@@ -19,4 +19,4 @@ export class InputManager {
 
 export const input = new InputManager();
 
-export type Key = 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD' | 'ShiftLeft';
+export type Key = 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD' | 'ShiftLeft'| 'Space';

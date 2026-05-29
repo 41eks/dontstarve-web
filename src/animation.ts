@@ -82,8 +82,10 @@ export function createAnimationUpdater(model: THREE.Group) {
 
         if (isMoving) {
             targetState = isShift ? 'run' : 'walk';
-        }
-
+        } else if (input.isPressed('Space')) {
+            targetState = 'jump'
+        } 
+ 
         // 这样只会当状态发生变化时才调用
         modelAnimathion.start(targetState);
     };
