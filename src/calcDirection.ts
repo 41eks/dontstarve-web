@@ -46,23 +46,23 @@ export function updateMovement(
 
         player.lookAt(target);
     };
-    function updatePosition(length: number) {
+    function updatePosition(length: number, dt: number) {
 
         if (moveDir.lengthSq() === 0) return;
 
-        player.position.addScaledVector(moveDir, length);
+        player.position.addScaledVector(moveDir, length * dt);
         // camera.position.addScaledVector(moveDir, length);
     }
 
 
-    function updateMoveState(length: number) {
+    function updateMoveState(length: number, dt: number) {
 
         // 一帧只算一次
         updateDir();
 
         updateLookAt();
 
-        updatePosition(length);
+        updatePosition(length, dt);
         // updateCamera();
 
     }

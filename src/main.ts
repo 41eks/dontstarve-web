@@ -44,7 +44,7 @@ const player = await loadGLB('ShinChan.glb').then((model) => {
   scene.add(model);
   return model;
 });
-const velocity = new THREE.Vector3(0, 0, 0.1);
+const velocity = new THREE.Vector3(0, 0, 16);
 const originLength = velocity.length();
 const movestate = updateMovement(camera, player);
 
@@ -57,12 +57,11 @@ const timer = new THREE.Timer();
 export type Updatable = (dt: number) => void;
 const queue: Updatable[] = [];
 queue.push(updateAnimationListener);
-queue.push(() => {
-  movestate(originLength);
+queue.push((dt: number) => {
+  movestate(originLength, dt);
 });
 
-// 准备一个临时的向量，用于计算每帧的相对位移
-const cameraOffset = new THREE.Vector3();
+
 function animate() {
   requestAnimationFrame(animate);
   timer.update();
@@ -75,18 +74,9 @@ function animate() {
   const diff = new THREE.Vector3().copy(camera.position).sub(player.position);
 
 
-
-
   queue.forEach((listener) => listener(dt));
   controls.target.copy(player.position);
-  // === 1. 计算移动前，相机相对于玩家的【旋转角度和距离】 ===
-  // 这一步能完美保留你用鼠标右键旋转出来的视角，以及滚轮缩放的距离
-  cameraOffset.copy(camera.position).sub(controls.target);
 
-  // === 2. 执行队列（玩家开始移动，player.position 发生改变） ===
-  queue.forEach((listener) => listener(dt));
-
-  // 4. 将玩家的新位置，加上刚才算好的差值，强行赋给相机
   camera.position.copy(player.position).add(diff);
 
   // 5. 让控制器的目标死死咬住玩家的新位置
