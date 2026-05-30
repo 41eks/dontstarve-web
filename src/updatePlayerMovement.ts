@@ -83,7 +83,7 @@ export function updateMovement(
         }
     }
 
-    function updateMoveState(length: number, dt: number) {
+    function updateMoveState(length: number, _dt: number) {
 
         // 一帧只算一次
         updateDir();

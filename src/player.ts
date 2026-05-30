@@ -2,7 +2,7 @@
 
 export const player = await loadGLB('ShinChan.glb').then((model) => {
   model.scale.set(0.01, 0.01, 0.01);
-  model.position.set(0, 0, 0);
+  model.position.set(0, 30, 0);
   return model;
 });
 
@@ -23,8 +23,18 @@ export const playerBody = new CANNON.Body({
 }) as PlayerBody;
 playerBody.canJump = false;
 // 监听落地碰撞，允许跳跃
-playerBody.addEventListener("collide", (e: any) => {
+// playerBody.addEventListener("collide", (e: CANNON.ICollisionEvent) => {
+//   playerBody.canJump = true;
+// });
+playerBody.addEventListener("collide", (_e: {
+  body: Body;
+  contact: ContactEquation;
+  target: Body; 
+  type: string;
+}) => {
   playerBody.canJump = true;
 });
 import * as CANNON from "cannon-es";
 import type { PlayerBody } from './types/Player';
+// import * as CANNON from 'cannon-es'
+import type { Body, ContactEquation } from 'cannon-es';

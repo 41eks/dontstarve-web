@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import * as CANNON from "cannon-es";
-import type { PlayerBody } from './types/Player';
 // --- 1. 初始化物理世界 ---
 const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0), // 设置重力
@@ -37,7 +36,7 @@ boxes.forEach(box => {
 })
 
 
-camera.position.set(4, 10, -12); // 初始化在玩家后上方
+camera.position.set(4, 30, -12); // 初始化在玩家后上方
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 4, 0);   // 初始看向出生点
 controls.enableDamping = true;
@@ -82,7 +81,7 @@ const cannonDebugger = CannonDebugger(scene, world, {
   color: 0x00ff00, // 物理碰撞体将显示为红色线框
 });
 postPhysicsTasks.push(() => {
-  // 2. 在 animate 循环中更新 debugger
+  // 在 animate 循环中更新 debugger
   cannonDebugger.update();
 });
 
