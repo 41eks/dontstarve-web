@@ -1,3 +1,4 @@
+// src/animation.ts
 
 
 
@@ -79,13 +80,13 @@ export function createAnimationUpdater(model: THREE.Group) {
         const isShift = input.isPressed('ShiftLeft');
 
         let targetState = 'idle';
-
-        if (isMoving) {
-            targetState = isShift ? 'run' : 'walk';
-        } else if (input.isPressed('Space')) {
+        if (input.isPressed('Space')) {
             targetState = 'jump'
-        } 
- 
+        } else
+            if (isMoving) {
+                targetState = isShift ? 'run' : 'walk';
+            }
+
         // 这样只会当状态发生变化时才调用
         modelAnimathion.start(targetState);
     };

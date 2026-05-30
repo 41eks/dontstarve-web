@@ -1,3 +1,4 @@
+// src/building.ts
 
 import * as THREE from 'three';
 

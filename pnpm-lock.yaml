@@ -8,9 +8,12 @@ importers:
 
   .:
     dependencies:
-      cannon:
-        specifier: ^0.6.2
-        version: 0.6.2
+      cannon-es:
+        specifier: ^0.20.0
+        version: 0.20.0
+      cannon-es-debugger:
+        specifier: ^1.0.0
+        version: 1.0.0(cannon-es@0.20.0)(three@0.184.0)(typescript@6.0.3)
       three:
         specifier: ^0.184.0
         version: 0.184.0
@@ -161,8 +164,18 @@ packages:
   '@types/webxr@0.5.24':
     resolution: {integrity: sha512-h8fgEd/DpoS9CBrjEQXR+dIDraopAEfu4wYVNY2tEPwk60stPWhvZMf4Foo5FakuQ7HFZoa8WceaWFervK2Ovg==}
 
-  cannon@0.6.2:
-    resolution: {integrity: sha512-n/7wWSXr8KOSvjad2x0fJHgpMepKjOKi+NdSnjfYyijoDBZnp4JQKgPcpv28jlXoWM+N9zVYU09J0A6Qxx+Y7w==}
+  cannon-es-debugger@1.0.0:
+    resolution: {integrity: sha512-sE9lDOBAYFKlh+0w+cvWKwUhJef8HYnUSVPWPL0jD15MAuVRQKno4QYZSGxgOoJkMR3mQqxL4bxys2b3RSWH8g==}
+    peerDependencies:
+      cannon-es: 0.x
+      three: 0.x
+      typescript: '>=3.8'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  cannon-es@0.20.0:
+    resolution: {integrity: sha512-eZhWTZIkFOnMAJOgfXJa9+b3kVlvG+FX4mdkpePev/w/rP5V8NRquGyEozcjPfEoXUlb+p7d9SUcmDSn14prOA==}
 
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
@@ -445,7 +458,14 @@ snapshots:
 
   '@types/webxr@0.5.24': {}
 
-  cannon@0.6.2: {}
+  cannon-es-debugger@1.0.0(cannon-es@0.20.0)(three@0.184.0)(typescript@6.0.3):
+    dependencies:
+      cannon-es: 0.20.0
+      three: 0.184.0
+    optionalDependencies:
+      typescript: 6.0.3
+
+  cannon-es@0.20.0: {}
 
   detect-libc@2.1.2: {}
 
