@@ -1,3 +1,4 @@
+// src/InputManager.ts
 
 export class InputManager {
     keys = new Set();

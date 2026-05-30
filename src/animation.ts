@@ -71,6 +71,7 @@ export default class ModelAnimation {
 
 import type { Key } from "./InputManager";
 import * as THREE from 'three';
+import { playerBody } from "./player";
 export function createAnimationUpdater(model: THREE.Group) {
 
     const modelAnimathion = new ModelAnimation(model);
@@ -78,9 +79,10 @@ export function createAnimationUpdater(model: THREE.Group) {
     function updateAnimation() {
         const isMoving = (['KeyW', 'KeyA', 'KeyS', 'KeyD'] as Key[]).some((code: Key) => input.isPressed(code));
         const isShift = input.isPressed('ShiftLeft');
+        const isJumping = input.isPressed('Space') || !playerBody.canJump;
 
         let targetState = 'idle';
-        if (input.isPressed('Space')) {
+        if (isJumping) {
             targetState = 'jump'
         } else
             if (isMoving) {
