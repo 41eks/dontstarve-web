@@ -32,4 +32,5 @@ const boxes = Array.from({ length: 500 }, () => {
     // box.position.z = Math.random() * 1000 - 500
     return box;
 })
+
 export { ground, boxes };
