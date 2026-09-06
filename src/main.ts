@@ -44,11 +44,13 @@ import { updateMovement } from './updatePlayerMovement';
 import { player, playerBody } from './player';
 
 world.addBody(playerBody);
-world.addBody(pigKingBody);
 
 scene.add(player);
 
-
+import { pigBody, pig, updatePigPosition } from './pig';
+world.addBody(pigBody);
+scene.add(pig);
+world.addBody(pigKingBody);
 function getVelocity() {
   const velocity = new THREE.Vector3(0, 0, 16);
   const originLength = velocity.length();
@@ -65,6 +67,8 @@ const cameraDirection = new THREE.Vector3();
 middleTasks.push(updateAnimationListener);
 middleTasks.push((dt: number) => {
   updatePlayerMovement(getVelocity(), dt);
+  updatePigPosition();
+
 });
 import CannonDebugger from 'cannon-es-debugger';
 const isGitHubPages = window.location.hostname.endsWith('github.io');
