@@ -2,9 +2,17 @@
 
 import * as THREE from 'three';
 
+const groundTexture = new THREE.TextureLoader().load(
+    `${import.meta.env.BASE_URL}384px-GROUND_DECIDUOUS.png`
+);
+groundTexture.colorSpace = THREE.SRGBColorSpace;
+groundTexture.wrapS = THREE.RepeatWrapping;
+groundTexture.wrapT = THREE.RepeatWrapping;
+groundTexture.repeat.set(10, 10);
+
 const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
 const groundMaterial = new THREE.MeshLambertMaterial({
-    color: 0xffffff,
+    map: groundTexture,
     side: THREE.DoubleSide
 });
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);

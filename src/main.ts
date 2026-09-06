@@ -1,5 +1,6 @@
 // src/main.ts
 
+import './style.css';
 import { createAnimationUpdater } from './animation';
 
 import * as THREE from 'three';
@@ -26,11 +27,12 @@ import {
 } from './building';
 import { animate, backTasks, middleTasks } from './animate';
 import { camera } from './camera';
-import { pigKingBody, pigKingStandee, setPigKingNormal } from './pigking';
+import { pigKingBody, pigKingFloor, pigKingStandee, setPigKingNormal } from './pigking';
 import { scene } from './universal';
 scene.background = new THREE.Color(0xbfd1e5);
 
 scene.add(ground);
+scene.add(pigKingFloor);
 scene.add(pigKingStandee);
 // scene.add(boxes);
 boxes.forEach(box => {

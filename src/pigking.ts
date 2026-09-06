@@ -26,6 +26,28 @@ pigKingStandee.position.set(0, 0, 25);
 pigKingStandee.scale.set(pigKingScale, pigKingScale, pigKingScale);
 pigKingStandee.add(pigKingPlane);
 
+// 在 Pig King 脚下覆盖一块木地板，略高于草地以避免两个平面闪烁。
+const pigKingFloorTexture = new THREE.TextureLoader().load(
+    `${import.meta.env.BASE_URL}384px-GROUND_WOODFLOOR.png`
+);
+pigKingFloorTexture.colorSpace = THREE.SRGBColorSpace;
+pigKingFloorTexture.wrapS = THREE.RepeatWrapping;
+pigKingFloorTexture.wrapT = THREE.RepeatWrapping;
+pigKingFloorTexture.repeat.set(0.3, 0.3);
+
+const pigKingFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(36, 36),
+    new THREE.MeshLambertMaterial({
+        map: pigKingFloorTexture,
+        side: THREE.DoubleSide,
+    }),
+);
+pigKingFloor.name = 'PigKingFloor';
+pigKingFloor.rotation.x = -Math.PI / 2;
+pigKingFloor.position.copy(pigKingStandee.position);
+pigKingFloor.position.y = 0.02;
+pigKingFloor.receiveShadow = true;
+
 const pigKingBody = new CANNON.Body({
     mass: 0,
     shape: new CANNON.Box(new CANNON.Vec3(
@@ -54,4 +76,4 @@ function setPigKingNormal(normal: THREE.Vector3) {
     pigKingBody.aabbNeedsUpdate = true;
 }
 
-export { pigKingStandee, pigKingBody, setPigKingNormal };
+export { pigKingStandee, pigKingFloor, pigKingBody, setPigKingNormal };
