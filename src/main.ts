@@ -28,7 +28,7 @@ import {
 import { animate, backTasks, middleTasks } from './animate';
 import { camera } from './camera';
 import { pigKingBody, pigKingFloor, pigKingStandee, setPigKingNormal } from './pigking';
-import { scene } from './universal';
+import { renderer, scene } from './universal';
 scene.background = new THREE.Color(0xbfd1e5);
 
 scene.add(ground);
@@ -50,8 +50,10 @@ world.addBody(playerBody);
 scene.add(player);
 
 import { pigBody, pig, updatePigPosition } from './pig';
+import { setupPigInteraction } from './pigInteraction';
 world.addBody(pigBody);
 scene.add(pig);
+setupPigInteraction(camera, renderer, pig);
 world.addBody(pigKingBody);
 function getVelocity() {
   const velocity = new THREE.Vector3(0, 0, 16);

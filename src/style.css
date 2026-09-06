@@ -71,6 +71,27 @@ canvas {
   height: 100vh !important;
 }
 
+#pig-message {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 10;
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  font: 18px/1.5 var(--sans);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+#pig-message.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 h1,
 h2 {
   font-family: var(--heading);
