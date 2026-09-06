@@ -53,7 +53,7 @@ import { pigBody, pig, updatePigPosition } from './pig';
 import { setupPigInteraction } from './pigInteraction';
 world.addBody(pigBody);
 scene.add(pig);
-setupPigInteraction(camera, renderer, pig);
+const updatePigInteraction = setupPigInteraction(camera, renderer, pig, player);
 world.addBody(pigKingBody);
 function getVelocity() {
   const velocity = new THREE.Vector3(0, 0, 16);
@@ -90,6 +90,7 @@ backTasks.push(() => {
   camera.getWorldDirection(cameraDirection);
   setPigKingNormal(cameraDirection);
   setTreeNormals(cameraDirection);
+  updatePigInteraction();
 });
 
 animate(world, camera);

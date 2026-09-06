@@ -73,23 +73,24 @@ canvas {
 
 #pig-message {
   position: fixed;
-  left: 24px;
-  bottom: 24px;
+  left: 0;
+  top: 0;
   z-index: 10;
   padding: 10px 16px;
   border-radius: 8px;
   color: #fff;
   background: rgba(0, 0, 0, 0.72);
   font: 18px/1.5 var(--sans);
+  white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transform: translateY(8px);
+  transform: translate(-50%, calc(-100% + 4px));
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
 #pig-message.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate(-50%, calc(-100% - 8px));
 }
 
 h1,
