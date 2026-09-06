@@ -22,7 +22,7 @@ const groundBody = new CANNON.Body({
 groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 world.addBody(groundBody);
 import {
-  ground, boxes
+  ground, boxes, setTreeNormals
 
 } from './building';
 import { animate, backTasks, middleTasks } from './animate';
@@ -87,6 +87,7 @@ if (!isGitHubPages) {
 backTasks.push(() => {
   camera.getWorldDirection(cameraDirection);
   setPigKingNormal(cameraDirection);
+  setTreeNormals(cameraDirection);
 });
 
 animate(world, camera);

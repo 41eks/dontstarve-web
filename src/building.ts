@@ -20,25 +20,58 @@ ground.rotation.x = -Math.PI / 2;
 
 ground.receiveShadow = true;
 
+const treeTexture = new THREE.TextureLoader().load(
+    `${import.meta.env.BASE_URL}192px-Birchnut_Tree_Tall.png`
+);
+treeTexture.colorSpace = THREE.SRGBColorSpace;
+
+const treeHeight = 20;
+const treeWidth = treeHeight * (192 / 323);
+const treeGeometry = new THREE.PlaneGeometry(treeWidth, treeHeight);
+const treeMaterial = new THREE.MeshBasicMaterial({
+    map: treeTexture,
+    transparent: true,
+    alphaTest: 0.01,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+});
+
 const boxes = Array.from({ length: 500 }, () => {
-    const boxGeometry = new THREE.BoxGeometry(5, 20, 5);
-    const boxMaterial = new THREE.MeshLambertMaterial({
-        color: 0xff0000,
-        side: THREE.DoubleSide
-    });
-    const box = new THREE.Mesh(boxGeometry, boxMaterial);
+    const tree = new THREE.Mesh(treeGeometry, treeMaterial);
+    tree.position.y = treeHeight / 2;
+
     while (true) {
         const x = Math.random() * 1000 - 500;
         const z = Math.random() * 1000 - 500;
         if (x * x + z * z > 600) {
-            box.position.x = x;
-            box.position.z = z;
+            tree.position.x = x;
+            tree.position.z = z;
             break;
         }
     }
-    // box.position.x = Math.random() * 1000 - 500;
-    // box.position.z = Math.random() * 1000 - 500
-    return box;
-})
 
-export { ground, boxes };
+    return tree;
+});
+
+const horizontalCameraDirection = new THREE.Vector3();
+
+function setTreeNormals(normal: THREE.Vector3) {
+    horizontalCameraDirection.copy(normal);
+    horizontalCameraDirection.y = 0;
+
+    if (horizontalCameraDirection.lengthSq() === 0) {
+        return;
+    }
+
+    horizontalCameraDirection.normalize();
+    const rotationY = Math.atan2(
+        horizontalCameraDirection.x,
+        horizontalCameraDirection.z,
+    );
+
+    boxes.forEach((tree) => {
+        tree.rotation.y = rotationY;
+    });
+}
+
+export { ground, boxes, setTreeNormals };

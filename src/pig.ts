@@ -34,4 +34,4 @@ export const updatePigPosition = () => {
 import * as CANNON from "cannon-es";
 import type { PlayerBody } from './types/Player';
 // import * as CANNON from 'cannon-es'
-import type { Body, ContactEquation } from 'cannon-es';
+// import type { Body, ContactEquation } from 'cannon-es';
