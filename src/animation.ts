@@ -72,7 +72,44 @@ export default class ModelAnimation {
 import type { Key } from "./InputManager";
 import * as THREE from 'three';
 import { playerBody } from "./player";
+import type { WilsonAnimationController, WilsonFacing } from './wilson';
+import { JUMP_VELOCITY } from './updatePlayerMovement';
 export function createAnimationUpdater(model: THREE.Group) {
+
+    const wilsonAnimation = model.userData.animationController as WilsonAnimationController | undefined;
+
+    if (wilsonAnimation) {
+        let lastFacing: WilsonFacing = 'down';
+        let lastMirrored = false;
+
+        return function listener(dt: number) {
+            const forward = input.isPressed('KeyW');
+            const backward = input.isPressed('KeyS');
+            const left = input.isPressed('KeyA');
+            const right = input.isPressed('KeyD');
+            const isMoving = forward || backward || left || right;
+            const isJumping = input.isPressed('Space') || !playerBody.canJump;
+
+            if (isMoving) {
+                if (forward !== backward) {
+                    lastFacing = forward ? 'up' : 'down';
+                    lastMirrored = false;
+                } else if (left !== right) {
+                    lastFacing = 'side';
+                    lastMirrored = right;
+                }
+                wilsonAnimation.setFacing(lastFacing, lastMirrored);
+            }
+
+            wilsonAnimation.start(isJumping ? 'jump' : isMoving
+                ? (input.isPressed('ShiftLeft') ? 'run' : 'walk')
+                : 'idle');
+            const jumpProgress = isJumping
+                ? (JUMP_VELOCITY - playerBody.velocity.y) / (2 * JUMP_VELOCITY)
+                : undefined;
+            wilsonAnimation.update(dt, jumpProgress);
+        };
+    }
 
     const modelAnimathion = new ModelAnimation(model);
     modelAnimathion.start('idle');

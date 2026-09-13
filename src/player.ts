@@ -1,12 +1,8 @@
 // src/player.ts
 
-export const player = await loadGLB('ShinChan.glb').then((model) => {
-  model.scale.set(0.01, 0.01, 0.01);
-  model.position.set(0, 30, 0);
-  return model;
-});
+import { createWilsonPlayer } from './wilson';
 
-import { loadGLB } from './handleGLB';
+export const player = await createWilsonPlayer();
 // --- 核心：模型加载完后，立即为它创建一个物理刚体 ---
 
 const shapeRadius = 4.5;
@@ -34,7 +30,16 @@ playerBody.addEventListener("collide", (_e: {
 }) => {
   playerBody.canJump = true;
 });
+
+export function setPlayerNormal(normal: THREE.Vector3) {
+  const horizontalNormal = normal.clone();
+  horizontalNormal.y = 0;
+  if (horizontalNormal.lengthSq() === 0) return;
+  horizontalNormal.normalize();
+  player.rotation.y = Math.atan2(horizontalNormal.x, horizontalNormal.z);
+}
 import * as CANNON from "cannon-es";
+import * as THREE from 'three';
 import type { PlayerBody } from './types/Player';
 // import * as CANNON from 'cannon-es'
 import type { Body, ContactEquation } from 'cannon-es';

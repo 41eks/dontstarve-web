@@ -43,7 +43,7 @@ boxes.forEach(box => {
 // import { input } from './InputManager';
 import { updateMovement } from './updatePlayerMovement';
 
-import { player, playerBody } from './player';
+import { player, playerBody, setPlayerNormal } from './player';
 
 world.addBody(playerBody);
 
@@ -68,12 +68,12 @@ const updateAnimationListener = createAnimationUpdater(player);
 
 const cameraDirection = new THREE.Vector3();
 
-middleTasks.push(updateAnimationListener);
 middleTasks.push((dt: number) => {
   updatePlayerMovement(getVelocity(), dt);
   updatePigPosition();
 
 });
+middleTasks.push(updateAnimationListener);
 import CannonDebugger from 'cannon-es-debugger';
 const isGitHubPages = window.location.hostname.endsWith('github.io');
 if (!isGitHubPages) {
@@ -88,6 +88,7 @@ if (!isGitHubPages) {
 
 backTasks.push(() => {
   camera.getWorldDirection(cameraDirection);
+  setPlayerNormal(cameraDirection);
   setPigKingNormal(cameraDirection);
   setTreeNormals(cameraDirection);
   updatePigInteraction();

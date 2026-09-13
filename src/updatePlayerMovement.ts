@@ -14,6 +14,7 @@ const moveDir = new THREE.Vector3();
 const cameraForward = new THREE.Vector3();
 const cameraRight = new THREE.Vector3();
 const up = new THREE.Vector3(0, 1, 0);
+export const JUMP_VELOCITY = 10;
 
 export function updateMovement(
     camera: THREE.PerspectiveCamera,
@@ -52,7 +53,7 @@ export function updateMovement(
 
         target.copy(player.position).add(moveDir);
 
-        player.lookAt(target);
+        if (!player.userData.billboard) player.lookAt(target);
     };
     // 修改：通过修改速度来控制位移，保留 Y 轴速度以适应重力和跳跃
     function updatePhysicsPosition(length: number) {
@@ -78,7 +79,7 @@ export function updateMovement(
     // // 新增：跳跃逻辑
     function updateJump() {
         if (input.isPressed("Space") && playerBody.canJump) {
-            playerBody.velocity.y = 10; // 给一个向上的跳跃初速度
+            playerBody.velocity.y = JUMP_VELOCITY; // 给一个向上的跳跃初速度
             playerBody.canJump = false; // 在空中不能再次跳跃
         }
     }
@@ -100,4 +101,3 @@ export function updateMovement(
 
     return updateMoveState;
 }
-
