@@ -1,0 +1,330 @@
+:host {
+  display: contents;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+.survival-hud,
+.survival-hud * {
+  box-sizing: border-box;
+}
+
+.survival-hud {
+  --hud-ink: #171711;
+  --hud-wood: #5e4529;
+  --hud-wood-light: #95764b;
+  --hud-paper: #d4caa9;
+  --hud-shadow: rgb(0 0 0 / 48%);
+  position: fixed;
+  z-index: 40;
+  top: clamp(10px, 3.2vh, 26px);
+  right: clamp(8px, 1.8vw, 24px);
+  width: 272px;
+  color: #f8f4e8;
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(2px 3px 2px rgb(0 0 0 / 28%));
+  user-select: none;
+}
+
+.survival-hud__calendar {
+  display: grid;
+  grid-template-columns: 166px 86px;
+  align-items: start;
+  justify-content: end;
+  gap: 11px;
+}
+
+.world-clock {
+  position: relative;
+  height: 91px;
+}
+
+.world-clock__dial,
+.season-clock,
+.survival-meter__dial {
+  border: 3px solid var(--hud-ink);
+  box-shadow:
+    0 0 0 2px var(--hud-wood-light),
+    0 0 0 4px var(--hud-ink),
+    inset 0 0 0 3px rgb(255 241 191 / 28%),
+    inset 0 0 8px rgb(0 0 0 / 45%);
+}
+
+.world-clock__dial {
+  position: absolute;
+  top: 4px;
+  right: 1px;
+  width: 82px;
+  height: 82px;
+  overflow: visible;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, rgb(34 35 28 / 78%) 0 47%, transparent 48%),
+    conic-gradient(from -42deg, #dec843 0 27%, #d87c45 27% 49%, #884d4e 49% 73%, #dbad45 73% 100%);
+  transform: rotate(-2deg);
+}
+
+.world-clock__dial::before,
+.season-clock::before,
+.survival-meter__dial::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 2px solid rgb(21 18 14 / 78%);
+  border-radius: inherit;
+}
+
+.world-clock__copy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transform: rotate(2deg);
+  text-align: center;
+  text-shadow:
+    -2px -2px 0 #222,
+    2px -2px 0 #222,
+    -2px 2px 0 #222,
+    2px 2px 0 #222;
+}
+
+.world-clock__copy b {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.world-clock__copy strong {
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+
+.world-clock__hand,
+.season-clock__hand {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: 112px;
+  height: 112px;
+  max-width: none;
+  object-fit: contain;
+  pointer-events: none;
+  transform-origin: center;
+}
+
+.world-clock__hand {
+  transform: translate(-50%, -50%) rotate(176deg);
+}
+
+.season-clock__hand {
+  transform: translate(-50%, -50%) rotate(158deg);
+}
+
+.world-clock__moon {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  z-index: 3;
+  display: grid;
+  width: 37px;
+  height: 37px;
+  place-items: center;
+  border: 3px solid var(--hud-ink);
+  border-radius: 50%;
+  background: #ac995c;
+  box-shadow: 0 0 0 2px #80633b, inset 0 0 0 2px #e4cf73;
+}
+
+.world-clock__moon i {
+  width: 22px;
+  height: 26px;
+  border: 2px solid #252d2e;
+  border-radius: 50% 45% 50% 43%;
+  background:
+    radial-gradient(circle at 32% 35%, #e1ece4 0 10%, transparent 11%),
+    radial-gradient(circle at 64% 68%, #657679 0 13%, transparent 14%),
+    #9eafb0;
+  transform: rotate(13deg);
+}
+
+.world-clock__link {
+  position: absolute;
+  top: 27px;
+  left: 34px;
+  width: 51px;
+  height: 9px;
+  border-top: 4px solid var(--hud-ink);
+  background: var(--hud-wood-light);
+  transform: rotate(14deg);
+  transform-origin: left center;
+}
+
+.world-clock__link i {
+  position: absolute;
+  top: -6px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--hud-ink);
+  border-radius: 50%;
+  background: #9f7f47;
+}
+
+.world-clock__link i:first-child { left: 10px; }
+.world-clock__link i:last-child { right: 6px; }
+
+.season-clock {
+  position: relative;
+  width: 82px;
+  height: 82px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgb(32 34 29 / 78%) 0 35%, transparent 36%),
+    repeating-conic-gradient(from -41deg, transparent 0 21deg, rgb(20 18 14 / 65%) 22deg 25deg),
+    conic-gradient(from -43deg, #d45e42 0 28%, #78b6d1 28% 47%, #5fa33f 47% 74%, #d9c73e 74% 100%);
+  transform: rotate(2deg);
+}
+
+.season-clock strong {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  font-size: 21px;
+  transform: rotate(-2deg);
+  text-shadow:
+    -2px -2px 0 #161616,
+    2px -2px 0 #161616,
+    -2px 2px 0 #161616,
+    2px 2px 0 #161616;
+}
+
+.survival-hud__meters {
+  display: grid;
+  grid-template-columns: repeat(3, 67px);
+  justify-content: end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.survival-meter {
+  position: relative;
+  display: grid;
+  grid-template-rows: 62px 29px;
+  justify-items: center;
+}
+
+.survival-meter__dial {
+  position: relative;
+  z-index: 2;
+  width: 68px;
+  height: 68px;
+  margin-top: -3px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: rotate(var(--meter-tilt, 0deg));
+}
+
+.survival-meter__dial::before {
+  display: none;
+}
+
+.survival-meter__value {
+  position: relative;
+  z-index: 1;
+  min-width: 53px;
+  height: 29px;
+  margin-top: -2px;
+  padding: 4px 5px 3px;
+  border: 4px solid var(--hud-ink);
+  background: #3e3930;
+  box-shadow: inset 0 0 0 2px var(--hud-wood-light), 1px 2px 0 var(--hud-shadow);
+  color: #e8e3d3;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  text-shadow: 1px 1px 1px #000;
+}
+
+.survival-meter--hunger {
+  --meter-tilt: -3deg;
+}
+
+.survival-meter--sanity {
+  --meter-tilt: 2deg;
+}
+
+.survival-meter__asset {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.survival-meter--health {
+  --meter-tilt: -1deg;
+}
+
+.temperature {
+  display: flex;
+  width: 72px;
+  height: 30px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-top: 9px;
+  margin-left: auto;
+  padding: 2px 7px 2px 2px;
+  border: 4px solid var(--hud-ink);
+  background: #50493a;
+  box-shadow: inset 0 0 0 2px var(--hud-wood-light), 1px 2px 0 var(--hud-shadow);
+}
+
+.temperature output {
+  min-width: 34px;
+  color: #eee9da;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: right;
+  text-shadow: 1px 1px #111;
+}
+
+.temperature__face {
+  position: relative;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  place-items: center;
+  border: 2px solid #181817;
+  border-radius: 50%;
+  background: #c8bc75;
+}
+
+.temperature__face i {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #374144;
+  border-radius: 48% 42% 52% 45%;
+  background: #b9cdcb;
+  transform: rotate(10deg);
+}
+
+@media (max-width: 360px) {
+  .survival-hud {
+    top: 8px;
+    right: 6px;
+    transform: scale(0.82);
+    transform-origin: top right;
+  }
+}
+

@@ -1,10 +1,10 @@
 // src/main.ts
 
 import './style.css';
-import './ui/craftingUI';
-import './ui/statusHUD';
-import './ui/mapControls';
+import { mountGameUi } from '@three-roaming/ui';
 import { createAnimationUpdater } from './animation';
+
+mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 
 import * as THREE from 'three';
 
