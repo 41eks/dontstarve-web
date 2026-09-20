@@ -1,6 +1,9 @@
 // src/main.ts
 
 import './style.css';
+import './ui/craftingUI';
+import './ui/statusHUD';
+import './ui/mapControls';
 import { createAnimationUpdater } from './animation';
 
 import * as THREE from 'three';

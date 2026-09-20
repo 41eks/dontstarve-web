@@ -1,8 +1,8 @@
 // src/player.ts
 
-import { createWilsonPlayer } from './wilson';
+import { createWilsonPlayer } from '@three-roaming/wilson';
 
-export const player = await createWilsonPlayer();
+export const player = await createWilsonPlayer(`${import.meta.env.BASE_URL}dst/data/anim`);
 // --- 核心：模型加载完后，立即为它创建一个物理刚体 ---
 
 const shapeRadius = 4.5;

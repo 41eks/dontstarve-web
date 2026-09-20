@@ -14,9 +14,9 @@
     "vite": "^8.0.12"
   },
   "dependencies": {
+    "@three-roaming/wilson": "workspace:*",
     "cannon-es": "^0.20.0",
     "cannon-es-debugger": "^1.0.0",
-    "fflate": "^0.8.3",
     "three": "^0.184.0"
   }
 }

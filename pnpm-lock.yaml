@@ -8,15 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@three-roaming/wilson':
+        specifier: workspace:*
+        version: link:packages/wilson
       cannon-es:
         specifier: ^0.20.0
         version: 0.20.0
       cannon-es-debugger:
         specifier: ^1.0.0
         version: 1.0.0(cannon-es@0.20.0)(three@0.184.0)(typescript@6.0.3)
-      fflate:
-        specifier: ^0.8.3
-        version: 0.8.3
       three:
         specifier: ^0.184.0
         version: 0.184.0
@@ -30,6 +30,22 @@ importers:
       vite:
         specifier: ^8.0.12
         version: 8.0.14
+
+  packages/wilson:
+    dependencies:
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
+      three:
+        specifier: ^0.184.0
+        version: 0.184.0
+    devDependencies:
+      '@types/three':
+        specifier: ^0.184.1
+        version: 0.184.1
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
 
 packages:
 

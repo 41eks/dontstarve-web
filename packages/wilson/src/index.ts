@@ -372,21 +372,21 @@ function findEntry(entries: Record<string, Uint8Array>, wanted: string) {
   return key ? entries[key] : undefined;
 }
 
-async function loadEntries(file: string) {
-  const response = await fetch(`${import.meta.env.BASE_URL}dst/data/anim/${file}`);
+async function loadEntries(file: string, assetBaseUrl: string) {
+  const response = await fetch(`${assetBaseUrl.replace(/\/$/, '')}/${file}`);
   if (!response.ok) throw new Error(`Unable to load Wilson asset ${file}: HTTP ${response.status}`);
   return unzipSync(new Uint8Array(await response.arrayBuffer()));
 }
 
-async function loadAnim(file: string) {
-  const entries = await loadEntries(file);
+async function loadAnim(file: string, assetBaseUrl: string) {
+  const entries = await loadEntries(file, assetBaseUrl);
   const data = findEntry(entries, 'anim.bin');
   if (!data) throw new Error(`${file} does not contain anim.bin`);
   return parseAnim(data, `${file}:anim.bin`);
 }
 
-async function loadBuild(file: string): Promise<BuildPackage> {
-  const entries = await loadEntries(file);
+async function loadBuild(file: string, assetBaseUrl: string): Promise<BuildPackage> {
+  const entries = await loadEntries(file, assetBaseUrl);
   const data = findEntry(entries, 'build.bin');
   if (!data) throw new Error(`${file} does not contain build.bin`);
   const build = parseBuild(data, `${file}:build.bin`);
@@ -537,12 +537,12 @@ class WilsonController implements WilsonAnimationController {
   }
 }
 
-export async function createWilsonPlayer(): Promise<THREE.Group> {
+export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Group> {
   const [buildPackage, idle, movement, jump] = await Promise.all([
-    loadBuild('wilson.zip'),
-    loadAnim('player_idles.zip'),
-    loadAnim('player_basic.zip'),
-    loadAnim('player_jump.zip'),
+    loadBuild('wilson.zip', assetBaseUrl),
+    loadAnim('player_idles.zip', assetBaseUrl),
+    loadAnim('player_basic.zip', assetBaseUrl),
+    loadAnim('player_jump.zip', assetBaseUrl),
   ]);
   if (buildPackage.build.name.toLowerCase() !== 'wilson') {
     throw new Error(`Expected Wilson build, received ${buildPackage.build.name}`);
