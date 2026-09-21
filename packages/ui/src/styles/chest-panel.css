@@ -1,0 +1,60 @@
+:host {
+  display: contents;
+}
+
+.chest-panel,
+.chest-panel * {
+  box-sizing: border-box;
+}
+
+.chest-panel {
+  position: fixed;
+  z-index: 60;
+  top: 50%;
+  left: 50%;
+  width: min(560px, calc(100vw - 32px));
+  padding: 16px;
+  border: 4px solid #21180f;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #795b38, #40301f 72%);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 58%), inset 0 0 0 2px #aa8151;
+  color: #f4dfb6;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  user-select: none;
+}
+
+.chest-panel[hidden] {
+  display: none;
+}
+
+.chest-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.chest-panel h2 {
+  margin: 0;
+  color: inherit;
+  font: 700 24px/1.2 system-ui, sans-serif;
+}
+
+.chest-panel__close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid #251a10;
+  border-radius: 50%;
+  background: #9a7447;
+  color: #24190f;
+  cursor: pointer;
+  font: 700 26px/28px system-ui, sans-serif;
+}
+
+.chest-panel__slots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}

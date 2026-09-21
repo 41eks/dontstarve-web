@@ -1,14 +1,15 @@
 // src/InputManager.ts
 
 export class InputManager {
-    keys = new Set();
+    keys = new Set<Key>();
 
     constructor() {
         window.addEventListener('keydown', (e) => {
-            console.log(e.code);
-            this.keys.add(e.code)
+            if (isTextInput(e.target)) return;
+            this.keys.add(e.code as Key)
         });
-        window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+        window.addEventListener('keyup', (e) => this.keys.delete(e.code as Key));
+        window.addEventListener('blur', () => this.keys.clear());
     }
 
     isPressed = (code:Key) => {
@@ -21,3 +22,9 @@ export class InputManager {
 export const input = new InputManager();
 
 export type Key = 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD' | 'ShiftLeft'| 'Space';
+
+function isTextInput(target: EventTarget | null): boolean {
+    return target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || (target instanceof HTMLElement && target.isContentEditable);
+}

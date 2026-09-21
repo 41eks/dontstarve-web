@@ -72,7 +72,7 @@ export default class ModelAnimation {
 import type { Key } from "./InputManager";
 import * as THREE from 'three';
 import { playerBody } from "./player";
-import type { WilsonAnimationController, WilsonFacing } from '@three-roaming/wilson';
+import type { WilsonAnimationController, WilsonFacing } from '@three-roaming/wilson/player';
 import { JUMP_VELOCITY } from './updatePlayerMovement';
 export function createAnimationUpdater(model: THREE.Group) {
 

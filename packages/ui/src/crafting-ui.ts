@@ -9,6 +9,12 @@ export interface CraftRequestDetail {
   recipeId: string;
 }
 
+export interface CraftingStateDetail extends CraftRequestDetail {
+  crafting: boolean;
+}
+
+export const CRAFT_DURATION_MS = 1_000;
+
 function requestAtlas(archiveUrl: string, atlasPath: string) {
   const key = `${archiveUrl}\n${atlasPath}`;
   let request = atlasRequests.get(key);
@@ -22,8 +28,11 @@ function requestAtlas(archiveUrl: string, atlasPath: string) {
 export class DstCraftingUiElement extends AssetElement {
   private activeCategoryId = 'tool';
   private bufferedRecipeIds = new Set<string>();
+  private collapsed = true;
   private inventoryCounts?: Readonly<Record<string, number>>;
   private selectedRecipeId?: string;
+  private craftingRecipeId?: string;
+  private craftingTimer?: ReturnType<typeof setTimeout>;
 
   constructor() {
     super();
@@ -50,6 +59,15 @@ export class DstCraftingUiElement extends AssetElement {
     }
     this.bufferedRecipeIds = next;
     if (this.isConnected) this.render();
+  }
+
+  disconnectedCallback(): void {
+    if (!this.craftingRecipeId) return;
+    if (this.craftingTimer !== undefined) clearTimeout(this.craftingTimer);
+    const recipeId = this.craftingRecipeId;
+    this.craftingRecipeId = undefined;
+    this.craftingTimer = undefined;
+    this.emitCraftingState(recipeId, false);
   }
 
   protected render(): void {
@@ -135,9 +153,14 @@ export class DstCraftingUiElement extends AssetElement {
       selectedName.textContent = recipe.name;
       materials.replaceChildren(...recipe.ingredients.map((ingredient) => this.ingredient(ingredient)));
       buildButton.disabled = this.isRecipeLocked(recipe);
-      buildButton.textContent = this.isRecipeBuffered(recipe)
-        ? '放置'
-        : recipe.locked ? '尚未解锁' : '建造';
+      if (this.craftingRecipeId) {
+        buildButton.disabled = true;
+        buildButton.textContent = this.craftingRecipeId === recipe.id ? '制作中…' : '请稍候';
+      } else {
+        buildButton.textContent = this.isRecipeBuffered(recipe)
+          ? '放置'
+          : recipe.locked ? '尚未解锁' : '建造';
+      }
     };
 
     const renderCategoryRecipes = (category: CategoryConfig) => {
@@ -221,14 +244,15 @@ export class DstCraftingUiElement extends AssetElement {
     root.querySelector('.craft-arrow-right')!.addEventListener('click', () => updateSelection(selectedIndex + 1));
     buildButton.addEventListener('click', () => {
       const recipe = activeRecipes[selectedIndex];
-      if (!recipe || this.isRecipeLocked(recipe)) return;
-      this.dispatchEvent(new CustomEvent<CraftRequestDetail>('game:craft-request', {
-        bubbles: true,
-        composed: true,
-        detail: { recipeId: recipe.id },
-      }));
+      if (!recipe || this.isRecipeLocked(recipe) || this.craftingRecipeId) return;
+      if (this.isRecipeBuffered(recipe)) {
+        this.emitCraftRequest(recipe.id);
+        return;
+      }
+      this.startCrafting(recipe.id);
     });
     const setCollapsed = (collapsed: boolean) => {
+      this.collapsed = collapsed;
       panel.classList.toggle('is-collapsed', collapsed);
       const viewToggle = root.querySelector<HTMLButtonElement>('.craft-view-toggle')!;
       const quickToggle = root.querySelector<HTMLButtonElement>('.craft-quick-toggle')!;
@@ -240,7 +264,7 @@ export class DstCraftingUiElement extends AssetElement {
     root.querySelector('.craft-quick-toggle')!.addEventListener('click', () => {
       setCollapsed(!panel.classList.contains('is-collapsed'));
     });
-    setCollapsed(true);
+    setCollapsed(this.collapsed);
     const initialCategory = categories.find(({ id }) => id === this.activeCategoryId) ?? categories[0];
     root.querySelector('h1')!.textContent = initialCategory.name;
     renderCategoryRecipes(initialCategory);
@@ -343,5 +367,34 @@ export class DstCraftingUiElement extends AssetElement {
 
   private availableCount(ingredient: RecipeIngredient): number {
     return this.inventoryCounts?.[ingredient.id] ?? ingredient.available;
+  }
+
+  private startCrafting(recipeId: string): void {
+    this.craftingRecipeId = recipeId;
+    this.emitCraftingState(recipeId, true);
+    this.render();
+    this.craftingTimer = setTimeout(() => {
+      this.craftingTimer = undefined;
+      this.craftingRecipeId = undefined;
+      this.emitCraftRequest(recipeId);
+      this.emitCraftingState(recipeId, false);
+      if (this.isConnected) this.render();
+    }, CRAFT_DURATION_MS);
+  }
+
+  private emitCraftRequest(recipeId: string): void {
+    this.dispatchEvent(new CustomEvent<CraftRequestDetail>('game:craft-request', {
+      bubbles: true,
+      composed: true,
+      detail: { recipeId },
+    }));
+  }
+
+  private emitCraftingState(recipeId: string, crafting: boolean): void {
+    this.dispatchEvent(new CustomEvent<CraftingStateDetail>('game:crafting-state-change', {
+      bubbles: true,
+      composed: true,
+      detail: { recipeId, crafting },
+    }));
   }
 }

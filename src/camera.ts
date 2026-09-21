@@ -5,10 +5,10 @@ import { player } from './player';
 import { renderer } from './universal';
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
-camera.position.set(4, 30, -12);
+camera.position.set(player.position.x + 4, player.position.y + 12, player.position.z - 24);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 4, 0);
+controls.target.copy(player.position).add(new THREE.Vector3(0, 4, 0));
 controls.enableDamping = true;
 controls.update();
 controls.addEventListener("change", () => {

@@ -1,30 +1,29 @@
-import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import pigKingUrl from './assets/384px-Pig_King.png';
+import * as THREE from 'three';
+import {
+    createAnimatedSprite,
+    type SpriteAnimationController,
+} from '@three-roaming/wilson/sprite';
 
-const pigKingTexture = new THREE.TextureLoader().load(pigKingUrl);
-pigKingTexture.colorSpace = THREE.SRGBColorSpace;
-
-const pigKingScale = 2;
-const pigKingHeight = 12;
+const pigKingHeight = 24;
 const pigKingWidth = pigKingHeight * (384 / 344);
 const pigKingDepth = 1;
-const pigKingGeometry = new THREE.PlaneGeometry(pigKingWidth, pigKingHeight);
-const pigKingMaterial = new THREE.MeshBasicMaterial({
-    map: pigKingTexture,
-    transparent: true,
-    alphaTest: 0.01,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-});
-const pigKingPlane = new THREE.Mesh(pigKingGeometry, pigKingMaterial);
-pigKingPlane.position.y = pigKingHeight / 2;
 
-const pigKingStandee = new THREE.Group();
-pigKingStandee.name = 'PigKingStandee';
+const pigKingStandee = await createAnimatedSprite(
+    `${import.meta.env.BASE_URL}dst/data/anim`,
+    'pig_king.zip',
+    {
+        initialAnimation: 'idle',
+        name: 'PigKingStandee',
+        scale: 0.04,
+    },
+);
 pigKingStandee.position.set(0, 0, 25);
-pigKingStandee.scale.set(pigKingScale, pigKingScale, pigKingScale);
-pigKingStandee.add(pigKingPlane);
+pigKingStandee.updateWorldMatrix(true, true);
+const pigKingBounds = new THREE.Box3().setFromObject(pigKingStandee);
+pigKingStandee.position.y -= pigKingBounds.min.y;
+
+const pigKingAnimation = pigKingStandee.userData.animationController as SpriteAnimationController;
 
 // 在 Pig King 脚下覆盖一块木地板，略高于草地以避免两个平面闪烁。
 const pigKingFloorTexture = new THREE.TextureLoader().load(
@@ -44,23 +43,52 @@ const pigKingFloor = new THREE.Mesh(
 );
 pigKingFloor.name = 'PigKingFloor';
 pigKingFloor.rotation.x = -Math.PI / 2;
-pigKingFloor.position.copy(pigKingStandee.position);
-pigKingFloor.position.y = 0.02;
+pigKingFloor.position.set(pigKingStandee.position.x, 0.02, pigKingStandee.position.z);
 pigKingFloor.receiveShadow = true;
 
 const pigKingBody = new CANNON.Body({
     mass: 0,
     shape: new CANNON.Box(new CANNON.Vec3(
-        (pigKingWidth * pigKingScale) / 2,
-        (pigKingHeight * pigKingScale) / 2,
+        pigKingWidth / 2,
+        pigKingHeight / 2,
         pigKingDepth / 2,
     )),
     position: new CANNON.Vec3(
         pigKingStandee.position.x,
-        pigKingStandee.position.y + (pigKingHeight * pigKingScale) / 2,
+        pigKingHeight / 2,
         pigKingStandee.position.z,
     ),
 });
+
+function setupPigKingInteraction(
+    camera: THREE.Camera,
+    renderer: THREE.WebGLRenderer,
+) {
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    const handlePointerDown = (event: PointerEvent) => {
+        if (event.button !== 0) return;
+
+        const bounds = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+        pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        pigKingStandee.updateWorldMatrix(true, true);
+        if (raycaster.intersectObject(pigKingStandee, true).length === 0) return;
+
+        pigKingAnimation.playOnce('unimpressed', () => {
+            pigKingAnimation.start('idle');
+        });
+    };
+
+    renderer.domElement.addEventListener('pointerdown', handlePointerDown);
+    return () => renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
+}
+
+function updatePigKingAnimation(dt: number) {
+    pigKingAnimation.update(dt);
+}
 
 function setPigKingNormal(normal: THREE.Vector3) {
     const horizontalNormal = normal.clone();
@@ -76,4 +104,11 @@ function setPigKingNormal(normal: THREE.Vector3) {
     pigKingBody.aabbNeedsUpdate = true;
 }
 
-export { pigKingStandee, pigKingFloor, pigKingBody, setPigKingNormal };
+export {
+    pigKingStandee,
+    pigKingFloor,
+    pigKingBody,
+    setPigKingNormal,
+    setupPigKingInteraction,
+    updatePigKingAnimation,
+};

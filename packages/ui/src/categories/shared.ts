@@ -36,22 +36,33 @@ export interface InventoryRecipeDefinition {
   readonly buffered: boolean;
 }
 
+export interface InventoryProductSpec {
+  readonly name: string;
+  readonly icon: string;
+  readonly atlas?: string;
+}
+
 export type CraftingFilterName = keyof typeof filterRecipeIds;
 
 const recipeData = recipeDataJson as unknown as RecipeData;
 const recipesById = new Map(recipeData.recipes.map((recipe) => [recipe.name, recipe]));
 
+function recipeProduct(source: SourceRecipe) {
+  const configuredProduct = source.config.product;
+  const id = configuredProduct === undefined ? source.name : stringValue(configuredProduct);
+  const configuredCount = source.config.numtogive;
+  const count = configuredCount === undefined ? 1 : configuredCount;
+  if (!id || typeof count !== 'number' || !Number.isSafeInteger(count) || count <= 0) {
+    return undefined;
+  }
+  return { id, count };
+}
+
 function createInventoryRecipe(
   source: SourceRecipe,
 ): InventoryRecipeDefinition | undefined {
-  const product = source.config.product;
-  const productId = product === undefined ? source.name : stringValue(product);
-  const productCountValue = source.config.numtogive;
-  const productCount = productCountValue === undefined ? 1 : productCountValue;
-  if (!productId || typeof productCount !== 'number' || !Number.isSafeInteger(productCount)
-    || productCount <= 0) {
-    return undefined;
-  }
+  const product = recipeProduct(source);
+  if (!product) return undefined;
 
   const ingredients: Record<string, number> = {};
   for (const ingredient of source.ingredients) {
@@ -65,8 +76,8 @@ function createInventoryRecipe(
   }
   return {
     recipeId: source.name,
-    productId,
-    productCount,
+    productId: product.id,
+    productCount: product.count,
     ingredients,
     buffered: typeof source.config.placer === 'string',
   };
@@ -77,6 +88,37 @@ export const INVENTORY_RECIPES: Readonly<Record<string, InventoryRecipeDefinitio
     const recipe = createInventoryRecipe(source);
     return recipe ? [[source.name, recipe]] : [];
   }));
+
+function createInventoryProductSpec(
+  source: SourceRecipe,
+): readonly [string, InventoryProductSpec] | undefined {
+  const product = recipeProduct(source);
+  if (!product) return undefined;
+  const nameOverride = stringValue(source.config.nameoverride);
+  const nameKey = nameOverride ?? product.id;
+  const atlas = stringValue(source.config.atlas);
+  return [product.id, {
+    name: ingredientNames[nameKey]
+      ?? recipeNames[nameKey]
+      ?? recipeNames[source.name]
+      ?? humanize(product.id),
+    icon: stringValue(source.config.image) ?? `${product.id}.tex`,
+    ...(atlas ? { atlas } : {}),
+  }];
+}
+
+const inventoryProductSpecs = new Map<string, InventoryProductSpec>();
+for (const source of recipeData.recipes) {
+  const entry = createInventoryProductSpec(source);
+  if (!entry) continue;
+  const [productId, spec] = entry;
+  if (!inventoryProductSpecs.has(productId) || source.name === productId) {
+    inventoryProductSpecs.set(productId, spec);
+  }
+}
+
+export const INVENTORY_PRODUCT_SPECS: Readonly<Record<string, InventoryProductSpec>> =
+  Object.fromEntries(inventoryProductSpecs);
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;

@@ -93,6 +93,25 @@ canvas {
   transform: translate(-50%, calc(-100% - 8px));
 }
 
+.build-cursor-label {
+  position: fixed;
+  z-index: 100;
+  padding: 3px 7px;
+  border-radius: 4px;
+  color: #fff;
+  background: rgb(21 24 25 / 82%);
+  font: 600 12px/1.2 var(--sans);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 1px 1px 2px #000;
+  transform: translate(-50%, calc(-100% - 12px));
+}
+
+.build-cursor-label[hidden] {
+  display: none;
+}
+
 h1,
 h2 {
   font-family: var(--heading);

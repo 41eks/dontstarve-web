@@ -1,12 +1,17 @@
-import type { InventoryRecipeDefinition } from '@three-roaming/ui';
+import {
+  INVENTORY_PRODUCT_SPECS,
+  PLAYER_EQUIPMENT_CONTAINER_ID,
+  PLAYER_INVENTORY_CONTAINER_ID,
+  equipmentSlotAddress,
+  inventorySlotAddress,
+  type EquipmentKind,
+  type InventoryRecipeDefinition,
+  type SlotAddress,
+} from '@three-roaming/ui';
+
+export type { EquipmentKind } from '@three-roaming/ui';
 
 export const INVENTORY_SLOT_COUNT = 15;
-
-export type EquipmentKind = 'hand' | 'body' | 'head';
-
-export type InventorySlotRef =
-  | { group: 'inventory'; index: number }
-  | { group: 'equipment'; kind: EquipmentKind };
 
 export interface InventoryItemDefinition {
   slot_index: number;
@@ -28,12 +33,12 @@ export interface InventoryStack {
 }
 
 export interface InventorySlotDelta {
-  slot: InventorySlotRef;
+  slot: SlotAddress;
   itemId: string;
   delta: number;
 }
 
-export type InventoryListener = (changedSlots: readonly InventorySlotRef[]) => void;
+export type InventoryListener = (changedSlots: readonly SlotAddress[]) => void;
 
 export const INVENTORY_ITEM_DEFINITIONS: readonly InventoryItemDefinition[] = [
   {
@@ -68,7 +73,22 @@ export const INVENTORY_ITEM_DEFINITIONS: readonly InventoryItemDefinition[] = [
   },
 ];
 
-const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = {
+const DEFAULT_CRAFTED_ITEM_MAX_STACK = 40;
+
+const GENERATED_INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
+  Object.fromEntries(Object.entries(INVENTORY_PRODUCT_SPECS).map(([itemId, spec]) => [itemId, {
+    name: spec.name,
+    maxStack: DEFAULT_CRAFTED_ITEM_MAX_STACK,
+    icon: spec.icon,
+    ...(spec.atlas ? { atlas: spec.atlas } : {}),
+  }]));
+
+const INVENTORY_ITEM_SPEC_OVERRIDES: Readonly<Record<string, InventoryItemSpec>> = {
+  meatballs: {
+    name: '肉丸',
+    maxStack: 40,
+    icon: 'meatballs.tex',
+  },
   cutgrass: {
     name: '草',
     maxStack: 40,
@@ -102,16 +122,19 @@ const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = {
   },
 };
 
+const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = {
+  ...GENERATED_INVENTORY_ITEM_SPECS,
+  ...INVENTORY_ITEM_SPEC_OVERRIDES,
+};
+
 const equipmentKinds: readonly EquipmentKind[] = ['hand', 'body', 'head'];
 
-function cloneRef(ref: InventorySlotRef): InventorySlotRef {
-  return ref.group === 'inventory'
-    ? { group: 'inventory', index: ref.index }
-    : { group: 'equipment', kind: ref.kind };
+function cloneAddress(address: SlotAddress): SlotAddress {
+  return { ...address };
 }
 
-function slotKey(ref: InventorySlotRef) {
-  return ref.group === 'inventory' ? `inventory:${ref.index}` : `equipment:${ref.kind}`;
+function addressKey(address: SlotAddress): string {
+  return `${address.containerId}\n${address.slotKey}`;
 }
 
 export class InventoryStore {
@@ -161,8 +184,8 @@ export class InventoryStore {
     return () => this.listeners.delete(listener);
   }
 
-  get(ref: InventorySlotRef): InventoryStack | null {
-    const stack = this.readSlot(this.slots, this.equipment, ref);
+  get(address: SlotAddress): InventoryStack | null {
+    const stack = this.readSlot(this.slots, this.equipment, address);
     return stack ? { ...stack } : null;
   }
 
@@ -202,14 +225,47 @@ export class InventoryStore {
     return true;
   }
 
-  refs(): readonly InventorySlotRef[] {
+  addresses(): readonly SlotAddress[] {
     return [
-      ...Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index): InventorySlotRef => ({
-        group: 'inventory',
-        index,
-      })),
-      ...equipmentKinds.map((kind): InventorySlotRef => ({ group: 'equipment', kind })),
+      ...Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => inventorySlotAddress(index)),
+      ...equipmentKinds.map((kind) => equipmentSlotAddress(kind)),
     ];
+  }
+
+  add(itemId: string, count: number): boolean {
+    const spec = this.itemSpecs.get(itemId);
+    if (!spec || !Number.isSafeInteger(count) || count <= 0) return false;
+
+    const workingSlots = this.slots.map((stack) => stack ? { ...stack } : null);
+    const changes: InventorySlotDelta[] = [];
+    let remaining = count;
+
+    for (let index = 0; index < workingSlots.length && remaining > 0; index += 1) {
+      const stack = workingSlots[index];
+      if (stack?.itemId !== itemId || stack.count >= spec.maxStack) continue;
+      const added = Math.min(remaining, spec.maxStack - stack.count);
+      changes.push({
+        slot: inventorySlotAddress(index),
+        itemId,
+        delta: added,
+      });
+      stack.count += added;
+      remaining -= added;
+    }
+
+    for (let index = 0; index < workingSlots.length && remaining > 0; index += 1) {
+      if (workingSlots[index]) continue;
+      const added = Math.min(remaining, spec.maxStack);
+      changes.push({
+        slot: inventorySlotAddress(index),
+        itemId,
+        delta: added,
+      });
+      workingSlots[index] = { itemId, count: added };
+      remaining -= added;
+    }
+
+    return remaining === 0 && this.applySlotChanges(changes);
   }
 
   craft(recipe: InventoryRecipeDefinition): boolean {
@@ -233,7 +289,7 @@ export class InventoryStore {
         if (stack?.itemId !== itemId) continue;
         const consumed = Math.min(stack.count, remaining);
         changes.push({
-          slot: { group: 'inventory', index },
+          slot: inventorySlotAddress(index),
           itemId,
           delta: -consumed,
         });
@@ -251,7 +307,7 @@ export class InventoryStore {
         if (stack?.itemId !== recipe.productId || stack.count >= product.maxStack) continue;
         const added = Math.min(productsRemaining, product.maxStack - stack.count);
         changes.push({
-          slot: { group: 'inventory', index },
+          slot: inventorySlotAddress(index),
           itemId: recipe.productId,
           delta: added,
         });
@@ -262,7 +318,7 @@ export class InventoryStore {
         if (workingSlots[index]) continue;
         const added = Math.min(productsRemaining, product.maxStack);
         changes.push({
-          slot: { group: 'inventory', index },
+          slot: inventorySlotAddress(index),
           itemId: recipe.productId,
           delta: added,
         });
@@ -292,7 +348,7 @@ export class InventoryStore {
     for (const change of changes) {
       if (!Number.isSafeInteger(change.delta) || change.delta === 0) return false;
       const spec = this.itemSpecs.get(change.itemId);
-      if (!spec || !this.isValidRef(change.slot)) return false;
+      if (!spec || !this.isValidAddress(change.slot)) return false;
 
       const current = this.readSlot(nextSlots, nextEquipment, change.slot);
       if (change.delta < 0) {
@@ -309,7 +365,8 @@ export class InventoryStore {
         continue;
       }
 
-      if (change.slot.group === 'equipment' && spec.equippable !== change.slot.kind) {
+      if (change.slot.containerId === PLAYER_EQUIPMENT_CONTAINER_ID
+        && spec.equippable !== change.slot.slotKey) {
         return false;
       }
       if (current && current.itemId !== change.itemId) return false;
@@ -323,14 +380,14 @@ export class InventoryStore {
 
     this.slots = nextSlots;
     this.equipment = nextEquipment;
-    const changed = new Map<string, InventorySlotRef>();
-    changes.forEach(({ slot }) => changed.set(slotKey(slot), cloneRef(slot)));
+    const changed = new Map<string, SlotAddress>();
+    changes.forEach(({ slot }) => changed.set(addressKey(slot), cloneAddress(slot)));
     const changedSlots = [...changed.values()];
     this.notify(changedSlots);
     return true;
   }
 
-  private notify(changedSlots: readonly InventorySlotRef[]): void {
+  private notify(changedSlots: readonly SlotAddress[]): void {
     this.listeners.forEach((listener) => listener(changedSlots));
   }
 
@@ -340,28 +397,39 @@ export class InventoryStore {
     return spec;
   }
 
-  private isValidRef(ref: InventorySlotRef): boolean {
-    return ref.group === 'inventory'
-      ? Number.isInteger(ref.index) && ref.index >= 0 && ref.index < INVENTORY_SLOT_COUNT
-      : equipmentKinds.includes(ref.kind);
+  private isValidAddress(address: SlotAddress): boolean {
+    if (address.containerId === PLAYER_INVENTORY_CONTAINER_ID) {
+      const index = Number(address.slotKey);
+      return Number.isInteger(index)
+        && String(index) === address.slotKey
+        && index >= 0
+        && index < INVENTORY_SLOT_COUNT;
+    }
+    return address.containerId === PLAYER_EQUIPMENT_CONTAINER_ID
+      && equipmentKinds.includes(address.slotKey as EquipmentKind);
   }
 
   private readSlot(
     slots: readonly (InventoryStack | null)[],
     equipment: Readonly<Record<EquipmentKind, InventoryStack | null>>,
-    ref: InventorySlotRef,
+    address: SlotAddress,
   ): InventoryStack | null {
-    if (!this.isValidRef(ref)) return null;
-    return ref.group === 'inventory' ? slots[ref.index] : equipment[ref.kind];
+    if (!this.isValidAddress(address)) return null;
+    return address.containerId === PLAYER_INVENTORY_CONTAINER_ID
+      ? slots[Number(address.slotKey)]
+      : equipment[address.slotKey as EquipmentKind];
   }
 
   private writeSlot(
     slots: (InventoryStack | null)[],
     equipment: Record<EquipmentKind, InventoryStack | null>,
-    ref: InventorySlotRef,
+    address: SlotAddress,
     value: InventoryStack | null,
   ): void {
-    if (ref.group === 'inventory') slots[ref.index] = value;
-    else equipment[ref.kind] = value;
+    if (address.containerId === PLAYER_INVENTORY_CONTAINER_ID) {
+      slots[Number(address.slotKey)] = value;
+    } else {
+      equipment[address.slotKey as EquipmentKind] = value;
+    }
   }
 }

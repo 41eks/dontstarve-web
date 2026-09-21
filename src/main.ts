@@ -3,39 +3,55 @@
 import './style.css';
 import {
   INVENTORY_RECIPES,
+  equipmentSlotAddress,
   mountGameUi,
+  type CraftingStateDetail,
   type CraftRequestDetail,
-  type InventorySlotChangeDetail,
+  type DebugCommandDetail,
+  type SlotAddress,
+  type SlotContextMenuDetail,
+  type SlotTransferRequest,
 } from '@three-roaming/ui';
-import type { WilsonAnimationController } from '@three-roaming/wilson';
+import type { WilsonAnimationController } from '@three-roaming/wilson/player';
 import { preloadImageArchive } from '@three-roaming/wilson/imageAtlas';
-import { createAnimationUpdater } from './animation';
-import { player, playerBody, setPlayerNormal } from './player';
+import { player } from './player';
+import { executeDebugCommand } from './debugCommands';
+import { isPlaceableBuildingId } from './placeableBuilding';
 import {
   INVENTORY_ITEM_DEFINITIONS,
   InventoryStore,
-  type InventorySlotRef,
 } from './inventory';
+import { startScene } from './scene';
 
 void preloadImageArchive(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 export const inventory = new InventoryStore(INVENTORY_ITEM_DEFINITIONS);
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
+const handSlotAddress = equipmentSlotAddress('hand');
+
+function isHandSlot(address: SlotAddress): boolean {
+  return address.containerId === handSlotAddress.containerId
+    && address.slotKey === handSlotAddress.slotKey;
+}
+
+window.addEventListener('contextmenu', (event) => {
+  event.preventDefault();
+});
 
 function syncHandEquipment(): void {
-  const handItem = inventory.get({ group: 'equipment', kind: 'hand' });
+  const handItem = inventory.get(handSlotAddress);
   playerAnimation?.setCarryItem(handItem?.itemId === 'torch' ? 'torch' : null);
 }
 
-function syncInventorySlot(ref: InventorySlotRef): void {
-  const stack = inventory.get(ref);
+function syncInventorySlot(address: SlotAddress): void {
+  const stack = inventory.get(address);
   if (!stack) {
-    gameUi.inventoryBar.setSlot(ref, null);
+    gameUi.inventoryBar.setSlot(address, null);
     return;
   }
 
   const spec = inventory.getItemSpec(stack.itemId);
-  gameUi.inventoryBar.setSlot(ref, {
+  gameUi.inventoryBar.setSlot(address, {
     id: stack.itemId,
     name: spec.name,
     count: stack.count,
@@ -51,168 +67,90 @@ function syncCraftingInventory(): void {
   gameUi.crafting.setBufferedRecipes(inventory.buffered());
 }
 
-inventory.refs().forEach(syncInventorySlot);
+inventory.addresses().forEach(syncInventorySlot);
 syncCraftingInventory();
 syncHandEquipment();
 inventory.subscribe((changedSlots) => {
   changedSlots.forEach(syncInventorySlot);
   syncCraftingInventory();
-  if (changedSlots.some((ref) => ref.group === 'equipment' && ref.kind === 'hand')) {
+  if (changedSlots.some((address) =>
+    address.containerId === handSlotAddress.containerId
+    && address.slotKey === handSlotAddress.slotKey)) {
     syncHandEquipment();
   }
 });
 
-interface PendingInventoryOperation {
-  decrease?: InventorySlotChangeDetail;
-  increase?: InventorySlotChangeDetail;
-}
+const { buildingPlacement, groundItems } = startScene(
+  (buildingId) => inventory.takeBuffered(buildingId),
+  (item) => {
+    if (!inventory.add(item.itemId, item.count)) return false;
+    playerAnimation?.playPickup();
+    return true;
+  },
+);
+gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
+  const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
+  void executeDebugCommand(command, inventory, async (prefabId) => {
+    if (!isPlaceableBuildingId(prefabId)) return false;
+    await buildingPlacement.spawn(prefabId);
+    return true;
+  }).then((result) => {
+    if (result.ok) console.info(result.message);
+    else console.warn(result.message);
+  }).catch((error: unknown) => {
+    console.error(`Unable to execute debug command: ${command}`, error);
+  });
+});
 
-const pendingInventoryOperations = new Map<number, PendingInventoryOperation>();
-
-function receiveInventorySlotChange(
-  direction: 'decrease' | 'increase',
-  detail: InventorySlotChangeDetail,
-): void {
+window.addEventListener('game:slot-transfer-request', (event) => {
+  const detail = (event as CustomEvent<SlotTransferRequest>).detail;
   if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) return;
-  const operation = pendingInventoryOperations.get(detail.operationId) ?? {};
-  operation[direction] = detail;
-  pendingInventoryOperations.set(detail.operationId, operation);
 
-  if (!operation.decrease || !operation.increase) {
-    queueMicrotask(() => {
-      if (pendingInventoryOperations.get(detail.operationId) === operation
-        && (!operation.decrease || !operation.increase)) {
-        pendingInventoryOperations.delete(detail.operationId);
-      }
+  const transferred = inventory.applySlotChanges([
+    { slot: detail.from, itemId: detail.itemId, delta: -detail.amount },
+    { slot: detail.to, itemId: detail.itemId, delta: detail.amount },
+  ]);
+  if (!transferred || detail.itemId !== 'torch') return;
+  if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out');
+  else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in');
+});
+gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
+  const { slot, shiftKey } = (event as CustomEvent<SlotContextMenuDetail>).detail;
+  const stack = inventory.get(slot);
+  if (!stack) return;
+  if (shiftKey) {
+    const spec = inventory.getItemSpec(stack.itemId);
+    const position = player.position.clone();
+    void groundItems.drop({
+      itemId: stack.itemId,
+      name: spec.name,
+      icon: spec.icon,
+      ...(spec.atlas ? { atlas: spec.atlas } : {}),
+      count: 1,
+    }, position, () => inventory.applySlotChanges([
+      { slot, itemId: stack.itemId, delta: -1 },
+    ])).then((dropped) => {
+      if (dropped) playerAnimation?.playPickup();
+    }).catch((error: unknown) => {
+      console.error(`Unable to drop ${stack.itemId}`, error);
     });
     return;
   }
-
-  pendingInventoryOperations.delete(detail.operationId);
-  if (operation.decrease.itemId !== operation.increase.itemId
-    || operation.decrease.amount !== operation.increase.amount) {
-    return;
-  }
-
-  inventory.applySlotChanges([
-    {
-      slot: operation.decrease.slot,
-      itemId: operation.decrease.itemId,
-      delta: -operation.decrease.amount,
-    },
-    {
-      slot: operation.increase.slot,
-      itemId: operation.increase.itemId,
-      delta: operation.increase.amount,
-    },
-  ]);
-}
-
-gameUi.inventoryBar.addEventListener('game:inventory-slot-decrease', (event) => {
-  receiveInventorySlotChange(
-    'decrease',
-    (event as CustomEvent<InventorySlotChangeDetail>).detail,
-  );
-});
-gameUi.inventoryBar.addEventListener('game:inventory-slot-increase', (event) => {
-  receiveInventorySlotChange(
-    'increase',
-    (event as CustomEvent<InventorySlotChangeDetail>).detail,
-  );
+  if (stack.itemId === 'meatballs') playerAnimation?.playEat();
 });
 gameUi.crafting.addEventListener('game:craft-request', (event) => {
   const { recipeId } = (event as CustomEvent<CraftRequestDetail>).detail;
   const recipe = INVENTORY_RECIPES[recipeId];
-  if (recipe) inventory.craft(recipe);
+  if (!recipe) return;
+
+  const crafted = inventory.craft(recipe);
+  if (isPlaceableBuildingId(recipeId) && (crafted || inventory.isBuffered(recipeId))) {
+    void buildingPlacement.begin(recipeId).catch((error: unknown) => {
+      console.error(`Unable to start ${recipeId} placement`, error);
+    });
+  }
 });
-
-import * as THREE from 'three';
-
-import * as CANNON from "cannon-es";
-// --- 1. 初始化物理世界 ---
-const world = new CANNON.World({
-  gravity: new CANNON.Vec3(0, -9.82, 0), // 设置重力
+gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
+  const { crafting } = (event as CustomEvent<CraftingStateDetail>).detail;
+  playerAnimation?.setCrafting(crafting);
 });
-
-// --- 2. 创建物理地面 ---
-const groundMaterial = new CANNON.Material("ground");
-const groundBody = new CANNON.Body({
-  mass: 0, // 质量为0代表静态物体，不会掉落
-  shape: new CANNON.Plane(),
-  material: groundMaterial,
-});
-// Cannon 的 Plane 默认面向 Z 轴，需要旋转使其平躺在地面
-groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-world.addBody(groundBody);
-import {
-  ground, boxes, setTreeNormals
-
-} from './building';
-import { animate, backTasks, middleTasks } from './animate';
-import { camera } from './camera';
-import { pigKingBody, pigKingFloor, pigKingStandee, setPigKingNormal } from './pigking';
-import { renderer, scene } from './universal';
-scene.background = new THREE.Color(0xbfd1e5);
-
-scene.add(ground);
-scene.add(pigKingFloor);
-scene.add(pigKingStandee);
-// scene.add(boxes);
-boxes.forEach(box => {
-  scene.add(box);
-})
-
-
-// import { input } from './InputManager';
-import { updateMovement } from './updatePlayerMovement';
-
-world.addBody(playerBody);
-
-scene.add(player);
-
-import { pigBody, pig, updatePigPosition } from './pig';
-import { setupPigInteraction } from './pigInteraction';
-world.addBody(pigBody);
-scene.add(pig);
-const updatePigInteraction = setupPigInteraction(camera, renderer, pig, player);
-world.addBody(pigKingBody);
-function getVelocity() {
-  const velocity = new THREE.Vector3(0, 0, 16);
-  const originLength = velocity.length();
-  return originLength
-}
-
-const updatePlayerMovement = updateMovement(camera, player, playerBody);
-
-
-const updateAnimationListener = createAnimationUpdater(player);
-
-const cameraDirection = new THREE.Vector3();
-
-middleTasks.push((dt: number) => {
-  updatePlayerMovement(getVelocity(), dt);
-  updatePigPosition();
-
-});
-middleTasks.push(updateAnimationListener);
-import CannonDebugger from 'cannon-es-debugger';
-const isGitHubPages = window.location.hostname.endsWith('github.io');
-if (!isGitHubPages) {
-  const cannonDebugger = CannonDebugger(scene, world, {
-    color: 0x00ff00, // 物理碰撞体将显示为绿色线框
-  });
-  backTasks.push(() => {
-    // 在 animate 循环中更新 debugger
-    cannonDebugger.update();
-  });
-}
-
-backTasks.push(() => {
-  camera.getWorldDirection(cameraDirection);
-  setPlayerNormal(cameraDirection);
-  setPigKingNormal(cameraDirection);
-  setTreeNormals(cameraDirection);
-  updatePigInteraction();
-});
-
-animate(world, camera);

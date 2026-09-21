@@ -6,6 +6,7 @@ type Effect = {
     cleanups: (() => void)[];
     deps: any[];            // 存它依赖的 Signal 对象
     depsIndices: number[];  // 存它在各个 Signal.subscribers 数组里的下标
+    disposed: boolean;
 };
 
 type SignalNode = {
@@ -30,7 +31,9 @@ export function createEffect(fn: () => void) {
         deps: [], // 初始化空账本
         depsIndices: [],
         cleanups: [],
+        disposed: false,
         runner: () => {
+            if (effect.disposed) return;
             // ✨ 核心清理动作：执行前，先把自己从所有旧的 Signal 依赖中清除
             cleanup(effect);
 
@@ -48,11 +51,18 @@ export function createEffect(fn: () => void) {
 
     // 初始化时，手动调用对象的 runner 触发第一次执行
     effect.runner();
+
+    return () => {
+        if (effect.disposed) return;
+        effect.disposed = true;
+        queue.delete(effect.runner);
+        cleanup(effect);
+    };
 }
 
 
 // 优化 1：直接接收初始值，简化 API
-export function createState<T>(initialValue: T) {
+export function createSignal<T>(initialValue: T) {
     let _state = initialValue;
     const signalObj: SignalNode = {
         subscribers: [], subscriberIndices: []
@@ -168,7 +178,7 @@ function _run() {
 
 
 export function createMemo<T>(fn: () => T) {
-    const memoState = createState<T | undefined>(undefined);
+    const memoState = createSignal<T | undefined>(undefined);
 
     createEffect(() => {
         const newValue = fn();

@@ -1,5 +1,18 @@
+import { loadImageAtlas, type ImageAtlas } from '@three-roaming/wilson/imageAtlas';
 import { AssetElement } from './assets';
 import styles from './styles/status-hud.css?inline';
+
+const atlasRequests = new Map<string, Promise<ImageAtlas>>();
+
+function requestAtlas(archiveUrl: string, atlasPath: string) {
+  const key = `${archiveUrl}\n${atlasPath}`;
+  let request = atlasRequests.get(key);
+  if (!request) {
+    request = loadImageAtlas(archiveUrl, atlasPath);
+    atlasRequests.set(key, request);
+  }
+  return request;
+}
 
 type MeterDefinition = {
   kind: 'hunger' | 'sanity' | 'health';
@@ -46,8 +59,45 @@ export class DstStatusHudElement extends AssetElement {
       </section>
     `;
 
+    root.querySelector('.world-clock__dial')!.prepend(this.atlasImage(
+      'world-clock__rim',
+      'images/hud.xml',
+      'clock_rim.tex',
+    ));
+
     const meterRow = root.querySelector<HTMLElement>('.survival-hud__meters')!;
     meters.forEach((meter) => meterRow.append(this.createMeter(meter)));
+  }
+
+  private atlasImage(className: string, atlasPath: string, elementName: string): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    const archiveUrl = this.dataAsset('databundles/images.zip');
+    canvas.className = className;
+    canvas.width = 1;
+    canvas.height = 1;
+    canvas.dataset.archive = archiveUrl;
+    canvas.dataset.atlas = atlasPath;
+    canvas.dataset.element = elementName;
+    canvas.setAttribute('aria-hidden', 'true');
+
+    void requestAtlas(archiveUrl, atlasPath).then((atlas) => {
+      if (!canvas.isConnected) return;
+      const sprite = atlas.require(elementName);
+      canvas.width = sprite.width;
+      canvas.height = sprite.height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas 2D context is unavailable');
+      context.putImageData(
+        new ImageData(Uint8ClampedArray.from(sprite.pixels), sprite.width, sprite.height),
+        0,
+        0,
+      );
+      canvas.dataset.loaded = 'true';
+    }).catch((error: unknown) => {
+      canvas.dataset.error = error instanceof Error ? error.message : String(error);
+      canvas.dispatchEvent(new Event('error'));
+    });
+    return canvas;
   }
 
   private createMeter({ kind, label, value }: MeterDefinition): HTMLElement {
