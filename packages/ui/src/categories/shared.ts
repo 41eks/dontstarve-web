@@ -29,9 +29,11 @@ interface RecipeData {
 }
 
 export interface InventoryRecipeDefinition {
+  readonly recipeId: string;
   readonly productId: string;
   readonly productCount: number;
   readonly ingredients: Readonly<Record<string, number>>;
+  readonly buffered: boolean;
 }
 
 export type CraftingFilterName = keyof typeof filterRecipeIds;
@@ -61,7 +63,13 @@ function createInventoryRecipe(
     }
     ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount;
   }
-  return { productId, productCount, ingredients };
+  return {
+    recipeId: source.name,
+    productId,
+    productCount,
+    ingredients,
+    buffered: typeof source.config.placer === 'string',
+  };
 }
 
 export const INVENTORY_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> =

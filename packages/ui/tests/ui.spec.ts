@@ -262,6 +262,22 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-material')).toHaveCount(3);
   await expect(crafting.locator('.craft-build')).toBeDisabled();
 
+  await page.evaluate(() => {
+    const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
+      setBufferedRecipes(recipeIds: Iterable<string>): void;
+    };
+    element.setBufferedRecipes(['researchlab']);
+  });
+  const bufferedResearchLab = recipes.filter({ has: page.locator('[data-element="researchlab.tex"]') });
+  await expect(bufferedResearchLab).toHaveAttribute('data-buffered', 'true');
+  await expect(bufferedResearchLab.locator('.craft-recipe-bg')).toHaveAttribute(
+    'data-element',
+    'slot_bg_buffered.tex',
+  );
+  await expect(bufferedResearchLab.locator('.craft-lock')).toHaveCount(0);
+  await expect(crafting.locator('.craft-build')).toBeEnabled();
+  await expect(crafting.locator('.craft-build')).toHaveText('放置');
+
   await crafting.locator('.craft-view-toggle').click();
   await expect(panel).toHaveClass(/is-collapsed/);
   await expect(crafting.locator('.craft-quick-toggle')).toHaveAttribute('aria-expanded', 'false');

@@ -51,6 +51,21 @@ export const INVENTORY_ITEM_DEFINITIONS: readonly InventoryItemDefinition[] = [
     id: 'torch',
     num: 1,
   },
+  {
+    slot_index: 3,
+    id: 'goldnugget',
+    num: 1,
+  },
+  {
+    slot_index: 4,
+    id: 'log',
+    num: 4,
+  },
+  {
+    slot_index: 5,
+    id: 'rocks',
+    num: 4,
+  },
 ];
 
 const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = {
@@ -70,6 +85,21 @@ const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = {
     icon: 'torch.tex',
     equippable: 'hand',
   },
+  goldnugget: {
+    name: '金块',
+    maxStack: 40,
+    icon: 'goldnugget.tex',
+  },
+  log: {
+    name: '木头',
+    maxStack: 20,
+    icon: 'log.tex',
+  },
+  rocks: {
+    name: '石头',
+    maxStack: 40,
+    icon: 'rocks.tex',
+  },
 };
 
 const equipmentKinds: readonly EquipmentKind[] = ['hand', 'body', 'head'];
@@ -85,6 +115,7 @@ function slotKey(ref: InventorySlotRef) {
 }
 
 export class InventoryStore {
+  private readonly bufferedBuilds = new Set<string>();
   private equipment: Record<EquipmentKind, InventoryStack | null> = {
     hand: null,
     body: null,
@@ -157,6 +188,20 @@ export class InventoryStore {
     );
   }
 
+  buffered(): readonly string[] {
+    return [...this.bufferedBuilds];
+  }
+
+  isBuffered(recipeId: string): boolean {
+    return this.bufferedBuilds.has(recipeId);
+  }
+
+  takeBuffered(recipeId: string): boolean {
+    if (!this.bufferedBuilds.delete(recipeId)) return false;
+    this.notify([]);
+    return true;
+  }
+
   refs(): readonly InventorySlotRef[] {
     return [
       ...Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index): InventorySlotRef => ({
@@ -169,8 +214,9 @@ export class InventoryStore {
 
   craft(recipe: InventoryRecipeDefinition): boolean {
     if (!Number.isSafeInteger(recipe.productCount) || recipe.productCount <= 0) return false;
-    const product = this.itemSpecs.get(recipe.productId);
-    if (!product) return false;
+    if (recipe.buffered && this.isBuffered(recipe.recipeId)) return false;
+    const product = recipe.buffered ? undefined : this.itemSpecs.get(recipe.productId);
+    if (!recipe.buffered && !product) return false;
 
     const workingSlots = this.slots.map((stack) => stack ? { ...stack } : null);
     const requiredByItem = new Map<string, number>();
@@ -198,33 +244,39 @@ export class InventoryStore {
       if (remaining > 0) return false;
     }
 
-    let productsRemaining = recipe.productCount;
-    for (let index = 0; index < workingSlots.length && productsRemaining > 0; index += 1) {
-      const stack = workingSlots[index];
-      if (stack?.itemId !== recipe.productId || stack.count >= product.maxStack) continue;
-      const added = Math.min(productsRemaining, product.maxStack - stack.count);
-      changes.push({
-        slot: { group: 'inventory', index },
-        itemId: recipe.productId,
-        delta: added,
-      });
-      stack.count += added;
-      productsRemaining -= added;
+    if (product) {
+      let productsRemaining = recipe.productCount;
+      for (let index = 0; index < workingSlots.length && productsRemaining > 0; index += 1) {
+        const stack = workingSlots[index];
+        if (stack?.itemId !== recipe.productId || stack.count >= product.maxStack) continue;
+        const added = Math.min(productsRemaining, product.maxStack - stack.count);
+        changes.push({
+          slot: { group: 'inventory', index },
+          itemId: recipe.productId,
+          delta: added,
+        });
+        stack.count += added;
+        productsRemaining -= added;
+      }
+      for (let index = 0; index < workingSlots.length && productsRemaining > 0; index += 1) {
+        if (workingSlots[index]) continue;
+        const added = Math.min(productsRemaining, product.maxStack);
+        changes.push({
+          slot: { group: 'inventory', index },
+          itemId: recipe.productId,
+          delta: added,
+        });
+        workingSlots[index] = { itemId: recipe.productId, count: added };
+        productsRemaining -= added;
+      }
+      if (productsRemaining > 0) return false;
     }
-    for (let index = 0; index < workingSlots.length && productsRemaining > 0; index += 1) {
-      if (workingSlots[index]) continue;
-      const added = Math.min(productsRemaining, product.maxStack);
-      changes.push({
-        slot: { group: 'inventory', index },
-        itemId: recipe.productId,
-        delta: added,
-      });
-      workingSlots[index] = { itemId: recipe.productId, count: added };
-      productsRemaining -= added;
-    }
-    if (productsRemaining > 0) return false;
 
-    return this.applySlotChanges(changes);
+    if (recipe.buffered) this.bufferedBuilds.add(recipe.recipeId);
+    const crafted = this.applySlotChanges(changes);
+    if (!crafted && recipe.buffered) this.bufferedBuilds.delete(recipe.recipeId);
+    if (crafted && changes.length === 0) this.notify([]);
+    return crafted;
   }
 
   applySlotChanges(changes: readonly InventorySlotDelta[]): boolean {
@@ -274,8 +326,12 @@ export class InventoryStore {
     const changed = new Map<string, InventorySlotRef>();
     changes.forEach(({ slot }) => changed.set(slotKey(slot), cloneRef(slot)));
     const changedSlots = [...changed.values()];
-    this.listeners.forEach((listener) => listener(changedSlots));
+    this.notify(changedSlots);
     return true;
+  }
+
+  private notify(changedSlots: readonly InventorySlotRef[]): void {
+    this.listeners.forEach((listener) => listener(changedSlots));
   }
 
   private requireItemSpec(itemId: string): InventoryItemSpec {

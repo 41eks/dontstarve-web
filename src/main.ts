@@ -48,6 +48,7 @@ function syncInventorySlot(ref: InventorySlotRef): void {
 
 function syncCraftingInventory(): void {
   gameUi.crafting.setInventoryCounts(inventory.counts());
+  gameUi.crafting.setBufferedRecipes(inventory.buffered());
 }
 
 inventory.refs().forEach(syncInventorySlot);

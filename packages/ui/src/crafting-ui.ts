@@ -21,6 +21,7 @@ function requestAtlas(archiveUrl: string, atlasPath: string) {
 
 export class DstCraftingUiElement extends AssetElement {
   private activeCategoryId = 'tool';
+  private bufferedRecipeIds = new Set<string>();
   private inventoryCounts?: Readonly<Record<string, number>>;
   private selectedRecipeId?: string;
 
@@ -38,6 +39,16 @@ export class DstCraftingUiElement extends AssetElement {
       return;
     }
     this.inventoryCounts = next;
+    if (this.isConnected) this.render();
+  }
+
+  setBufferedRecipes(recipeIds: Iterable<string>): void {
+    const next = new Set(recipeIds);
+    if (next.size === this.bufferedRecipeIds.size
+      && [...next].every((recipeId) => this.bufferedRecipeIds.has(recipeId))) {
+      return;
+    }
+    this.bufferedRecipeIds = next;
     if (this.isConnected) this.render();
   }
 
@@ -124,7 +135,9 @@ export class DstCraftingUiElement extends AssetElement {
       selectedName.textContent = recipe.name;
       materials.replaceChildren(...recipe.ingredients.map((ingredient) => this.ingredient(ingredient)));
       buildButton.disabled = this.isRecipeLocked(recipe);
-      buildButton.textContent = recipe.locked ? '尚未解锁' : '建造';
+      buildButton.textContent = this.isRecipeBuffered(recipe)
+        ? '放置'
+        : recipe.locked ? '尚未解锁' : '建造';
     };
 
     const renderCategoryRecipes = (category: CategoryConfig) => {
@@ -140,11 +153,19 @@ export class DstCraftingUiElement extends AssetElement {
         button.type = 'button';
         button.className = 'craft-recipe';
         button.dataset.recipe = recipe.id;
+        button.dataset.buffered = String(this.isRecipeBuffered(recipe));
         button.setAttribute('role', 'option');
-        button.setAttribute('aria-label', recipe.name);
+        button.setAttribute(
+          'aria-label',
+          this.isRecipeBuffered(recipe) ? `${recipe.name}（已制作）` : recipe.name,
+        );
         button.setAttribute('aria-selected', 'false');
         button.append(
-          this.atlasImage('craft-recipe-bg', 'images/crafting_menu.xml', 'slot_bg.tex'),
+          this.atlasImage(
+            'craft-recipe-bg',
+            'images/crafting_menu.xml',
+            this.isRecipeBuffered(recipe) ? 'slot_bg_buffered.tex' : 'slot_bg.tex',
+          ),
           this.recipeIcon(recipe),
           this.atlasImage('craft-recipe-frame', 'images/crafting_menu.xml', 'slot_frame.tex'),
         );
@@ -219,7 +240,7 @@ export class DstCraftingUiElement extends AssetElement {
     root.querySelector('.craft-quick-toggle')!.addEventListener('click', () => {
       setCollapsed(!panel.classList.contains('is-collapsed'));
     });
-    setCollapsed(false);
+    setCollapsed(true);
     const initialCategory = categories.find(({ id }) => id === this.activeCategoryId) ?? categories[0];
     root.querySelector('h1')!.textContent = initialCategory.name;
     renderCategoryRecipes(initialCategory);
@@ -287,8 +308,12 @@ export class DstCraftingUiElement extends AssetElement {
   }
 
   private isRecipeLocked(recipe: Recipe): boolean {
-    return Boolean(recipe.locked)
-      || recipe.ingredients.some((ingredient) => this.availableCount(ingredient) < ingredient.required);
+    return !this.isRecipeBuffered(recipe) && (Boolean(recipe.locked)
+      || recipe.ingredients.some((ingredient) => this.availableCount(ingredient) < ingredient.required));
+  }
+
+  private isRecipeBuffered(recipe: Recipe): boolean {
+    return this.bufferedRecipeIds.has(recipe.id);
   }
 
   private ingredient(ingredient: RecipeIngredient): HTMLSpanElement {
