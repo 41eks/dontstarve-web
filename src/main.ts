@@ -1,12 +1,129 @@
 // src/main.ts
 
 import './style.css';
-import { mountGameUi } from '@three-roaming/ui';
+import {
+  INVENTORY_RECIPES,
+  mountGameUi,
+  type CraftRequestDetail,
+  type InventorySlotChangeDetail,
+} from '@three-roaming/ui';
+import type { WilsonAnimationController } from '@three-roaming/wilson';
 import { preloadImageArchive } from '@three-roaming/wilson/imageAtlas';
 import { createAnimationUpdater } from './animation';
+import { player, playerBody, setPlayerNormal } from './player';
+import {
+  INVENTORY_ITEM_DEFINITIONS,
+  InventoryStore,
+  type InventorySlotRef,
+} from './inventory';
 
 void preloadImageArchive(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
-mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
+const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
+export const inventory = new InventoryStore(INVENTORY_ITEM_DEFINITIONS);
+const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
+
+function syncHandEquipment(): void {
+  const handItem = inventory.get({ group: 'equipment', kind: 'hand' });
+  playerAnimation?.setCarryItem(handItem?.itemId === 'torch' ? 'torch' : null);
+}
+
+function syncInventorySlot(ref: InventorySlotRef): void {
+  const stack = inventory.get(ref);
+  if (!stack) {
+    gameUi.inventoryBar.setSlot(ref, null);
+    return;
+  }
+
+  const spec = inventory.getItemSpec(stack.itemId);
+  gameUi.inventoryBar.setSlot(ref, {
+    id: stack.itemId,
+    name: spec.name,
+    count: stack.count,
+    maxStack: spec.maxStack,
+    icon: spec.icon,
+    ...(spec.atlas ? { atlas: spec.atlas } : {}),
+    ...(spec.equippable ? { equippable: spec.equippable } : {}),
+  });
+}
+
+function syncCraftingInventory(): void {
+  gameUi.crafting.setInventoryCounts(inventory.counts());
+}
+
+inventory.refs().forEach(syncInventorySlot);
+syncCraftingInventory();
+syncHandEquipment();
+inventory.subscribe((changedSlots) => {
+  changedSlots.forEach(syncInventorySlot);
+  syncCraftingInventory();
+  if (changedSlots.some((ref) => ref.group === 'equipment' && ref.kind === 'hand')) {
+    syncHandEquipment();
+  }
+});
+
+interface PendingInventoryOperation {
+  decrease?: InventorySlotChangeDetail;
+  increase?: InventorySlotChangeDetail;
+}
+
+const pendingInventoryOperations = new Map<number, PendingInventoryOperation>();
+
+function receiveInventorySlotChange(
+  direction: 'decrease' | 'increase',
+  detail: InventorySlotChangeDetail,
+): void {
+  if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) return;
+  const operation = pendingInventoryOperations.get(detail.operationId) ?? {};
+  operation[direction] = detail;
+  pendingInventoryOperations.set(detail.operationId, operation);
+
+  if (!operation.decrease || !operation.increase) {
+    queueMicrotask(() => {
+      if (pendingInventoryOperations.get(detail.operationId) === operation
+        && (!operation.decrease || !operation.increase)) {
+        pendingInventoryOperations.delete(detail.operationId);
+      }
+    });
+    return;
+  }
+
+  pendingInventoryOperations.delete(detail.operationId);
+  if (operation.decrease.itemId !== operation.increase.itemId
+    || operation.decrease.amount !== operation.increase.amount) {
+    return;
+  }
+
+  inventory.applySlotChanges([
+    {
+      slot: operation.decrease.slot,
+      itemId: operation.decrease.itemId,
+      delta: -operation.decrease.amount,
+    },
+    {
+      slot: operation.increase.slot,
+      itemId: operation.increase.itemId,
+      delta: operation.increase.amount,
+    },
+  ]);
+}
+
+gameUi.inventoryBar.addEventListener('game:inventory-slot-decrease', (event) => {
+  receiveInventorySlotChange(
+    'decrease',
+    (event as CustomEvent<InventorySlotChangeDetail>).detail,
+  );
+});
+gameUi.inventoryBar.addEventListener('game:inventory-slot-increase', (event) => {
+  receiveInventorySlotChange(
+    'increase',
+    (event as CustomEvent<InventorySlotChangeDetail>).detail,
+  );
+});
+gameUi.crafting.addEventListener('game:craft-request', (event) => {
+  const { recipeId } = (event as CustomEvent<CraftRequestDetail>).detail;
+  const recipe = INVENTORY_RECIPES[recipeId];
+  if (recipe) inventory.craft(recipe);
+});
 
 import * as THREE from 'three';
 
@@ -47,8 +164,6 @@ boxes.forEach(box => {
 
 // import { input } from './InputManager';
 import { updateMovement } from './updatePlayerMovement';
-
-import { player, playerBody, setPlayerNormal } from './player';
 
 world.addBody(playerBody);
 

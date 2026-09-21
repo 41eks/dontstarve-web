@@ -5,6 +5,10 @@ import { loadImageAtlas, type ImageAtlas } from '@three-roaming/wilson/imageAtla
 
 const atlasRequests = new Map<string, Promise<ImageAtlas>>();
 
+export interface CraftRequestDetail {
+  recipeId: string;
+}
+
 function requestAtlas(archiveUrl: string, atlasPath: string) {
   const key = `${archiveUrl}\n${atlasPath}`;
   let request = atlasRequests.get(key);
@@ -16,9 +20,25 @@ function requestAtlas(archiveUrl: string, atlasPath: string) {
 }
 
 export class DstCraftingUiElement extends AssetElement {
+  private activeCategoryId = 'tool';
+  private inventoryCounts?: Readonly<Record<string, number>>;
+  private selectedRecipeId?: string;
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+  }
+
+  setInventoryCounts(counts: Readonly<Record<string, number>>): void {
+    const next = { ...counts };
+    const previous = this.inventoryCounts;
+    if (previous
+      && Object.keys(previous).length === Object.keys(next).length
+      && Object.entries(next).every(([itemId, count]) => previous[itemId] === count)) {
+      return;
+    }
+    this.inventoryCounts = next;
+    if (this.isConnected) this.render();
   }
 
   protected render(): void {
@@ -94,6 +114,7 @@ export class DstCraftingUiElement extends AssetElement {
 
       selectedIndex = (index + activeRecipes.length) % activeRecipes.length;
       const recipe = activeRecipes[selectedIndex];
+      this.selectedRecipeId = recipe.id;
       recipeGrid.querySelectorAll('.craft-recipe').forEach((item, itemIndex) => {
         item.setAttribute('aria-selected', String(itemIndex === selectedIndex));
       });
@@ -107,8 +128,10 @@ export class DstCraftingUiElement extends AssetElement {
     };
 
     const renderCategoryRecipes = (category: CategoryConfig) => {
+      this.activeCategoryId = category.id;
       activeRecipes = category.recipes;
-      selectedIndex = 0;
+      const preservedIndex = activeRecipes.findIndex(({ id }) => id === this.selectedRecipeId);
+      selectedIndex = preservedIndex < 0 ? 0 : preservedIndex;
       recipeGrid.replaceChildren();
       quickbar.replaceChildren();
 
@@ -143,7 +166,7 @@ export class DstCraftingUiElement extends AssetElement {
         quickbar.append(button);
       });
 
-      updateSelection(0);
+      updateSelection(selectedIndex);
     };
 
     categories.forEach((category) => {
@@ -153,7 +176,7 @@ export class DstCraftingUiElement extends AssetElement {
       button.dataset.category = category.id;
       button.title = category.name;
       button.setAttribute('aria-label', category.name);
-      button.setAttribute('aria-pressed', String(category.id === 'tool'));
+      button.setAttribute('aria-pressed', String(category.id === this.activeCategoryId));
       button.innerHTML = `
         <img class="craft-category-frame craft-category-frame-inactive" src="${this.asset('crafting/filter/filter_button_inactive.tex.png')}" alt="" />
         <img class="craft-category-frame craft-category-frame-active" src="${this.asset('crafting/filter/filter_button_active.tex.png')}" alt="" />
@@ -164,6 +187,7 @@ export class DstCraftingUiElement extends AssetElement {
         category.icon,
       ));
       button.addEventListener('click', () => {
+        this.selectedRecipeId = undefined;
         root.querySelector('h1')!.textContent = category.name;
         root.querySelectorAll('.craft-category').forEach((item) => item.setAttribute('aria-pressed', 'false'));
         button.setAttribute('aria-pressed', 'true');
@@ -174,6 +198,15 @@ export class DstCraftingUiElement extends AssetElement {
 
     root.querySelector('.craft-arrow-left')!.addEventListener('click', () => updateSelection(selectedIndex - 1));
     root.querySelector('.craft-arrow-right')!.addEventListener('click', () => updateSelection(selectedIndex + 1));
+    buildButton.addEventListener('click', () => {
+      const recipe = activeRecipes[selectedIndex];
+      if (!recipe || this.isRecipeLocked(recipe)) return;
+      this.dispatchEvent(new CustomEvent<CraftRequestDetail>('game:craft-request', {
+        bubbles: true,
+        composed: true,
+        detail: { recipeId: recipe.id },
+      }));
+    });
     const setCollapsed = (collapsed: boolean) => {
       panel.classList.toggle('is-collapsed', collapsed);
       const viewToggle = root.querySelector<HTMLButtonElement>('.craft-view-toggle')!;
@@ -187,7 +220,9 @@ export class DstCraftingUiElement extends AssetElement {
       setCollapsed(!panel.classList.contains('is-collapsed'));
     });
     setCollapsed(false);
-    renderCategoryRecipes(categories.find(({ id }) => id === 'tool') ?? categories[0]);
+    const initialCategory = categories.find(({ id }) => id === this.activeCategoryId) ?? categories[0];
+    root.querySelector('h1')!.textContent = initialCategory.name;
+    renderCategoryRecipes(initialCategory);
   }
 
   private placeholder(color: string, label: string, className = ''): HTMLSpanElement {
@@ -253,15 +288,16 @@ export class DstCraftingUiElement extends AssetElement {
 
   private isRecipeLocked(recipe: Recipe): boolean {
     return Boolean(recipe.locked)
-      || recipe.ingredients.some(({ available, required }) => available < required);
+      || recipe.ingredients.some((ingredient) => this.availableCount(ingredient) < ingredient.required);
   }
 
   private ingredient(ingredient: RecipeIngredient): HTMLSpanElement {
     const item = document.createElement('span');
-    const hasMaterial = ingredient.available >= ingredient.required;
+    const available = this.availableCount(ingredient);
+    const hasMaterial = available >= ingredient.required;
     item.className = `craft-material ${hasMaterial ? 'has-materials' : 'missing-materials'}`;
     const required = ingredient.requiredLabel ?? String(ingredient.required);
-    item.setAttribute('aria-label', `${ingredient.name} ${ingredient.available}/${required}`);
+    item.setAttribute('aria-label', `${ingredient.name} ${available}/${required}`);
 
     if (ingredient.inventoryIcon) {
       item.append(this.atlasImage(
@@ -275,8 +311,12 @@ export class DstCraftingUiElement extends AssetElement {
 
     const count = document.createElement('span');
     count.className = 'craft-material-count';
-    count.textContent = ingredient.requiredLabel ?? `${ingredient.available}/${ingredient.required}`;
+    count.textContent = ingredient.requiredLabel ?? `${available}/${ingredient.required}`;
     item.append(count);
     return item;
+  }
+
+  private availableCount(ingredient: RecipeIngredient): number {
+    return this.inventoryCounts?.[ingredient.id] ?? ingredient.available;
   }
 }

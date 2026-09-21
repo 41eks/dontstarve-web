@@ -3,8 +3,19 @@ import { DstInventoryBarElement } from './inventory-bar';
 import { DstMapControlsElement } from './map-controls';
 import { DstStatusHudElement } from './status-hud';
 
-export { DstCraftingUiElement } from './crafting-ui';
-export { DstInventoryBarElement, type InventorySlotSelectDetail } from './inventory-bar';
+export { DstCraftingUiElement, type CraftRequestDetail } from './crafting-ui';
+export {
+  INVENTORY_RECIPES,
+  type InventoryRecipeDefinition,
+} from './categories/shared';
+export {
+  DstInventoryBarElement,
+  type EquipmentKind,
+  type InventoryBarItem,
+  type InventorySlotChangeDetail,
+  type InventorySlotRef,
+  type InventorySlotSelectDetail,
+} from './inventory-bar';
 export { DstMapControlsElement, type CameraTurnDirection } from './map-controls';
 export { DstStatusHudElement } from './status-hud';
 

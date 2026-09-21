@@ -1,3 +1,4 @@
 import { mountGameUi } from '../src';
 
-mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
+const { crafting } = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
+crafting.setInventoryCounts({ cutgrass: 3, twigs: 17 });

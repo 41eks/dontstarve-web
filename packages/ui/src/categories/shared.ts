@@ -28,11 +28,47 @@ interface RecipeData {
   readonly recipes: readonly SourceRecipe[];
 }
 
+export interface InventoryRecipeDefinition {
+  readonly productId: string;
+  readonly productCount: number;
+  readonly ingredients: Readonly<Record<string, number>>;
+}
+
 export type CraftingFilterName = keyof typeof filterRecipeIds;
 
 const recipeData = recipeDataJson as unknown as RecipeData;
 const recipesById = new Map(recipeData.recipes.map((recipe) => [recipe.name, recipe]));
-const inventory: Readonly<Record<string, number>> = { cutgrass: 3, twigs: 17 };
+
+function createInventoryRecipe(
+  source: SourceRecipe,
+): InventoryRecipeDefinition | undefined {
+  const product = source.config.product;
+  const productId = product === undefined ? source.name : stringValue(product);
+  const productCountValue = source.config.numtogive;
+  const productCount = productCountValue === undefined ? 1 : productCountValue;
+  if (!productId || typeof productCount !== 'number' || !Number.isSafeInteger(productCount)
+    || productCount <= 0) {
+    return undefined;
+  }
+
+  const ingredients: Record<string, number> = {};
+  for (const ingredient of source.ingredients) {
+    if (typeof ingredient.type !== 'string'
+      || typeof ingredient.amount !== 'number'
+      || !Number.isSafeInteger(ingredient.amount)
+      || ingredient.amount <= 0) {
+      return undefined;
+    }
+    ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount;
+  }
+  return { productId, productCount, ingredients };
+}
+
+export const INVENTORY_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> =
+  Object.fromEntries(recipeData.recipes.flatMap((source) => {
+    const recipe = createInventoryRecipe(source);
+    return recipe ? [[source.name, recipe]] : [];
+  }));
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
@@ -79,7 +115,7 @@ function createIngredient(source: SourceIngredient): RecipeIngredient {
     id: source.type,
     name: ingredientNames[source.type] ?? humanize(source.type),
     color: colorFor(source.type),
-    available: inventory[source.type] ?? 0,
+    available: 0,
     required: amount,
     ...(typeof source.amount === 'number' ? {} : { requiredLabel: source.amount.lua }),
     ...(atlas ? { inventoryAtlas: atlas } : {}),

@@ -109,6 +109,71 @@ test('renders the inventory and equipment slots and emits selection events', asy
   ]);
 });
 
+test('updates individual inventory signals and emits paired drag deltas', async ({ page }) => {
+  await openFixture(page);
+
+  await page.evaluate(() => {
+    const inventoryBar = document.querySelector('dst-inventory-bar') as HTMLElement & {
+      setSlot(ref: unknown, item: unknown): void;
+    };
+    inventoryBar.setSlot({ group: 'inventory', index: 0 }, {
+      id: 'cutgrass',
+      name: '草',
+      count: 3,
+      maxStack: 40,
+      icon: 'cutgrass.tex',
+    });
+
+    const eventLog: Array<{ type: string; detail: unknown }> = [];
+    window.addEventListener('game:inventory-slot-decrease', (event) => {
+      eventLog.push({ type: event.type, detail: (event as CustomEvent).detail });
+    });
+    window.addEventListener('game:inventory-slot-increase', (event) => {
+      eventLog.push({ type: event.type, detail: (event as CustomEvent).detail });
+    });
+    (window as typeof window & { inventoryDragEventLog: typeof eventLog }).inventoryDragEventLog = eventLog;
+  });
+
+  const slots = page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot');
+  await expect(slots.nth(0).locator('.inventory-slot__count')).toHaveText('3');
+  await expect(slots.nth(0)).toHaveAttribute('data-item-id', 'cutgrass');
+  await expect(slots.nth(0).locator('.inventory-slot__icon')).toHaveAttribute('data-loaded', 'true');
+
+  const sourceBox = await slots.nth(0).boundingBox();
+  const targetBox = await slots.nth(2).boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2, {
+    steps: 4,
+  });
+  await page.mouse.up();
+
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { inventoryDragEventLog: unknown[] }).inventoryDragEventLog,
+  )).toEqual([
+    {
+      type: 'game:inventory-slot-decrease',
+      detail: {
+        operationId: 1,
+        slot: { group: 'inventory', index: 0 },
+        itemId: 'cutgrass',
+        amount: 3,
+      },
+    },
+    {
+      type: 'game:inventory-slot-increase',
+      detail: {
+        operationId: 1,
+        slot: { group: 'inventory', index: 2 },
+        itemId: 'cutgrass',
+        amount: 3,
+      },
+    },
+  ]);
+});
+
 test('updates the crafting selection and collapsed state', async ({ page }) => {
   await openFixture(page);
 
@@ -163,6 +228,28 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-material-count')).toHaveText(['3/2', '17/2']);
   await expect(crafting.locator('.craft-build')).toBeEnabled();
   await expect(torchRecipe.locator('.craft-lock')).toHaveCount(0);
+
+  await page.evaluate(() => {
+    window.addEventListener('game:craft-request', (event) => {
+      (window as typeof window & { craftRequest?: unknown }).craftRequest =
+        (event as CustomEvent).detail;
+    });
+  });
+  await crafting.locator('.craft-build').click();
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { craftRequest?: unknown }).craftRequest,
+  )).toEqual({ recipeId: 'torch' });
+
+  await page.evaluate(() => {
+    const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
+      setInventoryCounts(counts: Readonly<Record<string, number>>): void;
+    };
+    element.setInventoryCounts({ cutgrass: 1, twigs: 15, torch: 1 });
+  });
+  await expect(crafting.locator('.craft-header h1')).toHaveText('光源');
+  await expect(crafting.locator('.craft-detail h2')).toHaveText('火炬');
+  await expect(crafting.locator('.craft-material-count')).toHaveText(['1/2', '15/2']);
+  await expect(crafting.locator('.craft-build')).toBeDisabled();
 
   const scienceCategory = crafting.locator('.craft-category[data-category="science"]');
   await scienceCategory.click();

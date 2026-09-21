@@ -16,7 +16,7 @@ export function setupPigInteraction(
     let hideTimer: number | undefined;
 
     message.id = 'pig-message';
-    message.textContent = '时间会证明猪模块';
+    message.textContent = '呃，真是臭死了。';
     message.setAttribute('role', 'status');
     message.setAttribute('aria-live', 'polite');
     document.body.appendChild(message);

@@ -70,6 +70,7 @@ export type WilsonFacing = 'up' | 'down' | 'side';
 export interface WilsonAnimationController {
   start(state: 'idle' | 'walk' | 'run' | 'jump'): void;
   setFacing(facing: WilsonFacing, mirrored?: boolean): void;
+  setCarryItem(item: 'torch' | null): void;
   update(dt: number, jumpProgress?: number): void;
 }
 
@@ -311,7 +312,15 @@ function findImage(build: ParsedBuild, hash: number, frameIndex: number) {
 }
 
 const facingValues: Record<WilsonFacing, number> = { down: 8, side: 5, up: 2 };
-const unarmedHiddenLayers = new Set([smallHash('ARM_carry')]);
+const normalArmLayerHash = smallHash('ARM_normal');
+const carryArmLayerHash = smallHash('ARM_carry');
+const swapObjectHash = smallHash('swap_object');
+const swapTorchHash = smallHash('swap_torch');
+
+interface CarryBuild {
+  build: ParsedBuild;
+  materials: THREE.MeshBasicMaterial[];
+}
 
 class WilsonController implements WilsonAnimationController {
   private readonly meshes: THREE.Mesh[] = [];
@@ -320,23 +329,27 @@ class WilsonController implements WilsonAnimationController {
   private state: 'idle' | 'walk' | 'run' | 'jump' = 'idle';
   private facing: WilsonFacing = 'down';
   private mirrored = false;
+  private carryItem: 'torch' | null = null;
   private animation!: Animation;
   private elapsed = 0;
   private frameIndex = -1;
   private readonly visual: THREE.Group;
   private readonly build: ParsedBuild;
   private readonly animations: Record<'idle' | 'walk' | 'run' | 'jump', ParsedAnim>;
+  private readonly torch: CarryBuild;
 
   constructor(
     visual: THREE.Group,
     build: ParsedBuild,
     animations: Record<'idle' | 'walk' | 'run' | 'jump', ParsedAnim>,
     materials: THREE.MeshBasicMaterial[],
+    torch: CarryBuild,
   ) {
     this.visual = visual;
     this.build = build;
     this.animations = animations;
     this.materials = materials;
+    this.torch = torch;
     this.selectAnimation();
   }
 
@@ -352,6 +365,14 @@ class WilsonController implements WilsonAnimationController {
     this.mirrored = mirrored;
     this.visual.scale.x = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
     this.selectAnimation();
+  }
+
+  setCarryItem(item: 'torch' | null) {
+    if (item === this.carryItem) return;
+    this.carryItem = item;
+    const currentFrame = Math.max(0, this.frameIndex);
+    this.frameIndex = -1;
+    this.showFrame(currentFrame);
   }
 
   update(dt: number, jumpProgress?: number) {
@@ -389,13 +410,31 @@ class WilsonController implements WilsonAnimationController {
     if (index === this.frameIndex) return;
     this.frameIndex = index;
     const sprites = this.animation.frames[index].elements
-      .filter((element) => !unarmedHiddenLayers.has(element.layerHash))
+      .filter((element) => this.carryItem
+        ? element.layerHash !== normalArmLayerHash
+        : element.layerHash !== carryArmLayerHash)
       .sort((a, b) => b.z - a.z)
-      .map((element) => ({ element, image: findImage(this.build, element.imageHash, element.imageIndex) }))
-      .filter((sprite): sprite is { element: AnimElement; image: BuildImage } => Boolean(sprite.image));
+      .map((element) => {
+        const usesTorch = this.carryItem === 'torch' && element.imageHash === swapObjectHash;
+        const source = usesTorch ? this.torch : { build: this.build, materials: this.materials };
+        return {
+          element,
+          image: findImage(
+            source.build,
+            usesTorch ? swapTorchHash : element.imageHash,
+            element.imageIndex,
+          ),
+          materials: source.materials,
+        };
+      })
+      .filter((sprite): sprite is {
+        element: AnimElement;
+        image: BuildImage;
+        materials: THREE.MeshBasicMaterial[];
+      } => Boolean(sprite.image));
 
     for (let spriteIndex = 0; spriteIndex < sprites.length; spriteIndex++) {
-      const { element, image } = sprites[spriteIndex];
+      const { element, image, materials } = sprites[spriteIndex];
       let mesh = this.meshes[spriteIndex];
       if (!mesh) {
         mesh = new THREE.Mesh();
@@ -406,7 +445,7 @@ class WilsonController implements WilsonAnimationController {
       }
       mesh.visible = true;
       mesh.geometry = this.geometryFor(image);
-      mesh.material = this.materials[image.sampler ?? 0];
+      mesh.material = materials[image.sampler ?? 0];
       const [a, b, c, d, x, y] = element.matrix;
       mesh.matrix.set(a, c, 0, x, b, d, 0, y, 0, 0, 1, 0, 0, 0, 0, 1);
       mesh.renderOrder = spriteIndex;
@@ -440,18 +479,8 @@ class WilsonController implements WilsonAnimationController {
   }
 }
 
-export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Group> {
-  const [buildPackage, idle, movement, jump] = await Promise.all([
-    loadBuild('wilson.zip', assetBaseUrl),
-    loadAnim('player_idles.zip', assetBaseUrl),
-    loadAnim('player_basic.zip', assetBaseUrl),
-    loadAnim('player_jump.zip', assetBaseUrl),
-  ]);
-  if (buildPackage.build.name.toLowerCase() !== 'wilson') {
-    throw new Error(`Expected Wilson build, received ${buildPackage.build.name}`);
-  }
-
-  const textures = buildPackage.atlases.map((atlas) => {
+function createMaterials(buildPackage: BuildPackage) {
+  return buildPackage.atlases.map((atlas) => {
     const texture = new THREE.DataTexture(atlas.pixels, atlas.width, atlas.height, THREE.RGBAFormat);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.flipY = false;
@@ -459,17 +488,37 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
     texture.magFilter = THREE.LinearFilter;
     texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
-    return texture;
+    return new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      alphaTest: 0.01,
+      depthTest: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    });
   });
-  const materials = textures.map((map) => new THREE.MeshBasicMaterial({
-    map,
-    transparent: true,
-    alphaTest: 0.01,
-    depthTest: true,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-  }));
+}
+
+export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Group> {
+  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump] = await Promise.all([
+    loadBuild('wilson.zip', assetBaseUrl),
+    loadBuild('swap_torch.zip', assetBaseUrl),
+    loadAnim('torch.zip', assetBaseUrl),
+    loadAnim('player_idles.zip', assetBaseUrl),
+    loadAnim('player_basic.zip', assetBaseUrl),
+    loadAnim('player_jump.zip', assetBaseUrl),
+  ]);
+  if (buildPackage.build.name.toLowerCase() !== 'wilson') {
+    throw new Error(`Expected Wilson build, received ${buildPackage.build.name}`);
+  }
+  if (torchBuildPackage.build.name.toLowerCase() !== 'swap_torch'
+    || !torchAnimation.animations.some((animation) => animation.bankHash === smallHash('torch'))) {
+    throw new Error('Expected the torch animation and swap_torch build');
+  }
+
+  const materials = createMaterials(buildPackage);
+  const torchMaterials = createMaterials(torchBuildPackage);
 
   const player = new THREE.Group();
   player.name = 'Wilson';
@@ -486,7 +535,10 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
     walk: movement,
     run: movement,
     jump,
-  }, materials);
+  }, materials, {
+    build: torchBuildPackage.build,
+    materials: torchMaterials,
+  });
   player.userData.animationController = controller;
   return player;
 }
