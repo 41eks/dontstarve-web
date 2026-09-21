@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('summer', '夏季', 'crafting/filter/filter_summer.tex.png', '#d2ba4e');
+export default createCategory('summer', 'SUMMER', '夏季', 'filter_summer.tex', '#d2ba4e');

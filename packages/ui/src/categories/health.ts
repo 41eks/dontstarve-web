@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('health', '治疗', 'crafting/filter/filter_health.tex.png', '#b86758');
+export default createCategory('health', 'RESTORATION', '治疗', 'filter_health.tex', '#b86758');

@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createAllRecipesCategory } from './shared';
 
-export default createPlaceholderCategory('none', '全部', 'crafting/filter/filter_none.tex.png', '#777');
+export default createAllRecipesCategory('none', '全部', 'filter_none.tex', '#777');

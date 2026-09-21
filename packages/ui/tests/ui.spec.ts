@@ -4,15 +4,22 @@ import { categories } from '../src/categories';
 const fixtureUrl = '/tests/fixture.html';
 
 test('keeps an independent recipe collection for every crafting category', () => {
-  expect(categories).toHaveLength(22);
-  expect(new Set(categories.map(({ recipes }) => recipes)).size).toBe(22);
-  expect(new Set(categories.map(({ recipes }) => recipes[0])).size).toBe(22);
+  expect(categories.map(({ id }) => id)).toEqual([
+    'favorites', 'crafting-station', 'special-event', 'character',
+    'tool', 'fire', 'science', 'refine', 'weapon', 'armour', 'warable', 'health', 'skull', 'cosmetic',
+    'structure', 'containers', 'cooking', 'gardening', 'fishing', 'sailing', 'riding', 'winter',
+    'summer', 'rain', 'none',
+  ]);
+  expect(new Set(categories.map(({ recipes }) => recipes)).size).toBe(25);
+  expect(categories.find(({ id }) => id === 'favorites')?.recipes).toEqual([]);
+  expect(categories.find(({ id }) => id === 'tool')?.recipes).toHaveLength(56);
+  expect(categories.find(({ id }) => id === 'fire')?.recipes).toHaveLength(23);
+  expect(categories.find(({ id }) => id === 'crafting-station')?.recipes).toHaveLength(387);
+  expect(categories.find(({ id }) => id === 'none')?.recipes).toHaveLength(972);
+  expect(categories.find(({ id }) => id === 'tool')?.recipes[0].id).toBe('axe');
   expect(categories.find(({ id }) => id === 'tool')?.recipes[0].name).toBe('斧头');
-  expect(categories.find(({ id }) => id === 'fire')?.recipes[0].name).toBe('火炬');
-  expect(categories
-    .filter(({ id }) => id !== 'tool' && id !== 'fire')
-    .every(({ recipes }) => recipes.length === 1 && recipes[0].asset === undefined && recipes[0].locked))
-    .toBe(true);
+  expect(categories.find(({ id }) => id === 'fire')?.recipes[0].id).toBe('lighter');
+  expect(categories.find(({ id }) => id === 'science')?.recipes[0].id).toBe('researchlab');
 });
 
 async function openFixture(page: Page): Promise<void> {
@@ -55,7 +62,7 @@ test('uses the mirrored DST data path for every image', async ({ page }) => {
   const imageUrls = await page.locator('dst-crafting-ui img, dst-status-hud img, dst-inventory-bar img, dst-map-controls img')
     .evaluateAll((images) => images.map((image) => (image as HTMLImageElement).src));
 
-  expect(imageUrls.length).toBeGreaterThan(30);
+  expect(imageUrls.length).toBeGreaterThan(10);
   for (const imageUrl of imageUrls) {
     expect(new URL(imageUrl).pathname).toMatch(/^\/dst\/data\/ui\//);
   }
@@ -64,6 +71,11 @@ test('uses the mirrored DST data path for every image', async ({ page }) => {
     const response = await page.request.get(imageUrl);
     expect(response.status(), imageUrl).toBe(200);
   }
+
+  const atlasArchives = await page.locator('dst-crafting-ui canvas[data-archive]')
+    .evaluateAll((canvases) => canvases.map((canvas) => (canvas as HTMLElement).dataset.archive));
+  expect(atlasArchives.length).toBeGreaterThan(0);
+  expect(new Set(atlasArchives)).toEqual(new Set([`${new URL(fixtureUrl, page.url()).origin}/dst/data/databundles/images.zip`]));
 });
 
 test('renders the inventory and equipment slots and emits selection events', async ({ page }) => {
@@ -104,50 +116,63 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   const panel = crafting.locator('.craft-panel');
   const recipes = crafting.locator('.craft-recipe');
 
-  await expect(crafting.locator('.craft-category')).toHaveCount(22);
-  await expect(recipes).toHaveCount(1);
+  await expect(crafting.locator('.craft-category')).toHaveCount(25);
+  await expect(recipes).toHaveCount(56);
   await expect(recipes.first()).toHaveAttribute('aria-selected', 'true');
   await expect(crafting.locator('.craft-detail h2')).toHaveText('斧头');
-  await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute(
-    'src',
-    /crafting\/filter\/tool\/axe\.tex\.png$/,
-  );
-  await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute(
-    'src',
-    /crafting\/filter\/tool\/axe\.tex\.png$/,
-  );
+  const background = recipes.first().locator('.craft-recipe-bg');
+  const frame = recipes.first().locator('.craft-recipe-frame');
+  const lock = recipes.first().locator('.craft-lock');
+  await expect(background).toHaveAttribute('data-atlas', 'images/crafting_menu.xml');
+  await expect(background).toHaveAttribute('data-element', 'slot_bg.tex');
+  await expect(frame).toHaveAttribute('data-element', 'slot_frame.tex');
+  await expect(lock).toHaveAttribute('data-element', 'slot_fg_lock.tex');
+  await expect(background).toHaveAttribute('data-loaded', 'true');
+  await expect(frame).toHaveAttribute('data-loaded', 'true');
+  await expect(lock).toHaveAttribute('data-loaded', 'true');
+  await expect(background).toHaveJSProperty('width', 128);
+  await expect(background).toHaveJSProperty('height', 128);
+  await expect(recipes.first()).toHaveAttribute('data-recipe', 'axe');
+  await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute('data-element', 'axe.tex');
+  await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute('data-loaded', 'true');
+  await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute('data-element', 'axe.tex');
   await expect(crafting.locator('.craft-material-asset')).toHaveCount(2);
-  await expect(crafting.locator('.craft-material-count')).toHaveText(['0/1', '0/1']);
+  await expect(crafting.locator('.craft-material-asset').nth(0)).toHaveAttribute(
+    'data-atlas',
+    'images/inventoryimages.xml',
+  );
+  await expect(crafting.locator('.craft-material-asset').nth(0)).toHaveAttribute('data-element', 'twigs.tex');
+  await expect(crafting.locator('.craft-material-asset').nth(1)).toHaveAttribute('data-element', 'flint.tex');
+  await expect(crafting.locator('.craft-material-asset[data-loaded="true"]')).toHaveCount(2);
+  await expect(crafting.locator('.craft-material-count')).toHaveText(['17/1', '0/1']);
 
   const fireCategory = crafting.locator('.craft-category[data-category="fire"]');
   await fireCategory.click();
   await expect(fireCategory).toHaveAttribute('aria-pressed', 'true');
   await expect(crafting.locator('.craft-header h1')).toHaveText('光源');
+  await expect(recipes).toHaveCount(23);
+  await expect(recipes.first()).toHaveAttribute('data-recipe', 'lighter');
+  const torchRecipe = recipes.filter({ has: page.locator('[data-element="torch.tex"]') });
+  await torchRecipe.click();
   await expect(crafting.locator('.craft-detail h2')).toHaveText('火炬');
-  await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute(
-    'src',
-    /crafting\/filter\/fire\/torch\.tex\.png$/,
-  );
-  await expect(crafting.locator('.craft-material-asset').nth(0)).toHaveAttribute(
-    'src',
-    /crafting\/item\/cutgrass\.tex\.png$/,
-  );
-  await expect(crafting.locator('.craft-material-asset').nth(1)).toHaveAttribute(
-    'src',
-    /crafting\/item\/twigs\.tex\.png$/,
-  );
+  await expect(recipes.locator('[data-element="torch.tex"]')).toHaveAttribute('data-loaded', 'true');
+  await expect(crafting.locator('.craft-material-asset').nth(0)).toHaveAttribute('data-element', 'cutgrass.tex');
+  await expect(crafting.locator('.craft-material-asset').nth(1)).toHaveAttribute('data-element', 'twigs.tex');
+  await expect(crafting.locator('.craft-material-asset[data-loaded="true"]')).toHaveCount(2);
+  await expect(crafting.locator('img[src*="crafting/item/"]')).toHaveCount(0);
   await expect(crafting.locator('.craft-material-count')).toHaveText(['3/2', '17/2']);
   await expect(crafting.locator('.craft-build')).toBeEnabled();
+  await expect(torchRecipe.locator('.craft-lock')).toHaveCount(0);
 
   const scienceCategory = crafting.locator('.craft-category[data-category="science"]');
   await scienceCategory.click();
   await expect(scienceCategory).toHaveAttribute('aria-pressed', 'true');
   await expect(crafting.locator('.craft-header h1')).toHaveText('科学');
-  await expect(recipes).toHaveCount(1);
+  await expect(recipes).toHaveCount(22);
   await expect(recipes.first()).toHaveAttribute('aria-selected', 'true');
-  await expect(recipes.first().locator('.craft-placeholder')).toHaveCount(1);
-  await expect(crafting.locator('.craft-detail h2')).toHaveText('科学占位');
-  await expect(crafting.locator('.craft-material')).toHaveCount(0);
+  await expect(recipes.first()).toHaveAttribute('data-recipe', 'researchlab');
+  await expect(crafting.locator('.craft-detail h2')).toHaveText('科学机器');
+  await expect(crafting.locator('.craft-material')).toHaveCount(3);
   await expect(crafting.locator('.craft-build')).toBeDisabled();
 
   await crafting.locator('.craft-view-toggle').click();

@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('riding', '骑乘', 'crafting/filter/filter_riding.tex.png', '#9b7652');
+export default createCategory('riding', 'RIDING', '骑乘', 'filter_riding.tex', '#9b7652');

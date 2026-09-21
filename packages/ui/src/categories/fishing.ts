@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('fishing', '钓鱼', 'crafting/filter/filter_fishing.tex.png', '#6d8fa2');
+export default createCategory('fishing', 'FISHING', '钓鱼', 'filter_fishing.tex', '#6d8fa2');

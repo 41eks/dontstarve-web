@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('refine', '精炼', 'crafting/filter/filter_refine.tex.png', '#b9c6d5');
+export default createCategory('refine', 'REFINE', '精炼', 'filter_refine.tex', '#b9c6d5');

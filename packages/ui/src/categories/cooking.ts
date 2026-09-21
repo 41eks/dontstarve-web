@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('cooking', '烹饪', 'crafting/filter/filter_cooking.tex.png', '#8f8070');
+export default createCategory('cooking', 'COOKING', '烹饪', 'filter_cooking.tex', '#8f8070');

@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('rain', '雨具', 'crafting/filter/filter_rain.tex.png', '#748f9d');
+export default createCategory('rain', 'RAIN', '雨具', 'filter_rain.tex', '#748f9d');

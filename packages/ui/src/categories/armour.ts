@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('armour', '护甲', 'crafting/filter/filter_armour.tex.png', '#927555');
+export default createCategory('armour', 'ARMOUR', '护甲', 'filter_armour.tex', '#927555');

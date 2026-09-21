@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createEmptyCategory } from './shared';
 
-export default createPlaceholderCategory('favorites', '收藏', 'crafting/filter/swap_icon-0.png', '#b79255');
+export default createEmptyCategory('favorites', '收藏', 'filter_favorites.tex');

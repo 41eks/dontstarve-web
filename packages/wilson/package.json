@@ -4,9 +4,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./imageAtlas": "./src/imageAtlas.ts",
+    "./parseKtex": "./src/parseKtex.ts",
+    "./recipes.json": "./recipes.json"
   },
   "scripts": {
+    "recipes:check": "node scripts/extract-recipes.mjs --check",
+    "recipes:generate": "node scripts/extract-recipes.mjs",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -17,6 +23,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.184.1",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.1"
   }
 }

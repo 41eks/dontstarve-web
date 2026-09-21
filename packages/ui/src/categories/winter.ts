@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('winter', '冬季', 'crafting/filter/filter_winter.tex.png', '#7fa8b7');
+export default createCategory('winter', 'WINTER', '冬季', 'filter_winter.tex', '#7fa8b7');

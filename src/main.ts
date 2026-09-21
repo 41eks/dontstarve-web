@@ -2,8 +2,10 @@
 
 import './style.css';
 import { mountGameUi } from '@three-roaming/ui';
+import { preloadImageArchive } from '@three-roaming/wilson/imageAtlas';
 import { createAnimationUpdater } from './animation';
 
+void preloadImageArchive(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 
 import * as THREE from 'three';

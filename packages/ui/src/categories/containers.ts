@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('containers', '容器', 'crafting/filter/filter_containers.tex.png', '#718965');
+export default createCategory('containers', 'CONTAINERS', '容器', 'filter_containers.tex', '#718965');

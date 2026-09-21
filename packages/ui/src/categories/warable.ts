@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('warable', '服装', 'crafting/filter/filter_warable.tex.png', '#779e6d');
+export default createCategory('warable', 'CLOTHING', '服装', 'filter_warable.tex', '#779e6d');

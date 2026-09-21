@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('skull', '暗影', 'crafting/filter/filter_skull.tex.png', '#715b73');
+export default createCategory('skull', 'MAGIC', '魔法', 'filter_skull.tex', '#715b73');

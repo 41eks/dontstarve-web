@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('weapon', '武器', 'crafting/filter/filter_weapon.tex.png', '#b45d50');
+export default createCategory('weapon', 'WEAPONS', '武器', 'filter_weapon.tex', '#b45d50');

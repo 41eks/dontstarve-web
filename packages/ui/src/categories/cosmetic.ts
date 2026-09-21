@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('cosmetic', '装饰', 'crafting/filter/filter_cosmetic.tex.png', '#b3788f');
+export default createCategory('cosmetic', 'DECOR', '装饰', 'filter_cosmetic.tex', '#b3788f');

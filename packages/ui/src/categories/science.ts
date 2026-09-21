@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('science', '科学', 'crafting/filter/filter_science.tex.png', '#78a9b9');
+export default createCategory('science', 'PROTOTYPERS', '科学', 'filter_science.tex', '#78a9b9');

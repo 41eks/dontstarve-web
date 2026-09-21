@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('structure', '建筑', 'crafting/filter/filter_structure.tex.png', '#a78063');
+export default createCategory('structure', 'STRUCTURES', '建筑', 'filter_structure.tex', '#a78063');

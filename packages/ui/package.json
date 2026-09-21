@@ -7,8 +7,13 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "categories:check": "node scripts/generate-categories.mjs --check",
+    "categories:generate": "node scripts/generate-categories.mjs",
     "test": "playwright test",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@three-roaming/wilson": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

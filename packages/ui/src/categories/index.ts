@@ -2,6 +2,8 @@ import armour from './armour';
 import containers from './containers';
 import cooking from './cooking';
 import cosmetic from './cosmetic';
+import craftingStation from './crafting-station';
+import character from './character';
 import favorites from './favorites';
 import fire from './fire';
 import fishing from './fishing';
@@ -14,6 +16,7 @@ import riding from './riding';
 import sailing from './sailing';
 import science from './science';
 import skull from './skull';
+import specialEvent from './special-event';
 import structure from './structure';
 import summer from './summer';
 import tool from './tool';
@@ -24,6 +27,7 @@ import winter from './winter';
 export type { CategoryConfig, Recipe, RecipeIngredient } from './types';
 
 export const categories = [
-  favorites, tool, fire, science, refine, weapon, armour, warable, health, skull, cosmetic,
-  structure, containers, cooking, gardening, fishing, riding, sailing, winter, summer, rain, none,
+  favorites, craftingStation, specialEvent, character,
+  tool, fire, science, refine, weapon, armour, warable, health, skull, cosmetic,
+  structure, containers, cooking, gardening, fishing, sailing, riding, winter, summer, rain, none,
 ] as const;

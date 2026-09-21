@@ -10,6 +10,11 @@ export abstract class AssetElement extends HTMLElement {
     return `${base}${path}`;
   }
 
+  protected dataAsset(path: string): string {
+    const base = new URL(this.assetBaseUrl.endsWith('/') ? this.assetBaseUrl : `${this.assetBaseUrl}/`, document.baseURI);
+    return new URL(`../${path}`, base).href;
+  }
+
   connectedCallback(): void {
     this.render();
   }

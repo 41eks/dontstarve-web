@@ -1,3 +1,3 @@
-import { createPlaceholderCategory } from './shared';
+import { createCategory } from './shared';
 
-export default createPlaceholderCategory('gardening', '园艺', 'crafting/filter/filter_gardening.tex.png', '#779e6d');
+export default createCategory('gardening', 'GARDENING', '园艺', 'filter_gardening.tex', '#779e6d');
