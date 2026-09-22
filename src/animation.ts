@@ -96,7 +96,7 @@ export function createAnimationUpdater(model: THREE.Group) {
                     lastMirrored = false;
                 } else if (left !== right) {
                     lastFacing = 'side';
-                    lastMirrored = right;
+                    lastMirrored = left;
                 }
                 wilsonAnimation.setFacing(lastFacing, lastMirrored);
             }

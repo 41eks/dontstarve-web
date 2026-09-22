@@ -15,7 +15,7 @@ const pigKingStandee = await createAnimatedSprite(
     {
         initialAnimation: 'idle',
         name: 'PigKingStandee',
-        scale: 0.04,
+        scale: 0.02,
     },
 );
 pigKingStandee.position.set(0, 0, 25);
@@ -49,9 +49,9 @@ pigKingFloor.receiveShadow = true;
 const pigKingBody = new CANNON.Body({
     mass: 0,
     shape: new CANNON.Box(new CANNON.Vec3(
-        pigKingWidth / 2,
+        pigKingWidth / 4,
         pigKingHeight / 2,
-        pigKingDepth / 2,
+        pigKingDepth / 4,
     )),
     position: new CANNON.Vec3(
         pigKingStandee.position.x,
@@ -90,17 +90,18 @@ function updatePigKingAnimation(dt: number) {
     pigKingAnimation.update(dt);
 }
 
-function setPigKingNormal(normal: THREE.Vector3) {
-    const horizontalNormal = normal.clone();
-    horizontalNormal.y = 0;
+const pigKingCameraZ = new THREE.Vector3();
 
-    if (horizontalNormal.lengthSq() === 0) {
-        return;
-    }
+function setPigKingNormal(cameraWorldQuaternion: THREE.Quaternion) {
+    pigKingStandee.quaternion.copy(cameraWorldQuaternion);
 
-    horizontalNormal.normalize();
-    pigKingStandee.rotation.y = Math.atan2(horizontalNormal.x, horizontalNormal.z);
-    pigKingBody.quaternion.setFromEuler(0, pigKingStandee.rotation.y, 0);
+    // Keep the physics box upright while matching the billboard's horizontal axis.
+    pigKingCameraZ.set(0, 0, 1).applyQuaternion(cameraWorldQuaternion);
+    pigKingCameraZ.y = 0;
+    if (pigKingCameraZ.lengthSq() === 0) return;
+    pigKingCameraZ.normalize();
+    const bodyRotationY = Math.atan2(pigKingCameraZ.x, pigKingCameraZ.z);
+    pigKingBody.quaternion.setFromEuler(0, bodyRotationY, 0);
     pigKingBody.aabbNeedsUpdate = true;
 }
 

@@ -31,12 +31,8 @@ playerBody.addEventListener("collide", (_e: {
   playerBody.canJump = true;
 });
 
-export function setPlayerNormal(normal: THREE.Vector3) {
-  const horizontalNormal = normal.clone();
-  horizontalNormal.y = 0;
-  if (horizontalNormal.lengthSq() === 0) return;
-  horizontalNormal.normalize();
-  player.rotation.y = Math.atan2(horizontalNormal.x, horizontalNormal.z);
+export function setPlayerNormal(cameraWorldQuaternion: THREE.Quaternion) {
+  player.quaternion.copy(cameraWorldQuaternion);
 }
 import * as CANNON from "cannon-es";
 import * as THREE from 'three';

@@ -21,3 +21,14 @@ export {
   type AnimatedSpriteOptions,
   type SpriteAnimationController,
 } from './sprite';
+export { setSpriteEntityRenderOrder } from './renderOrder';
+export {
+  composeRgbaSpriteAtlas,
+  createRgbaSpriteAtlas,
+  createRgbaSpriteFrameGeometry,
+  updateRgbaSpriteFrameGeometry,
+  type RgbaSpriteAtlas,
+  type RgbaSpriteAtlasFrame,
+  type RgbaSpriteAtlasOptions,
+  type RgbaSpriteFrameGeometryOptions,
+} from './rgbaSpriteAtlas';

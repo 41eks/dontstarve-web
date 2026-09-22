@@ -38,7 +38,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
     private readonly raycaster = new THREE.Raycaster();
     private readonly pointer = new THREE.Vector2();
-    private readonly cameraDirection = new THREE.Vector3();
+    private readonly cameraWorldQuaternion = new THREE.Quaternion();
     private readonly buildCursorLabel = document.createElement('div');
     private pointerClientX = 0;
     private pointerClientY = 0;
@@ -260,11 +260,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private faceCamera(model: THREE.Object3D) {
-        this.camera.getWorldDirection(this.cameraDirection);
-        this.cameraDirection.y = 0;
-        if (this.cameraDirection.lengthSq() === 0) return;
-        this.cameraDirection.normalize();
-        model.rotation.y = Math.atan2(this.cameraDirection.x, this.cameraDirection.z);
+        this.camera.getWorldQuaternion(this.cameraWorldQuaternion);
+        model.quaternion.copy(this.cameraWorldQuaternion);
     }
 
     private setOpacity(model: THREE.Object3D, opacity: number) {

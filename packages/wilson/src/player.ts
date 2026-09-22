@@ -11,6 +11,7 @@ import {
   type ParsedBuild,
   type ResolvedSprite,
 } from './animationAssets';
+import { registerSpriteRenderGroup } from './renderOrder';
 
 export type WilsonFacing = 'up' | 'down' | 'side';
 type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
@@ -236,6 +237,7 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
   const assetToWorldScale = 0.02;
   visual.scale.set(assetToWorldScale, -assetToWorldScale, assetToWorldScale);
   player.add(visual);
+  registerSpriteRenderGroup(player, visual);
 
   const controller = new WilsonController(visual, buildPackage.build, {
     idle,

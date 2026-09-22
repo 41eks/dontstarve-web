@@ -8,6 +8,7 @@
     "./imageAtlas": "./src/imageAtlas.ts",
     "./parseKtex": "./src/parseKtex.ts",
     "./player": "./src/player.ts",
+    "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",
     "./recipes.json": "./recipes.json"
   },

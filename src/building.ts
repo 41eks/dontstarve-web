@@ -1,6 +1,11 @@
 // src/building.ts
 
 import * as THREE from 'three';
+import {
+    createRgbaSpriteAtlas,
+    createRgbaSpriteFrameGeometry,
+    updateRgbaSpriteFrameGeometry,
+} from '@three-roaming/wilson';
 
 const groundTexture = new THREE.TextureLoader().load(
     `${import.meta.env.BASE_URL}384px-GROUND_DECIDUOUS.png`
@@ -20,58 +25,116 @@ ground.rotation.x = -Math.PI / 2;
 
 ground.receiveShadow = true;
 
-const treeTexture = new THREE.TextureLoader().load(
-    `${import.meta.env.BASE_URL}192px-Birchnut_Tree_Tall.png`
+const TREE_COUNT = 500;
+const TREE_SCALE = 0.02;
+const treeAtlas = await createRgbaSpriteAtlas(
+    `${import.meta.env.BASE_URL}dst/data/anim`,
+    'moon_tree.zip',
+    {
+        animationName: 'sway1_loop_tall',
+        padding: 2,
+        resolutionScale: 0.5,
+    },
 );
-treeTexture.colorSpace = THREE.SRGBColorSpace;
-
-const treeHeight = 20;
-const treeWidth = treeHeight * (192 / 323);
-const treeGeometry = new THREE.PlaneGeometry(treeWidth, treeHeight);
-const treeMaterial = new THREE.MeshBasicMaterial({
-    map: treeTexture,
-    transparent: true,
-    alphaTest: 0.01,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-});
-
-const boxes = Array.from({ length: 500 }, () => {
-    const tree = new THREE.Mesh(treeGeometry, treeMaterial);
-    tree.position.y = treeHeight / 2;
-
+const treeFrame = treeAtlas.frames[0];
+const treeGeometry = createRgbaSpriteFrameGeometry(treeFrame, { anchor: 'bottom' });
+const treePositions = Array.from({ length: TREE_COUNT }, () => {
     while (true) {
         const x = Math.random() * 1000 - 500;
         const z = Math.random() * 1000 - 500;
         if (x * x + z * z > 600) {
-            tree.position.x = x;
-            tree.position.z = z;
-            break;
+            return new THREE.Vector3(x, 0, z);
         }
     }
-
-    return tree;
 });
 
-const horizontalCameraDirection = new THREE.Vector3();
+const treeForest = new THREE.Group();
+treeForest.name = 'MoonTreeForest';
+const treeDepthPass = new THREE.Group();
+treeDepthPass.name = 'MoonTreeDepthPass';
+const treeColorPass = new THREE.Group();
+treeColorPass.name = 'MoonTreeColorPass';
+// Tree colors must be submitted before dynamic transparent characters. The
+// depth prepass still makes nearer trees win regardless of instance order.
+treeColorPass.renderOrder = -1;
+treeForest.add(treeDepthPass, treeColorPass);
+const treeColorMaterial = new THREE.MeshBasicMaterial({
+    map: treeAtlas.texture,
+    transparent: true,
+    alphaTest: 0.01,
+    depthTest: true,
+    depthWrite: false,
+    side: THREE.BackSide,
+    toneMapped: false,
+});
+const treeDepthMaterial = treeColorMaterial.clone();
+treeDepthMaterial.transparent = false;
+treeDepthMaterial.depthWrite = true;
+treeDepthMaterial.colorWrite = false;
+treeDepthMaterial.alphaToCoverage = true;
 
-function setTreeNormals(normal: THREE.Vector3) {
-    horizontalCameraDirection.copy(normal);
-    horizontalCameraDirection.y = 0;
+const treeColorMesh = new THREE.InstancedMesh(
+    treeGeometry,
+    treeColorMaterial,
+    TREE_COUNT,
+);
+const treeDepthMesh = new THREE.InstancedMesh(
+    treeGeometry,
+    treeDepthMaterial,
+    TREE_COUNT,
+);
+treeColorMesh.name = 'MoonTreeColor';
+treeDepthMesh.name = 'MoonTreeDepth';
+treeColorMesh.frustumCulled = false;
+treeDepthMesh.frustumCulled = false;
+treeColorPass.add(treeColorMesh);
+treeDepthPass.add(treeDepthMesh);
 
-    if (horizontalCameraDirection.lengthSq() === 0) {
-        return;
-    }
+let treeAnimationElapsed = 0;
+let treeAnimationFrameIndex = 0;
 
-    horizontalCameraDirection.normalize();
-    const rotationY = Math.atan2(
-        horizontalCameraDirection.x,
-        horizontalCameraDirection.z,
+function updateTreeAnimation(dt: number) {
+    treeAnimationElapsed += Math.min(dt, 0.1);
+    const nextFrameIndex = Math.floor(treeAnimationElapsed * treeAtlas.frameRate)
+        % treeAtlas.frames.length;
+    if (nextFrameIndex === treeAnimationFrameIndex) return;
+    treeAnimationFrameIndex = nextFrameIndex;
+    updateRgbaSpriteFrameGeometry(
+        treeGeometry,
+        treeAtlas.frames[treeAnimationFrameIndex],
+        { anchor: 'bottom' },
     );
-
-    boxes.forEach((tree) => {
-        tree.rotation.y = rotationY;
-    });
 }
 
-export { ground, boxes, setTreeNormals };
+const treeRootMatrix = new THREE.Matrix4();
+const treeLocalMatrix = new THREE.Matrix4().makeScale(
+    TREE_SCALE,
+    -TREE_SCALE,
+    TREE_SCALE,
+);
+const treeInstanceMatrix = new THREE.Matrix4();
+const treeUnitScale = new THREE.Vector3(1, 1, 1);
+const lastTreeQuaternion = new THREE.Quaternion();
+let hasTreeQuaternion = false;
+
+function setTreeNormals(cameraWorldQuaternion: THREE.Quaternion) {
+    if (hasTreeQuaternion
+        && Math.abs(lastTreeQuaternion.dot(cameraWorldQuaternion)) > 1 - 1e-10) return;
+    lastTreeQuaternion.copy(cameraWorldQuaternion);
+    hasTreeQuaternion = true;
+
+    treePositions.forEach((position, index) => {
+        treeRootMatrix.compose(position, cameraWorldQuaternion, treeUnitScale);
+        treeInstanceMatrix.multiplyMatrices(treeRootMatrix, treeLocalMatrix);
+        treeColorMesh.setMatrixAt(index, treeInstanceMatrix);
+        treeDepthMesh.setMatrixAt(index, treeInstanceMatrix);
+    });
+    treeColorMesh.instanceMatrix.needsUpdate = true;
+    treeDepthMesh.instanceMatrix.needsUpdate = true;
+}
+
+setTreeNormals(new THREE.Quaternion());
+
+const boxes = [treeForest];
+
+export { ground, boxes, setTreeNormals, updateTreeAnimation };

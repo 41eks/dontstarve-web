@@ -9,6 +9,7 @@ import {
   type ParsedBuild,
   type ResolvedSprite,
 } from './animationAssets';
+import { registerSpriteRenderGroup } from './renderOrder';
 
 export interface SpriteAnimationController {
   start(name: string): void;
@@ -114,6 +115,7 @@ export async function createAnimatedSprite(
   const scale = options.scale ?? 0.02;
   visual.scale.set(scale, -scale, scale);
   sprite.add(visual);
+  registerSpriteRenderGroup(sprite, visual);
 
   const controller = new SpriteController(
     visual,

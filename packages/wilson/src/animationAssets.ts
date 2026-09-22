@@ -329,57 +329,136 @@ export function createMaterials(buildPackage: BuildPackage) {
 }
 
 export class SpriteFrameRenderer {
-  private readonly meshes: THREE.Mesh[] = [];
-  private readonly geometries = new WeakMap<BuildImage, THREE.BufferGeometry>();
-  private readonly visual: THREE.Group;
+  private readonly geometry = new THREE.BufferGeometry();
+  private readonly materials: THREE.MeshBasicMaterial[] = [];
+  private readonly materialIndices = new Map<THREE.MeshBasicMaterial, number>();
+  private readonly mesh: THREE.Mesh;
+  private positions = new Float32Array();
+  private uvs = new Float32Array();
+  private quadCapacity = 0;
 
   constructor(visual: THREE.Group) {
-    this.visual = visual;
+    this.mesh = new THREE.Mesh(this.geometry, this.materials);
+    this.mesh.frustumCulled = false;
+    visual.add(this.mesh);
   }
 
   show(sprites: ResolvedSprite[]) {
+    if (sprites.length === 0) {
+      this.mesh.visible = false;
+      this.geometry.setDrawRange(0, 0);
+      return;
+    }
+    if (sprites.length > 0x3fff) {
+      throw new Error(`A sprite frame cannot contain more than ${0x3fff} parts`);
+    }
+
+    this.ensureCapacity(sprites.length);
+    this.mesh.visible = true;
+    this.materials.length = 0;
+    this.materialIndices.clear();
+    this.geometry.clearGroups();
+
+    let currentMaterialIndex = -1;
+    let groupStart = 0;
+    let groupCount = 0;
+
     for (let spriteIndex = 0; spriteIndex < sprites.length; spriteIndex++) {
       const { element, image, materials } = sprites[spriteIndex];
-      let mesh = this.meshes[spriteIndex];
-      if (!mesh) {
-        mesh = new THREE.Mesh();
-        mesh.matrixAutoUpdate = false;
-        mesh.frustumCulled = false;
-        this.meshes.push(mesh);
-        this.visual.add(mesh);
+      const material = materials[image.sampler ?? 0];
+      if (!material) {
+        throw new Error(`Sprite part ${spriteIndex} references a missing atlas material`);
       }
-      mesh.visible = true;
-      mesh.geometry = this.geometryFor(image);
-      mesh.material = materials[image.sampler ?? 0];
-      const [a, b, c, d, x, y] = element.matrix;
-      mesh.matrix.set(a, c, 0, x, b, d, 0, y, 0, 0, 1, 0, 0, 0, 0, 1);
-      mesh.renderOrder = spriteIndex;
+
+      let materialIndex = this.materialIndices.get(material);
+      if (materialIndex === undefined) {
+        materialIndex = this.materials.length;
+        this.materials.push(material);
+        this.materialIndices.set(material, materialIndex);
+      }
+      if (materialIndex !== currentMaterialIndex) {
+        if (groupCount > 0) {
+          this.geometry.addGroup(groupStart, groupCount, currentMaterialIndex);
+        }
+        currentMaterialIndex = materialIndex;
+        groupStart = spriteIndex * 6;
+        groupCount = 6;
+      } else {
+        groupCount += 6;
+      }
+
+      const [a, b, c, d, tx, ty] = element.matrix;
+      const x0 = image.x - image.width / 2;
+      const y0 = image.y - image.height / 2;
+      const x1 = x0 + image.width;
+      const y1 = y0 + image.height;
+      const positionOffset = spriteIndex * 12;
+      this.setPosition(positionOffset, x0, y0, a, b, c, d, tx, ty);
+      this.setPosition(positionOffset + 3, x1, y0, a, b, c, d, tx, ty);
+      this.setPosition(positionOffset + 6, x1, y1, a, b, c, d, tx, ty);
+      this.setPosition(positionOffset + 9, x0, y1, a, b, c, d, tx, ty);
+
+      const u0 = image.bbx! / image.canvasWidth!;
+      const v0 = image.bby! / image.canvasHeight!;
+      const u1 = (image.bbx! + image.width) / image.canvasWidth!;
+      const v1 = (image.bby! + image.height) / image.canvasHeight!;
+      const uvOffset = spriteIndex * 8;
+      this.uvs[uvOffset] = u0;
+      this.uvs[uvOffset + 1] = v0;
+      this.uvs[uvOffset + 2] = u1;
+      this.uvs[uvOffset + 3] = v0;
+      this.uvs[uvOffset + 4] = u1;
+      this.uvs[uvOffset + 5] = v1;
+      this.uvs[uvOffset + 6] = u0;
+      this.uvs[uvOffset + 7] = v1;
     }
-    for (let index = sprites.length; index < this.meshes.length; index++) {
-      this.meshes[index].visible = false;
+
+    if (groupCount > 0) {
+      this.geometry.addGroup(groupStart, groupCount, currentMaterialIndex);
     }
+    this.geometry.setDrawRange(0, sprites.length * 6);
+    this.geometry.getAttribute('position').needsUpdate = true;
+    this.geometry.getAttribute('uv').needsUpdate = true;
   }
 
-  private geometryFor(image: BuildImage) {
-    const cached = this.geometries.get(image);
-    if (cached) return cached;
-    const x0 = image.x - image.width / 2;
-    const y0 = image.y - image.height / 2;
-    const x1 = x0 + image.width;
-    const y1 = y0 + image.height;
-    const u0 = image.bbx! / image.canvasWidth!;
-    const v0 = image.bby! / image.canvasHeight!;
-    const u1 = (image.bbx! + image.width) / image.canvasWidth!;
-    const v1 = (image.bby! + image.height) / image.canvasHeight!;
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute([
-      x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y1, 0,
-    ], 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([
-      u0, v0, u1, v0, u1, v1, u0, v1,
-    ], 2));
-    geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    this.geometries.set(image, geometry);
-    return geometry;
+  private setPosition(
+    offset: number,
+    x: number,
+    y: number,
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    tx: number,
+    ty: number,
+  ) {
+    this.positions[offset] = a * x + c * y + tx;
+    this.positions[offset + 1] = b * x + d * y + ty;
+    this.positions[offset + 2] = 0;
+  }
+
+  private ensureCapacity(quadCount: number) {
+    if (quadCount <= this.quadCapacity) return;
+
+    this.quadCapacity = THREE.MathUtils.ceilPowerOfTwo(Math.max(quadCount, 16));
+    this.positions = new Float32Array(this.quadCapacity * 4 * 3);
+    this.uvs = new Float32Array(this.quadCapacity * 4 * 2);
+    const indices = new Uint16Array(this.quadCapacity * 6);
+    for (let quadIndex = 0; quadIndex < this.quadCapacity; quadIndex++) {
+      const vertexOffset = quadIndex * 4;
+      const indexOffset = quadIndex * 6;
+      indices.set([
+        vertexOffset, vertexOffset + 1, vertexOffset + 2,
+        vertexOffset, vertexOffset + 2, vertexOffset + 3,
+      ], indexOffset);
+    }
+
+    const positionAttribute = new THREE.BufferAttribute(this.positions, 3);
+    const uvAttribute = new THREE.BufferAttribute(this.uvs, 2);
+    positionAttribute.setUsage(THREE.DynamicDrawUsage);
+    uvAttribute.setUsage(THREE.DynamicDrawUsage);
+    this.geometry.setAttribute('position', positionAttribute);
+    this.geometry.setAttribute('uv', uvAttribute);
+    this.geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   }
 }
