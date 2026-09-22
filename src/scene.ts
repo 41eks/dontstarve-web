@@ -1,7 +1,7 @@
 import * as CANNON from 'cannon-es';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
-import { setSpriteEntityRenderOrder } from '@three-roaming/wilson';
+import { setSpriteEntityRenderOrder } from '@three-roaming/animation';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';

@@ -1,4 +1,4 @@
-import recipeDataJson from '@three-roaming/wilson/recipes.json' with { type: 'json' };
+import recipeDataJson from '@three-roaming/animation/recipes.json' with { type: 'json' };
 import {
   filterRecipeIds,
   ingredientNames,

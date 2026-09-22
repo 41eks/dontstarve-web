@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
     createAnimatedSprite,
     type SpriteAnimationController,
-} from '@three-roaming/wilson/sprite';
+} from '@three-roaming/animation/sprite';
 
 export interface AnimatedBuildingDefinition {
     archive: string;

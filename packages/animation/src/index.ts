@@ -12,11 +12,6 @@ export {
   type ParsedImageAtlasXml,
 } from './imageAtlas';
 export {
-  createWilsonPlayer,
-  type WilsonAnimationController,
-  type WilsonFacing,
-} from './player';
-export {
   createAnimatedSprite,
   type AnimatedSpriteOptions,
   type SpriteAnimationController,

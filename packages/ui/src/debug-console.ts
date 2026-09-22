@@ -1,4 +1,4 @@
-import { loadImageAtlas } from '@three-roaming/wilson/imageAtlas';
+import { loadImageAtlas } from '@three-roaming/animation/imageAtlas';
 import { AssetElement } from './assets';
 import styles from './styles/debug-console.css?inline';
 

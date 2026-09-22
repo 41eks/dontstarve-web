@@ -1,4 +1,4 @@
-import { loadImageAtlas, type ImageAtlas } from '@three-roaming/wilson/imageAtlas';
+import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
 import { createEffect } from '../signal';
 import { sameSlotAddress, type SlotAddress, type SlotItem, type SlotModel } from './slot-model';
 import { slotTransferController, type SlotTransferRequest } from './slot-transfer';

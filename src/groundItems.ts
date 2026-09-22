@@ -1,4 +1,4 @@
-import { loadImageAtlas, type ImageAtlas } from '@three-roaming/wilson/imageAtlas';
+import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
 import * as THREE from 'three';
 
 const DEFAULT_ATLAS = 'images/inventoryimages.xml';

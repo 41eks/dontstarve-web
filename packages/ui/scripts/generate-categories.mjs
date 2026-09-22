@@ -8,7 +8,7 @@ const scriptsRoot = rootArgument?.slice('--scripts-root='.length)
   ?? defaultScriptsRoot;
 const recipesFilterPath = `${scriptsRoot}/recipes_filter.lua`;
 const chineseStringsPath = `${scriptsRoot}/languages/chinese_s.po`;
-const recipeDataUrl = new URL('../../wilson/recipes.json', import.meta.url);
+const recipeDataUrl = new URL('../../animation/recipes.json', import.meta.url);
 const outputUrl = new URL('../src/categories/generated.ts', import.meta.url);
 
 const filterNames = [

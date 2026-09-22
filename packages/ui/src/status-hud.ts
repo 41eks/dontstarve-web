@@ -1,4 +1,4 @@
-import { loadImageAtlas, type ImageAtlas } from '@three-roaming/wilson/imageAtlas';
+import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
 import { AssetElement } from './assets';
 import styles from './styles/status-hud.css?inline';
 

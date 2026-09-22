@@ -1,7 +1,7 @@
 import { AssetElement } from './assets';
 import { categories, type CategoryConfig, type Recipe, type RecipeIngredient } from './categories';
 import styles from './styles/crafting-ui.css?inline';
-import { loadImageAtlas, type ImageAtlas } from '@three-roaming/wilson/imageAtlas';
+import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
 
 const atlasRequests = new Map<string, Promise<ImageAtlas>>();
 

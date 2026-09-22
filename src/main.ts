@@ -12,8 +12,8 @@ import {
   type SlotContextMenuDetail,
   type SlotTransferRequest,
 } from '@three-roaming/ui';
-import type { WilsonAnimationController } from '@three-roaming/wilson/player';
-import { preloadImageArchive } from '@three-roaming/wilson/imageAtlas';
+import type { WilsonAnimationController } from '@three-roaming/prefab/player';
+import { preloadImageArchive } from '@three-roaming/animation/imageAtlas';
 import { player } from './player';
 import { executeDebugCommand } from './debugCommands';
 import { isPlaceableBuildingId } from './placeableBuilding';

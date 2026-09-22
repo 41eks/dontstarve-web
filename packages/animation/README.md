@@ -1,4 +1,4 @@
-# @three-roaming/wilson
+# @three-roaming/animation
 
 ## DST 图片 XML 索引
 
@@ -12,7 +12,7 @@ public/dst/data/databundles/images.zip
 
 ```text
 images.zip!images/inventoryimages3.xml
-    -> packages/wilson/images/inventoryimages3.xml
+    -> packages/animation/images/inventoryimages3.xml
 ```
 
 这些文件是 DST 图片图集的纯文本索引，记录对应 `.tex` 纹理文件以及各图片元素的名称和 UV 坐标。将它们保留在包内是为了能够直接使用编辑器或 `rg` 搜索图片名称；运行时使用的原始资源仍位于 `public/dst/data`。
@@ -20,13 +20,13 @@ images.zip!images/inventoryimages3.xml
 更新 `images.zip` 后，使用以下命令重新同步全部 XML 索引：
 
 ```sh
-unzip -oq public/dst/data/databundles/images.zip 'images/*.xml' -d packages/wilson
+unzip -oq public/dst/data/databundles/images.zip 'images/*.xml' -d packages/animation
 ```
 
 例如搜索物品图片所在的索引：
 
 ```sh
-rg 'spear_rose' packages/wilson/images
+rg 'spear_rose' packages/animation/images
 ```
 
 ## DST 制作配方
@@ -46,13 +46,13 @@ rg 'spear_rose' packages/wilson/images
 /data/copy/AssetArchive-Dev/data/Don't Starve Together/data/databundles/scripts_unpacked/scripts/recipes.lua
 ```
 
-该文件原样复制到 `packages/wilson/scripts/recipes.lua`，再由
-`packages/wilson/scripts/extract-recipes.mjs` 转换为 `packages/wilson/recipes.json`：
+该文件原样复制到 `packages/animation/scripts/recipes.lua`，再由
+`packages/animation/scripts/extract-recipes.mjs` 转换为 `packages/animation/recipes.json`：
 
 ```text
 scripts.zip!scripts/recipes.lua
-    -> packages/wilson/scripts/recipes.lua
-    -> packages/wilson/recipes.json
+    -> packages/animation/scripts/recipes.lua
+    -> packages/animation/recipes.json
 ```
 
 ### JSON 生成规则
@@ -64,12 +64,12 @@ JSON 值的表达式会保留为 `{ "lua": "原表达式" }`，循环生成的�
 同步 `scripts/recipes.lua` 后可重新生成并检查 JSON：
 
 ```sh
-pnpm --filter @three-roaming/wilson recipes:generate
-pnpm --filter @three-roaming/wilson recipes:check
+pnpm --filter @three-roaming/animation recipes:generate
+pnpm --filter @three-roaming/animation recipes:check
 ```
 
 其他 workspace 包也可以通过导出路径读取：
 
 ```ts
-import recipeData from '@three-roaming/wilson/recipes.json';
+import recipeData from '@three-roaming/animation/recipes.json';
 ```

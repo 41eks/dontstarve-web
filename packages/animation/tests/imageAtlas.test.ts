@@ -4,7 +4,7 @@ import {
   parseImageAtlasArchive,
   parseImageAtlasXml,
   preloadImageArchive,
-} from '@three-roaming/wilson/imageAtlas';
+} from '@three-roaming/animation/imageAtlas';
 
 const encoder = new TextEncoder();
 

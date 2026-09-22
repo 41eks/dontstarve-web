@@ -1,5 +1,5 @@
 {
-  "name": "@three-roaming/wilson",
+  "name": "@three-roaming/animation",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./imageAtlas": "./src/imageAtlas.ts",
     "./parseKtex": "./src/parseKtex.ts",
-    "./player": "./src/player.ts",
+    "./animationAssets": "./src/animationAssets.ts",
+    "./renderOrder": "./src/renderOrder.ts",
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",
     "./recipes.json": "./recipes.json"

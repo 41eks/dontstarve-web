@@ -1,3 +1,4 @@
+import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import {
   createMaterials,
@@ -10,8 +11,8 @@ import {
   type ParsedAnim,
   type ParsedBuild,
   type ResolvedSprite,
-} from './animationAssets';
-import { registerSpriteRenderGroup } from './renderOrder';
+} from '@three-roaming/animation/animationAssets';
+import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
 
 export type WilsonFacing = 'up' | 'down' | 'side';
 type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
@@ -28,6 +29,19 @@ export interface WilsonAnimationController {
   setFacing(facing: WilsonFacing, mirrored?: boolean): void;
   setCarryItem(item: 'torch' | null): void;
   update(dt: number, jumpProgress?: number): void;
+}
+
+export type PlayerBody = CANNON.Body & { canJump: boolean };
+
+export interface WilsonPlayerPrefab {
+  body: PlayerBody;
+  model: THREE.Group;
+  setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
+}
+
+export interface WilsonPlayerPrefabOptions {
+  mass?: number;
+  shapeRadius?: number;
 }
 
 const facingValues: Record<WilsonFacing, number> = { down: 8, side: 5, up: 2 };
@@ -255,4 +269,33 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
   });
   player.userData.animationController = controller;
   return player;
+}
+
+export async function createWilsonPlayerPrefab(
+  assetBaseUrl: string,
+  options: WilsonPlayerPrefabOptions = {},
+): Promise<WilsonPlayerPrefab> {
+  const model = await createWilsonPlayer(assetBaseUrl);
+  const shapeRadius = options.shapeRadius ?? 4.5;
+  const material = new CANNON.Material('player');
+  const body = new CANNON.Body({
+    mass: options.mass ?? 5,
+    shape: new CANNON.Sphere(shapeRadius),
+    position: new CANNON.Vec3(model.position.x, model.position.y, model.position.z)
+      .vadd(new CANNON.Vec3(0, shapeRadius, 0)),
+    material,
+    fixedRotation: true,
+  }) as PlayerBody;
+  body.canJump = false;
+  body.addEventListener('collide', () => {
+    body.canJump = true;
+  });
+
+  return {
+    body,
+    model,
+    setNormal(cameraWorldQuaternion) {
+      model.quaternion.copy(cameraWorldQuaternion);
+    },
+  };
 }
