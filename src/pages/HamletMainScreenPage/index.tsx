@@ -197,10 +197,16 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
           <AtlasSprite assetRoot={ASSET_ROOT} atlas="ui" sprite="update_banner.tex" />
           <span>由死亡来定义冒险</span>
         </div>
-        <section className={styles.motd} aria-label="Don't Starve: Elsewhere">
+        <a
+          className={styles.motd}
+          href="https://store.steampowered.com/app/2239770/Dont_Starve_Elsewhere/"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="打开 Don't Starve: Elsewhere 商店页面"
+        >
           <AtlasSprite assetRoot={ASSET_ROOT} atlas="globalpanels" sprite="panel.tex" />
           <img src={elsewhereKeyArt} alt="Don't Starve: Elsewhere" />
-        </section>
+        </a>
         <nav className={styles.menu} aria-label="Hamlet 主菜单">
           {["开始游戏！", "模组", "选项", "退出"].map((label, index) => (
             <HamletButton key={label} label={label} focused={index === 0} onClick={() => runAction(label)} />

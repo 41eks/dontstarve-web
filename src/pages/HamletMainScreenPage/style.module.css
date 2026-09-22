@@ -19,7 +19,9 @@
 .updateBanner canvas { display: block; width: 100%; height: auto; }
 .updateBanner span { position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 2%; color: #17130f; font: 900 clamp(8px, 1.42vw, 24px)/1 "Noto Sans SC", system-ui, sans-serif; letter-spacing: -.04em; transform: rotate(-.4deg); }
 
-.motd { position: absolute; z-index: 5; left: 11.3%; top: 27.8%; width: 24.5%; transform: translate(-50%, -50%); }
+.motd { position: absolute; z-index: 5; left: 11.3%; top: 27.8%; width: 24.5%; color: inherit; text-decoration: none; cursor: pointer; transform: translate(-50%, -50%); transition: filter .16s ease, transform .16s ease; }
+.motd:hover, .motd:focus-visible { filter: brightness(1.12); transform: translate(-50%, -50%) scale(1.02); }
+.motd:focus-visible { outline: 2px solid #f2e8c6; outline-offset: 3px; }
 .motd > canvas { position: relative; z-index: 1; display: block; width: 100%; height: auto; transform: scale(.9, 1); }
 .motd img { position: absolute; z-index: 2; left: 16%; top: 22%; width: 68%; height: 42%; object-fit: contain; background: #111412; box-shadow: 0 2px 8px rgba(0,0,0,.42); }
 
