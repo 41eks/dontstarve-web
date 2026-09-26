@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./moontree": "./src/moontree.ts",
     "./pigking": "./src/pigking.ts",
-    "./player": "./src/player.ts"
+    "./player": "./src/player.ts",
+    "./researchlab": "./src/researchlab.ts",
+    "./animatedBuildingPlacement": "./src/animatedBuildingPlacement.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

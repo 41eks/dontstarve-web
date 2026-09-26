@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { AnimatedBuildingPlacement } from './animatedBuildingPlacement';
+import { AnimatedBuildingPlacement } from '@three-roaming/prefab/animatedBuildingPlacement';
 import {
     RESEARCH_LAB_DEFINITIONS,
     RESEARCH_LAB_IDS,
     type ResearchLabId,
-} from './researchlab';
+} from '@three-roaming/prefab/researchlab';
 
 export const TREASURE_CHEST_ID = 'treasurechest' as const;
 export const TENT_ID = 'tent' as const;

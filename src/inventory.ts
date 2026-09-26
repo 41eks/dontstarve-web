@@ -69,7 +69,7 @@ export const INVENTORY_ITEM_DEFINITIONS: readonly InventoryItemDefinition[] = [
   {
     slot_index: 5,
     id: 'rocks',
-    num: 4,
+    num: 14,
   },
 ];
 

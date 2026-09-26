@@ -1,9 +1,16 @@
 import { AssetElement } from './assets';
 import { categories, type CategoryConfig, type Recipe, type RecipeIngredient } from './categories';
+import { createCategoryButtonMapper } from './craft-category-button';
+import { createRecipeButtonMapper } from './craft-recipe-button';
 import styles from './styles/crafting-ui.css?inline';
 import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
 
 const atlasRequests = new Map<string, Promise<ImageAtlas>>();
+const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
+const imageArchiveUrl = new URL(
+  `${baseUrl}dst/data/databundles/images.zip`,
+  document.baseURI,
+).href;
 
 export interface CraftRequestDetail {
   recipeId: string;
@@ -25,8 +32,39 @@ function requestAtlas(archiveUrl: string, atlasPath: string) {
   return request;
 }
 
+function atlasImage(className: string, atlasPath: string, elementName: string): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.className = className;
+  canvas.width = 1;
+  canvas.height = 1;
+  canvas.dataset.archive = imageArchiveUrl;
+  canvas.dataset.atlas = atlasPath;
+  canvas.dataset.element = elementName;
+  canvas.setAttribute('aria-hidden', 'true');
+
+  void requestAtlas(imageArchiveUrl, atlasPath).then((atlas) => {
+    if (!canvas.isConnected) return;
+    const sprite = atlas.require(elementName);
+    canvas.width = sprite.width;
+    canvas.height = sprite.height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas 2D context is unavailable');
+    const pixels = Uint8ClampedArray.from(sprite.pixels);
+    context.putImageData(new ImageData(pixels, sprite.width, sprite.height), 0, 0);
+    canvas.dataset.loaded = 'true';
+  }).catch((error: unknown) => {
+    canvas.dataset.error = error instanceof Error ? error.message : String(error);
+    canvas.dispatchEvent(new Event('error'));
+  });
+  return canvas;
+}
+
+import { createSignal } from './signal';
+
+const activeCategoryIdState = createSignal('tool');
+
 export class DstCraftingUiElement extends AssetElement {
-  private activeCategoryId = 'tool';
+  // private activeCategoryId = 'tool';
   private bufferedRecipeIds = new Set<string>();
   private collapsed = true;
   private inventoryCounts?: Readonly<Record<string, number>>;
@@ -164,40 +202,21 @@ export class DstCraftingUiElement extends AssetElement {
     };
 
     const renderCategoryRecipes = (category: CategoryConfig) => {
-      this.activeCategoryId = category.id;
+      // this.activeCategoryId = category.id;
+      activeCategoryIdState.set(category.id);
       activeRecipes = category.recipes;
       const preservedIndex = activeRecipes.findIndex(({ id }) => id === this.selectedRecipeId);
       selectedIndex = preservedIndex < 0 ? 0 : preservedIndex;
       recipeGrid.replaceChildren();
       quickbar.replaceChildren();
 
-      activeRecipes.forEach((recipe, index) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'craft-recipe';
-        button.dataset.recipe = recipe.id;
-        button.dataset.buffered = String(this.isRecipeBuffered(recipe));
-        button.setAttribute('role', 'option');
-        button.setAttribute(
-          'aria-label',
-          this.isRecipeBuffered(recipe) ? `${recipe.name}（已制作）` : recipe.name,
-        );
-        button.setAttribute('aria-selected', 'false');
-        button.append(
-          this.atlasImage(
-            'craft-recipe-bg',
-            'images/crafting_menu.xml',
-            this.isRecipeBuffered(recipe) ? 'slot_bg_buffered.tex' : 'slot_bg.tex',
-          ),
-          this.recipeIcon(recipe),
-          this.atlasImage('craft-recipe-frame', 'images/crafting_menu.xml', 'slot_frame.tex'),
-        );
-        if (this.isRecipeLocked(recipe)) {
-          button.append(this.atlasImage('craft-lock', 'images/crafting_menu.xml', 'slot_fg_lock.tex'));
-        }
-        button.addEventListener('click', () => updateSelection(index));
-        recipeGrid.append(button);
-      });
+      recipeGrid.append(...activeRecipes.map(createRecipeButtonMapper({
+        atlasImage,
+        isBuffered: (recipe) => this.isRecipeBuffered(recipe),
+        isLocked: (recipe) => this.isRecipeLocked(recipe),
+        recipeIcon: (recipe) => this.recipeIcon(recipe),
+        selectRecipe: updateSelection,
+      })));
 
       activeRecipes.slice(0, 10).forEach((recipe, index) => {
         const button = document.createElement('button');
@@ -213,32 +232,18 @@ export class DstCraftingUiElement extends AssetElement {
       updateSelection(selectedIndex);
     };
 
-    categories.forEach((category) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'craft-category';
-      button.dataset.category = category.id;
-      button.title = category.name;
-      button.setAttribute('aria-label', category.name);
-      button.setAttribute('aria-pressed', String(category.id === this.activeCategoryId));
-      button.innerHTML = `
-        <img class="craft-category-frame craft-category-frame-inactive" src="${this.asset('crafting/filter/filter_button_inactive.tex.png')}" alt="" />
-        <img class="craft-category-frame craft-category-frame-active" src="${this.asset('crafting/filter/filter_button_active.tex.png')}" alt="" />
-      `;
-      button.append(this.atlasImage(
-        'craft-category-icon',
-        category.iconAtlas ?? 'images/crafting_menu_icons.xml',
-        category.icon,
-      ));
-      button.addEventListener('click', () => {
+    categoryNav.append(...categories.map(createCategoryButtonMapper({
+      activeCategoryId: activeCategoryIdState.get(),
+      assetBaseUrl: this.assetBaseUrl,
+      atlasImage,
+      selectCategory: (category, button) => {
         this.selectedRecipeId = undefined;
         root.querySelector('h1')!.textContent = category.name;
         root.querySelectorAll('.craft-category').forEach((item) => item.setAttribute('aria-pressed', 'false'));
         button.setAttribute('aria-pressed', 'true');
         renderCategoryRecipes(category);
-      });
-      categoryNav.append(button);
-    });
+      },
+    })));
 
     root.querySelector('.craft-arrow-left')!.addEventListener('click', () => updateSelection(selectedIndex - 1));
     root.querySelector('.craft-arrow-right')!.addEventListener('click', () => updateSelection(selectedIndex + 1));
@@ -265,7 +270,7 @@ export class DstCraftingUiElement extends AssetElement {
       setCollapsed(!panel.classList.contains('is-collapsed'));
     });
     setCollapsed(this.collapsed);
-    const initialCategory = categories.find(({ id }) => id === this.activeCategoryId) ?? categories[0];
+    const initialCategory = categories.find(({ id }) => id === activeCategoryIdState.get()) ?? categories[0];
     root.querySelector('h1')!.textContent = initialCategory.name;
     renderCategoryRecipes(initialCategory);
   }
@@ -283,13 +288,13 @@ export class DstCraftingUiElement extends AssetElement {
     if (recipe.asset) {
       const icon = document.createElement('img');
       icon.className = 'craft-recipe-asset';
-      icon.src = this.asset(recipe.asset);
+      icon.src = urlString`${this.assetBaseUrl}/${recipe.asset}`;
       icon.alt = '';
       return icon;
     }
 
     if (recipe.inventoryIcon) {
-      const icon = this.atlasImage(
+      const icon = atlasImage(
         'craft-recipe-asset',
         recipe.inventoryAtlas ?? 'images/inventoryimages.xml',
         recipe.inventoryIcon,
@@ -301,34 +306,6 @@ export class DstCraftingUiElement extends AssetElement {
     }
 
     return this.placeholder(recipe.color, recipe.name);
-  }
-
-  private atlasImage(className: string, atlasPath: string, elementName: string): HTMLCanvasElement {
-    const canvas = document.createElement('canvas');
-    const archiveUrl = this.dataAsset('databundles/images.zip');
-    canvas.className = className;
-    canvas.width = 1;
-    canvas.height = 1;
-    canvas.dataset.archive = archiveUrl;
-    canvas.dataset.atlas = atlasPath;
-    canvas.dataset.element = elementName;
-    canvas.setAttribute('aria-hidden', 'true');
-
-    void requestAtlas(archiveUrl, atlasPath).then((atlas) => {
-      if (!canvas.isConnected) return;
-      const sprite = atlas.require(elementName);
-      canvas.width = sprite.width;
-      canvas.height = sprite.height;
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Canvas 2D context is unavailable');
-      const pixels = Uint8ClampedArray.from(sprite.pixels);
-      context.putImageData(new ImageData(pixels, sprite.width, sprite.height), 0, 0);
-      canvas.dataset.loaded = 'true';
-    }).catch((error: unknown) => {
-      canvas.dataset.error = error instanceof Error ? error.message : String(error);
-      canvas.dispatchEvent(new Event('error'));
-    });
-    return canvas;
   }
 
   private isRecipeLocked(recipe: Recipe): boolean {
@@ -349,7 +326,7 @@ export class DstCraftingUiElement extends AssetElement {
     item.setAttribute('aria-label', `${ingredient.name} ${available}/${required}`);
 
     if (ingredient.inventoryIcon) {
-      item.append(this.atlasImage(
+      item.append(atlasImage(
         'craft-material-asset',
         ingredient.inventoryAtlas ?? 'images/inventoryimages.xml',
         ingredient.inventoryIcon,
@@ -398,3 +375,4 @@ export class DstCraftingUiElement extends AssetElement {
     }));
   }
 }
+import { urlString } from './utils';
