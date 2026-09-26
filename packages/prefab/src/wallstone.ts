@@ -1,3 +1,4 @@
+import { WALL_SCALE } from './tile';
 import { WallPlacement, type WallDefinition } from './wallPlacement';
 import type { WorldContext } from './worldContext';
 
@@ -15,7 +16,7 @@ export const WALL_STONE_DEFINITIONS: Readonly<Record<WallStoneId, WallDefinition
         buildLabel: '石墙',
         frontImageIndex: 14,
         name: 'WallStone',
-        scale: 0.02,
+        scale: WALL_SCALE,
         sideImageIndex: 4,
         symbol: 'wall_segment',
     },
@@ -24,7 +25,7 @@ export const WALL_STONE_DEFINITIONS: Readonly<Record<WallStoneId, WallDefinition
         buildLabel: '石墙',
         frontImageIndex: 14,
         name: 'WallStone',
-        scale: 0.02,
+        scale: WALL_SCALE,
         sideImageIndex: 4,
         symbol: 'wall_segment',
     },

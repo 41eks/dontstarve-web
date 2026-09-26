@@ -11,6 +11,7 @@
     "./researchlab": "./src/researchlab.ts",
     "./wallstone": "./src/wallstone.ts",
     "./wallPlacement": "./src/wallPlacement.ts",
+    "./tile": "./src/tile.ts",
     "./animatedBuildingPlacement": "./src/animatedBuildingPlacement.ts",
     "./worldContext": "./src/worldContext.ts"
   },

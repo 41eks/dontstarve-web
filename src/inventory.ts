@@ -71,6 +71,11 @@ export const INVENTORY_ITEM_DEFINITIONS: readonly InventoryItemDefinition[] = [
     id: 'rocks',
     num: 14,
   },
+    {
+  slot_index: 6,
+  id: 'wall_stone_item',
+  num: 14,
+},
 ];
 
 const DEFAULT_CRAFTED_ITEM_MAX_STACK = 40;

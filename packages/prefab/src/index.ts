@@ -26,6 +26,19 @@ export {
   type WallDefinition,
 } from './wallPlacement';
 export {
+  TileMap,
+  TILE_SIZE,
+  WALL_SCALE,
+  WALL_SLOT_SIZE,
+  WALL_TEXTURE_WIDTH,
+  WALL_WIDTH,
+  snapToCellCenter,
+  snapToTileCenter,
+  snapToWallSlotCenter,
+  type TileCoord,
+  type Vector2,
+} from './tile';
+export {
   RESEARCH_LAB_IDS,
   RESEARCH_LAB_DEFINITIONS,
   ResearchLabPlacement,

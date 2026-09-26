@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type { WorldContext } from './worldContext';
 
+/** Moves a ground hit onto the grid, e.g. `snapToTileCenter` for walls. */
+export type BuildCursorSnap = (point: THREE.Vector3) => THREE.Vector3;
+
 export class BuildCursor {
     private readonly element = document.createElement('div');
     private readonly ground: THREE.Object3D;
@@ -14,6 +17,7 @@ export class BuildCursor {
     private hasPointer = false;
     private preview?: THREE.Object3D;
     private previewGroundOffset = 0;
+    private snap?: BuildCursorSnap;
     private hasGroundTarget = false;
 
     constructor(world: WorldContext) {
@@ -39,9 +43,10 @@ export class BuildCursor {
         this.hasGroundTarget = false;
     }
 
-    setPreview(model: THREE.Object3D, groundOffset: number) {
+    setPreview(model: THREE.Object3D, groundOffset: number, snap?: BuildCursorSnap) {
         this.preview = model;
         this.previewGroundOffset = groundOffset;
+        this.snap = snap;
     }
 
     trackPointer(event: PointerEvent) {
@@ -63,10 +68,11 @@ export class BuildCursor {
         this.preview.visible = this.hasGroundTarget;
         if (!point) return;
 
+        const target = this.snap ? this.snap(point) : point;
         this.preview.position.set(
-            point.x,
-            point.y + this.previewGroundOffset,
-            point.z,
+            target.x,
+            target.y + this.previewGroundOffset,
+            target.z,
         );
         this.camera.getWorldQuaternion(this.cameraWorldQuaternion);
         this.preview.quaternion.copy(this.cameraWorldQuaternion);

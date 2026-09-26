@@ -4,6 +4,7 @@ import {
     type StaticSpriteController,
 } from '@three-roaming/animation/sprite';
 import { BuildCursor } from './buildCursor';
+import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
 
 export interface WallDefinition {
@@ -33,6 +34,11 @@ interface WallInstance<BuildId extends string> {
 }
 
 const HEADING_STEP = 45;
+
+function snapToWallSlot(point: THREE.Vector3): THREE.Vector3 {
+    const snapped = snapToWallSlotCenter(point);
+    return point.set(snapped.x, point.y, snapped.z);
+}
 
 /**
  * Places wall prefabs. A wall build archive ships no anim.bin, so its model is a
@@ -136,7 +142,7 @@ export class WallPlacement<BuildId extends string> {
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;
-        this.cursor.setPreview(instance.model, instance.groundOffset);
+        this.cursor.setPreview(instance.model, instance.groundOffset, snapToWallSlot);
         this.cursor.update();
     }
 
@@ -178,9 +184,9 @@ export class WallPlacement<BuildId extends string> {
         this.raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0));
         this.ground.updateWorldMatrix(true, false);
         const hit = this.raycaster.intersectObject(this.ground, false)[0];
-        if (hit) return hit.point.clone();
+        if (hit) return snapToWallSlot(hit.point.clone());
         target.y = 0;
-        return target;
+        return snapToWallSlot(target);
     }
 
     private updateFacing(wall: WallInstance<BuildId>, showFront: boolean) {
