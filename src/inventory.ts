@@ -225,6 +225,13 @@ export class InventoryStore {
     return true;
   }
 
+  /** Spends one crafted item, which is how unbuffered builds are paid for. */
+  takeItem(itemId: string): boolean {
+    const address = this.addresses().find((candidate) => this.get(candidate)?.itemId === itemId);
+    if (!address) return false;
+    return this.applySlotChanges([{ slot: address, itemId, delta: -1 }]);
+  }
+
   addresses(): readonly SlotAddress[] {
     return [
       ...Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => inventorySlotAddress(index)),

@@ -1,49 +1,62 @@
 import * as THREE from 'three';
 import {
-    createAnimatedSprite,
-    type SpriteAnimationController,
+    createStaticSprite,
+    type StaticSpriteController,
 } from '@three-roaming/animation/sprite';
 import { BuildCursor } from './buildCursor';
 import type { WorldContext } from './worldContext';
 
-export interface AnimatedBuildingDefinition {
+export interface WallDefinition {
     archive: string;
     buildLabel: string;
-    idleAnimation?: string;
+    /**
+     * Front face art for cardinal camera headings (0/90/180/270), where the
+     * wall's `facing=15` animations are used, e.g. `14` for `wall_segment-14`.
+     */
+    frontImageIndex: number;
     name: string;
-    proximityAnimation?: string;
     scale: number;
+    /**
+     * Oblique side art for diagonal camera headings (45/135/225/315), where the
+     * wall's `facing=240` animations are used, e.g. `4` for `wall_segment-4`.
+     */
+    sideImageIndex: number;
+    /** Symbol the images belong to; defaults to the build's only symbol. */
+    symbol?: string;
 }
 
-interface AnimatedBuildingInstance<BuildId extends string> {
+interface WallInstance<BuildId extends string> {
     buildId: BuildId;
     model: THREE.Group;
-    animation: SpriteAnimationController;
+    animation: StaticSpriteController;
     groundOffset: number;
-    isPlacing: boolean;
-    isPlayerNearby: boolean;
 }
 
-const PROXIMITY_ENTER_DISTANCE = 18;
-const PROXIMITY_EXIT_DISTANCE = 20;
+const HEADING_STEP = 45;
 
-export class AnimatedBuildingPlacement<BuildId extends string> {
+/**
+ * Places wall prefabs. A wall build archive ships no anim.bin, so its model is a
+ * single build image instead of the animated sprite used by
+ * `AnimatedBuildingPlacement`.
+ */
+export class WallPlacement<BuildId extends string> {
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.Camera;
     private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
-    private readonly definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>;
+    private readonly definitions: Readonly<Record<BuildId, WallDefinition>>;
     private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
     private readonly cursor: BuildCursor;
-    private active?: AnimatedBuildingInstance<BuildId>;
+    private active?: WallInstance<BuildId>;
     private loading?: Promise<void>;
-    private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
+    private readonly placed: WallInstance<BuildId>[] = [];
     private readonly raycaster = new THREE.Raycaster();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
+    private readonly cameraDirection = new THREE.Vector3();
 
     constructor(
         world: WorldContext,
-        definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>,
+        definitions: Readonly<Record<BuildId, WallDefinition>>,
         consumeBufferedBuild: (buildId: BuildId) => boolean,
     ) {
         this.scene = world.scene;
@@ -74,17 +87,17 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     async spawn(buildId: BuildId): Promise<void> {
-        const building = await this.createInstance(buildId);
+        const wall = await this.createInstance(buildId);
         const target = this.playerFrontGroundPosition();
-        building.model.position.set(
+        wall.model.position.set(
             target.x,
-            target.y + building.groundOffset,
+            target.y + wall.groundOffset,
             target.z,
         );
-        building.model.visible = true;
-        this.setOpacity(building.model, 1);
-        this.faceCamera(building.model);
-        this.placed.push(building);
+        wall.model.visible = true;
+        this.setOpacity(wall.model, 1);
+        this.faceCamera(wall.model);
+        this.placed.push(wall);
     }
 
     cancel() {
@@ -94,15 +107,13 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.cursor.hide();
     }
 
-    update(dt: number) {
-        if (this.active) {
-            this.active.animation.update(dt);
-        }
+    update() {
         this.cursor.update();
-        for (const building of this.placed) {
-            building.animation.update(dt);
-            this.updateProximityAnimation(building);
-            this.faceCamera(building.model);
+        const showFront = !this.isDiagonalHeading();
+        if (this.active) this.updateFacing(this.active, showFront);
+        for (const wall of this.placed) {
+            this.faceCamera(wall.model);
+            this.updateFacing(wall, showFront);
         }
     }
 
@@ -112,15 +123,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.cursor.update();
         if (!this.cursor.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
 
-        const placedBuilding = this.active;
-        placedBuilding.isPlacing = true;
-        this.setOpacity(placedBuilding.model, 1);
-        placedBuilding.model.visible = true;
-        placedBuilding.animation.playOnce('place', () => {
-            placedBuilding.animation.start(this.idleAnimation(placedBuilding.buildId));
-            placedBuilding.isPlacing = false;
-        });
-        this.placed.push(placedBuilding);
+        const placedWall = this.active;
+        placedWall.model.visible = true;
+        this.setOpacity(placedWall.model, 1);
+        this.placed.push(placedWall);
         this.active = undefined;
         this.cursor.hide();
     };
@@ -134,26 +140,28 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.cursor.update();
     }
 
-    private async createInstance(buildId: BuildId): Promise<AnimatedBuildingInstance<BuildId>> {
+    private async createInstance(buildId: BuildId): Promise<WallInstance<BuildId>> {
         const definition = this.definitions[buildId];
-        const model = await createAnimatedSprite(
+        const model = await createStaticSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
             definition.archive,
             {
-                initialAnimation: this.idleAnimation(buildId),
+                imageIndices: [definition.sideImageIndex, definition.frontImageIndex],
+                imageIndex: this.isDiagonalHeading()
+                    ? definition.sideImageIndex
+                    : definition.frontImageIndex,
                 name: definition.name,
                 scale: definition.scale,
+                symbol: definition.symbol,
             },
         );
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
-        const instance: AnimatedBuildingInstance<BuildId> = {
+        const instance: WallInstance<BuildId> = {
             buildId,
             model,
-            animation: model.userData.animationController as SpriteAnimationController,
+            animation: model.userData.animationController as StaticSpriteController,
             groundOffset: -bounds.min.y,
-            isPlacing: false,
-            isPlayerNearby: false,
         };
         this.scene.add(model);
         return instance;
@@ -175,30 +183,26 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return target;
     }
 
-    private updateProximityAnimation(building: AnimatedBuildingInstance<BuildId>) {
-        if (building.isPlacing) return;
-
-        const definition = this.definitions[building.buildId];
-        if (!definition.proximityAnimation) return;
-
-        const dx = this.player.position.x - building.model.position.x;
-        const dz = this.player.position.z - building.model.position.z;
-        const threshold = building.isPlayerNearby
-            ? PROXIMITY_EXIT_DISTANCE
-            : PROXIMITY_ENTER_DISTANCE;
-        const isPlayerNearby = dx * dx + dz * dz <= threshold * threshold;
-        if (isPlayerNearby === building.isPlayerNearby) return;
-
-        building.isPlayerNearby = isPlayerNearby;
-        building.animation.start(
-            isPlayerNearby
-                ? definition.proximityAnimation
-                : this.idleAnimation(building.buildId),
+    private updateFacing(wall: WallInstance<BuildId>, showFront: boolean) {
+        const definition = this.definitions[wall.buildId];
+        wall.animation.showImage(
+            showFront ? definition.frontImageIndex : definition.sideImageIndex,
         );
     }
 
-    private idleAnimation(buildId: BuildId) {
-        return this.definitions[buildId].idleAnimation ?? 'idle';
+    /**
+     * The wall is eight-faced and never rotated, so the game picks its art from
+     * `rotation + camera heading` (see `components/placer.lua`, "rotate against
+     * the camera"). A diagonal heading therefore selects the oblique `facing=240`
+     * art, a cardinal one the front `facing=15` art.
+     */
+    private isDiagonalHeading(): boolean {
+        this.camera.getWorldDirection(this.cameraDirection);
+        this.cameraDirection.y = 0;
+        if (this.cameraDirection.lengthSq() === 0) return false;
+        const heading = Math.atan2(-this.cameraDirection.z, -this.cameraDirection.x);
+        const steps = Math.round(THREE.MathUtils.radToDeg(heading) / HEADING_STEP);
+        return THREE.MathUtils.euclideanModulo(steps, 2) === 1;
     }
 
     private faceCamera(model: THREE.Object3D) {

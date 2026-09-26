@@ -13,8 +13,11 @@ export {
 } from './imageAtlas';
 export {
   createAnimatedSprite,
+  createStaticSprite,
   type AnimatedSpriteOptions,
   type SpriteAnimationController,
+  type StaticSpriteController,
+  type StaticSpriteOptions,
 } from './sprite';
 export { setSpriteEntityRenderOrder } from './renderOrder';
 export {

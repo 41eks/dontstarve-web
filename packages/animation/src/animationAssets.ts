@@ -2,7 +2,7 @@ import { unzipSync } from 'fflate';
 import * as THREE from 'three';
 import { parseKtex, type DecodedTexture } from './parseKtex';
 
-type Matrix2D = [number, number, number, number, number, number];
+export type Matrix2D = [number, number, number, number, number, number];
 
 export interface AnimElement {
   imageHash: number;

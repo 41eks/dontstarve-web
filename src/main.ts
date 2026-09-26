@@ -10,6 +10,7 @@ import {
   type DebugCommandDetail,
   type SlotAddress,
   type SlotContextMenuDetail,
+  type SlotSelectDetail,
   type SlotTransferRequest,
 } from '@three-roaming/ui';
 import type { WilsonAnimationController } from '@three-roaming/prefab/player';
@@ -81,7 +82,7 @@ inventory.subscribe((changedSlots) => {
 });
 
 const { buildingPlacement, groundItems } = startScene(
-  (buildingId) => inventory.takeBuffered(buildingId),
+  (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item) => {
     if (!inventory.add(item.itemId, item.count)) return false;
     playerAnimation?.playPickup();
@@ -114,6 +115,14 @@ window.addEventListener('game:slot-transfer-request', (event) => {
   if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out');
   else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in');
 });
+gameUi.inventoryBar.addEventListener('game:slot-select', (event) => {
+  const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
+  const stack = inventory.get(slot);
+  if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
+  void buildingPlacement.begin(stack.itemId).catch((error: unknown) => {
+    console.error(`Unable to start ${stack.itemId} placement`, error);
+  });
+});
 gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
   const { slot, shiftKey } = (event as CustomEvent<SlotContextMenuDetail>).detail;
   const stack = inventory.get(slot);
@@ -143,8 +152,10 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   const recipe = INVENTORY_RECIPES[recipeId];
   if (!recipe) return;
 
-  const crafted = inventory.craft(recipe);
-  if (isPlaceableBuildingId(recipeId) && (crafted || inventory.isBuffered(recipeId))) {
+  inventory.craft(recipe);
+  // Buffered builds place as soon as they are crafted. Walls are not buffered:
+  // crafting only fills the inventory, and placing starts from the slot click.
+  if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {
     void buildingPlacement.begin(recipeId).catch((error: unknown) => {
       console.error(`Unable to start ${recipeId} placement`, error);
     });

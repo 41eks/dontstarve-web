@@ -16,6 +16,14 @@
 - Instanced billboard forests cannot be interleaved per instance with dynamic transparent entities in one draw call. Use an alpha-tested, color-disabled depth prepass (`colorWrite = false`, `depthWrite = true`) followed by a transparent color pass with `depthWrite = false`; submit the color pass before dynamic characters. Do not enable depth writes on the forest color materials because coplanar DST layers will z-fight and flicker while the camera moves.
 - Use the actual foot point for depth ordering rather than the sprite center or bounding-box center; tall sprites otherwise switch order too early or too late.
 
+## Wall facing
+
+- A wall is an eight-faced billboard. `scripts_unpacked/scripts/prefabs/walls.lua` calls `Transform:SetEightFaced()` and only teleports the entity, so a wall keeps rotation `0` and switches art instead of rotating in world space.
+- An anim's `facing` byte is a bitmask of the `FACING_*` values in `scripts_unpacked/scripts/constants.lua`. In `anim/wall.zip`, `facing=15` (RIGHT/UP/LEFT/DOWN) maps to build images `wall_segment-10` through `wall_segment-16`, `facing=240` (UPRIGHT/UPLEFT/DOWNRIGHT/DOWNLEFT) maps to `wall_segment-0` through `wall_segment-7`, and the wall item's `idle` uses `facing=255` for every facing.
+- The engine picks the variant whose mask matches `Transform:GetRotation() + TheCamera:GetHeading()`; see `components/placer.lua` ("rotate against the camera") and `prefabs/daywalker.lua` (`dir1 + camdir`). Because a wall's rotation stays `0`, the camera heading alone selects the art.
+- A heading of `2n * 45` degrees shows the front face (`wall_segment-14`), and `(2n + 1) * 45` degrees the oblique side (`wall_segment-4`). Both are the `half` frame of their facing set, so pair frames of the same animation when adding a facing.
+- `packages/prefab/src/wallPlacement.ts` encodes the rule in `isDiagonalHeading()` and swaps frames with `StaticSpriteController.showImage()`. `createStaticSprite` draws one build image at a time, so list every facing in `imageIndices` instead of rebuilding the sprite.
+
 ## Inventory architecture
 
 - `src/inventory.ts` owns authoritative inventory state through `InventoryStore`. It defines item metadata, the 15 player inventory slots, three equipment slots (`hand`, `body`, and `head`), stack rules, crafting consumption, and atomic slot changes.

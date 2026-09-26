@@ -9,6 +9,8 @@
     "./pigking": "./src/pigking.ts",
     "./player": "./src/player.ts",
     "./researchlab": "./src/researchlab.ts",
+    "./wallstone": "./src/wallstone.ts",
+    "./wallPlacement": "./src/wallPlacement.ts",
     "./animatedBuildingPlacement": "./src/animatedBuildingPlacement.ts",
     "./worldContext": "./src/worldContext.ts"
   },
