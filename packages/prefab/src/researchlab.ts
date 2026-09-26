@@ -1,8 +1,8 @@
-import * as THREE from 'three';
 import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingDefinition,
 } from './animatedBuildingPlacement';
+import type { WorldContext } from './worldContext';
 
 export const RESEARCH_LAB_IDS = [
     'researchlab',
@@ -50,19 +50,11 @@ export function isResearchLabId(value: string): value is ResearchLabId {
 
 export class ResearchLabPlacement extends AnimatedBuildingPlacement<ResearchLabId> {
     constructor(
-        scene: THREE.Scene,
-        camera: THREE.Camera,
-        renderer: THREE.WebGLRenderer,
-        ground: THREE.Object3D,
-        player: THREE.Object3D,
+        world: WorldContext,
         consumeBufferedBuild: (buildId: ResearchLabId) => boolean,
     ) {
         super(
-            scene,
-            camera,
-            renderer,
-            ground,
-            player,
+            world,
             RESEARCH_LAB_DEFINITIONS,
             consumeBufferedBuild,
         );

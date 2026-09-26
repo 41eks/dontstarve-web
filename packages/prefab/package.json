@@ -9,7 +9,8 @@
     "./pigking": "./src/pigking.ts",
     "./player": "./src/player.ts",
     "./researchlab": "./src/researchlab.ts",
-    "./animatedBuildingPlacement": "./src/animatedBuildingPlacement.ts"
+    "./animatedBuildingPlacement": "./src/animatedBuildingPlacement.ts",
+    "./worldContext": "./src/worldContext.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

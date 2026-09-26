@@ -28,3 +28,4 @@ export {
   isResearchLabId,
   type ResearchLabId,
 } from './researchlab';
+export type { PointerContext, WorldContext } from './worldContext';

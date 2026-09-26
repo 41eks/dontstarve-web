@@ -4,6 +4,7 @@ import {
   createAnimatedSprite,
   type SpriteAnimationController,
 } from '@three-roaming/animation/sprite';
+import type { PointerContext } from './worldContext';
 
 export interface PigKingPrefabOptions {
   floorTextureUrl: string;
@@ -16,7 +17,7 @@ export interface PigKingPrefab {
   floor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>;
   standee: THREE.Group;
   setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
-  setupInteraction(camera: THREE.Camera, renderer: THREE.WebGLRenderer): () => void;
+  setupInteraction(context: PointerContext): () => void;
   update(dt: number): void;
 }
 
@@ -87,7 +88,7 @@ export async function createPigKing(
       body.quaternion.setFromEuler(0, bodyRotationY, 0);
       body.aabbNeedsUpdate = true;
     },
-    setupInteraction(camera, renderer) {
+    setupInteraction({ camera, renderer }) {
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
       const handlePointerDown = (event: PointerEvent) => {

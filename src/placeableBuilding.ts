@@ -1,10 +1,10 @@
-import * as THREE from 'three';
 import { AnimatedBuildingPlacement } from '@three-roaming/prefab/animatedBuildingPlacement';
 import {
     RESEARCH_LAB_DEFINITIONS,
     RESEARCH_LAB_IDS,
     type ResearchLabId,
 } from '@three-roaming/prefab/researchlab';
+import type { WorldContext } from '@three-roaming/prefab/worldContext';
 
 export const TREASURE_CHEST_ID = 'treasurechest' as const;
 export const TENT_ID = 'tent' as const;
@@ -40,19 +40,11 @@ export function isPlaceableBuildingId(value: string): value is PlaceableBuilding
 
 export class PlaceableBuildingPlacement extends AnimatedBuildingPlacement<PlaceableBuildingId> {
     constructor(
-        scene: THREE.Scene,
-        camera: THREE.Camera,
-        renderer: THREE.WebGLRenderer,
-        ground: THREE.Object3D,
-        player: THREE.Object3D,
+        world: WorldContext,
         consumeBufferedBuild: (buildId: PlaceableBuildingId) => boolean,
     ) {
         super(
-            scene,
-            camera,
-            renderer,
-            ground,
-            player,
+            world,
             PLACEABLE_BUILDING_DEFINITIONS,
             consumeBufferedBuild,
         );

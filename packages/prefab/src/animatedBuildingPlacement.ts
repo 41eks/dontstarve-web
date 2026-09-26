@@ -3,6 +3,8 @@ import {
     createAnimatedSprite,
     type SpriteAnimationController,
 } from '@three-roaming/animation/sprite';
+import { BuildCursor } from './buildCursor';
+import type { WorldContext } from './worldContext';
 
 export interface AnimatedBuildingDefinition {
     archive: string;
@@ -28,55 +30,40 @@ const PROXIMITY_EXIT_DISTANCE = 20;
 export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.Camera;
-    private readonly renderer: THREE.WebGLRenderer;
     private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
     private readonly definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>;
     private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
+    private readonly cursor: BuildCursor;
     private active?: AnimatedBuildingInstance<BuildId>;
     private loading?: Promise<void>;
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
     private readonly raycaster = new THREE.Raycaster();
-    private readonly pointer = new THREE.Vector2();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
-    private readonly buildCursorLabel = document.createElement('div');
-    private pointerClientX = 0;
-    private pointerClientY = 0;
-    private hasPointer = false;
-    private hasGroundTarget = false;
 
     constructor(
-        scene: THREE.Scene,
-        camera: THREE.Camera,
-        renderer: THREE.WebGLRenderer,
-        ground: THREE.Object3D,
-        player: THREE.Object3D,
+        world: WorldContext,
         definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>,
         consumeBufferedBuild: (buildId: BuildId) => boolean,
     ) {
-        this.scene = scene;
-        this.camera = camera;
-        this.renderer = renderer;
-        this.ground = ground;
-        this.player = player;
+        this.scene = world.scene;
+        this.camera = world.camera;
+        this.ground = world.ground;
+        this.player = world.player;
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
-        this.buildCursorLabel.className = 'build-cursor-label';
-        this.buildCursorLabel.hidden = true;
-        this.buildCursorLabel.setAttribute('aria-hidden', 'true');
-        document.body.appendChild(this.buildCursorLabel);
-        window.addEventListener('pointermove', this.handlePointerMove);
-        renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
+        this.cursor = new BuildCursor(world);
+        world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
     begin(buildId: BuildId): Promise<void> {
         if (this.active) return Promise.resolve();
         if (this.loading) return this.loading;
 
-        this.showBuildCursorLabel(this.definitions[buildId].buildLabel);
+        this.cursor.show(`build ${this.definitions[buildId].buildLabel}`);
         const request = this.createPreview(buildId)
             .catch((error: unknown) => {
-                this.hideBuildCursorLabel();
+                this.cursor.hide();
                 throw error;
             })
             .finally(() => {
@@ -103,9 +90,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     update(dt: number) {
         if (this.active) {
             this.active.animation.update(dt);
-            this.updatePreviewPosition();
-            this.faceCamera(this.active.model);
         }
+        this.cursor.update();
         for (const building of this.placed) {
             building.animation.update(dt);
             this.updateProximityAnimation(building);
@@ -113,21 +99,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         }
     }
 
-    private readonly handlePointerMove = (event: PointerEvent) => {
-        this.pointerClientX = event.clientX;
-        this.pointerClientY = event.clientY;
-        this.hasPointer = true;
-        this.updateBuildCursorLabelPosition();
-        this.updatePreviewPosition();
-    };
-
     private readonly handlePointerDown = (event: PointerEvent) => {
         if (event.button !== 0 || !this.active) return;
-        this.pointerClientX = event.clientX;
-        this.pointerClientY = event.clientY;
-        this.hasPointer = true;
-        this.updatePreviewPosition();
-        if (!this.hasGroundTarget || !this.consumeBufferedBuild(this.active.buildId)) return;
+        this.cursor.trackPointer(event);
+        this.cursor.update();
+        if (!this.cursor.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
 
         const placedBuilding = this.active;
         placedBuilding.isPlacing = true;
@@ -139,8 +115,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
         this.placed.push(placedBuilding);
         this.active = undefined;
-        this.hasGroundTarget = false;
-        this.hideBuildCursorLabel();
+        this.cursor.hide();
     };
 
     private async createPreview(buildId: BuildId) {
@@ -148,7 +123,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;
-        this.updatePreviewPosition();
+        this.cursor.setPreview(instance.model, instance.groundOffset);
+        this.cursor.update();
     }
 
     private async createInstance(buildId: BuildId): Promise<AnimatedBuildingInstance<BuildId>> {
@@ -174,31 +150,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         };
         this.scene.add(model);
         return instance;
-    }
-
-    private updatePreviewPosition() {
-        if (!this.active || !this.hasPointer) return;
-        const point = this.groundPointAtPointer();
-        this.hasGroundTarget = Boolean(point);
-        this.active.model.visible = Boolean(point);
-        if (!point) return;
-
-        this.active.model.position.set(
-            point.x,
-            point.y + this.active.groundOffset,
-            point.z,
-        );
-    }
-
-    private groundPointAtPointer(): THREE.Vector3 | undefined {
-        if (!this.hasPointer) return undefined;
-        const bounds = this.renderer.domElement.getBoundingClientRect();
-        this.pointer.x = ((this.pointerClientX - bounds.left) / bounds.width) * 2 - 1;
-        this.pointer.y = -((this.pointerClientY - bounds.top) / bounds.height) * 2 + 1;
-        this.raycaster.setFromCamera(this.pointer, this.camera);
-        this.ground.updateWorldMatrix(true, false);
-        const hit = this.raycaster.intersectObject(this.ground, false)[0];
-        return hit?.point.clone();
     }
 
     private playerFrontGroundPosition(): THREE.Vector3 {
@@ -241,22 +192,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     private idleAnimation(buildId: BuildId) {
         return this.definitions[buildId].idleAnimation ?? 'idle';
-    }
-
-    private showBuildCursorLabel(buildLabel: string) {
-        this.buildCursorLabel.textContent = `build ${buildLabel}`;
-        this.buildCursorLabel.hidden = false;
-        this.updateBuildCursorLabelPosition();
-    }
-
-    private hideBuildCursorLabel() {
-        this.buildCursorLabel.hidden = true;
-    }
-
-    private updateBuildCursorLabelPosition() {
-        if (this.buildCursorLabel.hidden || !this.hasPointer) return;
-        this.buildCursorLabel.style.left = `${this.pointerClientX}px`;
-        this.buildCursorLabel.style.top = `${this.pointerClientY}px`;
     }
 
     private faceCamera(model: THREE.Object3D) {

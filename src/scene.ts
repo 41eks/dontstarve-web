@@ -24,6 +24,7 @@ import {
 } from './placeableBuilding';
 import { renderer, scene } from './universal';
 import { updateMovement } from './updatePlayerMovement';
+import { view } from './view';
 
 export const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
@@ -46,7 +47,7 @@ scene.add(ground, pigKingFloor, pigKingStandee, player);
 scene.add(...boxes);
 
 // const updatePigInteraction = setupPigInteraction(camera, renderer, pig, player);
-setupPigKingInteraction(camera, renderer);
+setupPigKingInteraction(view);
 
 const updatePlayerMovement = updateMovement(camera, player, playerBody);
 const updateAnimation = createAnimationUpdater(player);
@@ -116,11 +117,7 @@ export function startScene(
   pickupGroundItem: (item: GroundItemDefinition) => boolean,
 ) {
   const buildingPlacement = new PlaceableBuildingPlacement(
-    scene,
-    camera,
-    renderer,
-    ground,
-    player,
+    view,
     consumeBufferedBuild,
   );
   // Camera updates in the back phase; align placeable billboards afterwards so
@@ -135,4 +132,8 @@ export function startScene(
   );
   animate(world, camera);
   return { buildingPlacement, groundItems };
+}
+
+export function scene_add(model:THREE.Object3D){
+  scene.add(model)
 }
