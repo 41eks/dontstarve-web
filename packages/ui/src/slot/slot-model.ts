@@ -1,9 +1,7 @@
 import { createSignal } from '../signal';
+import type { SlotAddress } from '@three-roaming/inventory';
 
-export interface SlotAddress {
-  containerId: string;
-  slotKey: string;
-}
+export type { SlotAddress } from '@three-roaming/inventory';
 
 export interface SlotSelectDetail {
   slot: SlotAddress;
@@ -16,6 +14,7 @@ export interface SlotContextMenuDetail {
 
 export interface SlotItem {
   id: string;
+  skinId?: string;
   name: string;
   count: number;
   maxStack: number;

@@ -18,6 +18,7 @@
   "dependencies": {
     "@fontsource/noto-sans-sc": "^5.3.0",
     "@three-roaming/animation": "workspace:*",
+    "@three-roaming/inventory": "workspace:*",
     "@three-roaming/prefab": "workspace:*",
     "@three-roaming/ui": "workspace:*",
     "cannon-es": "^0.20.0",

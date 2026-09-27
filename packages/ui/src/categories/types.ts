@@ -9,6 +9,13 @@ export interface RecipeIngredient {
   inventoryIcon?: string;
 }
 
+export interface RecipeSkin {
+  id: string;
+  name: string;
+  inventoryAtlas?: string;
+  inventoryIcon: string;
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -18,6 +25,7 @@ export interface Recipe {
   inventoryAtlas?: string;
   inventoryIcon?: string;
   ingredients: readonly RecipeIngredient[];
+  skins: readonly RecipeSkin[];
   locked?: boolean;
 }
 

@@ -9,6 +9,7 @@
     "./pigking": "./src/pigking.ts",
     "./player": "./src/player.ts",
     "./researchlab": "./src/researchlab.ts",
+    "./treasurechest": "./src/treasurechest.ts",
     "./wallstone": "./src/wallstone.ts",
     "./wallPlacement": "./src/wallPlacement.ts",
     "./tile": "./src/tile.ts",

@@ -24,7 +24,7 @@ import warable from './warable';
 import weapon from './weapon';
 import winter from './winter';
 
-export type { CategoryConfig, Recipe, RecipeIngredient } from './types';
+export type { CategoryConfig, Recipe, RecipeIngredient, RecipeSkin } from './types';
 
 export const categories = [
   favorites, craftingStation, specialEvent, character,

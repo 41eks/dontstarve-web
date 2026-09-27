@@ -63,6 +63,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     button.classList.toggle('is-selected', selected);
     button.setAttribute('aria-selected', String(selected));
     button.dataset.itemId = item?.id ?? '';
+    button.dataset.skinId = item?.skinId ?? '';
     button.setAttribute('aria-label', item
       ? `${item.name}，数量 ${item.count}`
       : options.label);

@@ -16,8 +16,10 @@ export { DstDebugConsoleElement, type DebugCommandDetail } from './debug-console
 export {
   INVENTORY_PRODUCT_SPECS,
   INVENTORY_RECIPES,
+  INVENTORY_SKIN_SPECS,
   type InventoryProductSpec,
   type InventoryRecipeDefinition,
+  type InventorySkinSpec,
 } from './categories/shared';
 export {
   DstInventoryBarElement,

@@ -19,14 +19,13 @@ import { player } from './player';
 import { executeDebugCommand } from './debugCommands';
 import { isPlaceableBuildingId } from './placeableBuilding';
 import {
-  INVENTORY_ITEM_DEFINITIONS,
-  InventoryStore,
+  createInventoryStore,
 } from './inventory';
 import { startScene } from './scene';
 
 void preloadImageArchive(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
-export const inventory = new InventoryStore(INVENTORY_ITEM_DEFINITIONS);
+export const inventory = createInventoryStore();
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
 const handSlotAddress = equipmentSlotAddress('hand');
 
@@ -51,9 +50,10 @@ function syncInventorySlot(address: SlotAddress): void {
     return;
   }
 
-  const spec = inventory.getItemSpec(stack.itemId);
+  const spec = inventory.getStackSpec(stack);
   gameUi.inventoryBar.setSlot(address, {
     id: stack.itemId,
+    ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
     name: spec.name,
     count: stack.count,
     maxStack: spec.maxStack,
@@ -84,7 +84,7 @@ inventory.subscribe((changedSlots) => {
 const { buildingPlacement, groundItems } = startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item) => {
-    if (!inventory.add(item.itemId, item.count)) return false;
+    if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
     playerAnimation?.playPickup();
     return true;
   },
@@ -108,8 +108,18 @@ window.addEventListener('game:slot-transfer-request', (event) => {
   if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) return;
 
   const transferred = inventory.applySlotChanges([
-    { slot: detail.from, itemId: detail.itemId, delta: -detail.amount },
-    { slot: detail.to, itemId: detail.itemId, delta: detail.amount },
+    {
+      slot: detail.from,
+      itemId: detail.itemId,
+      ...(detail.skinId === undefined ? {} : { skinId: detail.skinId }),
+      delta: -detail.amount,
+    },
+    {
+      slot: detail.to,
+      itemId: detail.itemId,
+      ...(detail.skinId === undefined ? {} : { skinId: detail.skinId }),
+      delta: detail.amount,
+    },
   ]);
   if (!transferred || detail.itemId !== 'torch') return;
   if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out');
@@ -128,16 +138,22 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
   const stack = inventory.get(slot);
   if (!stack) return;
   if (shiftKey) {
-    const spec = inventory.getItemSpec(stack.itemId);
+    const spec = inventory.getStackSpec(stack);
     const position = player.position.clone();
     void groundItems.drop({
       itemId: stack.itemId,
+      ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
       name: spec.name,
       icon: spec.icon,
       ...(spec.atlas ? { atlas: spec.atlas } : {}),
       count: 1,
     }, position, () => inventory.applySlotChanges([
-      { slot, itemId: stack.itemId, delta: -1 },
+      {
+        slot,
+        itemId: stack.itemId,
+        ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
+        delta: -1,
+      },
     ])).then((dropped) => {
       if (dropped) playerAnimation?.playPickup();
     }).catch((error: unknown) => {
@@ -148,11 +164,11 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
   if (stack.itemId === 'meatballs') playerAnimation?.playEat();
 });
 gameUi.crafting.addEventListener('game:craft-request', (event) => {
-  const { recipeId } = (event as CustomEvent<CraftRequestDetail>).detail;
+  const { recipeId, skinId } = (event as CustomEvent<CraftRequestDetail>).detail;
   const recipe = INVENTORY_RECIPES[recipeId];
   if (!recipe) return;
 
-  inventory.craft(recipe);
+  inventory.craft(recipe, skinId);
   // Buffered builds place as soon as they are crafted. Walls are not buffered:
   // crafting only fills the inventory, and placing starts from the slot click.
   if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {

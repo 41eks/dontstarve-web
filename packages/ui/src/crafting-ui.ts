@@ -1,5 +1,11 @@
 import { AssetElement } from './assets';
-import { categories, type CategoryConfig, type Recipe, type RecipeIngredient } from './categories';
+import {
+  categories,
+  type CategoryConfig,
+  type Recipe,
+  type RecipeIngredient,
+  type RecipeSkin,
+} from './categories';
 import { createCategoryButtonMapper } from './craft-category-button';
 import { createRecipeButtonMapper } from './craft-recipe-button';
 import styles from './styles/crafting-ui.css?inline';
@@ -14,6 +20,7 @@ const imageArchiveUrl = new URL(
 
 export interface CraftRequestDetail {
   recipeId: string;
+  skinId?: string;
 }
 
 export interface CraftingStateDetail extends CraftRequestDetail {
@@ -69,7 +76,9 @@ export class DstCraftingUiElement extends AssetElement {
   private collapsed = true;
   private inventoryCounts?: Readonly<Record<string, number>>;
   private selectedRecipeId?: string;
+  private readonly selectedSkinIds = new Map<string, string>();
   private craftingRecipeId?: string;
+  private craftingSkinId?: string;
   private craftingTimer?: ReturnType<typeof setTimeout>;
 
   constructor() {
@@ -103,9 +112,11 @@ export class DstCraftingUiElement extends AssetElement {
     if (!this.craftingRecipeId) return;
     if (this.craftingTimer !== undefined) clearTimeout(this.craftingTimer);
     const recipeId = this.craftingRecipeId;
+    const skinId = this.craftingSkinId;
     this.craftingRecipeId = undefined;
+    this.craftingSkinId = undefined;
     this.craftingTimer = undefined;
-    this.emitCraftingState(recipeId, false);
+    this.emitCraftingState(recipeId, false, skinId);
   }
 
   protected render(): void {
@@ -131,9 +142,9 @@ export class DstCraftingUiElement extends AssetElement {
             <p></p>
           </div>
           <div class="craft-preview">
-            <button class="craft-arrow craft-arrow-left" type="button" aria-label="上一个配方"><img src="${this.asset('crafting/crafting_inventory_arrow_l_idle.tex.png')}" alt="" /></button>
+            <button class="craft-arrow craft-arrow-left" type="button" aria-label="上一个皮肤"><img src="${this.asset('crafting/crafting_inventory_arrow_l_idle.tex.png')}" alt="" /></button>
             <div class="craft-selected-icon"></div>
-            <button class="craft-arrow craft-arrow-right" type="button" aria-label="下一个配方"><img src="${this.asset('crafting/crafting_inventory_arrow_r_idle.tex.png')}" alt="" /></button>
+            <button class="craft-arrow craft-arrow-right" type="button" aria-label="下一个皮肤"><img src="${this.asset('crafting/crafting_inventory_arrow_r_idle.tex.png')}" alt="" /></button>
             <strong></strong>
           </div>
           <div class="craft-materials"></div>
@@ -162,17 +173,53 @@ export class DstCraftingUiElement extends AssetElement {
     const description = root.querySelector<HTMLParagraphElement>('.craft-copy p')!;
     const selectedIcon = root.querySelector<HTMLElement>('.craft-selected-icon')!;
     const selectedName = root.querySelector<HTMLElement>('.craft-preview strong')!;
+    const previousSkinButton = root.querySelector<HTMLButtonElement>('.craft-arrow-left')!;
+    const nextSkinButton = root.querySelector<HTMLButtonElement>('.craft-arrow-right')!;
     const materials = root.querySelector<HTMLElement>('.craft-materials')!;
     const buildButton = root.querySelector<HTMLButtonElement>('.craft-build')!;
     let selectedIndex = 0;
     let activeRecipes: readonly Recipe[] = [];
+
+    const updateSkinSelection = (recipe: Recipe) => {
+      const selectedSkinId = this.selectedSkinIds.get(recipe.id);
+      const skinIndex = recipe.skins.findIndex(({ id }) => id === selectedSkinId) + 1;
+      if (skinIndex === 0 && selectedSkinId !== undefined) {
+        this.selectedSkinIds.delete(recipe.id);
+      }
+      const skin = skinIndex === 0 ? undefined : recipe.skins[skinIndex - 1];
+      selectedIcon.dataset.skin = skin?.id ?? '';
+      selectedIcon.replaceChildren(skin ? this.skinIcon(recipe, skin) : this.recipeIcon(recipe));
+      selectedName.textContent = skin?.name ?? '默认';
+      const hasSkins = recipe.skins.length > 0;
+      previousSkinButton.disabled = !hasSkins;
+      nextSkinButton.disabled = !hasSkins;
+      previousSkinButton.title = hasSkins ? '上一个皮肤' : '没有可用皮肤';
+      nextSkinButton.title = hasSkins ? '下一个皮肤' : '没有可用皮肤';
+    };
+
+    const changeSkin = (offset: number) => {
+      const recipe = activeRecipes[selectedIndex];
+      if (!recipe || recipe.skins.length === 0) return;
+      const selectedSkinId = this.selectedSkinIds.get(recipe.id);
+      const currentIndex = selectedSkinId === undefined
+        ? 0
+        : recipe.skins.findIndex(({ id }) => id === selectedSkinId) + 1;
+      const optionCount = recipe.skins.length + 1;
+      const nextIndex = (currentIndex + offset + optionCount) % optionCount;
+      if (nextIndex === 0) this.selectedSkinIds.delete(recipe.id);
+      else this.selectedSkinIds.set(recipe.id, recipe.skins[nextIndex - 1].id);
+      updateSkinSelection(recipe);
+    };
 
     const updateSelection = (index: number) => {
       if (activeRecipes.length === 0) {
         title.textContent = '暂无配方';
         description.textContent = '';
         selectedIcon.replaceChildren();
+        selectedIcon.dataset.skin = '';
         selectedName.textContent = '';
+        previousSkinButton.disabled = true;
+        nextSkinButton.disabled = true;
         materials.replaceChildren();
         buildButton.disabled = true;
         buildButton.textContent = '暂无配方';
@@ -187,8 +234,7 @@ export class DstCraftingUiElement extends AssetElement {
       });
       title.textContent = recipe.name;
       description.textContent = recipe.description;
-      selectedIcon.replaceChildren(this.recipeIcon(recipe));
-      selectedName.textContent = recipe.name;
+      updateSkinSelection(recipe);
       materials.replaceChildren(...recipe.ingredients.map((ingredient) => this.ingredient(ingredient)));
       buildButton.disabled = this.isRecipeLocked(recipe);
       if (this.craftingRecipeId) {
@@ -245,16 +291,17 @@ export class DstCraftingUiElement extends AssetElement {
       },
     })));
 
-    root.querySelector('.craft-arrow-left')!.addEventListener('click', () => updateSelection(selectedIndex - 1));
-    root.querySelector('.craft-arrow-right')!.addEventListener('click', () => updateSelection(selectedIndex + 1));
+    previousSkinButton.addEventListener('click', () => changeSkin(-1));
+    nextSkinButton.addEventListener('click', () => changeSkin(1));
     buildButton.addEventListener('click', () => {
       const recipe = activeRecipes[selectedIndex];
       if (!recipe || this.isRecipeLocked(recipe) || this.craftingRecipeId) return;
+      const skinId = this.selectedSkinIds.get(recipe.id);
       if (this.isRecipeBuffered(recipe)) {
-        this.emitCraftRequest(recipe.id);
+        this.emitCraftRequest(recipe.id, skinId);
         return;
       }
-      this.startCrafting(recipe.id);
+      this.startCrafting(recipe.id, skinId);
     });
     const setCollapsed = (collapsed: boolean) => {
       this.collapsed = collapsed;
@@ -308,6 +355,18 @@ export class DstCraftingUiElement extends AssetElement {
     return this.placeholder(recipe.color, recipe.name);
   }
 
+  private skinIcon(recipe: Recipe, skin: RecipeSkin): HTMLElement {
+    const icon = atlasImage(
+      'craft-recipe-asset',
+      skin.inventoryAtlas ?? 'images/inventoryimages.xml',
+      skin.inventoryIcon,
+    );
+    icon.addEventListener('error', () => {
+      icon.replaceWith(this.recipeIcon(recipe));
+    }, { once: true });
+    return icon;
+  }
+
   private isRecipeLocked(recipe: Recipe): boolean {
     return !this.isRecipeBuffered(recipe) && (Boolean(recipe.locked)
       || recipe.ingredients.some((ingredient) => this.availableCount(ingredient) < ingredient.required));
@@ -346,32 +405,34 @@ export class DstCraftingUiElement extends AssetElement {
     return this.inventoryCounts?.[ingredient.id] ?? ingredient.available;
   }
 
-  private startCrafting(recipeId: string): void {
+  private startCrafting(recipeId: string, skinId?: string): void {
     this.craftingRecipeId = recipeId;
-    this.emitCraftingState(recipeId, true);
+    this.craftingSkinId = skinId;
+    this.emitCraftingState(recipeId, true, skinId);
     this.render();
     this.craftingTimer = setTimeout(() => {
       this.craftingTimer = undefined;
       this.craftingRecipeId = undefined;
-      this.emitCraftRequest(recipeId);
-      this.emitCraftingState(recipeId, false);
+      this.craftingSkinId = undefined;
+      this.emitCraftRequest(recipeId, skinId);
+      this.emitCraftingState(recipeId, false, skinId);
       if (this.isConnected) this.render();
     }, CRAFT_DURATION_MS);
   }
 
-  private emitCraftRequest(recipeId: string): void {
+  private emitCraftRequest(recipeId: string, skinId?: string): void {
     this.dispatchEvent(new CustomEvent<CraftRequestDetail>('game:craft-request', {
       bubbles: true,
       composed: true,
-      detail: { recipeId },
+      detail: { recipeId, ...(skinId === undefined ? {} : { skinId }) },
     }));
   }
 
-  private emitCraftingState(recipeId: string, crafting: boolean): void {
+  private emitCraftingState(recipeId: string, crafting: boolean, skinId?: string): void {
     this.dispatchEvent(new CustomEvent<CraftingStateDetail>('game:crafting-state-change', {
       bubbles: true,
       composed: true,
-      detail: { recipeId, crafting },
+      detail: { recipeId, crafting, ...(skinId === undefined ? {} : { skinId }) },
     }));
   }
 }

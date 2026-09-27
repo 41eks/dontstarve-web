@@ -1,8 +1,16 @@
 import { AssetElement } from './assets';
+import {
+  INVENTORY_SLOT_COUNT,
+  PLAYER_EQUIPMENT_CONTAINER_ID,
+  PLAYER_INVENTORY_CONTAINER_ID,
+  equipmentSlotAddress,
+  inventorySlotAddress,
+  type EquipmentKind,
+  type SlotAddress,
+} from '@three-roaming/inventory';
 import { createSignal } from './signal';
 import { createSlotContainer, type SlotContainer } from './slot/slot-container';
 import type {
-  SlotAddress,
   SlotContextMenuDetail,
   SlotItem,
   SlotModel,
@@ -13,12 +21,16 @@ import type { SlotTransferRequest } from './slot/slot-transfer';
 import styles from './styles/inventory-bar.css?inline';
 import slotStyles from './styles/slot.css?inline';
 
-export const INVENTORY_SLOT_COUNT = 15;
-export const PLAYER_INVENTORY_CONTAINER_ID = 'player:inventory';
-export const PLAYER_EQUIPMENT_CONTAINER_ID = 'player:equipment';
-
-export type EquipmentKind = 'hand' | 'body' | 'head';
 export type InventoryBarItem = SlotItem;
+
+export {
+  INVENTORY_SLOT_COUNT,
+  PLAYER_EQUIPMENT_CONTAINER_ID,
+  PLAYER_INVENTORY_CONTAINER_ID,
+  equipmentSlotAddress,
+  inventorySlotAddress,
+};
+export type { EquipmentKind };
 
 interface SlotDescriptor {
   slot: SlotModel;
@@ -31,20 +43,6 @@ const equipmentSlots = [
   { kind: 'body', label: '身体装备', asset: 'equip_slot_body.tex.png' },
   { kind: 'head', label: '头部装备', asset: 'equip_slot_head.tex.png' },
 ] as const;
-
-export function inventorySlotAddress(index: number): SlotAddress {
-  if (!Number.isInteger(index) || index < 0 || index >= INVENTORY_SLOT_COUNT) {
-    throw new RangeError(`Invalid inventory slot index: ${index}`);
-  }
-  return { containerId: PLAYER_INVENTORY_CONTAINER_ID, slotKey: String(index) };
-}
-
-export function equipmentSlotAddress(kind: EquipmentKind): SlotAddress {
-  if (!equipmentSlots.some((slot) => slot.kind === kind)) {
-    throw new RangeError(`Invalid equipment slot kind: ${kind}`);
-  }
-  return { containerId: PLAYER_EQUIPMENT_CONTAINER_ID, slotKey: kind };
-}
 
 export class DstInventoryBarElement extends AssetElement {
   private readonly inventory = createSlotContainer({

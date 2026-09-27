@@ -4,22 +4,34 @@ import {
     type SpriteAnimationController,
 } from '@three-roaming/animation/sprite';
 import { BuildCursor } from './buildCursor';
+import { PointerRaycaster } from './pointerRaycaster';
 import type { WorldContext } from './worldContext';
 
 export interface AnimatedBuildingDefinition {
     archive: string;
     buildLabel: string;
     idleAnimation?: string;
+    interaction?: AnimatedBuildingToggleInteraction;
     name: string;
     proximityAnimation?: string;
     scale: number;
 }
+
+/** Animations used by buildings that toggle between closed and open on click. */
+export interface AnimatedBuildingToggleInteraction {
+    closeAnimation: string;
+    closedAnimation: string;
+    openAnimation: string;
+}
+
+type AnimatedBuildingInteractionState = 'closed' | 'opening' | 'open' | 'closing';
 
 interface AnimatedBuildingInstance<BuildId extends string> {
     buildId: BuildId;
     model: THREE.Group;
     animation: SpriteAnimationController;
     groundOffset: number;
+    interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
     isPlayerNearby: boolean;
 }
@@ -35,10 +47,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>;
     private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
     private readonly cursor: BuildCursor;
+    private readonly pointer: PointerRaycaster;
     private active?: AnimatedBuildingInstance<BuildId>;
     private loading?: Promise<void>;
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
-    private readonly raycaster = new THREE.Raycaster();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
 
     constructor(
@@ -52,7 +64,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.player = world.player;
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
-        this.cursor = new BuildCursor(world);
+        this.pointer = new PointerRaycaster(world);
+        this.cursor = new BuildCursor(world, this.pointer);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -107,10 +120,19 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private readonly handlePointerDown = (event: PointerEvent) => {
-        if (event.button !== 0 || !this.active) return;
-        this.cursor.trackPointer(event);
+        if (event.button !== 0) return;
+        if (this.active) {
+            this.placeActiveBuilding(event);
+            return;
+        }
+        this.interactWithPlacedBuilding(event);
+    };
+
+    private placeActiveBuilding(event: PointerEvent) {
+        if (!this.active) return;
+        this.pointer.trackPointer(event);
         this.cursor.update();
-        if (!this.cursor.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
+        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
 
         const placedBuilding = this.active;
         placedBuilding.isPlacing = true;
@@ -123,7 +145,47 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.placed.push(placedBuilding);
         this.active = undefined;
         this.cursor.hide();
-    };
+    }
+
+    private interactWithPlacedBuilding(event: PointerEvent) {
+        const interactable = this.placed.filter((building) =>
+            this.definitions[building.buildId].interaction !== undefined
+            && !building.isPlacing
+        );
+        if (interactable.length === 0) return;
+
+        this.pointer.trackPointer(event);
+        const byModel = new Map<THREE.Object3D, AnimatedBuildingInstance<BuildId>>(
+            interactable.map((building) => [building.model, building]),
+        );
+        const hit = this.pointer.raycastPointer([...byModel.keys()], true);
+        let object: THREE.Object3D | null = hit?.object ?? null;
+        while (object && !byModel.has(object)) object = object.parent;
+        if (!object) return;
+
+        const building = byModel.get(object);
+        if (building) this.toggleInteraction(building);
+    }
+
+    private toggleInteraction(building: AnimatedBuildingInstance<BuildId>) {
+        const interaction = this.definitions[building.buildId].interaction;
+        if (!interaction) return;
+
+        if (building.interactionState === 'closed') {
+            building.interactionState = 'opening';
+            building.animation.playOnce(interaction.openAnimation, () => {
+                building.interactionState = 'open';
+            });
+            return;
+        }
+        if (building.interactionState !== 'open') return;
+
+        building.interactionState = 'closing';
+        building.animation.playOnce(interaction.closeAnimation, () => {
+            building.animation.start(interaction.closedAnimation);
+            building.interactionState = 'closed';
+        });
+    }
 
     private async createPreview(buildId: BuildId) {
         const instance = await this.createInstance(buildId);
@@ -152,6 +214,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             model,
             animation: model.userData.animationController as SpriteAnimationController,
             groundOffset: -bounds.min.y,
+            ...(definition.interaction ? { interactionState: 'closed' as const } : {}),
             isPlacing: false,
             isPlayerNearby: false,
         };
@@ -167,9 +230,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         else direction.normalize();
         const target = this.player.position.clone().addScaledVector(direction, 10);
         const rayOrigin = new THREE.Vector3(target.x, target.y + 1000, target.z);
-        this.raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0));
-        this.ground.updateWorldMatrix(true, false);
-        const hit = this.raycaster.intersectObject(this.ground, false)[0];
+        const hit = this.pointer.raycast(rayOrigin, new THREE.Vector3(0, -1, 0), this.ground);
         if (hit) return hit.point.clone();
         target.y = 0;
         return target;

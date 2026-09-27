@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@three-roaming/animation": "workspace:*"
+    "@three-roaming/animation": "workspace:*",
+    "@three-roaming/inventory": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

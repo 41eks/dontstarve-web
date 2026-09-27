@@ -434,6 +434,15 @@
   transform: scale(1.1);
 }
 
+.craft-arrow:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.craft-arrow:disabled:hover {
+  transform: none;
+}
+
 .craft-arrow:active img {
   transform: translateY(1px);
 }

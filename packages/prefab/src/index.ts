@@ -25,6 +25,7 @@ export {
   WallPlacement,
   type WallDefinition,
 } from './wallPlacement';
+export { PointerRaycaster } from './pointerRaycaster';
 export {
   TileMap,
   TILE_SIZE,
@@ -45,6 +46,12 @@ export {
   isResearchLabId,
   type ResearchLabId,
 } from './researchlab';
+export {
+  TREASURE_CHEST_DEFINITION,
+  TREASURE_CHEST_ID,
+  TreasureChestPlacement,
+  type TreasureChestId,
+} from './treasurechest';
 export {
   WALL_STONE_IDS,
   WALL_STONE_DEFINITIONS,

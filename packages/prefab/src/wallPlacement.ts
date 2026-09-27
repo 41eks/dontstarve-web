@@ -4,6 +4,7 @@ import {
     type StaticSpriteController,
 } from '@three-roaming/animation/sprite';
 import { BuildCursor } from './buildCursor';
+import { PointerRaycaster } from './pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
 
@@ -53,10 +54,10 @@ export class WallPlacement<BuildId extends string> {
     private readonly definitions: Readonly<Record<BuildId, WallDefinition>>;
     private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
     private readonly cursor: BuildCursor;
+    private readonly pointer: PointerRaycaster;
     private active?: WallInstance<BuildId>;
     private loading?: Promise<void>;
     private readonly placed: WallInstance<BuildId>[] = [];
-    private readonly raycaster = new THREE.Raycaster();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
     private readonly cameraDirection = new THREE.Vector3();
 
@@ -71,7 +72,8 @@ export class WallPlacement<BuildId extends string> {
         this.player = world.player;
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
-        this.cursor = new BuildCursor(world);
+        this.pointer = new PointerRaycaster(world);
+        this.cursor = new BuildCursor(world, this.pointer);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -125,9 +127,9 @@ export class WallPlacement<BuildId extends string> {
 
     private readonly handlePointerDown = (event: PointerEvent) => {
         if (event.button !== 0 || !this.active) return;
-        this.cursor.trackPointer(event);
+        this.pointer.trackPointer(event);
         this.cursor.update();
-        if (!this.cursor.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
+        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
 
         const placedWall = this.active;
         placedWall.model.visible = true;
@@ -181,9 +183,7 @@ export class WallPlacement<BuildId extends string> {
         else direction.normalize();
         const target = this.player.position.clone().addScaledVector(direction, 10);
         const rayOrigin = new THREE.Vector3(target.x, target.y + 1000, target.z);
-        this.raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0));
-        this.ground.updateWorldMatrix(true, false);
-        const hit = this.raycaster.intersectObject(this.ground, false)[0];
+        const hit = this.pointer.raycast(rayOrigin, new THREE.Vector3(0, -1, 0), this.ground);
         if (hit) return snapToWallSlot(hit.point.clone());
         target.y = 0;
         return snapToWallSlot(target);

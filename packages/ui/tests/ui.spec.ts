@@ -64,6 +64,12 @@ test('keeps an independent recipe collection for every crafting category', () =>
   expect(categories.find(({ id }) => id === 'none')?.recipes).toHaveLength(972);
   expect(categories.find(({ id }) => id === 'tool')?.recipes[0].id).toBe('axe');
   expect(categories.find(({ id }) => id === 'tool')?.recipes[0].name).toBe('斧头');
+  expect(categories.find(({ id }) => id === 'tool')?.recipes[0].skins[0]).toEqual({
+    id: 'axe_feathered',
+    name: '猎人斧',
+    inventoryAtlas: 'images/inventoryimages.xml',
+    inventoryIcon: 'axe_feathered.tex',
+  });
   expect(categories.find(({ id }) => id === 'fire')?.recipes[0].id).toBe('lighter');
   expect(categories.find(({ id }) => id === 'science')?.recipes[0].id).toBe('researchlab');
 });
@@ -189,6 +195,27 @@ test('renders the inventory and equipment slots and emits selection events', asy
   const inventoryBar = page.locator('dst-inventory-bar');
   await expect(inventoryBar.locator('.inventory-bar__items .inventory-slot')).toHaveCount(15);
   await expect(inventoryBar.locator('.inventory-bar__equipment .inventory-slot')).toHaveCount(3);
+
+  await page.evaluate(() => {
+    const bar = document.querySelector('dst-inventory-bar') as HTMLElement & {
+      setSlot(ref: unknown, item: unknown): void;
+    };
+    bar.setSlot({ containerId: 'player:inventory', slotKey: '0' }, {
+      id: 'axe',
+      skinId: 'axe_feathered',
+      name: '猎人斧',
+      count: 1,
+      maxStack: 1,
+      icon: 'axe_feathered.tex',
+      atlas: 'images/inventoryimages.xml',
+    });
+  });
+  const skinnedSlot = inventoryBar.locator('.inventory-bar__items .inventory-slot').first();
+  await expect(skinnedSlot).toHaveAttribute('data-item-id', 'axe');
+  await expect(skinnedSlot).toHaveAttribute('data-skin-id', 'axe_feathered');
+  await expect(skinnedSlot).toHaveAttribute('aria-label', '猎人斧，数量 1');
+  await expect(skinnedSlot.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'axe_feathered.tex');
+  await expect(skinnedSlot.locator('.inventory-slot__icon')).toHaveAttribute('data-loaded', 'true');
 
   await page.evaluate(() => {
     const eventLog: Array<{ type: string; detail: unknown }> = [];
@@ -334,6 +361,53 @@ test('updates individual inventory signals and emits an atomic transfer request'
   ]);
 });
 
+test('preserves a skin id when an inventory stack is dragged', async ({ page }) => {
+  await openFixture(page);
+
+  await page.evaluate(() => {
+    const inventoryBar = document.querySelector('dst-inventory-bar') as HTMLElement & {
+      setSlot(ref: unknown, item: unknown): void;
+    };
+    inventoryBar.setSlot({ containerId: 'player:inventory', slotKey: '0' }, {
+      id: 'axe',
+      skinId: 'axe_feathered',
+      name: '猎人斧',
+      count: 1,
+      maxStack: 1,
+      icon: 'axe_feathered.tex',
+      atlas: 'images/inventoryimages.xml',
+    });
+    window.addEventListener('game:slot-transfer-request', (event) => {
+      (window as typeof window & { skinTransfer?: unknown }).skinTransfer =
+        (event as CustomEvent).detail;
+    });
+  });
+
+  const slots = page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot');
+  const sourceBox = await slots.nth(0).boundingBox();
+  const targetBox = await slots.nth(1).boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2, {
+    steps: 4,
+  });
+  await expect(page.locator('.slot-drag-preview')).toHaveAttribute('data-skin-id', 'axe_feathered');
+  await page.mouse.up();
+
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { skinTransfer?: unknown }).skinTransfer,
+  )).toEqual({
+    operationId: 1,
+    from: { containerId: 'player:inventory', slotKey: '0' },
+    to: { containerId: 'player:inventory', slotKey: '1' },
+    itemId: 'axe',
+    skinId: 'axe_feathered',
+    amount: 1,
+  });
+});
+
 test('opens a dynamic chest and shares drag targets with the inventory bar', async ({ page }) => {
   await openFixture(page);
 
@@ -475,6 +549,18 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute('data-element', 'axe.tex');
   await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute('data-loaded', 'true');
   await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute('data-element', 'axe.tex');
+  await expect(crafting.locator('.craft-preview strong')).toHaveText('默认');
+  await expect(crafting.locator('.craft-arrow-left')).toHaveAttribute('aria-label', '上一个皮肤');
+  await expect(crafting.locator('.craft-arrow-right')).toHaveAttribute('aria-label', '下一个皮肤');
+  await expect(crafting.locator('.craft-arrow-right')).toBeEnabled();
+  await crafting.locator('.craft-arrow-right').click();
+  await expect(crafting.locator('.craft-selected-icon')).toHaveAttribute('data-skin', 'axe_feathered');
+  await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute(
+    'data-element',
+    'axe_feathered.tex',
+  );
+  await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute('data-loaded', 'true');
+  await expect(crafting.locator('.craft-preview strong')).toHaveText('猎人斧');
   await expect(crafting.locator('.craft-material-asset')).toHaveCount(2);
   await expect(crafting.locator('.craft-material-asset').nth(0)).toHaveAttribute(
     'data-atlas',
@@ -502,6 +588,13 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-material-count')).toHaveText(['3/2', '17/2']);
   await expect(crafting.locator('.craft-build')).toBeEnabled();
   await expect(torchRecipe.locator('.craft-lock')).toHaveCount(0);
+  await crafting.locator('.craft-arrow-right').click();
+  await expect(crafting.locator('.craft-selected-icon')).toHaveAttribute('data-skin', 'torch_barber');
+  await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute(
+    'data-element',
+    'torch_barber.tex',
+  );
+  await expect(crafting.locator('.craft-preview strong')).toHaveText('油脂火炬');
 
   await page.evaluate(() => {
     const stateChanges: Array<{ crafting: boolean; recipeId: string; at: number }> = [];
@@ -523,10 +616,15 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-build')).toHaveText('制作中…');
   await expect.poll(() => page.evaluate(() =>
     (window as typeof window & { craftingStateChanges?: unknown }).craftingStateChanges,
-  )).toEqual([{ crafting: true, recipeId: 'torch', at: expect.any(Number) }]);
+  )).toEqual([{
+    crafting: true,
+    recipeId: 'torch',
+    skinId: 'torch_barber',
+    at: expect.any(Number),
+  }]);
   await expect.poll(() => page.evaluate(() =>
     (window as typeof window & { craftRequest?: unknown }).craftRequest,
-  )).toEqual({ recipeId: 'torch' });
+  )).toEqual({ recipeId: 'torch', skinId: 'torch_barber' });
   const craftTiming = await page.evaluate(() => {
     const target = window as typeof window & {
       craftRequestAt?: number;

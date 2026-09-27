@@ -5,16 +5,20 @@ import {
     type ResearchLabId,
 } from '@three-roaming/prefab/researchlab';
 import {
+    TREASURE_CHEST_DEFINITION,
+    TREASURE_CHEST_ID,
+    type TreasureChestId,
+} from '@three-roaming/prefab/treasurechest';
+import {
     WallStonePlacement,
     isWallStoneId,
     type WallStoneId,
 } from '@three-roaming/prefab/wallstone';
 import type { WorldContext } from '@three-roaming/prefab/worldContext';
 
-export const TREASURE_CHEST_ID = 'treasurechest' as const;
 export const TENT_ID = 'tent' as const;
 
-export type AnimatedBuildingId = ResearchLabId | typeof TREASURE_CHEST_ID | typeof TENT_ID;
+export type AnimatedBuildingId = ResearchLabId | TreasureChestId | typeof TENT_ID;
 export type PlaceableBuildingId = AnimatedBuildingId | WallStoneId;
 
 const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
@@ -25,13 +29,7 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
 
 const ANIMATED_BUILDING_DEFINITIONS = {
     ...RESEARCH_LAB_DEFINITIONS,
-    treasurechest: {
-        archive: 'treasure_chest.zip',
-        buildLabel: '箱子',
-        idleAnimation: 'closed',
-        name: 'TreasureChest',
-        scale: 0.02,
-    },
+    [TREASURE_CHEST_ID]: TREASURE_CHEST_DEFINITION,
     tent: {
         archive: 'tent.zip',
         buildLabel: '帐篷',

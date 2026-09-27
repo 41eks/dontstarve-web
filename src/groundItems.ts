@@ -6,6 +6,7 @@ const ITEM_HEIGHT = 4;
 
 export interface GroundItemDefinition {
   itemId: string;
+  skinId?: string;
   name: string;
   icon: string;
   atlas?: string;
@@ -110,6 +111,7 @@ export class GroundItemManager {
     sprite.name = `GroundItem:${definition.itemId}`;
     sprite.scale.set(ITEM_HEIGHT * image.width / image.height, ITEM_HEIGHT, 1);
     sprite.userData.itemId = definition.itemId;
+    sprite.userData.skinId = definition.skinId;
     sprite.userData.count = definition.count;
     return sprite;
   }

@@ -1,9 +1,11 @@
 import recipeDataJson from '@three-roaming/animation/recipes.json' with { type: 'json' };
+import type { InventoryRecipeDefinition, InventorySkinSpec } from '@three-roaming/inventory';
 import {
   filterRecipeIds,
   ingredientNames,
   recipeDescriptions,
   recipeNames,
+  recipeSkins,
 } from './generated';
 import type { CategoryConfig, Recipe, RecipeIngredient } from './types';
 
@@ -28,13 +30,7 @@ interface RecipeData {
   readonly recipes: readonly SourceRecipe[];
 }
 
-export interface InventoryRecipeDefinition {
-  readonly recipeId: string;
-  readonly productId: string;
-  readonly productCount: number;
-  readonly ingredients: Readonly<Record<string, number>>;
-  readonly buffered: boolean;
-}
+export type { InventoryRecipeDefinition, InventorySkinSpec } from '@three-roaming/inventory';
 
 export interface InventoryProductSpec {
   readonly name: string;
@@ -120,6 +116,13 @@ for (const source of recipeData.recipes) {
 export const INVENTORY_PRODUCT_SPECS: Readonly<Record<string, InventoryProductSpec>> =
   Object.fromEntries(inventoryProductSpecs);
 
+export const INVENTORY_SKIN_SPECS: Readonly<Record<string, InventorySkinSpec>> =
+  Object.fromEntries(Object.values(recipeSkins).flatMap((skins) => skins.map((skin) => [skin.id, {
+    name: skin.name,
+    icon: `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
+    atlas: 'images/inventoryimages.xml',
+  }])));
+
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
@@ -183,6 +186,7 @@ function createRecipe(id: string, color: string): Recipe {
       color,
       inventoryIcon: `${id}.tex`,
       ingredients: [],
+      skins: [],
     };
   }
 
@@ -197,6 +201,11 @@ function createRecipe(id: string, color: string): Recipe {
     ...(atlas ? { inventoryAtlas: atlas } : {}),
     inventoryIcon: image,
     ingredients: source.ingredients.map(createIngredient),
+    skins: (recipeSkins[product] ?? []).map((skin) => ({
+      ...skin,
+      inventoryAtlas: 'images/inventoryimages.xml',
+      inventoryIcon: `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
+    })),
   };
 }
 

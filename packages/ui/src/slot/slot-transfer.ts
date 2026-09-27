@@ -5,6 +5,7 @@ export interface SlotTransferRequest {
   from: SlotAddress;
   to: SlotAddress;
   itemId: string;
+  skinId?: string;
   amount: number;
 }
 
@@ -31,7 +32,7 @@ interface ActiveDrag {
 function transferAmount(source: SlotModel, target: SlotModel, item: SlotItem): number {
   if (sameSlotAddress(source.address, target.address) || !target.accepts(item)) return 0;
   const targetItem = target.getItem();
-  if (targetItem && targetItem.id !== item.id) return 0;
+  if (targetItem && (targetItem.id !== item.id || targetItem.skinId !== item.skinId)) return 0;
   return targetItem
     ? Math.min(item.count, targetItem.maxStack - targetItem.count)
     : item.count;
@@ -105,7 +106,7 @@ export class SlotTransferController {
     if (!wasActive || !target) return { dragged: wasActive, request: null };
 
     const sourceItem = drag.source.slot.getItem();
-    const amount = sourceItem?.id === drag.item.id
+    const amount = sourceItem?.id === drag.item.id && sourceItem.skinId === drag.item.skinId
       ? transferAmount(drag.source.slot, target.slot, sourceItem)
       : 0;
     return {
@@ -115,6 +116,7 @@ export class SlotTransferController {
         from: { ...drag.source.slot.address },
         to: { ...target.slot.address },
         itemId: sourceItem!.id,
+        ...(sourceItem!.skinId === undefined ? {} : { skinId: sourceItem!.skinId }),
         amount,
       },
     };
@@ -157,6 +159,7 @@ export class SlotTransferController {
     const preview = document.createElement('div');
     preview.className = 'slot-drag-preview';
     preview.dataset.itemId = item.id;
+    preview.dataset.skinId = item.skinId ?? '';
     preview.setAttribute('aria-hidden', 'true');
     const sourceRect = sourceCanvas?.getBoundingClientRect()
       ?? sourceButton.querySelector<HTMLElement>('.inventory-slot__content')?.getBoundingClientRect()
