@@ -12,6 +12,7 @@
     "./wallstone": "./src/wallstone.ts",
     "./wallPlacement": "./src/wallPlacement.ts",
     "./tile": "./src/tile.ts",
+    "./turf": "./src/turf.ts",
     "./animatedBuildingPlacement": "./src/animatedBuildingPlacement.ts",
     "./worldContext": "./src/worldContext.ts"
   },

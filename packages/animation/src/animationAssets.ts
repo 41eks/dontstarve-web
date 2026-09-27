@@ -307,17 +307,21 @@ export function findImage(build: ParsedBuild, hash: number, frameIndex: number) 
   return result?.vertexCount ? result : undefined;
 }
 
+export function createAtlasTexture(atlas: DecodedTexture): THREE.DataTexture {
+  const texture = new THREE.DataTexture(atlas.pixels, atlas.width, atlas.height, THREE.RGBAFormat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.flipY = false;
+  texture.generateMipmaps = false;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function createMaterials(buildPackage: BuildPackage) {
   return buildPackage.atlases.map((atlas) => {
-    const texture = new THREE.DataTexture(atlas.pixels, atlas.width, atlas.height, THREE.RGBAFormat);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.flipY = false;
-    texture.generateMipmaps = false;
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearFilter;
-    texture.needsUpdate = true;
     return new THREE.MeshBasicMaterial({
-      map: texture,
+      map: createAtlasTexture(atlas),
       transparent: true,
       alphaTest: 0.01,
       depthTest: true,

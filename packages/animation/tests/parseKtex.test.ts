@@ -48,6 +48,22 @@ describe('parseKtex', () => {
     ]);
   });
 
+  it('decodes and vertically flips uncompressed RGB textures', () => {
+    const source = new Uint8Array([
+      255, 0, 0, 0, 255, 0,
+      0, 0, 255, 1, 2, 3,
+    ]);
+
+    const texture = parseKtex(makeKtex(5, 2, 2, source));
+
+    expect(texture.width).toBe(2);
+    expect(texture.height).toBe(2);
+    expect(Array.from(texture.pixels)).toEqual([
+      0, 0, 255, 255, 1, 2, 3, 255,
+      255, 0, 0, 255, 0, 255, 0, 255,
+    ]);
+  });
+
   it('decodes BC1 colours and flips their rows', () => {
     let indices = 0;
     for (let pixel = 0; pixel < 16; pixel++) {

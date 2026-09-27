@@ -1,9 +1,11 @@
 // src/universal.ts
 
 import * as THREE from 'three';
+import { DstLightingRenderer } from './dstLighting';
 const scene = new THREE.Scene();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 // renderer.shadowMap.enabled = true;
@@ -34,11 +36,14 @@ function resizeRendererToDisplaySize() {
   return { width, height, needsResize };
 }
 
-const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(0, 20, 10);
-console.log(light);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff));
+// Lambert materials still need a neutral base light. The visible illumination
+// is applied to the complete frame by DstLightingRenderer, just like DST's
+// global ambient colour; there is no directional "sun" in the Lua setup.
+scene.add(new THREE.AmbientLight(0xffffff, 1));
 
+const dstLighting = await DstLightingRenderer.create(
+  renderer,
+  `${import.meta.env.BASE_URL}dst/data/images/colour_cubes`,
+);
 
-export { scene, renderer, resizeRendererToDisplaySize };
+export { dstLighting, scene, renderer, resizeRendererToDisplaySize };

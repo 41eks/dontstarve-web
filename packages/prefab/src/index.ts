@@ -52,4 +52,8 @@ export {
   isWallStoneId,
   type WallStoneId,
 } from './wallstone';
+export {
+  createTurfGround,
+  type TurfGroundOptions,
+} from './turf';
 export type { PointerContext, WorldContext } from './worldContext';

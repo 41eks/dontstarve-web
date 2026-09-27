@@ -133,6 +133,17 @@ export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
   let pixels: Uint8Array;
   if (pixelFormat <= 2) pixels = decodeBC(source, first.width, first.height, (pixelFormat + 1) as 1 | 2 | 3);
   else if (pixelFormat === 4) pixels = new Uint8Array(source.subarray(0, first.width * first.height * 4));
+  else if (pixelFormat === 5) {
+    pixels = new Uint8Array(first.width * first.height * 4);
+    for (let sourceIndex = 0, targetIndex = 0;
+      targetIndex < pixels.length;
+      sourceIndex += 3, targetIndex += 4) {
+      pixels[targetIndex] = source[sourceIndex];
+      pixels[targetIndex + 1] = source[sourceIndex + 1];
+      pixels[targetIndex + 2] = source[sourceIndex + 2];
+      pixels[targetIndex + 3] = 255;
+    }
+  }
   else throw new Error(`${label}: unsupported KTEX pixel format ${pixelFormat}`);
 
   const rowSize = first.width * 4;

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { PerspectiveCamera } from 'three';
-import { renderer, resizeRendererToDisplaySize, scene } from './universal';
+import { dstLighting, resizeRendererToDisplaySize, scene } from './universal';
 
 type Updatable = (dt: number) => void;
 
@@ -24,6 +24,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
         // 当这一帧所有的输入和推力都准备好了，物理世界往前走一步
         world.step(FIXED_TIMESTEP, dt, MAX_SUBSTEPS);
         backTasks.forEach((listener) => listener(dt));
+        dstLighting.update(dt);
 
         const { width, height, needsResize } = resizeRendererToDisplaySize();
         if (needsResize) {
@@ -31,7 +32,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
             camera.updateProjectionMatrix();
         }
 
-        renderer.render(scene, camera);
+        dstLighting.render(scene, camera);
     }
 
     tick();
