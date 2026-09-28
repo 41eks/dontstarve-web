@@ -129,7 +129,7 @@ gameUi.inventoryBar.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
   const stack = inventory.get(slot);
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
-  void buildingPlacement.begin(stack.itemId).catch((error: unknown) => {
+  void buildingPlacement.begin(stack.itemId, stack.skinId).catch((error: unknown) => {
     console.error(`Unable to start ${stack.itemId} placement`, error);
   });
 });
@@ -172,7 +172,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   // Buffered builds place as soon as they are crafted. Walls are not buffered:
   // crafting only fills the inventory, and placing starts from the slot click.
   if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {
-    void buildingPlacement.begin(recipeId).catch((error: unknown) => {
+    void buildingPlacement.begin(recipeId, inventory.bufferedSkin(recipeId)).catch((error: unknown) => {
       console.error(`Unable to start ${recipeId} placement`, error);
     });
   }

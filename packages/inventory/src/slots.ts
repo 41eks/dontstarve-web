@@ -1,19 +1,33 @@
-import { equipmentSlotAddress, inventorySlotAddress } from './addresses';
-import type { EquipmentKind, InventoryItemSpec, InventoryStack, SlotAddress } from './types';
+import type { InventoryItemSpec, InventoryStack } from './types';
 
 function cloneStack(stack: InventoryStack | null): InventoryStack | null {
   return stack ? { ...stack } : null;
 }
 
-export abstract class ItemSlot {
-  readonly address: SlotAddress;
+export interface ItemSlot {
+  get(): InventoryStack | null;
+  set(stack: InventoryStack | null): void;
+  accepts(spec: InventoryItemSpec): boolean;
+}
+
+const DEFAULT_MAX_STACK = 40;
+const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
+  torch: 1,
+  log: 20,
+};
+
+export function inventoryItemMaxStack(itemId: string): number {
+  return ITEM_MAX_STACKS[itemId] ?? DEFAULT_MAX_STACK;
+}
+
+export function inventoryItemEquipmentKind(itemId: string): 'hand' | undefined {
+  return itemId === 'torch' ? 'hand' : undefined;
+}
+
+export class InventorySlot implements ItemSlot {
   private stack: InventoryStack | null;
 
-  protected constructor(
-    address: SlotAddress,
-    initialStack: InventoryStack | null = null,
-  ) {
-    this.address = address;
+  constructor(initialStack: InventoryStack | null = null) {
     this.stack = cloneStack(initialStack);
   }
 
@@ -25,37 +39,71 @@ export abstract class ItemSlot {
     this.stack = cloneStack(stack);
   }
 
-  abstract accepts(spec: InventoryItemSpec): boolean;
-}
-
-export class InventorySlot extends ItemSlot {
-  readonly index: number;
-
-  constructor(
-    index: number,
-    initialStack: InventoryStack | null = null,
-  ) {
-    super(inventorySlotAddress(index), initialStack);
-    this.index = index;
-  }
-
   accepts(): boolean {
     return true;
   }
+
+  maxStack(itemId: string): number {
+    return inventoryItemMaxStack(itemId);
+  }
 }
 
-export class EquipmentSlot extends ItemSlot {
-  readonly equipmentKind: EquipmentKind;
+export class HandSlot implements ItemSlot {
+  private stack: InventoryStack | null;
 
-  constructor(
-    equipmentKind: EquipmentKind,
-    initialStack: InventoryStack | null = null,
-  ) {
-    super(equipmentSlotAddress(equipmentKind), initialStack);
-    this.equipmentKind = equipmentKind;
+  constructor(initialStack: InventoryStack | null = null) {
+    this.stack = cloneStack(initialStack);
+  }
+
+  get(): InventoryStack | null {
+    return cloneStack(this.stack);
+  }
+
+  set(stack: InventoryStack | null): void {
+    this.stack = cloneStack(stack);
   }
 
   accepts(spec: InventoryItemSpec): boolean {
-    return spec.equippable === this.equipmentKind;
+    return spec.equippable === 'hand';
+  }
+}
+
+export class BodySlot implements ItemSlot {
+  private stack: InventoryStack | null;
+
+  constructor(initialStack: InventoryStack | null = null) {
+    this.stack = cloneStack(initialStack);
+  }
+
+  get(): InventoryStack | null {
+    return cloneStack(this.stack);
+  }
+
+  set(stack: InventoryStack | null): void {
+    this.stack = cloneStack(stack);
+  }
+
+  accepts(spec: InventoryItemSpec): boolean {
+    return spec.equippable === 'body';
+  }
+}
+
+export class HeadSlot implements ItemSlot {
+  private stack: InventoryStack | null;
+
+  constructor(initialStack: InventoryStack | null = null) {
+    this.stack = cloneStack(initialStack);
+  }
+
+  get(): InventoryStack | null {
+    return cloneStack(this.stack);
+  }
+
+  set(stack: InventoryStack | null): void {
+    this.stack = cloneStack(stack);
+  }
+
+  accepts(spec: InventoryItemSpec): boolean {
+    return spec.equippable === 'head';
   }
 }

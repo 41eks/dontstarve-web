@@ -26,7 +26,7 @@
 
 ## Inventory architecture
 
-- `packages/inventory` owns authoritative inventory state and domain types. `InventorySlot` and `EquipmentSlot` model the concrete slot kinds; `InventoryStore` owns stack rules, crafting consumption, skin-aware stack identity, and atomic slot changes.
+- `packages/inventory` owns authoritative inventory state and domain types. `InventorySlot`, `HandSlot`, `BodySlot`, and `HeadSlot` model the concrete slot kinds without sharing an implementation superclass. `InventorySlot` supplies item stack limits; the pure `craft()` function transforms recipe inputs and slots into new inventory items, while `InventoryStore` applies the result atomically.
 - `src/inventoryItems.ts` defines application item metadata and initial inventory contents. `src/inventory.ts` only creates the 15 player inventory slots, the three equipment slots (`hand`, `body`, and `head`), and composes them into the store.
 - `packages/ui/src/inventory-bar.ts` renders inventory and equipment slots. UI slot models mirror state supplied by the application; they are not the source of truth.
 - `src/main.ts` connects the store and UI. Store notifications call `setSlot`, while UI events are translated back into store operations or gameplay actions.

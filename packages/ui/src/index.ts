@@ -14,6 +14,10 @@ export {
 } from './crafting-ui';
 export { DstDebugConsoleElement, type DebugCommandDetail } from './debug-console';
 export {
+  INVENTORY_ITEM_DISPLAY_SPECS,
+  type InventoryItemDisplaySpec,
+} from './inventory-items';
+export {
   INVENTORY_PRODUCT_SPECS,
   INVENTORY_RECIPES,
   INVENTORY_SKIN_SPECS,

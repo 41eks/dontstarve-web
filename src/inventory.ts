@@ -1,9 +1,12 @@
 import {
-  EQUIPMENT_KINDS,
   INVENTORY_SLOT_COUNT,
-  EquipmentSlot,
+  BodySlot,
+  HandSlot,
+  HeadSlot,
   InventorySlot,
   InventoryStore,
+  equipmentSlotAddress,
+  inventorySlotAddress,
   type InventoryStack,
 } from '@three-roaming/inventory';
 import {
@@ -48,9 +51,16 @@ export function createInventoryStore(
   const stacks = initialStacks(definitions);
   const inventorySlots = Array.from(
     { length: INVENTORY_SLOT_COUNT },
-    (_, index) => new InventorySlot(index, stacks.get(index) ?? null),
+    (_, index) => ({
+      address: inventorySlotAddress(index),
+      slot: new InventorySlot(stacks.get(index) ?? null),
+    }),
   );
-  const equipmentSlots = EQUIPMENT_KINDS.map((kind) => new EquipmentSlot(kind));
+  const equipmentSlots = [
+    { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
+    { address: equipmentSlotAddress('body'), slot: new BodySlot() },
+    { address: equipmentSlotAddress('head'), slot: new HeadSlot() },
+  ];
   return new InventoryStore(
     [...inventorySlots, ...equipmentSlots],
     INVENTORY_ITEM_SPECS,

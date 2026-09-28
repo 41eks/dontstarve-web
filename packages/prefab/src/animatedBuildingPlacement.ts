@@ -15,6 +15,7 @@ export interface AnimatedBuildingDefinition {
     name: string;
     proximityAnimation?: string;
     scale: number;
+    skinArchives?: Readonly<Record<string, string>>;
 }
 
 /** Animations used by buildings that toggle between closed and open on click. */
@@ -34,6 +35,7 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
     isPlayerNearby: boolean;
+    skinId?: string;
 }
 
 const PROXIMITY_ENTER_DISTANCE = 18;
@@ -69,12 +71,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
-    begin(buildId: BuildId): Promise<void> {
+    begin(buildId: BuildId, skinId?: string): Promise<void> {
         if (this.active) return Promise.resolve();
         if (this.loading) return this.loading;
 
         this.cursor.show(`build ${this.definitions[buildId].buildLabel}`);
-        const request = this.createPreview(buildId)
+        const request = this.createPreview(buildId, skinId)
             .catch((error: unknown) => {
                 this.cursor.hide();
                 throw error;
@@ -86,8 +88,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return request;
     }
 
-    async spawn(buildId: BuildId): Promise<void> {
-        const building = await this.createInstance(buildId);
+    async spawn(buildId: BuildId, skinId?: string): Promise<void> {
+        const building = await this.createInstance(buildId, skinId);
         const target = this.playerFrontGroundPosition();
         building.model.position.set(
             target.x,
@@ -187,8 +189,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
     }
 
-    private async createPreview(buildId: BuildId) {
-        const instance = await this.createInstance(buildId);
+    private async createPreview(buildId: BuildId, skinId?: string) {
+        const instance = await this.createInstance(buildId, skinId);
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;
@@ -196,11 +198,15 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.cursor.update();
     }
 
-    private async createInstance(buildId: BuildId): Promise<AnimatedBuildingInstance<BuildId>> {
+    private async createInstance(
+        buildId: BuildId,
+        skinId?: string,
+    ): Promise<AnimatedBuildingInstance<BuildId>> {
         const definition = this.definitions[buildId];
+        const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
         const model = await createAnimatedSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
-            definition.archive,
+            skinArchive ?? definition.archive,
             {
                 initialAnimation: this.idleAnimation(buildId),
                 name: definition.name,
@@ -217,7 +223,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             ...(definition.interaction ? { interactionState: 'closed' as const } : {}),
             isPlacing: false,
             isPlayerNearby: false,
+            ...(skinArchive === undefined ? {} : { skinId }),
         };
+        if (skinArchive !== undefined) model.userData.skinId = skinId;
         this.scene.add(model);
         return instance;
     }

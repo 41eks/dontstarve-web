@@ -6,15 +6,26 @@ export {
   equipmentSlotAddress,
   inventorySlotAddress,
 } from './addresses';
-export { EquipmentSlot, InventorySlot, ItemSlot } from './slots';
+export {
+  BodySlot,
+  HandSlot,
+  HeadSlot,
+  InventorySlot,
+  inventoryItemEquipmentKind,
+  inventoryItemMaxStack,
+  type ItemSlot,
+} from './slots';
+export { craft } from './craft';
 export { InventoryStore } from './store';
 export type {
   EquipmentKind,
   InventoryItemSpec,
+  InventoryItems,
   InventoryListener,
   InventoryRecipeDefinition,
   InventorySkinSpec,
   InventorySlotDelta,
   InventoryStack,
+  SlotRegistration,
   SlotAddress,
 } from './types';

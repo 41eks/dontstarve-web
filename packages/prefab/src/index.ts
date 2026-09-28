@@ -49,6 +49,7 @@ export {
 export {
   TREASURE_CHEST_DEFINITION,
   TREASURE_CHEST_ID,
+  TREASURE_CHEST_SKIN_ARCHIVES,
   TreasureChestPlacement,
   type TreasureChestId,
 } from './treasurechest';

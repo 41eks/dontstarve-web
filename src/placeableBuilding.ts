@@ -62,19 +62,19 @@ export class PlaceableBuildingPlacement {
         this.walls = new WallStonePlacement(world, consumeBufferedBuild);
     }
 
-    begin(buildId: PlaceableBuildingId): Promise<void> {
+    begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
         if (isWallStoneId(buildId)) {
             this.animated.cancel();
             return this.walls.begin(buildId);
         }
         this.walls.cancel();
-        return this.animated.begin(buildId);
+        return this.animated.begin(buildId, skinId);
     }
 
-    spawn(buildId: PlaceableBuildingId): Promise<void> {
+    spawn(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
         return isWallStoneId(buildId)
             ? this.walls.spawn(buildId)
-            : this.animated.spawn(buildId);
+            : this.animated.spawn(buildId, skinId);
     }
 
     update(dt: number): void {
