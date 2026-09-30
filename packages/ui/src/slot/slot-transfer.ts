@@ -14,6 +14,11 @@ export interface SlotDragEndResult {
   request: SlotTransferRequest | null;
 }
 
+export interface SlotClickResult {
+  handled: boolean;
+  request: SlotTransferRequest | null;
+}
+
 interface RegisteredSlot {
   button: HTMLButtonElement;
   slot: SlotModel;
@@ -29,6 +34,12 @@ interface ActiveDrag {
   target?: RegisteredSlot;
 }
 
+interface PickedUpSlot {
+  item: SlotItem;
+  source: RegisteredSlot;
+  target?: RegisteredSlot;
+}
+
 function transferAmount(source: SlotModel, target: SlotModel, item: SlotItem): number {
   if (sameSlotAddress(source.address, target.address) || !target.accepts(item)) return 0;
   const targetItem = target.getItem();
@@ -40,9 +51,17 @@ function transferAmount(source: SlotModel, target: SlotModel, item: SlotItem): n
 
 export class SlotTransferController {
   private drag?: ActiveDrag;
+  private pickedUp?: PickedUpSlot;
   private operationId = 0;
   private preview?: HTMLDivElement;
   private readonly registered = new Set<RegisteredSlot>();
+  private readonly followPickedUpItem = (event: PointerEvent) => {
+    this.movePreview(event.clientX, event.clientY);
+    this.updatePickedUpTarget(event.clientX, event.clientY);
+  };
+  private readonly cancelPickedUpItemOnEscape = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') this.clearPickedUp();
+  };
 
   register(slot: SlotModel, button: HTMLButtonElement): () => void {
     const registered = { slot, button };
@@ -50,11 +69,14 @@ export class SlotTransferController {
     return () => {
       this.registered.delete(registered);
       if (this.drag?.source === registered || this.drag?.target === registered) this.cancel();
+      if (this.pickedUp?.source === registered || this.pickedUp?.target === registered) {
+        this.clearPickedUp();
+      }
     };
   }
 
   begin(event: PointerEvent, slot: SlotModel): boolean {
-    if (event.button !== 0 || this.drag) return false;
+    if (event.button !== 0 || this.drag || this.pickedUp) return false;
     const item = slot.getItem();
     if (!item) return false;
 
@@ -70,6 +92,42 @@ export class SlotTransferController {
       startY: event.clientY,
     };
     return true;
+  }
+
+  click(event: MouseEvent, slot: SlotModel): SlotClickResult {
+    if (event.button !== 0 || event.detail === 0) return { handled: false, request: null };
+
+    const target = [...this.registered].find((entry) => entry.slot === slot);
+    if (!target) return { handled: false, request: null };
+
+    if (!this.pickedUp) {
+      const item = slot.getItem();
+      if (!item) return { handled: false, request: null };
+      this.pickedUp = { item, source: target };
+      target.button.classList.add('is-dragging');
+      this.createPreview(target.button, item, event.clientX, event.clientY);
+      document.addEventListener('pointermove', this.followPickedUpItem);
+      document.addEventListener('keydown', this.cancelPickedUpItemOnEscape);
+      return { handled: true, request: null };
+    }
+
+    const pickedUp = this.pickedUp;
+    if (target === pickedUp.source) {
+      this.clearPickedUp();
+      return { handled: true, request: null };
+    }
+
+    const sourceItem = pickedUp.source.slot.getItem();
+    if (!sourceItem
+      || sourceItem.id !== pickedUp.item.id
+      || sourceItem.skinId !== pickedUp.item.skinId) {
+      this.clearPickedUp();
+      return { handled: true, request: null };
+    }
+
+    const request = this.createTransferRequest(pickedUp.source.slot, target.slot, sourceItem);
+    if (request) this.clearPickedUp();
+    return { handled: true, request };
   }
 
   move(event: PointerEvent): boolean {
@@ -106,19 +164,12 @@ export class SlotTransferController {
     if (!wasActive || !target) return { dragged: wasActive, request: null };
 
     const sourceItem = drag.source.slot.getItem();
-    const amount = sourceItem?.id === drag.item.id && sourceItem.skinId === drag.item.skinId
-      ? transferAmount(drag.source.slot, target.slot, sourceItem)
-      : 0;
+    const request = sourceItem?.id === drag.item.id && sourceItem.skinId === drag.item.skinId
+      ? this.createTransferRequest(drag.source.slot, target.slot, sourceItem)
+      : null;
     return {
       dragged: wasActive,
-      request: amount <= 0 ? null : {
-        operationId: ++this.operationId,
-        from: { ...drag.source.slot.address },
-        to: { ...target.slot.address },
-        itemId: sourceItem!.id,
-        ...(sourceItem!.skinId === undefined ? {} : { skinId: sourceItem!.skinId }),
-        amount,
-      },
+      request,
     };
   }
 
@@ -146,6 +197,45 @@ export class SlotTransferController {
     this.preview?.remove();
     this.preview = undefined;
     this.drag = undefined;
+  }
+
+  private clearPickedUp(): void {
+    if (!this.pickedUp) return;
+    this.pickedUp.source.button.classList.remove('is-dragging');
+    this.pickedUp.target?.button.classList.remove('is-drop-target');
+    document.removeEventListener('pointermove', this.followPickedUpItem);
+    document.removeEventListener('keydown', this.cancelPickedUpItemOnEscape);
+    this.preview?.remove();
+    this.preview = undefined;
+    this.pickedUp = undefined;
+  }
+
+  private updatePickedUpTarget(clientX: number, clientY: number): void {
+    const pickedUp = this.pickedUp;
+    if (!pickedUp) return;
+    const target = this.findTarget(clientX, clientY, pickedUp.source);
+    if (pickedUp.target === target) return;
+    pickedUp.target?.button.classList.remove('is-drop-target');
+    pickedUp.target = target;
+    if (target && transferAmount(pickedUp.source.slot, target.slot, pickedUp.item) > 0) {
+      target.button.classList.add('is-drop-target');
+    }
+  }
+
+  private createTransferRequest(
+    source: SlotModel,
+    target: SlotModel,
+    item: SlotItem,
+  ): SlotTransferRequest | null {
+    const amount = transferAmount(source, target, item);
+    return amount <= 0 ? null : {
+      operationId: ++this.operationId,
+      from: { ...source.address },
+      to: { ...target.address },
+      itemId: item.id,
+      ...(item.skinId === undefined ? {} : { skinId: item.skinId }),
+      amount,
+    };
   }
 
   private createPreview(

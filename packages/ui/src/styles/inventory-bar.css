@@ -2,6 +2,10 @@
   display: contents;
 }
 
+:host([hidden]) {
+  display: none !important;
+}
+
 .inventory-bar,
 .inventory-bar * {
   box-sizing: border-box;

@@ -1,5 +1,5 @@
 import { craft as craftInventoryItems } from './craft';
-import { InventorySlot, type ItemSlot } from './slots';
+import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import type {
   InventoryItemSpec,
   InventoryListener,
@@ -41,24 +41,31 @@ export class InventoryStore {
   private readonly listeners = new Set<InventoryListener>();
   private readonly skinSpecs: Readonly<Record<string, InventorySkinSpec>>;
   private readonly registrationByAddress = new Map<string, RegisteredItemSlot>();
-  private readonly registrations: readonly RegisteredItemSlot[];
+  private readonly registrations: RegisteredItemSlot[] = [];
 
   constructor(
     registrations: readonly RegisteredItemSlot[],
     itemSpecs: Readonly<Record<string, InventoryItemSpec>>,
     skinSpecs: Readonly<Record<string, InventorySkinSpec>> = {},
   ) {
-    this.registrations = registrations.map(({ address, slot }) => ({
+    this.skinSpecs = skinSpecs;
+    Object.entries(itemSpecs).forEach(([itemId, spec]) => this.itemSpecs.set(itemId, spec));
+    this.registerSlots(registrations);
+  }
+
+  registerSlots(registrations: readonly RegisteredItemSlot[]): void {
+    const pendingKeys = new Set<string>();
+    const pending = registrations.map(({ address, slot }) => ({
       address: cloneAddress(address),
       slot,
     }));
-    this.skinSpecs = skinSpecs;
-    Object.entries(itemSpecs).forEach(([itemId, spec]) => this.itemSpecs.set(itemId, spec));
-    for (const registration of this.registrations) {
+    for (const registration of pending) {
       const { address, slot } = registration;
       const key = addressKey(address);
-      if (this.registrationByAddress.has(key)) throw new RangeError(`Duplicate slot address: ${key}`);
-      this.registrationByAddress.set(key, registration);
+      if (this.registrationByAddress.has(key) || pendingKeys.has(key)) {
+        throw new RangeError(`Duplicate slot address: ${key}`);
+      }
+      pendingKeys.add(key);
       const stack = slot.get();
       if (!stack) continue;
       const spec = this.requireItemSpec(stack.itemId);
@@ -68,6 +75,10 @@ export class InventoryStore {
         || !slot.accepts(spec)) {
         throw new RangeError(`Invalid initial stack for ${stack.itemId} in ${key}`);
       }
+    }
+    for (const registration of pending) {
+      this.registrations.push(registration);
+      this.registrationByAddress.set(addressKey(registration.address), registration);
     }
   }
 
@@ -93,6 +104,7 @@ export class InventoryStore {
 
   count(itemId: string): number {
     return this.registrations.reduce((total, { slot }) => {
+      if (slot instanceof StorageSlot) return total;
       const stack = slot.get();
       return total + (stack?.itemId === itemId ? stack.count : 0);
     }, 0);

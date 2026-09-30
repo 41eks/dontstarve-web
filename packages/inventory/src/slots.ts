@@ -48,6 +48,26 @@ export class InventorySlot implements ItemSlot {
   }
 }
 
+export class StorageSlot implements ItemSlot {
+  private stack: InventoryStack | null;
+
+  constructor(initialStack: InventoryStack | null = null) {
+    this.stack = cloneStack(initialStack);
+  }
+
+  get(): InventoryStack | null {
+    return cloneStack(this.stack);
+  }
+
+  set(stack: InventoryStack | null): void {
+    this.stack = cloneStack(stack);
+  }
+
+  accepts(): boolean {
+    return true;
+  }
+}
+
 export class HandSlot implements ItemSlot {
   private stack: InventoryStack | null;
 

@@ -20,6 +20,8 @@ import {
 import { player, playerBody, setPlayerNormal } from './player';
 import {
   PlaceableBuildingPlacement,
+  TREASURE_CHEST_ID,
+  type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
 } from './placeableBuilding';
 import { renderer, scene } from './universal';
@@ -115,10 +117,12 @@ backTasks.push(() => {
 export function startScene(
   consumeBufferedBuild: (buildingId: PlaceableBuildingId) => boolean,
   pickupGroundItem: (item: GroundItemDefinition) => boolean,
+  onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
 ) {
   const buildingPlacement = new PlaceableBuildingPlacement(
     view,
     consumeBufferedBuild,
+    onBuildingInteraction,
   );
   // Camera updates in the back phase; align placeable billboards afterwards so
   // they use the camera transform from the same rendered frame.
@@ -130,6 +134,9 @@ export function startScene(
     `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`,
     pickupGroundItem,
   );
+  void buildingPlacement.spawn(TREASURE_CHEST_ID).catch((error: unknown) => {
+    console.error('Unable to add the map treasure chest', error);
+  });
   animate(world, camera);
   return { buildingPlacement, groundItems };
 }

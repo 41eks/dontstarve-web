@@ -11,6 +11,7 @@ export {
   HandSlot,
   HeadSlot,
   InventorySlot,
+  StorageSlot,
   inventoryItemEquipmentKind,
   inventoryItemMaxStack,
   type ItemSlot,

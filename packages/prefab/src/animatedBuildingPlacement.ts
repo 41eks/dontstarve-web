@@ -25,6 +25,12 @@ export interface AnimatedBuildingToggleInteraction {
     openAnimation: string;
 }
 
+export interface AnimatedBuildingInteractionChange<BuildId extends string> {
+    buildId: BuildId;
+    isOpen: boolean;
+    model: THREE.Group;
+}
+
 type AnimatedBuildingInteractionState = 'closed' | 'opening' | 'open' | 'closing';
 
 interface AnimatedBuildingInstance<BuildId extends string> {
@@ -48,6 +54,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly player: THREE.Object3D;
     private readonly definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>;
     private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
+    private readonly onInteractionChange?: (
+        change: AnimatedBuildingInteractionChange<BuildId>,
+    ) => void;
     private readonly cursor: BuildCursor;
     private readonly pointer: PointerRaycaster;
     private active?: AnimatedBuildingInstance<BuildId>;
@@ -59,6 +68,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         world: WorldContext,
         definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>,
         consumeBufferedBuild: (buildId: BuildId) => boolean,
+        onInteractionChange?: (change: AnimatedBuildingInteractionChange<BuildId>) => void,
     ) {
         this.scene = world.scene;
         this.camera = world.camera;
@@ -66,6 +76,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.player = world.player;
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
+        this.onInteractionChange = onInteractionChange;
         this.pointer = new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
@@ -177,12 +188,22 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             building.interactionState = 'opening';
             building.animation.playOnce(interaction.openAnimation, () => {
                 building.interactionState = 'open';
+                this.onInteractionChange?.({
+                    buildId: building.buildId,
+                    isOpen: true,
+                    model: building.model,
+                });
             });
             return;
         }
         if (building.interactionState !== 'open') return;
 
         building.interactionState = 'closing';
+        this.onInteractionChange?.({
+            buildId: building.buildId,
+            isOpen: false,
+            model: building.model,
+        });
         building.animation.playOnce(interaction.closeAnimation, () => {
             building.animation.start(interaction.closedAnimation);
             building.interactionState = 'closed';

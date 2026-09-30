@@ -51,7 +51,7 @@ export class DstInventoryBarElement extends AssetElement {
     slotKeys: Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => String(index)),
   });
 
-  private readonly equipment = createSlotContainer({
+  private readonly equipment: SlotContainer = createSlotContainer({
     id: PLAYER_EQUIPMENT_CONTAINER_ID,
     kind: 'equipment',
     slotKeys: equipmentSlots.map(({ kind }) => kind),
@@ -80,7 +80,7 @@ export class DstInventoryBarElement extends AssetElement {
   }
 
   disconnectedCallback(): void {
-    this.renderers.forEach((renderer) => renderer.disconnect());
+    this.disposeRenderers();
   }
 
   protected render(): void {
@@ -190,5 +190,10 @@ export class DstInventoryBarElement extends AssetElement {
       : address.containerId === this.equipment.id ? this.equipment : undefined;
     if (!container) throw new RangeError(`Unknown inventory container: ${address.containerId}`);
     return container.getSlot(address.slotKey);
+  }
+
+  private disposeRenderers(): void {
+    this.renderers.forEach((renderer) => renderer.disconnect());
+    this.renderers.length = 0;
   }
 }

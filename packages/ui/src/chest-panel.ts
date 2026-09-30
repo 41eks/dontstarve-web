@@ -32,6 +32,29 @@ export class DstChestPanelElement extends AssetElement {
     return this.container;
   }
 
+  setAnchor(clientX: number, clientY: number): void {
+    const panelBounds = this.shadowRoot
+      ?.querySelector<HTMLElement>('.chest-panel')
+      ?.getBoundingClientRect();
+    const panelWidth = panelBounds?.width || 160;
+    const panelHeight = panelBounds?.height || 210;
+    const viewportMargin = 8;
+    const panelGap = 10;
+    const minX = panelWidth / 2 + viewportMargin;
+    const maxX = Math.max(minX, window.innerWidth - minX);
+    const minY = panelHeight + panelGap + viewportMargin;
+    const maxY = Math.max(minY, window.innerHeight - viewportMargin);
+
+    this.style.setProperty(
+      '--chest-panel-anchor-x',
+      `${Math.min(maxX, Math.max(minX, clientX))}px`,
+    );
+    this.style.setProperty(
+      '--chest-panel-anchor-y',
+      `${Math.min(maxY, Math.max(minY, clientY))}px`,
+    );
+  }
+
   open(options: OpenChestOptions): void {
     if (!options.containerId) throw new TypeError('Chest container id must not be empty');
     if (!Number.isInteger(options.slotCount) || options.slotCount <= 0) {

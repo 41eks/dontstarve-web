@@ -10,27 +10,35 @@ const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('Missing #app mount point');
 const mountPoint = app;
 
-const root = createRoot(mountPoint);
-let started = false;
-
-function enterGame(): void {
-  if (started) return;
-  started = true;
-  let timerStarted = false;
-  const startGameTimer = (): void => {
-    if (timerStarted) return;
-    timerStarted = true;
-    window.setTimeout(() => {
-      root.unmount();
-      mountPoint.replaceChildren();
-      document.title = '2dot5d';
-      void import('./main.ts').catch((error: unknown) => {
-        console.error('Unable to start the game', error);
-        mountPoint.textContent = '游戏载入失败，请刷新页面后重试。';
-      });
-    }, GAME_START_DELAY_MS);
-  };
-  root.render(<GeneratingWorldPage onReady={startGameTimer} />);
+function loadGame(): void {
+  mountPoint.replaceChildren();
+  document.title = '2dot5d';
+  void import('./main.ts').catch((error: unknown) => {
+    console.error('Unable to start the game', error);
+    mountPoint.textContent = '游戏载入失败，请刷新页面后重试。';
+  });
 }
 
-root.render(<HamletMainScreenPage onStart={enterGame} />);
+if (import.meta.env.DEV) {
+  loadGame();
+} else {
+  const root = createRoot(mountPoint);
+  let started = false;
+
+  const enterGame = (): void => {
+    if (started) return;
+    started = true;
+    let timerStarted = false;
+    const startGameTimer = (): void => {
+      if (timerStarted) return;
+      timerStarted = true;
+      window.setTimeout(() => {
+        root.unmount();
+        loadGame();
+      }, GAME_START_DELAY_MS);
+    };
+    root.render(<GeneratingWorldPage onReady={startGameTimer} />);
+  };
+
+  root.render(<HamletMainScreenPage onStart={enterGame} />);
+}

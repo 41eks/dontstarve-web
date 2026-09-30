@@ -20,6 +20,7 @@ export {
 export {
   AnimatedBuildingPlacement,
   type AnimatedBuildingDefinition,
+  type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
 export {
   WallPlacement,

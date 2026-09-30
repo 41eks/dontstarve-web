@@ -5,6 +5,7 @@ import {
   HeadSlot,
   InventorySlot,
   InventoryStore,
+  StorageSlot,
   craft,
   equipmentSlotAddress,
   inventorySlotAddress,
@@ -203,6 +204,30 @@ describe('InventoryStore', () => {
       inventorySlotAddress(0),
       inventorySlotAddress(1),
     ]);
+  });
+
+  it('registers storage slots and moves a stack into storage atomically', () => {
+    const store = new InventoryStore([
+      inventorySlot(0, { itemId: 'twigs', count: 4 }),
+    ], specs);
+    const storageAddress = { containerId: 'world:treasurechest:0', slotKey: '0' };
+    store.registerSlots([{
+      address: storageAddress,
+      slot: new StorageSlot(),
+    }]);
+
+    expect(store.applySlotChanges([
+      { slot: inventorySlotAddress(0), itemId: 'twigs', delta: -4 },
+      { slot: storageAddress, itemId: 'twigs', delta: 4 },
+    ])).toBe(true);
+    expect(store.get(inventorySlotAddress(0))).toBeNull();
+    expect(store.get(storageAddress)).toEqual({ itemId: 'twigs', count: 4 });
+    expect(store.count('twigs')).toBe(0);
+
+    expect(store.add('twigs', 1)).toBe(true);
+    expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'twigs', count: 1 });
+    expect(store.get(storageAddress)).toEqual({ itemId: 'twigs', count: 4 });
+    expect(store.count('twigs')).toBe(1);
   });
 
   it('rejects an item that does not match an equipment slot', () => {

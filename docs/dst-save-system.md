@@ -1,6 +1,6 @@
-# 《饥荒联机版》存档原理
+# 《饥荒联机版》存档原理与项目 JSON 存档设计
 
-本文总结《饥荒联机版》（Don't Starve Together，以下简称 DST）的存档目录、世界与玩家数据结构、地形编码方式，以及保存和加载流程。结论主要来自以下 Lua 源码：
+本文先总结《饥荒联机版》（Don't Starve Together，以下简称 DST）的存档目录、世界与玩家数据结构、地形编码方式，以及保存和加载流程，再据此设计适合本项目的 JSON 存档格式。结论主要来自以下 Lua 源码：
 
 - `scripts/mainfunctions.lua`
 - `scripts/networking.lua`
@@ -530,3 +530,481 @@ DST 的存档本质上是“版本化世界快照 + 独立玩家快照”的组�
 - 压缩、Snapshot 管理和部分二进制编码由 Klei 原生引擎实现，并未完全暴露在 Lua 源码中。
 
 这种结构既避免了为每块地皮、每个物品建立统一巨型对象，也允许地表、洞穴和玩家在保持 Snapshot 一致性的前提下分别保存和恢复。
+
+---
+
+## 本项目的 JSON 存档设计
+
+### 目标与边界
+
+本项目借鉴 DST 的“版本化 Snapshot、Prefab 实体、组件数据、玩家逻辑独立、两遍恢复引用”设计，但不复制 Lua 文件和原生编码层。第一版采用一个自包含 JSON 文件表示一次完整 Snapshot，适合浏览器本地保存、下载和导入：
+
+```text
+three-roaming-save-v1.json
+├── 格式、版本和 Session 标识
+├── Snapshot 元数据
+├── World
+│   ├── 世界系统状态
+│   ├── 地形或世界生成数据
+│   └── 按 Prefab 分组的持久化实体
+└── Players
+    └── 玩家位置、状态、背包、装备和缓冲建造
+```
+
+这里的“玩家逻辑独立”是指玩家数据不混入 `world.entities`，不是指第一版必须拆成多个物理文件。单文件可以保证世界、地面物品和玩家背包来自同一提交点，避免复制或丢失物品。将来支持多人或地表/洞穴 Shard 后，可以在不改变内部对象结构的前提下将 `world` 和各个 `players[playerId]` 拆成独立文件，由 Manifest 绑定为同一个 Snapshot。
+
+第一版应满足以下要求：
+
+1. 保存的是游戏逻辑状态，不是 Three.js 场景树的镜像。
+2. 一个文件可以完整恢复当前单人世界，不依赖更早的 Snapshot。
+3. 所有格式变更均有显式版本，并通过迁移函数升级。
+4. 实体通过稳定 ID 引用，加载时先创建、再连接引用。
+5. 写入是原子的；未写完的 Snapshot 永远不能成为当前存档。
+6. 导入的数据在创建场景对象前完成结构和语义校验。
+
+### 顶层格式
+
+顶层结构固定如下：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `format` | string | 固定为 `three-roaming-save`，防止误读其他 JSON |
+| `schemaVersion` | integer | JSON 数据结构版本；第一版为 `1` |
+| `gameVersion` | string | 写入存档的应用版本，仅用于诊断和兼容提示 |
+| `session` | object | 一次连续游戏的身份与初始创建时间 |
+| `snapshot` | object | 本次不可变快照的编号、父快照和保存原因 |
+| `world` | object | 世界系统、地图和世界实体 |
+| `players` | object | 以稳定玩家 ID 为键的玩家记录 |
+
+`session.id` 在新建世界时生成，此后保持不变。`snapshot.id` 在同一 Session 内单调递增，使用补零字符串，例如 `0000000042`，避免 JSON 数值精度和文件名排序问题。手动存档和自动存档都创建新 Snapshot，不原地修改历史 Snapshot。
+
+时间字段使用 UTC ISO 8601 字符串；持续时间使用秒。坐标、比例和进度必须是有限数，禁止 `NaN` 和正负无穷。可选字段不存在时应省略，只有字段语义明确允许空值时才写 `null`。
+
+### 完整示例
+
+下面示例覆盖当前项目实际需要保存的主要状态。为了便于阅读，只展示少量实体和背包槽；正式存档允许对应数组为空或包含更多记录。
+
+```json
+{
+  "format": "three-roaming-save",
+  "schemaVersion": 1,
+  "gameVersion": "0.0.0",
+  "session": {
+    "id": "0195ca23-4f37-7d84-90b1-5d2777189f28",
+    "createdAt": "2026-09-28T04:12:30.000Z"
+  },
+  "snapshot": {
+    "id": "0000000042",
+    "parentId": "0000000041",
+    "savedAt": "2026-09-28T05:03:11.482Z",
+    "reason": "autosave"
+  },
+  "world": {
+    "shardId": "master",
+    "prefab": "forest",
+    "seed": "1538069317",
+    "elapsedSeconds": 1842.375,
+    "systems": {
+      "clock": {
+        "day": 32,
+        "phase": "day",
+        "phaseProgress": 0.42
+      },
+      "season": {
+        "name": "autumn",
+        "daysRemaining": 8.5
+      },
+      "random": {
+        "algorithm": "xoshiro128ss",
+        "state": [1252864550, 388211817, 90175512, 3109841255]
+      }
+    },
+    "map": {
+      "kind": "generated",
+      "generator": {
+        "id": "forest-v1",
+        "seed": "1538069317",
+        "options": {
+          "size": 1000,
+          "moonTreeCount": 500,
+          "moonTreeExclusionRadiusSquared": 600
+        }
+      },
+      "instanceBatches": {
+        "moon_tree": {
+          "positions": [
+            [114.375, 0, -208.125],
+            [-87.5, 0, 341.75]
+          ]
+        }
+      }
+    },
+    "entities": {
+      "researchlab": [
+        {
+          "id": "e_01J8Y2KMH2Q4JVV9V4T4ZP3JPK",
+          "transform": {
+            "position": [18.125, 0, -9.5],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "idle"
+            }
+          }
+        }
+      ],
+      "treasurechest": [
+        {
+          "id": "e_01J8Y2N6PMAZE47YDCA3KT2F0A",
+          "transform": {
+            "position": [25, 0, -12.25],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "skinId": "treasurechest_ancient",
+              "state": "closed"
+            },
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "itemId": "log",
+                    "count": 8
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "wall_stone": [
+        {
+          "id": "e_01J8Y2P017M81DGWTZ7NTQSE8P",
+          "transform": {
+            "position": [32.5, 0, -17.5],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 400,
+              "maximum": 400
+            }
+          }
+        }
+      ],
+      "ground_item": [
+        {
+          "id": "e_01J8Y2QE5N0T16QPFAN4FK2G8X",
+          "transform": {
+            "position": [3.25, 0, 6.75],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "twigs",
+              "count": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "players": {
+    "local": {
+      "prefab": "wilson",
+      "shardId": "master",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationY": 0
+      },
+      "stats": {
+        "health": 150,
+        "hunger": 150,
+        "sanity": 200
+      },
+      "inventory": {
+        "containers": {
+          "player:inventory": {
+            "slotCount": 15,
+            "slots": [
+              {
+                "slotKey": "0",
+                "item": {
+                  "itemId": "cutgrass",
+                  "count": 3
+                }
+              },
+              {
+                "slotKey": "1",
+                "item": {
+                  "itemId": "twigs",
+                  "count": 17
+                }
+              }
+            ]
+          },
+          "player:equipment": {
+            "slotCount": 3,
+            "slots": [
+              {
+                "slotKey": "hand",
+                "item": {
+                  "itemId": "torch",
+                  "count": 1
+                }
+              }
+            ]
+          }
+        },
+        "bufferedBuilds": [
+          {
+            "recipeId": "treasurechest",
+            "skinId": "treasurechest_ancient"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+`snapshot.parentId` 在第一个 Snapshot 中为 `null`。它只表达历史关系；每个文件仍是完整快照，加载时不需要沿父链回放增量。
+
+### 世界数据
+
+#### 世界系统
+
+`world.systems` 保存没有自然宿主实体的权威状态，例如时钟、季节、世界事件和确定性随机数状态。每个系统拥有自己的小对象，不建立一个无约束的全局 `data` 字段。
+
+第一版当前尚未实现的时钟、季节和生存属性可以省略，不能用虚构的默认进度写入存档。对应玩法落地时再增加字段并提升 `schemaVersion` 或提供有明确默认值的迁移。
+
+随机数状态需要与生成种子区分：
+
+- `world.seed` 标识初始世界。
+- `map.generator.seed` 复现初次生成。
+- `systems.random.state` 让加载后的下一次随机事件与保存前连续。
+
+如果业务仍直接使用 `Math.random()`，就不能承诺后续随机序列可复现；第一版实现存档前应先引入可保存状态的伪随机数生成器。
+
+#### 地图与批量场景对象
+
+当前地面是固定平面，没有 DST 式可修改地皮，因此 `map` 只需要保存生成器身份、生成参数和不能稳定重算的数据。月树当前由 `Math.random()` 生成，必须选择下列方案之一：
+
+1. 保存所有月树坐标到 `map.instanceBatches.moon_tree.positions`；这是第一版推荐方案。
+2. 改用固定算法的有种子随机数，并冻结 `generator.id` 对应的算法；加载旧存档时必须保留旧生成器。
+
+月树是共享材质和几何体的实例化场景对象，不应膨胀为 500 个通用实体记录。批量数据只保存逻辑上的实例坐标；RGBA 图集、实例矩阵、深度预通过程和动画帧均在加载时重建。
+
+若以后加入可修改地皮，可采用与 DST 类似的编码对象：
+
+```json
+{
+  "width": 426,
+  "height": 426,
+  "tileSize": 4,
+  "tileCatalog": {
+    "GRASS": 6,
+    "FOREST": 7
+  },
+  "tiles": {
+    "encoding": "base64-le-u16",
+    "data": "BgAGAAcA..."
+  }
+}
+```
+
+加载器必须用存档自带的 `tileCatalog` 按名称映射到当前 ID，不能假设数字 ID 永远不变。Base64 只是 JSON 内的二进制承载方式，不表示加密；解码后必须校验字节数等于 `width × height × 2`。
+
+#### Prefab 实体
+
+`world.entities` 按 Prefab ID 分组，避免每条记录重复 `prefab`。记录只包含可持久化逻辑：
+
+- `id`：Session 内永不复用的实体 ID。
+- `transform`：地面接触点位置和必要的逻辑旋转。
+- `components`：该 Prefab 已注册的持久化组件数据。
+
+当前项目需要的 Prefab 映射为：
+
+| 运行时对象 | 存档 Prefab | 需要保存的组件 |
+|---|---|---|
+| 研究站、炼金引擎、箱子、帐篷 | 各自的建造 ID | `building`，以及将来的 `container` 等 |
+| 石墙 | `wall_stone` | `health` 等逻辑状态 |
+| 地面物品 | `ground_item` | `stack` |
+| 月树森林 | 不进入通用实体表 | `map.instanceBatches.moon_tree` |
+| Wilson | 不进入世界实体表 | `players.local` |
+
+墙的画面朝向只由相机 heading 决定，不能保存 `frontImageIndex`、`sideImageIndex` 或当前选中的图片。石墙逻辑旋转保持 `0`；加载后的每帧继续通过 `isDiagonalHeading()` 选择正面或斜面。
+
+`building.state` 只允许稳定状态，例如 `idle`、`closed`、`open`。`placing`、`opening`、`closing` 等过渡态在保存时归一化到明确的稳定状态，加载时不重放一次性动画。
+
+#### 实体引用与父子关系
+
+组件引用其他实体时统一保存 ID，不保存数组下标、Three.js `Object3D.id` 或内存引用：
+
+```json
+{
+  "follower": {
+    "leaderEntityId": "e_01J8Y2KMH2Q4JVV9V4T4ZP3JPK"
+  }
+}
+```
+
+容器中的物品作为 `container.slots[].item` 嵌套保存，不同时出现在 `world.entities.ground_item` 中。物品从地面放入容器时，应在同一逻辑事务内删除地面实体并写入槽位；反向操作同理。这继承了 DST “有父实体的对象不再作为顶层实体保存”的规则。
+
+### 玩家与物品栏
+
+玩家记录独立于 `world.entities`，但通过 `shardId` 与本次世界快照关联。当前位置取玩家地面接触点，即 `player.position`，不保存 Cannon 刚体中心的高度偏移。
+
+物品栏使用项目已有的稳定地址：
+
+- 普通背包：`containerId = "player:inventory"`，`slotKey = "0"` 到 `"14"`。
+- 装备栏：`containerId = "player:equipment"`，`slotKey = "hand" | "body" | "head"`。
+
+JSON 按容器分组，只写非空槽，空槽由 `slotCount` 和缺失的 `slotKey` 推导。每个 `item` 仅保存权威字段 `itemId`、`skinId` 和 `count`；名称、图标、Atlas、最大堆叠数和装备类型都从当前 `INVENTORY_ITEM_SPECS` / `INVENTORY_SKIN_SPECS` 重建，避免元数据在存档中过期。
+
+`bufferedBuilds` 是 `InventoryStore` 的权威状态，也必须保存。读取时需要校验：
+
+- `itemId` 和 `recipeId` 当前存在。
+- `count` 是正的安全整数，且不超过当前 `maxStack`。
+- `skinId` 属于对应物品或配方。
+- 装备物品可被目标 `hand`、`body` 或 `head` 槽接受。
+- 槽地址没有重复，普通背包索引在 `0..14` 内。
+
+不兼容的物品不能静默删除。加载器应拒绝该 Snapshot，并给出包含玩家 ID、容器和槽位的错误；以后如需支持被移除的 Mod 物品，应另行设计可恢复的 `orphanedItems` 机制。
+
+### 哪些内容不保存
+
+以下内容可由权威状态重建，或者属于不应跨会话保留的瞬时状态：
+
+- Three.js 的 `Scene`、`Group`、`Mesh`、材质、纹理、Geometry 和对象数字 ID。
+- Cannon `World`、`Body`、Shape、当前速度和碰撞接触缓存。
+- 相机矩阵、Billboard 法线、透明物体 `renderOrder` 和墙的当前朝向图片。
+- 动画当前帧、帧累计时间，以及拾取、进食、拿出物品等一次性动画。
+- 鼠标位置、射线检测结果、建造预览、拖拽状态、选中槽和打开的 UI 面板。
+- 物品的显示名、图标路径、Atlas 路径、最大堆叠数等静态定义。
+- 可从资源和 Prefab 定义重新得到的比例、ground offset 与碰撞形状。
+
+保存发生时若玩家正拖拽槽位，应先完成或取消 UI 操作；若正处于建造预览，预览本身不保存，尚未消费的配方仍由 `bufferedBuilds` 或背包物品保留。
+
+### 保存流程
+
+保存必须在一个游戏逻辑帧边界取得一致快照，不能在异步贴图加载或动画回调中分别读取世界与背包：
+
+```text
+收到保存请求
+    │
+    ├── 等到当前逻辑更新结束
+    ├── 暂停会修改权威状态的输入一个逻辑帧
+    ├── 依次采集 world、entities、players
+    ├── 深拷贝为纯数据，恢复正常更新
+    ├── 校验并 JSON.stringify
+    ├── 写入临时记录
+    └── 完整写入成功后，原子更新 activeSnapshotId
+```
+
+浏览器内推荐使用 IndexedDB：
+
+- `snapshots` Object Store 以 `[sessionId, snapshotId]` 为键，值是完整 JSON 对象或其 UTF-8 文本。
+- `sessions` Object Store 保存 `activeSnapshotId` 和 Snapshot 列表。
+- 写入 Snapshot 和更新活动指针必须处于同一个读写事务。
+
+下载到文件时不能原子覆盖用户已有文件，应生成带 Session 和 Snapshot ID 的新文件。服务端或桌面文件系统实现应先写同目录临时文件、刷新成功后再 rename；活动索引最后更新。
+
+自动保存可保留最近若干个完整 Snapshot，手动存档单独标记且不参与自动清理。删除历史时以整个 Snapshot 为单位，绝不能只删世界或玩家的一半。
+
+### 加载流程
+
+加载按以下固定顺序执行：
+
+1. 将 UTF-8 文本解析为 JSON；限制最大文件大小、对象深度、实体数和字符串长度。
+2. 校验 `format`，拒绝高于当前支持值的 `schemaVersion`。
+3. 对旧版本在纯数据层逐版迁移，例如 `v1 -> v2 -> v3`，禁止跨版本猜测字段。
+4. 做完整语义校验，包括有限坐标、唯一实体 ID、已知 Prefab、合法组件、物品堆叠和所有强引用可解析。
+5. 预加载本 Snapshot 所需的 Prefab 和图集；任一必需资源失败时保持旧世界不变。
+6. 在离屏的新世界中恢复地图与世界系统。
+7. 第一遍创建所有世界实体和玩家，并建立 `savedEntityId -> runtimeEntity` 映射。
+8. 恢复各组件的本地状态和嵌套容器。
+9. 第二遍解析跨实体引用，再执行组件的 `afterLoad`。
+10. 从保存位置同步 Three.js 对象和 Cannon Body，重建衍生渲染状态。
+11. 所有步骤成功后一次性替换当前世界；失败则销毁离屏世界并继续运行旧世界。
+
+加载不能通过调用“放置建筑”“丢弃物品”“装备火把”等玩家操作接口来实现，因为这些接口会消费物品、播放动画并产生副作用。每种持久化 Prefab 应提供无副作用的 `spawnFromSave(record)` 或等价恢复入口。
+
+### 版本与迁移
+
+`schemaVersion` 描述数据结构，不等同于 `gameVersion`。读取器只写当前版本，但至少保留仍受支持旧版本的纯函数迁移：
+
+```ts
+type Migration = (oldSave: unknown) => unknown;
+
+const migrations: Readonly<Record<number, Migration>> = {
+  1: migrateV1ToV2,
+  2: migrateV2ToV3,
+};
+```
+
+迁移原则如下：
+
+- 每个函数只负责相邻版本，并且不访问场景或网络。
+- 迁移后重新执行当前版本的完整校验。
+- 保留原文件；成功加载旧档后，下次保存才生成新版本 Snapshot。
+- 新读取器可以读取受支持的旧版本；旧读取器必须拒绝新版本，不能忽略未知权威字段后覆盖存档。
+- Prefab 或物品改名必须通过明确映射迁移，不能在加载器里长期散落别名判断。
+
+### 校验规则
+
+正式实现应使用 JSON Schema 做结构校验，再用 TypeScript 代码做跨字段语义校验。至少应保证：
+
+| 范围 | 规则 |
+|---|---|
+| 顶层 | `format` 精确匹配，版本为支持的正整数，必需字段存在 |
+| Snapshot | ID 格式合法；`parentId` 只能是更早编号或 `null` |
+| 数值 | 所有数值有限；计数为安全整数；进度在 `0..1` 内 |
+| 实体 | ID 全局唯一；Prefab 已注册；组件属于该 Prefab |
+| Transform | 三维坐标长度固定为 3，处于允许世界边界内 |
+| 引用 | 所有强引用目标存在且类型兼容；弱引用可在缺失时置空 |
+| 物品 | 定义存在、数量合法、皮肤匹配、目标槽可接受 |
+| 批量实例 | 数量有上限，每个位置合法，不能进入玩家禁区等非法区域 |
+| 地形 | Catalog 不重复；Base64 合法；解码长度与地图尺寸一致 |
+
+不要用 TypeScript 类型断言代替运行时校验。存档属于不可信输入，即使它最初由本项目生成，也可能被用户修改、截断或来自更高版本。
+
+### 当前代码落地所需接口
+
+当前实现的大部分状态封装在私有数组或 Map 中。为了避免存档模块读取渲染对象内部字段，领域对象应显式提供快照接口：
+
+```ts
+interface SaveParticipant<T> {
+  save(): T;
+  load(data: T): Promise<void> | void;
+}
+```
+
+建议的最小改造顺序为：
+
+1. 为 `InventoryStore` 增加纯数据 `exportState()` 和原子 `replaceState()`，覆盖槽位与 `bufferedBuilds`。
+2. 为 `GroundItemManager` 增加稳定实体 ID、`exportRecords()` 和无扣减背包副作用的 `restoreRecords()`。
+3. 为 `AnimatedBuildingPlacement` 与 `WallPlacement` 增加实体 ID、稳定状态导出和 `spawnFromSave()`。
+4. 让月树生成位置可注入并可导出，第一版直接保存位置数组。
+5. 建立 Prefab 持久化注册表，由注册表负责校验、创建、保存和迁移组件。
+6. 最后实现统一 `SaveCoordinator`，只负责帧边界、校验、Snapshot 编号和存储事务。
+
+存档层不应直接依赖 UI，也不应遍历 `scene.children` 猜测哪些对象需要保存。新增可持久化玩法时，必须显式注册其 Prefab/组件序列化器；未注册的视觉对象默认不保存。
+
+### 设计结论
+
+本项目第一版使用“单文件完整 JSON Snapshot”，但在数据模型上保持 DST 的边界：世界、Prefab 实体和玩家各自拥有清晰职责。具体取舍是：
+
+- 世界实体按 Prefab 分组，组件只保存权威逻辑状态。
+- 玩家不作为普通世界实体；背包和装备使用已有稳定槽地址。
+- 容器物品嵌套保存，避免同一物品同时存在于地面和容器。
+- 月树等实例化静态场景使用批量数据，不强行转换为大量通用实体。
+- 渲染、物理和动画的派生状态在加载后重建。
+- 每个 Snapshot 自包含、不可变，并通过事务更新活动指针。
+- 所有旧存档先迁移再校验，所有实体引用用两遍加载恢复。
+
+这套格式先覆盖当前单人浏览器游戏，同时给未来的容器、生命值、地形修改、多人玩家和多 Shard 留出扩展位置，而不需要把运行时引擎对象泄漏进存档协议。

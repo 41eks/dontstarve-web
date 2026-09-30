@@ -83,11 +83,14 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     content.replaceChildren(createAtlasImage(archiveUrl, atlasPath, item));
   };
 
-  button.addEventListener('click', () => {
+  button.addEventListener('click', (event) => {
     if (suppressNextClick) {
       suppressNextClick = false;
       return;
     }
+    const result = slotTransferController.click(event, options.slot);
+    if (result.request) options.onTransfer?.(result.request);
+    if (result.handled) return;
     options.onSelect?.(options.slot);
   });
   button.addEventListener('contextmenu', (event) => {

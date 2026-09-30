@@ -1,4 +1,7 @@
-import { AnimatedBuildingPlacement } from '@three-roaming/prefab/animatedBuildingPlacement';
+import {
+    AnimatedBuildingPlacement,
+    type AnimatedBuildingInteractionChange,
+} from '@three-roaming/prefab/animatedBuildingPlacement';
 import {
     RESEARCH_LAB_DEFINITIONS,
     RESEARCH_LAB_IDS,
@@ -16,10 +19,13 @@ import {
 } from '@three-roaming/prefab/wallstone';
 import type { WorldContext } from '@three-roaming/prefab/worldContext';
 
+export { TREASURE_CHEST_ID } from '@three-roaming/prefab/treasurechest';
+
 export const TENT_ID = 'tent' as const;
 
 export type AnimatedBuildingId = ResearchLabId | TreasureChestId | typeof TENT_ID;
 export type PlaceableBuildingId = AnimatedBuildingId | WallStoneId;
+export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
 const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     ...RESEARCH_LAB_IDS,
@@ -53,11 +59,13 @@ export class PlaceableBuildingPlacement {
     constructor(
         world: WorldContext,
         consumeBufferedBuild: (buildId: PlaceableBuildingId) => boolean,
+        onInteractionChange?: (change: PlaceableBuildingInteractionChange) => void,
     ) {
         this.animated = new AnimatedBuildingPlacement<AnimatedBuildingId>(
             world,
             ANIMATED_BUILDING_DEFINITIONS,
             consumeBufferedBuild,
+            onInteractionChange,
         );
         this.walls = new WallStonePlacement(world, consumeBufferedBuild);
     }

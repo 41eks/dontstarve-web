@@ -247,6 +247,37 @@ test('renders the inventory and equipment slots and emits selection events', asy
   ]);
 });
 
+test('uses one dedicated chest panel with slots matching the backpack size', async ({ page }) => {
+  await openFixture(page);
+
+  await page.evaluate(() => {
+    const chest = document.querySelector('dst-chest-panel') as HTMLElement & {
+      open(options: { containerId: string; slotCount: number; title: string }): void;
+      setAnchor(clientX: number, clientY: number): void;
+    };
+    chest.open({
+      containerId: 'world:treasurechest:0',
+      slotCount: 9,
+      title: '箱子',
+    });
+    chest.setAnchor(420, 360);
+  });
+
+  const chest = page.locator('dst-chest-panel');
+  await expect(chest).toHaveCount(1);
+  await expect(chest.locator('.chest-panel')).toBeVisible();
+  await expect(chest.locator('.inventory-slot')).toHaveCount(9);
+
+  const backpackSlotBox = await page.locator(
+    'dst-inventory-bar .inventory-bar__items .inventory-slot',
+  ).first().boundingBox();
+  const chestSlotBox = await chest.locator('.inventory-slot').first().boundingBox();
+  expect(backpackSlotBox).not.toBeNull();
+  expect(chestSlotBox).not.toBeNull();
+  expect(chestSlotBox!.width).toBeCloseTo(backpackSlotBox!.width, 1);
+  expect(chestSlotBox!.height).toBeCloseTo(backpackSlotBox!.height, 1);
+});
+
 test('emits an inventory slot context-menu event and suppresses the native menu', async ({ page }) => {
   await openFixture(page);
 
@@ -361,6 +392,67 @@ test('updates individual inventory signals and emits an atomic transfer request'
   ]);
 });
 
+test('picks up a backpack item on click and transfers it into storage on the next click', async ({ page }) => {
+  await openFixture(page);
+
+  await page.evaluate(() => {
+    const inventoryBar = document.querySelector('dst-inventory-bar') as HTMLElement & {
+      setSlot(ref: unknown, item: unknown): void;
+    };
+    inventoryBar.setSlot({ containerId: 'player:inventory', slotKey: '0' }, {
+      id: 'cutgrass',
+      name: '草',
+      count: 3,
+      maxStack: 40,
+      icon: 'cutgrass.tex',
+    });
+    const storagePanel = document.querySelector('dst-chest-panel') as HTMLElement & {
+      open(options: { containerId: string; slotCount: number; title: string }): void;
+      setAnchor(clientX: number, clientY: number): void;
+    };
+    storagePanel.open({
+      containerId: 'world:treasurechest:0',
+      slotCount: 9,
+      title: '箱子',
+    });
+    storagePanel.setAnchor(420, 360);
+    window.addEventListener('game:slot-transfer-request', (event) => {
+      (window as typeof window & { clickTransfer?: unknown }).clickTransfer =
+        (event as CustomEvent).detail;
+    });
+  });
+
+  const slots = page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot');
+  await expect(slots.nth(0).locator('.inventory-slot__icon')).toHaveAttribute('data-loaded', 'true');
+  await slots.nth(0).click();
+
+  const preview = page.locator('.slot-drag-preview');
+  await expect(preview).toBeVisible();
+  await expect(preview).toHaveAttribute('data-item-id', 'cutgrass');
+  await expect(slots.nth(0)).toHaveClass(/is-dragging/);
+
+  const storageSlots = page.locator('dst-chest-panel .inventory-slot');
+  const targetBox = await storageSlots.nth(2).boundingBox();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.move(
+    targetBox!.x + targetBox!.width / 2,
+    targetBox!.y + targetBox!.height / 2,
+  );
+  await expect(storageSlots.nth(2)).toHaveClass(/is-drop-target/);
+  await storageSlots.nth(2).click();
+
+  await expect(preview).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { clickTransfer?: unknown }).clickTransfer,
+  )).toEqual({
+    operationId: 1,
+    from: { containerId: 'player:inventory', slotKey: '0' },
+    to: { containerId: 'world:treasurechest:0', slotKey: '2' },
+    itemId: 'cutgrass',
+    amount: 3,
+  });
+});
+
 test('preserves a skin id when an inventory stack is dragged', async ({ page }) => {
   await openFixture(page);
 
@@ -408,7 +500,7 @@ test('preserves a skin id when an inventory stack is dragged', async ({ page }) 
   });
 });
 
-test('opens a dynamic chest and shares drag targets with the inventory bar', async ({ page }) => {
+test('opens the global chest panel and shares drag targets with the inventory bar', async ({ page }) => {
   await openFixture(page);
 
   await page.evaluate(() => {
@@ -416,7 +508,7 @@ test('opens a dynamic chest and shares drag targets with the inventory bar', asy
       open(options: { containerId: string; slotCount: number; title: string }): void;
       setSlot(address: unknown, item: unknown): void;
     };
-    chest.open({ containerId: 'chest:42', slotCount: 10, title: '木箱' });
+    chest.open({ containerId: 'chest:42', slotCount: 9, title: '木箱' });
 
     const inventoryBar = document.querySelector('dst-inventory-bar') as HTMLElement & {
       setSlot(address: unknown, item: unknown): void;
@@ -438,7 +530,7 @@ test('opens a dynamic chest and shares drag targets with the inventory bar', asy
   const chest = page.locator('dst-chest-panel').first();
   await expect(chest.locator('.chest-panel')).toBeVisible();
   await expect(chest.locator('.chest-panel h2')).toHaveText('木箱');
-  await expect(chest.locator('.inventory-slot')).toHaveCount(10);
+  await expect(chest.locator('.inventory-slot')).toHaveCount(9);
 
   const source = page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot').nth(1);
   const target = chest.locator('.inventory-slot').nth(3);
@@ -461,57 +553,6 @@ test('opens a dynamic chest and shares drag targets with the inventory bar', asy
     to: { containerId: 'chest:42', slotKey: '3' },
     itemId: 'twigs',
     amount: 7,
-  });
-
-  await page.evaluate(() => {
-    const firstChest = document.querySelector('dst-chest-panel') as HTMLElement & {
-      setSlot(address: unknown, item: unknown): void;
-    };
-    firstChest.shadowRoot!.querySelector<HTMLElement>('.chest-panel')!.style.left = '30%';
-    firstChest.setSlot({ containerId: 'chest:42', slotKey: '0' }, {
-      id: 'twigs',
-      name: '树枝',
-      count: 2,
-      maxStack: 40,
-      icon: 'twigs.tex',
-    });
-
-    const secondChest = document.createElement('dst-chest-panel') as HTMLElement & {
-      open(options: { containerId: string; slotCount: number; title: string }): void;
-    };
-    secondChest.setAttribute('asset-base', '/dst/data/ui/');
-    document.body.append(secondChest);
-    secondChest.open({ containerId: 'chest:99', slotCount: 5, title: '另一个木箱' });
-    secondChest.shadowRoot!.querySelector<HTMLElement>('.chest-panel')!.style.left = '70%';
-  });
-
-  const secondChest = page.locator('dst-chest-panel').nth(1);
-  const chestSource = chest.locator('.inventory-slot').nth(0);
-  const chestTarget = secondChest.locator('.inventory-slot').nth(2);
-  const chestSourceBox = await chestSource.boundingBox();
-  const chestTargetBox = await chestTarget.boundingBox();
-  expect(chestSourceBox).not.toBeNull();
-  expect(chestTargetBox).not.toBeNull();
-  await page.mouse.move(
-    chestSourceBox!.x + chestSourceBox!.width / 2,
-    chestSourceBox!.y + chestSourceBox!.height / 2,
-  );
-  await page.mouse.down();
-  await page.mouse.move(
-    chestTargetBox!.x + chestTargetBox!.width / 2,
-    chestTargetBox!.y + chestTargetBox!.height / 2,
-    { steps: 5 },
-  );
-  await page.mouse.up();
-
-  await expect.poll(() => page.evaluate(() =>
-    (window as typeof window & { chestTransfer?: unknown }).chestTransfer,
-  )).toEqual({
-    operationId: 2,
-    from: { containerId: 'chest:42', slotKey: '0' },
-    to: { containerId: 'chest:99', slotKey: '2' },
-    itemId: 'twigs',
-    amount: 2,
   });
 
   await chest.locator('.chest-panel__close').click();
