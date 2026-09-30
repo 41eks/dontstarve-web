@@ -19,6 +19,7 @@ export interface CreateSlotRendererOptions {
   slot: SlotModel;
   label: string;
   backgroundAsset: string;
+  backgroundAtlas?: string;
   backgroundUrl(): string;
   archiveUrl(): string;
   selectedSlot?(): SlotAddress | null;
@@ -49,6 +50,13 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     <span class="inventory-slot__content" aria-hidden="true"></span>
     <span class="inventory-slot__count" aria-hidden="true"></span>
   `;
+  if (options.backgroundAtlas) {
+    const background = createAtlasImage(options.archiveUrl(), options.backgroundAtlas, {
+      id: '', name: '', count: 1, maxStack: 1, icon: options.backgroundAsset,
+    });
+    background.className = 'inventory-slot__background';
+    button.querySelector('.inventory-slot__background')!.replaceWith(background);
+  }
 
   let disposeEffect: (() => void) | undefined;
   let unregister: (() => void) | undefined;
@@ -126,7 +134,9 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       unregister = undefined;
     },
     refresh() {
-      button.querySelector<HTMLImageElement>('.inventory-slot__background')!.src = options.backgroundUrl();
+      if (!options.backgroundAtlas) {
+        button.querySelector<HTMLImageElement>('.inventory-slot__background')!.src = options.backgroundUrl();
+      }
       update();
     },
   };

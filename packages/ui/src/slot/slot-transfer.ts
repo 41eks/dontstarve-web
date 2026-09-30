@@ -44,9 +44,8 @@ function transferAmount(source: SlotModel, target: SlotModel, item: SlotItem): n
   if (sameSlotAddress(source.address, target.address) || !target.accepts(item)) return 0;
   const targetItem = target.getItem();
   if (targetItem && (targetItem.id !== item.id || targetItem.skinId !== item.skinId)) return 0;
-  return targetItem
-    ? Math.min(item.count, targetItem.maxStack - targetItem.count)
-    : item.count;
+  const maxStack = Math.min(targetItem?.maxStack ?? item.maxStack, target.maxStack?.(item) ?? item.maxStack);
+  return Math.max(0, Math.min(item.count, maxStack - (targetItem?.count ?? 0)));
 }
 
 export class SlotTransferController {

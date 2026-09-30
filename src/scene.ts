@@ -27,6 +27,8 @@ import { view } from './view';
 import { initialSave } from './save/initialSave';
 import { SAVE_CATALOG } from './save/catalog';
 import type { ProximityEntity } from '@three-roaming/prefab/proximityEntities';
+import type { RuntimeSaveState } from './save/serialize';
+import type { SavedEntity } from './save/types';
 
 export const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
@@ -46,7 +48,7 @@ pigKings.forEach((pigKing) => world.addBody(pigKing.body));
 
 scene.background = new THREE.Color(0xbfd1e5);
 scene.add(ground, player);
-pigKings.forEach((pigKing) => scene.add(pigKing.floor, pigKing.standee));
+pigKings.forEach((pigKing) => scene.add(pigKing.setPiece.group));
 scene.add(...boxes);
 
 // const updatePigInteraction = setupPigInteraction(camera, renderer, pig, player);
@@ -62,18 +64,19 @@ const characterRenderEntries = [
   { object: player, footPosition: playerFootPosition, cameraDepth: 0 },
   ...pigKings.map((pigKing) => ({
     object: pigKing.standee,
-    footPosition: new THREE.Vector3(...pigKing.record.transform.position),
+    footPosition: pigKing.setPiece.footPosition,
     cameraDepth: 0,
   })),
 ];
 
-function updateCharacterRenderOrder() {
+function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement) {
   // The player origin follows the bottom of its physics body. Pig King's root
   // is vertically offset to ground its artwork, so its foot point is y = 0.
   playerFootPosition.copy(player.position);
 
   const renderEntries = [
     ...characterRenderEntries,
+    ...buildingPlacement.renderEntities,
     ...Array.from(moonTreeForest.activeEntities, (entity) => ({
       object: entity.model!, footPosition: entity.position, cameraDepth: 0,
     })),
@@ -119,7 +122,6 @@ backTasks.push((dt) => {
   setPlayerNormal(cameraWorldQuaternion);
   setPigKingNormal(cameraWorldQuaternion);
   setTreeNormals(cameraWorldQuaternion);
-  updateCharacterRenderOrder();
   // updatePigInteraction();
 });
 
@@ -135,7 +137,10 @@ export async function startScene(
   );
   // Camera updates in the back phase; align placeable billboards afterwards so
   // they use the camera transform from the same rendered frame.
-  backTasks.push((dt: number) => buildingPlacement.update(dt));
+  backTasks.push((dt: number) => {
+    buildingPlacement.update(dt);
+    updateCharacterRenderOrder(buildingPlacement);
+  });
   const groundItems = new GroundItemManager(
     scene,
     camera,
@@ -164,8 +169,36 @@ export async function startScene(
   }
   // Logical tree records stay in the map even when their models are unloaded.
   moonTreeForest.updateNearby(player.position);
+  let elapsedSeconds = initialSave.world.elapsedSeconds;
+  backTasks.push((dt) => { elapsedSeconds += dt; });
+  const getSaveState = (): Omit<RuntimeSaveState, 'inventory'> => {
+    const entities: Record<string, SavedEntity[]> = {
+      moon_tree: moonTreeForest.entities.map((entity) => ({
+        id: entity.saveId!,
+        transform: { position: entity.position.toArray(), rotationY: 0 },
+        components: {},
+      })),
+      pigking: pigKings.map((pigKing) => ({
+        id: pigKing.record.id,
+        transform: { position: [pigKing.standee.position.x, 0, pigKing.standee.position.z], rotationY: 0 },
+        components: {},
+      })),
+      ground_item: groundItems.exportRecords(),
+    };
+    for (const { prefabId, record } of buildingPlacement.exportRecords()) {
+      (entities[prefabId] ??= []).push({
+        ...record,
+        transform: { ...record.transform, position: [...record.transform.position] },
+      });
+    }
+    return {
+      entities, elapsedSeconds,
+      // Physics may place the foot a fraction below the ground while settling.
+      playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },
+    };
+  };
   animate(world, camera);
-  return { buildingPlacement, groundItems, byEntityId };
+  return { buildingPlacement, groundItems, byEntityId, getSaveState };
 }
 
 export function scene_add(model:THREE.Object3D){

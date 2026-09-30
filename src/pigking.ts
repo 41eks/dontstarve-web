@@ -1,20 +1,18 @@
 import * as THREE from 'three';
-import { createPigKing } from '@three-roaming/prefab/pigking';
+import { createPigKingSetPiece } from '@three-roaming/prefab/setpieces/pigking';
 import type { PointerContext } from '@three-roaming/prefab/worldContext';
 import { initialSave } from './save/initialSave';
 
 export const pigKings = await Promise.all(
   (initialSave.world.entities.pigking ?? []).map(async (record) => {
-    const prefab = await createPigKing(
-      `${import.meta.env.BASE_URL}dst/data/anim`,
-      {
-        floorTextureUrl: `${import.meta.env.BASE_URL}384px-GROUND_WOODFLOOR.png`,
-        position: new THREE.Vector3(...record.transform.position),
-      },
-    );
+    const setPiece = await createPigKingSetPiece({
+      assetBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
+      position: new THREE.Vector3(...record.transform.position),
+    });
+    const prefab = setPiece.pigKing;
     prefab.standee.userData.entityId = record.id;
     prefab.standee.userData.saveRecord = record;
-    return { ...prefab, record };
+    return { ...prefab, setPiece, record };
   }),
 );
 

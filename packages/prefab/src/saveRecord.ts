@@ -8,6 +8,20 @@ export interface PlacementSaveRecord {
   };
 }
 
+export interface PlacedEntitySaveRecord {
+  prefabId: string;
+  record: PlacementSaveRecord;
+}
+
+/** Removes the sprite's visual offset and flat-ground raycast rounding residue. */
+export function saveGroundPosition(
+  position: { x: number; y: number; z: number },
+  visualOffset: number,
+): [number, number, number] {
+  const height = position.y - visualOffset;
+  return [position.x, Math.abs(height) < 1e-6 ? 0 : height, position.z];
+}
+
 let fallbackSequence = 0;
 
 export function newEntityId(): string {

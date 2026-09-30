@@ -8,14 +8,12 @@ import type { PointerContext } from './worldContext';
 import definitions from './definitions.json' with { type: 'json' };
 
 export interface PigKingPrefabOptions {
-  floorTextureUrl: string;
   position?: THREE.Vector3;
   scale?: number;
 }
 
 export interface PigKingPrefab {
   body: CANNON.Body;
-  floor: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>;
   standee: THREE.Group;
   setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
   setupInteraction(context: PointerContext): () => void;
@@ -28,37 +26,20 @@ const pigKingDepth = 1;
 
 export async function createPigKing(
   assetBaseUrl: string,
-  options: PigKingPrefabOptions,
+  options: PigKingPrefabOptions = {},
 ): Promise<PigKingPrefab> {
   const standee = await createAnimatedSprite(assetBaseUrl, definitions.pigKing.archive, {
     initialAnimation: definitions.pigKing.animationName,
     name: 'PigKingStandee',
     scale: options.scale ?? definitions.pigKing.scale,
   });
-  standee.position.copy(options.position ?? new THREE.Vector3(0, 0, 25));
+  const position = options.position ?? new THREE.Vector3(0, 0, 25);
+  standee.position.copy(position);
   standee.updateWorldMatrix(true, true);
   const bounds = new THREE.Box3().setFromObject(standee);
-  standee.position.y -= bounds.min.y;
+  standee.position.y += position.y - bounds.min.y;
 
   const animation = standee.userData.animationController as SpriteAnimationController;
-  const floorTexture = new THREE.TextureLoader().load(options.floorTextureUrl);
-  floorTexture.colorSpace = THREE.SRGBColorSpace;
-  floorTexture.wrapS = THREE.RepeatWrapping;
-  floorTexture.wrapT = THREE.RepeatWrapping;
-  floorTexture.repeat.set(0.3, 0.3);
-
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(36, 36),
-    new THREE.MeshLambertMaterial({
-      map: floorTexture,
-      side: THREE.DoubleSide,
-    }),
-  );
-  floor.name = 'PigKingFloor';
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(standee.position.x, 0.02, standee.position.z);
-  floor.receiveShadow = true;
-
   const body = new CANNON.Body({
     mass: 0,
     shape: new CANNON.Box(new CANNON.Vec3(
@@ -68,7 +49,7 @@ export async function createPigKing(
     )),
     position: new CANNON.Vec3(
       standee.position.x,
-      pigKingHeight / 2,
+      position.y + pigKingHeight / 2,
       standee.position.z,
     ),
   });
@@ -76,7 +57,6 @@ export async function createPigKing(
 
   return {
     body,
-    floor,
     standee,
     setNormal(cameraWorldQuaternion) {
       standee.quaternion.copy(cameraWorldQuaternion);

@@ -20,6 +20,11 @@ export function isWallStoneId(value: string): value is WallStoneId {
 }
 
 export class WallStonePlacement extends WallPlacement<WallStoneId> {
+    override exportRecords() {
+        // The craftable item places a wall entity; its item ID is not a world prefab.
+        return super.exportRecords().map(({ record }) => ({ prefabId: 'wall_stone', record }));
+    }
+
     constructor(
         world: WorldContext,
         consumeBufferedBuild: (buildId: WallStoneId) => boolean,

@@ -4,6 +4,7 @@ import {
   findImage,
   loadAnimationArchive,
   loadBuild,
+  loadSpriteSkinArchive,
   smallHash,
   SpriteFrameRenderer,
   type Animation,
@@ -26,6 +27,23 @@ export interface AnimatedSpriteOptions {
   initialFrame?: 'first' | 'last';
   name?: string;
   scale?: number;
+  /** Skin build archive; missing symbols fall back to the base build. */
+  skinArchive?: string;
+  /** Restrict replacement to these symbols, e.g. researchlab4's machine_hat. */
+  skinSymbols?: readonly string[];
+  /** Symbols DST explicitly keeps from the base build even when wearing a skin. */
+  baseSymbols?: readonly string[];
+  /** Additional skin animation banks drawn over the main frame in the same mesh. */
+  skinAnimationBanks?: readonly string[];
+}
+
+interface SpriteSkin {
+  build: ParsedBuild;
+  materials: THREE.MeshBasicMaterial[];
+  animations?: ParsedAnim;
+  symbols?: ReadonlySet<number>;
+  baseSymbols: ReadonlySet<number>;
+  animationBanks: ReadonlySet<number>;
 }
 
 /** One archive and set of atlas materials shared by independent animated entities. */
@@ -60,9 +78,11 @@ class SpriteController implements SpriteAnimationController {
   private animation!: Animation;
   private animationName = '';
   private elapsed = 0;
-  private frameIndex = -1;
+  private frameKey = '';
+  private layers: Animation[] = [];
   private loop = true;
   private onComplete?: () => void;
+  private readonly skin?: SpriteSkin;
 
   constructor(
     visual: THREE.Group,
@@ -70,11 +90,13 @@ class SpriteController implements SpriteAnimationController {
     animations: ParsedAnim,
     materials: THREE.MeshBasicMaterial[],
     initialAnimation: string,
+    skin?: SpriteSkin,
   ) {
     this.renderer = new SpriteFrameRenderer(visual);
     this.build = build;
     this.animations = animations;
     this.materials = materials;
+    this.skin = skin;
     this.selectAnimation(initialAnimation, true);
   }
 
@@ -110,28 +132,46 @@ class SpriteController implements SpriteAnimationController {
   }
 
   private selectAnimation(name: string, loop: boolean, onComplete?: () => void) {
-    const animation = this.animations.animations.find((candidate) => candidate.name === name);
-    if (!animation) throw new Error(`Sprite animation ${name} is unavailable`);
+    const baseAnimation = this.animations.animations.find((candidate) => candidate.name === name);
+    if (!baseAnimation) throw new Error(`Sprite animation ${name} is unavailable`);
+    const animation = this.skin?.animations?.animations.find((candidate) =>
+      candidate.name === name && candidate.bankHash === baseAnimation.bankHash,
+    ) ?? baseAnimation;
     if (!animation.frames.length) throw new Error(`Sprite animation ${name} has no frames`);
     this.animation = animation;
     this.animationName = name;
     this.loop = loop;
     this.onComplete = onComplete;
     this.elapsed = 0;
-    this.frameIndex = -1;
+    this.frameKey = '';
+    this.layers = this.skin?.animations?.animations.filter((candidate) =>
+      candidate.name === name && this.skin!.animationBanks.has(candidate.bankHash),
+    ) ?? [];
     this.showFrame(0);
   }
 
   private showFrame(index: number) {
-    if (index === this.frameIndex) return;
-    this.frameIndex = index;
-    const sprites = [...this.animation.frames[index].elements]
+    const layerIndices = this.layers.map((layer) => {
+      const frame = Math.floor(this.elapsed * layer.frameRate);
+      return this.loop ? frame % layer.frames.length : Math.min(frame, layer.frames.length - 1);
+    });
+    const key = `${index}:${layerIndices.join(',')}`;
+    if (key === this.frameKey) return;
+    this.frameKey = key;
+    const frames = [this.animation.frames[index], ...this.layers.map((layer, i) => layer.frames[layerIndices[i]])];
+    const sprites = frames.flatMap((frame) => [...frame.elements]
       .sort((a, b) => b.z - a.z)
       .map((element) => {
+        const skin = this.skin;
+        if (skin && !skin.baseSymbols.has(element.imageHash)
+          && (skin.symbols === undefined || skin.symbols.has(element.imageHash))) {
+          const image = findImage(skin.build, element.imageHash, element.imageIndex);
+          if (image) return { element, image, materials: skin.materials };
+        }
         const image = findImage(this.build, element.imageHash, element.imageIndex);
         return image ? { element, image, materials: this.materials } : undefined;
       })
-      .filter((sprite): sprite is ResolvedSprite => Boolean(sprite));
+      .filter((sprite): sprite is ResolvedSprite => Boolean(sprite)));
     this.renderer.show(sprites);
   }
 }
@@ -142,7 +182,17 @@ export async function createAnimatedSprite(
   options: AnimatedSpriteOptions,
 ): Promise<THREE.Group> {
   const { buildPackage, animations } = await loadAnimationArchive(file, assetBaseUrl);
-  return createSprite(buildPackage.build, animations, createMaterials(buildPackage), options);
+  const skinArchive = options.skinArchive
+    ? await loadSpriteSkinArchive(options.skinArchive, assetBaseUrl) : undefined;
+  const skin: SpriteSkin | undefined = skinArchive ? {
+    build: skinArchive.buildPackage.build,
+    materials: createMaterials(skinArchive.buildPackage),
+    animations: skinArchive.animations,
+    symbols: options.skinSymbols ? new Set(options.skinSymbols.map(smallHash)) : undefined,
+    baseSymbols: new Set(options.baseSymbols?.map(smallHash)),
+    animationBanks: new Set(options.skinAnimationBanks?.map(smallHash)),
+  } : undefined;
+  return createSprite(buildPackage.build, animations, createMaterials(buildPackage), options, skin);
 }
 
 export async function createAnimatedSpriteFactory(
@@ -185,6 +235,7 @@ function createSprite(
   animations: ParsedAnim,
   materials: THREE.MeshBasicMaterial[],
   options: AnimatedSpriteOptions,
+  skin?: SpriteSkin,
 ): THREE.Group {
   const sprite = new THREE.Group();
   sprite.name = options.name ?? build.name;
@@ -202,6 +253,7 @@ function createSprite(
     animations,
     materials,
     options.initialAnimation,
+    skin,
   );
   if (options.initialFrame === 'last') controller.holdLastFrame(options.initialAnimation);
   sprite.userData.animationController = controller;

@@ -1,6 +1,7 @@
 import { unzipSync } from 'fflate';
 import * as THREE from 'three';
 import { parseKtex, type DecodedTexture } from './parseKtex';
+import { decodeDyn } from './decodeDyn';
 
 export type Matrix2D = [number, number, number, number, number, number];
 
@@ -268,11 +269,26 @@ export async function loadAnim(file: string, assetBaseUrl: string) {
 
 export async function loadBuild(file: string, assetBaseUrl: string): Promise<BuildPackage> {
   const entries = await loadEntries(file, assetBaseUrl);
+  return buildPackageFromEntries(entries, file, assetBaseUrl);
+}
+
+async function buildPackageFromEntries(
+  entries: Record<string, Uint8Array>,
+  file: string,
+  assetBaseUrl: string,
+): Promise<BuildPackage> {
   const data = findEntry(entries, 'build.bin');
   if (!data) throw new Error(`${file} does not contain build.bin`);
   const build = parseBuild(data, `${file}:build.bin`);
+  let atlasEntries = entries;
+  if (file.startsWith('dynamic/') && build.atlasNames.some((name) => !findEntry(entries, name))) {
+    const atlasFile = file.replace(/\.zip$/, '.dyn');
+    const response = await fetch(`${assetBaseUrl.replace(/\/$/, '')}/${atlasFile}`);
+    if (!response.ok) throw new Error(`Unable to load animation asset ${atlasFile}: HTTP ${response.status}`);
+    atlasEntries = unzipSync(decodeDyn(new Uint8Array(await response.arrayBuffer())));
+  }
   const atlases = build.atlasNames.map((name) => {
-    const atlas = findEntry(entries, name);
+    const atlas = findEntry(entries, name) ?? findEntry(atlasEntries, name);
     if (!atlas) throw new Error(`${file} does not contain ${name}`);
     return parseKtex(atlas, `${file}:${name}`);
   });
@@ -282,19 +298,20 @@ export async function loadBuild(file: string, assetBaseUrl: string): Promise<Bui
 export async function loadAnimationArchive(file: string, assetBaseUrl: string) {
   const entries = await loadEntries(file, assetBaseUrl);
   const animationData = findEntry(entries, 'anim.bin');
-  const buildData = findEntry(entries, 'build.bin');
   if (!animationData) throw new Error(`${file} does not contain anim.bin`);
-  if (!buildData) throw new Error(`${file} does not contain build.bin`);
-
-  const build = parseBuild(buildData, `${file}:build.bin`);
-  const atlases = build.atlasNames.map((name) => {
-    const atlas = findEntry(entries, name);
-    if (!atlas) throw new Error(`${file} does not contain ${name}`);
-    return parseKtex(atlas, `${file}:${name}`);
-  });
   return {
-    buildPackage: { build, atlases },
+    buildPackage: await buildPackageFromEntries(entries, file, assetBaseUrl),
     animations: parseAnim(animationData, `${file}:anim.bin`),
+  };
+}
+
+/** Skin builds often reuse their prefab's bank and contain no anim.bin. */
+export async function loadSpriteSkinArchive(file: string, assetBaseUrl: string) {
+  const entries = await loadEntries(file, assetBaseUrl);
+  const animationData = findEntry(entries, 'anim.bin');
+  return {
+    buildPackage: await buildPackageFromEntries(entries, file, assetBaseUrl),
+    animations: animationData ? parseAnim(animationData, `${file}:anim.bin`) : undefined,
   };
 }
 
@@ -327,6 +344,9 @@ export function createMaterials(buildPackage: BuildPackage) {
       depthTest: true,
       depthWrite: false,
       side: THREE.DoubleSide,
+      // Mirrored DST parts reverse winding. Two separate face passes would
+      // reorder those parts around the torso despite the correct index order.
+      forceSinglePass: true,
       toneMapped: false,
     });
   });

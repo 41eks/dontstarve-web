@@ -125,7 +125,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     }
     return { itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }) };
   };
-  const container = (value: unknown, path: string, keys: readonly string[]): SavedContainer => {
+  const container = (value: unknown, path: string, keys: readonly string[], maxStack = Infinity): SavedContainer => {
     const o = object(value, path, ['slotCount', 'slots']);
     if (o.slotCount !== keys.length) fail(`${path}.slotCount`, `expected ${keys.length}`);
     const seen = new Set<string>();
@@ -136,6 +136,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       if (!keys.includes(slotKey) || seen.has(slotKey)) fail(`${slotPath}.slotKey`, 'invalid or duplicate slot');
       seen.add(slotKey);
       const item = stack(slot.item, `${slotPath}.item`);
+      if (item.count > maxStack) fail(`${slotPath}.item.count`, `expected at most ${maxStack}`);
       if (keys.includes('hand') && catalog.items[item.itemId].equippable !== slotKey) {
         fail(`${slotPath}.item`, `item cannot be equipped in ${slotKey}`);
       }
@@ -158,19 +159,24 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       if (!/^[a-zA-Z0-9_:.-]+$/.test(id) || ids.has(id)) fail(`${recordPath}.id`, 'invalid or duplicate entity ID');
       ids.add(id);
       const building = Object.hasOwn(catalog.buildings, prefab) ? catalog.buildings[prefab] : undefined;
-      const allowedComponents = building ? ['building', ...(prefab === 'treasurechest' ? ['container'] : [])]
+      const isContainer = prefab === 'treasurechest' || prefab === 'cookpot';
+      const allowedComponents = building ? ['building', ...(isContainer ? ['container'] : [])]
         : prefab === 'ground_item' ? ['stack'] : catalog.walls.includes(prefab) ? ['health'] : [];
       const c = object(o.components, `${recordPath}.components`, allowedComponents);
       const components: SavedEntity['components'] = {};
       if (building) {
         const b = object(c.building, `${recordPath}.components.building`, ['state', 'skinId']);
-        const state = choice(b.state, `${recordPath}.components.building.state`, prefab === 'treasurechest' ? ['closed', 'open'] : ['idle']);
+        // Older cook pot saves only stored idle; migrate that to the closed state.
+        const state = choice(prefab === 'cookpot' && b.state === 'idle' ? 'closed' : b.state,
+          `${recordPath}.components.building.state`, isContainer ? ['closed', 'open'] : ['idle']);
         const skinId = b.skinId === undefined ? undefined : string(b.skinId, `${recordPath}.components.building.skinId`);
         if (skinId !== undefined && !Object.hasOwn(building.skinArchives ?? {}, skinId)) fail(`${recordPath}.components.building.skinId`, 'unsupported building skin');
         components.building = { state, ...(skinId === undefined ? {} : { skinId }) };
-        if (prefab === 'treasurechest') {
-          components.container = c.container === undefined ? { slotCount: 9, slots: [] }
-            : container(c.container, `${recordPath}.components.container`, numericKeys(9));
+        if (isContainer) {
+          const slotCount = prefab === 'cookpot' ? 4 : 9;
+          components.container = c.container === undefined ? { slotCount, slots: [] }
+            : container(c.container, `${recordPath}.components.container`, numericKeys(slotCount),
+              prefab === 'cookpot' ? 1 : Infinity);
         }
       }
       if (prefab === 'ground_item') components.stack = stack(c.stack, `${recordPath}.components.stack`);

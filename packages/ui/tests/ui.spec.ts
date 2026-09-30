@@ -6,6 +6,52 @@ import { createSlotContainer } from '../src/slot/slot-container';
 
 const fixtureUrl = '/tests/fixture.html';
 
+test('shows four prepared food slots to the right and transfers one item from a stack', async ({ page }) => {
+  await openFixture(page);
+  await page.evaluate(() => {
+    const panel = document.querySelector('dst-cook-pot-panel') as HTMLElement & {
+      open(options: { containerId: string; slotCount: number; title: string }): void;
+      setAnchor(x: number, y: number): void;
+      slotContainer: { slots: { constructor: { name: string }; maxStack(): number }[] };
+    };
+    panel.open({ containerId: 'world:cookpot:pot', slotCount: 4, title: '烹饪锅' });
+    panel.setAnchor(420, 360);
+    if (!panel.slotContainer.slots.every((slot) => slot.constructor.name === 'PreparedFoodSlot' && slot.maxStack() === 1)) {
+      throw new Error('Expected dedicated PreparedFoodSlot instances');
+    }
+    const bar = document.querySelector('dst-inventory-bar') as HTMLElement & {
+      setSlot(address: unknown, item: unknown): void;
+    };
+    bar.setSlot({ containerId: 'player:inventory', slotKey: '0' }, {
+      id: 'berries', name: '浆果', count: 3, maxStack: 40, icon: 'berries.tex',
+    });
+    (window as typeof window & { potTransfers: unknown[] }).potTransfers = [];
+    window.addEventListener('game:slot-transfer-request', (event) => {
+      (window as typeof window & { potTransfers: unknown[] }).potTransfers.push((event as CustomEvent).detail);
+    });
+  });
+  const panel = page.locator('dst-cook-pot-panel .cook-pot-panel');
+  const slots = panel.locator('.inventory-slot');
+  await expect(slots).toHaveCount(4);
+  await expect(slots.nth(0)).toHaveAttribute('data-background-asset', 'preparedfood_slot.tex');
+  await expect(slots.nth(0).locator('.inventory-slot__background')).toHaveAttribute('data-loaded', 'true');
+  const boxes = await Promise.all([0, 1, 2, 3].map((index) => slots.nth(index).boundingBox()));
+  for (let i = 0; i < boxes.length; i++) {
+    expect(boxes[i]!.x).toBeGreaterThan(420);
+    expect(boxes[i]!.x).toBeCloseTo(boxes[0]!.x, 1);
+    if (i > 0) expect(boxes[i]!.y).toBeGreaterThan(boxes[i - 1]!.y);
+  }
+  await page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot').nth(0).click();
+  await slots.nth(0).click();
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { potTransfers: unknown[] }).potTransfers,
+  )).toEqual([{
+    operationId: 1,
+    from: { containerId: 'player:inventory', slotKey: '0' },
+    to: { containerId: 'world:cookpot:pot', slotKey: '0' }, itemId: 'berries', amount: 1,
+  }]);
+});
+
 test('disposes signal effects and their cleanup callbacks', async () => {
   const value = createSignal(0);
   const observed: number[] = [];
@@ -247,7 +293,7 @@ test('renders the inventory and equipment slots and emits selection events', asy
   ]);
 });
 
-test('uses one dedicated chest panel with slots matching the backpack size', async ({ page }) => {
+test('uses one dedicated chest panel with compact slots matching the backpack size without a close button', async ({ page }) => {
   await openFixture(page);
 
   await page.evaluate(() => {
@@ -267,6 +313,8 @@ test('uses one dedicated chest panel with slots matching the backpack size', asy
   await expect(chest).toHaveCount(1);
   await expect(chest.locator('.chest-panel')).toBeVisible();
   await expect(chest.locator('.inventory-slot')).toHaveCount(9);
+  await expect(chest.locator('.inventory-slot').first()).toBeVisible();
+  await expect(chest.locator('.chest-panel__close')).toHaveCount(0);
 
   const backpackSlotBox = await page.locator(
     'dst-inventory-bar .inventory-bar__items .inventory-slot',
@@ -276,6 +324,47 @@ test('uses one dedicated chest panel with slots matching the backpack size', asy
   expect(chestSlotBox).not.toBeNull();
   expect(chestSlotBox!.width).toBeCloseTo(backpackSlotBox!.width, 1);
   expect(chestSlotBox!.height).toBeCloseTo(backpackSlotBox!.height, 1);
+  const nextColumn = await chest.locator('.inventory-slot').nth(1).boundingBox();
+  const nextRow = await chest.locator('.inventory-slot').nth(3).boundingBox();
+  expect(nextColumn!.x - chestSlotBox!.x).toBeCloseTo(chestSlotBox!.width, 1);
+  expect(nextRow!.y - chestSlotBox!.y).toBeCloseTo(chestSlotBox!.height, 1);
+});
+
+test('plays the chest panel open and close clips before hiding the animated background', async ({ page }, testInfo) => {
+  await openFixture(page);
+  await page.evaluate(() => {
+    const panel = document.querySelector('dst-chest-panel') as HTMLElement & {
+      open(options: { containerId: string; slotCount: number }): void;
+      setAnchor(x: number, y: number): void;
+    };
+    panel.open({ containerId: 'world:treasurechest:animated', slotCount: 9 });
+    panel.setAnchor(640, 500);
+  });
+  const panel = page.locator('dst-chest-panel .chest-panel');
+  const background = panel.locator('.chest-panel__background');
+  await expect(background).toHaveAttribute('data-archive', /\/dst\/data\/anim\/ui_chest_3x3.zip$/);
+  await expect(background).toHaveAttribute('data-animation', 'open');
+  await expect(background).toHaveAttribute('data-loaded', 'true');
+  await expect(background).toHaveAttribute('data-playing', 'false');
+  await expect(background).toHaveAttribute('data-frame', '6');
+  await expect(panel.locator('.inventory-slot').first()).toBeVisible();
+  expect(await background.evaluate((canvas) => {
+    const element = canvas as HTMLCanvasElement;
+    return element.getContext('2d')!.getImageData(0, 0, element.width, element.height)
+      .data.some((value, index) => index % 4 === 3 && value > 0);
+  })).toBe(true);
+  await panel.screenshot({ path: testInfo.outputPath('chest-panel.png') });
+  const closing = await page.evaluate(() => {
+    const element = document.querySelector('dst-chest-panel') as HTMLElement & { close(): void; isClosing: boolean };
+    let closedContainer: string | undefined;
+    element.addEventListener('game:chest-close', (event) => closedContainer = (event as CustomEvent).detail.containerId);
+    element.close();
+    const panel = element.shadowRoot!.querySelector<HTMLElement>('.chest-panel')!;
+    const canvas = panel.querySelector<HTMLCanvasElement>('.chest-panel__background')!;
+    return { animation: canvas.dataset.animation, visible: !panel.hidden, isClosing: element.isClosing, closedContainer };
+  });
+  expect(closing).toEqual({ animation: 'close', visible: true, isClosing: true, closedContainer: 'world:treasurechest:animated' });
+  await expect(panel).toBeHidden();
 });
 
 test('emits an inventory slot context-menu event and suppresses the native menu', async ({ page }) => {
@@ -555,7 +644,9 @@ test('opens the global chest panel and shares drag targets with the inventory ba
     amount: 7,
   });
 
-  await chest.locator('.chest-panel__close').click();
+  await page.evaluate(() => {
+    (document.querySelector('dst-chest-panel') as HTMLElement & { close(): void }).close();
+  });
   await expect(chest.locator('.chest-panel')).toBeHidden();
 });
 

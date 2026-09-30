@@ -28,6 +28,7 @@ export interface SlotModel {
   getItem(): SlotItem | null;
   setItem(item: SlotItem | null): void;
   accepts(item: SlotItem): boolean;
+  maxStack?(item: SlotItem): number;
 }
 
 export interface CreateSlotOptions {

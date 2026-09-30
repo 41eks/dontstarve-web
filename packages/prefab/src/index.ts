@@ -5,10 +5,23 @@ export {
 } from './moontree';
 export { ProximityEntities, type ProximityEntity } from './proximityEntities';
 export {
+  COOK_POT_DEFINITION,
+  COOK_POT_ID,
+  COOK_POT_SKIN_ARCHIVES,
+  CookPotPlacement,
+  type CookPotId,
+} from './cook_pot';
+export {
   createPigKing,
   type PigKingPrefab,
   type PigKingPrefabOptions,
 } from './pigking';
+export {
+  PIG_KING_SET_PIECE,
+  createPigKingSetPiece,
+  type PigKingSetPiece,
+  type PigKingSetPieceOptions,
+} from './setpieces/pigking';
 export {
   createWilsonPlayer,
   createWilsonPlayerPrefab,
@@ -44,6 +57,7 @@ export {
 export {
   RESEARCH_LAB_IDS,
   RESEARCH_LAB_DEFINITIONS,
+  RESEARCH_LAB_SKIN_ARCHIVES,
   ResearchLabPlacement,
   isResearchLabId,
   type ResearchLabId,

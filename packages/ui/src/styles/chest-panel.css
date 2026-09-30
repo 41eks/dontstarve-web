@@ -68,12 +68,68 @@
   gap: 0;
 }
 
+.animated-chest-panel {
+  transform: translate(-50%, calc(-100% - 10px)) scale(0.675);
+  width: calc(var(--chest-art-width, 5.75) * var(--inventory-slot-layout-size));
+  height: calc(var(--chest-art-height, 5.4) * var(--inventory-slot-layout-size));
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.chest-panel__background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.animated-chest-panel header {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--inventory-slot-layout-size) * 0.25);
+  right: calc(var(--inventory-slot-layout-size) * 0.4);
+  margin: 0;
+}
+
+.animated-chest-panel h2 {
+  display: none;
+}
+
+.animated-chest-panel .chest-panel__slots {
+  position: absolute;
+  left: var(--chest-art-origin-x, 50%);
+  top: var(--chest-art-origin-y, 50%);
+  /* Keep slots at inventory-bar size within the panel's 90% scale. */
+  grid-template-columns: repeat(3, calc(var(--inventory-slot-layout-size) / 0.9));
+  gap: 0;
+  transform: translate(-50%, -50%);
+}
+
+.animated-chest-panel.is-opening .chest-panel__slots,
+.animated-chest-panel.is-opening header,
+.animated-chest-panel.is-closing header {
+  visibility: hidden;
+}
+
+.cook-pot-panel {
+  transform: translateY(-50%) scale(0.75);
+  transform-origin: left center;
+}
+
+.cook-pot-panel .chest-panel__slots {
+  grid-template-columns: var(--inventory-slot-layout-size);
+}
+
 @media (max-width: 700px) {
   :host {
     --inventory-slot-layout-size: calc(5.1493vw - 1.018px);
   }
 
-  .chest-panel {
+  .cook-pot-panel {
     padding: 4px 3px 3px;
     border-width: 2px;
   }

@@ -15,11 +15,12 @@ import {
   type SlotTransferRequest,
 } from '@three-roaming/ui';
 import type { WilsonAnimationController } from '@three-roaming/prefab/player';
-import { StorageSlot } from '@three-roaming/inventory';
+import { PreparedFoodSlot, StorageSlot } from '@three-roaming/inventory';
 import { preloadImageArchive } from '@three-roaming/animation/imageAtlas';
 import { player } from './player';
 import {
   CHEST_SLOT_COUNT,
+  COOK_POT_SLOT_COUNT,
   createChestInventoryPanel,
 } from './chestInventoryPanel';
 import { executeDebugCommand } from './debugCommands';
@@ -29,13 +30,26 @@ import {
 } from './inventory';
 import { startScene } from './scene';
 import { initialSave } from './save/initialSave';
-import { chestContainerId, inventoryStateFromSave } from './save/inventoryState';
+import { chestContainerId, cookPotContainerId, inventoryStateFromSave } from './save/inventoryState';
+import { SAVE_CATALOG } from './save/catalog';
+import { serializeSave } from './save/serialize';
+import { downloadSaveJson } from './save/download';
 
 void preloadImageArchive(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
+const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, 'cookpot');
 export const inventory = createInventoryStore();
 const chestContainers = new Set<string>();
+const cookPotContainers = new Set<string>();
+function registerCookPot(entityId: string): void {
+  const containerId = cookPotContainerId(entityId);
+  if (cookPotContainers.has(containerId)) return;
+  inventory.registerSlots(Array.from({ length: COOK_POT_SLOT_COUNT }, (_, index) => ({
+    address: { containerId, slotKey: String(index) }, slot: new PreparedFoodSlot(),
+  })));
+  cookPotContainers.add(containerId);
+}
 function registerChest(entityId: string): void {
   const containerId = chestContainerId(entityId);
   if (chestContainers.has(containerId)) return;
@@ -45,11 +59,14 @@ function registerChest(entityId: string): void {
   chestContainers.add(containerId);
 }
 for (const record of initialSave.world.entities.treasurechest ?? []) registerChest(record.id);
+for (const record of initialSave.world.entities.cookpot ?? []) registerCookPot(record.id);
 inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
-gameUi.chestPanel.addEventListener('game:chest-close', (event) => {
-  const { containerId } = (event as CustomEvent<ChestCloseDetail>).detail;
-  inventory.setStorageAccessible(containerId, false);
-});
+for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel]) {
+  panel.addEventListener('game:chest-close', (event) => {
+    const { containerId } = (event as CustomEvent<ChestCloseDetail>).detail;
+    inventory.setStorageAccessible(containerId, false);
+  });
+}
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
 const handSlotAddress = equipmentSlotAddress('hand');
 
@@ -68,11 +85,10 @@ function syncHandEquipment(): void {
 }
 
 function syncInventorySlot(address: SlotAddress): void {
-  if (chestContainers.has(address.containerId)
-    && gameUi.chestPanel.slotContainer?.id !== address.containerId) return;
-  const inventoryBar = chestContainers.has(address.containerId)
-    ? gameUi.chestPanel
-    : gameUi.inventoryBar;
+  const storagePanel = cookPotContainers.has(address.containerId) ? gameUi.cookPotPanel
+    : chestContainers.has(address.containerId) ? gameUi.chestPanel : undefined;
+  if (storagePanel && storagePanel.slotContainer?.id !== address.containerId) return;
+  const inventoryBar = storagePanel ?? gameUi.inventoryBar;
   const stack = inventory.get(address);
   if (!stack) {
     inventoryBar.setSlot(address, null);
@@ -85,7 +101,7 @@ function syncInventorySlot(address: SlotAddress): void {
     ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
     name: spec.name,
     count: stack.count,
-    maxStack: spec.maxStack,
+    maxStack: cookPotContainers.has(address.containerId) ? 1 : spec.maxStack,
     icon: spec.icon,
     ...(spec.atlas ? { atlas: spec.atlas } : {}),
     ...(spec.equippable ? { equippable: spec.equippable } : {}),
@@ -110,7 +126,7 @@ inventory.subscribe((changedSlots) => {
   }
 });
 
-const { buildingPlacement, groundItems } = await startScene(
+const { buildingPlacement, groundItems, getSaveState } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item) => {
     if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
@@ -118,23 +134,33 @@ const { buildingPlacement, groundItems } = await startScene(
     return true;
   },
   ({ buildId, isOpen, model }) => {
-    if (buildId !== 'treasurechest') return;
-    registerChest(String(model.userData.entityId));
-    chestInventoryPanel.setOpen(model, isOpen);
-    inventory.setStorageAccessible(chestContainerId(String(model.userData.entityId)), isOpen);
+    if (buildId !== 'treasurechest' && buildId !== 'cookpot') return;
+    const entityId = String(model.userData.entityId);
+    const isCookPot = buildId === 'cookpot';
+    (isCookPot ? registerCookPot : registerChest)(entityId);
+    (isCookPot ? cookPotInventoryPanel : chestInventoryPanel).setOpen(model, isOpen);
+    const id = (isCookPot ? cookPotContainerId : chestContainerId)(entityId);
+    inventory.setStorageAccessible(id, isOpen);
     if (isOpen) {
       inventory.addresses()
-        .filter(({ containerId }) => containerId === chestContainerId(String(model.userData.entityId)))
+        .filter(({ containerId }) => containerId === id)
         .forEach(syncInventorySlot);
     }
   },
 );
+let lastSavedSnapshotId = initialSave.snapshot.id;
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, async (prefabId) => {
     if (!isPlaceableBuildingId(prefabId)) return false;
     await buildingPlacement.spawn(prefabId);
     return true;
+  }, () => {
+    const json = serializeSave(initialSave, {
+      ...getSaveState(), inventory: inventory.exportState(),
+    }, SAVE_CATALOG, lastSavedSnapshotId);
+    downloadSaveJson(json);
+    lastSavedSnapshotId = (JSON.parse(json) as typeof initialSave).snapshot.id;
   }).then((result) => {
     if (result.ok) console.info(result.message);
     else console.warn(result.message);

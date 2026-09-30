@@ -25,7 +25,15 @@ function parse(data: unknown = initialWorld) {
 describe('save JSON deserialization', () => {
   it('reads the checked-in initial world with all 500 persistent tree records', () => {
     const save = parse();
-    expect(save).toEqual(initialWorld);
+    const migrated = structuredClone(initialWorld);
+    for (const pot of migrated.world.entities.cookpot) {
+      Object.assign(pot.components, {
+        building: { ...pot.components.building, state: 'closed' },
+        container: { slotCount: 4, slots: [] },
+      });
+    }
+    expect(save).toEqual(migrated);
+    expect(save.world.entities.treasurechest.every((chest) => chest.components.building?.state === 'closed')).toBe(true);
     expect(save.world.entities.moon_tree).toHaveLength(500);
     expect(new Set(save.world.entities.moon_tree.map(({ id }) => id)).size).toBe(500);
     expect(save.world.entities.pigking[0].transform.position).toEqual([0, 0, 25]);
@@ -49,7 +57,7 @@ describe('save JSON deserialization', () => {
     ['transition animation state', (data: any) => { data.world.entities.treasurechest[0].components.building.state = 'opening'; }, 'closed, open'],
     ['wrong player shard', (data: any) => { data.players.local.shardId = 'caves'; }, 'this shard'],
     ['unknown buffered recipe', (data: any) => { data.players.local.inventory.bufferedBuilds = [{ recipeId: 'removed_recipe' }]; }, 'recipe'],
-    ['future parent snapshot', (data: any) => { data.snapshot.parentId = '0000000002'; }, 'earlier snapshot'],
+    ['future parent snapshot', (data: any) => { data.snapshot.parentId = data.snapshot.id; }, 'earlier snapshot'],
   ])('rejects %s before creating runtime models', (_, mutate, message) => {
     const data = structuredClone(initialWorld);
     mutate(data);
@@ -58,7 +66,7 @@ describe('save JSON deserialization', () => {
 
   it('rejects malformed JSON and nonfinite numbers rather than coercing them', () => {
     expect(() => deserializeSave('{', catalog)).toThrow('invalid JSON');
-    const text = JSON.stringify(initialWorld).replace('"elapsedSeconds":0', '"elapsedSeconds":1e999');
+    const text = JSON.stringify(initialWorld).replace(/"elapsedSeconds":[^,}]+/, '"elapsedSeconds":1e999');
     expect(() => deserializeSave(text, catalog)).toThrow('nonfinite number');
   });
 

@@ -14,6 +14,13 @@ export const RESEARCH_LAB_IDS = [
 
 export type ResearchLabId = typeof RESEARCH_LAB_IDS[number];
 
+export const RESEARCH_LAB_SKIN_ARCHIVES: Readonly<Record<ResearchLabId, Readonly<Record<string, string>>>> = {
+    researchlab: definitions.animatedBuildings.researchlab.skinArchives,
+    researchlab2: definitions.animatedBuildings.researchlab2.skinArchives,
+    researchlab3: definitions.animatedBuildings.researchlab3.skinArchives,
+    researchlab4: definitions.animatedBuildings.researchlab4.skinArchives,
+};
+
 export const RESEARCH_LAB_DEFINITIONS: Readonly<Record<ResearchLabId, AnimatedBuildingDefinition>> = {
     researchlab: definitions.animatedBuildings.researchlab,
     researchlab2: definitions.animatedBuildings.researchlab2,

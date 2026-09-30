@@ -17,6 +17,10 @@
 
 ## 总体结论
 
+项目当前从 `public/saves/initial-world.json` 反序列化初始世界，Prefab 定义位于 `packages/prefab/src/definitions.json`。在游戏调试控制台输入 `c_save()`，会将当前内存中的世界和玩家状态导出并下载为 `initial-world.json`，格式与启动文件一致。将下载的文件替换到 `public/saves/initial-world.json` 后刷新页面即可加载；浏览器下载不会直接修改项目文件。
+
+手动导出保存所有月树逻辑记录（包括距离玩家超过 120 单位、模型已卸载的月树）、已放置建筑和墙、箱子状态及物品、地面掉落物、玩家位置、背包、装备、待放置建造缓存和累计运行时间。摆放预览、相机朝向、动画帧与引擎对象不写入 JSON。打开或关闭箱子的动画按目标状态保存；Snapshot 编号递增，`parentId` 指向上一次成功下载的编号。自动保存与存档列表管理仍属于后续设计。
+
 DST 的存档不是单个文件，而是由多个层次组成：
 
 ```text
@@ -802,13 +806,13 @@ three-roaming-save-v1.json
 
 #### 地图与月树实体
 
-当前地面是固定平面，没有 DST 式可修改地皮，因此 `map` 保存生成器或初始数据集的身份和参数。当前应用从 `src/moonTreePositions.ts` 读取 500 个预先随机生成的固定坐标，通过 `createMoonTreeForest()` 的 `positions` 选项创建通用实体记录；坐标位于 1000 × 1000 的区域内，并保留出生点空地。每次进入页面使用同一组初始坐标，不在运行时重新随机生成。接入存档后，每棵月树的实际位置应保存到 `world.entities.moon_tree`，加载时直接恢复记录。
+当前地面是固定平面，没有 DST 式可修改地皮，因此 `map` 保存生成器或初始数据集的身份和参数。当前应用从 `public/saves/initial-world.json` 的 `world.entities.moon_tree` 读取 500 个预先随机生成的固定坐标，通过 `createMoonTreeForest()` 的 `positions` 选项创建通用实体记录；坐标位于 1000 × 1000 的区域内，并保留出生点空地。每次进入页面直接恢复存档中的实体记录，不在运行时重新随机生成。
 
 `ProximityEntities` 保留全部实体的 `id` 和地面接触点 `position`，按玩家与月树在 XZ 平面上的距离管理模型：距离小于或等于 `10 * TILE_SIZE` 时创建模型，超出时移除模型并释放其几何体。项目的 `TILE_SIZE = 12`，因此加载半径为 120 个世界单位。只有范围内的月树更新动画和 Billboard 朝向，并与玩家、猪王一起按脚点的相机空间深度排序。
 
 月树使用通用动画精灵，通过 `createAnimatedSpriteFactory()` 共享一次加载的动画资源、材质和贴图；每个已加载实体拥有独立模型、几何体和动画控制器。存档应遍历 `MoonTreeForest.entities` 中的全部逻辑记录，而不能只保存 `activeEntities` 或场景中当前存在的模型。距离卸载只释放渲染对象，不删除世界实体。
 
-第一版每棵月树保存稳定的存档 ID、脚点位置和逻辑旋转，当前没有额外持久化组件时使用空的 `components`。现有 `ProximityEntity.id` 按位置数组下标生成，只适用于本次运行；接入存档时应增加可恢复且永不复用的持久化 ID。加载范围、是否已加载、模型引用、动画帧和相机朝向属于运行时派生状态，按当前 Prefab 定义与恢复后的玩家位置重新计算。`map.generator.options.moonTreeCount` 仅描述初次生成参数，不能代替实际实体记录。
+第一版每棵月树保存稳定的存档 ID、脚点位置和逻辑旋转，当前没有额外持久化组件时使用空的 `components`。`ProximityEntity.id` 按位置数组下标生成，只适用于本次运行；持久化 ID 由 `saveId` 从 JSON 恢复并在导出时保留。加载范围、是否已加载、模型引用、动画帧和相机朝向属于运行时派生状态，按当前 Prefab 定义与恢复后的玩家位置重新计算。`map.generator.options.moonTreeCount` 仅描述初次生成参数，不能代替实际实体记录。
 
 若以后加入可修改地皮，可采用与 DST 类似的编码对象：
 
@@ -851,6 +855,8 @@ three-roaming-save-v1.json
 墙的画面朝向只由相机 heading 决定，不能保存 `frontImageIndex`、`sideImageIndex` 或当前选中的图片。石墙逻辑旋转保持 `0`；加载后的每帧继续通过 `isDiagonalHeading()` 选择正面或斜面。
 
 `building.state` 只允许稳定状态，例如 `idle`、`closed`、`open`。`placing`、`opening`、`closing` 等过渡态在保存时归一化到明确的稳定状态，加载时不重放一次性动画。
+
+`c_save()` 将所有 `treasurechest` 的 `building.state` 统一保存为 `closed`，保留皮肤和槽位内容。此归一化仅作用于输出存档，当前场景中的开关状态保持不变；初始存档中的箱子也使用 `closed`。
 
 #### 实体引用与父子关系
 

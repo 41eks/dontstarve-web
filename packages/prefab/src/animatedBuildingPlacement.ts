@@ -6,7 +6,7 @@ import {
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import type { WorldContext } from './worldContext';
-import { newEntityId, type PlacementSaveRecord } from './saveRecord';
+import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 
 export interface AnimatedBuildingDefinition {
     archive: string;
@@ -19,6 +19,9 @@ export interface AnimatedBuildingDefinition {
     proximityAnimation?: string;
     scale: number;
     skinArchives?: Readonly<Record<string, string>>;
+    skinSymbols?: readonly string[];
+    baseSymbols?: readonly string[];
+    skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** Animations used by buildings that toggle between closed and open on click. */
@@ -26,6 +29,7 @@ export interface AnimatedBuildingToggleInteraction {
     closeAnimation: string;
     closedAnimation: string;
     openAnimation: string;
+    openAnimationLoop?: boolean;
 }
 
 export interface AnimatedBuildingInteractionChange<BuildId extends string> {
@@ -132,6 +136,39 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return building.model;
     }
 
+    exportRecords(): PlacedEntitySaveRecord[] {
+        return this.placed.map((building) => ({
+            prefabId: building.buildId,
+            record: {
+                id: building.model.userData.entityId as string,
+                transform: {
+                    position: saveGroundPosition(building.model.position, building.groundOffset),
+                    rotationY: 0,
+                },
+                components: {
+                    building: {
+                        // Persist the target state of an interaction, not a transient animation frame.
+                        state: building.interactionState === undefined ? 'idle'
+                            : building.interactionState === 'open' || building.interactionState === 'opening'
+                                ? 'open' : 'closed',
+                        ...(building.skinId === undefined ? {} : { skinId: building.skinId }),
+                    },
+                },
+            },
+        }));
+    }
+
+    /** Whole sprite entities and their ground-contact points for depth sorting. */
+    get renderEntities() {
+        return [...this.placed, ...(this.active ? [this.active] : [])]
+            .filter(({ model }) => model.visible)
+            .map(({ model, groundOffset }) => ({
+                object: model,
+                footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
+                cameraDepth: 0,
+            }));
+    }
+
     cancel() {
         if (!this.active) return;
         this.scene.remove(this.active.model);
@@ -207,6 +244,16 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (definition.onProximity && !building.isPlayerNearby) return;
 
         if (building.interactionState === 'closed') {
+            if (interaction.openAnimationLoop) {
+                building.interactionState = 'open';
+                building.animation.start(interaction.openAnimation);
+                this.onInteractionChange?.({
+                    buildId: building.buildId,
+                    isOpen: true,
+                    model: building.model,
+                });
+                return;
+            }
             building.interactionState = 'opening';
             building.animation.playOnce(interaction.openAnimation, () => {
                 building.interactionState = 'open';
@@ -260,13 +307,17 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
         const model = await createAnimatedSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
-            skinArchive ?? definition.archive,
+            definition.archive,
             {
                 initialAnimation: state === 'open' && definition.interaction
                     ? definition.interaction.openAnimation : this.idleAnimation(buildId),
-                initialFrame: state === 'open' ? 'last' : 'first',
+                initialFrame: state === 'open' && !definition.interaction?.openAnimationLoop ? 'last' : 'first',
                 name: definition.name,
                 scale: definition.scale,
+                skinArchive,
+                skinSymbols: definition.skinSymbols,
+                baseSymbols: definition.baseSymbols,
+                skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
             },
         );
         model.updateWorldMatrix(true, true);
@@ -282,6 +333,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             ...(skinArchive === undefined ? {} : { skinId }),
         };
         if (skinArchive !== undefined) model.userData.skinId = skinId;
+        if (state === 'open' && definition.interaction?.openAnimationLoop) {
+            instance.animation.start(definition.interaction.openAnimation);
+        }
         if (attach) model.userData.entityId = newEntityId();
         if (attach) this.scene.add(model);
         return instance;

@@ -8,6 +8,10 @@ export function chestContainerId(entityId: string): string {
   return `world:treasurechest:${entityId}`;
 }
 
+export function cookPotContainerId(entityId: string): string {
+  return `world:cookpot:${entityId}`;
+}
+
 export function inventoryStateFromSave(save: SaveDocument): InventoryState {
   const slots: InventoryState['slots'][number][] = [];
   for (const [id, container] of Object.entries(save.players.local.inventory.containers)) {
@@ -18,9 +22,12 @@ export function inventoryStateFromSave(save: SaveDocument): InventoryState {
       slots.push({ address, item: { ...item } });
     }
   }
-  for (const record of save.world.entities.treasurechest ?? []) {
-    for (const { slotKey, item } of record.components.container?.slots ?? []) {
-      slots.push({ address: { containerId: chestContainerId(record.id), slotKey }, item: { ...item } });
+  for (const prefab of ['treasurechest', 'cookpot'] as const) {
+    for (const record of save.world.entities[prefab] ?? []) {
+      for (const { slotKey, item } of record.components.container?.slots ?? []) {
+        const containerId = (prefab === 'cookpot' ? cookPotContainerId : chestContainerId)(record.id);
+        slots.push({ address: { containerId, slotKey }, item: { ...item } });
+      }
     }
   }
   return { slots, bufferedBuilds: save.players.local.inventory.bufferedBuilds.map((build) => ({ ...build })) };

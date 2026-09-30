@@ -7,15 +7,15 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000001",
-    "parentId": null,
-    "savedAt": "2026-09-30T00:00:00.000Z",
-    "reason": "initial"
+    "id": "0000000002",
+    "parentId": "0000000001",
+    "savedAt": "2026-09-30T14:48:34.141Z",
+    "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 0,
+    "elapsedSeconds": 340.82549999998525,
     "systems": {},
     "map": {
       "kind": "generated",
@@ -6045,6 +6045,7 @@
           "components": {}
         }
       ],
+      "ground_item": [],
       "treasurechest": [
         {
           "id": "e_treasurechest_000001",
@@ -6062,7 +6063,50 @@
             },
             "container": {
               "slotCount": 9,
-              "slots": []
+              "slots": [
+                {
+                  "slotKey": "7",
+                  "item": {
+                    "itemId": "charcoal",
+                    "count": 8
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "cookpot": [
+        {
+          "id": "e_fb7d3d50267c65b2571016615853d61c",
+          "transform": {
+            "position": [
+              -29.58897508431369,
+              0,
+              15.732595457206893
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "idle"
+            }
+          }
+        },
+        {
+          "id": "e_3cc364e5431c4c9c6b21a3e68725598c",
+          "transform": {
+            "position": [
+              -45.17446902849612,
+              0,
+              21.756217787747786
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "idle",
+              "skinId": "cookpot_survival"
             }
           }
         }
@@ -6075,9 +6119,9 @@
       "shardId": "master",
       "transform": {
         "position": [
+          -16.491944283443743,
           0,
-          30,
-          0
+          -9.756380195061508
         ],
         "rotationY": 0
       },
@@ -6097,7 +6141,7 @@
                 "slotKey": "1",
                 "item": {
                   "itemId": "twigs",
-                  "count": 17
+                  "count": 5
                 }
               },
               {
@@ -6125,7 +6169,7 @@
                 "slotKey": "5",
                 "item": {
                   "itemId": "rocks",
-                  "count": 14
+                  "count": 6
                 }
               },
               {

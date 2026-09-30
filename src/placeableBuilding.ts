@@ -1,5 +1,10 @@
 import definitions from '@three-roaming/prefab/definitions.json' with { type: 'json' };
 import {
+    COOK_POT_DEFINITION,
+    COOK_POT_ID,
+    type CookPotId,
+} from '@three-roaming/prefab/cook_pot';
+import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingInteractionChange,
 } from '@three-roaming/prefab/animatedBuildingPlacement';
@@ -25,17 +30,19 @@ export { TREASURE_CHEST_ID } from '@three-roaming/prefab/treasurechest';
 
 export const TENT_ID = 'tent' as const;
 
-export type AnimatedBuildingId = ResearchLabId | TreasureChestId | typeof TENT_ID;
+export type AnimatedBuildingId = CookPotId | ResearchLabId | TreasureChestId | typeof TENT_ID;
 export type PlaceableBuildingId = AnimatedBuildingId | WallStoneId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
 const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
+    COOK_POT_ID,
     ...RESEARCH_LAB_IDS,
     TREASURE_CHEST_ID,
     TENT_ID,
 ];
 
 const ANIMATED_BUILDING_DEFINITIONS = {
+    [COOK_POT_ID]: COOK_POT_DEFINITION,
     ...RESEARCH_LAB_DEFINITIONS,
     [TREASURE_CHEST_ID]: TREASURE_CHEST_DEFINITION,
     tent: definitions.animatedBuildings.tent,
@@ -86,6 +93,14 @@ export class PlaceableBuildingPlacement {
         return isWallStoneId(buildId)
             ? this.walls.spawnFromSave(buildId, record)
             : this.animated.spawnFromSave(buildId, record);
+    }
+
+    exportRecords() {
+        return [...this.animated.exportRecords(), ...this.walls.exportRecords()];
+    }
+
+    get renderEntities() {
+        return [...this.animated.renderEntities, ...this.walls.renderEntities];
     }
 
     update(dt: number): void {

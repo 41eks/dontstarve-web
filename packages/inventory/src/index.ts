@@ -18,6 +18,7 @@ export {
 } from './slots';
 export { craft } from './craft';
 export { InventoryStore } from './store';
+export { PreparedFoodSlot } from './preparedFoodSlot';
 export type {
   EquipmentKind,
   InventoryItemSpec,

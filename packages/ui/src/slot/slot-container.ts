@@ -1,6 +1,7 @@
 import { createSlot, type SlotItem, type SlotModel } from './slot-model';
+import { PreparedFoodSlot } from './prepared-food-slot';
 
-export type SlotContainerKind = 'inventory' | 'equipment' | 'chest';
+export type SlotContainerKind = 'inventory' | 'equipment' | 'chest' | 'cookpot';
 
 export interface SlotContainer {
   readonly id: string;
@@ -24,10 +25,12 @@ export function createSlotContainer(options: CreateSlotContainerOptions): SlotCo
     throw new TypeError('Slot keys must be unique and non-empty');
   }
 
-  const slots = options.slotKeys.map((slotKey) => createSlot({
-    address: { containerId: options.id, slotKey },
-    accepts: (item) => options.accepts?.(slotKey, item) ?? true,
-  }));
+  const slots = options.slotKeys.map((slotKey) => options.kind === 'cookpot'
+    ? new PreparedFoodSlot({ containerId: options.id, slotKey })
+    : createSlot({
+      address: { containerId: options.id, slotKey },
+      accepts: (item) => options.accepts?.(slotKey, item) ?? true,
+    }));
   const slotsByKey = new Map(slots.map((slot) => [slot.address.slotKey, slot]));
 
   return {

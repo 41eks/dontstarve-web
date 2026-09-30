@@ -1,12 +1,51 @@
 {
   "animatedBuildings": {
+    "cookpot": {
+      "archive": "cook_pot.zip",
+      "buildLabel": "烹饪锅",
+      "idleAnimation": "idle_empty",
+      "interaction": {
+        "closeAnimation": "idle_empty",
+        "closedAnimation": "idle_empty",
+        "openAnimation": "cooking_pre_loop",
+        "openAnimationLoop": true
+      },
+      "name": "CookPot",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "cookpot_candy": "dynamic/cookpot_candy.zip",
+        "cookpot_cauldron": "dynamic/cookpot_cauldron.zip",
+        "cookpot_cauldronp": "dynamic/cookpot_cauldron.zip",
+        "cookpot_clay": "dynamic/cookpot_clay.zip",
+        "cookpot_kitchen": "dynamic/cookpot_kitchen.zip",
+        "cookpot_planet": "dynamic/cookpot_planet.zip",
+        "cookpot_survival": "dynamic/cookpot_survival.zip",
+        "cookpot_tureen": "dynamic/cookpot_tureen.zip"
+      }
+    },
     "researchlab": {
       "archive": "researchlab.zip",
       "buildLabel": "科学机器",
       "name": "ResearchLab",
       "onProximity": true,
       "proximityAnimation": "proximity_loop",
-      "scale": 0.016
+      "scale": 0.016,
+      "skinArchives": {
+        "researchlab_gothic": "dynamic/researchlab_gothic.zip",
+        "researchlab_green": "dynamic/researchlab_green.zip",
+        "researchlab_party": "dynamic/researchlab_party.zip",
+        "researchlab_retro": "dynamic/researchlab_retro.zip"
+      },
+      "baseSymbols": [
+        "bolt_b",
+        "bolt_c",
+        "rayFX",
+        "glowFX",
+        "sparkleFX",
+        "shadow_plume",
+        "shadow_wisp"
+      ]
     },
     "researchlab2": {
       "archive": "researchlab2.zip",
@@ -14,7 +53,24 @@
       "name": "ResearchLab2",
       "onProximity": true,
       "proximityAnimation": "proximity_loop",
-      "scale": 0.02
+      "scale": 0.02,
+      "skinArchives": {
+        "researchlab2_alchemytable": "dynamic/researchlab2_alchemytable.zip",
+        "researchlab2_crystal": "dynamic/researchlab2_crystal.zip",
+        "researchlab2_gothic": "dynamic/researchlab2_gothic.zip",
+        "researchlab2_pod": "dynamic/researchlab2_pod.zip",
+        "researchlab2_science": "dynamic/researchlab2_science.zip",
+        "researchlab2_science_resurrected": "dynamic/researchlab2_science.zip"
+      },
+      "baseSymbols": [
+        "shadow_plume",
+        "shadow_wisp"
+      ],
+      "skinAnimationBanks": {
+        "researchlab2_pod": [
+          "researchlab2_pod_fx"
+        ]
+      }
     },
     "researchlab3": {
       "archive": "researchlab3.zip",
@@ -22,7 +78,14 @@
       "name": "ResearchLab3",
       "onProximity": true,
       "proximityAnimation": "proximity_loop",
-      "scale": 0.02
+      "scale": 0.02,
+      "skinArchives": {
+        "researchlab3_adventure": "dynamic/researchlab3_adventure.zip",
+        "researchlab3_ancient": "dynamic/researchlab3_ancient.zip",
+        "researchlab3_crystal": "dynamic/researchlab3_crystal.zip",
+        "researchlab3_monster": "dynamic/researchlab3_monster.zip",
+        "researchlab3_nature": "dynamic/researchlab3_nature.zip"
+      }
     },
     "researchlab4": {
       "archive": "researchlab4.zip",
@@ -30,7 +93,34 @@
       "name": "ResearchLab4",
       "onProximity": true,
       "proximityAnimation": "proximity_loop",
-      "scale": 0.02
+      "scale": 0.02,
+      "skinArchives": {
+        "researchlab4_catcoon_costume": "dynamic/researchlab4_catcoon_costume.zip",
+        "researchlab4_catcoon_costumep": "dynamic/researchlab4_catcoon_costume.zip",
+        "researchlab4_chef": "dynamic/researchlab4_chef.zip",
+        "researchlab4_chester_costume": "dynamic/researchlab4_chester_costume.zip",
+        "researchlab4_chester_costumep": "dynamic/researchlab4_chester_costume.zip",
+        "researchlab4_derby": "dynamic/researchlab4_derby.zip",
+        "researchlab4_festive_bell_red_firehound": "dynamic/researchlab4_festive_bell_red_firehound.zip",
+        "researchlab4_fish": "dynamic/researchlab4_fish.zip",
+        "researchlab4_glommer_costume": "dynamic/researchlab4_glommer_costume.zip",
+        "researchlab4_glommer_costumep": "dynamic/researchlab4_glommer_costume.zip",
+        "researchlab4_hutch_costume": "dynamic/researchlab4_hutch_costume.zip",
+        "researchlab4_hutch_costumep": "dynamic/researchlab4_hutch_costume.zip",
+        "researchlab4_merchant": "dynamic/researchlab4_merchant.zip",
+        "researchlab4_minigolf_green": "dynamic/researchlab4_minigolf_green.zip",
+        "researchlab4_minigolf_purple": "dynamic/researchlab4_minigolf_purple.zip",
+        "researchlab4_minigolf_red": "dynamic/researchlab4_minigolf_red.zip",
+        "researchlab4_tophat_circus": "dynamic/researchlab4_tophat_circus.zip",
+        "researchlab4_tophat_harlequin": "dynamic/researchlab4_tophat_harlequin.zip",
+        "researchlab4_tophat_spiked": "dynamic/researchlab4_tophat_spiked.zip",
+        "researchlab4_tophat_wizard": "dynamic/researchlab4_tophat_wizard.zip",
+        "researchlab4_western": "dynamic/researchlab4_western.zip",
+        "researchlab4_witch_pyre": "dynamic/researchlab4_witch_pyre.zip"
+      },
+      "skinSymbols": [
+        "machine_hat"
+      ]
     },
     "treasurechest": {
       "archive": "treasure_chest.zip",

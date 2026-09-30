@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SpriteFrameRenderer,
+  createMaterials,
   type BuildImage,
   type ResolvedSprite,
 } from '../src/animationAssets';
@@ -37,6 +38,18 @@ function sprite(
 }
 
 describe('SpriteFrameRenderer', () => {
+  it('renders mirrored and ordinary billboard parts in the same face pass', () => {
+    const [material] = createMaterials({
+      build: { name: 'test', atlasNames: ['test'], symbols: new Map() },
+      atlases: [{ width: 1, height: 1, pixels: new Uint8Array([255, 255, 255, 255]) }],
+    });
+    expect(material.transparent).toBe(true);
+    expect(material.side).toBe(THREE.DoubleSide);
+    expect(material.forceSinglePass).toBe(true);
+    expect(material.depthWrite).toBe(false);
+    material.map?.dispose();
+    material.dispose();
+  });
   it('bakes every part transform into one indexed mesh', () => {
     const visual = new THREE.Group();
     const renderer = new SpriteFrameRenderer(visual);

@@ -1,6 +1,7 @@
 import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
 import * as THREE from 'three';
 import { newEntityId } from '@three-roaming/prefab/saveRecord';
+import type { SavedEntity } from './save/types';
 
 const DEFAULT_ATLAS = 'images/inventoryimages.xml';
 const ITEM_HEIGHT = 4;
@@ -77,6 +78,22 @@ export class GroundItemManager {
     this.items.set(sprite, { id, definition: { ...definition }, sprite });
     this.scene.add(sprite);
     return sprite;
+  }
+
+  exportRecords(): SavedEntity[] {
+    return [...this.items.values()].map(({ id, definition, sprite }) => ({
+      id,
+      transform: {
+        position: [sprite.position.x, sprite.position.y - ITEM_HEIGHT / 2, sprite.position.z],
+        rotationY: 0,
+      },
+      components: {
+        stack: {
+          itemId: definition.itemId, count: definition.count,
+          ...(definition.skinId === undefined ? {} : { skinId: definition.skinId }),
+        },
+      },
+    }));
   }
 
   private readonly handlePointerDown = (event: PointerEvent) => {

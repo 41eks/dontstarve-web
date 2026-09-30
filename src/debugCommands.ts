@@ -12,14 +12,26 @@ interface GiveCommand {
 
 const GIVE_COMMAND = /^\s*c_give\s*\(\s*(["'])([^"']+)\1\s*(?:[,，]\s*(\d+)\s*)?\)\s*;?\s*$/;
 const SPAWN_COMMAND = /^\s*c_spawn\s*\(\s*(["'])([^"']+)\1\s*\)\s*;?\s*$/;
+const SAVE_COMMAND = /^\s*c_save\s*\(\s*\)\s*;?\s*$/;
 
 export type DebugSpawnPrefab = (prefabId: string) => boolean | Promise<boolean>;
+export type DebugSaveGame = () => void | Promise<void>;
 
 export async function executeDebugCommand(
   command: string,
   inventory: InventoryStore,
   spawnPrefab?: DebugSpawnPrefab,
+  saveGame?: DebugSaveGame,
 ): Promise<DebugCommandResult> {
+  if (SAVE_COMMAND.test(command)) {
+    if (!saveGame) return { ok: false, message: '当前无法保存游戏' };
+    try {
+      await saveGame();
+      return { ok: true, message: '已下载存档 initial-world.json' };
+    } catch (error: unknown) {
+      return { ok: false, message: `保存失败：${error instanceof Error ? error.message : String(error)}` };
+    }
+  }
   const give = parseGiveCommand(command);
   if (give) return executeGive(give, inventory);
 
@@ -33,7 +45,7 @@ export async function executeDebugCommand(
 
   return {
     ok: false,
-    message: '无效命令：请使用 c_give("item_id", count) 或 c_spawn("prefab_id")',
+    message: '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id") 或 c_save()',
   };
 }
 

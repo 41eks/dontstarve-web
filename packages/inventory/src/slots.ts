@@ -8,6 +8,7 @@ export interface ItemSlot {
   get(): InventoryStack | null;
   set(stack: InventoryStack | null): void;
   accepts(spec: InventoryItemSpec): boolean;
+  maxStack?(itemId: string): number;
 }
 
 const DEFAULT_MAX_STACK = 40;

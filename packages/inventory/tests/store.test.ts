@@ -6,6 +6,7 @@ import {
   InventorySlot,
   InventoryStore,
   StorageSlot,
+  PreparedFoodSlot,
   craft,
   equipmentSlotAddress,
   inventorySlotAddress,
@@ -56,6 +57,26 @@ describe('specialized slots', () => {
 });
 
 describe('inventory state restoration', () => {
+  it('exports closed storage, equipment and buffered builds as detached data without notifying', () => {
+    const storage = { address: { containerId: 'chest:1', slotKey: '0' }, slot: new StorageSlot() };
+    const store = new InventoryStore([inventorySlot(0), equipmentSlot('hand'), storage], specs);
+    const recipe = { recipeId: 'house', productId: 'twigs', productCount: 1, ingredients: {}, buffered: true };
+    store.replaceState({ slots: [
+      { address: equipmentSlotAddress('hand'), item: { itemId: 'axe', count: 1 } },
+      { address: storage.address, item: { itemId: 'twigs', count: 5 } },
+    ], bufferedBuilds: [{ recipeId: 'house' }] }, { house: recipe });
+    const listener = vi.fn();
+    store.subscribe(listener);
+    const saved = store.exportState();
+    expect(saved.bufferedBuilds).toEqual([{ recipeId: 'house' }]);
+    expect(saved.slots[2].item).toEqual({ itemId: 'twigs', count: 5 });
+    saved.slots[2].item!.count = 40;
+    saved.slots[2].address.containerId = 'changed';
+    saved.bufferedBuilds[0].recipeId = 'changed';
+    expect(store.get(storage.address)?.count).toBe(5);
+    expect(store.isBuffered('house')).toBe(true);
+    expect(listener).not.toHaveBeenCalled();
+  });
   it('replaces items and buffered recipes without crafting, and notifies once', () => {
     const store = new InventoryStore([
       inventorySlot(0, { itemId: 'twigs', count: 8 }), inventorySlot(1), equipmentSlot('hand'),
@@ -272,6 +293,39 @@ describe('InventoryStore', () => {
     expect(store.get(storageAddress)).toEqual({ itemId: 'twigs', count: 4 });
     expect(store.count('twigs')).toBe(1);
     expect(store.materialSummary()).toEqual({ twigs: 1, axe: 0 });
+  });
+
+  it('limits prepared food slots to one item and rolls back oversized transfers and saves', () => {
+    const address = { containerId: 'world:cookpot:pot', slotKey: '0' };
+    const slot = new PreparedFoodSlot();
+    const store = new InventoryStore([
+      inventorySlot(0, { itemId: 'twigs', count: 4 }), { address, slot },
+    ], specs);
+    const transfer = (count: number) => store.applySlotChanges([
+      { slot: inventorySlotAddress(0), itemId: 'twigs', delta: -count },
+      { slot: address, itemId: 'twigs', delta: count },
+    ]);
+    expect(transfer(4)).toBe(false);
+    expect(store.get(inventorySlotAddress(0))?.count).toBe(4);
+    expect(slot.get()).toBeNull();
+    expect(transfer(1)).toBe(true);
+    expect(transfer(1)).toBe(false);
+    expect(slot.get()).toEqual({ itemId: 'twigs', count: 1 });
+    expect(store.count('twigs')).toBe(3);
+    expect(store.materialSummary().twigs).toBe(3);
+    store.setStorageAccessible(address.containerId, true);
+    expect(store.materialSummary().twigs).toBe(4);
+    const before = store.exportState();
+    expect(() => store.replaceState({
+      slots: [{ address, item: { itemId: 'twigs', count: 2 } }], bufferedBuilds: [],
+    }, {})).toThrow('Invalid saved item');
+    expect(store.exportState()).toEqual(before);
+    expect(() => new PreparedFoodSlot({ itemId: 'twigs', count: 2 })).toThrow('one item');
+    expect(store.applySlotChanges([
+      { slot: address, itemId: 'twigs', delta: -1 },
+      { slot: inventorySlotAddress(0), itemId: 'twigs', delta: 1 },
+    ])).toBe(true);
+    expect(store.get(inventorySlotAddress(0))?.count).toBe(4);
   });
 
   it('rejects an item that does not match an equipment slot', () => {

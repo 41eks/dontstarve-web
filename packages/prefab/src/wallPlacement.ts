@@ -7,7 +7,7 @@ import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
-import { newEntityId, type PlacementSaveRecord } from './saveRecord';
+import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 
 export interface WallDefinition {
     archive: string;
@@ -119,6 +119,33 @@ export class WallPlacement<BuildId extends string> {
         this.scene.add(wall.model);
         this.placed.push(wall);
         return wall.model;
+    }
+
+    get renderEntities() {
+        return [...this.placed, ...(this.active ? [this.active] : [])]
+            .filter(({ model }) => model.visible)
+            .map(({ model, groundOffset }) => ({
+                object: model,
+                footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
+                cameraDepth: 0,
+            }));
+    }
+
+    exportRecords(): PlacedEntitySaveRecord[] {
+        return this.placed.map((wall) => {
+            const health = (wall.model.userData.saveRecord as PlacementSaveRecord | undefined)?.components.health;
+            return {
+                prefabId: wall.buildId,
+                record: {
+                    id: wall.model.userData.entityId as string,
+                    transform: {
+                        position: saveGroundPosition(wall.model.position, wall.groundOffset),
+                        rotationY: 0,
+                    },
+                    components: health ? { health: { ...health } } : {},
+                },
+            };
+        });
     }
 
     cancel() {

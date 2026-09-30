@@ -1,5 +1,6 @@
 import { craft as craftInventoryItems } from './craft';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
+import { PreparedFoodSlot } from './preparedFoodSlot';
 import type {
   InventoryItemSpec,
   InventoryListener,
@@ -74,7 +75,7 @@ export class InventoryStore {
       const spec = this.requireItemSpec(stack.itemId);
       if (!Number.isSafeInteger(stack.count)
         || stack.count <= 0
-        || stack.count > spec.maxStack
+        || stack.count > Math.min(spec.maxStack, slot.maxStack?.(stack.itemId) ?? spec.maxStack)
         || !slot.accepts(spec)) {
         throw new RangeError(`Invalid initial stack for ${stack.itemId} in ${key}`);
       }
@@ -88,6 +89,19 @@ export class InventoryStore {
   subscribe(listener: InventoryListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Exports detached domain data, including inaccessible storage and buffered builds. */
+  exportState(): InventoryState {
+    return {
+      slots: this.registrations.map(({ address, slot }) => {
+        const item = slot.get();
+        return { address: cloneAddress(address), item: item ? { ...item } : null };
+      }),
+      bufferedBuilds: [...this.bufferedBuilds].map(([recipeId, skinId]) => ({
+        recipeId, ...(skinId === undefined ? {} : { skinId }),
+      })),
+    };
   }
 
   /** Validates the whole replacement before updating any slots or notifying UI. */
@@ -114,7 +128,8 @@ export class InventoryStore {
       if (item) {
         const spec = this.requireItemSpec(item.itemId);
         if (!Number.isSafeInteger(item.count) || item.count <= 0
-          || item.count > spec.maxStack || !registration.slot.accepts(spec)) {
+          || item.count > Math.min(spec.maxStack, registration.slot.maxStack?.(item.itemId) ?? spec.maxStack)
+          || !registration.slot.accepts(spec)) {
           throw new Error(`Invalid saved item in ${key}`);
         }
         validateSkin(item.itemId, item.skinId);
@@ -153,7 +168,7 @@ export class InventoryStore {
 
   count(itemId: string): number {
     return this.registrations.reduce((total, { slot }) => {
-      if (slot instanceof StorageSlot) return total;
+      if (slot instanceof StorageSlot || slot instanceof PreparedFoodSlot) return total;
       const stack = slot.get();
       return total + (stack?.itemId === itemId ? stack.count : 0);
     }, 0);
@@ -164,7 +179,7 @@ export class InventoryStore {
       [...this.itemSpecs.keys()].map((itemId) => [itemId, 0]),
     );
     for (const { address, slot } of this.registrations) {
-      if (slot instanceof StorageSlot
+      if ((slot instanceof StorageSlot || slot instanceof PreparedFoodSlot)
         && !this.accessibleStorageContainerIds.has(address.containerId)) continue;
       const stack = slot.get();
       if (stack) summary[stack.itemId] = (summary[stack.itemId] ?? 0) + stack.count;
@@ -308,7 +323,7 @@ export class InventoryStore {
       if (!slot.accepts(spec)) return false;
       if (current && !isSameStack(current, change.itemId, change.skinId)) return false;
       const nextCount = (current?.count ?? 0) + change.delta;
-      if (nextCount > spec.maxStack) return false;
+      if (nextCount > Math.min(spec.maxStack, slot.maxStack?.(change.itemId) ?? spec.maxStack)) return false;
       next.set(key, {
         itemId: change.itemId,
         ...(change.skinId === undefined ? {} : { skinId: change.skinId }),

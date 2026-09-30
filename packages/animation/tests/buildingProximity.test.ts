@@ -6,6 +6,7 @@ import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlac
 import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
 import { RESEARCH_LAB_DEFINITIONS, RESEARCH_LAB_IDS } from '../../prefab/src/researchlab';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
+import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import type { WorldContext } from '../../prefab/src/worldContext';
 
 afterEach(() => {
@@ -39,7 +40,7 @@ async function setup(definition = TREASURE_CHEST_DEFINITION) {
   const playOnce = vi.spyOn(animation, 'playOnce');
   const start = vi.spyOn(animation, 'start');
   vi.spyOn(PointerRaycaster.prototype, 'raycastPointer').mockImplementation((objects) =>
-    ({ object: objects[0] }) as THREE.Intersection,
+    ({ object: objects[0], point: new THREE.Vector3() }) as THREE.Intersection,
   );
   const distance = (value: number) => {
     player.position.copy(model.position).add(new THREE.Vector3(value, 100, 0));
@@ -54,6 +55,49 @@ async function setup(definition = TREASURE_CHEST_DEFINITION) {
 }
 
 describe('building proximity interactions', () => {
+  it('opens the cook pot immediately, loops its animation and closes on click or leaving', async () => {
+    const { placement, distance, click, finish, changes, model, start } = await setup(COOK_POT_DEFINITION);
+    distance(11);
+    click();
+    expect(changes).not.toHaveBeenCalled();
+    distance(0);
+    click();
+    expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: true, model });
+    expect(start).toHaveBeenLastCalledWith('cooking_pre_loop');
+    expect(placement.exportRecords()[0].record.components.building?.state).toBe('open');
+    finish();
+    click();
+    expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: false, model });
+    finish();
+    expect(start).toHaveBeenLastCalledWith('idle_empty');
+    click();
+    distance(11);
+    finish();
+    expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: false, model });
+    expect(start).toHaveBeenLastCalledWith('idle_empty');
+  });
+
+  it('exports stable chest target states and ground positions while excluding placement previews', async () => {
+    const { placement, model, distance, click, finish } = await setup();
+    distance(0);
+    const id = model.userData.entityId;
+    expect(placement.exportRecords()[0].record).toEqual({
+      id, transform: { position: [0, 0, -10], rotationY: 0 }, components: { building: { state: 'closed' } },
+    });
+    click();
+    expect(placement.exportRecords()[0].record.components.building?.state).toBe('open');
+    finish();
+    click();
+    expect(placement.exportRecords()[0].record.components.building?.state).toBe('closed');
+    await placement.begin('building');
+    expect(placement.exportRecords()).toHaveLength(1);
+    const exported = placement.exportRecords();
+    exported[0].record.transform.position = [100, 0, -10];
+    expect(placement.exportRecords()[0].record.transform.position[0]).toBe(0);
+    expect(placement.exportRecords()[0].record.id).toBe(id);
+    model.position.y -= 1e-12;
+    expect(placement.exportRecords()[0].record.transform.position[1]).toBe(0);
+  });
   it('blocks distant chest clicks and checks the current position on click', async () => {
     const { distance, click, playOnce, finish, changes, model } = await setup();
     distance(9.01);
