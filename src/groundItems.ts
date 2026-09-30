@@ -1,5 +1,6 @@
 import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
 import * as THREE from 'three';
+import { newEntityId } from '@three-roaming/prefab/saveRecord';
 
 const DEFAULT_ATLAS = 'images/inventoryimages.xml';
 const ITEM_HEIGHT = 4;
@@ -14,6 +15,7 @@ export interface GroundItemDefinition {
 }
 
 interface GroundItemRecord {
+  id: string;
   definition: GroundItemDefinition;
   sprite: THREE.Sprite;
 }
@@ -56,10 +58,25 @@ export class GroundItemManager {
     }
 
     sprite.position.set(position.x, ITEM_HEIGHT / 2, position.z);
-    const record = { definition: { ...definition }, sprite };
+    const record = { id: newEntityId(), definition: { ...definition }, sprite };
+    sprite.userData.entityId = record.id;
     this.items.set(sprite, record);
     this.scene.add(sprite);
     return true;
+  }
+
+  /** Restores an item without removing anything from inventory or playing pickup. */
+  async spawnFromSave(
+    id: string,
+    definition: GroundItemDefinition,
+    position: THREE.Vector3,
+  ): Promise<THREE.Sprite> {
+    const sprite = await this.createSprite(definition);
+    sprite.position.set(position.x, position.y + ITEM_HEIGHT / 2, position.z);
+    sprite.userData.entityId = id;
+    this.items.set(sprite, { id, definition: { ...definition }, sprite });
+    this.scene.add(sprite);
+    return sprite;
   }
 
   private readonly handlePointerDown = (event: PointerEvent) => {

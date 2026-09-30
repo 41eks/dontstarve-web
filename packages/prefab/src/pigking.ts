@@ -5,6 +5,7 @@ import {
   type SpriteAnimationController,
 } from '@three-roaming/animation/sprite';
 import type { PointerContext } from './worldContext';
+import definitions from './definitions.json' with { type: 'json' };
 
 export interface PigKingPrefabOptions {
   floorTextureUrl: string;
@@ -29,10 +30,10 @@ export async function createPigKing(
   assetBaseUrl: string,
   options: PigKingPrefabOptions,
 ): Promise<PigKingPrefab> {
-  const standee = await createAnimatedSprite(assetBaseUrl, 'pig_king.zip', {
-    initialAnimation: 'idle',
+  const standee = await createAnimatedSprite(assetBaseUrl, definitions.pigKing.archive, {
+    initialAnimation: definitions.pigKing.animationName,
     name: 'PigKingStandee',
-    scale: options.scale ?? 0.02,
+    scale: options.scale ?? definitions.pigKing.scale,
   });
   standee.position.copy(options.position ?? new THREE.Vector3(0, 0, 25));
   standee.updateWorldMatrix(true, true);

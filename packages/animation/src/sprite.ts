@@ -22,8 +22,17 @@ export interface SpriteAnimationController {
 
 export interface AnimatedSpriteOptions {
   initialAnimation: string;
+  /** Restore a stable one-shot end pose without replaying its animation. */
+  initialFrame?: 'first' | 'last';
   name?: string;
   scale?: number;
+}
+
+/** One archive and set of atlas materials shared by independent animated entities. */
+export interface AnimatedSpriteFactory {
+  create(options: AnimatedSpriteOptions): THREE.Group;
+  disposeSprite(sprite: THREE.Group): void;
+  dispose(): void;
 }
 
 export interface StaticSpriteOptions {
@@ -78,6 +87,12 @@ class SpriteController implements SpriteAnimationController {
     this.selectAnimation(name, false, onComplete);
   }
 
+  holdLastFrame(name: string) {
+    this.selectAnimation(name, false);
+    this.elapsed = this.animation.frames.length / this.animation.frameRate;
+    this.showFrame(this.animation.frames.length - 1);
+  }
+
   update(dt: number) {
     this.elapsed += Math.min(dt, 0.1);
     const elapsedFrame = Math.floor(this.elapsed * this.animation.frameRate);
@@ -127,8 +142,52 @@ export async function createAnimatedSprite(
   options: AnimatedSpriteOptions,
 ): Promise<THREE.Group> {
   const { buildPackage, animations } = await loadAnimationArchive(file, assetBaseUrl);
+  return createSprite(buildPackage.build, animations, createMaterials(buildPackage), options);
+}
+
+export async function createAnimatedSpriteFactory(
+  assetBaseUrl: string,
+  file: string,
+): Promise<AnimatedSpriteFactory> {
+  const { buildPackage, animations } = await loadAnimationArchive(file, assetBaseUrl);
+  const materials = createMaterials(buildPackage);
+  const sprites = new Set<THREE.Group>();
+  let disposed = false;
+  const disposeSprite = (sprite: THREE.Group) => {
+    if (!sprites.delete(sprite)) return;
+    sprite.removeFromParent();
+    sprite.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.geometry.dispose();
+    });
+  };
+  return {
+    create(options) {
+      if (disposed) throw new Error('Animated sprite factory has been disposed');
+      const sprite = createSprite(buildPackage.build, animations, materials, options);
+      sprites.add(sprite);
+      return sprite;
+    },
+    disposeSprite,
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      for (const sprite of sprites) disposeSprite(sprite);
+      for (const material of materials) {
+        material.map?.dispose();
+        material.dispose();
+      }
+    },
+  };
+}
+
+function createSprite(
+  build: ParsedBuild,
+  animations: ParsedAnim,
+  materials: THREE.MeshBasicMaterial[],
+  options: AnimatedSpriteOptions,
+): THREE.Group {
   const sprite = new THREE.Group();
-  sprite.name = options.name ?? buildPackage.build.name;
+  sprite.name = options.name ?? build.name;
   sprite.userData.billboard = true;
 
   const visual = new THREE.Group();
@@ -139,11 +198,12 @@ export async function createAnimatedSprite(
 
   const controller = new SpriteController(
     visual,
-    buildPackage.build,
+    build,
     animations,
-    createMaterials(buildPackage),
+    materials,
     options.initialAnimation,
   );
+  if (options.initialFrame === 'last') controller.holdLastFrame(options.initialAnimation);
   sprite.userData.animationController = controller;
   return sprite;
 }

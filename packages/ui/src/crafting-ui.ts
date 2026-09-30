@@ -10,6 +10,7 @@ import { createCategoryButtonMapper } from './craft-category-button';
 import { createRecipeButtonMapper } from './craft-recipe-button';
 import styles from './styles/crafting-ui.css?inline';
 import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
+import type { InventoryMaterialSummary } from '@three-roaming/inventory';
 
 const atlasRequests = new Map<string, Promise<ImageAtlas>>();
 const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
@@ -74,7 +75,7 @@ export class DstCraftingUiElement extends AssetElement {
   // private activeCategoryId = 'tool';
   private bufferedRecipeIds = new Set<string>();
   private collapsed = true;
-  private inventoryCounts?: Readonly<Record<string, number>>;
+  private materialSummary?: InventoryMaterialSummary;
   private selectedRecipeId?: string;
   private readonly selectedSkinIds = new Map<string, string>();
   private craftingRecipeId?: string;
@@ -86,15 +87,15 @@ export class DstCraftingUiElement extends AssetElement {
     this.attachShadow({ mode: 'open' });
   }
 
-  setInventoryCounts(counts: Readonly<Record<string, number>>): void {
-    const next = { ...counts };
-    const previous = this.inventoryCounts;
+  setMaterialSummary(summary: InventoryMaterialSummary): void {
+    const next = { ...summary };
+    const previous = this.materialSummary;
     if (previous
       && Object.keys(previous).length === Object.keys(next).length
       && Object.entries(next).every(([itemId, count]) => previous[itemId] === count)) {
       return;
     }
-    this.inventoryCounts = next;
+    this.materialSummary = next;
     if (this.isConnected) this.render();
   }
 
@@ -402,7 +403,7 @@ export class DstCraftingUiElement extends AssetElement {
   }
 
   private availableCount(ingredient: RecipeIngredient): number {
-    return this.inventoryCounts?.[ingredient.id] ?? ingredient.available;
+    return this.materialSummary?.[ingredient.id] ?? ingredient.available;
   }
 
   private startCrafting(recipeId: string, skinId?: string): void {

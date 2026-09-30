@@ -629,17 +629,27 @@ three-roaming-save-v1.json
           "moonTreeCount": 500,
           "moonTreeExclusionRadiusSquared": 600
         }
-      },
-      "instanceBatches": {
-        "moon_tree": {
-          "positions": [
-            [114.375, 0, -208.125],
-            [-87.5, 0, 341.75]
-          ]
-        }
       }
     },
     "entities": {
+      "moon_tree": [
+        {
+          "id": "e_moon_tree_000001",
+          "transform": {
+            "position": [114.375, 0, -208.125],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000002",
+          "transform": {
+            "position": [-87.5, 0, 341.75],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "researchlab": [
         {
           "id": "e_01J8Y2KMH2Q4JVV9V4T4ZP3JPK",
@@ -790,14 +800,15 @@ three-roaming-save-v1.json
 
 如果业务仍直接使用 `Math.random()`，就不能承诺后续随机序列可复现；第一版实现存档前应先引入可保存状态的伪随机数生成器。
 
-#### 地图与批量场景对象
+#### 地图与月树实体
 
-当前地面是固定平面，没有 DST 式可修改地皮，因此 `map` 只需要保存生成器身份、生成参数和不能稳定重算的数据。月树当前由 `Math.random()` 生成，必须选择下列方案之一：
+当前地面是固定平面，没有 DST 式可修改地皮，因此 `map` 保存生成器或初始数据集的身份和参数。当前应用从 `src/moonTreePositions.ts` 读取 500 个预先随机生成的固定坐标，通过 `createMoonTreeForest()` 的 `positions` 选项创建通用实体记录；坐标位于 1000 × 1000 的区域内，并保留出生点空地。每次进入页面使用同一组初始坐标，不在运行时重新随机生成。接入存档后，每棵月树的实际位置应保存到 `world.entities.moon_tree`，加载时直接恢复记录。
 
-1. 保存所有月树坐标到 `map.instanceBatches.moon_tree.positions`；这是第一版推荐方案。
-2. 改用固定算法的有种子随机数，并冻结 `generator.id` 对应的算法；加载旧存档时必须保留旧生成器。
+`ProximityEntities` 保留全部实体的 `id` 和地面接触点 `position`，按玩家与月树在 XZ 平面上的距离管理模型：距离小于或等于 `10 * TILE_SIZE` 时创建模型，超出时移除模型并释放其几何体。项目的 `TILE_SIZE = 12`，因此加载半径为 120 个世界单位。只有范围内的月树更新动画和 Billboard 朝向，并与玩家、猪王一起按脚点的相机空间深度排序。
 
-月树是共享材质和几何体的实例化场景对象，不应膨胀为 500 个通用实体记录。批量数据只保存逻辑上的实例坐标；RGBA 图集、实例矩阵、深度预通过程和动画帧均在加载时重建。
+月树使用通用动画精灵，通过 `createAnimatedSpriteFactory()` 共享一次加载的动画资源、材质和贴图；每个已加载实体拥有独立模型、几何体和动画控制器。存档应遍历 `MoonTreeForest.entities` 中的全部逻辑记录，而不能只保存 `activeEntities` 或场景中当前存在的模型。距离卸载只释放渲染对象，不删除世界实体。
+
+第一版每棵月树保存稳定的存档 ID、脚点位置和逻辑旋转，当前没有额外持久化组件时使用空的 `components`。现有 `ProximityEntity.id` 按位置数组下标生成，只适用于本次运行；接入存档时应增加可恢复且永不复用的持久化 ID。加载范围、是否已加载、模型引用、动画帧和相机朝向属于运行时派生状态，按当前 Prefab 定义与恢复后的玩家位置重新计算。`map.generator.options.moonTreeCount` 仅描述初次生成参数，不能代替实际实体记录。
 
 若以后加入可修改地皮，可采用与 DST 类似的编码对象：
 
@@ -834,7 +845,7 @@ three-roaming-save-v1.json
 | 研究站、炼金引擎、箱子、帐篷 | 各自的建造 ID | `building`，以及将来的 `container` 等 |
 | 石墙 | `wall_stone` | `health` 等逻辑状态 |
 | 地面物品 | `ground_item` | `stack` |
-| 月树森林 | 不进入通用实体表 | `map.instanceBatches.moon_tree` |
+| 每棵月树 | `moon_tree` | 当前无额外组件；保存所有实体的 ID 和 Transform，包括未加载模型的月树 |
 | Wilson | 不进入世界实体表 | `players.local` |
 
 墙的画面朝向只由相机 heading 决定，不能保存 `frontImageIndex`、`sideImageIndex` 或当前选中的图片。石墙逻辑旋转保持 `0`；加载后的每帧继续通过 `isDiagonalHeading()` 选择正面或斜面。
@@ -884,6 +895,7 @@ JSON 按容器分组，只写非空槽，空槽由 `slotCount` 和缺失的 `slo
 - Cannon `World`、`Body`、Shape、当前速度和碰撞接触缓存。
 - 相机矩阵、Billboard 法线、透明物体 `renderOrder` 和墙的当前朝向图片。
 - 动画当前帧、帧累计时间，以及拾取、进食、拿出物品等一次性动画。
+- 月树的 `model` 引用、`activeEntities` 集合和距离加载状态；由恢复后的玩家位置及 `10 * TILE_SIZE` 半径重建。
 - 鼠标位置、射线检测结果、建造预览、拖拽状态、选中槽和打开的 UI 面板。
 - 物品的显示名、图标路径、Atlas 路径、最大堆叠数等静态定义。
 - 可从资源和 Prefab 定义重新得到的比例、ground offset 与碰撞形状。
@@ -926,10 +938,10 @@ JSON 按容器分组，只写非空槽，空槽由 `slotCount` 和缺失的 `slo
 4. 做完整语义校验，包括有限坐标、唯一实体 ID、已知 Prefab、合法组件、物品堆叠和所有强引用可解析。
 5. 预加载本 Snapshot 所需的 Prefab 和图集；任一必需资源失败时保持旧世界不变。
 6. 在离屏的新世界中恢复地图与世界系统。
-7. 第一遍创建所有世界实体和玩家，并建立 `savedEntityId -> runtimeEntity` 映射。
+7. 第一遍恢复所有世界实体的逻辑记录和玩家，并建立 `savedEntityId -> runtimeEntity` 映射；月树的映射目标是始终存在的逻辑记录，模型按距离另行创建。
 8. 恢复各组件的本地状态和嵌套容器。
 9. 第二遍解析跨实体引用，再执行组件的 `afterLoad`。
-10. 从保存位置同步 Three.js 对象和 Cannon Body，重建衍生渲染状态。
+10. 从保存位置同步已创建的 Three.js 对象和 Cannon Body，重建衍生渲染状态；月树依据恢复后的玩家位置调用 `updateNearby()`，仅创建 10 格半径内的模型，再更新动画、Billboard 朝向与脚点深度排序。
 11. 所有步骤成功后一次性替换当前世界；失败则销毁离屏世界并继续运行旧世界。
 
 加载不能通过调用“放置建筑”“丢弃物品”“装备火把”等玩家操作接口来实现，因为这些接口会消费物品、播放动画并产生副作用。每种持久化 Prefab 应提供无副作用的 `spawnFromSave(record)` 或等价恢复入口。
@@ -968,7 +980,7 @@ const migrations: Readonly<Record<number, Migration>> = {
 | Transform | 三维坐标长度固定为 3，处于允许世界边界内 |
 | 引用 | 所有强引用目标存在且类型兼容；弱引用可在缺失时置空 |
 | 物品 | 定义存在、数量合法、皮肤匹配、目标槽可接受 |
-| 批量实例 | 数量有上限，每个位置合法，不能进入玩家禁区等非法区域 |
+| 月树 | 校验全部逻辑记录的数量上限、唯一 ID 和合法脚点位置，不按当前加载范围过滤记录 |
 | 地形 | Catalog 不重复；Base64 合法；解码长度与地图尺寸一致 |
 
 不要用 TypeScript 类型断言代替运行时校验。存档属于不可信输入，即使它最初由本项目生成，也可能被用户修改、截断或来自更高版本。
@@ -989,7 +1001,7 @@ interface SaveParticipant<T> {
 1. 为 `InventoryStore` 增加纯数据 `exportState()` 和原子 `replaceState()`，覆盖槽位与 `bufferedBuilds`。
 2. 为 `GroundItemManager` 增加稳定实体 ID、`exportRecords()` 和无扣减背包副作用的 `restoreRecords()`。
 3. 为 `AnimatedBuildingPlacement` 与 `WallPlacement` 增加实体 ID、稳定状态导出和 `spawnFromSave()`。
-4. 让月树生成位置可注入并可导出，第一版直接保存位置数组。
+4. 为月树增加稳定持久化 ID、完整逻辑记录导出和记录恢复入口；保存全部 `entities`，恢复后按玩家位置重建 `activeEntities`，不重新随机生成坐标。
 5. 建立 Prefab 持久化注册表，由注册表负责校验、创建、保存和迁移组件。
 6. 最后实现统一 `SaveCoordinator`，只负责帧边界、校验、Snapshot 编号和存储事务。
 
@@ -1002,7 +1014,7 @@ interface SaveParticipant<T> {
 - 世界实体按 Prefab 分组，组件只保存权威逻辑状态。
 - 玩家不作为普通世界实体；背包和装备使用已有稳定槽地址。
 - 容器物品嵌套保存，避免同一物品同时存在于地面和容器。
-- 月树等实例化静态场景使用批量数据，不强行转换为大量通用实体。
+- 月树作为通用实体写入 `world.entities.moon_tree`；全部逻辑记录持久化，模型仅在玩家 10 格（120 个世界单位）半径内加载。
 - 渲染、物理和动画的派生状态在加载后重建。
 - 每个 Snapshot 自包含、不可变，并通过事务更新活动指针。
 - 所有旧存档先迁移再校验，所有实体引用用两遍加载恢复。

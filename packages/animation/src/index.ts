@@ -13,8 +13,10 @@ export {
 } from './imageAtlas';
 export {
   createAnimatedSprite,
+  createAnimatedSpriteFactory,
   createStaticSprite,
   type AnimatedSpriteOptions,
+  type AnimatedSpriteFactory,
   type SpriteAnimationController,
   type StaticSpriteController,
   type StaticSpriteOptions,

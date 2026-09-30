@@ -7,6 +7,7 @@ import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
+import { newEntityId, type PlacementSaveRecord } from './saveRecord';
 
 export interface WallDefinition {
     archive: string;
@@ -108,6 +109,18 @@ export class WallPlacement<BuildId extends string> {
         this.placed.push(wall);
     }
 
+    async spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): Promise<THREE.Group> {
+        const wall = await this.createInstance(buildId, false);
+        wall.model.userData.entityId = record.id;
+        wall.model.userData.saveRecord = record;
+        const [x, y, z] = record.transform.position;
+        wall.model.position.set(x, y + wall.groundOffset, z);
+        this.faceCamera(wall.model);
+        this.scene.add(wall.model);
+        this.placed.push(wall);
+        return wall.model;
+    }
+
     cancel() {
         if (!this.active) return;
         this.scene.remove(this.active.model);
@@ -148,7 +161,7 @@ export class WallPlacement<BuildId extends string> {
         this.cursor.update();
     }
 
-    private async createInstance(buildId: BuildId): Promise<WallInstance<BuildId>> {
+    private async createInstance(buildId: BuildId, attach = true): Promise<WallInstance<BuildId>> {
         const definition = this.definitions[buildId];
         const model = await createStaticSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
@@ -171,7 +184,8 @@ export class WallPlacement<BuildId extends string> {
             animation: model.userData.animationController as StaticSpriteController,
             groundOffset: -bounds.min.y,
         };
-        this.scene.add(model);
+        if (attach) model.userData.entityId = newEntityId();
+        if (attach) this.scene.add(model);
         return instance;
     }
 

@@ -7,6 +7,7 @@ import {
   mountGameUi,
   type CraftingStateDetail,
   type CraftRequestDetail,
+  type ChestCloseDetail,
   type DebugCommandDetail,
   type SlotAddress,
   type SlotContextMenuDetail,
@@ -18,7 +19,6 @@ import { StorageSlot } from '@three-roaming/inventory';
 import { preloadImageArchive } from '@three-roaming/animation/imageAtlas';
 import { player } from './player';
 import {
-  CHEST_CONTAINER_ID,
   CHEST_SLOT_COUNT,
   createChestInventoryPanel,
 } from './chestInventoryPanel';
@@ -28,15 +28,28 @@ import {
   createInventoryStore,
 } from './inventory';
 import { startScene } from './scene';
+import { initialSave } from './save/initialSave';
+import { chestContainerId, inventoryStateFromSave } from './save/inventoryState';
 
 void preloadImageArchive(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
 export const inventory = createInventoryStore();
-inventory.registerSlots(Array.from({ length: CHEST_SLOT_COUNT }, (_, index) => ({
-  address: { containerId: CHEST_CONTAINER_ID, slotKey: String(index) },
-  slot: new StorageSlot(),
-})));
+const chestContainers = new Set<string>();
+function registerChest(entityId: string): void {
+  const containerId = chestContainerId(entityId);
+  if (chestContainers.has(containerId)) return;
+  inventory.registerSlots(Array.from({ length: CHEST_SLOT_COUNT }, (_, index) => ({
+    address: { containerId, slotKey: String(index) }, slot: new StorageSlot(),
+  })));
+  chestContainers.add(containerId);
+}
+for (const record of initialSave.world.entities.treasurechest ?? []) registerChest(record.id);
+inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
+gameUi.chestPanel.addEventListener('game:chest-close', (event) => {
+  const { containerId } = (event as CustomEvent<ChestCloseDetail>).detail;
+  inventory.setStorageAccessible(containerId, false);
+});
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
 const handSlotAddress = equipmentSlotAddress('hand');
 
@@ -55,9 +68,9 @@ function syncHandEquipment(): void {
 }
 
 function syncInventorySlot(address: SlotAddress): void {
-  if (address.containerId === CHEST_CONTAINER_ID
-    && gameUi.chestPanel.slotContainer?.id !== CHEST_CONTAINER_ID) return;
-  const inventoryBar = address.containerId === CHEST_CONTAINER_ID
+  if (chestContainers.has(address.containerId)
+    && gameUi.chestPanel.slotContainer?.id !== address.containerId) return;
+  const inventoryBar = chestContainers.has(address.containerId)
     ? gameUi.chestPanel
     : gameUi.inventoryBar;
   const stack = inventory.get(address);
@@ -80,7 +93,7 @@ function syncInventorySlot(address: SlotAddress): void {
 }
 
 function syncCraftingInventory(): void {
-  gameUi.crafting.setInventoryCounts(inventory.counts());
+  gameUi.crafting.setMaterialSummary(inventory.materialSummary());
   gameUi.crafting.setBufferedRecipes(inventory.buffered());
 }
 
@@ -97,7 +110,7 @@ inventory.subscribe((changedSlots) => {
   }
 });
 
-const { buildingPlacement, groundItems } = startScene(
+const { buildingPlacement, groundItems } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item) => {
     if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
@@ -106,10 +119,12 @@ const { buildingPlacement, groundItems } = startScene(
   },
   ({ buildId, isOpen, model }) => {
     if (buildId !== 'treasurechest') return;
+    registerChest(String(model.userData.entityId));
     chestInventoryPanel.setOpen(model, isOpen);
+    inventory.setStorageAccessible(chestContainerId(String(model.userData.entityId)), isOpen);
     if (isOpen) {
       inventory.addresses()
-        .filter(({ containerId }) => containerId === CHEST_CONTAINER_ID)
+        .filter(({ containerId }) => containerId === chestContainerId(String(model.userData.entityId)))
         .forEach(syncInventorySlot);
     }
   },

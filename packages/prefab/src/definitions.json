@@ -1,0 +1,117 @@
+{
+  "animatedBuildings": {
+    "researchlab": {
+      "archive": "researchlab.zip",
+      "buildLabel": "科学机器",
+      "name": "ResearchLab",
+      "onProximity": true,
+      "proximityAnimation": "proximity_loop",
+      "scale": 0.016
+    },
+    "researchlab2": {
+      "archive": "researchlab2.zip",
+      "buildLabel": "炼金引擎",
+      "name": "ResearchLab2",
+      "onProximity": true,
+      "proximityAnimation": "proximity_loop",
+      "scale": 0.02
+    },
+    "researchlab3": {
+      "archive": "researchlab3.zip",
+      "buildLabel": "暗影操控器",
+      "name": "ResearchLab3",
+      "onProximity": true,
+      "proximityAnimation": "proximity_loop",
+      "scale": 0.02
+    },
+    "researchlab4": {
+      "archive": "researchlab4.zip",
+      "buildLabel": "灵子分解器",
+      "name": "ResearchLab4",
+      "onProximity": true,
+      "proximityAnimation": "proximity_loop",
+      "scale": 0.02
+    },
+    "treasurechest": {
+      "archive": "treasure_chest.zip",
+      "buildLabel": "箱子",
+      "idleAnimation": "closed",
+      "interaction": {
+        "closeAnimation": "close",
+        "closedAnimation": "closed",
+        "openAnimation": "open"
+      },
+      "name": "TreasureChest",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "treasurechest_ancient": "dynamic/treasurechest_ancient.zip",
+        "treasurechest_upgraded_ancient": "dynamic/treasurechest_ancient.zip",
+        "treasurechest_cake": "dynamic/treasurechest_cake.zip",
+        "treasurechest_upgraded_cake": "dynamic/treasurechest_cake.zip",
+        "treasurechest_carpetbag": "dynamic/treasurechest_carpetbag.zip",
+        "treasurechest_upgraded_carpetbag": "dynamic/treasurechest_carpetbag.zip",
+        "treasurechest_clock": "dynamic/treasurechest_clock.zip",
+        "treasurechest_upgraded_clock": "dynamic/treasurechest_clock.zip",
+        "treasurechest_corruption": "dynamic/treasurechest_corruption.zip",
+        "treasurechest_upgraded_corruption": "dynamic/treasurechest_corruption.zip",
+        "treasurechest_cotl_basic": "dynamic/treasurechest_cotl_basic.zip",
+        "treasurechest_upgraded_cotl_basic": "dynamic/treasurechest_cotl_basic.zip",
+        "treasurechest_cotl_fancy": "dynamic/treasurechest_cotl_fancy.zip",
+        "treasurechest_upgraded_cotl_fancy": "dynamic/treasurechest_cotl_fancy.zip",
+        "treasurechest_crimson": "dynamic/treasurechest_crimson.zip",
+        "treasurechest_upgraded_crimson": "dynamic/treasurechest_crimson.zip",
+        "treasurechest_cupid": "dynamic/treasurechest_cupid.zip",
+        "treasurechest_upgraded_cupid": "dynamic/treasurechest_cupid.zip",
+        "treasurechest_gingerbread": "dynamic/treasurechest_gingerbread.zip",
+        "treasurechest_upgraded_gingerbread": "dynamic/treasurechest_gingerbread.zip",
+        "treasurechest_monster": "dynamic/treasurechest_monster.zip",
+        "treasurechest_upgraded_monster": "dynamic/treasurechest_monster.zip",
+        "treasurechest_posh": "dynamic/treasurechest_posh.zip",
+        "treasurechest_upgraded_posh": "dynamic/treasurechest_posh.zip",
+        "treasurechest_poshprint": "dynamic/treasurechest_poshprint.zip",
+        "treasurechest_upgraded_poshprint": "dynamic/treasurechest_poshprint.zip",
+        "treasurechest_sacred": "dynamic/treasurechest_sacred.zip",
+        "treasurechest_upgraded_sacred": "dynamic/treasurechest_sacred.zip",
+        "treasurechest_steamertrunk": "dynamic/treasurechest_steamertrunk.zip",
+        "treasurechest_upgraded_steamertrunk": "dynamic/treasurechest_steamertrunk.zip",
+        "treasurechest_traincase": "dynamic/treasurechest_traincase.zip",
+        "treasurechest_upgraded_traincase": "dynamic/treasurechest_traincase.zip",
+        "treasurechest_traveltrunk": "dynamic/treasurechest_traveltrunk.zip",
+        "treasurechest_upgraded_traveltrunk": "dynamic/treasurechest_traveltrunk.zip",
+        "treasurechest_vintage": "dynamic/treasurechest_vintage.zip",
+        "treasurechest_upgraded_vintage": "dynamic/treasurechest_vintage.zip",
+        "treasurechest_cupidalt": "dynamic/treasurechest_cupid.zip"
+      }
+    },
+    "tent": {
+      "archive": "tent.zip",
+      "buildLabel": "帐篷",
+      "name": "Tent",
+      "onProximity": false,
+      "scale": 0.02
+    }
+  },
+  "walls": {
+    "wall_stone": {
+      "archive": "wall_stone.zip",
+      "buildLabel": "石墙",
+      "frontImageIndex": 14,
+      "name": "WallStone",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    }
+  },
+  "moonTree": {
+    "archive": "moon_tree.zip",
+    "animationName": "sway1_loop_tall",
+    "scale": 0.02,
+    "loadRadiusTiles": 10
+  },
+  "pigKing": {
+    "archive": "pig_king.zip",
+    "animationName": "idle",
+    "scale": 0.02
+  }
+}

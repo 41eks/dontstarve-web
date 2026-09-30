@@ -117,11 +117,15 @@ export const INVENTORY_PRODUCT_SPECS: Readonly<Record<string, InventoryProductSp
   Object.fromEntries(inventoryProductSpecs);
 
 export const INVENTORY_SKIN_SPECS: Readonly<Record<string, InventorySkinSpec>> =
-  Object.fromEntries(Object.values(recipeSkins).flatMap((skins) => skins.map((skin) => [skin.id, {
+  Object.fromEntries(Object.entries(recipeSkins).flatMap(([recipeId, skins]) => skins.map((skin) => [skin.id, {
+    itemId: INVENTORY_RECIPES[recipeId]?.productId ?? recipeId,
     name: skin.name,
     icon: `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
     atlas: 'images/inventoryimages.xml',
   }])));
+
+export const INVENTORY_RECIPE_SKINS: Readonly<Record<string, readonly string[]>> =
+  Object.fromEntries(Object.entries(recipeSkins).map(([id, skins]) => [id, skins.map((skin) => skin.id)]));
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;

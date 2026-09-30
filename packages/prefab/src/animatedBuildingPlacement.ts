@@ -6,6 +6,7 @@ import {
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import type { WorldContext } from './worldContext';
+import { newEntityId, type PlacementSaveRecord } from './saveRecord';
 
 export interface AnimatedBuildingDefinition {
     archive: string;
@@ -13,6 +14,8 @@ export interface AnimatedBuildingDefinition {
     idleAnimation?: string;
     interaction?: AnimatedBuildingToggleInteraction;
     name: string;
+    /** Enable player proximity animations and interaction range checks. */
+    onProximity: boolean;
     proximityAnimation?: string;
     scale: number;
     skinArchives?: Readonly<Record<string, string>>;
@@ -44,8 +47,8 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     skinId?: string;
 }
 
-const PROXIMITY_ENTER_DISTANCE = 18;
-const PROXIMITY_EXIT_DISTANCE = 20;
+const PROXIMITY_ENTER_DISTANCE = 9;
+const PROXIMITY_EXIT_DISTANCE = 10;
 
 export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly scene: THREE.Scene;
@@ -113,6 +116,22 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.placed.push(building);
     }
 
+    /** Restores a logical record directly, without crafting or placement callbacks. */
+    async spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): Promise<THREE.Group> {
+        const building = await this.createInstance(
+            buildId, record.components.building?.skinId, false,
+            record.components.building?.state,
+        );
+        building.model.userData.entityId = record.id;
+        building.model.userData.saveRecord = record;
+        const [x, y, z] = record.transform.position;
+        building.model.position.set(x, y + building.groundOffset, z);
+        this.faceCamera(building.model);
+        this.scene.add(building.model);
+        this.placed.push(building);
+        return building.model;
+    }
+
     cancel() {
         if (!this.active) return;
         this.scene.remove(this.active.model);
@@ -126,8 +145,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         }
         this.cursor.update();
         for (const building of this.placed) {
+            this.updateProximity(building);
             building.animation.update(dt);
-            this.updateProximityAnimation(building);
             this.faceCamera(building.model);
         }
     }
@@ -181,8 +200,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private toggleInteraction(building: AnimatedBuildingInstance<BuildId>) {
-        const interaction = this.definitions[building.buildId].interaction;
+        const definition = this.definitions[building.buildId];
+        const interaction = definition.interaction;
         if (!interaction) return;
+        this.updateProximity(building);
+        if (definition.onProximity && !building.isPlayerNearby) return;
 
         if (building.interactionState === 'closed') {
             building.interactionState = 'opening';
@@ -197,6 +219,14 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             return;
         }
         if (building.interactionState !== 'open') return;
+
+        this.closeInteraction(building);
+    }
+
+    private closeInteraction(building: AnimatedBuildingInstance<BuildId>) {
+        const interaction = this.definitions[building.buildId].interaction;
+        if (!interaction || (building.interactionState !== 'open'
+            && building.interactionState !== 'opening')) return;
 
         building.interactionState = 'closing';
         this.onInteractionChange?.({
@@ -222,14 +252,19 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private async createInstance(
         buildId: BuildId,
         skinId?: string,
+        attach = true,
+        state?: 'idle' | 'closed' | 'open',
     ): Promise<AnimatedBuildingInstance<BuildId>> {
         const definition = this.definitions[buildId];
         const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
+        if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
         const model = await createAnimatedSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
             skinArchive ?? definition.archive,
             {
-                initialAnimation: this.idleAnimation(buildId),
+                initialAnimation: state === 'open' && definition.interaction
+                    ? definition.interaction.openAnimation : this.idleAnimation(buildId),
+                initialFrame: state === 'open' ? 'last' : 'first',
                 name: definition.name,
                 scale: definition.scale,
             },
@@ -241,13 +276,14 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             model,
             animation: model.userData.animationController as SpriteAnimationController,
             groundOffset: -bounds.min.y,
-            ...(definition.interaction ? { interactionState: 'closed' as const } : {}),
+            ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,
-            isPlayerNearby: false,
+            isPlayerNearby: state === 'open',
             ...(skinArchive === undefined ? {} : { skinId }),
         };
         if (skinArchive !== undefined) model.userData.skinId = skinId;
-        this.scene.add(model);
+        if (attach) model.userData.entityId = newEntityId();
+        if (attach) this.scene.add(model);
         return instance;
     }
 
@@ -265,11 +301,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return target;
     }
 
-    private updateProximityAnimation(building: AnimatedBuildingInstance<BuildId>) {
+    private updateProximity(building: AnimatedBuildingInstance<BuildId>) {
         if (building.isPlacing) return;
 
         const definition = this.definitions[building.buildId];
-        if (!definition.proximityAnimation) return;
+        if (!definition.onProximity) return;
 
         const dx = this.player.position.x - building.model.position.x;
         const dz = this.player.position.z - building.model.position.z;
@@ -280,11 +316,14 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (isPlayerNearby === building.isPlayerNearby) return;
 
         building.isPlayerNearby = isPlayerNearby;
-        building.animation.start(
-            isPlayerNearby
-                ? definition.proximityAnimation
-                : this.idleAnimation(building.buildId),
-        );
+        if (!isPlayerNearby) this.closeInteraction(building);
+        if (definition.proximityAnimation) {
+            building.animation.start(
+                isPlayerNearby
+                    ? definition.proximityAnimation
+                    : this.idleAnimation(building.buildId),
+            );
+        }
     }
 
     private idleAnimation(buildId: BuildId) {

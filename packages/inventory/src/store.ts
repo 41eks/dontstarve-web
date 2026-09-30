@@ -3,12 +3,14 @@ import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import type {
   InventoryItemSpec,
   InventoryListener,
+  InventoryMaterialSummary,
   InventoryRecipeDefinition,
   InventorySkinSpec,
   InventorySlotDelta,
   InventoryStack,
   SlotRegistration,
   SlotAddress,
+  InventoryState,
 } from './types';
 
 type RegisteredItemSlot = SlotRegistration<ItemSlot>;
@@ -39,6 +41,7 @@ export class InventoryStore {
   private readonly bufferedBuilds = new Map<string, string | undefined>();
   private readonly itemSpecs = new Map<string, InventoryItemSpec>();
   private readonly listeners = new Set<InventoryListener>();
+  private readonly accessibleStorageContainerIds = new Set<string>();
   private readonly skinSpecs: Readonly<Record<string, InventorySkinSpec>>;
   private readonly registrationByAddress = new Map<string, RegisteredItemSlot>();
   private readonly registrations: RegisteredItemSlot[] = [];
@@ -87,6 +90,52 @@ export class InventoryStore {
     return () => this.listeners.delete(listener);
   }
 
+  /** Validates the whole replacement before updating any slots or notifying UI. */
+  replaceState(
+    state: InventoryState,
+    recipes: Readonly<Record<string, InventoryRecipeDefinition>>,
+  ): void {
+    const next = new Map<string, InventoryStack | null>(
+      this.registrations.map(({ address }) => [addressKey(address), null]),
+    );
+    const seen = new Set<string>();
+    const validateSkin = (itemId: string, skinId?: string) => {
+      if (skinId === undefined) return;
+      const skin = Object.hasOwn(this.skinSpecs, skinId) ? this.skinSpecs[skinId] : undefined;
+      if (!skin || (skin.itemId !== undefined && skin.itemId !== itemId)) {
+        throw new Error(`Invalid skin ${skinId} for ${itemId}`);
+      }
+    };
+    for (const { address, item } of state.slots) {
+      const key = addressKey(address);
+      const registration = this.registrationByAddress.get(key);
+      if (!registration || seen.has(key)) throw new Error(`Invalid or duplicate saved slot: ${key}`);
+      seen.add(key);
+      if (item) {
+        const spec = this.requireItemSpec(item.itemId);
+        if (!Number.isSafeInteger(item.count) || item.count <= 0
+          || item.count > spec.maxStack || !registration.slot.accepts(spec)) {
+          throw new Error(`Invalid saved item in ${key}`);
+        }
+        validateSkin(item.itemId, item.skinId);
+      }
+      next.set(key, item ? { ...item } : null);
+    }
+    const buffered = new Map<string, string | undefined>();
+    for (const build of state.bufferedBuilds) {
+      const recipe = recipes[build.recipeId];
+      if (!recipe?.buffered || buffered.has(build.recipeId)) {
+        throw new Error(`Invalid buffered recipe: ${build.recipeId}`);
+      }
+      validateSkin(recipe.productId, build.skinId);
+      buffered.set(build.recipeId, build.skinId);
+    }
+    for (const { address, slot } of this.registrations) slot.set(next.get(addressKey(address)) ?? null);
+    this.bufferedBuilds.clear();
+    for (const [id, skin] of buffered) this.bufferedBuilds.set(id, skin);
+    this.notify(this.addresses());
+  }
+
   get(address: SlotAddress): InventoryStack | null {
     return this.registrationByAddress.get(addressKey(address))?.slot.get() ?? null;
   }
@@ -110,10 +159,28 @@ export class InventoryStore {
     }, 0);
   }
 
-  counts(): Readonly<Record<string, number>> {
-    return Object.fromEntries(
-      [...this.itemSpecs.keys()].map((itemId) => [itemId, this.count(itemId)]),
+  materialSummary(): InventoryMaterialSummary {
+    const summary: Record<string, number> = Object.fromEntries(
+      [...this.itemSpecs.keys()].map((itemId) => [itemId, 0]),
     );
+    for (const { address, slot } of this.registrations) {
+      if (slot instanceof StorageSlot
+        && !this.accessibleStorageContainerIds.has(address.containerId)) continue;
+      const stack = slot.get();
+      if (stack) summary[stack.itemId] = (summary[stack.itemId] ?? 0) + stack.count;
+    }
+    return summary;
+  }
+
+  setStorageAccessible(containerId: string, accessible: boolean): void {
+    if (!containerId) throw new TypeError('Storage container id must not be empty');
+    const changed = accessible
+      ? !this.accessibleStorageContainerIds.has(containerId)
+      : this.accessibleStorageContainerIds.has(containerId);
+    if (!changed) return;
+    if (accessible) this.accessibleStorageContainerIds.add(containerId);
+    else this.accessibleStorageContainerIds.delete(containerId);
+    this.notify([]);
   }
 
   buffered(): readonly string[] {

@@ -5,7 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./definitions.json": "./src/definitions.json",
+    "./saveRecord": "./src/saveRecord.ts",
     "./moontree": "./src/moontree.ts",
+    "./proximityEntities": "./src/proximityEntities.ts",
     "./pigking": "./src/pigking.ts",
     "./player": "./src/player.ts",
     "./researchlab": "./src/researchlab.ts",

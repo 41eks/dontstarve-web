@@ -23,10 +23,12 @@ export type {
   InventoryItemSpec,
   InventoryItems,
   InventoryListener,
+  InventoryMaterialSummary,
   InventoryRecipeDefinition,
   InventorySkinSpec,
   InventorySlotDelta,
   InventoryStack,
+  InventoryState,
   SlotRegistration,
   SlotAddress,
 } from './types';

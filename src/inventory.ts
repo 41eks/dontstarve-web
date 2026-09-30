@@ -10,7 +10,6 @@ import {
   type InventoryStack,
 } from '@three-roaming/inventory';
 import {
-  INVENTORY_ITEM_DEFINITIONS,
   INVENTORY_ITEM_SPECS,
   INVENTORY_SKIN_SPECS,
   type InventoryItemDefinition,
@@ -20,6 +19,7 @@ export { InventoryStore } from '@three-roaming/inventory';
 export type {
   EquipmentKind,
   InventoryItemSpec,
+  InventoryMaterialSummary,
   InventorySlotDelta,
   InventoryStack,
 } from '@three-roaming/inventory';
@@ -46,7 +46,7 @@ function initialStacks(
 }
 
 export function createInventoryStore(
-  definitions: readonly InventoryItemDefinition[] = INVENTORY_ITEM_DEFINITIONS,
+  definitions: readonly InventoryItemDefinition[] = [],
 ): InventoryStore {
   const stacks = initialStacks(definitions);
   const inventorySlots = Array.from(

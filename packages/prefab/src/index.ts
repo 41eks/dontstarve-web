@@ -3,6 +3,7 @@ export {
   type MoonTreeForest,
   type MoonTreeForestOptions,
 } from './moontree';
+export { ProximityEntities, type ProximityEntity } from './proximityEntities';
 export {
   createPigKing,
   type PigKingPrefab,

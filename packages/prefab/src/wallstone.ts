@@ -1,4 +1,4 @@
-import { WALL_SCALE } from './tile';
+import definitions from './definitions.json' with { type: 'json' };
 import { WallPlacement, type WallDefinition } from './wallPlacement';
 import type { WorldContext } from './worldContext';
 
@@ -11,24 +11,8 @@ export const WALL_STONE_IDS = [
 export type WallStoneId = typeof WALL_STONE_IDS[number];
 
 export const WALL_STONE_DEFINITIONS: Readonly<Record<WallStoneId, WallDefinition>> = {
-    wall_stone: {
-        archive: 'wall_stone.zip',
-        buildLabel: '石墙',
-        frontImageIndex: 14,
-        name: 'WallStone',
-        scale: WALL_SCALE,
-        sideImageIndex: 4,
-        symbol: 'wall_segment',
-    },
-    wall_stone_item: {
-        archive: 'wall_stone.zip',
-        buildLabel: '石墙',
-        frontImageIndex: 14,
-        name: 'WallStone',
-        scale: WALL_SCALE,
-        sideImageIndex: 4,
-        symbol: 'wall_segment',
-    },
+    wall_stone: definitions.walls.wall_stone,
+    wall_stone_item: definitions.walls.wall_stone,
 };
 
 export function isWallStoneId(value: string): value is WallStoneId {

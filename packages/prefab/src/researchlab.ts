@@ -1,3 +1,4 @@
+import definitions from './definitions.json' with { type: 'json' };
 import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingDefinition,
@@ -14,34 +15,10 @@ export const RESEARCH_LAB_IDS = [
 export type ResearchLabId = typeof RESEARCH_LAB_IDS[number];
 
 export const RESEARCH_LAB_DEFINITIONS: Readonly<Record<ResearchLabId, AnimatedBuildingDefinition>> = {
-    researchlab: {
-        archive: 'researchlab.zip',
-        buildLabel: '科学机器',
-        name: 'ResearchLab',
-        proximityAnimation: 'proximity_loop',
-        scale: 0.016,
-    },
-    researchlab2: {
-        archive: 'researchlab2.zip',
-        buildLabel: '炼金引擎',
-        name: 'ResearchLab2',
-        proximityAnimation: 'proximity_loop',
-        scale: 0.02,
-    },
-    researchlab3: {
-        archive: 'researchlab3.zip',
-        buildLabel: '暗影操控器',
-        name: 'ResearchLab3',
-        proximityAnimation: 'proximity_loop',
-        scale: 0.02,
-    },
-    researchlab4: {
-        archive: 'researchlab4.zip',
-        buildLabel: '灵子分解器',
-        name: 'ResearchLab4',
-        proximityAnimation: 'proximity_loop',
-        scale: 0.02,
-    },
+    researchlab: definitions.animatedBuildings.researchlab,
+    researchlab2: definitions.animatedBuildings.researchlab2,
+    researchlab3: definitions.animatedBuildings.researchlab3,
+    researchlab4: definitions.animatedBuildings.researchlab4,
 };
 
 export function isResearchLabId(value: string): value is ResearchLabId {

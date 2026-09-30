@@ -3,8 +3,8 @@ import type { DstChestPanelElement } from '@three-roaming/ui';
 import { backTasks } from './animate';
 import { camera } from './camera';
 import { renderer } from './universal';
+import { chestContainerId } from './save/inventoryState';
 
-export const CHEST_CONTAINER_ID = 'world:treasurechest:0';
 export const CHEST_SLOT_COUNT = 9;
 const ANCHOR_MARGIN = 1;
 
@@ -60,7 +60,7 @@ export function createChestInventoryPanel(
       if (isOpen) {
         openModel = model;
         element.open({
-          containerId: CHEST_CONTAINER_ID,
+          containerId: chestContainerId(String(model.userData.entityId)),
           slotCount: CHEST_SLOT_COUNT,
           title: '箱子',
         });

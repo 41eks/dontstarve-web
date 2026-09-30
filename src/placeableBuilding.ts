@@ -1,3 +1,4 @@
+import definitions from '@three-roaming/prefab/definitions.json' with { type: 'json' };
 import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingInteractionChange,
@@ -18,6 +19,7 @@ import {
     type WallStoneId,
 } from '@three-roaming/prefab/wallstone';
 import type { WorldContext } from '@three-roaming/prefab/worldContext';
+import type { PlacementSaveRecord } from '@three-roaming/prefab/saveRecord';
 
 export { TREASURE_CHEST_ID } from '@three-roaming/prefab/treasurechest';
 
@@ -36,12 +38,7 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
 const ANIMATED_BUILDING_DEFINITIONS = {
     ...RESEARCH_LAB_DEFINITIONS,
     [TREASURE_CHEST_ID]: TREASURE_CHEST_DEFINITION,
-    tent: {
-        archive: 'tent.zip',
-        buildLabel: '帐篷',
-        name: 'Tent',
-        scale: 0.02,
-    },
+    tent: definitions.animatedBuildings.tent,
 } as const;
 
 export function isPlaceableBuildingId(value: string): value is PlaceableBuildingId {
@@ -83,6 +80,12 @@ export class PlaceableBuildingPlacement {
         return isWallStoneId(buildId)
             ? this.walls.spawn(buildId)
             : this.animated.spawn(buildId, skinId);
+    }
+
+    spawnFromSave(buildId: PlaceableBuildingId, record: PlacementSaveRecord) {
+        return isWallStoneId(buildId)
+            ? this.walls.spawnFromSave(buildId, record)
+            : this.animated.spawnFromSave(buildId, record);
     }
 
     update(dt: number): void {

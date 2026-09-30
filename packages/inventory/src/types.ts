@@ -14,9 +14,15 @@ export interface InventoryItemSpec {
 }
 
 export interface InventorySkinSpec {
+  readonly itemId?: string;
   readonly name: string;
   readonly icon: string;
   readonly atlas: string;
+}
+
+export interface InventoryState {
+  slots: readonly { address: SlotAddress; item: InventoryStack | null }[];
+  bufferedBuilds: readonly { recipeId: string; skinId?: string }[];
 }
 
 export interface InventoryStack {
@@ -26,6 +32,8 @@ export interface InventoryStack {
 }
 
 export type InventoryItems = readonly (InventoryStack | null)[];
+
+export type InventoryMaterialSummary = Readonly<Record<string, number>>;
 
 export interface InventorySlotDelta {
   slot: SlotAddress;

@@ -20,6 +20,7 @@ export {
 export {
   INVENTORY_PRODUCT_SPECS,
   INVENTORY_RECIPES,
+  INVENTORY_RECIPE_SKINS,
   INVENTORY_SKIN_SPECS,
   type InventoryProductSpec,
   type InventoryRecipeDefinition,

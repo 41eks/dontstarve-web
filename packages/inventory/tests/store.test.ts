@@ -55,6 +55,40 @@ describe('specialized slots', () => {
   });
 });
 
+describe('inventory state restoration', () => {
+  it('replaces items and buffered recipes without crafting, and notifies once', () => {
+    const store = new InventoryStore([
+      inventorySlot(0, { itemId: 'twigs', count: 8 }), inventorySlot(1), equipmentSlot('hand'),
+    ], specs);
+    const listener = vi.fn();
+    store.subscribe(listener);
+    const recipes = { house: { recipeId: 'house', productId: 'twigs', productCount: 1, ingredients: { twigs: 8 }, buffered: true } };
+    store.replaceState({
+      slots: [{ address: equipmentSlotAddress('hand'), item: { itemId: 'axe', count: 1 } }],
+      bufferedBuilds: [{ recipeId: 'house' }],
+    }, recipes);
+    expect(store.get(inventorySlotAddress(0))).toBeNull();
+    expect(store.get(equipmentSlotAddress('hand'))).toEqual({ itemId: 'axe', count: 1 });
+    expect(store.isBuffered('house')).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the entire old inventory untouched when any saved slot is invalid', () => {
+    const store = new InventoryStore([inventorySlot(0, { itemId: 'twigs', count: 8 }), equipmentSlot('hand')], specs);
+    const listener = vi.fn();
+    store.subscribe(listener);
+    expect(() => store.replaceState({
+      slots: [
+        { address: inventorySlotAddress(0), item: { itemId: 'twigs', count: 2 } },
+        { address: equipmentSlotAddress('hand'), item: { itemId: 'twigs', count: 1 } },
+      ], bufferedBuilds: [],
+    }, {})).toThrow('Invalid saved item');
+    expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'twigs', count: 8 });
+    expect(store.get(equipmentSlotAddress('hand'))).toBeNull();
+    expect(listener).not.toHaveBeenCalled();
+  });
+});
+
 describe('craft', () => {
   it('returns new inventory items without mutating its input', () => {
     const slots = [
@@ -223,11 +257,21 @@ describe('InventoryStore', () => {
     expect(store.get(inventorySlotAddress(0))).toBeNull();
     expect(store.get(storageAddress)).toEqual({ itemId: 'twigs', count: 4 });
     expect(store.count('twigs')).toBe(0);
+    expect(store.materialSummary()).toEqual({ twigs: 0, axe: 0 });
+
+    const listener = vi.fn();
+    store.subscribe(listener);
+    store.setStorageAccessible(storageAddress.containerId, true);
+    expect(store.materialSummary()).toEqual({ twigs: 4, axe: 0 });
+    expect(listener).toHaveBeenLastCalledWith([]);
+    store.setStorageAccessible(storageAddress.containerId, false);
+    expect(store.materialSummary()).toEqual({ twigs: 0, axe: 0 });
 
     expect(store.add('twigs', 1)).toBe(true);
     expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'twigs', count: 1 });
     expect(store.get(storageAddress)).toEqual({ itemId: 'twigs', count: 4 });
     expect(store.count('twigs')).toBe(1);
+    expect(store.materialSummary()).toEqual({ twigs: 1, axe: 0 });
   });
 
   it('rejects an item that does not match an equipment slot', () => {

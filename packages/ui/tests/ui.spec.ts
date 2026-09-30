@@ -685,9 +685,9 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
 
   await page.evaluate(() => {
     const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
-      setInventoryCounts(counts: Readonly<Record<string, number>>): void;
+      setMaterialSummary(summary: Readonly<Record<string, number>>): void;
     };
-    element.setInventoryCounts({ cutgrass: 1, twigs: 15, torch: 1 });
+    element.setMaterialSummary({ cutgrass: 1, twigs: 15, torch: 1 });
   });
   await expect(crafting.locator('.craft-header h1')).toHaveText('光源');
   await expect(crafting.locator('.craft-detail h2')).toHaveText('火炬');
