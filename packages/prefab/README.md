@@ -7,7 +7,9 @@ DST 场景预制体。该包基于 `@three-roaming/animation` 组合具体资源
 - `createPigKingSetPiece`：猪王及周围 3 × 3 的 `turf_woodfloor` 地皮。
 - `createMoonTreeForest`
 - `ProximityEntities`：保留实体位置，仅创建玩家 XZ 距离加载半径内的模型，离开后移除并释放模型。
-- `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement` 与 `WallStonePlacement`
+- `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement`
+- `WallsPlacement`：`prefabs/walls.lua` 的 9 种墙（石、档案馆石、木、草、铥、档案馆铥、月岩、绝望石、废料），
+  含各自的 `wall_*_item` 部署物 ID。
 
 `CookPotPlacement` 使用 DST 预制体 ID `cookpot` 和 `anim/cook_pot.zip`，默认显示
 `idle_empty`，放置时播放 `place` 后回到 `idle_empty`。可通过包主入口或
@@ -41,6 +43,8 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 和可选的猪王脚点位置，返回包含猪王及木地板地皮的 `group`、`pigKing`、`turf`、
 `footPosition` 和九块地皮的坐标。木地板对齐地图格，覆盖猪王所在格及周围八格；
 使用原始 `levels/textures/noise_woodfloor.tex`，不再使用独立的 PNG 装饰地板。
+基础 turf 与木地板均不写入深度缓冲，避免裁掉动画图像延伸到脚点下方的部分；
+两者保持相同地面高度，按 `renderOrder` 的 `-2`、`-1` 顺序绘制。
 应用从存档中的每个 `pigking` 记录恢复整个 set piece，无需单独保存固定地皮布局。
 
 调用方负责传入 `${import.meta.env.BASE_URL}dst/data/anim` 形式的动画资源根路径，
@@ -91,7 +95,7 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 
 `@three-roaming/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
 `GroundItemAssets` 和 `createGroundItemSprite(assets, itemId, skinId?)`。
-目录包含 208 种材料、工具、提灯、荧光果、唤星者魔杖、肉类、蔬菜和普通烹饪食物，以及 68 个皮肤 ID。
+目录包含 217 种材料、工具、提灯、荧光果、唤星者魔杖、肉类、蔬菜、墙体物品和普通烹饪食物，以及 82 个皮肤 ID。
 初始背包里的物品均已接入地面动画；未进入目录的其他物品仍使用图标回退。
 资源由 `python3 packages/prefab/scripts/import-ground-items.py` 镜像，`--check`
 校验目录及源文件字节，`--source` 可指定 DST data 根路径。
@@ -100,8 +104,8 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 `swap_torch.zip` 的 build，锤子使用 `hammer.zip` 与 `swap_hammer.zip`。
 肉丸等食物使用 `cook_pot_food` bank，并按源 Lua 将 `swap_food` 替换为对应
 食物的 symbol；新食物的 `cook_pot_foodN` build 也保留原路径。
-掉落的石墙物品使用 `wall.zip` 的 `idle`（`wall_segment-7`），建造后的墙仍显示
-`half` 的正面／侧面。石头和冰固定采用源包的 `f1` 姿态；不实现随机外观或融化。
+掉落的墙体物品使用 `wall.zip`（绝望石墙为 `wall_dreadstone.zip`）的 `idle`
+（`wall_segment-7`），建造后的墙仍显示 `half` 的正面／侧面。石头和冰固定采用源包的 `f1` 姿态；不实现随机外观或融化。
 各帧所有部件合并为一个 Mesh，保留材质组顺序及 DoubleSide 单次绘制。
 地面模型的原点保持真实落点，动画视觉不改变存档位置；点击 Mesh 可拾取，
 资源加载或背包扣减失败时不会丢失物品。普通地面精灵不创建灯光、声音或独立特效实体；

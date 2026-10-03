@@ -4,6 +4,7 @@ import {
   createMaterials,
   findImage,
   loadAnim,
+  loadAnimationArchive,
   loadBuild,
   smallHash,
   SpriteFrameRenderer,
@@ -20,17 +21,31 @@ import { GroundItemAssets } from './groundItems';
 import { LanternLightController, loadLanternEquipment, resolveLanternPlayerSprite, type LanternEquipment } from './lantern';
 import { loadYellowStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, YELLOWSTAFF_CAST_TIME, type YellowStaffEquipment } from './yellowstaff';
 import { loadBugNetEquipment, resolveBugNetPlayerSprite, BUGNET_HIT_TIME, type BugNetEquipment } from './bugnet';
+import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
+import { loadHammerEquipment, resolveHammerPlayerSprite, HAMMER_HIT_TIME, type HammerEquipment } from './hammer';
+import { isPickaxeTool, loadPickaxeEquipment, resolvePickaxePlayerSprite, type PickaxeEquipment, type PickaxeTool } from './pickaxe';
 
 export type WilsonFacing = 'up' | 'down' | 'side';
-export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'bugnet';
+export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'bugnet' | 'hammer' | PickaxeTool;
 type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
-type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'pickup' | 'staff_pre' | 'staff' | 'bugnet_pre' | 'bugnet';
-type WilsonState = WilsonMovementState | 'build' | WilsonOneShotState;
-type WilsonAnimations = Record<WilsonState, ParsedAnim>;
+type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'pickup' | 'staff_pre' | 'staff' | 'bugnet_pre' | 'bugnet' | 'hammer_pre' | 'hammer' | 'hammer_pst';
+type WilsonState = WilsonMovementState | 'build' | WilsonOneShotState | 'emote';
+type WilsonAnimations = Record<Exclude<WilsonState, 'emote'>, ParsedAnim>;
 
 export interface WilsonAnimationController {
   readonly isCasting: boolean;
   readonly isNetting: boolean;
+  /** Shared pickaxe swing used by the hammer and the pickaxe. */
+  readonly isMining: boolean;
+  playMine(onHit: () => void): boolean;
+  cancelMine(): void;
+  readonly isHammering: boolean;
+  playHammer(onHit: () => void): boolean;
+  cancelHammer(): void;
+  readonly currentEmote: WilsonEmote | null;
+  readonly isEmoting: boolean;
+  playEmote(emote: WilsonEmote): Promise<boolean>;
+  cancelEmote(): void;
   playBugNet(onCatch: () => void): boolean;
   playStaffCast(onCast: () => void): boolean;
   start(state: WilsonMovementState): void;
@@ -71,6 +86,18 @@ interface CarryBuild {
   materials: THREE.MeshBasicMaterial[];
 }
 
+interface EmoteAssets {
+  animations: ParsedAnim;
+  props?: CarryBuild;
+}
+
+interface ActiveEmote extends EmoteAssets {
+  id: WilsonEmote;
+  clips: readonly string[];
+  clipIndex: number;
+  loop: boolean;
+}
+
 class WilsonController implements WilsonAnimationController {
   private readonly renderer: SpriteFrameRenderer;
   private readonly materials: THREE.MeshBasicMaterial[];
@@ -90,6 +117,9 @@ class WilsonController implements WilsonAnimationController {
   private staffEquipment: YellowStaffEquipment | null = null;
   private netEquipment: BugNetEquipment | null = null;
   private netCallback?: () => void;
+  private hammerEquipment: HammerEquipment | null = null;
+  private pickaxeEquipment: PickaxeEquipment | null = null;
+  private mineCallback?: () => void;
   private readonly castingLight: StaffCastingLight;
   private castElapsed = 0;
   private castCallback?: () => void;
@@ -105,6 +135,11 @@ class WilsonController implements WilsonAnimationController {
   private hatRequest = 0;
   private hatKey = '';
   private hatElapsed = 0;
+  private readonly emoteAssets = new Map<string, Promise<EmoteAssets>>();
+  private emote: ActiveEmote | null = null;
+  private emoteRequest = 0;
+  private emotePending = false;
+  private readonly assetBaseUrl: string;
 
   constructor(
     visual: THREE.Group,
@@ -119,6 +154,7 @@ class WilsonController implements WilsonAnimationController {
     this.animations = animations;
     this.materials = materials;
     this.torch = torch;
+    this.assetBaseUrl = assetBaseUrl;
     this.lanternAssets = new GroundItemAssets(assetBaseUrl);
     this.lanternLight = new LanternLightController(visual.parent!);
     this.castingLight = new StaffCastingLight(visual.parent!);
@@ -128,9 +164,10 @@ class WilsonController implements WilsonAnimationController {
   }
 
   start(state: WilsonMovementState) {
+    if (state !== 'idle' && this.isEmoting) this.cancelEmote();
     if (state === this.movementState) return;
     this.movementState = state;
-    if (this.crafting || this.oneShot) return;
+    if (this.crafting || this.oneShot || this.emote) return;
     this.state = this.movementState;
     this.selectAnimation();
   }
@@ -139,8 +176,81 @@ class WilsonController implements WilsonAnimationController {
     this.startOneShot('eat');
   }
 
+  get currentEmote(): WilsonEmote | null { return this.emote?.id ?? null; }
+  get isEmoting(): boolean { return this.emotePending || this.emote !== null; }
+
+  async playEmote(id: WilsonEmote): Promise<boolean> {
+    const definition: WilsonEmoteDefinition | undefined = WILSON_EMOTES[id];
+    if (!definition || this.oneShot || this.crafting || this.movementState === 'jump') return false;
+    this.cancelEmote();
+    const request = ++this.emoteRequest;
+    this.emotePending = true;
+    try {
+      let assets = this.emoteAssets.get(definition.archive);
+      if (!assets) {
+        assets = definition.props
+          ? loadAnimationArchive(definition.archive, this.assetBaseUrl).then(({ animations, buildPackage }) => ({
+            animations, props: { build: buildPackage.build, materials: createMaterials(buildPackage) },
+          }))
+          : loadAnim(definition.archive, this.assetBaseUrl).then((animations) => ({ animations }));
+        this.emoteAssets.set(definition.archive, assets);
+        void assets.catch(() => this.emoteAssets.delete(definition.archive));
+      }
+      const loaded = await assets;
+      if (request !== this.emoteRequest) return false;
+      this.emotePending = false;
+      this.emote = {
+        ...loaded, id, clips: definition.variants[Math.floor(Math.random() * definition.variants.length)],
+        clipIndex: 0, loop: definition.loop === true,
+      };
+      this.state = 'emote';
+      this.selectAnimation();
+      return true;
+    } catch (error) {
+      if (request !== this.emoteRequest) return false;
+      this.cancelEmote();
+      throw error;
+    }
+  }
+
+  cancelEmote(): void {
+    ++this.emoteRequest;
+    this.emotePending = false;
+    if (!this.emote) return;
+    this.emote = null;
+    this.state = this.crafting ? 'build' : this.movementState;
+    this.selectAnimation();
+  }
+
   get isCasting(): boolean { return this.oneShot === 'staff_pre' || this.oneShot === 'staff'; }
   get isNetting(): boolean { return this.oneShot === 'bugnet_pre' || this.oneShot === 'bugnet'; }
+  get isMining(): boolean { return this.oneShot === 'hammer_pre' || this.oneShot === 'hammer' || this.oneShot === 'hammer_pst'; }
+  get isHammering(): boolean { return this.isMining; }
+
+  playMine(onHit: () => void): boolean {
+    const ready = this.carryItem === 'hammer' ? !!this.hammerEquipment
+      : isPickaxeTool(this.carryItem ?? '') ? !!this.pickaxeEquipment : false;
+    if (this.oneShot || this.crafting || this.movementState === 'jump' || !ready) return false;
+    this.startOneShot('hammer_pre');
+    this.mineCallback = onHit;
+    return true;
+  }
+
+  playHammer(onHit: () => void): boolean {
+    return this.playMine(onHit);
+  }
+
+  cancelMine(): void {
+    this.mineCallback = undefined;
+    if (!this.isMining) return;
+    this.oneShot = null;
+    this.state = this.crafting ? 'build' : this.movementState;
+    this.selectAnimation();
+  }
+
+  cancelHammer(): void {
+    this.cancelMine();
+  }
 
   playBugNet(onCatch: () => void): boolean {
     if (this.oneShot || this.crafting || this.carryItem !== 'bugnet' || !this.netEquipment) return false;
@@ -191,7 +301,7 @@ class WilsonController implements WilsonAnimationController {
   setCrafting(crafting: boolean) {
     if (crafting === this.crafting) return;
     this.crafting = crafting;
-    if (crafting) { this.cancelCast(); this.cancelNet(); }
+    if (crafting) { this.cancelEmote(); this.cancelCast(); this.cancelNet(); this.cancelMine(); }
     if (this.oneShot) return;
     this.state = crafting ? 'build' : this.movementState;
     this.selectAnimation();
@@ -202,7 +312,9 @@ class WilsonController implements WilsonAnimationController {
     this.facing = facing;
     this.mirrored = mirrored;
     this.visual.scale.x = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
+    const elapsed = this.elapsed;
     this.selectAnimation();
+    if (this.emote) this.elapsed = elapsed;
   }
 
   async setCarryItem(item: WilsonCarryItem | null, skinId?: string): Promise<void> {
@@ -212,6 +324,7 @@ class WilsonController implements WilsonAnimationController {
     const request = ++this.carryRequest;
     this.cancelCast();
     this.cancelNet();
+    this.cancelMine();
     this.equippedCarryItem = item;
     this.lanternLight.setLit(false);
     if (item === 'lantern') {
@@ -242,6 +355,28 @@ class WilsonController implements WilsonAnimationController {
         const equipment = await loadBugNetEquipment(this.lanternAssets, skinId);
         if (request !== this.carryRequest) return;
         this.netEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item === 'hammer') {
+      try {
+        const equipment = await loadHammerEquipment(this.lanternAssets, skinId);
+        if (request !== this.carryRequest) return;
+        this.hammerEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item && isPickaxeTool(item)) {
+      try {
+        const equipment = await loadPickaxeEquipment(this.lanternAssets, item, skinId);
+        if (request !== this.carryRequest) return;
+        this.pickaxeEquipment = equipment;
       } catch (error) {
         if (request !== this.carryRequest) return;
         this.carryKey = '';
@@ -309,18 +444,44 @@ class WilsonController implements WilsonAnimationController {
       return;
     }
     this.elapsed += Math.min(dt, 0.1);
+    if (this.emote) {
+      const duration = this.animation.frames.length / this.animation.frameRate;
+      if (this.elapsed >= duration) {
+        if (this.emote.clipIndex < this.emote.clips.length - 1) {
+          const remainder = this.elapsed - duration;
+          this.emote.clipIndex += 1;
+          this.selectAnimation();
+          this.elapsed = remainder;
+        } else if (this.emote.loop) {
+          this.elapsed %= duration;
+        } else {
+          this.cancelEmote();
+          return;
+        }
+      }
+      this.showFrame(Math.min(this.animation.frames.length - 1, Math.floor(this.elapsed * this.animation.frameRate)));
+      return;
+    }
     if (this.oneShot === 'bugnet' && this.netCallback && this.elapsed >= BUGNET_HIT_TIME) {
       const callback = this.netCallback;
       this.netCallback = undefined;
+      callback();
+    }
+    if (this.oneShot === 'hammer' && this.mineCallback && this.elapsed + 1e-8 >= HAMMER_HIT_TIME) {
+      const callback = this.mineCallback;
+      this.mineCallback = undefined;
       callback();
     }
     if (this.oneShot) {
       const playbackRate = this.oneShot === 'pickup' ? pickupPlaybackRate : 1;
       const nextFrame = Math.floor(this.elapsed * this.animation.frameRate * playbackRate);
       if (nextFrame >= this.animation.frames.length) {
-        if (this.oneShot === 'staff_pre' || this.oneShot === 'bugnet_pre') {
+        if (this.oneShot === 'staff_pre' || this.oneShot === 'bugnet_pre'
+          || this.oneShot === 'hammer_pre' || this.oneShot === 'hammer') {
           const remainder = this.elapsed - this.animation.frames.length / this.animation.frameRate;
-          this.oneShot = this.oneShot === 'staff_pre' ? 'staff' : 'bugnet';
+          this.oneShot = this.oneShot === 'staff_pre' ? 'staff'
+            : this.oneShot === 'bugnet_pre' ? 'bugnet'
+              : this.oneShot === 'hammer_pre' ? 'hammer' : 'hammer_pst';
           this.state = this.oneShot;
           this.selectAnimation();
           this.elapsed = remainder;
@@ -341,7 +502,8 @@ class WilsonController implements WilsonAnimationController {
   }
 
   private selectAnimation() {
-    const name = this.state === 'idle' ? 'idle_loop'
+    const name = this.state === 'emote' ? this.emote!.clips[this.emote!.clipIndex]
+      : this.state === 'idle' ? 'idle_loop'
       : this.state === 'jump' ? 'jump'
         : this.state === 'build' ? 'build_loop'
           : this.state === 'eat' ? 'eat'
@@ -351,8 +513,11 @@ class WilsonController implements WilsonAnimationController {
                   : this.state === 'staff_pre' ? 'staff_pre'
                     : this.state === 'staff' ? 'staff'
                       : this.state === 'bugnet_pre' ? 'bugnet_pre'
-                        : this.state === 'bugnet' ? 'bugnet' : 'run_loop';
-    const parsed = this.animations[this.state];
+                        : this.state === 'bugnet' ? 'bugnet'
+                          : this.state === 'hammer_pre' ? 'pickaxe_pre'
+                            : this.state === 'hammer' ? 'pickaxe_loop'
+                              : this.state === 'hammer_pst' ? 'pickaxe_pst' : 'run_loop';
+    const parsed = this.state === 'emote' ? this.emote!.animations : this.animations[this.state];
     const bankHash = smallHash('wilson');
     const facing = facingValues[this.facing];
     const candidates = parsed.animations.filter((animation) =>
@@ -366,8 +531,10 @@ class WilsonController implements WilsonAnimationController {
   }
 
   private startOneShot(state: WilsonOneShotState) {
+    this.cancelEmote();
     this.cancelCast();
     this.cancelNet();
+    this.cancelMine();
     this.carryItem = this.equippedCarryItem;
     this.oneShot = state;
     this.state = state;
@@ -399,6 +566,10 @@ class WilsonController implements WilsonAnimationController {
         }
         if (this.carryItem === 'bugnet' && this.netEquipment && this.state !== 'build'
           && element.imageHash === swapObjectHash) return resolveBugNetPlayerSprite(this.netEquipment, element);
+        if (this.carryItem === 'hammer' && this.hammerEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolveHammerPlayerSprite(this.hammerEquipment, element);
+        if (isPickaxeTool(this.carryItem ?? '') && this.pickaxeEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolvePickaxePlayerSprite(this.pickaxeEquipment, element);
         const usesTorch = this.state !== 'build'
           && this.carryItem === 'torch'
           && element.imageHash === swapObjectHash;
@@ -408,14 +579,17 @@ class WilsonController implements WilsonAnimationController {
           usesTorch ? swapTorchHash : element.imageHash,
           element.imageIndex,
         );
-        return image ? [{ element, image, materials: source.materials }] : [];
+        if (image) return [{ element, image, materials: source.materials }];
+        const props = this.emote?.props;
+        const propImage = props && findImage(props.build, element.imageHash, element.imageIndex);
+        return propImage ? [{ element, image: propImage, materials: props!.materials }] : [];
       });
     this.renderer.show(sprites);
   }
 }
 
 export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Group> {
-  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net] = await Promise.all([
+  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer] = await Promise.all([
     loadBuild('wilson.zip', assetBaseUrl),
     loadBuild('swap_torch.zip', assetBaseUrl),
     loadAnim('torch.zip', assetBaseUrl),
@@ -426,6 +600,7 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
     loadAnim('player_actions_eat.zip', assetBaseUrl),
     loadAnim('player_staff.zip', assetBaseUrl),
     loadAnim('player_actions_bugnet.zip', assetBaseUrl),
+    loadAnim('player_actions_pickaxe.zip', assetBaseUrl),
   ]);
   if (buildPackage.build.name.toLowerCase() !== 'wilson') {
     throw new Error(`Expected Wilson build, received ${buildPackage.build.name}`);
@@ -460,6 +635,9 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
     staff,
     bugnet_pre: net,
     bugnet: net,
+    hammer_pre: hammer,
+    hammer,
+    hammer_pst: hammer,
   }, createMaterials(buildPackage), {
     build: torchBuildPackage.build,
     materials: createMaterials(torchBuildPackage),

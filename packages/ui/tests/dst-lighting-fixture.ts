@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
+import { getDstCycle } from '../../../src/tuning';
 
 export async function checkDstLocalLighting() {
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
@@ -57,7 +58,22 @@ export async function checkDstLocalLighting() {
   lighting.update(4);
   draw();
   const day = { near: sample(0, 0), far: sample(15, 0) };
+  // Drive the renderer with the same elapsed-time cycle used by the world.
+  const cycleFrames = [
+    { elapsed: 300, blend: 6 },
+    { elapsed: 420, blend: 8 },
+    { elapsed: 480, blend: 4 },
+  ].map(({ elapsed, blend }) => {
+    const cycle = getDstCycle(elapsed);
+    lighting.setPhase(cycle.phase);
+    lighting.update(blend / 2);
+    draw();
+    const halfway = sample(15, 0);
+    lighting.update(blend / 2);
+    draw();
+    return { ...cycle, halfway, colour: sample(15, 0) };
+  });
   const restoredBackground = scene.background === background;
   renderer.dispose();
-  return { night, torch, instances, moved, removed, day, restoredBackground };
+  return { night, torch, instances, moved, removed, day, cycleFrames, restoredBackground };
 }

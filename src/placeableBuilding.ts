@@ -18,10 +18,10 @@ import {
     type TreasureChestId,
 } from '@three-roaming/prefab/treasurechest';
 import {
-    WallStonePlacement,
-    isWallStoneId,
-    type WallStoneId,
-} from '@three-roaming/prefab/wallstone';
+    WallsPlacement,
+    isWallId,
+    type WallId,
+} from '@three-roaming/prefab/walls';
 import type { WorldContext } from '@three-roaming/prefab/worldContext';
 import type { PlacementSaveRecord } from '@three-roaming/prefab/saveRecord';
 import { TENT_DEFINITION, TENT_ID } from '@three-roaming/prefab/tent';
@@ -40,7 +40,7 @@ export { TENT_ID } from '@three-roaming/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | typeof TENT_ID
     | DragonflyChestId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId;
-export type PlaceableBuildingId = AnimatedBuildingId | WallStoneId;
+export type PlaceableBuildingId = AnimatedBuildingId | WallId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
 const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
@@ -74,7 +74,7 @@ const ANIMATED_BUILDING_DEFINITIONS = {
 } as const;
 
 export function isPlaceableBuildingId(value: string): value is PlaceableBuildingId {
-    return ANIMATED_BUILDING_IDS.some((buildingId) => buildingId === value) || isWallStoneId(value);
+    return ANIMATED_BUILDING_IDS.some((buildingId) => buildingId === value) || isWallId(value);
 }
 
 /**
@@ -83,7 +83,7 @@ export function isPlaceableBuildingId(value: string): value is PlaceableBuilding
  */
 export class PlaceableBuildingPlacement {
     private readonly animated: AnimatedBuildingPlacement<AnimatedBuildingId>;
-    private readonly walls: WallStonePlacement;
+    private readonly walls: WallsPlacement;
 
     constructor(
         world: WorldContext,
@@ -96,11 +96,11 @@ export class PlaceableBuildingPlacement {
             consumeBufferedBuild,
             onInteractionChange,
         );
-        this.walls = new WallStonePlacement(world, consumeBufferedBuild);
+        this.walls = new WallsPlacement(world, consumeBufferedBuild);
     }
 
     begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
-        if (isWallStoneId(buildId)) {
+        if (isWallId(buildId)) {
             this.animated.cancel();
             return this.walls.begin(buildId);
         }
@@ -109,13 +109,13 @@ export class PlaceableBuildingPlacement {
     }
 
     spawn(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
-        return isWallStoneId(buildId)
+        return isWallId(buildId)
             ? this.walls.spawn(buildId)
             : this.animated.spawn(buildId, skinId);
     }
 
     spawnFromSave(buildId: PlaceableBuildingId, record: PlacementSaveRecord) {
-        return isWallStoneId(buildId)
+        return isWallId(buildId)
             ? this.walls.spawnFromSave(buildId, record)
             : this.animated.spawnFromSave(buildId, record);
     }
@@ -133,8 +133,12 @@ export class PlaceableBuildingPlacement {
         return [...this.animated.renderEntities, ...this.walls.renderEntities];
     }
 
+    get hammerTargets() {
+        return [...this.animated.hammerTargets, ...this.walls.hammerTargets];
+    }
+
     update(dt: number): void {
         this.animated.update(dt);
-        this.walls.update();
+        this.walls.update(dt);
     }
 }

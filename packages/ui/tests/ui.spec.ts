@@ -582,6 +582,40 @@ test('picks up a backpack item on click and transfers it into storage on the nex
   });
 });
 
+test('lets a listener claim the slot click so a placeable stack is not picked up', async ({ page }) => {
+  await openFixture(page);
+
+  await page.evaluate(() => {
+    const inventoryBar = document.querySelector('dst-inventory-bar') as HTMLElement & {
+      setSlot(ref: unknown, item: unknown): void;
+    };
+    inventoryBar.setSlot({ containerId: 'player:inventory', slotKey: '0' }, {
+      id: 'wall_wood_item',
+      name: '木墙',
+      count: 6,
+      maxStack: 99,
+      icon: 'wall_wood_item.tex',
+    });
+    const events: string[] = [];
+    window.addEventListener('game:slot-select', (event) => {
+      events.push((event as CustomEvent).detail.slot.slotKey);
+      // A placeable item claims the click so placement can start instead of a transfer.
+      event.preventDefault();
+    }, true);
+    (window as typeof window & { claimedSelect: string[] }).claimedSelect = events;
+  });
+
+  const slots = page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot');
+  await expect(slots.nth(0).locator('.inventory-slot__icon')).toHaveAttribute('data-loaded', 'true');
+  await slots.nth(0).click();
+
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { claimedSelect?: unknown }).claimedSelect,
+  )).toEqual(['0']);
+  await expect(page.locator('.slot-drag-preview')).toHaveCount(0);
+  await expect(slots.nth(0)).not.toHaveClass(/is-dragging/);
+});
+
 test('preserves a skin id when an inventory stack is dragged', async ({ page }) => {
   await openFixture(page);
 

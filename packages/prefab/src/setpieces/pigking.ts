@@ -43,10 +43,8 @@ export async function createPigKingSetPiece(options: PigKingSetPieceOptions): Pr
   turf.position.set(center.x, footPosition.y, center.z);
   turf.userData.turfId = PIG_KING_SET_PIECE.turfId;
   const material = turf.material as THREE.MeshLambertMaterial;
-  // Draw on the ground plane without a second elevated floor or z-fighting.
-  material.polygonOffset = true;
-  material.polygonOffsetFactor = -1;
-  material.polygonOffsetUnits = -1;
+  // Paint over the base terrain at the same height. Neither turf writes depth.
+  turf.renderOrder = -1;
   // Keep woodfloor noise aligned in world space across separate set pieces.
   const noiseTileSize = TILE_SIZE * 8;
   material.map!.offset.set((center.x - size / 2) / noiseTileSize, (-center.z - size / 2) / noiseTileSize);

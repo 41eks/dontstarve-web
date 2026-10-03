@@ -1,6 +1,30 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
+test('application lighting starts in the saved elapsed-time phase without a startup fade', async ({ page }) => {
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async (urls) => {
+    const [{ dstLighting, scene }, { initialSave }, { getDstCycle }] = await Promise.all([
+      import(urls.universal), import(urls.save), import(urls.tuning),
+    ]);
+    return {
+      phase: dstLighting.getPhase(),
+      expectedPhase: getDstCycle(initialSave.world.elapsedSeconds).phase,
+      season: dstLighting.getSeason(),
+      expectedSeason: initialSave.world.systems.season?.name ?? 'spring',
+      lightLevel: dstLighting.sampleLightLevel(scene.position),
+    };
+  }, {
+    universal: `/@fs${fileURLToPath(new URL('../../../src/universal.ts', import.meta.url))}`,
+    save: `/@fs${fileURLToPath(new URL('../../../src/save/initialSave.ts', import.meta.url))}`,
+    tuning: `/@fs${fileURLToPath(new URL('../../../src/tuning.ts', import.meta.url))}`,
+  });
+  expect(result.phase).toBe(result.expectedPhase);
+  expect(result.season).toBe(result.expectedSeason);
+  if (result.phase === 'night') expect(result.lightLevel).toBe(0);
+  else expect(result.lightLevel).toBeGreaterThan(0);
+});
+
 test('spring night lights ground and late instanced sprites only around the equipped torch', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -24,6 +48,16 @@ test('spring night lights ground and late instanced sprites only around the equi
   expect(result.removed.instance).toEqual(result.night.centre);
   expect(brightness(result.day.far)).toBeGreaterThan(500);
   expect(Math.abs(brightness(result.day.near) - brightness(result.day.far))).toBeLessThan(5);
+  const [dusk, cycleNight, nextDay] = result.cycleFrames;
+  expect(dusk).toMatchObject({ cycles: 0, phase: 'dusk', phaseProgress: 0 });
+  expect(cycleNight).toMatchObject({ cycles: 0, phase: 'night', phaseProgress: 0 });
+  expect(nextDay).toMatchObject({ cycles: 1, phase: 'day', phaseProgress: 0 });
+  expect(brightness(dusk.colour)).toBeLessThan(brightness(result.day.far));
+  expect(brightness(dusk.halfway)).toBeGreaterThan(brightness(dusk.colour));
+  expect(brightness(cycleNight.colour)).toBeLessThan(30);
+  expect(brightness(cycleNight.halfway)).toBeGreaterThan(brightness(cycleNight.colour));
+  expect(nextDay.colour).toEqual(result.day.far);
+  expect(brightness(nextDay.halfway)).toBeLessThan(brightness(nextDay.colour));
   expect(result.restoredBackground).toBe(true);
   expect(errors).toEqual([]);
 });

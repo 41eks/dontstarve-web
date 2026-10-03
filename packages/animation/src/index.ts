@@ -14,13 +14,18 @@ export {
 export {
   createAnimatedSprite,
   createAnimatedSpriteFactory,
-  createStaticSprite,
   type AnimatedSpriteOptions,
   type AnimatedSpriteFactory,
   type SpriteAnimationController,
+  type TransientSpriteAnimationController,
+} from './sprite';
+export { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from './beefaloSprite';
+export {
+  createStaticSprite,
   type StaticSpriteController,
   type StaticSpriteOptions,
-} from './sprite';
+  type StaticSpriteOverlay,
+} from './wallSprite';
 export { setSpriteEntityRenderOrder } from './renderOrder';
 export {
   basic_init_fn,

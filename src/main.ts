@@ -18,8 +18,11 @@ import type { WilsonAnimationController } from '@three-roaming/prefab/player';
 import { isHatId } from '@three-roaming/prefab/hats';
 import { setupYellowStaffCasting } from '@three-roaming/prefab/yellowstaff';
 import { BugNetCaptureController } from '@three-roaming/prefab/bugnet';
+import { HammerActionController } from '@three-roaming/prefab/hammer';
+import { PickaxeActionController } from '@three-roaming/prefab/pickaxe';
 import { newEntityId } from '@three-roaming/prefab/saveRecord';
 import { isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
+import { isRockPrefab } from '@three-roaming/prefab/rocks';
 import { frontTasks } from './animate';
 import { input } from './InputManager';
 import { PointerRaycaster } from '@three-roaming/prefab/pointerRaycaster';
@@ -44,6 +47,7 @@ import { inventoryStateFromSave } from './save/inventoryState';
 import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
 import { downloadSaveJson } from './save/download';
+import { setupEmoteWheel } from './emoteWheel';
 
 void loadImageAtlas(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
@@ -93,7 +97,8 @@ window.addEventListener('contextmenu', (event) => {
 function syncHandEquipment(): void {
   const handItem = inventory.get(handSlotAddress);
   const carryItem = handItem?.itemId === 'torch' || handItem?.itemId === 'lantern'
-    || handItem?.itemId === 'yellowstaff' || handItem?.itemId === 'bugnet' ? handItem.itemId : null;
+    || handItem?.itemId === 'yellowstaff' || handItem?.itemId === 'bugnet' || handItem?.itemId === 'hammer'
+    || handItem?.itemId === 'pickaxe' || handItem?.itemId === 'goldenpickaxe' ? handItem.itemId : null;
   void playerAnimation?.setCarryItem(carryItem, handItem?.skinId)
     .catch((error: unknown) => console.error('Unable to equip hand item', error));
   dstLighting.setTorchOwner(handItem?.itemId === 'torch' ? player : null);
@@ -155,7 +160,8 @@ inventory.subscribe((changedSlots) => {
 });
 
 let cancelNetCapture = () => {};
-const { buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, getSaveState } = await startScene(
+let cancelHandTool = () => {};
+const { buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, beefalos, rockManager, getSaveState } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item, action) => {
     if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
@@ -205,10 +211,47 @@ if (playerAnimation) setupYellowStaffCasting(view, playerAnimation, dwarfStars,
   () => inventory.get(handSlotAddress)?.itemId === 'yellowstaff',
   () => locomotor.stop(),
   (error) => console.error('Unable to summon dwarf star', error));
+
+if (playerAnimation) {
+  const hammer = new HammerActionController(view, playerAnimation, locomotor,
+    () => inventory.get(handSlotAddress)?.itemId === 'hammer',
+    () => buildingPlacement.hammerTargets,
+    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    () => {
+      cancelNetCapture();
+      flowerPlanting.cancel();
+      buildingPlacement.cancel();
+    });
+  const handTool = () => inventory.get(handSlotAddress)?.itemId;
+  const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
+    () => handTool() === 'pickaxe' || handTool() === 'goldenpickaxe',
+    () => rockManager.mineTargets,
+    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    () => {
+      cancelNetCapture();
+      flowerPlanting.cancel();
+      buildingPlacement.cancel();
+    });
+  cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); };
+  frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); });
+}
+
+setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
+  () => locomotor.stop(), () => {
+    cancelNetCapture();
+    cancelHandTool();
+    flowerPlanting.cancel();
+    buildingPlacement.cancel();
+  }, () => cursorUi.update());
+
 let lastSavedSnapshotId = initialSave.snapshot.id;
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, async (prefabId) => {
+    if (prefabId === 'beefalo') {
+      await beefalos.spawnNear(player.position);
+      return true;
+    }
     if (isBulbPlantPrefab(prefabId)) {
       await bulbPlants.spawn(prefabId, player.position.clone());
       return true;
@@ -216,6 +259,10 @@ gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
     if (prefabId === 'fireflies') {
       const spec = inventory.getItemSpec(prefabId);
       await groundItems.spawnFromSave(newEntityId(), { ...spec, itemId: prefabId, count: 1 }, player.position.clone());
+      return true;
+    }
+    if (isRockPrefab(prefabId)) {
+      await rockManager.spawn(prefabId, player.position.clone());
       return true;
     }
     if (!isPlaceableBuildingId(prefabId)) return false;
@@ -254,15 +301,19 @@ window.addEventListener('game:slot-transfer-request', (event) => {
     },
   ]);
   if (!transferred || (detail.itemId !== 'torch' && detail.itemId !== 'lantern'
-    && detail.itemId !== 'yellowstaff' && detail.itemId !== 'bugnet')) return;
+    && detail.itemId !== 'yellowstaff' && detail.itemId !== 'bugnet' && detail.itemId !== 'hammer'
+    && detail.itemId !== 'pickaxe' && detail.itemId !== 'goldenpickaxe')) return;
   if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out', detail.itemId);
   else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in', detail.itemId);
 });
 gameUi.inventoryBar.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
+  cancelHandTool();
   flowerPlanting.cancel();
   const stack = inventory.get(slot);
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
+  // Placement claims the click so the stack is not picked up for a transfer.
+  event.preventDefault();
   locomotor.stop();
   void buildingPlacement.begin(stack.itemId, stack.skinId).catch((error: unknown) => {
     console.error(`Unable to start ${stack.itemId} placement`, error);
@@ -270,6 +321,7 @@ gameUi.inventoryBar.addEventListener('game:slot-select', (event) => {
 });
 gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
   const { slot, shiftKey } = (event as CustomEvent<SlotContextMenuDetail>).detail;
+  cancelHandTool();
   const stack = inventory.get(slot);
   if (!stack) return;
   if (shiftKey) {
@@ -311,6 +363,7 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
   if (stack.itemId === 'meatballs') playerAnimation?.playEat();
 });
 gameUi.crafting.addEventListener('game:craft-request', (event) => {
+  cancelHandTool();
   const { recipeId, skinId } = (event as CustomEvent<CraftRequestDetail>).detail;
   const recipe = INVENTORY_RECIPES[recipeId];
   if (!recipe) return;
@@ -328,6 +381,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
 });
 gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
   const { crafting } = (event as CustomEvent<CraftingStateDetail>).detail;
+  if (crafting) cancelHandTool();
   if (crafting) locomotor.stop();
   playerAnimation?.setCrafting(crafting);
 });

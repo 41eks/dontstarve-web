@@ -19,7 +19,8 @@
         "firepit_lava": "dynamic/firepit_lava.zip",
         "firepit_stonehenge": "dynamic/firepit_stonehenge.zip",
         "firepit_victorian": "dynamic/firepit_victorian.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "icebox": {
       "archive": "ice_box.zip",
@@ -45,7 +46,8 @@
         "columns": 3,
         "singleItems": false,
         "panelArchive": "ui_chest_3x3.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "cookpot": {
       "archive": "cook_pot.zip",
@@ -74,7 +76,8 @@
         "slotCount": 4,
         "columns": 1,
         "singleItems": true
-      }
+      },
+      "hammerAnimation": "hit_empty"
     },
     "researchlab": {
       "archive": "researchlab.zip",
@@ -96,7 +99,8 @@
         "sparkleFX",
         "shadow_plume",
         "shadow_wisp"
-      ]
+      ],
+      "hammerAnimation": "hit"
     },
     "researchlab2": {
       "archive": "researchlab2.zip",
@@ -120,7 +124,8 @@
         "researchlab2_pod": [
           "researchlab2_pod_fx"
         ]
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "researchlab3": {
       "archive": "researchlab3.zip",
@@ -134,7 +139,8 @@
         "researchlab3_crystal": "dynamic/researchlab3_crystal.zip",
         "researchlab3_monster": "dynamic/researchlab3_monster.zip",
         "researchlab3_nature": "dynamic/researchlab3_nature.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "researchlab4": {
       "archive": "researchlab4.zip",
@@ -168,7 +174,8 @@
       },
       "skinSymbols": [
         "machine_hat"
-      ]
+      ],
+      "hammerAnimation": "hit"
     },
     "treasurechest": {
       "archive": "treasure_chest.zip",
@@ -226,14 +233,16 @@
         "columns": 3,
         "singleItems": false,
         "panelArchive": "ui_chest_3x3.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "tent": {
       "archive": "tent.zip",
       "buildLabel": "帐篷",
       "name": "Tent",
       "onProximity": false,
-      "scale": 0.02
+      "scale": 0.02,
+      "hammerAnimation": "hit"
     },
     "dragonflychest": {
       "archive": "dragonfly_chest.zip",
@@ -258,7 +267,8 @@
         "columns": 3,
         "singleItems": false,
         "panelArchive": "ui_chester_shadow_3x4.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "campfire": {
       "archive": "campfire.zip",
@@ -295,7 +305,8 @@
         "columns": 3,
         "singleItems": false,
         "panelArchive": "ui_chest_3x3.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "nightlight": {
       "archive": "nightmare_torch.zip",
@@ -306,7 +317,8 @@
       "scale": 0.02,
       "skinArchives": {
         "nightmare_torch_relic": "dynamic/nightmare_torch_relic.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "pighouse": {
       "archive": "pig_house.zip",
@@ -319,7 +331,8 @@
         "pighouse_cabin": "dynamic/pighouse_cabin.zip",
         "pighouse_gothic": "dynamic/pighouse_gothic.zip",
         "pighouse_logcabin": "dynamic/pighouse_logcabin.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "mushroom_light": {
       "archive": "mushroom_light.zip",
@@ -346,7 +359,8 @@
         "columns": 1,
         "singleItems": true,
         "panelArchive": "ui_lamp_1x4.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     },
     "mushroom_light2": {
       "archive": "mushroom_light2.zip",
@@ -373,7 +387,8 @@
         "columns": 1,
         "singleItems": true,
         "panelArchive": "ui_lamp_1x4.zip"
-      }
+      },
+      "hammerAnimation": "hit"
     }
   },
   "walls": {
@@ -382,6 +397,89 @@
       "buildLabel": "石墙",
       "frontImageIndex": 14,
       "name": "WallStone",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_stone_2": {
+      "archive": "wall_stone_2.zip",
+      "buildLabel": "档案馆石墙",
+      "frontImageIndex": 14,
+      "name": "WallStone2",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_wood": {
+      "archive": "wall_wood.zip",
+      "buildLabel": "木墙",
+      "frontImageIndex": 14,
+      "name": "WallWood",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_hay": {
+      "archive": "wall_hay.zip",
+      "buildLabel": "草墙",
+      "frontImageIndex": 14,
+      "multColour": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "name": "WallHay",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_ruins": {
+      "archive": "wall_ruins.zip",
+      "buildLabel": "铥墙",
+      "frontImageIndex": 14,
+      "name": "WallRuins",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_ruins_2": {
+      "archive": "wall_ruins_2.zip",
+      "buildLabel": "档案馆铥墙",
+      "frontImageIndex": 14,
+      "name": "WallRuins2",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_moonrock": {
+      "archive": "wall_moonrock.zip",
+      "buildLabel": "月岩墙",
+      "frontImageIndex": 14,
+      "name": "WallMoonrock",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_dreadstone": {
+      "animationArchive": "wall_dreadstone.zip",
+      "archive": "wall_dreadstone.zip",
+      "buildLabel": "绝望石墙",
+      "frontImageIndex": 14,
+      "name": "WallDreadstone",
+      "overlay": {
+        "symbol": "wall_segment_red",
+        "frontImageIndex": 9,
+        "sideImageIndex": 2
+      },
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment_base"
+    },
+    "wall_scrap": {
+      "archive": "wall_scrap.zip",
+      "buildLabel": "废料墙",
+      "frontImageIndex": 14,
+      "name": "WallScrap",
       "scale": 0.02,
       "sideImageIndex": 4,
       "symbol": "wall_segment"

@@ -1,5 +1,9 @@
 # Repository instructions
 
+## Debug command documentation
+
+- After each change, check whether any debug commands were added or their supported arguments, behavior, or prefab IDs changed. Update the debug command section in `README.md` as part of the same change, including syntax, parameter descriptions, examples, and supported `c_spawn` prefab IDs where applicable. Remove or revise documentation for commands that are removed or changed so the README always matches the current implementation.
+
 ## DST asset paths
 
 - Assets sourced from `/data/copy/AssetArchive-Dev/data/DST/data` must be placed under `public/dst/data`.
@@ -12,7 +16,7 @@
 - An item placed on the ground uses its prefab's world appearance. Read the source Lua's `AnimState:SetBank()`, `SetBuild()`, and `PlayAnimation()` calls and load the corresponding `anim/*.zip` animation/build/texture assets. A single-frame ground pose still comes from the animation asset. Do not substitute an inventory icon for an available source ground animation or infer the ground asset from the item ID alone.
 - For example, `strawhat` uses `strawhat.tex` in the inventory, while its ground appearance uses `anim/hat_straw.zip`: bank `strawhat`, build `hat_straw`, animation `anim`. The shared constructor in `scripts_unpacked/scripts/prefabs/hats.lua` sets these ground bank/build/animation values.
 - Player equipment art is a third use of the assets: hats override player symbols such as `swap_hat` with symbols from their build, with item/character-specific variants. These worn symbols are distinct from both the inventory icon and the ground animation; preserve each source use when porting a prefab.
-- `src/groundItems.ts` uses `createHatGroundSprite` for hats and `createGroundItemSprite` from `packages/prefab/src/groundItems.ts` for catalogued materials, tools and food. `groundItems.json` records separate animation/build archives, the source bank/clip, skin builds and symbol overrides. Torch uses `torch.zip` plus `swap_torch.zip`; prepared food uses `cook_pot_food.zip` with a `swap_food` override; a dropped `wall_stone_item` uses `wall.zip`'s `idle` with `wall_stone.zip`, independently of a constructed wall's `half` pose. Inventory icons are only a fallback for items outside this catalog, not the DST asset convention.
+- `src/groundItems.ts` uses `createHatGroundSprite` for hats and `createGroundItemSprite` from `packages/prefab/src/groundItems.ts` for catalogued materials, tools and food. `groundItems.json` records separate animation/build archives, the source bank/clip, skin builds and symbol overrides. Torch uses `torch.zip` plus `swap_torch.zip`; prepared food uses `cook_pot_food.zip` with a `swap_food` override; a dropped wall item uses `wall.zip`'s `idle` with its `wall_*.zip` build, independently of a constructed wall's `half` pose (`wall_dreadstone_item` is the exception: its bank, build and anim all come from `wall_dreadstone.zip`). Inventory icons are only a fallback for items outside this catalog, not the DST asset convention.
 - The NPC-only `shadow_thrall_parasitehat` is excluded from hat imports, inventory metadata and recipes. Do not restore it through an icon or ground-image fallback. Regenerate and verify ground assets with `packages/prefab/scripts/import-ground-items.py` and `--check`, preserving source paths and bytes.
 
 ## Billboard drawing order
@@ -32,7 +36,7 @@
 - An anim's `facing` byte is a bitmask of the `FACING_*` values in `scripts_unpacked/scripts/constants.lua`. In `anim/wall.zip`, `facing=15` (RIGHT/UP/LEFT/DOWN) maps to build images `wall_segment-10` through `wall_segment-16`, `facing=240` (UPRIGHT/UPLEFT/DOWNRIGHT/DOWNLEFT) maps to `wall_segment-0` through `wall_segment-7`, and the wall item's `idle` uses `facing=255` for every facing.
 - The engine picks the variant whose mask matches `Transform:GetRotation() + TheCamera:GetHeading()`; see `components/placer.lua` ("rotate against the camera") and `prefabs/daywalker.lua` (`dir1 + camdir`). Because a wall's rotation stays `0`, the camera heading alone selects the art.
 - A heading of `2n * 45` degrees shows the front face (`wall_segment-14`), and `(2n + 1) * 45` degrees the oblique side (`wall_segment-4`). Both are the `half` frame of their facing set, so pair frames of the same animation when adding a facing.
-- `packages/prefab/src/wallPlacement.ts` encodes the rule in `isDiagonalHeading()` and swaps frames with `StaticSpriteController.showImage()`. `createStaticSprite` draws one build image at a time, so list every facing in `imageIndices` instead of rebuilding the sprite.
+- `packages/prefab/src/wallPlacement.ts` encodes the rule in `isDiagonalHeading()` and swaps frames with `StaticSpriteController.showImage()` from `packages/animation/src/wallSprite.ts`. `createStaticSprite` draws one build image at a time, so list every facing in `imageIndices` instead of rebuilding the sprite. `wall_dreadstone` draws `wall_segment_red` over `wall_segment_base`; pass it as `overlay` with positionally paired `imageIndices` so the glow layer survives.
 
 ## Inventory architecture
 
@@ -41,7 +45,7 @@
 - `packages/ui/src/inventory-bar.ts` renders inventory and equipment slots. UI slot models mirror state supplied by the application; they are not the source of truth.
 - `src/main.ts` connects the store and UI. Store notifications call `setSlot`, while UI events are translated back into store operations or gameplay actions.
 - Slot addresses are stable `{ containerId, slotKey }` values. Use `inventorySlotAddress()` and `equipmentSlotAddress()` instead of constructing player slot addresses ad hoc.
-- Drag-and-drop emits `game:slot-transfer-request`; selection emits `game:slot-select`; right-clicking a slot emits `game:slot-context-menu`. These events bubble across the inventory bar's shadow root.
+- Drag-and-drop emits `game:slot-transfer-request`; selection emits `game:slot-select`; right-clicking a slot emits `game:slot-context-menu`. These events bubble across the inventory bar's shadow root. `game:slot-select` is cancelable and runs before the transfer pick-up: `src/main.ts` calls `preventDefault()` when the stack is placeable so placement starts from the slot click instead of the item being picked up.
 - The webpage suppresses the browser's native context menu. In the current gameplay mapping, right-clicking a `meatballs` stack calls `WilsonAnimationController.playEat()` and plays `anim/player_actions_eat.zip`; it does not consume the stack.
 - Moving `torch` into the hand equipment slot plays `item_out`; moving it back to inventory plays `item_in`. Both one-shot animations come from `anim/player_actions_item.zip` and only run after a successful inventory transfer.
 - Shift-right-clicking an occupied inventory or equipment slot drops one item at the player's current ground position. Hats and catalogued ground items use their source animation/build assets; items outside the catalog fall back to their inventory icon. Both return to inventory when clicked; successful dropping and pickup both play `pickup` from `anim/player_actions_item.zip` at half of the source animation's playback speed. Ground models retain the source origin as their foot point for ordering, pickup and saves.

@@ -3,6 +3,15 @@ import { expect, test } from '@playwright/test';
 
 const moduleUrl = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url))}`;
 
+test('base turf and woodfloor preserve complete ground sprites at different camera angles', async ({ page }) => {
+  await page.goto('/tests/fixture.html');
+  const result = await page.evaluate(async (url) => {
+    const { checkTurfOcclusion } = await import(url);
+    return checkTurfOcclusion();
+  }, moduleUrl('./turf-fixture.ts'));
+  expect(result).toEqual({ comparisons: 24, failures: [] });
+});
+
 test('ground catalog renders every source frame and skin without inventory icons', async ({ page }) => {
   test.setTimeout(240_000);
   const failedRequests: string[] = [];
@@ -53,7 +62,9 @@ test('ground catalog renders every source frame and skin without inventory icons
     let removed = false;
     try { store.getItemSpec('shadow_thrall_parasitehat'); } catch { removed = true; }
     const common = ['torch', 'lantern', 'lightbulb', 'yellowstaff', 'meatballs', 'cutgrass', 'twigs', 'log', 'rocks', 'goldnugget',
-      'gears', 'charcoal', 'pigskin', 'cutstone', 'rope', 'wall_stone_item', 'axe', 'hammer'];
+      'gears', 'charcoal', 'pigskin', 'cutstone', 'rope',
+      'wall_stone_item', 'wall_wood_item', 'wall_hay_item', 'wall_ruins_item',
+      'wall_moonrock_item', 'wall_dreadstone_item', 'wall_scrap_item', 'axe', 'hammer'];
     return { failures, count: Object.keys(GROUND_ITEM_DEFINITIONS).length,
       skins: Object.keys(GROUND_ITEM_SKIN_SPECS).length,
       common: common.every((id) => GROUND_ITEM_DEFINITIONS[id] && store.getItemSpec(id)),
@@ -64,7 +75,7 @@ test('ground catalog renders every source frame and skin without inventory icons
   }, { ground: moduleUrl('../../prefab/src/groundItems.ts'), hats: moduleUrl('../../prefab/src/hats.ts'),
     atlas: moduleUrl('../../animation/src/imageAtlas.ts'), inventory: moduleUrl('../../../src/inventory.ts') });
   expect(result.failures).toEqual([]);
-  expect(result).toMatchObject({ count: 208, skins: 68, common: true, removed: true });
+  expect(result).toMatchObject({ count: 217, skins: 82, common: true, removed: true });
   expect(failedRequests).toEqual([]);
 });
 
@@ -76,7 +87,9 @@ test('common ground items drop and pick up with native geometry and preserve sav
   }, moduleUrl('./ground-item-pickup-fixture.ts'));
   expect(result).toEqual({ failures: [],
     pickedUp: ['torch', 'lantern', 'lightbulb', 'yellowstaff', 'meatballs', 'cutgrass', 'twigs', 'log', 'rocks', 'goldnugget',
-      'gears', 'charcoal', 'pigskin', 'cutstone', 'rope', 'wall_stone_item', 'axe', 'hammer'],
+      'gears', 'charcoal', 'pigskin', 'cutstone', 'rope',
+      'wall_stone_item', 'wall_wood_item', 'wall_hay_item', 'wall_ruins_item',
+      'wall_moonrock_item', 'wall_dreadstone_item', 'wall_scrap_item', 'axe', 'hammer'],
     failedLoad: true, inventoryMutations: 0, failedTransfer: false, remaining: 0, restoredFoot: [2, 0.25, 3],
   });
 });

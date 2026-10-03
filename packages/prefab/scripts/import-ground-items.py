@@ -108,7 +108,18 @@ def main():
         source = 'pickaxe' if 'pickaxe' in item else 'shovel' if 'shovel' in item else 'axe'
         add(item, item, item, 'idle', source)
     add('moonglassaxe', 'glassaxe', 'glassaxe', 'idle', 'axe')
-    add('wall_stone_item', 'wall', 'wall_stone', 'idle', 'walls', animation_archive='wall.zip')
+    # walls.lua gives every wall item the shared wall bank and its own build.
+    # wall_stone_2_item and wall_ruins_2_item ship no inventory icon in DST.
+    for item, bank, animation_archive in [
+        ('wall_stone_item', 'wall', 'wall.zip'),
+        ('wall_wood_item', 'wall', 'wall.zip'),
+        ('wall_hay_item', 'wall', 'wall.zip'),
+        ('wall_ruins_item', 'wall', 'wall.zip'),
+        ('wall_moonrock_item', 'wall', 'wall.zip'),
+        ('wall_scrap_item', 'wall', 'wall.zip'),
+        ('wall_dreadstone_item', 'wall_dreadstone', 'wall_dreadstone.zip'),
+    ]:
+        add(item, bank, item.removesuffix('_item'), 'idle', 'walls', animation_archive=animation_archive)
 
     # meats.lua passes bank/build/animation to common() for every edible form.
     meat_source = read('meats')

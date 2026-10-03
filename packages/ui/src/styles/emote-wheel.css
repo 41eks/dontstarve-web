@@ -1,0 +1,43 @@
+:host { display: contents; }
+.emote-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 115;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: radial-gradient(circle at center, rgb(12 10 8 / 55%), rgb(12 10 8 / 15%));
+  color: #f4e8ca;
+  font: 18px/1.4 "Noto Sans SC", sans-serif;
+  text-shadow: 1px 2px 3px #000;
+  pointer-events: auto;
+  user-select: none;
+  outline: none;
+}
+.emote-overlay[hidden], [hidden] { display: none !important; }
+.emote-wheel { position: relative; width: min(460px, 94vw, 80vh); aspect-ratio: 1; }
+.emote-wheel__items { position: absolute; inset: 0; }
+.emote-wheel__item {
+  position: absolute;
+  width: 18%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-shadow: inherit;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: transform 100ms ease, filter 100ms ease;
+  filter: brightness(.8) drop-shadow(2px 3px 2px #000);
+}
+.emote-wheel__item canvas { display: block; width: 100%; height: auto; }
+.emote-wheel__item span { display: block; font-size: clamp(11px, 2.7vw, 15px); white-space: nowrap; }
+.emote-wheel__item.is-selected { transform: translate(-50%, -50%) scale(1.12); filter: brightness(1.2) drop-shadow(0 0 7px #c8a565); }
+.emote-wheel__item:focus-visible { outline: 2px solid #d8bd84; border-radius: 8px; }
+.emote-wheel__center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+.emote-wheel__title { display: block; color: #c7b58c; font-size: 15px; }
+.emote-wheel__label { display: block; margin: 6px 0; font-size: 26px; white-space: nowrap; }
+.emote-wheel__back { padding: 5px 12px; border: 1px solid #897149; border-radius: 5px; color: #eee0be; background: #28231c; font: inherit; font-size: 13px; cursor: pointer; pointer-events: auto; }
+.emote-wheel__help { margin: 10px 0 0; font-size: clamp(12px, 3vw, 15px); }

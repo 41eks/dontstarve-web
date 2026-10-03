@@ -210,7 +210,9 @@ inst.Light:SetIntensity(intensity)
 - 从 `public/dst/data/images/colour_cubes/` 加载原始季节 LUT。
 - 在 shader 中对横向展开的 32×32×32 Colour Cube 做三线性采样。
 - 支持四季、白天、黄昏、夜晚、满月以及降水亮度。
-- 默认状态为春季夜晚，环境色为 `(0, 0, 0)`，使用 `spring_dusk_cc.tex` 调色 LUT；将火把装备到手部后照亮角色附近。
+- 世界按 [`src/tuning.ts`](../src/tuning.ts) 移植的 `tuning.lua` 默认周期自动切换：每段 30 秒，一天 16 段（480 秒），白天 10 段（300 秒）、黄昏 4 段（120 秒）、夜晚 2 段（60 秒）。`cycles` 表示已完成的天数，从 0 开始。
+- 使用存档的 `world.elapsedSeconds` 恢复周期，首次渲染直接使用对应时段的环境色和 LUT；之后时段切换使用 4／6／8 秒过渡。季节取存档的 `world.systems.season.name`，缺省为春季。这里使用 `tuning.lua` 的默认昼夜分配，尚未接入 `components/seasons.lua` 的季节段数调整。
+- 将火把装备到手部后照亮角色附近。
 
 由于项目中的 DST 动画精灵多数使用不接受 Three.js 灯光的 `MeshBasicMaterial`，仅添加 `THREE.AmbientLight` 无法让角色和树木受光。当前 [`src/dstLocalLighting.ts`](../src/dstLocalLighting.ts) 先生成环境光与火把合成的世界 XZ 光照贴图，场景材质逐像素采样并在显示颜色空间乘色，随后把场景渲染到离屏纹理并统一执行 Colour Cube 调色。全屏调色阶段不再重复乘环境色，避免夜晚把局部照明压黑。多光源合成及 Lua 到 shader 的参数转换尚未还原，目前采用明确标注的估计规则。
 

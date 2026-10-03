@@ -3,7 +3,7 @@ import { CursorLabelUi } from '../src/cursor-label';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { setPrefabLightOverride, getPrefabLightOverride } from '../../prefab/src/localLight';
 import { TreasureChestPlacement } from '../../prefab/src/treasurechest';
-import { WallStonePlacement } from '../../prefab/src/wallstone';
+import { WallsPlacement } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
 
 export async function checkCursorPreview() {
@@ -72,7 +72,7 @@ export async function checkCursorPreview() {
   const world: WorldContext = { scene, camera, renderer, ground, player,
     createCursorLabel: (value) => ui.createLabel(value) };
   const chest = new TreasureChestPlacement(world, () => true);
-  const wall = new WallStonePlacement(world, () => true);
+  const wall = new WallsPlacement(world, () => true);
   window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 220 }));
   await chest.begin('treasurechest');
   chest.update(0);

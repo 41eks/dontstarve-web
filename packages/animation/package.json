@@ -11,6 +11,8 @@
     "./renderOrder": "./src/renderOrder.ts",
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",
+    "./beefaloSprite": "./src/beefaloSprite.ts",
+    "./wallSprite": "./src/wallSprite.ts",
     "./prefabskin": "./src/prefabskin.ts",
     "./recipes.json": "./recipes.json",
     "./bitmapFont": "./src/bitmapFont.ts"

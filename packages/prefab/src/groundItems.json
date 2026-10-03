@@ -1180,6 +1180,110 @@
         "wall_stone_victorianitem": "dynamic/wall_stone_victorian.zip"
       }
     },
+    "wall_wood_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "木墙",
+      "icon": "wall_wood_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_wood.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_wood_ornateitem": "dynamic/wall_wood_ornate.zip"
+      }
+    },
+    "wall_hay_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "草墙",
+      "icon": "wall_hay_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_hay.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_hay_cornitem": "dynamic/wall_hay_corn.zip"
+      }
+    },
+    "wall_ruins_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "铥墙",
+      "icon": "wall_ruins_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_ruins.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_ruins_thulecite2item": "dynamic/wall_ruins_thulecite2.zip",
+        "wall_ruins_thulecite2item_alt": "dynamic/wall_ruins_thulecite2.zip",
+        "wall_ruins_thulecite_alt_item": "dynamic/wall_ruins_thulecite.zip",
+        "wall_ruins_thuleciteitem": "dynamic/wall_ruins_thulecite.zip",
+        "wall_ruins_victorianitem": "dynamic/wall_ruins_victorian.zip"
+      }
+    },
+    "wall_moonrock_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "月岩墙",
+      "icon": "wall_moonrock_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_moonrock.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_moonrock_victorianitem": "dynamic/wall_moonrock_victorian.zip"
+      }
+    },
+    "wall_scrap_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "废料墙",
+      "icon": "wall_scrap_item.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_scrap.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "wall_dreadstone_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "绝望石墙",
+      "icon": "wall_dreadstone_item.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "wall_dreadstone.zip",
+      "buildArchives": [
+        "wall_dreadstone.zip"
+      ],
+      "bank": "wall_dreadstone",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_dreadstone_relicitem": "dynamic/wall_dreadstone_relic.zip"
+      }
+    },
     "meat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
       "name": "肉",
@@ -3988,6 +4092,54 @@
       "icon": "torch_tesla.tex",
       "atlas": "images/inventoryimages3.xml"
     },
+    "wall_dreadstone_relicitem": {
+      "itemId": "wall_dreadstone_item",
+      "name": "分层绝望石墙",
+      "icon": "wall_dreadstone_relicitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_hay_cornitem": {
+      "itemId": "wall_hay_item",
+      "name": "玉米墙",
+      "icon": "wall_hay_cornitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_moonrock_victorianitem": {
+      "itemId": "wall_moonrock_item",
+      "name": "月光维多利亚墙",
+      "icon": "wall_moonrock_victorianitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_thulecite2item": {
+      "itemId": "wall_ruins_item",
+      "name": "远古装饰墙",
+      "icon": "wall_ruins_thulecite2item.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_thulecite2item_alt": {
+      "itemId": "wall_ruins_item",
+      "name": "远古装饰墙",
+      "icon": "wall_ruins_thulecite2item_alt.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_thulecite_alt_item": {
+      "itemId": "wall_ruins_item",
+      "name": "远古装饰墙",
+      "icon": "wall_ruins_thulecite_alt_item.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_thuleciteitem": {
+      "itemId": "wall_ruins_item",
+      "name": "远古装饰墙",
+      "icon": "wall_ruins_thuleciteitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_victorianitem": {
+      "itemId": "wall_ruins_item",
+      "name": "维多利亚铥墙",
+      "icon": "wall_ruins_victorianitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
     "wall_stone_ancient_alt_item": {
       "itemId": "wall_stone_item",
       "name": "远古石墙",
@@ -4028,6 +4180,12 @@
       "itemId": "wall_stone_item",
       "name": "维多利亚石墙",
       "icon": "wall_stone_victorianitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_wood_ornateitem": {
+      "itemId": "wall_wood_item",
+      "name": "胡桃木书架",
+      "icon": "wall_wood_ornateitem.tex",
       "atlas": "images/inventoryimages3.xml"
     }
   }

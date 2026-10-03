@@ -114,12 +114,12 @@ export {
   TENT_ID,
 } from './tent';
 export {
-  WALL_STONE_IDS,
-  WALL_STONE_DEFINITIONS,
-  WallStonePlacement,
-  isWallStoneId,
-  type WallStoneId,
-} from './wallstone';
+  WALL_DEFINITIONS,
+  WALL_IDS,
+  WallsPlacement,
+  isWallId,
+  type WallId,
+} from './walls';
 export {
   createTurfGround,
   type TurfGroundOptions,
@@ -153,6 +153,16 @@ export {
   BulbPlantController, BulbPlantManager, bulbPlantLight, bulbPlantRegrowTime, isBulbPlantPrefab,
   type BulbPlantPrefabId, type BulbPlantVariant, type BulbPlantLightState, type BulbPlantSaveState, type BulbPlantRecord, type BulbPlantWorld,
 } from './bulb_plant';
+
+export {
+  ROCK_PREFABS, RockController, RockManager, isRockPrefab,
+  type RockPrefabId, type RockRecord,
+} from './rocks';
+
+export {
+  PICKAXE_REACH, PickaxeActionController, isPickaxeTool, loadPickaxeEquipment, resolvePickaxePlayerSprite,
+  type PickaxeEquipment, type PickaxeTarget, type PickaxeTool,
+} from './pickaxe';
 
 export {
   GROUND_ITEM_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS,

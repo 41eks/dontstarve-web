@@ -1,6 +1,7 @@
 import type { InventoryStack } from '@three-roaming/inventory';
 import type { FlowerAnimation } from '@three-roaming/prefab/flower';
 import type { BulbPlantSaveState } from '@three-roaming/prefab/bulb_plant';
+import type { BeefaloSaveState } from '@three-roaming/prefab/beefalo';
 
 export interface SavedTransform {
   position: [number, number, number];
@@ -23,6 +24,7 @@ export interface SavedEntity {
     timer?: { remainingSeconds: number };
     flower?: { animation: FlowerAnimation; planted: true };
     bulbPlant?: BulbPlantSaveState;
+    beefalo?: BeefaloSaveState;
   };
 }
 

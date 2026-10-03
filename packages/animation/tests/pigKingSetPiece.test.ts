@@ -52,7 +52,9 @@ describe('Pig King woodfloor set piece', () => {
     const material = piece.turf.material as THREE.MeshLambertMaterial;
     expect(material.map).toBeInstanceOf(THREE.DataTexture);
     expect(material.map!.repeat.toArray()).toEqual([3 / 8, 3 / 8]);
-    expect(material.polygonOffset).toBe(true);
+    expect(material.depthWrite).toBe(false);
+    expect(material.polygonOffset).toBe(false);
+    expect(piece.turf.renderOrder).toBe(-1);
     expect(fetch).toHaveBeenCalledWith('/dst/data/levels/textures/noise_woodfloor.tex');
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(piece.group.getObjectByName('PigKingFloor')).toBeUndefined();

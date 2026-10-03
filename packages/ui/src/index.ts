@@ -3,6 +3,7 @@ import { DstCookPotPanelElement } from './cook-pot-panel';
 import { DstIceBoxPanelElement } from './ice-box-panel';
 import { DstCraftingUiElement } from './crafting-ui';
 import { DstDebugConsoleElement } from './debug-console';
+import { DstEmoteWheelElement } from './emote-wheel';
 import { DstInventoryBarElement } from './inventory-bar';
 import { DstMapControlsElement } from './map-controls';
 import { DstStatusHudElement } from './status-hud';
@@ -20,6 +21,7 @@ export {
   type CraftRequestDetail,
 } from './crafting-ui';
 export { DstDebugConsoleElement, type DebugCommandDetail } from './debug-console';
+export { DstEmoteWheelElement, type EmoteRequestDetail, type EmoteWheelToggleDetail } from './emote-wheel';
 export {
   INVENTORY_ITEM_DISPLAY_SPECS,
   type InventoryItemDisplaySpec,
@@ -82,12 +84,16 @@ export interface GameUiElements {
   iceBoxPanel: DstIceBoxPanelElement;
   crafting: DstCraftingUiElement;
   debugConsole: DstDebugConsoleElement;
+  emoteWheel: DstEmoteWheelElement;
   inventoryBar: DstInventoryBarElement;
   mapControls: DstMapControlsElement;
   statusHud: DstStatusHudElement;
 }
 
 export function defineGameUiElements(): void {
+  if (!customElements.get('dst-emote-wheel')) {
+    customElements.define('dst-emote-wheel', DstEmoteWheelElement);
+  }
   if (!customElements.get('dst-chest-panel')) {
     customElements.define('dst-chest-panel', DstChestPanelElement);
   }
@@ -125,17 +131,18 @@ export function mountGameUi(options: MountGameUiOptions = {}): GameUiElements {
   const iceBoxPanel = getOrCreate('dst-ice-box-panel', chestTarget);
   const crafting = getOrCreate('dst-crafting-ui', craftingTarget);
   const debugConsole = getOrCreate('dst-debug-console', overlayTarget);
+  const emoteWheel = getOrCreate('dst-emote-wheel', overlayTarget);
   const statusHud = getOrCreate('dst-status-hud', overlayTarget);
   const inventoryBar = getOrCreate('dst-inventory-bar', overlayTarget);
   const mapControls = getOrCreate('dst-map-controls', overlayTarget);
 
   if (options.assetBaseUrl) {
-    for (const element of [chestPanel, cookPotPanel, iceBoxPanel, crafting, debugConsole, statusHud, inventoryBar, mapControls]) {
+    for (const element of [chestPanel, cookPotPanel, iceBoxPanel, crafting, debugConsole, emoteWheel, statusHud, inventoryBar, mapControls]) {
       element.setAttribute('asset-base', options.assetBaseUrl);
     }
   }
 
-  return { chestPanel, cookPotPanel, iceBoxPanel, crafting, debugConsole, inventoryBar, mapControls, statusHud };
+  return { chestPanel, cookPotPanel, iceBoxPanel, crafting, debugConsole, emoteWheel, inventoryBar, mapControls, statusHud };
 }
 
 function getOrCreate<K extends keyof HTMLElementTagNameMap>(
@@ -157,6 +164,7 @@ declare global {
     'dst-ice-box-panel': DstIceBoxPanelElement;
     'dst-crafting-ui': DstCraftingUiElement;
     'dst-debug-console': DstDebugConsoleElement;
+    'dst-emote-wheel': DstEmoteWheelElement;
     'dst-inventory-bar': DstInventoryBarElement;
     'dst-map-controls': DstMapControlsElement;
     'dst-status-hud': DstStatusHudElement;

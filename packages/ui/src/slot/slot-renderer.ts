@@ -23,7 +23,8 @@ export interface CreateSlotRendererOptions {
   backgroundUrl(): string;
   archiveUrl(): string;
   selectedSlot?(): SlotAddress | null;
-  onSelect?(slot: SlotModel): void;
+  /** Return true to claim the click and skip the transfer pick-up. */
+  onSelect?(slot: SlotModel): boolean;
   onContextMenu?(slot: SlotModel, event: MouseEvent): void;
   onTransfer?(request: SlotTransferRequest): void;
 }
@@ -96,10 +97,11 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       suppressNextClick = false;
       return;
     }
+    // Selection runs first so a placeable item can claim the click for placement
+    // instead of being picked up for a transfer.
+    if (options.onSelect?.(options.slot)) return;
     const result = slotTransferController.click(event, options.slot);
     if (result.request) options.onTransfer?.(result.request);
-    if (result.handled) return;
-    options.onSelect?.(options.slot);
   });
   button.addEventListener('contextmenu', (event) => {
     event.preventDefault();

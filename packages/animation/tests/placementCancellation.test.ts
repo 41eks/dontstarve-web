@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createAnimatedSprite, createStaticSprite } from '../src/sprite';
+import { createAnimatedSprite } from '../src/sprite';
+import { createStaticSprite } from '../src/wallSprite';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { WallPlacement } from '../../prefab/src/wallPlacement';
 import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
@@ -8,7 +9,8 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { getPrefabLightOverride } from '../../prefab/src/localLight';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
 
-vi.mock('../src/sprite', () => ({ createAnimatedSprite: vi.fn(), createStaticSprite: vi.fn() }));
+vi.mock('../src/sprite', () => ({ createAnimatedSprite: vi.fn() }));
+vi.mock('../src/wallSprite', () => ({ createStaticSprite: vi.fn() }));
 
 function model() {
   const result = new THREE.Group();

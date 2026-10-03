@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
     createAnimatedSprite,
     type SpriteAnimationController,
+    type TransientSpriteAnimationController,
 } from '@three-roaming/animation/sprite';
 import type { PrefabSkinInitializer } from '@three-roaming/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';
@@ -9,6 +10,7 @@ import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import type { WorldContext } from './worldContext';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
+import type { HammerTarget } from './hammer';
 
 export interface AnimatedBuildingDefinition {
     archive: string;
@@ -16,6 +18,8 @@ export interface AnimatedBuildingDefinition {
     idleAnimation?: string;
     previewAnimation?: string;
     interaction?: AnimatedBuildingToggleInteraction;
+    /** Source SetWorkAction(ACTIONS.HAMMER) and its OnWork animation. */
+    hammerAnimation?: string;
     name: string;
     container?: BuildingContainerDefinition;
     /** Runs only after successful placement; call onComplete when built effects finish. */
@@ -63,7 +67,7 @@ type AnimatedBuildingInteractionState = 'closed' | 'opening' | 'open' | 'closing
 interface AnimatedBuildingInstance<BuildId extends string> {
     buildId: BuildId;
     model: THREE.Group;
-    animation: SpriteAnimationController;
+    animation: TransientSpriteAnimationController;
     groundOffset: number;
     interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
@@ -188,6 +192,25 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 object: model,
                 footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
                 cameraDepth: 0,
+            }));
+    }
+
+    get hammerTargets(): readonly HammerTarget[] {
+        return this.placed.filter((building) => this.definitions[building.buildId].hammerAnimation !== undefined)
+            .map((building) => ({
+                id: String(building.model.userData.entityId),
+                model: building.model,
+                position: building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)),
+                isValid: () => !building.isPlacing && building.model.visible && building.model.parent !== null,
+                playHit: () => {
+                    const definition = this.definitions[building.buildId];
+                    const current = building.animation.currentAnimation;
+                    const hit = definition.hammerAnimation === 'hit_empty'
+                        ? current === 'cooking_loop' ? 'hit_cooking' : current === 'idle_full' ? 'hit_full' : 'hit_empty'
+                        : (building.buildId === 'mushroom_light' || building.buildId === 'mushroom_light2') && current.endsWith('_on')
+                            ? 'hit_on' : definition.hammerAnimation!;
+                    building.animation.playTransient(hit);
+                },
             }));
     }
 
@@ -372,7 +395,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const instance: AnimatedBuildingInstance<BuildId> = {
             buildId,
             model,
-            animation: model.userData.animationController as SpriteAnimationController,
+            animation: model.userData.animationController as TransientSpriteAnimationController,
             groundOffset: -bounds.min.y,
             ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,

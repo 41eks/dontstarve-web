@@ -201,13 +201,20 @@ export class DstChestPanelElement extends AssetElement {
       ?.addEventListener('click', () => this.close());
   }
 
-  private selectSlot(slot: SlotModel): void {
+  /**
+   * Returns true when a listener cancelled `game:slot-select`, meaning it claimed
+   * the click (e.g. to start placement) and the slot must not pick the item up.
+   */
+  private selectSlot(slot: SlotModel): boolean {
     this.selectedSlot.set({ ...slot.address });
-    this.dispatchEvent(new CustomEvent<SlotSelectDetail>('game:slot-select', {
+    const select = new CustomEvent<SlotSelectDetail>('game:slot-select', {
       bubbles: true,
       composed: true,
+      cancelable: true,
       detail: { slot: { ...slot.address } },
-    }));
+    });
+    this.dispatchEvent(select);
+    return select.defaultPrevented;
   }
 
   private dispatchTransfer(detail: SlotTransferRequest): void {

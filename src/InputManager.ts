@@ -2,10 +2,11 @@
 
 export class InputManager {
     keys = new Set<Key>();
+    private blocked = false;
 
     constructor() {
         window.addEventListener('keydown', (e) => {
-            if (isTextInput(e.target)) return;
+            if (this.blocked || e.composedPath().some(isTextInput)) return;
             this.keys.add(e.code as Key)
         });
         window.addEventListener('keyup', (e) => this.keys.delete(e.code as Key));
@@ -14,6 +15,11 @@ export class InputManager {
 
     isPressed = (code:Key) => {
         return this.keys.has(code);
+    }
+
+    setBlocked(blocked: boolean): void {
+        this.blocked = blocked;
+        this.keys.clear();
     }
 }
 

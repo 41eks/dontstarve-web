@@ -134,7 +134,7 @@ export class GroundItemManager {
   }
 
   private addVisual(id: string, definition: GroundItemDefinition, position: THREE.Vector3, visual: GroundItemVisual, dropped = false): void {
-    const footPosition = new THREE.Vector3(position.x, 0, position.z);
+    const footPosition = new THREE.Vector3(position.x, dropped ? 0 : position.y, position.z);
     visual.model.position.copy(footPosition);
     visual.model.userData.entityId = id;
     this.items.set(visual.model, { id, definition, footPosition, ...visual });

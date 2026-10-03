@@ -38,6 +38,19 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
+  it('round trips beefalo positions, home, facing and manure timers and rejects invalid AI data', () => {
+    const { template, state } = fixture();
+    state.entities.beefalo = [{ id: 'e_beefalo', transform: { position: [10, 0, 2], rotationY: 0 },
+      components: { beefalo: { home: [3, 0, 4], heading: 135, poopRemainingSeconds: 12.5 } } }];
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities.beefalo).toEqual(state.entities.beefalo);
+    for (const patch of [{ home: [0, 1, 0] }, { home: [501, 0, 0] }, { heading: -1 },
+      { heading: 361 }, { poopRemainingSeconds: 0 }, { poopRemainingSeconds: 61 }]) {
+      const bad = structuredClone(saved);
+      Object.assign(bad.world.entities.beefalo[0].components.beefalo!, patch);
+      expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow();
+    }
+  });
   it('preserves bulb plant harvesting timers and rejects inconsistent harvested states', () => {
     const { template, state } = fixture();
     state.entities.flower_cave = [{ id: 'e_picked', transform: { position: [1, 0, 2], rotationY: 0 },

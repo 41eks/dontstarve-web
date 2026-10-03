@@ -2,22 +2,42 @@ import * as THREE from 'three';
 import {
     createStaticSprite,
     type StaticSpriteController,
-} from '@three-roaming/animation/sprite';
+} from '@three-roaming/animation/wallSprite';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
+import type { HammerTarget } from './hammer';
 
 export interface WallDefinition {
     archive: string;
+    /**
+     * Anim archive supplying the `half` pose and `half_hit` feedback. Defaults
+     * to the shared `wall.zip`; `wall_dreadstone` ships its own bank.
+     */
+    animationArchive?: string;
     buildLabel: string;
     /**
      * Front face art for cardinal camera headings (0/90/180/270), where the
      * wall's `facing=15` animations are used, e.g. `14` for `wall_segment-14`.
      */
     frontImageIndex: number;
+    /**
+     * DST `AnimState:SetMultColour` RGB triple, e.g. hay walls are drawn
+     * slightly dark with `[0.9, 0.9, 0.9]`.
+     */
+    multColour?: readonly number[];
     name: string;
+    /**
+     * Symbol stacked over the main one. `wall_dreadstone` draws
+     * `wall_segment_red` over `wall_segment_base`.
+     */
+    overlay?: {
+        symbol: string;
+        frontImageIndex: number;
+        sideImageIndex: number;
+    };
     scale: number;
     /**
      * Oblique side art for diagonal camera headings (45/135/225/315), where the
@@ -133,6 +153,16 @@ export class WallPlacement<BuildId extends string> {
             }));
     }
 
+    get hammerTargets(): readonly HammerTarget[] {
+        return this.placed.map((wall) => ({
+            id: String(wall.model.userData.entityId), model: wall.model,
+            position: wall.model.position.clone().add(new THREE.Vector3(0, -wall.groundOffset, 0)),
+            isValid: () => wall.model.visible && wall.model.parent !== null,
+            // This project displays the constructed wall's half pose; no health is changed.
+            playHit: () => wall.animation.playTransient('half_hit'),
+        }));
+    }
+
     exportRecords(): PlacedEntitySaveRecord[] {
         return this.placed.map((wall) => {
             const health = (wall.model.userData.saveRecord as PlacementSaveRecord | undefined)?.components.health;
@@ -158,13 +188,14 @@ export class WallPlacement<BuildId extends string> {
         this.cursor.hide();
     }
 
-    update() {
+    update(dt = 0) {
         this.cursor.update();
         const showFront = !this.isDiagonalHeading();
         if (this.active) this.updateFacing(this.active, showFront);
         for (const wall of this.placed) {
             this.faceCamera(wall.model);
             this.updateFacing(wall, showFront);
+            wall.animation.update(dt);
         }
     }
 
@@ -214,8 +245,17 @@ export class WallPlacement<BuildId extends string> {
                 name: definition.name,
                 scale: definition.scale,
                 symbol: definition.symbol,
+                ...(definition.overlay ? {
+                    overlay: {
+                        symbol: definition.overlay.symbol,
+                        imageIndices: [definition.overlay.sideImageIndex, definition.overlay.frontImageIndex],
+                    },
+                } : {}),
+                animationArchive: definition.animationArchive ?? 'wall.zip',
+                restAnimation: 'half',
             },
         );
+        if (definition.multColour) this.setMultColour(model, definition.multColour);
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
         const instance: WallInstance<BuildId> = {
@@ -248,6 +288,7 @@ export class WallPlacement<BuildId extends string> {
         wall.animation.showImage(
             showFront ? definition.frontImageIndex : definition.sideImageIndex,
         );
+        wall.animation.setFacing(showFront ? 8 : 128);
     }
 
     /**
@@ -277,6 +318,17 @@ export class WallPlacement<BuildId extends string> {
             materials.forEach((material) => {
                 material.transparent = true;
                 material.opacity = opacity;
+            });
+        });
+    }
+
+    private setMultColour(model: THREE.Object3D, colour: readonly number[]) {
+        const [red, green, blue] = [colour[0] ?? 1, colour[1] ?? 1, colour[2] ?? 1];
+        model.traverse((object) => {
+            if (!(object instanceof THREE.Mesh)) return;
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            materials.forEach((material) => {
+                material.color.setRGB(red, green, blue);
             });
         });
     }

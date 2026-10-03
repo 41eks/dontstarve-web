@@ -168,10 +168,11 @@ export class DstLightingRenderer {
   static async create(
     renderer: THREE.WebGLRenderer,
     colourCubeRoot: string,
+    initialState: { season: DstSeason; phase: DstLightPhase } = { season: 'spring', phase: 'night' },
   ): Promise<DstLightingRenderer> {
     const uniquePaths = [...new Set(Object.values(LUT_PATHS).flatMap((phases) => Object.values(phases)))];
     const loaded = await Promise.all(uniquePaths.map(async (path) => [path, await loadLut(colourCubeRoot, path)] as const));
-    return new DstLightingRenderer(renderer, new Map(loaded));
+    return new DstLightingRenderer(renderer, new Map(loaded), initialState);
   }
 
   private readonly renderer: THREE.WebGLRenderer;
@@ -198,9 +199,12 @@ export class DstLightingRenderer {
   private constructor(
     renderer: THREE.WebGLRenderer,
     textures: ReadonlyMap<string, THREE.DataTexture>,
+    initialState: { season: DstSeason; phase: DstLightPhase },
   ) {
     this.renderer = renderer;
     this.textures = textures;
+    this.season = initialState.season;
+    this.phase = initialState.phase;
     const initialLut = this.requireLut(this.season, this.phase);
     this.ambientCurrent.copy(ambientFor(this.season, this.phase));
     this.ambientStart.copy(this.ambientCurrent);

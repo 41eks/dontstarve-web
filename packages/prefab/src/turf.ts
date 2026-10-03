@@ -57,9 +57,12 @@ export async function createTurfGround(options: TurfGroundOptions): Promise<THRE
 
     const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(size, size),
-        new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide }),
+        // DST billboard artwork can extend below its ground-contact origin.
+        // Paint the terrain first without clipping those pixels with its depth.
+        new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide, depthWrite: false }),
     );
     ground.name = 'TurfGround';
+    ground.renderOrder = -2;
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     return ground;

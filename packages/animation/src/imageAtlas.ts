@@ -1,5 +1,6 @@
 import { imageArchiveUrl, preloadImageArchive } from './imageArchive';
-import { DecodedImageAtlas, parseImageAtlasArchive, type ImageAtlas } from './imageAtlasParser';
+import { DecodedImageAtlas, parseImageAtlasArchive, parseImageAtlasXml, type ImageAtlas } from './imageAtlasParser';
+import { parseKtex } from './parseKtex';
 import type { ImageAtlasWorkerRequest, ImageAtlasWorkerResponse } from './imageAtlasWorkerProtocol';
 
 export {
@@ -76,6 +77,29 @@ export function loadImageAtlas(
       : preloadImageArchive(url).then((data) => parseImageAtlasArchive(data, atlasPath));
     atlasRequests.set(key, request);
     void request.catch(() => atlasRequests.delete(key));
+  }
+  return request;
+}
+
+/** Some DST UI atlases are loose XML/KTEX files rather than images.zip entries. */
+export function loadImageAtlasFiles(xmlUrl: string | URL): Promise<ImageAtlas> {
+  const url = imageArchiveUrl(xmlUrl);
+  let request = atlasRequests.get(url);
+  if (!request) {
+    request = (async () => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Unable to load image atlas ${url}: HTTP ${response.status}`);
+      const definition = parseImageAtlasXml(await response.text(), url);
+      const texturePath = new URL(definition.texture, url).href;
+      const texture = await fetch(texturePath);
+      if (!texture.ok) throw new Error(`Unable to load image texture ${texturePath}: HTTP ${texture.status}`);
+      return new DecodedImageAtlas([{
+        ...definition, path: url, texturePath,
+        decodedTexture: parseKtex(new Uint8Array(await texture.arrayBuffer()), texturePath),
+      }]);
+    })();
+    atlasRequests.set(url, request);
+    void request.catch(() => atlasRequests.delete(url));
   }
   return request;
 }

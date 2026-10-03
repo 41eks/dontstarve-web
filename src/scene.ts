@@ -10,6 +10,9 @@ import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
 import { DwarfStarManager } from '@three-roaming/prefab/stafflight';
 import { BulbPlantManager, isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
+import { RockManager, isRockPrefab } from '@three-roaming/prefab/rocks';
+import { BeefaloManager, BEEFALO_BEHAVIOR } from '@three-roaming/prefab/beefalo';
+import { newEntityId } from '@three-roaming/prefab/saveRecord';
 import {
   pigKings,
   setPigKingNormal,
@@ -29,6 +32,7 @@ import { FlowerPlanting } from '@three-roaming/prefab/flower';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
 import { initialSave } from './save/initialSave';
+import { getDstCycle } from './tuning';
 import { SAVE_CATALOG } from './save/catalog';
 import type { ProximityEntity } from '@three-roaming/prefab/proximityEntities';
 import type { RuntimeSaveState } from './save/serialize';
@@ -95,7 +99,7 @@ const characterRenderEntries = [
   })),
 ];
 
-function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement, groundItems: GroundItemManager, dwarfStars: DwarfStarManager, flowerPlanting: FlowerPlanting, bulbPlants: BulbPlantManager) {
+function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement, groundItems: GroundItemManager, dwarfStars: DwarfStarManager, flowerPlanting: FlowerPlanting, bulbPlants: BulbPlantManager, beefalos: BeefaloManager, rockManager: RockManager) {
   // The player origin follows the bottom of its physics body. Pig King's root
   // is vertically offset to ground its artwork, so its foot point is y = 0.
   playerFootPosition.copy(player.position);
@@ -107,6 +111,8 @@ function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacemen
     ...flowerPlanting.renderEntities,
     ...dwarfStars.renderEntities,
     ...bulbPlants.renderEntities,
+    ...beefalos.renderEntities,
+    ...rockManager.renderEntities,
     ...Array.from(moonTreeForest.activeEntities, (entity) => ({
       object: entity.model!, footPosition: entity.position, cameraDepth: 0,
     })),
@@ -204,6 +210,43 @@ export async function startScene(
     getLightLevel: (model) => dstLighting.sampleLightLevel(model.position, model),
   });
   bulbPlants.setupInteraction(view, pickLightbulbs);
+  const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const pendingPoop = new Set<THREE.Vector3>();
+  const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    isDay: () => dstLighting.getPhase() === 'day',
+    isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
+    getPlayerPositions: () => [player.position],
+    findPath(start, target) {
+      const radius = BEEFALO_BEHAVIOR.radius;
+      const edge = initialSave.world.map.generator.options.size / 2 - radius;
+      const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC && body.collisionResponse
+        && body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere))
+        .map((body) => { body.updateAABB(); return body.aabb; });
+      return findGroundPath(start, target, { cellSize: radius,
+        isWalkable: (point) => Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
+          && !obstacles.some((box) => point.x >= box.lowerBound.x - radius && point.x <= box.upperBound.x + radius
+            && point.z >= box.lowerBound.z - radius && point.z <= box.upperBound.z + radius),
+      });
+    },
+    constrainPosition(position) {
+      const edge = initialSave.world.map.generator.options.size / 2 - BEEFALO_BEHAVIOR.radius;
+      position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
+      position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
+    },
+    spawnPoop(position) {
+      const positions = [...pendingPoop, ...groundItems.exportRecords()
+        .filter((record) => record.components.stack?.itemId === 'poop')
+        .map((record) => new THREE.Vector3(...record.transform.position))];
+      if (positions.some((point) => point.distanceToSquared(position) < BEEFALO_BEHAVIOR.poopSpacing ** 2)
+        || positions.filter((point) => point.distanceToSquared(position) <= BEEFALO_BEHAVIOR.poopDensityRadius ** 2).length >= 2) return;
+      pendingPoop.add(position);
+      void groundItems.spawnFromSave(newEntityId(), {
+        ...SAVE_CATALOG.items.poop, itemId: 'poop', count: 1,
+      }, position).catch((error: unknown) => console.error('Unable to spawn beefalo manure', error))
+        .finally(() => pendingPoop.delete(position));
+    },
+  });
+  middleTasks.push((dt) => beefalos.update(dt));
   // Align every billboard before sorting their ground-contact points.
   backTasks.push((dt: number) => {
     buildingPlacement.update(dt);
@@ -211,7 +254,9 @@ export async function startScene(
     groundItems.update(dt, cameraWorldQuaternion);
     dwarfStars.update(dt, cameraWorldQuaternion);
     bulbPlants.update(dt, cameraWorldQuaternion);
-    updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants);
+    beefalos.sync(cameraWorldQuaternion);
+    rockManager.update(dt, cameraWorldQuaternion);
+    updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, beefalos, rockManager);
   });
   setupPigKingInteraction(view);
   const byEntityId = new Map<string, THREE.Object3D | ProximityEntity>();
@@ -232,6 +277,10 @@ export async function startScene(
         byEntityId.set(record.id, await bulbPlants.spawn(prefabId, new THREE.Vector3(...record.transform.position), {
           id: record.id, transform: record.transform, components: { bulbPlant: record.components.bulbPlant! },
         }));
+      } else if (isRockPrefab(prefabId)) {
+        byEntityId.set(record.id, await rockManager.spawn(prefabId, new THREE.Vector3(...record.transform.position), {
+          id: record.id, transform: record.transform, components: {},
+        }));
       } else if (prefabId === 'ground_item') {
         const item = record.components.stack!;
         const spec = SAVE_CATALOG.items[item.itemId];
@@ -241,13 +290,20 @@ export async function startScene(
           icon: skin?.icon ?? spec.icon, atlas: skin?.atlas ?? spec.atlas,
         }, new THREE.Vector3(...record.transform.position));
         byEntityId.set(record.id, model);
+      } else if (prefabId === 'beefalo') {
+        byEntityId.set(record.id, await beefalos.spawn(new THREE.Vector3(...record.transform.position), {
+          id: record.id, transform: record.transform, components: { beefalo: record.components.beefalo! },
+        }));
       }
     }
   }
   // Logical tree records stay in the map even when their models are unloaded.
   moonTreeForest.updateNearby(player.position);
   let elapsedSeconds = initialSave.world.elapsedSeconds;
-  backTasks.push((dt) => { elapsedSeconds += dt; });
+  backTasks.push((dt) => {
+    elapsedSeconds += dt;
+    dstLighting.setPhase(getDstCycle(elapsedSeconds).phase);
+  });
   const getSaveState = (): Omit<RuntimeSaveState, 'inventory'> => {
     const entities: Record<string, SavedEntity[]> = {
       moon_tree: moonTreeForest.entities.map((entity) => ({
@@ -263,6 +319,7 @@ export async function startScene(
       ground_item: groundItems.exportRecords(),
       flower: flowerPlanting.exportRecords(),
       stafflight: dwarfStars.exportRecords(),
+      beefalo: beefalos.exportRecords(),
     };
     for (const { prefabId, record } of buildingPlacement.exportRecords()) {
       (entities[prefabId] ??= []).push({
@@ -271,6 +328,7 @@ export async function startScene(
       });
     }
     for (const { prefabId, record } of bulbPlants.exportRecords()) (entities[prefabId] ??= []).push(record);
+    for (const { prefabId, record } of rockManager.exportRecords()) (entities[prefabId] ??= []).push(record);
     return {
       entities, elapsedSeconds,
       // Physics may place the foot a fraction below the ground while settling.
@@ -279,7 +337,7 @@ export async function startScene(
   };
   setupLocomotorInput(view, locomotor);
   animate(world, camera);
-  return { buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, byEntityId, getSaveState };
+  return { buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, beefalos, rockManager, byEntityId, getSaveState };
 }
 
 export function scene_add(model:THREE.Object3D){

@@ -15,7 +15,9 @@ export async function checkGroundItemPickup() {
   // Invalid UI icon/atlas deliberately proves every supported item uses its world art.
   const definition = (id: string) => ({ itemId: id, name: id, icon: 'missing.tex', count: 1 });
   const common = ['torch', 'lantern', 'lightbulb', 'yellowstaff', 'meatballs', 'cutgrass', 'twigs', 'log', 'rocks', 'goldnugget',
-    'gears', 'charcoal', 'pigskin', 'cutstone', 'rope', 'wall_stone_item', 'axe', 'hammer'];
+    'gears', 'charcoal', 'pigskin', 'cutstone', 'rope',
+    'wall_stone_item', 'wall_wood_item', 'wall_hay_item', 'wall_ruins_item',
+    'wall_moonrock_item', 'wall_dreadstone_item', 'wall_scrap_item', 'axe', 'hammer'];
   const failures: string[] = [];
   for (const id of common) {
     const dropped = await manager.drop(definition(id), new THREE.Vector3(0, 9, 0), () => true);

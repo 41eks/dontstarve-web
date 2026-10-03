@@ -3,12 +3,11 @@ import {
   createMaterials,
   findImage,
   loadAnimationArchive,
-  loadBuild,
   loadSpriteSkinArchive,
   smallHash,
   SpriteFrameRenderer,
   type Animation,
-  type Matrix2D,
+  type BuildPackage,
   type ParsedAnim,
   type ParsedBuild,
   type ResolvedSprite,
@@ -19,6 +18,12 @@ export interface SpriteAnimationController {
   start(name: string): void;
   playOnce(name: string, onComplete?: () => void): void;
   update(dt: number): void;
+}
+
+export interface TransientSpriteAnimationController extends SpriteAnimationController {
+  readonly currentAnimation: string;
+  /** Brief feedback, then restore the interrupted clip, pose and callback. */
+  playTransient(name: string): void;
 }
 
 export interface AnimatedSpriteOptions {
@@ -53,35 +58,20 @@ export interface AnimatedSpriteFactory {
   dispose(): void;
 }
 
-export interface StaticSpriteOptions {
-  /** Build image frames the sprite can draw, e.g. `[4, 14]` for `wall_segment-4` and `wall_segment-14`. */
-  imageIndices: readonly number[];
-  /** Frame shown first; defaults to the first entry of `imageIndices`. */
-  imageIndex?: number;
-  name?: string;
-  scale?: number;
-  symbol?: string;
-}
-
-export interface StaticSpriteController extends SpriteAnimationController {
-  /** Switches to another of the sprite's `imageIndices` frames. */
-  showImage(imageIndex: number): void;
-}
-
-const IDENTITY_MATRIX: Matrix2D = [1, 0, 0, 1, 0, 0];
-
-class SpriteController implements SpriteAnimationController {
+export class SpriteController implements TransientSpriteAnimationController {
+  protected readonly visual: THREE.Group;
   private readonly renderer: SpriteFrameRenderer;
   private readonly build: ParsedBuild;
-  private readonly animations: ParsedAnim;
+  protected readonly animations: ParsedAnim;
   private readonly materials: THREE.MeshBasicMaterial[];
-  private animation!: Animation;
-  private animationName = '';
-  private elapsed = 0;
-  private frameKey = '';
+  protected animation!: Animation;
+  protected animationName = '';
+  protected elapsed = 0;
+  protected frameKey = '';
   private layers: Animation[] = [];
-  private loop = true;
+  protected loop = true;
   private onComplete?: () => void;
+  private transientRestore?: () => void;
   private readonly skin?: SpriteSkin;
 
   constructor(
@@ -92,6 +82,7 @@ class SpriteController implements SpriteAnimationController {
     initialAnimation: string,
     skin?: SpriteSkin,
   ) {
+    this.visual = visual;
     this.renderer = new SpriteFrameRenderer(visual);
     this.build = build;
     this.animations = animations;
@@ -105,8 +96,22 @@ class SpriteController implements SpriteAnimationController {
     this.selectAnimation(name, true);
   }
 
+  get currentAnimation(): string { return this.animationName; }
+
   playOnce(name: string, onComplete?: () => void) {
     this.selectAnimation(name, false, onComplete);
+  }
+
+  playTransient(name: string) {
+    const { animationName, elapsed, loop, onComplete } = this;
+    const restore = this.transientRestore ?? (() => {
+      this.selectAnimation(animationName, loop, onComplete);
+      this.elapsed = elapsed;
+      const frame = Math.floor(elapsed * this.animation.frameRate);
+      this.showFrame(loop ? frame % this.animation.frames.length : Math.min(frame, this.animation.frames.length - 1));
+    });
+    this.selectAnimation(name, false, restore);
+    this.transientRestore = restore;
   }
 
   holdLastFrame(name: string) {
@@ -114,6 +119,16 @@ class SpriteController implements SpriteAnimationController {
     this.elapsed = this.animation.frames.length / this.animation.frameRate;
     this.showFrame(this.animation.frames.length - 1);
   }
+
+  protected findAnimation(name: string): Animation {
+    const base = this.animations.animations.find((candidate) => candidate.name === name);
+    if (!base) throw new Error(`Sprite animation ${name} is unavailable`);
+    return this.skin?.animations?.animations.find((candidate) =>
+      candidate.name === name && candidate.bankHash === base.bankHash,
+    ) ?? base;
+  }
+
+  protected isLayerVisible(_layerHash: number): boolean { return true; }
 
   update(dt: number) {
     this.elapsed += Math.min(dt, 0.1);
@@ -132,16 +147,13 @@ class SpriteController implements SpriteAnimationController {
   }
 
   private selectAnimation(name: string, loop: boolean, onComplete?: () => void) {
-    const baseAnimation = this.animations.animations.find((candidate) => candidate.name === name);
-    if (!baseAnimation) throw new Error(`Sprite animation ${name} is unavailable`);
-    const animation = this.skin?.animations?.animations.find((candidate) =>
-      candidate.name === name && candidate.bankHash === baseAnimation.bankHash,
-    ) ?? baseAnimation;
+    const animation = this.findAnimation(name);
     if (!animation.frames.length) throw new Error(`Sprite animation ${name} has no frames`);
     this.animation = animation;
     this.animationName = name;
     this.loop = loop;
     this.onComplete = onComplete;
+    this.transientRestore = undefined;
     this.elapsed = 0;
     this.frameKey = '';
     this.layers = this.skin?.animations?.animations.filter((candidate) =>
@@ -150,7 +162,7 @@ class SpriteController implements SpriteAnimationController {
     this.showFrame(0);
   }
 
-  private showFrame(index: number) {
+  protected showFrame(index: number) {
     const layerIndices = this.layers.map((layer) => {
       const frame = Math.floor(this.elapsed * layer.frameRate);
       return this.loop ? frame % layer.frames.length : Math.min(frame, layer.frames.length - 1);
@@ -160,6 +172,7 @@ class SpriteController implements SpriteAnimationController {
     this.frameKey = key;
     const frames = [this.animation.frames[index], ...this.layers.map((layer, i) => layer.frames[layerIndices[i]])];
     const sprites = frames.flatMap((frame) => [...frame.elements]
+      .filter((element) => this.isLayerVisible(element.layerHash))
       .sort((a, b) => b.z - a.z)
       .map((element) => {
         const skin = this.skin;
@@ -200,6 +213,15 @@ export async function createAnimatedSpriteFactory(
   file: string,
 ): Promise<AnimatedSpriteFactory> {
   const { buildPackage, animations } = await loadAnimationArchive(file, assetBaseUrl);
+  return createSpriteFactory(buildPackage, animations);
+}
+
+/** Share loaded atlases while allowing specialized sprite controllers. */
+export function createSpriteFactory(
+  buildPackage: BuildPackage,
+  animations: ParsedAnim,
+  controllerClass: typeof SpriteController = SpriteController,
+): AnimatedSpriteFactory {
   const materials = createMaterials(buildPackage);
   const sprites = new Set<THREE.Group>();
   let disposed = false;
@@ -213,7 +235,7 @@ export async function createAnimatedSpriteFactory(
   return {
     create(options) {
       if (disposed) throw new Error('Animated sprite factory has been disposed');
-      const sprite = createSprite(buildPackage.build, animations, materials, options);
+      const sprite = createSprite(buildPackage.build, animations, materials, options, undefined, controllerClass);
       sprites.add(sprite);
       return sprite;
     },
@@ -236,6 +258,7 @@ function createSprite(
   materials: THREE.MeshBasicMaterial[],
   options: AnimatedSpriteOptions,
   skin?: SpriteSkin,
+  controllerClass: typeof SpriteController = SpriteController,
 ): THREE.Group {
   const sprite = new THREE.Group();
   sprite.name = options.name ?? build.name;
@@ -247,7 +270,7 @@ function createSprite(
   sprite.add(visual);
   registerSpriteRenderGroup(sprite, visual);
 
-  const controller = new SpriteController(
+  const controller = new controllerClass(
     visual,
     build,
     animations,
@@ -257,110 +280,5 @@ function createSprite(
   );
   if (options.initialFrame === 'last') controller.holdLastFrame(options.initialAnimation);
   sprite.userData.animationController = controller;
-  return sprite;
-}
-
-/** Stands in for a {@link SpriteAnimationController} on sprites that never animate. */
-class StaticSprite implements StaticSpriteController {
-  private readonly renderer: SpriteFrameRenderer;
-  private readonly frames: ReadonlyMap<number, ResolvedSprite[]>;
-  private imageIndex?: number;
-  private onComplete?: () => void;
-
-  constructor(
-    visual: THREE.Group,
-    frames: ReadonlyMap<number, ResolvedSprite[]>,
-    imageIndex: number,
-  ) {
-    this.renderer = new SpriteFrameRenderer(visual);
-    this.frames = frames;
-    this.showImage(imageIndex);
-  }
-
-  start() {}
-
-  playOnce(_name: string, onComplete?: () => void) {
-    this.onComplete = onComplete;
-  }
-
-  update() {
-    if (!this.onComplete) return;
-    const onComplete = this.onComplete;
-    this.onComplete = undefined;
-    onComplete();
-  }
-
-  showImage(imageIndex: number) {
-    if (imageIndex === this.imageIndex) return;
-    const sprites = this.frames.get(imageIndex);
-    if (!sprites) throw new Error(`Static sprite has no image ${imageIndex}`);
-    this.imageIndex = imageIndex;
-    this.renderer.show(sprites);
-  }
-}
-
-function staticSpriteFrame(
-  build: ParsedBuild,
-  symbolHash: number,
-  imageIndex: number,
-  materials: THREE.MeshBasicMaterial[],
-): ResolvedSprite[] {
-  const image = findImage(build, symbolHash, imageIndex);
-  if (!image) {
-    throw new Error(`Build ${build.name} has no drawable image ${symbolHash}-${imageIndex}`);
-  }
-  return [{
-    element: {
-      imageHash: symbolHash,
-      imageIndex,
-      layerHash: symbolHash,
-      matrix: IDENTITY_MATRIX,
-      z: 0,
-    },
-    image,
-    materials,
-  }];
-}
-
-/**
- * Renders build images from an archive that ships no anim.bin. Build symbols
- * such as `wall_segment` hold one image per state or facing, so a static prefab
- * draws one of those images at a time rather than animating it.
- */
-export async function createStaticSprite(
-  assetBaseUrl: string,
-  file: string,
-  options: StaticSpriteOptions,
-): Promise<THREE.Group> {
-  const buildPackage = await loadBuild(file, assetBaseUrl);
-  const build = buildPackage.build;
-  const symbolHash = options.symbol ? smallHash(options.symbol) : build.symbols.keys().next().value;
-  if (symbolHash === undefined) {
-    throw new Error(`Build ${build.name} does not contain any symbol`);
-  }
-  if (!options.imageIndices.length) {
-    throw new Error(`Static sprite ${file} must offer at least one build image`);
-  }
-
-  const sprite = new THREE.Group();
-  sprite.name = options.name ?? build.name;
-  sprite.userData.billboard = true;
-
-  const visual = new THREE.Group();
-  const scale = options.scale ?? 0.02;
-  visual.scale.set(scale, -scale, scale);
-  sprite.add(visual);
-  registerSpriteRenderGroup(sprite, visual);
-
-  const materials = createMaterials(buildPackage);
-  const frames = new Map(options.imageIndices.map((imageIndex) => [
-    imageIndex,
-    staticSpriteFrame(build, symbolHash, imageIndex, materials),
-  ]));
-  sprite.userData.animationController = new StaticSprite(
-    visual,
-    frames,
-    options.imageIndex ?? options.imageIndices[0],
-  );
   return sprite;
 }

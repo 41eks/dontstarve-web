@@ -847,14 +847,14 @@ three-roaming-save-v1.json
 | 运行时对象 | 存档 Prefab | 需要保存的组件 |
 |---|---|---|
 | 研究站、炼金引擎、箱子、帐篷 | 各自的建造 ID | `building`，以及将来的 `container` 等 |
-| 石墙 | `wall_stone` | `health` 等逻辑状态 |
+| 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap` | `health` 等逻辑状态 |
 | 地面物品 | `ground_item` | `stack` |
 | 蝴蝶种出的花 | `flower` | `flower.animation`（`f1`–`f10` 或 `rose`）和 `flower.planted` |
 | 单头、双头和三头灯草 | `flower_cave`、`flower_cave_double`、`flower_cave_triple` | `bulbPlant.variant`、`lightState` 和当前亮起/充能计时器的 `remainingSeconds` |
 | 每棵月树 | `moon_tree` | 当前无额外组件；保存所有实体的 ID 和 Transform，包括未加载模型的月树 |
 | Wilson | 不进入世界实体表 | `players.local` |
 
-墙的画面朝向只由相机 heading 决定，不能保存 `frontImageIndex`、`sideImageIndex` 或当前选中的图片。石墙逻辑旋转保持 `0`；加载后的每帧继续通过 `isDiagonalHeading()` 选择正面或斜面。
+墙的画面朝向只由相机 heading 决定，不能保存 `frontImageIndex`、`sideImageIndex` 或当前选中的图片。墙逻辑旋转保持 `0`；加载后的每帧继续通过 `isDiagonalHeading()` 选择正面或斜面。
 
 右键物品栏中的 `butterfly` 进入种植，再右键地面确认，消耗原槽位的一只蝴蝶；Esc 取消时不扣除物品。花使用 `anim/flowers.zip` 的原始 bank/build，种植时按 `flower.lua` 随机选择外观并保存，读档时保留外观、ID 和源动画的地面原点。种植预览不进入实体存档，也不带 `flower` 标签；只有种下的花会成为蝴蝶授粉和归巢的目标。
 
