@@ -132,12 +132,27 @@ export {
 } from './lantern';
 export { getPrefabLocalLight, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 export { LIGHTBULB_ID, LIGHTBULB_LIGHT, createLightbulbGroundSprite } from './lightbulb';
+export { FlowerPlanting, FLOWER_ANIMATIONS, type FlowerAnimation, type FlowerSaveRecord } from './flower';
+export {
+  BUGNET_ID, BUGNET_HIT_TIME, BUGNET_CAPTURE_RANGE, BugNetCaptureController,
+  loadBugNetEquipment, resolveBugNetPlayerSprite, type BugNetEquipment, type NetCaptureTarget, type ButterflyCaptureTarget,
+} from './bugnet';
+export {
+  ButterflyAssets, ButterflyController, BUTTERFLY_BEHAVIOR,
+  type ButterflyFlower, type ButterflyWorld, type ButterflyState,
+} from './butterfly';
 export {
   YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME,
   loadYellowStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, setupYellowStaffCasting,
   type YellowStaffEquipment,
 } from './yellowstaff';
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, dwarfStarLight, DwarfStarManager, type DwarfStarRecord } from './stafflight';
+export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, type FirefliesWorld } from './fireflies';
+export {
+  BULB_PLANT_ID, BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_LIGHT,
+  BulbPlantController, BulbPlantManager, bulbPlantLight, bulbPlantRegrowTime, isBulbPlantPrefab,
+  type BulbPlantPrefabId, type BulbPlantVariant, type BulbPlantLightState, type BulbPlantSaveState, type BulbPlantRecord, type BulbPlantWorld,
+} from './bulb_plant';
 
 export {
   GROUND_ITEM_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS,

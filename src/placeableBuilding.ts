@@ -124,6 +124,11 @@ export class PlaceableBuildingPlacement {
         return [...this.animated.exportRecords(), ...this.walls.exportRecords()];
     }
 
+    cancel(): void {
+        this.animated.cancel();
+        this.walls.cancel();
+    }
+
     get renderEntities() {
         return [...this.animated.renderEntities, ...this.walls.renderEntities];
     }

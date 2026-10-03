@@ -7,15 +7,15 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000005",
-    "parentId": "0000000004",
-    "savedAt": "2026-10-03T05:53:24.775Z",
+    "id": "0000000007",
+    "parentId": "0000000006",
+    "savedAt": "2026-10-03T08:49:19.671Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 3436.420999999332,
+    "elapsedSeconds": 3740.209099999452,
     "systems": {},
     "map": {
       "kind": "generated",
@@ -6098,6 +6098,7 @@
           }
         }
       ],
+      "flower": [],
       "stafflight": [],
       "treasurechest": [
         {
@@ -6118,6 +6119,27 @@
               "slotCount": 9,
               "slots": [
                 {
+                  "slotKey": "0",
+                  "item": {
+                    "itemId": "butterfly",
+                    "count": 31
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "itemId": "twigs",
+                    "count": 28
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "itemId": "fireflies",
+                    "count": 3
+                  }
+                },
+                {
                   "slotKey": "3",
                   "item": {
                     "itemId": "goldnugget",
@@ -6132,6 +6154,13 @@
                   }
                 },
                 {
+                  "slotKey": "5",
+                  "item": {
+                    "itemId": "silk",
+                    "count": 29
+                  }
+                },
+                {
                   "slotKey": "6",
                   "item": {
                     "itemId": "gears",
@@ -6143,6 +6172,13 @@
                   "item": {
                     "itemId": "charcoal",
                     "count": 8
+                  }
+                },
+                {
+                  "slotKey": "8",
+                  "item": {
+                    "itemId": "cutgrass",
+                    "count": 17
                   }
                 }
               ]
@@ -6230,9 +6266,9 @@
       "shardId": "master",
       "transform": {
         "position": [
-          -22.62515679004113,
+          -2.3044412315886675,
           0,
-          51.23147769043453
+          -3.3999312405353397
         ],
         "rotationY": 0
       },
@@ -6241,20 +6277,6 @@
           "player:inventory": {
             "slotCount": 15,
             "slots": [
-              {
-                "slotKey": "0",
-                "item": {
-                  "itemId": "cutgrass",
-                  "count": 19
-                }
-              },
-              {
-                "slotKey": "1",
-                "item": {
-                  "itemId": "twigs",
-                  "count": 2
-                }
-              },
               {
                 "slotKey": "2",
                 "item": {
@@ -6296,20 +6318,26 @@
                   "itemId": "rocks",
                   "count": 3
                 }
+              },
+              {
+                "slotKey": "13",
+                "item": {
+                  "itemId": "yellowstaff",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "14",
+                "item": {
+                  "itemId": "bugnet",
+                  "count": 1
+                }
               }
             ]
           },
           "player:equipment": {
             "slotCount": 3,
-            "slots": [
-              {
-                "slotKey": "hand",
-                "item": {
-                  "itemId": "yellowstaff",
-                  "count": 1
-                }
-              }
-            ]
+            "slots": []
           }
         },
         "bufferedBuilds": []

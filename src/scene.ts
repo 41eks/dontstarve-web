@@ -9,6 +9,7 @@ import { boxes, ground, moonTreeForest, setTreeNormals } from './building';
 import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
 import { DwarfStarManager } from '@three-roaming/prefab/stafflight';
+import { BulbPlantManager, isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
 import {
   pigKings,
   setPigKingNormal,
@@ -22,7 +23,9 @@ import {
   type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
 } from './placeableBuilding';
-import { renderer, scene } from './universal';
+import { dstLighting, renderer, scene } from './universal';
+import type { ButterflyFlower } from '@three-roaming/prefab/butterfly';
+import { FlowerPlanting } from '@three-roaming/prefab/flower';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
 import { initialSave } from './save/initialSave';
@@ -92,7 +95,7 @@ const characterRenderEntries = [
   })),
 ];
 
-function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement, groundItems: GroundItemManager, dwarfStars: DwarfStarManager) {
+function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement, groundItems: GroundItemManager, dwarfStars: DwarfStarManager, flowerPlanting: FlowerPlanting, bulbPlants: BulbPlantManager) {
   // The player origin follows the bottom of its physics body. Pig King's root
   // is vertically offset to ground its artwork, so its foot point is y = 0.
   playerFootPosition.copy(player.position);
@@ -101,7 +104,9 @@ function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacemen
     ...characterRenderEntries,
     ...buildingPlacement.renderEntities,
     ...groundItems.renderEntities,
+    ...flowerPlanting.renderEntities,
     ...dwarfStars.renderEntities,
+    ...bulbPlants.renderEntities,
     ...Array.from(moonTreeForest.activeEntities, (entity) => ({
       object: entity.model!, footPosition: entity.position, cameraDepth: 0,
     })),
@@ -152,14 +157,17 @@ backTasks.push((dt) => {
 
 export async function startScene(
   consumeBufferedBuild: (buildingId: PlaceableBuildingId) => boolean,
-  pickupGroundItem: (item: GroundItemDefinition) => boolean,
+  pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net') => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
+  onFlowerPlanted?: () => void,
+  pickLightbulbs: (count: number) => boolean = () => false,
 ) {
   const buildingPlacement = new PlaceableBuildingPlacement(
     view,
     consumeBufferedBuild,
     onBuildingInteraction,
   );
+  const flowerPlanting = new FlowerPlanting(view, `${import.meta.env.BASE_URL}dst/data/anim`, onFlowerPlanted);
   const groundItems = new GroundItemManager(
     scene,
     camera,
@@ -167,14 +175,43 @@ export async function startScene(
     `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`,
     pickupGroundItem,
     `${import.meta.env.BASE_URL}dst/data/anim`,
+    {
+      isDay: () => dstLighting.getPhase() === 'day',
+      getThreatPositions: () => [player.position],
+      getFlowers: () => {
+        const flowers: ButterflyFlower[] = [];
+        scene.traverse((object) => {
+          if (object.userData.tags?.includes('flower')) flowers.push({
+            id: object.userData.entityId ?? object.uuid,
+            position: object.getWorldPosition(new THREE.Vector3()),
+          });
+        });
+        return flowers;
+      },
+      constrainPosition: (position) => {
+        const edge = initialSave.world.map.generator.options.size / 2 - 0.5;
+        position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
+        position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
+      },
+    },
+    {
+      isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
+      getPlayerPositions: () => [player.position],
+    },
   );
   const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    getLightLevel: (model) => dstLighting.sampleLightLevel(model.position, model),
+  });
+  bulbPlants.setupInteraction(view, pickLightbulbs);
   // Align every billboard before sorting their ground-contact points.
   backTasks.push((dt: number) => {
     buildingPlacement.update(dt);
+    flowerPlanting.update(cameraWorldQuaternion);
     groundItems.update(dt, cameraWorldQuaternion);
     dwarfStars.update(dt, cameraWorldQuaternion);
-    updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars);
+    bulbPlants.update(dt, cameraWorldQuaternion);
+    updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants);
   });
   setupPigKingInteraction(view);
   const byEntityId = new Map<string, THREE.Object3D | ProximityEntity>();
@@ -187,6 +224,13 @@ export async function startScene(
       } else if (prefabId === 'stafflight') {
         byEntityId.set(record.id, await dwarfStars.spawn(new THREE.Vector3(...record.transform.position), {
           id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,
+        }));
+      } else if (prefabId === 'flower') {
+        byEntityId.set(record.id, await flowerPlanting.spawnFromSave(record.id,
+          record.components.flower!.animation, new THREE.Vector3(...record.transform.position)));
+      } else if (isBulbPlantPrefab(prefabId)) {
+        byEntityId.set(record.id, await bulbPlants.spawn(prefabId, new THREE.Vector3(...record.transform.position), {
+          id: record.id, transform: record.transform, components: { bulbPlant: record.components.bulbPlant! },
         }));
       } else if (prefabId === 'ground_item') {
         const item = record.components.stack!;
@@ -217,6 +261,7 @@ export async function startScene(
         components: {},
       })),
       ground_item: groundItems.exportRecords(),
+      flower: flowerPlanting.exportRecords(),
       stafflight: dwarfStars.exportRecords(),
     };
     for (const { prefabId, record } of buildingPlacement.exportRecords()) {
@@ -225,6 +270,7 @@ export async function startScene(
         transform: { ...record.transform, position: [...record.transform.position] },
       });
     }
+    for (const { prefabId, record } of bulbPlants.exportRecords()) (entities[prefabId] ??= []).push(record);
     return {
       entities, elapsedSeconds,
       // Physics may place the foot a fraction below the ground while settling.
@@ -233,7 +279,7 @@ export async function startScene(
   };
   setupLocomotorInput(view, locomotor);
   animate(world, camera);
-  return { buildingPlacement, groundItems, dwarfStars, byEntityId, getSaveState };
+  return { buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, byEntityId, getSaveState };
 }
 
 export function scene_add(model:THREE.Object3D){

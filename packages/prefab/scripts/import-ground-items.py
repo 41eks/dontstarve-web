@@ -90,9 +90,20 @@ def main():
     add('lantern', 'lantern', 'lantern', 'idle_off', 'mininglantern')
     assets.add('anim/swap_lantern.zip')
     add('lightbulb', 'bulb', 'bulb', 'idle', 'lightbulb')
+    # Live butterflies use this bank/build; SGbutterfly selects the flight clips
+    # after OnDropped switches the stategraph to idle.
+    add('butterfly', 'butterfly', 'butterfly_basic', 'idle', 'butterfly', loop=True)
+    # fireflies.lua switches between swarm_pre/loop/pst rather than an item pose.
+    add('fireflies', 'fireflies', 'fireflies', 'swarm_loop', 'fireflies', loop=True)
+    # butterfly.lua's OnDeploy spawns planted_flower from flower.lua.
+    assets.add('anim/flowers.zip')
+    # flower_cave.lua and lightflier_flower.lua share these world plant builds.
+    assets.update('anim/bulb_plant_' + variant + '.zip' for variant in ['single', 'springy', 'double', 'triple'])
     add('yellowstaff', 'staffs', 'staffs', 'yellowstaff', 'staff')
     assets.update(['anim/swap_staffs.zip', 'anim/player_staff.zip', 'anim/star_hot.zip'])
     add('hammer', 'hammer', 'swap_hammer', 'idle', 'hammer', animation_archive='hammer.zip')
+    add('bugnet', 'bugnet', 'swap_bugnet', 'idle', 'bugnet', animation_archive='bugnet.zip')
+    assets.add('anim/player_actions_bugnet.zip')
     for item in ['axe', 'goldenaxe', 'pickaxe', 'goldenpickaxe', 'shovel', 'goldenshovel']:
         source = 'pickaxe' if 'pickaxe' in item else 'shovel' if 'shovel' in item else 'axe'
         add(item, item, item, 'idle', source)

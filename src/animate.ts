@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { PerspectiveCamera } from 'three';
 import { cursorUi, dstLighting, resizeRendererToDisplaySize, scene } from './universal';
+import { FIXED_TIMESTEP, MAX_SUBSTEPS } from './physicsTiming';
 
 type Updatable = (dt: number) => void;
 
@@ -10,9 +11,6 @@ export const middleTasks: Updatable[] = [];
 export const backTasks: Updatable[] = [];
 
 const timer = new THREE.Timer();
-const FIXED_TIMESTEP = 1 / 60;   // 物理模拟的固定步长
-const MAX_SUBSTEPS = 3;           // 每帧最多补偿的子步数
-
 export function animate(world: World, camera: PerspectiveCamera) {
     function tick() {
         requestAnimationFrame(tick);

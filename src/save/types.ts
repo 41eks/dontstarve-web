@@ -1,4 +1,6 @@
 import type { InventoryStack } from '@three-roaming/inventory';
+import type { FlowerAnimation } from '@three-roaming/prefab/flower';
+import type { BulbPlantSaveState } from '@three-roaming/prefab/bulb_plant';
 
 export interface SavedTransform {
   position: [number, number, number];
@@ -19,6 +21,8 @@ export interface SavedEntity {
     stack?: InventoryStack;
     health?: { current: number; maximum: number };
     timer?: { remainingSeconds: number };
+    flower?: { animation: FlowerAnimation; planted: true };
+    bulbPlant?: BulbPlantSaveState;
   };
 }
 

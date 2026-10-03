@@ -1,6 +1,22 @@
 import * as THREE from 'three';
 import type { WorldContext } from './worldContext';
 
+/** AnimState:SetRayTestOnBB swarms use their full bounds, including particle gaps. */
+export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THREE.Object3D[], recursive = true): THREE.Intersection[] {
+    const hits = raycaster.intersectObjects(objects.filter(object => !object.userData.rayTestOnBB), recursive);
+    for (const object of objects) {
+        if (!object.userData.rayTestOnBB) continue;
+        object.updateWorldMatrix(true, true);
+        const box = new THREE.Box3().setFromObject(object);
+        if (box.isEmpty()) continue;
+        const point = raycaster.ray.intersectBox(box, new THREE.Vector3());
+        if (!point) continue;
+        const distance = point.distanceTo(raycaster.ray.origin);
+        if (distance >= raycaster.near && distance <= raycaster.far) hits.push({ distance, point, object });
+    }
+    return hits.sort((a, b) => a.distance - b.distance);
+}
+
 export class PointerRaycaster {
     private readonly camera: THREE.Camera;
     private readonly renderer: THREE.WebGLRenderer;
@@ -53,7 +69,7 @@ export class PointerRaycaster {
         this.ndc.x = ((this.clientX - bounds.left) / bounds.width) * 2 - 1;
         this.ndc.y = -((this.clientY - bounds.top) / bounds.height) * 2 + 1;
         this.raycaster.setFromCamera(this.ndc, this.camera);
-        return this.raycaster.intersectObjects(objects, recursive)[0];
+        return intersectSpriteEntities(this.raycaster, objects, recursive)[0];
     }
 
     raycast(

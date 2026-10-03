@@ -283,6 +283,10 @@ export class DstLightingRenderer {
     this.localLighting.setTorchOwner(owner);
   }
 
+  sampleLightLevel(position: THREE.Vector3, exclude?: THREE.Object3D): number {
+    return this.localLighting.sampleLightLevel(position, exclude);
+  }
+
   update(dt: number): void {
     const elapsed = Math.max(0, dt);
     if (this.ambientBlendRemaining > 0) {

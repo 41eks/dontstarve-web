@@ -849,10 +849,24 @@ three-roaming-save-v1.json
 | 研究站、炼金引擎、箱子、帐篷 | 各自的建造 ID | `building`，以及将来的 `container` 等 |
 | 石墙 | `wall_stone` | `health` 等逻辑状态 |
 | 地面物品 | `ground_item` | `stack` |
+| 蝴蝶种出的花 | `flower` | `flower.animation`（`f1`–`f10` 或 `rose`）和 `flower.planted` |
+| 单头、双头和三头灯草 | `flower_cave`、`flower_cave_double`、`flower_cave_triple` | `bulbPlant.variant`、`lightState` 和当前亮起/充能计时器的 `remainingSeconds` |
 | 每棵月树 | `moon_tree` | 当前无额外组件；保存所有实体的 ID 和 Transform，包括未加载模型的月树 |
 | Wilson | 不进入世界实体表 | `players.local` |
 
 墙的画面朝向只由相机 heading 决定，不能保存 `frontImageIndex`、`sideImageIndex` 或当前选中的图片。石墙逻辑旋转保持 `0`；加载后的每帧继续通过 `isDiagonalHeading()` 选择正面或斜面。
+
+右键物品栏中的 `butterfly` 进入种植，再右键地面确认，消耗原槽位的一只蝴蝶；Esc 取消时不扣除物品。花使用 `anim/flowers.zip` 的原始 bank/build，种植时按 `flower.lua` 随机选择外观并保存，读档时保留外观、ID 和源动画的地面原点。种植预览不进入实体存档，也不带 `flower` 标签；只有种下的花会成为蝴蝶授粉和归巢的目标。
+
+将 `bugnet` 装备到手部后，左键点击活蝴蝶会追赶并播放 `player_actions_bugnet.zip` 的 `bugnet_pre`、`bugnet`，在主动画第 10 帧检查 4 单位范围并捕捉。成功后蝴蝶进入背包、地面实体从存档中移除；背包满或目标已离开时保留蝴蝶。活蝴蝶需要捕虫网，其他地面物品继续左键拾取。捕虫网的地面外观使用 `bugnet.zip` 的 `idle` 和 `swap_bugnet.zip` 的 build，装备时替换玩家的 `swap_object`；装备、掉落和皮肤沿用物品存档。
+
+`fireflies` 使用 `anim/fireflies.zip` 的 `swarm_pre`、`swarm_loop`、`swarm_pst` 和原版淡入淡出速率。夜间玩家远离时发光，玩家进入 3 单位范围时淡出，离开到 5 单位时重新淡入；昼夜切换延迟 2–3 秒检查，掉落时短暂亮起。光源采用源半径 1（场景中为 3）、强度 0.5、falloff 1、颜色 `(180,195,150)/255`。萤火虫通过捕虫网进入背包，堆叠掉落会拆成独立虫群；存档使用 `ground_item.stack.itemId = "fireflies"`，恢复后按当前昼夜和玩家距离决定光照，不保存动画或瞬时淡入淡出。可用 `c_spawn("fireflies")` 在玩家脚下生成虫群，或 `c_give("fireflies")` 获取后 Shift 右键释放。
+
+用 `c_spawn("flower_cave")`、`c_spawn("flower_cave_double")`、`c_spawn("flower_cave_triple")` 在玩家脚下生成灯草光源。动画来自对应的 `anim/bulb_plant_*.zip`；单头灯草按源码随机选择 single/springy，双头和三头使用各自的 bank/build。光照曲线取自 `flower_cave.lua`，与 `lightflier_flower.lua` 共用：4–8 秒亮起时先扩大到 1.33 倍半径再稳定，熄灭时半径和强度降到 0。源半径分别为 3、4.5、4.5（场景中为 9、13.5、13.5），强度 0.8、falloff 0.5、颜色 `(237,237,209)/255`。普通灯草亮起计时为 90 秒加过渡时间和 0–10 秒随机量，充能为 110 秒加过渡时间。
+
+灯草通过 LightWatcher 的 0.075/0.05 阈值判断环境光和其他光源；CPU 采样沿用项目现有光照估算，与渲染使用相同衰减曲线。完全黑暗中生成的灯草等待外部照明触发，已有光照会在唤醒 1 秒后使其亮起。存档按三个原版 Prefab 分组，保存外观、光照状态和剩余计时；加载亮起的灯草直接恢复稳定光照，不重放瞬时亮起过程。`lightflier_flower` 的虫群系统不在这些命令内。
+
+左键采摘成熟灯草后，荧光果（`lightbulb`）进入背包，单头/双头/三头分别产出 1/2/3 个；背包空间不足时保留成熟灯草。成功采摘播放 `picking`、`picked` 和玩家拾取动画，立即关闭灯草光源并清除亮起/充能计时。原版基础再生时间分别为 1440/2160/2880 秒，再生后播放 `grow`、`idle` 并重新充能。已采摘灯草的 `bulbPlant` 额外保存 `picked: true` 和 `regrowSeconds`，读档恢复空株外观与剩余再生时间。
 
 `building.state` 只允许稳定状态，例如 `idle`、`closed`、`open`。`placing`、`opening`、`closing` 等过渡态在保存时归一化到明确的稳定状态，加载时不重放一次性动画。
 

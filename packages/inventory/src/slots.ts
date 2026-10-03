@@ -16,6 +16,7 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   torch: 1,
   lantern: 1,
   yellowstaff: 1,
+  bugnet: 1,
   log: 20,
 };
 
@@ -24,7 +25,7 @@ export function inventoryItemMaxStack(itemId: string): number {
 }
 
 export function inventoryItemEquipmentKind(itemId: string): 'hand' | undefined {
-  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' ? 'hand' : undefined;
+  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'bugnet' ? 'hand' : undefined;
 }
 
 export class InventorySlot implements ItemSlot {

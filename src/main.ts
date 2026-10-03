@@ -17,6 +17,11 @@ import {
 import type { WilsonAnimationController } from '@three-roaming/prefab/player';
 import { isHatId } from '@three-roaming/prefab/hats';
 import { setupYellowStaffCasting } from '@three-roaming/prefab/yellowstaff';
+import { BugNetCaptureController } from '@three-roaming/prefab/bugnet';
+import { newEntityId } from '@three-roaming/prefab/saveRecord';
+import { isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
+import { frontTasks } from './animate';
+import { input } from './InputManager';
 import { PointerRaycaster } from '@three-roaming/prefab/pointerRaycaster';
 import { view } from './view';
 import { PreparedFoodSlot, StorageSlot } from '@three-roaming/inventory';
@@ -88,7 +93,7 @@ window.addEventListener('contextmenu', (event) => {
 function syncHandEquipment(): void {
   const handItem = inventory.get(handSlotAddress);
   const carryItem = handItem?.itemId === 'torch' || handItem?.itemId === 'lantern'
-    || handItem?.itemId === 'yellowstaff' ? handItem.itemId : null;
+    || handItem?.itemId === 'yellowstaff' || handItem?.itemId === 'bugnet' ? handItem.itemId : null;
   void playerAnimation?.setCarryItem(carryItem, handItem?.skinId)
     .catch((error: unknown) => console.error('Unable to equip hand item', error));
   dstLighting.setTorchOwner(handItem?.itemId === 'torch' ? player : null);
@@ -149,11 +154,12 @@ inventory.subscribe((changedSlots) => {
   }
 });
 
-const { buildingPlacement, groundItems, dwarfStars, getSaveState } = await startScene(
+let cancelNetCapture = () => {};
+const { buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, getSaveState } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
-  (item) => {
+  (item, action) => {
     if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
-    playerAnimation?.playPickup();
+    if (action !== 'net') playerAnimation?.playPickup();
     return true;
   },
   ({ buildId, isOpen, model }) => {
@@ -170,7 +176,31 @@ const { buildingPlacement, groundItems, dwarfStars, getSaveState } = await start
         .forEach(syncInventorySlot);
     }
   },
+  () => playerAnimation?.playPickup(),
+  (count) => {
+    if (!inventory.add('lightbulb', count)) return false;
+    cancelNetCapture();
+    locomotor.stop();
+    flowerPlanting.cancel();
+    buildingPlacement.cancel();
+    playerAnimation?.playPickup();
+    return true;
+  },
 );
+if (playerAnimation) {
+  const bugNet = new BugNetCaptureController(view, playerAnimation, locomotor,
+    () => inventory.get(handSlotAddress)?.itemId === 'bugnet',
+    () => groundItems.netCaptureTargets,
+    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)));
+  cancelNetCapture = () => bugNet.cancel();
+  groundItems.setNetCaptureHandler((target) => {
+    if (!bugNet.request(target)) return false;
+    flowerPlanting.cancel();
+    buildingPlacement.cancel();
+    return true;
+  });
+  frontTasks.push((dt) => bugNet.update(dt));
+}
 if (playerAnimation) setupYellowStaffCasting(view, playerAnimation, dwarfStars,
   () => inventory.get(handSlotAddress)?.itemId === 'yellowstaff',
   () => locomotor.stop(),
@@ -179,6 +209,15 @@ let lastSavedSnapshotId = initialSave.snapshot.id;
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, async (prefabId) => {
+    if (isBulbPlantPrefab(prefabId)) {
+      await bulbPlants.spawn(prefabId, player.position.clone());
+      return true;
+    }
+    if (prefabId === 'fireflies') {
+      const spec = inventory.getItemSpec(prefabId);
+      await groundItems.spawnFromSave(newEntityId(), { ...spec, itemId: prefabId, count: 1 }, player.position.clone());
+      return true;
+    }
     if (!isPlaceableBuildingId(prefabId)) return false;
     await buildingPlacement.spawn(prefabId);
     return true;
@@ -214,12 +253,14 @@ window.addEventListener('game:slot-transfer-request', (event) => {
       delta: detail.amount,
     },
   ]);
-  if (!transferred || (detail.itemId !== 'torch' && detail.itemId !== 'lantern' && detail.itemId !== 'yellowstaff')) return;
+  if (!transferred || (detail.itemId !== 'torch' && detail.itemId !== 'lantern'
+    && detail.itemId !== 'yellowstaff' && detail.itemId !== 'bugnet')) return;
   if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out', detail.itemId);
   else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in', detail.itemId);
 });
 gameUi.inventoryBar.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
+  flowerPlanting.cancel();
   const stack = inventory.get(slot);
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
   locomotor.stop();
@@ -232,6 +273,7 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
   const stack = inventory.get(slot);
   if (!stack) return;
   if (shiftKey) {
+    flowerPlanting.cancel();
     const spec = inventory.getStackSpec(stack);
     const position = player.position.clone();
     void groundItems.drop({
@@ -255,6 +297,17 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
     });
     return;
   }
+  if (stack.itemId === 'butterfly') {
+    locomotor.stop();
+    buildingPlacement.cancel();
+    void flowerPlanting.begin(() => inventory.applySlotChanges([{
+      slot, itemId: 'butterfly', delta: -1,
+      ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
+    }])).catch((error: unknown) => {
+      console.error('Unable to start butterfly planting', error);
+    });
+    return;
+  }
   if (stack.itemId === 'meatballs') playerAnimation?.playEat();
 });
 gameUi.crafting.addEventListener('game:craft-request', (event) => {
@@ -266,6 +319,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   // Buffered builds place as soon as they are crafted. Walls are not buffered:
   // crafting only fills the inventory, and placing starts from the slot click.
   if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {
+    flowerPlanting.cancel();
     locomotor.stop();
     void buildingPlacement.begin(recipeId, inventory.bufferedSkin(recipeId)).catch((error: unknown) => {
       console.error(`Unable to start ${recipeId} placement`, error);

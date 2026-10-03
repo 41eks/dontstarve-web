@@ -102,6 +102,29 @@ export class DstLocalLighting {
     this.torchOwner = owner;
   }
 
+  /** CPU counterpart of the estimated lightmap, for prefab LightWatchers. */
+  sampleLightLevel(position: THREE.Vector3, exclude?: THREE.Object3D): number {
+    const colour = this.ambient.value.clone();
+    const accumulate = (owner: THREE.Object3D, light: PrefabLocalLight) => {
+      if (owner === exclude || light.radius <= 0 || light.intensity <= 0) return;
+      const origin = owner.getWorldPosition(new THREE.Vector3());
+      const distance = Math.max(Math.hypot(position.x - origin.x, position.z - origin.z) / light.radius, 0.0001);
+      const edge = THREE.MathUtils.clamp((distance - 2.5) / 0.5, 0, 1);
+      const attenuation = THREE.MathUtils.clamp(Math.exp(Math.log(light.falloff) * distance ** 2), 0, 1)
+        * (1 - edge * edge * (3 - 2 * edge));
+      colour.addScaledVector(new THREE.Vector3().fromArray(light.colour), light.intensity * attenuation);
+    };
+    for (const { owner } of this.prefabLights) {
+      const settings = getPrefabLocalLight(owner);
+      if (owner.parent && settings) accumulate(owner, settings);
+    }
+    if (this.torchOwner) accumulate(this.torchOwner, {
+      radius: TORCH_LIGHT_ESTIMATE.radius, intensity: TORCH_LIGHT_ESTIMATE.intensity,
+      falloff: TORCH_LIGHT_ESTIMATE.falloff, colour: TORCH_LIGHT_ESTIMATE.colour.toArray(),
+    });
+    return Math.min(1, colour.x) * 0.2126 + Math.min(1, colour.y) * 0.7152 + Math.min(1, colour.z) * 0.0722;
+  }
+
   renderLightmap(renderer: THREE.WebGLRenderer): void {
     const sources = [...this.prefabLights];
     if (this.torchOwner) sources.push({ owner: this.torchOwner, settings: {

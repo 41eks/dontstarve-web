@@ -79,7 +79,8 @@ describe('save JSON deserialization', () => {
     data.players.local.inventory.bufferedBuilds.push({ recipeId: 'treasurechest', skinId: 'treasurechest_ancient' } as never);
     const second = structuredClone(data.world.entities.treasurechest[0]);
     second.id = 'e_chest_second';
-    second.components.container.slots.push({ slotKey: '0', item: { itemId: 'log', count: 8 } } as never);
+    // Local saves may already fill the source chest; this test owns the second inventory.
+    second.components.container.slots = [{ slotKey: '0', item: { itemId: 'log', count: 8 } } as never];
     data.world.entities.treasurechest.push(second);
     const save = parse(data);
     const state = inventoryStateFromSave(save);

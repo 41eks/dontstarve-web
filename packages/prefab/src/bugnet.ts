@@ -1,0 +1,166 @@
+import * as THREE from 'three';
+import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@three-roaming/animation/animationAssets';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import type { WilsonAnimationController } from './player';
+import type { Locomotor } from './locomotor';
+import { PointerRaycaster } from './pointerRaycaster';
+import type { CursorLabel } from './buildCursor';
+import type { WorldContext } from './worldContext';
+
+export const BUGNET_ID = 'bugnet';
+export const BUGNET_HIT_TIME = 10 / 30;
+export const BUGNET_CAPTURE_RANGE = 4; // ACTIONS.NET's DefaultRangeCheck.
+// Leave room for the fleeing creature during pre + swing, including slow frames.
+const APPROACH_DISTANCE = 1;
+type NetBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
+export interface BugNetEquipment { readonly builds: readonly NetBuild[]; }
+
+export async function loadBugNetEquipment(assets: GroundItemAssets, skinId?: string): Promise<BugNetEquipment> {
+  const skinArchive = skinId ? GROUND_ITEM_DEFINITIONS.bugnet.skinArchives[skinId] : undefined;
+  if (skinId && !skinArchive) throw new Error(`Unknown bugnet skin: ${skinId}`);
+  const base = await assets.loadBuild('swap_bugnet.zip');
+  const skin = skinArchive ? await assets.loadBuild(skinArchive) : undefined;
+  return { builds: skin ? [skin, base] : [base] };
+}
+
+/** bugnet.lua replaces the player's swap_object with the swap_bugnet symbol. */
+export function resolveBugNetPlayerSprite(equipment: BugNetEquipment, element: AnimElement): ResolvedSprite[] {
+  for (const source of equipment.builds) {
+    const image = findImage(source.build, smallHash('swap_bugnet'), element.imageIndex);
+    if (image) return [{ element, image, materials: source.materials }];
+  }
+  return [];
+}
+
+export interface NetCaptureTarget {
+  readonly id: string;
+  readonly model: THREE.Group;
+  readonly position: THREE.Vector3;
+  isValid(): boolean;
+  isClickable?(): boolean;
+  /** Transfers one live creature to inventory; failure leaves it in the world. */
+  capture(): boolean;
+}
+export type ButterflyCaptureTarget = NetCaptureTarget;
+
+/** Queues the NET action, follows a moving target, then validates the swing hit. */
+export class BugNetCaptureController {
+  private readonly world: WorldContext;
+  private readonly animation: WilsonAnimationController;
+  private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
+  private readonly isEquipped: () => boolean;
+  private readonly getTargets: () => readonly NetCaptureTarget[];
+  private readonly isManualMovement: () => boolean;
+  private readonly pointer: PointerRaycaster;
+  private readonly label: CursorLabel;
+  private target?: NetCaptureTarget;
+  private actionVersion = 0;
+  private repathRemaining = 0;
+  private hoveredId?: string;
+  private readonly direction = new THREE.Vector3();
+  private readonly forward = new THREE.Vector3();
+  private readonly right = new THREE.Vector3();
+
+  constructor(
+    world: WorldContext,
+    animation: WilsonAnimationController,
+    locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
+    isEquipped: () => boolean,
+    getTargets: () => readonly NetCaptureTarget[],
+    isManualMovement = () => false,
+  ) {
+    this.world = world;
+    this.animation = animation;
+    this.locomotor = locomotor;
+    this.isEquipped = isEquipped;
+    this.getTargets = getTargets;
+    this.isManualMovement = isManualMovement;
+    this.pointer = new PointerRaycaster(world);
+    this.label = world.createCursorLabel?.(this.pointer) ?? { show() {}, hide() {}, update() {} };
+    world.renderer.domElement.addEventListener('pointerdown', this.handleGroundClick);
+    window.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  request(target: NetCaptureTarget): boolean {
+    if (!this.isEquipped() || !target.isValid() || target.isClickable?.() === false
+      || this.animation.isNetting || this.animation.isCasting) return false;
+    this.cancel();
+    this.target = target;
+    this.repathRemaining = 0;
+    return true;
+  }
+
+  cancel(): void {
+    this.actionVersion++;
+    if (this.target) this.locomotor.stop();
+    this.target = undefined;
+  }
+
+  update(dt: number): void {
+    this.updateHover();
+    if (!this.target) return;
+    const target = this.target;
+    if (!this.isEquipped() || !target.isValid() || this.isManualMovement()) {
+      this.cancel();
+      return;
+    }
+    const distanceSquared = this.distanceSquared(target);
+    if (distanceSquared <= APPROACH_DISTANCE ** 2) {
+      this.locomotor.stop();
+      this.faceTarget(target);
+      const version = this.actionVersion;
+      const started = this.animation.playBugNet(() => {
+        if (version === this.actionVersion && this.isEquipped() && target.isValid()
+          && this.distanceSquared(target) <= BUGNET_CAPTURE_RANGE ** 2) target.capture();
+      });
+      if (started) this.target = undefined;
+      return;
+    }
+    this.repathRemaining -= Math.max(0, dt);
+    // Close pursuit needs a fresh point every frame: the butterfly keeps flying
+    // while the previous destination becomes stale and the locomotor slows down.
+    if (this.repathRemaining <= 0 || distanceSquared <= BUGNET_CAPTURE_RANGE ** 2) {
+      this.repathRemaining = 0.2;
+      if (!this.locomotor.goToPoint(target.position)) this.cancel();
+    }
+  }
+
+  private distanceSquared(target: ButterflyCaptureTarget): number {
+    return (this.world.player.position.x - target.position.x) ** 2
+      + (this.world.player.position.z - target.position.z) ** 2;
+  }
+
+  private faceTarget(target: ButterflyCaptureTarget): void {
+    this.direction.subVectors(target.position, this.world.player.position).setY(0);
+    if (this.direction.lengthSq() < 1e-8) return;
+    this.world.camera.getWorldDirection(this.forward);
+    this.forward.setY(0).normalize();
+    this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();
+    const forward = this.direction.dot(this.forward);
+    const side = this.direction.dot(this.right);
+    this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
+      Math.abs(side) > Math.abs(forward) && side < 0);
+  }
+
+  private updateHover(): void {
+    const targets = this.isEquipped() ? this.getTargets().filter((target) => target.isValid() && target.isClickable?.() !== false) : [];
+    const hit = this.pointer.raycastPointer(targets.map(({ model }) => model));
+    let root: THREE.Object3D | null = hit?.object ?? null;
+    while (root && !targets.some(({ model }) => model === root)) root = root.parent;
+    const hovered = targets.find(({ model }) => model === root);
+    if (hovered?.id !== this.hoveredId) {
+      this.hoveredId = hovered?.id;
+      if (hovered) this.label.show(': 捕捉', 'left');
+      else this.label.hide();
+    }
+    this.label.update();
+  }
+
+  private readonly handleGroundClick = (event: PointerEvent) => {
+    // GroundItemManager consumes target clicks before this listener runs.
+    if (event.button === 0 && !event.defaultPrevented) this.cancel();
+  };
+  private readonly handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') this.cancel();
+  };
+}

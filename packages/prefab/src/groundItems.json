@@ -928,6 +928,36 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "butterfly": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/butterfly.lua",
+      "name": "蝴蝶",
+      "icon": "butterfly.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "butterfly_basic.zip",
+      "buildArchives": [
+        "butterfly_basic.zip"
+      ],
+      "bank": "butterfly",
+      "animation": "idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fireflies": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/fireflies.lua",
+      "name": "萤火虫",
+      "icon": "fireflies.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "fireflies.zip",
+      "buildArchives": [
+        "fireflies.zip"
+      ],
+      "bank": "fireflies",
+      "animation": "swarm_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "yellowstaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
       "name": "唤星者魔杖",
@@ -967,6 +997,27 @@
         "hammer_hammush": "dynamic/hammer_hammush.zip",
         "hammer_invisible": "dynamic/hammer_invisible.zip",
         "hammer_rw_startingforest": "dynamic/hammer_rw_startingforest.zip"
+      }
+    },
+    "bugnet": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bugnet.lua",
+      "name": "捕虫网",
+      "icon": "bugnet.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bugnet.zip",
+      "buildArchives": [
+        "swap_bugnet.zip"
+      ],
+      "bank": "bugnet",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "bugnet_frog": "dynamic/bugnet_frog.zip",
+        "bugnet_garden": "dynamic/bugnet_garden.zip",
+        "bugnet_lavaproof": "dynamic/bugnet_lavaproof.zip",
+        "bugnet_spider": "dynamic/bugnet_spider.zip",
+        "bugnet_spider_white": "dynamic/bugnet_spider_white.zip"
       }
     },
     "axe": {
@@ -3576,6 +3627,36 @@
       "name": "华丽斧头",
       "icon": "axe_victorian.tex",
       "atlas": "images/inventoryimages.xml"
+    },
+    "bugnet_frog": {
+      "itemId": "bugnet",
+      "name": "青蛙捕虫网",
+      "icon": "bugnet_frog.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bugnet_garden": {
+      "itemId": "bugnet",
+      "name": "抓人捕虫网",
+      "icon": "bugnet_garden.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bugnet_lavaproof": {
+      "itemId": "bugnet",
+      "name": "防熔岩虫网",
+      "icon": "bugnet_lavaproof.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bugnet_spider": {
+      "itemId": "bugnet",
+      "name": "贪婪蛛网",
+      "icon": "bugnet_spider.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "bugnet_spider_white": {
+      "itemId": "bugnet",
+      "name": "巨穴蛛网",
+      "icon": "bugnet_spider_white.tex",
+      "atlas": "images/inventoryimages1.xml"
     },
     "goldenaxe_invisible": {
       "itemId": "goldenaxe",

@@ -38,6 +38,67 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
+  it('preserves bulb plant harvesting timers and rejects inconsistent harvested states', () => {
+    const { template, state } = fixture();
+    state.entities.flower_cave = [{ id: 'e_picked', transform: { position: [1, 0, 2], rotationY: 0 },
+      components: { bulbPlant: { variant: 'single', lightState: 'RECHARGING', picked: true, regrowSeconds: 123.5 } } }];
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities.flower_cave).toEqual(state.entities.flower_cave);
+    for (const patch of [
+      { picked: 'yes' }, { picked: false }, { lightState: 'ON' }, { remainingSeconds: 1 },
+      { regrowSeconds: 0 }, { regrowSeconds: -1 }, { regrowSeconds: 1441 }, { regrowSeconds: undefined },
+    ]) {
+      const bad = structuredClone(saved);
+      Object.assign(bad.world.entities.flower_cave[0].components.bulbPlant!, patch);
+      expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow();
+    }
+  });
+  it('round trips all bulb plant prefabs, their appearance and remaining light timers', () => {
+    const { template, state } = fixture();
+    state.entities.flower_cave = [{ id: 'e_bulb_single', transform: { position: [1, 0, 2], rotationY: 0 },
+      components: { bulbPlant: { variant: 'springy', lightState: 'CHARGED' } } }];
+    state.entities.flower_cave_double = [{ id: 'e_bulb_double', transform: { position: [3, 0, 4], rotationY: 0 },
+      components: { bulbPlant: { variant: 'double', lightState: 'ON', remainingSeconds: 45.5 } } }];
+    state.entities.flower_cave_triple = [{ id: 'e_bulb_triple', transform: { position: [5, 0, 6], rotationY: 0 },
+      components: { bulbPlant: { variant: 'triple', lightState: 'RECHARGING', remainingSeconds: 100 } } }];
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    for (const prefab of ['flower_cave', 'flower_cave_double', 'flower_cave_triple']) {
+      expect(saved.world.entities[prefab]).toEqual(state.entities[prefab]);
+    }
+    const bad = structuredClone(saved);
+    bad.world.entities.flower_cave_double[0].components.bulbPlant!.variant = 'single';
+    expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow('variant');
+    for (const remainingSeconds of [0, -1, 109, NaN]) {
+      const badTimer = structuredClone(saved);
+      badTimer.world.entities.flower_cave_double[0].components.bulbPlant!.remainingSeconds = remainingSeconds;
+      expect(() => deserializeSave(JSON.stringify(badTimer), catalog)).toThrow('remainingSeconds');
+    }
+  });
+  it('round trips live fireflies as ground items without persisting transient light state', () => {
+    const { template, state } = fixture();
+    state.entities.ground_item = [{ id: 'e_fireflies',
+      transform: { position: [12, 0, 15], rotationY: 0 },
+      components: { stack: { itemId: 'fireflies', count: 1 } },
+    }];
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities.ground_item).toEqual(state.entities.ground_item);
+    expect(catalog.items.fireflies.atlas).toBe('images/inventoryimages.xml');
+  });
+  it('round trips planted flower poses and rejects unsupported flower state', () => {
+    const { template, state } = fixture();
+    state.entities.flower = [{
+      id: 'e_planted_flower', transform: { position: [10, 0, 11], rotationY: 0 },
+      components: { flower: { animation: 'f7', planted: true } },
+    }];
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities.flower).toEqual(state.entities.flower);
+    const bad = JSON.parse(JSON.stringify(saved));
+    bad.world.entities.flower[0].components.flower.animation = 'idle';
+    expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow('animation');
+    bad.world.entities.flower[0].components.flower.animation = 'f7';
+    bad.world.entities.flower[0].components.flower.planted = false;
+    expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow('planted');
+  });
   it('round trips independent dwarf star lifetimes and rejects invalid timers', () => {
     const { template, state } = fixture();
     state.entities.stafflight = [{

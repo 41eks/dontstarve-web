@@ -4,6 +4,7 @@ import type { Locomotor } from '@three-roaming/prefab/locomotor';
 import type { WilsonAnimationController } from '@three-roaming/prefab/player';
 import { input } from './InputManager';
 import type { PlayerBody } from './types/Player';
+import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 
 export const JUMP_VELOCITY = 10;
 const movementKeys = ['KeyW', 'KeyS', 'KeyA', 'KeyD'] as const;
@@ -34,15 +35,17 @@ export function updateMovement(
         if (input.isPressed('KeyA')) direction.sub(right);
         if (input.isPressed('KeyD')) direction.add(right);
         const manual = movementKeys.some((key) => input.isPressed(key));
-        const casting = (player.userData.animationController as WilsonAnimationController | undefined)?.isCasting;
-        if (casting) locomotor.stop();
-        else locomotor.update(speed, dt, manual ? direction : undefined);
+        const animation = player.userData.animationController as WilsonAnimationController | undefined;
+        const acting = animation?.isCasting || animation?.isNetting;
+        if (acting) locomotor.stop();
+        // Match world.step's substep budget when limiting the final travel step.
+        else locomotor.update(speed, Math.min(dt, MAX_PHYSICS_FRAME_TIME), manual ? direction : undefined);
 
         direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
         if (!player.userData.billboard && direction.lengthSq() > 0) {
             player.lookAt(target.copy(player.position).add(direction));
         }
-        if (!casting && input.isPressed('Space') && playerBody.canJump) {
+        if (!acting && input.isPressed('Space') && playerBody.canJump) {
             playerBody.velocity.y = JUMP_VELOCITY;
             playerBody.canJump = false;
         }
