@@ -30,7 +30,7 @@ export function createChestInventoryPanel(
       return;
     }
 
-    const anchorModel = openPrefab === 'cookpot' || openPrefab.startsWith('mushroom_light') ? openModel : player;
+    const anchorModel = openPrefab.startsWith('mushroom_light') ? openModel : player;
     anchorModel.updateWorldMatrix(true, true);
     bounds.setFromObject(anchorModel);
     if (bounds.isEmpty()) {

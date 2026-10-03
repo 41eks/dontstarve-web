@@ -91,6 +91,9 @@ importers:
       '@three-roaming/animation':
         specifier: workspace:*
         version: link:../animation
+      '@three-roaming/inventory':
+        specifier: workspace:*
+        version: link:../inventory
       cannon-es:
         specifier: ^0.20.0
         version: 0.20.0
@@ -113,6 +116,9 @@ importers:
       '@three-roaming/inventory':
         specifier: workspace:*
         version: link:../inventory
+      '@three-roaming/prefab':
+        specifier: workspace:*
+        version: link:../prefab
     devDependencies:
       '@playwright/test':
         specifier: ^1.63.0

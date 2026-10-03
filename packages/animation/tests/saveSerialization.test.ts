@@ -23,6 +23,8 @@ function fixture() {
   const template = deserializeSave(JSON.stringify(initialWorld), catalog);
   template.snapshot.id = '0000000001';
   template.snapshot.parentId = null;
+  // Tests add their own equipment; local gameplay saves may already equip an item.
+  template.players.local.inventory.containers['player:equipment'].slots = [];
   for (const chest of template.world.entities.treasurechest ?? []) {
     chest.components.container = { slotCount: 9, slots: [] };
   }
@@ -36,6 +38,21 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
+  it('round trips independent dwarf star lifetimes and rejects invalid timers', () => {
+    const { template, state } = fixture();
+    state.entities.stafflight = [{
+      id: 'e_star', transform: { position: [20, 0, 30], rotationY: 0 },
+      components: { timer: { remainingSeconds: 120.5 } },
+    }];
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities.stafflight).toEqual(state.entities.stafflight);
+    for (const remainingSeconds of [0, -1, 1441]) {
+      saved.world.entities.stafflight[0].components.timer!.remainingSeconds = remainingSeconds;
+      expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('remainingSeconds');
+    }
+    delete saved.world.entities.stafflight[0].components.timer;
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('timer');
+  });
   it.each(['dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2'] as const)(
     'round trips %s skins and the last container slot', (prefab) => {
       const { template, state } = fixture();

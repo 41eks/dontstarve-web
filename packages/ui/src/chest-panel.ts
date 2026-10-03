@@ -43,6 +43,8 @@ export class DstChestPanelElement extends AssetElement {
   }
 
   protected get containerKind(): SlotContainerKind { return 'chest'; }
+  protected get defaultPanelArchive(): string { return 'ui_chest_3x3.zip'; }
+  protected get defaultColumns(): number { return 3; }
   protected get backgroundAsset(): string { return 'ingredient_slot.tex.png'; }
   protected get backgroundAtlas(): string | undefined { return undefined; }
 
@@ -89,8 +91,8 @@ export class DstChestPanelElement extends AssetElement {
       slotKeys: Array.from({ length: options.slotCount }, (_, index) => String(index)),
     });
     this.panelTitle = options.title ?? '箱子';
-    this.panelArchive = options.panelArchive ?? 'ui_chest_3x3.zip';
-    this.columns = options.columns ?? 3;
+    this.panelArchive = options.panelArchive ?? this.defaultPanelArchive;
+    this.columns = options.columns ?? this.defaultColumns;
     this.selectedSlot.set(null);
     if (this.isConnected) this.render();
   }
@@ -101,7 +103,7 @@ export class DstChestPanelElement extends AssetElement {
     this.disposeRenderers();
     this.container = undefined;
     this.selectedSlot.set(null);
-    if (this.containerKind === 'chest' && this.background && this.isConnected) {
+    if (this.background && this.isConnected) {
       this.closing = true;
       const panel = this.shadowRoot!.querySelector<HTMLElement>('.chest-panel')!;
       panel.classList.remove('is-opening');
@@ -141,8 +143,8 @@ export class DstChestPanelElement extends AssetElement {
     const root = this.shadowRoot!;
     root.innerHTML = `
       <style>${slotStyles}\n${styles}</style>
-      <section class="chest-panel ${this.containerKind === 'cookpot' ? 'cook-pot-panel' : 'animated-chest-panel'}" ${this.container || this.closing ? '' : 'hidden'}>
-        ${this.containerKind === 'chest' ? '<canvas class="chest-panel__background" aria-hidden="true"></canvas>' : ''}
+      <section class="chest-panel animated-chest-panel ${this.containerKind === 'cookpot' ? 'cook-pot-panel' : ''}" ${this.container || this.closing ? '' : 'hidden'}>
+        <canvas class="chest-panel__background" aria-hidden="true"></canvas>
         <header>
           <h2></h2>
           ${this.containerKind === 'cookpot' ? '<button class="chest-panel__close" type="button" aria-label="关闭烹饪锅">×</button>' : ''}
@@ -152,7 +154,7 @@ export class DstChestPanelElement extends AssetElement {
     `;
     const panel = root.querySelector<HTMLElement>('.chest-panel')!;
     panel.style.setProperty('--storage-columns', String(this.columns));
-    if (this.containerKind === 'chest' && (this.container || this.closing)) {
+    if (this.container || this.closing) {
       this.background = new AnimatedBackground(
         root.querySelector<HTMLCanvasElement>('.chest-panel__background')!,
         this.dataAsset(`anim/${this.panelArchive}`),

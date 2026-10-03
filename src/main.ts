@@ -15,9 +15,13 @@ import {
   type SlotTransferRequest,
 } from '@three-roaming/ui';
 import type { WilsonAnimationController } from '@three-roaming/prefab/player';
+import { isHatId } from '@three-roaming/prefab/hats';
+import { setupYellowStaffCasting } from '@three-roaming/prefab/yellowstaff';
+import { view } from './view';
 import { PreparedFoodSlot, StorageSlot } from '@three-roaming/inventory';
-import { preloadImageArchive } from '@three-roaming/animation/imageAtlas';
+import { loadImageAtlas } from '@three-roaming/animation/imageAtlas';
 import { player } from './player';
+import { dstLighting } from './universal';
 import { createChestInventoryPanel } from './chestInventoryPanel';
 import {
   STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition, isStorageBuildingId,
@@ -35,7 +39,7 @@ import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
 import { downloadSaveJson } from './save/download';
 
-void preloadImageArchive(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
+void loadImageAtlas(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
 const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, 'cookpot');
@@ -68,6 +72,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
 }
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
 const handSlotAddress = equipmentSlotAddress('hand');
+const headSlotAddress = equipmentSlotAddress('head');
 
 function isHandSlot(address: SlotAddress): boolean {
   return address.containerId === handSlotAddress.containerId
@@ -80,7 +85,17 @@ window.addEventListener('contextmenu', (event) => {
 
 function syncHandEquipment(): void {
   const handItem = inventory.get(handSlotAddress);
-  playerAnimation?.setCarryItem(handItem?.itemId === 'torch' ? 'torch' : null);
+  const carryItem = handItem?.itemId === 'torch' || handItem?.itemId === 'lantern'
+    || handItem?.itemId === 'yellowstaff' ? handItem.itemId : null;
+  void playerAnimation?.setCarryItem(carryItem, handItem?.skinId)
+    .catch((error: unknown) => console.error('Unable to equip hand item', error));
+  dstLighting.setTorchOwner(handItem?.itemId === 'torch' ? player : null);
+}
+
+function syncHeadEquipment(): void {
+  const item = inventory.get(headSlotAddress);
+  void playerAnimation?.setHat(item && isHatId(item.itemId) ? item.itemId : null, item?.skinId)
+    .catch((error: unknown) => console.error('Unable to equip hat', error));
 }
 
 function syncInventorySlot(address: SlotAddress): void {
@@ -115,6 +130,7 @@ function syncCraftingInventory(): void {
 inventory.addresses().forEach(syncInventorySlot);
 syncCraftingInventory();
 syncHandEquipment();
+syncHeadEquipment();
 inventory.subscribe((changedSlots) => {
   changedSlots.forEach(syncInventorySlot);
   syncCraftingInventory();
@@ -123,9 +139,14 @@ inventory.subscribe((changedSlots) => {
     && address.slotKey === handSlotAddress.slotKey)) {
     syncHandEquipment();
   }
+  if (changedSlots.some((address) =>
+    address.containerId === headSlotAddress.containerId
+    && address.slotKey === headSlotAddress.slotKey)) {
+    syncHeadEquipment();
+  }
 });
 
-const { buildingPlacement, groundItems, getSaveState } = await startScene(
+const { buildingPlacement, groundItems, dwarfStars, getSaveState } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item) => {
     if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
@@ -147,6 +168,10 @@ const { buildingPlacement, groundItems, getSaveState } = await startScene(
     }
   },
 );
+if (playerAnimation) setupYellowStaffCasting(view, playerAnimation, dwarfStars,
+  () => inventory.get(handSlotAddress)?.itemId === 'yellowstaff',
+  () => locomotor.stop(),
+  (error) => console.error('Unable to summon dwarf star', error));
 let lastSavedSnapshotId = initialSave.snapshot.id;
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
@@ -186,9 +211,9 @@ window.addEventListener('game:slot-transfer-request', (event) => {
       delta: detail.amount,
     },
   ]);
-  if (!transferred || detail.itemId !== 'torch') return;
-  if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out');
-  else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in');
+  if (!transferred || (detail.itemId !== 'torch' && detail.itemId !== 'lantern' && detail.itemId !== 'yellowstaff')) return;
+  if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out', detail.itemId);
+  else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in', detail.itemId);
 });
 gameUi.inventoryBar.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;

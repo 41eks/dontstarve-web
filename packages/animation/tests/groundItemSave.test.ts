@@ -8,6 +8,19 @@ vi.mock('@three-roaming/animation/imageAtlas', () => ({
   }),
 }));
 
+// This suite checks save/transfer state; browser tests load the real DST assets.
+vi.mock('@three-roaming/prefab/groundItems', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@three-roaming/prefab/groundItems')>();
+  return {
+    ...actual,
+    createGroundItemSprite: async () => {
+      const model = new THREE.Group();
+      model.add(new THREE.Group());
+      return { model, update() {}, dispose() { model.removeFromParent(); } };
+    },
+  };
+});
+
 afterEach(() => vi.restoreAllMocks());
 
 function setup() {
@@ -17,7 +30,7 @@ function setup() {
   });
   const pickup = vi.fn(() => true);
   const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
-    { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', pickup);
+    { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', pickup, 'anim');
   return { manager, scene, canvas, pickup };
 }
 

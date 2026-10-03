@@ -36,10 +36,10 @@ function resizeRendererToDisplaySize() {
   return { width, height, needsResize };
 }
 
-// Lambert materials still need a neutral base light. The visible illumination
-// is applied to the complete frame by DstLightingRenderer, just like DST's
-// global ambient colour; there is no directional "sun" in the Lua setup.
-scene.add(new THREE.AmbientLight(0xffffff, 1));
+// Lambert materials need neutral base illumination. DstLightingRenderer applies
+// ambient + local colour through the world XZ lightmap before seasonal grading.
+// Lambert's diffuse BRDF divides irradiance by PI; this keeps white neutral.
+scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
 
 const dstLighting = await DstLightingRenderer.create(
   renderer,

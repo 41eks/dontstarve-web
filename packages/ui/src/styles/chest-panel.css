@@ -122,15 +122,11 @@
 
 .cook-pot-panel .chest-panel__slots {
   grid-template-columns: var(--inventory-slot-layout-size);
+  row-gap: calc(var(--inventory-slot-layout-size) / 8);
 }
 
 @media (max-width: 700px) {
   :host {
     --inventory-slot-layout-size: calc(5.1493vw - 1.018px);
-  }
-
-  .cook-pot-panel {
-    padding: 4px 3px 3px;
-    border-width: 2px;
   }
 }

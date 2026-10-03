@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { parseKtex } from '@three-roaming/animation/parseKtex';
+import { DstLocalLighting } from './dstLocalLighting';
 
 export type DstSeason = 'autumn' | 'winter' | 'spring' | 'summer';
 export type DstLightPhase = 'day' | 'dusk' | 'night' | 'full_moon';
@@ -131,7 +132,6 @@ const FRAGMENT_SHADER = /* glsl */`
   uniform sampler2D sceneTexture;
   uniform sampler2D sourceLut;
   uniform sampler2D destinationLut;
-  uniform vec3 ambientColour;
   uniform float lutSize;
   uniform float lutBlend;
 
@@ -153,7 +153,8 @@ const FRAGMENT_SHADER = /* glsl */`
     vec4 sceneColour = texture2D(sceneTexture, vUv);
     // DST's ambient values and colour cubes operate in display-colour space.
     vec3 displayColour = sRGBTransferOETF(vec4(max(sceneColour.rgb, 0.0), 1.0)).rgb;
-    vec3 litColour = clamp(displayColour * ambientColour, 0.0, 1.0);
+    // World materials already apply ambient + local lighting before composition.
+    vec3 litColour = clamp(displayColour, 0.0, 1.0);
     vec3 gradedSource = sampleColourCube(sourceLut, litColour);
     vec3 gradedDestination = sampleColourCube(destinationLut, litColour);
     vec3 graded = mix(gradedSource, gradedDestination, lutBlend);
@@ -162,7 +163,7 @@ const FRAGMENT_SHADER = /* glsl */`
   }
 `;
 
-/** Applies DST ambient lighting and its seasonal colour-cube post-process. */
+/** Applies world lighting before the seasonal colour-cube post-process. */
 export class DstLightingRenderer {
   static async create(
     renderer: THREE.WebGLRenderer,
@@ -180,11 +181,14 @@ export class DstLightingRenderer {
   private readonly postCamera = new THREE.Camera();
   private readonly material: THREE.ShaderMaterial;
   private readonly drawingBufferSize = new THREE.Vector2();
+  private readonly localLighting = new DstLocalLighting();
+  private readonly litAmbient = new THREE.Vector3();
+  private readonly litBackground = new THREE.Color();
   private readonly ambientStart = new THREE.Vector3();
   private readonly ambientCurrent = new THREE.Vector3();
   private readonly ambientTarget = new THREE.Vector3();
   private season: DstSeason = 'spring';
-  private phase: DstLightPhase = 'day';
+  private phase: DstLightPhase = 'night';
   private weatherLight = 1;
   private ambientBlendRemaining = 0;
   private ambientBlendTotal = 0;
@@ -217,7 +221,6 @@ export class DstLightingRenderer {
         sceneTexture: { value: this.renderTarget.texture },
         sourceLut: { value: initialLut },
         destinationLut: { value: initialLut },
-        ambientColour: { value: this.ambientCurrent.clone() },
         lutSize: { value: initialLut.image.height },
         lutBlend: { value: 1 },
       },
@@ -276,6 +279,10 @@ export class DstLightingRenderer {
     this.setWeatherLight(calculateDstWeatherLight(this.season, this.phase, intensity, snow));
   }
 
+  setTorchOwner(owner: THREE.Object3D | null): void {
+    this.localLighting.setTorchOwner(owner);
+  }
+
   update(dt: number): void {
     const elapsed = Math.max(0, dt);
     if (this.ambientBlendRemaining > 0) {
@@ -297,8 +304,22 @@ export class DstLightingRenderer {
       this.renderTarget.setSize(this.drawingBufferSize.x, this.drawingBufferSize.y);
     }
 
+    this.localLighting.prepareScene(scene);
+    this.localLighting.renderLightmap(this.renderer);
+    const originalBackground = scene.background;
+    if (originalBackground instanceof THREE.Color) {
+      this.litBackground.copy(originalBackground).convertLinearToSRGB();
+      this.litBackground.r *= this.litAmbient.x;
+      this.litBackground.g *= this.litAmbient.y;
+      this.litBackground.b *= this.litAmbient.z;
+      scene.background = this.litBackground.convertSRGBToLinear();
+    }
     this.renderer.setRenderTarget(this.renderTarget);
-    this.renderer.render(scene, camera);
+    try {
+      this.renderer.render(scene, camera);
+    } finally {
+      scene.background = originalBackground;
+    }
     this.renderer.setRenderTarget(null);
     this.renderer.render(this.postScene, this.postCamera);
   }
@@ -322,9 +343,10 @@ export class DstLightingRenderer {
   }
 
   private applyAmbientUniform(): void {
-    (this.material.uniforms.ambientColour.value as THREE.Vector3)
+    this.litAmbient
       .copy(this.ambientCurrent)
       .multiplyScalar(this.weatherLight);
+    this.localLighting.setAmbientColour(this.litAmbient);
   }
 
   private requireLut(season: DstSeason, phase: DstLightPhase): THREE.DataTexture {

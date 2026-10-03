@@ -54,6 +54,8 @@ export interface InventoryRecipeDefinition {
   readonly productSkinId?: string;
   readonly ingredients: Readonly<Record<string, number>>;
   readonly buffered: boolean;
+  /** Must be present in accessible slots, but are not consumed. */
+  readonly requiredItems?: readonly string[];
 }
 
 export type InventoryListener = (changedSlots: readonly SlotAddress[]) => void;

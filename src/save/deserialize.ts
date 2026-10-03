@@ -3,6 +3,7 @@ import type {
 } from '@three-roaming/inventory';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
 import type { BuildingContainerDefinition } from '@three-roaming/prefab/containers';
+import { DWARF_STAR_DURATION } from '@three-roaming/prefab/stafflight';
 
 export interface SaveCatalog {
   items: Readonly<Record<string, InventoryItemSpec>>;
@@ -152,7 +153,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
   const ids = new Set<string>();
   let entityCount = 0;
-  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', ...Object.keys(catalog.buildings), ...catalog.walls];
+  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', ...Object.keys(catalog.buildings), ...catalog.walls];
   const groups = object(world.entities, 'world.entities', allowedPrefabs);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;
@@ -167,7 +168,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       const containerDefinition = building?.container;
       const isContainer = containerDefinition !== undefined;
       const allowedComponents = building ? ['building', ...(isContainer ? ['container'] : [])]
-        : prefab === 'ground_item' ? ['stack'] : catalog.walls.includes(prefab) ? ['health'] : [];
+        : prefab === 'ground_item' ? ['stack'] : prefab === 'stafflight' ? ['timer'] : catalog.walls.includes(prefab) ? ['health'] : [];
       const c = object(o.components, `${recordPath}.components`, allowedComponents);
       const components: SavedEntity['components'] = {};
       if (building) {
@@ -186,6 +187,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
         }
       }
       if (prefab === 'ground_item') components.stack = stack(c.stack, `${recordPath}.components.stack`);
+      if (prefab === 'stafflight') {
+        const t = object(c.timer, `${recordPath}.components.timer`, ['remainingSeconds']);
+        components.timer = { remainingSeconds: number(t.remainingSeconds,
+          `${recordPath}.components.timer.remainingSeconds`, Number.MIN_VALUE, DWARF_STAR_DURATION) };
+      }
       if (c.health !== undefined) {
         const h = object(c.health, `${recordPath}.components.health`, ['current', 'maximum']);
         const maximum = number(h.maximum, `${recordPath}.components.health.maximum`, 1);

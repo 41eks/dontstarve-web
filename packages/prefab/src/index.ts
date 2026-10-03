@@ -64,6 +64,7 @@ export {
   createWilsonPlayerPrefab,
   type PlayerBody,
   type WilsonAnimationController,
+  type WilsonCarryItem,
   type WilsonFacing,
   type WilsonPlayerPrefab,
   type WilsonPlayerPrefabOptions,
@@ -124,3 +125,28 @@ export {
   type TurfGroundOptions,
 } from './turf';
 export type { PointerContext, WorldContext } from './worldContext';
+export {
+  LANTERN_ID, LANTERN_COLOUR, LanternLightController, createLanternGroundSprite,
+  loadLanternEquipment, resolveLanternPlayerSprite,
+  type LanternGroundOptions, type LanternEquipment,
+} from './lantern';
+export { getPrefabLocalLight, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
+export { LIGHTBULB_ID, LIGHTBULB_LIGHT, createLightbulbGroundSprite } from './lightbulb';
+export {
+  YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME,
+  loadYellowStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, setupYellowStaffCasting,
+  type YellowStaffEquipment,
+} from './yellowstaff';
+export { DWARF_STAR_ID, DWARF_STAR_DURATION, dwarfStarLight, DwarfStarManager, type DwarfStarRecord } from './stafflight';
+
+export {
+  GROUND_ITEM_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS,
+  GroundItemAssets, createGroundItemSprite,
+  type GroundItemAssetDefinition, type GroundItemSprite,
+} from './groundItems';
+
+export {
+  HAT_DEFINITIONS, HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_RECIPES, HAT_CRAFTING_DEFINITIONS,
+  isHatId, HatEquipmentAssets, isHatPlayerElementVisible, resolveHatSprites, createHatGroundSprite,
+  type HatDefinition, type HatEquipMode, type HatEquipment, type HatGroundSprite,
+} from './hats';

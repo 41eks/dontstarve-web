@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""Import source ground art for materials, tools and food, preserving DST paths."""
+import argparse
+import json
+from pathlib import Path
+import re
+import runpy
+import zipfile
+import xml.etree.ElementTree as ET
+
+
+SIMPLE = '''cutgrass twigs log cutreeds boards rope cutstone flint goldnugget
+gears charcoal pigskin silk stinger houndstooth nitre livinglog nightmarefuel
+petals petals_evil ash beefalowool boneshard butterflywings honey honeycomb
+thulecite thulecite_pieces guano tentaclespots spidergland slurtleslime
+slurtle_shellpieces walrus_tusk deerclops_eyeball bearger_fur dragon_scales
+glommerfuel acorn'''.split()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source', type=Path, default=Path('/data/copy/AssetArchive-Dev/data/DST/data'))
+    parser.add_argument('--check', action='store_true')
+    args = parser.parse_args()
+    package = Path(__file__).resolve().parent.parent
+    repo = package.parent.parent
+    scripts = args.source / 'databundles/scripts_unpacked/scripts'
+    read_po = runpy.run_path(str(Path(__file__).with_name('import-hats.py')))['read_po']
+    messages = read_po(scripts / 'languages/chinese_s.po')
+    icons = {}
+    with zipfile.ZipFile(args.source / 'databundles/images.zip') as archive:
+        for path in sorted(archive.namelist()):
+            if re.fullmatch(r'images/inventoryimages\d*\.xml', path):
+                for element in ET.fromstring(archive.read(path)).iter('Element'):
+                    icons.setdefault(element.attrib['name'], path)
+    items = {}
+    assets = set()
+
+    def read(name):
+        return (scripts / 'prefabs' / (name + '.lua')).read_text()
+
+    def add(item, bank, build, animation, source, animation_archive=None, overrides=None, loop=False, icon_name=None):
+        animation_archive = animation_archive or build + '.zip'
+        builds = [build + '.zip']
+        for override in (overrides or {}).values():
+            if override['archive'] not in builds:
+                builds.append(override['archive'])
+        icon = (icon_name or item) + '.tex'
+        if icon not in icons:
+            raise ValueError(f'No inventory icon for {item}')
+        definition = {
+            'source': 'databundles/scripts_unpacked/scripts/prefabs/' + source + '.lua',
+            'name': messages.get('STRINGS.NAMES.' + item.upper(), item),
+            'icon': icon, 'atlas': icons[icon],
+            'animationArchive': animation_archive, 'buildArchives': builds,
+            'bank': bank, 'animation': animation, 'loop': loop,
+            'symbolOverrides': overrides or {}, 'skinArchives': {},
+        }
+        items[item] = definition
+        assets.update('anim/' + path for path in [animation_archive, *builds])
+
+    # These constructors have literal bank/build/clip values before SetPristine.
+    for item in SIMPLE:
+        source = read(item)
+        constructor = source[source.index('MakeInventoryPhysics(inst)'):]
+        constructor = constructor[:constructor.index('SetPristine')]
+        bank = re.search(r'SetBank\("([^"]+)"\)', constructor)[1]
+        build = re.search(r'SetBuild\("([^"]+)"\)', constructor)[1]
+        clip = re.search(r'PlayAnimation\("([^"]+)"(?:,\s*(true|false))?\)', constructor)
+        add(item, bank, build, clip[1], item, loop=clip[2] == 'true' or item == 'nightmarefuel')
+
+    # Shared constructors use arguments or select an idle pose after SetPristine.
+    add('rocks', 'rocks', 'rocks', 'f1', 'inv_rocks')
+    add('ice', 'ice', 'ice', 'f1', 'inv_rocks_ice')
+    add('seeds', 'seeds', 'seeds', 'idle', 'seeds')
+    add('seeds_cooked', 'seeds', 'seeds', 'cooked', 'seeds')
+    add('pinecone', 'pinecone', 'pinecone', 'idle', 'pinecone')
+    add('acorn_cooked', 'acorn', 'acorn', 'cooked', 'acorn')
+    add('poop', 'poop', 'poop', 'dump', 'poop')
+    add('spoiled_food', 'spoiled', 'spoiled_food', 'idle', 'spoiledfood')
+    for colour in ['red', 'blue', 'purple', 'green', 'orange', 'yellow']:
+        add(colour + 'gem', 'gems', 'gems', colour + 'gem_idle', 'gem', loop=True)
+    for colour in ['crow', 'robin', 'robin_winter', 'canary']:
+        item = 'feather_' + colour
+        add(item, item, item, 'idle', 'feathers')
+
+    # torch.lua and hammer.lua deliberately split their bank and build archives.
+    add('torch', 'torch', 'swap_torch', 'idle', 'torch', animation_archive='torch.zip')
+    # mininglantern.lua registers lantern, with separate ground and worn builds.
+    add('lantern', 'lantern', 'lantern', 'idle_off', 'mininglantern')
+    assets.add('anim/swap_lantern.zip')
+    add('lightbulb', 'bulb', 'bulb', 'idle', 'lightbulb')
+    add('yellowstaff', 'staffs', 'staffs', 'yellowstaff', 'staff')
+    assets.update(['anim/swap_staffs.zip', 'anim/player_staff.zip', 'anim/star_hot.zip'])
+    add('hammer', 'hammer', 'swap_hammer', 'idle', 'hammer', animation_archive='hammer.zip')
+    for item in ['axe', 'goldenaxe', 'pickaxe', 'goldenpickaxe', 'shovel', 'goldenshovel']:
+        source = 'pickaxe' if 'pickaxe' in item else 'shovel' if 'shovel' in item else 'axe'
+        add(item, item, item, 'idle', source)
+    add('moonglassaxe', 'glassaxe', 'glassaxe', 'idle', 'axe')
+    add('wall_stone_item', 'wall', 'wall_stone', 'idle', 'walls', animation_archive='wall.zip')
+
+    # meats.lua passes bank/build/animation to common() for every edible form.
+    meat_source = read('meats')
+    constructors = {}
+    for match in re.finditer(r'local function (\w+)\(\)\n(.*?)(?=\nlocal function|\nreturn Prefab)', meat_source, re.S):
+        common = re.search(r'common\("([^"]+)",\s*"([^"]+)",\s*"([^"]+)"', match[2])
+        if common:
+            constructors[match[1]] = common.groups()
+    for item, constructor in re.findall(r'Prefab\("([^"]+)",\s*(\w+)', meat_source):
+        if constructor in constructors and not item.startswith('quagmire_'):
+            add(item, *constructors[constructor], 'meats')
+
+    # veggies.lua uses each vegetable's bank/build with idle and cooked clips.
+    for item in re.findall(r'^\s+(\w+)\s*=\s*MakeVegStats\(', read('veggies'), re.M):
+        icon = 'quagmire_' + item if item in {'tomato', 'onion'} else item
+        add(item, item, item, 'idle', 'veggies', icon_name=icon)
+        add(item + '_cooked', item, item, 'cooked', 'veggies', icon_name=icon + '_cooked')
+
+    # preparedfoods.lua overrides swap_food; later foods use additional builds.
+    foods = (scripts / 'preparedfoods.lua').read_text()
+    entries = list(re.finditer(r'^(?:\t| {4})(\w+)\s*=\s*\n(?:\t| {4})\{', foods, re.M))
+    for index, entry in enumerate(entries):
+        body = foods[entry.end():entries[index + 1].start() if index + 1 < len(entries) else len(foods)]
+        override = re.search(r'overridebuild\s*=\s*"([^"]+)"', body)
+        basename = re.search(r'basename\s*=\s*"([^"]+)"', body)
+        build = override[1] if override else 'cook_pot_food'
+        add(entry[1], 'cook_pot_food', build, 'idle', 'preparedfoods',
+            animation_archive='cook_pot_food.zip',
+            overrides={'swap_food': {'archive': build + '.zip', 'symbol': basename[1] if basename else entry[1]}})
+
+    # Skin builds replace matching symbols while the original bank keeps its pose.
+    skin_specs = {}
+    skins = read('skinprefabs')
+    for match in re.finditer(r'CreatePrefabSkin\("([^"]+)",\s*\{(.*?)\}\)\)', skins, re.S):
+        base = re.search(r'base_prefab\s*=\s*"([^"]+)"', match[2])
+        if not base or base[1] not in items:
+            continue
+        override = re.search(r'build_name_override\s*=\s*"([^"]+)"', match[2])
+        build = override[1] if override else match[1]
+        path = f'dynamic/{build}.zip'
+        items[base[1]]['skinArchives'][match[1]] = path
+        icon = match[1] + '.tex'
+        if icon not in icons:
+            raise ValueError(f'No inventory icon for skin {match[1]}')
+        skin_specs[match[1]] = {'itemId': base[1], 'name': messages.get('STRINGS.SKIN_NAMES.' + match[1], match[1]),
+                                 'icon': icon, 'atlas': icons[icon]}
+        assets.update(['anim/' + path, 'anim/' + str(Path(path).with_suffix('.dyn'))])
+
+    output = package / 'src/groundItems.json'
+    serialized = json.dumps({'items': items, 'skinSpecs': skin_specs}, ensure_ascii=False, indent=2) + '\n'
+    if args.check:
+        if output.read_text() != serialized:
+            raise ValueError('groundItems.json is out of date')
+    else:
+        output.write_text(serialized)
+    with zipfile.ZipFile(args.source / 'databundles/anim_dynamic.zip') as dynamic:
+        for relative in sorted(assets):
+            data = dynamic.read(relative) if relative.startswith('anim/dynamic/') and relative.endswith('.zip') else (args.source / relative).read_bytes()
+            target = repo / 'public/dst/data' / relative
+            if args.check:
+                if not target.exists() or target.read_bytes() != data:
+                    raise ValueError(f'Missing or different asset: {relative}')
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+    print(f'{"Checked" if args.check else "Imported"} {len(items)} ground items, {len(skin_specs)} skins, {len(assets)} assets')
+
+
+if __name__ == '__main__':
+    main()

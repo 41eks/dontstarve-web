@@ -63,12 +63,20 @@ test('shows four prepared food slots to the right and transfers one item from a 
     });
   });
   const panel = page.locator('dst-cook-pot-panel .cook-pot-panel');
+  const background = panel.locator('.chest-panel__background');
+  await expect(background).toHaveAttribute('data-archive', /\/dst\/data\/anim\/ui_cookpot_1x4.zip$/);
+  await expect(background).toHaveAttribute('data-loaded', 'true');
+  await expect(background).toHaveAttribute('data-animation', 'open');
+  await expect(background).toHaveAttribute('data-playing', 'false');
   const slots = panel.locator('.inventory-slot');
   await expect(slots).toHaveCount(4);
   await expect(slots.nth(0)).toHaveAttribute('data-background-asset', 'preparedfood_slot.tex');
   await expect(slots.nth(0).locator('.inventory-slot__background')).toHaveAttribute('data-loaded', 'true');
   const boxes = await Promise.all([0, 1, 2, 3].map((index) => slots.nth(index).boundingBox()));
+  const inventoryBox = (await page.locator('dst-inventory-bar .inventory-slot').first().boundingBox())!;
   for (let i = 0; i < boxes.length; i++) {
+    expect(boxes[i]!.width).toBeCloseTo(inventoryBox.width, 1);
+    expect(boxes[i]!.height).toBeCloseTo(inventoryBox.height, 1);
     expect(boxes[i]!.x).toBeGreaterThan(420);
     expect(boxes[i]!.x).toBeCloseTo(boxes[0]!.x, 1);
     if (i > 0) expect(boxes[i]!.y).toBeGreaterThan(boxes[i - 1]!.y);

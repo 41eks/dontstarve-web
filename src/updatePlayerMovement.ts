@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import type { Locomotor } from '@three-roaming/prefab/locomotor';
+import type { WilsonAnimationController } from '@three-roaming/prefab/player';
 import { input } from './InputManager';
 import type { PlayerBody } from './types/Player';
 
@@ -33,13 +34,15 @@ export function updateMovement(
         if (input.isPressed('KeyA')) direction.sub(right);
         if (input.isPressed('KeyD')) direction.add(right);
         const manual = movementKeys.some((key) => input.isPressed(key));
-        locomotor.update(speed, dt, manual ? direction : undefined);
+        const casting = (player.userData.animationController as WilsonAnimationController | undefined)?.isCasting;
+        if (casting) locomotor.stop();
+        else locomotor.update(speed, dt, manual ? direction : undefined);
 
         direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
         if (!player.userData.billboard && direction.lengthSq() > 0) {
             player.lookAt(target.copy(player.position).add(direction));
         }
-        if (input.isPressed('Space') && playerBody.canJump) {
+        if (!casting && input.isPressed('Space') && playerBody.canJump) {
             playerBody.velocity.y = JUMP_VELOCITY;
             playerBody.canJump = false;
         }

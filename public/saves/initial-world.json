@@ -7,15 +7,15 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000003",
-    "parentId": "0000000002",
-    "savedAt": "2026-10-02T14:31:47.573Z",
+    "id": "0000000005",
+    "parentId": "0000000004",
+    "savedAt": "2026-10-03T05:53:24.775Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 2041.9731999992398,
+    "elapsedSeconds": 3436.420999999332,
     "systems": {},
     "map": {
       "kind": "generated",
@@ -6045,7 +6045,60 @@
           "components": {}
         }
       ],
-      "ground_item": [],
+      "ground_item": [
+        {
+          "id": "e_9026f7ec3f32e8ffa91072a763ea3317",
+          "transform": {
+            "position": [
+              -5.77653418826343,
+              0,
+              1.0308098193467319
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "lightbulb",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_b961b11df249862d74c05530e02c053b",
+          "transform": {
+            "position": [
+              9.931287092473374,
+              0,
+              -0.39097096319598645
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "lightbulb",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_9e7d3d06c71772990f5c9c7e49c1fa14",
+          "transform": {
+            "position": [
+              -9.250176988112372,
+              0,
+              8.999427837510094
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "lantern",
+              "count": 1
+            }
+          }
+        }
+      ],
+      "stafflight": [],
       "treasurechest": [
         {
           "id": "e_treasurechest_000001",
@@ -6177,9 +6230,9 @@
       "shardId": "master",
       "transform": {
         "position": [
-          -13.624021632905155,
+          -22.62515679004113,
           0,
-          5.332743591752066
+          51.23147769043453
         ],
         "rotationY": 0
       },
@@ -6192,14 +6245,14 @@
                 "slotKey": "0",
                 "item": {
                   "itemId": "cutgrass",
-                  "count": 1
+                  "count": 19
                 }
               },
               {
                 "slotKey": "1",
                 "item": {
                   "itemId": "twigs",
-                  "count": 5
+                  "count": 2
                 }
               },
               {
@@ -6238,13 +6291,6 @@
                 }
               },
               {
-                "slotKey": "7",
-                "item": {
-                  "itemId": "rope",
-                  "count": 1
-                }
-              },
-              {
                 "slotKey": "8",
                 "item": {
                   "itemId": "rocks",
@@ -6255,7 +6301,15 @@
           },
           "player:equipment": {
             "slotCount": 3,
-            "slots": []
+            "slots": [
+              {
+                "slotKey": "hand",
+                "item": {
+                  "itemId": "yellowstaff",
+                  "count": 1
+                }
+              }
+            ]
           }
         },
         "bufferedBuilds": []

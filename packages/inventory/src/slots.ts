@@ -14,6 +14,8 @@ export interface ItemSlot {
 const DEFAULT_MAX_STACK = 40;
 const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   torch: 1,
+  lantern: 1,
+  yellowstaff: 1,
   log: 20,
 };
 
@@ -22,14 +24,19 @@ export function inventoryItemMaxStack(itemId: string): number {
 }
 
 export function inventoryItemEquipmentKind(itemId: string): 'hand' | undefined {
-  return itemId === 'torch' ? 'hand' : undefined;
+  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' ? 'hand' : undefined;
 }
 
 export class InventorySlot implements ItemSlot {
   private stack: InventoryStack | null;
+  private readonly itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>>;
 
-  constructor(initialStack: InventoryStack | null = null) {
+  constructor(
+    initialStack: InventoryStack | null = null,
+    itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {},
+  ) {
     this.stack = cloneStack(initialStack);
+    this.itemSpecs = itemSpecs;
   }
 
   get(): InventoryStack | null {
@@ -45,7 +52,7 @@ export class InventorySlot implements ItemSlot {
   }
 
   maxStack(itemId: string): number {
-    return inventoryItemMaxStack(itemId);
+    return this.itemSpecs[itemId]?.maxStack ?? inventoryItemMaxStack(itemId);
   }
 }
 

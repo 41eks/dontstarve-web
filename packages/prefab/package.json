@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./buildCursor": "./src/buildCursor.ts",
+    "./yellowstaff": "./src/yellowstaff.ts",
+    "./stafflight": "./src/stafflight.ts",
+    "./lantern": "./src/lantern.ts",
+    "./localLight": "./src/localLight.ts",
+    "./lightbulb": "./src/lightbulb.ts",
     ".": "./src/index.ts",
     "./definitions.json": "./src/definitions.json",
     "./saveRecord": "./src/saveRecord.ts",
@@ -31,14 +37,21 @@
     "./pighouse": "./src/pighouse.ts",
     "./mushroom_light": "./src/mushroom_light.ts",
     "./containers": "./src/containers.ts",
-    "./locomotor": "./src/locomotor.ts"
+    "./locomotor": "./src/locomotor.ts",
+    "./hats": "./src/hats.ts",
+    "./groundItems": "./src/groundItems.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "hats:import": "python3 scripts/import-hats.py",
+    "hats:check": "python3 scripts/import-hats.py --check",
+    "ground-items:import": "python3 scripts/import-ground-items.py",
+    "ground-items:check": "python3 scripts/import-ground-items.py --check"
   },
   "dependencies": {
     "@three-roaming/animation": "workspace:*",
-    "cannon-es": "^0.20.0"
+    "cannon-es": "^0.20.0",
+    "@three-roaming/inventory": "workspace:*"
   },
   "peerDependencies": {
     "three": "^0.184.0"

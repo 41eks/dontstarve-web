@@ -1,3 +1,5 @@
+import { HAT_ITEM_SPECS } from '@three-roaming/prefab/hats';
+import { GROUND_ITEM_DISPLAY_SPECS } from '@three-roaming/prefab/groundItems';
 import { INVENTORY_PRODUCT_SPECS, type InventoryProductSpec } from './categories/shared';
 import { ingredientNames } from './categories/generated';
 
@@ -9,4 +11,6 @@ export const INVENTORY_ITEM_DISPLAY_SPECS: Readonly<Record<string, InventoryItem
     icon: `${itemId}.tex`,
   }])),
   ...INVENTORY_PRODUCT_SPECS,
+  ...GROUND_ITEM_DISPLAY_SPECS,
+  ...HAT_ITEM_SPECS,
 };

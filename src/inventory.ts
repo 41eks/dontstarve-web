@@ -53,7 +53,7 @@ export function createInventoryStore(
     { length: INVENTORY_SLOT_COUNT },
     (_, index) => ({
       address: inventorySlotAddress(index),
-      slot: new InventorySlot(stacks.get(index) ?? null),
+      slot: new InventorySlot(stacks.get(index) ?? null, INVENTORY_ITEM_SPECS),
     }),
   );
   const equipmentSlots = [

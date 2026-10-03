@@ -1,0 +1,2914 @@
+{
+  "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+  "hats": {
+    "strawhat": {
+      "name": "草帽",
+      "icon": "strawhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_straw.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "strawhat_bonnet": "dynamic/strawhat_bonnet.zip",
+        "strawhat_cowboy": "dynamic/strawhat_cowboy.zip",
+        "strawhat_floppy": "dynamic/strawhat_floppy.zip",
+        "strawhat_western": "dynamic/strawhat_western.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "tophat": {
+      "name": "高礼帽",
+      "icon": "tophat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_top.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "hat_catcoon_costume": "dynamic/hat_catcoon_costume.zip",
+        "hat_catcoon_costumep": "dynamic/hat_catcoon_costume.zip",
+        "hat_chester_costume": "dynamic/hat_chester_costume.zip",
+        "hat_chester_costumep": "dynamic/hat_chester_costume.zip",
+        "hat_glommer_costume": "dynamic/hat_glommer_costume.zip",
+        "hat_glommer_costumep": "dynamic/hat_glommer_costume.zip",
+        "hat_hutch_costume": "dynamic/hat_hutch_costume.zip",
+        "hat_hutch_costumep": "dynamic/hat_hutch_costume.zip",
+        "tophat_chef": "dynamic/tophat_chef.zip",
+        "tophat_circus": "dynamic/tophat_circus.zip",
+        "tophat_derby": "dynamic/tophat_derby.zip",
+        "tophat_festive_bell_red_firehound": "dynamic/tophat_festive_bell_red_firehound.zip",
+        "tophat_fish": "dynamic/tophat_fish.zip",
+        "tophat_harlequin": "dynamic/tophat_harlequin.zip",
+        "tophat_merchant": "dynamic/tophat_merchant.zip",
+        "tophat_minigolf_green": "dynamic/tophat_minigolf_green.zip",
+        "tophat_minigolf_purple": "dynamic/tophat_minigolf_purple.zip",
+        "tophat_minigolf_red": "dynamic/tophat_minigolf_red.zip",
+        "tophat_spiked": "dynamic/tophat_spiked.zip",
+        "tophat_western": "dynamic/tophat_western.zip",
+        "tophat_witch_pyre": "dynamic/tophat_witch_pyre.zip",
+        "tophat_wizard": "dynamic/tophat_wizard.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "beefalohat": {
+      "name": "牛角帽",
+      "icon": "beefalohat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_beefalo.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "beefalohat_fantasy": "dynamic/beefalohat_fantasy.zip",
+        "beefalohat_klaus": "dynamic/beefalohat_klaus.zip",
+        "beefalohat_mystical": "dynamic/beefalohat_mystical.zip",
+        "beefalohat_pigking": "dynamic/beefalohat_pigking.zip",
+        "beefalohat_pigking_alt": "dynamic/beefalohat_pigking.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "featherhat": {
+      "name": "羽毛帽",
+      "icon": "featherhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_feather.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "featherhat_circus": "dynamic/featherhat_circus.zip",
+        "featherhat_exotic": "dynamic/featherhat_exotic.zip",
+        "featherhat_victorian": "dynamic/featherhat_victorian.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "beehat": {
+      "name": "养蜂帽",
+      "icon": "beehat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_bee.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "beehat_garden": "dynamic/beehat_garden.zip",
+        "beehat_mourning": "dynamic/beehat_mourning.zip",
+        "beehat_ninja": "dynamic/beehat_ninja.zip",
+        "beehat_sunhat": "dynamic/beehat_sunhat.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "minerhat": {
+      "name": "矿工帽",
+      "icon": "minerhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_miner.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat_off"
+      },
+      "skinArchives": {
+        "minerhat_bonnet": "dynamic/minerhat_bonnet.zip",
+        "minerhat_cowboy": "dynamic/minerhat_cowboy.zip",
+        "minerhat_floppy": "dynamic/minerhat_floppy.zip",
+        "minerhat_western": "dynamic/minerhat_western.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "spiderhat": {
+      "name": "蜘蛛帽",
+      "icon": "spiderhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_spider.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "footballhat": {
+      "name": "橄榄球头盔",
+      "icon": "footballhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_football.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "footballhat_adventure": "dynamic/footballhat_adventure.zip",
+        "footballhat_combathelm": "dynamic/footballhat_combathelm.zip",
+        "footballhat_combathelm2": "dynamic/footballhat_combathelm2.zip",
+        "footballhat_hockey": "dynamic/footballhat_hockey.zip",
+        "footballhat_rw_gustree": "dynamic/footballhat_rw_gustree.zip",
+        "footballhat_western": "dynamic/footballhat_western.zip",
+        "hat_dog_helm": "dynamic/hat_dog_helm.zip"
+      },
+      "skinEquipModes": {
+        "footballhat_adventure": "opentop",
+        "footballhat_rw_gustree": "opentop"
+      }
+    },
+    "earmuffshat": {
+      "name": "兔耳罩",
+      "icon": "earmuffshat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_earmuffs.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "earmuffshat_beeguard": "dynamic/earmuffshat_beeguard.zip",
+        "earmuffshat_deerclops": "dynamic/earmuffshat_deerclops.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "winterhat": {
+      "name": "冬帽",
+      "icon": "winterhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_winter.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "winterhat_black_davys": "dynamic/winterhat_black_davys.zip",
+        "winterhat_fancy_puppy": "dynamic/winterhat_fancy_puppy.zip",
+        "winterhat_fancy_puppyalt": "dynamic/winterhat_fancy_puppy.zip",
+        "winterhat_pink_hibiscus": "dynamic/winterhat_pink_hibiscus.zip",
+        "winterhat_plum_pudding": "dynamic/winterhat_plum_pudding.zip",
+        "winterhat_rooster": "dynamic/winterhat_rooster.zip",
+        "winterhat_rooster_alt": "dynamic/winterhat_rooster.zip",
+        "winterhat_stocking_cap_green_forest": "dynamic/winterhat_stocking_cap_green_forest.zip",
+        "winterhat_western": "dynamic/winterhat_western.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "bushhat": {
+      "name": "灌木丛帽",
+      "icon": "bushhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_bush.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "bushhat_cawnival": "dynamic/bushhat_cawnival.zip",
+        "bushhat_mystical": "dynamic/bushhat_mystical.zip",
+        "bushhat_swamp": "dynamic/bushhat_swamp.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "flowerhat": {
+      "name": "花环",
+      "icon": "flowerhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_flower.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "flowerhat_crown": "dynamic/flowerhat_crown.zip",
+        "flowerhat_healing": "dynamic/flowerhat_healing.zip",
+        "flowerhat_holly_wreath": "dynamic/flowerhat_holly_wreath.zip",
+        "flowerhat_ribbon_wreath": "dynamic/flowerhat_ribbon_wreath.zip",
+        "flowerhat_wreath": "dynamic/flowerhat_wreath.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "walrushat": {
+      "name": "贝雷帽",
+      "icon": "walrushat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_walrus.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "walrushat_blue": "dynamic/walrushat_blue.zip",
+        "walrushat_cawnival": "dynamic/walrushat_cawnival.zip",
+        "walrushat_ceremonial": "dynamic/walrushat_ceremonial.zip",
+        "walrushat_minigolf_green": "dynamic/walrushat_minigolf_green.zip",
+        "walrushat_minigolf_purple": "dynamic/walrushat_minigolf_purple.zip",
+        "walrushat_minigolf_red": "dynamic/walrushat_minigolf_red.zip",
+        "walrushat_party": "dynamic/walrushat_party.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "slurtlehat": {
+      "name": "背壳头盔",
+      "icon": "slurtlehat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_slurtle.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "ruinshat": {
+      "name": "铥矿皇冠",
+      "icon": "ruinshat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_ruins.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "ruinshat_an": "dynamic/ruinshat_an.zip",
+        "ruinshat_arcane": "dynamic/ruinshat_arcane.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "molehat": {
+      "name": "鼹鼠帽",
+      "icon": "molehat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_mole.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "molehat_goggles": "dynamic/molehat_goggles.zip",
+        "molehat_tail": "dynamic/molehat_tail.zip"
+      },
+      "skinEquipModes": {
+        "molehat_goggles": "opentop"
+      }
+    },
+    "wathgrithrhat": {
+      "name": "战斗头盔",
+      "icon": "wathgrithrhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_wathgrithr.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "wathgrithrhat_flower": "dynamic/wathgrithrhat_flower.zip",
+        "wathgrithrhat_lunar": "dynamic/wathgrithrhat_lunar.zip",
+        "wathgrithrhat_valkyrie": "dynamic/wathgrithrhat_valkyrie.zip",
+        "wathgrithrhat_western": "dynamic/wathgrithrhat_western.zip",
+        "wathgrithrhat_wrestle": "dynamic/wathgrithrhat_wrestle.zip"
+      },
+      "skinEquipModes": {
+        "wathgrithrhat_flower": "opentop",
+        "wathgrithrhat_lunar": "opentop",
+        "wathgrithrhat_valkyrie": "opentop"
+      }
+    },
+    "wathgrithr_improvedhat": {
+      "name": "统帅头盔",
+      "icon": "wathgrithr_improvedhat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_wathgrithr_improved.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "wathgrithr_improvedhat_flower": "dynamic/wathgrithr_improvedhat_flower.zip",
+        "wathgrithr_improvedhat_lunar": "dynamic/wathgrithr_improvedhat_lunar.zip",
+        "wathgrithr_improvedhat_valkyrie": "dynamic/wathgrithr_improvedhat_valkyrie.zip",
+        "wathgrithr_improvedhat_western": "dynamic/wathgrithr_improvedhat_western.zip",
+        "wathgrithr_improvedhat_wrestle": "dynamic/wathgrithr_improvedhat_wrestle.zip"
+      },
+      "skinEquipModes": {
+        "wathgrithr_improvedhat_flower": "opentop",
+        "wathgrithr_improvedhat_lunar": "opentop",
+        "wathgrithr_improvedhat_valkyrie": "opentop"
+      }
+    },
+    "walterhat": {
+      "name": "松树先锋队帽子",
+      "icon": "walterhat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_walter.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat_large"
+      },
+      "skinArchives": {
+        "walterhat_20s": "dynamic/walterhat_20s.zip",
+        "walterhat_ancient": "dynamic/walterhat_ancient.zip",
+        "walterhat_bee": "dynamic/walterhat_bee.zip",
+        "walterhat_beep": "dynamic/walterhat_bee.zip",
+        "walterhat_detective": "dynamic/walterhat_detective.zip",
+        "walterhat_formal": "dynamic/walterhat_formal.zip",
+        "walterhat_ice": "dynamic/walterhat_ice.zip",
+        "walterhat_lunar": "dynamic/walterhat_lunar.zip",
+        "walterhat_nature": "dynamic/walterhat_nature.zip",
+        "walterhat_rose": "dynamic/walterhat_rose.zip",
+        "walterhat_shadow": "dynamic/walterhat_shadow.zip",
+        "walterhat_survivor": "dynamic/walterhat_survivor.zip",
+        "walterhat_ventriloquist": "dynamic/walterhat_ventriloquist.zip",
+        "walterhat_victorian": "dynamic/walterhat_victorian.zip",
+        "walterhat_yule": "dynamic/walterhat_yule.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "icehat": {
+      "name": "冰帽",
+      "icon": "icehat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_ice.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "hat_ice_pengulls": "dynamic/hat_ice_pengulls.zip",
+        "hat_ice_shark": "dynamic/hat_ice_shark.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "rainhat": {
+      "name": "雨帽",
+      "icon": "rainhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_rain.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "rainhat_bonnet": "dynamic/rainhat_bonnet.zip",
+        "rainhat_cowboy": "dynamic/rainhat_cowboy.zip",
+        "rainhat_floppy": "dynamic/rainhat_floppy.zip",
+        "rainhat_western": "dynamic/rainhat_western.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "catcoonhat": {
+      "name": "猫帽",
+      "icon": "catcoonhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_catcoon.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "catcoonhat_clown": "dynamic/catcoonhat_clown.zip",
+        "catcoonhat_trapper_rooster": "dynamic/catcoonhat_trapper_rooster.zip",
+        "catcoonhat_trapperup_rooster": "dynamic/catcoonhat_trapperup_rooster.zip",
+        "hat_puppy_cap": "dynamic/hat_puppy_cap.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "watermelonhat": {
+      "name": "西瓜帽",
+      "icon": "watermelonhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_watermelon.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "watermelonhat_banana": "dynamic/watermelonhat_banana.zip",
+        "watermelonhat_cantaloupe": "dynamic/watermelonhat_cantaloupe.zip",
+        "watermelonhat_pumpkin": "dynamic/watermelonhat_pumpkin.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "eyebrellahat": {
+      "name": "眼球伞",
+      "icon": "eyebrellahat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_eyebrella.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "eyebrellahat_adventure": "dynamic/eyebrellahat_adventure.zip",
+        "eyebrellahat_crystal": "dynamic/eyebrellahat_crystal.zip",
+        "eyebrellahat_fantasy": "dynamic/eyebrellahat_fantasy.zip",
+        "eyebrellahat_insect": "dynamic/eyebrellahat_insect.zip",
+        "eyebrellahat_rose": "dynamic/eyebrellahat_rose.zip",
+        "eyebrellahat_victorian": "dynamic/eyebrellahat_victorian.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "red_mushroomhat": {
+      "name": "红蘑菇帽",
+      "icon": "red_mushroomhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_red_mushroom.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "green_mushroomhat": {
+      "name": "绿蘑菇帽",
+      "icon": "green_mushroomhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_green_mushroom.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "blue_mushroomhat": {
+      "name": "蓝蘑菇帽",
+      "icon": "blue_mushroomhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_blue_mushroom.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "hivehat": {
+      "name": "蜂王冠",
+      "icon": "hivehat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_hive.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "hivehat_an": "dynamic/hivehat_an.zip",
+        "hivehat_cawnival": "dynamic/hivehat_cawnival.zip",
+        "hivehat_joker": "dynamic/hivehat_joker.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "dragonheadhat": {
+      "name": "幸运兽脑袋",
+      "icon": "dragonheadhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_dragonhead.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "dragonbodyhat": {
+      "name": "幸运兽躯体",
+      "icon": "dragonbodyhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_dragonbody.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "dragontailhat": {
+      "name": "幸运兽尾巴",
+      "icon": "dragontailhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_dragontail.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "deserthat": {
+      "name": "沙漠护目镜",
+      "icon": "deserthat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_desert.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "deserthat_fedora": "dynamic/deserthat_fedora.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "goggleshat": {
+      "name": "时髦的护目镜",
+      "icon": "goggleshat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_goggles.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "goggleshat_fedora": "dynamic/goggleshat_fedora.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "moonstorm_goggleshat": {
+      "name": "星象护目镜",
+      "icon": "moonstorm_goggleshat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_moonstorm_goggles.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "skeletonhat": {
+      "name": "骨头头盔",
+      "icon": "skeletonhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "archive": "hat_skeleton.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "skeletonhat_mythical": "dynamic/skeletonhat_mythical.zip",
+        "skeletonhat_relic": "dynamic/skeletonhat_relic.zip",
+        "skeletonhat_shadowhelmet": "dynamic/skeletonhat_shadowhelmet.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "kelphat": {
+      "name": "海花环",
+      "icon": "kelphat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_kelp.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mermhat": {
+      "name": "聪明的伪装",
+      "icon": "mermhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_merm.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "mermhat_clown": "dynamic/mermhat_clown.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "cookiecutterhat": {
+      "name": "饼干切割机帽子",
+      "icon": "cookiecutterhat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "archive": "hat_cookiecutter.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "batnosehat": {
+      "name": "牛奶帽",
+      "icon": "batnosehat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "archive": "hat_batnose.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "nutrientsgoggleshat": {
+      "name": "高级耕作先驱帽",
+      "icon": "nutrientsgoggleshat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_nutrientsgoggles.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "plantregistryhat": {
+      "name": "耕作先驱帽",
+      "icon": "plantregistryhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_plantregistry.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "balloonhat": {
+      "name": "气球帽",
+      "icon": "balloonhat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "archive": "hat_balloon.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "alterguardianhat": {
+      "name": "启迪之冠",
+      "icon": "alterguardianhat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "archive": "hat_alterguardian.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "alterguardianhat_lastprism": "dynamic/alterguardianhat_lastprism.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "eyemaskhat": {
+      "name": "眼面具",
+      "icon": "eyemaskhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_eyemask.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "antlionhat": {
+      "name": "刮地皮头盔",
+      "icon": "antlionhat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "archive": "hat_antlion.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "hat_antlion_swamp": "dynamic/hat_antlion_swamp.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "mask_dollhat": {
+      "name": "玩偶面具",
+      "icon": "mask_dollhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_doll.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_dollbrokenhat": {
+      "name": "开裂玩偶面具",
+      "icon": "mask_dollbrokenhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_dollbroken.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_dollrepairedhat": {
+      "name": "破碎玩偶面具",
+      "icon": "mask_dollrepairedhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_dollrepaired.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_blacksmithhat": {
+      "name": "铁匠面具",
+      "icon": "mask_blacksmithhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_blacksmith.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_mirrorhat": {
+      "name": "镜子面具",
+      "icon": "mask_mirrorhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_mirror.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_queenhat": {
+      "name": "女王面具",
+      "icon": "mask_queenhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_queen.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_kinghat": {
+      "name": "国王面具",
+      "icon": "mask_kinghat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_king.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_treehat": {
+      "name": "树木面具",
+      "icon": "mask_treehat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_tree.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_foolhat": {
+      "name": "小丑面具",
+      "icon": "mask_foolhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_fool.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_sagehat": {
+      "name": "贤者面具",
+      "icon": "mask_sagehat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_sage.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_halfwithat": {
+      "name": "蠢人面具",
+      "icon": "mask_halfwithat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_halfwit.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_toadyhat": {
+      "name": "马屁精面具",
+      "icon": "mask_toadyhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_toady.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_ancient_handmaidhat": {
+      "name": "鞘翅面具",
+      "icon": "mask_ancient_handmaidhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_ancient_handmaid.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_ancient_architecthat": {
+      "name": "远见者面具",
+      "icon": "mask_ancient_architecthat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_ancient_architect.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mask_ancient_masonhat": {
+      "name": "工匠面具",
+      "icon": "mask_ancient_masonhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_ancient_mason.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "monkey_mediumhat": {
+      "name": "船长的三角帽",
+      "icon": "monkey_mediumhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_monkey_medium.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "monkeyhatmedium_blue": "dynamic/monkeyhatmedium_blue.zip",
+        "monkeyhatmedium_red": "dynamic/monkeyhatmedium_red.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "monkey_smallhat": {
+      "name": "海盗头巾",
+      "icon": "monkey_smallhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_monkey_small.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "monkeyhatsmall_beads": "dynamic/monkeyhatsmall_beads.zip",
+        "monkeyhatsmall_belt": "dynamic/monkeyhatsmall_belt.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "polly_rogershat": {
+      "name": "波莉·罗杰的帽子",
+      "icon": "polly_rogershat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_polly_rogers.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "salty_doghat": {
+      "name": "咸狗帽",
+      "icon": "salty_doghat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_salty_dog.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "nightcaphat": {
+      "name": "睡帽",
+      "icon": "nightcaphat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_nightcap.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "woodcarvedhat": {
+      "name": "硬木帽",
+      "icon": "woodcarvedhat.tex",
+      "atlas": "images/inventoryimages4.xml",
+      "archive": "hat_woodcarved.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "hat_woodcarved_swamp": "dynamic/hat_woodcarved_swamp.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "dreadstonehat": {
+      "name": "绝望石头盔",
+      "icon": "dreadstonehat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "archive": "hat_dreadstone.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "hat_dreadstone_horn": "dynamic/hat_dreadstone_horn.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "lunarplanthat": {
+      "name": "亮茄头盔",
+      "icon": "lunarplanthat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_lunarplant.zip",
+      "equip": {
+        "mode": "fullhelm",
+        "symbol": "swap_hat",
+        "follow": {
+          "animation": "idle",
+          "symbols": [
+            "hat01",
+            "float_top"
+          ]
+        }
+      },
+      "skinArchives": {
+        "lunarplanthat_brave": "dynamic/lunarplanthat_brave.zip",
+        "lunarplanthat_knight": "dynamic/lunarplanthat_knight.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "voidclothhat": {
+      "name": "虚空风帽",
+      "icon": "voidclothhat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_voidcloth.zip",
+      "equip": {
+        "mode": "fullhelm",
+        "symbol": "swap_hat",
+        "follow": {
+          "animation": "idle",
+          "symbols": [
+            "hat01"
+          ]
+        }
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "wagpunkhat": {
+      "name": "W.A.R.B.I.S.头戴齿轮",
+      "icon": "wagpunkhat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_wagpunk.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat",
+        "follow": {
+          "animation": "idle"
+        }
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "moon_mushroomhat": {
+      "name": "月亮蘑菇帽",
+      "icon": "moon_mushroomhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_moon_mushroom.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "scrap_monoclehat": {
+      "name": "视界扩展器",
+      "icon": "scrap_monoclehat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_scrap_monocle.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "scraphat": {
+      "name": "拾荒尖帽",
+      "icon": "scraphat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_scrap.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mermarmorhat": {
+      "name": "沼泽斗士头盔",
+      "icon": "mermarmorhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mermarmor.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "mermarmorupgradedhat": {
+      "name": "沼泽战士头盔",
+      "icon": "mermarmorupgradedhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mermarmorupgraded.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "inspectacleshat": {
+      "name": "检查专用镜",
+      "icon": "inspectacleshat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_inspectacles.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat",
+        "follow": {
+          "animation": "off"
+        }
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "roseglasseshat": {
+      "name": "玫瑰色眼镜",
+      "icon": "roseglasseshat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_roseglasses.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "ghostflowerhat": {
+      "name": "幽魂花冠",
+      "icon": "ghostflowerhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_ghostflower.zip",
+      "equip": {
+        "mode": "opentop",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "rabbithat": {
+      "name": "洞穴花环",
+      "icon": "rabbithat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_rabbit.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat",
+        "follow": {
+          "animation": "idle",
+          "extraBuilds": [
+            "rabbit_build.zip"
+          ]
+        }
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "pumpkinhat": {
+      "name": "无面南瓜",
+      "icon": "pumpkinhat.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "archive": "hat_pumpkin.zip",
+      "equip": {
+        "mode": "fullhelm",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {
+        "pumpkinhat_2": "dynamic/pumpkinhat_2.zip",
+        "pumpkinhat_3": "dynamic/pumpkinhat_3.zip"
+      },
+      "skinEquipModes": {}
+    },
+    "mask_princesshat": {
+      "name": "公主面具",
+      "icon": "mask_princesshat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "archive": "hat_mask_princess.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    },
+    "yoth_knighthat": {
+      "name": "镀金骑士头盔",
+      "icon": "yoth_knighthat.tex",
+      "atlas": "images/inventoryimages4.xml",
+      "archive": "hat_yoth_knight.zip",
+      "equip": {
+        "mode": "normal",
+        "symbol": "swap_hat"
+      },
+      "skinArchives": {},
+      "skinEquipModes": {}
+    }
+  },
+  "skinSpecs": {
+    "alterguardianhat_lastprism": {
+      "itemId": "alterguardianhat",
+      "name": "终极棱镜",
+      "icon": "alterguardianhat_lastprism.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "beefalohat_fantasy": {
+      "itemId": "beefalohat",
+      "name": "魔幻皮毛",
+      "icon": "beefalohat_fantasy.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "beefalohat_klaus": {
+      "itemId": "beefalohat",
+      "name": "克劳斯帽",
+      "icon": "beefalohat_klaus.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "beefalohat_mystical": {
+      "itemId": "beefalohat",
+      "name": "神秘游牧帽",
+      "icon": "beefalohat_mystical.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "beefalohat_pigking": {
+      "itemId": "beefalohat",
+      "name": "猪王帽",
+      "icon": "beefalohat_pigking.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "beefalohat_pigking_alt": {
+      "itemId": "beefalohat",
+      "name": "猪王帽",
+      "icon": "beefalohat_pigking_alt.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "beehat_garden": {
+      "itemId": "beehat",
+      "name": "蜂女巫帽",
+      "icon": "beehat_garden.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "beehat_mourning": {
+      "itemId": "beehat",
+      "name": "哀悼面纱",
+      "icon": "beehat_mourning.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "beehat_ninja": {
+      "itemId": "beehat",
+      "name": "蜂隐兜帽",
+      "icon": "beehat_ninja.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "beehat_sunhat": {
+      "itemId": "beehat",
+      "name": "蜜蜂软帽",
+      "icon": "beehat_sunhat.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bushhat_cawnival": {
+      "itemId": "bushhat",
+      "name": "鸦年华灌木丛帽",
+      "icon": "bushhat_cawnival.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bushhat_mystical": {
+      "itemId": "bushhat",
+      "name": "月灌木帽",
+      "icon": "bushhat_mystical.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bushhat_swamp": {
+      "itemId": "bushhat",
+      "name": "苔藓浆果帽",
+      "icon": "bushhat_swamp.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "catcoonhat_clown": {
+      "itemId": "catcoonhat",
+      "name": "丝滑帽",
+      "icon": "catcoonhat_clown.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "catcoonhat_trapper_rooster": {
+      "itemId": "catcoonhat",
+      "name": "捕兽者的帽子",
+      "icon": "catcoonhat_trapper_rooster.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "catcoonhat_trapperup_rooster": {
+      "itemId": "catcoonhat",
+      "name": "绑好的捕兽者的帽子",
+      "icon": "catcoonhat_trapperup_rooster.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "deserthat_fedora": {
+      "itemId": "deserthat",
+      "name": "侦探软呢帽",
+      "icon": "deserthat_fedora.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "earmuffshat_beeguard": {
+      "itemId": "earmuffshat",
+      "name": "甜蜜蜜蜂耳罩",
+      "icon": "earmuffshat_beeguard.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "earmuffshat_deerclops": {
+      "itemId": "earmuffshat",
+      "name": "毛茸鹿耳罩",
+      "icon": "earmuffshat_deerclops.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "eyebrellahat_adventure": {
+      "itemId": "eyebrellahat",
+      "name": "高脚鸟眼球伞",
+      "icon": "eyebrellahat_adventure.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "eyebrellahat_crystal": {
+      "itemId": "eyebrellahat",
+      "name": "玻璃眼球伞",
+      "icon": "eyebrellahat_crystal.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "eyebrellahat_fantasy": {
+      "itemId": "eyebrellahat",
+      "name": "猛兽眼球伞",
+      "icon": "eyebrellahat_fantasy.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "eyebrellahat_insect": {
+      "itemId": "eyebrellahat",
+      "name": "蠕动眼球伞",
+      "icon": "eyebrellahat_insect.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "eyebrellahat_rose": {
+      "itemId": "eyebrellahat",
+      "name": "玫瑰眼球伞",
+      "icon": "eyebrellahat_rose.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "eyebrellahat_victorian": {
+      "itemId": "eyebrellahat",
+      "name": "维多利亚眼球伞",
+      "icon": "eyebrellahat_victorian.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "featherhat_circus": {
+      "itemId": "featherhat",
+      "name": "女骑手头饰",
+      "icon": "featherhat_circus.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "featherhat_exotic": {
+      "itemId": "featherhat",
+      "name": "华丽头饰",
+      "icon": "featherhat_exotic.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "featherhat_victorian": {
+      "itemId": "featherhat",
+      "name": "羽毛修边帽",
+      "icon": "featherhat_victorian.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "flowerhat_crown": {
+      "itemId": "flowerhat",
+      "name": "羽毛头环",
+      "icon": "flowerhat_crown.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "flowerhat_healing": {
+      "itemId": "flowerhat",
+      "name": "生命绽放花环",
+      "icon": "flowerhat_healing.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "flowerhat_holly_wreath": {
+      "itemId": "flowerhat",
+      "name": "冬青花环",
+      "icon": "flowerhat_holly_wreath.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "flowerhat_ribbon_wreath": {
+      "itemId": "flowerhat",
+      "name": "缎带花环",
+      "icon": "flowerhat_ribbon_wreath.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "flowerhat_wreath": {
+      "itemId": "flowerhat",
+      "name": "带刺桂冠",
+      "icon": "flowerhat_wreath.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "footballhat_adventure": {
+      "itemId": "footballhat",
+      "name": "野蛮头盔",
+      "icon": "footballhat_adventure.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "footballhat_combathelm": {
+      "itemId": "footballhat",
+      "name": "带刺头盔",
+      "icon": "footballhat_combathelm.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "footballhat_combathelm2": {
+      "itemId": "footballhat",
+      "name": "司夜女神头盔",
+      "icon": "footballhat_combathelm2.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "footballhat_hockey": {
+      "itemId": "footballhat",
+      "name": "曲棍球头盔",
+      "icon": "footballhat_hockey.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "footballhat_rw_gustree": {
+      "itemId": "footballhat",
+      "name": "邪风树头盔",
+      "icon": "footballhat_rw_gustree.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "footballhat_western": {
+      "itemId": "footballhat",
+      "name": "钉饰皮帽",
+      "icon": "footballhat_western.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "goggleshat_fedora": {
+      "itemId": "goggleshat",
+      "name": "侦探护目镜",
+      "icon": "goggleshat_fedora.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_antlion_swamp": {
+      "itemId": "antlionhat",
+      "name": "红树林头盔",
+      "icon": "hat_antlion_swamp.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_catcoon_costume": {
+      "itemId": "tophat",
+      "name": "浣猫造型帽",
+      "icon": "hat_catcoon_costume.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "hat_catcoon_costumep": {
+      "itemId": "tophat",
+      "name": "浣猫造型帽",
+      "icon": "hat_catcoon_costumep.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_chester_costume": {
+      "itemId": "tophat",
+      "name": "无耻切斯特的帽子",
+      "icon": "hat_chester_costume.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "hat_chester_costumep": {
+      "itemId": "tophat",
+      "name": "无耻切斯特的帽子",
+      "icon": "hat_chester_costumep.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_dog_helm": {
+      "itemId": "footballhat",
+      "name": "战狼头盔",
+      "icon": "hat_dog_helm.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "hat_dreadstone_horn": {
+      "itemId": "dreadstonehat",
+      "name": "尖角绝望石头盔",
+      "icon": "hat_dreadstone_horn.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_glommer_costume": {
+      "itemId": "tophat",
+      "name": "格罗姆的头部伪装",
+      "icon": "hat_glommer_costume.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "hat_glommer_costumep": {
+      "itemId": "tophat",
+      "name": "格罗姆的头部伪装",
+      "icon": "hat_glommer_costumep.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_hutch_costume": {
+      "itemId": "tophat",
+      "name": "哈奇头部伪装",
+      "icon": "hat_hutch_costume.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "hat_hutch_costumep": {
+      "itemId": "tophat",
+      "name": "哈奇头部伪装",
+      "icon": "hat_hutch_costumep.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_ice_pengulls": {
+      "itemId": "icehat",
+      "name": "企鸥冰帽",
+      "icon": "hat_ice_pengulls.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_ice_shark": {
+      "itemId": "icehat",
+      "name": "大白鲨冰帽",
+      "icon": "hat_ice_shark.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hat_puppy_cap": {
+      "itemId": "catcoonhat",
+      "name": "小狗帽子",
+      "icon": "hat_puppy_cap.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "hat_woodcarved_swamp": {
+      "itemId": "woodcarvedhat",
+      "name": "湿木帽",
+      "icon": "hat_woodcarved_swamp.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hivehat_an": {
+      "itemId": "hivehat",
+      "name": "新皇冠",
+      "icon": "hivehat_an.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hivehat_cawnival": {
+      "itemId": "hivehat",
+      "name": "鸦年华王冠",
+      "icon": "hivehat_cawnival.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hivehat_joker": {
+      "itemId": "hivehat",
+      "name": "小丑王冠",
+      "icon": "hivehat_joker.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lunarplanthat_brave": {
+      "itemId": "lunarplanthat",
+      "name": "亮茄圣骑士头盔",
+      "icon": "lunarplanthat_brave.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lunarplanthat_knight": {
+      "itemId": "lunarplanthat",
+      "name": "亮茄掠夺者头盔",
+      "icon": "lunarplanthat_knight.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "mermhat_clown": {
+      "itemId": "mermhat",
+      "name": "愚夫帽",
+      "icon": "mermhat_clown.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "minerhat_bonnet": {
+      "itemId": "minerhat",
+      "name": "美丽头灯",
+      "icon": "minerhat_bonnet.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "minerhat_cowboy": {
+      "itemId": "minerhat",
+      "name": "牛仔头灯",
+      "icon": "minerhat_cowboy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "minerhat_floppy": {
+      "itemId": "minerhat",
+      "name": "镶边照明灯",
+      "icon": "minerhat_floppy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "minerhat_western": {
+      "itemId": "minerhat",
+      "name": "老矿工头灯",
+      "icon": "minerhat_western.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "molehat_goggles": {
+      "itemId": "molehat",
+      "name": "鼹鼠帽2.0",
+      "icon": "molehat_goggles.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "molehat_tail": {
+      "itemId": "molehat",
+      "name": "鼹鼠帽3.0",
+      "icon": "molehat_tail.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "monkeyhatmedium_blue": {
+      "itemId": "monkey_mediumhat",
+      "name": "风霜三角帽",
+      "icon": "monkeyhatmedium_blue.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "monkeyhatmedium_red": {
+      "itemId": "monkey_mediumhat",
+      "name": "金边三角帽",
+      "icon": "monkeyhatmedium_red.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "monkeyhatsmall_beads": {
+      "itemId": "monkey_smallhat",
+      "name": "珠子头巾",
+      "icon": "monkeyhatsmall_beads.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "monkeyhatsmall_belt": {
+      "itemId": "monkey_smallhat",
+      "name": "皮带头巾",
+      "icon": "monkeyhatsmall_belt.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pumpkinhat_2": {
+      "itemId": "pumpkinhat",
+      "name": "食尸鬼绿",
+      "icon": "pumpkinhat_2.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "pumpkinhat_3": {
+      "itemId": "pumpkinhat",
+      "name": "美南子",
+      "icon": "pumpkinhat_3.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "rainhat_bonnet": {
+      "itemId": "rainhat",
+      "name": "防雨女帽",
+      "icon": "rainhat_bonnet.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "rainhat_cowboy": {
+      "itemId": "rainhat",
+      "name": "牛仔雨帽",
+      "icon": "rainhat_cowboy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "rainhat_floppy": {
+      "itemId": "rainhat",
+      "name": "松软的雨帽",
+      "icon": "rainhat_floppy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "rainhat_western": {
+      "itemId": "rainhat",
+      "name": "牛仔雨帽",
+      "icon": "rainhat_western.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "ruinshat_an": {
+      "itemId": "ruinshat",
+      "name": "新头饰",
+      "icon": "ruinshat_an.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "ruinshat_arcane": {
+      "itemId": "ruinshat",
+      "name": "神秘头饰",
+      "icon": "ruinshat_arcane.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "skeletonhat_mythical": {
+      "itemId": "skeletonhat",
+      "name": "神话骨头头盔",
+      "icon": "skeletonhat_mythical.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "skeletonhat_relic": {
+      "itemId": "skeletonhat",
+      "name": "华丽骨头头盔",
+      "icon": "skeletonhat_relic.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "skeletonhat_shadowhelmet": {
+      "itemId": "skeletonhat",
+      "name": "暗影头盔",
+      "icon": "skeletonhat_shadowhelmet.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "strawhat_bonnet": {
+      "itemId": "strawhat",
+      "name": "稻草软帽",
+      "icon": "strawhat_bonnet.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "strawhat_cowboy": {
+      "itemId": "strawhat",
+      "name": "牛仔草帽",
+      "icon": "strawhat_cowboy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "strawhat_floppy": {
+      "itemId": "strawhat",
+      "name": "松软稻草帽",
+      "icon": "strawhat_floppy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "strawhat_western": {
+      "itemId": "strawhat",
+      "name": "牧场主草帽",
+      "icon": "strawhat_western.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_chef": {
+      "itemId": "tophat",
+      "name": "主厨帽",
+      "icon": "tophat_chef.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_circus": {
+      "itemId": "tophat",
+      "name": "神奇驯兽师帽",
+      "icon": "tophat_circus.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "tophat_derby": {
+      "itemId": "tophat",
+      "name": "圆顶礼帽",
+      "icon": "tophat_derby.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "tophat_festive_bell_red_firehound": {
+      "itemId": "tophat",
+      "name": "叮铃响的大礼帽",
+      "icon": "tophat_festive_bell_red_firehound.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "tophat_fish": {
+      "itemId": "tophat",
+      "name": "碧古鱼帽",
+      "icon": "tophat_fish.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_harlequin": {
+      "itemId": "tophat",
+      "name": "愚人帽",
+      "icon": "tophat_harlequin.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_merchant": {
+      "itemId": "tophat",
+      "name": "商人帽",
+      "icon": "tophat_merchant.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_minigolf_green": {
+      "itemId": "tophat",
+      "name": "蛋形球童帽",
+      "icon": "tophat_minigolf_green.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_minigolf_purple": {
+      "itemId": "tophat",
+      "name": "蝴蝶结球童帽",
+      "icon": "tophat_minigolf_purple.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_minigolf_red": {
+      "itemId": "tophat",
+      "name": "旗帜球童帽",
+      "icon": "tophat_minigolf_red.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_spiked": {
+      "itemId": "tophat",
+      "name": "表演家的暗影帽",
+      "icon": "tophat_spiked.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_western": {
+      "itemId": "tophat",
+      "name": "警长帽",
+      "icon": "tophat_western.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "tophat_witch_pyre": {
+      "itemId": "tophat",
+      "name": "火爆女巫帽",
+      "icon": "tophat_witch_pyre.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "tophat_wizard": {
+      "itemId": "tophat",
+      "name": "黑巫师帽",
+      "icon": "tophat_wizard.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walrushat_blue": {
+      "itemId": "walrushat",
+      "name": "海风贝雷帽",
+      "icon": "walrushat_blue.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walrushat_cawnival": {
+      "itemId": "walrushat",
+      "name": "鸦年华贝雷帽",
+      "icon": "walrushat_cawnival.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walrushat_ceremonial": {
+      "itemId": "walrushat",
+      "name": "雅仕扁帽",
+      "icon": "walrushat_ceremonial.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walrushat_minigolf_green": {
+      "itemId": "walrushat",
+      "name": "蛋形球童帽",
+      "icon": "walrushat_minigolf_green.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walrushat_minigolf_purple": {
+      "itemId": "walrushat",
+      "name": "蝴蝶结球童帽",
+      "icon": "walrushat_minigolf_purple.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walrushat_minigolf_red": {
+      "itemId": "walrushat",
+      "name": "旗帜球童帽",
+      "icon": "walrushat_minigolf_red.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walrushat_party": {
+      "itemId": "walrushat",
+      "name": "歌舞同乐会扁帽",
+      "icon": "walrushat_party.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_20s": {
+      "itemId": "walterhat",
+      "name": "飞行员帽",
+      "icon": "walterhat_20s.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_ancient": {
+      "itemId": "walterhat",
+      "name": "游隼帽",
+      "icon": "walterhat_ancient.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_bee": {
+      "itemId": "walterhat",
+      "name": "嗡嗡男孩帽",
+      "icon": "walterhat_bee.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_beep": {
+      "itemId": "walterhat",
+      "name": "嗡嗡男孩帽",
+      "icon": "walterhat_beep.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_detective": {
+      "itemId": "walterhat",
+      "name": "猎鹿帽",
+      "icon": "walterhat_detective.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_formal": {
+      "itemId": "walterhat",
+      "name": "松树队长帽",
+      "icon": "walterhat_formal.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_ice": {
+      "itemId": "walterhat",
+      "name": "舒适帽",
+      "icon": "walterhat_ice.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_lunar": {
+      "itemId": "walterhat",
+      "name": "月之童子军帽",
+      "icon": "walterhat_lunar.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_nature": {
+      "itemId": "walterhat",
+      "name": "冒险家头巾",
+      "icon": "walterhat_nature.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_rose": {
+      "itemId": "walterhat",
+      "name": "玫瑰毡帽",
+      "icon": "walterhat_rose.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_shadow": {
+      "itemId": "walterhat",
+      "name": "歪帽子",
+      "icon": "walterhat_shadow.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_survivor": {
+      "itemId": "walterhat",
+      "name": "灌木迷彩帽",
+      "icon": "walterhat_survivor.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_ventriloquist": {
+      "itemId": "walterhat",
+      "name": "话多的帽子",
+      "icon": "walterhat_ventriloquist.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_victorian": {
+      "itemId": "walterhat",
+      "name": "报童帽",
+      "icon": "walterhat_victorian.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "walterhat_yule": {
+      "itemId": "walterhat",
+      "name": "树顶帽",
+      "icon": "walterhat_yule.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "watermelonhat_banana": {
+      "itemId": "watermelonhat",
+      "name": "香蕉头巾",
+      "icon": "watermelonhat_banana.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "watermelonhat_cantaloupe": {
+      "itemId": "watermelonhat",
+      "name": "蜜瓜礼帽",
+      "icon": "watermelonhat_cantaloupe.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "watermelonhat_pumpkin": {
+      "itemId": "watermelonhat",
+      "name": "时髦南瓜",
+      "icon": "watermelonhat_pumpkin.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "wathgrithr_improvedhat_flower": {
+      "itemId": "wathgrithr_improvedhat",
+      "name": "野花头盔",
+      "icon": "wathgrithr_improvedhat_flower.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithr_improvedhat_lunar": {
+      "itemId": "wathgrithr_improvedhat",
+      "name": "月光统帅之冠",
+      "icon": "wathgrithr_improvedhat_lunar.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithr_improvedhat_valkyrie": {
+      "itemId": "wathgrithr_improvedhat",
+      "name": "飞翼统帅头盔",
+      "icon": "wathgrithr_improvedhat_valkyrie.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithr_improvedhat_western": {
+      "itemId": "wathgrithr_improvedhat",
+      "name": "叛徒头目遮阳帽",
+      "icon": "wathgrithr_improvedhat_western.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithr_improvedhat_wrestle": {
+      "itemId": "wathgrithr_improvedhat",
+      "name": "黄金统帅头盔",
+      "icon": "wathgrithr_improvedhat_wrestle.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithrhat_flower": {
+      "itemId": "wathgrithrhat",
+      "name": "野花头盔",
+      "icon": "wathgrithrhat_flower.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithrhat_lunar": {
+      "itemId": "wathgrithrhat",
+      "name": "月光之冠",
+      "icon": "wathgrithrhat_lunar.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithrhat_valkyrie": {
+      "itemId": "wathgrithrhat",
+      "name": "飞翼头盔",
+      "icon": "wathgrithrhat_valkyrie.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithrhat_western": {
+      "itemId": "wathgrithrhat",
+      "name": "牧人宽檐帽",
+      "icon": "wathgrithrhat_western.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wathgrithrhat_wrestle": {
+      "itemId": "wathgrithrhat",
+      "name": "金色头盔",
+      "icon": "wathgrithrhat_wrestle.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "winterhat_black_davys": {
+      "itemId": "winterhat",
+      "name": "黑色冬帽",
+      "icon": "winterhat_black_davys.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "winterhat_fancy_puppy": {
+      "itemId": "winterhat",
+      "name": "小狗针织帽",
+      "icon": "winterhat_fancy_puppy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "winterhat_fancy_puppyalt": {
+      "itemId": "winterhat",
+      "name": "小狗针织帽",
+      "icon": "winterhat_fancy_puppyalt.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "winterhat_pink_hibiscus": {
+      "itemId": "winterhat",
+      "name": "粉色冬帽",
+      "icon": "winterhat_pink_hibiscus.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "winterhat_plum_pudding": {
+      "itemId": "winterhat",
+      "name": "李子布丁帽",
+      "icon": "winterhat_plum_pudding.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "winterhat_rooster": {
+      "itemId": "winterhat",
+      "name": "咯咯响的冬帽",
+      "icon": "winterhat_rooster.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "winterhat_rooster_alt": {
+      "itemId": "winterhat",
+      "name": "咯咯响的冬帽",
+      "icon": "winterhat_rooster_alt.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "winterhat_stocking_cap_green_forest": {
+      "itemId": "winterhat",
+      "name": "喜庆的绒线帽",
+      "icon": "winterhat_stocking_cap_green_forest.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "winterhat_western": {
+      "itemId": "winterhat",
+      "name": "牧牛人冬帽",
+      "icon": "winterhat_western.tex",
+      "atlas": "images/inventoryimages3.xml"
+    }
+  },
+  "recipes": [
+    {
+      "name": "mermhat",
+      "ingredients": [
+        {
+          "type": "pondfish",
+          "amount": 1
+        },
+        {
+          "type": "cutreeds",
+          "amount": 1
+        },
+        {
+          "type": "twigs",
+          "amount": 2
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_tag": "merm_builder"
+      }
+    },
+    {
+      "name": "ghostflowerhat",
+      "ingredients": [
+        {
+          "type": "ghostflower",
+          "amount": 6
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_skill": "wendy_ghostflower_hat"
+      }
+    },
+    {
+      "name": "woodcarvedhat",
+      "ingredients": [
+        {
+          "type": "lucy",
+          "amount": 0
+        },
+        {
+          "type": "log",
+          "amount": 6
+        },
+        {
+          "type": "pinecone",
+          "amount": 1
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_skill": "woodie_human_lucy_2",
+        "sg_state": "carvewood"
+      }
+    },
+    {
+      "name": "wathgrithrhat",
+      "ingredients": [
+        {
+          "type": "goldnugget",
+          "amount": 2
+        },
+        {
+          "type": "rocks",
+          "amount": 2
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_tag": "valkyrie"
+      }
+    },
+    {
+      "name": "wathgrithr_improvedhat",
+      "ingredients": [
+        {
+          "type": "goldnugget",
+          "amount": 2
+        },
+        {
+          "type": "beefalowool",
+          "amount": 2
+        },
+        {
+          "type": "marble",
+          "amount": 1
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_skill": "wathgrithr_arsenal_helmet_3"
+      }
+    },
+    {
+      "name": "walterhat",
+      "ingredients": [
+        {
+          "type": "silk",
+          "amount": 4
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_tag": "pinetreepioneer"
+      }
+    },
+    {
+      "name": "tophat_magician",
+      "ingredients": [
+        {
+          "type": "tophat",
+          "amount": 1
+        },
+        {
+          "type": "nightmarefuel",
+          "amount": 2
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_tag": "shadowmagic",
+        "product": "tophat",
+        "description": "tophat_magician"
+      }
+    },
+    {
+      "name": "inspectacleshat",
+      "ingredients": [
+        {
+          "type": "goggleshat",
+          "amount": 1
+        },
+        {
+          "type": "transistor",
+          "amount": 2
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_skill": "winona_wagstaff_1"
+      }
+    },
+    {
+      "name": "roseglasseshat",
+      "ingredients": [
+        {
+          "type": "petals",
+          "amount": 12
+        },
+        {
+          "type": "twigs",
+          "amount": 3
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_skill": "winona_charlie_1"
+      }
+    },
+    {
+      "name": "balloonhat",
+      "ingredients": [
+        {
+          "type": "balloons_empty",
+          "amount": 0
+        },
+        {
+          "type": {
+            "lua": "CHARACTER_INGREDIENT.SANITY"
+          },
+          "amount": 5
+        }
+      ],
+      "tech": "NONE",
+      "config": {
+        "builder_tag": "balloonomancer",
+        "sg_state": "makeballoon"
+      }
+    },
+    {
+      "name": "minerhat",
+      "ingredients": [
+        {
+          "type": "strawhat",
+          "amount": 1
+        },
+        {
+          "type": "goldnugget",
+          "amount": 1
+        },
+        {
+          "type": "fireflies",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "molehat",
+      "ingredients": [
+        {
+          "type": "mole",
+          "amount": 2
+        },
+        {
+          "type": "transistor",
+          "amount": 2
+        },
+        {
+          "type": "wormlight",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "plantregistryhat",
+      "ingredients": [
+        {
+          "type": "fertilizer",
+          "amount": 1
+        },
+        {
+          "type": "seeds",
+          "amount": 3
+        },
+        {
+          "type": "transistor",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "dreadstonehat",
+      "ingredients": [
+        {
+          "type": "dreadstone",
+          "amount": 4
+        },
+        {
+          "type": "horrorfuel",
+          "amount": 4
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "footballhat",
+      "ingredients": [
+        {
+          "type": "pigskin",
+          "amount": 1
+        },
+        {
+          "type": "rope",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "cookiecutterhat",
+      "ingredients": [
+        {
+          "type": "cookiecuttershell",
+          "amount": 4
+        },
+        {
+          "type": "rope",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "flowerhat",
+      "ingredients": [
+        {
+          "type": "petals",
+          "amount": 12
+        }
+      ],
+      "tech": "NONE",
+      "config": {}
+    },
+    {
+      "name": "strawhat",
+      "ingredients": [
+        {
+          "type": "cutgrass",
+          "amount": 12
+        }
+      ],
+      "tech": "NONE",
+      "config": {}
+    },
+    {
+      "name": "tophat",
+      "ingredients": [
+        {
+          "type": "silk",
+          "amount": 6
+        }
+      ],
+      "tech": "SCIENCE_ONE",
+      "config": {}
+    },
+    {
+      "name": "rainhat",
+      "ingredients": [
+        {
+          "type": "mole",
+          "amount": 2
+        },
+        {
+          "type": "strawhat",
+          "amount": 1
+        },
+        {
+          "type": "boneshard",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "earmuffshat",
+      "ingredients": [
+        {
+          "type": "rabbit",
+          "amount": 2
+        },
+        {
+          "type": "twigs",
+          "amount": 1
+        }
+      ],
+      "tech": "NONE",
+      "config": {}
+    },
+    {
+      "name": "beefalohat",
+      "ingredients": [
+        {
+          "type": "beefalowool",
+          "amount": 8
+        },
+        {
+          "type": "horn",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_ONE",
+      "config": {}
+    },
+    {
+      "name": "winterhat",
+      "ingredients": [
+        {
+          "type": "beefalowool",
+          "amount": 4
+        },
+        {
+          "type": "silk",
+          "amount": 4
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "catcoonhat",
+      "ingredients": [
+        {
+          "type": "coontail",
+          "amount": 1
+        },
+        {
+          "type": "silk",
+          "amount": 4
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "kelphat",
+      "ingredients": [
+        {
+          "type": "kelp",
+          "amount": 6
+        }
+      ],
+      "tech": "NONE",
+      "config": {}
+    },
+    {
+      "name": "goggleshat",
+      "ingredients": [
+        {
+          "type": "goldnugget",
+          "amount": 1
+        },
+        {
+          "type": "pigskin",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_ONE",
+      "config": {}
+    },
+    {
+      "name": "deserthat",
+      "ingredients": [
+        {
+          "type": "goggleshat",
+          "amount": 1
+        },
+        {
+          "type": "pigskin",
+          "amount": 1
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "moonstorm_goggleshat",
+      "ingredients": [
+        {
+          "type": "moonglass",
+          "amount": 2
+        },
+        {
+          "type": "potato",
+          "amount": 1
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "watermelonhat",
+      "ingredients": [
+        {
+          "type": "watermelon",
+          "amount": 1
+        },
+        {
+          "type": "twigs",
+          "amount": 3
+        }
+      ],
+      "tech": "SCIENCE_ONE",
+      "config": {}
+    },
+    {
+      "name": "pumpkinhat",
+      "ingredients": [
+        {
+          "type": "pumpkin",
+          "amount": 1
+        }
+      ],
+      "tech": "HALLOWED_NIGHTS",
+      "config": {}
+    },
+    {
+      "name": "icehat",
+      "ingredients": [
+        {
+          "type": "rope",
+          "amount": 2
+        },
+        {
+          "type": "ice",
+          "amount": 10
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "beehat",
+      "ingredients": [
+        {
+          "type": "silk",
+          "amount": 8
+        },
+        {
+          "type": "rope",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "featherhat",
+      "ingredients": [
+        {
+          "type": "feather_crow",
+          "amount": 3
+        },
+        {
+          "type": "feather_robin",
+          "amount": 2
+        },
+        {
+          "type": "tentaclespots",
+          "amount": 2
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "bushhat",
+      "ingredients": [
+        {
+          "type": "strawhat",
+          "amount": 1
+        },
+        {
+          "type": "rope",
+          "amount": 1
+        },
+        {
+          "type": "dug_berrybush",
+          "amount": 1
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "eyebrellahat",
+      "ingredients": [
+        {
+          "type": "deerclops_eyeball",
+          "amount": 1
+        },
+        {
+          "type": "twigs",
+          "amount": 15
+        },
+        {
+          "type": "boneshard",
+          "amount": 4
+        }
+      ],
+      "tech": "SCIENCE_TWO",
+      "config": {}
+    },
+    {
+      "name": "red_mushroomhat",
+      "ingredients": [
+        {
+          "type": "red_cap",
+          "amount": 6
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "green_mushroomhat",
+      "ingredients": [
+        {
+          "type": "green_cap",
+          "amount": 6
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "blue_mushroomhat",
+      "ingredients": [
+        {
+          "type": "blue_cap",
+          "amount": 6
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "polly_rogershat",
+      "ingredients": [
+        {
+          "type": "monkey_mediumhat",
+          "amount": 1
+        },
+        {
+          "type": "feather_canary",
+          "amount": 1
+        },
+        {
+          "type": "blackflag",
+          "amount": 1
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "antlionhat",
+      "ingredients": [
+        {
+          "type": "beefalowool",
+          "amount": 5
+        },
+        {
+          "type": "pigskin",
+          "amount": 3
+        },
+        {
+          "type": "townportaltalisman",
+          "amount": 1
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "nutrientsgoggleshat",
+      "ingredients": [
+        {
+          "type": "plantregistryhat",
+          "amount": 1
+        },
+        {
+          "type": "thulecite_pieces",
+          "amount": 4
+        },
+        {
+          "type": "purplegem",
+          "amount": 1
+        }
+      ],
+      "tech": "ANCIENT_TWO",
+      "config": {
+        "nounlock": true
+      }
+    },
+    {
+      "name": "ruinshat",
+      "ingredients": [
+        {
+          "type": "thulecite",
+          "amount": 4
+        },
+        {
+          "type": "nightmarefuel",
+          "amount": 4
+        }
+      ],
+      "tech": "ANCIENT_FOUR",
+      "config": {
+        "nounlock": true
+      }
+    },
+    {
+      "name": "moon_mushroomhat",
+      "ingredients": [
+        {
+          "type": "moon_cap",
+          "amount": 4
+        },
+        {
+          "type": "red_mushroomhat",
+          "amount": 1
+        }
+      ],
+      "tech": "CELESTIAL_ONE",
+      "config": {
+        "nounlock": true
+      }
+    },
+    {
+      "name": "lunarplanthat",
+      "ingredients": [
+        {
+          "type": "purebrilliance",
+          "amount": 4
+        },
+        {
+          "type": "lunarplant_husk",
+          "amount": 2
+        }
+      ],
+      "tech": "LUNARFORGING_TWO",
+      "config": {
+        "nounlock": true,
+        "station_tag": "lunar_forge"
+      }
+    },
+    {
+      "name": "wagpunkhat",
+      "ingredients": [
+        {
+          "type": "wagpunk_bits",
+          "amount": 8
+        },
+        {
+          "type": "transistor",
+          "amount": 3
+        },
+        {
+          "type": "alterguardianhatshard",
+          "amount": 1
+        }
+      ],
+      "tech": "LOST",
+      "config": {}
+    },
+    {
+      "name": "voidclothhat",
+      "ingredients": [
+        {
+          "type": "horrorfuel",
+          "amount": 4
+        },
+        {
+          "type": "voidcloth",
+          "amount": 2
+        }
+      ],
+      "tech": "SHADOWFORGING_TWO",
+      "config": {
+        "nounlock": true,
+        "station_tag": "shadow_forge"
+      }
+    },
+    {
+      "name": "shellweaver_salty_doghat",
+      "ingredients": [
+        {
+          "type": "saltrock",
+          "amount": 5
+        },
+        {
+          "type": "polly_rogershat",
+          "amount": 1
+        }
+      ],
+      "tech": "SHELLWEAVER_ONE",
+      "config": {
+        "nounlock": true,
+        "manufactured": true,
+        "actionstr": "SHELLWEAVER",
+        "product": "salty_doghat"
+      }
+    },
+    {
+      "name": "rabbitkingshop_hat_rabbit",
+      "ingredients": [
+        {
+          "type": "rabbit",
+          "amount": 1
+        },
+        {
+          "type": "cutgrass",
+          "amount": 6
+        }
+      ],
+      "tech": "RABBITKINGSHOP_TWO",
+      "config": {
+        "nounlock": true,
+        "sg_state": "give",
+        "actionstr": "RABBITKINGSHOP",
+        "product": "rabbithat"
+      }
+    },
+    {
+      "name": "nightcaphat",
+      "ingredients": [
+        {
+          "type": "lucky_goldnugget",
+          "amount": 4
+        }
+      ],
+      "tech": "RABBITOFFERING_THREE",
+      "config": {
+        "nounlock": true,
+        "actionstr": "PERDOFFERING"
+      }
+    },
+    {
+      "name": "dragonheadhat",
+      "ingredients": [
+        {
+          "type": "lucky_goldnugget",
+          "amount": 8
+        }
+      ],
+      "tech": "PERDOFFERING_ONE",
+      "config": {
+        "nounlock": true,
+        "actionstr": "PERDOFFERING"
+      }
+    },
+    {
+      "name": "dragonbodyhat",
+      "ingredients": [
+        {
+          "type": "lucky_goldnugget",
+          "amount": 8
+        }
+      ],
+      "tech": "PERDOFFERING_ONE",
+      "config": {
+        "nounlock": true,
+        "actionstr": "PERDOFFERING"
+      }
+    },
+    {
+      "name": "dragontailhat",
+      "ingredients": [
+        {
+          "type": "lucky_goldnugget",
+          "amount": 8
+        }
+      ],
+      "tech": "PERDOFFERING_ONE",
+      "config": {
+        "nounlock": true,
+        "actionstr": "PERDOFFERING"
+      }
+    }
+  ]
+}

@@ -18,6 +18,8 @@ export function craft(
   if (!Number.isSafeInteger(recipe.productCount) || recipe.productCount <= 0) return null;
 
   const allSlots: readonly ItemSlot[] = [...slots, ...ingredientSlots];
+  if (recipe.requiredItems?.some((itemId) =>
+    !allSlots.some((slot) => slot.get()?.itemId === itemId))) return null;
   const next = allSlots.map((slot) => cloneStack(slot.get()));
   if (next.some((stack, index) => {
     if (!stack) return false;

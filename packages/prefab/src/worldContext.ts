@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type { BuildCursor } from './buildCursor';
+import type { PointerRaycaster } from './pointerRaycaster';
 
 /**
  * Everything a prefab needs from the host application to place itself in the
@@ -11,6 +13,7 @@ export interface WorldContext {
     renderer: THREE.WebGLRenderer;
     ground: THREE.Object3D;
     player: THREE.Object3D;
+    createBuildCursor?: (pointer: PointerRaycaster) => BuildCursor;
 }
 
 /** The subset a prefab needs to turn raw pointer events into raycasts. */

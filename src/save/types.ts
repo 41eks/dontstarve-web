@@ -18,6 +18,7 @@ export interface SavedEntity {
     container?: SavedContainer;
     stack?: InventoryStack;
     health?: { current: number; maximum: number };
+    timer?: { remainingSeconds: number };
   };
 }
 

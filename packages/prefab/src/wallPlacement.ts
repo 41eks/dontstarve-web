@@ -3,7 +3,7 @@ import {
     createStaticSprite,
     type StaticSpriteController,
 } from '@three-roaming/animation/sprite';
-import { BuildCursor } from './buildCursor';
+import { HIDDEN_BUILD_CURSOR, type BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
@@ -75,7 +75,7 @@ export class WallPlacement<BuildId extends string> {
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.pointer = new PointerRaycaster(world);
-        this.cursor = new BuildCursor(world, this.pointer);
+        this.cursor = world.createBuildCursor?.(this.pointer) ?? HIDDEN_BUILD_CURSOR;
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -83,7 +83,7 @@ export class WallPlacement<BuildId extends string> {
         if (this.active) return Promise.resolve();
         if (this.loading) return this.loading;
 
-        this.cursor.show(`build ${this.definitions[buildId].buildLabel}`);
+        this.cursor.show(`: 建造 ${this.definitions[buildId].buildLabel}`, 'left');
         const previewVersion = ++this.previewVersion;
         const request = this.createPreview(buildId, previewVersion)
             .catch((error: unknown) => {
@@ -124,7 +124,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     get renderEntities() {
-        return [...this.placed, ...(this.active ? [this.active] : [])]
+        return this.placed
             .filter(({ model }) => model.visible)
             .map(({ model, groundOffset }) => ({
                 object: model,
@@ -153,12 +153,13 @@ export class WallPlacement<BuildId extends string> {
     cancel() {
         this.previewVersion += 1;
         this.loading = undefined;
-        if (this.active) this.scene.remove(this.active.model);
+        if (this.active) this.active.model.removeFromParent();
         this.active = undefined;
         this.cursor.hide();
     }
 
     update() {
+        this.updatePreview();
         this.cursor.update();
         const showFront = !this.isDiagonalHeading();
         if (this.active) this.updateFacing(this.active, showFront);
@@ -177,6 +178,7 @@ export class WallPlacement<BuildId extends string> {
         if (this.loading || this.active) event.preventDefault();
         if (!this.active) return;
         this.pointer.trackPointer(event);
+        this.updatePreview();
         this.cursor.update();
         if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
 
@@ -186,19 +188,32 @@ export class WallPlacement<BuildId extends string> {
         this.placed.push(placedWall);
         this.active = undefined;
         this.cursor.hide();
+        placedWall.model.userData.entityId = newEntityId();
+        this.scene.add(placedWall.model);
     };
 
     private async createPreview(buildId: BuildId, previewVersion: number) {
-        const instance = await this.createInstance(buildId);
+        const instance = await this.createInstance(buildId, false);
         if (previewVersion !== this.previewVersion) {
-            this.scene.remove(instance.model);
+            instance.model.removeFromParent();
             return;
         }
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;
-        this.cursor.setPreview(instance.model, instance.groundOffset, snapToWallSlot);
+        this.cursor.setPreview(instance.model);
+        this.updatePreview();
         this.cursor.update();
+    }
+
+    private updatePreview() {
+        if (!this.active) return;
+        const point = this.pointer.groundPoint();
+        this.active.model.visible = point !== undefined;
+        if (!point) return;
+        const target = snapToWallSlot(point);
+        this.active.model.position.set(target.x, target.y + this.active.groundOffset, target.z);
+        this.faceCamera(this.active.model);
     }
 
     private async createInstance(buildId: BuildId, attach = true): Promise<WallInstance<BuildId>> {

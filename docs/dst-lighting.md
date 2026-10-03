@@ -176,9 +176,11 @@ shaders/postprocess_colourcube.ksh
 
 Lua 通过纹理采样器传入源 LUT 和目标 LUT，并通过 uniform 设置混合比例。实际逐像素采样发生在 `.ksh` shader 中。
 
-`scripts_unpacked` 只包含 Lua 调用和 shader 文件名，不包含 Klei 引擎内部代码及 `.ksh` 的可读着色器源码。因此可以确定环境色和 Colour Cube 的参数与调用顺序，但不能仅凭这些 Lua 文件还原引擎材质 shader 的全部实现细节。
+`scripts_unpacked` 只包含 Lua 调用和 shader 文件名。实际 `.ksh` 位于源资源的 `databundles/shaders.zip` 中；这些文件带有二进制元数据，但内部保留了可读的 GLSL 源码。Lua 和 shader 可以说明环境色、调色及光照采样方式，但仍不包含 Klei 引擎侧的全部参数计算和渲染调度代码。
 
 ## 局部光源与环境光的区别
+
+局部光源的完整源码分析见 [DST 局部光源实现：火把、衰减与光照贴图](dst-local-lighting.md)，包括 `torch.lua` 的生命周期、`lighting.ksh` 的衰减公式及地面和角色的采样代码。
 
 火把、营火、灯笼和发光生物等预制体通常会执行：
 
@@ -204,17 +206,18 @@ inst.Light:SetIntensity(intensity)
 当前项目在 [`src/dstLighting.ts`](../src/dstLighting.ts) 中实现了对应机制：
 
 - 使用 DST 原始环境颜色和过渡时间。
-- 使用全屏 shader 统一影响地面和 `MeshBasicMaterial` 精灵。
+- 使用世界 XZ 光照贴图统一影响地面和 `MeshBasicMaterial` 精灵，包含环境光及估计参数的火把局部光源。
 - 从 `public/dst/data/images/colour_cubes/` 加载原始季节 LUT。
 - 在 shader 中对横向展开的 32×32×32 Colour Cube 做三线性采样。
 - 支持四季、白天、黄昏、夜晚、满月以及降水亮度。
-- 默认状态为春季晴朗白天，使用 `(255, 244, 213)` 环境色和 `spring_day_cc.tex` 调色 LUT。
+- 默认状态为春季夜晚，环境色为 `(0, 0, 0)`，使用 `spring_dusk_cc.tex` 调色 LUT；将火把装备到手部后照亮角色附近。
 
-由于项目中的 DST 动画精灵多数使用不接受 Three.js 灯光的 `MeshBasicMaterial`，仅添加 `THREE.AmbientLight` 无法让角色和树木获得环境乘色。因此当前实现先把场景渲染到离屏纹理，再统一执行环境乘色和 Colour Cube 调色。这也更接近 DST“全局环境颜色 + 全屏后处理”的结构。
+由于项目中的 DST 动画精灵多数使用不接受 Three.js 灯光的 `MeshBasicMaterial`，仅添加 `THREE.AmbientLight` 无法让角色和树木受光。当前 [`src/dstLocalLighting.ts`](../src/dstLocalLighting.ts) 先生成环境光与火把合成的世界 XZ 光照贴图，场景材质逐像素采样并在显示颜色空间乘色，随后把场景渲染到离屏纹理并统一执行 Colour Cube 调色。全屏调色阶段不再重复乘环境色，避免夜晚把局部照明压黑。多光源合成及 Lua 到 shader 的参数转换尚未还原，目前采用明确标注的估计规则。
 
 渲染入口位于：
 
-- [`src/universal.ts`](../src/universal.ts)：初始化中性基础光和 DST 灯光渲染器。
+- [`src/universal.ts`](../src/universal.ts)：初始化中性基础光和 DST 灯光渲染器。Lambert 的白色基础光强度使用 `Math.PI`，抵消其漫反射 BRDF 的 `1 / PI`，以匹配精灵的基础颜色。
+- [`src/main.ts`](../src/main.ts)：根据权威库存的手部装备状态绑定或关闭火把光源。
 - [`src/animate.ts`](../src/animate.ts)：每帧更新颜色过渡并通过后处理输出场景。
 - [`packages/animation/src/parseKtex.ts`](../packages/animation/src/parseKtex.ts)：解析 LUT 使用的 KTEX RGB 纹理。
 
@@ -225,6 +228,7 @@ dstLighting.setSeason('winter');
 dstLighting.setPhase('dusk');
 dstLighting.setWeatherLight(0.8);
 dstLighting.setPrecipitation(1);
+dstLighting.setTorchOwner(player); // 装备火把时；卸下传 null
 ```
 
 ## 小结

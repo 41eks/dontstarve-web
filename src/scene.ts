@@ -8,6 +8,7 @@ import { createAnimationUpdater } from './animation';
 import { boxes, ground, moonTreeForest, setTreeNormals } from './building';
 import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
+import { DwarfStarManager } from '@three-roaming/prefab/stafflight';
 import {
   pigKings,
   setPigKingNormal,
@@ -91,7 +92,7 @@ const characterRenderEntries = [
   })),
 ];
 
-function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement) {
+function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement, groundItems: GroundItemManager, dwarfStars: DwarfStarManager) {
   // The player origin follows the bottom of its physics body. Pig King's root
   // is vertically offset to ground its artwork, so its foot point is y = 0.
   playerFootPosition.copy(player.position);
@@ -99,6 +100,8 @@ function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacemen
   const renderEntries = [
     ...characterRenderEntries,
     ...buildingPlacement.renderEntities,
+    ...groundItems.renderEntities,
+    ...dwarfStars.renderEntities,
     ...Array.from(moonTreeForest.activeEntities, (entity) => ({
       object: entity.model!, footPosition: entity.position, cameraDepth: 0,
     })),
@@ -157,19 +160,22 @@ export async function startScene(
     consumeBufferedBuild,
     onBuildingInteraction,
   );
-  // Camera updates in the back phase; align placeable billboards afterwards so
-  // they use the camera transform from the same rendered frame.
-  backTasks.push((dt: number) => {
-    buildingPlacement.update(dt);
-    updateCharacterRenderOrder(buildingPlacement);
-  });
   const groundItems = new GroundItemManager(
     scene,
     camera,
     renderer,
     `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`,
     pickupGroundItem,
+    `${import.meta.env.BASE_URL}dst/data/anim`,
   );
+  const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  // Align every billboard before sorting their ground-contact points.
+  backTasks.push((dt: number) => {
+    buildingPlacement.update(dt);
+    groundItems.update(dt, cameraWorldQuaternion);
+    dwarfStars.update(dt, cameraWorldQuaternion);
+    updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars);
+  });
   setupPigKingInteraction(view);
   const byEntityId = new Map<string, THREE.Object3D | ProximityEntity>();
   for (const entity of moonTreeForest.entities) byEntityId.set(entity.saveId!, entity);
@@ -178,6 +184,10 @@ export async function startScene(
     for (const record of records) {
       if (isPlaceableBuildingId(prefabId)) {
         byEntityId.set(record.id, await buildingPlacement.spawnFromSave(prefabId, record));
+      } else if (prefabId === 'stafflight') {
+        byEntityId.set(record.id, await dwarfStars.spawn(new THREE.Vector3(...record.transform.position), {
+          id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,
+        }));
       } else if (prefabId === 'ground_item') {
         const item = record.components.stack!;
         const spec = SAVE_CATALOG.items[item.itemId];
@@ -207,6 +217,7 @@ export async function startScene(
         components: {},
       })),
       ground_item: groundItems.exportRecords(),
+      stafflight: dwarfStars.exportRecords(),
     };
     for (const { prefabId, record } of buildingPlacement.exportRecords()) {
       (entities[prefabId] ??= []).push({
@@ -222,7 +233,7 @@ export async function startScene(
   };
   setupLocomotorInput(view, locomotor);
   animate(world, camera);
-  return { buildingPlacement, groundItems, byEntityId, getSaveState };
+  return { buildingPlacement, groundItems, dwarfStars, byEntityId, getSaveState };
 }
 
 export function scene_add(model:THREE.Object3D){

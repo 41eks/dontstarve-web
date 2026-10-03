@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@three-roaming/animation": "workspace:*",
-    "@three-roaming/inventory": "workspace:*"
+    "@three-roaming/inventory": "workspace:*",
+    "@three-roaming/prefab": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
