@@ -19,6 +19,52 @@ const imageArchiveUrl = new URL(
 ).href;
 
 const atlasImage = createAtlasImage(imageArchiveUrl);
+const assetBaseUrl = new URL('dst/data/ui/', document.baseURI).href;
+
+function placeholder(color: string, label: string, className = ''): HTMLSpanElement {
+  const icon = document.createElement('span');
+  icon.className = `craft-placeholder ${className}`.trim();
+  icon.style.setProperty('--placeholder-color', color);
+  icon.textContent = label.slice(0, 1);
+  icon.setAttribute('aria-hidden', 'true');
+  return icon;
+}
+
+function recipeIcon(recipe: Recipe): HTMLElement {
+  if (recipe.asset) {
+    const icon = document.createElement('img');
+    icon.className = 'craft-recipe-asset';
+    icon.src = urlString`${assetBaseUrl}/${recipe.asset}`;
+    icon.alt = '';
+    return icon;
+  }
+
+  if (recipe.inventoryIcon) {
+    const icon = atlasImage(
+      'craft-recipe-asset',
+      recipe.inventoryAtlas ?? 'images/inventoryimages.xml',
+      recipe.inventoryIcon,
+    );
+    icon.addEventListener('error', () => {
+      icon.replaceWith(placeholder(recipe.color, recipe.name));
+    }, { once: true });
+    return icon;
+  }
+
+  return placeholder(recipe.color, recipe.name);
+}
+
+function skinIcon(recipe: Recipe, skin: RecipeSkin): HTMLElement {
+  const icon = atlasImage(
+    'craft-recipe-asset',
+    skin.inventoryAtlas ?? 'images/inventoryimages.xml',
+    skin.inventoryIcon,
+  );
+  icon.addEventListener('error', () => {
+    icon.replaceWith(recipeIcon(recipe));
+  }, { once: true });
+  return icon;
+}
 
 export interface CraftRequestDetail {
   recipeId: string;
@@ -153,7 +199,7 @@ export class DstCraftingUiElement extends AssetElement {
       }
       const skin = skinIndex === 0 ? undefined : recipe.skins[skinIndex - 1];
       selectedIcon.dataset.skin = skin?.id ?? '';
-      selectedIcon.replaceChildren(skin ? this.skinIcon(recipe, skin) : this.recipeIcon(recipe));
+      selectedIcon.replaceChildren(skin ? skinIcon(recipe, skin) : recipeIcon(recipe));
       selectedName.textContent = skin?.name ?? '默认';
       const hasSkins = recipe.skins.length > 0;
       previousSkinButton.disabled = !hasSkins;
@@ -225,7 +271,7 @@ export class DstCraftingUiElement extends AssetElement {
         atlasImage,
         isBuffered: (recipe) => this.isRecipeBuffered(recipe),
         isLocked: (recipe) => this.isRecipeLocked(recipe),
-        recipeIcon: (recipe) => this.recipeIcon(recipe),
+        recipeIcon: (recipe) => recipeIcon(recipe),
         selectRecipe: updateSelection,
       })));
 
@@ -235,7 +281,7 @@ export class DstCraftingUiElement extends AssetElement {
         button.className = 'craft-quick-item';
         button.setAttribute('aria-label', recipe.name);
         button.dataset.label = recipe.name;
-        button.append(this.recipeIcon(recipe));
+        button.append(recipeIcon(recipe));
         button.addEventListener('click', () => updateSelection(index));
         quickbar.append(button);
       });
@@ -245,7 +291,7 @@ export class DstCraftingUiElement extends AssetElement {
 
     categoryNav.append(...categories.map(createCategoryButtonMapper({
       activeCategoryId: activeCategoryIdState.get(),
-      assetBaseUrl: this.assetBaseUrl,
+      assetBaseUrl,
       atlasImage,
       selectCategory: (category, button) => {
         this.selectedRecipeId = undefined;
@@ -287,51 +333,6 @@ export class DstCraftingUiElement extends AssetElement {
     renderCategoryRecipes(initialCategory);
   }
 
-  private placeholder(color: string, label: string, className = ''): HTMLSpanElement {
-    const icon = document.createElement('span');
-    icon.className = `craft-placeholder ${className}`.trim();
-    icon.style.setProperty('--placeholder-color', color);
-    icon.textContent = label.slice(0, 1);
-    icon.setAttribute('aria-hidden', 'true');
-    return icon;
-  }
-
-  private recipeIcon(recipe: Recipe): HTMLElement {
-    if (recipe.asset) {
-      const icon = document.createElement('img');
-      icon.className = 'craft-recipe-asset';
-      icon.src = urlString`${this.assetBaseUrl}/${recipe.asset}`;
-      icon.alt = '';
-      return icon;
-    }
-
-    if (recipe.inventoryIcon) {
-      const icon = atlasImage(
-        'craft-recipe-asset',
-        recipe.inventoryAtlas ?? 'images/inventoryimages.xml',
-        recipe.inventoryIcon,
-      );
-      icon.addEventListener('error', () => {
-        icon.replaceWith(this.placeholder(recipe.color, recipe.name));
-      }, { once: true });
-      return icon;
-    }
-
-    return this.placeholder(recipe.color, recipe.name);
-  }
-
-  private skinIcon(recipe: Recipe, skin: RecipeSkin): HTMLElement {
-    const icon = atlasImage(
-      'craft-recipe-asset',
-      skin.inventoryAtlas ?? 'images/inventoryimages.xml',
-      skin.inventoryIcon,
-    );
-    icon.addEventListener('error', () => {
-      icon.replaceWith(this.recipeIcon(recipe));
-    }, { once: true });
-    return icon;
-  }
-
   private isRecipeLocked(recipe: Recipe): boolean {
     return !this.isRecipeBuffered(recipe) && (Boolean(recipe.locked)
       || recipe.ingredients.some((ingredient) => this.availableCount(ingredient) < ingredient.required));
@@ -356,7 +357,7 @@ export class DstCraftingUiElement extends AssetElement {
         ingredient.inventoryIcon,
       ));
     } else {
-      item.append(this.placeholder(ingredient.color, ingredient.name, 'craft-placeholder-material'));
+      item.append(placeholder(ingredient.color, ingredient.name, 'craft-placeholder-material'));
     }
 
     const count = document.createElement('span');

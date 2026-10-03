@@ -1,4 +1,4 @@
-import { HAT_DEFINITIONS, HAT_RECIPES, HAT_SKIN_SPECS, isHatId } from '@three-roaming/prefab/hats';
+import { HAT_DEFINITIONS, HAT_RECIPES, HAT_SKIN_SPECS } from '@three-roaming/prefab/hats';
 import { GROUND_ITEM_SKIN_SPECS } from '@three-roaming/prefab/groundItems';
 import recipeDataJson from '@three-roaming/animation/recipes.json' with { type: 'json' };
 import type { InventoryRecipeDefinition, InventorySkinSpec } from '@three-roaming/inventory';
@@ -62,14 +62,16 @@ function createInventoryRecipe(
   if (!product) return undefined;
 
   const ingredients: Record<string, number> = {};
+  const requiredItems: string[] = [];
   for (const ingredient of source.ingredients) {
     if (typeof ingredient.type !== 'string'
       || typeof ingredient.amount !== 'number'
       || !Number.isSafeInteger(ingredient.amount)
-      || ingredient.amount <= 0) {
+      || ingredient.amount < 0) {
       return undefined;
     }
-    ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount;
+    if (ingredient.amount === 0) requiredItems.push(ingredient.type);
+    else ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount;
   }
   return {
     recipeId: source.name,
@@ -77,13 +79,13 @@ function createInventoryRecipe(
     productCount: product.count,
     ingredients,
     buffered: typeof source.config.placer === 'string',
+    ...(requiredItems.length ? { requiredItems } : {}),
   };
 }
 
 export const INVENTORY_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> =
   { ...Object.fromEntries(recipeData.recipes.flatMap((source) => {
-    const productId = recipeProduct(source)?.id;
-    const recipe = productId && isHatId(productId) ? HAT_RECIPES[source.name] : createInventoryRecipe(source);
+    const recipe = createInventoryRecipe(source);
     return recipe ? [[source.name, recipe]] : [];
   })), ...HAT_RECIPES };
 
