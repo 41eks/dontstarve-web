@@ -104,7 +104,7 @@
   left: var(--chest-art-origin-x, 50%);
   top: var(--chest-art-origin-y, 50%);
   /* Keep slots at inventory-bar size within the panel's 90% scale. */
-  grid-template-columns: repeat(3, calc(var(--inventory-slot-layout-size) / 0.9));
+  grid-template-columns: repeat(var(--storage-columns, 3), calc(var(--inventory-slot-layout-size) / 0.9));
   gap: 0;
   transform: translate(-50%, -50%);
 }

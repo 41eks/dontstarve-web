@@ -37,7 +37,8 @@ describe('save JSON deserialization', () => {
     expect(save.world.entities.moon_tree).toHaveLength(500);
     expect(new Set(save.world.entities.moon_tree.map(({ id }) => id)).size).toBe(500);
     expect(save.world.entities.pigking[0].transform.position).toEqual([0, 0, 25]);
-    expect(save.players.local.inventory.containers['player:inventory'].slots).toHaveLength(7);
+    expect(save.players.local.inventory.containers['player:inventory'].slots)
+      .toEqual(initialWorld.players.local.inventory.containers['player:inventory'].slots);
   });
 
   it.each([
@@ -72,7 +73,7 @@ describe('save JSON deserialization', () => {
 
   it('recovers equipment, buffered builds and separate inventories for each chest', () => {
     const data = structuredClone(initialWorld);
-    data.players.local.inventory.containers['player:equipment'].slots.push({ slotKey: 'hand', item: { itemId: 'torch', count: 1 } });
+    data.players.local.inventory.containers['player:equipment'].slots.push({ slotKey: 'hand', item: { itemId: 'torch', count: 1 } } as never);
     data.players.local.inventory.bufferedBuilds.push({ recipeId: 'treasurechest', skinId: 'treasurechest_ancient' } as never);
     const second = structuredClone(data.world.entities.treasurechest[0]);
     second.id = 'e_chest_second';

@@ -8,12 +8,32 @@ import { createAnimatedSprite, type SpriteAnimationController } from '../src/spr
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { AnimatedBuildingPlacement, type AnimatedBuildingDefinition } from '../../prefab/src/animatedBuildingPlacement';
+import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
+import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
+import { FIRE_PIT_DEFINITION } from '../../prefab/src/firepit';
+import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
+import { DRAGONFLY_CHEST_DEFINITION } from '../../prefab/src/dragonfly_chest';
+import { CAMPFIRE_DEFINITION } from '../../prefab/src/campfire';
+import { SALT_BOX_DEFINITION } from '../../prefab/src/saltbox';
+import { NIGHT_LIGHT_DEFINITION } from '../../prefab/src/nightlight';
+import { PIG_HOUSE_DEFINITION } from '../../prefab/src/pighouse';
+import { MUSHROOM_LIGHT_DEFINITIONS } from '../../prefab/src/mushroom_light';
 import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { recipeSkins } from '../../ui/src/categories/generated';
 
-const prefabIds = ['cookpot', 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'] as const;
+const prefabIds = [
+  'cookpot', 'firepit', 'icebox', 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4',
+  'dragonflychest', 'campfire', 'saltbox', 'nightlight', 'pighouse', 'mushroom_light', 'mushroom_light2',
+] as const;
+const buildingDefinitions = {
+  cookpot: COOK_POT_DEFINITION, firepit: FIRE_PIT_DEFINITION, icebox: ICE_BOX_DEFINITION,
+  ...RESEARCH_LAB_DEFINITIONS,
+  dragonflychest: DRAGONFLY_CHEST_DEFINITION, campfire: CAMPFIRE_DEFINITION,
+  saltbox: SALT_BOX_DEFINITION, nightlight: NIGHT_LIGHT_DEFINITION, pighouse: PIG_HOUSE_DEFINITION,
+  ...MUSHROOM_LIGHT_DEFINITIONS,
+};
 const cases = prefabIds.flatMap((prefabId) => Object.entries(definitions.animatedBuildings[prefabId].skinArchives)
   .map(([skinId, archive]) => ({ prefabId, skinId, archive })));
 
@@ -35,11 +55,12 @@ afterEach(() => {
 });
 
 function options(prefabId: typeof prefabIds[number], skinId: string) {
-  const definition: AnimatedBuildingDefinition = definitions.animatedBuildings[prefabId];
+  const definition: AnimatedBuildingDefinition = buildingDefinitions[prefabId];
+  const skin = definition.skinInit?.(skinId);
   return {
     initialAnimation: definition.idleAnimation ?? 'idle',
     scale: definition.scale,
-    skinArchive: definition.skinArchives![skinId],
+    skinArchive: skin?.skinArchive ?? definition.skinArchives![skinId],
     skinSymbols: definition.skinSymbols,
     baseSymbols: definition.baseSymbols,
     skinAnimationBanks: definition.skinAnimationBanks?.[skinId],
@@ -85,7 +106,7 @@ describe('DST building skins', () => {
     const mesh = meshOf(model);
     expect(mesh.visible).toBe(true);
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    expect(mesh.material.some((material) => material.map?.image.width > 0)).toBe(true);
+    expect(mesh.material.some((material) => ((material.map?.image as { width?: number })?.width ?? 0) > 0)).toBe(true);
     expect(fetch).toHaveBeenCalledWith(`/dst/data/anim/${archive}`);
     expect(fetch).toHaveBeenCalledWith(`/dst/data/anim/${archive.replace(/\.zip$/, '.dyn')}`);
     setSpriteEntityRenderOrder(model, 7);
@@ -95,7 +116,7 @@ describe('DST building skins', () => {
     animation.playOnce('place', complete);
     for (let frame = 0; frame < 100; frame++) animation.update(0.1);
     expect(complete).toHaveBeenCalledTimes(1);
-    if (prefabId !== 'cookpot') {
+    if (prefabId.startsWith('researchlab')) {
       animation.start('proximity_loop');
       for (let frame = 0; frame < 70; frame++) animation.update(1 / 30);
     }
@@ -156,20 +177,24 @@ describe('DST building skins', () => {
     } as unknown as WorldContext;
     const skinId = recipeSkins[prefabId][0].id;
     const consume = vi.fn(() => true);
-    const placement = new AnimatedBuildingPlacement(world, { [prefabId]: definitions.animatedBuildings[prefabId] }, consume);
+    const definition = buildingDefinitions[prefabId];
+    const skinInit = definition.skinInit ? vi.fn(definition.skinInit) : undefined;
+    const placement = new AnimatedBuildingPlacement(world, { [prefabId]: { ...definition, skinInit } }, consume);
     vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
     vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
     await placement.begin(prefabId, skinId);
+    if (skinInit) expect(skinInit).toHaveBeenCalledExactlyOnceWith(skinId);
     expect(placement.exportRecords()).toHaveLength(0);
     expect(world.scene.children[0].userData.skinId).toBe(skinId);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
     expect(consume).toHaveBeenCalledWith(prefabId);
     for (let frame = 0; frame < 100; frame++) placement.update(0.1);
     const record = placement.exportRecords()[0].record;
-    expect(record.components.building).toEqual({ state: prefabId === 'cookpot' ? 'closed' : 'idle', skinId });
+    expect(record.components.building).toEqual({ state: definition.interaction ? 'closed' : 'idle', skinId });
     expect(record.transform.position).toEqual([3, 0, 4]);
     const restored = await placement.spawnFromSave(prefabId, record as PlacementSaveRecord);
+    if (skinInit) expect(skinInit).toHaveBeenCalledTimes(2);
     expect(restored.userData.skinId).toBe(skinId);
     expect(placement.exportRecords()[1].record).toEqual(record);
     await expect(placement.spawn(prefabId, 'missing_skin')).rejects.toThrow('Unsupported');

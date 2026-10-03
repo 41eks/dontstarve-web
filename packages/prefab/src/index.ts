@@ -3,7 +3,44 @@ export {
   type MoonTreeForest,
   type MoonTreeForestOptions,
 } from './moontree';
+export {
+  DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, DRAGONFLY_CHEST_SKIN_ARCHIVES,
+  DragonflyChestPlacement, type DragonflyChestId,
+} from './dragonfly_chest';
+export {
+  CAMPFIRE_DEFINITION, CAMPFIRE_ID, CAMPFIRE_SKIN_ARCHIVES,
+  CampfirePlacement, type CampfireId,
+} from './campfire';
+export {
+  SALT_BOX_DEFINITION, SALT_BOX_ID, SALT_BOX_SKIN_ARCHIVES,
+  SaltBoxPlacement, type SaltBoxId,
+} from './saltbox';
+export {
+  NIGHT_LIGHT_DEFINITION, NIGHT_LIGHT_ID, NIGHT_LIGHT_SKIN_ARCHIVES,
+  NightLightPlacement, type NightLightId,
+} from './nightlight';
+export {
+  PIG_HOUSE_DEFINITION, PIG_HOUSE_ID, PIG_HOUSE_SKIN_ARCHIVES,
+  PigHousePlacement, type PigHouseId,
+} from './pighouse';
+export {
+  MUSHROOM_LIGHT_DEFINITIONS, MUSHROOM_LIGHT_IDS, MUSHROOM_LIGHT_SKIN_ARCHIVES,
+  MushroomLightPlacement, type MushroomLightId,
+} from './mushroom_light';
+export {
+  STORAGE_BUILDING_IDS, isStorageBuildingId, buildingContainerId, buildingContainerDefinition,
+  type StorageBuildingId, type BuildingContainerDefinition,
+} from './containers';
 export { ProximityEntities, type ProximityEntity } from './proximityEntities';
+export { Locomotor, findGroundPath, setupLocomotorInput, type LocomotorOptions, type GroundPathOptions } from './locomotor';
+export {
+  FIRE_PIT_DEFINITION, FIRE_PIT_ID, FIRE_PIT_SKIN_ARCHIVES,
+  FirePitPlacement, type FirePitId,
+} from './firepit';
+export {
+  ICE_BOX_DEFINITION, ICE_BOX_ID, ICE_BOX_SKIN_ARCHIVES,
+  IceBoxPlacement, type IceBoxId,
+} from './icebox';
 export {
   COOK_POT_DEFINITION,
   COOK_POT_ID,
@@ -33,7 +70,9 @@ export {
 } from './player';
 export {
   AnimatedBuildingPlacement,
+  type AnimatedBuildingBuiltContext,
   type AnimatedBuildingDefinition,
+  type AnimatedBuildingEventContext,
   type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
 export {
@@ -61,7 +100,7 @@ export {
   ResearchLabPlacement,
   isResearchLabId,
   type ResearchLabId,
-} from './researchlab';
+} from './scienceprototyper';
 export {
   TREASURE_CHEST_DEFINITION,
   TREASURE_CHEST_ID,
@@ -69,6 +108,10 @@ export {
   TreasureChestPlacement,
   type TreasureChestId,
 } from './treasurechest';
+export {
+  TENT_DEFINITION,
+  TENT_ID,
+} from './tent';
 export {
   WALL_STONE_IDS,
   WALL_STONE_DEFINITIONS,

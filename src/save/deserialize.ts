@@ -2,13 +2,18 @@ import type {
   InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec, InventoryStack,
 } from '@three-roaming/inventory';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
+import type { BuildingContainerDefinition } from '@three-roaming/prefab/containers';
 
 export interface SaveCatalog {
   items: Readonly<Record<string, InventoryItemSpec>>;
   skins: Readonly<Record<string, InventorySkinSpec>>;
   recipes: Readonly<Record<string, InventoryRecipeDefinition>>;
   recipeSkins: Readonly<Record<string, readonly string[]>>;
-  buildings: Readonly<Record<string, { archive: string; skinArchives?: Readonly<Record<string, string>> }>>;
+  buildings: Readonly<Record<string, {
+    archive: string;
+    skinArchives?: Readonly<Record<string, string>>;
+    container?: BuildingContainerDefinition;
+  }>>;
   walls: readonly string[];
 }
 
@@ -159,7 +164,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       if (!/^[a-zA-Z0-9_:.-]+$/.test(id) || ids.has(id)) fail(`${recordPath}.id`, 'invalid or duplicate entity ID');
       ids.add(id);
       const building = Object.hasOwn(catalog.buildings, prefab) ? catalog.buildings[prefab] : undefined;
-      const isContainer = prefab === 'treasurechest' || prefab === 'cookpot';
+      const containerDefinition = building?.container;
+      const isContainer = containerDefinition !== undefined;
       const allowedComponents = building ? ['building', ...(isContainer ? ['container'] : [])]
         : prefab === 'ground_item' ? ['stack'] : catalog.walls.includes(prefab) ? ['health'] : [];
       const c = object(o.components, `${recordPath}.components`, allowedComponents);
@@ -173,10 +179,10 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
         if (skinId !== undefined && !Object.hasOwn(building.skinArchives ?? {}, skinId)) fail(`${recordPath}.components.building.skinId`, 'unsupported building skin');
         components.building = { state, ...(skinId === undefined ? {} : { skinId }) };
         if (isContainer) {
-          const slotCount = prefab === 'cookpot' ? 4 : 9;
+          const slotCount = containerDefinition!.slotCount;
           components.container = c.container === undefined ? { slotCount, slots: [] }
             : container(c.container, `${recordPath}.components.container`, numericKeys(slotCount),
-              prefab === 'cookpot' ? 1 : Infinity);
+              containerDefinition!.singleItems ? 1 : Infinity);
         }
       }
       if (prefab === 'ground_item') components.stack = stack(c.stack, `${recordPath}.components.stack`);

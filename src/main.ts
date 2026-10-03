@@ -18,19 +18,19 @@ import type { WilsonAnimationController } from '@three-roaming/prefab/player';
 import { PreparedFoodSlot, StorageSlot } from '@three-roaming/inventory';
 import { preloadImageArchive } from '@three-roaming/animation/imageAtlas';
 import { player } from './player';
+import { createChestInventoryPanel } from './chestInventoryPanel';
 import {
-  CHEST_SLOT_COUNT,
-  COOK_POT_SLOT_COUNT,
-  createChestInventoryPanel,
-} from './chestInventoryPanel';
+  STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition, isStorageBuildingId,
+  type StorageBuildingId,
+} from '@three-roaming/prefab/containers';
 import { executeDebugCommand } from './debugCommands';
 import { isPlaceableBuildingId } from './placeableBuilding';
 import {
   createInventoryStore,
 } from './inventory';
-import { startScene } from './scene';
+import { locomotor, startScene } from './scene';
 import { initialSave } from './save/initialSave';
-import { chestContainerId, cookPotContainerId, inventoryStateFromSave } from './save/inventoryState';
+import { inventoryStateFromSave } from './save/inventoryState';
 import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
 import { downloadSaveJson } from './save/download';
@@ -39,29 +39,28 @@ void preloadImageArchive(`${import.meta.env.BASE_URL}dst/data/databundles/images
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
 const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, 'cookpot');
+const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, 'icebox');
 export const inventory = createInventoryStore();
-const chestContainers = new Set<string>();
-const cookPotContainers = new Set<string>();
-function registerCookPot(entityId: string): void {
-  const containerId = cookPotContainerId(entityId);
-  if (cookPotContainers.has(containerId)) return;
-  inventory.registerSlots(Array.from({ length: COOK_POT_SLOT_COUNT }, (_, index) => ({
-    address: { containerId, slotKey: String(index) }, slot: new PreparedFoodSlot(),
-  })));
-  cookPotContainers.add(containerId);
+const storageContainers = new Map<string, StorageBuildingId>();
+function storagePanel(prefab: StorageBuildingId) {
+  return prefab === 'cookpot' ? gameUi.cookPotPanel
+    : prefab === 'icebox' ? gameUi.iceBoxPanel : gameUi.chestPanel;
 }
-function registerChest(entityId: string): void {
-  const containerId = chestContainerId(entityId);
-  if (chestContainers.has(containerId)) return;
-  inventory.registerSlots(Array.from({ length: CHEST_SLOT_COUNT }, (_, index) => ({
-    address: { containerId, slotKey: String(index) }, slot: new StorageSlot(),
+function registerStorage(prefab: StorageBuildingId, entityId: string): void {
+  const containerId = buildingContainerId(prefab, entityId);
+  if (storageContainers.has(containerId)) return;
+  const definition = buildingContainerDefinition(prefab);
+  inventory.registerSlots(Array.from({ length: definition.slotCount }, (_, index) => ({
+    address: { containerId, slotKey: String(index) },
+    slot: definition.singleItems ? new PreparedFoodSlot() : new StorageSlot(),
   })));
-  chestContainers.add(containerId);
+  storageContainers.set(containerId, prefab);
 }
-for (const record of initialSave.world.entities.treasurechest ?? []) registerChest(record.id);
-for (const record of initialSave.world.entities.cookpot ?? []) registerCookPot(record.id);
+for (const prefab of STORAGE_BUILDING_IDS) {
+  for (const record of initialSave.world.entities[prefab] ?? []) registerStorage(prefab, record.id);
+}
 inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
-for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel]) {
+for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]) {
   panel.addEventListener('game:chest-close', (event) => {
     const { containerId } = (event as CustomEvent<ChestCloseDetail>).detail;
     inventory.setStorageAccessible(containerId, false);
@@ -85,10 +84,10 @@ function syncHandEquipment(): void {
 }
 
 function syncInventorySlot(address: SlotAddress): void {
-  const storagePanel = cookPotContainers.has(address.containerId) ? gameUi.cookPotPanel
-    : chestContainers.has(address.containerId) ? gameUi.chestPanel : undefined;
-  if (storagePanel && storagePanel.slotContainer?.id !== address.containerId) return;
-  const inventoryBar = storagePanel ?? gameUi.inventoryBar;
+  const storagePrefab = storageContainers.get(address.containerId);
+  const panel = storagePrefab === undefined ? undefined : storagePanel(storagePrefab);
+  if (panel && panel.slotContainer?.id !== address.containerId) return;
+  const inventoryBar = panel ?? gameUi.inventoryBar;
   const stack = inventory.get(address);
   if (!stack) {
     inventoryBar.setSlot(address, null);
@@ -101,7 +100,7 @@ function syncInventorySlot(address: SlotAddress): void {
     ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
     name: spec.name,
     count: stack.count,
-    maxStack: cookPotContainers.has(address.containerId) ? 1 : spec.maxStack,
+    maxStack: storagePrefab && buildingContainerDefinition(storagePrefab).singleItems ? 1 : spec.maxStack,
     icon: spec.icon,
     ...(spec.atlas ? { atlas: spec.atlas } : {}),
     ...(spec.equippable ? { equippable: spec.equippable } : {}),
@@ -134,12 +133,12 @@ const { buildingPlacement, groundItems, getSaveState } = await startScene(
     return true;
   },
   ({ buildId, isOpen, model }) => {
-    if (buildId !== 'treasurechest' && buildId !== 'cookpot') return;
+    if (!isStorageBuildingId(buildId)) return;
     const entityId = String(model.userData.entityId);
-    const isCookPot = buildId === 'cookpot';
-    (isCookPot ? registerCookPot : registerChest)(entityId);
-    (isCookPot ? cookPotInventoryPanel : chestInventoryPanel).setOpen(model, isOpen);
-    const id = (isCookPot ? cookPotContainerId : chestContainerId)(entityId);
+    registerStorage(buildId, entityId);
+    (buildId === 'cookpot' ? cookPotInventoryPanel : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel)
+      .setOpen(model, isOpen, buildId);
+    const id = buildingContainerId(buildId, entityId);
     inventory.setStorageAccessible(id, isOpen);
     if (isOpen) {
       inventory.addresses()
@@ -195,6 +194,7 @@ gameUi.inventoryBar.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
   const stack = inventory.get(slot);
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
+  locomotor.stop();
   void buildingPlacement.begin(stack.itemId, stack.skinId).catch((error: unknown) => {
     console.error(`Unable to start ${stack.itemId} placement`, error);
   });
@@ -238,6 +238,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   // Buffered builds place as soon as they are crafted. Walls are not buffered:
   // crafting only fills the inventory, and placing starts from the slot click.
   if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {
+    locomotor.stop();
     void buildingPlacement.begin(recipeId, inventory.bufferedSkin(recipeId)).catch((error: unknown) => {
       console.error(`Unable to start ${recipeId} placement`, error);
     });
@@ -245,5 +246,6 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
 });
 gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
   const { crafting } = (event as CustomEvent<CraftingStateDetail>).detail;
+  if (crafting) locomotor.stop();
   playerAnimation?.setCrafting(crafting);
 });

@@ -1,6 +1,6 @@
 import type { InventoryState } from '@three-roaming/inventory';
 import { deserializeSave, type SaveCatalog } from './deserialize';
-import { chestContainerId, cookPotContainerId } from './inventoryState';
+import { STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition } from '@three-roaming/prefab/containers';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
 
 export interface RuntimeSaveState {
@@ -24,17 +24,14 @@ export function serializeSave(
   containers.set('player:inventory', { slotCount: 15, slots: [] });
   containers.set('player:equipment', { slotCount: 3, slots: [] });
   const entities = structuredClone(state.entities);
-  for (const chest of entities.treasurechest ?? []) {
-    // An open chest is a session interaction; reload every saved chest closed.
-    if (chest.components.building) chest.components.building.state = 'closed';
-    const container = { slotCount: 9, slots: [] } satisfies SavedContainer;
-    chest.components.container = container;
-    containers.set(chestContainerId(chest.id), container);
-  }
-  for (const pot of entities.cookpot ?? []) {
-    const container = { slotCount: 4, slots: [] } satisfies SavedContainer;
-    pot.components.container = container;
-    containers.set(cookPotContainerId(pot.id), container);
+  for (const prefab of STORAGE_BUILDING_IDS) {
+    for (const chest of entities[prefab] ?? []) {
+      // Open storage is a session interaction; reload saved storage closed.
+      if (prefab !== 'cookpot' && chest.components.building) chest.components.building.state = 'closed';
+      const container = { slotCount: buildingContainerDefinition(prefab).slotCount, slots: [] } satisfies SavedContainer;
+      chest.components.container = container;
+      containers.set(buildingContainerId(prefab, chest.id), container);
+    }
   }
   for (const { address, item } of state.inventory.slots) {
     const container = containers.get(address.containerId);

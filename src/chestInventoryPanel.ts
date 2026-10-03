@@ -4,23 +4,25 @@ import { backTasks } from './animate';
 import { camera } from './camera';
 import { renderer } from './universal';
 import { player } from './player';
-import { chestContainerId, cookPotContainerId } from './save/inventoryState';
+import { buildingContainerId, buildingContainerDefinition, type StorageBuildingId } from '@three-roaming/prefab/containers';
+import definitions from '@three-roaming/prefab/definitions.json' with { type: 'json' };
 
 export const CHEST_SLOT_COUNT = 9;
 export const COOK_POT_SLOT_COUNT = 4;
 const ANCHOR_MARGIN = 1;
 
 export interface ChestInventoryPanelController {
-  setOpen(model: THREE.Object3D, isOpen: boolean): void;
+  setOpen(model: THREE.Object3D, isOpen: boolean, prefab?: StorageBuildingId): void;
 }
 
 export function createChestInventoryPanel(
   element: DstChestPanelElement,
-  prefab: 'treasurechest' | 'cookpot' = 'treasurechest',
+  prefab: StorageBuildingId = 'treasurechest',
 ): ChestInventoryPanelController {
   const bounds = new THREE.Box3();
   const anchor = new THREE.Vector3();
   let openModel: THREE.Object3D | undefined;
+  let openPrefab = prefab;
 
   const update = () => {
     if (!openModel || !openModel.visible || (!element.slotContainer && !element.isClosing)) {
@@ -28,7 +30,7 @@ export function createChestInventoryPanel(
       return;
     }
 
-    const anchorModel = prefab === 'treasurechest' ? player : openModel;
+    const anchorModel = openPrefab === 'cookpot' || openPrefab.startsWith('mushroom_light') ? openModel : player;
     anchorModel.updateWorldMatrix(true, true);
     bounds.setFromObject(anchorModel);
     if (bounds.isEmpty()) {
@@ -41,7 +43,7 @@ export function createChestInventoryPanel(
       bounds.max.y + ANCHOR_MARGIN,
       (bounds.min.z + bounds.max.z) / 2,
     ).project(camera);
-    if (prefab === 'cookpot') {
+    if (openPrefab === 'cookpot' || openPrefab.startsWith('mushroom_light')) {
       // Project all box corners so the panel stays to the sprite's screen-right
       // even when the camera heading changes.
       let right = -Infinity;
@@ -78,14 +80,19 @@ export function createChestInventoryPanel(
   });
 
   return {
-    setOpen(model, isOpen) {
+    setOpen(model, isOpen, buildingPrefab = prefab) {
       if (isOpen) {
         if (openModel !== model && element.slotContainer) element.close();
         openModel = model;
+        openPrefab = buildingPrefab;
+        const container = buildingContainerDefinition(buildingPrefab);
         element.open({
-          containerId: (prefab === 'cookpot' ? cookPotContainerId : chestContainerId)(String(model.userData.entityId)),
-          slotCount: prefab === 'cookpot' ? COOK_POT_SLOT_COUNT : CHEST_SLOT_COUNT,
-          title: prefab === 'cookpot' ? '烹饪锅' : '箱子',
+          containerId: buildingContainerId(buildingPrefab, String(model.userData.entityId)),
+          slotCount: container.slotCount,
+          columns: container.columns,
+          panelArchive: container.panelArchive,
+          singleItems: container.singleItems,
+          title: definitions.animatedBuildings[buildingPrefab].buildLabel,
         });
       } else if (openModel === model) {
         element.close();

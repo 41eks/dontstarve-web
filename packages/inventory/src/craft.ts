@@ -1,4 +1,4 @@
-import type { InventorySlot } from './slots';
+import type { InventorySlot, ItemSlot } from './slots';
 import type { InventoryItems, InventoryRecipeDefinition, InventoryStack } from './types';
 
 function cloneStack(stack: InventoryStack | null): InventoryStack | null {
@@ -9,21 +9,24 @@ function isProductStack(stack: InventoryStack, recipe: InventoryRecipeDefinition
   return stack.itemId === recipe.productId && stack.skinId === recipe.productSkinId;
 }
 
+/** Returns backpack stacks followed by ingredient-only stacks, without changing the slots. */
 export function craft(
   recipe: InventoryRecipeDefinition,
   slots: readonly InventorySlot[],
+  ingredientSlots: readonly ItemSlot[] = [],
 ): InventoryItems | null {
   if (!Number.isSafeInteger(recipe.productCount) || recipe.productCount <= 0) return null;
 
-  const next = slots.map((slot) => cloneStack(slot.get()));
+  const allSlots: readonly ItemSlot[] = [...slots, ...ingredientSlots];
+  const next = allSlots.map((slot) => cloneStack(slot.get()));
   if (next.some((stack, index) => {
     if (!stack) return false;
-    const maxStack = slots[index].maxStack(stack.itemId);
+    const maxStack = allSlots[index].maxStack?.(stack.itemId);
     return !Number.isSafeInteger(stack.count)
       || stack.count <= 0
-      || !Number.isSafeInteger(maxStack)
-      || maxStack <= 0
-      || stack.count > maxStack;
+      || (maxStack !== undefined && (
+        !Number.isSafeInteger(maxStack) || maxStack <= 0 || stack.count > maxStack
+      ));
   })) return null;
 
   for (const [itemId, amount] of Object.entries(recipe.ingredients)) {
@@ -45,7 +48,7 @@ export function craft(
   if (recipe.buffered) return next;
 
   let productsRemaining = recipe.productCount;
-  for (let index = 0; index < next.length && productsRemaining > 0; index += 1) {
+  for (let index = 0; index < slots.length && productsRemaining > 0; index += 1) {
     const stack = next[index];
     if (!stack || !isProductStack(stack, recipe)) continue;
     const available = slots[index].maxStack(recipe.productId) - stack.count;
@@ -55,7 +58,7 @@ export function craft(
     productsRemaining -= added;
   }
 
-  for (let index = 0; index < next.length && productsRemaining > 0; index += 1) {
+  for (let index = 0; index < slots.length && productsRemaining > 0; index += 1) {
     if (next[index] !== null) continue;
     const maxStack = slots[index].maxStack(recipe.productId);
     if (!Number.isSafeInteger(maxStack) || maxStack <= 0) continue;

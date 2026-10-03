@@ -73,7 +73,7 @@ export async function createPigKing(
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
       const handlePointerDown = (event: PointerEvent) => {
-        if (event.button !== 0) return;
+        if (event.button !== 0 || event.defaultPrevented) return;
 
         const rendererBounds = renderer.domElement.getBoundingClientRect();
         pointer.x = ((event.clientX - rendererBounds.left) / rendererBounds.width) * 2 - 1;
@@ -81,7 +81,7 @@ export async function createPigKing(
         raycaster.setFromCamera(pointer, camera);
         standee.updateWorldMatrix(true, true);
         if (raycaster.intersectObject(standee, true).length === 0) return;
-
+        event.preventDefault();
         animation.playOnce('unimpressed', () => animation.start('idle'));
       };
 

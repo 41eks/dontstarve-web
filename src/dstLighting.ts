@@ -183,7 +183,7 @@ export class DstLightingRenderer {
   private readonly ambientStart = new THREE.Vector3();
   private readonly ambientCurrent = new THREE.Vector3();
   private readonly ambientTarget = new THREE.Vector3();
-  private season: DstSeason = 'autumn';
+  private season: DstSeason = 'spring';
   private phase: DstLightPhase = 'day';
   private weatherLight = 1;
   private ambientBlendRemaining = 0;

@@ -42,7 +42,6 @@ export class DstStatusHudElement extends AssetElement {
             <div class="world-clock__moon" aria-hidden="true"><i></i></div>
             <div class="world-clock__link" aria-hidden="true"><i></i><i></i></div>
             <div class="world-clock__dial" aria-hidden="true">
-              <img class="world-clock__hand" src="${this.asset('status/clock_hand.tex.png')}" alt="" />
               <span class="world-clock__copy"><b>世界</b><strong>32日</strong></span>
             </div>
           </div>
@@ -63,6 +62,10 @@ export class DstStatusHudElement extends AssetElement {
       'world-clock__rim',
       'images/hud.xml',
       'clock_rim.tex',
+    ), this.atlasImage(
+      'world-clock__hand',
+      'images/hud.xml',
+      'clock_hand.tex',
     ));
 
     const meterRow = root.querySelector<HTMLElement>('.survival-hud__meters')!;

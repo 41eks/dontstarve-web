@@ -58,6 +58,7 @@ export class WallPlacement<BuildId extends string> {
     private readonly pointer: PointerRaycaster;
     private active?: WallInstance<BuildId>;
     private loading?: Promise<void>;
+    private previewVersion = 0;
     private readonly placed: WallInstance<BuildId>[] = [];
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
     private readonly cameraDirection = new THREE.Vector3();
@@ -83,9 +84,10 @@ export class WallPlacement<BuildId extends string> {
         if (this.loading) return this.loading;
 
         this.cursor.show(`build ${this.definitions[buildId].buildLabel}`);
-        const request = this.createPreview(buildId)
+        const previewVersion = ++this.previewVersion;
+        const request = this.createPreview(buildId, previewVersion)
             .catch((error: unknown) => {
-                this.cursor.hide();
+                if (previewVersion === this.previewVersion) this.cursor.hide();
                 throw error;
             })
             .finally(() => {
@@ -149,8 +151,9 @@ export class WallPlacement<BuildId extends string> {
     }
 
     cancel() {
-        if (!this.active) return;
-        this.scene.remove(this.active.model);
+        this.previewVersion += 1;
+        this.loading = undefined;
+        if (this.active) this.scene.remove(this.active.model);
         this.active = undefined;
         this.cursor.hide();
     }
@@ -166,7 +169,13 @@ export class WallPlacement<BuildId extends string> {
     }
 
     private readonly handlePointerDown = (event: PointerEvent) => {
-        if (event.button !== 0 || !this.active) return;
+        if (event.button === 2) {
+            this.cancel();
+            return;
+        }
+        if (event.button !== 0 || event.defaultPrevented) return;
+        if (this.loading || this.active) event.preventDefault();
+        if (!this.active) return;
         this.pointer.trackPointer(event);
         this.cursor.update();
         if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
@@ -179,8 +188,12 @@ export class WallPlacement<BuildId extends string> {
         this.cursor.hide();
     };
 
-    private async createPreview(buildId: BuildId) {
+    private async createPreview(buildId: BuildId, previewVersion: number) {
         const instance = await this.createInstance(buildId);
+        if (previewVersion !== this.previewVersion) {
+            this.scene.remove(instance.model);
+            return;
+        }
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;

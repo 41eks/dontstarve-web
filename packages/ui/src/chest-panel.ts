@@ -12,6 +12,9 @@ export interface OpenChestOptions {
   containerId: string;
   slotCount: number;
   title?: string;
+  panelArchive?: string;
+  columns?: number;
+  singleItems?: boolean;
 }
 
 export interface ChestCloseDetail {
@@ -21,6 +24,8 @@ export interface ChestCloseDetail {
 export class DstChestPanelElement extends AssetElement {
   private container?: SlotContainer;
   private panelTitle = '箱子';
+  private panelArchive = 'ui_chest_3x3.zip';
+  private columns = 3;
   private readonly renderers: SlotRenderer[] = [];
   private readonly selectedSlot = createSignal<SlotAddress | null>(null);
   private background?: AnimatedBackground;
@@ -80,10 +85,12 @@ export class DstChestPanelElement extends AssetElement {
     this.closing = false;
     this.container = createSlotContainer({
       id: options.containerId,
-      kind: this.containerKind,
+      kind: options.singleItems ? 'cookpot' : this.containerKind,
       slotKeys: Array.from({ length: options.slotCount }, (_, index) => String(index)),
     });
     this.panelTitle = options.title ?? '箱子';
+    this.panelArchive = options.panelArchive ?? 'ui_chest_3x3.zip';
+    this.columns = options.columns ?? 3;
     this.selectedSlot.set(null);
     if (this.isConnected) this.render();
   }
@@ -144,10 +151,11 @@ export class DstChestPanelElement extends AssetElement {
       </section>
     `;
     const panel = root.querySelector<HTMLElement>('.chest-panel')!;
+    panel.style.setProperty('--storage-columns', String(this.columns));
     if (this.containerKind === 'chest' && (this.container || this.closing)) {
       this.background = new AnimatedBackground(
         root.querySelector<HTMLCanvasElement>('.chest-panel__background')!,
-        this.dataAsset('anim/ui_chest_3x3.zip'),
+        this.dataAsset(`anim/${this.panelArchive}`),
         ({ width, height, originX, originY }) => {
           panel.style.setProperty('--chest-art-width', String(width / 64));
           panel.style.setProperty('--chest-art-height', String(height / 64));

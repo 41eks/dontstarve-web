@@ -3,6 +3,8 @@ import {
     createAnimatedSprite,
     type SpriteAnimationController,
 } from '@three-roaming/animation/sprite';
+import type { PrefabSkinInitializer } from '@three-roaming/animation/prefabskin';
+import type { BuildingContainerDefinition } from './containers';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import type { WorldContext } from './worldContext';
@@ -12,16 +14,34 @@ export interface AnimatedBuildingDefinition {
     archive: string;
     buildLabel: string;
     idleAnimation?: string;
+    previewAnimation?: string;
     interaction?: AnimatedBuildingToggleInteraction;
     name: string;
-    /** Enable player proximity animations and interaction range checks. */
+    container?: BuildingContainerDefinition;
+    /** Runs only after successful placement; call onComplete when built effects finish. */
+    onbuilt?: (context: AnimatedBuildingBuiltContext) => void;
+    /** Runs when the player enters the building's proximity range. */
+    onturnon?: (context: AnimatedBuildingEventContext) => void;
+    /** Runs when the player leaves the building's proximity range. */
+    onturnoff?: (context: AnimatedBuildingEventContext) => void;
+    /** Enable player proximity events and interaction range checks. */
     onProximity: boolean;
-    proximityAnimation?: string;
     scale: number;
     skinArchives?: Readonly<Record<string, string>>;
+    skinInit?: PrefabSkinInitializer;
     skinSymbols?: readonly string[];
     baseSymbols?: readonly string[];
     skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
+}
+
+export interface AnimatedBuildingEventContext {
+    model: THREE.Group;
+    animation: SpriteAnimationController;
+    skinId?: string;
+}
+
+export interface AnimatedBuildingBuiltContext extends AnimatedBuildingEventContext {
+    onComplete: () => void;
 }
 
 /** Animations used by buildings that toggle between closed and open on click. */
@@ -68,6 +88,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly pointer: PointerRaycaster;
     private active?: AnimatedBuildingInstance<BuildId>;
     private loading?: Promise<void>;
+    private previewVersion = 0;
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
 
@@ -94,9 +115,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (this.loading) return this.loading;
 
         this.cursor.show(`build ${this.definitions[buildId].buildLabel}`);
-        const request = this.createPreview(buildId, skinId)
+        const previewVersion = ++this.previewVersion;
+        const request = this.createPreview(buildId, previewVersion, skinId)
             .catch((error: unknown) => {
-                this.cursor.hide();
+                if (previewVersion === this.previewVersion) this.cursor.hide();
                 throw error;
             })
             .finally(() => {
@@ -170,8 +192,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     cancel() {
-        if (!this.active) return;
-        this.scene.remove(this.active.model);
+        // Cancel only the placer, including pending asset loads. The buffered build stays in inventory.
+        this.previewVersion += 1;
+        this.loading = undefined;
+        if (this.active) this.scene.remove(this.active.model);
         this.active = undefined;
         this.cursor.hide();
     }
@@ -189,8 +213,18 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private readonly handlePointerDown = (event: PointerEvent) => {
+        if (event.button === 2) {
+            this.cancel();
+            return;
+        }
         if (event.button !== 0) return;
+        if (event.defaultPrevented) return;
+        if (this.loading) {
+            event.preventDefault();
+            return;
+        }
         if (this.active) {
+            event.preventDefault();
             this.placeActiveBuilding(event);
             return;
         }
@@ -204,16 +238,19 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
 
         const placedBuilding = this.active;
-        placedBuilding.isPlacing = true;
+        const onbuilt = this.definitions[placedBuilding.buildId].onbuilt;
+        placedBuilding.isPlacing = onbuilt !== undefined;
         this.setOpacity(placedBuilding.model, 1);
         placedBuilding.model.visible = true;
-        placedBuilding.animation.playOnce('place', () => {
-            placedBuilding.animation.start(this.idleAnimation(placedBuilding.buildId));
-            placedBuilding.isPlacing = false;
-        });
         this.placed.push(placedBuilding);
         this.active = undefined;
         this.cursor.hide();
+        onbuilt?.({
+            model: placedBuilding.model,
+            animation: placedBuilding.animation,
+            skinId: placedBuilding.skinId,
+            onComplete: () => { placedBuilding.isPlacing = false; },
+        });
     }
 
     private interactWithPlacedBuilding(event: PointerEvent) {
@@ -233,7 +270,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (!object) return;
 
         const building = byModel.get(object);
-        if (building) this.toggleInteraction(building);
+        if (building) {
+            event.preventDefault();
+            this.toggleInteraction(building);
+        }
     }
 
     private toggleInteraction(building: AnimatedBuildingInstance<BuildId>) {
@@ -287,8 +327,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
     }
 
-    private async createPreview(buildId: BuildId, skinId?: string) {
-        const instance = await this.createInstance(buildId, skinId);
+    private async createPreview(buildId: BuildId, previewVersion: number, skinId?: string) {
+        const instance = await this.createInstance(buildId, skinId, true, undefined, true);
+        if (previewVersion !== this.previewVersion) {
+            this.scene.remove(instance.model);
+            return;
+        }
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;
@@ -301,20 +345,23 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         skinId?: string,
         attach = true,
         state?: 'idle' | 'closed' | 'open',
+        preview = false,
     ): Promise<AnimatedBuildingInstance<BuildId>> {
         const definition = this.definitions[buildId];
         const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
         if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
+        const skin = skinId === undefined ? undefined : definition.skinInit?.(skinId);
         const model = await createAnimatedSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
-            definition.archive,
+            skin?.archive ?? definition.archive,
             {
-                initialAnimation: state === 'open' && definition.interaction
+                initialAnimation: preview && definition.previewAnimation ? definition.previewAnimation
+                    : state === 'open' && definition.interaction
                     ? definition.interaction.openAnimation : this.idleAnimation(buildId),
                 initialFrame: state === 'open' && !definition.interaction?.openAnimationLoop ? 'last' : 'first',
                 name: definition.name,
                 scale: definition.scale,
-                skinArchive,
+                skinArchive: skin?.skinArchive ?? skinArchive,
                 skinSymbols: definition.skinSymbols,
                 baseSymbols: definition.baseSymbols,
                 skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
@@ -371,13 +418,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
         building.isPlayerNearby = isPlayerNearby;
         if (!isPlayerNearby) this.closeInteraction(building);
-        if (definition.proximityAnimation) {
-            building.animation.start(
-                isPlayerNearby
-                    ? definition.proximityAnimation
-                    : this.idleAnimation(building.buildId),
-            );
-        }
+        const onProximityChange = isPlayerNearby ? definition.onturnon : definition.onturnoff;
+        onProximityChange?.({
+            model: building.model,
+            animation: building.animation,
+            skinId: building.skinId,
+        });
     }
 
     private idleAnimation(buildId: BuildId) {

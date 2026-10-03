@@ -208,7 +208,7 @@ inst.Light:SetIntensity(intensity)
 - 从 `public/dst/data/images/colour_cubes/` 加载原始季节 LUT。
 - 在 shader 中对横向展开的 32×32×32 Colour Cube 做三线性采样。
 - 支持四季、白天、黄昏、夜晚、满月以及降水亮度。
-- 默认状态为秋季晴朗白天。
+- 默认状态为春季晴朗白天，使用 `(255, 244, 213)` 环境色和 `spring_day_cc.tex` 调色 LUT。
 
 由于项目中的 DST 动画精灵多数使用不接受 Three.js 灯光的 `MeshBasicMaterial`，仅添加 `THREE.AmbientLight` 无法让角色和树木获得环境乘色。因此当前实现先把场景渲染到离屏纹理，再统一执行环境乘色和 Colour Cube 调色。这也更接近 DST“全局环境颜色 + 全屏后处理”的结构。
 

@@ -178,9 +178,7 @@ export class InventoryStore {
     const summary: Record<string, number> = Object.fromEntries(
       [...this.itemSpecs.keys()].map((itemId) => [itemId, 0]),
     );
-    for (const { address, slot } of this.registrations) {
-      if ((slot instanceof StorageSlot || slot instanceof PreparedFoodSlot)
-        && !this.accessibleStorageContainerIds.has(address.containerId)) continue;
+    for (const { slot } of this.accessibleMaterialSlots()) {
       const stack = slot.get();
       if (stack) summary[stack.itemId] = (summary[stack.itemId] ?? 0) + stack.count;
     }
@@ -276,11 +274,14 @@ export class InventoryStore {
 
   craft(recipe: InventoryRecipeDefinition, skinId?: string): boolean {
     if (recipe.buffered && this.isBuffered(recipe.recipeId)) return false;
-    const slots = this.inventorySlots();
+    const inventorySlots = this.inventorySlots();
+    const ingredientSlots = this.accessibleMaterialSlots().filter(({ slot }) => !(slot instanceof InventorySlot));
+    const slots = [...inventorySlots, ...ingredientSlots];
     const current = slots.map(({ slot }) => slot.get());
     const next = craftInventoryItems(
       skinId === undefined ? recipe : { ...recipe, productSkinId: skinId },
-      slots.map(({ slot }) => slot),
+      inventorySlots.map(({ slot }) => slot),
+      ingredientSlots.map(({ slot }) => slot),
     );
     if (!next) return false;
 
@@ -340,6 +341,13 @@ export class InventoryStore {
     }
     this.notify([...changed.values()]);
     return true;
+  }
+
+  private accessibleMaterialSlots(): readonly RegisteredItemSlot[] {
+    return this.registrations.filter(({ address, slot }) => (
+      !(slot instanceof StorageSlot || slot instanceof PreparedFoodSlot)
+      || this.accessibleStorageContainerIds.has(address.containerId)
+    ));
   }
 
   private inventorySlots(): readonly RegisteredInventorySlot[] {

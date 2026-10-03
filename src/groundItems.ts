@@ -97,7 +97,7 @@ export class GroundItemManager {
   }
 
   private readonly handlePointerDown = (event: PointerEvent) => {
-    if (event.button !== 0 || this.items.size === 0) return;
+    if (event.button !== 0 || event.defaultPrevented || this.items.size === 0) return;
 
     const bounds = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
@@ -106,6 +106,7 @@ export class GroundItemManager {
 
     const hit = this.raycaster.intersectObjects([...this.items.keys()], false)[0];
     if (!hit) return;
+    event.preventDefault();
     const sprite = hit.object as THREE.Sprite;
     const record = this.items.get(sprite);
     if (!record || !this.onPickup(record.definition)) return;

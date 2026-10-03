@@ -132,7 +132,15 @@
 }
 
 .world-clock__hand {
+  width: 100%;
+  height: 100%;
   transform: translate(-50%, -50%) rotate(176deg);
+  animation: world-clock-hand-turn 480s linear infinite;
+}
+
+@keyframes world-clock-hand-turn {
+  from { transform: translate(-50%, -50%) rotate(176deg); }
+  to { transform: translate(-50%, -50%) rotate(536deg); }
 }
 
 .season-clock__hand {

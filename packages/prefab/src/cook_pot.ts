@@ -1,6 +1,7 @@
 import definitions from './definitions.json' with { type: 'json' };
 import {
     AnimatedBuildingPlacement,
+    type AnimatedBuildingBuiltContext,
     type AnimatedBuildingDefinition,
     type AnimatedBuildingInteractionChange,
 } from './animatedBuildingPlacement';
@@ -13,8 +14,17 @@ export type CookPotId = typeof COOK_POT_ID;
 export const COOK_POT_SKIN_ARCHIVES: Readonly<Record<string, string>> =
     definitions.animatedBuildings.cookpot.skinArchives;
 
-export const COOK_POT_DEFINITION: AnimatedBuildingDefinition =
-    definitions.animatedBuildings.cookpot;
+function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
+    animation.playOnce('place', () => {
+        animation.start('idle_empty');
+        onComplete();
+    });
+}
+
+export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
+    ...definitions.animatedBuildings.cookpot,
+    onbuilt,
+};
 
 const COOK_POT_DEFINITIONS: Readonly<Record<CookPotId, AnimatedBuildingDefinition>> = {
     [COOK_POT_ID]: COOK_POT_DEFINITION,

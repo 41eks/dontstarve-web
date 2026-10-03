@@ -3,8 +3,40 @@ import { categories } from '../src/categories';
 import { INVENTORY_PRODUCT_SPECS, INVENTORY_RECIPES } from '../src/categories/shared';
 import { createEffect, createSignal, onCleanUp } from '../src/signal';
 import { createSlotContainer } from '../src/slot/slot-container';
+import type { DstChestPanelElement } from '../src/chest-panel';
 
 const fixtureUrl = '/tests/fixture.html';
+
+for (const storage of [
+  { prefab: 'dragonflychest', slotCount: 12, columns: 3, panelArchive: 'ui_chester_shadow_3x4.zip', singleItems: false },
+  { prefab: 'mushroom_light', slotCount: 4, columns: 1, panelArchive: 'ui_lamp_1x4.zip', singleItems: true },
+]) {
+  test(`renders ${storage.prefab} with its original panel, capacity and inventory-sized slots`, async ({ page }) => {
+    await openFixture(page);
+    await page.evaluate((storage) => {
+      const panel = document.querySelector('dst-chest-panel') as DstChestPanelElement;
+      panel.open({ ...storage, containerId: `world:${storage.prefab}:test`, title: storage.prefab });
+      panel.setAnchor(700, 650);
+      if (storage.singleItems && !panel.slotContainer!.slots.every((slot) => slot.maxStack() === 1)) {
+        throw new Error('Light slots must accept one item');
+      }
+    }, storage);
+    const panel = page.locator('dst-chest-panel');
+    const background = panel.locator('.chest-panel__background');
+    await expect(background).toHaveAttribute('data-archive', new RegExp(`${storage.panelArchive}$`));
+    await expect(background).toHaveAttribute('data-loaded', 'true');
+    const slots = panel.locator('.inventory-slot');
+    await expect(slots).toHaveCount(storage.slotCount);
+    await expect(slots.first()).toBeVisible();
+    const first = (await slots.first().boundingBox())!;
+    const nextRow = (await slots.nth(storage.columns).boundingBox())!;
+    const inventory = (await page.locator('dst-inventory-bar .inventory-slot').first().boundingBox())!;
+    expect(first.width).toBeCloseTo(inventory.width, 1);
+    expect(first.height).toBeCloseTo(inventory.height, 1);
+    expect(nextRow.x).toBeCloseTo(first.x, 1);
+    expect(nextRow.y).toBeGreaterThan(first.y);
+  });
+}
 
 test('shows four prepared food slots to the right and transfers one item from a stack', async ({ page }) => {
   await openFixture(page);
@@ -648,6 +680,42 @@ test('opens the global chest panel and shares drag targets with the inventory ba
     (document.querySelector('dst-chest-panel') as HTMLElement & { close(): void }).close();
   });
   await expect(chest.locator('.chest-panel')).toBeHidden();
+});
+
+test('mounts independent ice box storage with nine inventory-sized slots', async ({ page }) => {
+  await openFixture(page);
+  await page.evaluate(() => {
+    const panel = document.querySelector('dst-ice-box-panel') as HTMLElement & {
+      open(options: { containerId: string; slotCount: number; title: string }): void;
+      setAnchor(x: number, y: number): void;
+      setSlot(address: unknown, item: unknown): void;
+    };
+    panel.open({ containerId: 'world:icebox:fridge', slotCount: 9, title: '冰箱' });
+    panel.setAnchor(500, 400);
+    panel.setSlot({ containerId: 'world:icebox:fridge', slotKey: '8' }, {
+      id: 'meatballs', name: '肉丸', count: 3, maxStack: 40, icon: 'meatballs.tex',
+    });
+    window.addEventListener('game:chest-close', (event) => {
+      (window as typeof window & { iceBoxClosed?: string }).iceBoxClosed =
+        (event as CustomEvent<{ containerId: string }>).detail.containerId;
+    });
+  });
+  const panel = page.locator('dst-ice-box-panel');
+  await expect(panel.locator('.chest-panel')).toBeVisible();
+  await expect(panel.locator('h2')).toHaveText('冰箱');
+  await expect(panel.locator('.inventory-slot')).toHaveCount(9);
+  await expect(panel.locator('.inventory-slot').nth(8)).toHaveAttribute('data-item-id', 'meatballs');
+  const storage = await panel.locator('.inventory-slot').first().boundingBox();
+  const inventory = await page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot').first().boundingBox();
+  expect(storage!.width).toBeCloseTo(inventory!.width, 1);
+  expect(storage!.height).toBeCloseTo(inventory!.height, 1);
+  await page.evaluate(() => {
+    (document.querySelector('dst-ice-box-panel') as HTMLElement & { close(): void }).close();
+  });
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { iceBoxClosed?: string }).iceBoxClosed,
+  )).toBe('world:icebox:fridge');
+  await expect(panel.locator('.chest-panel')).toBeHidden();
 });
 
 test('updates the crafting selection and collapsed state', async ({ page }) => {

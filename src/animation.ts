@@ -69,34 +69,40 @@ export default class ModelAnimation {
     }
 }
 
-import type { Key } from "./InputManager";
 import * as THREE from 'three';
 import { playerBody } from "./player";
 import type { WilsonAnimationController, WilsonFacing } from '@three-roaming/prefab/player';
 import { JUMP_VELOCITY } from './updatePlayerMovement';
-export function createAnimationUpdater(model: THREE.Group) {
+export function createAnimationUpdater(model: THREE.Group, camera: THREE.Camera) {
 
     const wilsonAnimation = model.userData.animationController as WilsonAnimationController | undefined;
 
     if (wilsonAnimation) {
         let lastFacing: WilsonFacing = 'down';
         let lastMirrored = false;
+        const direction = new THREE.Vector3();
+        const forward = new THREE.Vector3();
+        const right = new THREE.Vector3();
+        const up = new THREE.Vector3(0, 1, 0);
 
         return function listener(dt: number) {
-            const forward = input.isPressed('KeyW');
-            const backward = input.isPressed('KeyS');
-            const left = input.isPressed('KeyA');
-            const right = input.isPressed('KeyD');
-            const isMoving = forward || backward || left || right;
+            direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
+            const isMoving = direction.lengthSq() > 0.0001;
             const isJumping = input.isPressed('Space') || !playerBody.canJump;
 
             if (isMoving) {
-                if (forward !== backward) {
-                    lastFacing = forward ? 'up' : 'down';
+                camera.getWorldDirection(forward);
+                forward.y = 0;
+                forward.normalize();
+                right.crossVectors(forward, up).normalize();
+                const forwardAmount = direction.dot(forward);
+                const rightAmount = direction.dot(right);
+                if (Math.abs(forwardAmount) >= Math.abs(rightAmount)) {
+                    lastFacing = forwardAmount > 0 ? 'up' : 'down';
                     lastMirrored = false;
-                } else if (left !== right) {
+                } else {
                     lastFacing = 'side';
-                    lastMirrored = left;
+                    lastMirrored = rightAmount < 0;
                 }
                 wilsonAnimation.setFacing(lastFacing, lastMirrored);
             }
@@ -114,7 +120,7 @@ export function createAnimationUpdater(model: THREE.Group) {
     const modelAnimathion = new ModelAnimation(model);
     modelAnimathion.start('idle');
     function updateAnimation() {
-        const isMoving = (['KeyW', 'KeyA', 'KeyS', 'KeyD'] as Key[]).some((code: Key) => input.isPressed(code));
+        const isMoving = Math.hypot(playerBody.velocity.x, playerBody.velocity.z) > 0.01;
         const isShift = input.isPressed('ShiftLeft');
         const isJumping = input.isPressed('Space') || !playerBody.canJump;
 

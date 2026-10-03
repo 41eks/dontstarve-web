@@ -29,6 +29,7 @@ import { SAVE_CATALOG } from './save/catalog';
 import type { ProximityEntity } from '@three-roaming/prefab/proximityEntities';
 import type { RuntimeSaveState } from './save/serialize';
 import type { SavedEntity } from './save/types';
+import { Locomotor, findGroundPath, setupLocomotorInput } from '@three-roaming/prefab/locomotor';
 
 export const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
@@ -52,10 +53,31 @@ pigKings.forEach((pigKing) => scene.add(pigKing.setPiece.group));
 scene.add(...boxes);
 
 // const updatePigInteraction = setupPigInteraction(camera, renderer, pig, player);
-setupPigKingInteraction(view);
-
-const updatePlayerMovement = updateMovement(camera, player, playerBody);
-const updateAnimation = createAnimationUpdater(player);
+const playerRadius = (playerBody.shapes[0] as CANNON.Sphere).radius;
+export const locomotor = new Locomotor(playerBody, {
+  findPath(start, target) {
+    const mapEdge = initialSave.world.map.generator.options.size / 2 - playerRadius;
+    const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC
+      && body.collisionResponse
+      && (body.collisionFilterMask & playerBody.collisionFilterGroup) !== 0
+      && body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere))
+      .map((body) => {
+        body.updateAABB();
+        return {
+          minX: body.aabb.lowerBound.x - playerRadius, maxX: body.aabb.upperBound.x + playerRadius,
+          minZ: body.aabb.lowerBound.z - playerRadius, maxZ: body.aabb.upperBound.z + playerRadius,
+        };
+      });
+    return findGroundPath(start, target, {
+      cellSize: Math.max(1, playerRadius / 2),
+      isWalkable: (point) => Math.abs(point.x) <= mapEdge && Math.abs(point.z) <= mapEdge
+        && !obstacles.some((box) => point.x >= box.minX && point.x <= box.maxX
+          && point.z >= box.minZ && point.z <= box.maxZ),
+    });
+  },
+});
+const updatePlayerMovement = updateMovement(camera, player, playerBody, locomotor);
+const updateAnimation = createAnimationUpdater(player, camera);
 const cameraWorldQuaternion = new THREE.Quaternion();
 const playerFootPosition = new THREE.Vector3();
 const cameraSpaceFootPosition = new THREE.Vector3();
@@ -148,6 +170,7 @@ export async function startScene(
     `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`,
     pickupGroundItem,
   );
+  setupPigKingInteraction(view);
   const byEntityId = new Map<string, THREE.Object3D | ProximityEntity>();
   for (const entity of moonTreeForest.entities) byEntityId.set(entity.saveId!, entity);
   for (const pigKing of pigKings) byEntityId.set(pigKing.record.id, pigKing.standee);
@@ -197,6 +220,7 @@ export async function startScene(
       playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },
     };
   };
+  setupLocomotorInput(view, locomotor);
   animate(world, camera);
   return { buildingPlacement, groundItems, byEntityId, getSaveState };
 }

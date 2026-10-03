@@ -7,15 +7,15 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000002",
-    "parentId": "0000000001",
-    "savedAt": "2026-09-30T14:48:34.141Z",
+    "id": "0000000003",
+    "parentId": "0000000002",
+    "savedAt": "2026-10-02T14:31:47.573Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 340.82549999998525,
+    "elapsedSeconds": 2041.9731999992398,
     "systems": {},
     "map": {
       "kind": "generated",
@@ -6065,10 +6065,60 @@
               "slotCount": 9,
               "slots": [
                 {
+                  "slotKey": "3",
+                  "item": {
+                    "itemId": "goldnugget",
+                    "count": 40
+                  }
+                },
+                {
+                  "slotKey": "4",
+                  "item": {
+                    "itemId": "rocks",
+                    "count": 40
+                  }
+                },
+                {
+                  "slotKey": "6",
+                  "item": {
+                    "itemId": "gears",
+                    "count": 10
+                  }
+                },
+                {
                   "slotKey": "7",
                   "item": {
                     "itemId": "charcoal",
                     "count": 8
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "e_b1b9f84f58c5a2f1f2c6287d6cc28024",
+          "transform": {
+            "position": [
+              -2.3863652093126895,
+              0,
+              -14.872265569828048
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed",
+              "skinId": "treasurechest_poshprint"
+            },
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "5",
+                  "item": {
+                    "itemId": "pigskin",
+                    "count": 10
                   }
                 }
               ]
@@ -6089,7 +6139,11 @@
           },
           "components": {
             "building": {
-              "state": "idle"
+              "state": "closed"
+            },
+            "container": {
+              "slotCount": 4,
+              "slots": []
             }
           }
         },
@@ -6105,8 +6159,12 @@
           },
           "components": {
             "building": {
-              "state": "idle",
+              "state": "closed",
               "skinId": "cookpot_survival"
+            },
+            "container": {
+              "slotCount": 4,
+              "slots": []
             }
           }
         }
@@ -6119,9 +6177,9 @@
       "shardId": "master",
       "transform": {
         "position": [
-          -16.491944283443743,
+          -13.624021632905155,
           0,
-          -9.756380195061508
+          5.332743591752066
         ],
         "rotationY": 0
       },
@@ -6134,7 +6192,7 @@
                 "slotKey": "0",
                 "item": {
                   "itemId": "cutgrass",
-                  "count": 3
+                  "count": 1
                 }
               },
               {
@@ -6154,7 +6212,7 @@
               {
                 "slotKey": "3",
                 "item": {
-                  "itemId": "goldnugget",
+                  "itemId": "cutstone",
                   "count": 1
                 }
               },
@@ -6162,14 +6220,14 @@
                 "slotKey": "4",
                 "item": {
                   "itemId": "log",
-                  "count": 20
+                  "count": 8
                 }
               },
               {
                 "slotKey": "5",
                 "item": {
-                  "itemId": "rocks",
-                  "count": 6
+                  "itemId": "goldnugget",
+                  "count": 1
                 }
               },
               {
@@ -6177,6 +6235,20 @@
                 "item": {
                   "itemId": "wall_stone_item",
                   "count": 14
+                }
+              },
+              {
+                "slotKey": "7",
+                "item": {
+                  "itemId": "rope",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "8",
+                "item": {
+                  "itemId": "rocks",
+                  "count": 3
                 }
               }
             ]

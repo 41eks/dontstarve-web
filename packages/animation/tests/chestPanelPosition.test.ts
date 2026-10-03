@@ -26,7 +26,7 @@ beforeEach(() => {
   camera.updateMatrixWorld();
 });
 
-it('anchors the chest panel above the moving player and keeps it visible through closing', () => {
+it.each(['treasurechest', 'icebox', 'dragonflychest', 'saltbox'] as const)('anchors the %s panel above the moving player and keeps it visible through closing', (prefab) => {
   const element = Object.assign(new EventTarget(), {
     hidden: true, isClosing: false, slotContainer: undefined as { id: string } | undefined,
     setAnchor: vi.fn(),
@@ -34,10 +34,10 @@ it('anchors the chest panel above the moving player and keeps it visible through
     close() {
       this.slotContainer = undefined;
       this.isClosing = true;
-      this.dispatchEvent(new Event('game:chest-close'));
+      (this as unknown as EventTarget).dispatchEvent(new Event('game:chest-close'));
     },
   });
-  const controller = createChestInventoryPanel(element as unknown as DstChestPanelElement);
+  const controller = createChestInventoryPanel(element as unknown as DstChestPanelElement, prefab);
   const chest = new THREE.Group();
   chest.position.set(10, 0, 0);
   chest.userData.entityId = 'chest';

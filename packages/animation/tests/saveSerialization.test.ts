@@ -5,10 +5,11 @@ import { INVENTORY_ITEM_DISPLAY_SPECS } from '../../ui/src/inventory-items';
 import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS, INVENTORY_SKIN_SPECS } from '../../ui/src/categories/shared';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
-import { chestContainerId, cookPotContainerId, inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { chestContainerId, cookPotContainerId, iceBoxContainerId, inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { serializeSave, type RuntimeSaveState } from '../../../src/save/serialize';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import type { InventoryStore } from '../../../src/inventory';
+import { buildingContainerId, buildingContainerDefinition } from '../../prefab/src/containers';
 
 const catalog: SaveCatalog = {
   items: Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
@@ -25,15 +26,74 @@ function fixture() {
   for (const chest of template.world.entities.treasurechest ?? []) {
     chest.components.container = { slotCount: 9, slots: [] };
   }
-  const state: RuntimeSaveState = {
+  const inventory = inventoryStateFromSave(template);
+  const state = {
     entities: structuredClone(template.world.entities),
     playerTransform: { position: [30, 0, 42], rotationY: 0 },
-    inventory: inventoryStateFromSave(template), elapsedSeconds: 123.5,
-  };
+    inventory: { ...inventory, slots: [...inventory.slots] }, elapsedSeconds: 123.5,
+  } satisfies RuntimeSaveState;
   return { template, state };
 }
 
 describe('manual JSON save', () => {
+  it.each(['dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2'] as const)(
+    'round trips %s skins and the last container slot', (prefab) => {
+      const { template, state } = fixture();
+      const definition = buildingContainerDefinition(prefab);
+      const skinId = Object.keys(definitions.animatedBuildings[prefab].skinArchives)[0];
+      state.entities[prefab] = [{
+        id: `e_${prefab}`, transform: { position: [10, 0, 10], rotationY: 0 },
+        components: { building: { state: 'open', skinId } },
+      }];
+      const stored = {
+        address: { containerId: buildingContainerId(prefab, `e_${prefab}`), slotKey: String(definition.slotCount - 1) },
+        item: { itemId: prefab.startsWith('mushroom_light') ? 'lightbulb' : 'berries', count: definition.singleItems ? 1 : 3 },
+      };
+      state.inventory.slots.push(stored);
+      const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+      expect(saved.world.entities[prefab][0].components).toEqual({
+        building: { state: 'closed', skinId },
+        container: { slotCount: definition.slotCount, slots: [{ slotKey: stored.address.slotKey, item: stored.item }] },
+      });
+      expect(state.entities[prefab][0].components.building?.state).toBe('open');
+      expect(inventoryStateFromSave(saved).slots).toContainEqual(stored);
+      const slot = saved.world.entities[prefab][0].components.container!.slots[0];
+      slot.slotKey = String(definition.slotCount);
+      expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('invalid or duplicate slot');
+      slot.slotKey = stored.address.slotKey;
+      if (definition.singleItems) {
+        slot.item.count = 2;
+        expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('expected at most 1');
+      }
+    },
+  );
+  it('round trips fire pit skins and ice box contents without changing live open states', () => {
+    const { template, state } = fixture();
+    state.entities.firepit = [{
+      id: 'e_firepit', transform: { position: [10, 0, 10], rotationY: 0 },
+      components: { building: { state: 'idle', skinId: 'firepit_fangedp' } },
+    }];
+    state.entities.icebox = [{
+      id: 'e_icebox', transform: { position: [20, 0, 20], rotationY: 0 },
+      components: { building: { state: 'open', skinId: 'icebox_crystal' } },
+    }];
+    const stored = {
+      address: { containerId: iceBoxContainerId('e_icebox'), slotKey: '8' },
+      item: { itemId: 'berries', count: 3 },
+    };
+    state.inventory.slots.push(stored);
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities.firepit).toEqual(state.entities.firepit);
+    expect(saved.world.entities.icebox[0].components).toEqual({
+      building: { state: 'closed', skinId: 'icebox_crystal' },
+      container: { slotCount: 9, slots: [{ slotKey: '8', item: stored.item }] },
+    });
+    expect(inventoryStateFromSave(saved).slots).toContainEqual(stored);
+    expect(state.entities.icebox[0].components.building?.state).toBe('open');
+    saved.world.entities.icebox[0].components.container!.slots[0].slotKey = '9';
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('invalid or duplicate slot');
+  });
+
   it('round trips cook pot slots and rejects stacked ingredients while reading old idle saves', () => {
     const { template, state } = fixture();
     state.entities.cookpot = [{
