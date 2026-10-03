@@ -1,4 +1,5 @@
 import type { Recipe } from './categories';
+import { createEffect } from './signal';
 
 interface RecipeButtonMapperOptions {
   atlasImage: (className: string, atlasPath: string, elementName: string) => HTMLCanvasElement;
@@ -6,6 +7,7 @@ interface RecipeButtonMapperOptions {
   isLocked: (recipe: Recipe) => boolean;
   recipeIcon: (recipe: Recipe) => HTMLElement;
   selectRecipe: (index: number) => void;
+  effects: Array<() => void>;
 }
 
 export function createRecipeButtonMapper({
@@ -14,29 +16,44 @@ export function createRecipeButtonMapper({
   isLocked,
   recipeIcon,
   selectRecipe,
+  effects,
 }: RecipeButtonMapperOptions): (recipe: Recipe, index: number) => HTMLButtonElement {
   return (recipe, index) => {
-    const buffered = isBuffered(recipe);
+    let buffered = false;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'craft-recipe';
-    button.dataset.recipe = recipe.id;
-    button.dataset.buffered = String(buffered);
     button.setAttribute('role', 'option');
-    button.setAttribute('aria-label', buffered ? `${recipe.name}（已制作）` : recipe.name);
+    button.setAttribute('aria-label', recipe.name);
     button.setAttribute('aria-selected', 'false');
     button.append(
       atlasImage(
         'craft-recipe-bg',
         'images/crafting_menu.xml',
-        buffered ? 'slot_bg_buffered.tex' : 'slot_bg.tex',
+        'slot_bg.tex',
       ),
       recipeIcon(recipe),
       atlasImage('craft-recipe-frame', 'images/crafting_menu.xml', 'slot_frame.tex'),
     );
-    if (isLocked(recipe)) {
-      button.append(atlasImage('craft-lock', 'images/crafting_menu.xml', 'slot_fg_lock.tex'));
-    }
+    effects.push(createEffect(() => {
+      const lock = button.querySelector('.craft-lock');
+      if (isLocked(recipe)) {
+        if (!lock) button.append(atlasImage('craft-lock', 'images/crafting_menu.xml', 'slot_fg_lock.tex'));
+      } else {
+        lock?.remove();
+      }
+    }));
+    effects.push(createEffect(() => {
+      const nextBuffered = isBuffered(recipe);
+      if (nextBuffered === buffered) return;
+      buffered = nextBuffered;
+      button.setAttribute('aria-label', buffered ? `${recipe.name}（已制作）` : recipe.name);
+      button.querySelector('.craft-recipe-bg')!.replaceWith(atlasImage(
+        'craft-recipe-bg',
+        'images/crafting_menu.xml',
+        buffered ? 'slot_bg_buffered.tex' : 'slot_bg.tex',
+      ));
+    }));
     button.addEventListener('click', () => selectRecipe(index));
     return button;
   };

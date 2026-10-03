@@ -771,7 +771,7 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await crafting.locator('.craft-quick-toggle').click();
   await expect(panel).not.toHaveClass(/is-collapsed/);
 
-  await expect(crafting.locator('.craft-category')).toHaveCount(25);
+  await expect(crafting.locator('.craft-category')).toHaveCount(categories.length);
   await expect(recipes).toHaveCount(56);
   await expect(recipes.first()).toHaveAttribute('aria-selected', 'true');
   await expect(crafting.locator('.craft-detail h2')).toHaveText('斧头');
@@ -787,7 +787,6 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(lock).toHaveAttribute('data-loaded', 'true');
   await expect(background).toHaveJSProperty('width', 128);
   await expect(background).toHaveJSProperty('height', 128);
-  await expect(recipes.first()).toHaveAttribute('data-recipe', 'axe');
   await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute('data-element', 'axe.tex');
   await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute('data-loaded', 'true');
   await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute('data-element', 'axe.tex');
@@ -796,7 +795,6 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-arrow-right')).toHaveAttribute('aria-label', '下一个皮肤');
   await expect(crafting.locator('.craft-arrow-right')).toBeEnabled();
   await crafting.locator('.craft-arrow-right').click();
-  await expect(crafting.locator('.craft-selected-icon')).toHaveAttribute('data-skin', 'axe_feathered');
   await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute(
     'data-element',
     'axe_feathered.tex',
@@ -813,12 +811,11 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-material-asset[data-loaded="true"]')).toHaveCount(2);
   await expect(crafting.locator('.craft-material-count')).toHaveText(['17/1', '0/1']);
 
-  const fireCategory = crafting.locator('.craft-category[data-category="fire"]');
+  const fireCategory = crafting.locator('.craft-category[aria-label="光源"]');
   await fireCategory.click();
   await expect(fireCategory).toHaveAttribute('aria-pressed', 'true');
   await expect(crafting.locator('.craft-header h1')).toHaveText('光源');
   await expect(recipes).toHaveCount(23);
-  await expect(recipes.first()).toHaveAttribute('data-recipe', 'lighter');
   const torchRecipe = recipes.filter({ has: page.locator('[data-element="torch.tex"]') });
   await torchRecipe.click();
   await expect(crafting.locator('.craft-detail h2')).toHaveText('火炬');
@@ -831,7 +828,6 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-build')).toBeEnabled();
   await expect(torchRecipe.locator('.craft-lock')).toHaveCount(0);
   await crafting.locator('.craft-arrow-right').click();
-  await expect(crafting.locator('.craft-selected-icon')).toHaveAttribute('data-skin', 'torch_barber');
   await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute(
     'data-element',
     'torch_barber.tex',
@@ -895,13 +891,12 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-material-count')).toHaveText(['1/2', '15/2']);
   await expect(crafting.locator('.craft-build')).toBeDisabled();
 
-  const scienceCategory = crafting.locator('.craft-category[data-category="science"]');
+  const scienceCategory = crafting.locator('.craft-category[aria-label="科学"]');
   await scienceCategory.click();
   await expect(scienceCategory).toHaveAttribute('aria-pressed', 'true');
   await expect(crafting.locator('.craft-header h1')).toHaveText('科学');
   await expect(recipes).toHaveCount(22);
   await expect(recipes.first()).toHaveAttribute('aria-selected', 'true');
-  await expect(recipes.first()).toHaveAttribute('data-recipe', 'researchlab');
   await expect(crafting.locator('.craft-detail h2')).toHaveText('科学机器');
   await expect(crafting.locator('.craft-material')).toHaveCount(3);
   await expect(crafting.locator('.craft-build')).toBeDisabled();
@@ -913,7 +908,6 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
     element.setBufferedRecipes(['researchlab']);
   });
   const bufferedResearchLab = recipes.filter({ has: page.locator('[data-element="researchlab.tex"]') });
-  await expect(bufferedResearchLab).toHaveAttribute('data-buffered', 'true');
   await expect(bufferedResearchLab.locator('.craft-recipe-bg')).toHaveAttribute(
     'data-element',
     'slot_bg_buffered.tex',
@@ -929,6 +923,98 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await crafting.locator('.craft-quick-toggle').click();
   await expect(panel).not.toHaveClass(/is-collapsed/);
   await expect(crafting.locator('.craft-quick-toggle')).toHaveAttribute('aria-expanded', 'true');
+});
+
+test('updates only changed recipe locks without rebuilding the crafting menu', async ({ page }) => {
+  await openFixture(page);
+  const crafting = page.locator('dst-crafting-ui');
+  await crafting.locator('.craft-quick-toggle').click();
+  await crafting.locator('.craft-category[aria-label="光源"]').click();
+  const torch = crafting.locator('.craft-recipe').filter({ has: page.locator('[data-element="torch.tex"]') });
+  await torch.click();
+  await crafting.locator('.craft-arrow-right').click();
+  await crafting.locator('.craft-recipe canvas[data-loaded="true"]').first().waitFor();
+
+  // Retain references so a full render or a grid rebuild cannot pass the test.
+  await page.evaluate(() => {
+    const root = document.querySelector('dst-crafting-ui')!.shadowRoot!;
+    const nodes = [...root.querySelectorAll('.craft-panel, .craft-category, .craft-recipe, .craft-recipe-bg, .craft-recipe-frame, .craft-recipe-asset, .craft-material-asset')];
+    (window as typeof window & { originalCraftNodes: Element[] }).originalCraftNodes = nodes;
+  });
+  const changeMaterials = async (twigs: number) => page.evaluate(async (twigs) => {
+    const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
+      setMaterialSummary(summary: Readonly<Record<string, number>>): void;
+    };
+    const grid = element.shadowRoot!.querySelector('.craft-recipes')!;
+    const buttons = [...grid.children];
+    const before = buttons.map((button) => Boolean(button.querySelector('.craft-lock')));
+    const records: MutationRecord[] = [];
+    const observer = new MutationObserver((mutations) => records.push(...mutations));
+    observer.observe(grid, { childList: true, subtree: true });
+    element.setMaterialSummary({ cutgrass: 2, twigs });
+    await Promise.resolve();
+    records.push(...observer.takeRecords());
+    observer.disconnect();
+    const changedIndices = buttons.flatMap((button, index) =>
+      before[index] !== Boolean(button.querySelector('.craft-lock')) ? [index] : [],
+    );
+    return {
+      changedIndices,
+      mutatedIndices: records.map((record) => buttons.indexOf(record.target as Element)),
+      retainedNodes: (window as typeof window & { originalCraftNodes: Element[] }).originalCraftNodes.every((node) => node.isConnected),
+    };
+  }, twigs);
+
+  // Enough -> insufficient -> enough -> still enough: unchanged locks do not mutate.
+  for (const [twigs, locked] of [[1, true], [2, false], [3, false], [1, true]] as const) {
+    const result = await changeMaterials(twigs);
+    expect(result.retainedNodes).toBe(true);
+    expect(result.mutatedIndices.sort()).toEqual(result.changedIndices.sort());
+    if (twigs === 3) expect(result.changedIndices).toEqual([]);
+    await expect(torch.locator('.craft-lock')).toHaveCount(locked ? 1 : 0);
+    await expect(crafting.locator('.craft-build')).toBeEnabled({ enabled: !locked });
+    await expect(crafting.locator('.craft-material-count')).toHaveText(['2/2', `${twigs}/2`]);
+    await expect(crafting.locator('.craft-preview strong')).toHaveText('油脂火炬');
+  }
+
+  // Buffered recipes override both technology locks and material shortages.
+  await page.evaluate(() => {
+    const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
+      setBufferedRecipes(recipeIds: Iterable<string>): void;
+    };
+    element.setBufferedRecipes(['torch']);
+  });
+  await expect(torch.locator('.craft-lock')).toHaveCount(0);
+  await expect(torch).toHaveAttribute('aria-label', '火炬（已制作）');
+  await expect(torch.locator('.craft-recipe-bg')).toHaveAttribute('data-element', 'slot_bg_buffered.tex');
+  await expect(crafting.locator('.craft-build')).toHaveText('放置');
+  await expect(crafting.locator('.craft-build')).toBeEnabled();
+  await page.evaluate(() => {
+    const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
+      setBufferedRecipes(recipeIds: Iterable<string>): void;
+    };
+    element.setBufferedRecipes([]);
+  });
+  await expect(torch.locator('.craft-lock')).toHaveCount(1);
+  await expect(torch.locator('.craft-recipe-bg')).toHaveAttribute('data-element', 'slot_bg.tex');
+  await expect(crafting.locator('.craft-build')).toBeDisabled();
+
+  // Dispose a queued lock effect on removal; reconnect from the latest state.
+  const detachedLockCount = await page.evaluate(async () => {
+    const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
+      setMaterialSummary(summary: Readonly<Record<string, number>>): void;
+    };
+    const oldTorch = element.shadowRoot!.querySelector('[aria-label="火炬"]')!;
+    element.setMaterialSummary({ cutgrass: 2, twigs: 2 });
+    element.remove();
+    await Promise.resolve();
+    const lockCount = oldTorch.querySelectorAll('.craft-lock').length;
+    document.body.append(element);
+    return lockCount;
+  });
+  expect(detachedLockCount).toBe(1);
+  await expect(torch.locator('.craft-lock')).toHaveCount(0);
+  await expect(crafting.locator('.craft-build')).toBeEnabled();
 });
 
 test('emits composed map, pause, and camera events', async ({ page }) => {

@@ -18,7 +18,6 @@ export function createCategoryButtonMapper({
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'craft-category';
-    button.dataset.category = category.id;
     button.title = category.name;
     button.setAttribute('aria-label', category.name);
     button.setAttribute('aria-pressed', String(category.id === activeCategoryId));

@@ -11,6 +11,7 @@ import { createRecipeButtonMapper } from './craft-recipe-button';
 import styles from './styles/crafting-ui.css?inline';
 import { createAtlasImage } from './atlasImage';
 import type { InventoryMaterialSummary } from '@three-roaming/inventory';
+import { createEffect, createSignal } from './signal';
 
 const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
 const imageArchiveUrl = new URL(
@@ -77,8 +78,6 @@ export interface CraftingStateDetail extends CraftRequestDetail {
 
 export const CRAFT_DURATION_MS = 1_000;
 
-import { createSignal } from './signal';
-
 const activeCategoryIdState = createSignal('tool');
 
 export class DstCraftingUiElement extends AssetElement {
@@ -91,6 +90,15 @@ export class DstCraftingUiElement extends AssetElement {
   private craftingRecipeId?: string;
   private craftingSkinId?: string;
   private craftingTimer?: ReturnType<typeof setTimeout>;
+  private readonly recipes = [...new Set(categories.flatMap((category) => category.recipes))];
+  private readonly recipeIndices = new Map(this.recipes.map((recipe, index) => [recipe, index]));
+  private isLockedArray = this.recipes.map((recipe) => this.calculateRecipeLocked(recipe));
+  private readonly recipeLockStates = this.isLockedArray.map((locked) => createSignal(locked));
+  private readonly recipeBufferedStates = this.recipes.map(() => createSignal(false));
+  private readonly recipeButtonEffects: Array<() => void> = [];
+  private readonly controlEffects: Array<() => void> = [];
+  private refreshMaterials?: () => void;
+  private refreshBuildButton?: () => void;
 
   constructor() {
     super();
@@ -106,7 +114,8 @@ export class DstCraftingUiElement extends AssetElement {
       return;
     }
     this.materialSummary = next;
-    if (this.isConnected) this.render();
+    this.updateRecipeLocks();
+    if (this.isConnected) this.refreshMaterials?.();
   }
 
   setBufferedRecipes(recipeIds: Iterable<string>): void {
@@ -116,10 +125,15 @@ export class DstCraftingUiElement extends AssetElement {
       return;
     }
     this.bufferedRecipeIds = next;
-    if (this.isConnected) this.render();
+    this.updateRecipeLocks();
+    this.recipes.forEach((recipe, index) => {
+      const buffered = next.has(recipe.id);
+      if (buffered !== this.recipeBufferedStates[index].get()) this.recipeBufferedStates[index].set(buffered);
+    });
   }
 
   disconnectedCallback(): void {
+    this.disposeEffects();
     if (!this.craftingRecipeId) return;
     if (this.craftingTimer !== undefined) clearTimeout(this.craftingTimer);
     const recipeId = this.craftingRecipeId;
@@ -131,6 +145,7 @@ export class DstCraftingUiElement extends AssetElement {
   }
 
   protected render(): void {
+    this.disposeEffects();
     const root = this.shadowRoot!;
     root.innerHTML = `
       <style>${styles}</style>
@@ -190,6 +205,27 @@ export class DstCraftingUiElement extends AssetElement {
     const buildButton = root.querySelector<HTMLButtonElement>('.craft-build')!;
     let selectedIndex = 0;
     let activeRecipes: readonly Recipe[] = [];
+    const selectedRecipeState = createSignal<Recipe | undefined>(undefined);
+
+    this.refreshMaterials = () => {
+      const recipe = activeRecipes[selectedIndex];
+      recipe?.ingredients.forEach((ingredient, index) => {
+        this.updateIngredient(materials.children[index] as HTMLSpanElement, ingredient);
+      });
+    };
+    this.refreshBuildButton = () => {
+      const recipe = selectedRecipeState.get();
+      if (!recipe) {
+        buildButton.disabled = true;
+        buildButton.textContent = '暂无配方';
+        return;
+      }
+      buildButton.disabled = this.isRecipeLocked(recipe) || Boolean(this.craftingRecipeId);
+      const buffered = this.isRecipeBuffered(recipe);
+      buildButton.textContent = this.craftingRecipeId
+        ? this.craftingRecipeId === recipe.id ? '制作中…' : '请稍候'
+        : buffered ? '放置' : recipe.locked ? '尚未解锁' : '建造';
+    };
 
     const updateSkinSelection = (recipe: Recipe) => {
       const selectedSkinId = this.selectedSkinIds.get(recipe.id);
@@ -198,7 +234,6 @@ export class DstCraftingUiElement extends AssetElement {
         this.selectedSkinIds.delete(recipe.id);
       }
       const skin = skinIndex === 0 ? undefined : recipe.skins[skinIndex - 1];
-      selectedIcon.dataset.skin = skin?.id ?? '';
       selectedIcon.replaceChildren(skin ? skinIcon(recipe, skin) : recipeIcon(recipe));
       selectedName.textContent = skin?.name ?? '默认';
       const hasSkins = recipe.skins.length > 0;
@@ -224,21 +259,20 @@ export class DstCraftingUiElement extends AssetElement {
 
     const updateSelection = (index: number) => {
       if (activeRecipes.length === 0) {
+        selectedRecipeState.set(undefined);
         title.textContent = '暂无配方';
         description.textContent = '';
         selectedIcon.replaceChildren();
-        selectedIcon.dataset.skin = '';
         selectedName.textContent = '';
         previousSkinButton.disabled = true;
         nextSkinButton.disabled = true;
         materials.replaceChildren();
-        buildButton.disabled = true;
-        buildButton.textContent = '暂无配方';
         return;
       }
 
       selectedIndex = (index + activeRecipes.length) % activeRecipes.length;
       const recipe = activeRecipes[selectedIndex];
+      selectedRecipeState.set(recipe);
       this.selectedRecipeId = recipe.id;
       recipeGrid.querySelectorAll('.craft-recipe').forEach((item, itemIndex) => {
         item.setAttribute('aria-selected', String(itemIndex === selectedIndex));
@@ -247,16 +281,16 @@ export class DstCraftingUiElement extends AssetElement {
       description.textContent = recipe.description;
       updateSkinSelection(recipe);
       materials.replaceChildren(...recipe.ingredients.map((ingredient) => this.ingredient(ingredient)));
-      buildButton.disabled = this.isRecipeLocked(recipe);
-      if (this.craftingRecipeId) {
-        buildButton.disabled = true;
-        buildButton.textContent = this.craftingRecipeId === recipe.id ? '制作中…' : '请稍候';
-      } else {
-        buildButton.textContent = this.isRecipeBuffered(recipe)
-          ? '放置'
-          : recipe.locked ? '尚未解锁' : '建造';
-      }
     };
+
+    const mapRecipeToButton = createRecipeButtonMapper({
+      atlasImage,
+      isBuffered: (recipe) => this.isRecipeBuffered(recipe),
+      isLocked: (recipe) => this.isRecipeLocked(recipe),
+      recipeIcon,
+      selectRecipe: updateSelection,
+      effects: this.recipeButtonEffects,
+    });
 
     const renderCategoryRecipes = (category: CategoryConfig) => {
       // this.activeCategoryId = category.id;
@@ -264,16 +298,11 @@ export class DstCraftingUiElement extends AssetElement {
       activeRecipes = category.recipes;
       const preservedIndex = activeRecipes.findIndex(({ id }) => id === this.selectedRecipeId);
       selectedIndex = preservedIndex < 0 ? 0 : preservedIndex;
+      this.recipeButtonEffects.splice(0).forEach((dispose) => dispose());
       recipeGrid.replaceChildren();
       quickbar.replaceChildren();
 
-      recipeGrid.append(...activeRecipes.map(createRecipeButtonMapper({
-        atlasImage,
-        isBuffered: (recipe) => this.isRecipeBuffered(recipe),
-        isLocked: (recipe) => this.isRecipeLocked(recipe),
-        recipeIcon: (recipe) => recipeIcon(recipe),
-        selectRecipe: updateSelection,
-      })));
+      recipeGrid.append(...activeRecipes.map(mapRecipeToButton));
 
       activeRecipes.slice(0, 10).forEach((recipe, index) => {
         const button = document.createElement('button');
@@ -331,24 +360,39 @@ export class DstCraftingUiElement extends AssetElement {
     const initialCategory = categories.find(({ id }) => id === activeCategoryIdState.get()) ?? categories[0];
     root.querySelector('h1')!.textContent = initialCategory.name;
     renderCategoryRecipes(initialCategory);
+    this.controlEffects.push(createEffect(this.refreshBuildButton));
   }
 
   private isRecipeLocked(recipe: Recipe): boolean {
-    return !this.isRecipeBuffered(recipe) && (Boolean(recipe.locked)
+    return this.recipeLockStates[this.recipeIndices.get(recipe)!].get();
+  }
+
+  private calculateRecipeLocked(recipe: Recipe): boolean {
+    return !this.bufferedRecipeIds.has(recipe.id) && (Boolean(recipe.locked)
       || recipe.ingredients.some((ingredient) => this.availableCount(ingredient) < ingredient.required));
   }
 
   private isRecipeBuffered(recipe: Recipe): boolean {
-    return this.bufferedRecipeIds.has(recipe.id);
+    return this.recipeBufferedStates[this.recipeIndices.get(recipe)!].get();
+  }
+
+  private updateRecipeLocks(): void {
+    const nextIsLockedArray = this.recipes.map((recipe) => this.calculateRecipeLocked(recipe));
+    nextIsLockedArray.forEach((locked, index) => {
+      if (locked !== this.isLockedArray[index]) this.recipeLockStates[index].set(locked);
+    });
+    this.isLockedArray = nextIsLockedArray;
+  }
+
+  private disposeEffects(): void {
+    this.recipeButtonEffects.splice(0).forEach((dispose) => dispose());
+    this.controlEffects.splice(0).forEach((dispose) => dispose());
+    this.refreshMaterials = undefined;
+    this.refreshBuildButton = undefined;
   }
 
   private ingredient(ingredient: RecipeIngredient): HTMLSpanElement {
     const item = document.createElement('span');
-    const available = this.availableCount(ingredient);
-    const hasMaterial = available >= ingredient.required;
-    item.className = `craft-material ${hasMaterial ? 'has-materials' : 'missing-materials'}`;
-    const required = ingredient.requiredLabel ?? String(ingredient.required);
-    item.setAttribute('aria-label', `${ingredient.name} ${available}/${required}`);
 
     if (ingredient.inventoryIcon) {
       item.append(atlasImage(
@@ -362,9 +406,17 @@ export class DstCraftingUiElement extends AssetElement {
 
     const count = document.createElement('span');
     count.className = 'craft-material-count';
-    count.textContent = ingredient.requiredLabel ?? `${available}/${ingredient.required}`;
     item.append(count);
+    this.updateIngredient(item, ingredient);
     return item;
+  }
+
+  private updateIngredient(item: HTMLSpanElement, ingredient: RecipeIngredient): void {
+    const available = this.availableCount(ingredient);
+    item.className = `craft-material ${available >= ingredient.required ? 'has-materials' : 'missing-materials'}`;
+    const required = ingredient.requiredLabel ?? String(ingredient.required);
+    item.setAttribute('aria-label', `${ingredient.name} ${available}/${required}`);
+    item.querySelector('.craft-material-count')!.textContent = ingredient.requiredLabel ?? `${available}/${ingredient.required}`;
   }
 
   private availableCount(ingredient: RecipeIngredient): number {
@@ -375,14 +427,14 @@ export class DstCraftingUiElement extends AssetElement {
     this.craftingRecipeId = recipeId;
     this.craftingSkinId = skinId;
     this.emitCraftingState(recipeId, true, skinId);
-    this.render();
+    this.refreshBuildButton?.();
     this.craftingTimer = setTimeout(() => {
       this.craftingTimer = undefined;
       this.craftingRecipeId = undefined;
       this.craftingSkinId = undefined;
       this.emitCraftRequest(recipeId, skinId);
       this.emitCraftingState(recipeId, false, skinId);
-      if (this.isConnected) this.render();
+      if (this.isConnected) this.refreshBuildButton?.();
     }, CRAFT_DURATION_MS);
   }
 
