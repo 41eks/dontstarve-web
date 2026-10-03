@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { PerspectiveCamera } from 'three';
-import { dstLighting, resizeRendererToDisplaySize, scene } from './universal';
+import { cursorUi, dstLighting, resizeRendererToDisplaySize, scene } from './universal';
 
 type Updatable = (dt: number) => void;
 
@@ -33,6 +33,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
         }
 
         dstLighting.render(scene, camera);
+        cursorUi.update();
     }
 
     tick();

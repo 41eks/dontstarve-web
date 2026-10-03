@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TILE_SIZE } from '@three-roaming/prefab/tile';
-import { getPrefabLocalLight, type PrefabLocalLight } from '@three-roaming/prefab/localLight';
+import { getPrefabLightOverride, getPrefabLocalLight, type PrefabLocalLight } from '@three-roaming/prefab/localLight';
 
 // DST tiles are 4 units wide; this scene uses TILE_SIZE (12).
 // The Lua values are known. Their conversion to shader constants is estimated:
@@ -60,6 +60,7 @@ export class DstLocalLighting {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.Camera();
   private readonly patchedMaterials = new WeakSet<THREE.Material>();
+  private readonly lightOverrides = new WeakMap<THREE.Material, { value: number }>();
   private readonly ownerPosition = new THREE.Vector3();
   private readonly prefabLights: { owner: THREE.Object3D; settings: PrefabLocalLight }[] = [];
   private torchOwner: THREE.Object3D | null = null;
@@ -164,8 +165,19 @@ export class DstLocalLighting {
       if (light) this.prefabLights.push({ owner: object, settings: light });
       const material = (object as THREE.Mesh).material;
       if (!material) return;
+      let lightOverride = 0;
+      for (let owner: THREE.Object3D | null = object; owner; owner = owner.parent) {
+        const value = getPrefabLightOverride(owner);
+        if (value === undefined) continue;
+        lightOverride = value;
+        break;
+      }
+      // Placement sprites own their atlas materials, including skin atlases.
+      // Reset every frame so commits and animation changes restore normal light.
       for (const entry of Array.isArray(material) ? material : [material]) {
         this.patchMaterial(entry);
+        const uniform = this.lightOverrides.get(entry);
+        if (uniform) uniform.value = lightOverride;
       }
     });
   }
@@ -180,11 +192,14 @@ export class DstLocalLighting {
 
     const previousCompile = material.onBeforeCompile;
     const previousKey = material.customProgramCacheKey();
+    const lightOverride = { value: 0 };
+    this.lightOverrides.set(material, lightOverride);
     material.onBeforeCompile = (shader, renderer) => {
       previousCompile.call(material, shader, renderer);
       shader.uniforms.dstAmbientColour = this.ambient;
       shader.uniforms.dstLightmap = this.lightmap;
       shader.uniforms.dstLightmapExtents = this.extents;
+      shader.uniforms.dstLightOverride = lightOverride;
       shader.vertexShader = shader.vertexShader.replace('#include <common>', `
         #include <common>
         varying vec2 vDstWorldXZ;
@@ -204,6 +219,7 @@ export class DstLocalLighting {
         uniform sampler2D dstLightmap;
         uniform vec4 dstLightmapExtents;
         uniform vec3 dstAmbientColour;
+        uniform float dstLightOverride;
         varying vec2 vDstWorldXZ;
       `).replace('#include <colorspace_fragment>', `
         vec2 dstLightUv = (vDstWorldXZ - dstLightmapExtents.xy) * dstLightmapExtents.zw;
@@ -213,12 +229,13 @@ export class DstLocalLighting {
           dstLight = texture2D(dstLightmap, dstLightUv).rgb;
         }
         // The original ambient colours and LUTs operate in display space.
+        dstLight = max(dstLight, vec3(dstLightOverride));
         vec3 dstDisplay = sRGBTransferOETF(vec4(max(gl_FragColor.rgb, 0.0), 1.0)).rgb;
         gl_FragColor.rgb = sRGBTransferEOTF(vec4(dstDisplay * dstLight, 1.0)).rgb;
         #include <colorspace_fragment>
       `);
     };
-    material.customProgramCacheKey = () => `${previousKey}:dst-world-lightmap-v1`;
+    material.customProgramCacheKey = () => `${previousKey}:dst-world-lightmap-v2`;
     material.needsUpdate = true;
     this.patchedMaterials.add(material);
   }

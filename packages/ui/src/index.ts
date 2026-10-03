@@ -7,6 +7,8 @@ import { DstInventoryBarElement } from './inventory-bar';
 import { DstMapControlsElement } from './map-controls';
 import { DstStatusHudElement } from './status-hud';
 
+export { CursorLabelUi, type CursorPointer } from './cursor-label';
+
 export { DstChestPanelElement, type ChestCloseDetail, type OpenChestOptions } from './chest-panel';
 export { DstCookPotPanelElement } from './cook-pot-panel';
 export { DstIceBoxPanelElement } from './ice-box-panel';

@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./cursor-label": "./src/cursor-label.ts"
   },
   "scripts": {
     "categories:check": "node scripts/generate-categories.mjs --check",
     "categories:generate": "node scripts/generate-categories.mjs",
     "test": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "controller-font:import": "python3 scripts/import-controller-font.py",
+    "controller-font:check": "python3 scripts/import-controller-font.py --check"
   },
   "dependencies": {
     "@three-roaming/animation": "workspace:*",

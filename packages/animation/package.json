@@ -12,7 +12,8 @@
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",
     "./prefabskin": "./src/prefabskin.ts",
-    "./recipes.json": "./recipes.json"
+    "./recipes.json": "./recipes.json",
+    "./bitmapFont": "./src/bitmapFont.ts"
   },
   "scripts": {
     "recipes:check": "node scripts/extract-recipes.mjs --check",

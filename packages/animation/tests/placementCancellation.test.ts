@@ -5,6 +5,7 @@ import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlac
 import { WallPlacement } from '../../prefab/src/wallPlacement';
 import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
+import { getPrefabLightOverride } from '../../prefab/src/localLight';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
 
 vi.mock('../src/sprite', () => ({ createAnimatedSprite: vi.fn(), createStaticSprite: vi.fn() }));
@@ -32,12 +33,16 @@ afterEach(() => {
 });
 
 function setup(kind: 'animated' | 'wall') {
-  const cursor = { hidden: true, style: {}, setAttribute: vi.fn() };
-  vi.stubGlobal('document', { createElement: () => cursor, body: { appendChild: vi.fn() } });
+  const cursor = { hidden: true };
   const canvas = new EventTarget();
   const world = {
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas },
+    createCursorLabel: () => ({
+      show: () => { cursor.hidden = false; },
+      hide: () => { cursor.hidden = true; },
+      update: () => {},
+    }),
   } as unknown as WorldContext;
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
@@ -77,11 +82,14 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
   const existing = world.scene.children[0];
   await begin();
   const preview = world.scene.children[1];
+  expect(getPrefabLightOverride(preview)).toBe(1);
+  expect(placement.renderEntities.map(({ object }) => object)).toContain(preview);
   const paidState = store.exportState();
   expect(cursor.hidden).toBe(false);
 
   click(2);
   expect(preview.parent).toBeNull();
+  expect(getPrefabLightOverride(preview)).toBeUndefined();
   expect(world.scene.children).toEqual([existing]);
   expect(cursor.hidden).toBe(true);
   expect(store.exportState()).toEqual(paidState);
@@ -100,6 +108,7 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
   if (kind === 'animated') expect(world.scene.children[1].userData.skinId).toBe('selected_skin');
   click(0);
   expect(consume).toHaveBeenCalledTimes(1);
+  expect(getPrefabLightOverride(world.scene.children[1])).toBeUndefined();
   expect(store.isBuffered('building')).toBe(false);
   expect(store.count('building')).toBe(0);
   expect(store.count('log')).toBe(0);

@@ -1,0 +1,19 @@
+:host {
+  position: fixed;
+  z-index: 100;
+  color: #fff;
+  font: 600 20px/1.2 'Noto Sans SC', sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  transform: translate(-50%, calc(-100% - 12px));
+}
+:host([hidden]) { display: none; }
+.label { display: flex; align-items: center; gap: 4px; }
+.button { width: 32px; height: 32px; }
+.button[hidden] { display: none; }
+span {
+  -webkit-text-stroke: 3px #17130e;
+  paint-order: stroke fill;
+  text-shadow: 1px 2px 2px #000;
+}

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { BuildCursor } from './buildCursor';
+import type { CursorLabel } from './buildCursor';
 import type { PointerRaycaster } from './pointerRaycaster';
 
 /**
@@ -13,7 +13,7 @@ export interface WorldContext {
     renderer: THREE.WebGLRenderer;
     ground: THREE.Object3D;
     player: THREE.Object3D;
-    createBuildCursor?: (pointer: PointerRaycaster) => BuildCursor;
+    createCursorLabel?: (pointer: PointerRaycaster) => CursorLabel;
 }
 
 /** The subset a prefab needs to turn raw pointer events into raycasts. */

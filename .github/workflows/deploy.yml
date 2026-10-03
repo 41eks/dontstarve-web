@@ -3,6 +3,8 @@
 name: Deploy static content to Pages
 
 on:
+  # 支持在 Actions 页面手动触发部署
+  workflow_dispatch:
   # 每次推送到 main 分支时触发部署
   push:
     branches: ['main'] # 如果你的默认分支是 master，请将其改为 master

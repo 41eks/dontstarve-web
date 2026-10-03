@@ -73,7 +73,9 @@ describe('save JSON deserialization', () => {
 
   it('recovers equipment, buffered builds and separate inventories for each chest', () => {
     const data = structuredClone(initialWorld);
-    data.players.local.inventory.containers['player:equipment'].slots.push({ slotKey: 'hand', item: { itemId: 'torch', count: 1 } } as never);
+    const equipment = data.players.local.inventory.containers['player:equipment'];
+    equipment.slots = equipment.slots.filter(({ slotKey }) => slotKey !== 'hand');
+    equipment.slots.push({ slotKey: 'hand', item: { itemId: 'torch', count: 1 } } as never);
     data.players.local.inventory.bufferedBuilds.push({ recipeId: 'treasurechest', skinId: 'treasurechest_ancient' } as never);
     const second = structuredClone(data.world.entities.treasurechest[0]);
     second.id = 'e_chest_second';

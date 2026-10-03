@@ -4,8 +4,7 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // 将 'your-repo-name' 替换为你真实的 GitHub 仓库名称
-  // 例如你的仓库是 https://github.com/john/my-project，这里就写 '/my-project/'
-  base: '/three-roaming/',
+  // GitHub Pages 项目站点路径，与仓库名称保持一致。
+  base: '/dontstarve-web/',
   server:'0.0.0.0'
 })

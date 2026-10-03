@@ -39,7 +39,8 @@
     "./containers": "./src/containers.ts",
     "./locomotor": "./src/locomotor.ts",
     "./hats": "./src/hats.ts",
-    "./groundItems": "./src/groundItems.ts"
+    "./groundItems": "./src/groundItems.ts",
+    "./pointerRaycaster": "./src/pointerRaycaster.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

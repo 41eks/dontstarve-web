@@ -17,11 +17,12 @@ import {
 import type { WilsonAnimationController } from '@three-roaming/prefab/player';
 import { isHatId } from '@three-roaming/prefab/hats';
 import { setupYellowStaffCasting } from '@three-roaming/prefab/yellowstaff';
+import { PointerRaycaster } from '@three-roaming/prefab/pointerRaycaster';
 import { view } from './view';
 import { PreparedFoodSlot, StorageSlot } from '@three-roaming/inventory';
 import { loadImageAtlas } from '@three-roaming/animation/imageAtlas';
 import { player } from './player';
-import { dstLighting } from './universal';
+import { cursorUi, dstLighting } from './universal';
 import { createChestInventoryPanel } from './chestInventoryPanel';
 import {
   STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition, isStorageBuildingId,
@@ -72,6 +73,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
 }
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
 const handSlotAddress = equipmentSlotAddress('hand');
+const handPointer = new PointerRaycaster(view);
 const headSlotAddress = equipmentSlotAddress('head');
 
 function isHandSlot(address: SlotAddress): boolean {
@@ -90,6 +92,7 @@ function syncHandEquipment(): void {
   void playerAnimation?.setCarryItem(carryItem, handItem?.skinId)
     .catch((error: unknown) => console.error('Unable to equip hand item', error));
   dstLighting.setTorchOwner(handItem?.itemId === 'torch' ? player : null);
+  cursorUi.setHandAction(handItem?.itemId === 'yellowstaff' ? ': 施放法术' : null, handPointer);
 }
 
 function syncHeadEquipment(): void {

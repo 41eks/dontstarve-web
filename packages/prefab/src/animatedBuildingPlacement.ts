@@ -5,7 +5,7 @@ import {
 } from '@three-roaming/animation/sprite';
 import type { PrefabSkinInitializer } from '@three-roaming/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';
-import { HIDDEN_BUILD_CURSOR, type BuildCursor } from './buildCursor';
+import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import type { WorldContext } from './worldContext';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
@@ -106,7 +106,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.onInteractionChange = onInteractionChange;
         this.pointer = new PointerRaycaster(world);
-        this.cursor = world.createBuildCursor?.(this.pointer) ?? HIDDEN_BUILD_CURSOR;
+        this.cursor = new BuildCursor(world, this.pointer);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -182,7 +182,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     /** Whole sprite entities and their ground-contact points for depth sorting. */
     get renderEntities() {
-        return this.placed
+        return [...this.placed, ...(this.active ? [this.active] : [])]
             .filter(({ model }) => model.visible)
             .map(({ model, groundOffset }) => ({
                 object: model,
@@ -204,7 +204,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (this.active) {
             this.active.animation.update(dt);
         }
-        this.updatePreview();
         this.cursor.update();
         for (const building of this.placed) {
             this.updateProximity(building);
@@ -235,7 +234,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private placeActiveBuilding(event: PointerEvent) {
         if (!this.active) return;
         this.pointer.trackPointer(event);
-        this.updatePreview();
         this.cursor.update();
         if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
 
@@ -247,8 +245,6 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.placed.push(placedBuilding);
         this.active = undefined;
         this.cursor.hide();
-        placedBuilding.model.userData.entityId = newEntityId();
-        this.scene.add(placedBuilding.model);
         onbuilt?.({
             model: placedBuilding.model,
             animation: placedBuilding.animation,
@@ -332,7 +328,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private async createPreview(buildId: BuildId, previewVersion: number, skinId?: string) {
-        const instance = await this.createInstance(buildId, skinId, false, undefined, true);
+        const instance = await this.createInstance(buildId, skinId, true, undefined, true);
         if (previewVersion !== this.previewVersion) {
             instance.model.removeFromParent();
             return;
@@ -340,18 +336,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;
-        this.cursor.setPreview(instance.model);
-        this.updatePreview();
+        this.cursor.setPreview(instance.model, instance.groundOffset);
         this.cursor.update();
-    }
-
-    private updatePreview() {
-        if (!this.active) return;
-        const point = this.pointer.groundPoint();
-        this.active.model.visible = point !== undefined;
-        if (!point) return;
-        this.active.model.position.set(point.x, point.y + this.active.groundOffset, point.z);
-        this.faceCamera(this.active.model);
     }
 
     private async createInstance(

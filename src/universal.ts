@@ -2,6 +2,7 @@
 
 import * as THREE from 'three';
 import { DstLightingRenderer } from './dstLighting';
+import { CursorLabelUi } from '@three-roaming/ui/cursor-label';
 const scene = new THREE.Scene();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -10,6 +11,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 // renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
+const cursorUi = new CursorLabelUi(renderer.domElement, `${import.meta.env.BASE_URL}dst/data/fonts/controllers.zip`);
 
 let displayWidth = 0;
 let displayHeight = 0;
@@ -46,4 +48,4 @@ const dstLighting = await DstLightingRenderer.create(
   `${import.meta.env.BASE_URL}dst/data/images/colour_cubes`,
 );
 
-export { dstLighting, scene, renderer, resizeRendererToDisplaySize };
+export { cursorUi, dstLighting, scene, renderer, resizeRendererToDisplaySize };

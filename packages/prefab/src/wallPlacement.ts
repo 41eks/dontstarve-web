@@ -3,7 +3,7 @@ import {
     createStaticSprite,
     type StaticSpriteController,
 } from '@three-roaming/animation/sprite';
-import { HIDDEN_BUILD_CURSOR, type BuildCursor } from './buildCursor';
+import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
@@ -75,7 +75,7 @@ export class WallPlacement<BuildId extends string> {
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.pointer = new PointerRaycaster(world);
-        this.cursor = world.createBuildCursor?.(this.pointer) ?? HIDDEN_BUILD_CURSOR;
+        this.cursor = new BuildCursor(world, this.pointer);
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -124,7 +124,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     get renderEntities() {
-        return this.placed
+        return [...this.placed, ...(this.active ? [this.active] : [])]
             .filter(({ model }) => model.visible)
             .map(({ model, groundOffset }) => ({
                 object: model,
@@ -159,7 +159,6 @@ export class WallPlacement<BuildId extends string> {
     }
 
     update() {
-        this.updatePreview();
         this.cursor.update();
         const showFront = !this.isDiagonalHeading();
         if (this.active) this.updateFacing(this.active, showFront);
@@ -178,7 +177,6 @@ export class WallPlacement<BuildId extends string> {
         if (this.loading || this.active) event.preventDefault();
         if (!this.active) return;
         this.pointer.trackPointer(event);
-        this.updatePreview();
         this.cursor.update();
         if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
 
@@ -188,12 +186,10 @@ export class WallPlacement<BuildId extends string> {
         this.placed.push(placedWall);
         this.active = undefined;
         this.cursor.hide();
-        placedWall.model.userData.entityId = newEntityId();
-        this.scene.add(placedWall.model);
     };
 
     private async createPreview(buildId: BuildId, previewVersion: number) {
-        const instance = await this.createInstance(buildId, false);
+        const instance = await this.createInstance(buildId);
         if (previewVersion !== this.previewVersion) {
             instance.model.removeFromParent();
             return;
@@ -201,19 +197,8 @@ export class WallPlacement<BuildId extends string> {
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;
-        this.cursor.setPreview(instance.model);
-        this.updatePreview();
+        this.cursor.setPreview(instance.model, instance.groundOffset, snapToWallSlot);
         this.cursor.update();
-    }
-
-    private updatePreview() {
-        if (!this.active) return;
-        const point = this.pointer.groundPoint();
-        this.active.model.visible = point !== undefined;
-        if (!point) return;
-        const target = snapToWallSlot(point);
-        this.active.model.position.set(target.x, target.y + this.active.groundOffset, target.z);
-        this.faceCamera(this.active.model);
     }
 
     private async createInstance(buildId: BuildId, attach = true): Promise<WallInstance<BuildId>> {

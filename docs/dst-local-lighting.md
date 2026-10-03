@@ -277,3 +277,29 @@ Falloff `0.9 - 0.4k`；颜色为 `(223,208,69)/255`，半径乘场景单位比�
 矮星 ID 使用 `saveRecord.ts` 的 `newEntityId()`，兼容没有 `crypto.randomUUID()`
 的 HTTP 开发环境。浏览器回归测试同时禁用该接口验证召唤成功；避免施法光能显示，
 却因创建矮星时报错而没有持续照明。
+
+### 建造预览与鼠标提示
+
+原版 `prefabutil.lua` 的 `MakePlacer()` 创建世界实体，并调用
+`AnimState:SetLightOverride(1)`。当前 `BuildCursor` 同样保留预览的世界坐标、
+地面吸附、面向相机和脚点深度排序；预览继续参与世界遮挡。
+`setPrefabLightOverride(model, 1)` 为预览根节点设置最低材质亮度，
+`dstLocalLighting.ts` 将它传给各子网格材质的 `dstLightOverride` uniform，
+用 `max(dstLight, vec3(dstLightOverride))` 覆盖光照下限。
+这只改变预览本身，不产生局部光源；季节颜色校正仍作用于世界预览。
+落地或取消时清除覆盖，后续动画帧恢复普通环境光和局部光照。
+预览使用独立的动画/皮肤 atlas 材质，不修改其他世界实体的共享材质。
+
+鼠标 label 的 DOM、样式与按钮字形由 `packages/ui/src/cursor-label.ts`
+管理，prefab 通过 `WorldContext.createCursorLabel` 注入显示接口。
+label 不经过世界光照贴图或季节 LUT。建造提示优先于手持动作提示；
+手持 `yellowstaff` 时显示右键图标和 `: 施放法术`，卸下后清除。
+鼠标在游戏 UI 上方时隐藏提示。
+
+左右键图标来自原版 `fonts/controllers.zip` 的 `font.fnt` 和 `font.tex`，
+字形分别为 `U+E100` 与 `U+E101`。中文文案使用中文字体回退。
+归档从 `databundles/fonts.zip` 按原路径、原始字节导入
+`public/dst/data/fonts/controllers.zip`，可执行
+`python3 packages/ui/scripts/import-controller-font.py --check` 校验。
+`packages/ui/tests/cursor-preview.spec.ts` 验证夜间亮度、光照覆盖清除、
+世界实体放置/取消、按钮字形、UI 提示优先级及隐藏规则。
