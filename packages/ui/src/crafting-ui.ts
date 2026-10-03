@@ -9,15 +9,16 @@ import {
 import { createCategoryButtonMapper } from './craft-category-button';
 import { createRecipeButtonMapper } from './craft-recipe-button';
 import styles from './styles/crafting-ui.css?inline';
-import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
+import { createAtlasImage } from './atlasImage';
 import type { InventoryMaterialSummary } from '@three-roaming/inventory';
 
-const atlasRequests = new Map<string, Promise<ImageAtlas>>();
 const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
 const imageArchiveUrl = new URL(
   `${baseUrl}dst/data/databundles/images.zip`,
   document.baseURI,
 ).href;
+
+const atlasImage = createAtlasImage(imageArchiveUrl);
 
 export interface CraftRequestDetail {
   recipeId: string;
@@ -29,43 +30,6 @@ export interface CraftingStateDetail extends CraftRequestDetail {
 }
 
 export const CRAFT_DURATION_MS = 1_000;
-
-function requestAtlas(archiveUrl: string, atlasPath: string) {
-  const key = `${archiveUrl}\n${atlasPath}`;
-  let request = atlasRequests.get(key);
-  if (!request) {
-    request = loadImageAtlas(archiveUrl, atlasPath);
-    atlasRequests.set(key, request);
-  }
-  return request;
-}
-
-function atlasImage(className: string, atlasPath: string, elementName: string): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.className = className;
-  canvas.width = 1;
-  canvas.height = 1;
-  canvas.dataset.archive = imageArchiveUrl;
-  canvas.dataset.atlas = atlasPath;
-  canvas.dataset.element = elementName;
-  canvas.setAttribute('aria-hidden', 'true');
-
-  void requestAtlas(imageArchiveUrl, atlasPath).then((atlas) => {
-    if (!canvas.isConnected) return;
-    const sprite = atlas.require(elementName);
-    canvas.width = sprite.width;
-    canvas.height = sprite.height;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Canvas 2D context is unavailable');
-    const pixels = Uint8ClampedArray.from(sprite.pixels);
-    context.putImageData(new ImageData(pixels, sprite.width, sprite.height), 0, 0);
-    canvas.dataset.loaded = 'true';
-  }).catch((error: unknown) => {
-    canvas.dataset.error = error instanceof Error ? error.message : String(error);
-    canvas.dispatchEvent(new Event('error'));
-  });
-  return canvas;
-}
 
 import { createSignal } from './signal';
 

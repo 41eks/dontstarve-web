@@ -3,13 +3,12 @@ import { GROUND_ITEM_SKIN_SPECS } from '@three-roaming/prefab/groundItems';
 import recipeDataJson from '@three-roaming/animation/recipes.json' with { type: 'json' };
 import type { InventoryRecipeDefinition, InventorySkinSpec } from '@three-roaming/inventory';
 import {
-  filterRecipeIds,
   ingredientNames,
   recipeDescriptions,
   recipeNames,
   recipeSkins,
 } from './generated';
-import type { CategoryConfig, Recipe, RecipeIngredient } from './types';
+import type { Recipe, RecipeIngredient } from './types';
 
 interface LuaExpression {
   readonly lua: string;
@@ -40,10 +39,10 @@ export interface InventoryProductSpec {
   readonly atlas?: string;
 }
 
-export type CraftingFilterName = keyof typeof filterRecipeIds;
-
 const recipeData = recipeDataJson as unknown as RecipeData;
 const recipesById = new Map(recipeData.recipes.map((recipe) => [recipe.name, recipe]));
+
+export { recipeData };
 
 function recipeProduct(source: SourceRecipe) {
   const configuredProduct = source.config.product;
@@ -183,14 +182,14 @@ function createIngredient(source: SourceIngredient): RecipeIngredient {
   };
 }
 
-function createRecipe(id: string, color: string): Recipe {
+export function createRecipe(id: string): Recipe {
   const source = recipesById.get(id);
   if (!source) {
     return {
       id,
       name: recipeNames[id] ?? humanize(id),
       description: recipeDescriptions[id] ?? '',
-      color,
+      color: colorFor(id),
       inventoryIcon: `${id}.tex`,
       ingredients: [],
       skins: [],
@@ -205,7 +204,7 @@ function createRecipe(id: string, color: string): Recipe {
     id,
     name: recipeNames[id] ?? humanize(id),
     description: recipeDescriptions[id] ?? '',
-    color,
+    color: colorFor(id),
     ...(atlas ? { inventoryAtlas: atlas } : {}),
     inventoryIcon: image,
     ...(hat && !HAT_RECIPES[id] ? { locked: true } : {}),
@@ -220,36 +219,4 @@ function createRecipe(id: string, color: string): Recipe {
       inventoryIcon: HAT_SKIN_SPECS[skin.id]?.icon ?? `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
     })),
   };
-}
-
-export function createCategory(
-  id: string,
-  filter: CraftingFilterName,
-  name: string,
-  icon: string,
-  color: string,
-): CategoryConfig {
-  return {
-    id,
-    name,
-    icon,
-    recipes: filterRecipeIds[filter].map((recipeId) => createRecipe(recipeId, color)),
-  };
-}
-
-export function createAllRecipesCategory(
-  id: string,
-  name: string,
-  icon: string,
-  color: string,
-): CategoryConfig {
-  return { id, name, icon, recipes: recipeData.recipes.map(({ name: recipeId }) => createRecipe(recipeId, color)) };
-}
-
-export function createEmptyCategory(
-  id: string,
-  name: string,
-  icon: string,
-): CategoryConfig {
-  return { id, name, icon, recipes: [] };
 }
