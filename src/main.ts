@@ -16,10 +16,14 @@ import {
 } from '@three-roaming/ui';
 import type { WilsonAnimationController } from '@three-roaming/prefab/player';
 import { isHatId } from '@three-roaming/prefab/hats';
-import { setupYellowStaffCasting } from '@three-roaming/prefab/yellowstaff';
+import { isLightStaff, setupLightStaffCasting } from '@three-roaming/prefab/yellowstaff';
 import { BugNetCaptureController } from '@three-roaming/prefab/bugnet';
 import { HammerActionController } from '@three-roaming/prefab/hammer';
 import { PickaxeActionController } from '@three-roaming/prefab/pickaxe';
+import { PitchforkActionController, isPitchforkTool } from '@three-roaming/prefab/pitchfork';
+import { ReskinActionController } from '@three-roaming/prefab/reskin_tool';
+import { DisposeSounds } from '@three-roaming/prefab/sound';
+import { turfMap } from './building';
 import { newEntityId } from '@three-roaming/prefab/saveRecord';
 import { isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
 import { isRockPrefab } from '@three-roaming/prefab/rocks';
@@ -96,13 +100,15 @@ window.addEventListener('contextmenu', (event) => {
 
 function syncHandEquipment(): void {
   const handItem = inventory.get(handSlotAddress);
-  const carryItem = handItem?.itemId === 'torch' || handItem?.itemId === 'lantern'
-    || handItem?.itemId === 'yellowstaff' || handItem?.itemId === 'bugnet' || handItem?.itemId === 'hammer'
-    || handItem?.itemId === 'pickaxe' || handItem?.itemId === 'goldenpickaxe' ? handItem.itemId : null;
+  const itemId = handItem?.itemId;
+  const carryItem = itemId === 'torch' || itemId === 'lantern'
+    || isLightStaff(itemId) || itemId === 'bugnet' || itemId === 'hammer' || itemId === 'reskin_tool'
+    || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
+    || (itemId !== undefined && isPitchforkTool(itemId)) ? itemId : null;
   void playerAnimation?.setCarryItem(carryItem, handItem?.skinId)
     .catch((error: unknown) => console.error('Unable to equip hand item', error));
   dstLighting.setTorchOwner(handItem?.itemId === 'torch' ? player : null);
-  cursorUi.setHandAction(handItem?.itemId === 'yellowstaff' ? ': 施放法术' : null, handPointer);
+  cursorUi.setHandAction(isLightStaff(itemId) ? ': 施放法术' : null, handPointer);
 }
 
 function syncHeadEquipment(): void {
@@ -161,7 +167,7 @@ inventory.subscribe((changedSlots) => {
 
 let cancelNetCapture = () => {};
 let cancelHandTool = () => {};
-const { buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, beefalos, rockManager, getSaveState } = await startScene(
+const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, reskinEffects, getSaveState } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item, action) => {
     if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
@@ -207,10 +213,14 @@ if (playerAnimation) {
   });
   frontTasks.push((dt) => bugNet.update(dt));
 }
-if (playerAnimation) setupYellowStaffCasting(view, playerAnimation, dwarfStars,
+if (playerAnimation) setupLightStaffCasting(view, playerAnimation, dwarfStars,
   () => inventory.get(handSlotAddress)?.itemId === 'yellowstaff',
   () => locomotor.stop(),
   (error) => console.error('Unable to summon dwarf star', error));
+if (playerAnimation) setupLightStaffCasting(view, playerAnimation, polarLights,
+  () => inventory.get(handSlotAddress)?.itemId === 'opalstaff',
+  () => locomotor.stop(),
+  (error) => console.error('Unable to summon polar light', error));
 
 if (playerAnimation) {
   const hammer = new HammerActionController(view, playerAnimation, locomotor,
@@ -232,8 +242,29 @@ if (playerAnimation) {
       flowerPlanting.cancel();
       buildingPlacement.cancel();
     });
-  cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); };
-  frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); });
+  const pitchfork = new PitchforkActionController(view, playerAnimation, locomotor,
+    () => isPitchforkTool(handTool() ?? ''), turfMap,
+    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    () => {
+      cancelNetCapture();
+      flowerPlanting.cancel();
+      buildingPlacement.cancel();
+    });
+  const reskin = new ReskinActionController(view, playerAnimation, locomotor,
+    () => {
+      const tool = inventory.get(handSlotAddress);
+      return tool?.itemId === 'reskin_tool' ? tool : undefined;
+    },
+    () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets], reskinEffects,
+    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    () => {
+      cancelNetCapture(); hammer.cancel(); pickaxe.cancel(); pitchfork.cancel();
+      flowerPlanting.cancel(); buildingPlacement.cancel();
+    },
+    (error) => console.error('Unable to reskin target', error));
+  cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); reskin.cancel(); };
+  frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); pitchfork.update(dt); reskin.update(dt); });
+  window.addEventListener('pagehide', () => { reskin.dispose(); reskinEffects.dispose(); DisposeSounds(); }, { once: true });
 }
 
 setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
@@ -301,8 +332,8 @@ window.addEventListener('game:slot-transfer-request', (event) => {
     },
   ]);
   if (!transferred || (detail.itemId !== 'torch' && detail.itemId !== 'lantern'
-    && detail.itemId !== 'yellowstaff' && detail.itemId !== 'bugnet' && detail.itemId !== 'hammer'
-    && detail.itemId !== 'pickaxe' && detail.itemId !== 'goldenpickaxe')) return;
+    && !isLightStaff(detail.itemId) && detail.itemId !== 'bugnet' && detail.itemId !== 'hammer'
+    && detail.itemId !== 'pickaxe' && detail.itemId !== 'goldenpickaxe' && !isPitchforkTool(detail.itemId))) return;
   if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out', detail.itemId);
   else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in', detail.itemId);
 });

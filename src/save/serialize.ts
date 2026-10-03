@@ -2,12 +2,14 @@ import type { InventoryState } from '@three-roaming/inventory';
 import { deserializeSave, type SaveCatalog } from './deserialize';
 import { STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition } from '@three-roaming/prefab/containers';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
+import type { TurfTileSave } from '@three-roaming/prefab/turfMap';
 
 export interface RuntimeSaveState {
   entities: Record<string, SavedEntity[]>;
   playerTransform: SavedTransform;
   inventory: InventoryState;
   elapsedSeconds: number;
+  tiles?: TurfTileSave[];
 }
 
 /** Captures current domain state; the loaded document supplies only world/session metadata. */
@@ -41,7 +43,13 @@ export function serializeSave(
   const document: SaveDocument = {
     ...structuredClone(template),
     snapshot: { id: String(nextId).padStart(10, '0'), parentId, savedAt, reason: 'manual' },
-    world: { ...structuredClone(template.world), elapsedSeconds: state.elapsedSeconds, entities },
+    world: {
+      ...structuredClone(template.world), elapsedSeconds: state.elapsedSeconds, entities,
+      map: {
+        ...structuredClone(template.world.map),
+        ...(state.tiles === undefined ? {} : { tiles: structuredClone(state.tiles) }),
+      },
+    },
     players: {
       local: {
         ...structuredClone(template.players.local),

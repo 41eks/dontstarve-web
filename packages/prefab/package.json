@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./reskin_tool": "./src/reskin_tool.ts",
+    "./sound": "./src/sound.ts",
+    "./pitchfork": "./src/pitchfork.ts",
+    "./turfMap": "./src/turfMap.ts",
+    "./groundTiles": "./src/groundTiles.ts",
     "./hammer": "./src/hammer.ts",
     "./pickaxe": "./src/pickaxe.ts",
     "./rocks": "./src/rocks.ts",
@@ -27,6 +32,7 @@
     "./firepit": "./src/firepit.ts",
     "./icebox": "./src/icebox.ts",
     "./moontree": "./src/moontree.ts",
+    "./moonbase": "./src/moonbase.ts",
     "./proximityEntities": "./src/proximityEntities.ts",
     "./pigking": "./src/pigking.ts",
     "./setpieces/pigking": "./src/setpieces/pigking.ts",
@@ -57,7 +63,9 @@
     "hats:import": "python3 scripts/import-hats.py",
     "hats:check": "python3 scripts/import-hats.py --check",
     "ground-items:import": "python3 scripts/import-ground-items.py",
-    "ground-items:check": "python3 scripts/import-ground-items.py --check"
+    "ground-items:check": "python3 scripts/import-ground-items.py --check",
+    "ground-tiles:import": "python3 scripts/import-ground-tiles.py",
+    "ground-tiles:check": "python3 scripts/import-ground-tiles.py --check"
   },
   "dependencies": {
     "@three-roaming/animation": "workspace:*",

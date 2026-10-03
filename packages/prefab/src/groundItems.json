@@ -978,6 +978,46 @@
         "starstaff_swamp": "dynamic/starstaff_swamp.zip"
       }
     },
+    "opalstaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "唤月者魔杖",
+      "icon": "opalstaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "opalstaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "moonstaff_crystal": "dynamic/starstaff_crystal.zip",
+        "moonstaff_portal": "dynamic/starstaff_portal.zip",
+        "moonstaff_relic": "dynamic/starstaff_relic.zip",
+        "moonstaff_swamp": "dynamic/starstaff_swamp.zip"
+      }
+    },
+    "reskin_tool": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/reskin_tool.lua",
+      "name": "清洁扫把",
+      "icon": "reskin_tool.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "reskin_tool.zip",
+      "buildArchives": [
+        "reskin_tool.zip"
+      ],
+      "bank": "reskin_tool",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "reskin_tool_bouquet": "dynamic/reskin_tool_bouquet.zip",
+        "reskin_tool_brush": "dynamic/reskin_tool_brush.zip",
+        "reskin_tool_toilet": "dynamic/reskin_tool_toilet.zip",
+        "reskin_tool_wand": "dynamic/reskin_tool_wand.zip"
+      }
+    },
     "hammer": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hammer.lua",
       "name": "锤子",
@@ -1018,6 +1058,42 @@
         "bugnet_lavaproof": "dynamic/bugnet_lavaproof.zip",
         "bugnet_spider": "dynamic/bugnet_spider.zip",
         "bugnet_spider_white": "dynamic/bugnet_spider_white.zip"
+      }
+    },
+    "pitchfork": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
+      "name": "干草叉",
+      "icon": "pitchfork.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pitchfork.zip",
+      "buildArchives": [
+        "pitchfork.zip"
+      ],
+      "bank": "pitchfork",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "pitchfork_fork": "dynamic/pitchfork_fork.zip",
+        "pitchfork_invisible": "dynamic/pitchfork_invisible.zip",
+        "pitchfork_rose": "dynamic/pitchfork_rose.zip"
+      }
+    },
+    "goldenpitchfork": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
+      "name": "黄金干草叉",
+      "icon": "goldenpitchfork.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "goldenpitchfork.zip",
+      "buildArchives": [
+        "goldenpitchfork.zip"
+      ],
+      "bank": "goldenpitchfork",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "goldenpitchfork_invisible": "dynamic/goldenpitchfork_invisible.zip"
       }
     },
     "axe": {
@@ -3786,6 +3862,12 @@
       "icon": "goldenpickaxe_northern.tex",
       "atlas": "images/inventoryimages2.xml"
     },
+    "goldenpitchfork_invisible": {
+      "itemId": "goldenpitchfork",
+      "name": "拟真黄金干草叉",
+      "icon": "goldenpitchfork_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
     "goldenshovel_invisible": {
       "itemId": "goldenshovel",
       "name": "拟真黄金铲子",
@@ -3900,6 +3982,30 @@
       "icon": "lantern_winter_alt.tex",
       "atlas": "images/inventoryimages2.xml"
     },
+    "moonstaff_crystal": {
+      "itemId": "opalstaff",
+      "name": "棱镜唤月者魔杖",
+      "icon": "moonstaff_crystal.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "moonstaff_portal": {
+      "itemId": "opalstaff",
+      "name": "月亮魔杖",
+      "icon": "moonstaff_portal.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "moonstaff_relic": {
+      "itemId": "opalstaff",
+      "name": "扭曲唤月者魔杖",
+      "icon": "moonstaff_relic.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "moonstaff_swamp": {
+      "itemId": "opalstaff",
+      "name": "原始唤月者魔杖",
+      "icon": "moonstaff_swamp.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
     "pickaxe_feathered": {
       "itemId": "pickaxe",
       "name": "猎人鹤嘴锄",
@@ -3941,6 +4047,48 @@
       "name": "华丽鹤嘴锄",
       "icon": "pickaxe_victorian.tex",
       "atlas": "images/inventoryimages2.xml"
+    },
+    "pitchfork_fork": {
+      "itemId": "pitchfork",
+      "name": "pitchfork_fork",
+      "icon": "pitchfork_fork.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pitchfork_invisible": {
+      "itemId": "pitchfork",
+      "name": "拟真干草叉",
+      "icon": "pitchfork_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pitchfork_rose": {
+      "itemId": "pitchfork",
+      "name": "怒放干草叉",
+      "icon": "pitchfork_rose.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "reskin_tool_bouquet": {
+      "itemId": "reskin_tool",
+      "name": "可爱花束",
+      "icon": "reskin_tool_bouquet.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "reskin_tool_brush": {
+      "itemId": "reskin_tool",
+      "name": "幽灵漆刷",
+      "icon": "reskin_tool_brush.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "reskin_tool_toilet": {
+      "itemId": "reskin_tool",
+      "name": "厕所刷",
+      "icon": "reskin_tool_toilet.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "reskin_tool_wand": {
+      "itemId": "reskin_tool",
+      "name": "荆棘扭扭杖",
+      "icon": "reskin_tool_wand.tex",
+      "atlas": "images/inventoryimages3.xml"
     },
     "shovel_feathered": {
       "itemId": "shovel",

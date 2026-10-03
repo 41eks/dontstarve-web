@@ -33,6 +33,10 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 
 `TreasureChestPlacement` 会按 DST `treasurechest.lua` 的状态切换：点击关闭的箱子播放
 `open` 并停留在打开帧，再次点击播放 `close`，完成后回到 `closed`。
+`treasurechest.ts` 的 `onopen` / `onclose` 直接调用通用 `PlaySound()`，分别播放
+`dontstarve/wilson/chest_open` / `chest_close`；`icebox.ts` 同样播放
+`dontstarve/common/icebox_open` / `icebox_close`。创建实例时预加载共享音频，
+点击开关及走远自动关闭均在动画开始时播放一次，恢复存档时不重放开关声。
 应用的箱子面板跟随玩家头顶，背景使用 `anim/ui_chest_3x3.zip`，打开和关闭时
 分别播放背景的 `open` / `close`，关闭动画完成后才隐藏面板。
 制作时选择的箱子皮肤会映射到 `${import.meta.env.BASE_URL}dst/data/anim/dynamic/`
@@ -43,6 +47,14 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 和可选的猪王脚点位置，返回包含猪王及木地板地皮的 `group`、`pigKing`、`turf`、
 `footPosition` 和九块地皮的坐标。木地板对齐地图格，覆盖猪王所在格及周围八格；
 使用原始 `levels/textures/noise_woodfloor.tex`，不再使用独立的 PNG 装饰地板。
+`TurfMap`（`@three-roaming/prefab/turfMap`）提供按格查询、挖地、稀疏存档和
+`createVisual(assetBaseUrl)`。主场景将猪王木地板格登记到该地图，由统一地皮层替代
+set piece 的整块地板。`groundTiles.json` 从 `tiledefs.lua` 提取 ID、atlas/noise 路径和
+绘制顺序；`pnpm --filter @three-roaming/prefab ground-tiles:import` 导入原版资产，
+`ground-tiles:check` 校验源字节和定义。`groundTiles.ts` 根据八邻格选择 48 个源 atlas
+图块，并按 `ground.ksh` 的方式将 atlas RGBA 与世界坐标噪声相乘。内部同种格用完整
+图块，交界使用边、外角和内角；挖地同步刷新相邻掩码，存档只记录地皮状态。
+
 基础 turf 与木地板均不写入深度缓冲，避免裁掉动画图像延伸到脚点下方的部分；
 两者保持相同地面高度，按 `renderOrder` 的 `-2`、`-1` 顺序绘制。
 应用从存档中的每个 `pigking` 记录恢复整个 set piece，无需单独保存固定地皮布局。
@@ -74,15 +86,24 @@ inventory atlas 路径。`HAT_SKIN_SPECS` 及 `skinArchives` 对应 144 个皮�
 卸下帽子。普通帽、露顶帽、全头盔分别切换头发与脸部；Walter 帽使用 Wilson 的
 `swap_hat_large`，矿工帽使用不发光的 `swap_hat_off`。月亮头盔、虚空兜帽、
 W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合入玩家
-同一帧的 `BufferGeometry`，保持原始层序及连续材质组，不创建灯光、声音或
-独立特效实体。发光与粒子部件被排除，头盔主体和活动机械部件保留。
+同一帧的 `BufferGeometry`，保持原始层序及连续材质组。上述帽子的发光与粒子部件
+被排除，头盔主体和活动机械部件保留。
+
+启迪之冠另加载 `hat_alterguardian_equipped.zip`，以 `hair` 为跟随点，播放
+`activate_pre` → `activate_loop`，保持 `SetNoFaced()` 的环绕方向。`back` / `front`
+分别合入玩家帧的前后绘制顺序，保留最终棱镜皮肤的 `p4_piece` / `fx_glow`
+覆盖。用源冠冕贴图的局部模糊加色光晕近似原版 bloom；模糊限制在图集元素边界内，
+光晕也合入玩家几何体。独立的光源子节点使用原版半径 4（本场景 12）、强度 0.8、衰减 0.5 和空容器
+的黄绿色光。`setSanityPercent(percent)` 接收 0–1，高于 0.85 激活；降到阈值时立即
+关灯，播放 `activate_pst`，第 8 帧恢复静态帽子。当前应用没有权威理智状态，默认
+按满理智展示；卸下或换帽立即清除动画及光源，不与手持提灯的光源互相覆盖。
 
 `HAT_CRAFTING_DEFINITIONS` 保留 52 条原始配方及科技、角色、技能、制作站
 元数据。`HAT_RECIPES` 提供现有 InventoryStore 可以执行的 51 条背包配方；
 木雕帽需持有 Lucy，但不消耗它。气球帽需要理智值，当前没有对应的权威状态与
 扣减接口，因此保留原始定义并锁定 UI 制作；可以用 `c_give("balloonhat")`
 检查装备。掉落帽子没有新增配方。科技和角色限制仍依照当前合成系统的行为，
-本次不增加解锁系统或装备耐久、战斗、照明能力。
+当前未实现解锁系统、装备耐久和帽子战斗能力；启迪之冠提供上述照明与动态外观。
 
 `python3 packages/prefab/scripts/import-hats.py` 可重新生成帽子目录并镜像资产，
 `--source` 可指定 DST data 根目录，`--check` 校验目录与所有镜像文件。
@@ -95,7 +116,7 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 
 `@three-roaming/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
 `GroundItemAssets` 和 `createGroundItemSprite(assets, itemId, skinId?)`。
-目录包含 217 种材料、工具、提灯、荧光果、唤星者魔杖、肉类、蔬菜、墙体物品和普通烹饪食物，以及 82 个皮肤 ID。
+目录包含 221 种材料、工具、提灯、荧光果、唤星者魔杖、唤月者魔杖、清洁扫把、肉类、蔬菜、墙体物品和普通烹饪食物，以及 94 个皮肤 ID。
 初始背包里的物品均已接入地面动画；未进入目录的其他物品仍使用图标回退。
 资源由 `python3 packages/prefab/scripts/import-ground-items.py` 镜像，`--check`
 校验目录及源文件字节，`--source` 可指定 DST data 根路径。
@@ -160,7 +181,8 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 动画；基础外观和 4 个皮肤均使用原始资源。
 
 应用中用 `c_give("yellowstaff")` 获取魔杖，拖入手部装备栏后右键地面施法。
-`player_staff.zip` 播放 `staff_pre → staff`，第 53 帧生成矮星；重复点击不重复提交，
+`player_staff.zip` 播放 `staff_pre → staff`，第 13 帧调用
+`PlaySound('dontstarve/wilson/use_gemstaff')`，第 53 帧生成矮星；重复点击不重复提交，
 施法过程中停止移动，卸下魔杖或开始其他动作会取消尚未提交的召唤。
 
 `@three-roaming/prefab/stafflight` 的 `DwarfStarManager` 管理独立的矮星
@@ -169,7 +191,48 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 命中的地面点，持续 24 分钟（1440 秒），到期播放
 消失动画并在 1 秒后移除；存档保存各自的落点和剩余寿命，恢复时继续计时。
 `prepare()` 可提前加载资源，`spawn(position)` 召唤，`update(dt, cameraQuaternion)`
-更新动画与光照，`exportRecords()` 返回可保存记录，`dispose()` 释放共享资源。
+更新动画与光照，`exportRecords()` 返回可保存记录，`dispose()` 释放共享精灵资源并停止所属声音。
+
+`prepare()` 同时预加载矮星音频：出现时播放 `dontstarve/common/staff_star_create`，
+每颗矮星独立循环 `dontstarve/common/staff_star_LP`，消失动画结束时停止；
+移除及 `dispose()` 会停止并断开所属矮星的音源。恢复存档时只接续循环声。
+音频由 vgmstream 从 `sound/common.fsb` 的流 273（`staff_star_create`）和
+274（`staff_star_fireLP`）提取，保留源 bank 的目录，导出为 `sound/common.fsb-273.wav`、
+`sound/common.fsb-274.wav`；声音在用户交互后启用。提取方法见根目录 `AGENTS.md`。
+
+通用音频 API 由 `@three-roaming/prefab/sound` 提供，直接调用 `PlaySound('事件路径')`。
+支持 `dontstarve/common/staff_star_create`、`dontstarve/common/staff_star_LP` 和
+`dontstarve/wilson/use_gemstaff`（流 284，`sound/common.fsb-284.wav`），以及
+`dontstarve/wilson/hit`（`sfx.fsb` 流 423 / 424，等权随机）和
+`dontstarve/wilson/use_pick_rock`（`wilson.fsb` 流 124）。还支持冰箱开关声
+`dontstarve/common/icebox_open` / `icebox_close`（`sfx.fsb` 流 383 / 382）及木箱开关声
+`dontstarve/wilson/chest_open` / `chest_close`（`wilson.fsb` 流 15 / 14）。循环行为由事件映射
+决定；返回句柄的 `stop()` 停止该次播放，`PreloadSounds(...paths)` 预加载共享音频，
+`DisposeSounds()` 在游戏关闭时停止全部声音并释放音频上下文。
+
+锤子与两种鹤嘴锄在装备时预加载音效，在共享 `pickaxe_loop` 第 7 帧分别调用
+`PlaySound('dontstarve/wilson/hit')` 和 `PlaySound('dontstarve/wilson/use_pick_rock')`。
+每次挥击只触发一次；命中前取消动作不会播放声音。这里只提供动作声音及受击反馈。
 
 当前实现手持、施法动作、临时施法照明和矮星局部照明；尚未接入魔杖耐久、
-理智消耗、矮星加热／烹饪／引燃、声音、独立施法特效和 Bloom 后处理。
+理智消耗、矮星加热／烹饪／引燃、独立施法特效和 Bloom 后处理。
+
+清洁扫把的 `ReskinActionController` / `ReskinEffects` 由
+`@three-roaming/prefab/reskin_tool` 导出。玩家手持时右键有已导入皮肤的建筑或地面物品，
+超出原版 CASTSPELL 的 20 单位距离（本场景 60）会先走近。目标和特效资源加载完成后，
+`WilsonAnimationController.playReskin()` 按 `SGwilson.lua` 的 `veryquickcastspell`
+播放 `player_attacks.zip` 的 `atk_pre → atk`，第 9 帧原子提交目标的下一个皮肤。
+目标目录按支持的皮肤 ID 循环，最后恢复基础外观；目前不实现原版所有权与事件锁筛选。
+
+`ReskinEffects` 使用 `reskin_tool_fx.zip` 的 `fx_shadow_dust/puff`，4 个工具皮肤按
+`explode_small.lua` 的定义替换 `shadow_dust`；保留目标专属大小和高度、基础特效的
+`SetLightOverride(1)` 与皮肤特效的 `0`。每帧部件合入一个 Mesh，按真实目标脚点排序，
+第 16 帧移除特效；不保存临时特效。当前渲染器不提供原版 Bloom 后处理。
+声音经共享 `PlaySound()` 播放：开始时 `dontstarve/wilson/attack_weapon`，提交时
+`dontstarve/common/together/reskin_tool`，幽灵画笔改用 `terraria1/skins/spectrepaintbrush`。
+FEV 和音频索引见 `docs/vgmstream-cli-guide.md`。
+
+`AnimatedBuildingPlacement.reskinTargets` 保留实体根节点、开关状态和容器引用；
+地面物品保留数量、实体 ID 和真实落点，拾回时携带新皮肤。换肤后的皮肤进入现有
+存档字段；取消、目标移除或资源加载失败不会提交变化。场景退出调用控制器和
+特效的 `dispose()`，并用 `DisposeSounds()` 释放共享声音。

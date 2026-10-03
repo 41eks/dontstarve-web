@@ -2,19 +2,21 @@ import { describe, expect, it, vi } from 'vitest';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../../ui/src/inventory-items';
-import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS, INVENTORY_SKIN_SPECS } from '../../ui/src/categories/shared';
+import { HAT_ITEM_SPECS } from '../../prefab/src/hats';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
+import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS, INVENTORY_SKIN_SPECS } from '../../ui/src/categories/shared';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
 import { chestContainerId, cookPotContainerId, iceBoxContainerId, inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { serializeSave, type RuntimeSaveState } from '../../../src/save/serialize';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import type { InventoryStore } from '../../../src/inventory';
 import { buildingContainerId, buildingContainerDefinition } from '../../prefab/src/containers';
+import { WORLD_TILES } from '../../prefab/src/turfMap';
 
 const catalog: SaveCatalog = {
-  items: Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
+  items: { ...Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
     ...spec, maxStack: inventoryItemMaxStack(id), equippable: inventoryItemEquipmentKind(id),
-  }])),
+  }])), ...HAT_ITEM_SPECS },
   skins: INVENTORY_SKIN_SPECS, recipes: INVENTORY_RECIPES, recipeSkins: INVENTORY_RECIPE_SKINS,
   buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls),
 };
@@ -38,6 +40,25 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
+  it('round trips dug terrain and rejects duplicate, invalid and out-of-bounds tiles', () => {
+    const { template, state } = fixture();
+    const tiles = [{ col: -1, row: 2, tileId: WORLD_TILES.DIRT }];
+    const saved = deserializeSave(serializeSave(template, { ...state, tiles }, catalog), catalog);
+    expect(saved.world.map.tiles).toEqual(tiles);
+    const resaved = deserializeSave(serializeSave(saved, state, catalog), catalog);
+    expect(resaved.world.map.tiles).toEqual(tiles);
+    for (const tiles of [
+      [{ col: 0, row: 0, tileId: WORLD_TILES.DECIDUOUS }],
+      [{ col: 0.5, row: 0, tileId: WORLD_TILES.DIRT }],
+      [{ col: 100, row: 0, tileId: WORLD_TILES.DIRT }],
+      [{ col: -100, row: 0, tileId: WORLD_TILES.DIRT }],
+      [saved.world.map.tiles![0], saved.world.map.tiles![0]],
+    ]) {
+      const bad = structuredClone(saved);
+      Object.assign(bad.world.map, { tiles });
+      expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow();
+    }
+  });
   it('round trips beefalo positions, home, facing and manure timers and rejects invalid AI data', () => {
     const { template, state } = fixture();
     state.entities.beefalo = [{ id: 'e_beefalo', transform: { position: [10, 0, 2], rotationY: 0 },
@@ -112,19 +133,19 @@ describe('manual JSON save', () => {
     bad.world.entities.flower[0].components.flower.planted = false;
     expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow('planted');
   });
-  it('round trips independent dwarf star lifetimes and rejects invalid timers', () => {
+  it.each([['stafflight', 1440], ['staffcoldlight', 960]] as const)('round trips %s lifetimes and rejects invalid timers', (prefab, duration) => {
     const { template, state } = fixture();
-    state.entities.stafflight = [{
+    state.entities[prefab] = [{
       id: 'e_star', transform: { position: [20, 0, 30], rotationY: 0 },
       components: { timer: { remainingSeconds: 120.5 } },
     }];
     const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
-    expect(saved.world.entities.stafflight).toEqual(state.entities.stafflight);
-    for (const remainingSeconds of [0, -1, 1441]) {
-      saved.world.entities.stafflight[0].components.timer!.remainingSeconds = remainingSeconds;
+    expect(saved.world.entities[prefab]).toEqual(state.entities[prefab]);
+    for (const remainingSeconds of [0, -1, duration + 1]) {
+      saved.world.entities[prefab][0].components.timer!.remainingSeconds = remainingSeconds;
       expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('remainingSeconds');
     }
-    delete saved.world.entities.stafflight[0].components.timer;
+    delete saved.world.entities[prefab][0].components.timer;
     expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('timer');
   });
   it.each(['dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2'] as const)(

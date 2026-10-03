@@ -113,6 +113,12 @@ export {
   TENT_DEFINITION,
   TENT_ID,
 } from './tent';
+export { MOONBASE_DEFINITION, MOONBASE_ID } from './moonbase';
+export {
+  loadReskinToolEquipment, resolveReskinToolPlayerSprite, ReskinActionController, ReskinEffects,
+  RESKIN_CAST_TIME, RESKIN_REACH, nextReskin, reskinEffectSound,
+  type ReskinToolEquipment, type ReskinTarget, type PreparedReskin,
+} from './reskin_tool';
 export {
   WALL_DEFINITIONS,
   WALL_IDS,
@@ -143,10 +149,13 @@ export {
 } from './butterfly';
 export {
   YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME,
+  OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, loadLightStaffEquipment, setupLightStaffCasting,
   loadYellowStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, setupYellowStaffCasting,
-  type YellowStaffEquipment,
+  type YellowStaffEquipment, type LightStaffId,
 } from './yellowstaff';
-export { DWARF_STAR_ID, DWARF_STAR_DURATION, dwarfStarLight, DwarfStarManager, type DwarfStarRecord } from './stafflight';
+export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,
+  dwarfStarLight, polarLight, DwarfStarManager, type DwarfStarRecord, type StaffLightId } from './stafflight';
+export { PlaySound, PreloadSounds, DisposeSounds, type SoundEventPath, type SoundHandle } from './sound';
 export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, type FirefliesWorld } from './fireflies';
 export {
   BULB_PLANT_ID, BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_LIGHT,

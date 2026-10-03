@@ -200,7 +200,7 @@ export class DstLocalLighting {
       for (const entry of Array.isArray(material) ? material : [material]) {
         this.patchMaterial(entry);
         const uniform = this.lightOverrides.get(entry);
-        if (uniform) uniform.value = lightOverride;
+        if (uniform) uniform.value = Math.max(lightOverride, getPrefabLightOverride(entry) ?? 0);
       }
     });
   }

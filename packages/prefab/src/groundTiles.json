@@ -1,0 +1,29 @@
+{
+  "DIRT": {
+    "tileId": 4,
+    "name": "dirt",
+    "atlas": "levels/tiles/dirt.xml",
+    "texture": "levels/tiles/dirt.tex",
+    "noise": "levels/textures/Ground_noise_dirt.tex",
+    "renderOrder": 0,
+    "cannotBeDug": true
+  },
+  "DECIDUOUS": {
+    "tileId": 30,
+    "name": "deciduous",
+    "atlas": "levels/tiles/deciduous.xml",
+    "texture": "levels/tiles/deciduous.tex",
+    "noise": "levels/textures/Ground_noise_deciduous.tex",
+    "renderOrder": 1,
+    "cannotBeDug": false
+  },
+  "WOODFLOOR": {
+    "tileId": 10,
+    "name": "blocky",
+    "atlas": "levels/tiles/blocky.xml",
+    "texture": "levels/tiles/blocky.tex",
+    "noise": "levels/textures/noise_woodfloor.tex",
+    "renderOrder": 2,
+    "cannotBeDug": false
+  }
+}

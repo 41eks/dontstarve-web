@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import hats.lua inventory/equipment art and recipe metadata, without FX assets."""
+"""Import hats.lua inventory/equipment art, crown activation FX and recipe metadata."""
 import argparse
 import json
 from pathlib import Path
@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 OPEN_TOP = {'earmuffs', 'ruins', 'flower', 'goggles', 'eyebrella', 'merm', 'kelp',
             'alterguardian', 'scrap_monocle', 'roseglasses', 'ghostflower'}
 FULL_HELM = {'lunarplant', 'voidcloth', 'pumpkin'}
-# Some hat bodies are drawn by FollowSymbol in DST. Keep their physical art;
+# Other hat bodies are drawn by FollowSymbol in DST. Keep their physical art;
 # omit glow, particles, blink effects, lights, sounds and separate FX entities.
 FOLLOW = {
     'lunarplant': {'animation': 'idle', 'symbols': ['hat01', 'float_top']},
@@ -18,6 +18,14 @@ FOLLOW = {
     'wagpunk': {'animation': 'idle'},
     'inspectacles': {'animation': 'off'},
     'rabbit': {'animation': 'idle', 'extraBuilds': ['rabbit_build.zip']},
+}
+ACTIVATED = {
+    'alterguardian': {
+        'archive': 'hat_alterguardian_equipped.zip', 'symbol': 'hair',
+        'sanityThreshold': 170 / 200,
+        'light': {'radius': 4, 'intensity': 0.8, 'falloff': 0.5,
+                  'colour': [180 / 255, 195 / 255, 150 / 255]},
+    },
 }
 
 
@@ -78,6 +86,9 @@ def main():
         if name in FOLLOW:
             hat['equip']['follow'] = FOLLOW[name]
             assets.update('anim/' + archive for archive in FOLLOW[name].get('extraBuilds', []))
+        if name in ACTIVATED:
+            hat['equip']['activated'] = ACTIVATED[name]
+            assets.add('anim/' + ACTIVATED[name]['archive'])
         hats[item_id] = hat
         assets.add('anim/' + hat['archive'])
     skin_specs = {}

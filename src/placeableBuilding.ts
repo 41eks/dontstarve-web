@@ -25,6 +25,7 @@ import {
 import type { WorldContext } from '@three-roaming/prefab/worldContext';
 import type { PlacementSaveRecord } from '@three-roaming/prefab/saveRecord';
 import { TENT_DEFINITION, TENT_ID } from '@three-roaming/prefab/tent';
+import { MOONBASE_DEFINITION, MOONBASE_ID } from '@three-roaming/prefab/moonbase';
 import { FIRE_PIT_DEFINITION, FIRE_PIT_ID, type FirePitId } from '@three-roaming/prefab/firepit';
 import { ICE_BOX_DEFINITION, ICE_BOX_ID, type IceBoxId } from '@three-roaming/prefab/icebox';
 import { DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, type DragonflyChestId } from '@three-roaming/prefab/dragonfly_chest';
@@ -39,7 +40,7 @@ export { TREASURE_CHEST_ID } from '@three-roaming/prefab/treasurechest';
 export { TENT_ID } from '@three-roaming/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | typeof TENT_ID
-    | DragonflyChestId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId;
+    | DragonflyChestId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | typeof MOONBASE_ID;
 export type PlaceableBuildingId = AnimatedBuildingId | WallId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
@@ -50,6 +51,7 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     ...RESEARCH_LAB_IDS,
     TREASURE_CHEST_ID,
     TENT_ID,
+    MOONBASE_ID,
     DRAGONFLY_CHEST_ID,
     CAMPFIRE_ID,
     SALT_BOX_ID,
@@ -65,6 +67,7 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     ...RESEARCH_LAB_DEFINITIONS,
     [TREASURE_CHEST_ID]: TREASURE_CHEST_DEFINITION,
     [TENT_ID]: TENT_DEFINITION,
+    [MOONBASE_ID]: MOONBASE_DEFINITION,
     [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_DEFINITION,
     [CAMPFIRE_ID]: CAMPFIRE_DEFINITION,
     [SALT_BOX_ID]: SALT_BOX_DEFINITION,
@@ -135,6 +138,10 @@ export class PlaceableBuildingPlacement {
 
     get hammerTargets() {
         return [...this.animated.hammerTargets, ...this.walls.hammerTargets];
+    }
+
+    get reskinTargets() {
+        return this.animated.reskinTargets;
     }
 
     update(dt: number): void {

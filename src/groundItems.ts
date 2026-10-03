@@ -1,7 +1,8 @@
 import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
 import * as THREE from 'three';
 import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
-import { createHatGroundSprite, HatEquipmentAssets, isHatId } from '@three-roaming/prefab/hats';
+import { createHatGroundSprite, HatEquipmentAssets, isHatId, HAT_DEFINITIONS } from '@three-roaming/prefab/hats';
+import { nextReskin, type ReskinTarget } from '@three-roaming/prefab/reskin_tool';
 import { createGroundItemSprite, GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '@three-roaming/prefab/groundItems';
 import { newEntityId } from '@three-roaming/prefab/saveRecord';
 import { createLanternGroundSprite } from '@three-roaming/prefab/lantern';
@@ -167,7 +168,42 @@ export class GroundItemManager {
       .map((record) => this.captureTarget(record));
   }
 
-  private isNetCreature(itemId: string): boolean { return itemId === 'butterfly' || itemId === 'fireflies'; }
+    get reskinTargets(): readonly ReskinTarget[] {
+        return [...this.items.values()].flatMap((record) => {
+            const prefabId = record.definition.itemId;
+            const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ITEM_DEFINITIONS[prefabId])?.skinArchives ?? {});
+            if (skins.length === 0) return [];
+            const isValid = () => this.items.get(record.model) === record && !record.isRemoved?.();
+            return [{
+                id: record.id, prefabId, model: record.model, position: record.footPosition, isValid,
+                prepareNextSkin: async () => {
+                    const skinId = nextReskin(skins, record.definition.skinId);
+                    const definition = { ...record.definition };
+                    if (skinId === undefined) delete definition.skinId; else definition.skinId = skinId;
+                    const visual = await this.createVisual(definition);
+                    let used = false;
+                    return {
+                        apply: () => {
+                            if (used || !isValid()) return false;
+                            visual.model.position.copy(record.footPosition);
+                            visual.model.quaternion.copy(record.model.quaternion);
+                            visual.model.userData.entityId = record.id;
+                            this.items.delete(record.model);
+                            record.dispose();
+                            this.items.set(visual.model, { ...record, ...visual, definition });
+                            this.scene.add(visual.model);
+                            visual.onPlaced?.(false);
+                            used = true;
+                            return true;
+                        },
+                        dispose: () => { if (!used) { visual.dispose(); used = true; } },
+                    };
+                },
+            }];
+        });
+    }
+
+    private isNetCreature(itemId: string): boolean { return itemId === 'butterfly' || itemId === 'fireflies'; }
 
   private captureTarget(record: GroundItemRecord): NetCaptureTarget {
     const isValid = () => this.items.get(record.model) === record && !record.isRemoved?.() && record.isWorkable?.() !== false;

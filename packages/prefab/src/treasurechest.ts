@@ -5,6 +5,7 @@ import {
     type AnimatedBuildingDefinition,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
+import { PlaySound, PreloadSounds } from './sound';
 
 export const TREASURE_CHEST_ID = 'treasurechest' as const;
 export type TreasureChestId = typeof TREASURE_CHEST_ID;
@@ -21,6 +22,9 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 
 export const TREASURE_CHEST_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.treasurechest,
+    prepare: () => PreloadSounds('dontstarve/wilson/chest_open', 'dontstarve/wilson/chest_close'),
+    onopen: () => { PlaySound('dontstarve/wilson/chest_open'); },
+    onclose: () => { PlaySound('dontstarve/wilson/chest_close'); },
     onbuilt,
 };
 

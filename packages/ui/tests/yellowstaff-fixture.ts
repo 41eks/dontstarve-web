@@ -2,11 +2,24 @@ import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { setupYellowStaffCasting } from '../../prefab/src/yellowstaff';
-import { DwarfStarManager } from '../../prefab/src/stafflight';
+import { setupLightStaffCasting, type LightStaffId } from '../../prefab/src/yellowstaff';
+import { DwarfStarManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
+import { HandSlot, InventorySlot, InventoryStore, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 
-export async function checkYellowStaff() {
+export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
+  const duration = itemId === 'opalstaff' ? POLAR_LIGHT_DURATION : DWARF_STAR_DURATION;
+  const inventory = new InventoryStore([
+    { address: inventorySlotAddress(0), slot: new InventorySlot() },
+    { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
+  ], INVENTORY_ITEM_SPECS);
+  const given = await executeDebugCommand(`c_give("${itemId}")`, inventory);
+  const transferred = inventory.applySlotChanges([
+    { slot: inventorySlotAddress(0), itemId, delta: -1 },
+    { slot: equipmentSlotAddress('hand'), itemId, delta: 1 },
+  ]);
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(400, 400);
   document.body.append(renderer.domElement);
@@ -34,10 +47,10 @@ export async function checkYellowStaff() {
   scene.add(player);
   const animation = player.userData.animationController as WilsonAnimationController;
   const failures: string[] = [];
-  const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS.yellowstaff.skinArchives)];
+  const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS[itemId].skinArchives)];
   for (const skin of skins) {
-    await animation.setCarryItem('yellowstaff', skin);
-    const build = skin ? GROUND_ITEM_DEFINITIONS.yellowstaff.skinArchives[skin].split('/').at(-1)!.replace('.zip', '') : 'swap_staffs';
+    await animation.setCarryItem(itemId, skin);
+    const build = skin ? GROUND_ITEM_DEFINITIONS[itemId].skinArchives[skin].split('/').at(-1)!.replace('.zip', '') : 'swap_staffs';
     for (const facing of ['up', 'down', 'side'] as const) {
       for (const mirrored of [false, true]) {
         animation.setFacing(facing, mirrored);
@@ -48,12 +61,12 @@ export async function checkYellowStaff() {
       }
     }
   }
-  await animation.setCarryItem('yellowstaff');
+  await animation.setCarryItem(itemId);
   const unlitHand = !getPrefabLocalLight(player);
-  const stars = new DwarfStarManager(scene, '/dst/data/anim');
+  const stars = new DwarfStarManager(scene, '/dst/data/anim', itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight');
   let equipped = true;
   let stops = 0;
-  const disposeInput = setupYellowStaffCasting({ scene, camera, renderer, ground, player }, animation, stars,
+  const disposeInput = setupLightStaffCasting({ scene, camera, renderer, ground, player }, animation, stars,
     () => equipped, () => { stops += 1; }, (error) => failures.push(String(error)));
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
@@ -86,7 +99,7 @@ export async function checkYellowStaff() {
   const afterCommit = stars.exportRecords().length;
   tick(60);
   const star = stars.renderEntities[0]?.object as THREE.Group | undefined;
-  if (!star) throw new Error(`Dwarf star summon failed: ${failures.join('; ')}`);
+  if (!star) throw new Error(`${itemId} summon failed: ${failures.join('; ')}`);
   const mesh = star.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const appeared = mesh.geometry.drawRange.count > 0 && mesh.material.every((material) => material.forceSinglePass);
   const bright = sample(30);
@@ -117,21 +130,22 @@ export async function checkYellowStaff() {
   const expiredRemoved = !restored.parent && !getPrefabLocalLight(restored);
   const survivor = stars.exportRecords().length;
   const lifetimeStar = await stars.spawn(new THREE.Vector3(-70, 0, 0));
-  stars.update(1439, camera.quaternion);
-  const survivesUntil24Minutes = !!lifetimeStar.parent && !!getPrefabLocalLight(lifetimeStar)
+  stars.update(duration - 1, camera.quaternion);
+  const survivesUntilExpiry = !!lifetimeStar.parent && !!getPrefabLocalLight(lifetimeStar)
     && stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.entityId
       && Math.abs(entry.components.timer.remainingSeconds - 1) < 0.000001);
   stars.update(1, camera.quaternion);
-  const expiresAt24Minutes = !stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.entityId);
+  const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.entityId);
   stars.update(1, camera.quaternion);
   const lifetimeRemoved = !lifetimeStar.parent && !getPrefabLocalLight(lifetimeStar);
   disposeInput();
   stars.dispose();
   const disposedDark = sample(30);
   renderer.dispose();
-  return { failures, skins: skins.length - 1, unlitHand, ignoredLeft, busy, beforeCommit, afterCommit,
+  return { failures, given, transferred, prefabId: star.name, colour: source.colour,
+    skins: skins.length - 1, unlitHand, ignoredLeft, busy, beforeCommit, afterCommit,
     position: record.transform.position, remainingSeconds: record.components.timer.remainingSeconds,
-    fixedPosition, survivesUntil24Minutes, expiresAt24Minutes, lifetimeRemoved,
+    fixedPosition, survivesUntilExpiry, expiresAtLifetime, lifetimeRemoved,
     stops, appeared, baseline, bright, far,
     radius: source.radius, cancelled, noCastingLight, ignoredUnequipped, restoredLit,
     expiredNotSaved, expiredRemoved, survivor, disposedDark };

@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import {
-  createMaterials, findImage, loadAnimationArchive, loadBuild, smallHash,
+  createMaterials, findImage, loadAnim, loadAnimationArchive, loadBuild, smallHash,
   type AnimElement, type BuildPackage, type Matrix2D, type ParsedAnim, type ParsedBuild,
   SpriteFrameRenderer, type ResolvedSprite,
 } from '@three-roaming/animation/animationAssets';
 import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@three-roaming/inventory';
 import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
+import { setPrefabLightOverride, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
+import { TILE_SIZE } from './tile';
 import catalog from './hats.json' with { type: 'json' };
 
 export type HatEquipMode = 'normal' | 'opentop' | 'fullhelm';
@@ -18,6 +20,12 @@ export interface HatDefinition {
   readonly equip: {
     readonly mode: HatEquipMode;
     readonly symbol: string;
+    readonly activated?: {
+      readonly archive: string;
+      readonly symbol: string;
+      readonly sanityThreshold: number;
+      readonly light: PrefabLocalLight;
+    };
     readonly follow?: {
       readonly animation: string;
       readonly symbols?: readonly string[];
@@ -28,7 +36,7 @@ export interface HatDefinition {
   readonly skinEquipModes: Readonly<Record<string, HatEquipMode>>;
 }
 
-export const HAT_DEFINITIONS: Readonly<Record<string, HatDefinition>> = catalog.hats as
+export const HAT_DEFINITIONS: Readonly<Record<string, HatDefinition>> = catalog.hats as unknown as
   Readonly<Record<string, HatDefinition>>;
 export const HAT_IDS: readonly string[] = Object.keys(HAT_DEFINITIONS);
 export function isHatId(itemId: string): boolean {
@@ -74,6 +82,12 @@ export interface HatEquipment {
   readonly definition: HatDefinition;
   readonly builds: readonly HatBuild[];
   readonly animations: ParsedAnim;
+  readonly activated?: {
+    readonly animations: ParsedAnim;
+    readonly builds: readonly HatBuild[];
+    readonly glowMaterials: ReadonlyMap<HatBuild, THREE.MeshBasicMaterial[]>;
+    readonly bloomMaterials: ReadonlyMap<HatBuild, THREE.MeshBasicMaterial[]>;
+  };
 }
 
 /** One cache per player; loads only hats actually equipped and shares atlas materials. */
@@ -108,10 +122,38 @@ export class HatEquipmentAssets {
     const archives = [...(skinArchive ? [skinArchive] : []), definition.archive,
       ...(definition.equip.follow?.extraBuilds ?? [])];
     const builds = await Promise.all(archives.map((archive) => this.loadBuild(archive)));
+    const activation = definition.equip.activated;
+    let activated: HatEquipment['activated'];
+    if (activation) {
+      const [fxAnimations, fxBuild] = await Promise.all([
+        loadAnim(activation.archive, this.assetBaseUrl), this.loadBuild(activation.archive),
+      ]);
+      // Only p4_piece/fx_glow use the skin; other symbols retain their FX build.
+      const sources = [...(skinArchive ? [await this.loadBuild(skinArchive)] : []),
+        fxBuild];
+      const fxBuilds = sources.map(({ build, materials }) => ({ build,
+        // hats.lua's empty spore container applies a 0.7 multiplier.
+        materials: materials.map((source) => {
+          const material = source.clone();
+          material.color.setRGB(0.7, 0.7, 0.7, THREE.SRGBColorSpace);
+          return material;
+        }),
+      }));
+      activated = { animations: fxAnimations, builds: fxBuilds,
+        glowMaterials: new Map(fxBuilds.map((source) => [source, source.materials.map((base) => {
+          const glow = base.clone();
+          glow.name += ':glow';
+          // Preserve the source glow texture in darkness within the merged mesh.
+          setPrefabLightOverride(glow, 1);
+          return glow;
+        })])),
+        bloomMaterials: new Map(fxBuilds.map((source) => [source, createHatBloomMaterials(source)])),
+      };
+    }
     const skinMode = skinId ? definition.skinEquipModes[skinId] : undefined;
     return {
       definition: skinMode ? { ...definition, equip: { ...definition.equip, mode: skinMode } } : definition,
-      builds, animations,
+      builds, animations, ...(activated ? { activated } : {}),
     };
   }
 
@@ -130,6 +172,56 @@ export class HatEquipmentAssets {
     for (const material of materials) material.name = `hat:${build.build.name}`;
     return { build: build.build, materials };
   }
+}
+
+const bloomPadding = 12;
+
+/** Local approximation of the crown's SetBloomEffectHandle, using its own atlas
+ * art. Bounds prevent the blur from sampling neighbouring atlas symbols. */
+function createHatBloomMaterials(source: HatBuild): THREE.MeshBasicMaterial[] {
+  const image = findImage(source.build, smallHash('p4_piece'), 0);
+  if (!image) return [];
+  return source.materials.map((base) => {
+    const material = base.clone();
+    material.name += ':bloom';
+    material.blending = THREE.AdditiveBlending;
+    material.opacity = 0.6;
+    material.alphaTest = 0.001;
+    setPrefabLightOverride(material, 1);
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.hatBloomBounds = { value: new THREE.Vector4(
+        image.bbx! / image.canvasWidth!, image.bby! / image.canvasHeight!,
+        (image.bbx! + image.width) / image.canvasWidth!, (image.bby! + image.height) / image.canvasHeight!,
+      ) };
+      shader.uniforms.hatBloomStep = { value: new THREE.Vector2(
+        bloomPadding / 2 / image.canvasWidth!, bloomPadding / 2 / image.canvasHeight!,
+      ) };
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
+        #include <common>
+        uniform vec4 hatBloomBounds;
+        uniform vec2 hatBloomStep;
+      `).replace('#include <map_fragment>', `
+        vec4 halo = vec4(0.0);
+        float weights = 0.0;
+        for (int x = -2; x <= 2; x++) {
+          for (int y = -2; y <= 2; y++) {
+            vec2 delta = vec2(float(x), float(y));
+            vec2 uv = vMapUv + delta * hatBloomStep;
+            float weight = exp(-dot(delta, delta) * 0.5);
+            weights += weight;
+            if (all(greaterThanEqual(uv, hatBloomBounds.xy))
+              && all(lessThanEqual(uv, hatBloomBounds.zw))) {
+              vec4 texel = texture2D(map, uv);
+              halo += vec4(texel.rgb * texel.a, texel.a) * weight;
+            }
+          }
+        }
+        diffuseColor *= vec4(halo.rgb / max(halo.a, 0.0001), halo.a / weights);
+      `);
+    };
+    material.customProgramCacheKey = () => 'dst-hat-bloom-v1';
+    return material;
+  });
 }
 
 const hashSet = (names: readonly string[]) => new Set(names.map(smallHash));
@@ -185,6 +277,102 @@ export function resolveHatSprites(hat: HatEquipment, anchor: AnimElement, elapse
       const sprite = resolve(hat, { ...element, matrix: compose(anchor.matrix, element.matrix) });
       return sprite ? [sprite] : [];
     });
+}
+
+/** hats.lua activation and alterguardian_hat_equipped.lua's two NoFaced layers. */
+export class HatActivationController {
+  readonly model = new THREE.Group();
+  private hat: HatEquipment | null = null;
+  private sanityPercent = 1;
+  private active = false;
+  private deactivating = false;
+  private elapsed = 0;
+
+  constructor(owner: THREE.Object3D) {
+    this.model.name = 'HatActivationLight';
+    owner.add(this.model);
+  }
+
+  get isAnimating(): boolean { return this.active || this.deactivating; }
+  get hidesSwapHat(): boolean {
+    return this.active || (this.deactivating && this.elapsed < 8 / 30);
+  }
+
+  setHat(hat: HatEquipment | null): void {
+    this.hat = hat;
+    this.active = false;
+    this.deactivating = false;
+    this.elapsed = 0;
+    this.refresh();
+  }
+
+  setSanityPercent(percent: number): void {
+    if (!Number.isFinite(percent)) throw new RangeError('Sanity percent must be finite');
+    this.sanityPercent = THREE.MathUtils.clamp(percent, 0, 1);
+    this.refresh();
+  }
+
+  update(dt: number): void {
+    if (!this.isAnimating) return;
+    this.elapsed += dt;
+    if (this.deactivating) {
+      const clip = this.hat!.activated!.animations.animations.find(({ name }) => name === 'activate_pst')!;
+      if (this.elapsed >= clip.frames.length / clip.frameRate) this.deactivating = false;
+    }
+  }
+
+  resolve(anchor: AnimElement, mirrored: boolean): { back: ResolvedSprite[]; front: ResolvedSprite[] } {
+    const back: ResolvedSprite[] = [];
+    const front: ResolvedSprite[] = [];
+    const fx = this.hat?.activated;
+    if (!fx || !this.isAnimating) return { back, front };
+    const clips = fx.animations.animations;
+    const pre = clips.find(({ name }) => name === 'activate_pre')!;
+    const preDuration = pre.frames.length / pre.frameRate;
+    const clip = clips.find(({ name }) => name === (this.active
+      ? this.elapsed < preDuration ? 'activate_pre' : 'activate_loop'
+      : 'activate_pst'))!;
+    const time = this.active && this.elapsed >= preDuration ? this.elapsed - preDuration : this.elapsed;
+    const index = Math.floor((time + 1e-8) * clip.frameRate);
+    const frame = clip.frames[clip.name === 'activate_loop'
+      ? index % clip.frames.length : Math.min(index, clip.frames.length - 1)];
+    // FollowSymbol supplies the hair position, but SetNoFaced keeps the orbit
+    // independent of head rotation, facing and the player's mirrored scale.
+    const anchorMatrix: Matrix2D = [mirrored ? -1 : 1, 0, 0, 1, anchor.matrix[4], anchor.matrix[5]];
+    for (const element of [...frame.elements].sort((a, b) => b.z - a.z)) {
+      const hash = element.imageHash;
+      const skinnable = hash === smallHash('p4_piece') || hash === smallHash('fx_glow');
+      const source = skinnable ? fx.builds.find(({ build }) => build.symbols.has(hash)) : fx.builds.at(-1);
+      if (!source) continue;
+      // No seed contents: flame_swap/outline have no source build images.
+      const image = findImage(source.build, hash, element.imageIndex);
+      if (!image) continue;
+      const sprites = element.layerHash === smallHash('back') ? back : front;
+      const transformed = { ...element, matrix: compose(anchorMatrix, element.matrix) };
+      if (hash === smallHash('p4_piece')) {
+        sprites.push({ element: transformed, image: { ...image,
+          width: image.width + bloomPadding * 2, height: image.height + bloomPadding * 2,
+          bbx: image.bbx! - bloomPadding, bby: image.bby! - bloomPadding,
+        }, materials: fx.bloomMaterials.get(source)! });
+      }
+      sprites.push({ element: transformed, image,
+        materials: hash === smallHash('fx_glow') ? fx.glowMaterials.get(source)! : source.materials });
+    }
+    return { back, front };
+  }
+
+  private refresh(): void {
+    const config = this.hat?.definition.equip.activated;
+    const active = !!this.hat?.activated && !!config && this.sanityPercent > config.sanityThreshold;
+    if (active !== this.active) {
+      this.deactivating = this.active && !active;
+      this.active = active;
+      this.elapsed = 0;
+    }
+    setPrefabLocalLight(this.model, active && config ? {
+      ...config.light, radius: config.light.radius * (TILE_SIZE / 4),
+    } : null);
+  }
 }
 
 export interface HatGroundSprite {

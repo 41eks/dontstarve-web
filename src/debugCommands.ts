@@ -10,9 +10,9 @@ interface GiveCommand {
   count: number;
 }
 
-const GIVE_COMMAND = /^\s*c_give\s*\(\s*(["'])([^"']+)\1\s*(?:[,，]\s*(\d+)\s*)?\)\s*;?\s*$/;
-const SPAWN_COMMAND = /^\s*c_spawn\s*\(\s*(["'])([^"']+)\1\s*\)\s*;?\s*$/;
-const SAVE_COMMAND = /^\s*c_save\s*\(\s*\)\s*;?\s*$/;
+const GIVE_COMMAND = /^\s*c_give\s*[(（]\s*(["'])([^"']+)\1\s*(?:[,，]\s*(\d+)\s*)?[)）]\s*;?\s*$/;
+const SPAWN_COMMAND = /^\s*c_spawn\s*[(（]\s*(["'])([^"']+)\1\s*[)）]\s*;?\s*$/;
+const SAVE_COMMAND = /^\s*c_save\s*[(（]\s*[)）]\s*;?\s*$/;
 
 export type DebugSpawnPrefab = (prefabId: string) => boolean | Promise<boolean>;
 export type DebugSaveGame = () => void | Promise<void>;

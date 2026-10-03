@@ -5,10 +5,11 @@ import { setSpriteEntityRenderOrder } from '@three-roaming/animation';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
-import { boxes, ground, moonTreeForest, setTreeNormals } from './building';
+import { boxes, ground, turfGround, turfMap, moonTreeForest, setTreeNormals } from './building';
+import { WORLD_TILES } from '@three-roaming/prefab/turfMap';
 import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
-import { DwarfStarManager } from '@three-roaming/prefab/stafflight';
+import { DwarfStarManager, POLAR_LIGHT_ID } from '@three-roaming/prefab/stafflight';
 import { BulbPlantManager, isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
 import { RockManager, isRockPrefab } from '@three-roaming/prefab/rocks';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@three-roaming/prefab/beefalo';
@@ -32,6 +33,7 @@ import { FlowerPlanting } from '@three-roaming/prefab/flower';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
 import { initialSave } from './save/initialSave';
+import { ReskinEffects } from '@three-roaming/prefab/reskin_tool';
 import { getDstCycle } from './tuning';
 import { SAVE_CATALOG } from './save/catalog';
 import type { ProximityEntity } from '@three-roaming/prefab/proximityEntities';
@@ -56,8 +58,12 @@ world.addBody(playerBody);
 pigKings.forEach((pigKing) => world.addBody(pigKing.body));
 
 scene.background = new THREE.Color(0xbfd1e5);
-scene.add(ground, player);
+scene.add(ground, turfGround, player);
 pigKings.forEach((pigKing) => scene.add(pigKing.setPiece.group));
+for (const king of pigKings) {
+  king.setPiece.turf.visible = false;
+  for (const tile of king.setPiece.tiles) turfMap.setOriginalTile(tile.position, WORLD_TILES.WOODFLOOR);
+}
 scene.add(...boxes);
 
 // const updatePigInteraction = setupPigInteraction(camera, renderer, pig, player);
@@ -99,7 +105,7 @@ const characterRenderEntries = [
   })),
 ];
 
-function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement, groundItems: GroundItemManager, dwarfStars: DwarfStarManager, flowerPlanting: FlowerPlanting, bulbPlants: BulbPlantManager, beefalos: BeefaloManager, rockManager: RockManager) {
+function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement, groundItems: GroundItemManager, dwarfStars: DwarfStarManager, polarLights: DwarfStarManager, flowerPlanting: FlowerPlanting, bulbPlants: BulbPlantManager, beefalos: BeefaloManager, rockManager: RockManager, reskinEffects: ReskinEffects) {
   // The player origin follows the bottom of its physics body. Pig King's root
   // is vertically offset to ground its artwork, so its foot point is y = 0.
   playerFootPosition.copy(player.position);
@@ -110,9 +116,11 @@ function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacemen
     ...groundItems.renderEntities,
     ...flowerPlanting.renderEntities,
     ...dwarfStars.renderEntities,
+    ...polarLights.renderEntities,
     ...bulbPlants.renderEntities,
     ...beefalos.renderEntities,
     ...rockManager.renderEntities,
+    ...reskinEffects.renderEntities,
     ...Array.from(moonTreeForest.activeEntities, (entity) => ({
       object: entity.model!, footPosition: entity.position, cameraDepth: 0,
     })),
@@ -173,6 +181,7 @@ export async function startScene(
     consumeBufferedBuild,
     onBuildingInteraction,
   );
+  const reskinEffects = new ReskinEffects(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const flowerPlanting = new FlowerPlanting(view, `${import.meta.env.BASE_URL}dst/data/anim`, onFlowerPlanted);
   const groundItems = new GroundItemManager(
     scene,
@@ -206,6 +215,7 @@ export async function startScene(
     },
   );
   const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const polarLights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, POLAR_LIGHT_ID);
   const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
     getLightLevel: (model) => dstLighting.sampleLightLevel(model.position, model),
   });
@@ -253,10 +263,12 @@ export async function startScene(
     flowerPlanting.update(cameraWorldQuaternion);
     groundItems.update(dt, cameraWorldQuaternion);
     dwarfStars.update(dt, cameraWorldQuaternion);
+    polarLights.update(dt, cameraWorldQuaternion);
     bulbPlants.update(dt, cameraWorldQuaternion);
     beefalos.sync(cameraWorldQuaternion);
     rockManager.update(dt, cameraWorldQuaternion);
-    updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, beefalos, rockManager);
+    reskinEffects.update(dt, cameraWorldQuaternion);
+    updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, reskinEffects);
   });
   setupPigKingInteraction(view);
   const byEntityId = new Map<string, THREE.Object3D | ProximityEntity>();
@@ -266,8 +278,9 @@ export async function startScene(
     for (const record of records) {
       if (isPlaceableBuildingId(prefabId)) {
         byEntityId.set(record.id, await buildingPlacement.spawnFromSave(prefabId, record));
-      } else if (prefabId === 'stafflight') {
-        byEntityId.set(record.id, await dwarfStars.spawn(new THREE.Vector3(...record.transform.position), {
+      } else if (prefabId === 'stafflight' || prefabId === POLAR_LIGHT_ID) {
+        const lights = prefabId === POLAR_LIGHT_ID ? polarLights : dwarfStars;
+        byEntityId.set(record.id, await lights.spawn(new THREE.Vector3(...record.transform.position), {
           id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,
         }));
       } else if (prefabId === 'flower') {
@@ -319,6 +332,7 @@ export async function startScene(
       ground_item: groundItems.exportRecords(),
       flower: flowerPlanting.exportRecords(),
       stafflight: dwarfStars.exportRecords(),
+      staffcoldlight: polarLights.exportRecords(),
       beefalo: beefalos.exportRecords(),
     };
     for (const { prefabId, record } of buildingPlacement.exportRecords()) {
@@ -330,14 +344,14 @@ export async function startScene(
     for (const { prefabId, record } of bulbPlants.exportRecords()) (entities[prefabId] ??= []).push(record);
     for (const { prefabId, record } of rockManager.exportRecords()) (entities[prefabId] ??= []).push(record);
     return {
-      entities, elapsedSeconds,
+      entities, elapsedSeconds, tiles: turfMap.exportTiles(),
       // Physics may place the foot a fraction below the ground while settling.
       playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },
     };
   };
   setupLocomotorInput(view, locomotor);
   animate(world, camera);
-  return { buildingPlacement, groundItems, dwarfStars, flowerPlanting, bulbPlants, beefalos, rockManager, byEntityId, getSaveState };
+  return { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, reskinEffects, byEntityId, getSaveState };
 }
 
 export function scene_add(model:THREE.Object3D){

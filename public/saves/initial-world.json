@@ -7,18 +7,19 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000007",
-    "parentId": "0000000006",
-    "savedAt": "2026-10-03T08:49:19.671Z",
+    "id": "0000000011",
+    "parentId": "0000000010",
+    "savedAt": "2026-10-03T16:16:42.051Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 3740.209099999452,
+    "elapsedSeconds": 4647.35339999907,
     "systems": {},
     "map": {
       "kind": "generated",
+      "tiles": [],
       "generator": {
         "id": "forest-initial-v1",
         "options": {
@@ -6081,6 +6082,108 @@
           }
         },
         {
+          "id": "e_7c88adde2e96cf50216c5536d45934fd",
+          "transform": {
+            "position": [
+              -20.887391132479568,
+              0,
+              -8.934433462256212
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_ec32369c80eec4f59b134d48d347c727",
+          "transform": {
+            "position": [
+              -10.127456866920609,
+              0,
+              -43.83088313160126
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "wall_moonrock_item",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_ba6862dac33e15636920d3d9b693f34a",
+          "transform": {
+            "position": [
+              -6.888244694398452,
+              0,
+              -24.365984623222943
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "alterguardianhat",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_90cf4246abdaf9c4386cdb43d516541a",
+          "transform": {
+            "position": [
+              6.482520699179232,
+              0,
+              -26.03924601889433
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "alterguardianhat",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_777d1313fa8f0bbeec157f5f4c2a9b2d",
+          "transform": {
+            "position": [
+              17.478305808189926,
+              0,
+              -26.03924601889433
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "alterguardianhat",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_02462944419ec2f83371ad24f6ea25f5",
+          "transform": {
+            "position": [
+              3.718775426467693,
+              0,
+              -11.180857721573076
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        },
+        {
           "id": "e_9e7d3d06c71772990f5c9c7e49c1fa14",
           "transform": {
             "position": [
@@ -6093,13 +6196,280 @@
           "components": {
             "stack": {
               "itemId": "lantern",
+              "count": 1,
+              "skinId": "lantern_tesla"
+            }
+          }
+        },
+        {
+          "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
+          "transform": {
+            "position": [
+              -95.5352091170558,
+              0,
+              -15.059002600849213
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
               "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_5f98f9a627feea2fb75d1ffa516e94b7",
+          "transform": {
+            "position": [
+              -54.7892207374554,
+              0,
+              74.42827835774092
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_d96125953f2a5c9abf3006c7e9814f8b",
+          "transform": {
+            "position": [
+              -112.73094717819863,
+              0,
+              15.955230508633568
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_bb2e6b7bc2ac993bbee65beff6992d46",
+          "transform": {
+            "position": [
+              -85.82872789626282,
+              0,
+              15.646758746629951
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_7d80c7aec9e512f51989a11a65b96473",
+          "transform": {
+            "position": [
+              -95.5360321899776,
+              0,
+              4.707937799013264
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_bc82037e0af6ebb29adf332fc52afbbc",
+          "transform": {
+            "position": [
+              -64.5199722446746,
+              0,
+              55.218872183133854
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_45ab679d6b222a356a667c32dea0a67e",
+          "transform": {
+            "position": [
+              -91.27619005303735,
+              0,
+              55.218872183133854
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_4b127dfbea3bd9b2bdf5847c3f578f82",
+          "transform": {
+            "position": [
+              -127.1447029833026,
+              0,
+              48.049913164501945
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_92af5ad48ad47ab3653fcfec39dbceab",
+          "transform": {
+            "position": [
+              -124.49537244015616,
+              0,
+              71.25287708653137
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_4ac5d7792664c8e497a12dd8582670e6",
+          "transform": {
+            "position": [
+              -94.9650384914786,
+              0,
+              83.81069607897703
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_24f1cc810bb5579550521d6cb1b4fc39",
+          "transform": {
+            "position": [
+              -73.13005864352395,
+              0,
+              81.91466931380819
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_34fd8417ab5d93e3e3a5790ef059f8bc",
+          "transform": {
+            "position": [
+              16.67789116822153,
+              0,
+              1.9381944169262884
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "opalstaff",
+              "count": 1,
+              "skinId": "moonstaff_crystal"
+            }
+          }
+        },
+        {
+          "id": "e_8c93768383b35e63145e7cc3c8141347",
+          "transform": {
+            "position": [
+              13.7496837257966,
+              0,
+              34.88557305897684
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "yellowstaff",
+              "count": 1,
+              "skinId": "starstaff_crystal"
+            }
+          }
+        },
+        {
+          "id": "e_b334f24acb83f2eebcc0af2853c292c4",
+          "transform": {
+            "position": [
+              9.516294926866202,
+              0,
+              14.973106762556332
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "reskin_tool",
+              "count": 1,
+              "skinId": "reskin_tool_wand"
             }
           }
         }
       ],
       "flower": [],
       "stafflight": [],
+      "staffcoldlight": [],
+      "beefalo": [
+        {
+          "id": "e_fbc93491832fbc0f9ee1870641d45c24",
+          "transform": {
+            "position": [
+              -17.632782928480157,
+              0,
+              8.600566393457752
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -17.695081993185838,
+                0,
+                0.22546845008602653
+              ],
+              "heading": 259.3166329783004,
+              "poopRemainingSeconds": 15.072083134423835
+            }
+          }
+        }
+      ],
       "treasurechest": [
         {
           "id": "e_treasurechest_000001",
@@ -6129,7 +6499,7 @@
                   "slotKey": "1",
                   "item": {
                     "itemId": "twigs",
-                    "count": 28
+                    "count": 21
                   }
                 },
                 {
@@ -6143,7 +6513,7 @@
                   "slotKey": "3",
                   "item": {
                     "itemId": "goldnugget",
-                    "count": 40
+                    "count": 39
                   }
                 },
                 {
@@ -6178,7 +6548,7 @@
                   "slotKey": "8",
                   "item": {
                     "itemId": "cutgrass",
-                    "count": 17
+                    "count": 11
                   }
                 }
               ]
@@ -6209,6 +6579,13 @@
                     "itemId": "pigskin",
                     "count": 10
                   }
+                },
+                {
+                  "slotKey": "7",
+                  "item": {
+                    "itemId": "moonrocknugget",
+                    "count": 32
+                  }
                 }
               ]
             }
@@ -6228,7 +6605,8 @@
           },
           "components": {
             "building": {
-              "state": "closed"
+              "state": "closed",
+              "skinId": "cookpot_cauldronp"
             },
             "container": {
               "slotCount": 4,
@@ -6257,6 +6635,144 @@
             }
           }
         }
+      ],
+      "wall_moonrock": [
+        {
+          "id": "e_19e5ae73e45516b9023c28d60bba8a56",
+          "transform": {
+            "position": [
+              13.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_5fd1d2f59a58e23e2fba2a6f9e8e3967",
+          "transform": {
+            "position": [
+              10.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_f0c039aebfecb4bdaf1da9870870e714",
+          "transform": {
+            "position": [
+              7.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_3173a3a18d9c99c87fb82352159fb0eb",
+          "transform": {
+            "position": [
+              4.5,
+              0,
+              -43.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_178995283cd56cd722594539aa4b4fe5",
+          "transform": {
+            "position": [
+              1.5,
+              0,
+              -46.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_786a38f07e79cb76d81acddee071ec12",
+          "transform": {
+            "position": [
+              -1.5,
+              0,
+              -49.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "wall_stone": [
+        {
+          "id": "e_292d8d625929f26c3145bf4eef4fd8db",
+          "transform": {
+            "position": [
+              -40.5,
+              0,
+              -31.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_4807891eea6bacad621803988260a15a",
+          "transform": {
+            "position": [
+              -40.5,
+              0,
+              -25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_01ac6ad3a1f8f480c97a72ff41527480",
+          "transform": {
+            "position": [
+              -37.5,
+              0,
+              -16.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_ea2214ab2efc6975801ddc98c45e3bec",
+          "transform": {
+            "position": [
+              -43.5,
+              0,
+              -7.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "rock2": [
+        {
+          "id": "e_10f744212462fb2e3f566f39d918099b",
+          "transform": {
+            "position": [
+              31.857231460977644,
+              0,
+              -41.84302377546824
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
       ]
     }
   },
@@ -6266,9 +6782,9 @@
       "shardId": "master",
       "transform": {
         "position": [
-          -2.3044412315886675,
+          38.853899374400484,
           0,
-          -3.3999312405353397
+          52.587476098121
         ],
         "rotationY": 0
       },
@@ -6277,6 +6793,13 @@
           "player:inventory": {
             "slotCount": 15,
             "slots": [
+              {
+                "slotKey": "0",
+                "item": {
+                  "itemId": "wall_moonrock_item",
+                  "count": 1
+                }
+              },
               {
                 "slotKey": "2",
                 "item": {
@@ -6299,30 +6822,37 @@
                 }
               },
               {
-                "slotKey": "5",
-                "item": {
-                  "itemId": "goldnugget",
-                  "count": 1
-                }
-              },
-              {
                 "slotKey": "6",
                 "item": {
                   "itemId": "wall_stone_item",
-                  "count": 14
+                  "count": 10
+                }
+              },
+              {
+                "slotKey": "7",
+                "item": {
+                  "itemId": "butterfly",
+                  "count": 15
                 }
               },
               {
                 "slotKey": "8",
                 "item": {
-                  "itemId": "rocks",
-                  "count": 3
+                  "itemId": "fireflies",
+                  "count": 14
                 }
               },
               {
-                "slotKey": "13",
+                "slotKey": "10",
                 "item": {
-                  "itemId": "yellowstaff",
+                  "itemId": "goldenpickaxe",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "11",
+                "item": {
+                  "itemId": "hammer",
                   "count": 1
                 }
               },
@@ -6337,7 +6867,23 @@
           },
           "player:equipment": {
             "slotCount": 3,
-            "slots": []
+            "slots": [
+              {
+                "slotKey": "hand",
+                "item": {
+                  "itemId": "reskin_tool",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "head",
+                "item": {
+                  "itemId": "alterguardianhat",
+                  "count": 1,
+                  "skinId": "alterguardianhat_lastprism"
+                }
+              }
+            ]
           }
         },
         "bufferedBuilds": []

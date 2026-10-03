@@ -100,10 +100,21 @@ def main():
     # flower_cave.lua and lightflier_flower.lua share these world plant builds.
     assets.update('anim/bulb_plant_' + variant + '.zip' for variant in ['single', 'springy', 'double', 'triple'])
     add('yellowstaff', 'staffs', 'staffs', 'yellowstaff', 'staff')
-    assets.update(['anim/swap_staffs.zip', 'anim/player_staff.zip', 'anim/star_hot.zip'])
+    add('opalstaff', 'staffs', 'staffs', 'opalstaff', 'staff')
+    assets.update(['anim/swap_staffs.zip', 'anim/player_staff.zip', 'anim/star_hot.zip', 'anim/star_cold.zip'])
+    # reskin_tool.lua uses its idle ground pose and a separate held build.
+    add('reskin_tool', 'reskin_tool', 'reskin_tool', 'idle', 'reskin_tool')
+    assets.add('anim/swap_reskin_tool.zip')
+    assets.update(['anim/reskin_tool_fx.zip', 'anim/player_attacks.zip'])
     add('hammer', 'hammer', 'swap_hammer', 'idle', 'hammer', animation_archive='hammer.zip')
     add('bugnet', 'bugnet', 'swap_bugnet', 'idle', 'bugnet', animation_archive='bugnet.zip')
     assets.add('anim/player_actions_bugnet.zip')
+    # pitchfork.lua: idle ground bank/build and separate held swap symbols.
+    for item in ['pitchfork', 'goldenpitchfork']:
+        add(item, item, item, 'idle', 'pitchfork')
+        assets.add('anim/swap_' + item + '.zip')
+    assets.add('anim/player_actions_shovel.zip')
+    assets.add('levels/textures/Ground_noise_dirt.tex')
     for item in ['axe', 'goldenaxe', 'pickaxe', 'goldenpickaxe', 'shovel', 'goldenshovel']:
         source = 'pickaxe' if 'pickaxe' in item else 'shovel' if 'shovel' in item else 'axe'
         add(item, item, item, 'idle', source)

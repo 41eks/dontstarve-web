@@ -3,12 +3,14 @@ import type {
 } from '@three-roaming/inventory';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
 import type { BuildingContainerDefinition } from '@three-roaming/prefab/containers';
-import { DWARF_STAR_DURATION } from '@three-roaming/prefab/stafflight';
+import { DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '@three-roaming/prefab/stafflight';
 import { FLOWER_ANIMATIONS } from '@three-roaming/prefab/flower';
 import { BEEFALO_BEHAVIOR } from '@three-roaming/prefab/beefalo';
 import { BULB_PLANT_PREFABS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_MAX_ON_TIME,
   BULB_PLANT_MAX_RECHARGE_TIME, isBulbPlantPrefab, bulbPlantRegrowTime } from '@three-roaming/prefab/bulb_plant';
 import { ROCK_PREFABS } from '@three-roaming/prefab/rocks';
+import { WORLD_TILES } from '@three-roaming/prefab/turfMap';
+import { TILE_SIZE } from '@three-roaming/prefab/tile';
 
 export interface SaveCatalog {
   items: Readonly<Record<string, InventoryItemSpec>>;
@@ -107,10 +109,24 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   if (parentId !== null && parentId >= id) fail('snapshot.parentId', 'must refer to an earlier snapshot');
   const world = object(root.world, 'world', ['shardId', 'prefab', 'seed', 'elapsedSeconds', 'systems', 'map', 'entities']);
   const shardId = string(world.shardId, 'world.shardId');
-  const map = object(world.map, 'world.map', ['kind', 'generator']);
+  const map = object(world.map, 'world.map', ['kind', 'generator', 'tiles']);
   const generator = object(map.generator, 'world.map.generator', ['id', 'seed', 'options']);
   const options = object(generator.options, 'world.map.generator.options', ['size', 'moonTreeCount', 'moonTreeExclusionRadiusSquared']);
   const size = number(options.size, 'world.map.generator.options.size', 1, 10_000);
+  const tileKeys = new Set<string>();
+  const tiles = map.tiles === undefined ? undefined : array(map.tiles, 'world.map.tiles',
+    (Math.ceil(size / TILE_SIZE) + 1) ** 2).map((value, i) => {
+    const path = `world.map.tiles[${i}]`;
+    const tile = object(value, path, ['col', 'row', 'tileId']);
+    const min = Math.floor(-size / 2 / TILE_SIZE), max = Math.ceil(size / 2 / TILE_SIZE) - 1;
+    const col = integer(tile.col, `${path}.col`, min, max);
+    const row = integer(tile.row, `${path}.row`, min, max);
+    if (tile.tileId !== WORLD_TILES.DIRT) fail(`${path}.tileId`, 'expected WORLD_TILES.DIRT');
+    const key = `${col},${row}`;
+    if (tileKeys.has(key)) fail(path, 'duplicate terrain tile');
+    tileKeys.add(key);
+    return { col, row, tileId: WORLD_TILES.DIRT };
+  });
 
   const transform = (value: unknown, path: string, grounded: boolean): SavedTransform => {
     const o = object(value, path, ['position', 'rotationY']);
@@ -158,7 +174,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
   const ids = new Set<string>();
   let entityCount = 0;
-  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'flower', 'beefalo', ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
+  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
   const groups = object(world.entities, 'world.entities', allowedPrefabs);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;
@@ -173,7 +189,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       const containerDefinition = building?.container;
       const isContainer = containerDefinition !== undefined;
       const allowedComponents = building ? ['building', ...(isContainer ? ['container'] : [])]
-        : prefab === 'ground_item' ? ['stack'] : prefab === 'stafflight' ? ['timer'] : prefab === 'flower' ? ['flower']
+        : prefab === 'ground_item' ? ['stack'] : prefab === 'stafflight' || prefab === 'staffcoldlight' ? ['timer'] : prefab === 'flower' ? ['flower']
         : prefab === 'beefalo' ? ['beefalo'] : isBulbPlantPrefab(prefab) ? ['bulbPlant'] : catalog.walls.includes(prefab) ? ['health'] : [];
       const c = object(o.components, `${recordPath}.components`, allowedComponents);
       const components: SavedEntity['components'] = {};
@@ -225,10 +241,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
         if (flower.planted !== true) fail(`${path}.planted`, 'expected true');
         components.flower = { animation: choice(flower.animation, `${path}.animation`, FLOWER_ANIMATIONS), planted: true };
       }
-      if (prefab === 'stafflight') {
+      if (prefab === 'stafflight' || prefab === 'staffcoldlight') {
         const t = object(c.timer, `${recordPath}.components.timer`, ['remainingSeconds']);
         components.timer = { remainingSeconds: number(t.remainingSeconds,
-          `${recordPath}.components.timer.remainingSeconds`, Number.MIN_VALUE, DWARF_STAR_DURATION) };
+          `${recordPath}.components.timer.remainingSeconds`, Number.MIN_VALUE,
+          prefab === 'staffcoldlight' ? POLAR_LIGHT_DURATION : DWARF_STAR_DURATION) };
       }
       if (c.health !== undefined) {
         const h = object(c.health, `${recordPath}.components.health`, ['current', 'maximum']);
@@ -290,6 +307,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       elapsedSeconds: number(world.elapsedSeconds, 'world.elapsedSeconds'), systems,
       map: {
         kind: choice(map.kind, 'world.map.kind', ['generated']),
+        ...(tiles === undefined ? {} : { tiles }),
         generator: {
           id: string(generator.id, 'world.map.generator.id'),
           ...(generator.seed === undefined ? {} : { seed: string(generator.seed, 'world.map.generator.seed') }),

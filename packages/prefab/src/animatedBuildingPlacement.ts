@@ -11,6 +11,8 @@ import { PointerRaycaster } from './pointerRaycaster';
 import type { WorldContext } from './worldContext';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from './hammer';
+import { nextReskin, type ReskinTarget } from './reskin_tool';
+import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
 
 export interface AnimatedBuildingDefinition {
     archive: string;
@@ -22,8 +24,14 @@ export interface AnimatedBuildingDefinition {
     hammerAnimation?: string;
     name: string;
     container?: BuildingContainerDefinition;
+    /** Prepares prefab resources alongside the sprite, without playing effects. */
+    prepare?: () => Promise<void>;
     /** Runs only after successful placement; call onComplete when built effects finish. */
     onbuilt?: (context: AnimatedBuildingBuiltContext) => void;
+    /** Runs when an accepted interaction starts its opening animation. */
+    onopen?: (context: AnimatedBuildingEventContext) => void;
+    /** Runs when a click or proximity exit starts its closing animation. */
+    onclose?: (context: AnimatedBuildingEventContext) => void;
     /** Runs when the player enters the building's proximity range. */
     onturnon?: (context: AnimatedBuildingEventContext) => void;
     /** Runs when the player leaves the building's proximity range. */
@@ -214,6 +222,63 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             }));
     }
 
+    get reskinTargets(): readonly ReskinTarget[] {
+        return this.placed.filter(({ buildId }) => Object.keys(this.definitions[buildId].skinArchives ?? {}).length > 0)
+            .map((building) => {
+                const isValid = () => this.placed.includes(building) && !building.isPlacing
+                    && building.model.visible && building.model.parent !== null
+                    && building.interactionState !== 'opening' && building.interactionState !== 'closing';
+                return {
+                    id: String(building.model.userData.entityId), prefabId: building.buildId, model: building.model,
+                    position: building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)), isValid,
+                    prepareNextSkin: async () => {
+                        const previousSkin = building.skinId;
+                        const previousState = building.interactionState;
+                        const skinId = nextReskin(Object.keys(this.definitions[building.buildId].skinArchives!), previousSkin);
+                        const replacement = await this.createInstance(building.buildId, skinId, false,
+                            previousState === 'open' ? 'open' : previousState === 'closed' ? 'closed' : 'idle');
+                        let used = false;
+                        const disposeModel = (model: THREE.Group) => {
+                            const materials = new Set<THREE.Material>();
+                            model.traverse((object) => {
+                                if (!(object instanceof THREE.Mesh)) return;
+                                object.geometry.dispose();
+                                (Array.isArray(object.material) ? object.material : [object.material]).forEach((material) => materials.add(material));
+                            });
+                            for (const material of materials) {
+                                if (material instanceof THREE.MeshBasicMaterial) material.map?.dispose();
+                                material.dispose();
+                            }
+                            model.clear();
+                        };
+                        return {
+                            apply: () => {
+                                if (used || !isValid() || building.skinId !== previousSkin || building.interactionState !== previousState) return false;
+                                const footY = building.model.position.y - building.groundOffset;
+                                // Keep the entity root: open container panels and IDs retain their references.
+                                disposeModel(building.model);
+                                for (const child of [...replacement.model.children]) building.model.add(child);
+                                registerSpriteRenderGroup(building.model, building.model.children[0] as THREE.Group);
+                                building.animation = replacement.animation;
+                                building.model.userData.animationController = replacement.animation;
+                                building.skinId = skinId;
+                                if (skinId === undefined) delete building.model.userData.skinId;
+                                else building.model.userData.skinId = skinId;
+                                building.groundOffset = replacement.groundOffset;
+                                building.model.position.y = footY + building.groundOffset;
+                                if (building.isPlayerNearby) this.definitions[building.buildId].onturnon?.({
+                                    model: building.model, animation: building.animation, skinId,
+                                });
+                                used = true;
+                                return true;
+                            },
+                            dispose: () => { if (!used) { disposeModel(replacement.model); used = true; } },
+                        };
+                    },
+                };
+            });
+    }
+
     cancel() {
         // Cancel only the placer, including pending asset loads. The buffered build stays in inventory.
         this.previewVersion += 1;
@@ -307,6 +372,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (definition.onProximity && !building.isPlayerNearby) return;
 
         if (building.interactionState === 'closed') {
+            definition.onopen?.({
+                model: building.model,
+                animation: building.animation,
+                skinId: building.skinId,
+            });
             if (interaction.openAnimationLoop) {
                 building.interactionState = 'open';
                 building.animation.start(interaction.openAnimation);
@@ -334,11 +404,17 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private closeInteraction(building: AnimatedBuildingInstance<BuildId>) {
-        const interaction = this.definitions[building.buildId].interaction;
+        const definition = this.definitions[building.buildId];
+        const interaction = definition.interaction;
         if (!interaction || (building.interactionState !== 'open'
             && building.interactionState !== 'opening')) return;
 
         building.interactionState = 'closing';
+        definition.onclose?.({
+            model: building.model,
+            animation: building.animation,
+            skinId: building.skinId,
+        });
         this.onInteractionChange?.({
             buildId: building.buildId,
             isOpen: false,
@@ -374,7 +450,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
         if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
         const skin = skinId === undefined ? undefined : definition.skinInit?.(skinId);
-        const model = await createAnimatedSprite(
+        const [model] = await Promise.all([createAnimatedSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
             skin?.archive ?? definition.archive,
             {
@@ -389,7 +465,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 baseSymbols: definition.baseSymbols,
                 skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
             },
-        );
+        ), definition.prepare?.()]);
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
         const instance: AnimatedBuildingInstance<BuildId> = {

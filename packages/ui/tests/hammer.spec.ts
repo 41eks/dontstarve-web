@@ -27,15 +27,25 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
     const player = await import(urls.player);
     const { scene } = await import(urls.universal);
     const { view } = await import(urls.view);
+    const { equipmentSlotAddress } = await import(urls.inventory);
+    const handAddress = equipmentSlotAddress('hand');
+    const equipped = main.inventory.get(handAddress);
+    // This scenario starts with an empty hand, regardless of the saved equipment.
+    if (equipped) main.inventory.applySlotChanges([
+      { slot: handAddress, itemId: equipped.itemId, skinId: equipped.skinId, delta: -equipped.count },
+    ]);
     const target = scene.children.find((model: any) => model.name === 'TreasureChest');
     if (!target) throw new Error('Missing saved treasure chest');
     const radius = player.playerBody.shapes[0].radius;
     player.playerBody.position.set(target.position.x, radius, target.position.z + 3);
     player.player.position.set(target.position.x, 0, target.position.z + 3);
-    main.inventory.add('hammer', 1);
+    if (main.inventory.count('hammer') === 0) main.inventory.add('hammer', 1);
     (window as any).hammerGame = { main, ...player, scene, view, target };
-  }, Object.fromEntries(['main', 'player', 'universal', 'view'].map((name) =>
-    [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`])));
+  }, {
+    ...Object.fromEntries(['main', 'player', 'universal', 'view'].map((name) =>
+      [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`])),
+    inventory: `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`,
+  });
   const bar = page.locator('dst-inventory-bar');
   const hammerSlot = bar.locator('.inventory-bar__items .inventory-slot[data-item-id="hammer"]');
   await expect(hammerSlot).toBeVisible();

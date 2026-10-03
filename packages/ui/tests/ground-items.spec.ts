@@ -75,7 +75,7 @@ test('ground catalog renders every source frame and skin without inventory icons
   }, { ground: moduleUrl('../../prefab/src/groundItems.ts'), hats: moduleUrl('../../prefab/src/hats.ts'),
     atlas: moduleUrl('../../animation/src/imageAtlas.ts'), inventory: moduleUrl('../../../src/inventory.ts') });
   expect(result.failures).toEqual([]);
-  expect(result).toMatchObject({ count: 217, skins: 82, common: true, removed: true });
+  expect(result).toMatchObject({ count: 221, skins: 94, common: true, removed: true });
   expect(failedRequests).toEqual([]);
 });
 

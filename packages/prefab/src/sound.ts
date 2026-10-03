@@ -1,0 +1,126 @@
+// dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
+const sounds = {
+  'dontstarve/common/staff_star_create': { bank: 'common', streams: [273], loop: false },
+  'dontstarve/common/staff_star_LP': { bank: 'common', streams: [274], loop: true },
+  'dontstarve/wilson/use_gemstaff': { bank: 'common', streams: [284], loop: false },
+  'dontstarve/common/staffteleport': { bank: 'common', streams: [284], loop: false },
+  // FEV has three simultaneous layers, each with one sound definition.
+  'dontstarve/common/staff_coldlight_LP': { bank: 'sfx', streams: [796], loop: true,
+    layers: [{ bank: 'sfx', streams: [797] }, { bank: 'common', streams: [158] }] },
+  'dontstarve/wilson/hit': { bank: 'sfx', streams: [423, 424], loop: false },
+  'dontstarve/wilson/use_pick_rock': { bank: 'wilson', streams: [124], loop: false },
+  'dontstarve/common/icebox_open': { bank: 'sfx', streams: [383], loop: false },
+  'dontstarve/common/icebox_close': { bank: 'sfx', streams: [382], loop: false },
+  'dontstarve/wilson/chest_open': { bank: 'wilson', streams: [15], loop: false },
+  'dontstarve/wilson/chest_close': { bank: 'wilson', streams: [14], loop: false },
+  'dontstarve/wilson/attack_weapon': { bank: 'sfx', streams: [1230, 1231, 1232, 1233], loop: false },
+  'dontstarve/common/together/reskin_tool': { bank: 'sfx', streams: [827, 828, 829, 830, 831, 832], loop: false },
+  'terraria1/skins/spectrepaintbrush': { bank: 'terraria1', streams: [241, 242, 243], loop: false },
+} as const;
+export type SoundEventPath = keyof typeof sounds;
+export interface SoundHandle { stop(): void; }
+
+let context: AudioContext | undefined;
+const buffers = new Map<string, AudioBuffer>();
+const requests = new Map<string, Promise<AudioBuffer>>();
+const playing = new Set<SoundHandle>();
+
+function unlock(): void {
+  if (context?.state === 'suspended') void context.resume().catch(() => undefined);
+}
+
+function getContext(): AudioContext | undefined {
+  if (typeof AudioContext === 'undefined') return undefined;
+  if (!context) {
+    context = new AudioContext();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pointerdown', unlock, true);
+      window.addEventListener('keydown', unlock, true);
+    }
+  }
+  return context;
+}
+
+function soundLayers(path: SoundEventPath): string[][] {
+  const event = sounds[path];
+  const layers = [event, ...('layers' in event ? event.layers : [])];
+  return layers.map((layer) => layer.streams.map((stream) => `${layer.bank}.fsb-${stream}.wav`));
+}
+
+function loadSound(filename: string, audio: AudioContext): Promise<AudioBuffer> {
+  let request = requests.get(filename);
+  if (!request) {
+    request = (async () => {
+      const response = await fetch(`${import.meta.env.BASE_URL}dst/data/sound/${filename}`);
+      if (!response.ok) throw new Error(`Unable to load ${filename}: ${response.status}`);
+      const buffer = await audio.decodeAudioData(await response.arrayBuffer());
+      if (audio === context) buffers.set(filename, buffer);
+      return buffer;
+    })();
+    requests.set(filename, request);
+    void request.catch(() => { if (requests.get(filename) === request) requests.delete(filename); });
+  }
+  return request;
+}
+
+export async function PreloadSounds(...paths: SoundEventPath[]): Promise<void> {
+  const audio = getContext();
+  if (!audio) return;
+  await Promise.all(paths.flatMap((path) => soundLayers(path).flat()).map((filename) => loadSound(filename, audio).catch((error: unknown) => {
+    if (audio === context) console.warn(`Unable to prepare ${filename}`, error);
+  })));
+}
+
+/** Play a DST event; loop behavior and the source sample come from its FEV mapping. */
+export function PlaySound(path: SoundEventPath): SoundHandle {
+  const audio = getContext();
+  const filenames = soundLayers(path).map((files) => files.length === 1 ? files[0] : files[Math.floor(Math.random() * files.length)]);
+  const sources = new Set<AudioBufferSourceNode>();
+  let remaining = filenames.length;
+  let stopped = false;
+  const handle: SoundHandle = { stop() {
+    if (stopped) return;
+    stopped = true;
+    playing.delete(handle);
+    for (const source of sources) { source.onended = null; source.stop(); source.disconnect(); }
+    sources.clear();
+  } };
+  if (!audio) return handle;
+  playing.add(handle);
+  const start = (buffer: AudioBuffer) => {
+    if (stopped || audio !== context) return;
+    const source = audio.createBufferSource();
+    source.buffer = buffer;
+    source.loop = sounds[path].loop;
+    source.connect(audio.destination);
+    sources.add(source);
+    source.onended = () => {
+      sources.delete(source);
+      source.disconnect();
+      if (--remaining === 0) { stopped = true; playing.delete(handle); }
+    };
+    source.start();
+  };
+  for (const filename of filenames) {
+    const buffer = buffers.get(filename);
+    if (buffer) start(buffer);
+    else void loadSound(filename, audio).then(start).catch((error: unknown) => {
+      handle.stop();
+      if (audio === context) console.warn(`Unable to play ${path}`, error);
+    });
+  }
+  return handle;
+}
+
+/** Release the shared audio service when the game is closed. */
+export function DisposeSounds(): void {
+  for (const sound of playing) sound.stop();
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('pointerdown', unlock, true);
+    window.removeEventListener('keydown', unlock, true);
+  }
+  void context?.close().catch(() => undefined);
+  context = undefined;
+  buffers.clear();
+  requests.clear();
+}

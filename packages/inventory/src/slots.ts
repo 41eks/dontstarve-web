@@ -16,10 +16,14 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   torch: 1,
   lantern: 1,
   yellowstaff: 1,
+  opalstaff: 1,
+  reskin_tool: 1,
   bugnet: 1,
   hammer: 1,
   pickaxe: 1,
   goldenpickaxe: 1,
+  pitchfork: 1,
+  goldenpitchfork: 1,
   log: 20,
 };
 
@@ -28,8 +32,9 @@ export function inventoryItemMaxStack(itemId: string): number {
 }
 
 export function inventoryItemEquipmentKind(itemId: string): 'hand' | undefined {
-  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'bugnet'
-    || itemId === 'hammer' || itemId === 'pickaxe' || itemId === 'goldenpickaxe' ? 'hand' : undefined;
+  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'bugnet'
+    || itemId === 'hammer' || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
+    || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool' ? 'hand' : undefined;
 }
 
 export class InventorySlot implements ItemSlot {

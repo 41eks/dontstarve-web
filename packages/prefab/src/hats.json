@@ -684,7 +684,22 @@
       "archive": "hat_alterguardian.zip",
       "equip": {
         "mode": "opentop",
-        "symbol": "swap_hat"
+        "symbol": "swap_hat",
+        "activated": {
+          "archive": "hat_alterguardian_equipped.zip",
+          "symbol": "hair",
+          "sanityThreshold": 0.85,
+          "light": {
+            "radius": 4,
+            "intensity": 0.8,
+            "falloff": 0.5,
+            "colour": [
+              0.7058823529411765,
+              0.7647058823529411,
+              0.5882352941176471
+            ]
+          }
+        }
       },
       "skinArchives": {
         "alterguardianhat_lastprism": "dynamic/alterguardianhat_lastprism.zip"

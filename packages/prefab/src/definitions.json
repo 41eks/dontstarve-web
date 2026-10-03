@@ -1,5 +1,13 @@
 {
   "animatedBuildings": {
+    "moonbase": {
+      "archive": "moonbase.zip",
+      "buildLabel": "月亮石",
+      "idleAnimation": "med",
+      "name": "MoonBase",
+      "onProximity": false,
+      "scale": 0.02
+    },
     "firepit": {
       "archive": "firepit.zip",
       "buildLabel": "火坑",
