@@ -39,6 +39,7 @@ export class FlowerPlanting {
   private previewMaterials: THREE.Material[] = [];
   private takeButterfly?: () => boolean;
   private previewVersion = 0;
+  private disposed = false;
 
   constructor(world: WorldContext, assetBaseUrl: string, onPlant?: () => void, random = Math.random) {
     this.world = world;
@@ -52,6 +53,7 @@ export class FlowerPlanting {
   }
 
   async begin(takeButterfly: () => boolean): Promise<void> {
+    if (this.disposed) throw new Error('Flower planting has been disposed');
     this.cancel();
     const version = this.previewVersion;
     this.takeButterfly = takeButterfly;
@@ -80,6 +82,18 @@ export class FlowerPlanting {
       if (version === this.previewVersion) this.cancel();
       throw error;
     }
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
+    window.removeEventListener('keydown', this.handleKeyDown);
+    this.pointer.dispose();
+    this.cancel();
+    this.flowers.clear();
+    if (this.readyFactory) this.readyFactory.dispose();
+    else if (this.factory) void this.factory.then((factory) => factory.dispose(), () => undefined);
   }
 
   cancel(): void {
@@ -113,6 +127,7 @@ export class FlowerPlanting {
 
   async spawnFromSave(id: string, animation: FlowerAnimation, position: THREE.Vector3): Promise<THREE.Group> {
     const factory = await this.loadFactory();
+    if (this.disposed) throw new Error('Flower planting has been disposed');
     const flower = this.createFlower(factory, id, animation, position);
     this.flowers.set(id, flower);
     this.world.scene.add(flower.model);
@@ -120,6 +135,7 @@ export class FlowerPlanting {
   }
 
   private loadFactory(): Promise<AnimatedSpriteFactory> {
+    if (this.disposed) return Promise.reject(new Error('Flower planting has been disposed'));
     if (!this.factory) {
       this.factory = createAnimatedSpriteFactory(this.assetBaseUrl, 'flowers.zip').then((factory) => {
         this.readyFactory = factory;

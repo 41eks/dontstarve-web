@@ -114,6 +114,7 @@ export {
   TENT_ID,
 } from './tent';
 export { MOONBASE_DEFINITION, MOONBASE_ID } from './moonbase';
+export { WARDROBE_DEFINITION, WARDROBE_ID } from './wardrobe';
 export {
   loadReskinToolEquipment, resolveReskinToolPlayerSprite, ReskinActionController, ReskinEffects,
   RESKIN_CAST_TIME, RESKIN_REACH, nextReskin, reskinEffectSound,

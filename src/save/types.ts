@@ -3,6 +3,7 @@ import type { FlowerAnimation } from '@three-roaming/prefab/flower';
 import type { BulbPlantSaveState } from '@three-roaming/prefab/bulb_plant';
 import type { BeefaloSaveState } from '@three-roaming/prefab/beefalo';
 import type { TurfTileSave } from '@three-roaming/prefab/turfMap';
+import type { NightmareGrowthSaveState } from '@three-roaming/prefab/nightmaregrowth';
 
 export interface SavedTransform {
   position: [number, number, number];
@@ -26,6 +27,7 @@ export interface SavedEntity {
     flower?: { animation: FlowerAnimation; planted: true };
     bulbPlant?: BulbPlantSaveState;
     beefalo?: BeefaloSaveState;
+    nightmareGrowth?: NightmareGrowthSaveState;
   };
 }
 

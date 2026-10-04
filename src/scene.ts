@@ -5,41 +5,22 @@ import { setSpriteEntityRenderOrder } from '@three-roaming/animation';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
-import { boxes, ground, turfGround, turfMap, moonTreeForest, setTreeNormals } from './building';
-import { WORLD_TILES } from '@three-roaming/prefab/turfMap';
+import { ground, turfGround, turfMap } from './building';
 import { camera } from './camera';
-import { GroundItemManager, type GroundItemDefinition } from './groundItems';
-import { DwarfStarManager, POLAR_LIGHT_ID } from '@three-roaming/prefab/stafflight';
-import { BulbPlantManager, isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
-import { RockManager, isRockPrefab } from '@three-roaming/prefab/rocks';
-import { PondManager, POND_ID } from '@three-roaming/prefab/pond';
-import { BeefaloManager, BEEFALO_BEHAVIOR } from '@three-roaming/prefab/beefalo';
-import { newEntityId } from '@three-roaming/prefab/saveRecord';
-import {
-  pigKings,
-  setPigKingNormal,
-  setupPigKingInteraction,
-  updatePigKingAnimation,
-} from './pigking';
+import type { GroundItemDefinition } from './groundItems';
+import { createSceneEntities } from './sceneEntities';
+import type { EntityRegistry } from './entityRegistry';
 import { player, playerBody, setPlayerNormal } from './player';
 import {
-  PlaceableBuildingPlacement,
-  isPlaceableBuildingId,
   type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
 } from './placeableBuilding';
-import { dstLighting, renderer, scene } from './universal';
-import type { ButterflyFlower } from '@three-roaming/prefab/butterfly';
-import { FlowerPlanting } from '@three-roaming/prefab/flower';
+import { dstLighting, scene } from './universal';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
 import { initialSave } from './save/initialSave';
-import { ReskinEffects } from '@three-roaming/prefab/reskin_tool';
 import { getDstCycle } from './tuning';
-import { SAVE_CATALOG } from './save/catalog';
-import type { ProximityEntity } from '@three-roaming/prefab/proximityEntities';
 import type { RuntimeSaveState } from './save/serialize';
-import type { SavedEntity } from './save/types';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@three-roaming/prefab/locomotor';
 
 export const world = new CANNON.World({
@@ -55,19 +36,9 @@ const groundBody = new CANNON.Body({
 groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 world.addBody(groundBody);
 world.addBody(playerBody);
-// world.addBody(pigBody);
-pigKings.forEach((pigKing) => world.addBody(pigKing.body));
-
 scene.background = new THREE.Color(0xbfd1e5);
 scene.add(ground, turfGround, player);
-pigKings.forEach((pigKing) => scene.add(pigKing.setPiece.group));
-for (const king of pigKings) {
-  king.setPiece.turf.visible = false;
-  for (const tile of king.setPiece.tiles) turfMap.setOriginalTile(tile.position, WORLD_TILES.WOODFLOOR);
-}
-scene.add(...boxes);
 
-// const updatePigInteraction = setupPigInteraction(camera, renderer, pig, player);
 const playerRadius = (playerBody.shapes[0] as CANNON.Sphere).radius;
 export const locomotor = new Locomotor(playerBody, {
   findPath(start, target) {
@@ -97,34 +68,11 @@ const cameraWorldQuaternion = new THREE.Quaternion();
 const playerFootPosition = new THREE.Vector3();
 const cameraSpaceFootPosition = new THREE.Vector3();
 
-const characterRenderEntries = [
-  { object: player, footPosition: playerFootPosition, cameraDepth: 0 },
-  ...pigKings.map((pigKing) => ({
-    object: pigKing.standee,
-    footPosition: pigKing.setPiece.footPosition,
-    cameraDepth: 0,
-  })),
-];
-
-function updateCharacterRenderOrder(buildingPlacement: PlaceableBuildingPlacement, groundItems: GroundItemManager, dwarfStars: DwarfStarManager, polarLights: DwarfStarManager, flowerPlanting: FlowerPlanting, bulbPlants: BulbPlantManager, beefalos: BeefaloManager, rockManager: RockManager, reskinEffects: ReskinEffects) {
-  // The player origin follows the bottom of its physics body. Pig King's root
-  // is vertically offset to ground its artwork, so its foot point is y = 0.
+function updateCharacterRenderOrder(registry: EntityRegistry) {
   playerFootPosition.copy(player.position);
-
   const renderEntries = [
-    ...characterRenderEntries,
-    ...buildingPlacement.renderEntities,
-    ...groundItems.renderEntities,
-    ...flowerPlanting.renderEntities,
-    ...dwarfStars.renderEntities,
-    ...polarLights.renderEntities,
-    ...bulbPlants.renderEntities,
-    ...beefalos.renderEntities,
-    ...rockManager.renderEntities,
-    ...reskinEffects.renderEntities,
-    ...Array.from(moonTreeForest.activeEntities, (entity) => ({
-      object: entity.model!, footPosition: entity.position, cameraDepth: 0,
-    })),
+    { object: player, footPosition: playerFootPosition, cameraDepth: 0 },
+    ...registry.renderEntities,
   ];
   for (const entry of renderEntries) {
     entry.cameraDepth = cameraSpaceFootPosition
@@ -151,7 +99,6 @@ middleTasks.push((dt: number) => {
   updatePlayerMovement(getVelocity(), dt);
 });
 middleTasks.push(updateAnimation);
-middleTasks.push(updatePigKingAnimation);
 
 if (!window.location.hostname.endsWith('github.io')) {
   const cannonDebugger = CannonDebugger(scene, world, {
@@ -160,16 +107,6 @@ if (!window.location.hostname.endsWith('github.io')) {
   backTasks.push(() => cannonDebugger.update());
 }
 
-backTasks.push((dt) => {
-  moonTreeForest.updateNearby(player.position);
-  moonTreeForest.update(dt);
-  camera.getWorldQuaternion(cameraWorldQuaternion);
-  setPlayerNormal(cameraWorldQuaternion);
-  setPigKingNormal(cameraWorldQuaternion);
-  setTreeNormals(cameraWorldQuaternion);
-  // updatePigInteraction();
-});
-
 export async function startScene(
   consumeBufferedBuild: (buildingId: PlaceableBuildingId) => boolean,
   pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net') => boolean,
@@ -177,189 +114,50 @@ export async function startScene(
   onFlowerPlanted?: () => void,
   pickLightbulbs: (count: number) => boolean = () => false,
 ) {
-  const buildingPlacement = new PlaceableBuildingPlacement(
-    view,
-    consumeBufferedBuild,
-    onBuildingInteraction,
-  );
-  const reskinEffects = new ReskinEffects(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
-  const flowerPlanting = new FlowerPlanting(view, `${import.meta.env.BASE_URL}dst/data/anim`, onFlowerPlanted);
-  const groundItems = new GroundItemManager(
-    scene,
-    camera,
-    renderer,
-    `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`,
-    pickupGroundItem,
-    `${import.meta.env.BASE_URL}dst/data/anim`,
-    {
-      isDay: () => dstLighting.getPhase() === 'day',
-      getThreatPositions: () => [player.position],
-      getFlowers: () => {
-        const flowers: ButterflyFlower[] = [];
-        scene.traverse((object) => {
-          if (object.userData.tags?.includes('flower')) flowers.push({
-            id: object.userData.entityId ?? object.uuid,
-            position: object.getWorldPosition(new THREE.Vector3()),
-          });
-        });
-        return flowers;
-      },
-      constrainPosition: (position) => {
-        const edge = initialSave.world.map.generator.options.size / 2 - 0.5;
-        position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
-        position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
-      },
-    },
-    {
-      isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
-      getPlayerPositions: () => [player.position],
-    },
-  );
-  const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
-  const polarLights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, POLAR_LIGHT_ID);
-  const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    getLightLevel: (model) => dstLighting.sampleLightLevel(model.position, model),
-  });
-  bulbPlants.setupInteraction(view, pickLightbulbs);
-  const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
-  const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
-  const pendingPoop = new Set<THREE.Vector3>();
-  const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    isDay: () => dstLighting.getPhase() === 'day',
-    isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
-    getPlayerPositions: () => [player.position],
-    findPath(start, target) {
-      const radius = BEEFALO_BEHAVIOR.radius;
-      const edge = initialSave.world.map.generator.options.size / 2 - radius;
-      const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC && body.collisionResponse
-        && body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere))
-        .map((body) => { body.updateAABB(); return body.aabb; });
-      return findGroundPath(start, target, { cellSize: radius,
-        isWalkable: (point) => Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
-          && !obstacles.some((box) => point.x >= box.lowerBound.x - radius && point.x <= box.upperBound.x + radius
-            && point.z >= box.lowerBound.z - radius && point.z <= box.upperBound.z + radius),
-      });
-    },
-    constrainPosition(position) {
-      const edge = initialSave.world.map.generator.options.size / 2 - BEEFALO_BEHAVIOR.radius;
-      position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
-      position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
-    },
-    spawnPoop(position) {
-      const positions = [...pendingPoop, ...groundItems.exportRecords()
-        .filter((record) => record.components.stack?.itemId === 'poop')
-        .map((record) => new THREE.Vector3(...record.transform.position))];
-      if (positions.some((point) => point.distanceToSquared(position) < BEEFALO_BEHAVIOR.poopSpacing ** 2)
-        || positions.filter((point) => point.distanceToSquared(position) <= BEEFALO_BEHAVIOR.poopDensityRadius ** 2).length >= 2) return;
-      pendingPoop.add(position);
-      void groundItems.spawnFromSave(newEntityId(), {
-        ...SAVE_CATALOG.items.poop, itemId: 'poop', count: 1,
-      }, position).catch((error: unknown) => console.error('Unable to spawn beefalo manure', error))
-        .finally(() => pendingPoop.delete(position));
-    },
-  });
-  middleTasks.push((dt) => beefalos.update(dt));
-  // Align every billboard before sorting their ground-contact points.
-  backTasks.push((dt: number) => {
-    buildingPlacement.update(dt);
-    flowerPlanting.update(cameraWorldQuaternion);
-    groundItems.update(dt, cameraWorldQuaternion);
-    dwarfStars.update(dt, cameraWorldQuaternion);
-    polarLights.update(dt, cameraWorldQuaternion);
-    bulbPlants.update(dt, cameraWorldQuaternion);
-    beefalos.sync(cameraWorldQuaternion);
-    rockManager.update(dt, cameraWorldQuaternion);
-    ponds.update(dt);
-    reskinEffects.update(dt, cameraWorldQuaternion);
-    updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, reskinEffects);
-  });
-  setupPigKingInteraction(view);
-  const byEntityId = new Map<string, THREE.Object3D | ProximityEntity>();
-  for (const entity of moonTreeForest.entities) byEntityId.set(entity.saveId!, entity);
-  for (const pigKing of pigKings) byEntityId.set(pigKing.record.id, pigKing.standee);
-  for (const [prefabId, records] of Object.entries(initialSave.world.entities)) {
-    for (const record of records) {
-      if (isPlaceableBuildingId(prefabId)) {
-        byEntityId.set(record.id, await buildingPlacement.spawnFromSave(prefabId, record));
-      } else if (prefabId === 'stafflight' || prefabId === POLAR_LIGHT_ID) {
-        const lights = prefabId === POLAR_LIGHT_ID ? polarLights : dwarfStars;
-        byEntityId.set(record.id, await lights.spawn(new THREE.Vector3(...record.transform.position), {
-          id: record.id, remainingSeconds: record.components.timer!.remainingSeconds,
-        }));
-      } else if (prefabId === 'flower') {
-        byEntityId.set(record.id, await flowerPlanting.spawnFromSave(record.id,
-          record.components.flower!.animation, new THREE.Vector3(...record.transform.position)));
-      } else if (isBulbPlantPrefab(prefabId)) {
-        byEntityId.set(record.id, await bulbPlants.spawn(prefabId, new THREE.Vector3(...record.transform.position), {
-          id: record.id, transform: record.transform, components: { bulbPlant: record.components.bulbPlant! },
-        }));
-      } else if (isRockPrefab(prefabId)) {
-        byEntityId.set(record.id, await rockManager.spawn(prefabId, new THREE.Vector3(...record.transform.position), {
-          id: record.id, transform: record.transform, components: {},
-        }));
-      } else if (prefabId === POND_ID) {
-        byEntityId.set(record.id, await ponds.spawn(new THREE.Vector3(...record.transform.position), {
-          id: record.id, transform: record.transform, components: {},
-        }));
-      } else if (prefabId === 'ground_item') {
-        const item = record.components.stack!;
-        const spec = SAVE_CATALOG.items[item.itemId];
-        const skin = item.skinId ? SAVE_CATALOG.skins[item.skinId] : undefined;
-        const model = await groundItems.spawnFromSave(record.id, {
-          ...item, name: skin?.name ?? spec.name,
-          icon: skin?.icon ?? spec.icon, atlas: skin?.atlas ?? spec.atlas,
-        }, new THREE.Vector3(...record.transform.position));
-        byEntityId.set(record.id, model);
-      } else if (prefabId === 'beefalo') {
-        byEntityId.set(record.id, await beefalos.spawn(new THREE.Vector3(...record.transform.position), {
-          id: record.id, transform: record.transform, components: { beefalo: record.components.beefalo! },
-        }));
-      }
-    }
+  const entities = createSceneEntities(world, consumeBufferedBuild, pickupGroundItem,
+    onBuildingInteraction, onFlowerPlanted, pickLightbulbs);
+  const { registry } = entities;
+  try {
+    await registry.restoreAll(initialSave.world.entities);
+  } catch (error) {
+    registry.dispose();
+    throw error;
   }
-  // Logical tree records stay in the map even when their models are unloaded.
-  moonTreeForest.updateNearby(player.position);
+  const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
+  const updateEntities = (dt: number) => {
+    camera.getWorldQuaternion(cameraWorldQuaternion);
+    setPlayerNormal(cameraWorldQuaternion);
+    registry.update(dt, cameraWorldQuaternion);
+    updateCharacterRenderOrder(registry);
+  };
+  middleTasks.push(updateBeforePhysics);
+  backTasks.push(updateEntities);
   let elapsedSeconds = initialSave.world.elapsedSeconds;
-  backTasks.push((dt) => {
+  const updateClock = (dt: number) => {
     elapsedSeconds += dt;
     dstLighting.setPhase(getDstCycle(elapsedSeconds).phase);
-  });
+  };
+  backTasks.push(updateClock);
   const getSaveState = (): Omit<RuntimeSaveState, 'inventory'> => {
-    const entities: Record<string, SavedEntity[]> = {
-      moon_tree: moonTreeForest.entities.map((entity) => ({
-        id: entity.saveId!,
-        transform: { position: entity.position.toArray(), rotationY: 0 },
-        components: {},
-      })),
-      pigking: pigKings.map((pigKing) => ({
-        id: pigKing.record.id,
-        transform: { position: [pigKing.standee.position.x, 0, pigKing.standee.position.z], rotationY: 0 },
-        components: {},
-      })),
-      ground_item: groundItems.exportRecords(),
-      flower: flowerPlanting.exportRecords(),
-      stafflight: dwarfStars.exportRecords(),
-      staffcoldlight: polarLights.exportRecords(),
-      beefalo: beefalos.exportRecords(),
-      [POND_ID]: ponds.exportRecords(),
-    };
-    for (const { prefabId, record } of buildingPlacement.exportRecords()) {
-      (entities[prefabId] ??= []).push({
-        ...record,
-        transform: { ...record.transform, position: [...record.transform.position] },
-      });
-    }
-    for (const { prefabId, record } of bulbPlants.exportRecords()) (entities[prefabId] ??= []).push(record);
-    for (const { prefabId, record } of rockManager.exportRecords()) (entities[prefabId] ??= []).push(record);
     return {
-      entities, elapsedSeconds, tiles: turfMap.exportTiles(),
+      entities: registry.exportRecords(), elapsedSeconds, tiles: turfMap.exportTiles(),
       // Physics may place the foot a fraction below the ground while settling.
       playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },
     };
   };
-  setupLocomotorInput(view, locomotor);
-  animate(world, camera);
-  return { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, ponds, reskinEffects, byEntityId, getSaveState };
+  const removeLocomotorInput = setupLocomotorInput(view, locomotor);
+  const stopAnimation = animate(world, camera);
+  const dispose = () => {
+    stopAnimation();
+    locomotor.stop();
+    removeLocomotorInput();
+    for (const [tasks, task] of [[middleTasks, updateBeforePhysics], [backTasks, updateEntities], [backTasks, updateClock]] as const) {
+      const index = tasks.indexOf(task);
+      if (index >= 0) tasks.splice(index, 1);
+    }
+    registry.dispose();
+  };
+  return { ...entities, byEntityId: registry.byEntityId, getSaveState, dispose };
 }
 
 export function scene_add(model:THREE.Object3D){

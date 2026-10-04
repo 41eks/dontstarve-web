@@ -95,12 +95,32 @@ export class HatEquipmentAssets {
   private readonly builds = new Map<string, Promise<HatBuild>>();
   private readonly hats = new Map<string, Promise<HatEquipment>>();
   private readonly assetBaseUrl: string;
+  private disposed = false;
 
   constructor(assetBaseUrl: string) {
     this.assetBaseUrl = assetBaseUrl;
   }
 
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const build of this.builds.values()) void build.then(({ materials }) => {
+      for (const material of materials) { material.map?.dispose(); material.dispose(); }
+    }, () => undefined);
+    for (const hat of this.hats.values()) void hat.then(({ activated }) => {
+      if (!activated) return;
+      for (const material of [
+        ...activated.builds.flatMap(({ materials }) => materials),
+        ...Array.from(activated.glowMaterials.values()).flat(),
+        ...Array.from(activated.bloomMaterials.values()).flat(),
+      ]) material.dispose();
+    }, () => undefined);
+    this.builds.clear();
+    this.hats.clear();
+  }
+
   load(itemId: string, skinId?: string): Promise<HatEquipment> {
+    if (this.disposed) return Promise.reject(new Error('Hat assets have been disposed'));
     const definition = HAT_DEFINITIONS[itemId];
     if (!definition) return Promise.reject(new Error(`Unknown hat: ${itemId}`));
     const key = `${itemId}\n${skinId ?? ''}`;
@@ -115,6 +135,7 @@ export class HatEquipmentAssets {
 
   private async loadHat(definition: HatDefinition, skinId?: string): Promise<HatEquipment> {
     const { buildPackage, animations } = await loadAnimationArchive(definition.archive, this.assetBaseUrl);
+    if (this.disposed) throw new Error('Hat assets have been disposed');
     const base = this.builds.get(definition.archive) ?? Promise.resolve(this.materialize(buildPackage));
     this.builds.set(definition.archive, base);
     const skinArchive = skinId ? definition.skinArchives[skinId] : undefined;
@@ -158,6 +179,7 @@ export class HatEquipmentAssets {
   }
 
   private loadBuild(archive: string): Promise<HatBuild> {
+    if (this.disposed) return Promise.reject(new Error('Hat assets have been disposed'));
     let request = this.builds.get(archive);
     if (!request) {
       request = loadBuild(archive, this.assetBaseUrl).then((build) => this.materialize(build));

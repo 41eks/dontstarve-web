@@ -25,10 +25,6 @@ import { ReskinActionController } from '@three-roaming/prefab/reskin_tool';
 import { DisposeSounds, UpdateSoundListener } from '@three-roaming/prefab/sound';
 import { disposeAnimationAssets } from '@three-roaming/animation';
 import { turfMap } from './building';
-import { newEntityId } from '@three-roaming/prefab/saveRecord';
-import { isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
-import { isRockPrefab } from '@three-roaming/prefab/rocks';
-import { POND_ID } from '@three-roaming/prefab/pond';
 import { backTasks, frontTasks } from './animate';
 import { input } from './InputManager';
 import { PointerRaycaster } from '@three-roaming/prefab/pointerRaycaster';
@@ -172,7 +168,7 @@ inventory.subscribe((changedSlots) => {
 
 let cancelNetCapture = () => {};
 let cancelHandTool = () => {};
-const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, ponds, reskinEffects, getSaveState } = await startScene(
+const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, rockManager, reskinEffects, registry, getSaveState, dispose: disposeScene } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item, action) => {
     if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
@@ -270,7 +266,7 @@ if (playerAnimation) {
   cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); reskin.cancel(); };
   frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); pitchfork.update(dt); reskin.update(dt); });
   window.addEventListener('pagehide', () => {
-    reskin.dispose(); reskinEffects.dispose(); DisposeSounds(); disposeAnimationAssets();
+    reskin.dispose();
   }, { once: true });
 }
 
@@ -283,35 +279,14 @@ setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
   }, () => cursorUi.update());
 
 let lastSavedSnapshotId = initialSave.snapshot.id;
-window.addEventListener('pagehide', () => ponds.dispose(), { once: true });
+window.addEventListener('pagehide', () => {
+  disposeScene();
+  DisposeSounds();
+  disposeAnimationAssets();
+}, { once: true });
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
-  void executeDebugCommand(command, inventory, async (prefabId) => {
-    if (prefabId === POND_ID) {
-      await ponds.spawn(player.position.clone());
-      return true;
-    }
-    if (prefabId === 'beefalo') {
-      await beefalos.spawnNear(player.position);
-      return true;
-    }
-    if (isBulbPlantPrefab(prefabId)) {
-      await bulbPlants.spawn(prefabId, player.position.clone());
-      return true;
-    }
-    if (prefabId === 'fireflies') {
-      const spec = inventory.getItemSpec(prefabId);
-      await groundItems.spawnFromSave(newEntityId(), { ...spec, itemId: prefabId, count: 1 }, player.position.clone());
-      return true;
-    }
-    if (isRockPrefab(prefabId)) {
-      await rockManager.spawn(prefabId, player.position.clone());
-      return true;
-    }
-    if (!isPlaceableBuildingId(prefabId)) return false;
-    await buildingPlacement.spawn(prefabId);
-    return true;
-  }, () => {
+  void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => {
     const json = serializeSave(initialSave, {
       ...getSaveState(), inventory: inventory.exportState(),
     }, SAVE_CATALOG, lastSavedSnapshotId);

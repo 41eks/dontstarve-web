@@ -10,6 +10,7 @@ import { BULB_PLANT_PREFABS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_MAX_ON_TIME,
   BULB_PLANT_MAX_RECHARGE_TIME, isBulbPlantPrefab, bulbPlantRegrowTime } from '@three-roaming/prefab/bulb_plant';
 import { ROCK_PREFABS } from '@three-roaming/prefab/rocks';
 import { POND_ID } from '@three-roaming/prefab/pond';
+import { NIGHTMAREGROWTH_ID } from '@three-roaming/prefab/nightmaregrowth';
 import { WORLD_TILES } from '@three-roaming/prefab/turfMap';
 import { TILE_SIZE } from '@three-roaming/prefab/tile';
 
@@ -175,7 +176,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
   const ids = new Set<string>();
   let entityCount = 0;
-  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', POND_ID, ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
+  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', POND_ID, NIGHTMAREGROWTH_ID, ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
   const groups = object(world.entities, 'world.entities', allowedPrefabs);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;
@@ -191,9 +192,15 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       const isContainer = containerDefinition !== undefined;
       const allowedComponents = building ? ['building', ...(isContainer ? ['container'] : [])]
         : prefab === 'ground_item' ? ['stack'] : prefab === 'stafflight' || prefab === 'staffcoldlight' ? ['timer'] : prefab === 'flower' ? ['flower']
-        : prefab === 'beefalo' ? ['beefalo'] : isBulbPlantPrefab(prefab) ? ['bulbPlant'] : catalog.walls.includes(prefab) ? ['health'] : [];
+        : prefab === 'beefalo' ? ['beefalo'] : prefab === NIGHTMAREGROWTH_ID ? ['nightmareGrowth']
+        : isBulbPlantPrefab(prefab) ? ['bulbPlant'] : catalog.walls.includes(prefab) ? ['health'] : [];
       const c = object(o.components, `${recordPath}.components`, allowedComponents);
       const components: SavedEntity['components'] = {};
+      if (prefab === NIGHTMAREGROWTH_ID) {
+        const path = `${recordPath}.components.nightmareGrowth`;
+        const growth = object(c.nightmareGrowth, path, ['crackRotation']);
+        components.nightmareGrowth = { crackRotation: number(growth.crackRotation, `${path}.crackRotation`, 0, 360) };
+      }
       if (building) {
         const b = object(c.building, `${recordPath}.components.building`, ['state', 'skinId']);
         // Older cook pot saves only stored idle; migrate that to the closed state.

@@ -13,6 +13,7 @@
     "./pickaxe": "./src/pickaxe.ts",
     "./rocks": "./src/rocks.ts",
     "./pond": "./src/pond.ts",
+    "./nightmaregrowth": "./src/nightmaregrowth.ts",
     "./beefalo": "./src/beefalo.ts",
     "./emotes": "./src/emotes.ts",
     "./buildCursor": "./src/buildCursor.ts",
@@ -34,6 +35,7 @@
     "./icebox": "./src/icebox.ts",
     "./moontree": "./src/moontree.ts",
     "./moonbase": "./src/moonbase.ts",
+    "./wardrobe": "./src/wardrobe.ts",
     "./proximityEntities": "./src/proximityEntities.ts",
     "./pigking": "./src/pigking.ts",
     "./setpieces/pigking": "./src/setpieces/pigking.ts",
@@ -57,7 +59,8 @@
     "./locomotor": "./src/locomotor.ts",
     "./hats": "./src/hats.ts",
     "./groundItems": "./src/groundItems.ts",
-    "./pointerRaycaster": "./src/pointerRaycaster.ts"
+    "./pointerRaycaster": "./src/pointerRaycaster.ts",
+    "./disposeSprite": "./src/disposeSprite.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

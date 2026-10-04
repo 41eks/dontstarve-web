@@ -36,12 +36,24 @@ export class GroundItemAssets {
   private readonly animations = new Map<string, Promise<ParsedAnim>>();
   private readonly builds = new Map<string, Promise<GroundBuild>>();
   private readonly animationBaseUrl: string;
+  private disposed = false;
 
   constructor(animationBaseUrl: string) {
     this.animationBaseUrl = animationBaseUrl;
   }
 
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const build of this.builds.values()) void build.then(({ materials }) => {
+      for (const material of materials) { material.map?.dispose(); material.dispose(); }
+    }, () => undefined);
+    this.builds.clear();
+    this.animations.clear();
+  }
+
   loadAnimation(archive: string): Promise<ParsedAnim> {
+    if (this.disposed) return Promise.reject(new Error('Ground assets have been disposed'));
     let request = this.animations.get(archive);
     if (!request) {
       request = loadAnim(archive, this.animationBaseUrl);
@@ -52,6 +64,7 @@ export class GroundItemAssets {
   }
 
   loadBuild(archive: string): Promise<GroundBuild> {
+    if (this.disposed) return Promise.reject(new Error('Ground assets have been disposed'));
     let request = this.builds.get(archive);
     if (!request) {
       request = loadBuild(archive, this.animationBaseUrl).then((asset) => {

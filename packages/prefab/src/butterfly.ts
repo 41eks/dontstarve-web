@@ -203,16 +203,25 @@ function groundDistanceSquared(a: THREE.Vector3, b: THREE.Vector3): number {
 /** Share original DST build textures across separately animated butterflies. */
 export class ButterflyAssets {
   private factory?: Promise<AnimatedSpriteFactory>;
+  private disposed = false;
   private readonly assetBaseUrl: string;
 
   constructor(assetBaseUrl: string) { this.assetBaseUrl = assetBaseUrl; }
 
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.factory) void this.factory.then((factory) => factory.dispose(), () => undefined);
+  }
+
   async create(world: ButterflyWorld) {
+    if (this.disposed) throw new Error('Insect assets have been disposed');
     if (!this.factory) {
       this.factory = createAnimatedSpriteFactory(this.assetBaseUrl, 'butterfly_basic.zip');
       void this.factory.catch(() => { this.factory = undefined; });
     }
     const factory = await this.factory;
+    if (this.disposed) throw new Error('Insect assets have been disposed');
     const model = factory.create({ initialAnimation: 'idle_flight_loop', name: 'GroundItem:butterfly' });
     const controller = new ButterflyController(model, model.userData.animationController, world);
     return {

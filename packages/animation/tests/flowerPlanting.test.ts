@@ -122,3 +122,19 @@ describe('butterfly planting', () => {
     expect(butterfly.targetFlowerId).toBe(record.id);
   });
 });
+
+it('disposes shared flower assets, preview and input listeners without planting', async () => {
+  const s = await setup();
+  await s.manager.spawnFromSave('e_flower', 'f1', new THREE.Vector3());
+  await s.manager.begin(s.consume);
+  const removeCanvas = vi.spyOn(s.world.renderer.domElement, 'removeEventListener');
+  const removeWindow = vi.spyOn(s.windowEvents, 'removeEventListener');
+  s.manager.dispose(); s.manager.dispose();
+  expect(s.world.scene.children).toEqual([]);
+  expect(s.manager.exportRecords()).toEqual([]);
+  expect(removeCanvas).toHaveBeenCalledOnce();
+  expect(removeWindow).toHaveBeenCalledTimes(2); // pointermove and Escape
+  s.click();
+  expect(s.consume).not.toHaveBeenCalled();
+  await expect(s.manager.spawnFromSave('late', 'f1', new THREE.Vector3())).rejects.toThrow('disposed');
+});

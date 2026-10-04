@@ -27,7 +27,4 @@ export const moonTreeForest = await createMoonTreeForest(
     },
 );
 
-const boxes = [moonTreeForest.group];
-
-export const setTreeNormals = moonTreeForest.setNormals;
-export { ground, boxes };
+export { ground };

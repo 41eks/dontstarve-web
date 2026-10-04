@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeSprite } from './disposeSprite';
 import {
     createStaticSprite,
     type StaticSpriteController,
@@ -68,6 +69,8 @@ function snapToWallSlot(point: THREE.Vector3): THREE.Vector3 {
  * `AnimatedBuildingPlacement`.
  */
 export class WallPlacement<BuildId extends string> {
+    private disposed = false;
+    private readonly canvas: HTMLCanvasElement;
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.Camera;
     private readonly ground: THREE.Object3D;
@@ -88,6 +91,7 @@ export class WallPlacement<BuildId extends string> {
         definitions: Readonly<Record<BuildId, WallDefinition>>,
         consumeBufferedBuild: (buildId: BuildId) => boolean,
     ) {
+        this.canvas = world.renderer.domElement;
         this.scene = world.scene;
         this.camera = world.camera;
         this.ground = world.ground;
@@ -100,6 +104,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     begin(buildId: BuildId): Promise<void> {
+        if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
         if (this.active) return Promise.resolve();
         if (this.loading) return this.loading;
 
@@ -180,10 +185,20 @@ export class WallPlacement<BuildId extends string> {
         });
     }
 
+    dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+        this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
+        this.pointer.dispose();
+        this.cancel();
+        for (const instance of this.placed) disposeSprite(instance.model);
+        this.placed.length = 0;
+    }
+
     cancel() {
         this.previewVersion += 1;
         this.loading = undefined;
-        if (this.active) this.active.model.removeFromParent();
+        if (this.active) disposeSprite(this.active.model);
         this.active = undefined;
         this.cursor.hide();
     }
@@ -222,7 +237,7 @@ export class WallPlacement<BuildId extends string> {
     private async createPreview(buildId: BuildId, previewVersion: number) {
         const instance = await this.createInstance(buildId);
         if (previewVersion !== this.previewVersion) {
-            instance.model.removeFromParent();
+            disposeSprite(instance.model);
             return;
         }
         this.setOpacity(instance.model, 0.65);
@@ -233,6 +248,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     private async createInstance(buildId: BuildId, attach = true): Promise<WallInstance<BuildId>> {
+        if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
         const model = await createStaticSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
@@ -256,6 +272,7 @@ export class WallPlacement<BuildId extends string> {
             },
         );
         if (definition.multColour) this.setMultColour(model, definition.multColour);
+        if (this.disposed) { disposeSprite(model); throw new Error('Placement has been disposed'); }
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
         const instance: WallInstance<BuildId> = {

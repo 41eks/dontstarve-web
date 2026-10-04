@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeSprite } from './disposeSprite';
 import {
     createAnimatedSprite,
     type SpriteAnimationController,
@@ -87,6 +88,8 @@ const PROXIMITY_ENTER_DISTANCE = 9;
 const PROXIMITY_EXIT_DISTANCE = 10;
 
 export class AnimatedBuildingPlacement<BuildId extends string> {
+    private disposed = false;
+    private readonly canvas: HTMLCanvasElement;
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.Camera;
     private readonly ground: THREE.Object3D;
@@ -110,6 +113,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         consumeBufferedBuild: (buildId: BuildId) => boolean,
         onInteractionChange?: (change: AnimatedBuildingInteractionChange<BuildId>) => void,
     ) {
+        this.canvas = world.renderer.domElement;
         this.scene = world.scene;
         this.camera = world.camera;
         this.ground = world.ground;
@@ -123,6 +127,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     begin(buildId: BuildId, skinId?: string): Promise<void> {
+        if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
         if (this.active) return Promise.resolve();
         if (this.loading) return this.loading;
 
@@ -279,11 +284,21 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             });
     }
 
+    dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+        this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
+        this.pointer.dispose();
+        this.cancel();
+        for (const instance of this.placed) disposeSprite(instance.model);
+        this.placed.length = 0;
+    }
+
     cancel() {
         // Cancel only the placer, including pending asset loads. The buffered build stays in inventory.
         this.previewVersion += 1;
         this.loading = undefined;
-        if (this.active) this.active.model.removeFromParent();
+        if (this.active) disposeSprite(this.active.model);
         this.active = undefined;
         this.cursor.hide();
     }
@@ -429,7 +444,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private async createPreview(buildId: BuildId, previewVersion: number, skinId?: string) {
         const instance = await this.createInstance(buildId, skinId, true, undefined, true);
         if (previewVersion !== this.previewVersion) {
-            instance.model.removeFromParent();
+            disposeSprite(instance.model);
             return;
         }
         this.setOpacity(instance.model, 0.65);
@@ -446,6 +461,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         state?: 'idle' | 'closed' | 'open',
         preview = false,
     ): Promise<AnimatedBuildingInstance<BuildId>> {
+        if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
         const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
         if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
@@ -466,6 +482,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
             },
         ), definition.prepare?.()]);
+        if (this.disposed) { disposeSprite(model); throw new Error('Placement has been disposed'); }
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
         const instance: AnimatedBuildingInstance<BuildId> = {

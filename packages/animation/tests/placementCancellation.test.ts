@@ -141,3 +141,40 @@ it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelle
   expect(consume).toHaveBeenCalledTimes(1);
   expect(placement.exportRecords()).toHaveLength(1);
 });
+
+it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, previews and pointer listeners once', async (kind) => {
+  const { placement, begin, world, click, consume } = setup(kind);
+  const removeListener = vi.spyOn(world.renderer.domElement, 'removeEventListener');
+  const pointerDispose = vi.spyOn(PointerRaycaster.prototype, 'dispose');
+  await placement.spawn('building');
+  await begin();
+  const resources = world.scene.children.flatMap((model) => {
+    const mesh = model.children[0] as THREE.Mesh;
+    return [vi.spyOn(mesh.geometry, 'dispose'), vi.spyOn(mesh.material as THREE.Material, 'dispose')];
+  });
+  placement.dispose(); placement.dispose();
+  expect(world.scene.children).toEqual([]);
+  expect(placement.exportRecords()).toEqual([]);
+  expect(placement.renderEntities).toEqual([]);
+  expect(pointerDispose).toHaveBeenCalledOnce();
+  expect(removeListener).toHaveBeenCalledOnce();
+  resources.forEach((resource) => expect(resource).toHaveBeenCalledOnce());
+  click(0);
+  expect(consume).not.toHaveBeenCalled();
+  await expect(begin()).rejects.toThrow('disposed');
+});
+
+it.each(['animated', 'wall'] as const)('%s disposal rejects a pending spawn and releases its late sprite', async (kind) => {
+  const { placement, load, world } = setup(kind);
+  let resolve!: (value: THREE.Group) => void;
+  load.mockImplementationOnce(() => new Promise<THREE.Group>((done) => { resolve = done; }));
+  const pending = placement.spawn('building');
+  placement.dispose();
+  const late = model(), mesh = late.children[0] as THREE.Mesh;
+  const geometryDispose = vi.spyOn(mesh.geometry, 'dispose');
+  resolve(late);
+  await expect(pending).rejects.toThrow('disposed');
+  expect(geometryDispose).toHaveBeenCalledOnce();
+  expect(world.scene.children).toEqual([]);
+  expect(placement.exportRecords()).toEqual([]);
+});

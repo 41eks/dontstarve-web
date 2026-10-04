@@ -163,15 +163,24 @@ export class FirefliesController {
 /** Independent swarm animations share the unmodified source build/atlas. */
 export class FirefliesAssets {
   private factory?: Promise<AnimatedSpriteFactory>;
+  private disposed = false;
   private readonly assetBaseUrl: string;
   constructor(assetBaseUrl: string) { this.assetBaseUrl = assetBaseUrl; }
 
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.factory) void this.factory.then((factory) => factory.dispose(), () => undefined);
+  }
+
   async create(world: FirefliesWorld) {
+    if (this.disposed) throw new Error('Insect assets have been disposed');
     if (!this.factory) {
       this.factory = createAnimatedSpriteFactory(this.assetBaseUrl, 'fireflies.zip');
       void this.factory.catch(() => { this.factory = undefined; });
     }
     const factory = await this.factory;
+    if (this.disposed) throw new Error('Insect assets have been disposed');
     const model = factory.create({ initialAnimation: 'swarm_loop', name: 'GroundItem:fireflies' });
     const controller = new FirefliesController(model, model.userData.animationController, world);
     return { model, controller, onPlaced: (dropped: boolean) => controller.place(dropped),

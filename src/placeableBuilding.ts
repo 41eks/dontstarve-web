@@ -19,6 +19,7 @@ import {
 } from '@three-roaming/prefab/treasurechest';
 import {
     WallsPlacement,
+    WALL_IDS,
     isWallId,
     type WallId,
 } from '@three-roaming/prefab/walls';
@@ -26,6 +27,7 @@ import type { WorldContext } from '@three-roaming/prefab/worldContext';
 import type { PlacementSaveRecord } from '@three-roaming/prefab/saveRecord';
 import { TENT_DEFINITION, TENT_ID } from '@three-roaming/prefab/tent';
 import { MOONBASE_DEFINITION, MOONBASE_ID } from '@three-roaming/prefab/moonbase';
+import { WARDROBE_DEFINITION, WARDROBE_ID } from '@three-roaming/prefab/wardrobe';
 import { FIRE_PIT_DEFINITION, FIRE_PIT_ID, type FirePitId } from '@three-roaming/prefab/firepit';
 import { ICE_BOX_DEFINITION, ICE_BOX_ID, type IceBoxId } from '@three-roaming/prefab/icebox';
 import { DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, type DragonflyChestId } from '@three-roaming/prefab/dragonfly_chest';
@@ -40,7 +42,7 @@ export { TREASURE_CHEST_ID } from '@three-roaming/prefab/treasurechest';
 export { TENT_ID } from '@three-roaming/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | typeof TENT_ID
-    | DragonflyChestId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | typeof MOONBASE_ID;
+    | DragonflyChestId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | typeof MOONBASE_ID | typeof WARDROBE_ID;
 export type PlaceableBuildingId = AnimatedBuildingId | WallId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
@@ -52,6 +54,7 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     TREASURE_CHEST_ID,
     TENT_ID,
     MOONBASE_ID,
+    WARDROBE_ID,
     DRAGONFLY_CHEST_ID,
     CAMPFIRE_ID,
     SALT_BOX_ID,
@@ -68,6 +71,7 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     [TREASURE_CHEST_ID]: TREASURE_CHEST_DEFINITION,
     [TENT_ID]: TENT_DEFINITION,
     [MOONBASE_ID]: MOONBASE_DEFINITION,
+    [WARDROBE_ID]: WARDROBE_DEFINITION,
     [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_DEFINITION,
     [CAMPFIRE_ID]: CAMPFIRE_DEFINITION,
     [SALT_BOX_ID]: SALT_BOX_DEFINITION,
@@ -76,8 +80,10 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     ...MUSHROOM_LIGHT_DEFINITIONS,
 } as const;
 
+export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [...ANIMATED_BUILDING_IDS, ...WALL_IDS];
+
 export function isPlaceableBuildingId(value: string): value is PlaceableBuildingId {
-    return ANIMATED_BUILDING_IDS.some((buildingId) => buildingId === value) || isWallId(value);
+    return PLACEABLE_BUILDING_IDS.some((buildingId) => buildingId === value);
 }
 
 /**
@@ -125,6 +131,11 @@ export class PlaceableBuildingPlacement {
 
     exportRecords() {
         return [...this.animated.exportRecords(), ...this.walls.exportRecords()];
+    }
+
+    dispose(): void {
+        this.animated.dispose();
+        this.walls.dispose();
     }
 
     cancel(): void {

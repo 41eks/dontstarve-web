@@ -3,6 +3,8 @@
 import * as THREE from 'three';
 import { DstLightingRenderer } from './dstLighting';
 import { CursorLabelUi } from '@three-roaming/ui/cursor-label';
+import { initialSave } from './save/initialSave';
+import { getDstCycle } from './tuning';
 const scene = new THREE.Scene();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -46,6 +48,10 @@ scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
 const dstLighting = await DstLightingRenderer.create(
   renderer,
   `${import.meta.env.BASE_URL}dst/data/images/colour_cubes`,
+  {
+    season: initialSave.world.systems.season?.name ?? 'spring',
+    phase: getDstCycle(initialSave.world.elapsedSeconds).phase,
+  },
 );
 
 export { cursorUi, dstLighting, scene, renderer, resizeRendererToDisplaySize };

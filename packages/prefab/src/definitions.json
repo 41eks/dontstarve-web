@@ -1,5 +1,13 @@
 {
   "animatedBuildings": {
+    "wardrobe": {
+      "archive": "wardrobe.zip",
+      "buildLabel": "衣柜",
+      "idleAnimation": "closed",
+      "name": "Wardrobe",
+      "onProximity": false,
+      "scale": 0.02
+    },
     "moonbase": {
       "archive": "moonbase.zip",
       "buildLabel": "月亮石",

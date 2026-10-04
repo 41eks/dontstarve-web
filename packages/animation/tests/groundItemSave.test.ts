@@ -27,6 +27,7 @@ vi.mock('@three-roaming/prefab/butterfly', async (importOriginal) => {
   return {
     ...actual,
     ButterflyAssets: class {
+      dispose() {}
       async create(world: import('../../prefab/src/butterfly').ButterflyWorld) {
         const model = new THREE.Group();
         model.add(new THREE.Group());
@@ -138,4 +139,17 @@ describe('ground item save records', () => {
     expect(scene.children).toHaveLength(0);
     expect(manager.exportRecords()).toHaveLength(0);
   });
+});
+
+it('disposes ground visuals and input listeners once and rejects later drops', async () => {
+  const { manager, scene, canvas, pickup } = setup();
+  await manager.spawnFromSave('ground_one', definition, new THREE.Vector3());
+  const remove = vi.spyOn(canvas, 'removeEventListener');
+  manager.dispose(); manager.dispose();
+  expect(scene.children).toEqual([]);
+  expect(manager.exportRecords()).toEqual([]);
+  expect(remove).toHaveBeenCalledOnce();
+  const take = vi.fn(() => true);
+  await expect(manager.drop(definition, new THREE.Vector3(), take)).rejects.toThrow('disposed');
+  expect(take).not.toHaveBeenCalled(); expect(pickup).not.toHaveBeenCalled();
 });

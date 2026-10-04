@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { createPigKingSetPiece } from '@three-roaming/prefab/setpieces/pigking';
-import type { PointerContext } from '@three-roaming/prefab/worldContext';
 import { initialSave } from './save/initialSave';
 
 export const pigKings = await Promise.all(
@@ -15,13 +14,3 @@ export const pigKings = await Promise.all(
     return { ...prefab, setPiece, record };
   }),
 );
-
-export const setPigKingNormal = (quaternion: THREE.Quaternion) => {
-  pigKings.forEach((pigKing) => pigKing.setNormal(quaternion));
-};
-export const setupPigKingInteraction = (context: PointerContext) => {
-  pigKings.forEach((pigKing) => pigKing.setupInteraction(context));
-};
-export const updatePigKingAnimation = (dt: number) => {
-  pigKings.forEach((pigKing) => pigKing.update(dt));
-};

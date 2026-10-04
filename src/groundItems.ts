@@ -58,6 +58,7 @@ export class GroundItemManager {
   private readonly raycaster = new THREE.Raycaster();
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
+  private disposed = false;
 
   constructor(
     scene: THREE.Scene,
@@ -81,6 +82,19 @@ export class GroundItemManager {
     this.firefliesAssets = new FirefliesAssets(animationBaseUrl);
     this.firefliesWorld = firefliesWorld;
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
+    for (const item of this.items.values()) item.dispose();
+    this.items.clear();
+    this.hatAssets.dispose();
+    this.groundAssets.dispose();
+    this.butterflyAssets.dispose();
+    this.firefliesAssets.dispose();
+    this.atlasRequests.clear();
   }
 
   async drop(
@@ -121,12 +135,14 @@ export class GroundItemManager {
   }
 
   private async createDropVisuals(definition: GroundItemDefinition): Promise<GroundItemVisual[]> {
+    if (this.disposed) throw new Error('Ground items have been disposed');
     if (!Number.isSafeInteger(definition.count) || definition.count < 1) throw new RangeError('Invalid ground item count');
     const count = this.isNetCreature(definition.itemId) ? definition.count : 1;
     const visuals: GroundItemVisual[] = [];
     try {
       // Live insects force individual drops from a stack.
       for (let index = 0; index < count; index++) visuals.push(await this.createVisual(this.singleDropDefinition(definition)));
+      if (this.disposed) throw new Error('Ground items have been disposed');
       return visuals;
     } catch (error) {
       visuals.forEach((visual) => visual.dispose());

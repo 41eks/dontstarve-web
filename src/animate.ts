@@ -12,8 +12,9 @@ export const backTasks: Updatable[] = [];
 
 const timer = new THREE.Timer();
 export function animate(world: World, camera: PerspectiveCamera) {
+    let frameId: number;
     function tick() {
-        requestAnimationFrame(tick);
+        frameId = requestAnimationFrame(tick);
         timer.update();
         const dt = timer.getDelta();
 
@@ -35,4 +36,5 @@ export function animate(world: World, camera: PerspectiveCamera) {
     }
 
     tick();
+    return () => cancelAnimationFrame(frameId);
 }
