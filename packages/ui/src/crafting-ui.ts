@@ -1,7 +1,6 @@
 import { AssetElement } from './assets';
 import {
   categories,
-  type CategoryConfig,
   type Recipe,
   type RecipeIngredient,
   type RecipeSkin,
@@ -78,10 +77,14 @@ export interface CraftingStateDetail extends CraftRequestDetail {
 
 export const CRAFT_DURATION_MS = 1_000;
 
-const activeCategoryIdState = createSignal('tool');
+let resolveCraftingUiReady: () => void;
+/** Resolves after the first mounted crafting menu creates all groups, buttons and initial effects. */
+export const craftingUiReady: Promise<void> = new Promise((resolve) => {
+  resolveCraftingUiReady = resolve;
+});
 
 export class DstCraftingUiElement extends AssetElement {
-  // private activeCategoryId = 'tool';
+  private readonly activeCategoryIdState = createSignal('tool');
   private bufferedRecipeIds = new Set<string>();
   private collapsed = true;
   private materialSummary?: InventoryMaterialSummary;
@@ -188,6 +191,7 @@ export class DstCraftingUiElement extends AssetElement {
     `;
 
     this.initializeControls(root);
+    resolveCraftingUiReady();
   }
 
   private initializeControls(root: ShadowRoot): void {
@@ -203,8 +207,11 @@ export class DstCraftingUiElement extends AssetElement {
     const nextSkinButton = root.querySelector<HTMLButtonElement>('.craft-arrow-right')!;
     const materials = root.querySelector<HTMLElement>('.craft-materials')!;
     const buildButton = root.querySelector<HTMLButtonElement>('.craft-build')!;
+    const categoryTitle = root.querySelector<HTMLHeadingElement>('h1')!;
     let selectedIndex = 0;
     let activeRecipes: readonly Recipe[] = [];
+    let activeRecipeButtons: readonly HTMLButtonElement[] = [];
+    let selectedRecipeButton: HTMLButtonElement | undefined;
     const selectedRecipeState = createSignal<Recipe | undefined>(undefined);
 
     this.refreshMaterials = () => {
@@ -259,6 +266,8 @@ export class DstCraftingUiElement extends AssetElement {
 
     const updateSelection = (index: number) => {
       if (activeRecipes.length === 0) {
+        selectedRecipeButton?.setAttribute('aria-selected', 'false');
+        selectedRecipeButton = undefined;
         selectedRecipeState.set(undefined);
         title.textContent = '暂无配方';
         description.textContent = '';
@@ -274,13 +283,21 @@ export class DstCraftingUiElement extends AssetElement {
       const recipe = activeRecipes[selectedIndex];
       selectedRecipeState.set(recipe);
       this.selectedRecipeId = recipe.id;
-      recipeGrid.querySelectorAll('.craft-recipe').forEach((item, itemIndex) => {
-        item.setAttribute('aria-selected', String(itemIndex === selectedIndex));
-      });
+      const nextButton = activeRecipeButtons[selectedIndex];
+      if (nextButton !== selectedRecipeButton) {
+        selectedRecipeButton?.setAttribute('aria-selected', 'false');
+        nextButton.setAttribute('aria-selected', 'true');
+        selectedRecipeButton = nextButton;
+      }
       title.textContent = recipe.name;
       description.textContent = recipe.description;
       updateSkinSelection(recipe);
       materials.replaceChildren(...recipe.ingredients.map((ingredient) => this.ingredient(ingredient)));
+    };
+
+    const selectRecipe = (recipe: Recipe) => {
+      const index = activeRecipes.indexOf(recipe);
+      if (index >= 0) updateSelection(index);
     };
 
     const mapRecipeToButton = createRecipeButtonMapper({
@@ -288,48 +305,80 @@ export class DstCraftingUiElement extends AssetElement {
       isBuffered: (recipe) => this.isRecipeBuffered(recipe),
       isLocked: (recipe) => this.isRecipeLocked(recipe),
       recipeIcon,
-      selectRecipe: updateSelection,
+      selectRecipe,
       effects: this.recipeButtonEffects,
     });
 
-    const renderCategoryRecipes = (category: CategoryConfig) => {
-      // this.activeCategoryId = category.id;
-      activeCategoryIdState.set(category.id);
-      activeRecipes = category.recipes;
-      const preservedIndex = activeRecipes.findIndex(({ id }) => id === this.selectedRecipeId);
-      selectedIndex = preservedIndex < 0 ? 0 : preservedIndex;
-      this.recipeButtonEffects.splice(0).forEach((dispose) => dispose());
-      recipeGrid.replaceChildren();
-      quickbar.replaceChildren();
+    const categoryViews = categories.filter(({ id }) => id !== 'none').map((category) => {
+      const recipeGroup = document.createElement('div');
+      recipeGroup.className = 'craft-recipe-category';
+      recipeGroup.hidden = true;
+      const recipeButtons = category.recipes.map(mapRecipeToButton);
+      for (let index = 0; index < recipeButtons.length; index += 7) {
+        const row = document.createElement('div');
+        row.className = 'craft-recipe-row';
+        row.append(...recipeButtons.slice(index, index + 7));
+        recipeGroup.append(row);
+      }
+      recipeGrid.append(recipeGroup);
 
-      recipeGrid.append(...activeRecipes.map(mapRecipeToButton));
-
-      activeRecipes.slice(0, 10).forEach((recipe, index) => {
+      const quickGroup = document.createElement('div');
+      quickGroup.className = 'craft-quick-category';
+      quickGroup.hidden = true;
+      category.recipes.slice(0, 10).forEach((recipe) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'craft-quick-item';
         button.setAttribute('aria-label', recipe.name);
         button.dataset.label = recipe.name;
         button.append(recipeIcon(recipe));
-        button.addEventListener('click', () => updateSelection(index));
-        quickbar.append(button);
+        button.addEventListener('click', () => selectRecipe(recipe));
+        quickGroup.append(button);
       });
-
-      updateSelection(selectedIndex);
+      quickbar.append(quickGroup);
+      return { category, recipeGroup, quickGroup, recipeButtons };
+    });
+    const allView = {
+      category: categories.find(({ id }) => id === 'none')!,
+      recipeButtons: categoryViews.flatMap(({ recipeButtons }) => recipeButtons),
     };
 
-    categoryNav.append(...categories.map(createCategoryButtonMapper({
-      activeCategoryId: activeCategoryIdState.get(),
+    const categoryButtons = categories.map(createCategoryButtonMapper({
+      activeCategoryId: this.activeCategoryIdState.get(),
       assetBaseUrl,
       atlasImage,
-      selectCategory: (category, button) => {
-        this.selectedRecipeId = undefined;
-        root.querySelector('h1')!.textContent = category.name;
-        root.querySelectorAll('.craft-category').forEach((item) => item.setAttribute('aria-pressed', 'false'));
-        button.setAttribute('aria-pressed', 'true');
-        renderCategoryRecipes(category);
-      },
-    })));
+      selectCategory: (category) => this.activeCategoryIdState.set(category.id),
+    }));
+    categoryNav.append(...categoryButtons);
+
+    this.controlEffects.push(createEffect(() => {
+      const activeCategoryId = this.activeCategoryIdState.get();
+      categoryViews.forEach(({ category, recipeGroup, quickGroup }) => {
+        const recipeHidden = activeCategoryId !== 'none' && category.id !== activeCategoryId;
+        const quickHidden = category.id !== (activeCategoryId === 'none' ? categoryViews[0].category.id : activeCategoryId);
+        if (recipeGroup.hidden !== recipeHidden) recipeGroup.hidden = recipeHidden;
+        if (quickGroup.hidden !== quickHidden) quickGroup.hidden = quickHidden;
+      });
+    }));
+
+    let previousCategoryId: string | undefined;
+    this.controlEffects.push(createEffect(() => {
+      const activeCategoryId = this.activeCategoryIdState.get();
+      const view = activeCategoryId === 'none'
+        ? allView
+        : categoryViews.find(({ category }) => category.id === activeCategoryId) ?? categoryViews[0];
+      if (previousCategoryId !== undefined) this.selectedRecipeId = undefined;
+      previousCategoryId = view.category.id;
+      activeRecipes = view.category.recipes;
+      activeRecipeButtons = view.recipeButtons;
+      categoryTitle.textContent = view.category.name;
+      categoryButtons.forEach((button, index) => {
+        const pressed = String(categories[index].id === view.category.id);
+        if (button.getAttribute('aria-pressed') !== pressed) button.setAttribute('aria-pressed', pressed);
+      });
+      const preservedIndex = activeRecipes.findIndex(({ id }) => id === this.selectedRecipeId);
+      updateSelection(preservedIndex < 0 ? 0 : preservedIndex);
+    }));
 
     previousSkinButton.addEventListener('click', () => changeSkin(-1));
     nextSkinButton.addEventListener('click', () => changeSkin(1));
@@ -357,9 +406,6 @@ export class DstCraftingUiElement extends AssetElement {
       setCollapsed(!panel.classList.contains('is-collapsed'));
     });
     setCollapsed(this.collapsed);
-    const initialCategory = categories.find(({ id }) => id === activeCategoryIdState.get()) ?? categories[0];
-    root.querySelector('h1')!.textContent = initialCategory.name;
-    renderCategoryRecipes(initialCategory);
     this.controlEffects.push(createEffect(this.refreshBuildButton));
   }
 

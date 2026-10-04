@@ -16,6 +16,7 @@ export { DstIceBoxPanelElement } from './ice-box-panel';
 export { PreparedFoodSlot } from './slot/prepared-food-slot';
 export {
   CRAFT_DURATION_MS,
+  craftingUiReady,
   DstCraftingUiElement,
   type CraftingStateDetail,
   type CraftRequestDetail,

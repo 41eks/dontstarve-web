@@ -1,3 +1,5 @@
+import { TILE_SIZE } from './tile';
+
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
   'dontstarve/common/staff_star_create': { bank: 'common', streams: [273], loop: false },
@@ -19,11 +21,34 @@ const sounds = {
 } as const;
 export type SoundEventPath = keyof typeof sounds;
 export interface SoundHandle { stop(): void; }
+export interface SoundPosition { readonly x: number; readonly z: number; }
+export const SOUND_MAX_DISTANCE = TILE_SIZE * 8;
+
+/** Full volume within one tile, inverse-square falloff, then silence at the cutoff. */
+export function inverseSquareAttenuation(
+  distance: number, referenceDistance = TILE_SIZE, maxDistance = SOUND_MAX_DISTANCE,
+): number {
+  if (distance >= maxDistance) return 0;
+  return (referenceDistance / Math.max(referenceDistance, distance)) ** 2;
+}
 
 let context: AudioContext | undefined;
 const buffers = new Map<string, AudioBuffer>();
 const requests = new Map<string, Promise<AudioBuffer>>();
 const playing = new Set<SoundHandle>();
+const spatialSounds = new Map<SoundHandle, { position: SoundPosition; gain: GainNode }>();
+const listener: { x: number; z: number } = { x: 0, z: 0 };
+
+function updateGain({ position, gain }: { position: SoundPosition; gain: GainNode }): void {
+  gain.gain.value = inverseSquareAttenuation(Math.hypot(position.x - listener.x, position.z - listener.z));
+}
+
+/** Call each frame after movement; source positions are retained by reference. */
+export function UpdateSoundListener(position: SoundPosition): void {
+  listener.x = position.x;
+  listener.z = position.z;
+  for (const sound of spatialSounds.values()) updateGain(sound);
+}
 
 function unlock(): void {
   if (context?.state === 'suspended') void context.resume().catch(() => undefined);
@@ -71,33 +96,47 @@ export async function PreloadSounds(...paths: SoundEventPath[]): Promise<void> {
   })));
 }
 
-/** Play a DST event; loop behavior and the source sample come from its FEV mapping. */
-export function PlaySound(path: SoundEventPath): SoundHandle {
+/** Optional ground position enables distance attenuation; omitted positions play at full volume. */
+export function PlaySound(path: SoundEventPath, position?: SoundPosition): SoundHandle {
   const audio = getContext();
   const filenames = soundLayers(path).map((files) => files.length === 1 ? files[0] : files[Math.floor(Math.random() * files.length)]);
   const sources = new Set<AudioBufferSourceNode>();
   let remaining = filenames.length;
   let stopped = false;
+  const gain = audio && position ? audio.createGain() : undefined;
   const handle: SoundHandle = { stop() {
     if (stopped) return;
     stopped = true;
     playing.delete(handle);
+    spatialSounds.delete(handle);
     for (const source of sources) { source.onended = null; source.stop(); source.disconnect(); }
     sources.clear();
+    gain?.disconnect();
   } };
   if (!audio) return handle;
   playing.add(handle);
+  if (gain && position) {
+    const sound = { position, gain };
+    spatialSounds.set(handle, sound);
+    updateGain(sound);
+    gain.connect(audio.destination);
+  }
   const start = (buffer: AudioBuffer) => {
     if (stopped || audio !== context) return;
     const source = audio.createBufferSource();
     source.buffer = buffer;
     source.loop = sounds[path].loop;
-    source.connect(audio.destination);
+    source.connect(gain ?? audio.destination);
     sources.add(source);
     source.onended = () => {
       sources.delete(source);
       source.disconnect();
-      if (--remaining === 0) { stopped = true; playing.delete(handle); }
+      if (--remaining === 0) {
+        stopped = true;
+        playing.delete(handle);
+        spatialSounds.delete(handle);
+        gain?.disconnect();
+      }
     };
     source.start();
   };
@@ -123,4 +162,5 @@ export function DisposeSounds(): void {
   context = undefined;
   buffers.clear();
   requests.clear();
+  listener.x = listener.z = 0;
 }

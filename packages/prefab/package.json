@@ -12,6 +12,7 @@
     "./hammer": "./src/hammer.ts",
     "./pickaxe": "./src/pickaxe.ts",
     "./rocks": "./src/rocks.ts",
+    "./pond": "./src/pond.ts",
     "./beefalo": "./src/beefalo.ts",
     "./emotes": "./src/emotes.ts",
     "./buildCursor": "./src/buildCursor.ts",

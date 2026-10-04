@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DwarfStarManager } from '../../prefab/src/stafflight';
-import { DisposeSounds, PlaySound, PreloadSounds } from '../../prefab/src/sound';
+import { DisposeSounds, PlaySound, PreloadSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE } from '../../prefab/src/sound';
 
 afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -14,11 +14,17 @@ async function setup() {
     start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>;
     connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn>;
   }[] = [];
+  const gains: { gain: { value: number }; connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }[] = [];
   const context = {
     state: 'suspended', destination: {},
     resume: vi.fn(async () => { context.state = 'running'; }),
     close: vi.fn(async () => { context.state = 'closed'; }),
     decodeAudioData: vi.fn(async () => ({}) as AudioBuffer),
+    createGain: vi.fn(() => {
+      const gain = { gain: { value: 1 }, connect: vi.fn(), disconnect: vi.fn() };
+      gains.push(gain);
+      return gain;
+    }),
     createBufferSource: vi.fn(() => {
       const source = { buffer: null as AudioBuffer | null, loop: false, onended: null as (() => void) | null,
         start: vi.fn(), stop: vi.fn(), connect: vi.fn(), disconnect: vi.fn() };
@@ -33,10 +39,50 @@ async function setup() {
     return new Response(new Uint8Array([0, 1]));
   });
   vi.stubGlobal('fetch', fetchMock);
-  return { events, sources, context, fetchMock };
+  return { events, sources, gains, context, fetchMock };
 }
 
 describe('dwarf star source sounds', () => {
+  it('mutes at and beyond the cutoff, with a configurable maximum distance', () => {
+    expect(inverseSquareAttenuation(0)).toBe(1);
+    expect(inverseSquareAttenuation(12)).toBe(1);
+    expect(inverseSquareAttenuation(SOUND_MAX_DISTANCE - 1)).toBeGreaterThan(0);
+    expect(inverseSquareAttenuation(SOUND_MAX_DISTANCE)).toBe(0);
+    expect(inverseSquareAttenuation(SOUND_MAX_DISTANCE + 1)).toBe(0);
+    expect(inverseSquareAttenuation(30, 12, 30)).toBe(0);
+  });
+
+  it('attenuates independent stars as the player moves and releases their gains', async () => {
+    const s = await setup();
+    const manager = new DwarfStarManager(new THREE.Scene(), '/dst/data/anim');
+    UpdateSoundListener(new THREE.Vector3());
+    const near = await manager.spawn(new THREE.Vector3());
+    const far = await manager.spawn(new THREE.Vector3(24, 0, 0));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1, 1, 0.25, 0.25]);
+    expect(s.sources.map((source) => source.connect.mock.calls[0][0])).toEqual(s.gains);
+    // Height does not change ground distance, including jumps and the player's model offset.
+    UpdateSoundListener(new THREE.Vector3(48, 30, 0));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 0.25, 0.25]);
+    far.position.x = 48;
+    UpdateSoundListener(new THREE.Vector3(48, 0, 0));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1]);
+    UpdateSoundListener(new THREE.Vector3(144, 0, 0));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([0, 0, 0, 0]);
+    expect(s.sources.every((source) => source.stop.mock.calls.length === 0)).toBe(true);
+    UpdateSoundListener(new THREE.Vector3(48, 0, 0));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1]);
+    expect(near.position.x).toBe(0);
+    // Player-local sounds still bypass distance attenuation.
+    await PreloadSounds('dontstarve/wilson/use_gemstaff');
+    PlaySound('dontstarve/wilson/use_gemstaff');
+    expect(s.sources[4].connect).toHaveBeenCalledWith(s.context.destination);
+    s.sources[0].onended!();
+    manager.dispose();
+    expect(s.gains.every((gain) => gain.disconnect.mock.calls.length === 1)).toBe(true);
+    UpdateSoundListener(new THREE.Vector3());
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1]);
+  });
+
   it('preloads all polar light layers and stops each independent summon together', async () => {
     const s = await setup();
     await PreloadSounds('dontstarve/common/staff_coldlight_LP', 'dontstarve/common/staffteleport');

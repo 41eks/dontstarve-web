@@ -120,7 +120,7 @@ export class ReskinEffects {
     this.showFrame(effect, 0);
     this.active.add(effect);
     this.scene.add(model);
-    PlaySound(reskinEffectSound(toolSkinId));
+    PlaySound(reskinEffectSound(toolSkinId), effect.footPosition);
   }
 
   get renderEntities() {

@@ -25,8 +25,8 @@ export const ICE_BOX_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.icebox,
     skinInit: icebox_init_fn,
     prepare: () => PreloadSounds('dontstarve/common/icebox_open', 'dontstarve/common/icebox_close'),
-    onopen: () => { PlaySound('dontstarve/common/icebox_open'); },
-    onclose: () => { PlaySound('dontstarve/common/icebox_close'); },
+    onopen: ({ model }) => { PlaySound('dontstarve/common/icebox_open', model.position); },
+    onclose: ({ model }) => { PlaySound('dontstarve/common/icebox_close', model.position); },
     onbuilt,
 };
 

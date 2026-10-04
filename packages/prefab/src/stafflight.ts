@@ -80,8 +80,8 @@ export class DwarfStarManager {
     const animation = model.userData.animationController as SpriteAnimationController;
     const star: Star = { model, animation, remainingSeconds,
       ageSeconds: this.duration - remainingSeconds, removalSeconds: null,
-      creationSound: saved ? undefined : PlaySound('dontstarve/common/staff_star_create'),
-      loopSound: PlaySound(this.loopEvent) };
+      creationSound: saved ? undefined : PlaySound('dontstarve/common/staff_star_create', model.position),
+      loopSound: PlaySound(this.loopEvent, model.position) };
     this.stars.add(star);
     if (!saved) animation.playOnce('appear', () => this.startIdle(star));
     else this.startIdle(star);

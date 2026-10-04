@@ -155,7 +155,8 @@ export {
 } from './yellowstaff';
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,
   dwarfStarLight, polarLight, DwarfStarManager, type DwarfStarRecord, type StaffLightId } from './stafflight';
-export { PlaySound, PreloadSounds, DisposeSounds, type SoundEventPath, type SoundHandle } from './sound';
+export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE,
+  type SoundEventPath, type SoundHandle, type SoundPosition } from './sound';
 export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, type FirefliesWorld } from './fireflies';
 export {
   BULB_PLANT_ID, BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_LIGHT,

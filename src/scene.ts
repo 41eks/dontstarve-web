@@ -12,6 +12,7 @@ import { GroundItemManager, type GroundItemDefinition } from './groundItems';
 import { DwarfStarManager, POLAR_LIGHT_ID } from '@three-roaming/prefab/stafflight';
 import { BulbPlantManager, isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
 import { RockManager, isRockPrefab } from '@three-roaming/prefab/rocks';
+import { PondManager, POND_ID } from '@three-roaming/prefab/pond';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@three-roaming/prefab/beefalo';
 import { newEntityId } from '@three-roaming/prefab/saveRecord';
 import {
@@ -221,6 +222,7 @@ export async function startScene(
   });
   bulbPlants.setupInteraction(view, pickLightbulbs);
   const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const pendingPoop = new Set<THREE.Vector3>();
   const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
     isDay: () => dstLighting.getPhase() === 'day',
@@ -267,6 +269,7 @@ export async function startScene(
     bulbPlants.update(dt, cameraWorldQuaternion);
     beefalos.sync(cameraWorldQuaternion);
     rockManager.update(dt, cameraWorldQuaternion);
+    ponds.update(dt);
     reskinEffects.update(dt, cameraWorldQuaternion);
     updateCharacterRenderOrder(buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, reskinEffects);
   });
@@ -292,6 +295,10 @@ export async function startScene(
         }));
       } else if (isRockPrefab(prefabId)) {
         byEntityId.set(record.id, await rockManager.spawn(prefabId, new THREE.Vector3(...record.transform.position), {
+          id: record.id, transform: record.transform, components: {},
+        }));
+      } else if (prefabId === POND_ID) {
+        byEntityId.set(record.id, await ponds.spawn(new THREE.Vector3(...record.transform.position), {
           id: record.id, transform: record.transform, components: {},
         }));
       } else if (prefabId === 'ground_item') {
@@ -334,6 +341,7 @@ export async function startScene(
       stafflight: dwarfStars.exportRecords(),
       staffcoldlight: polarLights.exportRecords(),
       beefalo: beefalos.exportRecords(),
+      [POND_ID]: ponds.exportRecords(),
     };
     for (const { prefabId, record } of buildingPlacement.exportRecords()) {
       (entities[prefabId] ??= []).push({
@@ -351,7 +359,7 @@ export async function startScene(
   };
   setupLocomotorInput(view, locomotor);
   animate(world, camera);
-  return { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, reskinEffects, byEntityId, getSaveState };
+  return { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, ponds, reskinEffects, byEntityId, getSaveState };
 }
 
 export function scene_add(model:THREE.Object3D){

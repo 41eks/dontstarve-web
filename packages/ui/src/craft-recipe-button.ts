@@ -6,7 +6,7 @@ interface RecipeButtonMapperOptions {
   isBuffered: (recipe: Recipe) => boolean;
   isLocked: (recipe: Recipe) => boolean;
   recipeIcon: (recipe: Recipe) => HTMLElement;
-  selectRecipe: (index: number) => void;
+  selectRecipe: (recipe: Recipe) => void;
   effects: Array<() => void>;
 }
 
@@ -17,8 +17,8 @@ export function createRecipeButtonMapper({
   recipeIcon,
   selectRecipe,
   effects,
-}: RecipeButtonMapperOptions): (recipe: Recipe, index: number) => HTMLButtonElement {
-  return (recipe, index) => {
+}: RecipeButtonMapperOptions): (recipe: Recipe) => HTMLButtonElement {
+  return (recipe) => {
     let buffered = false;
     const button = document.createElement('button');
     button.type = 'button';
@@ -54,7 +54,7 @@ export function createRecipeButtonMapper({
         buffered ? 'slot_bg_buffered.tex' : 'slot_bg.tex',
       ));
     }));
-    button.addEventListener('click', () => selectRecipe(index));
+    button.addEventListener('click', () => selectRecipe(recipe));
     return button;
   };
 }

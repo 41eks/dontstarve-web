@@ -9,6 +9,7 @@ import { BEEFALO_BEHAVIOR } from '@three-roaming/prefab/beefalo';
 import { BULB_PLANT_PREFABS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_MAX_ON_TIME,
   BULB_PLANT_MAX_RECHARGE_TIME, isBulbPlantPrefab, bulbPlantRegrowTime } from '@three-roaming/prefab/bulb_plant';
 import { ROCK_PREFABS } from '@three-roaming/prefab/rocks';
+import { POND_ID } from '@three-roaming/prefab/pond';
 import { WORLD_TILES } from '@three-roaming/prefab/turfMap';
 import { TILE_SIZE } from '@three-roaming/prefab/tile';
 
@@ -174,7 +175,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
   const ids = new Set<string>();
   let entityCount = 0;
-  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
+  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', POND_ID, ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
   const groups = object(world.entities, 'world.entities', allowedPrefabs);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;

@@ -1,4 +1,4 @@
-import { createRecipe, recipeData } from './shared';
+import { createRecipe } from './shared';
 import { filterRecipeIds } from './generated';
 import type { CategoryConfig } from './types';
 
@@ -12,7 +12,7 @@ export const favoritesCategory: CategoryConfig = { id: 'favorites', name: '收�
 export const craftingStationCategory = category('crafting-station', 'CRAFTING_STATION', '制作站', 'filter_none.tex');
 export const specialEventCategory = category('special-event', 'SPECIAL_EVENT', '活动', 'filter_events.tex');
 
-export const categories = [
+const recipeCategories = [
   category('character', 'CHARACTER', '角色', 'avatar_wilson.tex', 'images/crafting_menu_avatars.xml'),
   category('tool', 'TOOLS', '工具', 'filter_tool.tex'),
   category('fire', 'LIGHT', '光源', 'filter_fire.tex'),
@@ -34,5 +34,9 @@ export const categories = [
   category('winter', 'WINTER', '冬季', 'filter_winter.tex'),
   category('summer', 'SUMMER', '夏季', 'filter_summer.tex'),
   category('rain', 'RAIN', '雨天', 'filter_rain.tex'),
-  { id: 'none', name: '全部', icon: 'filter_none.tex', recipes: recipeData.recipes.map(({ name: recipeId }) => createRecipe(recipeId)) },
+] as const;
+
+export const categories = [
+  ...recipeCategories,
+  { id: 'none', name: '全部', icon: 'filter_none.tex', recipes: recipeCategories.flatMap(({ recipes }) => recipes) },
 ] as const;

@@ -23,8 +23,8 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 export const TREASURE_CHEST_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.treasurechest,
     prepare: () => PreloadSounds('dontstarve/wilson/chest_open', 'dontstarve/wilson/chest_close'),
-    onopen: () => { PlaySound('dontstarve/wilson/chest_open'); },
-    onclose: () => { PlaySound('dontstarve/wilson/chest_close'); },
+    onopen: ({ model }) => { PlaySound('dontstarve/wilson/chest_open', model.position); },
+    onclose: ({ model }) => { PlaySound('dontstarve/wilson/chest_close', model.position); },
     onbuilt,
 };
 

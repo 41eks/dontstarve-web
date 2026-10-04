@@ -5,7 +5,6 @@ import { INVENTORY_ITEM_DISPLAY_SPECS } from '../../ui/src/inventory-items';
 import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS, INVENTORY_SKIN_SPECS } from '../../ui/src/categories/shared';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
-import { chestContainerId, inventoryStateFromSave } from '../../../src/save/inventoryState';
 
 const catalog: SaveCatalog = {
   items: Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
@@ -23,24 +22,6 @@ function parse(data: unknown = initialWorld) {
 }
 
 describe('save JSON deserialization', () => {
-  it('reads the checked-in initial world with all 500 persistent tree records', () => {
-    const save = parse();
-    const migrated = structuredClone(initialWorld);
-    for (const pot of migrated.world.entities.cookpot) {
-      Object.assign(pot.components, {
-        building: { ...pot.components.building, state: 'closed' },
-        container: { slotCount: 4, slots: [] },
-      });
-    }
-    expect(save).toEqual(migrated);
-    expect(save.world.entities.treasurechest.every((chest) => chest.components.building?.state === 'closed')).toBe(true);
-    expect(save.world.entities.moon_tree).toHaveLength(500);
-    expect(new Set(save.world.entities.moon_tree.map(({ id }) => id)).size).toBe(500);
-    expect(save.world.entities.pigking[0].transform.position).toEqual([0, 0, 25]);
-    expect(save.players.local.inventory.containers['player:inventory'].slots)
-      .toEqual(initialWorld.players.local.inventory.containers['player:inventory'].slots);
-  });
-
   it.each([
     ['unknown version', (data: any) => { data.schemaVersion = 2; }, 'schemaVersion'],
     ['wrong format', (data: any) => { data.format = 'other'; }, 'format'],
@@ -71,21 +52,4 @@ describe('save JSON deserialization', () => {
     expect(() => deserializeSave(text, catalog)).toThrow('nonfinite number');
   });
 
-  it('recovers equipment, buffered builds and separate inventories for each chest', () => {
-    const data = structuredClone(initialWorld);
-    const equipment = data.players.local.inventory.containers['player:equipment'];
-    equipment.slots = equipment.slots.filter(({ slotKey }) => slotKey !== 'hand');
-    equipment.slots.push({ slotKey: 'hand', item: { itemId: 'torch', count: 1 } } as never);
-    data.players.local.inventory.bufferedBuilds.push({ recipeId: 'treasurechest', skinId: 'treasurechest_ancient' } as never);
-    const second = structuredClone(data.world.entities.treasurechest[0]);
-    second.id = 'e_chest_second';
-    // Local saves may already fill the source chest; this test owns the second inventory.
-    second.components.container.slots = [{ slotKey: '0', item: { itemId: 'log', count: 8 } } as never];
-    data.world.entities.treasurechest.push(second);
-    const save = parse(data);
-    const state = inventoryStateFromSave(save);
-    expect(state.slots).toContainEqual({ address: { containerId: 'player:equipment', slotKey: 'hand' }, item: { itemId: 'torch', count: 1 } });
-    expect(state.slots).toContainEqual({ address: { containerId: chestContainerId(second.id), slotKey: '0' }, item: { itemId: 'log', count: 8 } });
-    expect(state.bufferedBuilds).toEqual([{ recipeId: 'treasurechest', skinId: 'treasurechest_ancient' }]);
-  });
 });

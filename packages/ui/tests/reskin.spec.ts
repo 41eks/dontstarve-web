@@ -1,6 +1,49 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
+test('animation decoder worker shares assets and retries failed skin loads', async ({ page, context }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const requests: string[] = [];
+  context.on('request', (request) => requests.push(request.url()));
+  let skinAttempts = 0;
+  await context.route('**/anim/dynamic/treasurechest_ancient.zip', (route) => {
+    if (++skinAttempts === 1) return route.fulfill({ status: 503, body: 'retry' });
+    return route.continue();
+  });
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async (url) => {
+    const assets = await import(url);
+    const [first, second] = await Promise.all([
+      assets.loadAnimationArchive('treasure_chest.zip', '/dst/data/anim'),
+      assets.loadAnimationArchive('treasure_chest.zip', '/dst/data/anim/'),
+    ]);
+    const firstMaterials = assets.createMaterials(first.buildPackage);
+    const secondMaterials = assets.createMaterials(second.buildPackage);
+    let failed = false;
+    try { await assets.loadSpriteSkinArchive('dynamic/treasurechest_ancient.zip', '/dst/data/anim'); }
+    catch { failed = true; }
+    const skin = await assets.loadSpriteSkinArchive('dynamic/treasurechest_ancient.zip', '/dst/data/anim');
+    const result = {
+      sameBuild: first.buildPackage === second.buildPackage,
+      sameAnimation: first.animations === second.animations,
+      pixels: first.buildPackage.atlases[0].pixels.byteLength,
+      symbolsAreMap: first.buildPackage.build.symbols instanceof Map,
+      independentTextures: firstMaterials[0].map !== secondMaterials[0].map,
+      failed, skinPixels: skin.buildPackage.atlases[0].pixels.byteLength,
+    };
+    for (const material of [...firstMaterials, ...secondMaterials]) { material.map.dispose(); material.dispose(); }
+    return result;
+  }, `/@fs${fileURLToPath(new URL('../../animation/src/animationAssets.ts', import.meta.url))}`);
+  expect(result.sameBuild && result.sameAnimation && result.symbolsAreMap && result.independentTextures && result.failed).toBe(true);
+  expect(result.pixels).toBeGreaterThan(0);
+  expect(result.skinPixels).toBeGreaterThan(0);
+  expect(page.workers().some((worker) => worker.url().includes('animationArchive.worker'))).toBe(true);
+  expect(requests.filter((url) => url.endsWith('/anim/treasure_chest.zip'))).toHaveLength(1);
+  expect(skinAttempts).toBe(2);
+  expect(errors).toEqual([]);
+});
+
 test('reskin casting uses source animation timing, five puff builds and decoded sounds', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
@@ -62,8 +105,7 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
     const mesh = target.children[0].children[0];
     mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox;
-    const position = target.position.clone();
-    position.y += -(box.min.y + box.max.y) * 0.01;
+    const position = box.getCenter(target.position.clone()).applyMatrix4(mesh.matrixWorld);
     const ndc = position.project(game.view.camera);
     const bounds = game.view.renderer.domElement.getBoundingClientRect();
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
@@ -73,11 +115,15 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
   await expect.poll(() => page.evaluate(() => (window as any).reskinGame.player.userData.animationController.isReskinning)).toBe(false);
   await page.evaluate(async () => {
     const game = (window as any).reskinGame;
+    // c_spawn places the chest 10 units away; opening requires being within 9.
+    const radius = game.playerBody.shapes[0].radius;
+    game.playerBody.position.set(game.target.position.x + 3, radius, game.target.position.z);
+    game.player.position.set(game.target.position.x + 3, 0, game.target.position.z);
+    await new Promise(requestAnimationFrame);
     const mesh = game.target.children[0].children[0];
     mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox;
-    const position = game.target.position.clone();
-    position.y += -(box.min.y + box.max.y) * 0.01;
+    const position = box.getCenter(game.target.position.clone()).applyMatrix4(mesh.matrixWorld);
     const ndc = position.project(game.view.camera);
     const bounds = game.view.renderer.domElement.getBoundingClientRect();
     game.view.renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', {
@@ -85,6 +131,14 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
       clientY: bounds.top + (1 - ndc.y) * bounds.height / 2,
     }));
     game.containerId = `world:treasurechest:${game.entityId}`;
+  });
+  // Container slots are registered when the opening animation completes.
+  await expect.poll(() => page.evaluate(() => {
+    const game = (window as any).reskinGame;
+    return game.main.inventory.addresses().some((slot: any) => slot.containerId === game.containerId);
+  })).toBe(true);
+  await page.evaluate(() => {
+    const game = (window as any).reskinGame;
     if (!game.main.inventory.applySlotChanges([
       { slot: { containerId: game.containerId, slotKey: '8' }, itemId: 'log', delta: 2 },
     ])) throw new Error('Unable to fill reskinned chest');

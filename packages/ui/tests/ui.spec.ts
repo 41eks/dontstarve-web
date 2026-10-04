@@ -6,6 +6,9 @@ import { createSlotContainer } from '../src/slot/slot-container';
 import type { DstChestPanelElement } from '../src/chest-panel';
 
 const fixtureUrl = '/tests/fixture.html';
+const renderedCraftingCategories = categories.filter(({ id }) => id !== 'none');
+const renderedRecipeCount = renderedCraftingCategories.reduce((count, category) => count + category.recipes.length, 0);
+const renderedQuickItemCount = renderedCraftingCategories.reduce((count, category) => count + Math.min(10, category.recipes.length), 0);
 
 for (const storage of [
   { prefab: 'dragonflychest', slotCount: 12, columns: 3, panelArchive: 'ui_chester_shadow_3x4.zip', singleItems: false },
@@ -135,19 +138,20 @@ test('creates addressable slot containers with per-slot acceptance rules', () =>
   expect(container.getSlot('body').accepts(torch)).toBe(false);
 });
 
-test('keeps an independent recipe collection for every crafting category', () => {
+test('uses the preceding category recipes for the all category', () => {
   expect(categories.map(({ id }) => id)).toEqual([
-    'favorites', 'crafting-station', 'special-event', 'character',
+    'character',
     'tool', 'fire', 'science', 'refine', 'weapon', 'armour', 'warable', 'health', 'skull', 'cosmetic',
     'structure', 'containers', 'cooking', 'gardening', 'fishing', 'sailing', 'riding', 'winter',
     'summer', 'rain', 'none',
   ]);
-  expect(new Set(categories.map(({ recipes }) => recipes)).size).toBe(25);
-  expect(categories.find(({ id }) => id === 'favorites')?.recipes).toEqual([]);
+  expect(new Set(categories.map(({ recipes }) => recipes)).size).toBe(categories.length);
   expect(categories.find(({ id }) => id === 'tool')?.recipes).toHaveLength(56);
   expect(categories.find(({ id }) => id === 'fire')?.recipes).toHaveLength(23);
-  expect(categories.find(({ id }) => id === 'crafting-station')?.recipes).toHaveLength(387);
-  expect(categories.find(({ id }) => id === 'none')?.recipes).toHaveLength(972);
+  const allRecipes = categories.find(({ id }) => id === 'none')!.recipes;
+  const existingRecipes = renderedCraftingCategories.flatMap(({ recipes }) => recipes);
+  expect(allRecipes).toHaveLength(909);
+  expect(allRecipes.every((recipe, index) => recipe === existingRecipes[index])).toBe(true);
   expect(categories.find(({ id }) => id === 'tool')?.recipes[0].id).toBe('axe');
   expect(categories.find(({ id }) => id === 'tool')?.recipes[0].name).toBe('斧头');
   expect(categories.find(({ id }) => id === 'tool')?.recipes[0].skins[0]).toEqual({
@@ -765,7 +769,7 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
 
   const crafting = page.locator('dst-crafting-ui');
   const panel = crafting.locator('.craft-panel');
-  const recipes = crafting.locator('.craft-recipe');
+  const recipes = crafting.locator('.craft-recipe-category:not([hidden]) .craft-recipe');
 
   await expect(panel).toHaveClass(/is-collapsed/);
   await crafting.locator('.craft-quick-toggle').click();
@@ -930,10 +934,10 @@ test('updates only changed recipe locks without rebuilding the crafting menu', a
   const crafting = page.locator('dst-crafting-ui');
   await crafting.locator('.craft-quick-toggle').click();
   await crafting.locator('.craft-category[aria-label="光源"]').click();
-  const torch = crafting.locator('.craft-recipe').filter({ has: page.locator('[data-element="torch.tex"]') });
+  const torch = crafting.locator('.craft-recipe-category:not([hidden]) .craft-recipe').filter({ has: page.locator('[data-element="torch.tex"]') });
   await torch.click();
   await crafting.locator('.craft-arrow-right').click();
-  await crafting.locator('.craft-recipe canvas[data-loaded="true"]').first().waitFor();
+  await crafting.locator('.craft-recipe-category:not([hidden]) canvas[data-loaded="true"]').first().waitFor();
 
   // Retain references so a full render or a grid rebuild cannot pass the test.
   await page.evaluate(() => {
@@ -945,8 +949,8 @@ test('updates only changed recipe locks without rebuilding the crafting menu', a
     const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
       setMaterialSummary(summary: Readonly<Record<string, number>>): void;
     };
-    const grid = element.shadowRoot!.querySelector('.craft-recipes')!;
-    const buttons = [...grid.children];
+    const grid = element.shadowRoot!.querySelector('.craft-recipe-category:not([hidden])')!;
+    const buttons = [...grid.querySelectorAll('.craft-recipe')];
     const before = buttons.map((button) => Boolean(button.querySelector('.craft-lock')));
     const records: MutationRecord[] = [];
     const observer = new MutationObserver((mutations) => records.push(...mutations));
@@ -1004,7 +1008,7 @@ test('updates only changed recipe locks without rebuilding the crafting menu', a
     const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
       setMaterialSummary(summary: Readonly<Record<string, number>>): void;
     };
-    const oldTorch = element.shadowRoot!.querySelector('[aria-label="火炬"]')!;
+    const oldTorch = element.shadowRoot!.querySelector('.craft-recipe-category:not([hidden]) [aria-label="火炬"]')!;
     element.setMaterialSummary({ cutgrass: 2, twigs: 2 });
     element.remove();
     await Promise.resolve();
@@ -1015,6 +1019,175 @@ test('updates only changed recipe locks without rebuilding the crafting menu', a
   expect(detachedLockCount).toBe(1);
   await expect(torch.locator('.craft-lock')).toHaveCount(0);
   await expect(crafting.locator('.craft-build')).toBeEnabled();
+});
+
+test('keeps every category mounted and switches groups without recreating buttons or effects', async ({ page }) => {
+  await openFixture(page);
+  const crafting = page.locator('dst-crafting-ui');
+  await crafting.locator('.craft-quick-toggle').click();
+  const recipeGroups = crafting.locator('.craft-recipe-category');
+  const quickGroups = crafting.locator('.craft-quick-category');
+  await expect(recipeGroups).toHaveCount(renderedCraftingCategories.length);
+  await expect(quickGroups).toHaveCount(renderedCraftingCategories.length);
+  await expect(crafting.locator('.craft-recipe')).toHaveCount(renderedRecipeCount);
+  await expect(crafting.locator('.craft-quick-item')).toHaveCount(renderedQuickItemCount);
+  await expect.poll(() => crafting.locator('.craft-recipe-category canvas:not([data-loaded="true"]):not([data-error])').count(), { timeout: 20_000 }).toBe(0);
+
+  const initial = await page.evaluate(() => {
+    const element = document.querySelector('dst-crafting-ui') as HTMLElement & { recipeButtonEffects: Array<() => void> };
+    const root = element.shadowRoot!;
+    const nodes = [...root.querySelectorAll('.craft-recipe, .craft-recipe canvas, .craft-quick-item, .craft-quick-item canvas')];
+    const mutations: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => mutations.push(...records));
+    observer.observe(root.querySelector('.craft-recipes')!, { childList: true, subtree: true });
+    observer.observe(root.querySelector('.craft-quick-items')!, { childList: true, subtree: true });
+    (window as typeof window & { categorySnapshot: unknown }).categorySnapshot = {
+      nodes, effects: [...element.recipeButtonEffects], mutations, observer,
+    };
+    return { effects: element.recipeButtonEffects.length };
+  });
+  expect(initial.effects).toBe(renderedRecipeCount * 2);
+
+  for (const name of ['光源', '科学', '全部', '工具', '光源']) {
+    await crafting.locator(`.craft-category[aria-label="${name}"]`).click();
+    await expect(crafting.locator('.craft-header h1')).toHaveText(name);
+    await expect(crafting.locator('.craft-recipe-category:not([hidden])')).toHaveCount(name === '全部' ? renderedCraftingCategories.length : 1);
+    await expect(crafting.locator('.craft-quick-category:not([hidden])')).toHaveCount(1);
+    await expect(crafting.locator('.craft-category[aria-pressed="true"]')).toHaveAttribute('aria-label', name);
+    if (name === '全部') {
+      await expect(crafting.locator('.craft-recipe-category:not([hidden]) .craft-recipe')).toHaveCount(renderedRecipeCount);
+      const fireIndex = renderedCraftingCategories.findIndex(({ id }) => id === 'fire');
+      await recipeGroups.nth(fireIndex).locator('.craft-recipe').first().click();
+      await expect(crafting.locator('.craft-detail h2')).toHaveText(renderedCraftingCategories[fireIndex].recipes[0].name);
+      await crafting.locator('.craft-quick-category:not([hidden]) .craft-quick-item').nth(5).click();
+      await expect(crafting.locator('.craft-detail h2')).toHaveText(renderedCraftingCategories[0].recipes[5].name);
+      await expect(crafting.locator('.craft-recipe[aria-selected="true"]')).toHaveCount(1);
+    }
+    const retained = await page.evaluate(() => {
+      const element = document.querySelector('dst-crafting-ui') as HTMLElement & { recipeButtonEffects: Array<() => void> };
+      const snapshot = (window as typeof window & { categorySnapshot: {
+        nodes: Element[]; effects: Array<() => void>; mutations: MutationRecord[]; observer: MutationObserver;
+      } }).categorySnapshot;
+      snapshot.mutations.push(...snapshot.observer.takeRecords());
+      return {
+        nodes: snapshot.nodes.every((node) => node.isConnected),
+        effects: snapshot.effects.length === element.recipeButtonEffects.length
+          && snapshot.effects.every((effect, index) => effect === element.recipeButtonEffects[index]),
+        mutations: snapshot.mutations.length,
+      };
+    });
+    expect(retained).toEqual({ nodes: true, effects: true, mutations: 0 });
+  }
+
+  // Seven recipe slots remain on each row with gaps after adding the group wrappers.
+  const recipes = crafting.locator('.craft-recipe-category:not([hidden]) .craft-recipe');
+  const first = (await recipes.nth(0).boundingBox())!;
+  const second = (await recipes.nth(1).boundingBox())!;
+  const seventh = (await recipes.nth(6).boundingBox())!;
+  const eighth = (await recipes.nth(7).boundingBox())!;
+  expect(second.x).toBeGreaterThan(first.x + first.width);
+  expect(seventh.y).toBeCloseTo(first.y, 1);
+  expect(eighth.x).toBeCloseTo(first.x, 1);
+  expect(eighth.y).toBeGreaterThan(first.y + first.height);
+
+  await crafting.locator('.craft-category[aria-label="工具"]').click();
+  await page.evaluate(async () => {
+    const element = document.querySelector('dst-crafting-ui') as HTMLElement & {
+      setMaterialSummary(summary: Readonly<Record<string, number>>): void;
+      setBufferedRecipes(ids: Iterable<string>): void;
+    };
+    element.setMaterialSummary({ cutgrass: 0, twigs: 0 });
+    await Promise.resolve();
+    element.setBufferedRecipes(['torch']);
+    await Promise.resolve();
+  });
+  await crafting.locator('.craft-category[aria-label="光源"]').click();
+  const torch = recipes.filter({ has: page.locator('[data-element="torch.tex"]') });
+  await torch.click();
+  await expect(torch.locator('.craft-lock')).toHaveCount(0);
+  await expect(torch.locator('.craft-recipe-bg')).toHaveAttribute('data-element', 'slot_bg_buffered.tex');
+  await expect(crafting.locator('.craft-build')).toBeEnabled();
+  await expect(crafting.locator('.craft-build')).toHaveText('放置');
+  await expect(crafting.locator('.craft-material-count')).toHaveText(['0/2', '0/2']);
+});
+
+test('renders retained offscreen recipe rows when scrolled and changes only two selection attributes', async ({ page }) => {
+  await openFixture(page);
+  const crafting = page.locator('dst-crafting-ui');
+  await crafting.locator('.craft-quick-toggle').click();
+  await crafting.locator('.craft-category[aria-label="全部"]').click();
+  const allRecipes = categories.find(({ id }) => id === 'none')!.recipes;
+  const group = crafting.locator('.craft-recipes');
+  await expect(group.locator('.craft-recipe-row')).toHaveCount(renderedCraftingCategories.reduce((count, { recipes }) => count + Math.ceil(recipes.length / 7), 0));
+  await expect(group.locator('.craft-recipe-row').last()).toHaveCSS('content-visibility', 'auto');
+  await crafting.locator('.craft-recipes').evaluate((grid) => { grid.scrollTop = grid.scrollHeight; });
+  const lastButton = group.locator('.craft-recipe').last();
+  await expect(lastButton).toBeInViewport();
+  const changedAttributes = await crafting.evaluate(async (element) => {
+    const group = element.shadowRoot!.querySelector('.craft-recipes')!;
+    const observer = new MutationObserver(() => {});
+    observer.observe(group, { attributes: true, subtree: true, attributeFilter: ['aria-selected'] });
+    const buttons = group.querySelectorAll<HTMLButtonElement>('.craft-recipe');
+    buttons[buttons.length - 1].click();
+    const records = observer.takeRecords();
+    observer.disconnect();
+    await Promise.resolve();
+    return records.length;
+  });
+  expect(changedAttributes).toBe(2);
+  await expect(lastButton).toHaveAttribute('aria-selected', 'true');
+  await expect(crafting.locator('.craft-detail h2')).toHaveText(allRecipes.at(-1)!.name);
+  await expect(group.locator('.craft-recipe[aria-selected="true"]')).toHaveCount(1);
+
+  await page.setViewportSize({ width: 640, height: 640 });
+  await crafting.locator('.craft-recipes').evaluate((grid) => { grid.scrollTop = 0; });
+  const recipes = group.locator('.craft-recipe');
+  const first = (await recipes.nth(0).boundingBox())!;
+  const seventh = (await recipes.nth(6).boundingBox())!;
+  const eighth = (await recipes.nth(7).boundingBox())!;
+  expect(seventh.y).toBeCloseTo(first.y, 1);
+  expect(eighth.x).toBeCloseTo(first.x, 1);
+  expect(eighth.y).toBeGreaterThan(first.y + first.height);
+});
+
+test('resolves craftingUiReady after every category and initial control is created', async ({ page }) => {
+  await page.route('**/tests/fixture.ts*', (route) => route.fulfill({
+    contentType: 'application/javascript',
+    body: `
+      import { craftingUiReady, defineGameUiElements } from '/src/index.ts';
+      const state = window.craftingReadiness = { resolved: false };
+      craftingUiReady.then(() => { state.resolved = true; });
+      await Promise.resolve();
+      state.pendingBeforeMount = !state.resolved;
+      defineGameUiElements();
+      const element = document.createElement('dst-crafting-ui');
+      await Promise.resolve();
+      state.pendingWhileDetached = !state.resolved;
+      document.body.append(element);
+      await craftingUiReady;
+      const root = element.shadowRoot;
+      state.recipeGroups = root.querySelectorAll('.craft-recipe-category').length;
+      state.quickGroups = root.querySelectorAll('.craft-quick-category').length;
+      state.buttons = root.querySelectorAll('.craft-recipe').length;
+      state.selectedCategories = root.querySelectorAll('.craft-category[aria-pressed="true"]').length;
+      state.title = root.querySelector('.craft-detail h2').textContent;
+      state.buildDisabled = root.querySelector('.craft-build').disabled;
+    `,
+  }));
+  await page.goto(fixtureUrl);
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { craftingReadiness?: unknown }).craftingReadiness,
+  )).toEqual({
+    resolved: true,
+    pendingBeforeMount: true,
+    pendingWhileDetached: true,
+    recipeGroups: renderedCraftingCategories.length,
+    quickGroups: renderedCraftingCategories.length,
+    buttons: renderedRecipeCount,
+    selectedCategories: 1,
+    title: '斧头',
+    buildDisabled: true,
+  });
 });
 
 test('emits composed map, pause, and camera events', async ({ page }) => {

@@ -22,12 +22,14 @@ import { HammerActionController } from '@three-roaming/prefab/hammer';
 import { PickaxeActionController } from '@three-roaming/prefab/pickaxe';
 import { PitchforkActionController, isPitchforkTool } from '@three-roaming/prefab/pitchfork';
 import { ReskinActionController } from '@three-roaming/prefab/reskin_tool';
-import { DisposeSounds } from '@three-roaming/prefab/sound';
+import { DisposeSounds, UpdateSoundListener } from '@three-roaming/prefab/sound';
+import { disposeAnimationAssets } from '@three-roaming/animation';
 import { turfMap } from './building';
 import { newEntityId } from '@three-roaming/prefab/saveRecord';
 import { isBulbPlantPrefab } from '@three-roaming/prefab/bulb_plant';
 import { isRockPrefab } from '@three-roaming/prefab/rocks';
-import { frontTasks } from './animate';
+import { POND_ID } from '@three-roaming/prefab/pond';
+import { backTasks, frontTasks } from './animate';
 import { input } from './InputManager';
 import { PointerRaycaster } from '@three-roaming/prefab/pointerRaycaster';
 import { view } from './view';
@@ -52,6 +54,9 @@ import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
 import { downloadSaveJson } from './save/download';
 import { setupEmoteWheel } from './emoteWheel';
+
+UpdateSoundListener(player.position);
+backTasks.push(() => UpdateSoundListener(player.position));
 
 void loadImageAtlas(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
@@ -167,7 +172,7 @@ inventory.subscribe((changedSlots) => {
 
 let cancelNetCapture = () => {};
 let cancelHandTool = () => {};
-const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, reskinEffects, getSaveState } = await startScene(
+const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants, beefalos, rockManager, ponds, reskinEffects, getSaveState } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
   (item, action) => {
     if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
@@ -264,7 +269,9 @@ if (playerAnimation) {
     (error) => console.error('Unable to reskin target', error));
   cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); reskin.cancel(); };
   frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); pitchfork.update(dt); reskin.update(dt); });
-  window.addEventListener('pagehide', () => { reskin.dispose(); reskinEffects.dispose(); DisposeSounds(); }, { once: true });
+  window.addEventListener('pagehide', () => {
+    reskin.dispose(); reskinEffects.dispose(); DisposeSounds(); disposeAnimationAssets();
+  }, { once: true });
 }
 
 setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
@@ -276,9 +283,14 @@ setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
   }, () => cursorUi.update());
 
 let lastSavedSnapshotId = initialSave.snapshot.id;
+window.addEventListener('pagehide', () => ponds.dispose(), { once: true });
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, async (prefabId) => {
+    if (prefabId === POND_ID) {
+      await ponds.spawn(player.position.clone());
+      return true;
+    }
     if (prefabId === 'beefalo') {
       await beefalos.spawnNear(player.position);
       return true;

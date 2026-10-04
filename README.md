@@ -9,10 +9,12 @@ https://41eks.github.io/dontstarve-web/
 | 命令 | 参数与作用 | 示例 |
 | --- | --- | --- |
 | `c_give("item_id", count)` | 向物品栏添加物品。`count` 可省略，默认 `1`，必须为正的安全整数；按堆叠上限分配。未知物品或物品栏空间不足时失败。 | `c_give("torch")`、`c_give("opalstaff")`、`c_give("pitchfork")`、`c_give("hammer")`、`c_give("meatballs", 10)` |
-| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫和岩石生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("rock1")` |
+| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、岩石和池塘生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("rock1")`、`c_spawn("pond")` |
 | `c_save()` | 将当前游戏状态（包括挖过的地皮）导出并下载为 `initial-world.json`。要作为初始存档加载，将下载文件放到 `public/saves/initial-world.json` 后重新加载页面。 | `c_save()` |
 
 命令支持单引号或双引号、英文或中文括号（也可混用）、额外空白及末尾分号；`c_give` 的参数分隔符也支持中文逗号。每次提交一条命令。
+
+场景音效（箱子开关、矮星、极光和换肤特效）按玩家到声源的地面距离实时衰减：一块地皮（12 个世界单位）内保持原音量，之外使用 `gain = (12 / distance)²`。两块地皮处为 1/4，四块地皮处为 1/16；达到八块地皮（96 个世界单位）后完全静音，走近后循环声恢复。静音距离由 `packages/prefab/src/sound.ts` 的 `SOUND_MAX_DISTANCE` 设置；这是暂用的平方反比模型。玩家自身动作音效保持原音量。
 
 启迪之冠可用 `c_give("alterguardianhat")` 获取，也支持输入 `c_give("alterguardianhat"）`。每顶占一格，物品栏需有空位；获取后拖到头部装备槽即可佩戴，播放原版升起、漂浮环绕和发光动画，并照亮周围地面；卸下或换帽后停止。支持“最终棱镜”皮肤。该 prefab 在原版 `hats.lua` 中由 `MakeHat("alterguardian")` 注册，动态外观来自 `anim/hat_alterguardian_equipped.zip`。原版在理智高于 85% 时激活；当前游戏尚无权威理智状态，装备控制器默认按满理智展示，可通过 `setSanityPercent(0…1)` 控制激活与收回。
 
@@ -36,6 +38,8 @@ https://41eks.github.io/dontstarve-web/
 
 ### c_spawn 支持的对象
 
+`c_spawn("pond")` 在玩家当前位置生成池塘，使用原版 `anim/marsh_tile.zip` 的 bank/build `marsh_tile` 和循环 `idle` 动画，贴图平铺在地面上并绘制在角色下方。当前仅实现池塘外观，不包含交互、碰撞、鱼蛙生成、岸边植物或季节变化；位置随 `c_save()` 保存并在加载时恢复。
+
 | 类型 | prefab_id |
 | --- | --- |
 | 建筑 | `cookpot`、`firepit`、`icebox`、`treasurechest`、`tent`、`moonbase`、`dragonflychest`、`campfire`、`saltbox`、`nightlight`、`pighouse`、`mushroom_light`、`mushroom_light2` |
@@ -43,6 +47,7 @@ https://41eks.github.io/dontstarve-web/
 | 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap`，以及各自的 `wall_*_item`（两种 ID 均生成建成的墙） |
 | 洞穴植物 | `flower_cave`、`flower_cave_double`、`flower_cave_triple` |
 | 岩石 | `rock1`、`rock2`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low` |
+| 池塘 | `pond` |
 | 生物 | `fireflies`、`beefalo` |
 
 `c_give` 可用的物品 ID 由 [src/inventoryItems.ts](src/inventoryItems.ts) 汇总的物品定义决定；命令解析见 [src/debugCommands.ts](src/debugCommands.ts)，场景对象生成入口见 [src/main.ts](src/main.ts)。

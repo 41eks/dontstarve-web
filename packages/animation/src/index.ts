@@ -1,4 +1,5 @@
 export { parseKtex, type DecodedTexture } from './parseKtex';
+export { disposeAnimationAssets } from './animationAssets';
 export {
   cropAtlasTexture,
   loadImageAtlas,
