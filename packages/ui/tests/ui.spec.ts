@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { categories } from '../src/categories';
+import { categories, type Recipe } from '../src/categories';
 import { INVENTORY_PRODUCT_SPECS, INVENTORY_RECIPES } from '../src/categories/shared';
 import { createEffect, createSignal, onCleanUp } from '../src/signal';
 import { createSlotContainer } from '../src/slot/slot-container';
@@ -217,8 +217,8 @@ test('registers all elements with open, styled shadow roots', async ({ page }) =
   await expect(clockRim).toHaveAttribute('data-atlas', 'images/hud.xml');
   await expect(clockRim).toHaveAttribute('data-element', 'clock_rim.tex');
   await expect(clockRim).toHaveAttribute('data-loaded', 'true');
-  await expect(clockRim).toHaveJSProperty('width', 216);
-  await expect(clockRim).toHaveJSProperty('height', 216);
+  await expect(clockRim).toHaveAttribute('data-width', '216');
+  await expect(clockRim).toHaveAttribute('data-height', '216');
 });
 
 test('opens the debug console with backquote and emits entered commands', async ({ page }) => {
@@ -273,10 +273,10 @@ test('uses the mirrored DST data path for every image', async ({ page }) => {
     expect(response.status(), imageUrl).toBe(200);
   }
 
-  const atlasArchives = await page.locator('dst-crafting-ui canvas[data-archive]')
-    .evaluateAll((canvases) => canvases.map((canvas) => (canvas as HTMLElement).dataset.archive));
-  expect(atlasArchives.length).toBeGreaterThan(0);
-  expect(new Set(atlasArchives)).toEqual(new Set([`${new URL(fixtureUrl, page.url()).origin}/dst/data/databundles/images.zip`]));
+  const atlasPaths = await page.locator('dst-crafting-ui [data-atlas]')
+    .evaluateAll((images) => images.map((image) => (image as HTMLElement).dataset.atlas));
+  expect(atlasPaths.length).toBeGreaterThan(0);
+  expect(atlasPaths.every((path) => path?.startsWith('images/'))).toBe(true);
 });
 
 test('renders the inventory and equipment slots and emits selection events', async ({ page }) => {
@@ -789,8 +789,8 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(background).toHaveAttribute('data-loaded', 'true');
   await expect(frame).toHaveAttribute('data-loaded', 'true');
   await expect(lock).toHaveAttribute('data-loaded', 'true');
-  await expect(background).toHaveJSProperty('width', 128);
-  await expect(background).toHaveJSProperty('height', 128);
+  await expect(background).toHaveAttribute('data-width', '128');
+  await expect(background).toHaveAttribute('data-height', '128');
   await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute('data-element', 'axe.tex');
   await expect(recipes.first().locator('.craft-recipe-asset')).toHaveAttribute('data-loaded', 'true');
   await expect(crafting.locator('.craft-selected-icon .craft-recipe-asset')).toHaveAttribute('data-element', 'axe.tex');
@@ -929,6 +929,56 @@ test('updates the crafting selection and collapsed state', async ({ page }) => {
   await expect(crafting.locator('.craft-quick-toggle')).toHaveAttribute('aria-expanded', 'true');
 });
 
+test('drives recipe details from the selection signal and disposes it on removal', async ({ page }) => {
+  await openFixture(page);
+  const crafting = page.locator('dst-crafting-ui');
+  await crafting.locator('.craft-quick-toggle').click();
+  const selected = await crafting.evaluate(async (element) => {
+    const modulePath = '/src/categories/index.ts';
+    const { categories } = await import(modulePath) as typeof import('../src/categories');
+    const recipe = categories.find(({ id }) => id === 'tool')!.recipes.find(({ ingredients }) => ingredients.length > 2)!;
+    const ui = element as HTMLElement & {
+      selectedRecipeState: { set(recipe: Recipe | undefined): void };
+      setMaterialSummary(summary: Readonly<Record<string, number>>): void;
+    };
+    ui.selectedRecipeState.set(recipe);
+    // Inventory notifications can arrive before the queued selection effect renders.
+    ui.setMaterialSummary(Object.fromEntries(recipe.ingredients.map(({ id }) => [id, 99])));
+    return { name: recipe.name, ingredientCount: recipe.ingredients.length };
+  });
+  await expect(crafting.locator('.craft-detail h2')).toHaveText(selected.name);
+  await expect(crafting.locator('.craft-material')).toHaveCount(selected.ingredientCount);
+  await expect(crafting.locator('.craft-recipe[aria-selected="true"]')).toHaveAttribute('aria-label', selected.name);
+  await expect(crafting.locator('.craft-material-count').first()).toHaveText(/^99\//);
+
+  await crafting.evaluate((element) => {
+    (element as HTMLElement & { selectedRecipeState: { set(recipe: undefined): void } }).selectedRecipeState.set(undefined);
+  });
+  await expect(crafting.locator('.craft-detail h2')).toHaveText('暂无配方');
+  await expect(crafting.locator('.craft-material')).toHaveCount(0);
+  await expect(crafting.locator('.craft-selected-icon')).toBeEmpty();
+  await expect(crafting.locator('.craft-recipe[aria-selected="true"]')).toHaveCount(0);
+  await expect(crafting.locator('.craft-arrow-left')).toBeDisabled();
+  await expect(crafting.locator('.craft-build')).toBeDisabled();
+
+  const detachedTitle = await crafting.evaluate(async (element) => {
+    const modulePath = '/src/categories/index.ts';
+    const { categories } = await import(modulePath) as typeof import('../src/categories');
+    const recipe = categories.find(({ id }) => id === 'tool')!.recipes[0];
+    const ui = element as HTMLElement & { selectedRecipeState: { set(recipe: Recipe): void } };
+    const oldTitle = ui.shadowRoot!.querySelector('.craft-detail h2')!;
+    ui.selectedRecipeState.set(recipe);
+    ui.remove();
+    await Promise.resolve();
+    const detachedTitle = oldTitle.textContent;
+    document.body.append(ui);
+    return detachedTitle;
+  });
+  expect(detachedTitle).toBe('暂无配方');
+  await expect(crafting.locator('.craft-detail h2')).toHaveText('斧头');
+  await expect(crafting.locator('.craft-recipe[aria-selected="true"]')).toHaveCount(1);
+});
+
 test('updates only changed recipe locks without rebuilding the crafting menu', async ({ page }) => {
   await openFixture(page);
   const crafting = page.locator('dst-crafting-ui');
@@ -937,7 +987,7 @@ test('updates only changed recipe locks without rebuilding the crafting menu', a
   const torch = crafting.locator('.craft-recipe-category:not([hidden]) .craft-recipe').filter({ has: page.locator('[data-element="torch.tex"]') });
   await torch.click();
   await crafting.locator('.craft-arrow-right').click();
-  await crafting.locator('.craft-recipe-category:not([hidden]) canvas[data-loaded="true"]').first().waitFor();
+  await crafting.locator('.craft-recipe-category:not([hidden]) [data-atlas][data-loaded="true"]').first().waitFor();
 
   // Retain references so a full render or a grid rebuild cannot pass the test.
   await page.evaluate(() => {
@@ -1031,12 +1081,12 @@ test('keeps every category mounted and switches groups without recreating button
   await expect(quickGroups).toHaveCount(renderedCraftingCategories.length);
   await expect(crafting.locator('.craft-recipe')).toHaveCount(renderedRecipeCount);
   await expect(crafting.locator('.craft-quick-item')).toHaveCount(renderedQuickItemCount);
-  await expect.poll(() => crafting.locator('.craft-recipe-category canvas:not([data-loaded="true"]):not([data-error])').count(), { timeout: 20_000 }).toBe(0);
+  await expect.poll(() => crafting.locator('.craft-recipe-category [data-atlas]:not([data-loaded="true"]):not([data-error])').count(), { timeout: 20_000 }).toBe(0);
 
   const initial = await page.evaluate(() => {
     const element = document.querySelector('dst-crafting-ui') as HTMLElement & { recipeButtonEffects: Array<() => void> };
     const root = element.shadowRoot!;
-    const nodes = [...root.querySelectorAll('.craft-recipe, .craft-recipe canvas, .craft-quick-item, .craft-quick-item canvas')];
+    const nodes = [...root.querySelectorAll('.craft-recipe, .craft-recipe [data-atlas], .craft-quick-item, .craft-quick-item [data-atlas]')];
     const mutations: MutationRecord[] = [];
     const observer = new MutationObserver((records) => mutations.push(...records));
     observer.observe(root.querySelector('.craft-recipes')!, { childList: true, subtree: true });

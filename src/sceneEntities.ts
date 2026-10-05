@@ -2,16 +2,18 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 
 import { turfMap, moonTreeForest } from './building';
-import { WORLD_TILES } from '@three-roaming/prefab/turfMap';
+import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
-import { DwarfStarManager, POLAR_LIGHT_ID } from '@three-roaming/prefab/stafflight';
-import { BulbPlantManager, BULB_PLANT_PREFABS } from '@three-roaming/prefab/bulb_plant';
-import { RockManager, ROCK_PREFABS } from '@three-roaming/prefab/rocks';
-import { PondManager, POND_ID } from '@three-roaming/prefab/pond';
-import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@three-roaming/prefab/nightmaregrowth';
-import { BeefaloManager, BEEFALO_BEHAVIOR } from '@three-roaming/prefab/beefalo';
-import { newEntityId } from '@three-roaming/prefab/saveRecord';
+import { DwarfStarManager, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
+import { BulbPlantManager, BULB_PLANT_PREFABS } from '@dontstarve-web/prefab/bulb_plant';
+import { RockManager, ROCK_PREFABS } from '@dontstarve-web/prefab/rocks';
+import { GrassManager, GRASS_ID } from '@dontstarve-web/prefab/grass';
+import { SaplingManager, SAPLING_PREFABS } from '@dontstarve-web/prefab/sapling';
+import { PondManager, POND_ID } from '@dontstarve-web/prefab/pond';
+import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
+import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
+import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import { pigKings } from './pigking';
 import { player } from './player';
 import {
@@ -21,24 +23,24 @@ import {
   type PlaceableBuildingId,
 } from './placeableBuilding';
 import { dstLighting, renderer, scene } from './universal';
-import type { ButterflyFlower } from '@three-roaming/prefab/butterfly';
-import { FlowerPlanting } from '@three-roaming/prefab/flower';
+import type { ButterflyFlower } from '@dontstarve-web/prefab/butterfly';
+import { FlowerPlanting } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
 import { initialSave } from './save/initialSave';
-import { ReskinEffects } from '@three-roaming/prefab/reskin_tool';
+import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
 import { SAVE_CATALOG } from './save/catalog';
-import { findGroundPath } from '@three-roaming/prefab/locomotor';
+import { findGroundPath } from '@dontstarve-web/prefab/locomotor';
 
 import { EntityRegistry } from './entityRegistry';
-import { disposeSprite } from '@three-roaming/prefab/disposeSprite';
+import { disposeSprite } from '@dontstarve-web/prefab/disposeSprite';
 
 export function createSceneEntities(
   world: CANNON.World,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId) => boolean,
-  pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net') => boolean,
+  pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
-  pickLightbulbs: (count: number) => boolean = () => false,
+  pickLightbulbs: (count: number, sourcePosition: THREE.Vector3) => boolean = () => false,
 ) {
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
@@ -86,6 +88,8 @@ export function createSceneEntities(
   });
   bulbPlants.setupInteraction(view, pickLightbulbs);
   const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const grasses = new GrassManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const saplings = new SaplingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const nightmareGrowths = new NightmareGrowthManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const pendingPoop = new Set<THREE.Vector3>();
@@ -255,6 +259,28 @@ export function createSceneEntities(
     dispose: () => rockManager.dispose(),
   });
   registry.register({
+    prefabIds: [GRASS_ID],
+    restore: (_, record) => grasses.spawn(new THREE.Vector3(...record.transform.position), {
+      id: record.id, transform: record.transform, components: {},
+    }),
+    debugSpawn: { prefabIds: [GRASS_ID], create: () => grasses.spawn(player.position.clone()) },
+    exportRecords: () => grasses.exportRecords().map((record) => ({ prefabId: GRASS_ID, record })),
+    update: (dt, quaternion) => grasses.update(dt, quaternion),
+    renderEntities: () => grasses.renderEntities,
+    dispose: () => grasses.dispose(),
+  });
+  registry.register({
+    prefabIds: SAPLING_PREFABS,
+    restore: (id, record) => saplings.spawn(id, new THREE.Vector3(...record.transform.position), {
+      id: record.id, transform: record.transform, components: {},
+    }),
+    debugSpawn: { prefabIds: SAPLING_PREFABS, create: (id) => saplings.spawn(id, player.position.clone()) },
+    exportRecords: () => saplings.exportRecords(),
+    update: (dt, quaternion) => saplings.update(dt, quaternion),
+    renderEntities: () => saplings.renderEntities,
+    dispose: () => saplings.dispose(),
+  });
+  registry.register({
     prefabIds: [POND_ID],
     restore: (_, record) => ponds.spawn(new THREE.Vector3(...record.transform.position), {
       id: record.id, transform: record.transform, components: {},
@@ -284,5 +310,5 @@ export function createSceneEntities(
     dispose: () => reskinEffects.dispose(),
   });
   return { registry, buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants,
-    beefalos, rockManager, ponds, nightmareGrowths, reskinEffects };
+    beefalos, rockManager, grasses, saplings, ponds, nightmareGrowths, reskinEffects };
 }

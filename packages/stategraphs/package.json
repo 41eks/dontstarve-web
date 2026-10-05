@@ -1,0 +1,17 @@
+{
+  "name": "@dontstarve-web/stategraphs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./SGwilson": "./src/SGwilson.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node tests/stategraphs.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  }
+}

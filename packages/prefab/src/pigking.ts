@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {
   createAnimatedSprite,
   type SpriteAnimationController,
-} from '@three-roaming/animation/sprite';
+} from '@dontstarve-web/animation/sprite';
 import type { PointerContext } from './worldContext';
 import definitions from './definitions.json' with { type: 'json' };
 

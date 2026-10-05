@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@three-roaming/animation/animationAssets';
+import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { WilsonAnimationController } from './player';
 import type { Locomotor } from './locomotor';

@@ -1,3 +1,4 @@
+import { initializeUiImageAtlases } from './image-atlases';
 import { DstChestPanelElement } from './chest-panel';
 import { DstCookPotPanelElement } from './cook-pot-panel';
 import { DstIceBoxPanelElement } from './ice-box-panel';
@@ -7,6 +8,8 @@ import { DstEmoteWheelElement } from './emote-wheel';
 import { DstInventoryBarElement } from './inventory-bar';
 import { DstMapControlsElement } from './map-controls';
 import { DstStatusHudElement } from './status-hud';
+
+export { INVENTORY_RECEIVE_DURATION_MS, INVENTORY_RECEIVE_PULSE_MS, type InventoryReceiveSource } from './slot/slot-receive-animation';
 
 export { CursorLabelUi, type CursorPointer } from './cursor-label';
 
@@ -92,6 +95,7 @@ export interface GameUiElements {
 }
 
 export function defineGameUiElements(): void {
+  initializeUiImageAtlases();
   if (!customElements.get('dst-emote-wheel')) {
     customElements.define('dst-emote-wheel', DstEmoteWheelElement);
   }

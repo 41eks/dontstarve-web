@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@three-roaming/animation/sprite';
+import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import { newEntityId } from './saveRecord';
 import type { PickaxeTarget } from './pickaxe';
 

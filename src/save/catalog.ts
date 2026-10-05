@@ -1,5 +1,5 @@
-import definitions from '@three-roaming/prefab/definitions.json' with { type: 'json' };
-import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS } from '@three-roaming/ui';
+import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
+import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS } from '@dontstarve-web/ui';
 import { INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS } from '../inventoryItems';
 import type { SaveCatalog } from './deserialize';
 

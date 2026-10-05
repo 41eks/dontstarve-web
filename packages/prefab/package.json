@@ -1,5 +1,5 @@
 {
-  "name": "@three-roaming/prefab",
+  "name": "@dontstarve-web/prefab",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,6 +12,8 @@
     "./hammer": "./src/hammer.ts",
     "./pickaxe": "./src/pickaxe.ts",
     "./rocks": "./src/rocks.ts",
+    "./grass": "./src/grass.ts",
+    "./sapling": "./src/sapling.ts",
     "./pond": "./src/pond.ts",
     "./nightmaregrowth": "./src/nightmaregrowth.ts",
     "./beefalo": "./src/beefalo.ts",
@@ -72,9 +74,10 @@
     "ground-tiles:check": "python3 scripts/import-ground-tiles.py --check"
   },
   "dependencies": {
-    "@three-roaming/animation": "workspace:*",
+    "@dontstarve-web/stategraphs": "workspace:*",
+    "@dontstarve-web/animation": "workspace:*",
     "cannon-es": "^0.20.0",
-    "@three-roaming/inventory": "workspace:*"
+    "@dontstarve-web/inventory": "workspace:*"
   },
   "peerDependencies": {
     "three": "^0.184.0"

@@ -24,6 +24,7 @@ export type {
   InventoryItemSpec,
   InventoryItems,
   InventoryListener,
+  InventoryReceiveListener,
   InventoryMaterialSummary,
   InventoryRecipeDefinition,
   InventorySkinSpec,

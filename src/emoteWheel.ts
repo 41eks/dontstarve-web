@@ -1,5 +1,5 @@
-import type { WilsonAnimationController } from '@three-roaming/prefab/player';
-import type { DstEmoteWheelElement, EmoteRequestDetail, EmoteWheelToggleDetail } from '@three-roaming/ui';
+import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import type { DstEmoteWheelElement, EmoteRequestDetail, EmoteWheelToggleDetail } from '@dontstarve-web/ui';
 import { input } from './InputManager';
 
 export function setupEmoteWheel(

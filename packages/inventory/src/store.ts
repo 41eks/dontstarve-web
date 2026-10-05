@@ -1,9 +1,10 @@
-import { craft as craftInventoryItems } from './craft';
+import { planCraft } from './craft';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type {
   InventoryItemSpec,
   InventoryListener,
+  InventoryReceiveListener,
   InventoryMaterialSummary,
   InventoryRecipeDefinition,
   InventorySkinSpec,
@@ -230,7 +231,7 @@ export class InventoryStore {
     return this.registrations.map(({ address }) => cloneAddress(address));
   }
 
-  add(itemId: string, count: number, skinId?: string): boolean {
+  add(itemId: string, count: number, skinId?: string, onReceived?: InventoryReceiveListener): boolean {
     const spec = this.itemSpecs.get(itemId);
     if (!spec || !Number.isSafeInteger(count) || count <= 0) return false;
 
@@ -269,21 +270,24 @@ export class InventoryStore {
       remaining -= added;
     }
 
-    return remaining === 0 && this.applySlotChanges(changes);
+    if (remaining !== 0 || !this.applySlotChanges(changes)) return false;
+    onReceived?.(changes.map((change) => ({ ...change, slot: cloneAddress(change.slot) })));
+    return true;
   }
 
-  craft(recipe: InventoryRecipeDefinition, skinId?: string): boolean {
+  craft(recipe: InventoryRecipeDefinition, skinId?: string, onReceived?: InventoryReceiveListener): boolean {
     if (recipe.buffered && this.isBuffered(recipe.recipeId)) return false;
     const inventorySlots = this.inventorySlots();
     const ingredientSlots = this.accessibleMaterialSlots().filter(({ slot }) => !(slot instanceof InventorySlot));
     const slots = [...inventorySlots, ...ingredientSlots];
     const current = slots.map(({ slot }) => slot.get());
-    const next = craftInventoryItems(
+    const result = planCraft(
       skinId === undefined ? recipe : { ...recipe, productSkinId: skinId },
       inventorySlots.map(({ slot }) => slot),
       ingredientSlots.map(({ slot }) => slot),
     );
-    if (!next) return false;
+    if (!result) return false;
+    const next = result.items;
 
     const changed: SlotAddress[] = [];
     slots.forEach(({ address, slot }, index) => {
@@ -296,6 +300,15 @@ export class InventoryStore {
       this.bufferedBuilds.set(recipe.recipeId, skinId ?? recipe.productSkinId);
     }
     this.notify(changed);
+    if (result.products.length) {
+      const productSkinId = skinId ?? recipe.productSkinId;
+      onReceived?.(result.products.map(({ slotIndex, count }) => ({
+        slot: cloneAddress(inventorySlots[slotIndex].address),
+        itemId: recipe.productId,
+        ...(productSkinId === undefined ? {} : { skinId: productSkinId }),
+        delta: count,
+      })));
+    }
     return true;
   }
 

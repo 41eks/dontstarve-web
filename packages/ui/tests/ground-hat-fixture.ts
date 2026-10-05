@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_DEFINITIONS } from '@three-roaming/prefab/hats';
+import { HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { GroundItemManager } from '../../../src/groundItems';
 
 export async function checkGroundHats() {

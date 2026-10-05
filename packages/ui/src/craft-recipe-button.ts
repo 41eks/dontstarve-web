@@ -2,7 +2,7 @@ import type { Recipe } from './categories';
 import { createEffect } from './signal';
 
 interface RecipeButtonMapperOptions {
-  atlasImage: (className: string, atlasPath: string, elementName: string) => HTMLCanvasElement;
+  atlasImage: (className: string, atlasPath: string, elementName: string) => HTMLElement;
   isBuffered: (recipe: Recipe) => boolean;
   isLocked: (recipe: Recipe) => boolean;
   recipeIcon: (recipe: Recipe) => HTMLElement;

@@ -1,13 +1,13 @@
-import { HAT_ITEM_SPECS } from '@three-roaming/prefab/hats';
+import { HAT_ITEM_SPECS } from '@dontstarve-web/prefab/hats';
 import {
   INVENTORY_ITEM_DISPLAY_SPECS,
   INVENTORY_SKIN_SPECS,
-} from '@three-roaming/ui';
+} from '@dontstarve-web/ui';
 import {
   inventoryItemEquipmentKind,
   inventoryItemMaxStack,
   type InventoryItemSpec,
-} from '@three-roaming/inventory';
+} from '@dontstarve-web/inventory';
 
 export interface InventoryItemDefinition {
   slot_index: number;

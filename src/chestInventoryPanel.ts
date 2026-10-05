@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import type { DstChestPanelElement } from '@three-roaming/ui';
+import type { DstChestPanelElement } from '@dontstarve-web/ui';
 import { backTasks } from './animate';
 import { camera } from './camera';
 import { renderer } from './universal';
 import { player } from './player';
-import { buildingContainerId, buildingContainerDefinition, type StorageBuildingId } from '@three-roaming/prefab/containers';
-import definitions from '@three-roaming/prefab/definitions.json' with { type: 'json' };
+import { buildingContainerId, buildingContainerDefinition, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
+import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 
 export const CHEST_SLOT_COUNT = 9;
 export const COOK_POT_SLOT_COUNT = 4;

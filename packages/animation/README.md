@@ -1,4 +1,4 @@
-# @three-roaming/animation
+# @dontstarve-web/animation
 
 ## DST 图片 XML 索引
 
@@ -28,6 +28,37 @@ unzip -oq public/dst/data/databundles/images.zip 'images/*.xml' -d packages/anim
 ```sh
 rg 'spear_rose' packages/animation/images
 ```
+
+## UI 共享图集图片
+
+`@dontstarve-web/animation/atlasImage` 用 KV 缓存小图在共享图片上的
+`imageUrl`、`x`、`y`、`width`、`height`、`atlasWidth` 和 `atlasHeight`。
+每张源纹理只转成一个 PNG Blob URL，格子使用 CSS 背景裁切，按小图比例缩放；
+不为每个格子裁切像素或创建 canvas。
+
+```ts
+import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
+import { registerImageAtlases, createAtlasImage, getAtlasImage } from '@dontstarve-web/animation/atlasImage';
+
+// 初始化时批量注册；加载函数在第一次查询时才执行，也可以直接传已加载的 ImageAtlas。
+const archive = `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`;
+registerImageAtlases(Object.fromEntries([
+  'images/crafting_menu.xml', 'images/hud.xml', 'images/inventoryimages.xml',
+].map((path) => [path, () => loadImageAtlas(archive, path)])));
+
+const image = createAtlasImage('slot-background', 'images/crafting_menu.xml', 'pinslot_bg.tex');
+container.append(image); // 返回独立的 span，各个实例共享同一张背景图片。
+await image.ready;
+const region = await getAtlasImage('images/crafting_menu.xml', 'pinslot_bg');
+```
+
+为返回的元素设置宽高，内部 CSS 会居中并保持小图比例。`ready` 等待共享图片解码完成；
+失败时拒绝 Promise，同时设置 `data-error` 并触发 `error` 事件。图集加载失败后下次查询会重试。
+注册按图集路径去重，同名小图通过图集路径区分。游戏关闭时调用 `disposeAtlasImages()`
+释放 Blob URL 和注册表；下一次初始化重新注册。
+
+UI 的批量注册入口是 `packages/ui/src/image-atlases.ts`；资源包路径只在此处配置，
+制作、HUD、物品栏和接收动画的调用方不再传入 `archiveUrl`。
 
 ## DST 制作配方
 
@@ -64,12 +95,12 @@ JSON 值的表达式会保留为 `{ "lua": "原表达式" }`，循环生成的�
 同步 `scripts/recipes.lua` 后可重新生成并检查 JSON：
 
 ```sh
-pnpm --filter @three-roaming/animation recipes:generate
-pnpm --filter @three-roaming/animation recipes:check
+pnpm --filter @dontstarve-web/animation recipes:generate
+pnpm --filter @dontstarve-web/animation recipes:check
 ```
 
 其他 workspace 包也可以通过导出路径读取：
 
 ```ts
-import recipeData from '@three-roaming/animation/recipes.json';
+import recipeData from '@dontstarve-web/animation/recipes.json';
 ```

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@three-roaming/animation/sprite';
+import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { newEntityId } from './saveRecord';
 
 export const POND_ID = 'pond' as const;

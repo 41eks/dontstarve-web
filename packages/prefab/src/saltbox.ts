@@ -1,5 +1,5 @@
 import definitions from './definitions.json' with { type: 'json' };
-import { saltbox_init_fn } from '@three-roaming/animation/prefabskin';
+import { saltbox_init_fn } from '@dontstarve-web/animation/prefabskin';
 import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingBuiltContext,

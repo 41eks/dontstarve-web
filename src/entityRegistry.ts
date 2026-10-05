@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { ProximityEntity } from '@three-roaming/prefab/proximityEntities';
+import type { ProximityEntity } from '@dontstarve-web/prefab/proximityEntities';
 import type { SavedEntity } from './save/types';
 
 export interface EntityRenderEntry {

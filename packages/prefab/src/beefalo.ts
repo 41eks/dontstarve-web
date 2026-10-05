@@ -1,7 +1,7 @@
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '@three-roaming/animation/beefaloSprite';
-import type { AnimatedSpriteFactory } from '@three-roaming/animation/sprite';
+import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '@dontstarve-web/animation/beefaloSprite';
+import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import { Locomotor, type LocomotorOptions } from './locomotor';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';

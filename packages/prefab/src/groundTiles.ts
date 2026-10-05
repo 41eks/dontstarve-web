@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { parseKtex } from '@three-roaming/animation/parseKtex';
-import { parseImageAtlasXml, type ImageAtlasElement } from '@three-roaming/animation/imageAtlas';
+import { parseKtex } from '@dontstarve-web/animation/parseKtex';
+import { parseImageAtlasXml, type ImageAtlasElement } from '@dontstarve-web/animation/imageAtlas';
 import definitions from './groundTiles.json';
 import { TILE_SIZE } from './tile';
 

@@ -1,5 +1,5 @@
-import { loadImageAtlasFiles } from '@three-roaming/animation/imageAtlas';
-import { WILSON_EMOTES, type EmoteGroup, type WilsonEmote } from '@three-roaming/prefab/emotes';
+import { loadImageAtlasFiles } from '@dontstarve-web/animation/imageAtlas';
+import { WILSON_EMOTES, type EmoteGroup, type WilsonEmote } from '@dontstarve-web/prefab/emotes';
 import { AssetElement } from './assets';
 import styles from './styles/emote-wheel.css?inline';
 

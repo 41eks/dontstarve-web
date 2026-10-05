@@ -1,5 +1,5 @@
 import definitions from './definitions.json' with { type: 'json' };
-import { mushroom_light_init_fn, mushroom_light2_init_fn } from '@three-roaming/animation/prefabskin';
+import { mushroom_light_init_fn, mushroom_light2_init_fn } from '@dontstarve-web/animation/prefabskin';
 import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingBuiltContext,

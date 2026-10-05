@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { parseKtex } from '@three-roaming/animation/parseKtex';
+import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 import { TILE_SIZE } from './tile';
 import { loadGroundTileAssets, type GroundTileName } from './groundTiles';
 

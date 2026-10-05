@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { HAT_IDS, HAT_DEFINITIONS } from '@three-roaming/prefab/hats';
-import { createWilsonPlayer, type WilsonAnimationController } from '@three-roaming/prefab/player';
+import { HAT_IDS, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
+import { createWilsonPlayer, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
 
 export async function renderHatCatalog(): Promise<void> {
   const player = await createWilsonPlayer('/dst/data/anim');

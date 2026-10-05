@@ -3,7 +3,7 @@ import {
   createAnimatedSpriteFactory,
   type AnimatedSpriteFactory,
   type SpriteAnimationController,
-} from '@three-roaming/animation/sprite';
+} from '@dontstarve-web/animation/sprite';
 
 export interface ButterflyFlower {
   readonly id: string;

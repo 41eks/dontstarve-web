@@ -59,3 +59,6 @@ export interface InventoryRecipeDefinition {
 }
 
 export type InventoryListener = (changedSlots: readonly SlotAddress[]) => void;
+
+/** Successful incoming allocations; every delta is the quantity received by that slot. */
+export type InventoryReceiveListener = (received: readonly InventorySlotDelta[]) => void;

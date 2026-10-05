@@ -3,7 +3,7 @@ import { disposeSprite } from './disposeSprite';
 import {
     createStaticSprite,
     type StaticSpriteController,
-} from '@three-roaming/animation/wallSprite';
+} from '@dontstarve-web/animation/wallSprite';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';

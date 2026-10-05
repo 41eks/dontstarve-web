@@ -1,5 +1,5 @@
-import { loadAnimationArchive } from '@three-roaming/animation/animationAssets';
-import { composeRgbaSpriteAtlas, type RgbaSpriteAtlasFrame } from '@three-roaming/animation/rgbaSpriteAtlas';
+import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
+import { composeRgbaSpriteAtlas, type RgbaSpriteAtlasFrame } from '@dontstarve-web/animation/rgbaSpriteAtlas';
 
 interface Clip {
   source: HTMLCanvasElement;

@@ -1,8 +1,8 @@
-import type { InventoryState } from '@three-roaming/inventory';
+import type { InventoryState } from '@dontstarve-web/inventory';
 import { deserializeSave, type SaveCatalog } from './deserialize';
-import { STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition } from '@three-roaming/prefab/containers';
+import { STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition } from '@dontstarve-web/prefab/containers';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
-import type { TurfTileSave } from '@three-roaming/prefab/turfMap';
+import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
 
 export interface RuntimeSaveState {
   entities: Record<string, SavedEntity[]>;

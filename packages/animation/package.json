@@ -1,5 +1,5 @@
 {
-  "name": "@three-roaming/animation",
+  "name": "@dontstarve-web/animation",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,8 @@
     "./wallSprite": "./src/wallSprite.ts",
     "./prefabskin": "./src/prefabskin.ts",
     "./recipes.json": "./recipes.json",
-    "./bitmapFont": "./src/bitmapFont.ts"
+    "./bitmapFont": "./src/bitmapFont.ts",
+    "./atlasImage": "./src/atlasImage.ts"
   },
   "scripts": {
     "recipes:check": "node scripts/extract-recipes.mjs --check",

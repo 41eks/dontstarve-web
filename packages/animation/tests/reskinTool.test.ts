@@ -10,7 +10,7 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import { parseImageAtlasXml } from '../src/imageAtlas';
 
 // Application inventory imports the UI's metadata through its package entry point.
-vi.mock('@three-roaming/ui', async () => ({
+vi.mock('@dontstarve-web/ui', async () => ({
   ...await import('../../ui/src/inventory-items'),
   ...await import('../../ui/src/categories/shared'),
 }));

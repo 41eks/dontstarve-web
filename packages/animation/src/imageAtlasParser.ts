@@ -153,7 +153,10 @@ function xmlPathsFromArchive(data: Uint8Array, requestedPath: string) {
   return { paths, xmlEntries };
 }
 
-export function cropAtlasTexture(texture: DecodedTexture, element: ImageAtlasElement): DecodedTexture {
+export function atlasElementBounds(
+  texture: Pick<DecodedTexture, 'width' | 'height'>,
+  element: ImageAtlasElement,
+) {
   const left = Math.max(0, Math.floor(texture.width * element.u1));
   const top = Math.max(0, Math.floor(texture.height * (1 - element.v2)));
   const right = Math.min(texture.width, Math.floor(texture.width * element.u2) + 1);
@@ -161,6 +164,11 @@ export function cropAtlasTexture(texture: DecodedTexture, element: ImageAtlasEle
   const width = right - left;
   const height = bottom - top;
   if (width <= 0 || height <= 0) throw new Error(`${element.name}: invalid atlas bounds`);
+  return { x: left, y: top, width, height };
+}
+
+export function cropAtlasTexture(texture: DecodedTexture, element: ImageAtlasElement): DecodedTexture {
+  const { x: left, y: top, width, height } = atlasElementBounds(texture, element);
 
   const pixels = new Uint8Array(width * height * 4);
   for (let y = 0; y < height; y++) {
@@ -236,4 +244,3 @@ export function parseImageAtlasArchive(
   });
   return new DecodedImageAtlas(pages);
 }
-

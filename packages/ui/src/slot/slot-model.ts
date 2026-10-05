@@ -1,7 +1,7 @@
 import { createSignal } from '../signal';
-import type { SlotAddress } from '@three-roaming/inventory';
+import type { SlotAddress } from '@dontstarve-web/inventory';
 
-export type { SlotAddress } from '@three-roaming/inventory';
+export type { SlotAddress } from '@dontstarve-web/inventory';
 
 export interface SlotSelectDetail {
   slot: SlotAddress;

@@ -3,15 +3,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
 import { ButterflyController } from '../../prefab/src/butterfly';
 
-vi.mock('@three-roaming/animation/imageAtlas', () => ({
+vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
   loadImageAtlas: async () => ({
     require: () => ({ width: 1, height: 1, pixels: new Uint8Array([255, 255, 255, 255]) }),
   }),
 }));
 
 // This suite checks save/transfer state; browser tests load the real DST assets.
-vi.mock('@three-roaming/prefab/groundItems', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@three-roaming/prefab/groundItems')>();
+vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dontstarve-web/prefab/groundItems')>();
   return {
     ...actual,
     createGroundItemSprite: async () => {
@@ -22,8 +22,8 @@ vi.mock('@three-roaming/prefab/groundItems', async (importOriginal) => {
   };
 });
 
-vi.mock('@three-roaming/prefab/butterfly', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@three-roaming/prefab/butterfly')>();
+vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dontstarve-web/prefab/butterfly')>();
   return {
     ...actual,
     ButterflyAssets: class {
@@ -71,7 +71,7 @@ describe('ground item save records', () => {
       { object: scene.children[0] } as THREE.Intersection,
     ]);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0, clientX: 50, clientY: 50 }));
-    expect(pickup).toHaveBeenCalledWith(definition, 'pickup');
+    expect(pickup).toHaveBeenCalledWith(definition, 'pickup', new THREE.Vector3(8, 0, 9));
     expect(manager.exportRecords()).toEqual([]);
     expect(scene.children).toHaveLength(0);
   });
@@ -107,7 +107,7 @@ describe('ground item save records', () => {
       { object: scene.children[0] } as THREE.Intersection,
     ]);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0, clientX: 50, clientY: 50 }));
-    expect(pickup).toHaveBeenCalledWith({ ...butterfly, count: 1 }, 'net');
+    expect(pickup).toHaveBeenCalledWith({ ...butterfly, count: 1 }, 'net', new THREE.Vector3(...records[0].transform.position));
     expect(manager.exportRecords()).toHaveLength(2);
     expect(scene.children).toHaveLength(2);
     const restored = setup();

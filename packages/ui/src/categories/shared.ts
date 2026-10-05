@@ -1,7 +1,7 @@
-import { HAT_DEFINITIONS, HAT_RECIPES, HAT_SKIN_SPECS } from '@three-roaming/prefab/hats';
-import { GROUND_ITEM_SKIN_SPECS } from '@three-roaming/prefab/groundItems';
-import recipeDataJson from '@three-roaming/animation/recipes.json' with { type: 'json' };
-import type { InventoryRecipeDefinition, InventorySkinSpec } from '@three-roaming/inventory';
+import { HAT_DEFINITIONS, HAT_RECIPES, HAT_SKIN_SPECS } from '@dontstarve-web/prefab/hats';
+import { GROUND_ITEM_SKIN_SPECS } from '@dontstarve-web/prefab/groundItems';
+import recipeDataJson from '@dontstarve-web/animation/recipes.json' with { type: 'json' };
+import type { InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
 import {
   ingredientNames,
   recipeDescriptions,
@@ -31,7 +31,7 @@ interface RecipeData {
   readonly recipes: readonly SourceRecipe[];
 }
 
-export type { InventoryRecipeDefinition, InventorySkinSpec } from '@three-roaming/inventory';
+export type { InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
 
 export interface InventoryProductSpec {
   readonly name: string;

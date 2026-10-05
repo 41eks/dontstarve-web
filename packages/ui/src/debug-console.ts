@@ -1,4 +1,4 @@
-import { loadImageAtlas } from '@three-roaming/animation/imageAtlas';
+import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
 import { AssetElement } from './assets';
 import styles from './styles/debug-console.css?inline';
 
@@ -67,7 +67,7 @@ export class DstDebugConsoleElement extends AssetElement {
     this.shadowRoot!.innerHTML = `
       <style>${styles}</style>
       <section class="debug-console" aria-label="调试控制台" aria-hidden="true" hidden>
-        <canvas class="debug-console__background" aria-hidden="true"></canvas>
+        <span class="debug-console__background" aria-hidden="true"></span>
         <form class="debug-console__form" autocomplete="off">
           <label class="debug-console__label" for="debug-command">调试命令</label>
           <input
@@ -149,31 +149,9 @@ export class DstDebugConsoleElement extends AssetElement {
     return this.shadowRoot!.querySelector<HTMLInputElement>('.debug-console__input')!;
   }
 
-  private async renderBackground(): Promise<void> {
-    const canvas = this.shadowRoot!.querySelector<HTMLCanvasElement>('.debug-console__background');
-    if (!canvas) return;
-    canvas.dataset.archive = this.dataAsset('databundles/images.zip');
-    canvas.dataset.atlas = CONSOLE_ATLAS;
-    canvas.dataset.element = CONSOLE_BACKGROUND;
-    delete canvas.dataset.loaded;
-    delete canvas.dataset.error;
-
-    try {
-      const atlas = await loadImageAtlas(canvas.dataset.archive, CONSOLE_ATLAS);
-      if (!canvas.isConnected) return;
-      const sprite = atlas.require(CONSOLE_BACKGROUND);
-      canvas.width = sprite.width;
-      canvas.height = sprite.height;
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Canvas 2D context is unavailable');
-      context.putImageData(
-        new ImageData(Uint8ClampedArray.from(sprite.pixels), sprite.width, sprite.height),
-        0,
-        0,
-      );
-      canvas.dataset.loaded = 'true';
-    } catch (error: unknown) {
-      canvas.dataset.error = error instanceof Error ? error.message : String(error);
-    }
+  private renderBackground(): void {
+    this.shadowRoot!.querySelector('.debug-console__background')?.replaceWith(
+      createAtlasImage('debug-console__background', CONSOLE_ATLAS, CONSOLE_BACKGROUND),
+    );
   }
 }

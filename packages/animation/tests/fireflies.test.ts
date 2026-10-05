@@ -154,7 +154,7 @@ describe('real fireflies archive and ground transfers', () => {
     expect(scene.children).toHaveLength(2);
     pickup.mockReturnValue(true);
     expect(target.capture()).toBe(true);
-    expect(pickup).toHaveBeenLastCalledWith({ ...definition, count: 1 }, 'net');
+    expect(pickup).toHaveBeenLastCalledWith({ ...definition, count: 1 }, 'net', target.position.clone());
     expect(target.capture()).toBe(false);
     expect(getPrefabLocalLight(target.model)).toBeUndefined();
     expect(manager.exportRecords()).toHaveLength(1);

@@ -1,5 +1,5 @@
 {
-  "name": "@three-roaming/ui",
+  "name": "@dontstarve-web/ui",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,9 +16,9 @@
     "controller-font:check": "python3 scripts/import-controller-font.py --check"
   },
   "dependencies": {
-    "@three-roaming/animation": "workspace:*",
-    "@three-roaming/inventory": "workspace:*",
-    "@three-roaming/prefab": "workspace:*"
+    "@dontstarve-web/animation": "workspace:*",
+    "@dontstarve-web/inventory": "workspace:*",
+    "@dontstarve-web/prefab": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

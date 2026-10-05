@@ -7,7 +7,7 @@ const { initialSave, createLighting } = vi.hoisted(() => ({
 
 vi.mock('../../../src/save/initialSave', () => ({ initialSave }));
 vi.mock('../../../src/dstLighting', () => ({ DstLightingRenderer: { create: createLighting } }));
-vi.mock('@three-roaming/ui/cursor-label', () => ({ CursorLabelUi: class {} }));
+vi.mock('@dontstarve-web/ui/cursor-label', () => ({ CursorLabelUi: class {} }));
 vi.mock('three', async (importOriginal) => ({
   ...await importOriginal<typeof import('three')>(),
   WebGLRenderer: class {

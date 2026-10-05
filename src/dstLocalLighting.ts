@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { TILE_SIZE } from '@three-roaming/prefab/tile';
-import { getPrefabLightOverride, getPrefabLocalLight, type PrefabLocalLight } from '@three-roaming/prefab/localLight';
+import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
+import { getPrefabLightOverride, getPrefabLocalLight, type PrefabLocalLight } from '@dontstarve-web/prefab/localLight';
 
 // DST tiles are 4 units wide; this scene uses TILE_SIZE (12).
 // The Lua values are known. Their conversion to shader constants is estimated:

@@ -1,18 +1,20 @@
 import type {
   InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec, InventoryStack,
-} from '@three-roaming/inventory';
+} from '@dontstarve-web/inventory';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
-import type { BuildingContainerDefinition } from '@three-roaming/prefab/containers';
-import { DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '@three-roaming/prefab/stafflight';
-import { FLOWER_ANIMATIONS } from '@three-roaming/prefab/flower';
-import { BEEFALO_BEHAVIOR } from '@three-roaming/prefab/beefalo';
+import type { BuildingContainerDefinition } from '@dontstarve-web/prefab/containers';
+import { DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '@dontstarve-web/prefab/stafflight';
+import { FLOWER_ANIMATIONS } from '@dontstarve-web/prefab/flower';
+import { BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { BULB_PLANT_PREFABS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_MAX_ON_TIME,
-  BULB_PLANT_MAX_RECHARGE_TIME, isBulbPlantPrefab, bulbPlantRegrowTime } from '@three-roaming/prefab/bulb_plant';
-import { ROCK_PREFABS } from '@three-roaming/prefab/rocks';
-import { POND_ID } from '@three-roaming/prefab/pond';
-import { NIGHTMAREGROWTH_ID } from '@three-roaming/prefab/nightmaregrowth';
-import { WORLD_TILES } from '@three-roaming/prefab/turfMap';
-import { TILE_SIZE } from '@three-roaming/prefab/tile';
+  BULB_PLANT_MAX_RECHARGE_TIME, isBulbPlantPrefab, bulbPlantRegrowTime } from '@dontstarve-web/prefab/bulb_plant';
+import { ROCK_PREFABS } from '@dontstarve-web/prefab/rocks';
+import { GRASS_ID } from '@dontstarve-web/prefab/grass';
+import { SAPLING_PREFABS } from '@dontstarve-web/prefab/sapling';
+import { POND_ID } from '@dontstarve-web/prefab/pond';
+import { NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
+import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 
 export interface SaveCatalog {
   items: Readonly<Record<string, InventoryItemSpec>>;
@@ -176,7 +178,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
   const ids = new Set<string>();
   let entityCount = 0;
-  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', POND_ID, NIGHTMAREGROWTH_ID, ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
+  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', GRASS_ID, POND_ID, NIGHTMAREGROWTH_ID, ...SAPLING_PREFABS, ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
   const groups = object(world.entities, 'world.entities', allowedPrefabs);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;

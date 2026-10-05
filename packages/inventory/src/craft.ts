@@ -9,12 +9,17 @@ function isProductStack(stack: InventoryStack, recipe: InventoryRecipeDefinition
   return stack.itemId === recipe.productId && stack.skinId === recipe.productSkinId;
 }
 
-/** Returns backpack stacks followed by ingredient-only stacks, without changing the slots. */
-export function craft(
+export interface CraftResult {
+  items: InventoryItems;
+  /** Product allocations after ingredient consumption, including reused ingredient slots. */
+  products: readonly { slotIndex: number; count: number }[];
+}
+
+export function planCraft(
   recipe: InventoryRecipeDefinition,
   slots: readonly InventorySlot[],
   ingredientSlots: readonly ItemSlot[] = [],
-): InventoryItems | null {
+): CraftResult | null {
   if (!Number.isSafeInteger(recipe.productCount) || recipe.productCount <= 0) return null;
 
   const allSlots: readonly ItemSlot[] = [...slots, ...ingredientSlots];
@@ -47,8 +52,9 @@ export function craft(
     if (remaining > 0) return null;
   }
 
-  if (recipe.buffered) return next;
+  if (recipe.buffered) return { items: next, products: [] };
 
+  const products: { slotIndex: number; count: number }[] = [];
   let productsRemaining = recipe.productCount;
   for (let index = 0; index < slots.length && productsRemaining > 0; index += 1) {
     const stack = next[index];
@@ -57,6 +63,7 @@ export function craft(
     if (available <= 0) continue;
     const added = Math.min(productsRemaining, available);
     next[index] = { ...stack, count: stack.count + added };
+    products.push({ slotIndex: index, count: added });
     productsRemaining -= added;
   }
 
@@ -70,8 +77,18 @@ export function craft(
       ...(recipe.productSkinId === undefined ? {} : { skinId: recipe.productSkinId }),
       count,
     };
+    products.push({ slotIndex: index, count });
     productsRemaining -= count;
   }
 
-  return productsRemaining === 0 ? next : null;
+  return productsRemaining === 0 ? { items: next, products } : null;
+}
+
+/** Returns backpack stacks followed by ingredient-only stacks, without changing the slots. */
+export function craft(
+  recipe: InventoryRecipeDefinition,
+  slots: readonly InventorySlot[],
+  ingredientSlots: readonly ItemSlot[] = [],
+): InventoryItems | null {
+  return planCraft(recipe, slots, ingredientSlots)?.items ?? null;
 }

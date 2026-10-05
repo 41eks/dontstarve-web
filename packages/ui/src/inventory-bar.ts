@@ -7,7 +7,7 @@ import {
   inventorySlotAddress,
   type EquipmentKind,
   type SlotAddress,
-} from '@three-roaming/inventory';
+} from '@dontstarve-web/inventory';
 import { createSignal } from './signal';
 import { createSlotContainer, type SlotContainer } from './slot/slot-container';
 import type {
@@ -17,6 +17,7 @@ import type {
   SlotSelectDetail,
 } from './slot/slot-model';
 import { createSlotRenderer, type SlotRenderer } from './slot/slot-renderer';
+import type { InventoryReceiveSource } from './slot/slot-receive-animation';
 import type { SlotTransferRequest } from './slot/slot-transfer';
 import styles from './styles/inventory-bar.css?inline';
 import slotStyles from './styles/slot.css?inline';
@@ -73,6 +74,16 @@ export class DstInventoryBarElement extends AssetElement {
 
   setSlot(address: SlotAddress, item: InventoryBarItem | null): void {
     this.requireSlot(address).setItem(item);
+  }
+
+  animateReceive(address: SlotAddress, source: InventoryReceiveSource, amount: number): void {
+    this.requireSlot(address);
+    this.renderers.find(({ button }) => button.dataset.containerId === address.containerId
+      && button.dataset.slotKey === address.slotKey)?.animateReceive(source, amount);
+  }
+
+  cancelReceiveAnimations(): void {
+    this.renderers.forEach((renderer) => renderer.cancelReceiveAnimation());
   }
 
   getSlot(address: SlotAddress): InventoryBarItem | null {
@@ -149,7 +160,6 @@ export class DstInventoryBarElement extends AssetElement {
     const renderer = createSlotRenderer({
       ...descriptor,
       backgroundUrl: () => this.asset(`bag/${descriptor.backgroundAsset}`),
-      archiveUrl: () => this.dataAsset('databundles/images.zip'),
       selectedSlot: this.selectedSlot.get,
       onSelect: (slot) => this.selectSlot(slot),
       onContextMenu: (slot, event) => this.openSlotContextMenu(slot, event),
@@ -201,6 +211,5 @@ export class DstInventoryBarElement extends AssetElement {
 
   private disposeRenderers(): void {
     this.renderers.forEach((renderer) => renderer.disconnect());
-    this.renderers.length = 0;
   }
 }

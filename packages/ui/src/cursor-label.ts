@@ -1,5 +1,5 @@
-import { loadBitmapFont, type BitmapFont } from '@three-roaming/animation/bitmapFont';
-import type { CursorLabel } from '@three-roaming/prefab/buildCursor';
+import { loadBitmapFont, type BitmapFont } from '@dontstarve-web/animation/bitmapFont';
+import type { CursorLabel } from '@dontstarve-web/prefab/buildCursor';
 import styles from './styles/cursor-label.css?inline';
 
 export interface CursorPointer {

@@ -1,4 +1,4 @@
-import { createWilsonPlayerPrefab } from '@three-roaming/prefab/player';
+import { createWilsonPlayerPrefab } from '@dontstarve-web/prefab/player';
 import * as CANNON from 'cannon-es';
 import { initialSave } from './save/initialSave';
 

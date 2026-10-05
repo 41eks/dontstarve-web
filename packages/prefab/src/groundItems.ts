@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import {
   createMaterials, findImage, loadAnim, loadBuild, smallHash, SpriteFrameRenderer,
   type ParsedAnim, type ParsedBuild, type ResolvedSprite,
-} from '@three-roaming/animation/animationAssets';
-import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
-import type { InventorySkinSpec } from '@three-roaming/inventory';
+} from '@dontstarve-web/animation/animationAssets';
+import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import type { InventorySkinSpec } from '@dontstarve-web/inventory';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export interface GroundItemAssetDefinition {

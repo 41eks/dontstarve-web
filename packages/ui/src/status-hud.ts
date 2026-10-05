@@ -1,4 +1,4 @@
-import { createAtlasImage } from './atlasImage';
+import { createAtlasImage as atlasImage } from '@dontstarve-web/animation/atlasImage';
 import { AssetElement } from './assets';
 import styles from './styles/status-hud.css?inline';
 
@@ -45,8 +45,6 @@ export class DstStatusHudElement extends AssetElement {
         </div>
       </section>
     `;
-
-    const atlasImage = createAtlasImage(this.dataAsset('databundles/images.zip'));
 
     root.querySelector('.world-clock__dial')!.prepend(atlasImage(
       'world-clock__rim',

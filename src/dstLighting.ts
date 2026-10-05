@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { parseKtex } from '@three-roaming/animation/parseKtex';
+import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 import { DstLocalLighting } from './dstLocalLighting';
 
 export type DstSeason = 'autumn' | 'winter' | 'spring' | 'summer';

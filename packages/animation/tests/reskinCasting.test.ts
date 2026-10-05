@@ -131,7 +131,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
     { object: manager.reskinTargets[0].model.children[0].children[0], point: new THREE.Vector3(), distance: 1 } as THREE.Intersection,
   ]);
   canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0, clientX: 50, clientY: 50 }));
-  expect(picked).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'reskin_tool', count: 1, skinId: 'reskin_tool_bouquet' }), 'pickup');
+  expect(picked).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'reskin_tool', count: 1, skinId: 'reskin_tool_bouquet' }), 'pickup', new THREE.Vector3(3, 0, 4));
   expect(manager.exportRecords()).toEqual([]);
 });
 

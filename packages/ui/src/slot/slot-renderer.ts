@@ -1,19 +1,8 @@
-import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
+import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
+import { SlotReceiveAnimation, type InventoryReceiveSource } from './slot-receive-animation';
 import { createEffect } from '../signal';
-import { sameSlotAddress, type SlotAddress, type SlotItem, type SlotModel } from './slot-model';
+import { sameSlotAddress, type SlotAddress, type SlotModel } from './slot-model';
 import { slotTransferController, type SlotTransferRequest } from './slot-transfer';
-
-const atlasRequests = new Map<string, Promise<ImageAtlas>>();
-
-function requestAtlas(archiveUrl: string, atlasPath: string): Promise<ImageAtlas> {
-  const key = `${archiveUrl}\n${atlasPath}`;
-  let request = atlasRequests.get(key);
-  if (!request) {
-    request = loadImageAtlas(archiveUrl, atlasPath);
-    atlasRequests.set(key, request);
-  }
-  return request;
-}
 
 export interface CreateSlotRendererOptions {
   slot: SlotModel;
@@ -21,7 +10,6 @@ export interface CreateSlotRendererOptions {
   backgroundAsset: string;
   backgroundAtlas?: string;
   backgroundUrl(): string;
-  archiveUrl(): string;
   selectedSlot?(): SlotAddress | null;
   /** Return true to claim the click and skip the transfer pick-up. */
   onSelect?(slot: SlotModel): boolean;
@@ -34,6 +22,8 @@ export interface SlotRenderer {
   connect(): void;
   disconnect(): void;
   refresh(): void;
+  animateReceive(source: InventoryReceiveSource, amount: number): void;
+  cancelReceiveAnimation(): void;
 }
 
 export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRenderer {
@@ -52,16 +42,14 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     <span class="inventory-slot__count" aria-hidden="true"></span>
   `;
   if (options.backgroundAtlas) {
-    const background = createAtlasImage(options.archiveUrl(), options.backgroundAtlas, {
-      id: '', name: '', count: 1, maxStack: 1, icon: options.backgroundAsset,
-    });
-    background.className = 'inventory-slot__background';
+    const background = createAtlasImage('inventory-slot__background', options.backgroundAtlas, options.backgroundAsset);
     button.querySelector('.inventory-slot__background')!.replaceWith(background);
   }
 
   let disposeEffect: (() => void) | undefined;
   let unregister: (() => void) | undefined;
   let suppressNextClick = false;
+  const receiveAnimation = new SlotReceiveAnimation(button, () => options.slot.getItem());
 
   const update = () => {
     const item = options.slot.getItem();
@@ -77,6 +65,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       ? `${item.name}，数量 ${item.count}`
       : options.label);
     count.textContent = item && item.count > 1 ? String(item.count) : '';
+    receiveAnimation.sync();
 
     if (!item) {
       content.dataset.iconKey = '';
@@ -84,12 +73,11 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       return;
     }
 
-    const archiveUrl = options.archiveUrl();
     const atlasPath = item.atlas ?? 'images/inventoryimages.xml';
-    const iconKey = `${archiveUrl}\n${atlasPath}\n${item.icon}`;
+    const iconKey = `${atlasPath}\n${item.icon}`;
     if (content.dataset.iconKey === iconKey) return;
     content.dataset.iconKey = iconKey;
-    content.replaceChildren(createAtlasImage(archiveUrl, atlasPath, item));
+    content.replaceChildren(createAtlasImage('inventory-slot__icon', atlasPath, item.icon));
   };
 
   button.addEventListener('click', (event) => {
@@ -130,11 +118,17 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       disposeEffect = createEffect(update);
     },
     disconnect() {
+      receiveAnimation.cancel();
       disposeEffect?.();
       disposeEffect = undefined;
       unregister?.();
       unregister = undefined;
     },
+    animateReceive(source, amount) {
+      update();
+      receiveAnimation.receive(source, amount);
+    },
+    cancelReceiveAnimation() { receiveAnimation.cancel(); },
     refresh() {
       if (!options.backgroundAtlas) {
         button.querySelector<HTMLImageElement>('.inventory-slot__background')!.src = options.backgroundUrl();
@@ -144,34 +138,3 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   };
 }
 
-function createAtlasImage(
-  archiveUrl: string,
-  atlasPath: string,
-  item: SlotItem,
-): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.className = 'inventory-slot__icon';
-  canvas.width = 1;
-  canvas.height = 1;
-  canvas.dataset.archive = archiveUrl;
-  canvas.dataset.atlas = atlasPath;
-  canvas.dataset.element = item.icon;
-
-  void requestAtlas(archiveUrl, atlasPath).then((atlas) => {
-    if (!canvas.isConnected) return;
-    const sprite = atlas.require(item.icon);
-    canvas.width = sprite.width;
-    canvas.height = sprite.height;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Canvas 2D context is unavailable');
-    context.putImageData(
-      new ImageData(Uint8ClampedArray.from(sprite.pixels), sprite.width, sprite.height),
-      0,
-      0,
-    );
-    canvas.dataset.loaded = 'true';
-  }).catch((error: unknown) => {
-    canvas.dataset.error = error instanceof Error ? error.message : String(error);
-  });
-  return canvas;
-}

@@ -1,5 +1,6 @@
+import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
 import * as THREE from 'three';
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@three-roaming/animation/animationAssets';
+import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { WilsonAnimationController } from './player';
 import type { Locomotor } from './locomotor';
@@ -10,7 +11,7 @@ import { snapToTileCenter } from './tile';
 import type { TurfMap } from './turfMap';
 
 // SGwilson: TERRAFORM commits 25 frames after shovel_pre starts.
-export const PITCHFORK_DIG_TIME = 25 / 30;
+export const PITCHFORK_DIG_TIME = WILSON_ACTION_TIMES.terraform;
 export const PITCHFORK_REACH = 4;
 type PitchforkBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
 

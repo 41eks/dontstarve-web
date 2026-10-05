@@ -1,5 +1,6 @@
+import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
 import * as THREE from 'three';
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@three-roaming/animation/animationAssets';
+import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { WilsonAnimationController } from './player';
 import type { Locomotor } from './locomotor';
@@ -8,7 +9,7 @@ import type { CursorLabel } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 
 // SGwilson: HAMMER commits seven frames into pickaxe_loop, after pickaxe_pre.
-export const HAMMER_HIT_TIME = 7 / 30;
+export const HAMMER_HIT_TIME = WILSON_ACTION_TIMES.mine;
 export const HAMMER_REACH = 4;
 type HammerBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
 export interface HammerEquipment { readonly builds: readonly HammerBuild[] }

@@ -1,6 +1,6 @@
-# @three-roaming/prefab
+# @dontstarve-web/prefab
 
-DST 场景预制体。该包基于 `@three-roaming/animation` 组合具体资源，当前提供：
+DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资源，当前提供：
 
 - `createWilsonPlayer` / `createWilsonPlayerPrefab`
 - `createPigKing`
@@ -13,7 +13,7 @@ DST 场景预制体。该包基于 `@three-roaming/animation` 组合具体资源
 
 `CookPotPlacement` 使用 DST 预制体 ID `cookpot` 和 `anim/cook_pot.zip`，默认显示
 `idle_empty`，放置时播放 `place` 后回到 `idle_empty`。可通过包主入口或
-`@three-roaming/prefab/cook_pot` 导入。应用已接入制作放置、
+`@dontstarve-web/prefab/cook_pot` 导入。应用已接入制作放置、
 `c_spawn("cookpot")` 和存档恢复；支持 8 个皮肤 ID。靠近后点击锅会循环播放
 `cooking_pre_loop`，并在锅右侧显示 4 个竖向的 `PreparedFoodSlot`，每格最多 1 个
 物品，背景取自 `images/hud2.xml` 的 `preparedfood_slot.tex`。再次点击或走远会关闭
@@ -43,14 +43,14 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 下对应的 DST build，并在预览、放置及后续开关动画中保持不变。
 
 `createPigKing` 只创建猪王的模型、碰撞体和动画交互。`createPigKingSetPiece`
-通过包主入口或 `@three-roaming/prefab/setpieces/pigking` 导入，接收 DST data 根路径
+通过包主入口或 `@dontstarve-web/prefab/setpieces/pigking` 导入，接收 DST data 根路径
 和可选的猪王脚点位置，返回包含猪王及木地板地皮的 `group`、`pigKing`、`turf`、
 `footPosition` 和九块地皮的坐标。木地板对齐地图格，覆盖猪王所在格及周围八格；
 使用原始 `levels/textures/noise_woodfloor.tex`，不再使用独立的 PNG 装饰地板。
-`TurfMap`（`@three-roaming/prefab/turfMap`）提供按格查询、挖地、稀疏存档和
+`TurfMap`（`@dontstarve-web/prefab/turfMap`）提供按格查询、挖地、稀疏存档和
 `createVisual(assetBaseUrl)`。主场景将猪王木地板格登记到该地图，由统一地皮层替代
 set piece 的整块地板。`groundTiles.json` 从 `tiledefs.lua` 提取 ID、atlas/noise 路径和
-绘制顺序；`pnpm --filter @three-roaming/prefab ground-tiles:import` 导入原版资产，
+绘制顺序；`pnpm --filter @dontstarve-web/prefab ground-tiles:import` 导入原版资产，
 `ground-tiles:check` 校验源字节和定义。`groundTiles.ts` 根据八邻格选择 48 个源 atlas
 图块，并按 `ground.ksh` 的方式将 atlas RGBA 与世界坐标噪声相乘。内部同种格用完整
 图块，交界使用边、外角和内角；挖地同步刷新相邻掩码，存档只记录地皮状态。
@@ -73,7 +73,7 @@ set piece 则传入 `${import.meta.env.BASE_URL}dst/data`；prefab 包不依赖�
 每次进入页面使用同一组初始位置。显式位置优先于 `count`、`areaSize`、
 `exclusionRadiusSquared` 和 `random`；Prefab 会复制坐标，避免修改调用方的数据。
 
-帽子由 `@three-roaming/prefab/hats` 提供：`HAT_DEFINITIONS` 包含 `hats.lua`
+帽子由 `@dontstarve-web/prefab/hats` 提供：`HAT_DEFINITIONS` 包含 `hats.lua`
 返回的 82 种可用帽子，`HAT_ITEM_SPECS` 指定头部装备、单件上限、中文名称和真实
 inventory atlas 路径。`HAT_SKIN_SPECS` 及 `skinArchives` 对应 144 个皮肤 ID；
 皮肤别名沿用 DST 的 `build_name_override`，露顶皮肤保留原始头发显示规则。
@@ -114,7 +114,7 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 落地帽子按实体的地面接触点参与遮挡排序，点击合并 Mesh 可拾取，存档保存真实落点。
 兔子帽同时使用 `rabbit_build` 的身体和 `hat_rabbit` 的帽子部件。
 
-`@three-roaming/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
+`@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
 `GroundItemAssets` 和 `createGroundItemSprite(assets, itemId, skinId?)`。
 目录包含 221 种材料、工具、提灯、荧光果、唤星者魔杖、唤月者魔杖、清洁扫把、肉类、蔬菜、墙体物品和普通烹饪食物，以及 94 个皮肤 ID。
 初始背包里的物品均已接入地面动画；未进入目录的其他物品仍使用图标回退。
@@ -132,7 +132,7 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 资源加载或背包扣减失败时不会丢失物品。普通地面精灵不创建灯光、声音或独立特效实体；
 提灯通过下述专用工厂提供亮灯状态与局部光源描述。
 
-提灯由 `@three-roaming/prefab/lantern` 提供。物品 ID 是 `lantern`，源代码为
+提灯由 `@dontstarve-web/prefab/lantern` 提供。物品 ID 是 `lantern`，源代码为
 `prefabs/mininglantern.lua`。地面使用 `lantern.zip` 的 bank/build `lantern`，
 亮灯播放 `idle_on`，熄灭播放 `idle_off`；手持使用 `swap_lantern.zip` 的
 `swap_lantern` 和 `lantern_overlay` 符号，主体与覆盖层合入 Wilson 同一帧的 Mesh。
@@ -153,7 +153,7 @@ await player.userData.animationController.setCarryItem(null); // 收回背包并
 
 `LanternLightController` 按源 Lua 在燃料比例 0～1 时使用半径 3～5（换算为场景的
 9～15 世界单位）、强度 0.4～0.6、Falloff 0.9，以及 RGB `(180,195,150)/255`；
-零燃料时关闭光源。通过 `@three-roaming/prefab/localLight` 的 `getPrefabLocalLight()`
+零燃料时关闭光源。通过 `@dontstarve-web/prefab/localLight` 的 `getPrefabLocalLight()`
 读取实体原点上的渲染无关光源描述，由应用的局部光照渲染器绘制。
 
 应用支持把提灯拖到手部装备、Shift+右键丢到地面，以及点击地面提灯拾回背包。
@@ -164,7 +164,7 @@ await player.userData.animationController.setCarryItem(null); // 收回背包并
 当前背包没有逐件燃料状态，因此应用使用满燃料，不自动耗油或保存开关／燃料比例；
 Prefab API 可由后续权威燃料状态驱动。声音、单独的粒子特效和地面开关交互尚未接入。
 
-荧光果由 `@three-roaming/prefab/lightbulb` 的 `createLightbulbGroundSprite(assets)`
+荧光果由 `@dontstarve-web/prefab/lightbulb` 的 `createLightbulbGroundSprite(assets)`
 提供。使用 `lightbulb.lua` 指定的 `anim/bulb.zip`、bank/build `bulb` 和 `idle`
 动画，默认放在地上发光。`setLit(false)` 关闭局部光源，`dispose()` 同时移除光源和模型。
 它的原版半径为 0.5，换算为场景的 1.5 世界单位；强度 0.5、Falloff 0.7，
@@ -175,7 +175,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 图标从真实 inventory atlas 读取，地面模型使用原始动画，不使用图标回退。
 本次提供局部照明，尚未接入原版 Bloom 后处理、腐坏和食用效果。
 
-唤星者魔杖由 `@three-roaming/prefab/yellowstaff` 提供，装备 API 为
+唤星者魔杖由 `@dontstarve-web/prefab/yellowstaff` 提供，装备 API 为
 `await controller.setCarryItem('yellowstaff', skinId)`。手持使用 `swap_staffs.zip`
 的 `swap_yellowstaff`，地面使用 `staffs.zip` 的 bank/build `staffs`、`yellowstaff`
 动画；基础外观和 4 个皮肤均使用原始资源。
@@ -185,7 +185,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `PlaySound('dontstarve/wilson/use_gemstaff')`，第 53 帧生成矮星；重复点击不重复提交，
 施法过程中停止移动，卸下魔杖或开始其他动作会取消尚未提交的召唤。
 
-`@three-roaming/prefab/stafflight` 的 `DwarfStarManager` 管理独立的矮星
+`@dontstarve-web/prefab/stafflight` 的 `DwarfStarManager` 管理独立的矮星
 （源 prefab ID `stafflight`）。`star_hot.zip` 播放 `appear → idle_loop → disappear`，
 局部光源每 20 秒脉动一次，半径为 33～36 世界单位。矮星固定在右键 raycaster
 命中的地面点，持续 24 分钟（1440 秒），到期播放
@@ -200,7 +200,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 274（`staff_star_fireLP`）提取，保留源 bank 的目录，导出为 `sound/common.fsb-273.wav`、
 `sound/common.fsb-274.wav`；声音在用户交互后启用。提取方法见根目录 `AGENTS.md`。
 
-通用音频 API 由 `@three-roaming/prefab/sound` 提供，直接调用 `PlaySound('事件路径')`。
+通用音频 API 由 `@dontstarve-web/prefab/sound` 提供，直接调用 `PlaySound('事件路径')`。
 支持 `dontstarve/common/staff_star_create`、`dontstarve/common/staff_star_LP` 和
 `dontstarve/wilson/use_gemstaff`（流 284，`sound/common.fsb-284.wav`），以及
 `dontstarve/wilson/hit`（`sfx.fsb` 流 423 / 424，等权随机）和
@@ -218,7 +218,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 理智消耗、矮星加热／烹饪／引燃、独立施法特效和 Bloom 后处理。
 
 清洁扫把的 `ReskinActionController` / `ReskinEffects` 由
-`@three-roaming/prefab/reskin_tool` 导出。玩家手持时右键有已导入皮肤的建筑或地面物品，
+`@dontstarve-web/prefab/reskin_tool` 导出。玩家手持时右键有已导入皮肤的建筑或地面物品，
 超出原版 CASTSPELL 的 20 单位距离（本场景 60）会先走近。目标和特效资源加载完成后，
 `WilsonAnimationController.playReskin()` 按 `SGwilson.lua` 的 `veryquickcastspell`
 播放 `player_attacks.zip` 的 `atk_pre → atk`，第 9 帧原子提交目标的下一个皮肤。

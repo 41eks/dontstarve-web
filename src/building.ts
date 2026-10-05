@@ -1,10 +1,10 @@
 // src/building.ts
 
 import * as THREE from 'three';
-import { createMoonTreeForest } from '@three-roaming/prefab/moontree';
-import { TILE_SIZE } from '@three-roaming/prefab/tile';
-import { createTurfGround } from '@three-roaming/prefab/turf';
-import { TurfMap } from '@three-roaming/prefab/turfMap';
+import { createMoonTreeForest } from '@dontstarve-web/prefab/moontree';
+import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
+import { createTurfGround } from '@dontstarve-web/prefab/turf';
+import { TurfMap } from '@dontstarve-web/prefab/turfMap';
 import { initialSave } from './save/initialSave';
 
 const ground = await createTurfGround({

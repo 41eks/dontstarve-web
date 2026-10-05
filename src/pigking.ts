@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createPigKingSetPiece } from '@three-roaming/prefab/setpieces/pigking';
+import { createPigKingSetPiece } from '@dontstarve-web/prefab/setpieces/pigking';
 import { initialSave } from './save/initialSave';
 
 export const pigKings = await Promise.all(

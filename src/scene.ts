@@ -1,7 +1,7 @@
 import * as CANNON from 'cannon-es';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
-import { setSpriteEntityRenderOrder } from '@three-roaming/animation';
+import { setSpriteEntityRenderOrder } from '@dontstarve-web/animation';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
@@ -21,7 +21,7 @@ import { view } from './view';
 import { initialSave } from './save/initialSave';
 import { getDstCycle } from './tuning';
 import type { RuntimeSaveState } from './save/serialize';
-import { Locomotor, findGroundPath, setupLocomotorInput } from '@three-roaming/prefab/locomotor';
+import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 
 export const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
@@ -109,10 +109,10 @@ if (!window.location.hostname.endsWith('github.io')) {
 
 export async function startScene(
   consumeBufferedBuild: (buildingId: PlaceableBuildingId) => boolean,
-  pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net') => boolean,
+  pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
-  pickLightbulbs: (count: number) => boolean = () => false,
+  pickLightbulbs: (count: number, sourcePosition: THREE.Vector3) => boolean = () => false,
 ) {
   const entities = createSceneEntities(world, consumeBufferedBuild, pickupGroundItem,
     onBuildingInteraction, onFlowerPlanted, pickLightbulbs);

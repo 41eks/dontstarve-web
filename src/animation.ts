@@ -71,7 +71,7 @@ export default class ModelAnimation {
 
 import * as THREE from 'three';
 import { playerBody } from "./player";
-import type { WilsonAnimationController, WilsonFacing } from '@three-roaming/prefab/player';
+import type { WilsonAnimationController, WilsonFacing } from '@dontstarve-web/prefab/player';
 import { JUMP_VELOCITY } from './updatePlayerMovement';
 export function createAnimationUpdater(model: THREE.Group, camera: THREE.Camera) {
 

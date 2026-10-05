@@ -1,3 +1,4 @@
+import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
 import { sameSlotAddress, type SlotAddress, type SlotItem, type SlotModel } from './slot-model';
 
 export interface SlotTransferRequest {
@@ -244,13 +245,13 @@ export class SlotTransferController {
     clientY: number,
   ): void {
     this.preview?.remove();
-    const sourceCanvas = sourceButton.querySelector<HTMLCanvasElement>('.inventory-slot__icon');
+    const sourceIcon = sourceButton.querySelector<HTMLElement>('.inventory-slot__icon');
     const preview = document.createElement('div');
     preview.className = 'slot-drag-preview';
     preview.dataset.itemId = item.id;
     preview.dataset.skinId = item.skinId ?? '';
     preview.setAttribute('aria-hidden', 'true');
-    const sourceRect = sourceCanvas?.getBoundingClientRect()
+    const sourceRect = sourceIcon?.getBoundingClientRect()
       ?? sourceButton.querySelector<HTMLElement>('.inventory-slot__content')?.getBoundingClientRect()
       ?? sourceButton.getBoundingClientRect();
     Object.assign(preview.style, {
@@ -266,11 +267,8 @@ export class SlotTransferController {
       transform: 'translate(-50%, -50%)',
     });
 
-    if (sourceCanvas) {
-      const image = document.createElement('img');
-      image.src = sourceCanvas.toDataURL();
-      image.alt = '';
-      image.className = 'slot-drag-preview__icon';
+    if (sourceIcon) {
+      const image = createAtlasImage('slot-drag-preview__icon', sourceIcon.dataset.atlas!, sourceIcon.dataset.element!);
       Object.assign(image.style, {
         display: 'block',
         width: '100%',

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
   createAnimatedSpriteFactory,
   type AnimatedSpriteFactory,
-} from '@three-roaming/animation/sprite';
+} from '@dontstarve-web/animation/sprite';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
 import { newEntityId } from './saveRecord';

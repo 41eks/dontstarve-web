@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@three-roaming/animation/sprite';
+import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
@@ -233,7 +233,7 @@ export class BulbPlantManager {
   private pointer?: PointerRaycaster;
   private cursor?: CursorLabel;
   private canvas?: HTMLCanvasElement;
-  private giveFruit?: (count: number) => boolean;
+  private giveFruit?: (count: number, sourcePosition: THREE.Vector3) => boolean;
   private hoveredId?: string;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: BulbPlantWorld, random = Math.random) {
@@ -276,7 +276,7 @@ export class BulbPlantManager {
     this.updateHover();
   }
 
-  setupInteraction(world: WorldContext, giveFruit: (count: number) => boolean): void {
+  setupInteraction(world: WorldContext, giveFruit: (count: number, sourcePosition: THREE.Vector3) => boolean): void {
     this.pointer = new PointerRaycaster(world);
     this.cursor = world.createCursorLabel?.(this.pointer);
     this.giveFruit = giveFruit;
@@ -313,7 +313,7 @@ export class BulbPlantManager {
     const plant = this.hitPlant();
     if (!plant) return;
     event.preventDefault();
-    plant.controller.tryPick(this.giveFruit ?? (() => false));
+    plant.controller.tryPick((count) => this.giveFruit?.(count, plant.model.position.clone()) ?? false);
     this.updateHover();
   };
 

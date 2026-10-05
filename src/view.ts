@@ -1,4 +1,4 @@
-import type { WorldContext } from '@three-roaming/prefab/worldContext';
+import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 
 import { ground } from './building';
 import { camera } from './camera';

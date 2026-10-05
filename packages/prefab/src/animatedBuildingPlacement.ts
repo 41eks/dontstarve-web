@@ -4,8 +4,8 @@ import {
     createAnimatedSprite,
     type SpriteAnimationController,
     type TransientSpriteAnimationController,
-} from '@three-roaming/animation/sprite';
-import type { PrefabSkinInitializer } from '@three-roaming/animation/prefabskin';
+} from '@dontstarve-web/animation/sprite';
+import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from './pointerRaycaster';
@@ -13,7 +13,7 @@ import type { WorldContext } from './worldContext';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from './hammer';
 import { nextReskin, type ReskinTarget } from './reskin_tool';
-import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
+import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 
 export interface AnimatedBuildingDefinition {
     archive: string;

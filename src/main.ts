@@ -13,31 +13,30 @@ import {
   type SlotContextMenuDetail,
   type SlotSelectDetail,
   type SlotTransferRequest,
-} from '@three-roaming/ui';
-import type { WilsonAnimationController } from '@three-roaming/prefab/player';
-import { isHatId } from '@three-roaming/prefab/hats';
-import { isLightStaff, setupLightStaffCasting } from '@three-roaming/prefab/yellowstaff';
-import { BugNetCaptureController } from '@three-roaming/prefab/bugnet';
-import { HammerActionController } from '@three-roaming/prefab/hammer';
-import { PickaxeActionController } from '@three-roaming/prefab/pickaxe';
-import { PitchforkActionController, isPitchforkTool } from '@three-roaming/prefab/pitchfork';
-import { ReskinActionController } from '@three-roaming/prefab/reskin_tool';
-import { DisposeSounds, UpdateSoundListener } from '@three-roaming/prefab/sound';
-import { disposeAnimationAssets } from '@three-roaming/animation';
+} from '@dontstarve-web/ui';
+import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { isHatId } from '@dontstarve-web/prefab/hats';
+import { isLightStaff, setupLightStaffCasting } from '@dontstarve-web/prefab/yellowstaff';
+import { BugNetCaptureController } from '@dontstarve-web/prefab/bugnet';
+import { HammerActionController } from '@dontstarve-web/prefab/hammer';
+import { PickaxeActionController } from '@dontstarve-web/prefab/pickaxe';
+import { PitchforkActionController, isPitchforkTool } from '@dontstarve-web/prefab/pitchfork';
+import { ReskinActionController } from '@dontstarve-web/prefab/reskin_tool';
+import { DisposeSounds, UpdateSoundListener } from '@dontstarve-web/prefab/sound';
+import { disposeAnimationAssets, disposeAtlasImages } from '@dontstarve-web/animation';
 import { turfMap } from './building';
 import { backTasks, frontTasks } from './animate';
 import { input } from './InputManager';
-import { PointerRaycaster } from '@three-roaming/prefab/pointerRaycaster';
+import { PointerRaycaster } from '@dontstarve-web/prefab/pointerRaycaster';
 import { view } from './view';
-import { PreparedFoodSlot, StorageSlot } from '@three-roaming/inventory';
-import { loadImageAtlas } from '@three-roaming/animation/imageAtlas';
+import { PreparedFoodSlot, StorageSlot } from '@dontstarve-web/inventory';
 import { player } from './player';
 import { cursorUi, dstLighting } from './universal';
 import { createChestInventoryPanel } from './chestInventoryPanel';
 import {
   STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition, isStorageBuildingId,
   type StorageBuildingId,
-} from '@three-roaming/prefab/containers';
+} from '@dontstarve-web/prefab/containers';
 import { executeDebugCommand } from './debugCommands';
 import { isPlaceableBuildingId } from './placeableBuilding';
 import {
@@ -50,11 +49,11 @@ import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
 import { downloadSaveJson } from './save/download';
 import { setupEmoteWheel } from './emoteWheel';
+import { inventoryReceiveEffect } from './inventoryReceive';
 
 UpdateSoundListener(player.position);
 backTasks.push(() => UpdateSoundListener(player.position));
 
-void loadImageAtlas(`${import.meta.env.BASE_URL}dst/data/databundles/images.zip`).catch(() => undefined);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
 const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, 'cookpot');
@@ -170,8 +169,9 @@ let cancelNetCapture = () => {};
 let cancelHandTool = () => {};
 const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, rockManager, reskinEffects, registry, getSaveState, dispose: disposeScene } = await startScene(
   (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
-  (item, action) => {
-    if (!inventory.add(item.itemId, item.count, item.skinId)) return false;
+  (item, action, sourcePosition) => {
+    if (!inventory.add(item.itemId, item.count, item.skinId,
+      inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition))) return false;
     if (action !== 'net') playerAnimation?.playPickup();
     return true;
   },
@@ -190,8 +190,9 @@ const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting,
     }
   },
   () => playerAnimation?.playPickup(),
-  (count) => {
-    if (!inventory.add('lightbulb', count)) return false;
+  (count, sourcePosition) => {
+    if (!inventory.add('lightbulb', count, undefined,
+      inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition))) return false;
     cancelNetCapture();
     locomotor.stop();
     flowerPlanting.cancel();
@@ -280,9 +281,11 @@ setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
 
 let lastSavedSnapshotId = initialSave.snapshot.id;
 window.addEventListener('pagehide', () => {
+  gameUi.inventoryBar.cancelReceiveAnimations();
   disposeScene();
   DisposeSounds();
   disposeAnimationAssets();
+  disposeAtlasImages();
 }, { once: true });
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
@@ -386,7 +389,8 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   const recipe = INVENTORY_RECIPES[recipeId];
   if (!recipe) return;
 
-  inventory.craft(recipe, skinId);
+  inventory.craft(recipe, skinId,
+    inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, player.position));
   // Buffered builds place as soon as they are crafted. Walls are not buffered:
   // crafting only fills the inventory, and placing starts from the slot click.
   if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {

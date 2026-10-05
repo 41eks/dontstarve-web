@@ -1,5 +1,6 @@
+import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
 import * as THREE from 'three';
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@three-roaming/animation/animationAssets';
+import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
 import type { WilsonAnimationController } from './player';
 import type { Locomotor } from './locomotor';
@@ -8,7 +9,7 @@ import type { CursorLabel } from './buildCursor';
 import type { WorldContext } from './worldContext';
 
 export const BUGNET_ID = 'bugnet';
-export const BUGNET_HIT_TIME = 10 / 30;
+export const BUGNET_HIT_TIME = WILSON_ACTION_TIMES.net;
 export const BUGNET_CAPTURE_RANGE = 4; // ACTIONS.NET's DefaultRangeCheck.
 // Leave room for the fleeing creature during pre + swing, including slow frames.
 const APPROACH_DISTANCE = 1;

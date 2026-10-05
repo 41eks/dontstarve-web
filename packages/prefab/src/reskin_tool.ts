@@ -1,6 +1,7 @@
+import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
 import * as THREE from 'three';
-import { findImage, smallHash, SpriteFrameRenderer, type AnimElement, type Animation, type ResolvedSprite } from '@three-roaming/animation/animationAssets';
-import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
+import { findImage, smallHash, SpriteFrameRenderer, type AnimElement, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { setPrefabLightOverride } from './localLight';
 import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
@@ -12,7 +13,7 @@ import type { Locomotor } from './locomotor';
 import type { CursorLabel } from './buildCursor';
 
 // SGwilson veryquickcastspell commits nine frames after atk_pre begins.
-export const RESKIN_CAST_TIME = 9 / 30;
+export const RESKIN_CAST_TIME = WILSON_ACTION_TIMES.reskin;
 export const RESKIN_REACH = 20 * (TILE_SIZE / 4);
 
 export interface PreparedReskin {

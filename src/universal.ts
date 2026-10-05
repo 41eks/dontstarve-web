@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 import { DstLightingRenderer } from './dstLighting';
-import { CursorLabelUi } from '@three-roaming/ui/cursor-label';
+import { CursorLabelUi } from '@dontstarve-web/ui/cursor-label';
 import { initialSave } from './save/initialSave';
 import { getDstCycle } from './tuning';
 const scene = new THREE.Scene();
@@ -11,6 +11,13 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
+Object.assign(renderer.domElement.style, {
+  position: 'fixed',
+  inset: '0',
+  display: 'block',
+  width: '100vw',
+  height: '100vh',
+});
 // renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 const cursorUi = new CursorLabelUi(renderer.domElement, `${import.meta.env.BASE_URL}dst/data/fonts/controllers.zip`);

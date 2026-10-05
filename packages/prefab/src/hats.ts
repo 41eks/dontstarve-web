@@ -3,9 +3,9 @@ import {
   createMaterials, findImage, loadAnim, loadAnimationArchive, loadBuild, smallHash,
   type AnimElement, type BuildPackage, type Matrix2D, type ParsedAnim, type ParsedBuild,
   SpriteFrameRenderer, type ResolvedSprite,
-} from '@three-roaming/animation/animationAssets';
-import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@three-roaming/inventory';
-import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
+} from '@dontstarve-web/animation/animationAssets';
+import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
+import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { setPrefabLightOverride, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import catalog from './hats.json' with { type: 'json' };

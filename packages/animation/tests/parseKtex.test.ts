@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseKtex } from '@three-roaming/animation/parseKtex';
+import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 
 function makeKtex(
   pixelFormat: number,

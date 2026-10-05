@@ -1,16 +1,16 @@
-import { loadImageAtlas, type ImageAtlas } from '@three-roaming/animation/imageAtlas';
+import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/imageAtlas';
 import * as THREE from 'three';
-import { registerSpriteRenderGroup } from '@three-roaming/animation/renderOrder';
-import { createHatGroundSprite, HatEquipmentAssets, isHatId, HAT_DEFINITIONS } from '@three-roaming/prefab/hats';
-import { nextReskin, type ReskinTarget } from '@three-roaming/prefab/reskin_tool';
-import { createGroundItemSprite, GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '@three-roaming/prefab/groundItems';
-import { newEntityId } from '@three-roaming/prefab/saveRecord';
-import { createLanternGroundSprite } from '@three-roaming/prefab/lantern';
-import { createLightbulbGroundSprite } from '@three-roaming/prefab/lightbulb';
-import { ButterflyAssets, type ButterflyController, type ButterflyWorld } from '@three-roaming/prefab/butterfly';
-import type { NetCaptureTarget } from '@three-roaming/prefab/bugnet';
-import { FirefliesAssets, type FirefliesWorld } from '@three-roaming/prefab/fireflies';
-import { intersectSpriteEntities } from '@three-roaming/prefab/pointerRaycaster';
+import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { createHatGroundSprite, HatEquipmentAssets, isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
+import { nextReskin, type ReskinTarget } from '@dontstarve-web/prefab/reskin_tool';
+import { createGroundItemSprite, GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
+import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
+import { createLanternGroundSprite } from '@dontstarve-web/prefab/lantern';
+import { createLightbulbGroundSprite } from '@dontstarve-web/prefab/lightbulb';
+import { ButterflyAssets, type ButterflyController, type ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
+import type { NetCaptureTarget } from '@dontstarve-web/prefab/bugnet';
+import { FirefliesAssets, type FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
+import { intersectSpriteEntities } from '@dontstarve-web/prefab/pointerRaycaster';
 import type { SavedEntity } from './save/types';
 
 const DEFAULT_ATLAS = 'images/inventoryimages.xml';
@@ -52,7 +52,7 @@ export class GroundItemManager {
   private readonly butterflyWorld: ButterflyWorld;
   private readonly firefliesAssets: FirefliesAssets;
   private readonly firefliesWorld: FirefliesWorld;
-  private readonly onPickup: (item: GroundItemDefinition, action: 'pickup' | 'net') => boolean;
+  private readonly onPickup: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean;
   private onNetCapture?: (target: NetCaptureTarget) => boolean;
   private readonly pointer = new THREE.Vector2();
   private readonly raycaster = new THREE.Raycaster();
@@ -65,7 +65,7 @@ export class GroundItemManager {
     camera: THREE.Camera,
     renderer: THREE.WebGLRenderer,
     archiveUrl: string,
-    onPickup: (item: GroundItemDefinition, action: 'pickup' | 'net') => boolean,
+    onPickup: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
     animationBaseUrl: string,
     butterflyWorld: ButterflyWorld = { isDay: () => true, getThreatPositions: () => [], getFlowers: () => [] },
     firefliesWorld: FirefliesWorld = { isNight: () => false, getPlayerPositions: () => [] },
@@ -227,7 +227,7 @@ export class GroundItemManager {
       id: record.id, model: record.model, position: record.footPosition, isValid,
       isClickable: () => record.isClickable?.() !== false,
       capture: () => {
-        if (!isValid() || !this.onPickup({ ...record.definition }, 'net')) return false;
+        if (!isValid() || !this.onPickup({ ...record.definition }, 'net', record.footPosition.clone())) return false;
         this.items.delete(record.model);
         record.dispose();
         return true;
@@ -255,7 +255,7 @@ export class GroundItemManager {
       this.onNetCapture?.(this.captureTarget(record));
       return;
     }
-    if (!this.onPickup(record.definition, 'pickup')) return;
+    if (!this.onPickup(record.definition, 'pickup', record.footPosition.clone())) return;
 
     this.items.delete(record.model);
     record.dispose();

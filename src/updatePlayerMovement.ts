@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import type { Locomotor } from '@three-roaming/prefab/locomotor';
-import type { WilsonAnimationController } from '@three-roaming/prefab/player';
+import type { Locomotor } from '@dontstarve-web/prefab/locomotor';
+import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { input } from './InputManager';
 import type { PlayerBody } from './types/Player';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';

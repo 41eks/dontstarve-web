@@ -4,7 +4,7 @@ import { urlString } from './utils';
 interface CategoryButtonMapperOptions {
   activeCategoryId: string;
   assetBaseUrl: string;
-  atlasImage: (className: string, atlasPath: string, elementName: string) => HTMLCanvasElement;
+  atlasImage: (className: string, atlasPath: string, elementName: string) => HTMLElement;
   selectCategory: (category: CategoryConfig, button: HTMLButtonElement) => void;
 }
 

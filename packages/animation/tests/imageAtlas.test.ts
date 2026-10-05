@@ -4,7 +4,7 @@ import {
   parseImageAtlasArchive,
   parseImageAtlasXml,
   preloadImageArchive,
-} from '@three-roaming/animation/imageAtlas';
+} from '@dontstarve-web/animation/imageAtlas';
 
 const encoder = new TextEncoder();
 

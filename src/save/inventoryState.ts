@@ -1,9 +1,9 @@
 import {
   inventorySlotAddress, equipmentSlotAddress,
   type EquipmentKind, type InventoryState,
-} from '@three-roaming/inventory';
+} from '@dontstarve-web/inventory';
 import type { SaveDocument } from './types';
-import { STORAGE_BUILDING_IDS, buildingContainerId } from '@three-roaming/prefab/containers';
+import { STORAGE_BUILDING_IDS, buildingContainerId } from '@dontstarve-web/prefab/containers';
 
 export function chestContainerId(entityId: string): string {
   return `world:treasurechest:${entityId}`;

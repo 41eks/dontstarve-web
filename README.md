@@ -9,14 +9,13 @@ https://41eks.github.io/dontstarve-web/
 | 命令 | 参数与作用 | 示例 |
 | --- | --- | --- |
 | `c_give("item_id", count)` | 向物品栏添加物品。`count` 可省略，默认 `1`，必须为正的安全整数；按堆叠上限分配。未知物品或物品栏空间不足时失败。 | `c_give("torch")`、`c_give("opalstaff")`、`c_give("pitchfork")`、`c_give("hammer")`、`c_give("meatballs", 10)` |
-| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、岩石、池塘和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("rock1")`、`c_spawn("pond")`、`c_spawn("nightmaregrowth")` |
+| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、岩石、草、树苗、池塘和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("rock1")`、`c_spawn("grass")`、`c_spawn("sapling")`、`c_spawn("pond")`、`c_spawn("nightmaregrowth")` |
 | `c_save()` | 将当前游戏状态（包括挖过的地皮）导出并下载为 `initial-world.json`。要作为初始存档加载，将下载文件放到 `public/saves/initial-world.json` 后重新加载页面。 | `c_save()` |
 
 命令支持单引号或双引号、英文或中文括号（也可混用）、额外空白及末尾分号；`c_give` 的参数分隔符也支持中文逗号。每次提交一条命令。
 
-场景音效（箱子开关、矮星、极光和换肤特效）按玩家到声源的地面距离实时衰减：一块地皮（12 个世界单位）内保持原音量，之外使用 `gain = (12 / distance)²`。两块地皮处为 1/4，四块地皮处为 1/16；达到八块地皮（96 个世界单位）后完全静音，走近后循环声恢复。静音距离由 `packages/prefab/src/sound.ts` 的 `SOUND_MAX_DISTANCE` 设置；这是暂用的平方反比模型。玩家自身动作音效保持原音量。
 
-启迪之冠可用 `c_give("alterguardianhat")` 获取，也支持输入 `c_give("alterguardianhat"）`。每顶占一格，物品栏需有空位；获取后拖到头部装备槽即可佩戴，播放原版升起、漂浮环绕和发光动画，并照亮周围地面；卸下或换帽后停止。支持“最终棱镜”皮肤。该 prefab 在原版 `hats.lua` 中由 `MakeHat("alterguardian")` 注册，动态外观来自 `anim/hat_alterguardian_equipped.zip`。原版在理智高于 85% 时激活；当前游戏尚无权威理智状态，装备控制器默认按满理智展示，可通过 `setSanityPercent(0…1)` 控制激活与收回。
+
 
 用 `c_spawn("icebox")` 或 `c_spawn("treasurechest")` 生成冰箱或木箱后，走近并左键点击可打开，再次点击关闭。开关动画开始时分别播放原版 `dontstarve/common/icebox_open` / `icebox_close` 或 `dontstarve/wilson/chest_open` / `chest_close`；走远自动关闭时也播放关闭声。恢复存档时不重放开门声。
 
@@ -32,13 +31,15 @@ https://41eks.github.io/dontstarve-web/
 
 干草叉可用 `c_give("pitchfork")`（或 `c_give("goldenpitchfork")`）获取，每格一把。拖到手部装备槽后，右键地面会自动走近目标地皮中心，播放 `anim/player_actions_shovel.zip` 的 `shovel_pre` → `shovel_loop` → `shovel_pst`，在动作开始后第 25 帧将整格地皮改成 `WORLD_TILES.DIRT`（原版泥土贴图）；猪王周围的木地板也可挖，泥土不可重复挖。移动、跳跃、左键、Esc 或卸下工具可取消尚未完成的挖地。支持原版地面和手持外观及皮肤；Shift + 右键物品槽可丢弃，点击地面物品可拾回。挖地变化会随 `c_save()` 保存并在加载时恢复；当前不消耗耐久或生成挖出的地皮物品。
 
-地皮边缘按 `tilemanager.lua` / `tiledefs.lua` 的 atlas、噪声贴图和绘制优先级处理（泥土 → 落叶林 → 木地板），根据相邻八格选择原版边缘、外角及内角贴图。连续挖地会同步更新周围边界，同种地皮之间不留接缝。
 
-唤星者魔杖可用 `c_give("yellowstaff")` 获取，拖入手部装备槽后右键地面施法。施法第 13 帧播放原版 `dontstarve/wilson/use_gemstaff`，第 53 帧生成矮星；第 13 帧前取消施法不会触发施法声。矮星出现时播放 `dontstarve/common/staff_star_create`，存在期间独立循环播放 `dontstarve/common/staff_star_LP`，消失动画结束或场景释放时停止。矮星持续 24 分钟；`c_save()` 保存其落点与剩余寿命，加载后接续循环音效。浏览器首次交互后启用声音。
 
 唤月者魔杖可用 `c_give("opalstaff")` 获取，数量可指定为 `c_give("opalstaff", 2)`，每把占一格。拖入手部装备槽后，右键地面施法，在第 13 帧播放原版 `dontstarve/common/staffteleport`，第 53 帧在点击位置召唤蓝色极光（`staffcoldlight`），照亮周围地面。使用原版 `anim/star_cold.zip` 的出现、三种待机与消失动画；极光持续 16 分钟，出现时播放 `staff_star_create`，存在期间播放 `staff_coldlight_LP` 的三层循环音效。卸下魔杖可取消尚未完成的召唤。支持原版图标、手持与地面外观、皮肤、Shift + 右键丢弃和点击拾回；魔杖及极光的落点、剩余寿命随 `c_save()` 保存并在加载时恢复。当前施法不消耗耐久或理智。
 
 ### c_spawn 支持的对象
+
+`c_spawn("grass")` 在玩家当前位置生成草丛，使用原版 `grass.lua` 的 bank `grass`（`anim/grass.zip`）与 build `grass1`（`anim/grass1.zip`），循环播放 84 帧 `idle`。当前仅实现贴图显示，不包含采集、挖掘、枯萎、冬季或变色蜥蜴变形；位置随 `c_save()` 保存并在加载时恢复。
+
+`c_spawn("sapling")` 和 `c_spawn("sapling_moon")` 在玩家当前位置生成树苗，分别使用原版 `anim/sapling.zip` 与 `anim/sapling_moon.zip` 中与 prefab 同名的 bank 和 build，循环播放 80 帧 `sway`。当前仅实现贴图显示，不包含种植、采集、挖掘、枯萎、冬季停止生长或万圣节月亮形态转换；位置随 `c_save()` 保存并在加载时恢复。
 
 `c_spawn("pond")` 在玩家当前位置生成池塘，使用原版 `anim/marsh_tile.zip` 的 bank/build `marsh_tile` 和循环 `idle` 动画，贴图平铺在地面上并绘制在角色下方。当前仅实现池塘外观，不包含交互、碰撞、鱼蛙生成、岸边植物或季节变化；位置随 `c_save()` 保存并在加载时恢复。
 
@@ -51,6 +52,8 @@ https://41eks.github.io/dontstarve-web/
 | 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap`，以及各自的 `wall_*_item`（两种 ID 均生成建成的墙） |
 | 洞穴植物 | `flower_cave`、`flower_cave_double`、`flower_cave_triple` |
 | 岩石 | `rock1`、`rock2`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low` |
+| 草丛 | `grass` |
+| 树苗 | `sapling`、`sapling_moon` |
 | 池塘 | `pond` |
 | 场景装饰 | `nightmaregrowth` |
 | 生物 | `fireflies`、`beefalo` |

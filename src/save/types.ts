@@ -1,9 +1,9 @@
-import type { InventoryStack } from '@three-roaming/inventory';
-import type { FlowerAnimation } from '@three-roaming/prefab/flower';
-import type { BulbPlantSaveState } from '@three-roaming/prefab/bulb_plant';
-import type { BeefaloSaveState } from '@three-roaming/prefab/beefalo';
-import type { TurfTileSave } from '@three-roaming/prefab/turfMap';
-import type { NightmareGrowthSaveState } from '@three-roaming/prefab/nightmaregrowth';
+import type { InventoryStack } from '@dontstarve-web/inventory';
+import type { FlowerAnimation } from '@dontstarve-web/prefab/flower';
+import type { BulbPlantSaveState } from '@dontstarve-web/prefab/bulb_plant';
+import type { BeefaloSaveState } from '@dontstarve-web/prefab/beefalo';
+import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
+import type { NightmareGrowthSaveState } from '@dontstarve-web/prefab/nightmaregrowth';
 
 export interface SavedTransform {
   position: [number, number, number];

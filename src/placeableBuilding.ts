@@ -2,44 +2,44 @@ import {
     COOK_POT_DEFINITION,
     COOK_POT_ID,
     type CookPotId,
-} from '@three-roaming/prefab/cook_pot';
+} from '@dontstarve-web/prefab/cook_pot';
 import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingInteractionChange,
-} from '@three-roaming/prefab/animatedBuildingPlacement';
+} from '@dontstarve-web/prefab/animatedBuildingPlacement';
 import {
     RESEARCH_LAB_DEFINITIONS,
     RESEARCH_LAB_IDS,
     type ResearchLabId,
-} from '@three-roaming/prefab/scienceprototyper';
+} from '@dontstarve-web/prefab/scienceprototyper';
 import {
     TREASURE_CHEST_DEFINITION,
     TREASURE_CHEST_ID,
     type TreasureChestId,
-} from '@three-roaming/prefab/treasurechest';
+} from '@dontstarve-web/prefab/treasurechest';
 import {
     WallsPlacement,
     WALL_IDS,
     isWallId,
     type WallId,
-} from '@three-roaming/prefab/walls';
-import type { WorldContext } from '@three-roaming/prefab/worldContext';
-import type { PlacementSaveRecord } from '@three-roaming/prefab/saveRecord';
-import { TENT_DEFINITION, TENT_ID } from '@three-roaming/prefab/tent';
-import { MOONBASE_DEFINITION, MOONBASE_ID } from '@three-roaming/prefab/moonbase';
-import { WARDROBE_DEFINITION, WARDROBE_ID } from '@three-roaming/prefab/wardrobe';
-import { FIRE_PIT_DEFINITION, FIRE_PIT_ID, type FirePitId } from '@three-roaming/prefab/firepit';
-import { ICE_BOX_DEFINITION, ICE_BOX_ID, type IceBoxId } from '@three-roaming/prefab/icebox';
-import { DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, type DragonflyChestId } from '@three-roaming/prefab/dragonfly_chest';
-import { CAMPFIRE_DEFINITION, CAMPFIRE_ID, type CampfireId } from '@three-roaming/prefab/campfire';
-import { SALT_BOX_DEFINITION, SALT_BOX_ID, type SaltBoxId } from '@three-roaming/prefab/saltbox';
-import { NIGHT_LIGHT_DEFINITION, NIGHT_LIGHT_ID, type NightLightId } from '@three-roaming/prefab/nightlight';
-import { PIG_HOUSE_DEFINITION, PIG_HOUSE_ID, type PigHouseId } from '@three-roaming/prefab/pighouse';
-import { MUSHROOM_LIGHT_DEFINITIONS, MUSHROOM_LIGHT_IDS, type MushroomLightId } from '@three-roaming/prefab/mushroom_light';
+} from '@dontstarve-web/prefab/walls';
+import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
+import type { PlacementSaveRecord } from '@dontstarve-web/prefab/saveRecord';
+import { TENT_DEFINITION, TENT_ID } from '@dontstarve-web/prefab/tent';
+import { MOONBASE_DEFINITION, MOONBASE_ID } from '@dontstarve-web/prefab/moonbase';
+import { WARDROBE_DEFINITION, WARDROBE_ID } from '@dontstarve-web/prefab/wardrobe';
+import { FIRE_PIT_DEFINITION, FIRE_PIT_ID, type FirePitId } from '@dontstarve-web/prefab/firepit';
+import { ICE_BOX_DEFINITION, ICE_BOX_ID, type IceBoxId } from '@dontstarve-web/prefab/icebox';
+import { DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, type DragonflyChestId } from '@dontstarve-web/prefab/dragonfly_chest';
+import { CAMPFIRE_DEFINITION, CAMPFIRE_ID, type CampfireId } from '@dontstarve-web/prefab/campfire';
+import { SALT_BOX_DEFINITION, SALT_BOX_ID, type SaltBoxId } from '@dontstarve-web/prefab/saltbox';
+import { NIGHT_LIGHT_DEFINITION, NIGHT_LIGHT_ID, type NightLightId } from '@dontstarve-web/prefab/nightlight';
+import { PIG_HOUSE_DEFINITION, PIG_HOUSE_ID, type PigHouseId } from '@dontstarve-web/prefab/pighouse';
+import { MUSHROOM_LIGHT_DEFINITIONS, MUSHROOM_LIGHT_IDS, type MushroomLightId } from '@dontstarve-web/prefab/mushroom_light';
 
-export { TREASURE_CHEST_ID } from '@three-roaming/prefab/treasurechest';
+export { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 
-export { TENT_ID } from '@three-roaming/prefab/tent';
+export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | typeof TENT_ID
     | DragonflyChestId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | typeof MOONBASE_ID | typeof WARDROBE_ID;

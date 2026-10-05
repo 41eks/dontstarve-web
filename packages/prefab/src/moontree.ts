@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
   createAnimatedSpriteFactory,
   type SpriteAnimationController,
-} from '@three-roaming/animation/sprite';
+} from '@dontstarve-web/animation/sprite';
 import { ProximityEntities, type ProximityEntity } from './proximityEntities';
 import { TILE_SIZE } from './tile';
 import definitions from './definitions.json' with { type: 'json' };

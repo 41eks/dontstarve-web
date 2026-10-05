@@ -52,3 +52,8 @@ export {
   type RgbaSpriteAtlasOptions,
   type RgbaSpriteFrameGeometryOptions,
 } from './rgbaSpriteAtlas';
+
+export {
+  createAtlasImage, getAtlasImage, registerImageAtlases, disposeAtlasImages,
+  type AtlasImageElement, type AtlasImageRegion,
+} from './atlasImage';

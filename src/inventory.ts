@@ -8,21 +8,21 @@ import {
   equipmentSlotAddress,
   inventorySlotAddress,
   type InventoryStack,
-} from '@three-roaming/inventory';
+} from '@dontstarve-web/inventory';
 import {
   INVENTORY_ITEM_SPECS,
   INVENTORY_SKIN_SPECS,
   type InventoryItemDefinition,
 } from './inventoryItems';
 
-export { InventoryStore } from '@three-roaming/inventory';
+export { InventoryStore } from '@dontstarve-web/inventory';
 export type {
   EquipmentKind,
   InventoryItemSpec,
   InventoryMaterialSummary,
   InventorySlotDelta,
   InventoryStack,
-} from '@three-roaming/inventory';
+} from '@dontstarve-web/inventory';
 
 function initialStacks(
   definitions: readonly InventoryItemDefinition[],

@@ -1,5 +1,6 @@
-import type { AnimElement, ResolvedSprite } from '@three-roaming/animation/animationAssets';
-import { findImage, smallHash } from '@three-roaming/animation/animationAssets';
+import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
+import type { AnimElement, ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import { findImage, smallHash } from '@dontstarve-web/animation/animationAssets';
 import * as THREE from 'three';
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
 import { setPrefabLocalLight } from './localLight';
@@ -17,7 +18,7 @@ export type LightStaffId = typeof YELLOWSTAFF_ID | typeof OPALSTAFF_ID;
 export function isLightStaff(itemId: string | null | undefined): itemId is LightStaffId {
   return itemId === YELLOWSTAFF_ID || itemId === OPALSTAFF_ID;
 }
-export const YELLOWSTAFF_CAST_TIME = 53 / 30;
+export const YELLOWSTAFF_CAST_TIME = WILSON_ACTION_TIMES.cast;
 type StaffBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
 export interface YellowStaffEquipment { readonly builds: readonly StaffBuild[]; readonly symbol: string; }
 
