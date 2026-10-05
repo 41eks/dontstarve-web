@@ -12,9 +12,11 @@
 }
 
 .inventory-bar {
+  --inventory-bar-bottom: clamp(3px, 0.8vh, 9px);
+
   position: fixed;
   z-index: 55;
-  bottom: clamp(3px, 0.8vh, 9px);
+  bottom: var(--inventory-bar-bottom);
   left: 50%;
   display: grid;
   width: min(1140px, calc(100vw - 18px));
@@ -31,19 +33,18 @@
 
 .inventory-bar__backdrop {
   position: absolute;
-  inset: 3px 2px 1px;
+  /* The atlas frame has an inset wooden rim; extend it beyond the slot layout
+     so the first and last slots remain inside that rim. */
+  left: -16px;
+  /* Centre the full texture on the viewport's bottom edge, compensating for
+     the bar's 0.75 scale and bottom gap so only its upper half stays visible. */
+  bottom: calc(-1 * var(--inventory-bar-bottom) / 0.75);
   z-index: -1;
-  border: 4px solid #17140f;
-  border-radius: 8px 7px 5px 6px;
-  background:
-    linear-gradient(180deg, rgb(136 105 68 / 92%) 0 8%, transparent 9% 87%, rgb(41 31 23 / 94%) 88%),
-    linear-gradient(90deg, #55402a, #32271d 5%, #4c3926 48%, #31251a 94%, #57412a);
-  box-shadow:
-    0 0 0 2px rgb(112 83 49 / 96%),
-    0 0 0 4px rgb(20 17 13 / 92%),
-    inset 0 2px 0 rgb(196 153 91 / 35%),
-    inset 0 -4px 5px rgb(0 0 0 / 42%);
-  transform: rotate(-0.08deg);
+  display: block;
+  width: calc(100% + 32px);
+  aspect-ratio: 1352 / 250;
+  pointer-events: none;
+  transform: translateY(50%);
 }
 
 .inventory-bar__items,
@@ -193,18 +194,9 @@
 
 @media (max-width: 700px) {
   .inventory-bar {
-    bottom: 2px;
+    --inventory-bar-bottom: 2px;
     width: calc(100vw - 6px);
     padding: 4px 3px 3px;
-  }
-
-  .inventory-bar__backdrop {
-    border-width: 2px;
-    box-shadow:
-      0 0 0 1px rgb(112 83 49 / 96%),
-      0 0 0 2px rgb(20 17 13 / 92%),
-      inset 0 1px 0 rgb(196 153 91 / 35%),
-      inset 0 -2px 3px rgb(0 0 0 / 42%);
   }
 
   .inventory-bar__equipment {

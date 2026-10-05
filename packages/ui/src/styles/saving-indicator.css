@@ -1,0 +1,43 @@
+:host {
+  display: contents;
+}
+
+.saving-indicator {
+  position: fixed;
+  z-index: 80;
+  top: 12px;
+  right: clamp(160px, 28vw, 440px);
+  width: 140px;
+  height: 160px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.saving-indicator[hidden],
+.saving-indicator__text[hidden] {
+  display: none;
+}
+
+.saving-indicator canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.saving-indicator__text {
+  position: absolute;
+  right: -70px;
+  bottom: 0;
+  white-space: nowrap;
+  color: rgb(241 199 66);
+  font: 700 24px / 1.2 'Noto Sans SC', system-ui, sans-serif;
+  text-shadow: 1px 2px 2px #000;
+}
+
+@media (max-width: 700px) {
+  .saving-indicator {
+    right: 140px;
+    transform: scale(0.75);
+    transform-origin: top right;
+  }
+}

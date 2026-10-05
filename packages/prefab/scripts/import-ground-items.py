@@ -86,6 +86,9 @@ def main():
 
     # torch.lua and hammer.lua deliberately split their bank and build archives.
     add('torch', 'torch', 'swap_torch', 'idle', 'torch', animation_archive='torch.zip')
+    # backpack.lua: world bank backpack1/anim comes from backpack.zip, while
+    # both ground and worn swap_body images come from swap_backpack.zip.
+    add('backpack', 'backpack1', 'swap_backpack', 'anim', 'backpack', animation_archive='backpack.zip')
     # mininglantern.lua registers lantern, with separate ground and worn builds.
     add('lantern', 'lantern', 'lantern', 'idle_off', 'mininglantern')
     assets.add('anim/swap_lantern.zip')

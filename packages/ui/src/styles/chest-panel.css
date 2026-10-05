@@ -125,6 +125,23 @@
   row-gap: calc(var(--inventory-slot-layout-size) / 8);
 }
 
+.backpack-panel {
+  top: 50%;
+  left: auto;
+  right: 8px;
+  transform: translateY(-50%) scale(0.75);
+  transform-origin: right center;
+}
+
+.backpack-panel .chest-panel__slots {
+  /* containers.lua: centres (-162, 114), (-87, 114), with 75px steps.
+     Source art uses 64px slots; compensate separately for panel scaling. */
+  left: calc(var(--chest-art-origin-x) - 124.5 / 64 * var(--inventory-slot-layout-size));
+  top: calc(var(--chest-art-origin-y) - 1.5 / 64 * var(--inventory-slot-layout-size));
+  grid-template-columns: repeat(2, var(--inventory-slot-layout-size));
+  gap: calc(11 / 64 * var(--inventory-slot-layout-size));
+}
+
 @media (max-width: 700px) {
   :host {
     --inventory-slot-layout-size: calc(5.1493vw - 1.018px);

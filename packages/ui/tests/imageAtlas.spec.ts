@@ -56,7 +56,7 @@ test('shares CSS atlas images across slots and preserves source crop coordinates
 test('batch registers lazy atlases, reuses texture pages and retries failed registrations', async ({ page }) => {
   await page.goto('/tests/fixture.html');
   const result = await page.evaluate(async ({ imageModuleUrl, parserModuleUrl }) => {
-    const { createAtlasImage, getAtlasImage, registerImageAtlases } = await import(imageModuleUrl) as typeof import('../../animation/src/atlasImage');
+    const { createAtlasImage, getAtlasImage, registerImageAtlases, disposeAtlasImages } = await import(imageModuleUrl) as typeof import('../../animation/src/atlasImage');
     const { DecodedImageAtlas } = await import(parserModuleUrl) as typeof import('../../animation/src/imageAtlasParser');
     const pixels = new Uint8Array(4 * 4 * 4);
     for (let offset = 0; offset < pixels.length; offset += 4) {
@@ -97,13 +97,21 @@ test('batch registers lazy atlases, reuses texture pages and retries failed regi
     canvas.width = 4; canvas.height = 4;
     const context = canvas.getContext('2d')!;
     context.drawImage(source, 0, 0);
+    const pixel = [...context.getImageData(bottom.x, bottom.y, 1, 1).data];
+    disposeAtlasImages();
+    const revoked = new Image();
+    revoked.src = bottom.imageUrl;
+    const oldUrlRevoked = await revoked.decode().then(() => false, () => true);
+    registerImageAtlases({ 'test/first.xml': atlas });
+    const renewed = await getAtlasImage('test/first.xml', 'wide');
     return { lazyAttempts, attempts, failure: failed.dataset.error, sameEntry: wide === duplicate,
       sharedTexture: wide.imageUrl === bottom.imageUrl, size: [rect.width, rect.height],
       bottom: [bottom.x, bottom.y, bottom.width, bottom.height],
-      pixel: [...context.getImageData(bottom.x, bottom.y, 1, 1).data] };
+      pixel, oldUrlRevoked, freshUrl: renewed.imageUrl !== wide.imageUrl };
   }, { imageModuleUrl, parserModuleUrl });
   expect(result).toEqual({ lazyAttempts: 0, attempts: 2, failure: 'Temporary atlas failure',
-    sameEntry: true, sharedTexture: true, size: [60, 30], bottom: [2, 2, 2, 2], pixel: [0, 0, 255, 255] });
+    sameEntry: true, sharedTexture: true, size: [60, 30], bottom: [2, 2, 2, 2], pixel: [0, 0, 255, 255],
+    oldUrlRevoked: true, freshUrl: true });
 });
 
 test('decodes HUD and inventory atlases in one worker and shares cached results', async ({ page }) => {

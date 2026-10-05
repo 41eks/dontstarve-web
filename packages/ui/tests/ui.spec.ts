@@ -494,7 +494,7 @@ test('updates individual inventory signals and emits an atomic transfer request'
   await expect(dragPreview).toBeVisible();
   await expect(dragPreview).toHaveAttribute('data-item-id', 'cutgrass');
   await expect(dragPreview.locator('.slot-drag-preview__icon')).toHaveCount(1);
-  await expect(dragPreview.locator('img.slot-drag-preview__icon')).toHaveCount(1);
+  await expect(dragPreview.locator('.slot-drag-preview__icon')).toHaveAttribute('data-loaded', 'true');
   const previewBox = await dragPreview.boundingBox();
   expect(previewBox).not.toBeNull();
   expect(sourceIconBox).not.toBeNull();

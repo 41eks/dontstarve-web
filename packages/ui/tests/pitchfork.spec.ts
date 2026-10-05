@@ -43,7 +43,7 @@ test('equipped pitchfork digs the clicked tile, cancels pending work and saves t
   const bar = page.locator('dst-inventory-bar');
   const slot = bar.locator('.inventory-bar__items .inventory-slot[data-item-id="pitchfork"]').first();
   await expect(slot).toBeVisible();
-  await expect(slot.locator('canvas[data-loaded="true"]')).toBeVisible();
+  await expect(slot.locator('.inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
   await slot.dragTo(hand);
   await expect(hand).toHaveAttribute('data-item-id', 'pitchfork');

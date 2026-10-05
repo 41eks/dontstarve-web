@@ -1,4 +1,5 @@
 import { AssetElement } from './assets';
+import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
 import {
   INVENTORY_SLOT_COUNT,
   PLAYER_EQUIPMENT_CONTAINER_ID,
@@ -123,6 +124,12 @@ export class DstInventoryBarElement extends AssetElement {
         </button>
       </section>
     `;
+
+    const backdrop = createAtlasImage('inventory-bar__backdrop', 'images/hud.xml', 'inventory_bg.tex');
+    root.querySelector('.inventory-bar__backdrop')!.replaceWith(backdrop);
+    void backdrop.ready.then(() => {
+      backdrop.style.aspectRatio = `${backdrop.dataset.width} / ${backdrop.dataset.height}`;
+    }).catch((error: unknown) => console.error('Unable to load inventory background', error));
 
     const inventoryGroups = root.querySelectorAll<HTMLElement>('.inventory-bar__item-group');
     this.inventory.slots.forEach((slot, index) => {

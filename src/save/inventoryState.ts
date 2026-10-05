@@ -1,5 +1,6 @@
 import {
   inventorySlotAddress, equipmentSlotAddress,
+  PLAYER_BACKPACK_CONTAINER_ID, backpackSlotAddress,
   type EquipmentKind, type InventoryState,
 } from '@dontstarve-web/inventory';
 import type { SaveDocument } from './types';
@@ -23,7 +24,8 @@ export function inventoryStateFromSave(save: SaveDocument): InventoryState {
     for (const { slotKey, item } of container.slots) {
       const address = id === 'player:inventory'
         ? inventorySlotAddress(Number(slotKey))
-        : equipmentSlotAddress(slotKey as EquipmentKind);
+        : id === PLAYER_BACKPACK_CONTAINER_ID ? backpackSlotAddress(Number(slotKey))
+          : equipmentSlotAddress(slotKey as EquipmentKind);
       slots.push({ address, item: { ...item } });
     }
   }

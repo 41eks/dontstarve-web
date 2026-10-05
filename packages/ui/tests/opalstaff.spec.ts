@@ -34,13 +34,13 @@ test('game console gives opalstaff and equipped right-click summons a saved pola
   const bar = page.locator('dst-inventory-bar');
   const staff = bar.locator('.inventory-bar__items .inventory-slot[data-item-id="opalstaff"]').first();
   await expect(staff).toBeVisible();
-  await expect(staff.locator('canvas[data-loaded="true"]')).toBeVisible();
+  await expect(staff.locator('.inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
   await staff.dragTo(hand);
   await expect(hand).toHaveAttribute('data-item-id', 'opalstaff');
   await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.children[0].children[0].material
     .some((material: any) => material.name === 'ground:swap_staffs'))).toBe(true);
-  await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.userData.animationController.oneShot)).toBeNull();
+  await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.userData.animationController.stategraph.isOneShot)).toBe(false);
   const point = await page.evaluate(() => {
     const { player, view } = (window as any).opalGame;
     const position = player.position.clone();

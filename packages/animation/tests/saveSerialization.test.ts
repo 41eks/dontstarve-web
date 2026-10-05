@@ -40,6 +40,20 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
+  it('round trips equipped backpack contents, including the eighth slot', () => {
+    const { template, state } = fixture();
+    state.inventory.slots.push(
+      { address: { containerId: 'player:equipment', slotKey: 'body' }, item: { itemId: 'backpack', count: 1 } },
+      { address: { containerId: 'player:backpack', slotKey: '7' }, item: { itemId: 'cutgrass', count: 3 } },
+    );
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.players.local.inventory.containers['player:backpack']).toEqual({
+      slotCount: 8, slots: [{ slotKey: '7', item: { itemId: 'cutgrass', count: 3 } }],
+    });
+    expect(inventoryStateFromSave(saved).slots).toContainEqual(state.inventory.slots.at(-1));
+    saved.players.local.inventory.containers['player:backpack'].slots[0].slotKey = '8';
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('invalid or duplicate slot');
+  });
   it('round trips dug terrain and rejects duplicate, invalid and out-of-bounds tiles', () => {
     const { template, state } = fixture();
     const tiles = [{ col: -1, row: 2, tileId: WORLD_TILES.DIRT }];

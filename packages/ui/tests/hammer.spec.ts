@@ -49,7 +49,7 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
   const bar = page.locator('dst-inventory-bar');
   const hammerSlot = bar.locator('.inventory-bar__items .inventory-slot[data-item-id="hammer"]');
   await expect(hammerSlot).toBeVisible();
-  await expect(hammerSlot.locator('canvas[data-loaded="true"]')).toBeVisible();
+  await expect(hammerSlot.locator('.inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   // Actual Shift + right-click uses the application store and source ground model.
   await page.keyboard.down('Shift');
   await hammerSlot.click({ button: 'right' });

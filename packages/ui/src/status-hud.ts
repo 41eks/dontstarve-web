@@ -27,8 +27,6 @@ export class DstStatusHudElement extends AssetElement {
       <section class="survival-hud" aria-label="生存状态">
         <div class="survival-hud__calendar">
           <div class="world-clock" aria-label="世界第 32 日">
-            <div class="world-clock__moon" aria-hidden="true"><i></i></div>
-            <div class="world-clock__link" aria-hidden="true"><i></i><i></i></div>
             <div class="world-clock__dial" aria-hidden="true">
               <span class="world-clock__copy"><b>世界</b><strong>32日</strong></span>
             </div>

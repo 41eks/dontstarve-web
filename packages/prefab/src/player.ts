@@ -18,7 +18,7 @@ import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder
 import {
   HatActivationController, HatEquipmentAssets, isHatPlayerElementVisible, resolveHatSprites, type HatEquipment,
 } from './hats';
-import { GroundItemAssets } from './groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { LanternLightController, loadLanternEquipment, resolveLanternPlayerSprite, type LanternEquipment } from './lantern';
 import { isLightStaff, loadLightStaffEquipment, OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR, resolveYellowStaffPlayerSprite, StaffCastingLight, type YellowStaffEquipment } from './yellowstaff';
 import { loadBugNetEquipment, resolveBugNetPlayerSprite, type BugNetEquipment } from './bugnet';
@@ -65,6 +65,7 @@ export interface WilsonAnimationController {
   setCarryItem(item: WilsonCarryItem | null, skinId?: string): Promise<void>;
   setLanternFuelPercent(percent: number): void;
   setHat(itemId: string | null, skinId?: string): Promise<void>;
+  setBackpack(equipped: boolean, skinId?: string): Promise<void>;
   /** Normalized sanity; defaults to full until the application supplies state. */
   setSanityPercent(percent: number): void;
   update(dt: number, jumpProgress?: number): void;
@@ -140,6 +141,9 @@ class WilsonController implements WilsonAnimationController {
   private hatRequest = 0;
   private hatKey = '';
   private hatElapsed = 0;
+  private backpack: readonly CarryBuild[] | null = null;
+  private backpackKey = '';
+  private backpackRequest = 0;
   private readonly emoteAssets = new Map<string, Promise<EmoteAssets>>();
   private emote: ActiveEmote | null = null;
   private emoteRequest = 0;
@@ -441,6 +445,31 @@ class WilsonController implements WilsonAnimationController {
     this.refreshFrame();
   }
 
+  async setBackpack(equipped: boolean, skinId?: string): Promise<void> {
+    const key = equipped ? `backpack:${skinId ?? ''}` : '';
+    if (key === this.backpackKey) return;
+    this.backpackKey = key;
+    const request = ++this.backpackRequest;
+    this.backpack = null;
+    this.refreshFrame();
+    if (!equipped) return;
+    try {
+      const skinArchive = skinId ? GROUND_ITEM_DEFINITIONS.backpack.skinArchives[skinId] : undefined;
+      if (skinId && !skinArchive) throw new Error(`Unknown backpack skin: ${skinId}`);
+      const [base, skin] = await Promise.all([
+        this.lanternAssets.loadBuild('swap_backpack.zip'),
+        skinArchive ? this.lanternAssets.loadBuild(skinArchive) : undefined,
+      ]);
+      if (request !== this.backpackRequest) return;
+      this.backpack = skin ? [skin, base] : [base];
+      this.refreshFrame();
+    } catch (error) {
+      if (request !== this.backpackRequest) return;
+      this.backpackKey = '';
+      throw error;
+    }
+  }
+
   setSanityPercent(percent: number): void {
     this.hatActivation.setSanityPercent(percent);
     this.refreshFrame();
@@ -509,6 +538,11 @@ class WilsonController implements WilsonAnimationController {
         || (this.carryItem === 'lantern' && this.lanternLight.isLit && this.state !== 'build'))
       .sort((a, b) => b.z - a.z)
       .flatMap((element): ResolvedSprite[] => {
+        if (this.backpack && element.imageHash === smallHash('swap_body')) {
+          const source = this.backpack.find(({ build }) => build.symbols.has(element.imageHash));
+          const image = source && findImage(source.build, element.imageHash, element.imageIndex);
+          return image ? [{ element, image, materials: source.materials }] : [];
+        }
         if (this.hat && element.imageHash === smallHash(
           this.hat.definition.equip.mode === 'fullhelm' ? 'headbase_hat' : 'swap_hat',
         )) return resolveHatSprites(this.hat, element, this.hatElapsed);

@@ -1,6 +1,7 @@
 import { categories, type Recipe, type RecipeIngredient, type RecipeSkin } from './categories';
 import { createCategoryButtonMapper } from './craft-category-button';
 import { createRecipeButtonMapper } from './craft-recipe-button';
+import { createCraftingScrollbar } from './crafting-scrollbar';
 import { createAtlasImage as atlasImage } from '@dontstarve-web/animation/atlasImage';
 import { createEffect, type createSignal } from './signal';
 import { urlString } from './utils';
@@ -11,8 +12,6 @@ interface CraftingControlsOptions {
   selectedSkinIds: Map<string, string>;
   recipeButtonEffects: Array<() => void>;
   controlEffects: Array<() => void>;
-  collapsed: boolean;
-  onCollapsedChange: (collapsed: boolean) => void;
   availableCount: (ingredient: RecipeIngredient) => number;
   isRecipeLocked: (recipe: Recipe) => boolean;
   isRecipeBuffered: (recipe: Recipe) => boolean;
@@ -21,7 +20,8 @@ interface CraftingControlsOptions {
   startCrafting: (recipeId: string, skinId?: string) => void;
 }
 
-const assetBaseUrl = new URL('dst/data/ui/', document.baseURI).href;
+const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
+const assetBaseUrl = new URL(`${baseUrl}dst/data/ui/`, document.baseURI).href;
 
 function placeholder(color: string, label: string, className = ''): HTMLSpanElement {
   const icon = document.createElement('span');
@@ -74,8 +74,6 @@ export function initializeCraftingControls(root: ShadowRoot, {
   selectedSkinIds,
   recipeButtonEffects,
   controlEffects,
-  collapsed,
-  onCollapsedChange,
   availableCount,
   isRecipeLocked,
   isRecipeBuffered,
@@ -84,7 +82,7 @@ export function initializeCraftingControls(root: ShadowRoot, {
   startCrafting,
 }: CraftingControlsOptions) {
   const listeners = new AbortController();
-  const panel = root.querySelector<HTMLElement>('.craft-panel')!;
+  const scrollbar = createCraftingScrollbar(root);
   const categoryNav = root.querySelector<HTMLElement>('.craft-categories')!;
   const recipeGrid = root.querySelector<HTMLElement>('.craft-recipes')!;
   const quickbar = root.querySelector<HTMLElement>('.craft-quick-items')!;
@@ -103,6 +101,10 @@ export function initializeCraftingControls(root: ShadowRoot, {
   const materials = root.querySelector<HTMLElement>('.craft-materials')!;
   const buildButton = root.querySelector<HTMLButtonElement>('.craft-build')!;
   const categoryTitle = root.querySelector<HTMLHeadingElement>('h1')!;
+  root.querySelector('.craft-detail-favorite')!.append(
+    atlasImage('craft-detail-favorite-unchecked', 'images/crafting_menu.xml', 'favorite_unchecked.tex'),
+    atlasImage('craft-detail-favorite-checked', 'images/crafting_menu.xml', 'favorite_checked.tex'),
+  );
   let activeRecipes: readonly Recipe[] = [];
   let activeRecipeButtons: readonly HTMLButtonElement[] = [];
   let selectedRecipeButton: HTMLButtonElement | undefined;
@@ -250,6 +252,7 @@ export function initializeCraftingControls(root: ShadowRoot, {
     const view = activeCategoryId === 'none'
       ? allView
       : categoryViews.find(({ category }) => category.id === activeCategoryId) ?? categoryViews[0];
+    if (previousCategoryId !== undefined && previousCategoryId !== view.category.id) recipeGrid.scrollTop = 0;
     activeRecipes = view.category.recipes;
     activeRecipeButtons = view.recipeButtons;
     categoryTitle.textContent = view.category.name;
@@ -262,6 +265,7 @@ export function initializeCraftingControls(root: ShadowRoot, {
       : -1;
     previousCategoryId = view.category.id;
     updateSelection(preservedIndex < 0 ? 0 : preservedIndex);
+    scrollbar.refresh();
   }));
 
   controlEffects.push(createEffect(() => {
@@ -296,20 +300,6 @@ export function initializeCraftingControls(root: ShadowRoot, {
     }
     startCrafting(recipe.id, skinId);
   }, { signal: listeners.signal });
-  const setCollapsed = (collapsed: boolean) => {
-    onCollapsedChange(collapsed);
-    panel.classList.toggle('is-collapsed', collapsed);
-    const viewToggle = root.querySelector<HTMLButtonElement>('.craft-view-toggle')!;
-    const quickToggle = root.querySelector<HTMLButtonElement>('.craft-quick-toggle')!;
-    viewToggle.setAttribute('aria-expanded', String(!collapsed));
-    quickToggle.setAttribute('aria-expanded', String(!collapsed));
-    quickToggle.setAttribute('aria-label', collapsed ? '展开制作菜单' : '收起制作菜单');
-  };
-  root.querySelector('.craft-view-toggle')!.addEventListener('click', () => setCollapsed(true), { signal: listeners.signal });
-  root.querySelector('.craft-quick-toggle')!.addEventListener('click', () => {
-    setCollapsed(!panel.classList.contains('is-collapsed'));
-  }, { signal: listeners.signal });
-  setCollapsed(collapsed);
   controlEffects.push(createEffect(refreshBuildButton));
 
   function ingredient(ingredient: RecipeIngredient): HTMLSpanElement {
@@ -343,6 +333,9 @@ export function initializeCraftingControls(root: ShadowRoot, {
   return {
     refreshMaterials,
     refreshBuildButton,
-    dispose: () => listeners.abort(),
+    dispose: () => {
+      scrollbar.dispose();
+      listeners.abort();
+    },
   };
 }

@@ -29,7 +29,7 @@ import { backTasks, frontTasks } from './animate';
 import { input } from './InputManager';
 import { PointerRaycaster } from '@dontstarve-web/prefab/pointerRaycaster';
 import { view } from './view';
-import { PreparedFoodSlot, StorageSlot } from '@dontstarve-web/inventory';
+import { BACKPACK_SLOT_COUNT, PLAYER_BACKPACK_CONTAINER_ID, backpackSlotAddress, inventorySlotAddress, PreparedFoodSlot, StorageSlot } from '@dontstarve-web/inventory';
 import { player } from './player';
 import { cursorUi, dstLighting } from './universal';
 import { createChestInventoryPanel } from './chestInventoryPanel';
@@ -59,6 +59,9 @@ const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
 const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, 'cookpot');
 const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, 'icebox');
 export const inventory = createInventoryStore();
+inventory.registerSlots(Array.from({ length: BACKPACK_SLOT_COUNT }, (_, index) => ({
+  address: backpackSlotAddress(index), slot: new StorageSlot(),
+})));
 const storageContainers = new Map<string, StorageBuildingId>();
 function storagePanel(prefab: StorageBuildingId) {
   return prefab === 'cookpot' ? gameUi.cookPotPanel
@@ -88,6 +91,7 @@ const playerAnimation = player.userData.animationController as WilsonAnimationCo
 const handSlotAddress = equipmentSlotAddress('hand');
 const handPointer = new PointerRaycaster(view);
 const headSlotAddress = equipmentSlotAddress('head');
+const bodySlotAddress = equipmentSlotAddress('body');
 
 function isHandSlot(address: SlotAddress): boolean {
   return address.containerId === handSlotAddress.containerId
@@ -117,11 +121,25 @@ function syncHeadEquipment(): void {
     .catch((error: unknown) => console.error('Unable to equip hat', error));
 }
 
+function syncBodyEquipment(): void {
+  const item = inventory.get(bodySlotAddress);
+  const equipped = item?.itemId === 'backpack';
+  void playerAnimation?.setBackpack(equipped, item?.skinId)
+    .catch((error: unknown) => console.error('Unable to equip backpack', error));
+  if (equipped && !gameUi.backpackPanel.slotContainer) {
+    gameUi.backpackPanel.open({ containerId: PLAYER_BACKPACK_CONTAINER_ID, slotCount: BACKPACK_SLOT_COUNT, title: '背包' });
+    Array.from({ length: BACKPACK_SLOT_COUNT }, (_, index) => backpackSlotAddress(index)).forEach(syncInventorySlot);
+  } else if (!equipped) gameUi.backpackPanel.close();
+  inventory.setStorageAccessible(PLAYER_BACKPACK_CONTAINER_ID, equipped);
+}
+
 function syncInventorySlot(address: SlotAddress): void {
+  const isBackpack = address.containerId === PLAYER_BACKPACK_CONTAINER_ID;
+  if (isBackpack && !gameUi.backpackPanel.slotContainer) return;
   const storagePrefab = storageContainers.get(address.containerId);
   const panel = storagePrefab === undefined ? undefined : storagePanel(storagePrefab);
   if (panel && panel.slotContainer?.id !== address.containerId) return;
-  const inventoryBar = panel ?? gameUi.inventoryBar;
+  const inventoryBar = isBackpack ? gameUi.backpackPanel : panel ?? gameUi.inventoryBar;
   const stack = inventory.get(address);
   if (!stack) {
     inventoryBar.setSlot(address, null);
@@ -150,6 +168,8 @@ inventory.addresses().forEach(syncInventorySlot);
 syncCraftingInventory();
 syncHandEquipment();
 syncHeadEquipment();
+syncBodyEquipment();
+syncCraftingInventory();
 inventory.subscribe((changedSlots) => {
   changedSlots.forEach(syncInventorySlot);
   syncCraftingInventory();
@@ -162,6 +182,10 @@ inventory.subscribe((changedSlots) => {
     address.containerId === headSlotAddress.containerId
     && address.slotKey === headSlotAddress.slotKey)) {
     syncHeadEquipment();
+  }
+  if (changedSlots.some((address) =>
+    address.containerId === bodySlotAddress.containerId && address.slotKey === bodySlotAddress.slotKey)) {
+    syncBodyEquipment();
   }
 });
 
@@ -282,6 +306,7 @@ setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
 let lastSavedSnapshotId = initialSave.snapshot.id;
 window.addEventListener('pagehide', () => {
   gameUi.inventoryBar.cancelReceiveAnimations();
+  gameUi.savingIndicator.remove();
   disposeScene();
   DisposeSounds();
   disposeAnimationAssets();
@@ -289,13 +314,13 @@ window.addEventListener('pagehide', () => {
 }, { once: true });
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
-  void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => {
+  void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => gameUi.savingIndicator.whileSaving(() => {
     const json = serializeSave(initialSave, {
       ...getSaveState(), inventory: inventory.exportState(),
     }, SAVE_CATALOG, lastSavedSnapshotId);
     downloadSaveJson(json);
     lastSavedSnapshotId = (JSON.parse(json) as typeof initialSave).snapshot.id;
-  }).then((result) => {
+  })).then((result) => {
     if (result.ok) console.info(result.message);
     else console.warn(result.message);
   }).catch((error: unknown) => {
@@ -306,6 +331,8 @@ gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
 window.addEventListener('game:slot-transfer-request', (event) => {
   const detail = (event as CustomEvent<SlotTransferRequest>).detail;
   if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) return;
+  if ((detail.from.containerId === PLAYER_BACKPACK_CONTAINER_ID || detail.to.containerId === PLAYER_BACKPACK_CONTAINER_ID)
+    && (inventory.get(bodySlotAddress)?.itemId !== 'backpack' || detail.itemId === 'backpack')) return;
 
   const transferred = inventory.applySlotChanges([
     {
@@ -327,7 +354,7 @@ window.addEventListener('game:slot-transfer-request', (event) => {
   if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out', detail.itemId);
   else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in', detail.itemId);
 });
-gameUi.inventoryBar.addEventListener('game:slot-select', (event) => {
+window.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
   cancelHandTool();
   flowerPlanting.cancel();
@@ -382,6 +409,16 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
     return;
   }
   if (stack.itemId === 'meatballs') playerAnimation?.playEat();
+  if (stack.itemId === 'backpack') {
+    const equipped = slot.containerId === bodySlotAddress.containerId && slot.slotKey === bodySlotAddress.slotKey;
+    const target = equipped
+      ? Array.from({ length: 15 }, (_, index) => inventorySlotAddress(index)).find((address) => !inventory.get(address))
+      : inventory.get(bodySlotAddress) === null ? bodySlotAddress : undefined;
+    if (target) inventory.applySlotChanges([
+      { slot, itemId: stack.itemId, skinId: stack.skinId, delta: -1 },
+      { slot: target, itemId: stack.itemId, skinId: stack.skinId, delta: 1 },
+    ]);
+  }
 });
 gameUi.crafting.addEventListener('game:craft-request', (event) => {
   cancelHandTool();

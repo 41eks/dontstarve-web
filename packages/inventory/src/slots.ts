@@ -1,4 +1,4 @@
-import type { InventoryItemSpec, InventoryStack } from './types';
+import type { EquipmentKind, InventoryItemSpec, InventoryStack } from './types';
 
 function cloneStack(stack: InventoryStack | null): InventoryStack | null {
   return stack ? { ...stack } : null;
@@ -13,6 +13,7 @@ export interface ItemSlot {
 
 const DEFAULT_MAX_STACK = 40;
 const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
+  backpack: 1,
   torch: 1,
   lantern: 1,
   yellowstaff: 1,
@@ -31,7 +32,8 @@ export function inventoryItemMaxStack(itemId: string): number {
   return ITEM_MAX_STACKS[itemId] ?? DEFAULT_MAX_STACK;
 }
 
-export function inventoryItemEquipmentKind(itemId: string): 'hand' | undefined {
+export function inventoryItemEquipmentKind(itemId: string): EquipmentKind | undefined {
+  if (itemId === 'backpack') return 'body';
   return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'bugnet'
     || itemId === 'hammer' || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
     || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool' ? 'hand' : undefined;

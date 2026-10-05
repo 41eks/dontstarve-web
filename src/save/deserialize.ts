@@ -271,7 +271,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const player = object(players.local, 'players.local', ['prefab', 'shardId', 'transform', 'stats', 'inventory']);
   if (player.shardId !== shardId) fail('players.local.shardId', 'player must belong to this shard');
   const inventory = object(player.inventory, 'players.local.inventory', ['containers', 'bufferedBuilds']);
-  const containers = object(inventory.containers, 'players.local.inventory.containers', ['player:inventory', 'player:equipment']);
+  const containers = object(inventory.containers, 'players.local.inventory.containers', ['player:inventory', 'player:equipment', 'player:backpack']);
   const bufferedIds = new Set<string>();
   const bufferedBuilds = array(inventory.bufferedBuilds, 'players.local.inventory.bufferedBuilds', 1000).map((value, i) => {
     const path = `players.local.inventory.bufferedBuilds[${i}]`;
@@ -337,6 +337,9 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
           containers: {
             'player:inventory': container(containers['player:inventory'], 'players.local.inventory.containers.player:inventory', numericKeys(15)),
             'player:equipment': container(containers['player:equipment'], 'players.local.inventory.containers.player:equipment', ['hand', 'body', 'head']),
+            ...(containers['player:backpack'] === undefined ? {} : {
+              'player:backpack': container(containers['player:backpack'], 'players.local.inventory.containers.player:backpack', numericKeys(8)),
+            }),
           }, bufferedBuilds,
         },
       },

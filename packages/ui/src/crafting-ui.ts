@@ -5,6 +5,7 @@ import {
   type RecipeIngredient,
 } from './categories';
 import { initializeCraftingControls } from './crafting-controls';
+import { createCraftingBackground } from './crafting-background';
 import styles from './styles/crafting-ui.css?inline';
 import type { InventoryMaterialSummary } from '@dontstarve-web/inventory';
 import { createSignal } from './signal';
@@ -43,7 +44,9 @@ export class DstCraftingUiElement extends AssetElement {
   private readonly recipeBufferedStates = this.recipes.map(() => createSignal(false));
   private readonly recipeButtonEffects: Array<() => void> = [];
   private readonly controlEffects: Array<() => void> = [];
+  private collapseListeners?: AbortController;
   private disposeControls?: () => void;
+  private disposeBackground?: () => void;
   private refreshMaterials?: () => void;
   private refreshBuildButton?: () => void;
 
@@ -97,6 +100,7 @@ export class DstCraftingUiElement extends AssetElement {
     root.innerHTML = `
       <style>${styles}</style>
       <section class="craft-panel" aria-label="制作菜单">
+        <div class="craft-background" aria-hidden="true"></div>
         <header class="craft-header">
           <button class="craft-favorite" type="button" aria-label="收藏配方">
             <img class="craft-favorite-bg craft-favorite-bg-inactive" src="${this.asset('crafting/filter/filter_button_inactive.tex.png')}" alt="" />
@@ -107,11 +111,20 @@ export class DstCraftingUiElement extends AssetElement {
           <button class="craft-view-toggle" type="button" aria-label="切换网格视图"><span></span><span></span><span></span><span></span></button>
         </header>
         <nav class="craft-categories" aria-label="制作分类"></nav>
-        <div class="craft-recipes" role="listbox" aria-label="配方列表"></div>
+        <div class="craft-recipes-area">
+          <div class="craft-recipes" id="craft-recipes" role="listbox" aria-label="配方列表"></div>
+          <div class="craft-recipe-scrollbar">
+            <button class="craft-scroll-arrow craft-scroll-up" type="button" aria-label="向上滚动配方"></button>
+            <div class="craft-scroll-track" role="scrollbar" tabindex="0" aria-label="滚动配方列表" aria-controls="craft-recipes" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+              <div class="craft-scroll-thumb"></div>
+            </div>
+            <button class="craft-scroll-arrow craft-scroll-down" type="button" aria-label="向下滚动配方"></button>
+          </div>
+        </div>
         <div class="craft-scroll-marker" aria-hidden="true"></div>
         <article class="craft-detail" aria-live="polite">
           <div class="craft-copy">
-            <div class="craft-detail-heading"><span aria-hidden="true">★</span><h2></h2></div>
+            <div class="craft-detail-heading"><span class="craft-detail-favorite" aria-hidden="true"></span><h2></h2></div>
             <p></p>
           </div>
           <div class="craft-preview">
@@ -138,14 +151,32 @@ export class DstCraftingUiElement extends AssetElement {
       </section>
     `;
 
+    const listeners = new AbortController();
+    this.collapseListeners = listeners;
+    const panel = root.querySelector<HTMLElement>('.craft-panel')!;
+    const viewToggle = root.querySelector<HTMLButtonElement>('.craft-view-toggle')!;
+    const quickToggle = root.querySelector<HTMLButtonElement>('.craft-quick-toggle')!;
+    const setCollapsed = (collapsed: boolean) => {
+      this.collapsed = collapsed;
+      panel.classList.toggle('is-collapsed', collapsed);
+      root.querySelectorAll<HTMLElement>('.craft-header, .craft-categories, .craft-recipes-area, .craft-detail').forEach((section) => {
+        section.inert = collapsed;
+        section.setAttribute('aria-hidden', String(collapsed));
+      });
+      viewToggle.setAttribute('aria-expanded', String(!collapsed));
+      quickToggle.setAttribute('aria-expanded', String(!collapsed));
+      quickToggle.setAttribute('aria-label', collapsed ? '展开制作菜单' : '收起制作菜单');
+    };
+    viewToggle.addEventListener('click', () => setCollapsed(true), { signal: listeners.signal });
+    quickToggle.addEventListener('click', () => setCollapsed(!this.collapsed), { signal: listeners.signal });
+    setCollapsed(this.collapsed);
+
     const controls = initializeCraftingControls(root, {
       activeCategoryIdState: this.activeCategoryIdState,
       selectedRecipeState: this.selectedRecipeState,
       selectedSkinIds: this.selectedSkinIds,
       recipeButtonEffects: this.recipeButtonEffects,
       controlEffects: this.controlEffects,
-      collapsed: this.collapsed,
-      onCollapsedChange: (collapsed) => { this.collapsed = collapsed; },
       availableCount: (ingredient) => this.availableCount(ingredient),
       isRecipeLocked: (recipe) => this.isRecipeLocked(recipe),
       isRecipeBuffered: (recipe) => this.isRecipeBuffered(recipe),
@@ -156,6 +187,7 @@ export class DstCraftingUiElement extends AssetElement {
     this.refreshMaterials = controls.refreshMaterials;
     this.refreshBuildButton = controls.refreshBuildButton;
     this.disposeControls = controls.dispose;
+    this.disposeBackground = createCraftingBackground(root).dispose;
     resolveCraftingUiReady();
   }
 
@@ -181,6 +213,10 @@ export class DstCraftingUiElement extends AssetElement {
   }
 
   private disposeEffects(): void {
+    this.disposeBackground?.();
+    this.disposeBackground = undefined;
+    this.collapseListeners?.abort();
+    this.collapseListeners = undefined;
     this.disposeControls?.();
     this.disposeControls = undefined;
     this.recipeButtonEffects.splice(0).forEach((dispose) => dispose());

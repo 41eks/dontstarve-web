@@ -885,6 +885,58 @@
         "torch_tesla": "dynamic/torch_tesla.zip"
       }
     },
+    "backpack": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/backpack.lua",
+      "name": "背包",
+      "icon": "backpack.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "backpack.zip",
+      "buildArchives": [
+        "swap_backpack.zip"
+      ],
+      "bank": "backpack1",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "backpack_babybeef": "dynamic/backpack_babybeef.zip",
+        "backpack_basic_blue_catcoon": "dynamic/backpack_basic_blue_catcoon.zip",
+        "backpack_basic_green_olive": "dynamic/backpack_basic_green_olive.zip",
+        "backpack_bat": "dynamic/backpack_bat.zip",
+        "backpack_beefalo": "dynamic/backpack_beefalo.zip",
+        "backpack_buckle_grey_pewter": "dynamic/backpack_buckle_grey_pewter.zip",
+        "backpack_buckle_navy_phthalo": "dynamic/backpack_buckle_navy_phthalo.zip",
+        "backpack_buckle_red_rook": "dynamic/backpack_buckle_red_rook.zip",
+        "backpack_camping_green_viridian": "dynamic/backpack_camping_green_viridian.zip",
+        "backpack_camping_orange_carrot": "dynamic/backpack_camping_orange_carrot.zip",
+        "backpack_camping_red_koalefant": "dynamic/backpack_camping_red_koalefant.zip",
+        "backpack_carrat": "dynamic/backpack_carrat.zip",
+        "backpack_catcoon": "dynamic/backpack_catcoon.zip",
+        "backpack_catcoonp": "dynamic/backpack_catcoon.zip",
+        "backpack_chester": "dynamic/backpack_chester.zip",
+        "backpack_crab": "dynamic/backpack_crab.zip",
+        "backpack_crab_resurrected": "dynamic/backpack_crab.zip",
+        "backpack_deerclops": "dynamic/backpack_deerclops.zip",
+        "backpack_deerclops_resurrected": "dynamic/backpack_deerclops.zip",
+        "backpack_dragonfly_fire": "dynamic/backpack_dragonfly_fire.zip",
+        "backpack_glommer": "dynamic/backpack_glommer.zip",
+        "backpack_glommer_resurrected": "dynamic/backpack_glommer.zip",
+        "backpack_heart": "dynamic/backpack_heart.zip",
+        "backpack_hound": "dynamic/backpack_hound.zip",
+        "backpack_invisible": "dynamic/backpack_invisible.zip",
+        "backpack_koalefant": "dynamic/backpack_koalefant.zip",
+        "backpack_labrat": "dynamic/backpack_labrat.zip",
+        "backpack_mandrake": "dynamic/backpack_mandrake.zip",
+        "backpack_mandrake_resurrected": "dynamic/backpack_mandrake.zip",
+        "backpack_minigolf": "dynamic/backpack_minigolf.zip",
+        "backpack_mushy": "dynamic/backpack_mushy.zip",
+        "backpack_poop": "dynamic/backpack_poop.zip",
+        "backpack_rabbit": "dynamic/backpack_rabbit.zip",
+        "backpack_smallbird": "dynamic/backpack_smallbird.zip",
+        "backpack_spider": "dynamic/backpack_spider.zip",
+        "backpack_splumonkey": "dynamic/backpack_splumonkey.zip"
+      }
+    },
     "lantern": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mininglantern.lua",
       "name": "提灯",
@@ -3807,6 +3859,222 @@
       "name": "华丽斧头",
       "icon": "axe_victorian.tex",
       "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_babybeef": {
+      "itemId": "backpack",
+      "name": "迷你皮弗娄牛旅行包",
+      "icon": "backpack_babybeef.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_basic_blue_catcoon": {
+      "itemId": "backpack",
+      "name": "背包",
+      "icon": "backpack_basic_blue_catcoon.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_basic_green_olive": {
+      "itemId": "backpack",
+      "name": "背包",
+      "icon": "backpack_basic_green_olive.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_bat": {
+      "itemId": "backpack",
+      "name": "蝙蝠背包",
+      "icon": "backpack_bat.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_beefalo": {
+      "itemId": "backpack",
+      "name": "皮弗娄旅行包",
+      "icon": "backpack_beefalo.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_buckle_grey_pewter": {
+      "itemId": "backpack",
+      "name": "带扣背包",
+      "icon": "backpack_buckle_grey_pewter.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_buckle_navy_phthalo": {
+      "itemId": "backpack",
+      "name": "带扣背包",
+      "icon": "backpack_buckle_navy_phthalo.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_buckle_red_rook": {
+      "itemId": "backpack",
+      "name": "带扣背包",
+      "icon": "backpack_buckle_red_rook.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_camping_green_viridian": {
+      "itemId": "backpack",
+      "name": "帆布背包",
+      "icon": "backpack_camping_green_viridian.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_camping_orange_carrot": {
+      "itemId": "backpack",
+      "name": "帆布背包",
+      "icon": "backpack_camping_orange_carrot.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_camping_red_koalefant": {
+      "itemId": "backpack",
+      "name": "帆布背包",
+      "icon": "backpack_camping_red_koalefant.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_carrat": {
+      "itemId": "backpack",
+      "name": "胡萝卜鼠背包",
+      "icon": "backpack_carrat.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_catcoon": {
+      "itemId": "backpack",
+      "name": "浣猫旅行包",
+      "icon": "backpack_catcoon.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_catcoonp": {
+      "itemId": "backpack",
+      "name": "浣猫旅行包",
+      "icon": "backpack_catcoonp.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_chester": {
+      "itemId": "backpack",
+      "name": "切斯特背包",
+      "icon": "backpack_chester.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_crab": {
+      "itemId": "backpack",
+      "name": "螃蟹背包",
+      "icon": "backpack_crab.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_crab_resurrected": {
+      "itemId": "backpack",
+      "name": "螃蟹背包",
+      "icon": "backpack_crab_resurrected.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_deerclops": {
+      "itemId": "backpack",
+      "name": "独眼巨鹿背包",
+      "icon": "backpack_deerclops.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_deerclops_resurrected": {
+      "itemId": "backpack",
+      "name": "独眼巨鹿背包",
+      "icon": "backpack_deerclops_resurrected.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_dragonfly_fire": {
+      "itemId": "backpack",
+      "name": "烈焰背包",
+      "icon": "backpack_dragonfly_fire.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_glommer": {
+      "itemId": "backpack",
+      "name": "格罗姆背包",
+      "icon": "backpack_glommer.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_glommer_resurrected": {
+      "itemId": "backpack",
+      "name": "格罗姆背包",
+      "icon": "backpack_glommer_resurrected.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_heart": {
+      "itemId": "backpack",
+      "name": "丘比特旅行包",
+      "icon": "backpack_heart.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_hound": {
+      "itemId": "backpack",
+      "name": "猎犬背包",
+      "icon": "backpack_hound.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_invisible": {
+      "itemId": "backpack",
+      "name": "拟真背包",
+      "icon": "backpack_invisible.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_koalefant": {
+      "itemId": "backpack",
+      "name": "考拉象方便小包",
+      "icon": "backpack_koalefant.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_labrat": {
+      "itemId": "backpack",
+      "name": "可变光谱背包",
+      "icon": "backpack_labrat.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_mandrake": {
+      "itemId": "backpack",
+      "name": "曼德拉草背包",
+      "icon": "backpack_mandrake.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_mandrake_resurrected": {
+      "itemId": "backpack",
+      "name": "曼德拉草背包",
+      "icon": "backpack_mandrake_resurrected.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_minigolf": {
+      "itemId": "backpack",
+      "name": "鸦年华推杆手包",
+      "icon": "backpack_minigolf.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_mushy": {
+      "itemId": "backpack",
+      "name": "破旧的背包",
+      "icon": "backpack_mushy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_poop": {
+      "itemId": "backpack",
+      "name": "便便袋",
+      "icon": "backpack_poop.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_rabbit": {
+      "itemId": "backpack",
+      "name": "兔子背包",
+      "icon": "backpack_rabbit.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_smallbird": {
+      "itemId": "backpack",
+      "name": "小鸟背包",
+      "icon": "backpack_smallbird.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_spider": {
+      "itemId": "backpack",
+      "name": "蜘蛛袋",
+      "icon": "backpack_spider.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_splumonkey": {
+      "itemId": "backpack",
+      "name": "穴居猴背包",
+      "icon": "backpack_splumonkey.tex",
+      "atlas": "images/inventoryimages1.xml"
     },
     "bugnet_frog": {
       "itemId": "bugnet",

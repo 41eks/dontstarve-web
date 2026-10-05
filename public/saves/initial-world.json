@@ -7,15 +7,15 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000012",
-    "parentId": "0000000011",
-    "savedAt": "2026-10-04T06:02:33.054Z",
+    "id": "0000000013",
+    "parentId": "0000000012",
+    "savedAt": "2026-10-05T15:00:27.875Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 4730.876899999473,
+    "elapsedSeconds": 4846.402799999493,
     "systems": {},
     "map": {
       "kind": "generated",
@@ -6046,6 +6046,319 @@
           "components": {}
         }
       ],
+      "cookpot": [
+        {
+          "id": "e_fb7d3d50267c65b2571016615853d61c",
+          "transform": {
+            "position": [
+              -29.58897508431369,
+              0,
+              15.732595457206893
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed",
+              "skinId": "cookpot_cauldronp"
+            },
+            "container": {
+              "slotCount": 4,
+              "slots": []
+            }
+          }
+        },
+        {
+          "id": "e_3cc364e5431c4c9c6b21a3e68725598c",
+          "transform": {
+            "position": [
+              -45.17446902849612,
+              0,
+              21.756217787747786
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed",
+              "skinId": "cookpot_survival"
+            },
+            "container": {
+              "slotCount": 4,
+              "slots": []
+            }
+          }
+        }
+      ],
+      "firepit": [],
+      "icebox": [],
+      "researchlab": [],
+      "researchlab2": [],
+      "researchlab3": [],
+      "researchlab4": [],
+      "treasurechest": [
+        {
+          "id": "e_treasurechest_000001",
+          "transform": {
+            "position": [
+              -7.071,
+              0,
+              -7.071
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed"
+            },
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "itemId": "butterfly",
+                    "count": 31
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "itemId": "twigs",
+                    "count": 21
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "itemId": "fireflies",
+                    "count": 3
+                  }
+                },
+                {
+                  "slotKey": "3",
+                  "item": {
+                    "itemId": "goldnugget",
+                    "count": 39
+                  }
+                },
+                {
+                  "slotKey": "4",
+                  "item": {
+                    "itemId": "rocks",
+                    "count": 40
+                  }
+                },
+                {
+                  "slotKey": "5",
+                  "item": {
+                    "itemId": "silk",
+                    "count": 29
+                  }
+                },
+                {
+                  "slotKey": "6",
+                  "item": {
+                    "itemId": "gears",
+                    "count": 10
+                  }
+                },
+                {
+                  "slotKey": "7",
+                  "item": {
+                    "itemId": "charcoal",
+                    "count": 8
+                  }
+                },
+                {
+                  "slotKey": "8",
+                  "item": {
+                    "itemId": "cutgrass",
+                    "count": 11
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "e_b1b9f84f58c5a2f1f2c6287d6cc28024",
+          "transform": {
+            "position": [
+              -2.3863652093126895,
+              0,
+              -14.872265569828048
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed",
+              "skinId": "treasurechest_poshprint"
+            },
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "5",
+                  "item": {
+                    "itemId": "pigskin",
+                    "count": 10
+                  }
+                },
+                {
+                  "slotKey": "7",
+                  "item": {
+                    "itemId": "moonrocknugget",
+                    "count": 32
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "tent": [],
+      "moonbase": [],
+      "wardrobe": [],
+      "dragonflychest": [],
+      "campfire": [],
+      "saltbox": [],
+      "nightlight": [],
+      "pighouse": [],
+      "mushroom_light": [],
+      "mushroom_light2": [],
+      "wall_stone": [
+        {
+          "id": "e_292d8d625929f26c3145bf4eef4fd8db",
+          "transform": {
+            "position": [
+              -40.5,
+              0,
+              -31.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_4807891eea6bacad621803988260a15a",
+          "transform": {
+            "position": [
+              -40.5,
+              0,
+              -25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_01ac6ad3a1f8f480c97a72ff41527480",
+          "transform": {
+            "position": [
+              -37.5,
+              0,
+              -16.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_ea2214ab2efc6975801ddc98c45e3bec",
+          "transform": {
+            "position": [
+              -43.5,
+              0,
+              -7.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "wall_stone_2": [],
+      "wall_wood": [],
+      "wall_hay": [],
+      "wall_ruins": [],
+      "wall_ruins_2": [],
+      "wall_moonrock": [
+        {
+          "id": "e_19e5ae73e45516b9023c28d60bba8a56",
+          "transform": {
+            "position": [
+              13.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_5fd1d2f59a58e23e2fba2a6f9e8e3967",
+          "transform": {
+            "position": [
+              10.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_f0c039aebfecb4bdaf1da9870870e714",
+          "transform": {
+            "position": [
+              7.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_3173a3a18d9c99c87fb82352159fb0eb",
+          "transform": {
+            "position": [
+              4.5,
+              0,
+              -43.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_178995283cd56cd722594539aa4b4fe5",
+          "transform": {
+            "position": [
+              1.5,
+              0,
+              -46.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_786a38f07e79cb76d81acddee071ec12",
+          "transform": {
+            "position": [
+              -1.5,
+              0,
+              -49.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "wall_dreadstone": [],
+      "wall_scrap": [],
       "ground_item": [
         {
           "id": "e_9026f7ec3f32e8ffa91072a763ea3317",
@@ -6205,9 +6518,9 @@
           "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
           "transform": {
             "position": [
-              -7.387887129262216,
+              -41.456306603708924,
               0,
-              16.626235275620083
+              14.121958967243502
             ],
             "rotationY": 0
           },
@@ -6222,9 +6535,9 @@
           "id": "e_5f98f9a627feea2fb75d1ffa516e94b7",
           "transform": {
             "position": [
-              -49.06155383725895,
+              -5.682995852324061,
               0,
-              109.83969511001546
+              132.53682727985526
             ],
             "rotationY": 0
           },
@@ -6239,9 +6552,9 @@
           "id": "e_d96125953f2a5c9abf3006c7e9814f8b",
           "transform": {
             "position": [
-              -160.76788747708758,
+              -135.6346936516781,
               0,
-              22.571071215388645
+              53.01387133646579
             ],
             "rotationY": 0
           },
@@ -6256,9 +6569,9 @@
           "id": "e_bb2e6b7bc2ac993bbee65beff6992d46",
           "transform": {
             "position": [
-              -53.172212914617944,
+              -78.15937905205405,
               0,
-              -6.30639814875746
+              44.95478840411585
             ],
             "rotationY": 0
           },
@@ -6273,9 +6586,9 @@
           "id": "e_7d80c7aec9e512f51989a11a65b96473",
           "transform": {
             "position": [
-              -115.9621786675495,
+              -115.89369703148144,
               0,
-              85.13360538770429
+              40.336063408164655
             ],
             "rotationY": 0
           },
@@ -6441,19 +6754,40 @@
               "skinId": "reskin_tool_wand"
             }
           }
+        },
+        {
+          "id": "e_7c297653ab711cc0da900999597ddece",
+          "transform": {
+            "position": [
+              19.275205015121504,
+              0,
+              14.634710495321393
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "backpack",
+              "count": 1,
+              "skinId": "backpack_carrat"
+            }
+          }
         }
       ],
       "flower": [],
       "stafflight": [],
       "staffcoldlight": [],
+      "flower_cave": [],
+      "flower_cave_double": [],
+      "flower_cave_triple": [],
       "beefalo": [
         {
           "id": "e_fbc93491832fbc0f9ee1870641d45c24",
           "transform": {
             "position": [
-              -10.904022654321222,
+              -29.35983686631564,
               0,
-              6.077664848676426
+              10.666896412613895
             ],
             "rotationY": 0
           },
@@ -6464,12 +6798,33 @@
                 0,
                 0.22546845008602653
               ],
-              "heading": 335.6882515925576,
-              "poopRemainingSeconds": 46.37584573499596
+              "heading": 0.4459565739484219,
+              "poopRemainingSeconds": 8.187147234891174
             }
           }
         }
       ],
+      "rock1": [],
+      "rock2": [
+        {
+          "id": "e_10f744212462fb2e3f566f39d918099b",
+          "transform": {
+            "position": [
+              31.857231460977644,
+              0,
+              -41.84302377546824
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "rock_flintless": [],
+      "rock_flintless_med": [],
+      "rock_flintless_low": [],
+      "grass": [],
+      "sapling": [],
+      "sapling_moon": [],
       "pond": [
         {
           "id": "e_be5e94c7320d1059c66478541a6e91fc",
@@ -6501,310 +6856,6 @@
             }
           }
         }
-      ],
-      "treasurechest": [
-        {
-          "id": "e_treasurechest_000001",
-          "transform": {
-            "position": [
-              -7.071,
-              0,
-              -7.071
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "building": {
-              "state": "closed"
-            },
-            "container": {
-              "slotCount": 9,
-              "slots": [
-                {
-                  "slotKey": "0",
-                  "item": {
-                    "itemId": "butterfly",
-                    "count": 31
-                  }
-                },
-                {
-                  "slotKey": "1",
-                  "item": {
-                    "itemId": "twigs",
-                    "count": 21
-                  }
-                },
-                {
-                  "slotKey": "2",
-                  "item": {
-                    "itemId": "fireflies",
-                    "count": 3
-                  }
-                },
-                {
-                  "slotKey": "3",
-                  "item": {
-                    "itemId": "goldnugget",
-                    "count": 39
-                  }
-                },
-                {
-                  "slotKey": "4",
-                  "item": {
-                    "itemId": "rocks",
-                    "count": 40
-                  }
-                },
-                {
-                  "slotKey": "5",
-                  "item": {
-                    "itemId": "silk",
-                    "count": 29
-                  }
-                },
-                {
-                  "slotKey": "6",
-                  "item": {
-                    "itemId": "gears",
-                    "count": 10
-                  }
-                },
-                {
-                  "slotKey": "7",
-                  "item": {
-                    "itemId": "charcoal",
-                    "count": 8
-                  }
-                },
-                {
-                  "slotKey": "8",
-                  "item": {
-                    "itemId": "cutgrass",
-                    "count": 11
-                  }
-                }
-              ]
-            }
-          }
-        },
-        {
-          "id": "e_b1b9f84f58c5a2f1f2c6287d6cc28024",
-          "transform": {
-            "position": [
-              -2.3863652093126895,
-              0,
-              -14.872265569828048
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "building": {
-              "state": "closed",
-              "skinId": "treasurechest_poshprint"
-            },
-            "container": {
-              "slotCount": 9,
-              "slots": [
-                {
-                  "slotKey": "5",
-                  "item": {
-                    "itemId": "pigskin",
-                    "count": 10
-                  }
-                },
-                {
-                  "slotKey": "7",
-                  "item": {
-                    "itemId": "moonrocknugget",
-                    "count": 32
-                  }
-                }
-              ]
-            }
-          }
-        }
-      ],
-      "cookpot": [
-        {
-          "id": "e_fb7d3d50267c65b2571016615853d61c",
-          "transform": {
-            "position": [
-              -29.58897508431369,
-              0,
-              15.732595457206893
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "building": {
-              "state": "closed",
-              "skinId": "cookpot_cauldronp"
-            },
-            "container": {
-              "slotCount": 4,
-              "slots": []
-            }
-          }
-        },
-        {
-          "id": "e_3cc364e5431c4c9c6b21a3e68725598c",
-          "transform": {
-            "position": [
-              -45.17446902849612,
-              0,
-              21.756217787747786
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "building": {
-              "state": "closed",
-              "skinId": "cookpot_survival"
-            },
-            "container": {
-              "slotCount": 4,
-              "slots": []
-            }
-          }
-        }
-      ],
-      "wall_moonrock": [
-        {
-          "id": "e_19e5ae73e45516b9023c28d60bba8a56",
-          "transform": {
-            "position": [
-              13.5,
-              0,
-              -40.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_5fd1d2f59a58e23e2fba2a6f9e8e3967",
-          "transform": {
-            "position": [
-              10.5,
-              0,
-              -40.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_f0c039aebfecb4bdaf1da9870870e714",
-          "transform": {
-            "position": [
-              7.5,
-              0,
-              -40.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_3173a3a18d9c99c87fb82352159fb0eb",
-          "transform": {
-            "position": [
-              4.5,
-              0,
-              -43.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_178995283cd56cd722594539aa4b4fe5",
-          "transform": {
-            "position": [
-              1.5,
-              0,
-              -46.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_786a38f07e79cb76d81acddee071ec12",
-          "transform": {
-            "position": [
-              -1.5,
-              0,
-              -49.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        }
-      ],
-      "wall_stone": [
-        {
-          "id": "e_292d8d625929f26c3145bf4eef4fd8db",
-          "transform": {
-            "position": [
-              -40.5,
-              0,
-              -31.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_4807891eea6bacad621803988260a15a",
-          "transform": {
-            "position": [
-              -40.5,
-              0,
-              -25.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_01ac6ad3a1f8f480c97a72ff41527480",
-          "transform": {
-            "position": [
-              -37.5,
-              0,
-              -16.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_ea2214ab2efc6975801ddc98c45e3bec",
-          "transform": {
-            "position": [
-              -43.5,
-              0,
-              -7.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        }
-      ],
-      "rock2": [
-        {
-          "id": "e_10f744212462fb2e3f566f39d918099b",
-          "transform": {
-            "position": [
-              31.857231460977644,
-              0,
-              -41.84302377546824
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        }
       ]
     }
   },
@@ -6814,9 +6865,9 @@
       "shardId": "master",
       "transform": {
         "position": [
-          118.55406794320214,
+          28.184133866198014,
           0,
-          48.44640895043649
+          -12.90509339324658
         ],
         "rotationY": 0
       },
@@ -6916,6 +6967,10 @@
                 }
               }
             ]
+          },
+          "player:backpack": {
+            "slotCount": 8,
+            "slots": []
           }
         },
         "bufferedBuilds": []

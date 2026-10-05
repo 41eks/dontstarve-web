@@ -1,10 +1,13 @@
 export {
   EQUIPMENT_KINDS,
   INVENTORY_SLOT_COUNT,
+  BACKPACK_SLOT_COUNT,
+  PLAYER_BACKPACK_CONTAINER_ID,
   PLAYER_EQUIPMENT_CONTAINER_ID,
   PLAYER_INVENTORY_CONTAINER_ID,
   equipmentSlotAddress,
   inventorySlotAddress,
+  backpackSlotAddress,
 } from './addresses';
 export {
   BodySlot,

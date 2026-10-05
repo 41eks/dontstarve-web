@@ -1,4 +1,4 @@
-import { atlasElementBounds, type ImageAtlas, type ImageAtlasPage } from './imageAtlasParser';
+import { atlasElementBounds, type ImageAtlas, type ImageAtlasElement, type ImageAtlasPage } from './imageAtlasParser';
 
 export interface AtlasImageRegion {
   readonly imageUrl: string;
@@ -18,6 +18,7 @@ type AtlasSource = ImageAtlas | (() => Promise<ImageAtlas>);
 const sources = new Map<string, AtlasSource>();
 const requests = new Map<string, Promise<void>>();
 const regions = new Map<string, AtlasImageRegion>();
+const index = new Map<string, { page: ImageAtlasPage; element: ImageAtlasElement }>();
 const textures = new Map<string, Promise<string>>();
 const imageUrls = new Set<string>();
 let generation = 0;
@@ -80,19 +81,12 @@ function loadRegisteredAtlas(atlasPath: string): Promise<void> {
       const source = sources.get(path);
       if (!source) throw new Error(`Image atlas is not registered: ${atlasPath}`);
       const atlas = typeof source === 'function' ? await source() : source;
-      // Keep registration atomic if one page fails to decode.
-      const entries = await Promise.all(atlas.pages.map(async (page) => {
-        const imageUrl = await textureImage(page, currentGeneration);
-        return [...page.elements.values()].map((element) => [key(path, element.name), {
-          imageUrl,
-          ...atlasElementBounds(page.decodedTexture, element),
-          atlasWidth: page.decodedTexture.width,
-          atlasHeight: page.decodedTexture.height,
-        }] as const);
-      }));
       if (currentGeneration !== generation) throw new Error('Atlas images were disposed');
-      for (const [name, region] of entries.flat()) {
-        if (!regions.has(name)) regions.set(name, region);
+      for (const page of atlas.pages) {
+        for (const element of page.elements.values()) {
+          const name = key(path, element.name);
+          if (!index.has(name)) index.set(name, { page, element });
+        }
       }
     })();
     requests.set(path, request);
@@ -105,11 +99,25 @@ function loadRegisteredAtlas(atlasPath: string): Promise<void> {
 
 /** Look up crop coordinates; no per-image pixel extraction is performed. */
 export async function getAtlasImage(atlasPath: string, elementName: string): Promise<AtlasImageRegion> {
+  const currentGeneration = generation;
   await loadRegisteredAtlas(atlasPath);
   const names = /\.[^./\\]+$/.test(elementName)
     ? [elementName] : [elementName, `${elementName}.tex`, `${elementName}.png`];
-  const region = names.map((name) => regions.get(key(atlasPath, name))).find(Boolean);
-  if (!region) throw new Error(`Image atlas does not contain ${elementName}`);
+  const indexed = names.map((name) => index.get(key(atlasPath, name))).find(Boolean);
+  if (!indexed) throw new Error(`Image atlas does not contain ${elementName}`);
+  const regionKey = key(atlasPath, indexed.element.name);
+  const cached = regions.get(regionKey);
+  if (cached) return cached;
+  // Inventory aliases span many pages; encode only pages used by visible/requested images.
+  const imageUrl = await textureImage(indexed.page, currentGeneration);
+  if (currentGeneration !== generation) throw new Error('Atlas images were disposed');
+  const region = regions.get(regionKey) ?? {
+    imageUrl,
+    ...atlasElementBounds(indexed.page.decodedTexture, indexed.element),
+    atlasWidth: indexed.page.decodedTexture.width,
+    atlasHeight: indexed.page.decodedTexture.height,
+  };
+  regions.set(regionKey, region);
   return region;
 }
 
@@ -172,5 +180,6 @@ export function disposeAtlasImages(): void {
   sources.clear();
   requests.clear();
   regions.clear();
+  index.clear();
   textures.clear();
 }
