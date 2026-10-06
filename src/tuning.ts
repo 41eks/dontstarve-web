@@ -17,6 +17,13 @@ export const TUNING = {
 
 export type DstCyclePhase = 'day' | 'dusk' | 'night';
 
+const MOON_PHASE_CYCLES = [
+  'new', 'quarter', 'quarter', 'quarter', 'half', 'half', 'half',
+  'threequarter', 'threequarter', 'threequarter', 'full',
+  'threequarter', 'threequarter', 'threequarter', 'half', 'half', 'half',
+  'quarter', 'quarter', 'quarter',
+] as const;
+
 /** `cycles` counts completed days, as in DST's components/clock.lua. */
 export function getDstCycle(elapsedSeconds: number): {
   cycles: number;
@@ -37,5 +44,20 @@ export function getDstCycle(elapsedSeconds: number): {
     cycles,
     phase: 'night',
     phaseProgress: (duskTime - TUNING.DUSK_TIME_DEFAULT) / TUNING.NIGHT_TIME_DEFAULT,
+  };
+}
+
+/** Surface clock state from clock.lua's default segments and 20-day moon cycle. */
+export function getDstClock(elapsedSeconds: number) {
+  const cycle = getDstCycle(elapsedSeconds);
+  const moonIndex = cycle.cycles % MOON_PHASE_CYCLES.length;
+  return {
+    cycles: cycle.cycles,
+    phase: cycle.phase,
+    time: Math.max(0, elapsedSeconds) % TUNING.TOTAL_DAY_TIME / TUNING.TOTAL_DAY_TIME,
+    daySegments: TUNING.DAY_SEGS_DEFAULT,
+    duskSegments: TUNING.DUSK_SEGS_DEFAULT,
+    moonPhase: MOON_PHASE_CYCLES[moonIndex],
+    waxing: moonIndex < MOON_PHASE_CYCLES.length / 2,
   };
 }

@@ -1,13 +1,61 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
-test('application lighting starts in the saved elapsed-time phase without a startup fade', async ({ page }) => {
+test('importing the shared view does not fetch colour cubes or load a save', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', (request) => {
+    if (/colour_cubes|saves\/initial-world/.test(request.url())) requests.push(request.url());
+  });
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async (url) => {
+    const { dstLighting, renderer } = await import(url);
+    return { hasLighting: dstLighting !== undefined, hasRenderer: renderer.domElement.isConnected };
+  }, `/@fs${fileURLToPath(new URL('../../../src/universal.ts', import.meta.url))}`);
+  expect(result).toEqual({ hasLighting: false, hasRenderer: true });
+  expect(requests).toEqual([]);
+});
+
+test('a failed colour-cube load rejects startup without publishing lighting readiness', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.route('**/images/colour_cubes/insane_day_cc.tex', (route) => route.fulfill({ status: 503, body: '' }));
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async (urls) => {
+    let readyCount = 0;
+    window.addEventListener('game:lighting-ready', () => readyCount++);
+    let failure = '';
+    try {
+      await import(urls.main);
+    } catch (error) {
+      failure = String(error);
+    }
+    const { dstLighting } = await import(urls.universal);
+    return { readyCount, hasLighting: dstLighting !== undefined, failure };
+  }, {
+    main: `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`,
+    universal: `/@fs${fileURLToPath(new URL('../../../src/universal.ts', import.meta.url))}`,
+  });
+  expect(result.readyCount).toBe(0);
+  expect(result.hasLighting).toBe(false);
+  expect(result.failure).toContain('insane_day_cc.tex: HTTP 503');
+});
+
+test('application lighting starts in the saved elapsed-time phase without a startup fade', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async (urls) => {
+    let readyCount = 0;
+    let publishedLighting: unknown;
+    window.addEventListener('game:lighting-ready', (event) => {
+      readyCount++;
+      publishedLighting = event.detail;
+    });
+    await import(urls.main);
     const [{ dstLighting, scene }, { initialSave }, { getDstCycle }] = await Promise.all([
       import(urls.universal), import(urls.save), import(urls.tuning),
     ]);
     return {
+      readyCount,
+      publishedSharedInstance: publishedLighting === dstLighting,
       phase: dstLighting.getPhase(),
       expectedPhase: getDstCycle(initialSave.world.elapsedSeconds).phase,
       season: dstLighting.getSeason(),
@@ -15,11 +63,14 @@ test('application lighting starts in the saved elapsed-time phase without a star
       lightLevel: dstLighting.sampleLightLevel(scene.position),
     };
   }, {
+    main: `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`,
     universal: `/@fs${fileURLToPath(new URL('../../../src/universal.ts', import.meta.url))}`,
     save: `/@fs${fileURLToPath(new URL('../../../src/save/initialSave.ts', import.meta.url))}`,
     tuning: `/@fs${fileURLToPath(new URL('../../../src/tuning.ts', import.meta.url))}`,
   });
   expect(result.phase).toBe(result.expectedPhase);
+  expect(result.readyCount).toBe(1);
+  expect(result.publishedSharedInstance).toBe(true);
   expect(result.season).toBe(result.expectedSeason);
   if (result.phase === 'night') expect(result.lightLevel).toBe(0);
   else expect(result.lightLevel).toBeGreaterThan(0);

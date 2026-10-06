@@ -116,6 +116,9 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 
 `@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
 `GroundItemAssets` 和 `createGroundItemSprite(assets, itemId, skinId?)`。
+通用资源加载、动画选择、符号覆盖、模型创建和逐帧绘制由
+`@dontstarve-web/animation/archiveSprite` 提供。`GroundItemAssets` 继承其共享缓存，
+保留 `ground:` 材质名称；prefab 层负责物品定义、皮肤校验、实体物品信息和库存事件。
 目录包含 221 种材料、工具、提灯、荧光果、唤星者魔杖、唤月者魔杖、清洁扫把、肉类、蔬菜、墙体物品和普通烹饪食物，以及 94 个皮肤 ID。
 初始背包里的物品均已接入地面动画；未进入目录的其他物品仍使用图标回退。
 资源由 `python3 packages/prefab/scripts/import-ground-items.py` 镜像，`--check`
@@ -141,6 +144,9 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 ```ts
 const lamp = await createLanternGroundSprite(new GroundItemAssets(animationBaseUrl));
 scene.add(lamp.model); // 默认为满燃料、亮灯，位置由调用方设置
+lamp.model.dispatchEvent({ type: 'ondropped' });
+lamp.model.dispatchEvent({ type: 'onputininventory' }); // 关闭地面光源
+lamp.model.dispatchEvent({ type: 'ondropped' }); // 再次放到地面，恢复灯光
 lamp.light.setLit(false);
 lamp.light.setFuelPercent(0.5);
 lamp.light.setLit(true);
@@ -150,6 +156,31 @@ await player.userData.animationController.setCarryItem('lantern', skinId);
 player.userData.animationController.setLanternFuelPercent(0.5);
 await player.userData.animationController.setCarryItem(null); // 收回背包并关闭手持光源
 ```
+
+地面物品的库存事件使用实体自己的 `THREE.Object3D` 事件系统。各 prefab TS 通过
+`listenInventoryEvents(model, { ondropped, onputininventory, onload })` 注册处理函数，
+该函数由 `@dontstarve-web/prefab/inventoryEvents` 导出，并返回取消监听的函数；
+prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移到地面后触发，
+`onputininventory` 在成功拾取或虫网捕获后、移除地面模型前触发；失败的库存操作
+不触发这两个事件。`onload` 用于存档恢复或换肤后的地面初始化，不重放掉落效果。
+应用的 `GroundItemManager` 负责按创建器注册表创建实例、设置落点和分发事件；
+灯光、活动、动画和 Bernie 形态的处理保留在各 prefab 中。
+
+`GroundItemManager` 在 `animationBaseUrl` 后接收必填的 `player: THREE.Object3D`。
+地面拾取与木箱共用 `@dontstarve-web/prefab/playerProximity` 的水平距离判断：
+进入距离为 9，退出距离为 10；每帧及拾取前更新状态，超过范围时不修改库存，
+也不触发 `onputininventory`。普通物品、帽子、Bernie 和图标回退均遵守该规则；
+虫网继续在捕获动作中检查自身距离。`ondropped` 仍在成功丢弃后触发。
+
+每个 prefab TS 同时导出 `createXXXGroundFactory(context)`，在自己的文件中绑定
+`createXXXGroundSprite`、声明 `itemIds` 和虫网捕获策略，并管理专用资产缓存。
+`GroundPrefabRegistry` 统一装配这些模块，先注册通用物品和帽子，再按相同 ID
+注册特殊 prefab；共享动画/build 缓存由注册表统一释放。应用的管理器只传入
+资源路径、世界上下文和附近实体查询，不再逐个绑定创建器或管理 prefab 缓存。
+`createBernieGroundSprite`、`createLanternGroundSprite`、`createLightbulbGroundSprite`、
+`createButterflyGroundSprite` 和 `createFirefliesGroundSprite` 的实现及库存事件均在
+对应 prefab TS 中。萤火虫的旧入口 `FirefliesAssets.create(world)` 委托给同文件的
+`createFirefliesGroundSprite(assets, world)`，保持现有调用兼容。
 
 `LanternLightController` 按源 Lua 在燃料比例 0～1 时使用半径 3～5（换算为场景的
 9～15 世界单位）、强度 0.4～0.6、Falloff 0.9，以及 RGB `(180,195,150)/255`；

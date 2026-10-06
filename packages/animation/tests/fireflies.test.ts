@@ -124,12 +124,19 @@ describe('real fireflies archive and ground transfers', () => {
     assets();
     const visual = await new FirefliesAssets('/anim').create({ isNight: () => true, getPlayerPositions: () => [] });
     visual.model.position.set(8, 0, 9);
-    visual.onPlaced(false);
+    visual.model.dispatchEvent({ type: 'onload' });
     for (let i = 0; i < 50; i++) visual.update(0.1);
     const mesh = visual.model.children[0].children[0] as THREE.Mesh;
     expect(visual.model.children[0].children).toHaveLength(1);
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect((mesh.material as THREE.MeshBasicMaterial[]).every(m => m.forceSinglePass)).toBe(true);
+    expect(getPrefabLocalLight(visual.model)).toEqual(FIREFLIES_LIGHT);
+    visual.model.dispatchEvent({ type: 'onputininventory' });
+    visual.update(0.1);
+    expect(getPrefabLocalLight(visual.model)).toBeUndefined();
+    expect(visual.controller.workable).toBe(false);
+    visual.model.dispatchEvent({ type: 'ondropped' });
+    for (let i = 0; i < 50; i++) visual.update(0.1);
     expect(getPrefabLocalLight(visual.model)).toEqual(FIREFLIES_LIGHT);
     visual.dispose();
     expect(getPrefabLocalLight(visual.model)).toBeUndefined();
@@ -141,7 +148,7 @@ describe('real fireflies archive and ground transfers', () => {
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
     const pickup = vi.fn(() => false);
     const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
-      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', pickup, '/anim', undefined,
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', pickup, '/anim', new THREE.Group(), undefined,
       { isNight: () => true, getPlayerPositions: () => [] });
     const definition = { itemId: 'fireflies', count: 2, name: '萤火虫', icon: 'fireflies.tex' };
     expect(await manager.drop(definition, new THREE.Vector3(8, 0, 9), () => false)).toBe(false);
@@ -159,7 +166,7 @@ describe('real fireflies archive and ground transfers', () => {
     expect(getPrefabLocalLight(target.model)).toBeUndefined();
     expect(manager.exportRecords()).toHaveLength(1);
     const dark = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
-      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', pickup, '/anim');
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', pickup, '/anim', new THREE.Group());
     const restored = await dark.spawnFromSave(records[0].id, { ...definition, count: 1 }, new THREE.Vector3(8, 0, 9));
     expect(dark.exportRecords()).toEqual([records[0]]);
     expect(getPrefabLocalLight(restored)).toBeUndefined();

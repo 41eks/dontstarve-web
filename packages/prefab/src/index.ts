@@ -32,6 +32,7 @@ export {
   type StorageBuildingId, type BuildingContainerDefinition,
 } from './containers';
 export { ProximityEntities, type ProximityEntity } from './proximityEntities';
+export { isPlayerNearby, PLAYER_PROXIMITY_ENTER_DISTANCE, PLAYER_PROXIMITY_EXIT_DISTANCE } from './playerProximity';
 export { Locomotor, findGroundPath, setupLocomotorInput, type LocomotorOptions, type GroundPathOptions } from './locomotor';
 export {
   FIRE_PIT_DEFINITION, FIRE_PIT_ID, FIRE_PIT_SKIN_ARCHIVES,
@@ -146,8 +147,12 @@ export {
 } from './bugnet';
 export {
   ButterflyAssets, ButterflyController, BUTTERFLY_BEHAVIOR,
+  BUTTERFLY_ID, createButterflyGroundSprite,
   type ButterflyFlower, type ButterflyWorld, type ButterflyState,
 } from './butterfly';
+export { listenInventoryEvents, type PrefabInventoryEventMap } from './inventoryEvents';
+export { GroundPrefabRegistry } from './groundPrefabRegistry';
+export type { GroundItemDefinition, GroundItemVisual, GroundItemFactory, GroundPrefabContext, GroundPrefabOptions } from './groundPrefab';
 export {
   YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME,
   OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, loadLightStaffEquipment, setupLightStaffCasting,
@@ -158,7 +163,7 @@ export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATIO
   dwarfStarLight, polarLight, DwarfStarManager, type DwarfStarRecord, type StaffLightId } from './stafflight';
 export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE,
   type SoundEventPath, type SoundHandle, type SoundPosition } from './sound';
-export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, type FirefliesWorld } from './fireflies';
+export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, createFirefliesGroundSprite, type FirefliesWorld } from './fireflies';
 export {
   BULB_PLANT_ID, BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_LIGHT,
   BulbPlantController, BulbPlantManager, bulbPlantLight, bulbPlantRegrowTime, isBulbPlantPrefab,

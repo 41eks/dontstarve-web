@@ -9,6 +9,8 @@ import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder
 import { setPrefabLightOverride, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import catalog from './hats.json' with { type: 'json' };
+import { listenInventoryEvents } from './inventoryEvents';
+import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
 export type HatEquipMode = 'normal' | 'opentop' | 'fullhelm';
 
@@ -424,7 +426,9 @@ export async function createHatGroundSprite(
   const renderer = new SpriteFrameRenderer(visual);
   let elapsed = 0;
   let frameIndex = -1;
+  let inInventory = false;
   const update = (dt: number) => {
+    if (inInventory) return;
     elapsed += Math.min(dt, 0.1);
     const frame = Math.floor(elapsed * animation.frameRate);
     // Rabbit's animqueueover restarts its ground idle in hats.lua.
@@ -440,13 +444,30 @@ export async function createHatGroundSprite(
     renderer.show(sprites);
   };
   update(0);
+  const onGround = () => { inInventory = false; update(0); };
+  const removeInventoryEvents = listenInventoryEvents(model, {
+    ondropped: onGround,
+    onload: onGround,
+    onputininventory: () => { inInventory = true; },
+  });
   return {
     model, update,
     dispose() {
+      removeInventoryEvents();
+      inInventory = true;
       model.removeFromParent();
       visual.traverse((object) => {
         if (object instanceof THREE.Mesh) object.geometry.dispose();
       });
     },
+  };
+}
+
+export function createHatGroundFactory(context: GroundPrefabContext): GroundItemFactory {
+  const assets = new HatEquipmentAssets(context.animationBaseUrl);
+  return {
+    itemIds: Object.keys(HAT_DEFINITIONS),
+    create: (item) => createHatGroundSprite(assets, item.itemId, item.skinId),
+    dispose: () => assets.dispose(),
   };
 }

@@ -937,6 +937,24 @@
         "backpack_splumonkey": "dynamic/backpack_splumonkey.zip"
       }
     },
+    "bernie_inactive": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bernie_inactive.lua",
+      "name": "伯尼",
+      "icon": "bernie_inactive.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bernie.zip",
+      "buildArchives": [
+        "bernie_build.zip"
+      ],
+      "bank": "bernie",
+      "animation": "inactive",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "bernie_cat": "dynamic/bernie_cat.zip",
+        "bernie_dog": "dynamic/bernie_dog.zip"
+      }
+    },
     "lantern": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mininglantern.lua",
       "name": "提灯",
@@ -4074,6 +4092,18 @@
       "itemId": "backpack",
       "name": "穴居猴背包",
       "icon": "backpack_splumonkey.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bernie_cat": {
+      "itemId": "bernie_inactive",
+      "name": "艾希莉",
+      "icon": "bernie_cat.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bernie_dog": {
+      "itemId": "bernie_inactive",
+      "name": "小火花",
+      "icon": "bernie_dog.tex",
       "atlas": "images/inventoryimages1.xml"
     },
     "bugnet_frog": {

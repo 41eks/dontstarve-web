@@ -1,6 +1,8 @@
 import { createGroundItemSprite, GroundItemAssets } from './groundItems';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
+import { listenInventoryEvents } from './inventoryEvents';
+import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
 export const LIGHTBULB_ID = 'lightbulb';
 
@@ -17,9 +19,21 @@ export async function createLightbulbGroundSprite(assets: GroundItemAssets, opti
   const sprite = await createGroundItemSprite(assets, LIGHTBULB_ID, options.skinId);
   const setLit = (lit: boolean) => setPrefabLocalLight(sprite.model, lit ? LIGHTBULB_LIGHT : null);
   setLit(options.lit ?? true);
+  const removeInventoryEvents = listenInventoryEvents(sprite.model, {
+    ondropped: () => setLit(true),
+    onputininventory: () => setLit(false),
+    onload: () => setLit(options.lit ?? true),
+  });
   return {
     ...sprite,
     setLit,
-    dispose() { setLit(false); sprite.dispose(); },
+    dispose() { removeInventoryEvents(); setLit(false); sprite.dispose(); },
+  };
+}
+
+export function createLightbulbGroundFactory(context: GroundPrefabContext): GroundItemFactory {
+  return {
+    itemIds: [LIGHTBULB_ID],
+    create: (item) => createLightbulbGroundSprite(context.assets, { skinId: item.skinId }),
   };
 }

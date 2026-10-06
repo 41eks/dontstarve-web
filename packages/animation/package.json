@@ -11,6 +11,7 @@
     "./renderOrder": "./src/renderOrder.ts",
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",
+    "./archiveSprite": "./src/archiveSprite.ts",
     "./beefaloSprite": "./src/beefaloSprite.ts",
     "./wallSprite": "./src/wallSprite.ts",
     "./prefabskin": "./src/prefabskin.ts",

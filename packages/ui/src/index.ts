@@ -77,6 +77,7 @@ export {
   type SlotTransferRequest,
 } from './slot/slot-transfer';
 export { DstStatusHudElement } from './status-hud';
+export type { WorldClockState } from './world-clock';
 export { DstSavingIndicatorElement } from './saving-indicator';
 
 export interface MountGameUiOptions {

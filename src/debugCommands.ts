@@ -13,6 +13,7 @@ interface GiveCommand {
 const GIVE_COMMAND = /^\s*c_give\s*[(（]\s*(["'])([^"']+)\1\s*(?:[,，]\s*(\d+)\s*)?[)）]\s*;?\s*$/;
 const SPAWN_COMMAND = /^\s*c_spawn\s*[(（]\s*(["'])([^"']+)\1\s*[)）]\s*;?\s*$/;
 const SAVE_COMMAND = /^\s*c_save\s*[(（]\s*[)）]\s*;?\s*$/;
+const SANITY_COMMAND = /^\s*c_setsanity\s*[(（]\s*(\d+(?:\.\d*)?|\.\d+)\s*[)）]\s*;?\s*$/;
 
 export type DebugSpawnPrefab = (prefabId: string) => boolean | Promise<boolean>;
 export type DebugSaveGame = () => void | Promise<void>;
@@ -22,7 +23,18 @@ export async function executeDebugCommand(
   inventory: InventoryStore,
   spawnPrefab?: DebugSpawnPrefab,
   saveGame?: DebugSaveGame,
+  setSanity?: (percent: number) => void,
 ): Promise<DebugCommandResult> {
+  const sanity = SANITY_COMMAND.exec(command);
+  if (sanity) {
+    const percent = Number(sanity[1]);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 1) {
+      return { ok: false, message: '理智比例必须是 0 到 1 的数字' };
+    }
+    if (!setSanity) return { ok: false, message: '当前无法设置理智' };
+    setSanity(percent);
+    return { ok: true, message: `已设置理智为 ${percent * 100}%` };
+  }
   if (SAVE_COMMAND.test(command)) {
     if (!saveGame) return { ok: false, message: '当前无法保存游戏' };
     try {
@@ -45,7 +57,7 @@ export async function executeDebugCommand(
 
   return {
     ok: false,
-    message: '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id") 或 c_save()',
+    message: '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id")、c_setsanity(percent) 或 c_save()',
   };
 }
 

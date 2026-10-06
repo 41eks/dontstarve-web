@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
+import { listenInventoryEvents } from './inventoryEvents';
+import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
 export const FIREFLIES_ID = 'fireflies';
 export const FIREFLIES_LIGHT = {
@@ -28,6 +30,7 @@ export class FirefliesController {
   private canWork = false;
   private canClick = false;
   private disposed = false;
+  private inInventory = false;
   readonly model: THREE.Group;
   private readonly animation: SpriteAnimationController;
   private readonly world: FirefliesWorld;
@@ -57,6 +60,9 @@ export class FirefliesController {
 
   /** Called after assigning the source ground origin, for both drops and restores. */
   place(dropped: boolean): void {
+    if (this.disposed) return;
+    this.inInventory = false;
+    setPrefabLightOverride(this.model, 1);
     this.night = this.world.isNight();
     this.updateProximity();
     if (dropped) {
@@ -66,7 +72,7 @@ export class FirefliesController {
   }
 
   update(dt: number): void {
-    if (this.disposed) return;
+    if (this.disposed || this.inInventory) return;
     const step = Math.max(0, Math.min(dt, 0.1));
     this.animation.update(step);
     if (this.disableWorkRemaining !== undefined) {
@@ -99,13 +105,22 @@ export class FirefliesController {
     this.refresh();
   }
 
-  dispose(): void {
-    this.disposed = true;
+  onPutInInventory(): void {
+    this.inInventory = true;
     this.canClick = this.canWork = false;
     this.checks = [];
     this.fadeValue = this.fadeRate = 0;
+    this.direction = 0;
+    this.disableWorkRemaining = undefined;
+    this.model.children[0].visible = false;
+    this.refresh();
     setPrefabLocalLight(this.model, null);
     setPrefabLightOverride(this.model, null);
+  }
+
+  dispose(): void {
+    this.disposed = true;
+    this.onPutInInventory();
   }
 
   private updateProximity(): boolean {
@@ -173,7 +188,7 @@ export class FirefliesAssets {
     if (this.factory) void this.factory.then((factory) => factory.dispose(), () => undefined);
   }
 
-  async create(world: FirefliesWorld) {
+  async loadFactory(): Promise<AnimatedSpriteFactory> {
     if (this.disposed) throw new Error('Insect assets have been disposed');
     if (!this.factory) {
       this.factory = createAnimatedSpriteFactory(this.assetBaseUrl, 'fireflies.zip');
@@ -181,11 +196,34 @@ export class FirefliesAssets {
     }
     const factory = await this.factory;
     if (this.disposed) throw new Error('Insect assets have been disposed');
-    const model = factory.create({ initialAnimation: 'swarm_loop', name: 'GroundItem:fireflies' });
-    const controller = new FirefliesController(model, model.userData.animationController, world);
-    return { model, controller, onPlaced: (dropped: boolean) => controller.place(dropped),
-      update: (dt: number) => controller.update(dt),
-      isClickable: () => controller.clickable, isWorkable: () => controller.workable,
-      dispose() { controller.dispose(); factory.disposeSprite(model); } };
+    return factory;
   }
+
+  create(world: FirefliesWorld) {
+    return createFirefliesGroundSprite(this, world);
+  }
+}
+
+export async function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld) {
+  const factory = await assets.loadFactory();
+  const model = factory.create({ initialAnimation: 'swarm_loop', name: 'GroundItem:fireflies' });
+  const controller = new FirefliesController(model, model.userData.animationController, world);
+  const removeInventoryEvents = listenInventoryEvents(model, {
+    ondropped: () => controller.place(true),
+    onputininventory: () => controller.onPutInInventory(),
+    onload: () => controller.place(false),
+  });
+  return { model, controller,
+    update: (dt: number) => controller.update(dt),
+    isClickable: () => controller.clickable, isWorkable: () => controller.workable,
+    dispose() { removeInventoryEvents(); controller.dispose(); factory.disposeSprite(model); } };
+}
+
+export function createFirefliesGroundFactory(context: GroundPrefabContext): GroundItemFactory {
+  const assets = new FirefliesAssets(context.animationBaseUrl);
+  return {
+    itemIds: [FIREFLIES_ID], capture: 'net',
+    create: () => createFirefliesGroundSprite(assets, context.firefliesWorld),
+    dispose: () => assets.dispose(),
+  };
 }

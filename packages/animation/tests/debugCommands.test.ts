@@ -13,6 +13,26 @@ function createInventory() {
 }
 
 describe('debug command punctuation', () => {
+  it.each(['c_setsanity(0)', 'c_setsanity（0.175）', ' c_setsanity （ .5 ) ; ', 'c_setsanity(1)'])(
+    'sets sanity exactly once using %s', async (command) => {
+      const setSanity = vi.fn();
+      const result = await executeDebugCommand(command, createInventory(), undefined, undefined, setSanity);
+      expect(result.ok).toBe(true);
+      expect(setSanity).toHaveBeenCalledTimes(1);
+      expect(setSanity.mock.calls[0][0]).toBeGreaterThanOrEqual(0);
+      expect(setSanity.mock.calls[0][0]).toBeLessThanOrEqual(1);
+    },
+  );
+
+  it.each(['c_setsanity(-1)', 'c_setsanity(1.01)', 'c_setsanity(NaN)', 'c_setsanity(Infinity)',
+    'c_setsanity()', 'c_setsanity("0.5")', 'c_setsanity(0); c_save()'])(
+    'rejects invalid sanity without changing it: %s', async (command) => {
+      const setSanity = vi.fn();
+      expect((await executeDebugCommand(command, createInventory(), undefined, undefined, setSanity)).ok).toBe(false);
+      expect(setSanity).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([
     'c_give("alterguardianhat")',
     'c_give("alterguardianhat"）',

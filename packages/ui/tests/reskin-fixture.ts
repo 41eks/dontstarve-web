@@ -41,7 +41,7 @@ export async function checkReskinCasting() {
     { slot: equipmentSlotAddress('hand'), itemId: 'reskin_tool', delta: 1 },
   ]);
   const items = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip',
-    (item) => inventory.add(item.itemId, item.count, item.skinId), '/dst/data/anim');
+    (item) => inventory.add(item.itemId, item.count, item.skinId), '/dst/data/anim', world.player);
   await items.spawnFromSave('e_dropped', { ...inventory.getItemSpec('reskin_tool'), itemId: 'reskin_tool', count: 1 }, new THREE.Vector3(6, 0, 0));
   let equipped = true;
   const controller = new ReskinActionController(world, animation,

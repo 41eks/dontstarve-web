@@ -73,7 +73,9 @@ export async function checkLanternLighting() {
   const staleEquip = !getPrefabLocalLight(player);
 
   let acceptsPickup = false;
-  const manager = new GroundItemManager(scene, camera, renderer, '/missing-atlas.zip', () => acceptsPickup, '/dst/data/anim');
+  const pickupPlayer = new THREE.Group();
+  pickupPlayer.position.set(-30, 0, 0);
+  const manager = new GroundItemManager(scene, camera, renderer, '/missing-atlas.zip', () => acceptsPickup, '/dst/data/anim', pickupPlayer);
   const definition = { itemId: 'lantern', count: 1, name: '提灯', icon: 'missing.tex' };
   const failedDrop = await manager.drop(definition, new THREE.Vector3(), () => false);
   await manager.drop(definition, new THREE.Vector3(-30, 20, 0), () => true);

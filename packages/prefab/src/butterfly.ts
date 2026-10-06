@@ -4,6 +4,10 @@ import {
   type AnimatedSpriteFactory,
   type SpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
+import { listenInventoryEvents } from './inventoryEvents';
+import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+
+export const BUTTERFLY_ID = 'butterfly';
 
 export interface ButterflyFlower {
   readonly id: string;
@@ -66,6 +70,20 @@ export class ButterflyController {
   get state(): ButterflyState { return this.currentState; }
   get removed(): boolean { return this.currentState === 'removed'; }
   get targetFlowerId(): string | undefined { return this.flower?.id; }
+
+  onDropped(): void {
+    this.flower = undefined;
+    this.visitedFlowers.clear();
+    this.goingHome = this.fleeing = false;
+    this.walkRemaining = 0;
+    this.waitRemaining = 1 + this.random() * 3;
+    this.setState('idle');
+  }
+
+  onPutInInventory(): void {
+    this.flower = undefined;
+    this.setState('removed');
+  }
 
   update(dt: number): void {
     if (this.removed) return;
@@ -224,10 +242,50 @@ export class ButterflyAssets {
     if (this.disposed) throw new Error('Insect assets have been disposed');
     const model = factory.create({ initialAnimation: 'idle_flight_loop', name: 'GroundItem:butterfly' });
     const controller = new ButterflyController(model, model.userData.animationController, world);
+    const removeInventoryEvents = listenInventoryEvents(model, {
+      ondropped: () => controller.onDropped(),
+      onputininventory: () => controller.onPutInInventory(),
+    });
     return {
       model, controller,
       update: (dt: number) => controller.update(dt),
-      dispose: () => factory.disposeSprite(model),
+      isRemoved: () => controller.removed,
+      dispose() { removeInventoryEvents(); controller.onPutInInventory(); factory.disposeSprite(model); },
     };
   }
+}
+
+/** Keep the butterfly's flower-occupancy rules with its own prefab. */
+export async function createButterflyGroundSprite(
+  assets: ButterflyAssets,
+  world: ButterflyWorld,
+  getNeighbours: () => readonly { model: THREE.Group; position: THREE.Vector3 }[],
+) {
+  let model: THREE.Group | undefined;
+  const visual = await assets.create({
+    isDay: () => world.isDay(),
+    getThreatPositions: () => world.getThreatPositions(),
+    getFlowers: () => world.getFlowers(),
+    constrainPosition: (position) => world.constrainPosition?.(position),
+    isFlowerOccupied: (id) => {
+      if (world.isFlowerOccupied?.(id)) return true;
+      const flower = world.getFlowers().find((candidate) => candidate.id === id);
+      return flower !== undefined && getNeighbours().some((neighbour) => {
+        const controller = neighbour.model.userData.butterflyController as ButterflyController | undefined;
+        return neighbour.model !== model && controller?.targetFlowerId === id
+          && neighbour.position.distanceToSquared(flower.position) < 4;
+      });
+    },
+  });
+  model = visual.model;
+  return { ...visual, isRemoved: () => visual.controller.removed };
+}
+
+export function createButterflyGroundFactory(context: GroundPrefabContext): GroundItemFactory {
+  const assets = new ButterflyAssets(context.animationBaseUrl);
+  return {
+    itemIds: [BUTTERFLY_ID], capture: 'net',
+    create: () => createButterflyGroundSprite(assets, context.butterflyWorld, context.getNeighbours),
+    dispose: () => assets.dispose(),
+  };
 }

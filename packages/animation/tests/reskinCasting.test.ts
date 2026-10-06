@@ -113,7 +113,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
   const world = setupWorld();
   const picked = vi.fn(() => true);
   const manager = new GroundItemManager(world.scene, world.camera, world.renderer,
-    '/dst/data/databundles/images.zip', picked, '/dst/data/anim');
+    '/dst/data/databundles/images.zip', picked, '/dst/data/anim', world.player);
   await manager.spawnFromSave('e_sweeper', {
     itemId: 'reskin_tool', count: 1, name: '清洁扫把', icon: 'reskin_tool.tex', atlas: 'images/inventoryimages3.xml',
   }, new THREE.Vector3(3, 0, 4));

@@ -75,7 +75,7 @@ test('ground catalog renders every source frame and skin without inventory icons
   }, { ground: moduleUrl('../../prefab/src/groundItems.ts'), hats: moduleUrl('../../prefab/src/hats.ts'),
     atlas: moduleUrl('../../animation/src/imageAtlas.ts'), inventory: moduleUrl('../../../src/inventory.ts') });
   expect(result.failures).toEqual([]);
-  expect(result).toMatchObject({ count: 221, skins: 94, common: true, removed: true });
+  expect(result).toMatchObject({ count: 223, skins: 132, common: true, removed: true });
   expect(failedRequests).toEqual([]);
 });
 
@@ -90,6 +90,6 @@ test('common ground items drop and pick up with native geometry and preserve sav
       'gears', 'charcoal', 'pigskin', 'cutstone', 'rope',
       'wall_stone_item', 'wall_wood_item', 'wall_hay_item', 'wall_ruins_item',
       'wall_moonrock_item', 'wall_dreadstone_item', 'wall_scrap_item', 'axe', 'hammer'],
-    failedLoad: true, inventoryMutations: 0, failedTransfer: false, remaining: 0, restoredFoot: [2, 0.25, 3],
+    blockedDistantPickups: 24, failedLoad: true, inventoryMutations: 0, failedTransfer: false, remaining: 0, restoredFoot: [2, 0.25, 3],
   });
 });

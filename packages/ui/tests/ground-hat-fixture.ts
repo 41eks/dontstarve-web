@@ -13,7 +13,7 @@ export async function checkGroundHats() {
   const pickedUp: string[] = [];
   let allowPickup = true;
   const manager = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip',
-    (item) => { if (!allowPickup) return false; pickedUp.push(item.itemId); return true; }, '/dst/data/anim');
+    (item) => { if (!allowPickup) return false; pickedUp.push(item.itemId); return true; }, '/dst/data/anim', new THREE.Group());
   const definition = (id: string, skinId?: string) => ({
     itemId: id, count: 1, ...(skinId ? { skinId } : {}),
     ...(skinId ? HAT_SKIN_SPECS[skinId] : HAT_ITEM_SPECS[id]),

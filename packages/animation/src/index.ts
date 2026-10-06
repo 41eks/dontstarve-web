@@ -29,6 +29,10 @@ export {
 } from './wallSprite';
 export { setSpriteEntityRenderOrder } from './renderOrder';
 export {
+  ArchiveSpriteAssets, createArchiveSprite,
+  type ArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions, type ArchiveSpriteBuild,
+} from './archiveSprite';
+export {
   basic_init_fn,
   firepit_init_fn,
   icebox_init_fn,

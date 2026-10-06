@@ -5,6 +5,8 @@ import { turfMap, moonTreeForest } from './building';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
+import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
+import { playerStats, WILSON_MAX_SANITY } from './playerStats';
 import { DwarfStarManager, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager, BULB_PLANT_PREFABS } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager, ROCK_PREFABS } from '@dontstarve-web/prefab/rocks';
@@ -57,6 +59,7 @@ export function createSceneEntities(
     `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`,
     pickupGroundItem,
     `${import.meta.env.BASE_URL}dst/data/anim`,
+    player,
     {
       isDay: () => dstLighting.getPhase() === 'day',
       getThreatPositions: () => [player.position],
@@ -80,6 +83,7 @@ export function createSceneEntities(
       isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
       getPlayerPositions: () => [player.position],
     },
+    { getSanityPercent: () => playerStats.sanity / WILSON_MAX_SANITY },
   );
   const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const polarLights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, POLAR_LIGHT_ID);
@@ -197,7 +201,7 @@ export function createSceneEntities(
         ...item, name: skin?.name ?? spec.name, icon: skin?.icon ?? spec.icon, atlas: skin?.atlas ?? spec.atlas,
       }, new THREE.Vector3(...record.transform.position));
     },
-    debugSpawn: { prefabIds: ['fireflies'], create: (id) => groundItems.spawnFromSave(newEntityId(), {
+    debugSpawn: { prefabIds: ['fireflies', BERNIE_ITEM_ID], create: (id) => groundItems.spawnFromSave(newEntityId(), {
       ...SAVE_CATALOG.items[id], itemId: id, count: 1,
     }, player.position.clone()) },
     exportRecords: () => groundItems.exportRecords().map((record) => ({ prefabId: 'ground_item', record })),

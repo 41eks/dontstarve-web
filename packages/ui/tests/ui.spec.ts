@@ -213,12 +213,10 @@ test('registers all elements with open, styled shadow roots', async ({ page }) =
   await page.addStyleTag({ content: '.survival-hud { display: none !important; }' });
   await expect(page.locator('dst-status-hud').locator('.survival-hud')).toHaveCSS('display', 'block');
 
-  const clockRim = page.locator('dst-status-hud .world-clock__rim');
-  await expect(clockRim).toHaveAttribute('data-atlas', 'images/hud.xml');
-  await expect(clockRim).toHaveAttribute('data-element', 'clock_rim.tex');
-  await expect(clockRim).toHaveAttribute('data-loaded', 'true');
-  await expect(clockRim).toHaveAttribute('data-width', '216');
-  await expect(clockRim).toHaveAttribute('data-height', '216');
+  const clock = page.locator('dst-status-hud .world-clock__animation');
+  await expect(clock).toHaveAttribute('data-state', 'ready');
+  await expect(clock).toHaveAttribute('data-animation', 'idle_day');
+  await expect(clock).toHaveAttribute('data-day', '1');
 });
 
 test('opens the debug console with backquote and emits entered commands', async ({ page }) => {

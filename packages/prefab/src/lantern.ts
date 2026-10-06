@@ -3,6 +3,8 @@ import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@do
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets, createGroundItemSprite } from './groundItems';
 import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
+import { listenInventoryEvents } from './inventoryEvents';
+import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
 export const LANTERN_ID = 'lantern';
 export const LANTERN_COLOUR = [180 / 255, 195 / 255, 150 / 255] as const;
@@ -60,11 +62,16 @@ export async function createLanternGroundSprite(assets: GroundItemAssets, option
   const light = new LanternLightController(sprite.model, (lit) => sprite.setAnimation(lit ? 'idle_on' : 'idle_off'));
   light.setFuelPercent(options.fuelPercent ?? 1);
   light.setLit(options.lit ?? true);
+  const removeInventoryEvents = listenInventoryEvents(sprite.model, {
+    ondropped: () => light.setLit(true),
+    onputininventory: () => light.setLit(false),
+    onload: () => light.setLit(options.lit ?? true),
+  });
   return {
     model: sprite.model,
     update: sprite.update,
     light,
-    dispose() { light.dispose(); sprite.dispose(); },
+    dispose() { removeInventoryEvents(); light.dispose(); sprite.dispose(); },
   };
 }
 
@@ -88,4 +95,11 @@ export function resolveLanternPlayerSprite(equipment: LanternEquipment, element:
     if (image) return [{ element, image, materials: source.materials }];
   }
   return [];
+}
+
+export function createLanternGroundFactory(context: GroundPrefabContext): GroundItemFactory {
+  return {
+    itemIds: [LANTERN_ID],
+    create: (item) => createLanternGroundSprite(context.assets, { skinId: item.skinId }),
+  };
 }

@@ -9,18 +9,22 @@ import styles from "./style.module.css"
 const ASSET_ROOT = assetUrl("hamlet-assets/ui")
 const HAMLET_GREEN: [number, number, number] = [87 / 255, 164 / 255, 86 / 255]
 const PIG_ACTIONS = ["idle_happy", "emote_hat", "emote_bow"]
+const FORUM_DIALOG_ID = "hamlet-forum"
 const randomPigDelay = () => 2 + Math.floor(Math.random() * 4)
 
 type HamletMainScreenPageProps = {
   onStart?: () => void
 }
 
-function HamletButton({ label, focused, onClick }: { label: string; focused?: boolean; onClick: () => void }) {
+function HamletButton({ label, focused, onClick, dialogId }: { label: string; focused?: boolean; onClick: () => void; dialogId?: string }) {
   const [hovered, setHovered] = useState(false)
   const active = focused || hovered
   return (
     <button
+      type="button"
       className={`${styles.gameButton} ${active ? styles.gameButtonFocused : ""}`}
+      aria-haspopup={dialogId ? "dialog" : undefined}
+      aria-controls={dialogId}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
@@ -47,7 +51,6 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
   const [viewportSize, setViewportSize] = useState({ width: window.innerWidth, height: window.innerHeight })
 
   useEffect(() => {
-    document.title = "Don't Starve: Hamlet"
     Promise.all([
       loadKleiAnimationAsset(assetUrl("hamlet-assets/hamlet-title")),
       loadKleiAnimationAsset(assetUrl("hamlet-assets/corner-dude")),
@@ -158,11 +161,14 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
       onStart?.()
       return
     }
+    if (action === "论坛") {
+      document.querySelector<HTMLDialogElement>(`#${FORUM_DIALOG_ID}`)?.showModal()
+      return
+    }
     const calls: Record<string, string> = {
       "模组": "TheFrontEnd:PushScreen(ModsScreen(...))",
       "选项": "MainScreen:DoOptionsMenu()",
       "退出": "网页展示不会真正关闭游戏",
-      "论坛": "MainScreen:Forums() · Hamlet community forum",
     }
     setNotice(calls[action])
   }
@@ -212,7 +218,7 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
             <HamletButton key={label} label={label} focused={index === 0} onClick={() => runAction(label)} />
           ))}
         </nav>
-        <div className={styles.forum}><HamletButton label="论坛" onClick={() => runAction("论坛")} /></div>
+        <div className={styles.forum}><HamletButton label="论坛" dialogId={FORUM_DIALOG_ID} onClick={() => runAction("论坛")} /></div>
         <button
           className={`${styles.musicButton} ${musicPlaying ? styles.musicButtonPlaying : ""}`}
           type="button"

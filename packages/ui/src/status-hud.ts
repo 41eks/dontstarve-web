@@ -1,5 +1,5 @@
-import { createAtlasImage as atlasImage } from '@dontstarve-web/animation/atlasImage';
 import { AssetElement } from './assets';
+import { INITIAL_CLOCK_STATE, WorldClock, type WorldClockState } from './world-clock';
 import styles from './styles/status-hud.css?inline';
 
 type MeterDefinition = {
@@ -15,21 +15,45 @@ const meters: MeterDefinition[] = [
 ];
 
 export class DstStatusHudElement extends AssetElement {
+  private clock?: WorldClock;
+  private clockState: WorldClockState = INITIAL_CLOCK_STATE;
+  private stats = Object.fromEntries(meters.map(({ kind, value }) => [kind, value]));
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
   }
 
+  disconnectedCallback(): void {
+    this.clock?.dispose();
+    this.clock = undefined;
+  }
+
+  setClock(state: WorldClockState, dt = 0): void {
+    this.clockState = { ...state };
+    this.clock?.update(this.clockState, dt);
+  }
+
+  setStats(stats: { health: number; hunger: number; sanity: number }): void {
+    this.stats = { ...stats };
+    for (const { kind, label } of meters) {
+      const meter = this.shadowRoot?.querySelector(`.survival-meter--${kind}`);
+      const value = Math.round(this.stats[kind]);
+      meter?.setAttribute('aria-label', `${label} ${value}`);
+      const output = meter?.querySelector('output');
+      if (output) output.textContent = String(value);
+    }
+  }
+
   protected render(): void {
+    this.clock?.dispose();
     const root = this.shadowRoot!;
     root.innerHTML = `
       <style>${styles}</style>
       <section class="survival-hud" aria-label="生存状态">
         <div class="survival-hud__calendar">
-          <div class="world-clock" aria-label="世界第 32 日">
-            <div class="world-clock__dial" aria-hidden="true">
-              <span class="world-clock__copy"><b>世界</b><strong>32日</strong></span>
-            </div>
+          <div class="world-clock" role="img" tabindex="0" aria-label="世界第 ${this.clockState.cycles + 1} 日">
+            <canvas class="world-clock__animation" aria-hidden="true"></canvas>
           </div>
           <div class="season-clock" aria-label="当前季节：冬">
             <img class="season-clock__hand" src="${this.asset('status/clock_hand.tex.png')}" alt="" />
@@ -44,18 +68,11 @@ export class DstStatusHudElement extends AssetElement {
       </section>
     `;
 
-    root.querySelector('.world-clock__dial')!.prepend(atlasImage(
-      'world-clock__rim',
-      'images/hud.xml',
-      'clock_rim.tex',
-    ), atlasImage(
-      'world-clock__hand',
-      'images/hud.xml',
-      'clock_hand.tex',
-    ));
+    this.clock = new WorldClock(root.querySelector<HTMLCanvasElement>('.world-clock__animation')!, this.dataAsset(''));
+    this.clock.update(this.clockState);
 
     const meterRow = root.querySelector<HTMLElement>('.survival-hud__meters')!;
-    meters.forEach((meter) => meterRow.append(this.createMeter(meter)));
+    meters.forEach((meter) => meterRow.append(this.createMeter({ ...meter, value: Math.round(this.stats[meter.kind]) })));
   }
 
   private createMeter({ kind, label, value }: MeterDefinition): HTMLElement {

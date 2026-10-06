@@ -1,63 +1,45 @@
 import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/imageAtlas';
 import * as THREE from 'three';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { createHatGroundSprite, HatEquipmentAssets, isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
+import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { nextReskin, type ReskinTarget } from '@dontstarve-web/prefab/reskin_tool';
-import { createGroundItemSprite, GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
+import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
-import { createLanternGroundSprite } from '@dontstarve-web/prefab/lantern';
-import { createLightbulbGroundSprite } from '@dontstarve-web/prefab/lightbulb';
-import { ButterflyAssets, type ButterflyController, type ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
+import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
+import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
+import { GroundPrefabRegistry } from '@dontstarve-web/prefab/groundPrefabRegistry';
+import type { GroundItemDefinition, GroundItemVisual } from '@dontstarve-web/prefab/groundPrefab';
 import type { NetCaptureTarget } from '@dontstarve-web/prefab/bugnet';
-import { FirefliesAssets, type FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
+import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
 import { intersectSpriteEntities } from '@dontstarve-web/prefab/pointerRaycaster';
+import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
 import type { SavedEntity } from './save/types';
+
+export type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 
 const DEFAULT_ATLAS = 'images/inventoryimages.xml';
 const ITEM_HEIGHT = 4;
-
-export interface GroundItemDefinition {
-  itemId: string;
-  skinId?: string;
-  name: string;
-  icon: string;
-  atlas?: string;
-  count: number;
-}
-
-interface GroundItemVisual {
-  model: THREE.Group;
-  update?(dt: number): void;
-  isRemoved?(): boolean;
-  onPlaced?(dropped: boolean): void;
-  isClickable?(): boolean;
-  isWorkable?(): boolean;
-  dispose(): void;
-}
 
 interface GroundItemRecord extends GroundItemVisual {
   id: string;
   definition: GroundItemDefinition;
   footPosition: THREE.Vector3;
+  isPlayerNearby: boolean;
 }
 
 export class GroundItemManager {
   private readonly atlasRequests = new Map<string, Promise<ImageAtlas>>();
   private readonly archiveUrl: string;
   private readonly camera: THREE.Camera;
+  private readonly prefabs: GroundPrefabRegistry;
   private readonly items = new Map<THREE.Group, GroundItemRecord>();
-  private readonly hatAssets: HatEquipmentAssets;
-  private readonly groundAssets: GroundItemAssets;
-  private readonly butterflyAssets: ButterflyAssets;
-  private readonly butterflyWorld: ButterflyWorld;
-  private readonly firefliesAssets: FirefliesAssets;
-  private readonly firefliesWorld: FirefliesWorld;
   private readonly onPickup: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean;
   private onNetCapture?: (target: NetCaptureTarget) => boolean;
   private readonly pointer = new THREE.Vector2();
   private readonly raycaster = new THREE.Raycaster();
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
+  private readonly player: THREE.Object3D;
   private disposed = false;
 
   constructor(
@@ -67,20 +49,22 @@ export class GroundItemManager {
     archiveUrl: string,
     onPickup: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
     animationBaseUrl: string,
+    player: THREE.Object3D,
     butterflyWorld: ButterflyWorld = { isDay: () => true, getThreatPositions: () => [], getFlowers: () => [] },
     firefliesWorld: FirefliesWorld = { isNight: () => false, getPlayerPositions: () => [] },
+    bernieWorld: BernieWorld = { getSanityPercent: () => 1 },
   ) {
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
     this.archiveUrl = archiveUrl;
     this.onPickup = onPickup;
-    this.hatAssets = new HatEquipmentAssets(animationBaseUrl);
-    this.groundAssets = new GroundItemAssets(animationBaseUrl);
-    this.butterflyAssets = new ButterflyAssets(animationBaseUrl);
-    this.butterflyWorld = butterflyWorld;
-    this.firefliesAssets = new FirefliesAssets(animationBaseUrl);
-    this.firefliesWorld = firefliesWorld;
+    this.player = player;
+    this.prefabs = new GroundPrefabRegistry({
+      animationBaseUrl, butterflyWorld, firefliesWorld, bernieWorld,
+      getNeighbours: () => [...this.items.values()]
+        .map(({ model, footPosition }) => ({ model, position: footPosition })),
+    });
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
   }
 
@@ -90,11 +74,8 @@ export class GroundItemManager {
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     for (const item of this.items.values()) item.dispose();
     this.items.clear();
-    this.hatAssets.dispose();
-    this.groundAssets.dispose();
-    this.butterflyAssets.dispose();
-    this.firefliesAssets.dispose();
     this.atlasRequests.clear();
+    this.prefabs.dispose();
   }
 
   async drop(
@@ -154,9 +135,11 @@ export class GroundItemManager {
     const footPosition = new THREE.Vector3(position.x, dropped ? 0 : position.y, position.z);
     visual.model.position.copy(footPosition);
     visual.model.userData.entityId = id;
-    this.items.set(visual.model, { id, definition, footPosition, ...visual });
+    const record = { id, definition, footPosition, isPlayerNearby: false, ...visual };
+    this.updateProximity(record);
+    this.items.set(visual.model, record);
     this.scene.add(visual.model);
-    visual.onPlaced?.(dropped);
+    visual.model.dispatchEvent({ type: dropped ? 'ondropped' : 'onload' });
   }
 
   exportRecords(): SavedEntity[] {
@@ -208,7 +191,7 @@ export class GroundItemManager {
                             record.dispose();
                             this.items.set(visual.model, { ...record, ...visual, definition });
                             this.scene.add(visual.model);
-                            visual.onPlaced?.(false);
+                            visual.model.dispatchEvent({ type: 'onload' });
                             used = true;
                             return true;
                         },
@@ -219,7 +202,7 @@ export class GroundItemManager {
         });
     }
 
-    private isNetCreature(itemId: string): boolean { return itemId === 'butterfly' || itemId === 'fireflies'; }
+    private isNetCreature(itemId: string): boolean { return this.prefabs.get(itemId)?.capture === 'net'; }
 
   private captureTarget(record: GroundItemRecord): NetCaptureTarget {
     const isValid = () => this.items.get(record.model) === record && !record.isRemoved?.() && record.isWorkable?.() !== false;
@@ -227,10 +210,7 @@ export class GroundItemManager {
       id: record.id, model: record.model, position: record.footPosition, isValid,
       isClickable: () => record.isClickable?.() !== false,
       capture: () => {
-        if (!isValid() || !this.onPickup({ ...record.definition }, 'net', record.footPosition.clone())) return false;
-        this.items.delete(record.model);
-        record.dispose();
-        return true;
+        return isValid() && this.putInInventory(record, 'net');
       },
     };
   }
@@ -255,11 +235,23 @@ export class GroundItemManager {
       this.onNetCapture?.(this.captureTarget(record));
       return;
     }
-    if (!this.onPickup(record.definition, 'pickup', record.footPosition.clone())) return;
-
-    this.items.delete(record.model);
-    record.dispose();
+    this.putInInventory(record, 'pickup');
   };
+
+  private putInInventory(record: GroundItemRecord, action: 'pickup' | 'net'): boolean {
+    if (action === 'pickup') {
+      this.updateProximity(record);
+      if (!record.isPlayerNearby) return false;
+    }
+    if (!this.onPickup({ ...record.definition }, action, record.footPosition.clone())) return false;
+    try {
+      record.model.dispatchEvent({ type: 'onputininventory' });
+    } finally {
+      this.items.delete(record.model);
+      record.dispose();
+    }
+    return true;
+  }
 
   get renderEntities(): readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[] {
     return [...this.items.values()].map(({ model, footPosition }) => ({
@@ -271,7 +263,8 @@ export class GroundItemManager {
     for (const item of this.items.values()) {
       item.model.quaternion.copy(cameraQuaternion);
       item.update?.(dt);
-      item.footPosition.set(item.model.position.x, 0, item.model.position.z);
+      item.footPosition.copy(item.model.position);
+      this.updateProximity(item);
       if (item.isRemoved?.()) {
         this.items.delete(item.model);
         item.dispose();
@@ -279,55 +272,20 @@ export class GroundItemManager {
     }
   }
 
+  private updateProximity(record: GroundItemRecord): void {
+    record.isPlayerNearby = isPlayerNearby(this.player.position, record.footPosition, record.isPlayerNearby);
+  }
+
   private async createVisual(definition: GroundItemDefinition): Promise<GroundItemVisual> {
-    if (definition.itemId === 'fireflies') {
-      const visual = await this.firefliesAssets.create(this.firefliesWorld);
-      visual.model.userData.count = 1;
-      return visual;
-    }
-    if (definition.itemId === 'butterfly') {
-      let model: THREE.Group | undefined;
-      const visual = await this.butterflyAssets.create({
-        isDay: () => this.butterflyWorld.isDay(),
-        getThreatPositions: () => this.butterflyWorld.getThreatPositions(),
-        getFlowers: () => this.butterflyWorld.getFlowers(),
-        constrainPosition: (position) => this.butterflyWorld.constrainPosition?.(position),
-        isFlowerOccupied: (id) => {
-          if (this.butterflyWorld.isFlowerOccupied?.(id)) return true;
-          const flower = this.butterflyWorld.getFlowers().find((candidate) => candidate.id === id);
-          return flower !== undefined && [...this.items.values()].some((item) => {
-            const controller = item.model.userData.butterflyController as ButterflyController | undefined;
-            return item.model !== model && controller?.targetFlowerId === id
-              && item.footPosition.distanceToSquared(flower.position) < 4;
-          });
-        },
-      });
-      model = visual.model;
-      model.userData.count = 1;
-      return { ...visual, isRemoved: () => visual.controller.removed };
-    }
-    if (definition.itemId === 'lightbulb') {
-      const visual = await createLightbulbGroundSprite(this.groundAssets, { skinId: definition.skinId });
-      visual.model.userData.count = definition.count;
-      return visual;
-    }
-    if (definition.itemId === 'lantern') {
-      const visual = await createLanternGroundSprite(this.groundAssets, { skinId: definition.skinId });
-      visual.model.userData.count = definition.count;
-      return visual;
-    }
-    if (isHatId(definition.itemId)) {
-      const visual = await createHatGroundSprite(this.hatAssets, definition.itemId, definition.skinId);
-      Object.assign(visual.model.userData, {
-        itemId: definition.itemId, skinId: definition.skinId, count: definition.count,
-      });
-      return visual;
-    }
-    if (GROUND_ITEM_DEFINITIONS[definition.itemId]) {
-      const visual = await createGroundItemSprite(this.groundAssets, definition.itemId, definition.skinId);
-      visual.model.userData.count = definition.count;
-      return visual;
-    }
+    const factory = this.prefabs.get(definition.itemId);
+    const visual = await (factory ? factory.create(definition) : this.createIconVisual(definition));
+    Object.assign(visual.model.userData, {
+      itemId: definition.itemId, skinId: definition.skinId, count: definition.count,
+    });
+    return visual;
+  }
+
+  private async createIconVisual(definition: GroundItemDefinition): Promise<GroundItemVisual> {
     const atlasPath = definition.atlas ?? DEFAULT_ATLAS;
     let atlasRequest = this.atlasRequests.get(atlasPath);
     if (!atlasRequest) {

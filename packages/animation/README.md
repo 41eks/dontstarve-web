@@ -1,5 +1,34 @@
 # @dontstarve-web/animation
 
+## DST 动画实体
+
+`@dontstarve-web/animation/archiveSprite` 提供 `ArchiveSpriteAssets` 和
+`createArchiveSprite(assets, definition, options?)`，负责并行加载 animation/build/皮肤资源、
+选择 bank 和动画、解析符号覆盖、创建模型和内部 visual Group，以及逐帧绘制。
+调用方传入资源定义；该模块不依赖 prefab 目录、物品 ID 或库存事件。
+
+```ts
+import { ArchiveSpriteAssets, createArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+
+const assets = new ArchiveSpriteAssets(`${import.meta.env.BASE_URL}dst/data/anim`);
+const sprite = await createArchiveSprite(assets, {
+  animationArchive: 'torch.zip', buildArchives: ['swap_torch.zip'],
+  bank: 'torch', animation: 'idle', loop: false,
+}, { name: 'Torch' });
+scene.add(sprite.model);
+sprite.update(dt);
+sprite.setPaused(true);
+sprite.dispose(); // 释放实体几何；共享材质和纹理由 assets 持有
+assets.dispose(); // 所有使用此缓存的实体移除后释放共享资源
+```
+
+`definition.symbolOverrides` 指定源符号对应的 build archive 和替换符号；
+`options.skinArchive` 指定皮肤 build，缺少的符号回退到基础 build。
+`options.scale` 默认为 `0.02`，Y 轴翻转用于 DST 的二维坐标。
+每帧部件合并为一个几何体，保留源图层顺序和连续材质组；内部 visual 已注册到
+实体绘制排序系统。`setAnimation(name)` 切换同一 bank 的动画，`setPaused(boolean)`
+控制更新，具体掉落和库存行为由 prefab 层监听事件后调用。
+
 ## DST 图片 XML 索引
 
 `images/` 下的 XML 文件原样提取自：

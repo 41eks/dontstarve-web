@@ -1,10 +1,8 @@
 // src/universal.ts
 
 import * as THREE from 'three';
-import { DstLightingRenderer } from './dstLighting';
+import type { DstLightingRenderer } from './dstLighting';
 import { CursorLabelUi } from '@dontstarve-web/ui/cursor-label';
-import { initialSave } from './save/initialSave';
-import { getDstCycle } from './tuning';
 const scene = new THREE.Scene();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -52,13 +50,11 @@ function resizeRendererToDisplaySize() {
 // Lambert's diffuse BRDF divides irradiance by PI; this keeps white neutral.
 scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
 
-const dstLighting = await DstLightingRenderer.create(
-  renderer,
-  `${import.meta.env.BASE_URL}dst/data/images/colour_cubes`,
-  {
-    season: initialSave.world.systems.season?.name ?? 'spring',
-    phase: getDstCycle(initialSave.world.elapsedSeconds).phase,
-  },
-);
+// main.ts publishes the initialized renderer before starting any scene tasks.
+// Importing the shared view no longer starts colour-cube fetches or loads saves.
+let dstLighting: DstLightingRenderer;
+window.addEventListener('game:lighting-ready', (event) => {
+  dstLighting = event.detail;
+}, { once: true });
 
 export { cursorUi, dstLighting, scene, renderer, resizeRendererToDisplaySize };

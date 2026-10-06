@@ -14,6 +14,7 @@ import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedE
 import type { HammerTarget } from './hammer';
 import { nextReskin, type ReskinTarget } from './reskin_tool';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { isPlayerNearby } from './playerProximity';
 
 export interface AnimatedBuildingDefinition {
     archive: string;
@@ -83,9 +84,6 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     isPlayerNearby: boolean;
     skinId?: string;
 }
-
-const PROXIMITY_ENTER_DISTANCE = 9;
-const PROXIMITY_EXIT_DISTANCE = 10;
 
 export class AnimatedBuildingPlacement<BuildId extends string> {
     private disposed = false;
@@ -524,17 +522,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const definition = this.definitions[building.buildId];
         if (!definition.onProximity) return;
 
-        const dx = this.player.position.x - building.model.position.x;
-        const dz = this.player.position.z - building.model.position.z;
-        const threshold = building.isPlayerNearby
-            ? PROXIMITY_EXIT_DISTANCE
-            : PROXIMITY_ENTER_DISTANCE;
-        const isPlayerNearby = dx * dx + dz * dz <= threshold * threshold;
-        if (isPlayerNearby === building.isPlayerNearby) return;
+        const nearby = isPlayerNearby(this.player.position, building.model.position, building.isPlayerNearby);
+        if (nearby === building.isPlayerNearby) return;
 
-        building.isPlayerNearby = isPlayerNearby;
-        if (!isPlayerNearby) this.closeInteraction(building);
-        const onProximityChange = isPlayerNearby ? definition.onturnon : definition.onturnoff;
+        building.isPlayerNearby = nearby;
+        if (!nearby) this.closeInteraction(building);
+        const onProximityChange = nearby ? definition.onturnon : definition.onturnoff;
         onProximityChange?.({
             model: building.model,
             animation: building.animation,

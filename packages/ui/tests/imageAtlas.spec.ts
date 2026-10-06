@@ -144,8 +144,7 @@ test('decodes HUD and inventory atlases in one worker and shares cached results'
     };
   }, moduleUrl);
 
-  expect(workers).toHaveLength(1);
-  expect(workers[0]).toContain('imageAtlas.worker.ts');
+  expect(workers.filter((url) => url.includes('imageAtlas.worker.ts'))).toHaveLength(1);
   expect(archiveDownloads).toBe(1);
   expect(result).toMatchObject({
     sameRequest: true,
@@ -158,7 +157,7 @@ test('decodes HUD and inventory atlases in one worker and shares cached results'
     hasElementMap: true,
   });
   expect(result.inventoryPages).toBeGreaterThan(1);
-  await expect(page.locator('dst-status-hud .world-clock__hand')).toHaveAttribute('data-loaded', 'true');
+  await expect(page.locator('dst-status-hud .world-clock__animation')).toHaveAttribute('data-state', 'ready');
 });
 
 test('retries failed worker downloads and keeps processing after an atlas parse error', async ({ page, context }) => {

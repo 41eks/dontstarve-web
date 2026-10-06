@@ -2,6 +2,10 @@
 
 https://41eks.github.io/dontstarve-web/
 
+首页保留 Hamlet 主菜单的展示内容；点击“论坛”打开项目介绍、Klei 社区和项目反馈链接，可用“关闭”按钮或 `Esc` 返回。介绍内容直接写在 `index.html` 的原生 `dialog` 中，构建后的初始 HTML 即可读取，无需等待动画加载。首页标题、描述、canonical 和分享元信息也在 `index.html` 中；`public/sitemap.xml` 仅列出首页，可在站长工具中提交 `https://41eks.github.io/dontstarve-web/sitemap.xml`。更换部署域名或路径时，同步修改 canonical、`og:url` 与 sitemap 的地址。生产构建显示首页，开发模式仍直接进入游戏。
+
+右上角世界时钟使用原版 `clock_transitions.zip`、`moon_phases_clock.zip` 和 `moon_phases.zip`，按 `widgets/uiclock.lua` 的地表时钟逻辑跟随场景时间。当前世界使用默认 16 格、每格 30 秒：白天 300 秒、黄昏 120 秒、夜晚 60 秒；指针每 480 秒转一圈，白天跨格时播放太阳脉动，昼夜切换播放过渡动画，月相按原版 20 天周期变化。日期和指针从存档的 `world.elapsedSeconds` 恢复。
+
 ## 调试命令（debugCommand）
 
 `c_give("backpack")` 获取背包，第二个参数为数量（默认 `1`，例如 `c_give("backpack", 2)`），每个占一格。拖到身体装备槽或右键背包即可装备，角色显示 `swap_backpack.zip` 的原版外观；右侧播放 `anim/ui_backpack_2x4.zip` 的 `open` 动画并显示 2 列 × 4 行的 8 个储物格，可与物品栏、其他容器拖放物品，材料可用于制作。Shift + 右键丢弃时使用原版 `anim/backpack.zip` 的 bank `backpack1`、`anim` 地面姿态和 `anim/swap_backpack.zip` 的 build，点击可拾回。支持 36 个原版皮肤及其实际库存图标 atlas；可在制作面板选择皮肤，或装备清洁扫把右键地面背包循环换肤。拾回和重新装备保留皮肤，隐形皮肤仅隐藏穿戴外观，地面姿态仍可见。卸下时播放 `close` 并隐藏储物格，再次装备时恢复内容；当前储物格属于玩家，同一玩家的多个背包共用这些格子。皮肤、地面背包和格子内容随 `c_save()` 保存和恢复。
@@ -11,10 +15,23 @@ https://41eks.github.io/dontstarve-web/
 | 命令 | 参数与作用 | 示例 |
 | --- | --- | --- |
 | `c_give("item_id", count)` | 向物品栏添加物品。`count` 可省略，默认 `1`，必须为正的安全整数；按堆叠上限分配。未知物品或物品栏空间不足时失败。 | `c_give("torch")`、`c_give("opalstaff")`、`c_give("pitchfork")`、`c_give("hammer")`、`c_give("meatballs", 10)` |
-| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、岩石、草、树苗、池塘和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("rock1")`、`c_spawn("grass")`、`c_spawn("sapling")`、`c_spawn("pond")`、`c_spawn("nightmaregrowth")` |
+| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、伯尼、岩石、草、树苗、池塘和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("bernie_inactive")`、`c_spawn("rock1")`、`c_spawn("grass")`、`c_spawn("sapling")`、`c_spawn("pond")`、`c_spawn("nightmaregrowth")` |
 | `c_save()` | 无参数。将当前游戏状态（包括挖过的地皮）导出并下载为 `initial-world.json`，同时在画面上方偏右显示原版 `anim/saving.zip` 的保存动画（`save_pre` → `save_loop` → `save_post`），结束后隐藏；保存超过 0.5 秒显示“正在保存…”。快速保存也会完整播放一轮动画；失败时结束提示并报告错误。要作为初始存档加载，将下载文件放到 `public/saves/initial-world.json` 后重新加载页面。 | `c_save()` |
+| `c_setsanity(percent)` | 设置 Wilson 的理智比例；`percent` 为必填的 `0` 到 `1` 数字（上限 200），同步状态栏和低理智滤镜，并随 `c_save()` 保存。调色按每 10% 一档四舍五入；实际理智、晃动速度和幅度保留连续值。 | `c_setsanity(0)`、`c_setsanity(0.175)`、`c_setsanity(1)` |
 
 命令支持单引号或双引号、英文或中文括号（也可混用）、额外空白及末尾分号；`c_give` 的参数分隔符也支持中文逗号。每次提交一条命令。
+
+低理智滤镜使用原版 `images/colour_cubes/insane_day_cc.tex`、`insane_dusk_cc.tex` 和 `insane_night_cc.tex`，按昼夜与季节调色同步渐变。调色将理智比例四舍五入到最近的 10% 档位（0%、10%、…、100%），再按 `colourcube.lua` 的平方曲线计算 `(1 - 档位比例)²`；例如 `c_setsanity(0.175)` 保留理智 35/200，调色按 20% 计算，强度为 0.64；`c_setsanity(0.149)` 按 10% 计算，强度为 0.81。原版 Lua 的曲线未作这种分档。世界画面边缘按 `postprocess_distort.ksh` 晃动，速度和幅度仍使用实际理智比例，速度为原版扭曲系数 `1` 时的一半，中心保持稳定；HUD 不受滤镜影响。旧存档未提供理智时沿用状态栏的 35/200，`c_setsanity(1)` 可恢复满理智画面。
+
+调色资源由 `src/main.ts` 显式调用 `DstLightingRenderer.create()` 并行加载，完成后通过 `game:lighting-ready` 事件发布实例，`src/universal.ts` 接收后供场景使用。场景在事件完成后启动；加载失败会中止启动。单独导入 `universal.ts` 不会请求调色资源或读取存档。
+
+地面物品通过 `GroundPrefabRegistry` 选择 prefab。各 prefab TS 自己导出 `createXXXGroundFactory(context)`，绑定地面 sprite 创建、专用缓存和捕获策略，并在自身 `model` 上监听 `ondropped`、`onputininventory`；应用的 `GroundItemManager` 只提供资源路径和世界上下文，在成功掉落、成功拾取（包括虫网捕获）后分发事件，失败的库存操作不触发事件。恢复存档和换肤使用 `onload` 初始化地面状态，不重放掉落效果。Bernie、提灯、荧光果、蝴蝶和萤火虫的行为分别定义在对应 prefab TS 中；移除实体时释放事件监听，管理器销毁时由注册表释放资源缓存。
+
+通用地面动画的加载、bank/动画选择、皮肤与符号覆盖、模型创建和逐帧绘制位于 `packages/animation/src/archiveSprite.ts`。prefab 层传入资源定义，保留物品 ID、皮肤校验和库存事件；`createGroundItemSprite` 与 `GroundItemAssets` 的原有调用方式保持兼容。
+
+点击地面物品拾取时，与木箱共用玩家距离规则：水平距离进入 9 个场景单位内（含边界）后允许拾取，超过 10 个单位后失效，重新靠近到 9 个单位内恢复。距离以物品脚点计算，忽略高度；每帧及点击转入库存前检查当前位置。距离过远或库存已满时，物品留在地面，不播放拾取动画或触发 `onputininventory`。规则适用于普通物品、帽子、伯尼及图标回退物品，包括从存档或命令生成的物品；虫网捕获继续使用原有捕获距离。
+
+`c_give("bernie_inactive")` 获取伯尼，数量可指定为 `c_give("bernie_inactive", 2)`，每只占一格。Shift + 右键物品槽放到地面，也可用 `c_spawn("bernie_inactive")` 直接在玩家位置生成。地面形态按玩家实际理智比例切换：低于 15%（Wilson 理智低于 30/200）显示 `bernie_big`，其余显示 `bernie_active`；`c_setsanity(0.1)` 和 `c_setsanity(0.175)` 可验证两种形态。使用原版 `bernie.zip` / `bernie_big.zip` 的 `idle_loop` 和共享 `bernie_build.zip`，支持艾希莉、小火花两种皮肤。点击任一形态拾回时仍为 `bernie_inactive`；位置、实体 ID、皮肤和物品数量随 `c_save()` 保存，恢复时根据玩家理智重新选择形态。当前按请求让 Wilson 也能触发两种地面形态，实现待机外观与拾取，不包含原版 Willow 限制、技能、跟随、战斗、耐久和变身冷却。
 
 
 
@@ -58,6 +75,6 @@ https://41eks.github.io/dontstarve-web/
 | 树苗 | `sapling`、`sapling_moon` |
 | 池塘 | `pond` |
 | 场景装饰 | `nightmaregrowth` |
-| 生物 | `fireflies`、`beefalo` |
+| 生物 | `fireflies`、`beefalo`、`bernie_inactive`（地面形态由理智决定） |
 
 `c_give` 可用的物品 ID 由 [src/inventoryItems.ts](src/inventoryItems.ts) 汇总的物品定义决定；命令解析见 [src/debugCommands.ts](src/debugCommands.ts)，场景实体的创建、恢复、导出、更新和销毁集中声明在 [src/sceneEntities.ts](src/sceneEntities.ts)，由 [src/entityRegistry.ts](src/entityRegistry.ts) 统一调度；`c_spawn` 的支持 ID 与落点规则由对应注册项决定。

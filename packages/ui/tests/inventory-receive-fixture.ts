@@ -26,7 +26,7 @@ export async function createReceiveFixture() {
   const scene = new THREE.Scene();
   const ground = new GroundItemManager(scene, camera, { domElement: canvas } as unknown as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', (item, _action, source) => inventory.add(item.itemId, item.count, item.skinId,
-      inventoryReceiveEffect(inventoryBar, camera, canvas, source)), '/dst/data/anim', undefined,
+      inventoryReceiveEffect(inventoryBar, camera, canvas, source)), '/dst/data/anim', new THREE.Group(), undefined,
     { isNight: () => true, getPlayerPositions: () => [] });
   return {
     inventory, inventoryBar,

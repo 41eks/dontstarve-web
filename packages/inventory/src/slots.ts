@@ -14,6 +14,7 @@ export interface ItemSlot {
 const DEFAULT_MAX_STACK = 40;
 const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   backpack: 1,
+  bernie_inactive: 1,
   torch: 1,
   lantern: 1,
   yellowstaff: 1,

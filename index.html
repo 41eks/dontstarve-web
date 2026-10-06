@@ -1,14 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <link rel="preload" href="%BASE_URL%dst/data/databundles/images.zip" as="fetch" crossorigin="anonymous" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>2dot5d</title>
+    <title>饥荒猪镇 Hamlet 网页演示 | dontstarve-web</title>
+    <meta name="description" content="dontstarve-web 饥荒网页实验：以 Don't Starve: Hamlet 猪镇主菜单为入口，体验原版风格的动画、音乐与浏览器中的角色、物品栏和场景交互。" />
+    <link rel="canonical" href="https://41eks.github.io/dontstarve-web/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:site_name" content="dontstarve-web" />
+    <meta property="og:title" content="饥荒猪镇 Hamlet 网页演示 | dontstarve-web" />
+    <meta property="og:description" content="从 Hamlet 猪镇主菜单进入饥荒网页实验，体验动画、音乐、角色与场景交互。" />
+    <meta property="og:url" content="https://41eks.github.io/dontstarve-web/" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="stylesheet" href="/src/pages/HamletMainScreenPage/forum.css" />
   </head>
   <body>
     <div id="app"></div>
+    <!-- Keep the forum's readable content in the initial HTML, outside React's game mount. -->
+    <dialog id="hamlet-forum" aria-labelledby="hamlet-forum-title">
+      <form method="dialog" class="forum-close">
+        <button type="submit" autofocus aria-label="关闭论坛，返回主菜单">关闭</button>
+      </form>
+      <h1 id="hamlet-forum-title">饥荒猪镇 Hamlet 网页演示</h1>
+      <p>dontstarve-web 是一个饥荒浏览器实验项目，以《Don't Starve: Hamlet》的猪镇主菜单为入口，展示原版风格的标题动画、城镇猪动画与背景音乐。</p>
+      <h2>如何体验</h2>
+      <p>关闭此窗口，点击“开始游戏！”，等待世界生成画面结束后进入场景。你可以体验角色移动、物品栏与装备，以及建筑和地面物品的交互；项目仍在开发中。</p>
+      <h2>社区与项目反馈</h2>
+      <p>本页面是社区实验项目。关于原版饥荒猪镇的讨论，可以访问 Klei 社区；关于本网页演示的问题和建议，可以在项目仓库反馈。</p>
+      <nav aria-label="饥荒社区与项目链接">
+        <a href="https://forums.kleientertainment.com/forums/forum/205-general-discussion/" target="_blank" rel="noopener noreferrer">Klei 饥荒猪镇 Hamlet 论坛</a>
+        <a href="https://github.com/41eks/dontstarve-web" target="_blank" rel="noopener noreferrer">dontstarve-web 项目源码</a>
+        <a href="https://github.com/41eks/dontstarve-web/issues" target="_blank" rel="noopener noreferrer">网页演示问题与建议</a>
+      </nav>
+    </dialog>
     <script type="module" src="/src/bootstrap.tsx"></script>
   </body>
 </html>

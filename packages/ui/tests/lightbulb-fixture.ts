@@ -40,7 +40,7 @@ export async function checkLightbulbLighting() {
   bulb.dispose();
   const disposed = sample(0);
   let acceptsPickup = false;
-  const manager = new GroundItemManager(scene, camera, renderer, '/missing-atlas.zip', () => acceptsPickup, '/dst/data/anim');
+  const manager = new GroundItemManager(scene, camera, renderer, '/missing-atlas.zip', () => acceptsPickup, '/dst/data/anim', new THREE.Group());
   const definition = { itemId: 'lightbulb', name: '荧光果', icon: 'missing.tex', count: 1 };
   const failedDrop = await manager.drop(definition, new THREE.Vector3(5, 20, 0), () => false);
   const failedDropBrightness = sample(5);

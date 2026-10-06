@@ -113,6 +113,7 @@ export async function startScene(
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
   pickLightbulbs: (count: number, sourcePosition: THREE.Vector3) => boolean = () => false,
+  onClockTick?: (elapsedSeconds: number, dt: number) => void,
 ) {
   const entities = createSceneEntities(world, consumeBufferedBuild, pickupGroundItem,
     onBuildingInteraction, onFlowerPlanted, pickLightbulbs);
@@ -133,9 +134,12 @@ export async function startScene(
   middleTasks.push(updateBeforePhysics);
   backTasks.push(updateEntities);
   let elapsedSeconds = initialSave.world.elapsedSeconds;
+  dstLighting.setPhase(getDstCycle(elapsedSeconds).phase);
+  onClockTick?.(elapsedSeconds, 0);
   const updateClock = (dt: number) => {
     elapsedSeconds += dt;
     dstLighting.setPhase(getDstCycle(elapsedSeconds).phase);
+    onClockTick?.(elapsedSeconds, dt);
   };
   backTasks.push(updateClock);
   const getSaveState = (): Omit<RuntimeSaveState, 'inventory'> => {

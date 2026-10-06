@@ -1,7 +1,7 @@
 import { BACKPACK_SLOT_COUNT, PLAYER_BACKPACK_CONTAINER_ID, type InventoryState } from '@dontstarve-web/inventory';
 import { deserializeSave, type SaveCatalog } from './deserialize';
 import { STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition } from '@dontstarve-web/prefab/containers';
-import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
+import type { SaveDocument, SavedContainer, SavedEntity, SavedPlayer, SavedTransform } from './types';
 import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
 
 export interface RuntimeSaveState {
@@ -9,6 +9,7 @@ export interface RuntimeSaveState {
   playerTransform: SavedTransform;
   inventory: InventoryState;
   elapsedSeconds: number;
+  playerStats?: SavedPlayer['stats'];
   tiles?: TurfTileSave[];
 }
 
@@ -55,6 +56,7 @@ export function serializeSave(
       local: {
         ...structuredClone(template.players.local),
         transform: structuredClone(state.playerTransform),
+        ...(state.playerStats === undefined ? {} : { stats: { ...state.playerStats } }),
         inventory: {
           containers: {
             'player:inventory': containers.get('player:inventory')!,

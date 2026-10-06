@@ -40,6 +40,27 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
+  it('round trips ground Bernie as an inactive inventory item with its identity and skin', () => {
+    const { template, state } = fixture();
+    const bernie = { id: 'e_bernie', transform: { position: [12, 0, 15] as [number, number, number], rotationY: 0 },
+      components: { stack: { itemId: 'bernie_inactive', skinId: 'bernie_cat', count: 1 } } };
+    state.entities.ground_item = [bernie];
+    const saved = deserializeSave(serializeSave(template, {
+      ...state, playerStats: { health: 150, hunger: 105, sanity: 20 },
+    }, catalog), catalog);
+    expect(saved.world.entities.ground_item).toEqual([bernie]);
+    expect(saved.players.local.stats?.sanity).toBe(20);
+  });
+  it('saves current sanity rather than the loaded value, preserving it through reload', () => {
+    const { template, state } = fixture();
+    template.players.local.stats = { health: 150, hunger: 105, sanity: 200 };
+    const playerStats = { health: 150, hunger: 105, sanity: 35 };
+    const saved = deserializeSave(serializeSave(template, { ...state, playerStats }, catalog), catalog);
+    expect(saved.players.local.stats).toEqual(playerStats);
+    expect(template.players.local.stats.sanity).toBe(200);
+    const resaved = deserializeSave(serializeSave(saved, state, catalog), catalog);
+    expect(resaved.players.local.stats).toEqual(playerStats);
+  });
   it('round trips equipped backpack contents, including the eighth slot', () => {
     const { template, state } = fixture();
     state.inventory.slots.push(

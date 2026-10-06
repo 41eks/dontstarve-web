@@ -89,6 +89,10 @@ def main():
     # backpack.lua: world bank backpack1/anim comes from backpack.zip, while
     # both ground and worn swap_body images come from swap_backpack.zip.
     add('backpack', 'backpack1', 'swap_backpack', 'anim', 'backpack', animation_archive='backpack.zip')
+    # Inventory Bernie rests in bernie.zip; both animated ground forms share
+    # bernie_build.zip, with the large bank supplied by bernie_big.zip.
+    add('bernie_inactive', 'bernie', 'bernie_build', 'inactive', 'bernie_inactive', animation_archive='bernie.zip')
+    assets.add('anim/bernie_big.zip')
     # mininglantern.lua registers lantern, with separate ground and worn builds.
     add('lantern', 'lantern', 'lantern', 'idle_off', 'mininglantern')
     assets.add('anim/swap_lantern.zip')

@@ -10,8 +10,9 @@ export async function checkGroundItemPickup() {
   renderer.setSize(320, 320);
   document.body.append(renderer.domElement);
   const pickedUp: string[] = [];
+  const player = new THREE.Group();
   const manager = new GroundItemManager(scene, camera, renderer, '/missing-inventory-atlas.zip',
-    (item) => { pickedUp.push(item.itemId); return true; }, '/dst/data/anim');
+    (item) => { pickedUp.push(item.itemId); return true; }, '/dst/data/anim', player);
   // Invalid UI icon/atlas deliberately proves every supported item uses its world art.
   const definition = (id: string) => ({ itemId: id, name: id, icon: 'missing.tex', count: 1 });
   const common = ['torch', 'lantern', 'lightbulb', 'yellowstaff', 'meatballs', 'cutgrass', 'twigs', 'log', 'rocks', 'goldnugget',
@@ -19,7 +20,9 @@ export async function checkGroundItemPickup() {
     'wall_stone_item', 'wall_wood_item', 'wall_hay_item', 'wall_ruins_item',
     'wall_moonrock_item', 'wall_dreadstone_item', 'wall_scrap_item', 'axe', 'hammer'];
   const failures: string[] = [];
+  let blockedDistantPickups = 0;
   for (const id of common) {
+    player.position.set(9.01, 0, 0);
     const dropped = await manager.drop(definition(id), new THREE.Vector3(0, 9, 0), () => true);
     manager.update(0.05, camera.quaternion);
     const { object: model } = manager.renderEntities[0];
@@ -33,10 +36,15 @@ export async function checkGroundItemPickup() {
     const point = box.getCenter(new THREE.Vector3()).project(camera);
     renderer.render(scene, camera);
     const bounds = renderer.domElement.getBoundingClientRect();
-    renderer.domElement.dispatchEvent(new MouseEvent('pointerdown', {
+    const click = () => renderer.domElement.dispatchEvent(new MouseEvent('pointerdown', {
       clientX: bounds.left + (point.x + 1) * bounds.width / 2,
       clientY: bounds.top + (1 - point.y) * bounds.height / 2, button: 0,
     }));
+    click();
+    if (manager.exportRecords().length === 1 && !pickedUp.includes(id)) blockedDistantPickups++;
+    else failures.push(`${id}:distant pickup`);
+    player.position.set(9, 100, 0);
+    click();
     if (!dropped || manager.exportRecords().length || pickedUp.at(-1) !== id) failures.push(id);
   }
   let inventoryMutations = 0;
@@ -49,6 +57,7 @@ export async function checkGroundItemPickup() {
   const remaining = manager.exportRecords().length;
   await manager.spawnFromSave('restore-native', definition('meatballs'), new THREE.Vector3(2, 0.25, 3));
   const restoredFoot = manager.exportRecords()[0].transform.position;
+  manager.dispose();
   renderer.dispose();
-  return { failures, pickedUp, failedLoad, inventoryMutations, failedTransfer, remaining, restoredFoot };
+  return { failures, pickedUp, blockedDistantPickups, failedLoad, inventoryMutations, failedTransfer, remaining, restoredFoot };
 }

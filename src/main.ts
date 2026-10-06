@@ -31,7 +31,8 @@ import { PointerRaycaster } from '@dontstarve-web/prefab/pointerRaycaster';
 import { view } from './view';
 import { BACKPACK_SLOT_COUNT, PLAYER_BACKPACK_CONTAINER_ID, backpackSlotAddress, inventorySlotAddress, PreparedFoodSlot, StorageSlot } from '@dontstarve-web/inventory';
 import { player } from './player';
-import { cursorUi, dstLighting } from './universal';
+import { cursorUi, dstLighting, renderer } from './universal';
+import { DstLightingRenderer } from './dstLighting';
 import { createChestInventoryPanel } from './chestInventoryPanel';
 import {
   STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition, isStorageBuildingId,
@@ -43,6 +44,7 @@ import {
   createInventoryStore,
 } from './inventory';
 import { locomotor, startScene } from './scene';
+import { getDstClock, getDstCycle } from './tuning';
 import { initialSave } from './save/initialSave';
 import { inventoryStateFromSave } from './save/inventoryState';
 import { SAVE_CATALOG } from './save/catalog';
@@ -50,11 +52,28 @@ import { serializeSave } from './save/serialize';
 import { downloadSaveJson } from './save/download';
 import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
+import { playerStats, setPlayerSanityPercent, WILSON_MAX_SANITY } from './playerStats';
+
+const lighting = await DstLightingRenderer.create(
+  renderer,
+  `${import.meta.env.BASE_URL}dst/data/images/colour_cubes`,
+  {
+    season: initialSave.world.systems.season?.name ?? 'spring',
+    phase: getDstCycle(initialSave.world.elapsedSeconds).phase,
+    sanityPercent: playerStats.sanity / WILSON_MAX_SANITY,
+  },
+);
+window.dispatchEvent(new CustomEvent('game:lighting-ready', { detail: lighting }));
 
 UpdateSoundListener(player.position);
 backTasks.push(() => UpdateSoundListener(player.position));
 
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
+function syncPlayerStats(): void {
+  gameUi.statusHud.setStats(playerStats);
+  dstLighting.setSanityPercent(playerStats.sanity / WILSON_MAX_SANITY);
+}
+syncPlayerStats();
 const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
 const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, 'cookpot');
 const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, 'icebox');
@@ -224,6 +243,7 @@ const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting,
     playerAnimation?.playPickup();
     return true;
   },
+  (elapsedSeconds, dt) => gameUi.statusHud.setClock(getDstClock(elapsedSeconds), dt),
 );
 if (playerAnimation) {
   const bugNet = new BugNetCaptureController(view, playerAnimation, locomotor,
@@ -316,11 +336,14 @@ gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => gameUi.savingIndicator.whileSaving(() => {
     const json = serializeSave(initialSave, {
-      ...getSaveState(), inventory: inventory.exportState(),
+      ...getSaveState(), inventory: inventory.exportState(), playerStats,
     }, SAVE_CATALOG, lastSavedSnapshotId);
     downloadSaveJson(json);
     lastSavedSnapshotId = (JSON.parse(json) as typeof initialSave).snapshot.id;
-  })).then((result) => {
+  }), (percent) => {
+    setPlayerSanityPercent(percent);
+    syncPlayerStats();
+  }).then((result) => {
     if (result.ok) console.info(result.message);
     else console.warn(result.message);
   }).catch((error: unknown) => {
