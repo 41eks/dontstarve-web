@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getDstCycle, TUNING } from '../../../src/tuning';
+import { getDstCycle } from '../../../src/tuning';
 
 describe('DST default day cycle', () => {
 

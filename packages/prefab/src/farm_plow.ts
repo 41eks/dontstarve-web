@@ -100,7 +100,7 @@ export class FarmPlowPlacement {
     this.cancel();
     const version = this.previewVersion;
     this.takeItem = takeItem;
-    this.cursor.show(': 部署耕地机（Esc 取消）', 'left');
+    this.cursor.show('鼠标右键：布署', 'right');
     try {
       await this.prepare();
       const preview = await this.create('farm_plow.zip', 'farm_plow', 'idle_place', 'FarmPlowPlacer');
@@ -348,6 +348,9 @@ export class FarmPlowPlacement {
   private async create(archive: string, bank: string, animation: string, name: string): Promise<ArchiveSprite> {
     const sprite = await createArchiveSprite(this.assets, spriteDefinition(archive, bank, animation), { name });
     sprite.model.userData.animationController = sprite;
+    // Placer and temporary FX are returned for rendering too. They must never
+    // count as tile occupants; persistent plows/decor replace these tags on add.
+    sprite.model.userData.tags = ['FX', 'NOCLICK'];
     return sprite;
   }
   private center(point: Pick<THREE.Vector3, 'x' | 'z'>): THREE.Vector3 {
@@ -385,8 +388,8 @@ export class FarmPlowPlacement {
   }
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (!this.takeItem || event.defaultPrevented) return;
-    if (event.button === 2) { event.preventDefault(); this.cancel(); return; }
-    if (event.button !== 0) return;
+    if (event.button === 0) { event.preventDefault(); this.cancel(); return; }
+    if (event.button !== 2) return;
     event.preventDefault(); event.stopImmediatePropagation(); this.pointer.trackPointer(event);
     const point = this.pointer.groundPoint();
     if (!point || !this.preview) return;

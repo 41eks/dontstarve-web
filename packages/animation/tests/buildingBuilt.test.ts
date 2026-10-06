@@ -7,17 +7,7 @@ import {
   type AnimatedBuildingDefinition,
 } from '../../prefab/src/animatedBuildingPlacement';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
-import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
-import { TENT_DEFINITION } from '../../prefab/src/tent';
-import { FIRE_PIT_DEFINITION } from '../../prefab/src/firepit';
-import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
-import { DRAGONFLY_CHEST_DEFINITION } from '../../prefab/src/dragonfly_chest';
-import { CAMPFIRE_DEFINITION } from '../../prefab/src/campfire';
-import { SALT_BOX_DEFINITION } from '../../prefab/src/saltbox';
-import { NIGHT_LIGHT_DEFINITION } from '../../prefab/src/nightlight';
-import { PIG_HOUSE_DEFINITION } from '../../prefab/src/pighouse';
-import { MUSHROOM_LIGHT_DEFINITIONS } from '../../prefab/src/mushroom_light';
 import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';

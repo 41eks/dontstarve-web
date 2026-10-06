@@ -2,10 +2,7 @@ import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadAnimationArchive } from '../src/animationAssets';
 import { createAnimatedSpriteFactory } from '../src/sprite';
-import { createMoonTreeForest } from '../../prefab/src/moontree';
 import { ProximityEntities } from '../../prefab/src/proximityEntities';
-import { TILE_SIZE } from '../../prefab/src/tile';
-import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 
 vi.mock('../src/animationAssets', async (importOriginal) => {
   const original = await importOriginal<typeof import('../src/animationAssets')>();

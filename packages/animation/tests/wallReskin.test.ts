@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { WallsPlacement, WALL_DEFINITIONS, type WallId } from '../../prefab/src/walls';
+import { WallsPlacement, type WallId } from '../../prefab/src/walls';
 import { WALL_SKIN_ARCHIVES, wallWorldSkin } from '../../prefab/src/wallSkins';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import type { WorldContext } from '../../prefab/src/worldContext';

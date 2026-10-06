@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets, createGroundItemSprite } from '../../prefab/src/groundItems';
+import { GroundItemAssets, createGroundItemSprite } from '../../prefab/src/groundItems';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { parseImageAtlasXml } from '../src/imageAtlas';
 

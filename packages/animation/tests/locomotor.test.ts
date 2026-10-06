@@ -1,9 +1,7 @@
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
-import { Locomotor, findGroundPath, setupLocomotorInput } from '../../prefab/src/locomotor';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
-import type { WorldContext } from '../../prefab/src/worldContext';
+import { Locomotor, findGroundPath } from '../../prefab/src/locomotor';
 
 afterEach(() => {
   vi.restoreAllMocks();

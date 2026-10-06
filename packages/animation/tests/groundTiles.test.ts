@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { GROUND_TILE_DEFINITIONS, groundTileVariant, loadGroundTileAssets } from '../../prefab/src/groundTiles';
+import { groundTileVariant, loadGroundTileAssets } from '../../prefab/src/groundTiles';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {

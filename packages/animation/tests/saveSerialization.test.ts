@@ -6,11 +6,10 @@ import { HAT_ITEM_SPECS } from '../../prefab/src/hats';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
 import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS, INVENTORY_SKIN_SPECS } from '../../ui/src/categories/shared';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
-import { chestContainerId, cookPotContainerId, iceBoxContainerId, inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { chestContainerId, cookPotContainerId, inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { serializeSave, type RuntimeSaveState } from '../../../src/save/serialize';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import type { InventoryStore } from '../../../src/inventory';
-import { buildingContainerId, buildingContainerDefinition } from '../../prefab/src/containers';
 import { WORLD_TILES } from '../../prefab/src/turfMap';
 
 const catalog: SaveCatalog = {

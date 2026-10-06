@@ -1,10 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BulbPlantController, BulbPlantManager, bulbPlantLight, bulbPlantRegrowTime, BULB_PLANT_LIGHT,
-  type BulbPlantVariant, type BulbPlantSaveState } from '../../prefab/src/bulb_plant';
-import { getPrefabLocalLight, setPrefabLocalLight } from '../../prefab/src/localLight';
-import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { BulbPlantController, BulbPlantManager, bulbPlantRegrowTime, BULB_PLANT_LIGHT, type BulbPlantVariant, type BulbPlantSaveState } from '../../prefab/src/bulb_plant';
+import { getPrefabLocalLight } from '../../prefab/src/localLight';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -100,9 +98,6 @@ describe('flower_cave harvesting and regrowth', () => {
     expect(s.controller.canPick).toBe(true);
     expect(s.controller.lightState).toBe('RECHARGING');
   });
-});
-
-describe('lightmap sampling for LightWatcher', () => {
 });
 
 describe('real plant archives, spawning and saving', () => {

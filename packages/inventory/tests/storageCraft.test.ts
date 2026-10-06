@@ -19,10 +19,6 @@ const firepit: InventoryRecipeDefinition = {
   recipeId: 'firepit', productId: 'firepit', productCount: 1,
   ingredients: { log: 2, rocks: 12 }, buffered: true,
 };
-const icebox: InventoryRecipeDefinition = {
-  recipeId: 'icebox', productId: 'icebox', productCount: 1,
-  ingredients: { goldnugget: 2, gears: 1, cutstone: 1 }, buffered: true,
-};
 
 function storageSlot(containerId: string, index: number, stack: InventoryStack | null) {
   return { address: { containerId, slotKey: String(index) }, slot: new StorageSlot(stack) };

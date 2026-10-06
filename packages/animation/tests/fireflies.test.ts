@@ -1,9 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FirefliesAssets, FirefliesController, FIREFLIES_LIGHT } from '../../prefab/src/fireflies';
+import { FirefliesController, FIREFLIES_LIGHT } from '../../prefab/src/fireflies';
 import { getPrefabLightOverride, getPrefabLocalLight } from '../../prefab/src/localLight';
-import { intersectSpriteEntities } from '../../prefab/src/pointerRaycaster';
 import { GroundItemManager } from '../../../src/groundItems';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

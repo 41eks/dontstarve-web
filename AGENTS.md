@@ -1,5 +1,11 @@
 # Repository instructions
 
+## Representative tests
+
+- Keep tests focused on representative behavior: a normal flow, a meaningful boundary or cancellation, and state/resource preservation where relevant. Avoid adding a separate test for every prefab, cosmetic skin, equivalent command spelling, or combination of inputs handled by the same implementation.
+- Sample distinct asset/rendering paths, such as split bank/build archives, symbol overrides, layered sprites and invisible equipment. Use the asset import scripts' `--check` modes for exhaustive catalog/path/byte validation instead of rendering every cosmetic variant in tests.
+- Keep browser tests for actual input, layout, WebGL/audio behavior and a few complete gameplay flows. Cover pure domain rules in unit tests and avoid repeating the same assertion in both suites. Remove obsolete tests and unused fixtures rather than leaving them skipped or excluding them through runner configuration.
+
 ## Debug command documentation
 
 - After each change, check whether debug commands, arguments, behavior, or prefab IDs changed. Update the debug command section of `README.md` in the same change, including syntax, parameters, examples, and supported `c_spawn` IDs; revise or remove outdated entries.

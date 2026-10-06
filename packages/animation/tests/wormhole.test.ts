@@ -1,12 +1,8 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { executeDebugCommand } from '../../../src/debugCommands';
-import type { InventoryStore } from '../../../src/inventory';
-import { EntityRegistry } from '../../../src/entityRegistry';
-import { WormholeManager, WORMHOLE_ID, WORMHOLE_SKINS,
-  WORMHOLE_ENTER_DISTANCE, WORMHOLE_EXIT_DISTANCE } from '../../prefab/src/wormhole';
-import { loadAnim, loadSpriteSkinArchive } from '../src/animationAssets';
+import { WormholeManager, WORMHOLE_SKINS, WORMHOLE_ENTER_DISTANCE, WORMHOLE_EXIT_DISTANCE } from '../../prefab/src/wormhole';
+import { loadSpriteSkinArchive } from '../src/animationAssets';
 
 afterEach(() => {
   vi.restoreAllMocks();

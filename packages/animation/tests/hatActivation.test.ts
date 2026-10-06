@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HatActivationController, HatEquipmentAssets, createHatGroundSprite } from '../../prefab/src/hats';
+import { HatActivationController, HatEquipmentAssets } from '../../prefab/src/hats';
 import { getPrefabLightOverride, getPrefabLocalLight } from '../../prefab/src/localLight';
 import { LanternLightController } from '../../prefab/src/lantern';
 import { smallHash, type AnimElement } from '../src/animationAssets';

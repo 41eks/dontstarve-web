@@ -7,7 +7,6 @@ import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } fro
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
