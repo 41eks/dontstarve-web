@@ -5,6 +5,7 @@ export interface PlacementSaveRecord {
   components: {
     building?: { state: 'idle' | 'closed' | 'open'; skinId?: string };
     health?: { current: number; maximum: number };
+    wall?: import('./wallSkins').WallSaveState;
   };
 }
 

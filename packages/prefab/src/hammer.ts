@@ -43,7 +43,7 @@ export interface HammerTarget {
   /** Ground contact, independent of the billboard's height or camera rotation. */
   readonly position: THREE.Vector3;
   isValid(): boolean;
-  /** Only visual feedback: never calls workable, health, container or loot mutations. */
+  /** Commit one successful HAMMER hit; the prefab owns work count and destruction. */
   playHit(): void;
 }
 

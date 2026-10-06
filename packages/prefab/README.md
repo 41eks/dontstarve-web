@@ -25,6 +25,17 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 `machine_hat`，其余部件使用原始 build；科学机器和炼金引擎保留源码指定的基础特效
 symbol，炼金打印舱的 `researchlab2_pod_fx` 动画层合并到同一帧几何体中。
 
+四种科技建筑按 `scienceprototyper.lua` / `magicprototyper.lua` 的 workable 回调
+接入 `onhit` 和 `onhammered`：4 次成功锤击后掉落配方材料（50%，逐项向上取整），
+生成原版 `structure_collapse_fx.zip` 的 `collapse_small` 木质坍塌效果并移除实体。
+掉落通过 `WorldContext.dropLoot` 交给应用的地面物品管理器，以 `flingLoot()`
+逐件生成。`LootFling` 按 `lootdropper.lua:FlingItem()` 的随机方向、水平 `0–2`、
+向上 `8±4` 和物品/建筑碰撞半径初始化，场景长度换算为 `TILE_SIZE / 4`。
+简化轨迹负责回落、轻微弹跳和停稳；抛起高度只影响 visual，地面脚点用于排序、
+拾取和存档。飞行中保存只保存当前地面位置，读档不重播散射。短暂坍塌特效由
+`AnimatedBuildingPlacement` 更新、排序和释放，不写入存档。皮肤切换保留剩余锤击次数，
+读档则按 Lua 默认恢复 4 次。其他建筑继续使用原有受击反馈。
+
 皮肤 build `.zip` 与贴图 `.dyn` 保留在 `public/dst/data/anim/dynamic/` 下。
 build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制，运行时解码。
 可通过 `python3 packages/prefab/scripts/import-building-skins.py` 重新同步，或用

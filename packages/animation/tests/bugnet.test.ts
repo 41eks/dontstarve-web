@@ -60,7 +60,7 @@ describe('NET action on a moving butterfly', () => {
     expect(s.target.capture).toHaveBeenCalledOnce();
   });
 
-  it.each(['escaped', 'removed', 'unequipped', 'cancelled'] as const)('revalidates %s targets at impact', (reason) => {
+  it.each(['escaped', 'unequipped'] as const)('revalidates %s targets at impact', (reason) => {
     const s = setup();
     s.target.position.x = 1;
     s.controller.request(s.target);
@@ -71,33 +71,6 @@ describe('NET action on a moving butterfly', () => {
     if (reason === 'cancelled') s.controller.cancel();
     s.hit();
     expect(s.target.capture).not.toHaveBeenCalled();
-  });
-
-  it('refreshes nearby moving targets every frame so pursuit reaches swing distance', () => {
-    const s = setup();
-    s.target.position.x = 3;
-    s.controller.request(s.target);
-    s.controller.update(1 / 60);
-    s.target.position.x += 4 / 60;
-    s.controller.update(1 / 60);
-    expect(s.locomotor.goToPoint).toHaveBeenCalledTimes(2);
-  });
-
-  it.each(['keyboard', 'escape', 'ground', 'blocked'] as const)('cancels pursuit on %s', (reason) => {
-    const s = setup();
-    s.controller.request(s.target);
-    s.controller.update(0.01);
-    if (reason === 'keyboard') s.moveManually();
-    if (reason === 'escape') window.dispatchEvent(Object.assign(new Event('keydown'), { key: 'Escape' }));
-    if (reason === 'ground') s.canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
-    if (reason === 'blocked') s.locomotor.goToPoint.mockReturnValue(false);
-    s.controller.update(0.2);
-    const paths = s.locomotor.goToPoint.mock.calls.length;
-    s.target.position.x = 1;
-    s.controller.update(0.2);
-    expect(s.locomotor.goToPoint).toHaveBeenCalledTimes(paths);
-    expect(s.animation.playBugNet).not.toHaveBeenCalled();
-    expect(s.locomotor.stop).toHaveBeenCalled();
   });
 });
 

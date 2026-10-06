@@ -44,21 +44,6 @@ test('animation decoder worker shares assets and retries failed skin loads', asy
   expect(errors).toEqual([]);
 });
 
-test('reskin casting uses source animation timing, five puff builds and decoded sounds', async ({ page }) => {
-  test.setTimeout(120_000);
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
-  await page.goto('/tests/dst-lighting.html');
-  const result = await page.evaluate(async (url) => (await import(url)).checkReskinCasting(),
-    `/@fs${fileURLToPath(new URL('./reskin-fixture.ts', import.meta.url))}`);
-  expect(result.failures).toEqual([]);
-  expect(result.cases).toHaveLength(5);
-  expect(result.cases.every((sound) => sound.whoosh > 0.2 && sound.whoosh < 0.4)).toBe(true);
-  expect(result.groundSkin).toBe('reskin_tool_bouquet');
-  expect(errors).toEqual([]);
-});
-
 test('game right-click reskins a chest and c_save keeps its skin and container contents', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];

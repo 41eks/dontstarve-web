@@ -21,6 +21,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
     return [itemId, {
       ...display,
       maxStack: inventoryItemMaxStack(itemId),
+      ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
       ...(equippable === undefined ? {} : { equippable }),
     }];
   })), ...HAT_ITEM_SPECS };

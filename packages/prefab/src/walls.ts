@@ -1,6 +1,7 @@
 import definitions from './definitions.json' with { type: 'json' };
 import { WallPlacement, type WallDefinition } from './wallPlacement';
 import type { WorldContext } from './worldContext';
+import { WALL_SKIN_ARCHIVES, wallWorldPrefab } from './wallSkins';
 
 /**
  * `wall_*` is the placed world prefab, `wall_*_item` the deployable stack.
@@ -29,7 +30,7 @@ export const WALL_IDS = [
 
 export type WallId = typeof WALL_IDS[number];
 
-export const WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = {
+const BASE_WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = {
     wall_stone: definitions.walls.wall_stone,
     wall_stone_item: definitions.walls.wall_stone,
     wall_stone_2: definitions.walls.wall_stone_2,
@@ -49,6 +50,12 @@ export const WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = {
     wall_scrap: definitions.walls.wall_scrap,
     wall_scrap_item: definitions.walls.wall_scrap,
 };
+
+export const WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = Object.fromEntries(
+    WALL_IDS.map((id) => [id, {
+        ...BASE_WALL_DEFINITIONS[id], skinArchives: WALL_SKIN_ARCHIVES[wallWorldPrefab(id)],
+    }]),
+) as Record<WallId, WallDefinition>;
 
 export function isWallId(value: string): value is WallId {
     return WALL_IDS.some((wallId) => wallId === value);

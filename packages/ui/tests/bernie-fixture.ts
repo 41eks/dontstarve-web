@@ -41,7 +41,12 @@ export async function checkBernieGround() {
     for (const [percent, expected] of [[1, 'bernie_active'], [0.1, 'bernie_big'], [0.15, 'bernie_active'],
       [0.149, 'bernie_big'], [0.151, 'bernie_active'], [0.175, 'bernie_active']] as const) {
       sanity = percent;
-      manager.update(0.05, camera.quaternion);
+      // Size changes now finish their source animation queue before settling.
+      manager.update(0, camera.quaternion);
+      for (let i = 0; model.userData.animation !== 'idle_loop' && i < 80; i++) {
+        manager.update(0.05, camera.quaternion);
+      }
+      if (model.userData.animation !== 'idle_loop') failures.push('transition did not finish');
       if (manager.renderEntities[0].object !== model) failures.push('entity replaced');
       if (JSON.stringify(manager.exportRecords()[0]) !== JSON.stringify(record)) failures.push('record changed');
       if (model.userData.prefab !== expected) failures.push(`${percent}:${model.userData.prefab}`);

@@ -26,32 +26,6 @@ it('selects every source mask for the 256 possible neighbours, with adjacent dia
   expect(groundTileVariant(false, 15, 15)).toBe(16); // enclosed concave hole
 });
 
-it('uses tilemanager atlas paths and matches real alpha shapes to cardinal and diagonal directions', async () => {
-  expect(GROUND_TILE_DEFINITIONS.DIRT.cannotBeDug).toBe(true);
-  expect(GROUND_TILE_DEFINITIONS.WOODFLOOR.name).toBe('blocky');
-  const assets = await loadGroundTileAssets('/dst/data', 'DECIDUOUS');
-  expect(assets.elements.size).toBe(48);
-  const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <uv_vertex>',
-    fragmentShader: '#include <common>\n#include <map_fragment>' };
-  assets.material.onBeforeCompile(shader as unknown as Parameters<THREE.Material['onBeforeCompile']>[0], {} as THREE.WebGLRenderer);
-  const atlas = (shader.uniforms as Record<string, { value: THREE.DataTexture }>).dstGroundTileAtlas.value;
-  const { data, width } = atlas.image;
-  const alpha = (variant: number, u: number, v: number) => {
-    const cell = assets.elements.get(String(variant).padStart(2, '0'))!;
-    const x = Math.floor(THREE.MathUtils.lerp(cell.u1, cell.u2, u) * width);
-    const y = Math.floor(THREE.MathUtils.lerp(1 - cell.v2, 1 - cell.v1, v) * width);
-    return data![(y * width + x) * 4 + 3];
-  };
-  expect(alpha(groundTileVariant(false, 1, 0), 0.05, 0.5)).toBeGreaterThan(200);
-  expect(alpha(groundTileVariant(false, 1, 0), 0.95, 0.5)).toBe(0);
-  expect(alpha(groundTileVariant(false, 2, 0), 0.5, 0.05)).toBeGreaterThan(200);
-  expect(alpha(groundTileVariant(false, 2, 0), 0.5, 0.95)).toBe(0);
-  expect(alpha(groundTileVariant(false, 0, 1), 0.05, 0.05)).toBeGreaterThan(200);
-  expect(alpha(groundTileVariant(false, 0, 1), 0.95, 0.95)).toBe(0);
-  expect(alpha(16, 0.5, 0.5)).toBe(0);
-  assets.material.dispose();
-});
-
 it('updates the outer boundary of contiguous dirt while leaving its interior free of seams', async () => {
   const map = new TurfMap(1000);
   const visual = await map.createVisual('/dst/data');

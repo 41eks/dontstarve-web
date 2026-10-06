@@ -35,10 +35,18 @@ export async function createBernieGroundSprite(assets: GroundItemAssets, world: 
     if (!clip?.frames.length) throw new Error(`Missing Bernie animation ${bank}:${name}`);
     return clip;
   };
-  const animations: Record<BernieAnimationForm, Animation> = {
-    bernie_active: findClip(small, 'bernie'), bernie_big: findClip(big, 'bernie_big'),
-    bernie_inactive: findClip(small, 'bernie', 'inactive'),
-  };
+  const animations = new Map<string, Animation>();
+  for (const [form, parsed, bank] of [
+    ['bernie_active', small, 'bernie'], ['bernie_big', big, 'bernie_big'],
+  ] as const) {
+    for (const name of ['idle_loop', 'idle_loop_nodir', 'activate']) {
+      animations.set(`${form}:${name}`, findClip(parsed, bank, name));
+    }
+  }
+  for (const name of ['deactivate', 'deactivate_pst']) {
+    animations.set(`bernie_big:${name}`, findClip(big, 'bernie_big', name));
+  }
+  animations.set(`${BERNIE_ITEM_ID}:inactive`, findClip(small, 'bernie', 'inactive'));
   const model = new THREE.Group();
   const visual = new THREE.Group();
   visual.scale.set(0.02, -0.02, 0.02);
@@ -46,24 +54,29 @@ export async function createBernieGroundSprite(assets: GroundItemAssets, world: 
   registerSpriteRenderGroup(model, visual);
   Object.assign(model.userData, { billboard: true, itemId: BERNIE_ITEM_ID, skinId });
   const renderer = new SpriteFrameRenderer(visual);
-  let form: BernieAnimationForm | undefined;
+  let form: BernieAnimationForm;
+  let clip: Animation;
   let inInventory = false;
   let elapsed = 0;
   let previousFrame = -1;
-  const showForm = (next: BernieAnimationForm, dt: number) => {
-    if (next !== form) {
-      form = next;
-      elapsed = 0;
-      previousFrame = -1;
-      // bernie_big.lua applies a 0.7 Transform scale; small Bernie uses 1.
-      const scale = 0.02 * (form === 'bernie_big' ? 0.7 : 1);
-      visual.scale.set(scale, -scale, scale);
-      model.name = `GroundItem:${form}`;
-      Object.assign(model.userData, { prefab: form, animation: form === BERNIE_ITEM_ID ? 'inactive' : 'idle_loop' });
-    }
-    elapsed += Math.max(0, Math.min(dt, 0.1));
-    const clip = animations[form];
-    const frame = Math.floor(elapsed * clip.frameRate) % clip.frames.length;
+  const play = (next: BernieAnimationForm, name: string, time = 0) => {
+    const animation = animations.get(`${next}:${name}`);
+    if (!animation) throw new Error(`Missing Bernie animation ${next}:${name}`);
+    form = next;
+    clip = animation;
+    elapsed = time;
+    previousFrame = -1;
+    // bernie_big.lua keeps scale 0.7 throughout activate/deactivate, including
+    // the small pose in deactivate_pst. The growth is baked into the source art.
+    const scale = 0.02 * (form === 'bernie_big' ? 0.7 : 1);
+    visual.scale.set(scale, -scale, scale);
+    model.name = `GroundItem:${form}`;
+    Object.assign(model.userData, { prefab: form, animation: name });
+  };
+  const draw = () => {
+    const rawFrame = Math.floor(elapsed * clip.frameRate);
+    const frame = clip.name === 'idle_loop' ? rawFrame % clip.frames.length
+      : Math.min(rawFrame, clip.frames.length - 1);
     if (frame === previousFrame) return;
     const sprites = [...clip.frames[frame].elements]
       .filter((element) => element.imageHash !== smallHash('bounding'))
@@ -80,17 +93,45 @@ export async function createBernieGroundSprite(assets: GroundItemAssets, world: 
     previousFrame = frame;
   };
   const update = (dt: number) => {
-    if (!inInventory) showForm(bernieGroundForm(world.getSanityPercent()), dt);
+    if (inInventory) return;
+    const desired = bernieGroundForm(world.getSanityPercent());
+    // Finish busy states before responding to another sanity change, as the
+    // Lua brains do. Re-read sanity on each update rather than queuing stale forms.
+    if (clip.name === 'idle_loop' && desired !== form) {
+      if (desired === 'bernie_big') play('bernie_big', 'activate');
+      else play('bernie_big', 'deactivate');
+    }
+    elapsed += Math.max(0, Math.min(dt, 0.1));
+    while (clip.name !== 'idle_loop') {
+      const duration = clip.name === 'idle_loop_nodir' ? 0.5 : clip.frames.length / clip.frameRate;
+      if (elapsed + 1e-8 < duration) break;
+      const remaining = Math.max(0, elapsed - duration);
+      switch (clip.name) {
+        case 'deactivate': play('bernie_big', 'deactivate_pst', remaining); break;
+        // SGberniebig goes inactive after the whole queue; the small prefab
+        // reanimates through SGbernie's activate before returning to idle.
+        case 'deactivate_pst': play('bernie_active', 'activate', remaining); break;
+        case 'activate': play(form, 'idle_loop_nodir', remaining); break;
+        // Both stategraphs switch facing at 0.5s and preserve animation time.
+        case 'idle_loop_nodir': play(form, 'idle_loop', elapsed); break;
+        default: throw new Error(`Unexpected Bernie animation ${clip.name}`);
+      }
+    }
+    draw();
   };
-  try { update(0); } catch (error) {
+  try { play(bernieGroundForm(world.getSanityPercent()), 'idle_loop'); draw(); } catch (error) {
     visual.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
     throw error;
   }
-  const onGround = () => { inInventory = false; update(0); };
+  const onGround = () => {
+    inInventory = false;
+    play(bernieGroundForm(world.getSanityPercent()), 'idle_loop');
+    draw();
+  };
   const removeInventoryEvents = listenInventoryEvents(model, {
     ondropped: onGround,
     onload: onGround,
-    onputininventory: () => { inInventory = true; showForm(BERNIE_ITEM_ID, 0); },
+    onputininventory: () => { inInventory = true; play(BERNIE_ITEM_ID, 'inactive'); draw(); },
   });
   return {
     model, update,

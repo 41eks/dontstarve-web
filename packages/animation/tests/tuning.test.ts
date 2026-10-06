@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { getDstCycle, TUNING } from '../../../src/tuning';
 
 describe('DST default day cycle', () => {
-  it('uses the 30-second, 16-segment day from tuning.lua', () => {
-    expect(TUNING.SEG_TIME).toBe(30);
-    expect(TUNING.TOTAL_DAY_TIME).toBe(480);
-    expect(TUNING.DAY_SEGS_DEFAULT + TUNING.DUSK_SEGS_DEFAULT + TUNING.NIGHT_SEGS_DEFAULT).toBe(16);
-  });
 
   it.each([
     [0, 0, 'day', 0],

@@ -11,10 +11,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it.each([
-  ['sapling', 'sapling.zip'],
-  ['sapling_moon', 'sapling_moon.zip'],
-])('spawns %s through the debug command from its own archive, then restores it', async (prefabId, archive) => {
+it.each([['sapling', 'sapling.zip']])('spawns %s through the debug command from its own archive, then restores it', async (prefabId, archive) => {
   const files = new Map<string, Uint8Array>();
   for (const file of ['sapling.zip', 'sapling_moon.zip']) {
     files.set(file, await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));

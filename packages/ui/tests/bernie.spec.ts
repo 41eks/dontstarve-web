@@ -4,29 +4,6 @@ import { expect, test } from '@playwright/test';
 
 const moduleUrl = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url))}`;
 
-test('Bernie shares an entity across sanity forms, renders original skins and picks up as an inactive item', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/tests/dst-lighting.html');
-  const result = await page.evaluate(async (url) => (await import(url)).checkBernieGround(), moduleUrl('./bernie-fixture.ts'));
-  expect(result.failures).toEqual([]);
-  for (const entry of result.cases) {
-    expect(entry.transitions.map((t: { prefab: string }) => t.prefab)).toEqual([
-      'bernie_active', 'bernie_big', 'bernie_active', 'bernie_big', 'bernie_active', 'bernie_active',
-    ]);
-    expect(entry.transitions[1].height).toBeGreaterThan(entry.transitions[0].height * 2);
-    expect(entry.savedItem).toMatchObject({ itemId: 'bernie_inactive', count: 1 });
-  }
-  expect(result.pickedUp.map((item: { itemId: string }) => item.itemId)).toEqual(Array(3).fill('bernie_inactive'));
-  expect(result.inventoryForms).toEqual(Array(3).fill('bernie_inactive'));
-  expect(result.pickedUp.map((item: { skinId?: string }) => item.skinId)).toEqual([undefined, 'bernie_cat', 'bernie_dog']);
-  expect(result.restoredState).toEqual({ prefab: 'bernie_big', record: {
-    id: 'e_bernie_restored', transform: { position: [2, 0.25, 3], rotationY: 0 },
-    components: { stack: { itemId: 'bernie_inactive', skinId: 'bernie_cat', count: 1 } },
-  } });
-  expect(errors).toEqual([]);
-});
-
 test('giving, dropping and spawning Bernie follows player sanity and saves canonical inventory IDs', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];

@@ -98,6 +98,13 @@ export class SpriteController implements TransientSpriteAnimationController {
 
   get currentAnimation(): string { return this.animationName; }
 
+  /** Keep a live entity's clip, progress and completion callback across reskinning. */
+  copyPlaybackFrom(source: SpriteController): void {
+    this.selectAnimation(source.animationName, source.loop, source.onComplete);
+    this.elapsed = source.elapsed;
+    this.update(0);
+  }
+
   playOnce(name: string, onComplete?: () => void) {
     this.selectAnimation(name, false, onComplete);
   }
@@ -221,8 +228,10 @@ export function createSpriteFactory(
   buildPackage: BuildPackage,
   animations: ParsedAnim,
   controllerClass: typeof SpriteController = SpriteController,
+  skinArchive?: Awaited<ReturnType<typeof loadSpriteSkinArchive>>,
 ): AnimatedSpriteFactory {
   const materials = createMaterials(buildPackage);
+  const skinMaterials = skinArchive ? createMaterials(skinArchive.buildPackage) : [];
   const sprites = new Set<THREE.Group>();
   let disposed = false;
   const disposeSprite = (sprite: THREE.Group) => {
@@ -235,7 +244,13 @@ export function createSpriteFactory(
   return {
     create(options) {
       if (disposed) throw new Error('Animated sprite factory has been disposed');
-      const sprite = createSprite(buildPackage.build, animations, materials, options, undefined, controllerClass);
+      const skin: SpriteSkin | undefined = skinArchive ? {
+        build: skinArchive.buildPackage.build, materials: skinMaterials, animations: skinArchive.animations,
+        symbols: options.skinSymbols ? new Set(options.skinSymbols.map(smallHash)) : undefined,
+        baseSymbols: new Set(options.baseSymbols?.map(smallHash)),
+        animationBanks: new Set(options.skinAnimationBanks?.map(smallHash)),
+      } : undefined;
+      const sprite = createSprite(buildPackage.build, animations, materials, options, skin, controllerClass);
       sprites.add(sprite);
       return sprite;
     },
@@ -244,7 +259,7 @@ export function createSpriteFactory(
       if (disposed) return;
       disposed = true;
       for (const sprite of sprites) disposeSprite(sprite);
-      for (const material of materials) {
+      for (const material of [...materials, ...skinMaterials]) {
         material.map?.dispose();
         material.dispose();
       }

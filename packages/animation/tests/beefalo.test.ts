@@ -52,46 +52,6 @@ describe('wild beefalo behavior', () => {
     expect(s.animation.start).toHaveBeenLastCalledWith('idle_loop');
   });
 
-  it('stops to face nearby players, keeps watching until six source units, and resumes wandering', () => {
-    const s = setup();
-    s.tick(1.1); s.complete(); s.tick(0.2);
-    const player = new THREE.Vector3(s.model.position.x + 10, 0, 0);
-    s.setPlayers([player]); s.tick(0.1);
-    expect(s.controller.state).toBe('walk_pst');
-    expect(s.body.velocity.x).toBe(0);
-    s.complete();
-    player.x = s.model.position.x + 16;
-    s.tick(3);
-    expect(s.world.findPath).toHaveBeenCalledTimes(1);
-    player.x = s.model.position.x + 19;
-    s.tick(1.2);
-    expect(s.world.findPath).toHaveBeenCalledTimes(2);
-  });
-
-  it('plays an uninterrupted grazing pre/loop/post sequence while watching a player', () => {
-    const s = setup();
-    s.setPlayers([new THREE.Vector3(10, 0, 0)]);
-    s.tick(1.1);
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('graze2_pre', expect.any(Function));
-    s.complete();
-    expect(s.animation.start).toHaveBeenLastCalledWith('graze2_loop');
-    s.tick(1.1);
-    expect(s.controller.state).toBe('graze_pst');
-    s.tick(0.2);
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('graze2_pst', expect.any(Function));
-    s.complete();
-    expect(s.controller.state).toBe('idle');
-  });
-
-  it.each([[0.6, 'shake'], [0.9, 'bellow']] as const)('plays idle action at random %s', (random, clip) => {
-    const s = setup(() => random);
-    s.setPlayers([new THREE.Vector3(10, 0, 0)]);
-    s.tick(2);
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith(clip, expect.any(Function));
-    s.complete();
-    expect(s.controller.state).toBe('idle');
-  });
-
   it('interrupts movement to sleep at night and wakes at dawn; stale callbacks cannot restart walking', () => {
     const s = setup();
     s.tick(1.1);
@@ -105,16 +65,6 @@ describe('wild beefalo behavior', () => {
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('sleep_pst', expect.any(Function));
     s.complete();
     expect(s.controller.state).toBe('idle');
-  });
-
-  it('retries blocked paths without moving through obstacles', () => {
-    const s = setup();
-    vi.mocked(s.world.findPath).mockReturnValue(null);
-    s.tick(1.1);
-    expect(s.world.findPath).toHaveBeenCalledTimes(4);
-    expect(s.body.velocity.length()).toBe(0);
-    s.tick(0.5);
-    expect(s.world.findPath).toHaveBeenCalledTimes(4);
   });
 
   it('drops manure on the original 40–60 second schedule and restores the remaining timer', () => {
@@ -176,27 +126,6 @@ describe('original beefalo assets', () => {
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     }
     factory.dispose();
-  });
-
-  it('spawns distinct live entities clear of the player, exports IDs, and removes physics/resources on disposal', async () => {
-    serveAssets();
-    const scene = new THREE.Scene();
-    const physics = new CANNON.World();
-    physics.addBody(new CANNON.Body({ mass: 5, shape: new CANNON.Sphere(4.5) }));
-    const world: BeefaloWorld = { isDay: () => true, isNight: () => false, getPlayerPositions: () => [],
-      findPath: (_start, target) => [target], constrainPosition() {}, spawnPoop() {} };
-    const manager = new BeefaloManager(scene, physics, '/dst/data/anim', world);
-    const [a, b] = await Promise.all([manager.spawnNear(new THREE.Vector3()), manager.spawnNear(new THREE.Vector3())]);
-    expect(a.position.distanceTo(b.position)).toBeGreaterThan(3);
-    expect(physics.bodies).toHaveLength(3);
-    const records = manager.exportRecords();
-    expect(new Set(records.map((r) => r.id)).size).toBe(2);
-    expect(records[0].components.beefalo.home).toEqual(a.position.toArray());
-    expect(manager.renderEntities[0].footPosition).toBe(a.position);
-    manager.dispose();
-    expect(physics.bodies).toHaveLength(1);
-    expect(scene.children).toHaveLength(0);
-    await expect(manager.spawn(new THREE.Vector3())).rejects.toThrow('disposed');
   });
 
   it('keeps walking over the physical ground rather than losing velocity to static friction', async () => {

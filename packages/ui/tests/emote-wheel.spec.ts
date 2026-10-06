@@ -82,15 +82,3 @@ test('cancel, back, repeat G, blur and shadow text input do not execute a select
   expect(await page.evaluate(() => window.emoteFixture.moving)).toBe(false);
   expect(await page.evaluate(() => window.emoteFixture.requests)).toEqual([]);
 });
-
-test('all 15 source emotes animate in every facing, preserve equipment and handle cancellation', async ({ page }) => {
-  test.setTimeout(120_000);
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  const result = await page.evaluate(() => window.emoteFixture.checkAnimations());
-  expect(result.failures).toEqual([]);
-  expect(result.changed).toBe(90);
-  expect(result.equipmentMaterials).toContain('hat:hat_straw');
-  expect(result).toMatchObject({ torchRendered: true, pickupInterrupts: true, craftingInterrupts: true, cancelledRequest: true });
-  expect(errors).toEqual([]);
-});

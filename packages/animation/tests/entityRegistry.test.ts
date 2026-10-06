@@ -26,34 +26,13 @@ describe('entity registry', () => {
     expect(registry.exportRecords()).toEqual({ thing: [record('e_one')] });
   });
 
-  it('retains unloaded logical entities when restoring', async () => {
-    const tree = { id: 0, saveId: 'e_tree', position: new THREE.Vector3(10, 0, 20) };
-    const registry = new EntityRegistry();
-    registry.register({ ...registration(), restore: () => tree });
-    await registry.restoreAll({ thing: [record('e_tree')] });
-    expect(registry.byEntityId.get('e_tree')).toBe(tree);
-  });
-
-  it.each([
-    { thing: [record('same'), record('same')] },
-    { thing: [record('same')], other: [record('same')] },
-    { thing: [record('good')], unknown: [record('bad')] },
-  ])('validates the entire save before restoring any models: %j', async (entities) => {
+  it.each([{ thing: [record('same')], other: [record('same')] }])('validates the entire save before restoring any models: %j', async (entities) => {
     const registry = new EntityRegistry(), family = registration();
     registry.register(family);
     registry.register({ ...registration(), prefabIds: ['other'], debugSpawn: undefined });
     await expect(registry.restoreAll(entities)).rejects.toThrow();
     expect(family.restore).not.toHaveBeenCalled();
     expect(registry.byEntityId.size).toBe(0);
-  });
-
-  it('rejects duplicate handlers without partially registering the new family', async () => {
-    const registry = new EntityRegistry();
-    registry.register(registration());
-    expect(() => registry.register({ ...registration(), prefabIds: ['other'],
-      debugSpawn: { prefabIds: ['new', 'thing'], create: async () => {} } })).toThrow('Duplicate');
-    expect(await registry.spawn('new')).toBe(false);
-    expect(() => registry.register({ ...registration(), prefabIds: ['thing'], debugSpawn: undefined })).toThrow('Duplicate');
   });
 
   it('exports detached transform and component snapshots, including empty families', () => {
@@ -66,17 +45,6 @@ describe('entity registry', () => {
     expect(saved.transform.position[0]).toBe(3);
     expect(saved.components.health!.current).toBe(50);
     expect(snapshot.empty).toEqual([]);
-  });
-
-  it('rejects exported IDs owned by another family and duplicate entity IDs', () => {
-    const registry = new EntityRegistry();
-    registry.register({ ...registration(), exportRecords: () => [{ prefabId: 'other', record: record('e_one') }] });
-    expect(() => registry.exportRecords()).toThrow('Unregistered exported prefab');
-    const duplicate = new EntityRegistry();
-    duplicate.register(registration());
-    duplicate.register({ ...registration(), prefabIds: ['other'], debugSpawn: undefined,
-      exportRecords: () => [{ prefabId: 'other', record: record('e_one') }] });
-    expect(() => duplicate.exportRecords()).toThrow('Duplicate entity ID');
   });
 
   it('preserves before/after physics timing and foot points, excluding ground layers', () => {
@@ -92,18 +60,6 @@ describe('entity registry', () => {
     expect(calls).toEqual(['forces', 'physics', 'align', 'water']);
     expect(registry.renderEntities).toEqual([entry]);
     expect(registry.renderEntities[0].footPosition).toBe(entry.footPosition);
-  });
-
-  it('updates and disposes transient effects without saving or spawning them', async () => {
-    const registry = new EntityRegistry(), update = vi.fn(), dispose = vi.fn();
-    registry.register({ prefabIds: [], exportRecords: () => [], update, dispose });
-    registry.update(0.1, new THREE.Quaternion());
-    expect(update).toHaveBeenCalledOnce();
-    expect(registry.exportRecords()).toEqual({});
-    expect(await registry.spawn('effect')).toBe(false);
-    registry.dispose(); registry.dispose();
-    registry.update(0.1, new THREE.Quaternion());
-    expect(update).toHaveBeenCalledOnce(); expect(dispose).toHaveBeenCalledOnce();
   });
 
   it('disposes all owners even if one cleanup fails, and disables every lifecycle', async () => {

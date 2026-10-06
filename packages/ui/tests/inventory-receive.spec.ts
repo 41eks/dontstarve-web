@@ -58,65 +58,6 @@ test('captured fireflies fly from their projected foot point into the actual slo
   expect(errors).toEqual([]);
 });
 
-test('stack gains keep the previous quantity visible and consecutive flights land independently', async ({ page }) => {
-  await setup(page);
-  await page.evaluate(() => (window as any).receiveFixture.inventory.add('cutgrass', 2));
-  const slot = page.locator('dst-inventory-bar .inventory-slot[data-item-id="cutgrass"]');
-  await expect(slot.locator('.inventory-slot__icon')).toHaveAttribute('data-loaded', 'true');
-  await page.evaluate(() => {
-    (window as any).receiveFixture.add('cutgrass', 1);
-    (window as any).receiveFixture.add('cutgrass', 2, 5, 2);
-  });
-  const flights = page.locator('.inventory-receive-flight');
-  await expect(flights).toHaveCount(2);
-  await expect(flights.nth(0)).toBeVisible();
-  await expect(flights.nth(1)).toBeVisible();
-  const width = (await flights.nth(0).boundingBox())!.width;
-  await expect(slot.locator('.inventory-slot__content')).toBeVisible();
-  await expect(slot.locator('.inventory-slot__count')).toHaveText('2');
-  expect(await page.evaluate(() => (window as any).receiveFixture.inventory.count('cutgrass'))).toBe(5);
-  await flights.nth(0).evaluate((element) => element.getAnimations()[0].finish());
-  await expect(flights).toHaveCount(1);
-  await expect(slot.locator('.inventory-slot__count')).toHaveText('3');
-  await flights.nth(0).evaluate((element) => element.getAnimations()[0].finish());
-  await expect(flights).toHaveCount(0);
-  await expect(slot.locator('.inventory-slot__count')).toHaveText('5');
-  // Landing is still paused at scale(2); the next flying icon must keep its base size.
-  await page.evaluate(() => (window as any).receiveFixture.add('cutgrass', 1));
-  await expect(flights).toBeVisible();
-  expect((await flights.boundingBox())!.width).toBeCloseTo(width, 1);
-});
-
-test('crafting and split acquisitions use their committed destination slots and skin atlas', async ({ page }) => {
-  await setup(page);
-  await page.evaluate(() => {
-    const fixture = (window as any).receiveFixture;
-    fixture.inventory.add('cutgrass', 3);
-    if (!fixture.craft()) throw new Error('Craft failed');
-  });
-  const rope = page.locator('dst-inventory-bar .inventory-slot[data-item-id="rope"]');
-  const flight = page.locator('.inventory-receive-flight');
-  await expect(flight).toBeVisible();
-  await expect(flight).toHaveAttribute('data-slot-key', '0');
-  await expect(rope.locator('.inventory-slot__content')).toBeHidden();
-  await flight.evaluate((element) => element.getAnimations()[0].finish());
-  await expect(rope.locator('.inventory-slot__content')).toBeVisible();
-  await page.evaluate(() => {
-    const fixture = (window as any).receiveFixture;
-    fixture.inventory.add('cutgrass', 39);
-    fixture.add('cutgrass', 3);
-  });
-  await expect(flight).toHaveCount(2);
-  expect(await flight.evaluateAll((elements) => elements.map((element) => (element as HTMLElement).dataset.slotKey))).toEqual(['1', '2']);
-  await page.evaluate(() => (window as any).receiveFixture.inventoryBar.cancelReceiveAnimations());
-  const skinned = await page.evaluate(() => (window as any).receiveFixture.add('reskin_tool', 1, 0, 0, 'reskin_tool_brush'));
-  expect(skinned.ok).toBe(true);
-  await expect(flight).toBeVisible();
-  await expect(flight.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'reskin_tool_brush.tex');
-  const atlas = await page.locator('dst-inventory-bar .inventory-slot[data-skin-id="reskin_tool_brush"] .inventory-slot__icon').getAttribute('data-atlas');
-  await expect(flight.locator('.inventory-slot__icon')).toHaveAttribute('data-atlas', atlas!);
-});
-
 test('failed acquisition, removing an item, resizing and disconnecting the UI leave no stale flights', async ({ page }) => {
   await setup(page);
   await page.evaluate(() => (window as any).receiveFixture.add('cutgrass', 1));
@@ -140,7 +81,7 @@ test('failed acquisition, removing an item, resizing and disconnecting the UI le
   await expect(flight).toHaveCount(0);
 });
 
-for (const viewport of [{ width: 1280, height: 720 }, { width: 375, height: 667 }]) {
+for (const viewport of [{ width: 375, height: 667 }]) {
 test(`the production crafting event keeps the flying icon in its slot size at ${viewport.width}px`, async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];

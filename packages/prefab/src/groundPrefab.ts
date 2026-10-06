@@ -11,6 +11,7 @@ export interface GroundItemDefinition {
   icon: string;
   atlas?: string;
   count: number;
+  remainingUses?: number;
 }
 
 export interface GroundItemVisual {

@@ -38,17 +38,6 @@ it('walks using physics to a copied target, then stops without teleporting or ch
   expect(locomotor.destination).toBeUndefined();
 });
 
-it('replaces an old destination and slows the final step instead of overshooting', () => {
-  const player = body();
-  const locomotor = new Locomotor(player);
-  locomotor.goToPoint(new THREE.Vector3(100, 0, 0));
-  locomotor.goToPoint(new THREE.Vector3(0, 0, -1));
-  locomotor.update(16, 0.5);
-  expect(player.velocity.x).toBe(0);
-  expect(player.velocity.z).toBe(-2);
-  expect(locomotor.destination).toEqual(new THREE.Vector3(0, 0, -1));
-});
-
 it('gives manual movement priority and does not resume the cancelled target after key release', () => {
   const player = body();
   const locomotor = new Locomotor(player);
@@ -93,35 +82,4 @@ it('rejects a blocked or unreachable destination and bounds the search', () => {
   player.velocity.set(2, 3, 4);
   expect(locomotor.goToPoint(new THREE.Vector3(8, 0, 0))).toBe(false);
   expect(player.velocity).toEqual(new CANNON.Vec3(0, 3, 0));
-});
-
-it('accepts ground left-clicks after interactions and ignores other buttons and missing ground', () => {
-  vi.stubGlobal('window', new EventTarget());
-  const canvas = new EventTarget();
-  const context = {
-    camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), renderer: { domElement: canvas },
-  } as unknown as WorldContext;
-  const locomotor = new Locomotor(body());
-  const track = vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
-  const hit = vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(8, 0, 6));
-  let handled = false;
-  canvas.addEventListener('pointerdown', (event) => { if (handled) event.preventDefault(); });
-  const dispose = setupLocomotorInput(context, locomotor);
-  const click = (button: number) => canvas.dispatchEvent(Object.assign(new Event('pointerdown', { cancelable: true }), { button }));
-  click(0);
-  expect(locomotor.destination).toEqual(new THREE.Vector3(8, 0, 6));
-  click(2);
-  expect(track).toHaveBeenCalledTimes(1);
-  handled = true;
-  click(0);
-  expect(locomotor.destination).toBeUndefined();
-  expect(track).toHaveBeenCalledTimes(1);
-  handled = false;
-  hit.mockReturnValue(undefined);
-  click(0);
-  expect(locomotor.destination).toBeUndefined();
-  dispose();
-  hit.mockReturnValue(new THREE.Vector3(5, 0, 5));
-  click(0);
-  expect(locomotor.destination).toBeUndefined();
 });

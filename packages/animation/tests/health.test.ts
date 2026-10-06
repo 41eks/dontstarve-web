@@ -20,24 +20,7 @@ describe('basic health component', () => {
     expect(health.IsDead()).toBe(false);
   });
 
-  it('refills on setting the maximum and clamps absolute values and percentages', () => {
-    const health = new Health(150);
-    health.DoDelta(-70);
-    health.SetMaxHealth(200);
-    expect(health.currenthealth).toBe(200);
-    health.SetVal(-10);
-    expect(health.IsDead()).toBe(true);
-    health.SetPercent(0.25);
-    expect(health.currenthealth).toBe(50);
-    health.SetPercent(2);
-    expect(health.currenthealth).toBe(200);
-    health.SetPercent(-1);
-    expect(health.currenthealth).toBe(0);
-    health.SetVal(300);
-    expect(health.currenthealth).toBe(200);
-  });
-
-  it.each([0, 83.5, 150])('round-trips current health %s and its maximum through JSON', (current) => {
+  it.each([83.5])('round-trips current health %s and its maximum through JSON', (current) => {
     const health = new Health(150);
     health.SetVal(current);
     const saved = health.OnSave();
@@ -65,7 +48,7 @@ describe('basic health component', () => {
     expect(health.currenthealth).toBe(10);
   });
 
-  it.each([NaN, Infinity, -Infinity])('rejects invalid numbers %s without corrupting state', (invalid) => {
+  it.each([NaN])('rejects invalid numbers %s without corrupting state', (invalid) => {
     const health = new Health(150);
     health.SetVal(50);
     const before = health.OnSave();

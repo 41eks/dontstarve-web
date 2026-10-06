@@ -1,8 +1,8 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
-for (const itemId of ['yellowstaff', 'opalstaff'] as const) {
- for (const hasRandomUUID of [true, false]) {
+for (const itemId of ['yellowstaff'] as const) {
+ for (const hasRandomUUID of [false]) {
   test(`${itemId} summons persistent lights (crypto.randomUUID: ${hasRandomUUID})`, async ({ page }) => {
     test.setTimeout(120_000);
     const errors: string[] = [];

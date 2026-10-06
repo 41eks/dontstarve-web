@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { disposeSprite } from './disposeSprite';
 import {
     createAnimatedSprite,
+    createAnimatedSpriteFactory,
+    type AnimatedSpriteFactory,
     type SpriteAnimationController,
     type TransientSpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
@@ -24,6 +26,12 @@ export interface AnimatedBuildingDefinition {
     interaction?: AnimatedBuildingToggleInteraction;
     /** Source SetWorkAction(ACTIONS.HAMMER) and its OnWork animation. */
     hammerAnimation?: string;
+    /** Source workable work count; omitted buildings retain animation-only hits. */
+    hammerWorkLeft?: number;
+    onhit?: (context: AnimatedBuildingHammerContext) => void;
+    onhammered?: (context: AnimatedBuildingHammerContext) => void;
+    /** Preloaded, temporary destruction art, independent of a building's skin. */
+    hammerEffect?: { archive: string; animation: string; name: string };
     name: string;
     container?: BuildingContainerDefinition;
     /** Prepares prefab resources alongside the sprite, without playing effects. */
@@ -58,6 +66,14 @@ export interface AnimatedBuildingBuiltContext extends AnimatedBuildingEventConte
     onComplete: () => void;
 }
 
+export interface AnimatedBuildingHammerContext extends AnimatedBuildingEventContext {
+    isPlayerNearby: boolean;
+    position: THREE.Vector3;
+    dropLoot: (items: readonly { itemId: string; count: number }[]) => void;
+    spawnEffect: () => void;
+    remove: () => void;
+}
+
 /** Animations used by buildings that toggle between closed and open on click. */
 export interface AnimatedBuildingToggleInteraction {
     closeAnimation: string;
@@ -83,6 +99,8 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     isPlacing: boolean;
     isPlayerNearby: boolean;
     skinId?: string;
+    workLeft?: number;
+    effectFactory?: AnimatedSpriteFactory;
 }
 
 export class AnimatedBuildingPlacement<BuildId extends string> {
@@ -92,6 +110,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly camera: THREE.Camera;
     private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
+    private readonly dropLoot?: WorldContext['dropLoot'];
     private readonly definitions: Readonly<Record<BuildId, AnimatedBuildingDefinition>>;
     private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
     private readonly onInteractionChange?: (
@@ -103,6 +122,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private loading?: Promise<void>;
     private previewVersion = 0;
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
+    private readonly effects = new Set<THREE.Group>();
+    private readonly effectFactories = new Map<string, Promise<AnimatedSpriteFactory>>();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
 
     constructor(
@@ -116,6 +137,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.camera = world.camera;
         this.ground = world.ground;
         this.player = world.player;
+        this.dropLoot = world.dropLoot;
         this.definitions = definitions;
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.onInteractionChange = onInteractionChange;
@@ -197,7 +219,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     /** Whole sprite entities and their ground-contact points for depth sorting. */
     get renderEntities() {
-        return [...this.placed, ...(this.active ? [this.active] : [])]
+        return [...this.placed, ...(this.active ? [this.active] : []),
+            ...Array.from(this.effects, (model) => ({ model, groundOffset: 0 }))]
             .filter(({ model }) => model.visible)
             .map(({ model, groundOffset }) => ({
                 object: model,
@@ -212,15 +235,23 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 id: String(building.model.userData.entityId),
                 model: building.model,
                 position: building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)),
-                isValid: () => !building.isPlacing && building.model.visible && building.model.parent !== null,
+                isValid: () => this.isHammerTargetValid(building),
                 playHit: () => {
+                    if (!this.isHammerTargetValid(building)) return;
+                    this.updateProximity(building);
                     const definition = this.definitions[building.buildId];
-                    const current = building.animation.currentAnimation;
-                    const hit = definition.hammerAnimation === 'hit_empty'
-                        ? current === 'cooking_loop' ? 'hit_cooking' : current === 'idle_full' ? 'hit_full' : 'hit_empty'
-                        : (building.buildId === 'mushroom_light' || building.buildId === 'mushroom_light2') && current.endsWith('_on')
-                            ? 'hit_on' : definition.hammerAnimation!;
-                    building.animation.playTransient(hit);
+                    if (building.workLeft !== undefined) building.workLeft = Math.max(0, building.workLeft - 1);
+                    const context = this.hammerContext(building);
+                    if (definition.onhit) definition.onhit(context);
+                    else {
+                        const current = building.animation.currentAnimation;
+                        const hit = definition.hammerAnimation === 'hit_empty'
+                            ? current === 'cooking_loop' ? 'hit_cooking' : current === 'idle_full' ? 'hit_full' : 'hit_empty'
+                            : (building.buildId === 'mushroom_light' || building.buildId === 'mushroom_light2') && current.endsWith('_on')
+                                ? 'hit_on' : definition.hammerAnimation!;
+                        building.animation.playTransient(hit);
+                    }
+                    if (building.workLeft === 0) definition.onhammered?.(context);
                 },
             }));
     }
@@ -290,6 +321,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.cancel();
         for (const instance of this.placed) disposeSprite(instance.model);
         this.placed.length = 0;
+        // Factory-owned effects share materials; only their factory disposes them.
+        for (const effect of this.effects) effect.removeFromParent();
+        this.effects.clear();
+        for (const factory of this.effectFactories.values()) void factory.then((value) => value.dispose(), () => undefined);
+        this.effectFactories.clear();
     }
 
     cancel() {
@@ -310,6 +346,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             this.updateProximity(building);
             building.animation.update(dt);
             this.faceCamera(building.model);
+        }
+        for (const effect of this.effects) {
+            (effect.userData.animationController as SpriteAnimationController).update(dt);
+            this.faceCamera(effect);
         }
     }
 
@@ -464,7 +504,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
         if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
         const skin = skinId === undefined ? undefined : definition.skinInit?.(skinId);
-        const [model] = await Promise.all([createAnimatedSprite(
+        const [model, , effectFactory] = await Promise.all([createAnimatedSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
             skin?.archive ?? definition.archive,
             {
@@ -479,7 +519,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 baseSymbols: definition.baseSymbols,
                 skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
             },
-        ), definition.prepare?.()]);
+        ), definition.prepare?.(), definition.hammerEffect ? this.prepareEffect(definition.hammerEffect.archive) : undefined]);
         if (this.disposed) { disposeSprite(model); throw new Error('Placement has been disposed'); }
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
@@ -487,6 +527,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             buildId,
             model,
             animation: model.userData.animationController as TransientSpriteAnimationController,
+            workLeft: definition.hammerWorkLeft,
+            effectFactory,
             groundOffset: -bounds.min.y,
             ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,
@@ -500,6 +542,53 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (attach) model.userData.entityId = newEntityId();
         if (attach) this.scene.add(model);
         return instance;
+    }
+
+    private isHammerTargetValid(building: AnimatedBuildingInstance<BuildId>): boolean {
+        return !this.disposed && this.placed.includes(building) && !building.isPlacing
+            && building.workLeft !== 0 && building.model.visible && building.model.parent !== null;
+    }
+
+    private prepareEffect(archive: string): Promise<AnimatedSpriteFactory> {
+        let request = this.effectFactories.get(archive);
+        if (!request) {
+            request = createAnimatedSpriteFactory(`${import.meta.env.BASE_URL}dst/data/anim`, archive);
+            this.effectFactories.set(archive, request);
+            void request.catch(() => this.effectFactories.delete(archive));
+        }
+        return request;
+    }
+
+    private hammerContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingHammerContext {
+        const position = building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0));
+        return {
+            model: building.model, animation: building.animation, skinId: building.skinId,
+            position, isPlayerNearby: building.isPlayerNearby,
+            dropLoot: (items) => this.dropLoot?.(items, position.clone()),
+            spawnEffect: () => {
+                const definition = this.definitions[building.buildId].hammerEffect;
+                if (!definition || !building.effectFactory || this.disposed) return;
+                const effect = building.effectFactory.create({
+                    initialAnimation: definition.animation, name: definition.name,
+                });
+                effect.position.copy(position);
+                effect.userData.persists = false;
+                effect.userData.tags = ['FX', 'NOCLICK'];
+                this.faceCamera(effect);
+                this.scene.add(effect);
+                this.effects.add(effect);
+                (effect.userData.animationController as SpriteAnimationController).playOnce(definition.animation, () => {
+                    this.effects.delete(effect);
+                    building.effectFactory!.disposeSprite(effect);
+                });
+            },
+            remove: () => {
+                const index = this.placed.indexOf(building);
+                if (index < 0) return;
+                this.placed.splice(index, 1);
+                disposeSprite(building.model);
+            },
+        };
     }
 
     private playerFrontGroundPosition(): THREE.Vector3 {

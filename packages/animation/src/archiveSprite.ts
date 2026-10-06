@@ -79,7 +79,10 @@ export class ArchiveSpriteAssets {
 
 export interface ArchiveSprite {
   readonly model: THREE.Group;
+  readonly currentAnimation: string;
   update(dt: number): void;
+  start(name: string): void;
+  playOnce(name: string, onComplete?: () => void): void;
   setAnimation(name: string): void;
   setPaused(paused: boolean): void;
   /** Geometry belongs to the entity; shared materials belong to its asset cache. */
@@ -116,11 +119,21 @@ export async function createArchiveSprite(
   let previousFrame = -1;
   let paused = false;
   let disposed = false;
+  let loop = definition.loop;
+  let onComplete: (() => void) | undefined;
   const update = (dt: number) => {
     if (paused || disposed) return;
-    elapsed += Math.min(dt, 0.1);
+    elapsed += Math.max(0, Math.min(dt, 0.1));
     const rawFrame = Math.floor(elapsed * animation.frameRate);
-    const index = definition.loop ? rawFrame % animation.frames.length
+    if (!loop && elapsed * animation.frameRate + 1e-8 >= animation.frames.length && onComplete) {
+      const complete = onComplete;
+      onComplete = undefined;
+      complete();
+      if (disposed || paused) return;
+      update(0);
+      return;
+    }
+    const index = loop ? rawFrame % animation.frames.length
       : Math.min(rawFrame, animation.frames.length - 1);
     if (index === previousFrame) return;
     const sprites: ResolvedSprite[] = [...animation.frames[index].elements]
@@ -140,25 +153,35 @@ export async function createArchiveSprite(
     renderer.show(sprites);
     previousFrame = index;
   };
+  const selectAnimation = (name: string, shouldLoop: boolean, complete?: () => void) => {
+    if (disposed) return;
+    const next = parsed.animations.find((clip) => clip.name === name && clip.bankHash === smallHash(definition.bank));
+    if (!next?.frames.length) throw new Error(`Missing sprite animation ${definition.bank}:${name}`);
+    animation = next;
+    loop = shouldLoop;
+    onComplete = complete;
+    elapsed = 0;
+    previousFrame = -1;
+    update(0);
+  };
   try { update(0); } catch (error) {
     visual.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
     throw error;
   }
   return {
     model, update,
+    get currentAnimation() { return animation.name; },
+    start(name: string) {
+      if (animation.name !== name || !loop) selectAnimation(name, true);
+    },
+    playOnce(name: string, complete?: () => void) { selectAnimation(name, false, complete); },
     setPaused(value: boolean) {
       if (disposed) return;
       paused = value;
       if (!paused) update(0);
     },
     setAnimation(name: string) {
-      const next = parsed.animations.find((clip) => clip.name === name && clip.bankHash === smallHash(definition.bank));
-      if (!next?.frames.length) throw new Error(`Missing sprite animation ${definition.bank}:${name}`);
-      if (next === animation) return;
-      animation = next;
-      elapsed = 0;
-      previousFrame = -1;
-      update(0);
+      if (animation.name !== name) selectAnimation(name, definition.loop);
     },
     dispose() {
       if (disposed) return;

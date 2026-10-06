@@ -201,7 +201,7 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
         <div className={styles.watermark}>猪镇抢先体验 · 测试分支 · 正在开发中</div>
         <div className={styles.updateBanner}>
           <AtlasSprite assetRoot={ASSET_ROOT} atlas="ui" sprite="update_banner.tex" />
-          <span>由死亡来定义冒险</span>
+          <span>Death Defining Adventure.</span>
         </div>
         <a
           className={styles.motd}

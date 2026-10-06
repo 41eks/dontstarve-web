@@ -14,6 +14,8 @@ export interface WorldContext {
     ground: THREE.Object3D;
     player: THREE.Object3D;
     createCursorLabel?: (pointer: PointerRaycaster) => CursorLabel;
+    /** Place destruction loot in the application's authoritative ground-item store. */
+    dropLoot?: (items: readonly { itemId: string; count: number }[], position: THREE.Vector3) => void;
 }
 
 /** The subset a prefab needs to turn raw pointer events into raycasts. */

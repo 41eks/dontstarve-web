@@ -29,6 +29,8 @@ export interface StaticSpriteOptions {
   name?: string;
   scale?: number;
   symbol?: string;
+  /** Source skin build; missing symbols fall back to the base wall build. */
+  skinArchive?: string;
   /**
    * Symbol stacked on top of `symbol`, e.g. `wall_dreadstone` draws
    * `wall_segment_red` over `wall_segment_base`.
@@ -44,6 +46,7 @@ export interface StaticSpriteController extends TransientSpriteAnimationControll
   /** Switches to another of the sprite's `imageIndices` frames. */
   showImage(imageIndex: number): void;
   setFacing(facing: number): void;
+  copyPlaybackFrom(source: StaticSpriteController): void;
 }
 
 const IDENTITY_MATRIX: Matrix2D = [1, 0, 0, 1, 0, 0];
@@ -57,8 +60,7 @@ class StaticSprite implements StaticSpriteController {
   private facing?: number;
   private clip?: Animation;
   private elapsed = 0;
-  private readonly build: ParsedBuild;
-  private readonly materials: THREE.MeshBasicMaterial[];
+  private readonly builds: readonly { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] }[];
   private readonly animations?: ParsedAnim;
   private readonly restAnimation?: string;
 
@@ -66,13 +68,11 @@ class StaticSprite implements StaticSpriteController {
     visual: THREE.Group,
     frames: ReadonlyMap<number, ResolvedSprite[]>,
     imageIndex: number,
-    build: ParsedBuild,
-    materials: THREE.MeshBasicMaterial[],
+    builds: readonly { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] }[],
     animations?: ParsedAnim,
     restAnimation?: string,
   ) {
-    this.build = build;
-    this.materials = materials;
+    this.builds = builds;
     this.animations = animations;
     this.restAnimation = restAnimation;
     this.renderer = new SpriteFrameRenderer(visual);
@@ -93,6 +93,18 @@ class StaticSprite implements StaticSpriteController {
   }
 
   playTransient(name: string) { this.playOnce(name); }
+
+  copyPlaybackFrom(source: StaticSpriteController) {
+    if (!(source instanceof StaticSprite)) throw new Error('Incompatible static sprite controller');
+    this.facing = source.facing;
+    this.showImage(source.imageIndex!);
+    this.onComplete = source.onComplete;
+    if (source.clip) {
+      this.clip = this.findAnimation(source.clip.name);
+      this.elapsed = source.elapsed;
+      this.showAnimationFrame(Math.min(this.clip.frames.length - 1, Math.floor(this.elapsed * this.clip.frameRate)));
+    }
+  }
 
   setFacing(facing: number) {
     if (this.facing === facing) return;
@@ -135,26 +147,27 @@ class StaticSprite implements StaticSpriteController {
   private showAnimationFrame(frame: number) {
     const rest = this.restAnimation ? this.findAnimation(this.restAnimation).frames[0] : undefined;
     this.renderer.show([...this.clip!.frames[frame].elements].sort((a, b) => b.z - a.z).flatMap((element): ResolvedSprite[] => {
-      const image = findImage(this.build, element.imageHash, element.imageIndex);
-      if (!image) return [];
+      const source = this.builds.find(({ build }) => findImage(build, element.imageHash, element.imageIndex));
+      if (!source) return [];
+      const image = findImage(source.build, element.imageHash, element.imageIndex)!;
       const anchor = rest?.elements.find((part) => part.imageHash === element.imageHash);
       const matrix: Matrix2D = [...element.matrix];
       if (anchor) { matrix[4] -= anchor.matrix[4]; matrix[5] -= anchor.matrix[5]; }
-      return [{ element: { ...element, matrix }, image, materials: this.materials }];
+      return [{ element: { ...element, matrix }, image, materials: source.materials }];
     }));
   }
 }
 
 function staticSpriteFrame(
-  build: ParsedBuild,
+  builds: readonly { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] }[],
   symbolHash: number,
   imageIndex: number,
-  materials: THREE.MeshBasicMaterial[],
 ): ResolvedSprite {
-  const image = findImage(build, symbolHash, imageIndex);
-  if (!image) {
-    throw new Error(`Build ${build.name} has no drawable image ${symbolHash}-${imageIndex}`);
+  const source = builds.find(({ build }) => findImage(build, symbolHash, imageIndex));
+  if (!source) {
+    throw new Error(`Build ${builds[0].build.name} has no drawable image ${symbolHash}-${imageIndex}`);
   }
+  const image = findImage(source.build, symbolHash, imageIndex)!;
   return {
     element: {
       imageHash: symbolHash,
@@ -164,7 +177,7 @@ function staticSpriteFrame(
       z: 0,
     },
     image,
-    materials,
+    materials: source.materials,
   };
 }
 
@@ -178,9 +191,10 @@ export async function createStaticSprite(
   file: string,
   options: StaticSpriteOptions,
 ): Promise<THREE.Group> {
-  const [buildPackage, animations] = await Promise.all([
+  const [buildPackage, animations, skinPackage] = await Promise.all([
     loadBuild(file, assetBaseUrl),
     options.animationArchive ? loadAnim(options.animationArchive, assetBaseUrl) : undefined,
+    options.skinArchive ? loadBuild(options.skinArchive, assetBaseUrl) : undefined,
   ]);
   const build = buildPackage.build;
   const symbolHash = options.symbol ? smallHash(options.symbol) : build.symbols.keys().next().value;
@@ -201,16 +215,18 @@ export async function createStaticSprite(
   sprite.add(visual);
   registerSpriteRenderGroup(sprite, visual);
 
-  const materials = createMaterials(buildPackage);
   const overlay = options.overlay;
   if (overlay && overlay.imageIndices.length !== options.imageIndices.length) {
     throw new Error(`Static sprite ${file} overlay must pair with every image index`);
   }
   const overlayHash = overlay ? smallHash(overlay.symbol) : undefined;
+  const builds = [skinPackage, buildPackage].filter((entry) => entry !== undefined)
+    .map((entry) => ({ build: entry.build, materials: createMaterials(entry) }));
+  sprite.userData.ownedSpriteMaterials = builds.flatMap(({ materials }) => materials);
   const frames = new Map<number, ResolvedSprite[]>(options.imageIndices.map((imageIndex, position) => {
-    const sprites = [staticSpriteFrame(build, symbolHash, imageIndex, materials)];
+    const sprites = [staticSpriteFrame(builds, symbolHash, imageIndex)];
     if (overlay && overlayHash !== undefined) {
-      sprites.push(staticSpriteFrame(build, overlayHash, overlay.imageIndices[position], materials));
+      sprites.push(staticSpriteFrame(builds, overlayHash, overlay.imageIndices[position]));
     }
     return [imageIndex, sprites];
   }));
@@ -218,7 +234,7 @@ export async function createStaticSprite(
     visual,
     frames,
     options.imageIndex ?? options.imageIndices[0],
-    build, materials, animations, options.restAnimation,
+    builds, animations, options.restAnimation,
   );
   return sprite;
 }

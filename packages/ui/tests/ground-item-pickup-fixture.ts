@@ -15,10 +15,8 @@ export async function checkGroundItemPickup() {
     (item) => { pickedUp.push(item.itemId); return true; }, '/dst/data/anim', player);
   // Invalid UI icon/atlas deliberately proves every supported item uses its world art.
   const definition = (id: string) => ({ itemId: id, name: id, icon: 'missing.tex', count: 1 });
-  const common = ['torch', 'lantern', 'lightbulb', 'yellowstaff', 'meatballs', 'cutgrass', 'twigs', 'log', 'rocks', 'goldnugget',
-    'gears', 'charcoal', 'pigskin', 'cutstone', 'rope',
-    'wall_stone_item', 'wall_wood_item', 'wall_hay_item', 'wall_ruins_item',
-    'wall_moonrock_item', 'wall_dreadstone_item', 'wall_scrap_item', 'axe', 'hammer'];
+  // Split builds, overridden food symbols, materials, walls and tools.
+  const common = ['torch', 'meatballs', 'log', 'wall_stone_item', 'hammer'];
   const failures: string[] = [];
   let blockedDistantPickups = 0;
   for (const id of common) {

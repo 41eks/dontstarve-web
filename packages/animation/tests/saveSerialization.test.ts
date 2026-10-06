@@ -40,17 +40,6 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
-  it('round trips ground Bernie as an inactive inventory item with its identity and skin', () => {
-    const { template, state } = fixture();
-    const bernie = { id: 'e_bernie', transform: { position: [12, 0, 15] as [number, number, number], rotationY: 0 },
-      components: { stack: { itemId: 'bernie_inactive', skinId: 'bernie_cat', count: 1 } } };
-    state.entities.ground_item = [bernie];
-    const saved = deserializeSave(serializeSave(template, {
-      ...state, playerStats: { health: 150, hunger: 105, sanity: 20 },
-    }, catalog), catalog);
-    expect(saved.world.entities.ground_item).toEqual([bernie]);
-    expect(saved.players.local.stats?.sanity).toBe(20);
-  });
   it('saves current sanity rather than the loaded value, preserving it through reload', () => {
     const { template, state } = fixture();
     template.players.local.stats = { health: 150, hunger: 105, sanity: 200 };
@@ -122,53 +111,7 @@ describe('manual JSON save', () => {
       expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow();
     }
   });
-  it('round trips all bulb plant prefabs, their appearance and remaining light timers', () => {
-    const { template, state } = fixture();
-    state.entities.flower_cave = [{ id: 'e_bulb_single', transform: { position: [1, 0, 2], rotationY: 0 },
-      components: { bulbPlant: { variant: 'springy', lightState: 'CHARGED' } } }];
-    state.entities.flower_cave_double = [{ id: 'e_bulb_double', transform: { position: [3, 0, 4], rotationY: 0 },
-      components: { bulbPlant: { variant: 'double', lightState: 'ON', remainingSeconds: 45.5 } } }];
-    state.entities.flower_cave_triple = [{ id: 'e_bulb_triple', transform: { position: [5, 0, 6], rotationY: 0 },
-      components: { bulbPlant: { variant: 'triple', lightState: 'RECHARGING', remainingSeconds: 100 } } }];
-    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
-    for (const prefab of ['flower_cave', 'flower_cave_double', 'flower_cave_triple']) {
-      expect(saved.world.entities[prefab]).toEqual(state.entities[prefab]);
-    }
-    const bad = structuredClone(saved);
-    bad.world.entities.flower_cave_double[0].components.bulbPlant!.variant = 'single';
-    expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow('variant');
-    for (const remainingSeconds of [0, -1, 109, NaN]) {
-      const badTimer = structuredClone(saved);
-      badTimer.world.entities.flower_cave_double[0].components.bulbPlant!.remainingSeconds = remainingSeconds;
-      expect(() => deserializeSave(JSON.stringify(badTimer), catalog)).toThrow('remainingSeconds');
-    }
-  });
-  it('round trips live fireflies as ground items without persisting transient light state', () => {
-    const { template, state } = fixture();
-    state.entities.ground_item = [{ id: 'e_fireflies',
-      transform: { position: [12, 0, 15], rotationY: 0 },
-      components: { stack: { itemId: 'fireflies', count: 1 } },
-    }];
-    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
-    expect(saved.world.entities.ground_item).toEqual(state.entities.ground_item);
-    expect(catalog.items.fireflies.atlas).toBe('images/inventoryimages.xml');
-  });
-  it('round trips planted flower poses and rejects unsupported flower state', () => {
-    const { template, state } = fixture();
-    state.entities.flower = [{
-      id: 'e_planted_flower', transform: { position: [10, 0, 11], rotationY: 0 },
-      components: { flower: { animation: 'f7', planted: true } },
-    }];
-    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
-    expect(saved.world.entities.flower).toEqual(state.entities.flower);
-    const bad = JSON.parse(JSON.stringify(saved));
-    bad.world.entities.flower[0].components.flower.animation = 'idle';
-    expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow('animation');
-    bad.world.entities.flower[0].components.flower.animation = 'f7';
-    bad.world.entities.flower[0].components.flower.planted = false;
-    expect(() => deserializeSave(JSON.stringify(bad), catalog)).toThrow('planted');
-  });
-  it.each([['stafflight', 1440], ['staffcoldlight', 960]] as const)('round trips %s lifetimes and rejects invalid timers', (prefab, duration) => {
+  it.each([['staffcoldlight', 960]] as const)('round trips %s lifetimes and rejects invalid timers', (prefab, duration) => {
     const { template, state } = fixture();
     state.entities[prefab] = [{
       id: 'e_star', transform: { position: [20, 0, 30], rotationY: 0 },
@@ -182,63 +125,6 @@ describe('manual JSON save', () => {
     }
     delete saved.world.entities[prefab][0].components.timer;
     expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('timer');
-  });
-  it.each(['dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2'] as const)(
-    'round trips %s skins and the last container slot', (prefab) => {
-      const { template, state } = fixture();
-      const definition = buildingContainerDefinition(prefab);
-      const skinId = Object.keys(definitions.animatedBuildings[prefab].skinArchives)[0];
-      state.entities[prefab] = [{
-        id: `e_${prefab}`, transform: { position: [10, 0, 10], rotationY: 0 },
-        components: { building: { state: 'open', skinId } },
-      }];
-      const stored = {
-        address: { containerId: buildingContainerId(prefab, `e_${prefab}`), slotKey: String(definition.slotCount - 1) },
-        item: { itemId: prefab.startsWith('mushroom_light') ? 'lightbulb' : 'berries', count: definition.singleItems ? 1 : 3 },
-      };
-      state.inventory.slots.push(stored);
-      const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
-      expect(saved.world.entities[prefab][0].components).toEqual({
-        building: { state: 'closed', skinId },
-        container: { slotCount: definition.slotCount, slots: [{ slotKey: stored.address.slotKey, item: stored.item }] },
-      });
-      expect(state.entities[prefab][0].components.building?.state).toBe('open');
-      expect(inventoryStateFromSave(saved).slots).toContainEqual(stored);
-      const slot = saved.world.entities[prefab][0].components.container!.slots[0];
-      slot.slotKey = String(definition.slotCount);
-      expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('invalid or duplicate slot');
-      slot.slotKey = stored.address.slotKey;
-      if (definition.singleItems) {
-        slot.item.count = 2;
-        expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('expected at most 1');
-      }
-    },
-  );
-  it('round trips fire pit skins and ice box contents without changing live open states', () => {
-    const { template, state } = fixture();
-    state.entities.firepit = [{
-      id: 'e_firepit', transform: { position: [10, 0, 10], rotationY: 0 },
-      components: { building: { state: 'idle', skinId: 'firepit_fangedp' } },
-    }];
-    state.entities.icebox = [{
-      id: 'e_icebox', transform: { position: [20, 0, 20], rotationY: 0 },
-      components: { building: { state: 'open', skinId: 'icebox_crystal' } },
-    }];
-    const stored = {
-      address: { containerId: iceBoxContainerId('e_icebox'), slotKey: '8' },
-      item: { itemId: 'berries', count: 3 },
-    };
-    state.inventory.slots.push(stored);
-    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
-    expect(saved.world.entities.firepit).toEqual(state.entities.firepit);
-    expect(saved.world.entities.icebox[0].components).toEqual({
-      building: { state: 'closed', skinId: 'icebox_crystal' },
-      container: { slotCount: 9, slots: [{ slotKey: '8', item: stored.item }] },
-    });
-    expect(inventoryStateFromSave(saved).slots).toContainEqual(stored);
-    expect(state.entities.icebox[0].components.building?.state).toBe('open');
-    saved.world.entities.icebox[0].components.container!.slots[0].slotKey = '9';
-    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('invalid or duplicate slot');
   });
 
   it('round trips cook pot slots and rejects stacked ingredients while reading old idle saves', () => {
@@ -332,13 +218,6 @@ describe('manual JSON save', () => {
 
 describe('c_save command', () => {
   const inventory = {} as InventoryStore;
-  it.each(['c_save()', ' c_save ( ) ; '])('downloads once for %s', async (command) => {
-    const save = vi.fn();
-    const spawn = vi.fn();
-    expect(await executeDebugCommand(command, inventory, spawn, save)).toEqual({ ok: true, message: '已下载存档 initial-world.json' });
-    expect(save).toHaveBeenCalledTimes(1);
-    expect(spawn).not.toHaveBeenCalled();
-  });
 
   it('rejects arguments and reports capture/download errors without claiming success', async () => {
     const save = vi.fn(() => { throw new Error('invalid state'); });

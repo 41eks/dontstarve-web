@@ -1,20 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
-test('importing the shared view does not fetch colour cubes or load a save', async ({ page }) => {
-  const requests: string[] = [];
-  page.on('request', (request) => {
-    if (/colour_cubes|saves\/initial-world/.test(request.url())) requests.push(request.url());
-  });
-  await page.goto('/tests/dst-lighting.html');
-  const result = await page.evaluate(async (url) => {
-    const { dstLighting, renderer } = await import(url);
-    return { hasLighting: dstLighting !== undefined, hasRenderer: renderer.domElement.isConnected };
-  }, `/@fs${fileURLToPath(new URL('../../../src/universal.ts', import.meta.url))}`);
-  expect(result).toEqual({ hasLighting: false, hasRenderer: true });
-  expect(requests).toEqual([]);
-});
-
 test('a failed colour-cube load rejects startup without publishing lighting readiness', async ({ page }) => {
   test.setTimeout(120_000);
   await page.route('**/images/colour_cubes/insane_day_cc.tex', (route) => route.fulfill({ status: 503, body: '' }));

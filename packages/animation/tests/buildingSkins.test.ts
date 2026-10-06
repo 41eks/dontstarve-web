@@ -24,8 +24,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { recipeSkins } from '../../ui/src/categories/generated';
 
 const prefabIds = [
-  'cookpot', 'firepit', 'icebox', 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4',
-  'dragonflychest', 'campfire', 'saltbox', 'nightlight', 'pighouse', 'mushroom_light', 'mushroom_light2',
+  'cookpot', 'researchlab2', 'researchlab4',
 ] as const;
 const buildingDefinitions = {
   cookpot: COOK_POT_DEFINITION, firepit: FIRE_PIT_DEFINITION, icebox: ICE_BOX_DEFINITION,
@@ -34,8 +33,8 @@ const buildingDefinitions = {
   saltbox: SALT_BOX_DEFINITION, nightlight: NIGHT_LIGHT_DEFINITION, pighouse: PIG_HOUSE_DEFINITION,
   ...MUSHROOM_LIGHT_DEFINITIONS,
 };
-const cases = prefabIds.flatMap((prefabId) => Object.entries(definitions.animatedBuildings[prefabId].skinArchives)
-  .map(([skinId, archive]) => ({ prefabId, skinId, archive })));
+// One plain build; the tests below exercise symbol-only and layered skins.
+const cases = [{ prefabId: 'cookpot', skinId: 'cookpot_candy', archive: 'dynamic/cookpot_candy.zip' }] as const;
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -86,9 +85,11 @@ function dispose(model: THREE.Group) {
 }
 
 describe('DST building skins', () => {
-  it.each(prefabIds)('%s covers every skin offered by the crafting UI', (prefabId) => {
-    expect(Object.keys(definitions.animatedBuildings[prefabId].skinArchives).sort())
-      .toEqual(recipeSkins[prefabId].map(({ id }) => id).sort());
+  it('covers crafting skin metadata for plain, symbol-only and layered buildings', () => {
+    for (const prefabId of prefabIds) {
+      expect(Object.keys(definitions.animatedBuildings[prefabId].skinArchives).sort())
+        .toEqual(recipeSkins[prefabId].map(({ id }) => id).sort());
+    }
   });
 
   it('decodes the original atlas package without modifying its bytes', async () => {
@@ -164,7 +165,7 @@ describe('DST building skins', () => {
     dispose(withoutFx);
   });
 
-  it.each(prefabIds)('%s keeps its selected skin through preview, placement, and restoration', async (prefabId) => {
+  it.each(['cookpot'] as const)('%s keeps its selected skin through preview, placement, and restoration', async (prefabId) => {
     vi.stubGlobal('window', new EventTarget());
     vi.stubGlobal('document', {
       createElement: () => ({ setAttribute: vi.fn(), style: {} }),

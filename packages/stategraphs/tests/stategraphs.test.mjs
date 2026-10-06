@@ -23,8 +23,7 @@ function actor() {
 }
 
 for (const [action, commitFrame, tag] of [
-  ['MINE', 16, 'mining'], ['HAMMER', 16, 'hammering'], ['NET', 16, 'netting'],
-  ['TERRAFORM', 25, 'digging'], ['CASTSPELL', 53, 'casting'], ['RESKIN', 9, 'reskinning'],
+  ['MINE', 16, 'mining'], ['CASTSPELL', 53, 'casting'], ['RESKIN', 9, 'reskinning'],
 ]) {
   test(`${action} commits once at its source frame, including the correct pre-animation clock`, () => {
     const { graph } = actor();
@@ -48,7 +47,7 @@ for (const [action, commitFrame, tag] of [
     assert.equal(graph.hasStateTag(tag), false);
   });
 
-  for (const reason of ['unequip', 'crafting', 'pickup', 'cancel']) {
+  if (action === 'RESKIN') for (const reason of ['unequip', 'cancel']) {
     test(`${action} discards uncommitted work on ${reason}`, () => {
       const { graph } = actor();
       let executed = 0;

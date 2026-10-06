@@ -12,8 +12,11 @@ import { ROCK_PREFABS } from '@dontstarve-web/prefab/rocks';
 import { GRASS_ID } from '@dontstarve-web/prefab/grass';
 import { SAPLING_PREFABS } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
+import { WORMHOLE_ID, WORMHOLE_SKINS } from '@dontstarve-web/prefab/wormhole';
+import { WALL_SKIN_ARCHIVES } from '@dontstarve-web/prefab/wallSkins';
 import { NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import { FARM_PLOW_ID, FARM_PLOW_DRILLING_DURATION, FARM_DECOR_IDS, FARM_PLOW_USES } from '@dontstarve-web/prefab/farm_plow';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 
 export interface SaveCatalog {
@@ -67,8 +70,8 @@ function integer(value: unknown, path: string, min = 0, max = Number.MAX_SAFE_IN
   return result;
 }
 
-function choice<const T extends readonly string[]>(value: unknown, path: string, choices: T): T[number] {
-  const result = string(value, path);
+function choice<const T extends readonly (string | number)[]>(value: unknown, path: string, choices: T): T[number] {
+  const result = typeof value === 'number' ? number(value, path) : string(value, path);
   if (!choices.includes(result)) fail(path, `expected ${choices.join(', ')}`);
   return result as T[number];
 }
@@ -121,15 +124,18 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const tiles = map.tiles === undefined ? undefined : array(map.tiles, 'world.map.tiles',
     (Math.ceil(size / TILE_SIZE) + 1) ** 2).map((value, i) => {
     const path = `world.map.tiles[${i}]`;
-    const tile = object(value, path, ['col', 'row', 'tileId']);
+    const tile = object(value, path, ['col', 'row', 'tileId', 'underTileId']);
     const min = Math.floor(-size / 2 / TILE_SIZE), max = Math.ceil(size / 2 / TILE_SIZE) - 1;
     const col = integer(tile.col, `${path}.col`, min, max);
     const row = integer(tile.row, `${path}.row`, min, max);
-    if (tile.tileId !== WORLD_TILES.DIRT) fail(`${path}.tileId`, 'expected WORLD_TILES.DIRT');
+    const tileId = choice(tile.tileId, `${path}.tileId`, [WORLD_TILES.DIRT, WORLD_TILES.FARMING_SOIL]);
+    const underTileId = tile.underTileId === undefined ? undefined
+      : choice(tile.underTileId, `${path}.underTileId`, [WORLD_TILES.DIRT, WORLD_TILES.DECIDUOUS]);
+    if (underTileId !== undefined && tileId !== WORLD_TILES.FARMING_SOIL) fail(`${path}.underTileId`, 'only farming soil has an underlying tile');
     const key = `${col},${row}`;
     if (tileKeys.has(key)) fail(path, 'duplicate terrain tile');
     tileKeys.add(key);
-    return { col, row, tileId: WORLD_TILES.DIRT };
+    return { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }) };
   });
 
   const transform = (value: unknown, path: string, grounded: boolean): SavedTransform => {
@@ -145,7 +151,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     return { position, rotationY: number(o.rotationY, `${path}.rotationY`, 0, 0) };
   };
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['itemId', 'skinId', 'count']);
+    const o = object(value, path, ['itemId', 'skinId', 'count', 'remainingUses']);
     const itemId = string(o.itemId, `${path}.itemId`);
     const spec = Object.hasOwn(catalog.items, itemId) ? catalog.items[itemId] : undefined;
     if (!spec) fail(`${path}.itemId`, `unknown item ${itemId}`);
@@ -154,7 +160,10 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       const skin = Object.hasOwn(catalog.skins, skinId) ? catalog.skins[skinId] : undefined;
       if (!skin || (skin.itemId !== undefined && skin.itemId !== itemId)) fail(`${path}.skinId`, `invalid skin for ${itemId}`);
     }
-    return { itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }) };
+    const remainingUses = o.remainingUses === undefined ? undefined
+      : integer(o.remainingUses, `${path}.remainingUses`, 1, spec.maxUses ?? 0);
+    return { itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
+      ...(remainingUses === undefined ? {} : { remainingUses }) };
   };
   const container = (value: unknown, path: string, keys: readonly string[], maxStack = Infinity): SavedContainer => {
     const o = object(value, path, ['slotCount', 'slots']);
@@ -178,7 +187,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
   const ids = new Set<string>();
   let entityCount = 0;
-  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', GRASS_ID, POND_ID, NIGHTMAREGROWTH_ID, ...SAPLING_PREFABS, ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
+  const allowedPrefabs = ['moon_tree', 'pigking', 'ground_item', 'stafflight', 'staffcoldlight', 'flower', 'beefalo', GRASS_ID, POND_ID, WORMHOLE_ID, NIGHTMAREGROWTH_ID, FARM_PLOW_ID, ...FARM_DECOR_IDS, ...SAPLING_PREFABS, ...BULB_PLANT_PREFABS, ...ROCK_PREFABS, ...Object.keys(catalog.buildings), ...catalog.walls];
   const groups = object(world.entities, 'world.entities', allowedPrefabs);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;
@@ -195,9 +204,48 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       const allowedComponents = building ? ['building', ...(isContainer ? ['container'] : [])]
         : prefab === 'ground_item' ? ['stack'] : prefab === 'stafflight' || prefab === 'staffcoldlight' ? ['timer'] : prefab === 'flower' ? ['flower']
         : prefab === 'beefalo' ? ['beefalo'] : prefab === NIGHTMAREGROWTH_ID ? ['nightmareGrowth']
-        : isBulbPlantPrefab(prefab) ? ['bulbPlant'] : catalog.walls.includes(prefab) ? ['health'] : [];
+        : prefab === WORMHOLE_ID ? ['wormhole']
+        : prefab === FARM_PLOW_ID ? ['farmPlow'] : prefab === 'farm_soil' ? ['farmSoil'] : prefab === 'farm_soil_debris' ? ['farmDebris']
+        : isBulbPlantPrefab(prefab) ? ['bulbPlant'] : catalog.walls.includes(prefab) ? ['health', 'wall'] : [];
       const c = object(o.components, `${recordPath}.components`, allowedComponents);
       const components: SavedEntity['components'] = {};
+      if (prefab === FARM_PLOW_ID) {
+        const path = `${recordPath}.components.farmPlow`;
+        const plow = object(c.farmPlow, path, ['phase', 'remainingSeconds', 'returnUses']);
+        const phase = choice(plow.phase, `${path}.phase`, ['drill_pre', 'drill_loop', 'collapse']);
+        const remainingSeconds = number(plow.remainingSeconds, `${path}.remainingSeconds`, 0, FARM_PLOW_DRILLING_DURATION);
+        const returnUses = integer(plow.returnUses, `${path}.returnUses`, 0, FARM_PLOW_USES - 1);
+        if (phase === 'collapse' && (remainingSeconds !== 0 || returnUses === 0)) fail(path, 'invalid fold-up state');
+        components.farmPlow = { phase, remainingSeconds, returnUses };
+      }
+      if (prefab === 'farm_soil') {
+        const path = `${recordPath}.components.farmSoil`;
+        const soil = object(c.farmSoil, path, ['broken', 'plowId']);
+        if (typeof soil.broken !== 'boolean') fail(`${path}.broken`, 'expected a boolean');
+        const plowId = soil.plowId === undefined ? undefined : string(soil.plowId, `${path}.plowId`);
+        components.farmSoil = { broken: soil.broken, ...(plowId === undefined ? {} : { plowId }) };
+      }
+      if (prefab === 'farm_soil_debris') {
+        const path = `${recordPath}.components.farmDebris`;
+        const debris = object(c.farmDebris, path, ['animation']);
+        components.farmDebris = { animation: choice(debris.animation, `${path}.animation`, ['f1', 'f2', 'f3', 'f4']) };
+      }
+      if (catalog.walls.includes(prefab) && c.wall !== undefined) {
+        const path = `${recordPath}.components.wall`;
+        const wall = object(c.wall, path, ['skinId']);
+        const skinId = wall.skinId === undefined ? undefined : string(wall.skinId, `${path}.skinId`);
+        if (skinId !== undefined && !Object.hasOwn(WALL_SKIN_ARCHIVES[prefab] ?? {}, skinId)) {
+          fail(`${path}.skinId`, 'unsupported wall skin');
+        }
+        components.wall = skinId === undefined ? {} : { skinId };
+      }
+      if (prefab === WORMHOLE_ID && c.wormhole !== undefined) {
+        const path = `${recordPath}.components.wormhole`;
+        const wormhole = object(c.wormhole, path, ['skinId']);
+        components.wormhole = wormhole.skinId === undefined ? {} : {
+          skinId: choice(wormhole.skinId, `${path}.skinId`, WORMHOLE_SKINS),
+        };
+      }
       if (prefab === NIGHTMAREGROWTH_ID) {
         const path = `${recordPath}.components.nightmareGrowth`;
         const growth = object(c.nightmareGrowth, path, ['crackRotation']);

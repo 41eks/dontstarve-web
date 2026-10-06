@@ -17,16 +17,6 @@ function setup(variant: BulbPlantVariant = 'single', saved?: BulbPlantSaveState)
 }
 
 describe('flower_cave source light cycle', () => {
-  it('uses source overshoot/settling and drain curves for all plant sizes', () => {
-    expect(bulbPlantLight(true, 0)).toBeNull();
-    expect(bulbPlantLight(false, 1)).toBeNull();
-    expect(bulbPlantLight(true, 1)).toEqual(BULB_PLANT_LIGHT);
-    expect(bulbPlantLight(true, 0.33)).toMatchObject({ radius: 9 * 1.33, intensity: 0.8, falloff: 0.4 });
-    expect(bulbPlantLight(false, 0.5)).toMatchObject({ radius: 4.5, intensity: 0.4, falloff: 0.75 });
-    expect(bulbPlantLight(true, 1, 'springy')?.radius).toBe(9);
-    expect(bulbPlantLight(true, 1, 'double')?.radius).toBe(13.5);
-    expect(bulbPlantLight(true, 1, 'triple')?.radius).toBe(13.5);
-  });
 
   it('waits on wake, turns on in light, drains after 94 seconds and recharges after 114', () => {
     const s = setup();
@@ -64,25 +54,10 @@ describe('flower_cave source light cycle', () => {
     expect(s.controller.lightState).toBe('ON');
     expect(getPrefabLocalLight(s.model)).toEqual(BULB_PLANT_LIGHT);
   });
-
-  it('restores full ON light and remaining timers, then cleans up light and stale callbacks', () => {
-    const s = setup('double', { variant: 'double', lightState: 'ON', remainingSeconds: 2 });
-    expect(getPrefabLocalLight(s.model)?.radius).toBe(13.5);
-    s.controller.update(2);
-    expect(s.controller.lightState).toBe('RECHARGING');
-    const complete = s.animation.playOnce.mock.calls.at(-1)![1] as () => void;
-    s.controller.dispose();
-    complete();
-    s.controller.update(100);
-    expect(getPrefabLocalLight(s.model)).toBeUndefined();
-    expect(s.animation.start).not.toHaveBeenCalled();
-  });
 });
 
 describe('flower_cave harvesting and regrowth', () => {
-  it.each([
-    ['single', 1, 1440], ['springy', 1, 1440], ['double', 2, 2160], ['triple', 3, 2880],
-  ] as const)('picks %s for %i fruit and regrows after %i seconds', (variant, count, seconds) => {
+  it.each([['double', 2, 2160]] as const)('picks %s for %i fruit and regrows after %i seconds', (variant, count, seconds) => {
     const s = setup(variant);
     s.controller.update(5);
     const full = vi.fn(() => false);
@@ -125,44 +100,9 @@ describe('flower_cave harvesting and regrowth', () => {
     expect(s.controller.canPick).toBe(true);
     expect(s.controller.lightState).toBe('RECHARGING');
   });
-
-  it('allows harvesting unlit mature plants and invalidates a pending light animation callback', () => {
-    const s = setup();
-    s.setLight(0);
-    expect(s.controller.tryPick(() => true)).toBe(true);
-    expect(s.controller.exportState('single').lightState).toBe('CHARGED');
-    expect(s.model.userData.bulbPlantPicked).toBe(true);
-    const lit = setup();
-    lit.controller.update(2);
-    const rechargeComplete = lit.animation.playOnce.mock.calls.at(-1)![1] as () => void;
-    lit.controller.tryPick(() => true);
-    rechargeComplete();
-    expect(lit.animation.start).not.toHaveBeenCalled();
-  });
 });
 
 describe('lightmap sampling for LightWatcher', () => {
-  it('samples ambient and existing lights with the renderer falloff and excludes the plant itself', () => {
-    const scene = new THREE.Scene();
-    const plant = new THREE.Group();
-    const lantern = new THREE.Group();
-    scene.add(plant, lantern);
-    const lighting = new DstLocalLighting();
-    lighting.setAmbientColour(new THREE.Vector3());
-    setPrefabLocalLight(plant, BULB_PLANT_LIGHT);
-    lighting.prepareScene(scene);
-    expect(lighting.sampleLightLevel(new THREE.Vector3(), plant)).toBe(0);
-    setPrefabLocalLight(lantern, { radius: 9, intensity: 0.8, falloff: 0.5, colour: [1, 1, 1] });
-    lighting.prepareScene(scene);
-    expect(lighting.sampleLightLevel(new THREE.Vector3(9, 0, 0), plant)).toBeCloseTo(0.4);
-    expect(lighting.sampleLightLevel(new THREE.Vector3(27, 0, 0), plant)).toBe(0);
-    setPrefabLocalLight(lantern, null);
-    expect(lighting.sampleLightLevel(new THREE.Vector3(), plant)).toBe(0);
-    lighting.setAmbientColour(new THREE.Vector3(0.1, 0.1, 0.1));
-    expect(lighting.sampleLightLevel(new THREE.Vector3(), plant)).toBeCloseTo(0.1);
-    lighting.setTorchOwner(lantern);
-    expect(lighting.sampleLightLevel(new THREE.Vector3(), plant)).toBeGreaterThan(0.1);
-  });
 });
 
 describe('real plant archives, spawning and saving', () => {

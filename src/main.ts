@@ -21,6 +21,7 @@ import { BugNetCaptureController } from '@dontstarve-web/prefab/bugnet';
 import { HammerActionController } from '@dontstarve-web/prefab/hammer';
 import { PickaxeActionController } from '@dontstarve-web/prefab/pickaxe';
 import { PitchforkActionController, isPitchforkTool } from '@dontstarve-web/prefab/pitchfork';
+import { FARM_PLOW_ITEM_ID, FARM_PLOW_USES } from '@dontstarve-web/prefab/farm_plow';
 import { ReskinActionController } from '@dontstarve-web/prefab/reskin_tool';
 import { DisposeSounds, UpdateSoundListener } from '@dontstarve-web/prefab/sound';
 import { disposeAnimationAssets, disposeAtlasImages } from '@dontstarve-web/animation';
@@ -210,11 +211,11 @@ inventory.subscribe((changedSlots) => {
 
 let cancelNetCapture = () => {};
 let cancelHandTool = () => {};
-const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, rockManager, reskinEffects, registry, getSaveState, dispose: disposeScene } = await startScene(
-  (buildingId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId),
+const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, farmPlow, rockManager, wormholes, reskinEffects, registry, getSaveState, dispose: disposeScene } = await startScene(
+  (buildingId, skinId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId, skinId),
   (item, action, sourcePosition) => {
     if (!inventory.add(item.itemId, item.count, item.skinId,
-      inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition))) return false;
+      inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition), item.remainingUses)) return false;
     if (action !== 'net') playerAnimation?.playPickup();
     return true;
   },
@@ -271,7 +272,7 @@ if (playerAnimation) setupLightStaffCasting(view, playerAnimation, polarLights,
 if (playerAnimation) {
   const hammer = new HammerActionController(view, playerAnimation, locomotor,
     () => inventory.get(handSlotAddress)?.itemId === 'hammer',
-    () => buildingPlacement.hammerTargets,
+    () => [...buildingPlacement.hammerTargets, ...farmPlow.hammerTargets],
     () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
     () => {
       cancelNetCapture();
@@ -301,14 +302,14 @@ if (playerAnimation) {
       const tool = inventory.get(handSlotAddress);
       return tool?.itemId === 'reskin_tool' ? tool : undefined;
     },
-    () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets], reskinEffects,
+    () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets], reskinEffects,
     () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
     () => {
       cancelNetCapture(); hammer.cancel(); pickaxe.cancel(); pitchfork.cancel();
       flowerPlanting.cancel(); buildingPlacement.cancel();
     },
     (error) => console.error('Unable to reskin target', error));
-  cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); reskin.cancel(); };
+  cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); reskin.cancel(); farmPlow.cancel(); };
   frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); pitchfork.update(dt); reskin.update(dt); });
   window.addEventListener('pagehide', () => {
     reskin.dispose();
@@ -357,6 +358,7 @@ window.addEventListener('game:slot-transfer-request', (event) => {
   if ((detail.from.containerId === PLAYER_BACKPACK_CONTAINER_ID || detail.to.containerId === PLAYER_BACKPACK_CONTAINER_ID)
     && (inventory.get(bodySlotAddress)?.itemId !== 'backpack' || detail.itemId === 'backpack')) return;
 
+  const remainingUses = inventory.get(detail.from)?.remainingUses;
   const transferred = inventory.applySlotChanges([
     {
       slot: detail.from,
@@ -369,6 +371,7 @@ window.addEventListener('game:slot-transfer-request', (event) => {
       itemId: detail.itemId,
       ...(detail.skinId === undefined ? {} : { skinId: detail.skinId }),
       delta: detail.amount,
+      ...(remainingUses === undefined ? {} : { remainingUses }),
     },
   ]);
   if (!transferred || (detail.itemId !== 'torch' && detail.itemId !== 'lantern'
@@ -382,6 +385,16 @@ window.addEventListener('game:slot-select', (event) => {
   cancelHandTool();
   flowerPlanting.cancel();
   const stack = inventory.get(slot);
+  if (stack?.itemId === FARM_PLOW_ITEM_ID) {
+    event.preventDefault(); locomotor.stop(); buildingPlacement.cancel();
+    void farmPlow.begin(() => {
+      const current = inventory.get(slot);
+      if (current?.itemId !== FARM_PLOW_ITEM_ID || current.remainingUses !== stack.remainingUses) return undefined;
+      if (!inventory.applySlotChanges([{ slot, itemId: FARM_PLOW_ITEM_ID, delta: -1 }])) return undefined;
+      return (current.remainingUses ?? FARM_PLOW_USES) - 1;
+    }).catch((error: unknown) => console.error('Unable to deploy farm plow', error));
+    return;
+  }
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
   // Placement claims the click so the stack is not picked up for a transfer.
   event.preventDefault();
@@ -406,6 +419,7 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
       icon: spec.icon,
       ...(spec.atlas ? { atlas: spec.atlas } : {}),
       count: 1,
+      ...(stack.remainingUses === undefined ? {} : { remainingUses: stack.remainingUses }),
     }, position, () => inventory.applySlotChanges([
       {
         slot,

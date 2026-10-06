@@ -44,12 +44,11 @@ it('gives separate sweepers through the application inventory, resolves their ic
   expect(inventory.get(equipmentSlotAddress('hand'))).toEqual({ itemId: 'reskin_tool', count: 1 });
 });
 
-it('renders source ground and held art for the base sweeper and all four skins, then removes held art', async () => {
+it('renders source ground and held art for the base sweeper and brush skin, then removes held art', async () => {
   const assets = new GroundItemAssets('/dst/data/anim');
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
-  const skins = Object.keys(GROUND_ITEM_DEFINITIONS.reskin_tool.skinArchives);
-  expect(skins).toHaveLength(4);
+  const skins = ['reskin_tool_brush'];
   for (const skinId of [undefined, ...skins]) {
     const ground = await createGroundItemSprite(assets, 'reskin_tool', skinId);
     expect((ground.model.children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);

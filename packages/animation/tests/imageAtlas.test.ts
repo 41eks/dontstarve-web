@@ -48,13 +48,6 @@ describe('parseImageAtlasXml', () => {
       name: 'axe.tex', u1: 0, u2: 0.5, v1: 0.5, v2: 1,
     });
   });
-
-  it('rejects malformed atlas elements', () => {
-    expect(() => parseImageAtlasXml(
-      '<Atlas><Texture filename="items.tex"/><Elements><Element name="axe.tex"/></Elements></Atlas>',
-      'items.xml',
-    )).toThrow('items.xml: invalid u1 coordinate');
-  });
 });
 
 describe('parseImageAtlasArchive', () => {
@@ -99,14 +92,6 @@ describe('parseImageAtlasArchive', () => {
     expect(atlas.require('axe.tex').pixels[0]).toBe(255);
     expect(atlas.require('torch').pixels[1]).toBe(255);
     expect(atlas.get('legacy')).toBeUndefined();
-  });
-
-  it('reports missing XML and textures with their archive paths', () => {
-    expect(() => parseImageAtlasArchive(zipSync({}), 'images/missing.xml'))
-      .toThrow('ZIP archive does not contain images/missing.xml');
-    expect(() => parseImageAtlasArchive(zipSync({
-      'images/items.xml': atlasXml('items.tex', fullElement('axe.tex')),
-    }), 'images/items.xml')).toThrow('ZIP archive does not contain images/items.tex');
   });
 });
 

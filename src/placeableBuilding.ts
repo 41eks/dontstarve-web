@@ -96,7 +96,7 @@ export class PlaceableBuildingPlacement {
 
     constructor(
         world: WorldContext,
-        consumeBufferedBuild: (buildId: PlaceableBuildingId) => boolean,
+        consumeBufferedBuild: (buildId: PlaceableBuildingId, skinId?: string) => boolean,
         onInteractionChange?: (change: PlaceableBuildingInteractionChange) => void,
     ) {
         this.animated = new AnimatedBuildingPlacement<AnimatedBuildingId>(
@@ -111,7 +111,7 @@ export class PlaceableBuildingPlacement {
     begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
         if (isWallId(buildId)) {
             this.animated.cancel();
-            return this.walls.begin(buildId);
+            return this.walls.begin(buildId, skinId);
         }
         this.walls.cancel();
         return this.animated.begin(buildId, skinId);
@@ -119,7 +119,7 @@ export class PlaceableBuildingPlacement {
 
     spawn(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
         return isWallId(buildId)
-            ? this.walls.spawn(buildId)
+            ? this.walls.spawn(buildId, skinId)
             : this.animated.spawn(buildId, skinId);
     }
 
@@ -152,7 +152,7 @@ export class PlaceableBuildingPlacement {
     }
 
     get reskinTargets() {
-        return this.animated.reskinTargets;
+        return [...this.animated.reskinTargets, ...this.walls.reskinTargets];
     }
 
     update(dt: number): void {

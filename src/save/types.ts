@@ -4,6 +4,9 @@ import type { BulbPlantSaveState } from '@dontstarve-web/prefab/bulb_plant';
 import type { BeefaloSaveState } from '@dontstarve-web/prefab/beefalo';
 import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
 import type { NightmareGrowthSaveState } from '@dontstarve-web/prefab/nightmaregrowth';
+import type { WormholeSaveState } from '@dontstarve-web/prefab/wormhole';
+import type { WallSaveState } from '@dontstarve-web/prefab/wallSkins';
+import type { FarmPlowSaveState, FarmSoilSaveState, FarmDebrisSaveState } from '@dontstarve-web/prefab/farm_plow';
 
 export interface SavedTransform {
   position: [number, number, number];
@@ -28,6 +31,11 @@ export interface SavedEntity {
     bulbPlant?: BulbPlantSaveState;
     beefalo?: BeefaloSaveState;
     nightmareGrowth?: NightmareGrowthSaveState;
+    wormhole?: WormholeSaveState;
+    wall?: WallSaveState;
+    farmPlow?: FarmPlowSaveState;
+    farmSoil?: FarmSoilSaveState;
+    farmDebris?: FarmDebrisSaveState;
   };
 }
 

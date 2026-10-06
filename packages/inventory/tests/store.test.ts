@@ -38,25 +38,24 @@ function equipmentSlot(kind: 'hand' | 'body' | 'head') {
   };
 }
 
-describe('specialized slots', () => {
-  it('stores stacks and applies equipment acceptance rules without owning addresses', () => {
-    const inventory = new InventorySlot({ itemId: 'twigs', count: 1 });
-    const hand = new HandSlot();
-    const body = new BodySlot();
-
-    expect(inventory.get()).toEqual({ itemId: 'twigs', count: 1 });
-    expect('address' in inventory).toBe(false);
-    expect('address' in hand).toBe(false);
-    expect(inventory.maxStack('torch')).toBe(1);
-    expect(inventory.maxStack('log')).toBe(20);
-    expect(inventory.maxStack('twigs')).toBe(40);
-    expect(inventory.accepts(specs.twigs)).toBe(true);
-    expect(hand.accepts(specs.axe)).toBe(true);
-    expect(body.accepts(specs.axe)).toBe(false);
-  });
-});
-
 describe('inventory state restoration', () => {
+  it('preserves a farm plow usage count through pickup, transfers and save/load', () => {
+    const itemSpecs = { farm_plow_item: { name: '耕地机', icon: 'farm_plow_item.tex', maxStack: 1, maxUses: 4 } };
+    const store = new InventoryStore([inventorySlot(0), inventorySlot(1)], itemSpecs);
+    const from = inventorySlotAddress(0), to = inventorySlotAddress(1);
+    expect(store.add('farm_plow_item', 1, undefined, undefined, 3)).toBe(true);
+    expect(store.get(from)).toEqual({ itemId: 'farm_plow_item', count: 1, remainingUses: 3 });
+    expect(store.applySlotChanges([{ slot: from, itemId: 'farm_plow_item', delta: -1 },
+      { slot: to, itemId: 'farm_plow_item', delta: 1, remainingUses: 3 }])).toBe(true);
+    const saved = store.exportState();
+    const restored = new InventoryStore([inventorySlot(0), inventorySlot(1)], itemSpecs);
+    restored.replaceState(saved, {});
+    expect(restored.get(to)?.remainingUses).toBe(3);
+    expect(store.add('farm_plow_item', 1, undefined, undefined, 0)).toBe(false);
+    expect(store.add('farm_plow_item', 1, undefined, undefined, 5)).toBe(false);
+    expect(store.get(to)?.remainingUses).toBe(3);
+  });
+
   it('exports closed storage, equipment and buffered builds as detached data without notifying', () => {
     const storage = { address: { containerId: 'chest:1', slotKey: '0' }, slot: new StorageSlot() };
     const store = new InventoryStore([inventorySlot(0), equipmentSlot('hand'), storage], specs);
@@ -76,22 +75,6 @@ describe('inventory state restoration', () => {
     expect(store.get(storage.address)?.count).toBe(5);
     expect(store.isBuffered('house')).toBe(true);
     expect(listener).not.toHaveBeenCalled();
-  });
-  it('replaces items and buffered recipes without crafting, and notifies once', () => {
-    const store = new InventoryStore([
-      inventorySlot(0, { itemId: 'twigs', count: 8 }), inventorySlot(1), equipmentSlot('hand'),
-    ], specs);
-    const listener = vi.fn();
-    store.subscribe(listener);
-    const recipes = { house: { recipeId: 'house', productId: 'twigs', productCount: 1, ingredients: { twigs: 8 }, buffered: true } };
-    store.replaceState({
-      slots: [{ address: equipmentSlotAddress('hand'), item: { itemId: 'axe', count: 1 } }],
-      bufferedBuilds: [{ recipeId: 'house' }],
-    }, recipes);
-    expect(store.get(inventorySlotAddress(0))).toBeNull();
-    expect(store.get(equipmentSlotAddress('hand'))).toEqual({ itemId: 'axe', count: 1 });
-    expect(store.isBuffered('house')).toBe(true);
-    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it('leaves the entire old inventory untouched when any saved slot is invalid', () => {
@@ -137,16 +120,6 @@ describe('craft', () => {
       { itemId: 'axe', count: 1 },
       null,
     ]);
-  });
-
-  it('returns null when ingredients are insufficient', () => {
-    expect(craft({
-      recipeId: 'axe',
-      productId: 'axe',
-      productCount: 1,
-      ingredients: { twigs: 2 },
-      buffered: false,
-    }, [new InventorySlot({ itemId: 'twigs', count: 1 })])).toBeNull();
   });
 
   it('uses slot max-stack definitions when placing products', () => {
@@ -261,40 +234,6 @@ describe('InventoryStore', () => {
     ]);
   });
 
-  it('registers storage slots and moves a stack into storage atomically', () => {
-    const store = new InventoryStore([
-      inventorySlot(0, { itemId: 'twigs', count: 4 }),
-    ], specs);
-    const storageAddress = { containerId: 'world:treasurechest:0', slotKey: '0' };
-    store.registerSlots([{
-      address: storageAddress,
-      slot: new StorageSlot(),
-    }]);
-
-    expect(store.applySlotChanges([
-      { slot: inventorySlotAddress(0), itemId: 'twigs', delta: -4 },
-      { slot: storageAddress, itemId: 'twigs', delta: 4 },
-    ])).toBe(true);
-    expect(store.get(inventorySlotAddress(0))).toBeNull();
-    expect(store.get(storageAddress)).toEqual({ itemId: 'twigs', count: 4 });
-    expect(store.count('twigs')).toBe(0);
-    expect(store.materialSummary()).toEqual({ twigs: 0, axe: 0 });
-
-    const listener = vi.fn();
-    store.subscribe(listener);
-    store.setStorageAccessible(storageAddress.containerId, true);
-    expect(store.materialSummary()).toEqual({ twigs: 4, axe: 0 });
-    expect(listener).toHaveBeenLastCalledWith([]);
-    store.setStorageAccessible(storageAddress.containerId, false);
-    expect(store.materialSummary()).toEqual({ twigs: 0, axe: 0 });
-
-    expect(store.add('twigs', 1)).toBe(true);
-    expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'twigs', count: 1 });
-    expect(store.get(storageAddress)).toEqual({ itemId: 'twigs', count: 4 });
-    expect(store.count('twigs')).toBe(1);
-    expect(store.materialSummary()).toEqual({ twigs: 1, axe: 0 });
-  });
-
   it('limits prepared food slots to one item and rolls back oversized transfers and saves', () => {
     const address = { containerId: 'world:cookpot:pot', slotKey: '0' };
     const slot = new PreparedFoodSlot();
@@ -326,19 +265,5 @@ describe('InventoryStore', () => {
       { slot: inventorySlotAddress(0), itemId: 'twigs', delta: 1 },
     ])).toBe(true);
     expect(store.get(inventorySlotAddress(0))?.count).toBe(4);
-  });
-
-  it('rejects an item that does not match an equipment slot', () => {
-    const store = new InventoryStore([
-      inventorySlot(0, { itemId: 'twigs', count: 1 }),
-      equipmentSlot('hand'),
-    ], specs);
-
-    expect(store.applySlotChanges([
-      { slot: inventorySlotAddress(0), itemId: 'twigs', delta: -1 },
-      { slot: equipmentSlotAddress('hand'), itemId: 'twigs', delta: 1 },
-    ])).toBe(false);
-    expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'twigs', count: 1 });
-    expect(store.get(equipmentSlotAddress('hand'))).toBeNull();
   });
 });

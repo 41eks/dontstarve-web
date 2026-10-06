@@ -13,6 +13,7 @@ import type { NetCaptureTarget } from '@dontstarve-web/prefab/bugnet';
 import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
 import { intersectSpriteEntities } from '@dontstarve-web/prefab/pointerRaycaster';
 import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
+import { LootFling } from '@dontstarve-web/prefab/lootFling';
 import type { SavedEntity } from './save/types';
 
 export type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
@@ -25,6 +26,7 @@ interface GroundItemRecord extends GroundItemVisual {
   definition: GroundItemDefinition;
   footPosition: THREE.Vector3;
   isPlayerNearby: boolean;
+  fling?: LootFling;
 }
 
 export class GroundItemManager {
@@ -99,6 +101,31 @@ export class GroundItemManager {
     return true;
   }
 
+  /** DropLoot spawns each recipe ingredient separately, then FlingItem launches it. */
+  async flingLoot(definitions: readonly GroundItemDefinition[], position: THREE.Vector3): Promise<void> {
+    if (this.disposed) throw new Error('Ground items have been disposed');
+    const origin = position.clone();
+    const pieces = definitions.flatMap((definition) => {
+      if (!Number.isSafeInteger(definition.count) || definition.count < 1) throw new RangeError('Invalid loot count');
+      return Array.from({ length: definition.count }, () => ({ ...definition, count: 1 }));
+    });
+    // Prepare every piece before launching, so asynchronous asset loads cannot
+    // stagger one building's scatter or leave a partially spawned batch.
+    const results = await Promise.allSettled(pieces.map((definition) => this.createVisual(definition)));
+    const failed = results.find((result) => result.status === 'rejected');
+    if (failed || this.disposed) {
+      for (const result of results) if (result.status === 'fulfilled') result.value.dispose();
+      if (failed?.status === 'rejected') throw failed.reason;
+      throw new Error('Ground items have been disposed');
+    }
+    for (const [index, result] of results.entries()) {
+      if (result.status !== 'fulfilled') continue;
+      const fling = new LootFling(origin);
+      this.addVisual(newEntityId(), pieces[index], fling.position, result.value, true);
+      this.items.get(result.value.model)!.fling = fling;
+    }
+  }
+
   /** Restores an item without removing anything from inventory or playing pickup. */
   async spawnFromSave(
     id: string,
@@ -152,6 +179,7 @@ export class GroundItemManager {
       components: {
         stack: {
           itemId: definition.itemId, count: definition.count,
+          ...(definition.remainingUses === undefined ? {} : { remainingUses: definition.remainingUses }),
           ...(definition.skinId === undefined ? {} : { skinId: definition.skinId }),
         },
       },
@@ -186,6 +214,7 @@ export class GroundItemManager {
                             if (used || !isValid()) return false;
                             visual.model.position.copy(record.footPosition);
                             visual.model.quaternion.copy(record.model.quaternion);
+                            if (record.fling) visual.model.children[0].position.y = record.fling.height;
                             visual.model.userData.entityId = record.id;
                             this.items.delete(record.model);
                             record.dispose();
@@ -263,6 +292,12 @@ export class GroundItemManager {
     for (const item of this.items.values()) {
       item.model.quaternion.copy(cameraQuaternion);
       item.update?.(dt);
+      if (item.fling) {
+        item.fling.update(dt);
+        item.model.position.copy(item.fling.position);
+        item.model.children[0].position.y = item.fling.height;
+        if (item.fling.settled) item.fling = undefined;
+      }
       item.footPosition.copy(item.model.position);
       this.updateProximity(item);
       if (item.isRemoved?.()) {

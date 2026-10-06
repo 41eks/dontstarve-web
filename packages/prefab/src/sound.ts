@@ -2,6 +2,13 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  'farming/common/farm/plow/drill_pre': { bank: 'farming', streams: [90], loop: false },
+  'farming/common/farm/plow/LP': { bank: 'farming', streams: [82, 83, 84], loop: true,
+    layers: [{ bank: 'farming', streams: [85] }, { bank: 'farming', streams: [86] },
+      { bank: 'farming', streams: [87] }, { bank: 'farming', streams: [88] }] },
+  'farming/common/farm/plow/collapse': { bank: 'farming', streams: [89], loop: false },
+  'farming/common/farm/plow/dirt_puff': { bank: 'farming', streams: [9], loop: false,
+    layers: [{ bank: 'farming', streams: [10] }] },
   'dontstarve/common/staff_star_create': { bank: 'common', streams: [273], loop: false },
   'dontstarve/common/staff_star_LP': { bank: 'common', streams: [274], loop: true },
   'dontstarve/wilson/use_gemstaff': { bank: 'common', streams: [284], loop: false },
@@ -10,6 +17,9 @@ const sounds = {
   'dontstarve/common/staff_coldlight_LP': { bank: 'sfx', streams: [796], loop: true,
     layers: [{ bank: 'sfx', streams: [797] }, { bank: 'common', streams: [158] }] },
   'dontstarve/wilson/hit': { bank: 'sfx', streams: [423, 424], loop: false },
+  'dontstarve/common/destroy_smoke': { bank: 'common', streams: [56, 57, 58, 59], loop: false,
+    layers: [{ bank: 'common', streams: [62] }, { bank: 'common', streams: [187] }] },
+  'dontstarve/common/destroy_wood': { bank: 'common', streams: [64], loop: false },
   'dontstarve/wilson/use_pick_rock': { bank: 'wilson', streams: [124], loop: false },
   'dontstarve/common/icebox_open': { bank: 'sfx', streams: [383], loop: false },
   'dontstarve/common/icebox_close': { bank: 'sfx', streams: [382], loop: false },

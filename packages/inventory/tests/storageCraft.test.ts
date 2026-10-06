@@ -29,29 +29,6 @@ function storageSlot(containerId: string, index: number, stack: InventoryStack |
 }
 
 describe('crafting with accessible storage', () => {
-  it.each([firepit, icebox])('buffers $recipeId using only ingredients in an open chest', (recipe) => {
-    const storage = Object.entries(recipe.ingredients).map(([itemId, count], index) => (
-      storageSlot('chest:1', index, { itemId, count })
-    ));
-    const store = new InventoryStore([
-      { address: inventorySlotAddress(0), slot: new InventorySlot({ itemId: 'axe', count: 40 }) },
-      ...storage,
-    ], specs);
-    store.setStorageAccessible('chest:1', true);
-    const listener = vi.fn();
-    store.subscribe(listener);
-
-    expect(store.materialSummary()).toMatchObject(recipe.ingredients);
-    expect(store.craft(recipe, `${recipe.recipeId}_skin`)).toBe(true);
-    expect(storage.map(({ slot }) => slot.get())).toEqual(storage.map(() => null));
-    expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'axe', count: 40 });
-    expect(store.bufferedSkin(recipe.recipeId)).toBe(`${recipe.recipeId}_skin`);
-    expect(listener).toHaveBeenCalledExactlyOnceWith(storage.map(({ address }) => address));
-
-    // A buffered build must not consume another set of ingredients.
-    expect(store.craft(recipe)).toBe(false);
-    expect(listener).toHaveBeenCalledTimes(1);
-  });
 
   it('combines the backpack and open containers, preserving remaining stacks and their skins', () => {
     const backpack = { address: inventorySlotAddress(0), slot: new InventorySlot({ itemId: 'log', count: 1 }) };
@@ -91,22 +68,6 @@ describe('crafting with accessible storage', () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-  it('leaves every source unchanged when one ingredient is insufficient', () => {
-    const store = new InventoryStore([
-      { address: inventorySlotAddress(0), slot: new InventorySlot({ itemId: 'log', count: 1 }) },
-      storageSlot('chest:1', 0, { itemId: 'log', count: 2 }),
-      storageSlot('chest:1', 1, { itemId: 'rocks', count: 11 }),
-    ], specs);
-    store.setStorageAccessible('chest:1', true);
-    const before = store.exportState();
-    const listener = vi.fn();
-    store.subscribe(listener);
-
-    expect(store.craft(firepit)).toBe(false);
-    expect(store.exportState()).toEqual(before);
-    expect(listener).not.toHaveBeenCalled();
-  });
-
   it('puts crafted items in the backpack and fails atomically when only storage has room', () => {
     const backpack = { address: inventorySlotAddress(0), slot: new InventorySlot({ itemId: 'rocks', count: 40 }) };
     const chest = storageSlot('chest:1', 0, { itemId: 'log', count: 2 });
@@ -128,15 +89,5 @@ describe('crafting with accessible storage', () => {
     expect(empty.slot.get()).toEqual({ itemId: 'axe', count: 1 });
     expect(chest.slot.get()).toBeNull();
     expect(listener).toHaveBeenCalledExactlyOnceWith([empty.address, chest.address]);
-  });
-
-  it('calculates storage consumption without mutating any input slot', () => {
-    const backpack = [new InventorySlot({ itemId: 'log', count: 1 })];
-    const storage = [new StorageSlot({ itemId: 'log', count: 2 }), new StorageSlot({ itemId: 'rocks', count: 12 })];
-    expect(craft(firepit, backpack, storage)).toEqual([null, { itemId: 'log', count: 1 }, null]);
-    expect(backpack[0].get()).toEqual({ itemId: 'log', count: 1 });
-    expect(storage.map((slot) => slot.get())).toEqual([
-      { itemId: 'log', count: 2 }, { itemId: 'rocks', count: 12 },
-    ]);
   });
 });

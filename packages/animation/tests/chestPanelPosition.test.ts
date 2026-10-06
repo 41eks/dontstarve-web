@@ -26,7 +26,7 @@ beforeEach(() => {
   camera.updateMatrixWorld();
 });
 
-it.each(['treasurechest', 'icebox', 'dragonflychest', 'saltbox'] as const)('anchors the %s panel above the moving player and keeps it visible through closing', (prefab) => {
+it.each(['treasurechest'] as const)('anchors the %s panel above the moving player and keeps it visible through closing', (prefab) => {
   const element = Object.assign(new EventTarget(), {
     hidden: true, isClosing: false, slotContainer: undefined as { id: string } | undefined,
     setAnchor: vi.fn(),

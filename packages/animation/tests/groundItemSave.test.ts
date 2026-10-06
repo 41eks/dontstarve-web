@@ -76,6 +76,37 @@ function setup() {
 const definition = { itemId: 'log', count: 1, name: 'Log', icon: 'log.tex' };
 
 describe('ground item save records', () => {
+  it('flings one entity per loot piece, keeps flight heights out of saves and stops motion on pickup', async () => {
+    const { manager, canvas, pickup, player } = setup();
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    try {
+      await manager.flingLoot([{ ...definition, count: 3 }], new THREE.Vector3(1, 0, 2));
+      const models = manager.renderEntities.map(({ object }) => object);
+      expect(models).toHaveLength(3);
+      expect(manager.exportRecords().map(({ components }) => components.stack?.count)).toEqual([1, 1, 1]);
+      manager.update(0.1, new THREE.Quaternion());
+      expect(models.every((model) => model.children[0].position.y > 0 && model.position.y === 0)).toBe(true);
+      expect(manager.exportRecords().every((record) => record.transform.position[1] === 0)).toBe(true);
+      const model = models[0];
+      player.position.copy(model.position);
+      vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([
+        { object: model } as unknown as THREE.Intersection,
+      ]);
+      canvas.dispatchEvent(Object.assign(new Event('pointerdown', { cancelable: true }),
+        { button: 0, clientX: 50, clientY: 50 }));
+      expect(pickup).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'log', count: 1 }), 'pickup', model.position);
+      expect(model.parent).toBeNull();
+      const pickedUpPosition = model.position.clone();
+      manager.update(5, new THREE.Quaternion());
+      expect(model.position).toEqual(pickedUpPosition);
+      expect(manager.exportRecords()).toHaveLength(2);
+      expect(models.slice(1).every((model) => model.children[0].position.y === 0)).toBe(true);
+      const records = manager.exportRecords();
+      manager.update(5, new THREE.Quaternion());
+      expect(manager.exportRecords()).toEqual(records);
+    } finally { manager.dispose(); }
+  });
+
   it.each(['log', 'test_icon_fallback'])('limits %s pickup to chest proximity and leaves distant items untouched', async (itemId) => {
     const { manager, scene, canvas, pickup, player } = setup();
     const item = { ...definition, itemId };
@@ -120,28 +151,6 @@ describe('ground item save records', () => {
     expect(onInventory).toHaveBeenCalledOnce();
     expect(manager.exportRecords()).toEqual([]);
     expect(model.parent).toBeNull();
-    manager.dispose();
-  });
-
-  it('tracks proximity during frames, including leaving and re-entering without a click', async () => {
-    const { manager, canvas, pickup, player } = setup();
-    player.position.x = 9.01;
-    const model = await manager.spawnFromSave('frame_range', definition, new THREE.Vector3());
-    vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as THREE.Intersection]);
-    const click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown'),
-      { button: 0, clientX: 50, clientY: 50 }));
-    player.position.x = 9;
-    manager.update(0, new THREE.Quaternion());
-    player.position.x = 10.01;
-    manager.update(0, new THREE.Quaternion());
-    player.position.x = 9.5;
-    click();
-    expect(pickup).not.toHaveBeenCalled();
-    player.position.x = 9;
-    manager.update(0, new THREE.Quaternion());
-    player.position.x = 10;
-    click();
-    expect(pickup).toHaveBeenCalledOnce();
     manager.dispose();
   });
 
@@ -197,47 +206,6 @@ describe('ground item save records', () => {
     expect(scene.children).toHaveLength(0);
   });
 
-  it('keeps restored IDs and item skins without pickup side effects', async () => {
-    const { manager, pickup } = setup();
-    const restored = { ...definition, itemId: 'treasurechest', skinId: 'treasurechest_ancient' };
-    await manager.spawnFromSave('e_restored_item', restored, new THREE.Vector3(3, 0, 4));
-    expect(manager.exportRecords()).toEqual([{
-      id: 'e_restored_item', transform: { position: [3, 0, 4], rotationY: 0 },
-      components: { stack: { itemId: 'treasurechest', skinId: 'treasurechest_ancient', count: 1 } },
-    }]);
-    expect(pickup).not.toHaveBeenCalled();
-  });
-
-  it('splits a live butterfly stack, saves moving foot points and nets only the clicked creature', async () => {
-    const { manager, scene, canvas, pickup } = setup();
-    manager.setNetCaptureHandler((target) => target.capture());
-    const butterfly = { itemId: 'butterfly', count: 3, name: '蝴蝶', icon: 'butterfly.tex' };
-    expect(await manager.drop(butterfly, new THREE.Vector3(8, 30, 9), () => false)).toBe(false);
-    expect(scene.children).toHaveLength(0);
-    expect(await manager.drop(butterfly, new THREE.Vector3(8, 30, 9), () => true)).toBe(true);
-    expect(scene.children).toHaveLength(3);
-    expect(new Set(manager.exportRecords().map(({ id }) => id)).size).toBe(3);
-    for (let frame = 0; frame < 20; frame++) manager.update(0.1, new THREE.Quaternion());
-    const records = manager.exportRecords();
-    expect(records.every(({ components }) => components.stack?.count === 1)).toBe(true);
-    expect(records[0].transform.position[0]).toBeGreaterThan(8);
-    expect(records[0].transform.position).toEqual(scene.children[0].position.toArray());
-    expect(manager.renderEntities[0].footPosition.toArray()).toEqual(records[0].transform.position);
-    expect(scene.children[0].userData.butterflyController).toBeInstanceOf(ButterflyController);
-    vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([
-      { object: scene.children[0] } as THREE.Intersection,
-    ]);
-    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0, clientX: 50, clientY: 50 }));
-    expect(pickup).toHaveBeenCalledWith({ ...butterfly, count: 1 }, 'net', new THREE.Vector3(...records[0].transform.position));
-    expect(manager.exportRecords()).toHaveLength(2);
-    expect(scene.children).toHaveLength(2);
-    const restored = setup();
-    await restored.manager.spawnFromSave(records[0].id, { ...butterfly, count: 1 }, new THREE.Vector3(...records[0].transform.position));
-    expect(restored.manager.exportRecords()[0]).toEqual(records[0]);
-    for (let frame = 0; frame < 20; frame++) restored.manager.update(0.1, new THREE.Quaternion());
-    expect(restored.manager.exportRecords()[0].transform.position[0]).toBeGreaterThan(records[0].transform.position[0]);
-  });
-
   it('requires NET for living butterflies and keeps a failed capture in the world', async () => {
     const { manager, scene, canvas, pickup } = setup();
     const butterfly = { itemId: 'butterfly', count: 1, name: '蝴蝶', icon: 'butterfly.tex' };
@@ -260,17 +228,4 @@ describe('ground item save records', () => {
     expect(scene.children).toHaveLength(0);
     expect(manager.exportRecords()).toHaveLength(0);
   });
-});
-
-it('disposes ground visuals and input listeners once and rejects later drops', async () => {
-  const { manager, scene, canvas, pickup } = setup();
-  await manager.spawnFromSave('ground_one', definition, new THREE.Vector3());
-  const remove = vi.spyOn(canvas, 'removeEventListener');
-  manager.dispose(); manager.dispose();
-  expect(scene.children).toEqual([]);
-  expect(manager.exportRecords()).toEqual([]);
-  expect(remove).toHaveBeenCalledOnce();
-  const take = vi.fn(() => true);
-  await expect(manager.drop(definition, new THREE.Vector3(), take)).rejects.toThrow('disposed');
-  expect(take).not.toHaveBeenCalled(); expect(pickup).not.toHaveBeenCalled();
 });

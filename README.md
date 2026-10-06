@@ -6,6 +6,15 @@ https://41eks.github.io/dontstarve-web/
 
 右上角世界时钟使用原版 `clock_transitions.zip`、`moon_phases_clock.zip` 和 `moon_phases.zip`，按 `widgets/uiclock.lua` 的地表时钟逻辑跟随场景时间。当前世界使用默认 16 格、每格 30 秒：白天 300 秒、黄昏 120 秒、夜晚 60 秒；指针每 480 秒转一圈，白天跨格时播放太阳脉动，昼夜切换播放过渡动画，月相按原版 20 天周期变化。日期和指针从存档的 `world.elapsedSeconds` 恢复。
 
+## 开发文档
+
+开发约束见 [AGENTS.md](AGENTS.md)，实现说明与案例见：
+
+- [DST 物品资产、地面外观与导入](docs/dst-item-assets.md)
+- [Billboard 绘制顺序与墙朝向](docs/dst-billboard-rendering.md)
+- [物品栏架构与交互](docs/inventory-architecture.md)
+- [DST 音频提取与浏览器播放](docs/vgmstream-cli-guide.md)
+
 ## 调试命令（debugCommand）
 
 `c_give("backpack")` 获取背包，第二个参数为数量（默认 `1`，例如 `c_give("backpack", 2)`），每个占一格。拖到身体装备槽或右键背包即可装备，角色显示 `swap_backpack.zip` 的原版外观；右侧播放 `anim/ui_backpack_2x4.zip` 的 `open` 动画并显示 2 列 × 4 行的 8 个储物格，可与物品栏、其他容器拖放物品，材料可用于制作。Shift + 右键丢弃时使用原版 `anim/backpack.zip` 的 bank `backpack1`、`anim` 地面姿态和 `anim/swap_backpack.zip` 的 build，点击可拾回。支持 36 个原版皮肤及其实际库存图标 atlas；可在制作面板选择皮肤，或装备清洁扫把右键地面背包循环换肤。拾回和重新装备保留皮肤，隐形皮肤仅隐藏穿戴外观，地面姿态仍可见。卸下时播放 `close` 并隐藏储物格，再次装备时恢复内容；当前储物格属于玩家，同一玩家的多个背包共用这些格子。皮肤、地面背包和格子内容随 `c_save()` 保存和恢复。
@@ -15,7 +24,7 @@ https://41eks.github.io/dontstarve-web/
 | 命令 | 参数与作用 | 示例 |
 | --- | --- | --- |
 | `c_give("item_id", count)` | 向物品栏添加物品。`count` 可省略，默认 `1`，必须为正的安全整数；按堆叠上限分配。未知物品或物品栏空间不足时失败。 | `c_give("torch")`、`c_give("opalstaff")`、`c_give("pitchfork")`、`c_give("hammer")`、`c_give("meatballs", 10)` |
-| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、伯尼、岩石、草、树苗、池塘和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("bernie_inactive")`、`c_spawn("rock1")`、`c_spawn("grass")`、`c_spawn("sapling")`、`c_spawn("pond")`、`c_spawn("nightmaregrowth")` |
+| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、伯尼、岩石、草、树苗、池塘、虫洞和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("bernie_inactive")`、`c_spawn("rock1")`、`c_spawn("grass")`、`c_spawn("sapling")`、`c_spawn("pond")`、`c_spawn("wormhole")`、`c_spawn("nightmaregrowth")` |
 | `c_save()` | 无参数。将当前游戏状态（包括挖过的地皮）导出并下载为 `initial-world.json`，同时在画面上方偏右显示原版 `anim/saving.zip` 的保存动画（`save_pre` → `save_loop` → `save_post`），结束后隐藏；保存超过 0.5 秒显示“正在保存…”。快速保存也会完整播放一轮动画；失败时结束提示并报告错误。要作为初始存档加载，将下载文件放到 `public/saves/initial-world.json` 后重新加载页面。 | `c_save()` |
 | `c_setsanity(percent)` | 设置 Wilson 的理智比例；`percent` 为必填的 `0` 到 `1` 数字（上限 200），同步状态栏和低理智滤镜，并随 `c_save()` 保存。调色按每 10% 一档四舍五入；实际理智、晃动速度和幅度保留连续值。 | `c_setsanity(0)`、`c_setsanity(0.175)`、`c_setsanity(1)` |
 
@@ -31,7 +40,7 @@ https://41eks.github.io/dontstarve-web/
 
 点击地面物品拾取时，与木箱共用玩家距离规则：水平距离进入 9 个场景单位内（含边界）后允许拾取，超过 10 个单位后失效，重新靠近到 9 个单位内恢复。距离以物品脚点计算，忽略高度；每帧及点击转入库存前检查当前位置。距离过远或库存已满时，物品留在地面，不播放拾取动画或触发 `onputininventory`。规则适用于普通物品、帽子、伯尼及图标回退物品，包括从存档或命令生成的物品；虫网捕获继续使用原有捕获距离。
 
-`c_give("bernie_inactive")` 获取伯尼，数量可指定为 `c_give("bernie_inactive", 2)`，每只占一格。Shift + 右键物品槽放到地面，也可用 `c_spawn("bernie_inactive")` 直接在玩家位置生成。地面形态按玩家实际理智比例切换：低于 15%（Wilson 理智低于 30/200）显示 `bernie_big`，其余显示 `bernie_active`；`c_setsanity(0.1)` 和 `c_setsanity(0.175)` 可验证两种形态。使用原版 `bernie.zip` / `bernie_big.zip` 的 `idle_loop` 和共享 `bernie_build.zip`，支持艾希莉、小火花两种皮肤。点击任一形态拾回时仍为 `bernie_inactive`；位置、实体 ID、皮肤和物品数量随 `c_save()` 保存，恢复时根据玩家理智重新选择形态。当前按请求让 Wilson 也能触发两种地面形态，实现待机外观与拾取，不包含原版 Willow 限制、技能、跟随、战斗、耐久和变身冷却。
+`c_give("bernie_inactive")` 获取伯尼，数量可指定为 `c_give("bernie_inactive", 2)`，每只占一格。Shift + 右键物品槽放到地面，也可用 `c_spawn("bernie_inactive")` 直接在玩家位置生成。地面形态按玩家实际理智比例切换：低于 15%（Wilson 理智低于 30/200）显示 `bernie_big`，其余显示 `bernie_active`；`c_setsanity(0.1)` 和 `c_setsanity(0.175)` 可验证两种形态。变大播放大伯尼的 `activate`；变小依次播放大伯尼的 `deactivate`、`deactivate_pst` 和小伯尼的 `activate`。起身结束后先播放 0.5 秒 `idle_loop_nodir`，保留播放时间切回 `idle_loop`。变身期间再次改变理智，会在当前动画流程完成后按最新理智切换。使用原版 `bernie.zip` / `bernie_big.zip` 动画和共享 `bernie_build.zip`，大伯尼保持 Lua 的 0.7 缩放，支持艾希莉、小火花两种皮肤。点击任一形态拾回时立即取消动画，仍为 `bernie_inactive`；位置、实体 ID、皮肤和物品数量随 `c_save()` 保存，恢复时根据玩家理智直接显示待机形态。当前按请求让 Wilson 也能触发两种地面形态，实现待机、大小切换动画与拾取，不包含原版 Willow 限制、技能、跟随、战斗、耐久和变身冷却。
 
 
 
@@ -44,7 +53,7 @@ https://41eks.github.io/dontstarve-web/
 
 `c_give("reskin_tool")` 获取清洁扫把，数量可用第二个参数指定，例如 `c_give("reskin_tool", 2)`；每把占一格。支持原版物品图标、手部装备外观、4 个皮肤，以及 Shift + 右键丢弃和点击拾回。装备到手部后，右键有可用皮肤的建筑或地面物品进行换肤，超出施法距离时自动走近；按当前支持的皮肤目录循环，最后回到基础外观。玩家按原版 `veryquickcastspell` 播放 `anim/player_attacks.zip` 的 `atk_pre → atk`，开始时播放挥动声，第 9 帧提交换肤并在目标位置播放 `reskin_tool_fx.zip` 的 `puff` 及换肤音效；清洁扫把的 4 个皮肤使用各自的特效外观，幽灵画笔使用独立音效。移动、跳跃、左键、Esc、卸下或更换扫把可取消未提交的换肤；取消后不出现换肤特效或结果音效。换肤保留实体 ID、位置、物品数量及容器内容，皮肤随 `c_save()` 保存和恢复；暂不处理背包内目标、角色胡须及原版皮肤所有权筛选。
 
-锤子可用 `c_give("hammer")` 获取，每格只能放一把，拖到手部装备槽后显示原版手持外观。Shift + 右键物品槽可放到地上，点击地面锤子可拾回。用 `c_spawn("treasurechest")` 等命令生成建筑后，手持锤子右键建筑会自动走近并播放挥锤及对应受击动画，在 `pickaxe_loop` 第 7 帧播放原版 `dontstarve/wilson/hit`（两段样本随机选择）；移动、Esc 或卸下锤子可取消尚未命中的挥锤及音效。当前播放动画和声音，不消耗锤子、不损坏建筑、不掉落物品或改变容器状态；营火没有 HAMMER 动作。
+锤子可用 `c_give("hammer")` 获取，每格只能放一把，拖到手部装备槽后显示原版手持外观。Shift + 右键物品槽可放到地上，点击地面锤子可拾回。用 `c_spawn("treasurechest")` 等命令生成建筑后，手持锤子右键建筑会自动走近并播放挥锤及对应受击动画，在 `pickaxe_loop` 第 7 帧播放原版 `dontstarve/wilson/hit`（两段样本随机选择）；移动、Esc 或卸下锤子可取消尚未命中的挥锤及音效。科技建筑 `researchlab`、`researchlab2`、`researchlab3`、`researchlab4` 按 Lua 需要 4 次成功命中：前三次播放 `hit` 后恢复靠近/待机动画，第四次触发 `onhammered`，按配方各材料的 50% 向上取整掉落物品，播放原版 `collapse_small` 木质坍塌特效和声音，并从场景、交互目标和存档中移除。材料按 `lootdropper.lua:FlingItem()` 逐件抛向随机方向，水平速度 `0–2`、向上速度 `8±4` 按场景比例换算，起点避开建筑碰撞半径；使用简化抛物线与落地弹跳，最后停在各自落点。飞行中也可拾取，保存当前地面位置，读档不重播抛出过程。可用 `c_spawn("researchlab")` 后手持锤子右键 4 次验证；未销毁的建筑读档后恢复 4 次锤击，符合 Lua workable 默认不保存进度的行为。其他建筑目前仍只播放受击动画和声音，保留容器状态；锤子暂不消耗耐久，营火没有 HAMMER 动作。
 
 鹤嘴锄可用 `c_give("pickaxe")`（或 `c_give("goldenpickaxe")`）获取，拖到手部装备槽后显示原版手持外观。用 `c_spawn("rock1")` 等命令生成岩石后，手持鹤嘴锄右键岩石会自动走近并播放 `anim/player_actions_pickaxe.zip` 的开采挥镐动画，在 `pickaxe_loop` 第 7 帧触发岩石受击脉冲及原版 `dontstarve/wilson/use_pick_rock`；两种鹤嘴锄使用同一音效。移动、Esc 或卸下鹤嘴锄可取消尚未命中的开采及音效。当前播放动画和声音，不消耗工具、不减少岩石状态、不破坏岩石或掉落物品。
 
@@ -55,6 +64,19 @@ https://41eks.github.io/dontstarve-web/
 唤月者魔杖可用 `c_give("opalstaff")` 获取，数量可指定为 `c_give("opalstaff", 2)`，每把占一格。拖入手部装备槽后，右键地面施法，在第 13 帧播放原版 `dontstarve/common/staffteleport`，第 53 帧在点击位置召唤蓝色极光（`staffcoldlight`），照亮周围地面。使用原版 `anim/star_cold.zip` 的出现、三种待机与消失动画；极光持续 16 分钟，出现时播放 `staff_star_create`，存在期间播放 `staff_coldlight_LP` 的三层循环音效。卸下魔杖可取消尚未完成的召唤。支持原版图标、手持与地面外观、皮肤、Shift + 右键丢弃和点击拾回；魔杖及极光的落点、剩余寿命随 `c_save()` 保存并在加载时恢复。当前施法不消耗耐久或理智。
 
 ### c_spawn 支持的对象
+
+`c_spawn("wormhole")` 在玩家当前位置生成虫洞，使用原版 `anim/teleporter_worm.zip` 的 bank `teleporter_worm` 和 `anim/teleporter_worm_build.zip` 的 build `teleporter_worm_build`。玩家进入 12 个场景单位内（原版 4 单位）播放 `open_pre` → `open_loop`，超过 15 个场景单位（原版 5 单位）播放 `open_pst` → `idle_loop`；距离只计算地面 XZ 平面。开口第 10 帧切入地面背景层，闭合第 4 帧恢复以地面原点排序的世界层，所有状态保持原版 billboard 朝向。用 `c_give("reskin_tool")` 获取清洁扫把并装备到手部，右键虫洞按 `wormhole_claw`、`wormhole_fantasy`、`wormhole_gothic`、`wormhole_lureplant`、`wormhole_spider`、`wormhole_worm` 顺序换肤，再回到默认外观；资源为原版 `anim/dynamic/wormhole_*.zip` / `.dyn`。换肤保留实体 ID、位置和当前动画进度；位置、实体 ID 和皮肤随 `c_save()` 保存，读档后根据玩家距离重新决定开闭。虫洞属于场景实体，通过 `c_spawn` 生成；当前不包含传送、配对、物品投喂或虫洞音效。
+
+用 `c_spawn("wall_stone")`、`c_spawn("wall_wood")`、`c_spawn("wall_hay")`、`c_spawn("wall_ruins")`、`c_spawn("wall_moonrock")` 或 `c_spawn("wall_dreadstone")` 生成建成墙；`wall_*_item` 别名仍生成建成墙。`c_give("wall_stone_item", 10)` 等命令获取可放置的墙物品，库存图标、掉落地面的 `idle` 动画与建成墙的 `half` 外观分别使用各自原版资源。装备 `c_give("reskin_tool")` 获取的清洁扫把，右键建成墙可按下表循环换肤，最后回到默认外观；原有地面墙物品也可换肤。放置带皮肤的墙物品会映射到对应的建成墙皮肤，保留正面/斜面随相机朝向切换、受击动画和绝望石墙的红色覆盖层。换肤保留实体 ID、地面落点及已保存的健康状态；建成墙皮肤随 `c_save()` 保存并恢复，旧的无皮肤墙存档仍可加载。档案馆墙 `wall_stone_2` / `wall_ruins_2` 和废料墙 `wall_scrap` 没有原版皮肤，不提供换肤。
+
+| 建成墙 prefab_id | 皮肤循环顺序 |
+| --- | --- |
+| `wall_stone` | `wall_stone_an`、`wall_stone_ancient`、`wall_stone_ancient_alt`、`wall_stone_gothic`、`wall_stone_rose`、`wall_stone_shell`、`wall_stone_victorian` |
+| `wall_wood` | `wall_wood_ornate` |
+| `wall_hay` | `wall_hay_corn` |
+| `wall_ruins` | `wall_ruins_thulecite`、`wall_ruins_thulecite2`、`wall_ruins_thulecite2_alt`、`wall_ruins_thulecite_alt`、`wall_ruins_victorian` |
+| `wall_moonrock` | `wall_moonrock_victorian` |
+| `wall_dreadstone` | `wall_dreadstone_relic` |
 
 `c_spawn("grass")` 在玩家当前位置生成草丛，使用原版 `grass.lua` 的 bank `grass`（`anim/grass.zip`）与 build `grass1`（`anim/grass1.zip`），循环播放 84 帧 `idle`。当前仅实现贴图显示，不包含采集、挖掘、枯萎、冬季或变色蜥蜴变形；位置随 `c_save()` 保存并在加载时恢复。
 
@@ -74,7 +96,7 @@ https://41eks.github.io/dontstarve-web/
 | 草丛 | `grass` |
 | 树苗 | `sapling`、`sapling_moon` |
 | 池塘 | `pond` |
-| 场景装饰 | `nightmaregrowth` |
+| 场景装饰 | `nightmaregrowth`、`wormhole` |
 | 生物 | `fireflies`、`beefalo`、`bernie_inactive`（地面形态由理智决定） |
 
 `c_give` 可用的物品 ID 由 [src/inventoryItems.ts](src/inventoryItems.ts) 汇总的物品定义决定；命令解析见 [src/debugCommands.ts](src/debugCommands.ts)，场景实体的创建、恢复、导出、更新和销毁集中声明在 [src/sceneEntities.ts](src/sceneEntities.ts)，由 [src/entityRegistry.ts](src/entityRegistry.ts) 统一调度；`c_spawn` 的支持 ID 与落点规则由对应注册项决定。

@@ -46,6 +46,9 @@ const fxInfo: Readonly<Record<string, { offset?: number; scale: number }>> = {
   researchlab3: { offset: 0.5, scale: 1.4 }, researchlab4: { offset: 0.5, scale: 1.3 },
   yellowstaff: { offset: 0.4, scale: 1 }, opalstaff: { offset: 0.4, scale: 1 },
   shovel: { offset: 0.2, scale: 1 }, featherhat: { offset: 0.1, scale: 1.1 },
+  wormhole: { scale: 1.3 },
+  wall_moonrock: { offset: 0.2, scale: 1.2 },
+  wall_ruins: { offset: 0.2, scale: 1.3 }, wall_stone: { offset: 0.2, scale: 1.3 },
 };
 
 export function reskinEffectSound(toolSkinId?: string): SoundEventPath {

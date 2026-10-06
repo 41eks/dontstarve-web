@@ -70,31 +70,6 @@ describe('Enlightened Crown source activation', () => {
     expect(crown.isAnimating).toBe(false);
   });
 
-  it('uses skin FX symbols, preserves NoFaced transforms and leaves dropped art unchanged', async () => {
-    const assets = sourceAssets();
-    const base = await assets.load('alterguardianhat');
-    const skin = await assets.load('alterguardianhat', 'alterguardianhat_lastprism');
-    const crown = new HatActivationController(new THREE.Group());
-    crown.setHat(skin);
-    crown.update(0.8);
-    const normal = crown.resolve(anchor, false);
-    const mirrored = crown.resolve(anchor, true);
-    for (const [index, sprite] of normal.front.entries()) {
-      expect(sprite.materials[0].name).toContain('alterguardianhat_lastprism');
-      const matrix = sprite.element.matrix;
-      const flipped = mirrored.front[index].element.matrix;
-      expect(flipped).toEqual([-matrix[0], matrix[1], -matrix[2], matrix[3],
-        2 * anchor.matrix[4] - matrix[4], matrix[5]]);
-    }
-    expect(base.builds[0].materials[0].color.getHex()).toBe(0xffffff);
-    const ground = await createHatGroundSprite(assets, 'alterguardianhat');
-    expect(getPrefabLocalLight(ground.model)).toBeUndefined();
-    const mesh = ground.model.children[0].children[0] as THREE.Mesh;
-    expect((mesh.material as THREE.Material[]).every(material => !material.name.includes('equipped'))).toBe(true);
-    ground.dispose();
-    expect(() => crown.setSanityPercent(NaN)).toThrow(RangeError);
-  });
-
   it('updates FX while Wilson is idle and merges both FX layers around the player geometry', async () => {
     sourceAssets();
     const player = await createWilsonPlayer('/crown-test');

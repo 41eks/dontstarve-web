@@ -1,19 +1,29 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
-test('hammer equipment, ground art, right-click action and building feedback preserve state', async ({ page }) => {
+test('science building skins support four-hit destruction, persistent loot and pickup', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   await page.goto('/tests/dst-lighting.html');
-  const result = await page.evaluate(async (url) => (await import(url)).checkHammer(),
+  const result = await page.evaluate(async (url) => (await import(url)).checkResearchLabDestruction(),
     `/@fs${fileURLToPath(new URL('./hammer-fixture.ts', import.meta.url))}`);
-  expect(result.failures).toEqual([]);
-  expect(result).toMatchObject({ skins: 5, wornCases: 36, buildingCases: 16, inventoryEquipped: true,
-    maxStack: 1, equippable: 'hand', campfireExcluded: true, openingResumed: true, litHit: true,
-    ignoredLeft: true, consumedRight: true, manualCancels: true, missedHit: true,
-    unequipCancels: true, ignoredUnequipped: true, approaches: true, reachesTarget: true, hoverLabel: true });
+  expect(result.cases.map((entry) => entry.loot)).toEqual([
+    [{ itemId: 'goldnugget', count: 1 }, { itemId: 'log', count: 2 }, { itemId: 'rocks', count: 2 }],
+    [{ itemId: 'boards', count: 2 }, { itemId: 'cutstone', count: 1 }, { itemId: 'transistor', count: 1 }],
+    [{ itemId: 'livinglog', count: 2 }, { itemId: 'purplegem', count: 1 }, { itemId: 'nightmarefuel', count: 4 }],
+    [{ itemId: 'rabbit', count: 2 }, { itemId: 'boards', count: 2 }, { itemId: 'tophat', count: 1 }],
+  ]);
+  for (const entry of result.cases) {
+    expect(entry).toMatchObject({ remainedAfterThree: true, removed: true, records: [], effect: true,
+      airborne: true, moved: true, spread: true, inFlightGrounded: true, settled: true, stable: true });
+  }
+  expect(result.records.ground_item).toHaveLength(21);
+  expect(result.records.ground_item.every((record) => record.components.stack.count === 1)).toBe(true);
+  expect(result.records.ground_item.every((record) => record.transform.position[1] === 0)).toBe(true);
+  expect(result).toMatchObject({ effectsCleaned: true, pickupRemoved: true,
+    pickedUp: [{ itemId: 'goldnugget', count: 1 }] });
   expect(errors).toEqual([]);
 });
 

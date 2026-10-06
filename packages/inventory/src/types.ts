@@ -11,6 +11,7 @@ export interface InventoryItemSpec {
   icon: string;
   atlas?: string;
   equippable?: EquipmentKind;
+  maxUses?: number;
 }
 
 export interface InventorySkinSpec {
@@ -29,6 +30,7 @@ export interface InventoryStack {
   itemId: string;
   skinId?: string;
   count: number;
+  remainingUses?: number;
 }
 
 export type InventoryItems = readonly (InventoryStack | null)[];
@@ -40,6 +42,7 @@ export interface InventorySlotDelta {
   itemId: string;
   skinId?: string;
   delta: number;
+  remainingUses?: number;
 }
 
 export interface SlotRegistration<TSlot = unknown> {

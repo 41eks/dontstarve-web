@@ -92,6 +92,9 @@ def main():
     # Inventory Bernie rests in bernie.zip; both animated ground forms share
     # bernie_build.zip, with the large bank supplied by bernie_big.zip.
     add('bernie_inactive', 'bernie', 'bernie_build', 'inactive', 'bernie_inactive', animation_archive='bernie.zip')
+    # farm_plow.lua: inventory item is packed; deployed machinery overrides soil01.
+    add('farm_plow_item', 'farm_plow', 'farm_plow', 'idle_packed', 'farm_plow')
+    assets.update('anim/' + name + '.zip' for name in ['farm_soil', 'farm_soil_debris', 'smoke_puff_small', 'gridplacer'])
     assets.add('anim/bernie_big.zip')
     # mininglantern.lua registers lantern, with separate ground and worn builds.
     add('lantern', 'lantern', 'lantern', 'idle_off', 'mininglantern')

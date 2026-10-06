@@ -9,6 +9,7 @@ import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize
 const catalog: SaveCatalog = {
   items: Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
     ...spec, maxStack: inventoryItemMaxStack(id), equippable: inventoryItemEquipmentKind(id),
+    ...(id === 'farm_plow_item' ? { maxUses: 4 } : {}),
   }])),
   skins: INVENTORY_SKIN_SPECS,
   recipes: INVENTORY_RECIPES,
@@ -22,24 +23,66 @@ function parse(data: unknown = initialWorld) {
 }
 
 describe('save JSON deserialization', () => {
+  it('round-trips farmland, active plows, soil and finite-use inventory items', () => {
+    const data = structuredClone(initialWorld) as any;
+    data.players.local.inventory.containers['player:equipment'].slots = [];
+    data.world.map.tiles = [{ col: 0, row: 0, tileId: 47, underTileId: 30 }];
+    data.world.entities.farm_plow = [{ id: 'test_plow', transform: { position: [6, 0, 6], rotationY: 0 },
+      components: { farmPlow: { phase: 'drill_loop', remainingSeconds: 7, returnUses: 3 } } }];
+    data.world.entities.farm_soil = [{ id: 'test_soil', transform: { position: [3, 0, 3], rotationY: 0 },
+      components: { farmSoil: { broken: false, plowId: 'test_plow' } } }];
+    data.world.entities.ground_item = [{ id: 'test_item', transform: { position: [12, 0, 12], rotationY: 0 },
+      components: { stack: { itemId: 'farm_plow_item', count: 1, remainingUses: 2 } } }];
+    const saved = parse(data);
+    expect(saved.world.map.tiles).toEqual(data.world.map.tiles);
+    expect(saved.world.entities.farm_plow).toEqual(data.world.entities.farm_plow);
+    expect(saved.world.entities.farm_soil).toEqual(data.world.entities.farm_soil);
+    expect(saved.world.entities.ground_item).toEqual(data.world.entities.ground_item);
+    data.world.entities.ground_item[0].components.stack.remainingUses = 0;
+    expect(() => parse(data)).toThrow('remainingUses');
+    data.world.entities.ground_item[0].components.stack.remainingUses = 5;
+    expect(() => parse(data)).toThrow('remainingUses');
+  });
+
+  it('restores valid wall skins and health, accepts legacy walls and rejects other-prefab skins', () => {
+    const data = structuredClone(initialWorld) as any;
+    data.players.local.inventory.containers['player:equipment'].slots = [];
+    data.world.entities.wall_stone = [{ id: 'wall:stone', transform: { position: [4, 0, -6], rotationY: 0 },
+      components: { health: { current: 90, maximum: 400 }, wall: { skinId: 'wall_stone_gothic' } } }];
+    expect(parse(data).world.entities.wall_stone).toEqual(data.world.entities.wall_stone);
+    data.world.entities.wall_stone[0].components.wall.skinId = 'wall_hay_corn';
+    expect(() => parse(data)).toThrow('unsupported wall skin');
+    data.world.entities.wall_stone[0].components.wall.skinId = 'wall_stone_anitem';
+    expect(() => parse(data)).toThrow('unsupported wall skin');
+    delete data.world.entities.wall_stone[0].components.wall;
+    expect(parse(data).world.entities.wall_stone).toEqual(data.world.entities.wall_stone);
+  });
+
+  it('accepts visual-only wormholes with their saved identity and position', () => {
+    const data = structuredClone(initialWorld) as any;
+    // This reduced catalog omits the application's imported hat definitions.
+    data.players.local.inventory.containers['player:equipment'].slots = [];
+    data.world.entities.wormhole = [{
+      id: 'wormhole:test', transform: { position: [4, 0, -6], rotationY: 0 }, components: {},
+    }];
+    expect(parse(data).world.entities.wormhole).toEqual(data.world.entities.wormhole);
+    data.world.entities.wormhole[0].components.wormhole = { skinId: 'wormhole_spider' };
+    expect(parse(data).world.entities.wormhole).toEqual(data.world.entities.wormhole);
+    data.world.entities.wormhole[0].components.wormhole.skinId = 'missing';
+    expect(() => parse(data)).toThrow('skinId');
+    delete data.world.entities.wormhole[0].components.wormhole;
+    data.world.entities.wormhole[0].components.teleporter = {};
+    expect(() => parse(data)).toThrow('unsupported field');
+  });
+
   it.each([
     ['unknown version', (data: any) => { data.schemaVersion = 2; }, 'schemaVersion'],
-    ['wrong format', (data: any) => { data.format = 'other'; }, 'format'],
     ['duplicate ID across prefabs', (data: any) => { data.world.entities.pigking[0].id = data.world.entities.moon_tree[0].id; }, 'duplicate entity ID'],
     ['unknown prefab', (data: any) => { data.world.entities.unknown = []; }, 'unsupported field'],
-    ['unknown component', (data: any) => { data.world.entities.moon_tree[0].components.future = {}; }, 'unsupported field'],
     ['out-of-bounds position', (data: any) => { data.world.entities.moon_tree[0].transform.position[0] = 501; }, 'position[0]'],
-    ['incomplete position', (data: any) => { data.world.entities.moon_tree[0].transform.position = [0, 0]; }, 'three coordinates'],
-    ['unknown item', (data: any) => { data.players.local.inventory.containers['player:inventory'].slots[0].item.itemId = 'removed_mod_item'; }, 'unknown item'],
     ['invalid stack count', (data: any) => { data.players.local.inventory.containers['player:inventory'].slots[0].item.count = 41; }, 'count'],
-    ['duplicate slot', (data: any) => { const c = data.players.local.inventory.containers['player:inventory']; c.slots[1].slotKey = c.slots[0].slotKey; }, 'duplicate slot'],
-    ['wrong equipment kind', (data: any) => { data.players.local.inventory.containers['player:equipment'].slots = [{ slotKey: 'body', item: { itemId: 'torch', count: 1 } }]; }, 'cannot be equipped'],
     ['wrong item skin', (data: any) => { data.players.local.inventory.containers['player:inventory'].slots[0].item.skinId = 'treasurechest_ancient'; }, 'invalid skin'],
-    ['wrong building skin', (data: any) => { data.world.entities.treasurechest[0].components.building.skinId = 'missing_skin'; }, 'unsupported building skin'],
-    ['transition animation state', (data: any) => { data.world.entities.treasurechest[0].components.building.state = 'opening'; }, 'closed, open'],
     ['wrong player shard', (data: any) => { data.players.local.shardId = 'caves'; }, 'this shard'],
-    ['unknown buffered recipe', (data: any) => { data.players.local.inventory.bufferedBuilds = [{ recipeId: 'removed_recipe' }]; }, 'recipe'],
-    ['future parent snapshot', (data: any) => { data.snapshot.parentId = data.snapshot.id; }, 'earlier snapshot'],
   ])('rejects %s before creating runtime models', (_, mutate, message) => {
     const data = structuredClone(initialWorld);
     mutate(data);

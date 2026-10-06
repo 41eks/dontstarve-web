@@ -36,6 +36,7 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
     : right !== null
       && left.itemId === right.itemId
       && left.skinId === right.skinId
+      && left.remainingUses === right.remainingUses
       && left.count === right.count;
 }
 
@@ -77,7 +78,7 @@ export class InventoryStore {
       if (!Number.isSafeInteger(stack.count)
         || stack.count <= 0
         || stack.count > Math.min(spec.maxStack, slot.maxStack?.(stack.itemId) ?? spec.maxStack)
-        || !slot.accepts(spec)) {
+        || !slot.accepts(spec) || !this.validUses(stack, spec)) {
         throw new RangeError(`Invalid initial stack for ${stack.itemId} in ${key}`);
       }
     }
@@ -130,7 +131,7 @@ export class InventoryStore {
         const spec = this.requireItemSpec(item.itemId);
         if (!Number.isSafeInteger(item.count) || item.count <= 0
           || item.count > Math.min(spec.maxStack, registration.slot.maxStack?.(item.itemId) ?? spec.maxStack)
-          || !registration.slot.accepts(spec)) {
+          || !registration.slot.accepts(spec) || !this.validUses(item, spec)) {
           throw new Error(`Invalid saved item in ${key}`);
         }
         validateSkin(item.itemId, item.skinId);
@@ -215,8 +216,11 @@ export class InventoryStore {
     return true;
   }
 
-  takeItem(itemId: string): boolean {
-    const registration = this.registrations.find(({ slot }) => slot.get()?.itemId === itemId);
+  takeItem(itemId: string, skinId?: string): boolean {
+    const registration = this.registrations.find(({ slot }) => {
+      const item = slot.get();
+      return item?.itemId === itemId && item.skinId === skinId;
+    });
     const stack = registration?.slot.get();
     if (!registration || !stack) return false;
     return this.applySlotChanges([{
@@ -231,9 +235,9 @@ export class InventoryStore {
     return this.registrations.map(({ address }) => cloneAddress(address));
   }
 
-  add(itemId: string, count: number, skinId?: string, onReceived?: InventoryReceiveListener): boolean {
+  add(itemId: string, count: number, skinId?: string, onReceived?: InventoryReceiveListener, remainingUses?: number): boolean {
     const spec = this.itemSpecs.get(itemId);
-    if (!spec || !Number.isSafeInteger(count) || count <= 0) return false;
+    if (!spec || !Number.isSafeInteger(count) || count <= 0 || !this.validUses({ remainingUses }, spec)) return false;
 
     const working = this.snapshot();
     const changes: InventorySlotDelta[] = [];
@@ -250,6 +254,7 @@ export class InventoryStore {
         itemId,
         ...(skinId === undefined ? {} : { skinId }),
         delta: added,
+        ...(remainingUses === undefined ? {} : { remainingUses }),
       });
       stack.count += added;
       remaining -= added;
@@ -265,8 +270,10 @@ export class InventoryStore {
         itemId,
         ...(skinId === undefined ? {} : { skinId }),
         delta: added,
+        ...(remainingUses === undefined ? {} : { remainingUses }),
       });
-      working.set(key, { itemId, ...(skinId === undefined ? {} : { skinId }), count: added });
+      working.set(key, { itemId, ...(skinId === undefined ? {} : { skinId }), count: added,
+        ...(remainingUses === undefined ? {} : { remainingUses }) });
       remaining -= added;
     }
 
@@ -320,7 +327,7 @@ export class InventoryStore {
       if (!Number.isSafeInteger(change.delta) || change.delta === 0) return false;
       const spec = this.itemSpecs.get(change.itemId);
       const registration = this.registrationByAddress.get(addressKey(change.slot));
-      if (!spec || !registration) return false;
+      if (!spec || !registration || !this.validUses(change, spec)) return false;
 
       const { address, slot } = registration;
       const key = addressKey(address);
@@ -342,6 +349,8 @@ export class InventoryStore {
         itemId: change.itemId,
         ...(change.skinId === undefined ? {} : { skinId: change.skinId }),
         count: nextCount,
+        ...((change.remainingUses ?? current?.remainingUses) === undefined ? {}
+          : { remainingUses: change.remainingUses ?? current?.remainingUses }),
       });
     }
 
@@ -354,6 +363,11 @@ export class InventoryStore {
     }
     this.notify([...changed.values()]);
     return true;
+  }
+
+  private validUses(item: { remainingUses?: number }, spec: InventoryItemSpec): boolean {
+    return item.remainingUses === undefined || (spec.maxUses !== undefined
+      && Number.isSafeInteger(item.remainingUses) && item.remainingUses >= 1 && item.remainingUses <= spec.maxUses);
   }
 
   private accessibleMaterialSlots(): readonly RegisteredItemSlot[] {

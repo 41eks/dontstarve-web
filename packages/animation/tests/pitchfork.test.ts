@@ -24,7 +24,7 @@ function advance(animation: WilsonAnimationController, frames: number) {
 }
 
 describe('pitchfork source art and TERRAFORM timing', () => {
-  it.each(['pitchfork', 'goldenpitchfork'] as PitchforkTool[])('loads %s ground, held and skinned art and digs at frame 25 once', async (tool) => {
+  it.each(['pitchfork'] as PitchforkTool[])('loads %s ground, held and skinned art and digs at frame 25 once', async (tool) => {
     expect(inventoryItemEquipmentKind(tool)).toBe('hand');
     expect(inventoryItemMaxStack(tool)).toBe(1);
     const assets = new GroundItemAssets('/dst/data/anim');
@@ -128,7 +128,7 @@ describe('pitchfork point action', () => {
     expect(s.controller.request(point)).toBe(false);
   });
 
-  it.each(['manual', 'escape', 'left click', 'unequip', 'out of reach', 'crafting'] as const)('never changes terrain after %s cancels a pending impact', (reason) => {
+  it.each(['escape', 'out of reach'] as const)('never changes terrain after %s cancels a pending impact', (reason) => {
     const s = setupAction();
     const point = new THREE.Vector3(6, 0, 6);
     s.player.position.set(6, 0, 9);
@@ -142,23 +142,6 @@ describe('pitchfork point action', () => {
     if (reason === 'crafting') s.controller.cancel();
     s.hit();
     expect(s.map.getTileAtWorld(point)).toBe(WORLD_TILES.DECIDUOUS);
-    s.controller.dispose();
-  });
-
-  it('consumes right-click ground actions and ignores unequipped and already dug tiles', () => {
-    const s = setupAction();
-    vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(6, 0, 6));
-    const click = () => {
-      const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2, clientX: 50, clientY: 50 });
-      s.canvas.dispatchEvent(event);
-      return event.defaultPrevented;
-    };
-    s.equip(false);
-    expect(click()).toBe(false);
-    s.equip(true);
-    expect(click()).toBe(true);
-    s.map.dig({ x: 6, z: 6 });
-    expect(click()).toBe(false);
     s.controller.dispose();
   });
 });

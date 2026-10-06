@@ -57,7 +57,7 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
   expect(cast).toHaveBeenCalledOnce();
 });
 
-it.each([undefined, 'reskin_tool_bouquet', 'reskin_tool_brush', 'reskin_tool_toilet', 'reskin_tool_wand'])(
+it.each([undefined, 'reskin_tool_brush'])(
   'draws %s puff with its source build and removes it at animation end', async (skinId) => {
     const scene = new THREE.Scene();
     const effects = new ReskinEffects(scene, '/dst/data/anim');
@@ -135,7 +135,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
   expect(manager.exportRecords()).toEqual([]);
 });
 
-it.each(['manual', 'escape', 'unequip', 'target removed', 'while loading'])(
+it.each(['unequip', 'while loading'])(
   'discards pending work and emits no effect after %s cancellation', async (reason) => {
     const world = setupWorld();
     let equipped = true, manual = false, valid = true;

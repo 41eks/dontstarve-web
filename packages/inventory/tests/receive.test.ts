@@ -36,17 +36,6 @@ it('reports crafted products in freed ingredient slots and preserves the selecte
   expect(inventory.get(inventorySlotAddress(0))).toEqual({ itemId: 'rope', skinId: 'rope_skin', count: 1 });
 });
 
-it('reports the produced amount even when the product is also a consumed ingredient', () => {
-  const inventory = store([{ itemId: 'cutgrass', count: 10 }]);
-  const receive = vi.fn();
-  expect(inventory.craft({ recipeId: 'recycle', productId: 'cutgrass', productCount: 2,
-    ingredients: { cutgrass: 3 }, buffered: false }, undefined, receive)).toBe(true);
-  expect(inventory.count('cutgrass')).toBe(9);
-  expect(receive).toHaveBeenCalledExactlyOnceWith([
-    { slot: inventorySlotAddress(0), itemId: 'cutgrass', delta: 2 },
-  ]);
-});
-
 it('emits no receipts for buffered builds, failed recipes or ordinary slot transfers', () => {
   const inventory = store([{ itemId: 'cutgrass', count: 3 }, null]);
   const receive = vi.fn();

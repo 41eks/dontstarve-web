@@ -122,6 +122,30 @@ play duration: 4399 samples (0:00.100 seconds)
 
 FEV 映射解析可以参考 AssetArchive 的 `src-tauri/src/fmodparse.rs`（`FmodEvent::resolve_def()`、`FmodSoundDefFile.file_index`），零基 FSB 索引的链接见 `src-tauri/src/scripts/assetloader.lua` 的 `Fev:GetEventByPath()` 和 `FsbLoader:GetSampleInfoByIndex()`。
 
+### 矮星 metadata 与导出命令
+
+先用 `/usr/bin/vgmstream-cli -h` 核对安装版本的参数，再列出 metadata。以下命令只读取源 bank，不在其旁边生成 WAV：
+
+```bash
+/usr/bin/vgmstream-cli -m -s 1 -S 0 /data/copy/AssetArchive-Dev/data/DST/data/sound/common.fsb > /tmp/three-roaming-common-metadata.txt
+rg -B 10 -A 3 'stream name:.*staff_star' /tmp/three-roaming-common-metadata.txt
+```
+
+在仓库根目录导出矮星出现声、循环声和独立的魔杖施法声：
+
+```bash
+mkdir -p public/dst/data/sound
+/usr/bin/vgmstream-cli -i -s 273 -o 'public/dst/data/sound/common.fsb-273.wav' /data/copy/AssetArchive-Dev/data/DST/data/sound/common.fsb
+/usr/bin/vgmstream-cli -i -s 274 -o 'public/dst/data/sound/common.fsb-274.wav' /data/copy/AssetArchive-Dev/data/DST/data/sound/common.fsb
+/usr/bin/vgmstream-cli -i -s 284 -o 'public/dst/data/sound/common.fsb-284.wav' /data/copy/AssetArchive-Dev/data/DST/data/sound/common.fsb
+```
+
+源目录已有对应解码 WAV 时，可用 `cmp` 核对字节，例如：
+
+```bash
+cmp 'public/dst/data/sound/common.fsb-273.wav' '/data/copy/AssetArchive-Dev/data/DST/data/sound/common.fsb#273.wav'
+```
+
 ### 锤子与鹤嘴锄声音的源码映射
 
 `SGwilson.lua` 的 `hammer` 状态在 `pickaxe_loop` 第 7 帧播放 `dontstarve/wilson/hit`。
@@ -152,6 +176,22 @@ FEV 映射解析可以参考 AssetArchive 的 `src-tauri/src/fmodparse.rs`（`Fm
 沿用 `vgmstream-cli -i -s <index> -o public/dst/data/sound/<bank>.fsb-<index>.wav <source.fsb>` 导出。
 木箱 Lua 的皮肤可通过 `skin_open_sound` / `skin_close_sound` 覆盖默认事件；当前接入的是上述默认声音。
 
+### 木质建筑坍塌声音
+
+`structure_collapse_fx.lua` 的 `SetMaterial("wood")` 同时播放
+`dontstarve/common/destroy_smoke` 和 `dontstarve/common/destroy_wood`。
+经 `dontstarve.fev` 的事件 → sound definition → bank/file_index 核对：
+
+| 事件/层 | bank | FEV file_index（零基） | vgmstream -s | 引用样本 |
+| --- | --- | --- | --- | --- |
+| `destroy_smoke` 第一层（随机选一个） | `common.fsb` | 55–58 | 56–59 | `Destroy_Smoke_v2_01.wav` 至 `_04.wav` |
+| `destroy_smoke` 第二层 | `common.fsb` | 61 | 62 | `Destroy_smoke.wav` |
+| `destroy_smoke` 第三层 | `common.fsb` | 186 | 187 | `deathpoof.wav` |
+| `destroy_wood` | `common.fsb` | 63 | 64 | `Destroy_wood.wav` |
+
+使用 `vgmstream-cli -i -s <index>` 导出至 `public/dst/data/sound/common.fsb-<index>.wav`。
+映射集中在 `packages/prefab/src/sound.ts`，科技建筑创建时预加载，第四次成功锤击时播放。
+
 ### 常用 FSB 文件
 
 - `sfx.fsb` — HUD 音效、脚步声、攻击音效等（约 1287 个流）
@@ -180,3 +220,11 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 导出时对上表每个索引使用 `vgmstream-cli -i -s <index>`，目标放到
 `public/dst/data/sound/<bank>.fsb-<index>.wav`。施法开始后取消会保留已经播放的挥动声，
 但不播放换肤结果声；结果声仅在第 9 帧成功提交时触发。
+
+## 浏览器播放与生命周期
+
+源事件与静态 WAV URL 的映射集中在 `packages/prefab/src/sound.ts`。例如矮星出现声通过普通 URL `${import.meta.env.BASE_URL}dst/data/sound/common.fsb-273.wav` 加载；无需特殊 Vite 中间件或每个 prefab 单独的音频类。
+
+生成实体或安排定时动作之前调用 `PreloadSounds(...eventPaths)` 完成预加载和解码，再通过 `PlaySound('dontstarve/…')` 播放源事件。解码只导出一个未延长的样本，持续循环由浏览器实现。
+
+每个实体保留自己的循环播放句柄，移除实体时调用句柄的 `stop()` 停止并断开音源。音频上下文需要在用户手势期间恢复；关闭整个游戏时调用 `DisposeSounds()`。这些流程避免多个实体共享同一循环源，或实体移除后仍有声音。

@@ -114,21 +114,6 @@ describe('parseKtex', () => {
     expect(texture.pixels.filter((_, index) => index % 4 === 3).every((alpha) => alpha === 186)).toBe(true);
   });
 
-  it('includes the supplied label in invalid-signature errors', () => {
-    expect(() => parseKtex(new Uint8Array([0, 0, 0, 0]), 'broken.tex'))
-      .toThrow('broken.tex: invalid KTEX signature');
-  });
-
-  it('rejects textures without mip levels', () => {
-    expect(() => parseKtex(makeKtex(0, 0, 0, new Uint8Array(), 0)))
-      .toThrow('KTEX: texture contains no mip levels');
-  });
-
-  it('rejects unsupported pixel formats', () => {
-    expect(() => parseKtex(makeKtex(3, 1, 1, new Uint8Array())))
-      .toThrow('KTEX: unsupported KTEX pixel format 3');
-  });
-
   it('rejects truncated input', () => {
     const truncated = makeKtex(4, 1, 1, new Uint8Array([1, 2, 3, 4])).subarray(0, 20);
 

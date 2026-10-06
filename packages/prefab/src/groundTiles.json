@@ -25,5 +25,14 @@
     "noise": "levels/textures/noise_woodfloor.tex",
     "renderOrder": 2,
     "cannotBeDug": false
+  },
+  "FARMING_SOIL": {
+    "tileId": 47,
+    "name": "farmsoil",
+    "atlas": "levels/tiles/farmsoil.xml",
+    "texture": "levels/tiles/farmsoil.tex",
+    "noise": "levels/textures/quagmire_soil_noise.tex",
+    "renderOrder": 3,
+    "cannotBeDug": false
   }
 }

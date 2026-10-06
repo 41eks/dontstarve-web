@@ -10,6 +10,9 @@ import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from './hammer';
+import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { nextReskin, type ReskinTarget } from './reskin_tool';
+import { wallWorldPrefab, wallWorldSkin } from './wallSkins';
 
 export interface WallDefinition {
     archive: string;
@@ -47,6 +50,7 @@ export interface WallDefinition {
     sideImageIndex: number;
     /** Symbol the images belong to; defaults to the build's only symbol. */
     symbol?: string;
+    skinArchives?: Readonly<Record<string, string>>;
 }
 
 interface WallInstance<BuildId extends string> {
@@ -54,6 +58,8 @@ interface WallInstance<BuildId extends string> {
     model: THREE.Group;
     animation: StaticSpriteController;
     groundOffset: number;
+    skinId?: string;
+    inventorySkinId?: string;
 }
 
 const HEADING_STEP = 45;
@@ -76,7 +82,7 @@ export class WallPlacement<BuildId extends string> {
     private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
     private readonly definitions: Readonly<Record<BuildId, WallDefinition>>;
-    private readonly consumeBufferedBuild: (buildId: BuildId) => boolean;
+    private readonly consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean;
     private readonly cursor: BuildCursor;
     private readonly pointer: PointerRaycaster;
     private active?: WallInstance<BuildId>;
@@ -89,7 +95,7 @@ export class WallPlacement<BuildId extends string> {
     constructor(
         world: WorldContext,
         definitions: Readonly<Record<BuildId, WallDefinition>>,
-        consumeBufferedBuild: (buildId: BuildId) => boolean,
+        consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean,
     ) {
         this.canvas = world.renderer.domElement;
         this.scene = world.scene;
@@ -103,14 +109,14 @@ export class WallPlacement<BuildId extends string> {
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
-    begin(buildId: BuildId): Promise<void> {
+    begin(buildId: BuildId, skinId?: string): Promise<void> {
         if (this.disposed) return Promise.reject(new Error('Placement has been disposed'));
         if (this.active) return Promise.resolve();
         if (this.loading) return this.loading;
 
         this.cursor.show(`: 建造 ${this.definitions[buildId].buildLabel}`, 'left');
         const previewVersion = ++this.previewVersion;
-        const request = this.createPreview(buildId, previewVersion)
+        const request = this.createPreview(buildId, previewVersion, skinId)
             .catch((error: unknown) => {
                 if (previewVersion === this.previewVersion) this.cursor.hide();
                 throw error;
@@ -122,8 +128,8 @@ export class WallPlacement<BuildId extends string> {
         return request;
     }
 
-    async spawn(buildId: BuildId): Promise<void> {
-        const wall = await this.createInstance(buildId);
+    async spawn(buildId: BuildId, skinId?: string): Promise<void> {
+        const wall = await this.createInstance(buildId, true, skinId);
         const target = this.playerFrontGroundPosition();
         wall.model.position.set(
             target.x,
@@ -137,7 +143,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     async spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): Promise<THREE.Group> {
-        const wall = await this.createInstance(buildId, false);
+        const wall = await this.createInstance(buildId, false, record.components.wall?.skinId);
         wall.model.userData.entityId = record.id;
         wall.model.userData.saveRecord = record;
         const [x, y, z] = record.transform.position;
@@ -168,6 +174,51 @@ export class WallPlacement<BuildId extends string> {
         }));
     }
 
+    get reskinTargets(): readonly ReskinTarget[] {
+        return this.placed.filter(({ buildId }) => Object.keys(this.definitions[buildId].skinArchives ?? {}).length > 0)
+            .map((wall) => {
+                const isValid = () => !this.disposed && this.placed.includes(wall)
+                    && wall.model.visible && wall.model.parent !== null;
+                return {
+                    id: String(wall.model.userData.entityId), prefabId: wallWorldPrefab(wall.buildId), model: wall.model,
+                    position: wall.model.position.clone().add(new THREE.Vector3(0, -wall.groundOffset, 0)), isValid,
+                    prepareNextSkin: async () => {
+                        const previousSkin = wall.skinId;
+                        const skinId = nextReskin(Object.keys(this.definitions[wall.buildId].skinArchives!), previousSkin);
+                        const replacement = await this.createInstance(wall.buildId, false, skinId);
+                        let used = false;
+                        return {
+                            apply: () => {
+                                if (used || !isValid() || wall.skinId !== previousSkin) return false;
+                                const footY = wall.model.position.y - wall.groundOffset;
+                                replacement.animation.copyPlaybackFrom(wall.animation);
+                                // Preserve the entity root and its saved health; release all
+                                // old atlas materials, including unused fallback symbols.
+                                const oldVisuals = new THREE.Group();
+                                oldVisuals.userData.ownedSpriteMaterials = wall.model.userData.ownedSpriteMaterials;
+                                for (const child of [...wall.model.children]) oldVisuals.add(child);
+                                disposeSprite(oldVisuals);
+                                for (const child of [...replacement.model.children]) wall.model.add(child);
+                                wall.model.userData.ownedSpriteMaterials = replacement.model.userData.ownedSpriteMaterials;
+                                registerSpriteRenderGroup(wall.model, wall.model.children[0] as THREE.Group);
+                                wall.animation = replacement.animation;
+                                wall.model.userData.animationController = replacement.animation;
+                                wall.groundOffset = replacement.groundOffset;
+                                wall.model.position.y = footY + wall.groundOffset;
+                                wall.skinId = skinId;
+                                if (skinId === undefined) delete wall.model.userData.skinId;
+                                else wall.model.userData.skinId = skinId;
+                                this.updateFacing(wall, !this.isDiagonalHeading());
+                                used = true;
+                                return true;
+                            },
+                            dispose: () => { if (!used) { disposeSprite(replacement.model); used = true; } },
+                        };
+                    },
+                };
+            });
+    }
+
     exportRecords(): PlacedEntitySaveRecord[] {
         return this.placed.map((wall) => {
             const health = (wall.model.userData.saveRecord as PlacementSaveRecord | undefined)?.components.health;
@@ -179,7 +230,10 @@ export class WallPlacement<BuildId extends string> {
                         position: saveGroundPosition(wall.model.position, wall.groundOffset),
                         rotationY: 0,
                     },
-                    components: health ? { health: { ...health } } : {},
+                    components: {
+                        ...(health ? { health: { ...health } } : {}),
+                        ...(wall.skinId === undefined ? {} : { wall: { skinId: wall.skinId } }),
+                    },
                 },
             };
         });
@@ -224,7 +278,7 @@ export class WallPlacement<BuildId extends string> {
         if (!this.active) return;
         this.pointer.trackPointer(event);
         this.cursor.update();
-        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId)) return;
+        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(this.active.buildId, this.active.inventorySkinId)) return;
 
         const placedWall = this.active;
         placedWall.model.visible = true;
@@ -234,8 +288,8 @@ export class WallPlacement<BuildId extends string> {
         this.cursor.hide();
     };
 
-    private async createPreview(buildId: BuildId, previewVersion: number) {
-        const instance = await this.createInstance(buildId);
+    private async createPreview(buildId: BuildId, previewVersion: number, skinId?: string) {
+        const instance = await this.createInstance(buildId, true, skinId);
         if (previewVersion !== this.previewVersion) {
             disposeSprite(instance.model);
             return;
@@ -247,9 +301,12 @@ export class WallPlacement<BuildId extends string> {
         this.cursor.update();
     }
 
-    private async createInstance(buildId: BuildId, attach = true): Promise<WallInstance<BuildId>> {
+    private async createInstance(buildId: BuildId, attach = true, requestedSkin?: string): Promise<WallInstance<BuildId>> {
         if (this.disposed) throw new Error('Placement has been disposed');
         const definition = this.definitions[buildId];
+        const skinId = requestedSkin === undefined ? undefined : wallWorldSkin(buildId, requestedSkin);
+        const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
+        if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
         const model = await createStaticSprite(
             `${import.meta.env.BASE_URL}dst/data/anim`,
             definition.archive,
@@ -261,6 +318,7 @@ export class WallPlacement<BuildId extends string> {
                 name: definition.name,
                 scale: definition.scale,
                 symbol: definition.symbol,
+                skinArchive,
                 ...(definition.overlay ? {
                     overlay: {
                         symbol: definition.overlay.symbol,
@@ -280,7 +338,10 @@ export class WallPlacement<BuildId extends string> {
             model,
             animation: model.userData.animationController as StaticSpriteController,
             groundOffset: -bounds.min.y,
+            skinId,
+            inventorySkinId: requestedSkin,
         };
+        if (skinId !== undefined) model.userData.skinId = skinId;
         if (attach) model.userData.entityId = newEntityId();
         if (attach) this.scene.add(model);
         return instance;

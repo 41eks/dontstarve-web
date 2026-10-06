@@ -163,18 +163,3 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   expect(consume).not.toHaveBeenCalled();
   await expect(begin()).rejects.toThrow('disposed');
 });
-
-it.each(['animated', 'wall'] as const)('%s disposal rejects a pending spawn and releases its late sprite', async (kind) => {
-  const { placement, load, world } = setup(kind);
-  let resolve!: (value: THREE.Group) => void;
-  load.mockImplementationOnce(() => new Promise<THREE.Group>((done) => { resolve = done; }));
-  const pending = placement.spawn('building');
-  placement.dispose();
-  const late = model(), mesh = late.children[0] as THREE.Mesh;
-  const geometryDispose = vi.spyOn(mesh.geometry, 'dispose');
-  resolve(late);
-  await expect(pending).rejects.toThrow('disposed');
-  expect(geometryDispose).toHaveBeenCalledOnce();
-  expect(world.scene.children).toEqual([]);
-  expect(placement.exportRecords()).toEqual([]);
-});

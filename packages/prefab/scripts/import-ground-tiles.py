@@ -20,7 +20,7 @@ def main():
     assets = set()
     # AddTile appends ground entries in rendering order (tilemanager.lua).
     entries = list(re.finditer(r'TileManager.AddTile\(\s*"([^"]+)"', source))
-    wanted = {'DIRT', 'DECIDUOUS', 'WOODFLOOR'}
+    wanted = {'DIRT', 'DECIDUOUS', 'WOODFLOOR', 'FARMING_SOIL'}
     for i, match in enumerate(entries):
         if match[1] not in wanted:
             continue

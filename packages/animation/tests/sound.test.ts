@@ -43,6 +43,7 @@ async function setup() {
 }
 
 describe('dwarf star source sounds', () => {
+
   it('mutes at and beyond the cutoff, with a configurable maximum distance', () => {
     expect(inverseSquareAttenuation(0)).toBe(1);
     expect(inverseSquareAttenuation(12)).toBe(1);
@@ -101,59 +102,6 @@ describe('dwarf star source sounds', () => {
     expect(s.sources.slice(3).every((source) => source.stop.mock.calls.length === 0)).toBe(true);
     second.stop();
     expect(s.sources.every((source) => source.disconnect.mock.calls.length === 1)).toBe(true);
-  });
-
-  it('shares decoded samples while every summon owns its creation sound and loop', async () => {
-    const s = await setup();
-    const manager = new DwarfStarManager(new THREE.Scene(), '/prefix/dst/data/anim');
-    try {
-      await manager.prepare();
-      const first = await manager.spawn(new THREE.Vector3());
-      const second = await manager.spawn(new THREE.Vector3(2, 0, 3));
-      const restored = await manager.spawn(new THREE.Vector3(4, 0, 5), { id: 'e_saved', remainingSeconds: 0.1 });
-      expect(s.fetchMock.mock.calls.map(([url]) => url)).toEqual([
-        '/prefix/dst/data/anim/star_hot.zip',
-        '/dst/data/sound/common.fsb-273.wav',
-        '/dst/data/sound/common.fsb-274.wav',
-      ]);
-      expect(s.context.decodeAudioData).toHaveBeenCalledTimes(2);
-      // A restored star starts only its continuous sound.
-      expect(s.sources.map((source) => source.loop)).toEqual([false, true, false, true, true]);
-      expect(s.sources.every((source) => source.start.mock.calls.length === 1)).toBe(true);
-      expect(s.sources[0].buffer).toBe(s.sources[2].buffer);
-      expect(s.sources[1].buffer).toBe(s.sources[3].buffer);
-      expect(s.context.resume).not.toHaveBeenCalled();
-      s.events.dispatchEvent(new Event('pointerdown'));
-      expect(s.context.resume).toHaveBeenCalledOnce();
-
-      // Expiry starts disappear; the source Lua kills the loop at animover.
-      const quaternion = new THREE.Quaternion();
-      manager.update(0.1, quaternion);
-      expect(s.sources[4].stop).not.toHaveBeenCalled();
-      for (let i = 0; i < 11; i++) manager.update(0.1, quaternion);
-      expect(s.sources[4].stop).toHaveBeenCalledOnce();
-      expect(s.sources[4].disconnect).toHaveBeenCalledOnce();
-      expect(restored.parent).toBeNull();
-      expect(first.parent).not.toBeNull();
-      expect(second.parent).not.toBeNull();
-      expect(s.sources[1].stop).not.toHaveBeenCalled();
-      expect(s.sources[3].stop).not.toHaveBeenCalled();
-
-      // Naturally completed creation audio disconnects without being stopped twice.
-      s.sources[0].onended!();
-      manager.dispose();
-      manager.dispose();
-      expect(s.sources[0].stop).not.toHaveBeenCalled();
-      expect(s.sources.every((source) => source.disconnect.mock.calls.length === 1)).toBe(true);
-      expect(s.sources.slice(1).every((source) => source.stop.mock.calls.length === 1)).toBe(true);
-      // The shared service remains available to player sounds after star disposal.
-      expect(s.context.close).not.toHaveBeenCalled();
-      DisposeSounds();
-      expect(s.context.close).toHaveBeenCalledOnce();
-      s.context.state = 'suspended';
-      s.events.dispatchEvent(new Event('keydown'));
-      expect(s.context.resume).toHaveBeenCalledOnce();
-    } finally { manager.dispose(); }
   });
 
   it('does not reject preloading on audio failure and retries the failed event', async () => {

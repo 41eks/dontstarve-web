@@ -6,6 +6,7 @@ import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
 import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
+import { FarmPlowPlacement, FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_DECOR_IDS } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats, WILSON_MAX_SANITY } from './playerStats';
 import { DwarfStarManager, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager, BULB_PLANT_PREFABS } from '@dontstarve-web/prefab/bulb_plant';
@@ -13,6 +14,7 @@ import { RockManager, ROCK_PREFABS } from '@dontstarve-web/prefab/rocks';
 import { GrassManager, GRASS_ID } from '@dontstarve-web/prefab/grass';
 import { SaplingManager, SAPLING_PREFABS } from '@dontstarve-web/prefab/sapling';
 import { PondManager, POND_ID } from '@dontstarve-web/prefab/pond';
+import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
@@ -38,7 +40,7 @@ import { disposeSprite } from '@dontstarve-web/prefab/disposeSprite';
 
 export function createSceneEntities(
   world: CANNON.World,
-  consumeBufferedBuild: (buildingId: PlaceableBuildingId) => boolean,
+  consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
@@ -46,7 +48,10 @@ export function createSceneEntities(
 ) {
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
-    view,
+    { ...view, dropLoot: (items, position) => {
+      void groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
+        .catch((error: unknown) => console.error('Unable to drop building loot', error));
+    } },
     consumeBufferedBuild,
     onBuildingInteraction,
   );
@@ -95,6 +100,7 @@ export function createSceneEntities(
   const grasses = new GrassManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const saplings = new SaplingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const wormholes = new WormholeManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, () => [player.position]);
   const nightmareGrowths = new NightmareGrowthManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const pendingPoop = new Set<THREE.Vector3>();
   const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
@@ -132,6 +138,36 @@ export function createSceneEntities(
     },
   });
   const registry = new EntityRegistry();
+  const farmPlow = new FarmPlowPlacement(view, turfMap, `${import.meta.env.BASE_URL}dst/data`,
+    async (position, remainingUses) => { await groundItems.spawnFromSave(newEntityId(), {
+      ...SAVE_CATALOG.items[FARM_PLOW_ITEM_ID], itemId: FARM_PLOW_ITEM_ID, count: 1, remainingUses,
+    }, position); },
+    () => {
+      const blockers = registry.renderEntities.filter(({ object }) =>
+        object.userData.prefab !== FARM_PLOW_ID && !FARM_DECOR_IDS.includes(object.userData.prefab))
+        .map(({ object, footPosition }) => ({ position: footPosition, tags: object.userData.tags as string[] | undefined }));
+      // The complete forest blocks tiles, including trees outside the visual loading radius.
+      for (const tree of moonTreeForest.entities) blockers.push({ position: tree.position, tags: undefined });
+      return blockers;
+    });
+  registry.register({
+    prefabIds: [FARM_PLOW_ID],
+    restore: (_, record) => farmPlow.spawn(new THREE.Vector3(...record.transform.position), {
+      id: record.id, state: record.components.farmPlow!,
+    }),
+    debugSpawn: { prefabIds: [FARM_PLOW_ID], create: () => farmPlow.spawn(player.position.clone()) },
+    exportRecords: () => farmPlow.exportRecords().map((record) => ({ prefabId: FARM_PLOW_ID, record })),
+    update: (dt, quaternion) => farmPlow.update(dt, quaternion),
+    renderEntities: () => farmPlow.renderEntities,
+    dispose: () => farmPlow.dispose(),
+  });
+  registry.register({
+    prefabIds: FARM_DECOR_IDS,
+    restore: (id, record) => farmPlow.spawnDecor(id, new THREE.Vector3(...record.transform.position),
+      id === 'farm_soil' ? record.components.farmSoil : record.components.farmDebris, undefined, record.id),
+    debugSpawn: { prefabIds: FARM_DECOR_IDS, create: (id) => farmPlow.spawnDecor(id, player.position.clone()) },
+    exportRecords: () => farmPlow.exportDecorRecords(), dispose: () => {},
+  });
   const treesById = new Map(moonTreeForest.entities.map((entity) => [entity.saveId!, entity]));
   registry.register({
     prefabIds: ['moon_tree'],
@@ -201,9 +237,9 @@ export function createSceneEntities(
         ...item, name: skin?.name ?? spec.name, icon: skin?.icon ?? spec.icon, atlas: skin?.atlas ?? spec.atlas,
       }, new THREE.Vector3(...record.transform.position));
     },
-    debugSpawn: { prefabIds: ['fireflies', BERNIE_ITEM_ID], create: (id) => groundItems.spawnFromSave(newEntityId(), {
+    debugSpawn: { prefabIds: ['fireflies', BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID], create: (id) => groundItems.spawnFromSave(newEntityId(), {
       ...SAVE_CATALOG.items[id], itemId: id, count: 1,
-    }, player.position.clone()) },
+    }, player.position.clone().setY(0)) },
     exportRecords: () => groundItems.exportRecords().map((record) => ({ prefabId: 'ground_item', record })),
     update: (dt, quaternion) => groundItems.update(dt, quaternion),
     renderEntities: () => groundItems.renderEntities,
@@ -307,6 +343,17 @@ export function createSceneEntities(
     dispose: () => nightmareGrowths.dispose(),
   });
   registry.register({
+    prefabIds: [WORMHOLE_ID],
+    restore: (_, record) => wormholes.spawn(new THREE.Vector3(...record.transform.position), {
+      id: record.id, transform: record.transform, components: { wormhole: record.components.wormhole },
+    }),
+    debugSpawn: { prefabIds: [WORMHOLE_ID], create: () => wormholes.spawn(player.position.clone()) },
+    exportRecords: () => wormholes.exportRecords().map((record) => ({ prefabId: WORMHOLE_ID, record })),
+    update: (dt, quaternion) => wormholes.update(dt, quaternion),
+    renderEntities: () => wormholes.renderEntities,
+    dispose: () => wormholes.dispose(),
+  });
+  registry.register({
     prefabIds: [],
     exportRecords: () => [],
     update: (dt, quaternion) => reskinEffects.update(dt, quaternion),
@@ -314,5 +361,5 @@ export function createSceneEntities(
     dispose: () => reskinEffects.dispose(),
   });
   return { registry, buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants,
-    beefalos, rockManager, grasses, saplings, ponds, nightmareGrowths, reskinEffects };
+    beefalos, rockManager, grasses, saplings, ponds, wormholes, nightmareGrowths, reskinEffects, farmPlow };
 }

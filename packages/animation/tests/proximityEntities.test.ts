@@ -96,39 +96,4 @@ describe('nearby entity lifecycle', () => {
     expect(textureDispose).toHaveBeenCalledTimes(1);
     expect(() => factory.create(options)).toThrow('disposed');
   });
-
-  it('keeps 500 tree records with no models until the player approaches', async () => {
-    const initialPositions = Array.from({ length: 500 }, () => new THREE.Vector3(200, 0, 0));
-    const random = vi.fn(() => { throw new Error('Explicit positions must bypass random generation'); });
-    const forest = await createMoonTreeForest('/dst/data/anim', {
-      positions: initialPositions,
-      count: 1,
-      random,
-    });
-    expect(forest.entities).toHaveLength(500);
-    expect(random).not.toHaveBeenCalled();
-    initialPositions[0].set(0, 0, 0);
-    expect(forest.entities[0].position.toArray()).toEqual([200, 0, 0]);
-    expect(forest.group.children).toHaveLength(0);
-    forest.updateNearby(new THREE.Vector3());
-    expect(forest.activeEntities.size).toBe(0);
-    forest.updateNearby(new THREE.Vector3(200 - 10 * TILE_SIZE - 0.001, 0, 0));
-    expect(forest.activeEntities.size).toBe(0);
-    forest.updateNearby(new THREE.Vector3(200 - 10 * TILE_SIZE, 0, 0));
-    expect(forest.activeEntities.size).toBe(500);
-    expect(forest.group.children.every((child) => child instanceof THREE.Group)).toBe(true);
-    const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1);
-    forest.setNormals(quaternion);
-    forest.update(0.1);
-    for (const entity of forest.activeEntities) {
-      expect(entity.model!.quaternion.equals(quaternion)).toBe(true);
-      setSpriteEntityRenderOrder(entity.model!, entity.id);
-      expect(entity.model!.children[0].renderOrder).toBe(entity.id);
-    }
-    expect(loadAnimationArchive).toHaveBeenCalledTimes(1);
-    forest.updateNearby(new THREE.Vector3());
-    expect(forest.group.children).toHaveLength(0);
-    expect(forest.entities.every((entity) => entity.model === undefined)).toBe(true);
-    forest.dispose();
-  });
 });

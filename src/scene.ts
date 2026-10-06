@@ -108,7 +108,7 @@ if (!window.location.hostname.endsWith('github.io')) {
 }
 
 export async function startScene(
-  consumeBufferedBuild: (buildingId: PlaceableBuildingId) => boolean,
+  consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,

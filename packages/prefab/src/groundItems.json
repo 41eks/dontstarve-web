@@ -955,6 +955,21 @@
         "bernie_dog": "dynamic/bernie_dog.zip"
       }
     },
+    "farm_plow_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/farm_plow.lua",
+      "name": "耕地机",
+      "icon": "farm_plow_item.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "farm_plow.zip",
+      "buildArchives": [
+        "farm_plow.zip"
+      ],
+      "bank": "farm_plow",
+      "animation": "idle_packed",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "lantern": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mininglantern.lua",
       "name": "提灯",

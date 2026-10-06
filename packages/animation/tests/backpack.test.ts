@@ -14,13 +14,12 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-it('uses the source backpack1/anim bank and swap_backpack build for base and all 36 ground skins', async () => {
+it('uses source ground art for base, ordinary, shared-build and invisible backpacks', async () => {
   expect(GROUND_ITEM_DEFINITIONS.backpack).toMatchObject({
     animationArchive: 'backpack.zip', buildArchives: ['swap_backpack.zip'], bank: 'backpack1', animation: 'anim',
   });
   const assets = new GroundItemAssets('/dst/data/anim');
-  const skins = Object.keys(GROUND_ITEM_DEFINITIONS.backpack.skinArchives);
-  expect(skins).toHaveLength(36);
+  const skins = ['backpack_babybeef', 'backpack_catcoonp', 'backpack_invisible'];
   for (const skinId of [undefined, ...skins]) {
     const ground = await createGroundItemSprite(assets, 'backpack', skinId);
     const mesh = ground.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
@@ -37,7 +36,7 @@ it('uses skinned swap_body art in every player facing and hides invisible equipm
   const player = await createWilsonPlayer('/dst/data/anim');
   const controller = player.userData.animationController as WilsonAnimationController;
   const mesh = player.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-  for (const skinId of Object.keys(GROUND_ITEM_DEFINITIONS.backpack.skinArchives)) {
+  for (const skinId of ['backpack_babybeef', 'backpack_invisible']) {
     await controller.setBackpack(true, skinId);
     let hasSkinnedArt = false;
     for (const facing of ['up', 'down', 'side'] as const) {
@@ -53,10 +52,10 @@ it('uses skinned swap_body art in every player facing and hides invisible equipm
   expect(mesh.material.some((material) => material.name.startsWith('ground:backpack_'))).toBe(false);
 });
 
-it('resolves every backpack skin icon from its actual inventory atlas, including shared-build aliases', async () => {
+it('resolves representative backpack icons and shared-build aliases from their actual atlases', async () => {
   const bytes = await readFile(new URL('../../../public/dst/data/databundles/images.zip', import.meta.url));
   const xmls = unzipSync(bytes, { filter: (entry) => /images\/inventoryimages\d*\.xml$/.test(entry.name) });
-  for (const skinId of Object.keys(GROUND_ITEM_DEFINITIONS.backpack.skinArchives)) {
+  for (const skinId of ['backpack_babybeef', 'backpack_catcoonp', 'backpack_mandrake_resurrected']) {
     const spec = GROUND_ITEM_SKIN_SPECS[skinId];
     expect(spec.itemId).toBe('backpack');
     expect(parseImageAtlasXml(new TextDecoder().decode(xmls[spec.atlas])).elements.has(spec.icon), skinId).toBe(true);

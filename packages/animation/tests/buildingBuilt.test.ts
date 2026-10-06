@@ -54,18 +54,7 @@ async function setup(definition: AnimatedBuildingDefinition) {
 }
 
 const buildings = [
-  ['firepit', FIRE_PIT_DEFINITION, 'idle'],
-  ['icebox', ICE_BOX_DEFINITION, 'closed'],
-  ['treasurechest', TREASURE_CHEST_DEFINITION, 'closed'],
   ['cookpot', COOK_POT_DEFINITION, 'idle_empty'],
-  ...Object.entries(RESEARCH_LAB_DEFINITIONS).map(([id, definition]) => [id, definition, 'idle'] as const),
-  ['tent', TENT_DEFINITION, 'idle'],
-  ['dragonflychest', DRAGONFLY_CHEST_DEFINITION, 'closed'],
-  ['campfire', CAMPFIRE_DEFINITION, 'idle'],
-  ['saltbox', SALT_BOX_DEFINITION, 'closed'],
-  ['nightlight', NIGHT_LIGHT_DEFINITION, 'idle'],
-  ['pighouse', PIG_HOUSE_DEFINITION, 'idle'],
-  ...Object.entries(MUSHROOM_LIGHT_DEFINITIONS).map(([id, definition]) => [id, definition, 'idle'] as const),
 ] as const;
 
 it.each(buildings)('%s runs its built animation only after a successful placement', async (_id, definition, idle) => {

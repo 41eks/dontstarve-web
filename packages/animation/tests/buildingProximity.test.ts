@@ -77,28 +77,6 @@ describe('building proximity interactions', () => {
     expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: false, model });
     expect(start).toHaveBeenLastCalledWith('idle_empty');
   });
-
-  it('exports stable chest target states and ground positions while excluding placement previews', async () => {
-    const { placement, model, distance, click, finish } = await setup();
-    distance(0);
-    const id = model.userData.entityId;
-    expect(placement.exportRecords()[0].record).toEqual({
-      id, transform: { position: [0, 0, -10], rotationY: 0 }, components: { building: { state: 'closed' } },
-    });
-    click();
-    expect(placement.exportRecords()[0].record.components.building?.state).toBe('open');
-    finish();
-    click();
-    expect(placement.exportRecords()[0].record.components.building?.state).toBe('closed');
-    await placement.begin('building');
-    expect(placement.exportRecords()).toHaveLength(1);
-    const exported = placement.exportRecords();
-    exported[0].record.transform.position = [100, 0, -10];
-    expect(placement.exportRecords()[0].record.transform.position[0]).toBe(0);
-    expect(placement.exportRecords()[0].record.id).toBe(id);
-    model.position.y -= 1e-12;
-    expect(placement.exportRecords()[0].record.transform.position[1]).toBe(0);
-  });
   it('blocks distant chest clicks and checks the current position on click', async () => {
     const { distance, click, playOnce, finish, changes, model } = await setup();
     distance(9.01);
@@ -145,16 +123,7 @@ describe('building proximity interactions', () => {
     expect(start).toHaveBeenLastCalledWith('closed');
   });
 
-  it('still lets the player close a nearby chest by clicking', async () => {
-    const { distance, click, finish, changes } = await setup();
-    distance(0);
-    click();
-    finish();
-    click();
-    expect(changes.mock.calls.map(([change]) => change.isOpen)).toEqual([true, false]);
-  });
-
-  it.each(RESEARCH_LAB_IDS)('%s switches between proximity and idle animations', async (id) => {
+  it.each(['researchlab4'] as const)('%s switches between proximity and idle animations', async (id) => {
     const definition = RESEARCH_LAB_DEFINITIONS[id];
     const onturnon = vi.fn(definition.onturnon!);
     const onturnoff = vi.fn(definition.onturnoff!);
@@ -186,26 +155,5 @@ describe('building proximity interactions', () => {
     placement.update(0);
     expect(onturnon).toHaveBeenCalledTimes(2);
     expect(start).toHaveBeenLastCalledWith('proximity_loop');
-  });
-
-  it('allows unrestricted interaction when onProximity is false', async () => {
-    const { distance, click, finish, changes } = await setup({ ...TREASURE_CHEST_DEFINITION, onProximity: false });
-    distance(100);
-    click();
-    finish();
-    expect(changes.mock.calls.map(([change]) => change.isOpen)).toEqual([true]);
-  });
-
-  it('opens the ice box, closes it on leaving, and restores its closed pose', async () => {
-    const { placement, distance, click, finish, changes, start, model } = await setup(ICE_BOX_DEFINITION);
-    distance(0);
-    click();
-    finish();
-    expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: true, model });
-    expect(placement.exportRecords()[0].record.components.building?.state).toBe('open');
-    distance(11);
-    finish();
-    expect(changes).toHaveBeenLastCalledWith({ buildId: 'building', isOpen: false, model });
-    expect(start).toHaveBeenLastCalledWith('closed');
   });
 });

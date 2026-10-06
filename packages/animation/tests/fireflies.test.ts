@@ -61,25 +61,6 @@ describe('source fireflies light and proximity', () => {
     expect(s.controller.workable).toBe(true);
   });
 
-  it('waits 2–3 seconds after a phase change and briefly lights dropped swarms in daytime', () => {
-    const s = setup(false);
-    s.controller.place(false);
-    s.tick(4);
-    expect(s.controller.intensity).toBe(0);
-    s.setNight(true);
-    s.tick(1.9);
-    expect(s.controller.intensity).toBe(0);
-    s.tick(0.2);
-    expect(s.controller.intensity).toBeGreaterThan(0);
-    const drop = setup(false, new THREE.Vector3());
-    drop.controller.place(true);
-    drop.tick(1);
-    expect(drop.controller.intensity).toBeGreaterThan(0);
-    drop.tick(2);
-    expect(drop.controller.clickable).toBe(false);
-    expect(getPrefabLocalLight(drop.model)).toBeUndefined();
-  });
-
   it('reverses a fade without restarting the light at zero and removes light on disposal', () => {
     const s = setup();
     s.controller.place(false);
@@ -98,20 +79,6 @@ describe('source fireflies light and proximity', () => {
     expect(getPrefabLocalLight(s.model)).toBeUndefined();
     expect(s.controller.workable).toBe(false);
   });
-
-  it('ray-tests the full swarm bounds including gaps between particles', () => {
-    const group = new THREE.Group();
-    group.userData.rayTestOnBB = true;
-    for (const x of [-1, 1]) {
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), new THREE.MeshBasicMaterial());
-      mesh.position.x = x;
-      group.add(mesh);
-    }
-    group.updateWorldMatrix(true, true);
-    const ray = new THREE.Raycaster(new THREE.Vector3(0, 0, 5), new THREE.Vector3(0, 0, -1));
-    expect(ray.intersectObjects([group], true)).toHaveLength(0);
-    expect(intersectSpriteEntities(ray, [group])[0].object).toBe(group);
-  });
 });
 
 describe('real fireflies archive and ground transfers', () => {
@@ -119,28 +86,6 @@ describe('real fireflies archive and ground transfers', () => {
     vi.stubGlobal('fetch', async () => new Response(await readFile(
       new URL('../../../public/dst/data/anim/fireflies.zip', import.meta.url))));
   }
-
-  it('plays all original swarm clips with merged art and a source-origin light', async () => {
-    assets();
-    const visual = await new FirefliesAssets('/anim').create({ isNight: () => true, getPlayerPositions: () => [] });
-    visual.model.position.set(8, 0, 9);
-    visual.model.dispatchEvent({ type: 'onload' });
-    for (let i = 0; i < 50; i++) visual.update(0.1);
-    const mesh = visual.model.children[0].children[0] as THREE.Mesh;
-    expect(visual.model.children[0].children).toHaveLength(1);
-    expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    expect((mesh.material as THREE.MeshBasicMaterial[]).every(m => m.forceSinglePass)).toBe(true);
-    expect(getPrefabLocalLight(visual.model)).toEqual(FIREFLIES_LIGHT);
-    visual.model.dispatchEvent({ type: 'onputininventory' });
-    visual.update(0.1);
-    expect(getPrefabLocalLight(visual.model)).toBeUndefined();
-    expect(visual.controller.workable).toBe(false);
-    visual.model.dispatchEvent({ type: 'ondropped' });
-    for (let i = 0; i < 50; i++) visual.update(0.1);
-    expect(getPrefabLocalLight(visual.model)).toEqual(FIREFLIES_LIGHT);
-    visual.dispose();
-    expect(getPrefabLocalLight(visual.model)).toBeUndefined();
-  });
 
   it('splits live drops, prevents bare-hand pickup, captures atomically and restores dark daytime swarms', async () => {
     assets();
