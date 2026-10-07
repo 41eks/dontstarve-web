@@ -59,6 +59,17 @@ done
 
 ## DST 实战示例
 
+### 火把点燃与熄灭
+
+`prefabs/torch.lua` 的 `DoIgniteSound()` 使用 `dontstarve/wilson/torch_swing`，`DoExtinguishSound()` 使用 `dontstarve/common/fireOut`。以当前 `sound/dontstarve.fev` 解析事件路径和 sound definition，映射如下：
+
+| 事件 | sound definition | 源样本 | bank | FEV file_index | `vgmstream -s` |
+| --- | --- | --- | --- | --- | --- |
+| `dontstarve/wilson/torch_swing` | 42 | `sfx/wilson/Torch_swing_1.wav` / `Torch_swing_2.wav` | `wilson.fsb` | 94 / 95 | 95 / 96 |
+| `dontstarve/common/fireOut` | 44 | `sfx/objects/fire_out.wav` | `common.fsb` | 197 | 198 |
+
+用 `-m -s` 检查 metadata，再用 `-i` 导出 `public/dst/data/sound/wilson.fsb-95.wav`、`wilson.fsb-96.wav` 和 `common.fsb-198.wav`。三份导出均与源目录已有的对应 `<bank>.fsb#<index>.wav` 比较，字节一致。两个事件均为非循环声音；播放映射统一位于 `packages/prefab/src/sound.ts`。
+
 ### 从 sfx.fsb 提取 `dontstarve/HUD/craft_up`
 
 1. 确认目标流的索引号：

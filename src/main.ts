@@ -1,6 +1,8 @@
 // src/main.ts
 
 import './style.css';
+import { handEquipment, handEquipmentState, type HandEquipment } from '@dontstarve-web/signals';
+export { handEquipment } from '@dontstarve-web/signals';
 import {
   INVENTORY_RECIPES,
   equipmentSlotAddress,
@@ -30,6 +32,7 @@ import {
 } from '@dontstarve-web/stategraphs';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { isHatId } from '@dontstarve-web/prefab/hats';
+import { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, TorchController } from '@dontstarve-web/prefab/torch';
 import { isLightStaff } from '@dontstarve-web/prefab/yellowstaff';
 import { isPitchforkTool } from '@dontstarve-web/prefab/pitchfork';
 import { isFarmHoeTool } from '@dontstarve-web/prefab/farm_hoe';
@@ -135,16 +138,41 @@ window.addEventListener('contextmenu', (event) => {
   event.preventDefault();
 });
 
-function syncHandEquipment(): void {
-  const handItem = inventory.get(handSlotAddress);
-  const itemId = handItem?.itemId;
+let equippedTorch: TorchController | undefined;
+let stopTorchBurning: (() => void) | undefined;
+await PreloadSounds(...TORCH_SOUNDS);
+
+function syncHandEquipment(equipment: HandEquipment | null): void {
+  equippedTorch?.onunequip();
+  equippedTorch?.dispose();
+  stopTorchBurning?.();
+  stopTorchBurning = undefined;
+  equippedTorch = undefined;
+  const itemId = equipment?.itemId;
   const carryItem = itemId === 'torch' || itemId === 'lantern'
     || isLightStaff(itemId) || itemId === 'bugnet' || itemId === 'hammer' || itemId === 'reskin_tool'
     || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
     || (itemId !== undefined && (isPitchforkTool(itemId) || isFarmHoeTool(itemId) || isShovelTool(itemId))) ? itemId : null;
-  void playerAnimation?.setCarryItem(carryItem, handItem?.skinId)
+  void playerAnimation?.setCarryItem(carryItem, equipment?.skinId)
     .catch((error: unknown) => console.error('Unable to equip hand item', error));
-  dstLighting.setTorchOwner(handItem?.itemId === 'torch' ? player : null);
+  if (itemId === TORCH_ID) {
+    const getTorchStack = () => handEquipment.peek() === equipment ? inventory.get(handSlotAddress) : null;
+    equippedTorch = new TorchController({
+      getRemainingFuel: () => {
+        const stack = getTorchStack();
+        return stack ? stack.remainingFuel ?? TORCH_FUEL : null;
+      },
+      setRemainingFuel: (seconds) => getTorchStack() !== null && inventory.setRemainingFuel(handSlotAddress, seconds),
+      remove: () => {
+        const stack = getTorchStack();
+        return stack !== null && inventory.applySlotChanges([{
+          slot: handSlotAddress, itemId: stack.itemId, skinId: stack.skinId, delta: -1,
+        }]);
+      },
+    }, { soundPosition: player.position });
+    stopTorchBurning = equippedTorch.burning.subscribe((burning) => dstLighting.setTorchOwner(burning ? player : null));
+    equippedTorch.onequip(handEquipmentState);
+  }
   cursorUi.setHandAction(isLightStaff(itemId) ? ': 施放法术' : null, handPointer);
 }
 
@@ -202,18 +230,14 @@ function syncCraftingInventory(): void {
 
 inventory.addresses().forEach(syncInventorySlot);
 syncCraftingInventory();
-syncHandEquipment();
+syncHandEquipment(handEquipment.peek());
+const stopHandEquipment = handEquipment.subscribe(syncHandEquipment);
 syncHeadEquipment();
 syncBodyEquipment();
 syncCraftingInventory();
 inventory.subscribe((changedSlots) => {
   changedSlots.forEach(syncInventorySlot);
   syncCraftingInventory();
-  if (changedSlots.some((address) =>
-    address.containerId === handSlotAddress.containerId
-    && address.slotKey === handSlotAddress.slotKey)) {
-    syncHandEquipment();
-  }
   if (changedSlots.some((address) =>
     address.containerId === headSlotAddress.containerId
     && address.slotKey === headSlotAddress.slotKey)) {
@@ -225,10 +249,12 @@ inventory.subscribe((changedSlots) => {
   }
 });
 
-// torch.lua ignites on equip; burnable.lua starts/stops fueled consumption.
-frontTasks.push((dt) => {
-  if (inventory.get(handSlotAddress)?.itemId === 'torch') inventory.consumeFuel(handSlotAddress, dt);
-});
+frontTasks.push((dt) => equippedTorch?.onFrame(dt));
+window.addEventListener('pagehide', () => {
+  stopHandEquipment();
+  equippedTorch?.dispose();
+  stopTorchBurning?.();
+}, { once: true });
 
 let cancelNetCapture = () => {};
 let cancelHandTool = () => {};
@@ -387,6 +413,7 @@ window.addEventListener('pagehide', () => {
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => gameUi.savingIndicator.whileSaving(() => {
+    equippedTorch?.flushFuel();
     const json = serializeSave(initialSave, {
       ...getSaveState(), inventory: inventory.exportState(), playerStats,
     }, SAVE_CATALOG, lastSavedSnapshotId);
@@ -409,6 +436,7 @@ window.addEventListener('game:slot-transfer-request', (event) => {
   if ((detail.from.containerId === PLAYER_BACKPACK_CONTAINER_ID || detail.to.containerId === PLAYER_BACKPACK_CONTAINER_ID)
     && (inventory.get(bodySlotAddress)?.itemId !== 'backpack' || detail.itemId === 'backpack')) return;
 
+  if (isHandSlot(detail.from) || isHandSlot(detail.to)) equippedTorch?.flushFuel();
   const remainingUses = inventory.get(detail.from)?.remainingUses;
   const phonographRecord = inventory.get(detail.from)?.phonographRecord;
   const remainingFuel = inventory.get(detail.from)?.remainingFuel;
@@ -496,6 +524,7 @@ window.addEventListener('game:slot-context-menu', (event) => {
   const { slot, shiftKey } = (event as CustomEvent<SlotContextMenuDetail>).detail;
   cancelHandTool();
   selectedRecordSlot = undefined;
+  if (isHandSlot(slot)) equippedTorch?.flushFuel();
   const stack = inventory.get(slot);
   if (!stack) return;
   if (shiftKey) {
@@ -514,6 +543,7 @@ window.addEventListener('game:slot-context-menu', (event) => {
       ...(stack.phonographRecord === undefined ? {} : { phonographRecord: stack.phonographRecord }),
     };
     void groundItems.drop(definition, position, () => {
+      if (isHandSlot(slot)) equippedTorch?.flushFuel();
       const current = inventory.get(slot);
       if (current?.itemId !== stack.itemId || current.skinId !== stack.skinId
         || current.remainingUses !== stack.remainingUses || current.phonographRecord !== stack.phonographRecord) return false;

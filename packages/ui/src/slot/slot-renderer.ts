@@ -1,6 +1,6 @@
 import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
 import { SlotReceiveAnimation, type InventoryReceiveSource } from './slot-receive-animation';
-import { createEffect } from '../signal';
+import { createEffect } from '@dontstarve-web/signals';
 import { sameSlotAddress, type SlotAddress, type SlotModel } from './slot-model';
 import { slotTransferController, type SlotTransferRequest } from './slot-transfer';
 

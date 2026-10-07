@@ -74,7 +74,7 @@ export class GroundItemManager {
     this.player = player;
     this.effectAssets = new GroundItemAssets(animationBaseUrl);
     this.prefabs = new GroundPrefabRegistry({
-      animationBaseUrl, butterflyWorld, firefliesWorld, bernieWorld,
+      animationBaseUrl, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       getNeighbours: () => [...this.items.values()]
         .map(({ model, footPosition }) => ({ model, position: footPosition })),
     });
@@ -176,6 +176,7 @@ export class GroundItemManager {
     const footPosition = new THREE.Vector3(position.x, dropped ? 0 : position.y, position.z);
     visual.model.position.copy(footPosition);
     visual.model.userData.entityId = id;
+    visual.setDefinition?.(definition);
     const record = { id, definition, footPosition, isPlayerNearby: false, ...visual };
     this.updateProximity(record);
     this.items.set(visual.model, record);
@@ -184,10 +185,11 @@ export class GroundItemManager {
   }
 
   exportRecords(): SavedEntity[] {
-    return [...this.items.values()].map((record) => {
+    return [...this.items.values()].flatMap<SavedEntity>((record) => {
       const { id, footPosition } = record;
       const definition = this.currentDefinition(record);
-      return {
+      if (record.isRemoved?.()) return [];
+      return [{
         id,
         transform: {
           position: footPosition.toArray(),
@@ -202,8 +204,9 @@ export class GroundItemManager {
             ...(definition.phonographRecord === undefined ? {} : { phonographRecord: definition.phonographRecord }),
           },
           ...(definition.playbackRemaining === undefined ? {} : { phonograph: { remainingSeconds: definition.playbackRemaining } }),
+          ...(definition.torchLit ? { torch: { lit: true as const } } : {}),
         },
-      };
+      }];
     });
   }
 
@@ -308,6 +311,13 @@ export class GroundItemManager {
                               definition.phonographRecord = oldMachine.record;
                               definition.playbackRemaining = oldMachine.isPlaying ? oldMachine.remainingSeconds : undefined;
                             }
+                            if (record.definition.itemId === 'torch') {
+                              const current = this.currentDefinition(record);
+                              if (!isValid()) return false;
+                              definition.remainingFuel = current.remainingFuel;
+                              definition.torchLit = current.torchLit;
+                            }
+                            visual.setDefinition?.(definition);
                             visual.model.position.copy(record.footPosition);
                             visual.model.quaternion.copy(record.model.quaternion);
                             if (record.fling) visual.model.children[0].position.y = record.fling.height;
@@ -383,7 +393,9 @@ export class GroundItemManager {
     }
     if (this.inserting.has(record)) return false;
     const definition = this.currentDefinition(record);
+    if (record.isRemoved?.()) return false;
     delete definition.playbackRemaining;
+    delete definition.torchLit;
     if (!this.onPickup(definition, action, record.footPosition.clone())) return false;
     try {
       record.model.dispatchEvent({ type: 'onputininventory' });

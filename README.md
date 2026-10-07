@@ -22,7 +22,15 @@ https://41eks.github.io/dontstarve-web/
 玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。`src/main.ts` 将物品栏状态、移动、动画和目标操作接口接入控制器；`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。
 
 
-`c_give("torch", 2)` 获取两把满耐久火把，每把占一格；`c_spawn("torch")` 在玩家脚下生成可拾取的满耐久火把。物品栏、装备槽和储物格在图标下方显示燃料百分比，按原版 `widgets/itemtile.lua:SetPercent()` 四舍五入，未耗尽时最低显示 `1%`。基础燃料为 `TUNING.TORCH_FUEL = 75` 秒，装备到手部时燃烧，卸下或普通丢弃后停止；耗尽时移除火把、手持外观和照明。燃料随转移、丢弃、拾取、清洁扫把换肤及 `c_save()` 保存恢复；旧存档未记录燃料的火把按满耐久加载。当前使用基础燃烧速率，尚未接入雨水、技能加成和投掷后持续燃烧。
+`c_give("torch", 2)` 获取两把满耐久火把，每把占一格；`c_spawn("torch")` 在玩家脚下生成可拾取的满耐久火把。物品栏、装备槽和储物格在图标下方显示燃料百分比，按原版 `widgets/itemtile.lua:SetPercent()` 四舍五入，未耗尽时最低显示 `1%`。基础燃料为 `TUNING.TORCH_FUEL = 75` 秒，由 torch prefab 的 `onequip()` / `onunequip()` 管理燃烧：装备到手部时点燃并消耗，卸下或普通丢弃后停止；耗尽时由 torch 移除物品，清除手持外观和照明。燃料随转移、丢弃、拾取、清洁扫把换肤及 `c_save()` 保存恢复；旧存档未记录燃料的火把按满耐久加载。燃料每 60 个燃烧帧结算一次，扣减这段时间累计的实际 `dt`，UI 随结算刷新；转移、丢弃、拾取、换肤、熄灭和 `c_save()` 前会结算不足 60 帧的部分，保留已经消耗的燃料。当前使用基础燃烧速率，尚未接入雨水、技能加成和投掷后持续燃烧。
+
+装备变化在库存事务成功提交后发布到 [packages/signals](packages/signals/README.md) 的客户端共享 `handEquipmentState`，再依次执行旧装备卸下、新装备装备；燃料及其他库存更新不重新发布装备。应用通过 `onequip(handEquipmentState)` 绑定具体槽位，torch 通过独立的 `burning` signal 同步照明，`extinguish()` 校验装备引用后清空绑定槽位；`onunequip()` 和释放停止燃烧并解除绑定，不修改槽位值。地面火把没有槽位绑定，熄灭不会修改玩家装备。耗尽同时移除库存物品；未耗尽时显式熄灭保留库存燃料。旧 torch 不会清空新装备。signal 不写入存档；UI 操作、命令及读档仍由库存提交装备结果。
+
+手部 signal 的非空值必须声明 `EQUIPSLOTS = "HANDS"`，同时受 TypeScript 类型和 setter 运行时校验限制；身体装备或缺少槽位声明的对象不能写入。torch 公开只读的 `EQUIPSLOTS: "HANDS"` 属性。`c_give`、`c_spawn` 和 `c_save` 的命令参数及支持 ID 不变。
+
+火把点燃播放原版 `dontstarve/wilson/torch_swing`（两段样本随机选择），卸下、燃尽或成功拾取正在燃烧的地面火把时播放一次 `dontstarve/common/fireOut`。`OnPutInInventory()` 恢复 `idle`、停止燃烧与地面音源，保留剩余燃料和皮肤；普通未点燃火把拾取不播放熄灭声。地面实体接收 `onextinguish` 事件后调用 `OnExtinguish()`：熄灭照明、恢复 `idle`，按 Lua 的小范围随机水平速度和向上速度弹离地面，保留燃料、实体 ID 与皮肤，不修改玩家手部装备。声音在装备或生成前预加载，真实鼠标或键盘输入恢复音频上下文。
+
+地面燃烧状态保存到 `ground_item.components.torch.lit`，剩余燃料仍保存在 `stack.remainingFuel`；换肤保留燃烧和最新燃料，读档恢复燃烧但不重播点燃声。`c_spawn("torch")` 和普通丢弃仍生成未点燃火把。当前接入这两个回调及地面照明/弹跳，不包含投掷输入、飞行/插地动作、雨水/技能修正及原版火焰粒子；外部游戏逻辑可通过地面模型的 `userData.torch.ignite()` 点燃，通过 `onextinguish` 事件熄灭。
 
 原版 Lua 中哪些 prefab 可用 `c_spawn`、哪些可通过 `c_give` 入栏，见 [prefab 命令静态核对表](docs/dst-prefab-console.md)。该表记录源码调查结果；本项目当前支持的 ID 以本文下方对象列表及物品定义为准。
 

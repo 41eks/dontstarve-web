@@ -97,6 +97,13 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       }
     }
     if (keys.includes('stack')) components.stack = stack(c.stack, `${path}.stack`);
+    if (keys.includes('stack') && c.torch !== undefined) {
+      const componentPath = `${path}.torch`;
+      if (components.stack?.itemId !== 'torch') fail(componentPath, 'torch state requires a torch');
+      const torch = object(c.torch, componentPath, ['lit']);
+      if (torch.lit !== true) fail(`${componentPath}.lit`, 'expected true');
+      components.torch = { lit: true };
+    }
     if (keys.includes('stack') && c.phonograph !== undefined) {
       const componentPath = `${path}.phonograph`;
       if (components.stack?.itemId !== 'phonograph' || !components.stack.phonographRecord) fail(componentPath, 'playing machine requires a record');

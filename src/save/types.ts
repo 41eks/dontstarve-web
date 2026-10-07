@@ -26,6 +26,7 @@ export interface SavedEntity {
     container?: SavedContainer;
     stack?: InventoryStack;
     phonograph?: { remainingSeconds: number };
+    torch?: { lit: true };
     health?: { current: number; maximum: number };
     timer?: { remainingSeconds: number };
     flower?: { animation: FlowerAnimation; planted: true };

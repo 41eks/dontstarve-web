@@ -25,6 +25,7 @@
     "./yellowstaff": "./src/yellowstaff.ts",
     "./stafflight": "./src/stafflight.ts",
     "./lantern": "./src/lantern.ts",
+    "./torch": "./src/torch.ts",
     "./bernie": "./src/bernie.ts",
     "./inventoryEvents": "./src/inventoryEvents.ts",
     "./localLight": "./src/localLight.ts",
@@ -90,7 +91,8 @@
     "@dontstarve-web/stategraphs": "workspace:*",
     "@dontstarve-web/animation": "workspace:*",
     "cannon-es": "^0.20.0",
-    "@dontstarve-web/inventory": "workspace:*"
+    "@dontstarve-web/inventory": "workspace:*",
+    "@dontstarve-web/signals": "workspace:*"
   },
   "peerDependencies": {
     "three": "^0.184.0"

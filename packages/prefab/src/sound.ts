@@ -2,6 +2,9 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // torch.lua → dontstarve.fev sound definitions 42/44 → file_index + 1.
+  'dontstarve/wilson/torch_swing': { bank: 'wilson', streams: [95, 96], loop: false },
+  'dontstarve/common/fireOut': { bank: 'common', streams: [198], loop: false },
   'dontstarve/wilson/equip_item_gold': { bank: 'wilson', streams: [115], loop: false },
   'dontstarve/wilson/dig': { bank: 'wilson', streams: [64, 65, 66], loop: false },
   'dontstarve_DLC001/creatures/mole/emerge': { bank: 'mole', streams: [2, 3, 4], loop: false },

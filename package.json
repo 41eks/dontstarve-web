@@ -19,6 +19,7 @@
     "@fontsource/noto-sans-sc": "^5.3.0",
     "@dontstarve-web/animation": "workspace:*",
     "@dontstarve-web/inventory": "workspace:*",
+    "@dontstarve-web/signals": "workspace:*",
     "@dontstarve-web/prefab": "workspace:*",
     "@dontstarve-web/ui": "workspace:*",
     "cannon-es": "^0.20.0",

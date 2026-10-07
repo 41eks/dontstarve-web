@@ -1,4 +1,6 @@
 import { planCraft } from './craft';
+import { handEquipmentState, handEquipment } from '@dontstarve-web/signals';
+import { equipmentSlotAddress } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type {
@@ -43,6 +45,7 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
 }
 
 export class InventoryStore {
+  readonly handEquipment = handEquipment;
   private readonly bufferedBuilds = new Map<string, string | undefined>();
   private readonly itemSpecs = new Map<string, InventoryItemSpec>();
   private readonly listeners = new Set<InventoryListener>();
@@ -87,6 +90,9 @@ export class InventoryStore {
     for (const registration of pending) {
       this.registrations.push(registration);
       this.registrationByAddress.set(addressKey(registration.address), registration);
+    }
+    if (pending.some(({ address }) => addressKey(address) === addressKey(equipmentSlotAddress('hand')))) {
+      this.publishHandEquipment();
     }
   }
 
@@ -152,7 +158,7 @@ export class InventoryStore {
     for (const { address, slot } of this.registrations) slot.set(next.get(addressKey(address)) ?? null);
     this.bufferedBuilds.clear();
     for (const [id, skin] of buffered) this.bufferedBuilds.set(id, skin);
-    this.notify(this.addresses());
+    this.notify(this.addresses(), true);
   }
 
   get(address: SlotAddress): InventoryStack | null {
@@ -315,7 +321,7 @@ export class InventoryStore {
     if (recipe.buffered) {
       this.bufferedBuilds.set(recipe.recipeId, skinId ?? recipe.productSkinId);
     }
-    this.notify(changed);
+    this.notify(changed, changed.some((address) => addressKey(address) === addressKey(equipmentSlotAddress('hand'))));
     if (result.products.length) {
       const productSkinId = skinId ?? recipe.productSkinId;
       onReceived?.(result.products.map(({ slotIndex, count }) => ({
@@ -374,7 +380,7 @@ export class InventoryStore {
       registration.slot.set(next.get(key) ?? null);
       changed.set(key, cloneAddress(registration.address));
     }
-    this.notify([...changed.values()]);
+    this.notify([...changed.values()], changed.has(addressKey(equipmentSlotAddress('hand'))));
     return true;
   }
 
@@ -384,16 +390,15 @@ export class InventoryStore {
       || this.skinSpecs[item.phonographRecord]?.itemId === 'record');
   }
 
-  /** Caller chooses which fuelled slot is burning; depletion removes the item atomically. */
-  consumeFuel(address: SlotAddress, seconds: number): boolean {
-    if (!Number.isFinite(seconds) || seconds <= 0) return false;
+  /** Persists prefab fuel state. Burning and depletion are managed by the prefab. */
+  setRemainingFuel(address: SlotAddress, remainingFuel: number): boolean {
     const registration = this.registrationByAddress.get(addressKey(address));
     const stack = registration?.slot.get();
     if (!registration || !stack) return false;
-    const maximum = this.requireItemSpec(stack.itemId).maxFuel;
-    if (maximum === undefined) return false;
-    const remainingFuel = Math.max(0, (stack.remainingFuel ?? maximum) - seconds);
-    registration.slot.set(remainingFuel === 0 ? null : { ...stack, remainingFuel });
+    const spec = this.requireItemSpec(stack.itemId);
+    if (spec.maxFuel === undefined || !this.validUses({ remainingFuel }, spec)) return false;
+    if (stack.remainingFuel === remainingFuel) return true;
+    registration.slot.set({ ...stack, remainingFuel });
     this.notify([cloneAddress(address)]);
     return true;
   }
@@ -424,7 +429,17 @@ export class InventoryStore {
     return new Map(this.registrations.map(({ address, slot }) => [addressKey(address), slot.get()]));
   }
 
-  private notify(changedSlots: readonly SlotAddress[]): void {
+  private publishHandEquipment(): void {
+    const stack = this.get(equipmentSlotAddress('hand'));
+    handEquipmentState.set(stack ? Object.freeze({
+      itemId: stack.itemId, EQUIPSLOTS: 'HANDS' as const,
+      ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
+    }) : null);
+  }
+
+  private notify(changedSlots: readonly SlotAddress[], handReplaced = false): void {
+    // Fuel or unrelated inventory updates must not re-equip an extinguished torch.
+    if (handReplaced) this.publishHandEquipment();
     this.listeners.forEach((listener) => listener(changedSlots));
   }
 

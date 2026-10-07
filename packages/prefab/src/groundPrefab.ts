@@ -3,6 +3,7 @@ import type { GroundItemAssets } from './groundItems';
 import type { BernieWorld } from './bernie';
 import type { ButterflyWorld } from './butterfly';
 import type { FirefliesWorld } from './fireflies';
+import type { SoundPosition } from './sound';
 
 export interface GroundItemDefinition {
   itemId: string;
@@ -13,6 +14,7 @@ export interface GroundItemDefinition {
   count: number;
   remainingUses?: number;
   remainingFuel?: number;
+  torchLit?: boolean;
   phonographRecord?: string;
   playbackRemaining?: number;
 }
@@ -24,11 +26,14 @@ export interface GroundItemVisual {
   isClickable?(): boolean;
   isWorkable?(): boolean;
   getDefinition?(): Partial<GroundItemDefinition>;
+  /** Rebind prepared visuals to the state committed after asynchronous asset loading. */
+  setDefinition?(definition: GroundItemDefinition): void;
   dispose(): void;
 }
 
 export interface GroundPrefabOptions {
   animationBaseUrl: string;
+  inventoryOwnerPosition?: SoundPosition;
   bernieWorld: BernieWorld;
   butterflyWorld: ButterflyWorld;
   firefliesWorld: FirefliesWorld;

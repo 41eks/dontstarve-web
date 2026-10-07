@@ -1,6 +1,6 @@
 import { AssetElement } from './assets';
 import { AnimatedBackground } from './animated-background';
-import { createSignal } from './signal';
+import { createSignal } from '@dontstarve-web/signals';
 import { createSlotContainer, type SlotContainer, type SlotContainerKind } from './slot/slot-container';
 import type { SlotAddress, SlotItem, SlotModel, SlotSelectDetail } from './slot/slot-model';
 import { createSlotRenderer, type SlotRenderer } from './slot/slot-renderer';

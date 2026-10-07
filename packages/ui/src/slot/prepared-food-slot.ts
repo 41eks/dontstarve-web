@@ -1,4 +1,4 @@
-import { createSignal } from '../signal';
+import { createSignal } from '@dontstarve-web/signals';
 import type { SlotAddress, SlotItem, SlotModel } from './slot-model';
 
 /** UI mirror of the authoritative PreparedFoodSlot in packages/inventory. */

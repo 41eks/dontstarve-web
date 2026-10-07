@@ -24,6 +24,7 @@ export { InventoryStore } from './store';
 export { PreparedFoodSlot } from './preparedFoodSlot';
 export type {
   EquipmentKind,
+  HandEquipment,
   InventoryItemSpec,
   InventoryItems,
   InventoryListener,

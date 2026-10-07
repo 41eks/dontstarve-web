@@ -8,7 +8,7 @@ import { initializeCraftingControls } from './crafting-controls';
 import { createCraftingBackground } from './crafting-background';
 import styles from './styles/crafting-ui.css?inline';
 import type { InventoryMaterialSummary } from '@dontstarve-web/inventory';
-import { createSignal } from './signal';
+import { createSignal } from '@dontstarve-web/signals';
 
 export interface CraftRequestDetail {
   recipeId: string;

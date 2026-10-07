@@ -9,7 +9,7 @@ import {
   type EquipmentKind,
   type SlotAddress,
 } from '@dontstarve-web/inventory';
-import { createSignal } from './signal';
+import { createSignal } from '@dontstarve-web/signals';
 import { createSlotContainer, type SlotContainer } from './slot/slot-container';
 import type {
   SlotContextMenuDetail,

@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { handEquipmentState } from '@dontstarve-web/signals';
 import {
   BodySlot,
   HandSlot,
@@ -13,6 +14,12 @@ import {
   type InventoryItemSpec,
   type InventoryStack,
 } from '../src';
+
+const signalSubscriptions: (() => void)[] = [];
+afterEach(() => {
+  signalSubscriptions.splice(0).forEach((stop) => stop());
+  handEquipmentState.set(null);
+});
 
 const specs: Readonly<Record<string, InventoryItemSpec>> = {
   twigs: { name: '树枝', maxStack: 40, icon: 'twigs.tex' },
@@ -39,7 +46,51 @@ function equipmentSlot(kind: 'hand' | 'body' | 'head') {
 }
 
 describe('inventory state restoration', () => {
-  it('consumes fractional fuel, preserves it through transfers and reload, and removes depleted items', () => {
+  it('publishes hand equipment only after commits, preserves its identity during fuel updates and distinguishes replacement torches', () => {
+    const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75 } };
+    const store = new InventoryStore([inventorySlot(0), equipmentSlot('hand')], itemSpecs);
+    const from = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
+    const transitions: unknown[] = [];
+    signalSubscriptions.push(store.handEquipment.subscribe((equipment) => transitions.push({ equipment, hand: store.get(hand), from: store.get(from) })));
+    expect(store.handEquipment.get()).toBeNull();
+    expect(store.add('torch', 1)).toBe(true);
+    expect(store.applySlotChanges([{ slot: from, itemId: 'torch', delta: -1 },
+      { slot: hand, itemId: 'torch', delta: 1 }])).toBe(true);
+    const first = store.handEquipment.get();
+    expect(first).toEqual({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
+    expect(transitions).toEqual([{ equipment: first, hand: { itemId: 'torch', count: 1 }, from: null }]);
+    store.setRemainingFuel(hand, 40);
+    expect(store.handEquipment.get()).toBe(first);
+    expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: 1 }])).toBe(false);
+    expect(store.handEquipment.get()).toBe(first);
+    expect(transitions).toHaveLength(1);
+    expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: -1 },
+      { slot: from, itemId: 'torch', delta: 1, remainingFuel: 40 }])).toBe(true);
+    expect(store.handEquipment.get()).toBeNull();
+    expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: 1 }])).toBe(true);
+    const second = store.handEquipment.get();
+    expect(second).toEqual(first);
+    expect(second).not.toBe(first);
+    // An atomic same-prefab replacement still starts a new equip lifetime.
+    expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: -1 },
+      { slot: hand, itemId: 'torch', delta: 1, remainingFuel: 25 }])).toBe(true);
+    expect(store.handEquipment.get()).not.toBe(second);
+    const saved = store.exportState();
+    const last = store.handEquipment.get();
+    store.replaceState(saved, {});
+    expect(store.handEquipment.get()).toEqual(last);
+    expect(store.handEquipment.get()).not.toBe(last);
+    expect(() => store.replaceState({ ...saved, slots: [{ address: hand, item: { itemId: 'torch', count: 2 } }] }, {})).toThrow();
+    expect(transitions).toHaveLength(5);
+    handEquipmentState.set(null);
+    store.setRemainingFuel(hand, 24);
+    store.applySlotChanges([{ slot: from, itemId: 'torch', delta: -1 }]);
+    store.setStorageAccessible('chest:test', true);
+    expect(handEquipmentState.peek()).toBeNull();
+    expect(transitions).toHaveLength(6);
+  });
+
+  it('persists fractional prefab fuel through transfers and reload', () => {
     const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75 } };
     const store = new InventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
     const from = inventorySlotAddress(0), spare = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
@@ -48,7 +99,7 @@ describe('inventory state restoration', () => {
       { slot: hand, itemId: 'torch', delta: 1 }])).toBe(true);
     const listener = vi.fn();
     store.subscribe(listener);
-    expect(store.consumeFuel(hand, 37.125)).toBe(true);
+    expect(store.setRemainingFuel(hand, 37.875)).toBe(true);
     expect(store.get(hand)).toEqual({ itemId: 'torch', count: 1, remainingFuel: 37.875 });
     expect(listener).toHaveBeenLastCalledWith([hand]);
     expect(store.get(spare)).toEqual({ itemId: 'torch', count: 1 });
@@ -61,8 +112,6 @@ describe('inventory state restoration', () => {
     const restored = new InventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
     restored.replaceState(store.exportState(), {});
     expect(restored.get(from)).toEqual(store.get(from));
-    expect(restored.consumeFuel(from, 37.875)).toBe(true);
-    expect(restored.get(from)).toBeNull();
     expect(restored.get(spare)).toEqual(store.get(spare));
   });
 
@@ -81,7 +130,7 @@ describe('inventory state restoration', () => {
     expect(listener).not.toHaveBeenCalled();
     expect(store.add('torch', 1)).toBe(true);
     listener.mockClear();
-    for (const seconds of [0, -1, NaN, Infinity]) expect(store.consumeFuel(inventorySlotAddress(0), seconds)).toBe(false);
+    for (const seconds of [0, -1, 76, NaN, Infinity]) expect(store.setRemainingFuel(inventorySlotAddress(0), seconds)).toBe(false);
     expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'torch', count: 1 });
     expect(listener).not.toHaveBeenCalled();
   });

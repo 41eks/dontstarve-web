@@ -3,6 +3,8 @@ import type { Object3D } from 'three';
 export interface PrefabInventoryEventMap {
   ondropped: {};
   onputininventory: {};
+  /** Burnable-style request for external ground extinguishing. */
+  onextinguish: {};
   /** Initialize a restored or reskinned ground entity without a fresh drop. */
   onload: {};
 }

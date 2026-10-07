@@ -6,10 +6,17 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `createPigKing`
 - `createPigKingSetPiece`：猪王及周围 3 × 3 的 `turf_woodfloor` 地皮。
 - `createMoonTreeForest`
+- `TorchController`：`torch.lua` 的装备点燃、卸下熄灭、燃料消耗及耗尽移除；燃料通过调用方的权威状态读写接口保存，独立的只读 `burning` signal 发布燃烧状态，照明通过同步订阅更新。signal 原语来自公共包 `@dontstarve-web/signals`。
 - `ProximityEntities`：保留实体位置，仅创建玩家 XZ 距离加载半径内的模型，离开后移除并释放模型。
 - `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement`
 - `WallsPlacement`：`prefabs/walls.lua` 的 9 种墙（石、档案馆石、木、草、铥、档案馆铥、月岩、绝望石、废料），
   含各自的 `wall_*_item` 部署物 ID。
+
+`TorchController.onFrame(dt)` 累计实际时间，每 60 个燃烧帧调用一次 `update()`；`flushFuel()` 在保存、转移及生命周期停止前结算不足 60 帧的时间。
+
+`TorchController.onequip(slotSignal)` 绑定调用方提供的槽位；`onunequip()` 停止燃烧并解除绑定，不改变槽位值。`extinguish()` 仅在绑定槽位仍保存同一次装备实例时清空它；地面火把没有绑定槽位。
+
+`TorchController.OnPutInInventory()` 恢复闲置状态并停止火焰，保留 fuel；`OnExtinguish()` 处理未持有且未耗尽的地面火把。`createTorchGroundFactory()` 将成功拾取和外部熄灭事件接入这些回调，管理独立地面照明、剩余燃料及熄灭弹跳。声音通过共享 `PlaySound()` / `PreloadSounds()` 播放，地面声音在拾取或移除时释放，玩家拥有的一次性音效允许自然播放结束。地面 lit 状态及 fuel 可保存和恢复，换肤保持状态，恢复不重播点燃声。
 
 `CookPotPlacement` 使用 DST 预制体 ID `cookpot` 和 `anim/cook_pot.zip`，默认显示
 `idle_empty`，放置时播放 `place` 后回到 `idle_empty`。可通过包主入口或

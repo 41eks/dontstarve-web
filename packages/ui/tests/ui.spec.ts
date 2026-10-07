@@ -1,7 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { categories, type Recipe } from '../src/categories';
 import { INVENTORY_PRODUCT_SPECS, INVENTORY_RECIPES } from '../src/categories/shared';
-import { createEffect, createSignal, onCleanUp } from '../src/signal';
 import { createSlotContainer } from '../src/slot/slot-container';
 import type { DstChestPanelElement } from '../src/chest-panel';
 
@@ -92,25 +91,6 @@ test('shows four prepared food slots to the right and transfers one item from a 
     from: { containerId: 'player:inventory', slotKey: '0' },
     to: { containerId: 'world:cookpot:pot', slotKey: '0' }, itemId: 'berries', amount: 1,
   }]);
-});
-
-test('disposes signal effects and their cleanup callbacks', async () => {
-  const value = createSignal(0);
-  const observed: number[] = [];
-  let cleanupCount = 0;
-  const dispose = createEffect(() => {
-    observed.push(value.get());
-    onCleanUp(() => cleanupCount += 1);
-  });
-
-  value.set(1);
-  await Promise.resolve();
-  dispose();
-  value.set(2);
-  await Promise.resolve();
-
-  expect(observed).toEqual([0, 1]);
-  expect(cleanupCount).toBe(2);
 });
 
 test('creates addressable slot containers with per-slot acceptance rules', () => {

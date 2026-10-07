@@ -54,7 +54,7 @@ export const PREFAB_DEFINITIONS = {
     if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
     return fail(path, `missing building definition for ${context.prefab}`);
   }, PLACEABLE_BUILDING_IDS),
-  groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph'] }),
+  groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch'] }),
     ['fireflies', BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'phonograph', 'record', 'seeds', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel']),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] })),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION })),

@@ -5,13 +5,13 @@ import { INVENTORY_ITEM_DISPLAY_SPECS } from '../../ui/src/inventory-items';
 import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS, INVENTORY_SKIN_SPECS } from '../../ui/src/categories/shared';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
-import { TUNING } from '../../../src/tuning';
+import { TORCH_FUEL } from '../../prefab/src/torch';
 
 const catalog: SaveCatalog = {
   items: Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
     ...spec, maxStack: inventoryItemMaxStack(id), equippable: inventoryItemEquipmentKind(id),
     ...(id === 'farm_plow_item' ? { maxUses: 4 } : {}),
-    ...(id === 'torch' ? { maxFuel: TUNING.TORCH_FUEL } : {}),
+    ...(id === 'torch' ? { maxFuel: TORCH_FUEL } : {}),
   }])),
   skins: INVENTORY_SKIN_SPECS,
   recipes: INVENTORY_RECIPES,
@@ -31,7 +31,7 @@ describe('save JSON deserialization', () => {
     data.players.local.inventory.containers['player:inventory'].slots = [{ slotKey: '0',
       item: { itemId: 'torch', count: 1, remainingFuel: 0.125 } }];
     data.world.entities.ground_item = [{ id: 'torch:test', transform: { position: [12, 0, 12], rotationY: 0 },
-      components: { stack: { itemId: 'torch', count: 1, skinId: 'torch_barber', remainingFuel: 37.875 } } }];
+      components: { stack: { itemId: 'torch', count: 1, skinId: 'torch_barber', remainingFuel: 37.875 }, torch: { lit: true } } }];
     const restored = parse(data);
     expect(restored.world.entities.ground_item).toEqual(data.world.entities.ground_item);
     expect(restored.players.local.inventory.containers['player:inventory'].slots).toEqual(data.players.local.inventory.containers['player:inventory'].slots);
@@ -41,9 +41,13 @@ describe('save JSON deserialization', () => {
       expect(() => parse(data)).toThrow('remainingFuel');
     }
     delete item.remainingFuel;
+    delete data.world.entities.ground_item[0].components.torch;
     expect(parse(data).world.entities.ground_item).toEqual(data.world.entities.ground_item);
     item.itemId = 'twigs'; delete item.skinId; item.remainingFuel = 10;
     expect(() => parse(data)).toThrow('remainingFuel');
+    delete item.remainingFuel;
+    data.world.entities.ground_item[0].components.torch = { lit: true };
+    expect(() => parse(data)).toThrow('torch state requires a torch');
   });
 
   it('round-trips farmland, active plows, soil and finite-use inventory items', () => {

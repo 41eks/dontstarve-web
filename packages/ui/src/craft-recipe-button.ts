@@ -1,5 +1,5 @@
 import type { Recipe } from './categories';
-import { createEffect } from './signal';
+import { createEffect } from '@dontstarve-web/signals';
 
 interface RecipeButtonMapperOptions {
   atlasImage: (className: string, atlasPath: string, elementName: string) => HTMLElement;

@@ -18,7 +18,8 @@
   "dependencies": {
     "@dontstarve-web/animation": "workspace:*",
     "@dontstarve-web/inventory": "workspace:*",
-    "@dontstarve-web/prefab": "workspace:*"
+    "@dontstarve-web/prefab": "workspace:*",
+    "@dontstarve-web/signals": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

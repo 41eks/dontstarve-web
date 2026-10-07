@@ -239,6 +239,7 @@ export function createSceneEntities(
       return groundItems.spawnFromSave(record.id, {
         ...item, name: skin?.name ?? spec.name, icon: skin?.icon ?? spec.icon, atlas: skin?.atlas ?? spec.atlas,
         ...(record.components.phonograph ? { playbackRemaining: record.components.phonograph.remainingSeconds } : {}),
+        ...(record.components.torch ? { torchLit: true } : {}),
       }, new THREE.Vector3(...record.transform.position));
     },
     debugSpawn: (id) => groundItems.spawnFromSave(newEntityId(), {

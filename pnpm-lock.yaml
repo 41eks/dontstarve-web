@@ -17,6 +17,9 @@ importers:
       '@dontstarve-web/prefab':
         specifier: workspace:*
         version: link:packages/prefab
+      '@dontstarve-web/signals':
+        specifier: workspace:*
+        version: link:packages/signals
       '@dontstarve-web/stategraphs':
         specifier: workspace:*
         version: link:packages/stategraphs
@@ -81,6 +84,10 @@ importers:
         version: 5.0.1(@types/node@26.6.3)(vite@8.0.14(@types/node@26.6.3))
 
   packages/inventory:
+    dependencies:
+      '@dontstarve-web/signals':
+        specifier: workspace:*
+        version: link:../signals
     devDependencies:
       typescript:
         specifier: ~6.0.2
@@ -97,6 +104,9 @@ importers:
       '@dontstarve-web/inventory':
         specifier: workspace:*
         version: link:../inventory
+      '@dontstarve-web/signals':
+        specifier: workspace:*
+        version: link:../signals
       '@dontstarve-web/stategraphs':
         specifier: workspace:*
         version: link:../stategraphs
@@ -113,6 +123,15 @@ importers:
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
+
+  packages/signals:
+    devDependencies:
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@26.6.3)(vite@8.0.14(@types/node@26.6.3))
 
   packages/stategraphs:
     dependencies:
@@ -138,6 +157,9 @@ importers:
       '@dontstarve-web/prefab':
         specifier: workspace:*
         version: link:../prefab
+      '@dontstarve-web/signals':
+        specifier: workspace:*
+        version: link:../signals
     devDependencies:
       '@playwright/test':
         specifier: ^1.63.0

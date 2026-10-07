@@ -3,7 +3,7 @@ import { createCategoryButtonMapper } from './craft-category-button';
 import { createRecipeButtonMapper } from './craft-recipe-button';
 import { createCraftingScrollbar } from './crafting-scrollbar';
 import { createAtlasImage as atlasImage } from '@dontstarve-web/animation/atlasImage';
-import { createEffect, type createSignal } from './signal';
+import { createEffect, type createSignal } from '@dontstarve-web/signals';
 import { urlString } from './utils';
 
 interface CraftingControlsOptions {

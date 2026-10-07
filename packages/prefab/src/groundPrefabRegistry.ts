@@ -6,6 +6,7 @@ import { createButterflyGroundFactory } from './butterfly';
 import { createLightbulbGroundFactory } from './lightbulb';
 import { createLanternGroundFactory } from './lantern';
 import { createPhonographGroundFactory } from './phonograph';
+import { createTorchGroundFactory } from './torch';
 import type { GroundItemFactory, GroundPrefabOptions } from './groundPrefab';
 
 // Shared catalog factories come first; specialized prefabs override their IDs.
@@ -13,6 +14,7 @@ const PREFAB_MODULES = [
   createGroundItemFactory, createHatGroundFactory, createBernieGroundFactory,
   createFirefliesGroundFactory, createButterflyGroundFactory,
   createLightbulbGroundFactory, createLanternGroundFactory, createPhonographGroundFactory,
+  createTorchGroundFactory,
 ];
 
 /** One registry and resource lifetime per ground-item manager. */

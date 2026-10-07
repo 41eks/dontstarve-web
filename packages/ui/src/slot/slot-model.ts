@@ -1,4 +1,4 @@
-import { createSignal } from '../signal';
+import { createSignal } from '@dontstarve-web/signals';
 import type { SlotAddress } from '@dontstarve-web/inventory';
 
 export type { SlotAddress } from '@dontstarve-web/inventory';
