@@ -10,11 +10,12 @@ import {
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';
 import { BuildCursor } from './buildCursor';
-import { PointerRaycaster } from './pointerRaycaster';
+import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext } from './worldContext';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
-import type { HammerTarget } from './hammer';
-import { nextReskin, type ReskinTarget } from './reskin_tool';
+import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
+import { nextReskin } from './reskin_tool';
+import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { isPlayerNearby } from './playerProximity';
 

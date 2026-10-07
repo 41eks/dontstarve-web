@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FlowerPlanting, FLOWER_ANIMATIONS } from '../../prefab/src/flower';
 import { ButterflyController } from '../../prefab/src/butterfly';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
 import { getPrefabLightOverride } from '../../prefab/src/localLight';

@@ -6,15 +6,20 @@ export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
 export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'pickup';
 export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'mine_start' | 'mine' | 'mine_pst' | 'hammer_start' | 'hammer' | 'hammer_pst'
-  | 'bugnet_start' | 'bugnet' | 'terraform' | 'terraform_pst' | 'castspell' | 'veryquickcastspell';
-export type WilsonAction = 'MINE' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'RESKIN';
+  | 'bugnet_start' | 'bugnet' | 'terraform' | 'terraform_pst' | 'castspell' | 'veryquickcastspell'
+  | 'quickeat' | 'doshortaction' | 'till_start' | 'till' | 'till_pst' | 'dig_start' | 'dig' | 'dig_pst';
+export type WilsonAction = 'MINE' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'RESKIN' | 'EAT' | 'PLANT' | 'TILL' | 'DIG';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'bugnet_pre' | 'bugnet'
-  | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk';
+  | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
+  | 'quick_eat_pre' | 'quick_eat' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst';
 
 export const WILSON_ACTION_TIMES = {
   mine: 7 * FRAMES, net: 10 * FRAMES, terraform: 25 * FRAMES,
   castSound: 13 * FRAMES, cast: 53 * FRAMES, reskin: 9 * FRAMES,
+  quickEat: 12 * FRAMES, plant: 6 * FRAMES,
+  till: 11 * FRAMES,
+  dig: 15 * FRAMES,
 } as const;
 
 export interface WilsonAnimationClip {
@@ -28,7 +33,7 @@ export interface WilsonAnimationClip {
 export interface WilsonStateGraphHost {
   /** Select the art and return its effective playback duration in seconds. */
   playAnimation(clip: WilsonAnimationClip): number;
-  playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin'): void;
+  playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'dig' | 'tillEmerge'): void;
   setCasting(casting: boolean): void;
   onStateChanged(name: WilsonStateName): void;
 }
@@ -92,6 +97,37 @@ function createStates(): StateDefinition<WilsonStateGraph, WilsonStateName>[] {
     );
   }
   states.push(
+    makeState('dig_start', [clip('shovel_pre')], ['oneshot', 'action', 'digging', 'shoveling', 'predig'], {
+      events: animationEvents('dig'),
+    }),
+    makeState('dig', [clip('shovel_loop')], ['oneshot', 'action', 'digging', 'shoveling', 'predig'], {
+      timeline: [TimeEvent(WILSON_ACTION_TIMES.dig, (inst: WilsonInstance) => {
+        inst.removeStateTag('predig');
+        inst.context.host.playSound('dig');
+        perform(inst);
+      })], events: animationEvents('dig_pst'),
+    }),
+    makeState('dig_pst', [clip('shovel_pst')], ['oneshot', 'action', 'digging', 'shoveling'], { events: animationEvents() }),
+    makeState('till_start', [clip('till_pre')], ['oneshot', 'action', 'tilling', 'busy'], {
+      events: animationEvents('till'),
+    }),
+    makeState('till', [clip('till_loop')], ['oneshot', 'action', 'tilling', 'busy'], {
+      timeline: [TimeEvent(4 * FRAMES, (inst: WilsonInstance) => inst.context.host.playSound('dig')),
+        TimeEvent(WILSON_ACTION_TIMES.till, perform),
+        TimeEvent(12 * FRAMES, (inst: WilsonInstance) => inst.context.host.playSound('tillEmerge')),
+        TimeEvent(22 * FRAMES, (inst: WilsonInstance) => inst.removeStateTag('busy'))],
+      events: animationEvents('till_pst'),
+    }),
+    makeState('till_pst', [clip('till_pst')], ['oneshot', 'action', 'tilling'], { events: animationEvents() }),
+    makeState('quickeat', [clip('quick_eat_pre'), clip('quick_eat')], ['oneshot', 'action', 'eating', 'busy'], {
+      timeline: [TimeEvent(10 * FRAMES, (inst: WilsonInstance) => inst.context.host.playSound('eat')),
+        TimeEvent(WILSON_ACTION_TIMES.quickEat, perform)],
+      events: animationEvents(undefined, 'animqueueover'),
+    }),
+    makeState('doshortaction', [clip('pickup'), clip('pickup_pst')], ['oneshot', 'action', 'planting', 'busy'], {
+      timeline: [TimeEvent(WILSON_ACTION_TIMES.plant, perform)],
+      events: animationEvents(undefined, 'animqueueover'),
+    }),
     makeState('bugnet_start', [clip('bugnet_pre')], ['oneshot', 'action', 'working', 'netting', 'prenet'], {
       events: animationEvents('bugnet'),
     }),
@@ -139,6 +175,9 @@ const actionHandlers = [
   ActionHandler('MINE', 'mine_start'), ActionHandler('HAMMER', 'hammer_start'),
   ActionHandler('NET', 'bugnet_start'), ActionHandler('TERRAFORM', 'terraform'),
   ActionHandler('CASTSPELL', 'castspell'), ActionHandler('RESKIN', 'veryquickcastspell'),
+  ActionHandler('EAT', 'quickeat'), ActionHandler('PLANT', 'doshortaction'),
+  ActionHandler('TILL', 'till_start'),
+  ActionHandler('DIG', 'dig_start'),
 ] as const;
 
 export class WilsonStateGraph {

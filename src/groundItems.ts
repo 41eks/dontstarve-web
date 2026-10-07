@@ -2,18 +2,24 @@ import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/image
 import * as THREE from 'three';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
-import { nextReskin, type ReskinTarget } from '@dontstarve-web/prefab/reskin_tool';
+import { nextReskin } from '@dontstarve-web/prefab/reskin_tool';
+import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
 import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
 import { GroundPrefabRegistry } from '@dontstarve-web/prefab/groundPrefabRegistry';
 import type { GroundItemDefinition, GroundItemVisual } from '@dontstarve-web/prefab/groundPrefab';
-import type { NetCaptureTarget } from '@dontstarve-web/prefab/bugnet';
+import type { NetCaptureTarget } from '@dontstarve-web/stategraphs/bugnet';
 import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
-import { intersectSpriteEntities } from '@dontstarve-web/prefab/pointerRaycaster';
+import { intersectSpriteEntities } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
 import { LootFling } from '@dontstarve-web/prefab/lootFling';
+import { PHONOGRAPH_ID, RECORD_ID, RECORD_SONGS, PhonographController } from '@dontstarve-web/prefab/phonograph';
+import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
+import { PlaySound } from '@dontstarve-web/prefab/sound';
+import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { GroundItemAssets } from '@dontstarve-web/prefab/groundItems';
 import type { SavedEntity } from './save/types';
 
 export type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
@@ -43,6 +49,10 @@ export class GroundItemManager {
   private readonly scene: THREE.Scene;
   private readonly player: THREE.Object3D;
   private disposed = false;
+  private readonly effects = new Set<ArchiveSprite>();
+  private readonly effectAssets: GroundItemAssets;
+  private readonly inserting = new Set<GroundItemRecord>();
+  private recordSource?: () => { skinId?: string; take(): boolean } | undefined;
 
   constructor(
     scene: THREE.Scene,
@@ -62,6 +72,7 @@ export class GroundItemManager {
     this.archiveUrl = archiveUrl;
     this.onPickup = onPickup;
     this.player = player;
+    this.effectAssets = new GroundItemAssets(animationBaseUrl);
     this.prefabs = new GroundPrefabRegistry({
       animationBaseUrl, butterflyWorld, firefliesWorld, bernieWorld,
       getNeighbours: () => [...this.items.values()]
@@ -75,6 +86,9 @@ export class GroundItemManager {
     this.disposed = true;
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     for (const item of this.items.values()) item.dispose();
+    for (const effect of this.effects) effect.dispose();
+    this.effects.clear();
+    this.effectAssets.dispose();
     this.items.clear();
     this.atlasRequests.clear();
     this.prefabs.dispose();
@@ -170,18 +184,92 @@ export class GroundItemManager {
   }
 
   exportRecords(): SavedEntity[] {
-    return [...this.items.values()].map(({ id, definition, footPosition }) => ({
-      id,
-      transform: {
-        position: footPosition.toArray(),
-        rotationY: 0,
-      },
-      components: {
-        stack: {
-          itemId: definition.itemId, count: definition.count,
-          ...(definition.remainingUses === undefined ? {} : { remainingUses: definition.remainingUses }),
-          ...(definition.skinId === undefined ? {} : { skinId: definition.skinId }),
+    return [...this.items.values()].map((record) => {
+      const { id, footPosition } = record;
+      const definition = this.currentDefinition(record);
+      return {
+        id,
+        transform: {
+          position: footPosition.toArray(),
+          rotationY: 0,
         },
+        components: {
+          stack: {
+            itemId: definition.itemId, count: definition.count,
+            ...(definition.remainingUses === undefined ? {} : { remainingUses: definition.remainingUses }),
+            ...(definition.remainingFuel === undefined ? {} : { remainingFuel: definition.remainingFuel }),
+            ...(definition.skinId === undefined ? {} : { skinId: definition.skinId }),
+            ...(definition.phonographRecord === undefined ? {} : { phonographRecord: definition.phonographRecord }),
+          },
+          ...(definition.playbackRemaining === undefined ? {} : { phonograph: { remainingSeconds: definition.playbackRemaining } }),
+        },
+      };
+    });
+  }
+
+  /** Slot selection supplies one record; the take callback validates and consumes it atomically. */
+  setPhonographRecordSource(source: () => { skinId?: string; take(): boolean } | undefined): void {
+    this.recordSource = source;
+  }
+
+  private currentDefinition(record: GroundItemRecord): GroundItemDefinition {
+    return { ...record.definition, ...record.getDefinition?.() };
+  }
+
+  async insertPhonographRecord(model: THREE.Group, source: { skinId?: string; take(): boolean }): Promise<boolean> {
+    const record = this.items.get(model);
+    const controller = model.userData.phonograph as PhonographController | undefined;
+    if (!record || !controller || this.inserting.has(record) || !Object.hasOwn(RECORD_SONGS, source.skinId ?? RECORD_ID)
+      || !isPlayerNearby(this.player.position, record.footPosition, false)) return false;
+    this.inserting.add(record);
+    let ejected: GroundItemVisual | undefined;
+    try {
+      const oldRecord = controller.record;
+      const skinId = oldRecord === RECORD_ID ? undefined : oldRecord;
+      const spec = GROUND_ITEM_DEFINITIONS.record;
+      const definition = { itemId: RECORD_ID, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas,
+        ...(skinId ? { skinId } : {}) };
+      if (oldRecord) ejected = await this.createVisual(definition);
+      if (this.disposed || this.items.get(model) !== record || controller.record !== oldRecord
+        || !isPlayerNearby(this.player.position, record.footPosition, false) || !source.take()) return false;
+      controller.insert(source.skinId ?? RECORD_ID);
+      if (ejected) {
+        const fling = new LootFling(record.footPosition);
+        this.addVisual(newEntityId(), definition, fling.position, ejected, true);
+        this.items.get(ejected.model)!.fling = fling;
+        ejected = undefined;
+      }
+      return true;
+    } finally { ejected?.dispose(); this.inserting.delete(record); }
+  }
+
+  get hammerTargets(): readonly HammerTarget[] {
+    return [...this.items.values()].filter((record) => record.definition.itemId === PHONOGRAPH_ID).map((record) => ({
+      id: record.id, model: record.model, position: record.footPosition,
+      isValid: () => !this.disposed && this.items.get(record.model) === record && !this.inserting.has(record),
+      playHit: () => {
+        if (this.items.get(record.model) !== record || this.inserting.has(record)) return;
+        const controller = record.model.userData.phonograph as PhonographController;
+        const position = record.footPosition.clone();
+        const loaded = controller.record;
+        controller.stop();
+        this.items.delete(record.model); record.dispose();
+        if (loaded) {
+          const spec = GROUND_ITEM_DEFINITIONS.record;
+          void this.flingLoot([{ itemId: RECORD_ID, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas,
+            ...(loaded === RECORD_ID ? {} : { skinId: loaded }) }], position)
+            .catch((error: unknown) => console.error('Unable to drop record', error));
+        }
+        PlaySound('dontstarve/common/destroy_smoke', position);
+        PlaySound('dontstarve/common/destroy_wood', position);
+        void createArchiveSprite(this.effectAssets, {
+          animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
+          bank: 'collapse', animation: 'collapse_small', loop: false,
+        }).then((effect) => {
+          if (this.disposed) { effect.dispose(); return; }
+          effect.model.position.copy(position); this.scene.add(effect.model); this.effects.add(effect);
+          effect.playOnce('collapse_small', () => { effect.dispose(); this.effects.delete(effect); });
+        }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
       },
     }));
   }
@@ -205,13 +293,21 @@ export class GroundItemManager {
                 id: record.id, prefabId, model: record.model, position: record.footPosition, isValid,
                 prepareNextSkin: async () => {
                     const skinId = nextReskin(skins, record.definition.skinId);
-                    const definition = { ...record.definition };
+                    const definition = this.currentDefinition(record);
                     if (skinId === undefined) delete definition.skinId; else definition.skinId = skinId;
                     const visual = await this.createVisual(definition);
                     let used = false;
                     return {
                         apply: () => {
                             if (used || !isValid()) return false;
+                            // The machine may have advanced while skin assets were loading.
+                            const oldMachine = record.model.userData.phonograph as PhonographController | undefined;
+                            const newMachine = visual.model.userData.phonograph as PhonographController | undefined;
+                            if (oldMachine && newMachine) {
+                              newMachine.record = oldMachine.record;
+                              definition.phonographRecord = oldMachine.record;
+                              definition.playbackRemaining = oldMachine.isPlaying ? oldMachine.remainingSeconds : undefined;
+                            }
                             visual.model.position.copy(record.footPosition);
                             visual.model.quaternion.copy(record.model.quaternion);
                             if (record.fling) visual.model.children[0].position.y = record.fling.height;
@@ -245,7 +341,7 @@ export class GroundItemManager {
   }
 
   private readonly handlePointerDown = (event: PointerEvent) => {
-    if (event.button !== 0 || event.defaultPrevented || this.items.size === 0) return;
+    if ((event.button !== 0 && event.button !== 2) || event.defaultPrevented || this.items.size === 0) return;
 
     const bounds = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
@@ -255,11 +351,24 @@ export class GroundItemManager {
     const hit = intersectSpriteEntities(this.raycaster, [...this.items.values()]
       .filter(record => record.isClickable?.() !== false).map(record => record.model), true)[0];
     if (!hit) return;
-    event.preventDefault();
     let root: THREE.Object3D | null = hit.object;
     while (root && !this.items.has(root as THREE.Group)) root = root.parent;
     const record = root ? this.items.get(root as THREE.Group) : undefined;
     if (!record) return;
+    const machine = record.model.userData.phonograph as PhonographController | undefined;
+    if (event.button === 2) {
+      if (!machine || !machine.record || !isPlayerNearby(this.player.position, record.footPosition, false)) return;
+      event.preventDefault();
+      if (machine.isPlaying) machine.stop(); else machine.play();
+      return;
+    }
+    event.preventDefault();
+    const source = this.recordSource?.();
+    if (machine && source) {
+      void this.insertPhonographRecord(record.model, source)
+        .catch((error: unknown) => console.error('Unable to insert record', error));
+      return;
+    }
     if (this.isNetCreature(record.definition.itemId)) {
       this.onNetCapture?.(this.captureTarget(record));
       return;
@@ -272,7 +381,10 @@ export class GroundItemManager {
       this.updateProximity(record);
       if (!record.isPlayerNearby) return false;
     }
-    if (!this.onPickup({ ...record.definition }, action, record.footPosition.clone())) return false;
+    if (this.inserting.has(record)) return false;
+    const definition = this.currentDefinition(record);
+    delete definition.playbackRemaining;
+    if (!this.onPickup(definition, action, record.footPosition.clone())) return false;
     try {
       record.model.dispatchEvent({ type: 'onputininventory' });
     } finally {
@@ -285,10 +397,11 @@ export class GroundItemManager {
   get renderEntities(): readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[] {
     return [...this.items.values()].map(({ model, footPosition }) => ({
       object: model, footPosition, cameraDepth: 0,
-    }));
+    })).concat([...this.effects].map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })));
   }
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+    for (const effect of this.effects) { effect.model.quaternion.copy(cameraQuaternion); effect.update(dt); }
     for (const item of this.items.values()) {
       item.model.quaternion.copy(cameraQuaternion);
       item.update?.(dt);

@@ -12,6 +12,9 @@ export interface GroundItemDefinition {
   atlas?: string;
   count: number;
   remainingUses?: number;
+  remainingFuel?: number;
+  phonographRecord?: string;
+  playbackRemaining?: number;
 }
 
 export interface GroundItemVisual {
@@ -20,6 +23,7 @@ export interface GroundItemVisual {
   isRemoved?(): boolean;
   isClickable?(): boolean;
   isWorkable?(): boolean;
+  getDefinition?(): Partial<GroundItemDefinition>;
   dispose(): void;
 }
 

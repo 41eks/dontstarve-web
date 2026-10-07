@@ -1,6 +1,6 @@
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import { PointerRaycaster } from './pointerRaycaster';
+import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext } from './worldContext';
 
 export interface GroundPathOptions {

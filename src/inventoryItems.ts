@@ -1,4 +1,5 @@
 import { HAT_ITEM_SPECS } from '@dontstarve-web/prefab/hats';
+import { TUNING } from './tuning';
 import {
   INVENTORY_ITEM_DISPLAY_SPECS,
   INVENTORY_SKIN_SPECS,
@@ -22,6 +23,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...display,
       maxStack: inventoryItemMaxStack(itemId),
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
+      ...(itemId === 'torch' ? { maxFuel: TUNING.TORCH_FUEL } : {}),
       ...(equippable === undefined ? {} : { equippable }),
     }];
   })), ...HAT_ITEM_SPECS };

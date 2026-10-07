@@ -16,6 +16,8 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   backpack: 1,
   bernie_inactive: 1,
   farm_plow_item: 1,
+  phonograph: 1,
+  record: 1,
   torch: 1,
   lantern: 1,
   yellowstaff: 1,
@@ -27,6 +29,10 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   goldenpickaxe: 1,
   pitchfork: 1,
   goldenpitchfork: 1,
+  farm_hoe: 1,
+  golden_farm_hoe: 1,
+  shovel: 1,
+  goldenshovel: 1,
   log: 20,
 };
 
@@ -38,7 +44,9 @@ export function inventoryItemEquipmentKind(itemId: string): EquipmentKind | unde
   if (itemId === 'backpack') return 'body';
   return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'bugnet'
     || itemId === 'hammer' || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
-    || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool' ? 'hand' : undefined;
+    || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool'
+    || itemId === 'farm_hoe' || itemId === 'golden_farm_hoe'
+    || itemId === 'shovel' || itemId === 'goldenshovel' ? 'hand' : undefined;
 }
 
 export class InventorySlot implements ItemSlot {

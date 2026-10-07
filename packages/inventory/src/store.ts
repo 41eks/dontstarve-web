@@ -37,6 +37,8 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
       && left.itemId === right.itemId
       && left.skinId === right.skinId
       && left.remainingUses === right.remainingUses
+      && left.remainingFuel === right.remainingFuel
+      && left.phonographRecord === right.phonographRecord
       && left.count === right.count;
 }
 
@@ -78,7 +80,7 @@ export class InventoryStore {
       if (!Number.isSafeInteger(stack.count)
         || stack.count <= 0
         || stack.count > Math.min(spec.maxStack, slot.maxStack?.(stack.itemId) ?? spec.maxStack)
-        || !slot.accepts(spec) || !this.validUses(stack, spec)) {
+        || !slot.accepts(spec) || !this.validUses(stack, spec) || !this.validRecord(stack)) {
         throw new RangeError(`Invalid initial stack for ${stack.itemId} in ${key}`);
       }
     }
@@ -131,7 +133,7 @@ export class InventoryStore {
         const spec = this.requireItemSpec(item.itemId);
         if (!Number.isSafeInteger(item.count) || item.count <= 0
           || item.count > Math.min(spec.maxStack, registration.slot.maxStack?.(item.itemId) ?? spec.maxStack)
-          || !registration.slot.accepts(spec) || !this.validUses(item, spec)) {
+          || !registration.slot.accepts(spec) || !this.validUses(item, spec) || !this.validRecord(item)) {
           throw new Error(`Invalid saved item in ${key}`);
         }
         validateSkin(item.itemId, item.skinId);
@@ -235,10 +237,11 @@ export class InventoryStore {
     return this.registrations.map(({ address }) => cloneAddress(address));
   }
 
-  add(itemId: string, count: number, skinId?: string, onReceived?: InventoryReceiveListener, remainingUses?: number): boolean {
+  add(itemId: string, count: number, skinId?: string, onReceived?: InventoryReceiveListener, remainingUses?: number, phonographRecord?: string, remainingFuel?: number): boolean {
     const spec = this.itemSpecs.get(itemId);
-    if (!spec || !Number.isSafeInteger(count) || count <= 0 || !this.validUses({ remainingUses }, spec)) return false;
+    if (!spec || !Number.isSafeInteger(count) || count <= 0 || !this.validUses({ remainingUses, remainingFuel }, spec)) return false;
 
+    if (!this.validRecord({ itemId, phonographRecord })) return false;
     const working = this.snapshot();
     const changes: InventorySlotDelta[] = [];
     let remaining = count;
@@ -255,6 +258,8 @@ export class InventoryStore {
         ...(skinId === undefined ? {} : { skinId }),
         delta: added,
         ...(remainingUses === undefined ? {} : { remainingUses }),
+        ...(remainingFuel === undefined ? {} : { remainingFuel }),
+        ...(phonographRecord === undefined ? {} : { phonographRecord }),
       });
       stack.count += added;
       remaining -= added;
@@ -271,9 +276,13 @@ export class InventoryStore {
         ...(skinId === undefined ? {} : { skinId }),
         delta: added,
         ...(remainingUses === undefined ? {} : { remainingUses }),
+        ...(remainingFuel === undefined ? {} : { remainingFuel }),
+        ...(phonographRecord === undefined ? {} : { phonographRecord }),
       });
       working.set(key, { itemId, ...(skinId === undefined ? {} : { skinId }), count: added,
-        ...(remainingUses === undefined ? {} : { remainingUses }) });
+        ...(remainingUses === undefined ? {} : { remainingUses }),
+        ...(remainingFuel === undefined ? {} : { remainingFuel }),
+        ...(phonographRecord === undefined ? {} : { phonographRecord }) });
       remaining -= added;
     }
 
@@ -327,7 +336,7 @@ export class InventoryStore {
       if (!Number.isSafeInteger(change.delta) || change.delta === 0) return false;
       const spec = this.itemSpecs.get(change.itemId);
       const registration = this.registrationByAddress.get(addressKey(change.slot));
-      if (!spec || !registration || !this.validUses(change, spec)) return false;
+      if (!spec || !registration || !this.validUses(change, spec) || !this.validRecord(change)) return false;
 
       const { address, slot } = registration;
       const key = addressKey(address);
@@ -349,8 +358,12 @@ export class InventoryStore {
         itemId: change.itemId,
         ...(change.skinId === undefined ? {} : { skinId: change.skinId }),
         count: nextCount,
+        ...((change.phonographRecord ?? current?.phonographRecord) === undefined ? {}
+          : { phonographRecord: change.phonographRecord ?? current?.phonographRecord }),
         ...((change.remainingUses ?? current?.remainingUses) === undefined ? {}
           : { remainingUses: change.remainingUses ?? current?.remainingUses }),
+        ...((change.remainingFuel ?? current?.remainingFuel) === undefined ? {}
+          : { remainingFuel: change.remainingFuel ?? current?.remainingFuel }),
       });
     }
 
@@ -365,9 +378,31 @@ export class InventoryStore {
     return true;
   }
 
-  private validUses(item: { remainingUses?: number }, spec: InventoryItemSpec): boolean {
-    return item.remainingUses === undefined || (spec.maxUses !== undefined
-      && Number.isSafeInteger(item.remainingUses) && item.remainingUses >= 1 && item.remainingUses <= spec.maxUses);
+  private validRecord(item: { itemId: string; phonographRecord?: string }): boolean {
+    if (item.phonographRecord === undefined) return true;
+    return item.itemId === 'phonograph' && (item.phonographRecord === 'record'
+      || this.skinSpecs[item.phonographRecord]?.itemId === 'record');
+  }
+
+  /** Caller chooses which fuelled slot is burning; depletion removes the item atomically. */
+  consumeFuel(address: SlotAddress, seconds: number): boolean {
+    if (!Number.isFinite(seconds) || seconds <= 0) return false;
+    const registration = this.registrationByAddress.get(addressKey(address));
+    const stack = registration?.slot.get();
+    if (!registration || !stack) return false;
+    const maximum = this.requireItemSpec(stack.itemId).maxFuel;
+    if (maximum === undefined) return false;
+    const remainingFuel = Math.max(0, (stack.remainingFuel ?? maximum) - seconds);
+    registration.slot.set(remainingFuel === 0 ? null : { ...stack, remainingFuel });
+    this.notify([cloneAddress(address)]);
+    return true;
+  }
+
+  private validUses(item: { remainingUses?: number; remainingFuel?: number }, spec: InventoryItemSpec): boolean {
+    return (item.remainingUses === undefined || (spec.maxUses !== undefined
+      && Number.isSafeInteger(item.remainingUses) && item.remainingUses >= 1 && item.remainingUses <= spec.maxUses))
+      && (item.remainingFuel === undefined || (spec.maxFuel !== undefined
+        && Number.isFinite(item.remainingFuel) && item.remainingFuel > 0 && item.remainingFuel <= spec.maxFuel));
   }
 
   private accessibleMaterialSlots(): readonly RegisteredItemSlot[] {

@@ -16,6 +16,8 @@
     "./sapling": "./src/sapling.ts",
     "./pond": "./src/pond.ts",
     "./wormhole": "./src/wormhole.ts",
+    "./phonograph": "./src/phonograph.ts",
+    "./portal": "./src/portal.ts",
     "./nightmaregrowth": "./src/nightmaregrowth.ts",
     "./beefalo": "./src/beefalo.ts",
     "./emotes": "./src/emotes.ts",
@@ -32,6 +34,9 @@
     "./bulb_plant": "./src/bulb_plant.ts",
     "./flower": "./src/flower.ts",
     "./farm_plow": "./src/farm_plow.ts",
+    "./seeds": "./src/seeds.ts",
+    "./farm_hoe": "./src/farm_hoe.ts",
+    "./shovel": "./src/shovel.ts",
     "./bugnet": "./src/bugnet.ts",
     ".": "./src/index.ts",
     "./definitions.json": "./src/definitions.json",
@@ -70,7 +75,6 @@
     "./lootFling": "./src/lootFling.ts",
     "./groundPrefab": "./src/groundPrefab.ts",
     "./groundPrefabRegistry": "./src/groundPrefabRegistry.ts",
-    "./pointerRaycaster": "./src/pointerRaycaster.ts",
     "./disposeSprite": "./src/disposeSprite.ts"
   },
   "scripts": {

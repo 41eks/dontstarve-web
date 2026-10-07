@@ -52,6 +52,7 @@ function transferAmount(source: SlotModel, target: SlotModel, item: SlotItem): n
 export class SlotTransferController {
   private drag?: ActiveDrag;
   private pickedUp?: PickedUpSlot;
+  private selected?: RegisteredSlot;
   private operationId = 0;
   private preview?: HTMLDivElement;
   private readonly registered = new Set<RegisteredSlot>();
@@ -60,14 +61,47 @@ export class SlotTransferController {
     this.updatePickedUpTarget(event.clientX, event.clientY);
   };
   private readonly cancelPickedUpItemOnEscape = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') this.clearPickedUp();
+    if (event.key === 'Escape') { this.clearPickedUp(); this.clearSelection(); }
   };
+  private readonly followSelection = (event: PointerEvent) => this.movePreview(event.clientX, event.clientY);
+
+  /** An application action owns the click; show its item without starting a transfer. */
+  showSelection(address: SlotAddress): void {
+    this.clearSelection(); this.clearPickedUp(); this.clearDrag();
+    const source = [...this.registered].find(({ slot }) => sameSlotAddress(slot.address, address));
+    const item = source?.slot.getItem();
+    if (!source || !item) return;
+    this.selected = source;
+    const rect = source.button.getBoundingClientRect();
+    this.createPreview(source.button, item, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    this.preview!.dataset.selection = 'true';
+    document.addEventListener('pointermove', this.followSelection);
+    document.addEventListener('keydown', this.cancelPickedUpItemOnEscape);
+  }
+
+  syncSelection(slot: SlotModel): void {
+    if (this.selected?.slot !== slot) return;
+    const item = slot.getItem();
+    if (!item || item.id !== this.preview?.dataset.itemId || (item.skinId ?? '') !== this.preview.dataset.skinId) {
+      this.clearSelection(); return;
+    }
+    const count = this.preview.querySelector<HTMLElement>('.slot-drag-preview__count')!;
+    count.textContent = item.count > 1 ? String(item.count) : '';
+  }
+
+  clearSelection(): void {
+    if (!this.selected) return;
+    document.removeEventListener('pointermove', this.followSelection);
+    document.removeEventListener('keydown', this.cancelPickedUpItemOnEscape);
+    this.preview?.remove(); this.preview = undefined; this.selected = undefined;
+  }
 
   register(slot: SlotModel, button: HTMLButtonElement): () => void {
     const registered = { slot, button };
     this.registered.add(registered);
     return () => {
       this.registered.delete(registered);
+      if (this.selected === registered) this.clearSelection();
       if (this.drag?.source === registered || this.drag?.target === registered) this.cancel();
       if (this.pickedUp?.source === registered || this.pickedUp?.target === registered) {
         this.clearPickedUp();
@@ -82,6 +116,7 @@ export class SlotTransferController {
 
     const source = [...this.registered].find((entry) => entry.slot === slot);
     if (!source) return false;
+    this.clearSelection();
     source.button.setPointerCapture(event.pointerId);
     this.drag = {
       active: false,
@@ -278,9 +313,10 @@ export class SlotTransferController {
       preview.append(image);
     }
 
-    if (item.count > 1) {
+    {
       const count = document.createElement('span');
-      count.textContent = String(item.count);
+      count.className = 'slot-drag-preview__count';
+      count.textContent = item.count > 1 ? String(item.count) : '';
       Object.assign(count.style, {
         position: 'absolute',
         right: '2px',

@@ -25,6 +25,7 @@ export interface SavedEntity {
     building?: { state: 'idle' | 'closed' | 'open'; skinId?: string };
     container?: SavedContainer;
     stack?: InventoryStack;
+    phonograph?: { remainingSeconds: number };
     health?: { current: number; maximum: number };
     timer?: { remainingSeconds: number };
     flower?: { animation: FlowerAnimation; planted: true };

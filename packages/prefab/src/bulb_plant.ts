@@ -3,7 +3,7 @@ import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAni
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
-import { PointerRaycaster } from './pointerRaycaster';
+import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext } from './worldContext';
 import type { CursorLabel } from './buildCursor';
 

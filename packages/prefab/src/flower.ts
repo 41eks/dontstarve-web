@@ -4,7 +4,7 @@ import {
   type AnimatedSpriteFactory,
 } from '@dontstarve-web/animation/sprite';
 import { BuildCursor } from './buildCursor';
-import { PointerRaycaster } from './pointerRaycaster';
+import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { newEntityId } from './saveRecord';
 import type { WorldContext } from './worldContext';
 

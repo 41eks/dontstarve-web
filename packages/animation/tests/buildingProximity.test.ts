@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SpriteAnimationController } from '../src/sprite';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';

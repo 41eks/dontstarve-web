@@ -81,7 +81,6 @@ export {
   WallPlacement,
   type WallDefinition,
 } from './wallPlacement';
-export { PointerRaycaster } from './pointerRaycaster';
 export {
   TileMap,
   TILE_SIZE,
@@ -116,11 +115,8 @@ export {
 } from './tent';
 export { MOONBASE_DEFINITION, MOONBASE_ID } from './moonbase';
 export { WARDROBE_DEFINITION, WARDROBE_ID } from './wardrobe';
-export {
-  loadReskinToolEquipment, resolveReskinToolPlayerSprite, ReskinActionController, ReskinEffects,
-  RESKIN_CAST_TIME, RESKIN_REACH, nextReskin, reskinEffectSound,
-  type ReskinToolEquipment, type ReskinTarget, type PreparedReskin,
-} from './reskin_tool';
+export { loadReskinToolEquipment, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';
+export { resolveReskinToolPlayerSprite, type ReskinToolEquipment } from './reskin_tool';
 export {
   WALL_DEFINITIONS,
   WALL_IDS,
@@ -141,10 +137,7 @@ export {
 export { getPrefabLocalLight, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 export { LIGHTBULB_ID, LIGHTBULB_LIGHT, createLightbulbGroundSprite } from './lightbulb';
 export { FlowerPlanting, FLOWER_ANIMATIONS, type FlowerAnimation, type FlowerSaveRecord } from './flower';
-export {
-  BUGNET_ID, BUGNET_HIT_TIME, BUGNET_CAPTURE_RANGE, BugNetCaptureController,
-  loadBugNetEquipment, resolveBugNetPlayerSprite, type BugNetEquipment, type NetCaptureTarget, type ButterflyCaptureTarget,
-} from './bugnet';
+export { BUGNET_ID, loadBugNetEquipment, resolveBugNetPlayerSprite, type BugNetEquipment } from './bugnet';
 export {
   ButterflyAssets, ButterflyController, BUTTERFLY_BEHAVIOR,
   BUTTERFLY_ID, createButterflyGroundSprite,
@@ -153,12 +146,7 @@ export {
 export { listenInventoryEvents, type PrefabInventoryEventMap } from './inventoryEvents';
 export { GroundPrefabRegistry } from './groundPrefabRegistry';
 export type { GroundItemDefinition, GroundItemVisual, GroundItemFactory, GroundPrefabContext, GroundPrefabOptions } from './groundPrefab';
-export {
-  YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME,
-  OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, loadLightStaffEquipment, setupLightStaffCasting,
-  loadYellowStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, setupYellowStaffCasting,
-  type YellowStaffEquipment, type LightStaffId,
-} from './yellowstaff';
+export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, loadLightStaffEquipment, loadYellowStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, type YellowStaffEquipment, type LightStaffId } from './yellowstaff';
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,
   dwarfStarLight, polarLight, DwarfStarManager, type DwarfStarRecord, type StaffLightId } from './stafflight';
 export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE,
@@ -175,10 +163,7 @@ export {
   type RockPrefabId, type RockRecord,
 } from './rocks';
 
-export {
-  PICKAXE_REACH, PickaxeActionController, isPickaxeTool, loadPickaxeEquipment, resolvePickaxePlayerSprite,
-  type PickaxeEquipment, type PickaxeTarget, type PickaxeTool,
-} from './pickaxe';
+export { isPickaxeTool, loadPickaxeEquipment, resolvePickaxePlayerSprite, type PickaxeEquipment, type PickaxeTool } from './pickaxe';
 
 export {
   GROUND_ITEM_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS,
@@ -191,3 +176,10 @@ export {
   isHatId, HatEquipmentAssets, isHatPlayerElementVisible, resolveHatSprites, createHatGroundSprite,
   type HatDefinition, type HatEquipMode, type HatEquipment, type HatGroundSprite,
 } from './hats';
+
+export {
+  PORTAL_ID, PortalManager,
+  type PortalRecord,
+} from './portal';
+
+export { PHONOGRAPH_ID, RECORD_ID, PHONOGRAPH_PLAY_TIME, PhonographController } from './phonograph';

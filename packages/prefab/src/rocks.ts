@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import { newEntityId } from './saveRecord';
-import type { PickaxeTarget } from './pickaxe';
+import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 
 export const ROCK_PREFABS = ['rock1', 'rock2', 'rock_flintless', 'rock_flintless_med', 'rock_flintless_low'] as const;
 export type RockPrefabId = typeof ROCK_PREFABS[number];

@@ -4,7 +4,7 @@ import { createAnimatedSprite } from '../src/sprite';
 import { createStaticSprite } from '../src/wallSprite';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { WallPlacement } from '../../prefab/src/wallPlacement';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { getPrefabLightOverride } from '../../prefab/src/localLight';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';

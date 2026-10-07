@@ -21,6 +21,8 @@ export interface SlotItem {
   icon: string;
   atlas?: string;
   equippable?: string;
+  /** Remaining fuel/uses as a fraction of the maximum. */
+  durabilityPercent?: number;
 }
 
 export interface SlotModel {

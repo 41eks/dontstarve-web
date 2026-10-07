@@ -7,19 +7,26 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000013",
-    "parentId": "0000000012",
-    "savedAt": "2026-10-05T15:00:27.875Z",
+    "id": "0000000014",
+    "parentId": "0000000013",
+    "savedAt": "2026-10-07T09:22:07.556Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 4846.402799999493,
+    "elapsedSeconds": 4917.833899999674,
     "systems": {},
     "map": {
       "kind": "generated",
-      "tiles": [],
+      "tiles": [
+        {
+          "col": 2,
+          "row": -1,
+          "tileId": 47,
+          "underTileId": 30
+        }
+      ],
       "generator": {
         "id": "forest-initial-v1",
         "options": {
@@ -30,6 +37,267 @@
       }
     },
     "entities": {
+      "farm_plow": [],
+      "farm_soil": [
+        {
+          "id": "e_b359e9eb6f2036d1467bb8874597f4be",
+          "transform": {
+            "position": [
+              31.542742463498087,
+              0,
+              -0.7059261082027986
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_e3b9fa7b66b7175267c7fe64dc023659",
+          "transform": {
+            "position": [
+              29.462612432080288,
+              0,
+              -0.004091455472502226
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": false
+            }
+          }
+        },
+        {
+          "id": "e_bb0f8768d1166bd17f2d5ac19331d1fb",
+          "transform": {
+            "position": [
+              26.966659556608167,
+              0,
+              -3.3502096109896087
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_316fa258e46464347999de9d27119258",
+          "transform": {
+            "position": [
+              28.108654545603933,
+              0,
+              -11.309286995601909
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_734ef65a989a11fea548a77a75c2d42d",
+          "transform": {
+            "position": [
+              25.76337320959666,
+              0,
+              -7.261278337403534
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_ad27879ca9e139d182c0448be9c0e952",
+          "transform": {
+            "position": [
+              24.46539017106535,
+              0,
+              -10.810402312559944
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": false
+            }
+          }
+        },
+        {
+          "id": "e_e29424b404b6e9f94db9073ab12a851a",
+          "transform": {
+            "position": [
+              24.439841981509975,
+              0,
+              -0.05698711457379524
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_859092a74c02d3e6cd4c107d5a136147",
+          "transform": {
+            "position": [
+              35.82778282362699,
+              0,
+              -1.0209978562998536
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": false
+            }
+          }
+        },
+        {
+          "id": "e_3dc706c45607828bdd3563957d0df834",
+          "transform": {
+            "position": [
+              35.05866934683244,
+              0,
+              -11.340620632980572
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_5c77669c2705bc12c4b11f52a6f44c91",
+          "transform": {
+            "position": [
+              24.100655273836946,
+              0,
+              -2.245804365994789
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_80eddb502af334dac45b32434c766dd2",
+          "transform": {
+            "position": [
+              29.74146081335593,
+              0,
+              -9.08820372533999
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_12946e9cf2d6b7d32a678959039cd923",
+          "transform": {
+            "position": [
+              35.03572469167517,
+              0,
+              -5.079812417434238
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        }
+      ],
+      "farm_soil_debris": [
+        {
+          "id": "e_90111c8672f3ebe7b5933c65c58c1ac0",
+          "transform": {
+            "position": [
+              24.83359391498297,
+              0,
+              -5.1890899247414275
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmDebris": {
+              "animation": "f4"
+            }
+          }
+        },
+        {
+          "id": "e_bb2457112d5b94d9c92e0230fd2adece",
+          "transform": {
+            "position": [
+              31.9314899865942,
+              0,
+              -4.787627445397425
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmDebris": {
+              "animation": "f2"
+            }
+          }
+        },
+        {
+          "id": "e_e56c5f7e4729d785e9c0a11d578cbe9a",
+          "transform": {
+            "position": [
+              35.067596053973766,
+              0,
+              -8.250216638391755
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmDebris": {
+              "animation": "f2"
+            }
+          }
+        },
+        {
+          "id": "e_b706253652865e66ea016450bf9c9d69",
+          "transform": {
+            "position": [
+              31.367715843243026,
+              0,
+              -11.123417076565545
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmDebris": {
+              "animation": "f4"
+            }
+          }
+        }
+      ],
       "moon_tree": [
         {
           "id": "e_moon_tree_000001",
@@ -6518,9 +6786,9 @@
           "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
           "transform": {
             "position": [
-              -41.456306603708924,
+              -23.088108304516815,
               0,
-              14.121958967243502
+              8.433095223930843
             ],
             "rotationY": 0
           },
@@ -6535,9 +6803,9 @@
           "id": "e_5f98f9a627feea2fb75d1ffa516e94b7",
           "transform": {
             "position": [
-              -5.682995852324061,
+              -5.195205634344359,
               0,
-              132.53682727985526
+              160.02045071214388
             ],
             "rotationY": 0
           },
@@ -6552,9 +6820,9 @@
           "id": "e_d96125953f2a5c9abf3006c7e9814f8b",
           "transform": {
             "position": [
-              -135.6346936516781,
+              -171.49630141134088,
               0,
-              53.01387133646579
+              27.033885221307543
             ],
             "rotationY": 0
           },
@@ -6569,9 +6837,9 @@
           "id": "e_bb2e6b7bc2ac993bbee65beff6992d46",
           "transform": {
             "position": [
-              -78.15937905205405,
+              -65.02521682933572,
               0,
-              44.95478840411585
+              30.67572399542208
             ],
             "rotationY": 0
           },
@@ -6586,9 +6854,9 @@
           "id": "e_7d80c7aec9e512f51989a11a65b96473",
           "transform": {
             "position": [
-              -115.89369703148144,
+              -125.6130390442993,
               0,
-              40.336063408164655
+              60.08971710173461
             ],
             "rotationY": 0
           },
@@ -6772,6 +7040,24 @@
               "skinId": "backpack_carrat"
             }
           }
+        },
+        {
+          "id": "e_bc4ba2b98bff1c1ce5de8423a3de5a8e",
+          "transform": {
+            "position": [
+              30,
+              0,
+              -6
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "farm_plow_item",
+              "count": 1,
+              "remainingUses": 3
+            }
+          }
         }
       ],
       "flower": [],
@@ -6785,9 +7071,9 @@
           "id": "e_fbc93491832fbc0f9ee1870641d45c24",
           "transform": {
             "position": [
-              -29.35983686631564,
+              -26.896190231193568,
               0,
-              10.666896412613895
+              9.316314289065978
             ],
             "rotationY": 0
           },
@@ -6798,8 +7084,8 @@
                 0,
                 0.22546845008602653
               ],
-              "heading": 0.4459565739484219,
-              "poopRemainingSeconds": 8.187147234891174
+              "heading": 5.518830128045408,
+              "poopRemainingSeconds": 20.171099614583166
             }
           }
         }
@@ -6856,7 +7142,9 @@
             }
           }
         }
-      ]
+      ],
+      "wormhole": [],
+      "multiplayer_portal_moonrock": []
     }
   },
   "players": {
@@ -6865,11 +7153,16 @@
       "shardId": "master",
       "transform": {
         "position": [
-          28.184133866198014,
+          23.57394789428128,
           0,
           -12.90509339324658
         ],
         "rotationY": 0
+      },
+      "stats": {
+        "health": 150,
+        "hunger": 105,
+        "sanity": 35
       },
       "inventory": {
         "containers": {
@@ -6880,6 +7173,13 @@
                 "slotKey": "0",
                 "item": {
                   "itemId": "wall_moonrock_item",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "1",
+                "item": {
+                  "itemId": "seeds",
                   "count": 1
                 }
               },

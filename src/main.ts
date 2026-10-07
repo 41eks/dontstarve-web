@@ -13,22 +13,35 @@ import {
   type SlotContextMenuDetail,
   type SlotSelectDetail,
   type SlotTransferRequest,
+  slotTransferController,
 } from '@dontstarve-web/ui';
+import {
+  setupLightStaffCasting,
+  BugNetCaptureController,
+  HammerActionController,
+  PickaxeActionController,
+  PitchforkActionController,
+  FarmHoeActionController,
+  ShovelActionController,
+  SeedsActionController,
+  type SeedSource,
+  ReskinActionController,
+  PointerRaycaster,
+} from '@dontstarve-web/stategraphs';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { isHatId } from '@dontstarve-web/prefab/hats';
-import { isLightStaff, setupLightStaffCasting } from '@dontstarve-web/prefab/yellowstaff';
-import { BugNetCaptureController } from '@dontstarve-web/prefab/bugnet';
-import { HammerActionController } from '@dontstarve-web/prefab/hammer';
-import { PickaxeActionController } from '@dontstarve-web/prefab/pickaxe';
-import { PitchforkActionController, isPitchforkTool } from '@dontstarve-web/prefab/pitchfork';
+import { isLightStaff } from '@dontstarve-web/prefab/yellowstaff';
+import { isPitchforkTool } from '@dontstarve-web/prefab/pitchfork';
+import { isFarmHoeTool } from '@dontstarve-web/prefab/farm_hoe';
+import { isShovelTool } from '@dontstarve-web/prefab/shovel';
 import { FARM_PLOW_ITEM_ID, FARM_PLOW_USES } from '@dontstarve-web/prefab/farm_plow';
-import { ReskinActionController } from '@dontstarve-web/prefab/reskin_tool';
-import { DisposeSounds, UpdateSoundListener } from '@dontstarve-web/prefab/sound';
+import { SEEDS_HUNGER } from '@dontstarve-web/prefab/seeds';
+import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
+import { DisposeSounds, UpdateSoundListener, PreloadSounds } from '@dontstarve-web/prefab/sound';
 import { disposeAnimationAssets, disposeAtlasImages } from '@dontstarve-web/animation';
 import { turfMap } from './building';
 import { backTasks, frontTasks } from './animate';
 import { input } from './InputManager';
-import { PointerRaycaster } from '@dontstarve-web/prefab/pointerRaycaster';
 import { view } from './view';
 import { BACKPACK_SLOT_COUNT, PLAYER_BACKPACK_CONTAINER_ID, backpackSlotAddress, inventorySlotAddress, PreparedFoodSlot, StorageSlot } from '@dontstarve-web/inventory';
 import { player } from './player';
@@ -128,7 +141,7 @@ function syncHandEquipment(): void {
   const carryItem = itemId === 'torch' || itemId === 'lantern'
     || isLightStaff(itemId) || itemId === 'bugnet' || itemId === 'hammer' || itemId === 'reskin_tool'
     || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
-    || (itemId !== undefined && isPitchforkTool(itemId)) ? itemId : null;
+    || (itemId !== undefined && (isPitchforkTool(itemId) || isFarmHoeTool(itemId) || isShovelTool(itemId))) ? itemId : null;
   void playerAnimation?.setCarryItem(carryItem, handItem?.skinId)
     .catch((error: unknown) => console.error('Unable to equip hand item', error));
   dstLighting.setTorchOwner(handItem?.itemId === 'torch' ? player : null);
@@ -176,6 +189,9 @@ function syncInventorySlot(address: SlotAddress): void {
     icon: spec.icon,
     ...(spec.atlas ? { atlas: spec.atlas } : {}),
     ...(spec.equippable ? { equippable: spec.equippable } : {}),
+    ...(spec.maxFuel === undefined ? {} : {
+      durabilityPercent: (stack.remainingFuel ?? spec.maxFuel) / spec.maxFuel,
+    }),
   });
 }
 
@@ -209,13 +225,18 @@ inventory.subscribe((changedSlots) => {
   }
 });
 
+// torch.lua ignites on equip; burnable.lua starts/stops fueled consumption.
+frontTasks.push((dt) => {
+  if (inventory.get(handSlotAddress)?.itemId === 'torch') inventory.consumeFuel(handSlotAddress, dt);
+});
+
 let cancelNetCapture = () => {};
 let cancelHandTool = () => {};
 const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, farmPlow, rockManager, wormholes, reskinEffects, registry, getSaveState, dispose: disposeScene } = await startScene(
   (buildingId, skinId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId, skinId),
   (item, action, sourcePosition) => {
     if (!inventory.add(item.itemId, item.count, item.skinId,
-      inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition), item.remainingUses)) return false;
+      inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition), item.remainingUses, item.phonographRecord, item.remainingFuel)) return false;
     if (action !== 'net') playerAnimation?.playPickup();
     return true;
   },
@@ -246,6 +267,21 @@ const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting,
   },
   (elapsedSeconds, dt) => gameUi.statusHud.setClock(getDstClock(elapsedSeconds), dt),
 );
+const seeds = playerAnimation ? new SeedsActionController(view, playerAnimation, locomotor, farmPlow,
+  () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+  (error) => console.error('Unable to use seeds', error), () => slotTransferController.clearSelection()) : undefined;
+if (seeds) {
+  frontTasks.push(() => seeds.update());
+  window.addEventListener('pagehide', () => seeds.dispose(), { once: true });
+}
+function seedSource(slot: SlotAddress): SeedSource {
+  return {
+    prepareEat: () => PreloadSounds('dontstarve/wilson/eat'),
+    isValid: () => inventory.get(slot)?.itemId === 'seeds',
+    take: () => inventory.get(slot)?.itemId === 'seeds'
+      && inventory.applySlotChanges([{ slot, itemId: 'seeds', delta: -1 }]),
+  };
+}
 if (playerAnimation) {
   const bugNet = new BugNetCaptureController(view, playerAnimation, locomotor,
     () => inventory.get(handSlotAddress)?.itemId === 'bugnet',
@@ -272,7 +308,7 @@ if (playerAnimation) setupLightStaffCasting(view, playerAnimation, polarLights,
 if (playerAnimation) {
   const hammer = new HammerActionController(view, playerAnimation, locomotor,
     () => inventory.get(handSlotAddress)?.itemId === 'hammer',
-    () => [...buildingPlacement.hammerTargets, ...farmPlow.hammerTargets],
+    () => [...buildingPlacement.hammerTargets, ...farmPlow.hammerTargets, ...groundItems.hammerTargets],
     () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
     () => {
       cancelNetCapture();
@@ -297,6 +333,21 @@ if (playerAnimation) {
       flowerPlanting.cancel();
       buildingPlacement.cancel();
     });
+  const farmHoe = new FarmHoeActionController(view, playerAnimation, locomotor,
+    () => {
+      const tool = inventory.get(handSlotAddress);
+      return tool && isFarmHoeTool(tool.itemId) ? tool : undefined;
+    }, farmPlow,
+    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    () => {
+      cancelNetCapture(); seeds?.cancel(); flowerPlanting.cancel(); buildingPlacement.cancel(); farmPlow.cancel();
+    }, (error) => console.error('Unable to till farm soil', error));
+  const shovel = new ShovelActionController(view, playerAnimation, locomotor,
+    () => isShovelTool(handTool() ?? ''), () => farmPlow.digTargets,
+    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    () => {
+      cancelNetCapture(); seeds?.cancel(); flowerPlanting.cancel(); buildingPlacement.cancel(); farmPlow.cancel();
+    });
   const reskin = new ReskinActionController(view, playerAnimation, locomotor,
     () => {
       const tool = inventory.get(handSlotAddress);
@@ -305,14 +356,14 @@ if (playerAnimation) {
     () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets], reskinEffects,
     () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
     () => {
-      cancelNetCapture(); hammer.cancel(); pickaxe.cancel(); pitchfork.cancel();
+      cancelNetCapture(); hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); farmHoe.cancel(); shovel.cancel();
       flowerPlanting.cancel(); buildingPlacement.cancel();
     },
     (error) => console.error('Unable to reskin target', error));
-  cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); reskin.cancel(); farmPlow.cancel(); };
-  frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); pitchfork.update(dt); reskin.update(dt); });
+  cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); farmHoe.cancel(); shovel.cancel(); reskin.cancel(); farmPlow.cancel(); seeds?.cancel(); };
+  frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); pitchfork.update(dt); farmHoe.update(); shovel.update(dt); reskin.update(dt); });
   window.addEventListener('pagehide', () => {
-    reskin.dispose();
+    reskin.dispose(); farmHoe.dispose(); shovel.dispose();
   }, { once: true });
 }
 
@@ -359,6 +410,8 @@ window.addEventListener('game:slot-transfer-request', (event) => {
     && (inventory.get(bodySlotAddress)?.itemId !== 'backpack' || detail.itemId === 'backpack')) return;
 
   const remainingUses = inventory.get(detail.from)?.remainingUses;
+  const phonographRecord = inventory.get(detail.from)?.phonographRecord;
+  const remainingFuel = inventory.get(detail.from)?.remainingFuel;
   const transferred = inventory.applySlotChanges([
     {
       slot: detail.from,
@@ -372,19 +425,55 @@ window.addEventListener('game:slot-transfer-request', (event) => {
       ...(detail.skinId === undefined ? {} : { skinId: detail.skinId }),
       delta: detail.amount,
       ...(remainingUses === undefined ? {} : { remainingUses }),
+      ...(phonographRecord === undefined ? {} : { phonographRecord }),
+      ...(remainingFuel === undefined ? {} : { remainingFuel }),
     },
   ]);
   if (!transferred || (detail.itemId !== 'torch' && detail.itemId !== 'lantern'
     && !isLightStaff(detail.itemId) && detail.itemId !== 'bugnet' && detail.itemId !== 'hammer'
-    && detail.itemId !== 'pickaxe' && detail.itemId !== 'goldenpickaxe' && !isPitchforkTool(detail.itemId))) return;
+    && detail.itemId !== 'pickaxe' && detail.itemId !== 'goldenpickaxe' && !isPitchforkTool(detail.itemId)
+    && !isFarmHoeTool(detail.itemId) && !isShovelTool(detail.itemId))) return;
   if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out', detail.itemId);
   else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in', detail.itemId);
+});
+let selectedRecordSlot: SlotAddress | undefined;
+const recordPointer = new PointerRaycaster(view);
+const recordLabel = view.createCursorLabel?.(recordPointer);
+frontTasks.push(() => {
+  if (selectedRecordSlot && inventory.get(selectedRecordSlot)?.itemId === 'record') recordLabel?.show(': 放入唱片', 'left');
+  else recordLabel?.hide();
+  recordLabel?.update();
+});
+window.addEventListener('pagehide', () => { recordPointer.dispose(); recordLabel?.hide(); }, { once: true });
+groundItems.setPhonographRecordSource(() => {
+  const slot = selectedRecordSlot;
+  const stack = slot && inventory.get(slot);
+  if (!slot || stack?.itemId !== 'record') return undefined;
+  return { skinId: stack.skinId, take: () => {
+    if (selectedRecordSlot !== slot) return false;
+    const current = inventory.get(slot);
+    if (current?.itemId !== 'record' || current.skinId !== stack.skinId) return false;
+    if (!inventory.applySlotChanges([{ slot, itemId: 'record', skinId: stack.skinId, delta: -1 }])) return false;
+    selectedRecordSlot = undefined;
+    playerAnimation?.playPickup();
+    return true;
+  } };
+});
+window.addEventListener('keydown', (event) => {
+  if (['Escape', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'].includes(event.code)) selectedRecordSlot = undefined;
 });
 window.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
   cancelHandTool();
   flowerPlanting.cancel();
   const stack = inventory.get(slot);
+  selectedRecordSlot = undefined;
+  if (stack?.itemId === 'seeds' && seeds) {
+    event.preventDefault(); cancelNetCapture(); locomotor.stop(); buildingPlacement.cancel();
+    seeds.begin(seedSource(slot));
+    slotTransferController.showSelection(slot);
+    return;
+  }
   if (stack?.itemId === FARM_PLOW_ITEM_ID) {
     event.preventDefault(); locomotor.stop(); buildingPlacement.cancel();
     void farmPlow.begin(() => {
@@ -403,16 +492,17 @@ window.addEventListener('game:slot-select', (event) => {
     console.error(`Unable to start ${stack.itemId} placement`, error);
   });
 });
-gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
+window.addEventListener('game:slot-context-menu', (event) => {
   const { slot, shiftKey } = (event as CustomEvent<SlotContextMenuDetail>).detail;
   cancelHandTool();
+  selectedRecordSlot = undefined;
   const stack = inventory.get(slot);
   if (!stack) return;
   if (shiftKey) {
     flowerPlanting.cancel();
     const spec = inventory.getStackSpec(stack);
     const position = player.position.clone();
-    void groundItems.drop({
+    const definition: GroundItemDefinition = {
       itemId: stack.itemId,
       ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
       name: spec.name,
@@ -420,18 +510,31 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
       ...(spec.atlas ? { atlas: spec.atlas } : {}),
       count: 1,
       ...(stack.remainingUses === undefined ? {} : { remainingUses: stack.remainingUses }),
-    }, position, () => inventory.applySlotChanges([
-      {
+      ...(stack.remainingFuel === undefined ? {} : { remainingFuel: stack.remainingFuel }),
+      ...(stack.phonographRecord === undefined ? {} : { phonographRecord: stack.phonographRecord }),
+    };
+    void groundItems.drop(definition, position, () => {
+      const current = inventory.get(slot);
+      if (current?.itemId !== stack.itemId || current.skinId !== stack.skinId
+        || current.remainingUses !== stack.remainingUses || current.phonographRecord !== stack.phonographRecord) return false;
+      // Equipped fuel can advance while drop assets load. Capture it at commit.
+      definition.remainingFuel = current.remainingFuel;
+      return inventory.applySlotChanges([{
         slot,
         itemId: stack.itemId,
         ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
         delta: -1,
-      },
-    ])).then((dropped) => {
+      }]);
+    }).then((dropped) => {
       if (dropped) playerAnimation?.playPickup();
     }).catch((error: unknown) => {
       console.error(`Unable to drop ${stack.itemId}`, error);
     });
+    return;
+  }
+  if (stack.itemId === 'record') {
+    locomotor.stop(); flowerPlanting.cancel(); buildingPlacement.cancel();
+    selectedRecordSlot = slot;
     return;
   }
   if (stack.itemId === 'butterfly') {
@@ -443,6 +546,14 @@ gameUi.inventoryBar.addEventListener('game:slot-context-menu', (event) => {
     }])).catch((error: unknown) => {
       console.error('Unable to start butterfly planting', error);
     });
+    return;
+  }
+  if (stack.itemId === 'seeds' && seeds) {
+    cancelNetCapture(); flowerPlanting.cancel(); buildingPlacement.cancel();
+    void seeds.eat(seedSource(slot), () => {
+      playerStats.hunger = Math.min(150, playerStats.hunger + SEEDS_HUNGER);
+      syncPlayerStats();
+    }).catch((error: unknown) => console.error('Unable to eat seeds', error));
     return;
   }
   if (stack.itemId === 'meatballs') playerAnimation?.playEat();

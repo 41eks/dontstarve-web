@@ -99,6 +99,12 @@ def main():
     # mininglantern.lua registers lantern, with separate ground and worn builds.
     add('lantern', 'lantern', 'lantern', 'idle_off', 'mininglantern')
     assets.add('anim/swap_lantern.zip')
+    # phonograph.lua and records.lua: source world poses, with independent inventory atlases.
+    add('phonograph', 'phonograph', 'phonograph', 'idle', 'phonograph')
+    # anim.bin's snow placeholder has no build art; seasonal engine snow is hidden.
+    items['phonograph']['hiddenSymbols'] = ['snow']
+    assets.add('anim/structure_collapse_fx.zip')
+    add('record', 'records', 'records', 'idle', 'records')
     add('lightbulb', 'bulb', 'bulb', 'idle', 'lightbulb')
     # Live butterflies use this bank/build; SGbutterfly selects the flight clips
     # after OnDropped switches the stategraph to idle.
@@ -124,10 +130,16 @@ def main():
         add(item, item, item, 'idle', 'pitchfork')
         assets.add('anim/swap_' + item + '.zip')
     assets.add('anim/player_actions_shovel.zip')
+    # farm_hoe.lua: ground builds differ from the golden held swap build.
+    add('farm_hoe', 'quagmire_hoe', 'quagmire_hoe', 'idle', 'farm_hoe')
+    add('golden_farm_hoe', 'goldenhoe', 'goldenhoe', 'idle', 'farm_hoe')
+    assets.update(['anim/swap_goldenhoe.zip', 'anim/player_actions_till.zip'])
     assets.add('levels/textures/Ground_noise_dirt.tex')
     for item in ['axe', 'goldenaxe', 'pickaxe', 'goldenpickaxe', 'shovel', 'goldenshovel']:
         source = 'pickaxe' if 'pickaxe' in item else 'shovel' if 'shovel' in item else 'axe'
         add(item, item, item, 'idle', source)
+    # shovel.lua's worn symbols come from swap builds, independently of idle art.
+    assets.update(['anim/swap_shovel.zip', 'anim/swap_goldenshovel.zip'])
     add('moonglassaxe', 'glassaxe', 'glassaxe', 'idle', 'axe')
     # walls.lua gives every wall item the shared wall bank and its own build.
     # wall_stone_2_item and wall_ruins_2_item ship no inventory icon in DST.

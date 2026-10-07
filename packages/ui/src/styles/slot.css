@@ -39,7 +39,8 @@
   object-fit: contain;
 }
 
-.inventory-slot__count {
+.inventory-slot__count,
+.inventory-slot__percent {
   position: absolute;
   right: 9%;
   bottom: 5%;
@@ -53,6 +54,14 @@
     -1px 1px 0 #21180e,
     1px 1px 0 #21180e,
     0 2px 2px rgb(0 0 0 / 80%);
+}
+
+.inventory-slot__percent {
+  left: 0;
+  right: 0;
+  bottom: 16%;
+  text-align: center;
+  font-size: clamp(12px, 1.65vw, 21px);
 }
 
 .inventory-slot:hover .inventory-slot__background,

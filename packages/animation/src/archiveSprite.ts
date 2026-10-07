@@ -13,6 +13,8 @@ export interface ArchiveSpriteDefinition {
   readonly animation: string;
   readonly loop: boolean;
   readonly symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
+  /** Source animation placeholders supplied by runtime systems such as snow. */
+  readonly hiddenSymbols?: readonly string[];
 }
 
 export interface ArchiveSpriteOptions {
@@ -106,6 +108,7 @@ export async function createArchiveSprite(
   let animation = initialAnimation;
   const overrides = new Map(Object.entries(definition.symbolOverrides ?? {}).map(([symbol, override]) =>
     [smallHash(symbol), { hash: smallHash(override.symbol), source: builds[definition.buildArchives.indexOf(override.archive)] }]));
+  const hidden = new Set((definition.hiddenSymbols ?? []).map(smallHash));
   const model = new THREE.Group();
   model.name = options.name ?? `${definition.bank}:${definition.animation}`;
   model.userData.billboard = true;
@@ -138,7 +141,7 @@ export async function createArchiveSprite(
     if (index === previousFrame) return;
     const sprites: ResolvedSprite[] = [...animation.frames[index].elements]
       // These banks include a bounding-only symbol with no build art.
-      .filter((element) => element.imageHash !== smallHash('bounding'))
+      .filter((element) => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash))
       .sort((a, b) => b.z - a.z).map((element) => {
         const override = overrides.get(element.imageHash);
         const hash = override?.hash ?? element.imageHash;

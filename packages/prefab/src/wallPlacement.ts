@@ -5,13 +5,14 @@ import {
     type StaticSpriteController,
 } from '@dontstarve-web/animation/wallSprite';
 import { BuildCursor } from './buildCursor';
-import { PointerRaycaster } from './pointerRaycaster';
+import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
-import type { HammerTarget } from './hammer';
+import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { nextReskin, type ReskinTarget } from './reskin_tool';
+import { nextReskin } from './reskin_tool';
+import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { wallWorldPrefab, wallWorldSkin } from './wallSkins';
 
 export interface WallDefinition {

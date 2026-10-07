@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createWilsonPlayerPrefab, type WilsonAnimationController } from '../../prefab/src/player';
-import { HammerActionController } from '../../prefab/src/hammer';
+import { HammerActionController } from '../../stategraphs/src/hammer';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, createGroundItemSprite } from '../../prefab/src/groundItems';
 import { Locomotor } from '../../prefab/src/locomotor';
 import type { TransientSpriteAnimationController } from '../../animation/src/sprite';

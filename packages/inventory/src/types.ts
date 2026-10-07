@@ -12,6 +12,8 @@ export interface InventoryItemSpec {
   atlas?: string;
   equippable?: EquipmentKind;
   maxUses?: number;
+  /** Full fuel duration in seconds. Missing stack fuel means a fresh item. */
+  maxFuel?: number;
 }
 
 export interface InventorySkinSpec {
@@ -31,6 +33,9 @@ export interface InventoryStack {
   skinId?: string;
   count: number;
   remainingUses?: number;
+  remainingFuel?: number;
+  /** Loaded record: `record` means the base track; other values are record skin IDs. */
+  phonographRecord?: string;
 }
 
 export type InventoryItems = readonly (InventoryStack | null)[];
@@ -43,6 +48,8 @@ export interface InventorySlotDelta {
   skinId?: string;
   delta: number;
   remainingUses?: number;
+  remainingFuel?: number;
+  phonographRecord?: string;
 }
 
 export interface SlotRegistration<TSlot = unknown> {

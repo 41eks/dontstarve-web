@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PitchforkActionController, loadPitchforkEquipment, type PitchforkTool } from '../../prefab/src/pitchfork';
+import { loadPitchforkEquipment, type PitchforkTool } from '../../prefab/src/pitchfork';
+import { PitchforkActionController } from '../../stategraphs/src/pitchfork';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';

@@ -998,6 +998,51 @@
         "lantern_winter_alt": "dynamic/lantern_winter.zip"
       }
     },
+    "phonograph": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/phonograph.lua",
+      "name": "留声机",
+      "icon": "phonograph.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "phonograph.zip",
+      "buildArchives": [
+        "phonograph.zip"
+      ],
+      "bank": "phonograph",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "decor_phonograph_cawnival": "dynamic/decor_phonograph_cawnival.zip",
+        "decor_phonograph_fantasy": "dynamic/decor_phonograph_fantasy.zip",
+        "decor_phonograph_hallowed": "dynamic/decor_phonograph_hallowed.zip",
+        "decor_phonograph_handmade": "dynamic/decor_phonograph_handmade.zip",
+        "decor_phonograph_rose": "dynamic/decor_phonograph_rose.zip",
+        "decor_phonograph_western": "dynamic/decor_phonograph_western.zip"
+      },
+      "hiddenSymbols": [
+        "snow"
+      ]
+    },
+    "record": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/records.lua",
+      "name": "唱片",
+      "icon": "record.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "records.zip",
+      "buildArchives": [
+        "records.zip"
+      ],
+      "bank": "records",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "record_creepyforest": "dynamic/record_creepyforest.zip",
+        "record_drstyle": "dynamic/record_drstyle.zip",
+        "record_efs": "dynamic/record_efs.zip",
+        "record_hallowednights": "dynamic/record_hallowednights.zip"
+      }
+    },
     "lightbulb": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/lightbulb.lua",
       "name": "荧光果",
@@ -1179,6 +1224,42 @@
       "symbolOverrides": {},
       "skinArchives": {
         "goldenpitchfork_invisible": "dynamic/goldenpitchfork_invisible.zip"
+      }
+    },
+    "farm_hoe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/farm_hoe.lua",
+      "name": "园艺锄",
+      "icon": "farm_hoe.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "quagmire_hoe.zip",
+      "buildArchives": [
+        "quagmire_hoe.zip"
+      ],
+      "bank": "quagmire_hoe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "farm_hoe_invisible": "dynamic/farm_hoe_invisible.zip",
+        "farm_hoe_rustic": "dynamic/farm_hoe_rustic.zip"
+      }
+    },
+    "golden_farm_hoe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/farm_hoe.lua",
+      "name": "黄金园艺锄",
+      "icon": "golden_farm_hoe.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "goldenhoe.zip",
+      "buildArchives": [
+        "goldenhoe.zip"
+      ],
+      "bank": "goldenhoe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "golden_farmhoe_garden": "dynamic/golden_farmhoe_garden.zip",
+        "golden_farmhoe_invisible": "dynamic/golden_farmhoe_invisible.zip"
       }
     },
     "axe": {
@@ -4151,6 +4232,66 @@
       "icon": "bugnet_spider_white.tex",
       "atlas": "images/inventoryimages1.xml"
     },
+    "decor_phonograph_cawnival": {
+      "itemId": "phonograph",
+      "name": "鸦年华氛围机",
+      "icon": "decor_phonograph_cawnival.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_fantasy": {
+      "itemId": "phonograph",
+      "name": "花之旋律",
+      "icon": "decor_phonograph_fantasy.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_hallowed": {
+      "itemId": "phonograph",
+      "name": "幽美旋律发声器",
+      "icon": "decor_phonograph_hallowed.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_handmade": {
+      "itemId": "phonograph",
+      "name": "田园唱机",
+      "icon": "decor_phonograph_handmade.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_rose": {
+      "itemId": "phonograph",
+      "name": "镀金玫瑰留声机",
+      "icon": "decor_phonograph_rose.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_western": {
+      "itemId": "phonograph",
+      "name": "客厅留声机",
+      "icon": "decor_phonograph_western.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "farm_hoe_invisible": {
+      "itemId": "farm_hoe",
+      "name": "拟真园艺锄",
+      "icon": "farm_hoe_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "farm_hoe_rustic": {
+      "itemId": "farm_hoe",
+      "name": "家纺园艺锄",
+      "icon": "farm_hoe_rustic.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "golden_farmhoe_garden": {
+      "itemId": "golden_farm_hoe",
+      "name": "订制园艺锄",
+      "icon": "golden_farmhoe_garden.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "golden_farmhoe_invisible": {
+      "itemId": "golden_farm_hoe",
+      "name": "拟真黄金园艺锄",
+      "icon": "golden_farmhoe_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
     "goldenaxe_invisible": {
       "itemId": "goldenaxe",
       "name": "拟真黄金斧头",
@@ -4378,6 +4519,30 @@
       "name": "怒放干草叉",
       "icon": "pitchfork_rose.tex",
       "atlas": "images/inventoryimages2.xml"
+    },
+    "record_creepyforest": {
+      "itemId": "record",
+      "name": "惊悚森林",
+      "icon": "record_creepyforest.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "record_drstyle": {
+      "itemId": "record",
+      "name": "D.R.风格",
+      "icon": "record_drstyle.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "record_efs": {
+      "itemId": "record",
+      "name": "E.F.S.",
+      "icon": "record_efs.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "record_hallowednights": {
+      "itemId": "record",
+      "name": "万圣夜",
+      "icon": "record_hallowednights.tex",
+      "atlas": "images/inventoryimages3.xml"
     },
     "reskin_tool_bouquet": {
       "itemId": "reskin_tool",

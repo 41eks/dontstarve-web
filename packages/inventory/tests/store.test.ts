@@ -39,6 +39,53 @@ function equipmentSlot(kind: 'hand' | 'body' | 'head') {
 }
 
 describe('inventory state restoration', () => {
+  it('consumes fractional fuel, preserves it through transfers and reload, and removes depleted items', () => {
+    const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75 } };
+    const store = new InventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
+    const from = inventorySlotAddress(0), spare = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
+    expect(store.add('torch', 2)).toBe(true);
+    expect(store.applySlotChanges([{ slot: from, itemId: 'torch', delta: -1 },
+      { slot: hand, itemId: 'torch', delta: 1 }])).toBe(true);
+    const listener = vi.fn();
+    store.subscribe(listener);
+    expect(store.consumeFuel(hand, 37.125)).toBe(true);
+    expect(store.get(hand)).toEqual({ itemId: 'torch', count: 1, remainingFuel: 37.875 });
+    expect(listener).toHaveBeenLastCalledWith([hand]);
+    expect(store.get(spare)).toEqual({ itemId: 'torch', count: 1 });
+    // Failed transfers leave the burning item's state intact.
+    expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: -1 },
+      { slot: spare, itemId: 'torch', delta: 1, remainingFuel: 37.875 }])).toBe(false);
+    expect(store.get(hand)?.remainingFuel).toBe(37.875);
+    expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: -1 },
+      { slot: from, itemId: 'torch', delta: 1, remainingFuel: 37.875 }])).toBe(true);
+    const restored = new InventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
+    restored.replaceState(store.exportState(), {});
+    expect(restored.get(from)).toEqual(store.get(from));
+    expect(restored.consumeFuel(from, 37.875)).toBe(true);
+    expect(restored.get(from)).toBeNull();
+    expect(restored.get(spare)).toEqual(store.get(spare));
+  });
+
+  it('rejects invalid fuel without changing inventory or notifying listeners', () => {
+    const store = new InventoryStore([inventorySlot(0)], {
+      ...specs, torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75 },
+    });
+    const listener = vi.fn();
+    store.subscribe(listener);
+    for (const fuel of [0, -1, 76, NaN, Infinity]) {
+      expect(store.add('torch', 1, undefined, undefined, undefined, undefined, fuel)).toBe(false);
+      expect(() => store.replaceState({ slots: [{ address: inventorySlotAddress(0),
+        item: { itemId: 'torch', count: 1, remainingFuel: fuel } }], bufferedBuilds: [] }, {})).toThrow();
+    }
+    expect(store.add('twigs', 1, undefined, undefined, undefined, undefined, 10)).toBe(false);
+    expect(listener).not.toHaveBeenCalled();
+    expect(store.add('torch', 1)).toBe(true);
+    listener.mockClear();
+    for (const seconds of [0, -1, NaN, Infinity]) expect(store.consumeFuel(inventorySlotAddress(0), seconds)).toBe(false);
+    expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'torch', count: 1 });
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   it('preserves a farm plow usage count through pickup, transfers and save/load', () => {
     const itemSpecs = { farm_plow_item: { name: '耕地机', icon: 'farm_plow_item.tex', maxStack: 1, maxUses: 4 } };
     const store = new InventoryStore([inventorySlot(0), inventorySlot(1)], itemSpecs);

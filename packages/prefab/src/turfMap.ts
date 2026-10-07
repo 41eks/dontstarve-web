@@ -52,6 +52,8 @@ export class TurfMap {
     this.rebuildGeometry();
   }
 
+  tileCenter(world: Vector2): Vector2 { return snapToTileCenter(world); }
+
   canTerraform(world: Vector2): boolean {
     const tile = this.getTileAtWorld(world);
     return tile === WORLD_TILES.DECIDUOUS || tile === WORLD_TILES.WOODFLOOR || tile === WORLD_TILES.FARMING_SOIL;

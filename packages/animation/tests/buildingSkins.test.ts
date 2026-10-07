@@ -18,7 +18,7 @@ import { SALT_BOX_DEFINITION } from '../../prefab/src/saltbox';
 import { NIGHT_LIGHT_DEFINITION } from '../../prefab/src/nightlight';
 import { PIG_HOUSE_DEFINITION } from '../../prefab/src/pighouse';
 import { MUSHROOM_LIGHT_DEFINITIONS } from '../../prefab/src/mushroom_light';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { recipeSkins } from '../../ui/src/categories/generated';

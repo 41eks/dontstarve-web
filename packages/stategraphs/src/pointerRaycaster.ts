@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { WorldContext } from './worldContext';
+import type { ActionWorldContext as WorldContext } from './actionContext.ts';
 
 /** AnimState:SetRayTestOnBB swarms use their full bounds, including particle gaps. */
 export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THREE.Object3D[], recursive = true): THREE.Intersection[] {

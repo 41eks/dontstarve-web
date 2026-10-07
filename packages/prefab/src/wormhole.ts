@@ -7,7 +7,8 @@ import {
 } from '@dontstarve-web/animation/sprite';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { newEntityId } from './saveRecord';
-import { nextReskin, type ReskinTarget } from './reskin_tool';
+import { nextReskin } from './reskin_tool';
+import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { TILE_SIZE } from './tile';
 
 export const WORMHOLE_ID = 'wormhole' as const;

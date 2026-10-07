@@ -9,6 +9,7 @@
 ## Debug command documentation
 
 - After each change, check whether debug commands, arguments, behavior, or prefab IDs changed. Update the debug command section of `README.md` in the same change, including syntax, parameters, examples, and supported `c_spawn` IDs; revise or remove outdated entries.
+- After completing a change that adds a debug command or newly supported prefab/item ID, consult [the prefab command static audit](docs/dst-prefab-console.md) and test the new command support, including `c_spawn` and/or `c_give` as applicable. Also test `c_save()` after executing the commands: verify successful save export and reload, preserving the resulting entities/items and relevant identity, position, quantity, skin, and component state. Keep automated coverage representative as required above.
 
 ## Prefab porting requirements
 

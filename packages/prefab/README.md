@@ -259,8 +259,8 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 当前实现手持、施法动作、临时施法照明和矮星局部照明；尚未接入魔杖耐久、
 理智消耗、矮星加热／烹饪／引燃、独立施法特效和 Bloom 后处理。
 
-清洁扫把的 `ReskinActionController` / `ReskinEffects` 由
-`@dontstarve-web/prefab/reskin_tool` 导出。玩家手持时右键有已导入皮肤的建筑或地面物品，
+清洁扫把的 `ReskinActionController` 由 `@dontstarve-web/stategraphs/reskin_tool` 导出，
+`ReskinEffects` 和装备资源由 `@dontstarve-web/prefab/reskin_tool` 导出。玩家手持时右键有已导入皮肤的建筑或地面物品，
 超出原版 CASTSPELL 的 20 单位距离（本场景 60）会先走近。目标和特效资源加载完成后，
 `WilsonAnimationController.playReskin()` 按 `SGwilson.lua` 的 `veryquickcastspell`
 播放 `player_attacks.zip` 的 `atk_pre → atk`，第 9 帧原子提交目标的下一个皮肤。

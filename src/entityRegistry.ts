@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { ProximityEntity } from '@dontstarve-web/prefab/proximityEntities';
 import type { SavedEntity } from './save/types';
+import type { PrefabDefinition } from './prefabDefinitions';
 
 export interface EntityRenderEntry {
   object: THREE.Object3D;
@@ -18,11 +19,9 @@ export interface EntityRecord {
 }
 
 export interface EntityRegistration<PrefabId extends string> {
-  /** Saved prefab IDs. Transient effects use an empty list. */
-  prefabIds: readonly PrefabId[];
   restore?: (prefabId: PrefabId, record: SavedEntity) => Promise<THREE.Object3D | ProximityEntity> | THREE.Object3D | ProximityEntity;
   /** Only these IDs are exposed through c_spawn, including any aliases. */
-  debugSpawn?: { prefabIds: readonly PrefabId[]; create: (prefabId: PrefabId) => Promise<unknown> };
+  debugSpawn?: (prefabId: PrefabId) => Promise<unknown>;
   exportRecords: () => readonly EntityRecord[];
   beforePhysics?: (dt: number) => void;
   update?: (dt: number, cameraQuaternion: THREE.Quaternion) => void;
@@ -35,22 +34,37 @@ export class EntityRegistry {
   readonly byEntityId = new Map<string, THREE.Object3D | ProximityEntity>();
   private readonly restorers = new Map<string, (record: SavedEntity) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
   private readonly creators = new Map<string, () => Promise<unknown>>();
-  private readonly registrations: EntityRegistration<string>[] = [];
+  private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];
   private disposed = false;
 
-  register<PrefabId extends string>(registration: EntityRegistration<PrefabId>): void {
+  register<PrefabId extends string>(definition: PrefabDefinition<PrefabId>, registration: EntityRegistration<PrefabId>): void {
     this.assertActive();
-    const savedIds = registration.prefabIds;
-    const debugIds = registration.debugSpawn?.prefabIds ?? [];
+    const savedIds = definition.prefabIds;
+    const debugIds = definition.debugSpawnIds;
     if (savedIds.length && !registration.restore) throw new Error('Persistent entities require a restore handler');
-    if (new Set(savedIds).size !== savedIds.length || new Set(debugIds).size !== debugIds.length
+    if (debugIds.length && !registration.debugSpawn) throw new Error('Debug prefabs require a spawn handler');
+    if (this.registrations.some((entry) => entry.definition === definition)
+      || new Set(savedIds).size !== savedIds.length || new Set(debugIds).size !== debugIds.length
       || savedIds.some((id) => this.restorers.has(id)) || debugIds.some((id) => this.creators.has(id))) {
       throw new Error('Duplicate entity registration');
     }
     for (const id of savedIds) this.restorers.set(id, (record) => registration.restore!(id, record));
-    for (const id of debugIds) this.creators.set(id, () => registration.debugSpawn!.create(id));
+    for (const id of debugIds) this.creators.set(id, () => registration.debugSpawn!(id));
     // Prefab IDs have been bound above; lifecycle callbacks no longer accept IDs.
-    this.registrations.push({ ...registration, restore: undefined, debugSpawn: undefined });
+    this.registrations.push({ ...registration, definition, restore: undefined, debugSpawn: undefined });
+  }
+
+  get prefabDefinitions(): readonly PrefabDefinition[] {
+    return this.registrations.map(({ definition }) => definition);
+  }
+
+  /** Fail during setup if the shared catalog has an unbound scene family. */
+  assertDefinitions(definitions: readonly PrefabDefinition[]): void {
+    this.assertActive();
+    const bound = new Set(this.prefabDefinitions);
+    for (const definition of definitions) {
+      if (!bound.has(definition)) throw new Error(`Unbound prefab definition: ${definition.prefabIds.join(', ') || 'transient effects'}`);
+    }
   }
 
   async spawn(prefabId: string): Promise<boolean> {
@@ -87,9 +101,9 @@ export class EntityRegistry {
     const entities: Record<string, SavedEntity[]> = {};
     const ids = new Set<string>();
     for (const registration of this.registrations) {
-      for (const prefabId of registration.prefabIds) entities[prefabId] ??= [];
+      for (const prefabId of registration.definition.prefabIds) entities[prefabId] ??= [];
       for (const { prefabId, record } of registration.exportRecords()) {
-        if (!registration.prefabIds.includes(prefabId)) throw new Error(`Unregistered exported prefab: ${prefabId}`);
+        if (!registration.definition.prefabIds.includes(prefabId)) throw new Error(`Unregistered exported prefab: ${prefabId}`);
         if (ids.has(record.id)) throw new Error(`Duplicate entity ID: ${record.id}`);
         ids.add(record.id);
         // Saves must not share mutable component state with live entities.

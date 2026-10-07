@@ -2,6 +2,19 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  'dontstarve/wilson/equip_item_gold': { bank: 'wilson', streams: [115], loop: false },
+  'dontstarve/wilson/dig': { bank: 'wilson', streams: [64, 65, 66], loop: false },
+  'dontstarve_DLC001/creatures/mole/emerge': { bank: 'mole', streams: [2, 3, 4], loop: false },
+  // farmplantable.lua / SGwilson.lua → dontstarve.fev (file_index + 1).
+  'dontstarve/common/plant': { bank: 'common', streams: [170, 171, 172, 173, 174], loop: false },
+  'dontstarve/wilson/eat': { bank: 'wilson', streams: [112, 113, 114], loop: false },
+  // phonograph.lua → dontstarve.fev → gramaphone banks (file_index + 1).
+  'dontstarve/music/gramaphone_ragtime': { bank: 'gramaphone', streams: [10], loop: true },
+  'dontstarve/music/gramaphone_creepyforest': { bank: 'gramaphone', streams: [4], loop: true },
+  'dontstarve/music/gramaphone_drstyle': { bank: 'gramaphone', streams: [7], loop: true },
+  'dontstarve/music/gramaphone_efs': { bank: 'gramaphone', streams: [9], loop: true },
+  'dontstarve/music/gramaphone_hallowednights': { bank: 'music_frontend_hallowednights2024', streams: [1], loop: true },
+  'dontstarve/music/gramaphone_end': { bank: 'gramaphone', streams: [12], loop: false },
   'farming/common/farm/plow/drill_pre': { bank: 'farming', streams: [90], loop: false },
   'farming/common/farm/plow/LP': { bank: 'farming', streams: [82, 83, 84], loop: true,
     layers: [{ bank: 'farming', streams: [85] }, { bank: 'farming', streams: [86] },
@@ -28,6 +41,13 @@ const sounds = {
   'dontstarve/wilson/attack_weapon': { bank: 'sfx', streams: [1230, 1231, 1232, 1233], loop: false },
   'dontstarve/common/together/reskin_tool': { bank: 'sfx', streams: [827, 828, 829, 830, 831, 832], loop: false },
   'terraria1/skins/spectrepaintbrush': { bank: 'terraria1', streams: [241, 242, 243], loop: false },
+  // FEV spawn_vines group: three simultaneous idle layers + one-shot variants.
+  'dontstarve/common/together/spawn_vines/spawnportal_idle': { bank: 'sfx', streams: [356], loop: true,
+    layers: [{ bank: 'sfx', streams: [357] }, { bank: 'sfx', streams: [358] }] },
+  'dontstarve/common/together/spawn_vines/spawnportal_jacob': { bank: 'common', streams: [94, 95, 96], loop: false },
+  'dontstarve/common/together/spawn_vines/spawnportal_spawning': { bank: 'common', streams: [102], loop: true },
+  'dontstarve/common/together/spawn_vines/spawnportal_shake': { bank: 'common', streams: [101], loop: false },
+  'dontstarve/common/together/spawn_vines/spawnportal_open': { bank: 'common', streams: [97], loop: false },
 } as const;
 export type SoundEventPath = keyof typeof sounds;
 export interface SoundHandle { stop(): void; }
@@ -107,7 +127,7 @@ export async function PreloadSounds(...paths: SoundEventPath[]): Promise<void> {
 }
 
 /** Optional ground position enables distance attenuation; omitted positions play at full volume. */
-export function PlaySound(path: SoundEventPath, position?: SoundPosition): SoundHandle {
+export function PlaySound(path: SoundEventPath, position?: SoundPosition, offsetSeconds = 0): SoundHandle {
   const audio = getContext();
   const filenames = soundLayers(path).map((files) => files.length === 1 ? files[0] : files[Math.floor(Math.random() * files.length)]);
   const sources = new Set<AudioBufferSourceNode>();
@@ -148,7 +168,8 @@ export function PlaySound(path: SoundEventPath, position?: SoundPosition): Sound
         gain?.disconnect();
       }
     };
-    source.start();
+    if (offsetSeconds > 0 && buffer.duration > 0) source.start(0, offsetSeconds % buffer.duration);
+    else source.start();
   };
   for (const filename of filenames) {
     const buffer = buffers.get(filename);

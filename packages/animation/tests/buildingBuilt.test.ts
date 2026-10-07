@@ -8,7 +8,7 @@ import {
 } from '../../prefab/src/animatedBuildingPlacement';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';
 

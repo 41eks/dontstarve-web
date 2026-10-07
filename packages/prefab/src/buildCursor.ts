@@ -1,14 +1,10 @@
 import * as THREE from 'three';
-import type { PointerRaycaster } from './pointerRaycaster';
+import type { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext } from './worldContext';
 import { setPrefabLightOverride } from './localLight';
 
-/** UI-owned presentation; the placer never creates DOM. */
-export interface CursorLabel {
-    show(text: string, button?: 'left' | 'right'): void;
-    hide(): void;
-    update(): void;
-}
+import type { CursorLabel } from '@dontstarve-web/stategraphs/actionContext';
+export type { CursorLabel } from '@dontstarve-web/stategraphs/actionContext';
 
 export type BuildCursorSnap = (point: THREE.Vector3) => THREE.Vector3;
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { ReskinActionController, ReskinEffects } from '../../prefab/src/reskin_tool';
+import { ReskinEffects } from '../../prefab/src/reskin_tool';
+import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { DisposeSounds } from '../../prefab/src/sound';

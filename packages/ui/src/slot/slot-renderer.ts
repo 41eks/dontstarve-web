@@ -40,6 +40,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     <img class="inventory-slot__background" alt="" draggable="false" />
     <span class="inventory-slot__content" aria-hidden="true"></span>
     <span class="inventory-slot__count" aria-hidden="true"></span>
+    <span class="inventory-slot__percent" aria-hidden="true"></span>
   `;
   if (options.backgroundAtlas) {
     const background = createAtlasImage('inventory-slot__background', options.backgroundAtlas, options.backgroundAsset);
@@ -56,16 +57,23 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     const selected = sameSlotAddress(options.selectedSlot?.() ?? null, options.slot.address);
     const content = button.querySelector<HTMLElement>('.inventory-slot__content')!;
     const count = button.querySelector<HTMLElement>('.inventory-slot__count')!;
+    const percent = button.querySelector<HTMLElement>('.inventory-slot__percent')!;
+    const durability = item?.durabilityPercent;
+    // widgets/itemtile.lua:SetPercent: round to an integer, retaining 1% until empty.
+    const percentText = durability === undefined ? ''
+      : `${durability > 0 ? Math.max(1, Math.round(durability * 100)) : 0}%`;
+    percent.textContent = percentText;
     button.classList.toggle('is-empty', item === null);
     button.classList.toggle('is-selected', selected);
     button.setAttribute('aria-selected', String(selected));
     button.dataset.itemId = item?.id ?? '';
     button.dataset.skinId = item?.skinId ?? '';
     button.setAttribute('aria-label', item
-      ? `${item.name}，数量 ${item.count}`
+      ? `${item.name}，数量 ${item.count}${percentText ? `，耐久 ${percentText}` : ''}`
       : options.label);
     count.textContent = item && item.count > 1 ? String(item.count) : '';
     receiveAnimation.sync();
+    slotTransferController.syncSelection(options.slot);
 
     if (!item) {
       content.dataset.iconKey = '';

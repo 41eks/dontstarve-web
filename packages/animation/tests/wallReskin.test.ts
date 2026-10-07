@@ -5,7 +5,7 @@ import { WallsPlacement, type WallId } from '../../prefab/src/walls';
 import { WALL_SKIN_ARCHIVES, wallWorldSkin } from '../../prefab/src/wallSkins';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
 import { loadBuild } from '../src/animationAssets';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';

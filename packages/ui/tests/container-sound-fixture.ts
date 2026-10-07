@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { ICE_BOX_DEFINITION } from '../../prefab/src/icebox';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
-import { PointerRaycaster } from '../../prefab/src/pointerRaycaster';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { DisposeSounds } from '../../prefab/src/sound';
 import type { WorldContext } from '../../prefab/src/worldContext';
 

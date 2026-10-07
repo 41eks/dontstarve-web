@@ -11,6 +11,7 @@ import { serializeSave, type RuntimeSaveState } from '../../../src/save/serializ
 import { executeDebugCommand } from '../../../src/debugCommands';
 import type { InventoryStore } from '../../../src/inventory';
 import { WORLD_TILES } from '../../prefab/src/turfMap';
+import { PORTAL_ID } from '../../prefab/src/portal';
 
 const catalog: SaveCatalog = {
   items: { ...Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
@@ -39,6 +40,22 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
+  it('round trips empty portal groups and spawned portals without accepting unsupported prefabs or components', () => {
+    const { template, state } = fixture();
+    // EntityRegistry exports every registered group, even before any spawn.
+    state.entities[PORTAL_ID] = [];
+    expect(deserializeSave(serializeSave(template, state, catalog), catalog).world.entities[PORTAL_ID]).toEqual([]);
+    state.entities[PORTAL_ID].push({ id: 'portal:test', transform: { position: [24, 0, -36], rotationY: 0 }, components: {} });
+    const before = structuredClone(state);
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities[PORTAL_ID]).toEqual(state.entities[PORTAL_ID]);
+    expect(state).toEqual(before);
+    saved.world.entities[PORTAL_ID][0].components.building = { state: 'idle' };
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('unsupported field');
+    state.entities.unregistered_prefab = [];
+    expect(() => serializeSave(template, state, catalog)).toThrow('world.entities.unregistered_prefab');
+  });
+
   it('saves current sanity rather than the loaded value, preserving it through reload', () => {
     const { template, state } = fixture();
     template.players.local.stats = { health: 150, hunger: 105, sanity: 200 };

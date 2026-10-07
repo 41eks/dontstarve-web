@@ -228,3 +228,46 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 生成实体或安排定时动作之前调用 `PreloadSounds(...eventPaths)` 完成预加载和解码，再通过 `PlaySound('dontstarve/…')` 播放源事件。解码只导出一个未延长的样本，持续循环由浏览器实现。
 
 每个实体保留自己的循环播放句柄，移除实体时调用句柄的 `stop()` 停止并断开音源。音频上下文需要在用户手势期间恢复；关闭整个游戏时调用 `DisposeSounds()`。这些流程避免多个实体共享同一循环源，或实体移除后仍有声音。
+
+### 留声机歌曲与停止声
+
+`phonograph.lua` 插片时播放 `records.lua` 的默认歌曲或 `skinprefabs.lua:record_init_fn` 的皮肤歌曲，64 秒后关闭并播放 `gramaphone_end`。源 bank 拼写为 `gramaphone`，与 prefab `phonograph` 不同。通过 `dontstarve.fev` 的事件 → sound definition → bank/file_index 核对：
+
+| `dontstarve/music/` 事件后缀 | bank | file_index（零基） | vgmstream -s | FEV 文件引用 |
+| --- | --- | --- | --- | --- |
+| `gramaphone_ragtime` | `gramaphone` | 9 | 10 | `music/gramaphone/Ragtime_vinyl_mastered.wav` |
+| `gramaphone_creepyforest` | `gramaphone` | 3 | 4 | `music/gramaphone/CreepyForest_vinyl_mastered.wav` |
+| `gramaphone_drstyle` | `gramaphone` | 6 | 7 | `music/gramaphone/DjangoStyleWeirder_vinyl_mastered.wav` |
+| `gramaphone_efs` | `gramaphone` | 8 | 9 | `music/gramaphone/EFS_vinyl_mastered.wav` |
+| `gramaphone_hallowednights` | `music_frontend_hallowednights2024` | 0 | 1 | `music/DST_HalloweenBook_80bpm_V8.wav` |
+| `gramaphone_end` | `gramaphone` | 11 | 12 | `sfx/objects/gramophoneEnd.wav` |
+
+使用 `/usr/bin/vgmstream-cli -i -s <index> -o public/dst/data/sound/<bank>.fsb-<index>.wav <source bank>` 导出，不延长样本。歌曲由浏览器独立循环，结束声为一次性声音；恢复播放按 `64 - remainingSeconds` 偏移到歌曲进度。已有源 WAV 的导出字节已比较一致。
+
+### 种子进食与坑内播种
+
+`SGwilson.lua` 的 `quickeat` 在第 10 帧播放 `dontstarve/wilson/eat`，第 12 帧执行 EAT。`components/farmplantable.lua` 在成功替换农田坑后播放 `dontstarve/common/plant`；`farm_plant_defs.lua` 的 randomseed.sounds 为空，不额外播放播种外观声。核对 `dontstarve.fev` 的事件 → sound definition → bank/file_index 后：
+
+| 事件 | bank | file_index（零基） | vgmstream -s | 样本 |
+| --- | --- | --- | --- | --- |
+| `dontstarve/wilson/eat` | `wilson` | 111–113 | 112–114 | `sfx/wilson/eat_1.wav` 至 `eat_3.wav` |
+| `dontstarve/common/plant` | `common` | 169–173 | 170–174 | `sfx/objects/craftable/Plant_1.wav` 至 `Plant_5.wav` |
+
+用 `vgmstream-cli -i -s <index>` 导出至 `public/dst/data/sound/<bank>.fsb-<index>.wav`，与已有源解码 WAV 的字节一致。每个事件随机播放一个样本，均不循环；进食开始前、播种动作准备阶段完成预加载。
+
+### 园艺锄耕坑
+
+`SGwilson.lua` 的 `till` 在 `till_loop` 第 4 帧播放 `dontstarve/wilson/dig`，第 11 帧执行 TILL，第 12 帧播放 `dontstarve_DLC001/creatures/mole/emerge`。分别核对 `dontstarve.fev` 和 `dontstarve_DLC001.fev` 的事件 → sound definition → bank/file_index：
+
+| 事件 | bank | file_index（零基） | vgmstream -s | 引用样本 |
+| --- | --- | --- | --- | --- |
+| `dontstarve/wilson/dig` | `wilson` | 63–65 | 64–66 | `sfx/wilson/Dig_1.wav` 至 `Dig_3.wav` |
+| `dontstarve_DLC001/creatures/mole/emerge` | `mole` | 1–3 | 2–4 | `sfx/creatures/mole_dig_1.wav` 至 `mole_dig_3.wav` |
+
+用 `vgmstream-cli -i -s <index>` 导出至 `public/dst/data/sound/<bank>.fsb-<index>.wav`；六个 WAV 与已有源解码样本字节一致。每个事件随机播放一个未扩展样本，不循环；装备园艺锄时预加载，播放与映射集中在 `sound.ts`。
+
+### 铲子装备与农田垃圾挖掘
+
+`shovel.lua` 的黄金铲子 `equipped` 事件播放 `dontstarve/wilson/equip_item_gold`；`SGwilson.lua` 的 `dig` 在 `shovel_loop` 第 15 帧播放 `dontstarve/wilson/dig` 并执行 DIG。后者沿用园艺锄已核对的 `wilson.fsb` 流 64–66；`farm_soil_debris.lua` 的 `dirt_puff` 对应 `fx.lua` 的 bank `small_puff`、build `smoke_puff_small`、动画 `puff`，没有额外的尘土声音。
+
+核对 `dontstarve.fev`：`equip_item_gold` → sound definition `/__simpleevent_sounddef__/equip_item Copy_204` → `sfx/wilson/equip_goldItem.wav`，bank `wilson`，零基 file_index 114，对应 vgmstream `-s 115`。用 `vgmstream-cli -i -s 115` 导出到 `public/dst/data/sound/wilson.fsb-115.wav`，与源解码样本字节一致；装备资源加载时完成声音预加载，当前装备请求仍有效时播放一次。声音映射和播放沿用 `sound.ts`。
