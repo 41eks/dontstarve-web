@@ -190,7 +190,7 @@ class WilsonController implements WilsonAnimationController {
   }
   playPlant(onPlant: () => boolean): boolean { return this.startAction('PLANT', onPlant, true); }
   cancelFoodAction(): void {
-    if (this.stategraph.hasStateTag('eating') || this.stategraph.hasStateTag('planting')) this.stategraph.cancelAction();
+    if (this.stategraph.isPerformingAction('EAT') || this.stategraph.isPerformingAction('PLANT')) this.stategraph.cancelAction();
   }
 
   get currentEmote(): WilsonEmote | null { return this.emote?.id ?? null; }
@@ -239,12 +239,12 @@ class WilsonController implements WilsonAnimationController {
     this.emote = null;
   }
 
-  get isCasting(): boolean { return this.stategraph.hasStateTag('casting'); }
-  get isNetting(): boolean { return this.stategraph.hasStateTag('netting'); }
-  get isMining(): boolean { return this.stategraph.hasStateTag('mining'); }
-  get isHammering(): boolean { return this.isMining; }
-  get isDigging(): boolean { return this.stategraph.hasStateTag('digging'); }
-  get isReskinning(): boolean { return this.stategraph.hasStateTag('reskinning'); }
+  get isCasting(): boolean { return this.stategraph.isPerformingAction('CASTSPELL'); }
+  get isNetting(): boolean { return this.stategraph.isPerformingAction('NET'); }
+  get isMining(): boolean { return this.stategraph.isPerformingAction('MINE'); }
+  get isHammering(): boolean { return this.stategraph.isPerformingAction('HAMMER'); }
+  get isDigging(): boolean { return this.stategraph.isPerformingAction('TERRAFORM'); }
+  get isReskinning(): boolean { return this.stategraph.isPerformingAction('RESKIN'); }
 
   private startAction(action: WilsonAction, execute: () => void | boolean, ready: boolean, foodDrink = false): boolean {
     if (!ready || !this.stategraph.canStartAction(action)) return false;
@@ -256,23 +256,23 @@ class WilsonController implements WilsonAnimationController {
     return this.startAction('RESKIN', onCast, this.carryItem === 'reskin_tool' && !!this.reskinToolEquipment);
   }
 
-  cancelReskin(): void { this.stategraph.cancelAction('reskinning'); }
+  cancelReskin(): void { this.stategraph.cancelAction('RESKIN'); }
 
   playDig(onDig: () => void): boolean {
     return this.startAction('TERRAFORM', onDig, isPitchforkTool(this.carryItem ?? '') && !!this.pitchforkEquipment);
   }
 
-  cancelDig(): void { this.stategraph.cancelAction('digging'); }
+  cancelDig(): void { this.stategraph.cancelAction('TERRAFORM'); }
   playShovelDig(onDig: () => boolean): boolean {
     return this.startAction('DIG', onDig, isShovelTool(this.carryItem ?? '') && !!this.shovelEquipment);
   }
-  cancelShovelDig(): void { this.stategraph.cancelAction('shoveling'); }
-  get isShoveling(): boolean { return this.stategraph.hasStateTag('shoveling'); }
-  get isTilling(): boolean { return this.stategraph.hasStateTag('tilling'); }
+  cancelShovelDig(): void { this.stategraph.cancelAction('DIG'); }
+  get isShoveling(): boolean { return this.stategraph.isPerformingAction('DIG'); }
+  get isTilling(): boolean { return this.stategraph.isPerformingAction('TILL'); }
   playTill(onTill: () => boolean): boolean {
     return this.startAction('TILL', onTill, isFarmHoeTool(this.carryItem ?? '') && !!this.farmHoeEquipment);
   }
-  cancelTill(): void { this.stategraph.cancelAction('tilling'); }
+  cancelTill(): void { this.stategraph.cancelAction('TILL'); }
 
   playMine(onHit: () => void): boolean {
     const hammer = this.carryItem === 'hammer';
@@ -281,8 +281,8 @@ class WilsonController implements WilsonAnimationController {
   }
 
   playHammer(onHit: () => void): boolean { return this.playMine(onHit); }
-  cancelMine(): void { this.stategraph.cancelAction('mining'); }
-  cancelHammer(): void { this.cancelMine(); }
+  cancelMine(): void { this.stategraph.cancelAction('MINE'); }
+  cancelHammer(): void { this.stategraph.cancelAction('HAMMER'); }
 
   playBugNet(onCatch: () => void): boolean {
     return this.startAction('NET', onCatch, this.carryItem === 'bugnet' && !!this.netEquipment);
@@ -356,7 +356,9 @@ class WilsonController implements WilsonAnimationController {
     }
     if (item === 'bugnet') {
       try {
-        const equipment = await loadBugNetEquipment(this.lanternAssets, skinId);
+        const [equipment] = await Promise.all([
+          loadBugNetEquipment(this.lanternAssets, skinId), PreloadSounds('dontstarve/wilson/dig'),
+        ]);
         if (request !== this.carryRequest) return;
         this.netEquipment = equipment;
       } catch (error) {
@@ -393,7 +395,9 @@ class WilsonController implements WilsonAnimationController {
     }
     if (item && isPitchforkTool(item)) {
       try {
-        const equipment = await loadPitchforkEquipment(this.lanternAssets, item, skinId);
+        const [equipment] = await Promise.all([
+          loadPitchforkEquipment(this.lanternAssets, item, skinId), PreloadSounds('dontstarve/wilson/dig'),
+        ]);
         if (request !== this.carryRequest) return;
         this.pitchforkEquipment = equipment;
       } catch (error) {

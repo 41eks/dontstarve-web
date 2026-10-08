@@ -37,10 +37,11 @@ export function updateMovement(
         const manual = movementKeys.some((key) => input.isPressed(key));
         const animation = player.userData.animationController as WilsonAnimationController | undefined;
         if (animation?.isEmoting && (manual || input.isPressed('Space'))) animation.cancelEmote();
+        if (animation?.isMining && (manual || input.isPressed('Space'))) animation.cancelMine();
         if (animation?.isHammering && (manual || input.isPressed('Space'))) animation.cancelHammer();
         if (animation?.isDigging && (manual || input.isPressed('Space'))) animation.cancelDig();
         if (animation?.isReskinning && (manual || input.isPressed('Space'))) animation.cancelReskin();
-        const acting = animation?.isCasting || animation?.isNetting || animation?.isEmoting || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        const acting = animation?.isCasting || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.
         else locomotor.update(speed, Math.min(dt, MAX_PHYSICS_FRAME_TIME), manual ? direction : undefined);

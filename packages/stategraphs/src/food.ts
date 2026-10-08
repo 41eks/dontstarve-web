@@ -80,7 +80,7 @@ export class FoodActionController {
     }
     if (this.hoveredTarget()) this.label.show(': 种植', 'left'); else this.label.hide();
     this.label.update();
-    if (this.prepared && !this.target && !this.animation.stategraph.hasStateTag('planting')) {
+    if (this.prepared && !this.target && !this.animation.stategraph.isPerformingAction('PLANT')) {
       this.prepared.dispose(); this.prepared = undefined;
     }
     const target = this.target, source = this.source;

@@ -68,7 +68,7 @@ export class PickaxeActionController {
 
   cancel(): void {
     this.actionVersion++;
-    // The pickaxe swing is shared with the hammer; only the equipped tool cancels it.
+    // Only the equipped tool cancels its own action.
     const owned = this.isEquipped();
     if (this.target || (owned && this.animation.isMining)) this.locomotor.stop();
     this.target = undefined;

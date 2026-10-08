@@ -70,7 +70,7 @@ export class HammerActionController {
 
   cancel(): void {
     this.actionVersion++;
-    // The pickaxe swing is shared; only the equipped tool may cancel it.
+    // Only the equipped tool cancels its own action.
     const owned = this.isEquipped();
     if (this.target || (owned && this.animation.isHammering)) this.locomotor.stop();
     this.target = undefined;

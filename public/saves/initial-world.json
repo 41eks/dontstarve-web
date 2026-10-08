@@ -7,15 +7,15 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000014",
-    "parentId": "0000000013",
-    "savedAt": "2026-10-07T09:22:07.556Z",
+    "id": "0000000015",
+    "parentId": "0000000014",
+    "savedAt": "2026-10-08T11:25:21.185Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 4917.833899999674,
+    "elapsedSeconds": 5253.627200002974,
     "systems": {},
     "map": {
       "kind": "generated",
@@ -298,6 +298,7 @@
           }
         }
       ],
+      "farm_plant_randomseed": [],
       "moon_tree": [
         {
           "id": "e_moon_tree_000001",
@@ -6327,12 +6328,45 @@
           },
           "components": {
             "building": {
-              "state": "closed",
+              "state": "open",
               "skinId": "cookpot_cauldronp"
             },
             "container": {
               "slotCount": 4,
-              "slots": []
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "entityId": "e_5de5481dfe59039eb6655af84d8dca32",
+                    "itemId": "red_cap",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "entityId": "e_1dba80208926f5175f3325190979330c",
+                    "itemId": "red_cap",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "entityId": "e_e59bc725b7807bd8dae74d0663fd6a9c",
+                    "itemId": "red_cap",
+                    "count": 1
+                  }
+                },
+                {
+                  "slotKey": "3",
+                  "item": {
+                    "entityId": "e_277728e6d2e033d7bcb040b326c6cf29",
+                    "itemId": "twigs",
+                    "count": 1
+                  }
+                }
+              ]
             }
           }
         },
@@ -6385,20 +6419,15 @@
                 {
                   "slotKey": "0",
                   "item": {
+                    "entityId": "e_6eb36343fdeb0d0acade0fa83bcc338f",
                     "itemId": "butterfly",
                     "count": 31
                   }
                 },
                 {
-                  "slotKey": "1",
-                  "item": {
-                    "itemId": "twigs",
-                    "count": 21
-                  }
-                },
-                {
                   "slotKey": "2",
                   "item": {
+                    "entityId": "e_6fb67330c2cf626cd34064c79ad64233",
                     "itemId": "fireflies",
                     "count": 3
                   }
@@ -6406,6 +6435,7 @@
                 {
                   "slotKey": "3",
                   "item": {
+                    "entityId": "e_0a7b886367469aa27afcc648b159e1f7",
                     "itemId": "goldnugget",
                     "count": 39
                   }
@@ -6413,6 +6443,7 @@
                 {
                   "slotKey": "4",
                   "item": {
+                    "entityId": "e_b956ba660e436eb441628149aa9eeb7e",
                     "itemId": "rocks",
                     "count": 40
                   }
@@ -6420,6 +6451,7 @@
                 {
                   "slotKey": "5",
                   "item": {
+                    "entityId": "e_f2de894d36213f6620364d3d61196c8e",
                     "itemId": "silk",
                     "count": 29
                   }
@@ -6427,6 +6459,7 @@
                 {
                   "slotKey": "6",
                   "item": {
+                    "entityId": "e_d5a2466574995a25e27cb5e238d4a4b8",
                     "itemId": "gears",
                     "count": 10
                   }
@@ -6434,6 +6467,7 @@
                 {
                   "slotKey": "7",
                   "item": {
+                    "entityId": "e_7f04e31a945b15c8ca6e34e45786397f",
                     "itemId": "charcoal",
                     "count": 8
                   }
@@ -6441,6 +6475,7 @@
                 {
                   "slotKey": "8",
                   "item": {
+                    "entityId": "e_a90765d2466aae640553a5e45e18135f",
                     "itemId": "cutgrass",
                     "count": 11
                   }
@@ -6470,6 +6505,7 @@
                 {
                   "slotKey": "5",
                   "item": {
+                    "entityId": "e_689e152a8a046cb9a9c4d0ed240d0062",
                     "itemId": "pigskin",
                     "count": 10
                   }
@@ -6477,6 +6513,7 @@
                 {
                   "slotKey": "7",
                   "item": {
+                    "entityId": "e_11d1a588174f958e8ac302f70764142b",
                     "itemId": "moonrocknugget",
                     "count": 32
                   }
@@ -6786,9 +6823,9 @@
           "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
           "transform": {
             "position": [
-              -23.088108304516815,
+              90.6901596666953,
               0,
-              8.433095223930843
+              -52.24658661442646
             ],
             "rotationY": 0
           },
@@ -6803,9 +6840,9 @@
           "id": "e_5f98f9a627feea2fb75d1ffa516e94b7",
           "transform": {
             "position": [
-              -5.195205634344359,
+              -67.37844720569508,
               0,
-              160.02045071214388
+              177.5332872726259
             ],
             "rotationY": 0
           },
@@ -6820,9 +6857,9 @@
           "id": "e_d96125953f2a5c9abf3006c7e9814f8b",
           "transform": {
             "position": [
-              -171.49630141134088,
+              -114.9060309324398,
               0,
-              27.033885221307543
+              92.15534570442243
             ],
             "rotationY": 0
           },
@@ -6837,9 +6874,9 @@
           "id": "e_bb2e6b7bc2ac993bbee65beff6992d46",
           "transform": {
             "position": [
-              -65.02521682933572,
+              -126.34599977530011,
               0,
-              30.67572399542208
+              -11.954409889148863
             ],
             "rotationY": 0
           },
@@ -6854,9 +6891,9 @@
           "id": "e_7d80c7aec9e512f51989a11a65b96473",
           "transform": {
             "position": [
-              -125.6130390442993,
+              -77.7503075198866,
               0,
-              60.08971710173461
+              52.62739681813066
             ],
             "rotationY": 0
           },
@@ -7035,13 +7072,13 @@
           },
           "components": {
             "stack": {
-              "itemId": "backpack",
-              "count": 1,
-              "skinId": "backpack_carrat",
               "container": {
                 "slotCount": 8,
                 "slots": []
-              }
+              },
+              "itemId": "backpack",
+              "count": 1,
+              "skinId": "backpack_carrat"
             }
           }
         },
@@ -7075,9 +7112,9 @@
           "id": "e_fbc93491832fbc0f9ee1870641d45c24",
           "transform": {
             "position": [
-              -26.896190231193568,
+              -16.43125009746627,
               0,
-              9.316314289065978
+              -1.7671206385726024
             ],
             "rotationY": 0
           },
@@ -7088,8 +7125,8 @@
                 0,
                 0.22546845008602653
               ],
-              "heading": 5.518830128045408,
-              "poopRemainingSeconds": 20.171099614583166
+              "heading": 108.01814613858357,
+              "poopRemainingSeconds": 0.17351013946149657
             }
           }
         }
@@ -7157,9 +7194,9 @@
       "shardId": "master",
       "transform": {
         "position": [
-          23.57394789428128,
+          -32.906182882133834,
           0,
-          -12.90509339324658
+          9.975528491535451
         ],
         "rotationY": 0
       },
@@ -7176,6 +7213,7 @@
               {
                 "slotKey": "0",
                 "item": {
+                  "entityId": "e_8cc9d70811a2f23ce1abb92d02337e70",
                   "itemId": "wall_moonrock_item",
                   "count": 1
                 }
@@ -7183,6 +7221,7 @@
               {
                 "slotKey": "1",
                 "item": {
+                  "entityId": "e_1db0be52dae6b678c3086efd6bbda1ae",
                   "itemId": "seeds",
                   "count": 1
                 }
@@ -7190,6 +7229,7 @@
               {
                 "slotKey": "2",
                 "item": {
+                  "entityId": "e_de1b2a40e41415328215c58886c176fa",
                   "itemId": "torch",
                   "count": 1
                 }
@@ -7197,6 +7237,7 @@
               {
                 "slotKey": "3",
                 "item": {
+                  "entityId": "e_5d692812dc3a6f33e8090c3c02807002",
                   "itemId": "cutstone",
                   "count": 1
                 }
@@ -7204,13 +7245,23 @@
               {
                 "slotKey": "4",
                 "item": {
+                  "entityId": "e_7ff3514096d07e602d5bb679f4a543ee",
                   "itemId": "log",
                   "count": 8
                 }
               },
               {
+                "slotKey": "5",
+                "item": {
+                  "entityId": "e_ce28f3798d0a92bc24c1b1c2cbf99ed3",
+                  "itemId": "red_cap",
+                  "count": 7
+                }
+              },
+              {
                 "slotKey": "6",
                 "item": {
+                  "entityId": "e_dd2f40d6829c5076db6e49cc0a1f0c23",
                   "itemId": "wall_stone_item",
                   "count": 10
                 }
@@ -7218,6 +7269,7 @@
               {
                 "slotKey": "7",
                 "item": {
+                  "entityId": "e_e640a364a302fd7fe5f12990a8527391",
                   "itemId": "butterfly",
                   "count": 15
                 }
@@ -7225,13 +7277,23 @@
               {
                 "slotKey": "8",
                 "item": {
+                  "entityId": "e_0cb0321cedf19505b07c7e0ef392d209",
                   "itemId": "fireflies",
                   "count": 14
                 }
               },
               {
+                "slotKey": "9",
+                "item": {
+                  "entityId": "e_701ca836d4dd5f0477d8a36ec530658b",
+                  "itemId": "twigs",
+                  "count": 20
+                }
+              },
+              {
                 "slotKey": "10",
                 "item": {
+                  "entityId": "e_d34ae8cfaefa8d4bfb198d8dd1d99932",
                   "itemId": "goldenpickaxe",
                   "count": 1
                 }
@@ -7239,6 +7301,7 @@
               {
                 "slotKey": "11",
                 "item": {
+                  "entityId": "e_a2d7407423ea49b87bb1170e99ee5852",
                   "itemId": "hammer",
                   "count": 1
                 }
@@ -7246,6 +7309,7 @@
               {
                 "slotKey": "14",
                 "item": {
+                  "entityId": "e_4edc42d322d0f1192991db8fb21e034f",
                   "itemId": "bugnet",
                   "count": 1
                 }
@@ -7258,6 +7322,7 @@
               {
                 "slotKey": "hand",
                 "item": {
+                  "entityId": "e_a150a6cf5e12e1a4141dc47e33de6c1d",
                   "itemId": "reskin_tool",
                   "count": 1
                 }
@@ -7265,6 +7330,7 @@
               {
                 "slotKey": "head",
                 "item": {
+                  "entityId": "e_63e45e55d283bed135c883e55765ff45",
                   "itemId": "alterguardianhat",
                   "count": 1,
                   "skinId": "alterguardianhat_lastprism"
