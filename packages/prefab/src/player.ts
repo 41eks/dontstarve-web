@@ -160,7 +160,7 @@ class WilsonController implements WilsonAnimationController {
       playAnimation: (clip) => this.selectAnimation(clip),
       playSound: (cue) => {
         const event = cue === 'dig' ? 'dontstarve/wilson/dig' : cue === 'tillEmerge' ? 'dontstarve_DLC001/creatures/mole/emerge'
-          : cue === 'eat' ? 'dontstarve/wilson/eat' : cue === 'reskin' ? 'dontstarve/wilson/attack_weapon'
+          : cue === 'sip' ? 'dontstarve/wilson/sip' : cue === 'eat' ? 'dontstarve/wilson/eat' : cue === 'reskin' ? 'dontstarve/wilson/attack_weapon'
           : cue === 'cast' ? (this.carryItem === 'opalstaff' ? 'dontstarve/common/staffteleport' : 'dontstarve/wilson/use_gemstaff')
             : cue === 'hammer' ? 'dontstarve/wilson/hit' : 'dontstarve/wilson/use_pick_rock';
         PlaySound(event);
@@ -185,9 +185,11 @@ class WilsonController implements WilsonAnimationController {
     this.startOneShot('eat');
   }
 
-  playSeedEat(onEat: () => boolean): boolean { return this.startAction('EAT', onEat, true); }
+  playQuickEat(onEat: () => boolean, foodDrink = false): boolean {
+    return this.startAction('EAT', onEat, true, foodDrink);
+  }
   playPlant(onPlant: () => boolean): boolean { return this.startAction('PLANT', onPlant, true); }
-  cancelSeedAction(): void {
+  cancelFoodAction(): void {
     if (this.stategraph.hasStateTag('eating') || this.stategraph.hasStateTag('planting')) this.stategraph.cancelAction();
   }
 
@@ -244,10 +246,10 @@ class WilsonController implements WilsonAnimationController {
   get isDigging(): boolean { return this.stategraph.hasStateTag('digging'); }
   get isReskinning(): boolean { return this.stategraph.hasStateTag('reskinning'); }
 
-  private startAction(action: WilsonAction, execute: () => void | boolean, ready: boolean): boolean {
+  private startAction(action: WilsonAction, execute: () => void | boolean, ready: boolean, foodDrink = false): boolean {
     if (!ready || !this.stategraph.canStartAction(action)) return false;
     this.cancelEmote();
-    return this.stategraph.pushBufferedAction(new BufferedAction(action, execute));
+    return this.stategraph.pushBufferedAction(new BufferedAction(action, execute), foodDrink);
   }
 
   playReskin(onCast: () => void): boolean {
@@ -660,6 +662,8 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
     eat,
     quick_eat_pre: eat,
     quick_eat: eat,
+    quick_drink_pre: eat,
+    quick_drink: eat,
     item_in: itemActions,
     item_out: itemActions,
     pickup: itemActions,

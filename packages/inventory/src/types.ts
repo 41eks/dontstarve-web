@@ -1,6 +1,6 @@
 export type EquipmentKind = 'hand' | 'body' | 'head';
 
-export type { HandEquipment } from '@dontstarve-web/signals';
+export type { HandEquipment, HeadEquipment, BodyEquipment } from '@dontstarve-web/signals';
 
 export interface SlotAddress {
   containerId: string;

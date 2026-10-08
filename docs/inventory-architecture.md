@@ -29,6 +29,14 @@ Store 通知驱动 UI 的 `setSlot()` 更新；UI 槽位模型是显示镜像。
 
 地面模型属于实体的表现资源。拾取移除模型，换肤替换模型，但保留实体；火把的运行时组件也保留。其他已有 prefab 的模型专用控制器仍由各自 factory 管理。`exportState()` 在结算组件后导出含 `entityId` 的快照；地面实体继续使用记录的 `id`。旧库存存档缺少 ID 时在加载时分配，后续保存保持稳定；读取拒绝重复物品 ID 以及与世界实体冲突的 ID。
 
+## 装备存在状态与表现
+
+手部、头部、身体装备分别使用工厂创建的 `handEquipmentExistenceState`、`headEquipmentExistenceState`、`bodyEquipmentExistenceState`，非空值的 `EQUIPSLOTS` 分别为 `HANDS`、`HEAD`、`BODY`。每个 Store 默认创建独立实例，构造函数第五个参数接受可选的状态对象，例如 `{ headEquipmentExistenceState, bodyEquipmentExistenceState }`；`handEquipment`、`headEquipment`、`bodyEquipment` 为对应的只读接口。
+
+每个装备槽位成功注册后，Store 在发布初始状态前自动建立该槽位唯一的清空监听，释放 Store 时统一取消。转移、提取、消耗或读档成功提交后，仅为被替换的装备槽发布新身份；普通组件变化或其他槽位更新不重新装备。主动清空 signal 表示移除对应槽位的当前物品，Store 核对旧实体身份后提交；普通卸下使用库存转移保留实体、皮肤和组件状态。
+
+`src/playerEquipment.ts` 统一处理同步订阅、生命周期切换、重入和释放。`src/playerHandEquipment.ts`、`src/playerHeadEquipment.ts`、`src/playerBodyEquipment.ts` 注入各自存在状态并更新玩家表现。`main.ts` 在恢复存档前注册三种绑定，移除了 `syncHeadEquipment()`、`syncBodyEquipment()` 以及库存 UI 通知里的装备轮询；初始外观也由存档提交的 signal 写入驱动。帽子继续使用 `setHat()`，背包继续使用 `setBackpack()`；身体装备绑定同时通知应用打开或关闭背包面板、恢复储物格显示并更新材料可访问性。UI 槽位同步仍由库存通知驱动。
+
 ## 火把燃料与百分比
 
 源文件位于 DST 的 `databundles/scripts_unpacked/scripts/`：`prefabs/torch.lua` 初始化 `fueled`，装备时点燃、卸下时熄灭；`components/burnable.lua` 的点燃/熄灭分别调用 `StartConsuming()` / `StopConsuming()`。`tuning.lua` 定义 `TORCH_FUEL = night_time * 1.25`，默认夜晚为 `30 * 2` 秒，因此满燃料为 75 秒。普通丢弃不点燃；投掷是独立的 `IgniteTossed()` 路径。
@@ -37,11 +45,11 @@ Store 通知驱动 UI 的 `setSlot()` 更新；UI 槽位模型是显示镜像。
 
 本项目的 `InventoryItemSpec.maxFuel` 保存满燃料秒数，`ItemEntity.components.fueled.remaining` 保存每把火把的实际剩余秒数，快照以 `InventoryStack.remainingFuel` 序列化；缺省表示满燃料，兼容旧存档与新制造物品。燃烧生命周期由 `packages/prefab/src/torch.ts` 的 `TorchController` 管理，`getTorchController(entity)` 为每个实体只创建一个控制器：`onequip(slotSignal)` 绑定具体槽位并调用 `ignite()`，`onunequip()` 停止燃烧并解除绑定，`extinguish()` 只停止燃烧，保留装备及燃料；`update()` 只在燃烧时扣减，并在耗尽时移除物品、熄灭照明。满燃料常量 `TORCH_FUEL` 也由该 prefab 提供。`onFrame(dt)` 每个燃烧帧仅累计帧数和秒数，每 60 帧才调用 `update()` 扣减全部累计秒数；`flushFuel()` 在停止生命周期、UI 手部转移、丢弃提交、换肤、拾取和保存前结算不足 60 帧的部分，防止燃料回升或丢失。
 
-`packages/signals/src/handEquipment.ts` 提供 `createHandEquipmentExistenceState()` 工厂，不导出全局装备状态。每个 `InventoryStore` 默认创建独立的 `handEquipmentExistenceState`，也可通过构造函数第五个参数注入；`InventoryStore.handEquipment` 是该实例的只读接口。应用通过 `bindPlayerHandEquipment({ handEquipmentExistenceState: inventory.handEquipmentExistenceState, ... })` 显式注入，再通过 `onequip(handEquipmentExistenceState)` 将具体槽位传给 torch。存在状态表示当前装备身份，燃烧和燃料由 prefab 与实体管理；Store 只订阅槽位清空，不监听所有 prefab 的动态状态。装备流为 UI / 命令 / 读档 → `InventoryStore` 完成提交 → 该库存的 signal 更新 → 旧 torch `onunequip()`、新 torch `onequip(handEquipmentExistenceState)`。该 signal 的 `HandEquipment` 对象引用代表一次装备实例，成功转移或同 prefab 替换会创建新引用；失败事务不发布变化。燃料及其他库存变化不重新发布手部状态，避免显式熄灭后自动重新装备。signal 的 `entity` 引用指向已提交的手部物品实例，不复制动态组件值；signal 对象表示一次装备关系，物品实体表示持续的物品身份。signal 不序列化，存档仍保存物品快照。读档从已恢复的手部实体建立运行时组件。
+`packages/signals/src/handEquipment.ts` 提供 `createHandEquipmentExistenceState()` 工厂，不导出全局装备状态。每个 `InventoryStore` 默认创建独立的 `handEquipmentExistenceState`，也可通过构造函数第五个参数的 `{ handEquipmentExistenceState }` 对象注入；`InventoryStore.handEquipment` 是该实例的只读接口。应用通过 `bindPlayerHandEquipment({ handEquipmentExistenceState: inventory.handEquipmentExistenceState, ... })` 显式注入，再通过 `onequip(handEquipmentExistenceState)` 将具体槽位传给 torch。存在状态表示当前装备身份，燃烧和燃料由 prefab 与实体管理；Store 只订阅槽位清空，不监听所有 prefab 的动态状态。装备流为 UI / 命令 / 读档 → `InventoryStore` 完成提交 → 该库存的 signal 更新 → 旧 torch `onunequip()`、新 torch `onequip(handEquipmentExistenceState)`。该 signal 的 `HandEquipment` 对象引用代表一次装备实例，成功转移或同 prefab 替换会创建新引用；失败事务不发布变化。燃料及其他库存变化不重新发布手部状态，避免显式熄灭后自动重新装备。signal 的 `entity` 引用指向已提交的手部物品实例，不复制动态组件值；signal 对象表示一次装备关系，物品实体表示持续的物品身份。signal 不序列化，存档仍保存物品快照。读档从已恢复的手部实体建立运行时组件。
 
 `HandEquipment` 要求公开字面量属性 `readonly EQUIPSLOTS: 'HANDS'`，共享 setter 同时做运行时校验；身体装备或缺少该属性的对象不能写入，失败不修改状态、不通知订阅者，`null` 仍可清空。torch 实现该结构类型，公开 `itemId = 'torch'` 与 `EQUIPSLOTS = 'HANDS'`；库存只为成功提交到手部槽的物品发布此属性，存档仍使用库存领域字段，不保存运行时槽位声明。
 
-torch 的只读 `burning` signal 独立表示燃烧状态，`onequip()` 点燃时设为 `true`，卸下、释放或耗尽后设为 `false`。`onunequip()` 和 `dispose()` 不修改 `handEquipmentExistenceState`，切换装备时不会清掉新值。燃尽时停止燃烧并校验绑定 signal 仍包含自己的装备引用，再调用 `slotSignal.set(null)`。`InventoryStore` 在手部槽位成功注册后、发布初始状态前自动建立唯一的清空监听，包括构造时和后续 `registerSlots()` 注册；注册失败或仅注册其他槽位不会建立新监听，应用无需手动绑定。监听核对旧 signal 的实体就是当前手部物品，原子清空槽位并清理实体，并随 Store 的 `dispose()` 释放；库存自身已完成的转移、空槽位和其他实体的请求跳过。普通 `extinguish()` 不改变装备 signal。未绑定槽位的地面火把不修改玩家状态；未耗尽的燃料保留在库存中。装备火把耗尽由 signal 清空请求触发库存移除；地面或没有库存 owner 的本地火把仍移除自己的实体。旧绑定已经被替换时，不清空新装备；旧物品通过自己的 owner 移除。`src/playerHandEquipment.ts` 先注册注入手部 signal 的 `subscribe()`，直接使用 signal 中的实体引用；随后 `InventoryStore.replaceState()` 从存档恢复库存并写入 signal，由该次写入触发生命周期和手持动画。订阅不回放当前值，也没有单独的初始同步。`packages/prefab/src/handEquipment.ts` 注册各手部 prefab 的手持外观、光标与生命周期工厂；torch 的装备工厂负责绑定控制器、声音位置及燃烧订阅。`main.ts` 只注入玩家表现接口、调度统一订阅器的帧更新和结算、请求成功转移动画并在关闭时释放；卸下不销毁实体上的控制器。同步订阅处理同一任务内的装备变化；生命周期回调导致嵌套转移时，先完成旧生命周期，再处理最新装备，避免重入时旧回调清理或覆盖新实例。UI 的 `createEffect()` 仍在微任务中合并刷新。页面关闭时释放装备、燃烧和库存对手部 signal 的订阅。手动 `set(null)` 移除手部物品；正常卸下使用库存转移，保留实体及状态。
+torch 的只读 `burning` signal 独立表示燃烧状态，`onequip()` 点燃时设为 `true`，卸下、释放或耗尽后设为 `false`。`onunequip()` 和 `dispose()` 不修改 `handEquipmentExistenceState`，切换装备时不会清掉新值。燃尽时停止燃烧并校验绑定 signal 仍包含自己的装备引用，再调用 `slotSignal.set(null)`。`InventoryStore` 在手部槽位成功注册后、发布初始状态前自动建立唯一的清空监听，包括构造时和后续 `registerSlots()` 注册；注册失败或仅注册其他槽位不会重复建立手部监听，应用无需手动绑定。监听核对旧 signal 的实体就是当前手部物品，原子清空槽位并清理实体，并随 Store 的 `dispose()` 释放；库存自身已完成的转移、空槽位和其他实体的请求跳过。普通 `extinguish()` 不改变装备 signal。未绑定槽位的地面火把不修改玩家状态；未耗尽的燃料保留在库存中。装备火把耗尽由 signal 清空请求触发库存移除；地面或没有库存 owner 的本地火把仍移除自己的实体。旧绑定已经被替换时，不清空新装备；旧物品通过自己的 owner 移除。`src/playerHandEquipment.ts` 先注册注入手部 signal 的 `subscribe()`，直接使用 signal 中的实体引用；随后 `InventoryStore.replaceState()` 从存档恢复库存并写入 signal，由该次写入触发生命周期和手持动画。订阅不回放当前值，也没有单独的初始同步。`packages/prefab/src/handEquipment.ts` 注册各手部 prefab 的手持外观、光标与生命周期工厂；torch 的装备工厂负责绑定控制器、声音位置及燃烧订阅。`main.ts` 只注入玩家表现接口、调度统一订阅器的帧更新和结算、请求成功转移动画并在关闭时释放；卸下不销毁实体上的控制器。同步订阅处理同一任务内的装备变化；生命周期回调导致嵌套转移时，先完成旧生命周期，再处理最新装备，避免重入时旧回调清理或覆盖新实例。UI 的 `createEffect()` 仍在微任务中合并刷新。页面关闭时释放装备、燃烧和库存对手部 signal 的订阅。手动 `set(null)` 移除手部物品；正常卸下使用库存转移，保留实体及状态。
 
 inventory 负责权威状态和原子写入，`InventoryStore.setRemainingFuel()` 不决定燃烧或耗尽行为，也不写入零燃料的临时库存物品；玩家装备火把的耗尽路径通过 signal 请求清空，实际移除由库存订阅执行。应用将比例同步到 UI 的 `SlotItem.durabilityPercent`，共享 slot renderer 在物品、装备和储物槽中显示相同百分比。燃料字段随库存转移、地面掉落、换肤、拾取与存档保存保留；异步加载掉落美术时，原实体继续消耗燃料，实际提交丢弃时先结算再交接引用。
 
@@ -70,6 +78,10 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 网页屏蔽浏览器原生右键菜单，游戏使用自己的右键映射。
 
 ## 当前动作与动画
+
+`packages/prefab/src/food.ts` 定义已接入食物的源 Lua 数值：种子为 4.6875 饥饿，香蕉奶昔为 8 生命、25 饥饿、33 理智。`bananajuice` 来自 `preparedfoods.lua:571`，数值分别为 `TUNING.HEALING_MEDSMALL`、`CALORIES_MED`、`SANITY_LARGE`；共享 `prefabs/preparedfoods.lua` 将这些数值装到 edible 组件，`fooddrink` 标签决定喝饮料动画。
+
+`FoodActionController` 共用进食与种植的取消/预加载流程，原种子控制器已泛化为 `packages/stategraphs/src/food.ts`。应用从点击时的槽位捕获实际物品实体及皮肤；第 12 帧提交前再核对实体仍在原槽，库存扣除成功后才调用 `applyPlayerFoodEffects()`。生命与饥饿上限 150，理智通过 signal 限制到 200；直接修改同 ID 的另一实体不能让旧动作误消耗替代物。`SGwilson` 的 EAT 使用同一个 quickeat 时间线，根据 `foodDrink` 选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`；饮料与进食动画均来自 `player_actions_eat.zip`，第 10 帧分别播放 sip / eat。预加载前后取消、动作取消或物品失效都不会产生食用效果。
 
 右键 `meatballs` 调用 `WilsonAnimationController.playEat()`，播放 `anim/player_actions_eat.zip`；当前只播放动作，不消耗该堆物品。
 

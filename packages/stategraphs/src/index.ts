@@ -14,7 +14,7 @@ export * from './bugnet.ts';
 export * from './shovel.ts';
 export * from './pitchfork.ts';
 export * from './farm_hoe.ts';
-export * from './seeds.ts';
+export * from './food.ts';
 export * from './reskin_tool.ts';
 export * from './yellowstaff.ts';
 export * from './pointerRaycaster.ts';

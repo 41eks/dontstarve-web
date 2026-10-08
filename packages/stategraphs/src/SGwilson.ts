@@ -12,7 +12,7 @@ export type WilsonAction = 'MINE' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL'
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
-  | 'quick_eat_pre' | 'quick_eat' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst';
+  | 'quick_eat_pre' | 'quick_eat' | 'quick_drink_pre' | 'quick_drink' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst';
 
 export const WILSON_ACTION_TIMES = {
   mine: 7 * FRAMES, net: 10 * FRAMES, terraform: 25 * FRAMES,
@@ -33,7 +33,7 @@ export interface WilsonAnimationClip {
 export interface WilsonStateGraphHost {
   /** Select the art and return its effective playback duration in seconds. */
   playAnimation(clip: WilsonAnimationClip): number;
-  playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'dig' | 'tillEmerge'): void;
+  playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'sip' | 'dig' | 'tillEmerge'): void;
   setCasting(casting: boolean): void;
   onStateChanged(name: WilsonStateName): void;
 }
@@ -119,8 +119,9 @@ function createStates(): StateDefinition<WilsonStateGraph, WilsonStateName>[] {
       events: animationEvents('till_pst'),
     }),
     makeState('till_pst', [clip('till_pst')], ['oneshot', 'action', 'tilling'], { events: animationEvents() }),
-    makeState('quickeat', [clip('quick_eat_pre'), clip('quick_eat')], ['oneshot', 'action', 'eating', 'busy'], {
-      timeline: [TimeEvent(10 * FRAMES, (inst: WilsonInstance) => inst.context.host.playSound('eat')),
+    makeState('quickeat', [], ['oneshot', 'action', 'eating', 'busy'], {
+      onenter: inst => inst.context.playQuickEatClips(),
+      timeline: [TimeEvent(10 * FRAMES, (inst: WilsonInstance) => inst.context.host.playSound(inst.context.isDrinking ? 'sip' : 'eat')),
         TimeEvent(WILSON_ACTION_TIMES.quickEat, perform)],
       events: animationEvents(undefined, 'animqueueover'),
     }),
@@ -190,6 +191,7 @@ export class WilsonStateGraph {
   private clipIndex = 0;
   private clipStartedAt = 0;
   private emoteClips: readonly WilsonAnimationClip[] = [];
+  private foodDrink = false;
 
   constructor(host: WilsonStateGraphHost) {
     this.host = host;
@@ -203,6 +205,7 @@ export class WilsonStateGraph {
   get isOneShot(): boolean { return this.hasStateTag('oneshot'); }
   get isCrafting(): boolean { return this.crafting; }
   get isJumping(): boolean { return this.movementState === 'jump'; }
+  get isDrinking(): boolean { return this.foodDrink && this.hasStateTag('eating'); }
   hasStateTag(tag: string): boolean { return this.sg.hasStateTag(tag); }
   listenForEvent(name: string, fn: (data: unknown) => void): () => void { return this.sg.listenForEvent(name, fn); }
   pushEvent(name: string, data?: unknown): void { this.sg.pushEvent(name, data); }
@@ -262,12 +265,13 @@ export class WilsonStateGraph {
       && (!this.isJumping || action === 'NET' || action === 'CASTSPELL');
   }
 
-  pushBufferedAction(action: BufferedAction<WilsonAction>): boolean {
+  pushBufferedAction(action: BufferedAction<WilsonAction>, foodDrink = false): boolean {
     if (!this.canStartAction(action.action) || !action.isValid()) return false;
     const handler = actionHandlers.find((entry) => entry.action === action.action);
     if (!handler) return false;
     this.clearBufferedAction();
     this.bufferedAction = action;
+    this.foodDrink = action.action === 'EAT' && foodDrink;
     this.sg.goToState(handler.state);
     return true;
   }
@@ -280,6 +284,13 @@ export class WilsonStateGraph {
     if (this.bufferedAction !== action) return;
     this.bufferedAction = null;
     if (!action.do()) this.pushEvent('actionfailed', { action });
+  }
+
+  /** SGwilson quickeat chooses drink clips for fooddrink-tagged inventory food. */
+  playQuickEatClips(): void {
+    this.playClips(this.foodDrink
+      ? [clip('quick_drink_pre'), clip('quick_drink')]
+      : [clip('quick_eat_pre'), clip('quick_eat')]);
   }
 
   private clearBufferedAction(): void {

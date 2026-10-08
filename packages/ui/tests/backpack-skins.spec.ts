@@ -18,12 +18,15 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
       if (item) main.inventory.applySlotChanges([{ slot, ...item, delta: -item.count }]);
     }
     main.inventory.add('backpack', 1); main.inventory.add('reskin_tool', 1);
+    const backpackSlot = main.inventory.addresses().find((address: any) =>
+      address.containerId === 'player:inventory' && main.inventory.get(address)?.itemId === 'backpack');
+    const backpackId = main.inventory.getEntity(backpackSlot)!.id;
     const radius = player.playerBody.shapes[0].radius;
     player.playerBody.position.set(120, radius, 120); player.player.position.set(120, 0, 120);
-    (window as any).backpackSkinGame = { main, ...player, scene, view };
+    (window as any).backpackSkinGame = { main, ...player, scene, view, backpackId };
     (window as any).backpackGroundPoint = async () => {
       await new Promise(requestAnimationFrame);
-      const target = scene.children.find((object: any) => object.name === 'GroundItem:backpack');
+      const target = scene.children.find((object: any) => object.userData.entityId === (window as any).backpackSkinGame.backpackId);
       const mesh = target.children[0].children[0];
       mesh.geometry.computeBoundingBox();
       const point = mesh.geometry.boundingBox.getCenter(target.position.clone()).applyMatrix4(mesh.matrixWorld).project(view.camera);
@@ -32,6 +35,7 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
     };
   }, Object.fromEntries(['main', 'player', 'universal', 'view'].map((name) =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`])));
+  const backpackId = await page.evaluate(() => (window as any).backpackSkinGame.backpackId);
   const bar = page.locator('dst-inventory-bar');
   const body = bar.locator('[data-slot-key="body"]');
   await bar.locator('.inventory-bar__items [data-item-id="backpack"]').first().dragTo(body);
@@ -41,7 +45,7 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   await page.keyboard.up('Shift');
   await expect.poll(() => page.evaluate(() => {
     const game = (window as any).backpackSkinGame;
-    const target = game.scene.children.find((object: any) => object.name === 'GroundItem:backpack');
+    const target = game.scene.children.find((object: any) => object.userData.entityId === (window as any).backpackSkinGame.backpackId);
     const mesh = target?.children[0].children[0];
     return Boolean(mesh?.isMesh && mesh.geometry.drawRange.count > 0
       && mesh.material.some((material: any) => material.name === 'ground:swap_backpack'));
@@ -53,7 +57,7 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   const point = await page.evaluate(() => (window as any).backpackGroundPoint());
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).backpackSkinGame.scene.children
-    .find((object: any) => object.name === 'GroundItem:backpack')?.userData.skinId)).toBe('backpack_babybeef');
+    .find((object: any) => object.userData.entityId === (window as any).backpackSkinGame.backpackId)?.userData.skinId)).toBe('backpack_babybeef');
   await expect.poll(() => page.evaluate(() => (window as any).backpackSkinGame.player.userData.animationController.isReskinning)).toBe(false);
   const groundDownload = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
@@ -62,7 +66,8 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   const groundChunks = [];
   for await (const chunk of groundStream!) groundChunks.push(chunk);
   expect(JSON.parse(Buffer.concat(groundChunks).toString()).world.entities.ground_item
-    .some((entity: any) => entity.components.stack.itemId === 'backpack' && entity.components.stack.skinId === 'backpack_babybeef')).toBe(true);
+    .some((entity: any) => entity.id === backpackId && entity.components.stack.itemId === 'backpack'
+      && entity.components.stack.skinId === 'backpack_babybeef')).toBe(true);
   const pickupPoint = await page.evaluate(() => (window as any).backpackGroundPoint());
   await page.mouse.click(pickupPoint.x, pickupPoint.y);
   const pickedUp = bar.locator('.inventory-bar__items [data-item-id="backpack"][data-skin-id="backpack_babybeef"]');
@@ -81,6 +86,6 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   for await (const chunk of stream!) chunks.push(chunk);
   const save = JSON.parse(Buffer.concat(chunks).toString());
   expect(save.players.local.inventory.containers['player:equipment'].slots.find((slot: any) => slot.slotKey === 'body').item)
-    .toEqual({ itemId: 'backpack', skinId: 'backpack_babybeef', count: 1 });
+    .toEqual({ entityId: backpackId, itemId: 'backpack', skinId: 'backpack_babybeef', count: 1 });
   expect(errors).toEqual([]);
 });

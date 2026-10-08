@@ -49,8 +49,8 @@ export interface ActionAnimationController {
   cancelEmote(): void;
   playBugNet(onCatch: () => void): boolean;
   playStaffCast(onCast: () => void): boolean;
-  playSeedEat(onEat: () => boolean): boolean;
+  playQuickEat(onEat: () => boolean, foodDrink?: boolean): boolean;
   playPlant(onPlant: () => boolean): boolean;
-  cancelSeedAction(): void;
+  cancelFoodAction(): void;
   setFacing(facing: 'up' | 'down' | 'side', mirrored?: boolean): void;
 }

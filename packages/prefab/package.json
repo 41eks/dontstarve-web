@@ -37,6 +37,7 @@
     "./flower": "./src/flower.ts",
     "./farm_plow": "./src/farm_plow.ts",
     "./seeds": "./src/seeds.ts",
+    "./food": "./src/food.ts",
     "./farm_hoe": "./src/farm_hoe.ts",
     "./shovel": "./src/shovel.ts",
     "./bugnet": "./src/bugnet.ts",

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { SEEDS_HUNGER } from '../../prefab/src/seeds';
-import { SeedsActionController } from '../../stategraphs/src/seeds';
+import { FoodActionController } from '../../stategraphs/src/food';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { TurfMap } from '../../prefab/src/turfMap';
@@ -37,7 +37,7 @@ it('renders the original ground seed pose and commits quick eating once at frame
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
   const { farm, world } = farmSetup(player);
-  const seeds = new SeedsActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined }, farm);
+  const seeds = new FoodActionController(world, animation, { stop() {}, goToPoint: () => true, destination: undefined }, farm);
   let count = 2;
   const stats = { hunger: 105, health: 150, sanity: 35 };
   const source = { isValid: () => count > 0, take: () => { count--; return true; } };
@@ -114,7 +114,7 @@ it('commits PLANT on frame 6 and cancels an uncommitted short action', async () 
   expect(plant).toHaveBeenCalledOnce();
   for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
   expect(animation.playPlant(plant)).toBe(true);
-  animation.cancelSeedAction();
+  animation.cancelFoodAction();
   for (let frame = 0; frame < 40; frame++) animation.update(1 / 30);
   expect(plant).toHaveBeenCalledOnce();
 });

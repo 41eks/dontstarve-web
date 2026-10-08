@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { createHandEquipmentExistenceState, type HandEquipment } from '../src';
+import { createHandEquipmentExistenceState, createHeadEquipmentExistenceState, createBodyEquipmentExistenceState, type HandEquipment } from '../src';
 
 it('accepts hand equipment and null, rejecting invalid slots without changing state or notifying', () => {
   const handEquipmentExistenceState = createHandEquipmentExistenceState();
@@ -18,6 +18,22 @@ it('accepts hand equipment and null, rejecting invalid slots without changing st
     expect(handEquipmentExistenceState.peek()).toBeNull();
     expect(listener).toHaveBeenCalledExactlyOnceWith(null, item);
   } finally { unsubscribe(); }
+});
+
+it('creates independent head/body states and rejects equipment for the wrong slot', () => {
+  const head = createHeadEquipmentExistenceState(), body = createBodyEquipmentExistenceState();
+  const hat = { itemId: 'strawhat', EQUIPSLOTS: 'HEAD' as const };
+  const backpack = { itemId: 'backpack', EQUIPSLOTS: 'BODY' as const };
+  head.set(hat); body.set(backpack);
+  const changes = vi.fn(), stop = head.subscribe(changes);
+  try {
+    // @ts-expect-error Body equipment cannot be published in a head slot.
+    expect(() => head.set(backpack)).toThrow('EQUIPSLOTS = "HEAD"');
+    expect(head.peek()).toBe(hat);
+    expect(changes).not.toHaveBeenCalled();
+    body.set(null);
+    expect(head.peek()).toBe(hat);
+  } finally { stop(); }
 });
 
 it('creates independent states and observes subsequent writes synchronously without replay', () => {

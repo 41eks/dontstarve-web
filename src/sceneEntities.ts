@@ -7,7 +7,7 @@ import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
 import { FarmPlowPlacement, FARM_PLOW_ID, FARM_DECOR_IDS } from '@dontstarve-web/prefab/farm_plow';
-import { playerStats, WILSON_MAX_SANITY } from './playerStats';
+import { playerStats } from './playerStats';
 import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
@@ -90,7 +90,7 @@ export function createSceneEntities(
       isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
       getPlayerPositions: () => [player.position],
     },
-    { getSanityPercent: () => playerStats.sanity / WILSON_MAX_SANITY },
+    { getSanityPercent: () => playerStats.sanity.percent.peek() },
     itemEntities,
   );
   const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,

@@ -282,3 +282,10 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 `shovel.lua` 的黄金铲子 `equipped` 事件播放 `dontstarve/wilson/equip_item_gold`；`SGwilson.lua` 的 `dig` 在 `shovel_loop` 第 15 帧播放 `dontstarve/wilson/dig` 并执行 DIG。后者沿用园艺锄已核对的 `wilson.fsb` 流 64–66；`farm_soil_debris.lua` 的 `dirt_puff` 对应 `fx.lua` 的 bank `small_puff`、build `smoke_puff_small`、动画 `puff`，没有额外的尘土声音。
 
 核对 `dontstarve.fev`：`equip_item_gold` → sound definition `/__simpleevent_sounddef__/equip_item Copy_204` → `sfx/wilson/equip_goldItem.wav`，bank `wilson`，零基 file_index 114，对应 vgmstream `-s 115`。用 `vgmstream-cli -i -s 115` 导出到 `public/dst/data/sound/wilson.fsb-115.wav`，与源解码样本字节一致；装备资源加载时完成声音预加载，当前装备请求仍有效时播放一次。声音映射和播放沿用 `sound.ts`。
+
+
+### 香蕉奶昔饮用声音
+
+`preparedfoods.lua:bananajuice` 定义 `fooddrink` 标签；`SGwilson.lua` 的 quickeat 根据该标签选择 `quick_drink_pre → quick_drink`，第 10 帧的 `DoEatSound()` 播放 `dontstarve/wilson/sip`，第 12 帧执行 EAT。动画实际在 `anim/player_actions_eat.zip` 中，不能用 `player_drink.zip` 的长饮用动画替代。
+
+核对源 `dontstarve.fev`：sip 事件引用 sound definition 1712（`/__simpleevent_sounddef__/eat Copy_2184`），文件 `sfx/wilson/player_sip_drink_DST_002.wav`，bank `sfx`，零基 `file_index = 1286`。对应 `vgmstream-cli -m -s 1287` 为单声道 44100 Hz、15014 samples（约 0.340 秒）。按 `-i -s 1287` 导出至 `public/dst/data/sound/sfx.fsb-1287.wav`，由 `sound.ts` 的统一映射预加载、解码和播放。

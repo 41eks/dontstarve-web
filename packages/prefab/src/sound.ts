@@ -11,6 +11,8 @@ const sounds = {
   // farmplantable.lua / SGwilson.lua → dontstarve.fev (file_index + 1).
   'dontstarve/common/plant': { bank: 'common', streams: [170, 171, 172, 173, 174], loop: false },
   'dontstarve/wilson/eat': { bank: 'wilson', streams: [112, 113, 114], loop: false },
+  // SGwilson.lua DoEatSound → dontstarve.fev sounddef 1712 → sfx file_index 1286.
+  'dontstarve/wilson/sip': { bank: 'sfx', streams: [1287], loop: false },
   // phonograph.lua → dontstarve.fev → gramaphone banks (file_index + 1).
   'dontstarve/music/gramaphone_ragtime': { bank: 'gramaphone', streams: [10], loop: true },
   'dontstarve/music/gramaphone_creepyforest': { bank: 'gramaphone', streams: [4], loop: true },

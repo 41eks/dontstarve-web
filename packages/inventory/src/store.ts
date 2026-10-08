@@ -1,10 +1,14 @@
 import { ItemEntity, ItemEntityRegistry } from './entity';
 import { planCraft } from './craft';
-import { createHandEquipmentExistenceState, readonlySignal, type HandEquipment, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { equipmentSlotAddress } from './addresses';
+import {
+  createHandEquipmentExistenceState, createHeadEquipmentExistenceState, createBodyEquipmentExistenceState, readonlySignal,
+  type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
+} from '@dontstarve-web/signals';
+import { EQUIPMENT_KINDS, equipmentSlotAddress } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type {
+  EquipmentKind,
   InventoryItemSpec,
   InventoryListener,
   InventoryReceiveListener,
@@ -17,6 +21,17 @@ import type {
   SlotAddress,
   InventoryState,
 } from './types';
+
+export interface EquipmentExistenceStates {
+  handEquipmentExistenceState?: Signal<HandEquipment | null>;
+  headEquipmentExistenceState?: Signal<HeadEquipment | null>;
+  bodyEquipmentExistenceState?: Signal<BodyEquipment | null>;
+}
+
+function changedEquipmentKinds(addresses: readonly SlotAddress[]): EquipmentKind[] {
+  return EQUIPMENT_KINDS.filter(kind => addresses.some(address =>
+    addressKey(address) === addressKey(equipmentSlotAddress(kind))));
+}
 
 type RegisteredItemSlot = SlotRegistration<ItemSlot>;
 type RegisteredInventorySlot = SlotRegistration<InventorySlot>;
@@ -48,6 +63,10 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
 export class InventoryStore {
   readonly handEquipmentExistenceState: Signal<HandEquipment | null>;
   readonly handEquipment: ReadonlySignal<HandEquipment | null>;
+  readonly headEquipmentExistenceState: Signal<HeadEquipment | null>;
+  readonly headEquipment: ReadonlySignal<HeadEquipment | null>;
+  readonly bodyEquipmentExistenceState: Signal<BodyEquipment | null>;
+  readonly bodyEquipment: ReadonlySignal<BodyEquipment | null>;
   readonly entities: ItemEntityRegistry;
   private readonly bufferedBuilds = new Map<string, string | undefined>();
   private readonly itemSpecs = new Map<string, InventoryItemSpec>();
@@ -56,17 +75,21 @@ export class InventoryStore {
   private readonly skinSpecs: Readonly<Record<string, InventorySkinSpec>>;
   private readonly registrationByAddress = new Map<string, RegisteredItemSlot>();
   private readonly registrations: RegisteredItemSlot[] = [];
-  private stopHandEquipmentExistenceState?: () => void;
+  private readonly equipmentSubscriptions = new Map<EquipmentKind, () => void>();
 
   constructor(
     registrations: readonly RegisteredItemSlot[],
     itemSpecs: Readonly<Record<string, InventoryItemSpec>>,
     skinSpecs: Readonly<Record<string, InventorySkinSpec>> = {},
     entities = new ItemEntityRegistry(),
-    handEquipmentExistenceState: Signal<HandEquipment | null> = createHandEquipmentExistenceState(),
+    equipmentExistenceStates: EquipmentExistenceStates = {},
   ) {
-    this.handEquipmentExistenceState = handEquipmentExistenceState;
-    this.handEquipment = readonlySignal(handEquipmentExistenceState);
+    this.handEquipmentExistenceState = equipmentExistenceStates.handEquipmentExistenceState ?? createHandEquipmentExistenceState();
+    this.headEquipmentExistenceState = equipmentExistenceStates.headEquipmentExistenceState ?? createHeadEquipmentExistenceState();
+    this.bodyEquipmentExistenceState = equipmentExistenceStates.bodyEquipmentExistenceState ?? createBodyEquipmentExistenceState();
+    this.handEquipment = readonlySignal(this.handEquipmentExistenceState);
+    this.headEquipment = readonlySignal(this.headEquipmentExistenceState);
+    this.bodyEquipment = readonlySignal(this.bodyEquipmentExistenceState);
     this.entities = entities;
     this.skinSpecs = skinSpecs;
     Object.entries(itemSpecs).forEach(([itemId, spec]) => this.itemSpecs.set(itemId, spec));
@@ -114,9 +137,9 @@ export class InventoryStore {
       this.registrationByAddress.set(addressKey(registration.address), registration);
     }
     this.bindOwners();
-    if (pending.some(({ address }) => addressKey(address) === addressKey(equipmentSlotAddress('hand')))) {
-      this.bindHandEquipmentExistenceState();
-      this.publishHandEquipmentExistenceState();
+    for (const kind of changedEquipmentKinds(pending.map(({ address }) => address))) {
+      this.bindEquipmentExistenceState(kind);
+      this.publishEquipmentExistenceState(kind);
     }
   }
 
@@ -125,13 +148,14 @@ export class InventoryStore {
     return () => this.listeners.delete(listener);
   }
 
-  /** Registration binds once before publishing; null removes the current equipment. */
-  private bindHandEquipmentExistenceState(): void {
-    if (this.stopHandEquipmentExistenceState) return;
-    const address = equipmentSlotAddress('hand');
-    if (!this.registrationByAddress.has(addressKey(address))) throw new Error('Missing player hand slot');
-    this.stopHandEquipmentExistenceState = this.handEquipmentExistenceState.subscribe((equipment, previous) => {
-      if (equipment !== null || this.handEquipmentExistenceState.peek() !== null) return;
+  /** Each equipment slot binds once before publishing; null removes its current item. */
+  private bindEquipmentExistenceState(kind: EquipmentKind): void {
+    if (this.equipmentSubscriptions.has(kind)) return;
+    const address = equipmentSlotAddress(kind);
+    const state = kind === 'hand' ? this.handEquipmentExistenceState
+      : kind === 'head' ? this.headEquipmentExistenceState : this.bodyEquipmentExistenceState;
+    const stop = state.subscribe((equipment: Equipment | null, previous: Equipment | null) => {
+      if (equipment !== null || state.peek() !== null) return;
       const entity = this.getEntity(address);
       // Own transfers already emptied the slot; foreign/stale equipment cannot remove its replacement.
       if (!entity || previous?.entity !== entity) return;
@@ -139,11 +163,12 @@ export class InventoryStore {
         slot: address, itemId: entity.prefab, skinId: entity.skinId, delta: -entity.components.stackable.count,
       }]);
     });
+    this.equipmentSubscriptions.set(kind, stop);
   }
 
   dispose(): void {
-    this.stopHandEquipmentExistenceState?.();
-    this.stopHandEquipmentExistenceState = undefined;
+    for (const stop of this.equipmentSubscriptions.values()) stop();
+    this.equipmentSubscriptions.clear();
     this.listeners.clear();
     this.entities.dispose();
   }
@@ -214,7 +239,7 @@ export class InventoryStore {
     this.commit(next, false, true);
     this.bufferedBuilds.clear();
     for (const [id, skin] of buffered) this.bufferedBuilds.set(id, skin);
-    this.notify(this.addresses(), true);
+    this.notify(this.addresses(), EQUIPMENT_KINDS);
   }
 
   get(address: SlotAddress): InventoryStack | null {
@@ -263,7 +288,7 @@ export class InventoryStore {
     if (count === state.count) {
       next.set(addressKey(address), null);
       this.commit(next, true);
-      this.notify([cloneAddress(address)], addressKey(address) === addressKey(equipmentSlotAddress('hand')));
+      this.notify([cloneAddress(address)], changedEquipmentKinds([address]));
       return entity;
     }
     const split = this.entities.create({ ...state, entityId: undefined, count });
@@ -434,7 +459,7 @@ export class InventoryStore {
     if (recipe.buffered) {
       this.bufferedBuilds.set(recipe.recipeId, skinId ?? recipe.productSkinId);
     }
-    this.notify(changed, changed.some((address) => addressKey(address) === addressKey(equipmentSlotAddress('hand'))));
+    this.notify(changed, changedEquipmentKinds(changed));
     if (result.products.length) {
       const productSkinId = skinId ?? recipe.productSkinId;
       onReceived?.(result.products.map(({ slotIndex, count }) => ({
@@ -503,7 +528,7 @@ export class InventoryStore {
     }
     if (!this.validEntityAssignments(next)) return false;
     this.commit(next);
-    this.notify([...changed.values()], changed.has(addressKey(equipmentSlotAddress('hand'))));
+    this.notify([...changed.values()], changedEquipmentKinds([...changed.values()]));
     return true;
   }
 
@@ -602,17 +627,24 @@ export class InventoryStore {
     for (const entity of old) if (!retained.has(entity) && !keepDeparted) this.entities.destroy(entity);
   }
 
-  private publishHandEquipmentExistenceState(): void {
-    const entity = this.getEntity(equipmentSlotAddress('hand'));
-    this.handEquipmentExistenceState.set(entity ? Object.freeze({
-      itemId: entity.prefab, EQUIPSLOTS: 'HANDS' as const, entity,
-      ...(entity.skinId === undefined ? {} : { skinId: entity.skinId }),
-    }) : null);
+  private publishEquipmentExistenceState(kind: EquipmentKind): void {
+    const address = equipmentSlotAddress(kind);
+    if (!this.registrationByAddress.has(addressKey(address))) return;
+    const entity = this.getEntity(address);
+    const publish = <S extends EquipmentSlot>(state: Signal<Equipment<S> | null>, EQUIPSLOTS: S) => {
+      state.set(entity ? Object.freeze({
+        itemId: entity.prefab, EQUIPSLOTS, entity,
+        ...(entity.skinId === undefined ? {} : { skinId: entity.skinId }),
+      }) : null);
+    };
+    if (kind === 'hand') publish(this.handEquipmentExistenceState, 'HANDS');
+    else if (kind === 'head') publish(this.headEquipmentExistenceState, 'HEAD');
+    else publish(this.bodyEquipmentExistenceState, 'BODY');
   }
 
-  private notify(changedSlots: readonly SlotAddress[], handReplaced = false): void {
-    // Fuel or unrelated inventory updates must not re-equip an extinguished torch.
-    if (handReplaced) this.publishHandEquipmentExistenceState();
+  private notify(changedSlots: readonly SlotAddress[], replacedEquipment: readonly EquipmentKind[] = []): void {
+    // Component or unrelated inventory updates must not restart equipment lifecycles.
+    for (const kind of replacedEquipment) this.publishEquipmentExistenceState(kind);
     this.listeners.forEach((listener) => listener(changedSlots));
   }
 

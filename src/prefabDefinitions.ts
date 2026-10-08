@@ -1,4 +1,5 @@
 import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
+import { BANANAJUICE_ID } from '@dontstarve-web/prefab/food';
 import { FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_DECOR_IDS, PLANTED_SEED_ID } from '@dontstarve-web/prefab/farm_plow';
 import { DWARF_STAR_DURATION, POLAR_LIGHT_DURATION, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BULB_PLANT_PREFABS } from '@dontstarve-web/prefab/bulb_plant';
@@ -55,7 +56,7 @@ export const PREFAB_DEFINITIONS = {
     return fail(path, `missing building definition for ${context.prefab}`);
   }, PLACEABLE_BUILDING_IDS),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch'] }),
-    ['fireflies', BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'phonograph', 'record', 'seeds', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel']),
+    ['fireflies', BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'phonograph', 'record', 'seeds', BANANAJUICE_ID, 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel']),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] })),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION })),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION })),

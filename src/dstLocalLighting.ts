@@ -98,6 +98,15 @@ export class DstLocalLighting {
     this.ambient.value.copy(colour);
   }
 
+  dispose(): void {
+    this.torchOwner = null;
+    this.prefabLights.length = 0;
+    this.target.dispose();
+    this.lightmapMaterial.dispose();
+    for (const quad of this.scene.children) if (quad instanceof THREE.Mesh) quad.geometry.dispose();
+    this.scene.clear();
+  }
+
   setTorchOwner(owner: THREE.Object3D | null): void {
     this.torchOwner = owner;
   }

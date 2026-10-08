@@ -1,9 +1,16 @@
 import * as THREE from 'three';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
+import type { ReadonlySignal } from '@dontstarve-web/signals';
 import { DstLocalLighting } from './dstLocalLighting';
 
 export type DstSeason = 'autumn' | 'winter' | 'spring' | 'summer';
 export type DstLightPhase = 'day' | 'dusk' | 'night' | 'full_moon';
+
+export interface DstLightingState {
+  season: DstSeason;
+  phase: DstLightPhase;
+  sanityPercent?: ReadonlySignal<number>;
+}
 
 declare global {
   interface WindowEventMap {
@@ -217,7 +224,7 @@ export class DstLightingRenderer {
   static async create(
     renderer: THREE.WebGLRenderer,
     colourCubeRoot: string,
-    initialState: { season: DstSeason; phase: DstLightPhase; sanityPercent?: number } = { season: 'spring', phase: 'night' },
+    initialState: DstLightingState = { season: 'spring', phase: 'night' },
   ): Promise<DstLightingRenderer> {
     const uniquePaths = [...new Set([
       ...Object.values(LUT_PATHS).flatMap((phases) => Object.values(phases)),
@@ -244,6 +251,8 @@ export class DstLightingRenderer {
   private phase: DstLightPhase = 'night';
   private weatherLight = 1;
   private sanityPercent = 1;
+  private stopSanitySubscription?: () => void;
+  private disposed = false;
   private distortionSpeed = 0;
   private ambientBlendRemaining = 0;
   private ambientBlendTotal = 0;
@@ -253,7 +262,7 @@ export class DstLightingRenderer {
   private constructor(
     renderer: THREE.WebGLRenderer,
     textures: ReadonlyMap<string, THREE.DataTexture>,
-    initialState: { season: DstSeason; phase: DstLightPhase; sanityPercent?: number },
+    initialState: DstLightingState,
   ) {
     this.renderer = renderer;
     this.textures = textures;
@@ -312,8 +321,24 @@ export class DstLightingRenderer {
     const quad = new THREE.Mesh(geometry, this.material);
     quad.frustumCulled = false;
     this.postScene.add(quad);
-    this.setSanityPercent(initialState.sanityPercent ?? 1);
+    if (initialState.sanityPercent) {
+      this.stopSanitySubscription = initialState.sanityPercent.subscribe(percent => this.applySanityPercent(percent));
+    }
+    this.applySanityPercent(initialState.sanityPercent?.peek() ?? 1);
     this.applyAmbientUniform();
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.stopSanitySubscription?.();
+    this.stopSanitySubscription = undefined;
+    this.localLighting.dispose();
+    this.renderTarget.dispose();
+    for (const texture of this.textures.values()) texture.dispose();
+    for (const quad of this.postScene.children) if (quad instanceof THREE.Mesh) quad.geometry.dispose();
+    this.postScene.clear();
+    this.material.dispose();
   }
 
   getSeason(): DstSeason {
@@ -344,7 +369,7 @@ export class DstLightingRenderer {
   }
 
   /** Apply DST's quadratic grading using the nearest 10% sanity level. */
-  setSanityPercent(percent: number): void {
+  private applySanityPercent(percent: number): void {
     if (!Number.isFinite(percent)) throw new Error('Sanity percent must be finite');
     this.sanityPercent = THREE.MathUtils.clamp(percent, 0, 1);
     const gradingPercent = Math.round(this.sanityPercent * SANITY_GRADING_STEPS) / SANITY_GRADING_STEPS;

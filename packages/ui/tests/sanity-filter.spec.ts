@@ -41,6 +41,7 @@ test('insanity LUTs use discrete grading levels, fade across phases and distort 
   expect(result.edgeChanges).toBeGreaterThan(100);
   expect(result.saneChanges).toBe(false);
   expect(result.maxBoundaryError).toBeLessThanOrEqual(1);
+  expect(result.subscriptionReleased).toBe(true);
   expect(errors).toEqual([]);
 });
 
@@ -78,8 +79,13 @@ test('game restores saved sanity and synchronizes debug commands, HUD and manual
   expect(await page.evaluate(async (urls) => {
     const { dstLighting } = await import(urls.universal);
     const { playerStats } = await import(urls.stats);
-    return { percent: dstLighting.getSanityPercent(), sanity: playerStats.sanity };
+    return { percent: dstLighting.getSanityPercent(), sanity: playerStats.sanity.peek() };
   }, urls)).toEqual({ percent: 0.175, sanity: 35 });
+  // Writing the source signal directly must update both consumers without the command callback.
+  await page.evaluate(async url => (await import(url)).playerStats.sanity.set(100), urls.stats);
+  await expect(meter.locator('output')).toHaveText('100');
+  expect(await page.evaluate(async url => (await import(url)).dstLighting.getSanityPercent(), urls.universal)).toBe(0.5);
+  await submit('c_setsanity(0.175)');
   const downloadPromise = page.waitForEvent('download');
   await submit('c_save()');
   const download = await downloadPromise;
@@ -93,5 +99,12 @@ test('game restores saved sanity and synchronizes debug commands, HUD and manual
   await submit('c_setsanity(0)');
   await expect(meter.locator('output')).toHaveText('0');
   await page.screenshot({ path: '/tmp/dontstarve-sanity-zero.png' });
+  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
+  await page.reload();
+  expect(await page.evaluate(async urls => {
+    await import(urls.main);
+    return (await import(urls.universal)).dstLighting.getSanityPercent();
+  }, urls)).toBe(0.175);
+  await expect(meter.locator('output')).toHaveText('35');
   expect(errors).toEqual([]);
 });

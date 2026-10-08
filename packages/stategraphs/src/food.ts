@@ -6,13 +6,13 @@ type FarmPlowPlacement = Pick<FarmActionWorld, 'soilTargets' | 'prepareSeedPlant
 
 const PLANT_REACH = 4;
 
-export interface SeedSource { isValid(): boolean; take(): boolean; prepareEat?(): Promise<void>; }
+export interface FoodSource { isValid(): boolean; take(): boolean; prepareEat?(): Promise<void>; readonly foodDrink?: boolean; }
 
-/** Inventory seeds can be eaten or planted in a finished, intact farm_soil hole. */
-export class SeedsActionController {
+/** Inventory food uses timed quick eating/drinking; seeds can also be planted. */
+export class FoodActionController {
   private readonly pointer: PointerRaycaster;
   private readonly label: CursorLabel;
-  private source?: SeedSource;
+  private source?: FoodSource;
   private target?: FarmSoilTarget;
   private prepared?: PreparedSeedPlant;
   private loading = false;
@@ -47,20 +47,20 @@ export class SeedsActionController {
     window.addEventListener('keydown', this.handleKeyDown);
   }
 
-  begin(source: SeedSource): void {
+  begin(source: FoodSource): void {
     this.cancel(); this.source = source; this.animation.cancelEmote();
   }
 
-  async eat(source: SeedSource, onEaten: () => void): Promise<boolean> {
+  async eat(source: FoodSource, onEaten: () => void): Promise<boolean> {
     this.cancel();
     const version = this.version;
     await source.prepareEat?.();
     if (this.disposed || version !== this.version || !source.isValid()) return false;
     this.locomotor.stop(); this.animation.cancelEmote();
-    return this.animation.playSeedEat(() => {
+    return this.animation.playQuickEat(() => {
       if (version !== this.version || !source.isValid() || !source.take()) return false;
       onEaten(); return true;
-    });
+    }, source.foodDrink);
   }
 
   cancel(): void {
@@ -68,7 +68,7 @@ export class SeedsActionController {
     if (this.target) this.locomotor.stop();
     this.target = undefined; this.source = undefined; this.loading = false;
     this.prepared?.dispose(); this.prepared = undefined;
-    this.animation.cancelSeedAction(); this.label.hide(); this.onDeselect();
+    this.animation.cancelFoodAction(); this.label.hide(); this.onDeselect();
   }
 
   update(): void {
@@ -151,7 +151,7 @@ export class SeedsActionController {
     if (!target) { if (event.button === 0 || event.button === 2) this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     this.version++; this.prepared?.dispose(); this.prepared = undefined; this.loading = false;
-    this.animation.cancelSeedAction(); this.animation.cancelEmote(); this.target = target;
+    this.animation.cancelFoodAction(); this.animation.cancelEmote(); this.target = target;
   };
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     if (event.code === 'Escape') this.cancel();

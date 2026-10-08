@@ -21,11 +21,13 @@ export {
   type ItemSlot,
 } from './slots';
 export { craft } from './craft';
-export { InventoryStore } from './store';
+export { InventoryStore, type EquipmentExistenceStates } from './store';
 export { PreparedFoodSlot } from './preparedFoodSlot';
 export type {
   EquipmentKind,
   HandEquipment,
+  HeadEquipment,
+  BodyEquipment,
   InventoryItemSpec,
   InventoryItems,
   InventoryListener,

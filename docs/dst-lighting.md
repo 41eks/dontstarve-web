@@ -242,3 +242,12 @@ DST 的整体灯光风格来自三类效果的组合：
 3. **Colour Cube shader**统一调整最终画面的颜色分布。
 
 所以要复现 DST 的白天效果，不能只设置一盏黄色方向光。至少需要让所有可见对象共享暖色环境乘色，并在最终画面上应用原版季节 LUT；局部灯光则作为独立系统按需叠加。
+
+
+## 理智 signal 与滤镜订阅
+
+`packages/signals` 的 `createSanityState(initialValue, maximum)` 创建理智点数 signal；`src/playerStats.ts` 从存档恢复 `playerStats.sanity`，Wilson 上限为 200，旧存档缺省为 35。写入有限点数自动限制在 `[0, 200]`，`percent` 提供同一状态的只读比例视图。
+
+`DstLightingRenderer.create()` 的 `initialState.sanityPercent` 接受该只读视图。加载 LUT 后，滤镜订阅比例变化并通过 `peek()` 应用最新值，因此加载期间发生的理智变化也能正确初始化。后续变化同步更新分档调色强度、连续扭曲幅度和速度；渲染每帧仅推进时间与昼夜/季节渐变。滤镜不导入全局玩家状态，外部不再直接调用滤镜的理智 setter。
+
+HUD 独立订阅理智点数，`c_setsanity(percent)` 只写入 signal。保存通过 `getPlayerStats()` 导出包含理智数值的快照，不序列化 signal；重载恢复数值后由滤镜订阅初始化画面。`DstLightingRenderer.dispose()` 取消订阅并释放 LUT、后处理与局部光照资源，页面关闭也取消 HUD 订阅。

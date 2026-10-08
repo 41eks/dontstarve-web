@@ -5,7 +5,7 @@ import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmen
 const hand = equipmentSlotAddress('hand'), bag = inventorySlotAddress(0);
 const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' as const } };
 function createStore(handEquipmentExistenceState?: ReturnType<typeof createHandEquipmentExistenceState>) {
-  return new InventoryStore([{ address: bag, slot: new InventorySlot() }, { address: hand, slot: new HandSlot() }], specs, {}, undefined, handEquipmentExistenceState);
+  return new InventoryStore([{ address: bag, slot: new InventorySlot() }, { address: hand, slot: new HandSlot() }], specs, {}, undefined, { handEquipmentExistenceState });
 }
 
 it('commits a signal clear before presentation observes it and preserves a transferred entity', () => {
@@ -72,7 +72,7 @@ it('binds once when a hand slot is registered later and leaves failed registrati
   const handEquipmentExistenceState = createHandEquipmentExistenceState();
   const subscribe = vi.spyOn(handEquipmentExistenceState, 'subscribe');
   const store = new InventoryStore([{ address: bag, slot: new InventorySlot() }], specs,
-    {}, undefined, handEquipmentExistenceState);
+    {}, undefined, { handEquipmentExistenceState });
   try {
     expect(subscribe).not.toHaveBeenCalled();
     expect(() => store.registerSlots([

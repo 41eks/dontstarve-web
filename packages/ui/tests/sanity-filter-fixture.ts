@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
+import { createSanityState } from '@dontstarve-web/signals';
 import { DstLightingRenderer, type DstLightPhase } from '../../../src/dstLighting';
 
 export async function checkSanityFilter() {
@@ -7,8 +8,9 @@ export async function checkSanityFilter() {
   renderer.setSize(128, 128);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.body.append(renderer.domElement);
+  const sanity = createSanityState(35, 200);
   const lighting = await DstLightingRenderer.create(renderer, '/dst/data/images/colour_cubes', {
-    season: 'spring', phase: 'day', sanityPercent: 35 / 200,
+    season: 'spring', phase: 'day', sanityPercent: sanity.percent,
   });
   const initialPercent = lighting.getSanityPercent();
   const scene = new THREE.Scene();
@@ -45,23 +47,23 @@ export async function checkSanityFilter() {
   for (const phase of ['day', 'dusk', 'night', 'full_moon'] as DstLightPhase[]) {
     lighting.setPhase(phase);
     lighting.update(10);
-    lighting.setSanityPercent(1);
+    sanity.set(200);
     const normal = draw();
-    lighting.setSanityPercent(0.5);
+    sanity.set(100);
     const halfSanity = draw();
-    lighting.setSanityPercent(0);
+    sanity.set(0);
     const insane = draw();
     const levels = [0.149, 0.15, 0.175, 0.249, 0.25, 0.95].map((percent) => {
-      lighting.setSanityPercent(percent);
+      sanity.set(percent * sanity.maximum);
       return { percent, actualPercent: lighting.getSanityPercent(), colour: draw() };
     });
-    lighting.setSanityPercent(1);
+    sanity.set(200);
     const restored = draw();
     const expected = await expectedInsane(`insane_${phase === 'full_moon' ? 'night' : phase}_cc.tex`);
     phases.push({ phase, normal, halfSanity, insane, expected, restored, levels });
   }
   // Spring uses the same ambient LUT for dusk/night, but different insane LUTs.
-  lighting.setSanityPercent(0);
+  sanity.set(0);
   lighting.setPhase('dusk');
   lighting.update(6);
   const dusk = draw();
@@ -97,7 +99,7 @@ export async function checkSanityFilter() {
     if (x > 48 && x < 80 && y > 48 && y < 80) centreChanges++;
     if (x < 16 || x > 112 || y < 16 || y > 112) edgeChanges++;
   }
-  lighting.setSanityPercent(1);
+  sanity.set(200);
   draw();
   const saneBefore = read();
   lighting.update(0.17);
@@ -107,7 +109,7 @@ export async function checkSanityFilter() {
   // A uniform source must stay uniform right up to the viewport boundaries:
   // resizing, DPR and large time deltas must not introduce bright scanlines.
   scene.background = background;
-  lighting.setSanityPercent(0);
+  sanity.set(0);
   lighting.setPhase('day');
   lighting.update(4);
   const reference = draw();
@@ -127,6 +129,10 @@ export async function checkSanityFilter() {
   }
   background.dispose();
   patternTexture.dispose();
+  const disposedPercent = lighting.getSanityPercent();
+  lighting.dispose();
+  sanity.set(200);
+  const subscriptionReleased = lighting.getSanityPercent() === disposedPercent;
   renderer.dispose();
-  return { initialPercent, phases, dusk, halfway, night, centreChanges, edgeChanges, saneChanges, maxBoundaryError };
+  return { initialPercent, phases, dusk, halfway, night, centreChanges, edgeChanges, saneChanges, maxBoundaryError, subscriptionReleased };
 }

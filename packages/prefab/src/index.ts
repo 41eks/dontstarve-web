@@ -186,3 +186,5 @@ export {
 } from './portal';
 
 export { PHONOGRAPH_ID, RECORD_ID, PHONOGRAPH_PLAY_TIME, PhonographController } from './phonograph';
+
+export { BANANAJUICE_ID, FOOD_EFFECTS, type FoodEffects } from './food';

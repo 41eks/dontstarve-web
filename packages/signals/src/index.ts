@@ -2,3 +2,9 @@ export { createSignal, createEffect, createMemo, onCleanUp, readonlySignal } fro
 export type { Signal, ReadonlySignal, SignalListener } from './signal';
 export { createHandEquipmentExistenceState } from './handEquipment';
 export type { HandEquipment, HandEquipmentEntity, HandEquipmentLifecycle } from './handEquipment';
+export { createHeadEquipmentExistenceState } from './headEquipment';
+export type { HeadEquipment, HeadEquipmentLifecycle } from './headEquipment';
+export { createBodyEquipmentExistenceState } from './bodyEquipment';
+export type { BodyEquipment, BodyEquipmentLifecycle } from './bodyEquipment';
+export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentSlot } from './equipment';
+export { createSanityState, type SanityState } from './sanity';

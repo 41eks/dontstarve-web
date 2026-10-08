@@ -1,0 +1,7280 @@
+{
+  "format": "three-roaming-save",
+  "schemaVersion": 1,
+  "gameVersion": "0.0.0",
+  "session": {
+    "id": "forest-initial-v1",
+    "createdAt": "2026-09-30T00:00:00.000Z"
+  },
+  "snapshot": {
+    "id": "0000000014",
+    "parentId": "0000000013",
+    "savedAt": "2026-10-07T09:22:07.556Z",
+    "reason": "manual"
+  },
+  "world": {
+    "shardId": "master",
+    "prefab": "forest",
+    "elapsedSeconds": 4917.833899999674,
+    "systems": {},
+    "map": {
+      "kind": "generated",
+      "tiles": [
+        {
+          "col": 2,
+          "row": -1,
+          "tileId": 47,
+          "underTileId": 30
+        }
+      ],
+      "generator": {
+        "id": "forest-initial-v1",
+        "options": {
+          "size": 1000,
+          "moonTreeCount": 500,
+          "moonTreeExclusionRadiusSquared": 600
+        }
+      }
+    },
+    "entities": {
+      "farm_plow": [],
+      "farm_soil": [
+        {
+          "id": "e_b359e9eb6f2036d1467bb8874597f4be",
+          "transform": {
+            "position": [
+              31.542742463498087,
+              0,
+              -0.7059261082027986
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_e3b9fa7b66b7175267c7fe64dc023659",
+          "transform": {
+            "position": [
+              29.462612432080288,
+              0,
+              -0.004091455472502226
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": false
+            }
+          }
+        },
+        {
+          "id": "e_bb0f8768d1166bd17f2d5ac19331d1fb",
+          "transform": {
+            "position": [
+              26.966659556608167,
+              0,
+              -3.3502096109896087
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_316fa258e46464347999de9d27119258",
+          "transform": {
+            "position": [
+              28.108654545603933,
+              0,
+              -11.309286995601909
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_734ef65a989a11fea548a77a75c2d42d",
+          "transform": {
+            "position": [
+              25.76337320959666,
+              0,
+              -7.261278337403534
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_ad27879ca9e139d182c0448be9c0e952",
+          "transform": {
+            "position": [
+              24.46539017106535,
+              0,
+              -10.810402312559944
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": false
+            }
+          }
+        },
+        {
+          "id": "e_e29424b404b6e9f94db9073ab12a851a",
+          "transform": {
+            "position": [
+              24.439841981509975,
+              0,
+              -0.05698711457379524
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_859092a74c02d3e6cd4c107d5a136147",
+          "transform": {
+            "position": [
+              35.82778282362699,
+              0,
+              -1.0209978562998536
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": false
+            }
+          }
+        },
+        {
+          "id": "e_3dc706c45607828bdd3563957d0df834",
+          "transform": {
+            "position": [
+              35.05866934683244,
+              0,
+              -11.340620632980572
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_5c77669c2705bc12c4b11f52a6f44c91",
+          "transform": {
+            "position": [
+              24.100655273836946,
+              0,
+              -2.245804365994789
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_80eddb502af334dac45b32434c766dd2",
+          "transform": {
+            "position": [
+              29.74146081335593,
+              0,
+              -9.08820372533999
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        },
+        {
+          "id": "e_12946e9cf2d6b7d32a678959039cd923",
+          "transform": {
+            "position": [
+              35.03572469167517,
+              0,
+              -5.079812417434238
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmSoil": {
+              "broken": true
+            }
+          }
+        }
+      ],
+      "farm_soil_debris": [
+        {
+          "id": "e_90111c8672f3ebe7b5933c65c58c1ac0",
+          "transform": {
+            "position": [
+              24.83359391498297,
+              0,
+              -5.1890899247414275
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmDebris": {
+              "animation": "f4"
+            }
+          }
+        },
+        {
+          "id": "e_bb2457112d5b94d9c92e0230fd2adece",
+          "transform": {
+            "position": [
+              31.9314899865942,
+              0,
+              -4.787627445397425
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmDebris": {
+              "animation": "f2"
+            }
+          }
+        },
+        {
+          "id": "e_e56c5f7e4729d785e9c0a11d578cbe9a",
+          "transform": {
+            "position": [
+              35.067596053973766,
+              0,
+              -8.250216638391755
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmDebris": {
+              "animation": "f2"
+            }
+          }
+        },
+        {
+          "id": "e_b706253652865e66ea016450bf9c9d69",
+          "transform": {
+            "position": [
+              31.367715843243026,
+              0,
+              -11.123417076565545
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "farmDebris": {
+              "animation": "f4"
+            }
+          }
+        }
+      ],
+      "moon_tree": [
+        {
+          "id": "e_moon_tree_000001",
+          "transform": {
+            "position": [
+              16.118,
+              0,
+              -20.135
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000002",
+          "transform": {
+            "position": [
+              51.283,
+              0,
+              -277.088
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000003",
+          "transform": {
+            "position": [
+              -29.714,
+              0,
+              291.529
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000004",
+          "transform": {
+            "position": [
+              442.964,
+              0,
+              -337.103
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000005",
+          "transform": {
+            "position": [
+              443.627,
+              0,
+              -493.982
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000006",
+          "transform": {
+            "position": [
+              154.601,
+              0,
+              242.243
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000007",
+          "transform": {
+            "position": [
+              228.838,
+              0,
+              194.865
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000008",
+          "transform": {
+            "position": [
+              -105.869,
+              0,
+              22.391
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000009",
+          "transform": {
+            "position": [
+              439.442,
+              0,
+              -362.667
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000010",
+          "transform": {
+            "position": [
+              111.311,
+              0,
+              -318.451
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000011",
+          "transform": {
+            "position": [
+              -352.016,
+              0,
+              -408.953
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000012",
+          "transform": {
+            "position": [
+              -245.228,
+              0,
+              -202.366
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000013",
+          "transform": {
+            "position": [
+              216.802,
+              0,
+              472.753
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000014",
+          "transform": {
+            "position": [
+              485.214,
+              0,
+              497.123
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000015",
+          "transform": {
+            "position": [
+              -446.315,
+              0,
+              486.611
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000016",
+          "transform": {
+            "position": [
+              -6.775,
+              0,
+              212.476
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000017",
+          "transform": {
+            "position": [
+              -50.505,
+              0,
+              60.225
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000018",
+          "transform": {
+            "position": [
+              281.142,
+              0,
+              -375.783
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000019",
+          "transform": {
+            "position": [
+              17.1,
+              0,
+              83.1
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000020",
+          "transform": {
+            "position": [
+              -184.971,
+              0,
+              416.714
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000021",
+          "transform": {
+            "position": [
+              363.503,
+              0,
+              135.3
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000022",
+          "transform": {
+            "position": [
+              -356.407,
+              0,
+              449.763
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000023",
+          "transform": {
+            "position": [
+              -113.091,
+              0,
+              126.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000024",
+          "transform": {
+            "position": [
+              -266.643,
+              0,
+              25.055
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000025",
+          "transform": {
+            "position": [
+              -97.61,
+              0,
+              422.411
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000026",
+          "transform": {
+            "position": [
+              11.051,
+              0,
+              -98.286
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000027",
+          "transform": {
+            "position": [
+              251.144,
+              0,
+              -273.664
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000028",
+          "transform": {
+            "position": [
+              -113.78,
+              0,
+              -318.725
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000029",
+          "transform": {
+            "position": [
+              454.642,
+              0,
+              318.362
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000030",
+          "transform": {
+            "position": [
+              -175.287,
+              0,
+              146.475
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000031",
+          "transform": {
+            "position": [
+              -378.434,
+              0,
+              -432.487
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000032",
+          "transform": {
+            "position": [
+              -137.785,
+              0,
+              61.247
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000033",
+          "transform": {
+            "position": [
+              211.633,
+              0,
+              199.242
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000034",
+          "transform": {
+            "position": [
+              -53.228,
+              0,
+              -328.505
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000035",
+          "transform": {
+            "position": [
+              351.034,
+              0,
+              470.102
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000036",
+          "transform": {
+            "position": [
+              70.792,
+              0,
+              405.228
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000037",
+          "transform": {
+            "position": [
+              249.656,
+              0,
+              275.238
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000038",
+          "transform": {
+            "position": [
+              325.03,
+              0,
+              158.929
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000039",
+          "transform": {
+            "position": [
+              235.436,
+              0,
+              488.385
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000040",
+          "transform": {
+            "position": [
+              -39.448,
+              0,
+              -371.974
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000041",
+          "transform": {
+            "position": [
+              282.847,
+              0,
+              40.841
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000042",
+          "transform": {
+            "position": [
+              225.32,
+              0,
+              -318.263
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000043",
+          "transform": {
+            "position": [
+              419.642,
+              0,
+              -420.713
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000044",
+          "transform": {
+            "position": [
+              87.074,
+              0,
+              320.824
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000045",
+          "transform": {
+            "position": [
+              -335.952,
+              0,
+              84.605
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000046",
+          "transform": {
+            "position": [
+              -194.253,
+              0,
+              410.76
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000047",
+          "transform": {
+            "position": [
+              41.744,
+              0,
+              -154.988
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000048",
+          "transform": {
+            "position": [
+              48.118,
+              0,
+              -471.861
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000049",
+          "transform": {
+            "position": [
+              284.855,
+              0,
+              -408.665
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000050",
+          "transform": {
+            "position": [
+              467.543,
+              0,
+              -104.978
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000051",
+          "transform": {
+            "position": [
+              299.216,
+              0,
+              -424.714
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000052",
+          "transform": {
+            "position": [
+              -138.273,
+              0,
+              -237.044
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000053",
+          "transform": {
+            "position": [
+              -71.383,
+              0,
+              190.318
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000054",
+          "transform": {
+            "position": [
+              -203.168,
+              0,
+              -439.542
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000055",
+          "transform": {
+            "position": [
+              142.516,
+              0,
+              -447.025
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000056",
+          "transform": {
+            "position": [
+              -179.326,
+              0,
+              74.063
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000057",
+          "transform": {
+            "position": [
+              -163.903,
+              0,
+              187.678
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000058",
+          "transform": {
+            "position": [
+              -316.367,
+              0,
+              173.296
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000059",
+          "transform": {
+            "position": [
+              -94.292,
+              0,
+              -36.79
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000060",
+          "transform": {
+            "position": [
+              398.87,
+              0,
+              217.03
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000061",
+          "transform": {
+            "position": [
+              215.873,
+              0,
+              -9.637
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000062",
+          "transform": {
+            "position": [
+              326.615,
+              0,
+              499.024
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000063",
+          "transform": {
+            "position": [
+              153.013,
+              0,
+              434.932
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000064",
+          "transform": {
+            "position": [
+              -313.486,
+              0,
+              -360.429
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000065",
+          "transform": {
+            "position": [
+              87.245,
+              0,
+              473.93
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000066",
+          "transform": {
+            "position": [
+              -183.974,
+              0,
+              82.73
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000067",
+          "transform": {
+            "position": [
+              82.478,
+              0,
+              99.505
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000068",
+          "transform": {
+            "position": [
+              -16.692,
+              0,
+              146.273
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000069",
+          "transform": {
+            "position": [
+              -299.59,
+              0,
+              426.261
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000070",
+          "transform": {
+            "position": [
+              -288.902,
+              0,
+              -387.702
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000071",
+          "transform": {
+            "position": [
+              -96.254,
+              0,
+              -239.007
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000072",
+          "transform": {
+            "position": [
+              8.492,
+              0,
+              80.55
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000073",
+          "transform": {
+            "position": [
+              -345.481,
+              0,
+              366.153
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000074",
+          "transform": {
+            "position": [
+              -19.128,
+              0,
+              454.634
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000075",
+          "transform": {
+            "position": [
+              326.088,
+              0,
+              345.746
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000076",
+          "transform": {
+            "position": [
+              1.883,
+              0,
+              67.016
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000077",
+          "transform": {
+            "position": [
+              384.431,
+              0,
+              466.959
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000078",
+          "transform": {
+            "position": [
+              -430.519,
+              0,
+              214.512
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000079",
+          "transform": {
+            "position": [
+              333.975,
+              0,
+              246.569
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000080",
+          "transform": {
+            "position": [
+              100.891,
+              0,
+              480.64
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000081",
+          "transform": {
+            "position": [
+              -280.927,
+              0,
+              211.694
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000082",
+          "transform": {
+            "position": [
+              -495.133,
+              0,
+              417.927
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000083",
+          "transform": {
+            "position": [
+              266.96,
+              0,
+              -367.103
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000084",
+          "transform": {
+            "position": [
+              97.915,
+              0,
+              -278.686
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000085",
+          "transform": {
+            "position": [
+              205.174,
+              0,
+              -224.574
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000086",
+          "transform": {
+            "position": [
+              -246.886,
+              0,
+              -363.509
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000087",
+          "transform": {
+            "position": [
+              -299.554,
+              0,
+              -221.515
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000088",
+          "transform": {
+            "position": [
+              -138.511,
+              0,
+              -457.171
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000089",
+          "transform": {
+            "position": [
+              -476.304,
+              0,
+              203.663
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000090",
+          "transform": {
+            "position": [
+              100.328,
+              0,
+              -247.518
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000091",
+          "transform": {
+            "position": [
+              191.975,
+              0,
+              54.127
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000092",
+          "transform": {
+            "position": [
+              480.974,
+              0,
+              -111.207
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000093",
+          "transform": {
+            "position": [
+              205.161,
+              0,
+              275.317
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000094",
+          "transform": {
+            "position": [
+              -477.472,
+              0,
+              -442.296
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000095",
+          "transform": {
+            "position": [
+              -398.386,
+              0,
+              364.303
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000096",
+          "transform": {
+            "position": [
+              326.198,
+              0,
+              43.948
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000097",
+          "transform": {
+            "position": [
+              302.054,
+              0,
+              -474.309
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000098",
+          "transform": {
+            "position": [
+              -65.305,
+              0,
+              -313.286
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000099",
+          "transform": {
+            "position": [
+              441.866,
+              0,
+              493.25
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000100",
+          "transform": {
+            "position": [
+              -285.192,
+              0,
+              98.93
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000101",
+          "transform": {
+            "position": [
+              419.701,
+              0,
+              -396.933
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000102",
+          "transform": {
+            "position": [
+              -358.761,
+              0,
+              -192.136
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000103",
+          "transform": {
+            "position": [
+              432.342,
+              0,
+              -65.924
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000104",
+          "transform": {
+            "position": [
+              437.968,
+              0,
+              -108.429
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000105",
+          "transform": {
+            "position": [
+              -388.713,
+              0,
+              -147.183
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000106",
+          "transform": {
+            "position": [
+              400.801,
+              0,
+              152.939
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000107",
+          "transform": {
+            "position": [
+              -17.308,
+              0,
+              -156.303
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000108",
+          "transform": {
+            "position": [
+              451.27,
+              0,
+              207.963
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000109",
+          "transform": {
+            "position": [
+              102.442,
+              0,
+              440.417
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000110",
+          "transform": {
+            "position": [
+              156.473,
+              0,
+              65.643
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000111",
+          "transform": {
+            "position": [
+              57.432,
+              0,
+              401.336
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000112",
+          "transform": {
+            "position": [
+              -264.306,
+              0,
+              125.698
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000113",
+          "transform": {
+            "position": [
+              -106.152,
+              0,
+              485.217
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000114",
+          "transform": {
+            "position": [
+              -316.323,
+              0,
+              -241.188
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000115",
+          "transform": {
+            "position": [
+              -485.312,
+              0,
+              -271.53
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000116",
+          "transform": {
+            "position": [
+              -428.987,
+              0,
+              -113.26
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000117",
+          "transform": {
+            "position": [
+              332.422,
+              0,
+              -383.167
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000118",
+          "transform": {
+            "position": [
+              185.29,
+              0,
+              -104.353
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000119",
+          "transform": {
+            "position": [
+              -9.486,
+              0,
+              315.063
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000120",
+          "transform": {
+            "position": [
+              99.06,
+              0,
+              149.356
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000121",
+          "transform": {
+            "position": [
+              260.18,
+              0,
+              260.984
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000122",
+          "transform": {
+            "position": [
+              -292.424,
+              0,
+              -309.272
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000123",
+          "transform": {
+            "position": [
+              -454.018,
+              0,
+              -39.974
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000124",
+          "transform": {
+            "position": [
+              -99.434,
+              0,
+              -223.821
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000125",
+          "transform": {
+            "position": [
+              380.525,
+              0,
+              -425.756
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000126",
+          "transform": {
+            "position": [
+              143.842,
+              0,
+              -303.835
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000127",
+          "transform": {
+            "position": [
+              -468.929,
+              0,
+              60.172
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000128",
+          "transform": {
+            "position": [
+              -197.321,
+              0,
+              74.378
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000129",
+          "transform": {
+            "position": [
+              242.918,
+              0,
+              -123.912
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000130",
+          "transform": {
+            "position": [
+              -149.91,
+              0,
+              241.216
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000131",
+          "transform": {
+            "position": [
+              220.801,
+              0,
+              -361.859
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000132",
+          "transform": {
+            "position": [
+              -333.379,
+              0,
+              103.536
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000133",
+          "transform": {
+            "position": [
+              251.658,
+              0,
+              -481.062
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000134",
+          "transform": {
+            "position": [
+              357.478,
+              0,
+              -294.621
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000135",
+          "transform": {
+            "position": [
+              -290.15,
+              0,
+              158.835
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000136",
+          "transform": {
+            "position": [
+              343.518,
+              0,
+              -22.687
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000137",
+          "transform": {
+            "position": [
+              494.635,
+              0,
+              495.006
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000138",
+          "transform": {
+            "position": [
+              42.759,
+              0,
+              -479.91
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000139",
+          "transform": {
+            "position": [
+              -110.046,
+              0,
+              195.519
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000140",
+          "transform": {
+            "position": [
+              457.108,
+              0,
+              424.183
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000141",
+          "transform": {
+            "position": [
+              148.835,
+              0,
+              478.988
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000142",
+          "transform": {
+            "position": [
+              -390.871,
+              0,
+              -192.404
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000143",
+          "transform": {
+            "position": [
+              470.084,
+              0,
+              19.315
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000144",
+          "transform": {
+            "position": [
+              -108.117,
+              0,
+              -288.09
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000145",
+          "transform": {
+            "position": [
+              -149.958,
+              0,
+              323.812
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000146",
+          "transform": {
+            "position": [
+              -322.819,
+              0,
+              -183.721
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000147",
+          "transform": {
+            "position": [
+              -373.588,
+              0,
+              -401.044
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000148",
+          "transform": {
+            "position": [
+              -238.074,
+              0,
+              184.57
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000149",
+          "transform": {
+            "position": [
+              304.012,
+              0,
+              398.496
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000150",
+          "transform": {
+            "position": [
+              -349.794,
+              0,
+              328.918
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000151",
+          "transform": {
+            "position": [
+              285.695,
+              0,
+              -478.08
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000152",
+          "transform": {
+            "position": [
+              -474.271,
+              0,
+              -31.897
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000153",
+          "transform": {
+            "position": [
+              -428.622,
+              0,
+              189.457
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000154",
+          "transform": {
+            "position": [
+              -215.347,
+              0,
+              190.318
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000155",
+          "transform": {
+            "position": [
+              -237.471,
+              0,
+              291.182
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000156",
+          "transform": {
+            "position": [
+              433.065,
+              0,
+              244.632
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000157",
+          "transform": {
+            "position": [
+              -346.993,
+              0,
+              -371.218
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000158",
+          "transform": {
+            "position": [
+              66.184,
+              0,
+              -426.805
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000159",
+          "transform": {
+            "position": [
+              327.419,
+              0,
+              -418.958
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000160",
+          "transform": {
+            "position": [
+              406.615,
+              0,
+              375.436
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000161",
+          "transform": {
+            "position": [
+              493.261,
+              0,
+              313.994
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000162",
+          "transform": {
+            "position": [
+              -295.188,
+              0,
+              143.368
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000163",
+          "transform": {
+            "position": [
+              -299.409,
+              0,
+              90.116
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000164",
+          "transform": {
+            "position": [
+              130.964,
+              0,
+              246.888
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000165",
+          "transform": {
+            "position": [
+              -88.622,
+              0,
+              -266.189
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000166",
+          "transform": {
+            "position": [
+              -96.027,
+              0,
+              26.418
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000167",
+          "transform": {
+            "position": [
+              348.953,
+              0,
+              -105.826
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000168",
+          "transform": {
+            "position": [
+              336.426,
+              0,
+              -182.557
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000169",
+          "transform": {
+            "position": [
+              -260.696,
+              0,
+              372.484
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000170",
+          "transform": {
+            "position": [
+              -257.277,
+              0,
+              -450.407
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000171",
+          "transform": {
+            "position": [
+              -210.659,
+              0,
+              333.827
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000172",
+          "transform": {
+            "position": [
+              41.94,
+              0,
+              -317.057
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000173",
+          "transform": {
+            "position": [
+              10.455,
+              0,
+              -124.336
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000174",
+          "transform": {
+            "position": [
+              -371.814,
+              0,
+              335.99
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000175",
+          "transform": {
+            "position": [
+              -189.375,
+              0,
+              -29.446
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000176",
+          "transform": {
+            "position": [
+              -4.429,
+              0,
+              276.59
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000177",
+          "transform": {
+            "position": [
+              465.176,
+              0,
+              -127.069
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000178",
+          "transform": {
+            "position": [
+              127.12,
+              0,
+              -203.334
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000179",
+          "transform": {
+            "position": [
+              -416.494,
+              0,
+              -463.635
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000180",
+          "transform": {
+            "position": [
+              -110.164,
+              0,
+              476.868
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000181",
+          "transform": {
+            "position": [
+              56.863,
+              0,
+              -260.368
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000182",
+          "transform": {
+            "position": [
+              258.134,
+              0,
+              298.136
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000183",
+          "transform": {
+            "position": [
+              -204.934,
+              0,
+              182.115
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000184",
+          "transform": {
+            "position": [
+              461.58,
+              0,
+              -260.112
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000185",
+          "transform": {
+            "position": [
+              309.01,
+              0,
+              -315.718
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000186",
+          "transform": {
+            "position": [
+              442.574,
+              0,
+              -209.92
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000187",
+          "transform": {
+            "position": [
+              118.919,
+              0,
+              -79.925
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000188",
+          "transform": {
+            "position": [
+              459.64,
+              0,
+              249.128
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000189",
+          "transform": {
+            "position": [
+              416.912,
+              0,
+              -474.06
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000190",
+          "transform": {
+            "position": [
+              293.212,
+              0,
+              -252.803
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000191",
+          "transform": {
+            "position": [
+              -219.542,
+              0,
+              -137.454
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000192",
+          "transform": {
+            "position": [
+              -306.525,
+              0,
+              369.783
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000193",
+          "transform": {
+            "position": [
+              445.304,
+              0,
+              495.632
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000194",
+          "transform": {
+            "position": [
+              -275.38,
+              0,
+              -467.532
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000195",
+          "transform": {
+            "position": [
+              -293.099,
+              0,
+              340.596
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000196",
+          "transform": {
+            "position": [
+              18.119,
+              0,
+              -410.553
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000197",
+          "transform": {
+            "position": [
+              241.94,
+              0,
+              -235.218
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000198",
+          "transform": {
+            "position": [
+              -382.425,
+              0,
+              162.423
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000199",
+          "transform": {
+            "position": [
+              437.149,
+              0,
+              0.793
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000200",
+          "transform": {
+            "position": [
+              -168.556,
+              0,
+              465.7
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000201",
+          "transform": {
+            "position": [
+              -418.029,
+              0,
+              378.982
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000202",
+          "transform": {
+            "position": [
+              256.166,
+              0,
+              420.662
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000203",
+          "transform": {
+            "position": [
+              -240.89,
+              0,
+              -335.139
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000204",
+          "transform": {
+            "position": [
+              191.737,
+              0,
+              -75.005
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000205",
+          "transform": {
+            "position": [
+              377.466,
+              0,
+              -33.538
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000206",
+          "transform": {
+            "position": [
+              397.276,
+              0,
+              225.822
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000207",
+          "transform": {
+            "position": [
+              -346.953,
+              0,
+              -187.162
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000208",
+          "transform": {
+            "position": [
+              -179.552,
+              0,
+              476.167
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000209",
+          "transform": {
+            "position": [
+              -235.71,
+              0,
+              309.982
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000210",
+          "transform": {
+            "position": [
+              362.008,
+              0,
+              -288.479
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000211",
+          "transform": {
+            "position": [
+              392.266,
+              0,
+              -98.464
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000212",
+          "transform": {
+            "position": [
+              -414.639,
+              0,
+              -180.37
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000213",
+          "transform": {
+            "position": [
+              -442.643,
+              0,
+              263.682
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000214",
+          "transform": {
+            "position": [
+              267.728,
+              0,
+              -44.877
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000215",
+          "transform": {
+            "position": [
+              400.438,
+              0,
+              462.372
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000216",
+          "transform": {
+            "position": [
+              154.306,
+              0,
+              285.494
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000217",
+          "transform": {
+            "position": [
+              150.582,
+              0,
+              259.853
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000218",
+          "transform": {
+            "position": [
+              -360.666,
+              0,
+              -392.721
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000219",
+          "transform": {
+            "position": [
+              -195.647,
+              0,
+              -328.489
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000220",
+          "transform": {
+            "position": [
+              -362.117,
+              0,
+              11.674
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000221",
+          "transform": {
+            "position": [
+              -6.93,
+              0,
+              -179.186
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000222",
+          "transform": {
+            "position": [
+              -294.857,
+              0,
+              481.292
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000223",
+          "transform": {
+            "position": [
+              -233.05,
+              0,
+              -37.642
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000224",
+          "transform": {
+            "position": [
+              52.445,
+              0,
+              -476.198
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000225",
+          "transform": {
+            "position": [
+              246.813,
+              0,
+              -185.188
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000226",
+          "transform": {
+            "position": [
+              416.98,
+              0,
+              159.255
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000227",
+          "transform": {
+            "position": [
+              -318.465,
+              0,
+              -93.05
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000228",
+          "transform": {
+            "position": [
+              488.049,
+              0,
+              -445.916
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000229",
+          "transform": {
+            "position": [
+              -493.315,
+              0,
+              -330.84
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000230",
+          "transform": {
+            "position": [
+              -9.973,
+              0,
+              -452.714
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000231",
+          "transform": {
+            "position": [
+              227.497,
+              0,
+              -237.024
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000232",
+          "transform": {
+            "position": [
+              -145.31,
+              0,
+              -193.064
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000233",
+          "transform": {
+            "position": [
+              -22.855,
+              0,
+              -43.134
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000234",
+          "transform": {
+            "position": [
+              220.576,
+              0,
+              -438.573
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000235",
+          "transform": {
+            "position": [
+              328.561,
+              0,
+              -473.799
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000236",
+          "transform": {
+            "position": [
+              334.652,
+              0,
+              275.927
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000237",
+          "transform": {
+            "position": [
+              -56.63,
+              0,
+              259.348
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000238",
+          "transform": {
+            "position": [
+              379.887,
+              0,
+              268.117
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000239",
+          "transform": {
+            "position": [
+              242.628,
+              0,
+              113.694
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000240",
+          "transform": {
+            "position": [
+              -259.501,
+              0,
+              -313.349
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000241",
+          "transform": {
+            "position": [
+              -27.885,
+              0,
+              -14.622
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000242",
+          "transform": {
+            "position": [
+              -235.097,
+              0,
+              -367.09
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000243",
+          "transform": {
+            "position": [
+              -282.4,
+              0,
+              194.511
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000244",
+          "transform": {
+            "position": [
+              399.286,
+              0,
+              298.079
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000245",
+          "transform": {
+            "position": [
+              292.066,
+              0,
+              -275.121
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000246",
+          "transform": {
+            "position": [
+              161.866,
+              0,
+              106.871
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000247",
+          "transform": {
+            "position": [
+              10.645,
+              0,
+              115.285
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000248",
+          "transform": {
+            "position": [
+              337.221,
+              0,
+              273.903
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000249",
+          "transform": {
+            "position": [
+              -244.1,
+              0,
+              82.711
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000250",
+          "transform": {
+            "position": [
+              -380.915,
+              0,
+              289.567
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000251",
+          "transform": {
+            "position": [
+              -0.539,
+              0,
+              275.95
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000252",
+          "transform": {
+            "position": [
+              231.886,
+              0,
+              370.582
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000253",
+          "transform": {
+            "position": [
+              -379.506,
+              0,
+              -54.055
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000254",
+          "transform": {
+            "position": [
+              -303.089,
+              0,
+              411.823
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000255",
+          "transform": {
+            "position": [
+              -255.846,
+              0,
+              -64.868
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000256",
+          "transform": {
+            "position": [
+              409.461,
+              0,
+              -379.024
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000257",
+          "transform": {
+            "position": [
+              -445.842,
+              0,
+              -146.814
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000258",
+          "transform": {
+            "position": [
+              495.323,
+              0,
+              -40.672
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000259",
+          "transform": {
+            "position": [
+              242.888,
+              0,
+              -116.161
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000260",
+          "transform": {
+            "position": [
+              -314.138,
+              0,
+              -353.298
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000261",
+          "transform": {
+            "position": [
+              238.728,
+              0,
+              368.968
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000262",
+          "transform": {
+            "position": [
+              483.662,
+              0,
+              154.331
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000263",
+          "transform": {
+            "position": [
+              467.54,
+              0,
+              41.238
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000264",
+          "transform": {
+            "position": [
+              -377.051,
+              0,
+              -153.58
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000265",
+          "transform": {
+            "position": [
+              175.943,
+              0,
+              422.083
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000266",
+          "transform": {
+            "position": [
+              -403.816,
+              0,
+              206.638
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000267",
+          "transform": {
+            "position": [
+              -141.592,
+              0,
+              -323.558
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000268",
+          "transform": {
+            "position": [
+              -87.441,
+              0,
+              106.685
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000269",
+          "transform": {
+            "position": [
+              425.431,
+              0,
+              -32.519
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000270",
+          "transform": {
+            "position": [
+              -313.11,
+              0,
+              -241.26
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000271",
+          "transform": {
+            "position": [
+              256.612,
+              0,
+              -470.16
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000272",
+          "transform": {
+            "position": [
+              -260.443,
+              0,
+              437.535
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000273",
+          "transform": {
+            "position": [
+              375.52,
+              0,
+              -61.973
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000274",
+          "transform": {
+            "position": [
+              -89.432,
+              0,
+              421.606
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000275",
+          "transform": {
+            "position": [
+              -195.413,
+              0,
+              -144.747
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000276",
+          "transform": {
+            "position": [
+              330.758,
+              0,
+              294.944
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000277",
+          "transform": {
+            "position": [
+              -244.426,
+              0,
+              -251.992
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000278",
+          "transform": {
+            "position": [
+              396.868,
+              0,
+              -231.413
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000279",
+          "transform": {
+            "position": [
+              -71.771,
+              0,
+              -265.453
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000280",
+          "transform": {
+            "position": [
+              266.05,
+              0,
+              -114.73
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000281",
+          "transform": {
+            "position": [
+              -121.104,
+              0,
+              -100.481
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000282",
+          "transform": {
+            "position": [
+              99.654,
+              0,
+              337.686
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000283",
+          "transform": {
+            "position": [
+              1.397,
+              0,
+              493.901
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000284",
+          "transform": {
+            "position": [
+              319.514,
+              0,
+              -55.733
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000285",
+          "transform": {
+            "position": [
+              -469.308,
+              0,
+              -334.11
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000286",
+          "transform": {
+            "position": [
+              410.728,
+              0,
+              10.846
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000287",
+          "transform": {
+            "position": [
+              -344.977,
+              0,
+              -405.454
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000288",
+          "transform": {
+            "position": [
+              -474.806,
+              0,
+              70.89
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000289",
+          "transform": {
+            "position": [
+              394.86,
+              0,
+              -489.881
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000290",
+          "transform": {
+            "position": [
+              64.941,
+              0,
+              -136.727
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000291",
+          "transform": {
+            "position": [
+              -185.663,
+              0,
+              -254.928
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000292",
+          "transform": {
+            "position": [
+              73.825,
+              0,
+              -63.986
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000293",
+          "transform": {
+            "position": [
+              110.345,
+              0,
+              427.387
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000294",
+          "transform": {
+            "position": [
+              -429.394,
+              0,
+              -217.649
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000295",
+          "transform": {
+            "position": [
+              -51.369,
+              0,
+              -474.685
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000296",
+          "transform": {
+            "position": [
+              -1.839,
+              0,
+              74.657
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000297",
+          "transform": {
+            "position": [
+              360.617,
+              0,
+              -317.513
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000298",
+          "transform": {
+            "position": [
+              135.33,
+              0,
+              64.495
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000299",
+          "transform": {
+            "position": [
+              328.614,
+              0,
+              -415.446
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000300",
+          "transform": {
+            "position": [
+              -459.28,
+              0,
+              -339.888
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000301",
+          "transform": {
+            "position": [
+              -127.514,
+              0,
+              -319.38
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000302",
+          "transform": {
+            "position": [
+              448.855,
+              0,
+              59.601
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000303",
+          "transform": {
+            "position": [
+              39.98,
+              0,
+              20.587
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000304",
+          "transform": {
+            "position": [
+              -129.739,
+              0,
+              92.146
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000305",
+          "transform": {
+            "position": [
+              399.646,
+              0,
+              156.299
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000306",
+          "transform": {
+            "position": [
+              409.814,
+              0,
+              -144.659
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000307",
+          "transform": {
+            "position": [
+              -346.678,
+              0,
+              -420.048
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000308",
+          "transform": {
+            "position": [
+              -265.913,
+              0,
+              445.716
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000309",
+          "transform": {
+            "position": [
+              73.598,
+              0,
+              387.841
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000310",
+          "transform": {
+            "position": [
+              315.061,
+              0,
+              287.987
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000311",
+          "transform": {
+            "position": [
+              238.987,
+              0,
+              137.725
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000312",
+          "transform": {
+            "position": [
+              77.837,
+              0,
+              246.037
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000313",
+          "transform": {
+            "position": [
+              385.485,
+              0,
+              253.032
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000314",
+          "transform": {
+            "position": [
+              -197.204,
+              0,
+              -317.182
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000315",
+          "transform": {
+            "position": [
+              465.295,
+              0,
+              380.287
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000316",
+          "transform": {
+            "position": [
+              186.581,
+              0,
+              -176.591
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000317",
+          "transform": {
+            "position": [
+              179.009,
+              0,
+              -153.368
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000318",
+          "transform": {
+            "position": [
+              -146.871,
+              0,
+              320.759
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000319",
+          "transform": {
+            "position": [
+              447.77,
+              0,
+              -258.179
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000320",
+          "transform": {
+            "position": [
+              -21.756,
+              0,
+              465.942
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000321",
+          "transform": {
+            "position": [
+              152.199,
+              0,
+              296.16
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000322",
+          "transform": {
+            "position": [
+              -170.916,
+              0,
+              272.699
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000323",
+          "transform": {
+            "position": [
+              393.364,
+              0,
+              375.376
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000324",
+          "transform": {
+            "position": [
+              254.038,
+              0,
+              49.171
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000325",
+          "transform": {
+            "position": [
+              -479.414,
+              0,
+              88.94
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000326",
+          "transform": {
+            "position": [
+              -115.689,
+              0,
+              -345.853
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000327",
+          "transform": {
+            "position": [
+              -242.729,
+              0,
+              438.622
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000328",
+          "transform": {
+            "position": [
+              -398.308,
+              0,
+              195.252
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000329",
+          "transform": {
+            "position": [
+              236.585,
+              0,
+              -291.144
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000330",
+          "transform": {
+            "position": [
+              -414.577,
+              0,
+              -355.461
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000331",
+          "transform": {
+            "position": [
+              253.907,
+              0,
+              44.932
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000332",
+          "transform": {
+            "position": [
+              -229.721,
+              0,
+              -85.238
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000333",
+          "transform": {
+            "position": [
+              -9.885,
+              0,
+              -92.323
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000334",
+          "transform": {
+            "position": [
+              242.856,
+              0,
+              -407.822
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000335",
+          "transform": {
+            "position": [
+              63.393,
+              0,
+              8.02
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000336",
+          "transform": {
+            "position": [
+              -59.858,
+              0,
+              347.304
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000337",
+          "transform": {
+            "position": [
+              94.057,
+              0,
+              212.988
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000338",
+          "transform": {
+            "position": [
+              477.295,
+              0,
+              -76.835
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000339",
+          "transform": {
+            "position": [
+              69.644,
+              0,
+              6.448
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000340",
+          "transform": {
+            "position": [
+              -126.147,
+              0,
+              342.018
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000341",
+          "transform": {
+            "position": [
+              -319.18,
+              0,
+              83.019
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000342",
+          "transform": {
+            "position": [
+              188.805,
+              0,
+              -233.144
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000343",
+          "transform": {
+            "position": [
+              -273.895,
+              0,
+              14.001
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000344",
+          "transform": {
+            "position": [
+              364.549,
+              0,
+              -394.92
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000345",
+          "transform": {
+            "position": [
+              -17.723,
+              0,
+              62.56
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000346",
+          "transform": {
+            "position": [
+              284.11,
+              0,
+              -435.851
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000347",
+          "transform": {
+            "position": [
+              398.26,
+              0,
+              -245.434
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000348",
+          "transform": {
+            "position": [
+              -42.375,
+              0,
+              46.255
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000349",
+          "transform": {
+            "position": [
+              98.868,
+              0,
+              -267.03
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000350",
+          "transform": {
+            "position": [
+              -296.49,
+              0,
+              277.789
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000351",
+          "transform": {
+            "position": [
+              81.737,
+              0,
+              339.737
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000352",
+          "transform": {
+            "position": [
+              492.875,
+              0,
+              449.24
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000353",
+          "transform": {
+            "position": [
+              474.233,
+              0,
+              109.501
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000354",
+          "transform": {
+            "position": [
+              26.335,
+              0,
+              -250.958
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000355",
+          "transform": {
+            "position": [
+              -197.829,
+              0,
+              -62.167
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000356",
+          "transform": {
+            "position": [
+              123.129,
+              0,
+              -406.037
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000357",
+          "transform": {
+            "position": [
+              -457.391,
+              0,
+              -236.663
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000358",
+          "transform": {
+            "position": [
+              -440.995,
+              0,
+              -147.747
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000359",
+          "transform": {
+            "position": [
+              28.631,
+              0,
+              -404.161
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000360",
+          "transform": {
+            "position": [
+              180.454,
+              0,
+              -416.921
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000361",
+          "transform": {
+            "position": [
+              -117.503,
+              0,
+              91.235
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000362",
+          "transform": {
+            "position": [
+              -245.952,
+              0,
+              169.801
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000363",
+          "transform": {
+            "position": [
+              495.825,
+              0,
+              12.066
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000364",
+          "transform": {
+            "position": [
+              -153.493,
+              0,
+              248.125
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000365",
+          "transform": {
+            "position": [
+              -396.063,
+              0,
+              -69.11
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000366",
+          "transform": {
+            "position": [
+              -298.774,
+              0,
+              222.577
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000367",
+          "transform": {
+            "position": [
+              -104.925,
+              0,
+              -261.007
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000368",
+          "transform": {
+            "position": [
+              94.573,
+              0,
+              457.564
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000369",
+          "transform": {
+            "position": [
+              -467.775,
+              0,
+              341.714
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000370",
+          "transform": {
+            "position": [
+              -158.571,
+              0,
+              67.191
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000371",
+          "transform": {
+            "position": [
+              172.192,
+              0,
+              -11.388
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000372",
+          "transform": {
+            "position": [
+              413.812,
+              0,
+              151.478
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000373",
+          "transform": {
+            "position": [
+              112.575,
+              0,
+              -237.563
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000374",
+          "transform": {
+            "position": [
+              -208.235,
+              0,
+              -357.703
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000375",
+          "transform": {
+            "position": [
+              120.056,
+              0,
+              -292.889
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000376",
+          "transform": {
+            "position": [
+              129.379,
+              0,
+              -483.378
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000377",
+          "transform": {
+            "position": [
+              -448.147,
+              0,
+              -173.494
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000378",
+          "transform": {
+            "position": [
+              485.72,
+              0,
+              -283.654
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000379",
+          "transform": {
+            "position": [
+              155.579,
+              0,
+              76.518
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000380",
+          "transform": {
+            "position": [
+              204.341,
+              0,
+              169.524
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000381",
+          "transform": {
+            "position": [
+              -43.36,
+              0,
+              192.465
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000382",
+          "transform": {
+            "position": [
+              7.141,
+              0,
+              58.122
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000383",
+          "transform": {
+            "position": [
+              11.243,
+              0,
+              -437.901
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000384",
+          "transform": {
+            "position": [
+              -434.986,
+              0,
+              -45.935
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000385",
+          "transform": {
+            "position": [
+              294.438,
+              0,
+              76.856
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000386",
+          "transform": {
+            "position": [
+              383.576,
+              0,
+              -193.975
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000387",
+          "transform": {
+            "position": [
+              -6.258,
+              0,
+              -386.87
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000388",
+          "transform": {
+            "position": [
+              124.731,
+              0,
+              407.238
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000389",
+          "transform": {
+            "position": [
+              429.201,
+              0,
+              137.529
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000390",
+          "transform": {
+            "position": [
+              -367.278,
+              0,
+              302.137
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000391",
+          "transform": {
+            "position": [
+              264.271,
+              0,
+              -84.478
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000392",
+          "transform": {
+            "position": [
+              493.067,
+              0,
+              210.067
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000393",
+          "transform": {
+            "position": [
+              397.169,
+              0,
+              277.476
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000394",
+          "transform": {
+            "position": [
+              -494.897,
+              0,
+              403.083
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000395",
+          "transform": {
+            "position": [
+              294.797,
+              0,
+              126.493
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000396",
+          "transform": {
+            "position": [
+              -59.219,
+              0,
+              220.791
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000397",
+          "transform": {
+            "position": [
+              -50.246,
+              0,
+              -45.431
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000398",
+          "transform": {
+            "position": [
+              -242.454,
+              0,
+              -395.462
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000399",
+          "transform": {
+            "position": [
+              -101.232,
+              0,
+              -379.766
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000400",
+          "transform": {
+            "position": [
+              295.269,
+              0,
+              224.619
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000401",
+          "transform": {
+            "position": [
+              412.276,
+              0,
+              185.585
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000402",
+          "transform": {
+            "position": [
+              -150.785,
+              0,
+              432.046
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000403",
+          "transform": {
+            "position": [
+              -330.553,
+              0,
+              -279.205
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000404",
+          "transform": {
+            "position": [
+              -420.53,
+              0,
+              308.067
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000405",
+          "transform": {
+            "position": [
+              76.148,
+              0,
+              -372.918
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000406",
+          "transform": {
+            "position": [
+              -332.112,
+              0,
+              23.066
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000407",
+          "transform": {
+            "position": [
+              -302.359,
+              0,
+              414.823
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000408",
+          "transform": {
+            "position": [
+              -482.974,
+              0,
+              -405.945
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000409",
+          "transform": {
+            "position": [
+              -363.751,
+              0,
+              -101.53
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000410",
+          "transform": {
+            "position": [
+              185.077,
+              0,
+              52.831
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000411",
+          "transform": {
+            "position": [
+              -217.451,
+              0,
+              62.509
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000412",
+          "transform": {
+            "position": [
+              493.844,
+              0,
+              -464.962
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000413",
+          "transform": {
+            "position": [
+              151.744,
+              0,
+              -263.856
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000414",
+          "transform": {
+            "position": [
+              451.289,
+              0,
+              282.823
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000415",
+          "transform": {
+            "position": [
+              241.187,
+              0,
+              71.768
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000416",
+          "transform": {
+            "position": [
+              380.281,
+              0,
+              155.492
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000417",
+          "transform": {
+            "position": [
+              -223.561,
+              0,
+              -395.174
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000418",
+          "transform": {
+            "position": [
+              -327.407,
+              0,
+              -358.312
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000419",
+          "transform": {
+            "position": [
+              74.457,
+              0,
+              419.614
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000420",
+          "transform": {
+            "position": [
+              -274.206,
+              0,
+              -460.446
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000421",
+          "transform": {
+            "position": [
+              -216.978,
+              0,
+              253.501
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000422",
+          "transform": {
+            "position": [
+              -39.658,
+              0,
+              250.83
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000423",
+          "transform": {
+            "position": [
+              -219.383,
+              0,
+              375.687
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000424",
+          "transform": {
+            "position": [
+              380.079,
+              0,
+              -331.765
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000425",
+          "transform": {
+            "position": [
+              52.076,
+              0,
+              -189.112
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000426",
+          "transform": {
+            "position": [
+              -138.427,
+              0,
+              -289.958
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000427",
+          "transform": {
+            "position": [
+              -305.001,
+              0,
+              -192.365
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000428",
+          "transform": {
+            "position": [
+              206.22,
+              0,
+              -179.464
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000429",
+          "transform": {
+            "position": [
+              -147.347,
+              0,
+              -189.929
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000430",
+          "transform": {
+            "position": [
+              268.199,
+              0,
+              -379.254
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000431",
+          "transform": {
+            "position": [
+              15.204,
+              0,
+              -79.628
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000432",
+          "transform": {
+            "position": [
+              230.548,
+              0,
+              -139.563
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000433",
+          "transform": {
+            "position": [
+              -471.641,
+              0,
+              -382.208
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000434",
+          "transform": {
+            "position": [
+              -150.431,
+              0,
+              434.947
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000435",
+          "transform": {
+            "position": [
+              -105.367,
+              0,
+              379.87
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000436",
+          "transform": {
+            "position": [
+              -331.551,
+              0,
+              -435.391
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000437",
+          "transform": {
+            "position": [
+              -453.06,
+              0,
+              -47.583
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000438",
+          "transform": {
+            "position": [
+              -388.149,
+              0,
+              -372.038
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000439",
+          "transform": {
+            "position": [
+              40.006,
+              0,
+              -20.372
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000440",
+          "transform": {
+            "position": [
+              -103.302,
+              0,
+              -420.446
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000441",
+          "transform": {
+            "position": [
+              258.121,
+              0,
+              3.003
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000442",
+          "transform": {
+            "position": [
+              329.549,
+              0,
+              471.239
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000443",
+          "transform": {
+            "position": [
+              304.176,
+              0,
+              333.06
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000444",
+          "transform": {
+            "position": [
+              -392.642,
+              0,
+              -316.798
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000445",
+          "transform": {
+            "position": [
+              82.31,
+              0,
+              -342.759
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000446",
+          "transform": {
+            "position": [
+              303.891,
+              0,
+              456.836
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000447",
+          "transform": {
+            "position": [
+              -97.795,
+              0,
+              247.701
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000448",
+          "transform": {
+            "position": [
+              -82.213,
+              0,
+              466.029
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000449",
+          "transform": {
+            "position": [
+              456.976,
+              0,
+              155.852
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000450",
+          "transform": {
+            "position": [
+              184.097,
+              0,
+              -180.914
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000451",
+          "transform": {
+            "position": [
+              275.306,
+              0,
+              -188.804
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000452",
+          "transform": {
+            "position": [
+              -387.504,
+              0,
+              316.971
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000453",
+          "transform": {
+            "position": [
+              -364.056,
+              0,
+              105.128
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000454",
+          "transform": {
+            "position": [
+              315.951,
+              0,
+              426.14
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000455",
+          "transform": {
+            "position": [
+              -418.369,
+              0,
+              383.184
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000456",
+          "transform": {
+            "position": [
+              -403.533,
+              0,
+              342.792
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000457",
+          "transform": {
+            "position": [
+              -7.376,
+              0,
+              -94.238
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000458",
+          "transform": {
+            "position": [
+              429.806,
+              0,
+              -40.742
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000459",
+          "transform": {
+            "position": [
+              98.241,
+              0,
+              -165.255
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000460",
+          "transform": {
+            "position": [
+              -435.112,
+              0,
+              -435.957
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000461",
+          "transform": {
+            "position": [
+              494.706,
+              0,
+              378.602
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000462",
+          "transform": {
+            "position": [
+              151.072,
+              0,
+              -178.878
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000463",
+          "transform": {
+            "position": [
+              2.834,
+              0,
+              -91.448
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000464",
+          "transform": {
+            "position": [
+              261.67,
+              0,
+              -496.709
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000465",
+          "transform": {
+            "position": [
+              -223.28,
+              0,
+              253.388
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000466",
+          "transform": {
+            "position": [
+              285.078,
+              0,
+              -16.648
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000467",
+          "transform": {
+            "position": [
+              406.549,
+              0,
+              98.758
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000468",
+          "transform": {
+            "position": [
+              -475.247,
+              0,
+              -490.649
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000469",
+          "transform": {
+            "position": [
+              217.165,
+              0,
+              451.046
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000470",
+          "transform": {
+            "position": [
+              178.276,
+              0,
+              -309.884
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000471",
+          "transform": {
+            "position": [
+              -166.136,
+              0,
+              -117.834
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000472",
+          "transform": {
+            "position": [
+              -279.441,
+              0,
+              432.831
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000473",
+          "transform": {
+            "position": [
+              318.051,
+              0,
+              -24.948
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000474",
+          "transform": {
+            "position": [
+              -432.388,
+              0,
+              -353.331
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000475",
+          "transform": {
+            "position": [
+              -16.692,
+              0,
+              274.612
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000476",
+          "transform": {
+            "position": [
+              107.815,
+              0,
+              -470.627
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000477",
+          "transform": {
+            "position": [
+              329.524,
+              0,
+              -127.147
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000478",
+          "transform": {
+            "position": [
+              -376.959,
+              0,
+              498.624
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000479",
+          "transform": {
+            "position": [
+              -199.513,
+              0,
+              127.305
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000480",
+          "transform": {
+            "position": [
+              -143.825,
+              0,
+              -259.773
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000481",
+          "transform": {
+            "position": [
+              279.825,
+              0,
+              -206.034
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000482",
+          "transform": {
+            "position": [
+              319.038,
+              0,
+              488.875
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000483",
+          "transform": {
+            "position": [
+              470.098,
+              0,
+              346.112
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000484",
+          "transform": {
+            "position": [
+              -50.241,
+              0,
+              -111.478
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000485",
+          "transform": {
+            "position": [
+              -412.354,
+              0,
+              -451.896
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000486",
+          "transform": {
+            "position": [
+              -219.246,
+              0,
+              302.463
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000487",
+          "transform": {
+            "position": [
+              -420.543,
+              0,
+              -401.399
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000488",
+          "transform": {
+            "position": [
+              -481.156,
+              0,
+              -287.594
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000489",
+          "transform": {
+            "position": [
+              495.03,
+              0,
+              -28.492
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000490",
+          "transform": {
+            "position": [
+              404.042,
+              0,
+              -99.279
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000491",
+          "transform": {
+            "position": [
+              241.943,
+              0,
+              340.25
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000492",
+          "transform": {
+            "position": [
+              -356.598,
+              0,
+              470.501
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000493",
+          "transform": {
+            "position": [
+              -439.097,
+              0,
+              -374.411
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000494",
+          "transform": {
+            "position": [
+              -197.933,
+              0,
+              -315.376
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000495",
+          "transform": {
+            "position": [
+              31.336,
+              0,
+              -281.257
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000496",
+          "transform": {
+            "position": [
+              -497.649,
+              0,
+              406.683
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000497",
+          "transform": {
+            "position": [
+              327.367,
+              0,
+              -354.565
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000498",
+          "transform": {
+            "position": [
+              -393.088,
+              0,
+              88.522
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000499",
+          "transform": {
+            "position": [
+              426.826,
+              0,
+              -358.492
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_moon_tree_000500",
+          "transform": {
+            "position": [
+              -113.777,
+              0,
+              -218.824
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "pigking": [
+        {
+          "id": "e_pigking_000001",
+          "transform": {
+            "position": [
+              0,
+              0,
+              25
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "cookpot": [
+        {
+          "id": "e_fb7d3d50267c65b2571016615853d61c",
+          "transform": {
+            "position": [
+              -29.58897508431369,
+              0,
+              15.732595457206893
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed",
+              "skinId": "cookpot_cauldronp"
+            },
+            "container": {
+              "slotCount": 4,
+              "slots": []
+            }
+          }
+        },
+        {
+          "id": "e_3cc364e5431c4c9c6b21a3e68725598c",
+          "transform": {
+            "position": [
+              -45.17446902849612,
+              0,
+              21.756217787747786
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed",
+              "skinId": "cookpot_survival"
+            },
+            "container": {
+              "slotCount": 4,
+              "slots": []
+            }
+          }
+        }
+      ],
+      "firepit": [],
+      "icebox": [],
+      "researchlab": [],
+      "researchlab2": [],
+      "researchlab3": [],
+      "researchlab4": [],
+      "treasurechest": [
+        {
+          "id": "e_treasurechest_000001",
+          "transform": {
+            "position": [
+              -7.071,
+              0,
+              -7.071
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed"
+            },
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "0",
+                  "item": {
+                    "itemId": "butterfly",
+                    "count": 31
+                  }
+                },
+                {
+                  "slotKey": "1",
+                  "item": {
+                    "itemId": "twigs",
+                    "count": 21
+                  }
+                },
+                {
+                  "slotKey": "2",
+                  "item": {
+                    "itemId": "fireflies",
+                    "count": 3
+                  }
+                },
+                {
+                  "slotKey": "3",
+                  "item": {
+                    "itemId": "goldnugget",
+                    "count": 39
+                  }
+                },
+                {
+                  "slotKey": "4",
+                  "item": {
+                    "itemId": "rocks",
+                    "count": 40
+                  }
+                },
+                {
+                  "slotKey": "5",
+                  "item": {
+                    "itemId": "silk",
+                    "count": 29
+                  }
+                },
+                {
+                  "slotKey": "6",
+                  "item": {
+                    "itemId": "gears",
+                    "count": 10
+                  }
+                },
+                {
+                  "slotKey": "7",
+                  "item": {
+                    "itemId": "charcoal",
+                    "count": 8
+                  }
+                },
+                {
+                  "slotKey": "8",
+                  "item": {
+                    "itemId": "cutgrass",
+                    "count": 11
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "e_b1b9f84f58c5a2f1f2c6287d6cc28024",
+          "transform": {
+            "position": [
+              -2.3863652093126895,
+              0,
+              -14.872265569828048
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "closed",
+              "skinId": "treasurechest_poshprint"
+            },
+            "container": {
+              "slotCount": 9,
+              "slots": [
+                {
+                  "slotKey": "5",
+                  "item": {
+                    "itemId": "pigskin",
+                    "count": 10
+                  }
+                },
+                {
+                  "slotKey": "7",
+                  "item": {
+                    "itemId": "moonrocknugget",
+                    "count": 32
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "tent": [],
+      "moonbase": [],
+      "wardrobe": [],
+      "dragonflychest": [],
+      "campfire": [],
+      "saltbox": [],
+      "nightlight": [],
+      "pighouse": [],
+      "mushroom_light": [],
+      "mushroom_light2": [],
+      "wall_stone": [
+        {
+          "id": "e_292d8d625929f26c3145bf4eef4fd8db",
+          "transform": {
+            "position": [
+              -40.5,
+              0,
+              -31.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_4807891eea6bacad621803988260a15a",
+          "transform": {
+            "position": [
+              -40.5,
+              0,
+              -25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_01ac6ad3a1f8f480c97a72ff41527480",
+          "transform": {
+            "position": [
+              -37.5,
+              0,
+              -16.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_ea2214ab2efc6975801ddc98c45e3bec",
+          "transform": {
+            "position": [
+              -43.5,
+              0,
+              -7.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "wall_stone_2": [],
+      "wall_wood": [],
+      "wall_hay": [],
+      "wall_ruins": [],
+      "wall_ruins_2": [],
+      "wall_moonrock": [
+        {
+          "id": "e_19e5ae73e45516b9023c28d60bba8a56",
+          "transform": {
+            "position": [
+              13.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_5fd1d2f59a58e23e2fba2a6f9e8e3967",
+          "transform": {
+            "position": [
+              10.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_f0c039aebfecb4bdaf1da9870870e714",
+          "transform": {
+            "position": [
+              7.5,
+              0,
+              -40.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_3173a3a18d9c99c87fb82352159fb0eb",
+          "transform": {
+            "position": [
+              4.5,
+              0,
+              -43.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_178995283cd56cd722594539aa4b4fe5",
+          "transform": {
+            "position": [
+              1.5,
+              0,
+              -46.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_786a38f07e79cb76d81acddee071ec12",
+          "transform": {
+            "position": [
+              -1.5,
+              0,
+              -49.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "wall_dreadstone": [],
+      "wall_scrap": [],
+      "ground_item": [
+        {
+          "id": "e_9026f7ec3f32e8ffa91072a763ea3317",
+          "transform": {
+            "position": [
+              -5.77653418826343,
+              0,
+              1.0308098193467319
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "lightbulb",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_b961b11df249862d74c05530e02c053b",
+          "transform": {
+            "position": [
+              9.931287092473374,
+              0,
+              -0.39097096319598645
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "lightbulb",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_7c88adde2e96cf50216c5536d45934fd",
+          "transform": {
+            "position": [
+              -20.887391132479568,
+              0,
+              -8.934433462256212
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_ec32369c80eec4f59b134d48d347c727",
+          "transform": {
+            "position": [
+              -10.127456866920609,
+              0,
+              -43.83088313160126
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "wall_moonrock_item",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_ba6862dac33e15636920d3d9b693f34a",
+          "transform": {
+            "position": [
+              -6.888244694398452,
+              0,
+              -24.365984623222943
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "alterguardianhat",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_90cf4246abdaf9c4386cdb43d516541a",
+          "transform": {
+            "position": [
+              6.482520699179232,
+              0,
+              -26.03924601889433
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "alterguardianhat",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_777d1313fa8f0bbeec157f5f4c2a9b2d",
+          "transform": {
+            "position": [
+              17.478305808189926,
+              0,
+              -26.03924601889433
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "alterguardianhat",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_02462944419ec2f83371ad24f6ea25f5",
+          "transform": {
+            "position": [
+              3.718775426467693,
+              0,
+              -11.180857721573076
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_9e7d3d06c71772990f5c9c7e49c1fa14",
+          "transform": {
+            "position": [
+              -9.250176988112372,
+              0,
+              8.999427837510094
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "lantern",
+              "count": 1,
+              "skinId": "lantern_tesla"
+            }
+          }
+        },
+        {
+          "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
+          "transform": {
+            "position": [
+              -23.088108304516815,
+              0,
+              8.433095223930843
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_5f98f9a627feea2fb75d1ffa516e94b7",
+          "transform": {
+            "position": [
+              -5.195205634344359,
+              0,
+              160.02045071214388
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_d96125953f2a5c9abf3006c7e9814f8b",
+          "transform": {
+            "position": [
+              -171.49630141134088,
+              0,
+              27.033885221307543
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_bb2e6b7bc2ac993bbee65beff6992d46",
+          "transform": {
+            "position": [
+              -65.02521682933572,
+              0,
+              30.67572399542208
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_7d80c7aec9e512f51989a11a65b96473",
+          "transform": {
+            "position": [
+              -125.6130390442993,
+              0,
+              60.08971710173461
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "butterfly",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_bc82037e0af6ebb29adf332fc52afbbc",
+          "transform": {
+            "position": [
+              -64.5199722446746,
+              0,
+              55.218872183133854
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_45ab679d6b222a356a667c32dea0a67e",
+          "transform": {
+            "position": [
+              -91.27619005303735,
+              0,
+              55.218872183133854
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_4b127dfbea3bd9b2bdf5847c3f578f82",
+          "transform": {
+            "position": [
+              -127.1447029833026,
+              0,
+              48.049913164501945
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_92af5ad48ad47ab3653fcfec39dbceab",
+          "transform": {
+            "position": [
+              -124.49537244015616,
+              0,
+              71.25287708653137
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_4ac5d7792664c8e497a12dd8582670e6",
+          "transform": {
+            "position": [
+              -94.9650384914786,
+              0,
+              83.81069607897703
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_24f1cc810bb5579550521d6cb1b4fc39",
+          "transform": {
+            "position": [
+              -73.13005864352395,
+              0,
+              81.91466931380819
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_34fd8417ab5d93e3e3a5790ef059f8bc",
+          "transform": {
+            "position": [
+              16.67789116822153,
+              0,
+              1.9381944169262884
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "opalstaff",
+              "count": 1,
+              "skinId": "moonstaff_crystal"
+            }
+          }
+        },
+        {
+          "id": "e_8c93768383b35e63145e7cc3c8141347",
+          "transform": {
+            "position": [
+              13.7496837257966,
+              0,
+              34.88557305897684
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "yellowstaff",
+              "count": 1,
+              "skinId": "starstaff_crystal"
+            }
+          }
+        },
+        {
+          "id": "e_b334f24acb83f2eebcc0af2853c292c4",
+          "transform": {
+            "position": [
+              9.516294926866202,
+              0,
+              14.973106762556332
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "reskin_tool",
+              "count": 1,
+              "skinId": "reskin_tool_wand"
+            }
+          }
+        },
+        {
+          "id": "e_7c297653ab711cc0da900999597ddece",
+          "transform": {
+            "position": [
+              19.275205015121504,
+              0,
+              14.634710495321393
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "backpack",
+              "count": 1,
+              "skinId": "backpack_carrat"
+            }
+          }
+        },
+        {
+          "id": "e_bc4ba2b98bff1c1ce5de8423a3de5a8e",
+          "transform": {
+            "position": [
+              30,
+              0,
+              -6
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "farm_plow_item",
+              "count": 1,
+              "remainingUses": 3
+            }
+          }
+        }
+      ],
+      "flower": [],
+      "stafflight": [],
+      "staffcoldlight": [],
+      "flower_cave": [],
+      "flower_cave_double": [],
+      "flower_cave_triple": [],
+      "beefalo": [
+        {
+          "id": "e_fbc93491832fbc0f9ee1870641d45c24",
+          "transform": {
+            "position": [
+              -26.896190231193568,
+              0,
+              9.316314289065978
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -17.695081993185838,
+                0,
+                0.22546845008602653
+              ],
+              "heading": 5.518830128045408,
+              "poopRemainingSeconds": 20.171099614583166
+            }
+          }
+        }
+      ],
+      "rock1": [],
+      "rock2": [
+        {
+          "id": "e_10f744212462fb2e3f566f39d918099b",
+          "transform": {
+            "position": [
+              31.857231460977644,
+              0,
+              -41.84302377546824
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "rock_flintless": [],
+      "rock_flintless_med": [],
+      "rock_flintless_low": [],
+      "grass": [],
+      "sapling": [],
+      "sapling_moon": [],
+      "pond": [
+        {
+          "id": "e_be5e94c7320d1059c66478541a6e91fc",
+          "transform": {
+            "position": [
+              135.28668189991572,
+              0,
+              31.713794993722182
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "nightmaregrowth": [
+        {
+          "id": "e_b8c5ddba5f7d1d574da52ea9cf8289d0",
+          "transform": {
+            "position": [
+              99.23287758288731,
+              0,
+              -26.72933635307457
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "nightmareGrowth": {
+              "crackRotation": 17.666833195795583
+            }
+          }
+        }
+      ],
+      "wormhole": [],
+      "multiplayer_portal_moonrock": []
+    }
+  },
+  "players": {
+    "local": {
+      "prefab": "wilson",
+      "shardId": "master",
+      "transform": {
+        "position": [
+          23.57394789428128,
+          0,
+          -12.90509339324658
+        ],
+        "rotationY": 0
+      },
+      "stats": {
+        "health": 150,
+        "hunger": 105,
+        "sanity": 35
+      },
+      "inventory": {
+        "containers": {
+          "player:inventory": {
+            "slotCount": 15,
+            "slots": [
+              {
+                "slotKey": "0",
+                "item": {
+                  "itemId": "wall_moonrock_item",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "1",
+                "item": {
+                  "itemId": "seeds",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "2",
+                "item": {
+                  "itemId": "torch",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "3",
+                "item": {
+                  "itemId": "cutstone",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "4",
+                "item": {
+                  "itemId": "log",
+                  "count": 8
+                }
+              },
+              {
+                "slotKey": "6",
+                "item": {
+                  "itemId": "wall_stone_item",
+                  "count": 10
+                }
+              },
+              {
+                "slotKey": "7",
+                "item": {
+                  "itemId": "butterfly",
+                  "count": 15
+                }
+              },
+              {
+                "slotKey": "8",
+                "item": {
+                  "itemId": "fireflies",
+                  "count": 14
+                }
+              },
+              {
+                "slotKey": "10",
+                "item": {
+                  "itemId": "goldenpickaxe",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "11",
+                "item": {
+                  "itemId": "hammer",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "14",
+                "item": {
+                  "itemId": "bugnet",
+                  "count": 1
+                }
+              }
+            ]
+          },
+          "player:equipment": {
+            "slotCount": 3,
+            "slots": [
+              {
+                "slotKey": "hand",
+                "item": {
+                  "itemId": "reskin_tool",
+                  "count": 1
+                }
+              },
+              {
+                "slotKey": "head",
+                "item": {
+                  "itemId": "alterguardianhat",
+                  "count": 1,
+                  "skinId": "alterguardianhat_lastprism"
+                }
+              }
+            ]
+          },
+          "player:backpack": {
+            "slotCount": 8,
+            "slots": []
+          }
+        },
+        "bufferedBuilds": []
+      }
+    }
+  }
+}
