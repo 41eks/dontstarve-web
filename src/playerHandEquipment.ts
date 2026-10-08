@@ -1,18 +1,18 @@
 import { ItemEntity } from '@dontstarve-web/inventory';
-import { handEquipmentState, type HandEquipment, type HandEquipmentLifecycle, type Signal } from '@dontstarve-web/signals';
+import type { HandEquipment, HandEquipmentLifecycle, Signal } from '@dontstarve-web/signals';
 import { getHandEquipmentDefinition, preloadHandEquipment, type HandEquipmentContext } from '@dontstarve-web/prefab/handEquipment';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 
 export interface PlayerHandEquipmentOptions extends HandEquipmentContext {
   animation?: Pick<WilsonAnimationController, 'setCarryItem' | 'playItemTransition'>;
   setHandAction(action: string | null): void;
-  slot?: Signal<HandEquipment | null>;
+  handEquipmentExistenceState: Signal<HandEquipment | null>;
 }
 
-/** Application wiring observes the shared signal; prefab definitions own item-specific behavior. */
+/** Application wiring observes the injected existence state; prefabs own item behavior. */
 export async function bindPlayerHandEquipment(options: PlayerHandEquipmentOptions) {
   await preloadHandEquipment();
-  const slot = options.slot ?? handEquipmentState;
+  const slot = options.handEquipmentExistenceState;
   let active: HandEquipmentLifecycle | undefined;
   let disposed = false;
   let transitioning = false;

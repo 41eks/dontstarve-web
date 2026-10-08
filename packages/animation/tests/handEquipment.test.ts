@@ -1,6 +1,6 @@
 import type { WilsonAnimationController } from '../../prefab/src/player';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createSignal, handEquipmentState, type HandEquipment } from '@dontstarve-web/signals';
+import { createHandEquipmentExistenceState, type HandEquipment } from '@dontstarve-web/signals';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { getTorchController } from '../../prefab/src/torch';
 import { PreloadSounds } from '../../prefab/src/sound';
@@ -9,7 +9,7 @@ import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })),
 }));
-afterEach(() => { handEquipmentState.set(null); vi.restoreAllMocks(); vi.clearAllMocks(); });
+afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); });
 
 function presentation() {
   return { animation: { setCarryItem: vi.fn<WilsonAnimationController['setCarryItem']>(async () => {}), playItemTransition: vi.fn<WilsonAnimationController['playItemTransition']>() },
@@ -24,7 +24,7 @@ it('equips from the restore signal write, unequips before replacement and releas
   ], { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' } },
   { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
   const ui = presentation();
-  const binding = await bindPlayerHandEquipment(ui);
+  const binding = await bindPlayerHandEquipment({ ...ui, handEquipmentExistenceState: store.handEquipmentExistenceState });
   try {
     expect(ui.animation.setCarryItem).not.toHaveBeenCalled();
     expect(ui.setHandAction).not.toHaveBeenCalled();
@@ -60,25 +60,33 @@ it('equips from the restore signal write, unequips before replacement and releas
     expect(equip).toHaveBeenCalledOnce();
     binding.playTransition('item_out', 'torch');
     expect(ui.animation.playItemTransition).toHaveBeenCalledExactlyOnceWith('item_out', 'torch');
+    const stillEquipped = store.handEquipment.peek();
     nextTorch.extinguish();
-    expect(store.handEquipment.peek()).toBeNull();
+    expect(store.handEquipment.peek()).toBe(stillEquipped);
     expect(store.getEntity(hand)).toBe(nextEntity);
-    expect(ui.animation.setCarryItem).toHaveBeenLastCalledWith(null, undefined);
+    expect(ui.animation.setCarryItem).toHaveBeenLastCalledWith('torch', undefined);
     expect(ui.setLightActive).toHaveBeenLastCalledWith(false);
     store.setRemainingFuel(hand, 17);
     expect(equip).toHaveBeenCalledOnce();
     store.transfer(hand, a, 1); store.transfer(a, hand, 1);
     expect(nextTorch.isBurning).toBe(true);
-    const equipment = handEquipmentState.peek();
+    const remove = vi.spyOn(nextEntity, 'remove');
+    binding.update(18); binding.flush();
+    expect(store.handEquipmentExistenceState.peek()).toBeNull();
+    expect(store.getEntity(hand)).toBeNull();
+    expect(nextEntity.isRemoved).toBe(true);
+    expect(remove).not.toHaveBeenCalled(); // The signal subscriber commits removal, not the prefab owner callback.
+    expect(ui.animation.setCarryItem).toHaveBeenLastCalledWith(null, undefined);
+    const saved = store.exportState();
+    store.replaceState(saved, {});
+    expect(store.get(hand)).toBeNull();
     binding.dispose();
-    expect(handEquipmentState.peek()).toBe(equipment);
-    expect(nextTorch.isBurning).toBe(false);
     const calls = ui.animation.setCarryItem.mock.calls.length;
-    handEquipmentState.set(null);
+    store.transfer(b, hand, 1);
+    store.handEquipmentExistenceState.set(null);
     binding.update(10);
     expect(ui.animation.setCarryItem).toHaveBeenCalledTimes(calls);
-    expect(nextEntity.components.fueled.remaining).toBe(17);
-  } finally { binding.dispose(); store.entities.dispose(); }
+  } finally { binding.dispose(); store.dispose(); }
 });
 
 it('preserves the latest equipment when unequip synchronously supersedes a transition', async () => {
@@ -86,9 +94,9 @@ it('preserves the latest equipment when unequip synchronously supersedes a trans
   const initial: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS', entity };
   const staff: HandEquipment = { itemId: 'yellowstaff', EQUIPSLOTS: 'HANDS' };
   const hammer: HandEquipment = { itemId: 'hammer', EQUIPSLOTS: 'HANDS' };
-  const slot = createSignal<HandEquipment | null>(null);
+  const slot = createHandEquipmentExistenceState();
   const ui = presentation();
-  const binding = await bindPlayerHandEquipment({ ...ui, slot });
+  const binding = await bindPlayerHandEquipment({ ...ui, handEquipmentExistenceState: slot });
   try {
     slot.set(initial);
     const torch = getTorchController(entity), unequip = torch.onunequip.bind(torch);

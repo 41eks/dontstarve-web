@@ -1,10 +1,10 @@
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { GroundItemManager } from '../../../src/groundItems';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
-import { createSignal, handEquipmentState, type HandEquipment } from '@dontstarve-web/signals';
+import { createSignal, createHandEquipmentExistenceState, type HandEquipment } from '@dontstarve-web/signals';
 import { TORCH_FUEL, TORCH_SOUNDS, TorchController, getTorchController, createTorchGroundFactory } from '../../prefab/src/torch';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { PlaySound, PreloadSounds } from '../../prefab/src/sound';
@@ -14,7 +14,9 @@ vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn() })),
 }));
-afterEach(() => { handEquipmentState.set(null); vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+let handEquipmentExistenceState: ReturnType<typeof createHandEquipmentExistenceState>;
+beforeEach(() => { handEquipmentExistenceState = createHandEquipmentExistenceState(); });
+afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function fixture(initialFuel = TORCH_FUEL) {
   const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: initialFuel });
@@ -68,8 +70,8 @@ describe('torch prefab burning lifecycle', () => {
     torch.update(10);
     expect(fuel.getRemainingFuel()).toBe(TORCH_FUEL);
     const equipment = torch;
-    handEquipmentState.set(equipment);
-    torch.onequip(handEquipmentState); torch.onequip(handEquipmentState);
+    handEquipmentExistenceState.set(equipment);
+    torch.onequip(handEquipmentExistenceState); torch.onequip(handEquipmentExistenceState);
     expect(PlaySound).toHaveBeenCalledExactlyOnceWith('dontstarve/wilson/torch_swing', undefined);
     expect(onBurningChange.mock.calls).toEqual([[true]]);
     torch.update(10.125); spare.torch.update(10.125);
@@ -77,11 +79,11 @@ describe('torch prefab burning lifecycle', () => {
     expect(spare.fuel.getRemainingFuel()).toBe(TORCH_FUEL);
     torch.onunequip();
     expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', undefined);
-    expect(handEquipmentState.peek()).toBe(equipment);
+    expect(handEquipmentExistenceState.peek()).toBe(equipment);
     torch.update(20);
     expect(torch.isBurning).toBe(false);
     expect(fuel.getRemainingFuel()).toBe(64.875);
-    torch.onequip(handEquipmentState);
+    torch.onequip(handEquipmentExistenceState);
     torch.update(0.5);
     expect(fuel.getRemainingFuel()).toBe(64.375);
     // A saved fuel value restores an unlit torch; equip starts its lifecycle.
@@ -89,11 +91,11 @@ describe('torch prefab burning lifecycle', () => {
     restored.torch.update(5);
     expect(restored.fuel.getRemainingFuel()).toBe(64.375);
     const restoredEquipment = restored.torch;
-    handEquipmentState.set(restoredEquipment);
-    restored.torch.onequip(handEquipmentState); restored.torch.update(0.125);
+    handEquipmentExistenceState.set(restoredEquipment);
+    restored.torch.onequip(handEquipmentExistenceState); restored.torch.update(0.125);
     expect(restored.fuel.getRemainingFuel()).toBe(64.25);
-    torch.dispose(); torch.update(5); torch.onequip(handEquipmentState);
-    expect(handEquipmentState.peek()).toBe(restoredEquipment);
+    torch.dispose(); torch.update(5); torch.onequip(handEquipmentExistenceState);
+    expect(handEquipmentExistenceState.peek()).toBe(restoredEquipment);
     expect(torch.isBurning).toBe(false);
     expect(fuel.getRemainingFuel()).toBe(64.375);
     expect(onBurningChange.mock.calls).toEqual([[true], [false], [true], [false]]);
@@ -102,8 +104,8 @@ describe('torch prefab burning lifecycle', () => {
 
   it('removes an exhausted torch and extinguishes once without persisting zero fuel', () => {
     const { torch, fuel, onBurningChange } = fixture(0.125);
-    handEquipmentState.set(torch);
-    torch.onequip(handEquipmentState);
+    handEquipmentExistenceState.set(torch);
+    torch.onequip(handEquipmentExistenceState);
     for (const dt of [0, -1, NaN, Infinity]) torch.onFrame(dt);
     for (let frame = 0; frame < 59; frame++) torch.onFrame(0.001);
     expect(fuel.getRemainingFuel()).toBe(0.125);
@@ -111,46 +113,45 @@ describe('torch prefab burning lifecycle', () => {
     torch.onFrame(0.125);
     expect(torch.isBurning).toBe(false);
     expect(fuel.getRemainingFuel()).toBeNull();
-    expect(handEquipmentState.peek()).toBeNull();
+    expect(handEquipmentExistenceState.peek()).toBeNull();
     expect(fuel.remove).toHaveBeenCalledOnce();
     expect(fuel.setRemainingFuel).not.toHaveBeenCalled();
-    torch.update(1); torch.onequip(handEquipmentState); torch.dispose();
+    torch.update(1); torch.onequip(handEquipmentExistenceState); torch.dispose();
     expect(fuel.remove).toHaveBeenCalledOnce();
     expect(onBurningChange.mock.calls).toEqual([[true], [false]]);
   });
 
-  it('clears only its bound slot, unbinds on unequip and preserves a replacement', () => {
-    const first = fixture(), next = fixture();
+  it('preserves equipment on extinguish, clears only its bound slot on depletion and protects replacements', () => {
+    const first = fixture(), next = fixture(), stale = fixture(0.1);
     const slot = createSignal<HandEquipment | null>(first.torch);
     const otherSlot = createSignal<HandEquipment | null>(next.torch);
-    const stopSlot = slot.subscribe((value) => { if (value === null) first.torch.onunequip(); });
-    const stopOther = otherSlot.subscribe((value) => { if (value === null) next.torch.onunequip(); });
+    const stopSlot = slot.subscribe(value => { if (value === null) first.torch.onunequip(); });
+    const stopOther = otherSlot.subscribe(value => { if (value === null) next.torch.onunequip(); });
     try {
       first.torch.onequip(slot);
       next.torch.onequip(otherSlot);
-      first.torch.onunequip();
       first.torch.extinguish();
       expect(slot.peek()).toBe(first.torch);
+      expect(first.torch.isBurning).toBe(false);
+      expect(first.fuel.getRemainingFuel()).toBe(TORCH_FUEL);
       first.torch.onequip(slot);
-      first.torch.extinguish();
+      first.torch.update(TORCH_FUEL);
       expect(slot.peek()).toBeNull();
       expect(otherSlot.peek()).toBe(next.torch);
       expect(next.torch.isBurning).toBe(true);
-      expect(first.fuel.getRemainingFuel()).toBe(TORCH_FUEL);
-
-      slot.set(first.torch);
-      first.torch.onequip(slot);
+      slot.set(stale.torch);
+      stale.torch.onequip(slot);
       slot.set(next.torch);
-      // Replacement without an unequip notification must also be protected.
-      first.torch.extinguish();
+      stale.torch.update(0.2);
       expect(slot.peek()).toBe(next.torch);
-      first.torch.onunequip(); first.torch.dispose();
+      expect(stale.fuel.getRemainingFuel()).toBeNull();
       next.torch.extinguish();
+      expect(otherSlot.peek()).toBe(next.torch);
+      next.torch.onequip(otherSlot);
+      next.torch.update(TORCH_FUEL);
       expect(otherSlot.peek()).toBeNull();
       expect(slot.peek()).toBe(next.torch);
-    } finally {
-      stopSlot(); stopOther(); first.torch.dispose(); next.torch.dispose();
-    }
+    } finally { stopSlot(); stopOther(); first.torch.dispose(); next.torch.dispose(); stale.torch.dispose(); }
   });
 
   it('keeps one entity and controller through equip, asynchronous drop, reskin, pickup and save restoration', async () => {
@@ -163,7 +164,7 @@ describe('torch prefab burning lifecycle', () => {
     const entity = store.getEntity(slot)!;
     const controller = getTorchController(entity);
     const equip = vi.spyOn(controller, 'onequip');
-    const binding = await bindPlayerHandEquipment({ setLightActive() {}, setHandAction() {} });
+    const binding = await bindPlayerHandEquipment({ handEquipmentExistenceState: store.handEquipmentExistenceState, setLightActive() {}, setHandAction() {} });
     const scene = new THREE.Scene(), player = new THREE.Group();
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
     const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
@@ -171,7 +172,7 @@ describe('torch prefab burning lifecycle', () => {
       '/dst/data/anim', player, undefined, undefined, undefined, store.entities);
     try {
       store.applySlotChanges([{ slot, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
-      expect(equip).toHaveBeenCalledExactlyOnceWith(handEquipmentState);
+      expect(equip).toHaveBeenCalledExactlyOnceWith(store.handEquipmentExistenceState);
       controller.onFrame(0.5);
       const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1 };
       expect(await manager.drop(definition, new THREE.Vector3(), () => {
@@ -230,7 +231,7 @@ describe('torch prefab burning lifecycle', () => {
     const visual = await factory.create(definition);
     try {
       const held = { itemId: 'hammer', EQUIPSLOTS: 'HANDS' as const };
-      handEquipmentState.set(held);
+      handEquipmentExistenceState.set(held);
       visual.model.position.set(4, 0, 6);
       // Prepared visual receives the actual state committed after an asynchronous drop.
       visual.setDefinition?.({ ...definition, remainingFuel: 18 });
@@ -245,7 +246,7 @@ describe('torch prefab burning lifecycle', () => {
       visual.model.dispatchEvent({ type: 'onextinguish' });
       expect(controller.isBurning).toBe(false);
       expect(getPrefabLocalLight(visual.model)).toBeUndefined();
-      expect(handEquipmentState.peek()).toBe(held);
+      expect(handEquipmentExistenceState.peek()).toBe(held);
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', visual.model.position);
       const before = visual.model.position.clone();
       visual.update?.(0.1);
@@ -258,7 +259,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', owner);
       expect(controller.isBurning).toBe(false);
       expect(visual.getDefinition?.()).toEqual({ remainingFuel: 17.5, torchLit: false });
-      expect(handEquipmentState.peek()).toBe(held);
+      expect(handEquipmentExistenceState.peek()).toBe(held);
       groundSounds.forEach((sound) => expect(sound.stop).toHaveBeenCalledOnce());
       const calls = vi.mocked(PlaySound).mock.calls.length;
       visual.model.dispatchEvent({ type: 'onputininventory' });

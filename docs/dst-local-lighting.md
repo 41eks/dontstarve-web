@@ -166,7 +166,7 @@ gl_FragColor.rgb *= max(light.rgb,
 
 [`src/dstLocalLighting.ts`](../src/dstLocalLighting.ts) 已实现一张 256×256 的世界 XZ 光照贴图，支持玩家手持火把、手持和地面的提灯，以及地面的荧光果。默认环境是春季夜晚，原始环境 RGB 为零；春季夜晚按原版约定复用黄昏 LUT。
 
-灯光开关由 [`src/main.ts`](../src/main.ts) 的 `syncHandEquipment()` 根据库存中手部装备决定，通过 `DstLightingRenderer.setTorchOwner(player | null)` 绑定或关闭光源。它使用成功转移后的库存状态；未装备的背包火把和普通丢到地面的火把不亮。角色每帧的世界原点决定贴图中心，照明不依赖手部动画、镜头朝向或屏幕坐标。
+灯光开关由 [`src/playerHandEquipment.ts`](../src/playerHandEquipment.ts) 订阅共享手部 signal，调用 torch prefab 的装备生命周期工厂，并由其燃烧 signal 通过应用注入的 `DstLightingRenderer.setTorchOwner(player | null)` 绑定或关闭光源。先注册订阅，再从存档恢复并写入 signal，动画和灯光都由该次写入触发；后续使用成功转移后的装备实体引用。未装备的背包火把和普通丢到地面的火把不亮。角色每帧的世界原点决定贴图中心，照明不依赖手部动画、镜头朝向或屏幕坐标。
 
 当前使用以下估计规则，**它们不是已确认的 DST 引擎参数转换**：
 

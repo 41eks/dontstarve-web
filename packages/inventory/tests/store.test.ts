@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { handEquipmentState } from '@dontstarve-web/signals';
 import {
   BodySlot,
   HandSlot,
@@ -18,7 +17,6 @@ import {
 const signalSubscriptions: (() => void)[] = [];
 afterEach(() => {
   signalSubscriptions.splice(0).forEach((stop) => stop());
-  handEquipmentState.set(null);
 });
 
 const specs: Readonly<Record<string, InventoryItemSpec>> = {
@@ -85,11 +83,11 @@ describe('inventory state restoration', () => {
     expect(store.handEquipment.get()).not.toBe(last);
     expect(() => store.replaceState({ ...saved, slots: [{ address: hand, item: { itemId: 'torch', count: 2 } }] }, {})).toThrow();
     expect(transitions).toHaveLength(5);
-    handEquipmentState.set(null);
+    store.handEquipmentExistenceState.set(null);
     store.setRemainingFuel(hand, 24);
     store.applySlotChanges([{ slot: from, itemId: 'torch', delta: -1 }]);
     store.setStorageAccessible('chest:test', true);
-    expect(handEquipmentState.peek()).toBeNull();
+    expect(store.handEquipmentExistenceState.peek()).toBeNull();
     expect(transitions).toHaveLength(6);
   });
 

@@ -1,4 +1,4 @@
-import { createSignal, readonlySignal, type Signal } from './signal';
+import { createSignal, type Signal } from './signal';
 
 /** Structural identity only: signals has no dependency on inventory or prefabs. */
 export interface HandEquipmentEntity {
@@ -7,9 +7,12 @@ export interface HandEquipmentEntity {
   readonly isRemoved: boolean;
 }
 
-/** Prefabs receive the concrete slot; implementations never import player state. */
+/**
+ * Prefabs receive a concrete existence state; implementations never import player state.
+ * Unequip releases the binding without changing its value.
+ */
 export interface HandEquipmentLifecycle {
-  onequip(slot: Signal<HandEquipment | null>): void;
+  onequip(handEquipmentExistenceState: Signal<HandEquipment | null>): void;
   onunequip(): void;
   onFrame?(dt: number): void;
   flush?(): void;
@@ -23,15 +26,22 @@ export interface HandEquipment {
   readonly entity?: HandEquipmentEntity;
 }
 
-/** Shared player hand state, statically imported by inventory and prefabs. */
-const state = createSignal<HandEquipment | null>(null);
-export const handEquipmentState: Signal<HandEquipment | null> = {
-  ...state,
-  set(value) {
-    if (value !== null && value?.EQUIPSLOTS !== 'HANDS') {
-      throw new TypeError('Hand equipment must declare EQUIPSLOTS = "HANDS"');
-    }
-    state.set(value);
-  },
-};
-export const handEquipment = readonlySignal(handEquipmentState);
+/**
+ * Creates an independent hand equipment existence state, initially empty.
+ * Inventory publishes the current equip identity after committing a slot change.
+ * A bound prefab may set null on depletion only while that identity is still current;
+ * the owning store then removes the item. Normal unequip uses inventory transfer.
+ * Fuel and burning state belong to the prefab/entity, not this signal.
+ */
+export function createHandEquipmentExistenceState(): Signal<HandEquipment | null> {
+  const state = createSignal<HandEquipment | null>(null);
+  return {
+    ...state,
+    set(value) {
+      if (value !== null && value?.EQUIPSLOTS !== 'HANDS') {
+        throw new TypeError('Hand equipment must declare EQUIPSLOTS = "HANDS"');
+      }
+      state.set(value);
+    },
+  };
+}

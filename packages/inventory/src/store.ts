@@ -1,6 +1,6 @@
 import { ItemEntity, ItemEntityRegistry } from './entity';
 import { planCraft } from './craft';
-import { handEquipmentState, handEquipment } from '@dontstarve-web/signals';
+import { createHandEquipmentExistenceState, readonlySignal, type HandEquipment, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { equipmentSlotAddress } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
@@ -46,7 +46,8 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
 }
 
 export class InventoryStore {
-  readonly handEquipment = handEquipment;
+  readonly handEquipmentExistenceState: Signal<HandEquipment | null>;
+  readonly handEquipment: ReadonlySignal<HandEquipment | null>;
   readonly entities: ItemEntityRegistry;
   private readonly bufferedBuilds = new Map<string, string | undefined>();
   private readonly itemSpecs = new Map<string, InventoryItemSpec>();
@@ -55,13 +56,17 @@ export class InventoryStore {
   private readonly skinSpecs: Readonly<Record<string, InventorySkinSpec>>;
   private readonly registrationByAddress = new Map<string, RegisteredItemSlot>();
   private readonly registrations: RegisteredItemSlot[] = [];
+  private stopHandEquipmentExistenceState?: () => void;
 
   constructor(
     registrations: readonly RegisteredItemSlot[],
     itemSpecs: Readonly<Record<string, InventoryItemSpec>>,
     skinSpecs: Readonly<Record<string, InventorySkinSpec>> = {},
     entities = new ItemEntityRegistry(),
+    handEquipmentExistenceState: Signal<HandEquipment | null> = createHandEquipmentExistenceState(),
   ) {
+    this.handEquipmentExistenceState = handEquipmentExistenceState;
+    this.handEquipment = readonlySignal(handEquipmentExistenceState);
     this.entities = entities;
     this.skinSpecs = skinSpecs;
     Object.entries(itemSpecs).forEach(([itemId, spec]) => this.itemSpecs.set(itemId, spec));
@@ -110,13 +115,37 @@ export class InventoryStore {
     }
     this.bindOwners();
     if (pending.some(({ address }) => addressKey(address) === addressKey(equipmentSlotAddress('hand')))) {
-      this.publishHandEquipment();
+      this.bindHandEquipmentExistenceState();
+      this.publishHandEquipmentExistenceState();
     }
   }
 
   subscribe(listener: InventoryListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Registration binds once before publishing; null removes the current equipment. */
+  private bindHandEquipmentExistenceState(): void {
+    if (this.stopHandEquipmentExistenceState) return;
+    const address = equipmentSlotAddress('hand');
+    if (!this.registrationByAddress.has(addressKey(address))) throw new Error('Missing player hand slot');
+    this.stopHandEquipmentExistenceState = this.handEquipmentExistenceState.subscribe((equipment, previous) => {
+      if (equipment !== null || this.handEquipmentExistenceState.peek() !== null) return;
+      const entity = this.getEntity(address);
+      // Own transfers already emptied the slot; foreign/stale equipment cannot remove its replacement.
+      if (!entity || previous?.entity !== entity) return;
+      this.applySlotChanges([{
+        slot: address, itemId: entity.prefab, skinId: entity.skinId, delta: -entity.components.stackable.count,
+      }]);
+    });
+  }
+
+  dispose(): void {
+    this.stopHandEquipmentExistenceState?.();
+    this.stopHandEquipmentExistenceState = undefined;
+    this.listeners.clear();
+    this.entities.dispose();
   }
 
   /** Exports detached domain data, including inaccessible storage and buffered builds. */
@@ -573,9 +602,9 @@ export class InventoryStore {
     for (const entity of old) if (!retained.has(entity) && !keepDeparted) this.entities.destroy(entity);
   }
 
-  private publishHandEquipment(): void {
+  private publishHandEquipmentExistenceState(): void {
     const entity = this.getEntity(equipmentSlotAddress('hand'));
-    handEquipmentState.set(entity ? Object.freeze({
+    this.handEquipmentExistenceState.set(entity ? Object.freeze({
       itemId: entity.prefab, EQUIPSLOTS: 'HANDS' as const, entity,
       ...(entity.skinId === undefined ? {} : { skinId: entity.skinId }),
     }) : null);
@@ -583,7 +612,7 @@ export class InventoryStore {
 
   private notify(changedSlots: readonly SlotAddress[], handReplaced = false): void {
     // Fuel or unrelated inventory updates must not re-equip an extinguished torch.
-    if (handReplaced) this.publishHandEquipment();
+    if (handReplaced) this.publishHandEquipmentExistenceState();
     this.listeners.forEach((listener) => listener(changedSlots));
   }
 

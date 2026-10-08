@@ -1,7 +1,6 @@
 // src/main.ts
 
 import './style.css';
-export { handEquipment } from '@dontstarve-web/signals';
 import {
   INVENTORY_RECIPES,
   equipmentSlotAddress,
@@ -93,6 +92,7 @@ const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
 const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, 'cookpot');
 const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, 'icebox');
 export const inventory = createInventoryStore();
+export const handEquipment = inventory.handEquipment;
 inventory.registerSlots(Array.from({ length: BACKPACK_SLOT_COUNT }, (_, index) => ({
   address: backpackSlotAddress(index), slot: new StorageSlot(),
 })));
@@ -136,6 +136,7 @@ window.addEventListener('contextmenu', (event) => {
 });
 
 const handEquipmentBinding = await bindPlayerHandEquipment({
+  handEquipmentExistenceState: inventory.handEquipmentExistenceState,
   animation: playerAnimation,
   soundPosition: player.position,
   setLightActive: active => dstLighting.setTorchOwner(active ? player : null),
@@ -370,7 +371,7 @@ window.addEventListener('pagehide', () => {
   gameUi.inventoryBar.cancelReceiveAnimations();
   gameUi.savingIndicator.remove();
   disposeScene();
-  inventory.entities.dispose();
+  inventory.dispose();
   DisposeSounds();
   disposeAnimationAssets();
   disposeAtlasImages();

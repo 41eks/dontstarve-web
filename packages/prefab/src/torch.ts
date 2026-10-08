@@ -79,15 +79,16 @@ export class TorchController implements HandEquipment {
   }
 
   extinguish(): void {
-    const slotSignal = this.slotSignal, equipment = this.equipment;
     this.flushFuel();
     this.OnExtinguish();
     this.stopFire(true);
-    const current = slotSignal?.peek();
-    // A stale torch cannot clear the equipment that replaced it.
-    if (slotSignal && current === equipment && current?.itemId === TORCH_ID) {
-      slotSignal.set(null);
-    }
+  }
+
+  private clearDepletedEquipment(): boolean {
+    const slotSignal = this.slotSignal, equipment = this.equipment;
+    if (!slotSignal || slotSignal.peek() !== equipment || equipment?.itemId !== TORCH_ID) return false;
+    slotSignal.set(null);
+    return true;
   }
 
   /** torch.lua: pickup clears fire, restores idle and stops fuel without emptying it. */
@@ -132,6 +133,8 @@ export class TorchController implements HandEquipment {
     const remaining = this.remainingFuel();
     if (remaining === null) {
       this.extinguish();
+      this.clearDepletedEquipment();
+      this.dispose();
       return;
     }
     const next = Math.max(0, remaining - dt);
@@ -139,7 +142,10 @@ export class TorchController implements HandEquipment {
     else {
       // Emit the final one-shot before Remove invokes component disposal.
       this.stopFire(true, this.options.soundPosition);
-      if (this.entity.remove()) { this.extinguish(); this.dispose(); }
+      const requested = this.clearDepletedEquipment();
+      // Ground/local unowned torches have no player store; stale bound items use their own owner.
+      if (!this.entity.isRemoved && (!requested || !this.entity.components.inventoryitem.owner)) this.entity.remove();
+      if (this.entity.isRemoved) this.dispose();
     }
   }
 

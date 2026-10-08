@@ -1,5 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { handEquipmentState } from '@dontstarve-web/signals';
+import { describe, expect, it, vi } from 'vitest';
 import { HandSlot, InventorySlot, InventoryStore, equipmentSlotAddress, inventorySlotAddress } from '../src';
 
 const a = inventorySlotAddress(0), b = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
@@ -14,7 +13,6 @@ function setup() {
     { address: hand, slot: new HandSlot() },
   ], specs);
 }
-afterEach(() => handEquipmentState.set(null));
 
 describe('DST item identity and ownership', () => {
   it('lets finiteuses consume durability, notify its owner and remove exhausted inventory items', () => {
