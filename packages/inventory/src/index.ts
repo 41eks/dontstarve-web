@@ -1,3 +1,4 @@
+export { ItemEntity, ItemEntityRegistry, FiniteUsesComponent, newItemEntityId, type ItemRuntimeComponent } from './entity';
 export {
   EQUIPMENT_KINDS,
   INVENTORY_SLOT_COUNT,

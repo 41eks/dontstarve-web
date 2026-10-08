@@ -884,7 +884,9 @@ three-roaming-save-v1.json
 }
 ```
 
-容器中的物品作为 `container.slots[].item` 嵌套保存，不同时出现在 `world.entities.ground_item` 中。物品从地面放入容器时，应在同一逻辑事务内删除地面实体并写入槽位；反向操作同理。这继承了 DST “有父实体的对象不再作为顶层实体保存”的规则。
+工作中的 `farm_plow` 使用 `components.farmPlow = { phase, remainingSeconds, deployItem }`。`deployItem` 是部署时通过 finiteuses 扣减后保存的完整物品快照，保留 `entityId`、prefab、数量和所有已支持的组件字段；耗尽或直接调试生成的工作实体为 `null`。返还时从快照重建物品，恢复原身份。嵌套快照的身份也参与全局重复 ID 校验。旧 `returnUses` 字段只在读取时迁移为 `{ itemId: "farm_plow_item", count: 1, remainingUses }`，不再写入新存档。
+
+容器中的物品作为 `container.slots[].item` 嵌套保存，不同时出现在 `world.entities.ground_item` 中。运行时库存槽持有 `ItemEntity` 引用，拾取或丢弃只改变归属与场景表现，不销毁并重建物品实体。库存快照用可选 `entityId` 保存稳定身份，地面记录使用同一身份作为 `id`；读取器兼容缺少该字段的旧存档，拒绝重复物品身份以及与世界实体冲突的身份。只有拆堆、制造和读取存档创建新运行时实体，整件移动与换肤保持引用；合堆消耗完全合入的实体。控制器、owner 回调和模型不序列化，读档按组件快照重建。这继承了 DST “有父实体的对象不再作为顶层实体保存”的规则。
 
 ### 玩家与物品栏
 

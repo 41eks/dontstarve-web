@@ -85,8 +85,17 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     // Current prefabs use camera-facing art and have no persistent world yaw.
     return { position, rotationY: number(o.rotationY, `${path}.rotationY`, 0, 0) };
   };
+  const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'phonographRecord']);
+    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'phonographRecord']);
+    const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
+    if (entityId !== undefined) {
+      if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
+      if (!path.endsWith('.components.stack')) {
+        if (ids.has(entityId)) fail(`${path}.entityId`, 'duplicate item entity ID');
+        ids.add(entityId);
+      }
+    }
     const itemId = string(o.itemId, `${path}.itemId`);
     const spec = Object.hasOwn(catalog.items, itemId) ? catalog.items[itemId] : undefined;
     if (!spec) fail(`${path}.itemId`, `unknown item ${itemId}`);
@@ -104,7 +113,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       || (phonographRecord !== 'record' && catalog.skins[phonographRecord]?.itemId !== 'record'))) {
       fail(`${path}.phonographRecord`, 'invalid loaded record');
     }
-    return { itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
+    return { ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
       ...(phonographRecord === undefined ? {} : { phonographRecord }),
       ...(remainingFuel === undefined ? {} : { remainingFuel }),
       ...(remainingUses === undefined ? {} : { remainingUses }) };
@@ -129,7 +138,6 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     return { slotCount: keys.length, slots };
   };
   const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
-  const ids = new Set<string>();
   let entityCount = 0;
   const parsers = prefabSaveParsers(catalog.prefabs ?? Object.values(PREFAB_DEFINITIONS));
   const groups = object(world.entities, 'world.entities', [...parsers.keys()]);
@@ -145,6 +153,9 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       const components = parsers.get(prefab)!(o.components, `${recordPath}.components`, {
         prefab, catalog, stack, container, transform,
       });
+      if (components.stack?.entityId !== undefined && components.stack.entityId !== id) {
+        fail(`${recordPath}.components.stack.entityId`, 'ground item ID must match entity record');
+      }
       return { id, transform: transform(o.transform, `${recordPath}.transform`, true), components };
     });
     return [prefab, records];

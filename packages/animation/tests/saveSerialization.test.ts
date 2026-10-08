@@ -3,19 +3,21 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../../ui/src/inventory-items';
 import { HAT_ITEM_SPECS } from '../../prefab/src/hats';
-import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
+import { TORCH_FUEL } from '../../prefab/src/torch';
+import { InventorySlot, InventoryStore, inventorySlotAddress, inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
 import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS, INVENTORY_SKIN_SPECS } from '../../ui/src/categories/shared';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
 import { chestContainerId, cookPotContainerId, inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { serializeSave, type RuntimeSaveState } from '../../../src/save/serialize';
 import { executeDebugCommand } from '../../../src/debugCommands';
-import type { InventoryStore } from '../../../src/inventory';
 import { WORLD_TILES } from '../../prefab/src/turfMap';
 import { PORTAL_ID } from '../../prefab/src/portal';
 
 const catalog: SaveCatalog = {
   items: { ...Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
     ...spec, maxStack: inventoryItemMaxStack(id), equippable: inventoryItemEquipmentKind(id),
+    ...(id === 'farm_plow_item' ? { maxUses: 4 } : {}),
+    ...(id === 'torch' ? { maxFuel: TORCH_FUEL } : {}),
   }])), ...HAT_ITEM_SPECS },
   skins: INVENTORY_SKIN_SPECS, recipes: INVENTORY_RECIPES, recipeSkins: INVENTORY_RECIPE_SKINS,
   buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls),
@@ -40,6 +42,49 @@ function fixture() {
 }
 
 describe('manual JSON save', () => {
+  it('round trips a deployed item snapshot and migrates the legacy returnUses field', () => {
+    const { template, state } = fixture();
+    const deployItem = { entityId: 'item:plow', itemId: 'farm_plow_item', count: 1, remainingUses: 2 };
+    state.entities.farm_plow = [{ id: 'plow:test', transform: { position: [6, 0, 6], rotationY: 0 },
+      components: { farmPlow: { phase: 'drill_loop', remainingSeconds: 7, deployItem } } }];
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities.farm_plow).toEqual(state.entities.farm_plow);
+    const legacy = JSON.parse(JSON.stringify(saved));
+    delete legacy.world.entities.farm_plow[0].components.farmPlow.deployItem;
+    legacy.world.entities.farm_plow[0].components.farmPlow.returnUses = 2;
+    expect(deserializeSave(JSON.stringify(legacy), catalog).world.entities.farm_plow[0].components.farmPlow?.deployItem)
+      .toEqual({ itemId: 'farm_plow_item', count: 1, remainingUses: 2 });
+    saved.world.entities.farm_plow[0].components.farmPlow!.deployItem!.remainingUses = 4;
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('expected one deployed farm_plow_item');
+  });
+
+  it('exports c_give entities through c_save, restores their identity and rejects conflicting IDs', async () => {
+    const { template, state } = fixture();
+    const createStore = () => new InventoryStore([0, 1].map(index => ({
+      address: inventorySlotAddress(index), slot: new InventorySlot(),
+    })), catalog.items);
+    const store = createStore();
+    expect((await executeDebugCommand('c_give("torch", 2)', store, () => false)).ok).toBe(true);
+    const entity = store.getEntity(inventorySlotAddress(0))!;
+    store.setRemainingFuel(inventorySlotAddress(0), 23.125);
+    let json = '';
+    expect((await executeDebugCommand('c_save()', store, () => false, () => {
+      json = serializeSave(template, { ...state, inventory: store.exportState() }, catalog);
+    })).ok).toBe(true);
+    const saved = deserializeSave(json, catalog);
+    const items = saved.players.local.inventory.containers['player:inventory'].slots;
+    expect(items[0].item).toEqual(entity.snapshot());
+    const restored = createStore();
+    restored.replaceState(inventoryStateFromSave(saved), {});
+    expect(restored.getEntity(inventorySlotAddress(0))).not.toBe(entity);
+    expect(restored.getEntity(inventorySlotAddress(0))!.snapshot()).toEqual(entity.snapshot());
+    items[1].item.entityId = entity.id;
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('duplicate item entity ID');
+    const conflicting = deserializeSave(json, catalog);
+    conflicting.world.entities.ground_item[0].id = entity.id;
+    expect(() => deserializeSave(JSON.stringify(conflicting), catalog)).toThrow('duplicate item entity ID');
+  });
+
   it('round trips empty portal groups and spawned portals without accepting unsupported prefabs or components', () => {
     const { template, state } = fixture();
     // EntityRegistry exports every registered group, even before any spawn.

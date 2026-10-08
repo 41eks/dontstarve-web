@@ -1,3 +1,4 @@
+import type { ItemEntityRegistry } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
@@ -114,9 +115,10 @@ export async function startScene(
   onFlowerPlanted?: () => void,
   pickLightbulbs: (count: number, sourcePosition: THREE.Vector3) => boolean = () => false,
   onClockTick?: (elapsedSeconds: number, dt: number) => void,
+  itemEntities?: ItemEntityRegistry,
 ) {
   const entities = createSceneEntities(world, consumeBufferedBuild, pickupGroundItem,
-    onBuildingInteraction, onFlowerPlanted, pickLightbulbs);
+    onBuildingInteraction, onFlowerPlanted, pickLightbulbs, itemEntities);
   const { registry } = entities;
   try {
     await registry.restoreAll(initialSave.world.entities);

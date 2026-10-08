@@ -55,7 +55,7 @@ describe('save JSON deserialization', () => {
     data.players.local.inventory.containers['player:equipment'].slots = [];
     data.world.map.tiles = [{ col: 0, row: 0, tileId: 47, underTileId: 30 }];
     data.world.entities.farm_plow = [{ id: 'test_plow', transform: { position: [6, 0, 6], rotationY: 0 },
-      components: { farmPlow: { phase: 'drill_loop', remainingSeconds: 7, returnUses: 3 } } }];
+      components: { farmPlow: { phase: 'drill_loop', remainingSeconds: 7, deployItem: { entityId: 'deployed_item', itemId: 'farm_plow_item', count: 1, remainingUses: 3 } } } }];
     data.world.entities.farm_soil = [{ id: 'test_soil', transform: { position: [3, 0, 3], rotationY: 0 },
       components: { farmSoil: { broken: false, plowId: 'test_plow' } } }];
     data.world.entities.ground_item = [{ id: 'test_item', transform: { position: [12, 0, 12], rotationY: 0 },
@@ -65,6 +65,14 @@ describe('save JSON deserialization', () => {
     expect(saved.world.entities.farm_plow).toEqual(data.world.entities.farm_plow);
     expect(saved.world.entities.farm_soil).toEqual(data.world.entities.farm_soil);
     expect(saved.world.entities.ground_item).toEqual(data.world.entities.ground_item);
+    const legacy = structuredClone(data);
+    delete legacy.world.entities.farm_plow[0].components.farmPlow.deployItem;
+    legacy.world.entities.farm_plow[0].components.farmPlow.returnUses = 3;
+    expect(parse(legacy).world.entities.farm_plow[0].components.farmPlow?.deployItem)
+      .toEqual({ itemId: 'farm_plow_item', count: 1, remainingUses: 3 });
+    data.world.entities.farm_plow[0].components.farmPlow.deployItem.entityId = 'test_item';
+    expect(() => parse(data)).toThrow('duplicate entity ID');
+    data.world.entities.farm_plow[0].components.farmPlow.deployItem.entityId = 'deployed_item';
     data.world.entities.ground_item[0].components.stack.remainingUses = 0;
     expect(() => parse(data)).toThrow('remainingUses');
     data.world.entities.ground_item[0].components.stack.remainingUses = 5;

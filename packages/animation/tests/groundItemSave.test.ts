@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
-import { ButterflyController } from '../../prefab/src/butterfly';
 import { createGroundItemSprite } from '@dontstarve-web/prefab/groundItems';
 
 vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
@@ -116,7 +115,7 @@ describe('ground item save records', () => {
     const model = await manager.spawnFromSave('range_item', item, foot);
     const onInventory = vi.fn();
     model.addEventListener('onputininventory', onInventory);
-    vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as THREE.Intersection]);
+    vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
     const click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown', { cancelable: true }),
       { button: 0, clientX: 50, clientY: 50 }));
     const saved = manager.exportRecords();
@@ -168,7 +167,7 @@ describe('ground item save records', () => {
     expect(model.position.toArray()).toEqual([3, 0, 4]);
     let attachedOnPickup = false;
     model.addEventListener('onputininventory', () => { attachedOnPickup = model.parent === scene; });
-    vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as THREE.Intersection]);
+    vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
     const click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0, clientX: 50, clientY: 50 }));
     pickup.mockReturnValueOnce(false);
     click();
@@ -201,7 +200,7 @@ describe('ground item save records', () => {
       { object: scene.children[0] } as THREE.Intersection,
     ]);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0, clientX: 50, clientY: 50 }));
-    expect(pickup).toHaveBeenCalledWith(definition, 'pickup', new THREE.Vector3(8, 0, 9));
+    expect(pickup).toHaveBeenCalledWith(expect.objectContaining(definition), 'pickup', new THREE.Vector3(8, 0, 9));
     expect(manager.exportRecords()).toEqual([]);
     expect(scene.children).toHaveLength(0);
   });

@@ -10,7 +10,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   await page.goto('/tests/dst-lighting.html');
-  await page.evaluate(async (paths) => {
+  const prepare = () => page.evaluate(async (paths) => {
     const main = await import(paths.main);
     const { player, playerBody } = await import(paths.player);
     const { scene } = await import(paths.universal);
@@ -23,7 +23,8 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     for (const records of Object.values(initialSave.world.entities) as any[]) {
       for (const record of records) occupied.add(key(record.transform.position));
     }
-    let center: any;
+    const activePlow = initialSave.world.entities.farm_plow?.[0];
+    let center: any = activePlow ? { x: activePlow.transform.position[0], z: activePlow.transform.position[2] } : undefined;
     for (let col = -17; col < -5 && !center; col++) {
       for (let row = -17; row < -5 && !center; row++) {
         const point = { x: col * 12 + 6, z: row * 12 + 6 };
@@ -38,6 +39,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     (window as any).farmGame = { main, player, scene, view, turfMap, center };
   }, Object.fromEntries(['main', 'player', 'universal', 'view', 'building', 'save/initialSave'].map((name) =>
     [name === 'save/initialSave' ? 'initialSave' : name, url(`../../../src/${name}.ts`)])));
+  await prepare();
   const submit = async (command: string) => page.evaluate((command) => {
     document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', { detail: { command } }));
   }, command);
@@ -45,6 +47,8 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   const item = page.locator('dst-inventory-bar .inventory-bar__items [data-item-id="farm_plow_item"]');
   await expect(item).toHaveCount(1);
   await expect(item.locator('.inventory-slot__icon[data-loaded="true"]')).toBeVisible();
+  const originalItem = await page.evaluate(() => (window as any).farmGame.main.inventory.exportState().slots
+    .find((slot: any) => slot.item?.itemId === 'farm_plow_item').item);
   await item.click();
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
     .some((model: any) => model.name === 'FarmPlowPlacer'))).toBe(true);
@@ -66,8 +70,12 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   const duringDownload = page.waitForEvent('download');
   await submit('c_save()');
   const drillingSave = JSON.parse(await readFile((await (await duringDownload).path())!, 'utf8'));
-  expect(drillingSave.world.entities.farm_plow[0].components.farmPlow).toMatchObject({ phase: 'drill_loop', returnUses: 3 });
+  expect(drillingSave.world.entities.farm_plow[0].components.farmPlow).toMatchObject({ phase: 'drill_loop', deployItem: { ...originalItem, remainingUses: 3 } });
   expect(drillingSave.world.entities.farm_plow[0].components.farmPlow.remainingSeconds).toBeLessThan(15);
+  await page.route('**/saves/initial-world.json', (route) => route.fulfill({ json: drillingSave }));
+  await page.reload(); await prepare();
+  expect(await page.evaluate(() => (window as any).farmGame.main.inventory.count('farm_plow_item'))).toBe(0);
+
   await expect.poll(() => page.evaluate(() => {
     const { turfMap, center } = (window as any).farmGame; return turfMap.getTileAtWorld(center);
   }), { timeout: 25_000 }).toBe(47);
@@ -95,10 +103,11 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
       id: model.userData.entityId, position: model.position.toArray() };
   }, { prefab, name });
   const pickupPoint = await spritePoint('farm_plow_item', 'GroundItem:farm_plow_item');
+  expect(pickupPoint.id).toBe(originalItem.entityId);
   await page.mouse.click(pickupPoint.x, pickupPoint.y);
   await expect(item).toHaveCount(1);
   expect(await page.evaluate(() => (window as any).farmGame.main.inventory.exportState().slots
-    .find((slot: any) => slot.item?.itemId === 'farm_plow_item').item.remainingUses)).toBe(3);
+    .find((slot: any) => slot.item?.itemId === 'farm_plow_item').item)).toEqual({ ...originalItem, remainingUses: 3 });
   const afterDownload = page.waitForEvent('download');
   await submit('c_save()');
   const finishedSave = JSON.parse(await readFile((await (await afterDownload).path())!, 'utf8'));

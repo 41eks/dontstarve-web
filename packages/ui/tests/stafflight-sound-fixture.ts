@@ -44,7 +44,7 @@ export async function prepareStarAudioCheck() {
   const castBuffer = sources[5].source.buffer!;
   (window as unknown as { checkStarAudio: (action: string) => unknown }).checkStarAudio = (action) => {
     if (action === 'expire') {
-      for (let i = 0; i < 12; i++) manager.update(0.1, new THREE.Quaternion());
+      for (let i = 0; i < 72; i++) manager.update(1 / 60, new THREE.Quaternion());
     }
     if (action === 'dispose') { manager.dispose(); DisposeSounds(); }
     return { state: context.state, restoredRemoved: !restored.parent,

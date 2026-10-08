@@ -1,7 +1,6 @@
 // src/main.ts
 
 import './style.css';
-import { handEquipment, handEquipmentState, type HandEquipment } from '@dontstarve-web/signals';
 export { handEquipment } from '@dontstarve-web/signals';
 import {
   INVENTORY_RECIPES,
@@ -32,12 +31,10 @@ import {
 } from '@dontstarve-web/stategraphs';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { isHatId } from '@dontstarve-web/prefab/hats';
-import { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, TorchController } from '@dontstarve-web/prefab/torch';
-import { isLightStaff } from '@dontstarve-web/prefab/yellowstaff';
 import { isPitchforkTool } from '@dontstarve-web/prefab/pitchfork';
 import { isFarmHoeTool } from '@dontstarve-web/prefab/farm_hoe';
 import { isShovelTool } from '@dontstarve-web/prefab/shovel';
-import { FARM_PLOW_ITEM_ID, FARM_PLOW_USES } from '@dontstarve-web/prefab/farm_plow';
+import { FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { SEEDS_HUNGER } from '@dontstarve-web/prefab/seeds';
 import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 import { DisposeSounds, UpdateSoundListener, PreloadSounds } from '@dontstarve-web/prefab/sound';
@@ -48,6 +45,7 @@ import { input } from './InputManager';
 import { view } from './view';
 import { BACKPACK_SLOT_COUNT, PLAYER_BACKPACK_CONTAINER_ID, backpackSlotAddress, inventorySlotAddress, PreparedFoodSlot, StorageSlot } from '@dontstarve-web/inventory';
 import { player } from './player';
+import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { cursorUi, dstLighting, renderer } from './universal';
 import { DstLightingRenderer } from './dstLighting';
 import { createChestInventoryPanel } from './chestInventoryPanel';
@@ -116,7 +114,6 @@ function registerStorage(prefab: StorageBuildingId, entityId: string): void {
 for (const prefab of STORAGE_BUILDING_IDS) {
   for (const record of initialSave.world.entities[prefab] ?? []) registerStorage(prefab, record.id);
 }
-inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
 for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]) {
   panel.addEventListener('game:chest-close', (event) => {
     const { containerId } = (event as CustomEvent<ChestCloseDetail>).detail;
@@ -138,43 +135,15 @@ window.addEventListener('contextmenu', (event) => {
   event.preventDefault();
 });
 
-let equippedTorch: TorchController | undefined;
-let stopTorchBurning: (() => void) | undefined;
-await PreloadSounds(...TORCH_SOUNDS);
+const handEquipmentBinding = await bindPlayerHandEquipment({
+  animation: playerAnimation,
+  soundPosition: player.position,
+  setLightActive: active => dstLighting.setTorchOwner(active ? player : null),
+  setHandAction: action => cursorUi.setHandAction(action, handPointer),
+});
 
-function syncHandEquipment(equipment: HandEquipment | null): void {
-  equippedTorch?.onunequip();
-  equippedTorch?.dispose();
-  stopTorchBurning?.();
-  stopTorchBurning = undefined;
-  equippedTorch = undefined;
-  const itemId = equipment?.itemId;
-  const carryItem = itemId === 'torch' || itemId === 'lantern'
-    || isLightStaff(itemId) || itemId === 'bugnet' || itemId === 'hammer' || itemId === 'reskin_tool'
-    || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
-    || (itemId !== undefined && (isPitchforkTool(itemId) || isFarmHoeTool(itemId) || isShovelTool(itemId))) ? itemId : null;
-  void playerAnimation?.setCarryItem(carryItem, equipment?.skinId)
-    .catch((error: unknown) => console.error('Unable to equip hand item', error));
-  if (itemId === TORCH_ID) {
-    const getTorchStack = () => handEquipment.peek() === equipment ? inventory.get(handSlotAddress) : null;
-    equippedTorch = new TorchController({
-      getRemainingFuel: () => {
-        const stack = getTorchStack();
-        return stack ? stack.remainingFuel ?? TORCH_FUEL : null;
-      },
-      setRemainingFuel: (seconds) => getTorchStack() !== null && inventory.setRemainingFuel(handSlotAddress, seconds),
-      remove: () => {
-        const stack = getTorchStack();
-        return stack !== null && inventory.applySlotChanges([{
-          slot: handSlotAddress, itemId: stack.itemId, skinId: stack.skinId, delta: -1,
-        }]);
-      },
-    }, { soundPosition: player.position });
-    stopTorchBurning = equippedTorch.burning.subscribe((burning) => dstLighting.setTorchOwner(burning ? player : null));
-    equippedTorch.onequip(handEquipmentState);
-  }
-  cursorUi.setHandAction(isLightStaff(itemId) ? ': 施放法术' : null, handPointer);
-}
+// Restore only after subscribing: the committed signal write drives equipment and animation.
+inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
 
 function syncHeadEquipment(): void {
   const item = inventory.get(headSlotAddress);
@@ -230,8 +199,6 @@ function syncCraftingInventory(): void {
 
 inventory.addresses().forEach(syncInventorySlot);
 syncCraftingInventory();
-syncHandEquipment(handEquipment.peek());
-const stopHandEquipment = handEquipment.subscribe(syncHandEquipment);
 syncHeadEquipment();
 syncBodyEquipment();
 syncCraftingInventory();
@@ -249,20 +216,16 @@ inventory.subscribe((changedSlots) => {
   }
 });
 
-frontTasks.push((dt) => equippedTorch?.onFrame(dt));
-window.addEventListener('pagehide', () => {
-  stopHandEquipment();
-  equippedTorch?.dispose();
-  stopTorchBurning?.();
-}, { once: true });
+frontTasks.push(dt => handEquipmentBinding.update(dt));
+window.addEventListener('pagehide', () => handEquipmentBinding.dispose(), { once: true });
 
 let cancelNetCapture = () => {};
 let cancelHandTool = () => {};
 const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, farmPlow, rockManager, wormholes, reskinEffects, registry, getSaveState, dispose: disposeScene } = await startScene(
   (buildingId, skinId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId, skinId),
   (item, action, sourcePosition) => {
-    if (!inventory.add(item.itemId, item.count, item.skinId,
-      inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition), item.remainingUses, item.phonographRecord, item.remainingFuel)) return false;
+    const effect = inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition);
+    if (!item.entity || !inventory.receive(item.entity, effect)) return false;
     if (action !== 'net') playerAnimation?.playPickup();
     return true;
   },
@@ -292,6 +255,7 @@ const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting,
     return true;
   },
   (elapsedSeconds, dt) => gameUi.statusHud.setClock(getDstClock(elapsedSeconds), dt),
+  inventory.entities,
 );
 const seeds = playerAnimation ? new SeedsActionController(view, playerAnimation, locomotor, farmPlow,
   () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
@@ -406,6 +370,7 @@ window.addEventListener('pagehide', () => {
   gameUi.inventoryBar.cancelReceiveAnimations();
   gameUi.savingIndicator.remove();
   disposeScene();
+  inventory.entities.dispose();
   DisposeSounds();
   disposeAnimationAssets();
   disposeAtlasImages();
@@ -413,7 +378,7 @@ window.addEventListener('pagehide', () => {
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => gameUi.savingIndicator.whileSaving(() => {
-    equippedTorch?.flushFuel();
+    handEquipmentBinding.flush();
     const json = serializeSave(initialSave, {
       ...getSaveState(), inventory: inventory.exportState(), playerStats,
     }, SAVE_CATALOG, lastSavedSnapshotId);
@@ -436,33 +401,13 @@ window.addEventListener('game:slot-transfer-request', (event) => {
   if ((detail.from.containerId === PLAYER_BACKPACK_CONTAINER_ID || detail.to.containerId === PLAYER_BACKPACK_CONTAINER_ID)
     && (inventory.get(bodySlotAddress)?.itemId !== 'backpack' || detail.itemId === 'backpack')) return;
 
-  if (isHandSlot(detail.from) || isHandSlot(detail.to)) equippedTorch?.flushFuel();
-  const remainingUses = inventory.get(detail.from)?.remainingUses;
-  const phonographRecord = inventory.get(detail.from)?.phonographRecord;
-  const remainingFuel = inventory.get(detail.from)?.remainingFuel;
-  const transferred = inventory.applySlotChanges([
-    {
-      slot: detail.from,
-      itemId: detail.itemId,
-      ...(detail.skinId === undefined ? {} : { skinId: detail.skinId }),
-      delta: -detail.amount,
-    },
-    {
-      slot: detail.to,
-      itemId: detail.itemId,
-      ...(detail.skinId === undefined ? {} : { skinId: detail.skinId }),
-      delta: detail.amount,
-      ...(remainingUses === undefined ? {} : { remainingUses }),
-      ...(phonographRecord === undefined ? {} : { phonographRecord }),
-      ...(remainingFuel === undefined ? {} : { remainingFuel }),
-    },
-  ]);
-  if (!transferred || (detail.itemId !== 'torch' && detail.itemId !== 'lantern'
-    && !isLightStaff(detail.itemId) && detail.itemId !== 'bugnet' && detail.itemId !== 'hammer'
-    && detail.itemId !== 'pickaxe' && detail.itemId !== 'goldenpickaxe' && !isPitchforkTool(detail.itemId)
-    && !isFarmHoeTool(detail.itemId) && !isShovelTool(detail.itemId))) return;
-  if (isHandSlot(detail.to)) playerAnimation?.playItemTransition('item_out', detail.itemId);
-  else if (isHandSlot(detail.from)) playerAnimation?.playItemTransition('item_in', detail.itemId);
+  if (isHandSlot(detail.from) || isHandSlot(detail.to)) handEquipmentBinding.flush();
+  const transferred = inventory.transfer(detail.from, detail.to, detail.amount, {
+    itemId: detail.itemId, skinId: detail.skinId,
+  });
+  if (!transferred) return;
+  if (isHandSlot(detail.to)) handEquipmentBinding.playTransition('item_out', detail.itemId);
+  else if (isHandSlot(detail.from)) handEquipmentBinding.playTransition('item_in', detail.itemId);
 });
 let selectedRecordSlot: SlotAddress | undefined;
 const recordPointer = new PointerRaycaster(view);
@@ -504,12 +449,9 @@ window.addEventListener('game:slot-select', (event) => {
   }
   if (stack?.itemId === FARM_PLOW_ITEM_ID) {
     event.preventDefault(); locomotor.stop(); buildingPlacement.cancel();
-    void farmPlow.begin(() => {
-      const current = inventory.get(slot);
-      if (current?.itemId !== FARM_PLOW_ITEM_ID || current.remainingUses !== stack.remainingUses) return undefined;
-      if (!inventory.applySlotChanges([{ slot, itemId: FARM_PLOW_ITEM_ID, delta: -1 }])) return undefined;
-      return (current.remainingUses ?? FARM_PLOW_USES) - 1;
-    }).catch((error: unknown) => console.error('Unable to deploy farm plow', error));
+    const entity = inventory.getEntity(slot);
+    if (!entity) return;
+    void farmPlow.begin(() => inventory.extract(slot, 1, entity) ?? undefined).catch((error: unknown) => console.error('Unable to deploy farm plow', error));
     return;
   }
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
@@ -524,13 +466,15 @@ window.addEventListener('game:slot-context-menu', (event) => {
   const { slot, shiftKey } = (event as CustomEvent<SlotContextMenuDetail>).detail;
   cancelHandTool();
   selectedRecordSlot = undefined;
-  if (isHandSlot(slot)) equippedTorch?.flushFuel();
+  if (isHandSlot(slot)) handEquipmentBinding.flush();
   const stack = inventory.get(slot);
   if (!stack) return;
   if (shiftKey) {
     flowerPlanting.cancel();
     const spec = inventory.getStackSpec(stack);
     const position = player.position.clone();
+    const entity = inventory.getEntity(slot);
+    if (!entity) return;
     const definition: GroundItemDefinition = {
       itemId: stack.itemId,
       ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
@@ -543,18 +487,11 @@ window.addEventListener('game:slot-context-menu', (event) => {
       ...(stack.phonographRecord === undefined ? {} : { phonographRecord: stack.phonographRecord }),
     };
     void groundItems.drop(definition, position, () => {
-      if (isHandSlot(slot)) equippedTorch?.flushFuel();
+      if (isHandSlot(slot)) handEquipmentBinding.flush();
       const current = inventory.get(slot);
       if (current?.itemId !== stack.itemId || current.skinId !== stack.skinId
         || current.remainingUses !== stack.remainingUses || current.phonographRecord !== stack.phonographRecord) return false;
-      // Equipped fuel can advance while drop assets load. Capture it at commit.
-      definition.remainingFuel = current.remainingFuel;
-      return inventory.applySlotChanges([{
-        slot,
-        itemId: stack.itemId,
-        ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
-        delta: -1,
-      }]);
+      return inventory.extract(slot, 1, entity) ?? false;
     }).then((dropped) => {
       if (dropped) playerAnimation?.playPickup();
     }).catch((error: unknown) => {

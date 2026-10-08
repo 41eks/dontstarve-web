@@ -20,3 +20,18 @@ it('accepts hand equipment and null, rejecting invalid slots without changing st
     expect(listener).toHaveBeenCalledExactlyOnceWith(null, item);
   } finally { unsubscribe(); }
 });
+
+it('does not replay the current value and observes subsequent writes synchronously until released', () => {
+  const first: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' };
+  const second: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' };
+  handEquipmentState.set(first);
+  const listener = vi.fn();
+  const stop = handEquipmentState.subscribe(listener);
+  expect(listener).not.toHaveBeenCalled();
+  handEquipmentState.set(null);
+  handEquipmentState.set(second);
+  expect(listener.mock.calls).toEqual([[null, first], [second, null]]);
+  stop();
+  handEquipmentState.set(null);
+  expect(listener).toHaveBeenCalledTimes(2);
+});

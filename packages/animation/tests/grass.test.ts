@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import type { InventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GrassManager, GRASS_ID } from '../../prefab/src/grass';
 
 afterEach(() => {
@@ -16,19 +17,18 @@ it('spawns grass through the debug command using its source bank and build, then
   for (const file of ['grass.zip', 'grass1.zip']) {
     archives.set(file, await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
   }
-  const fetchAsset = vi.fn(async (url: string) => new Response(archives.get(url.split('/').pop()!)!));
+  const fetchAsset = vi.fn(async (url: string) => new Response(new Uint8Array(archives.get(url.split('/').pop()!)!)));
   vi.stubGlobal('fetch', fetchAsset);
   vi.stubGlobal('window', new EventTarget());
 
   const scene = new THREE.Scene();
   const grasses = new GrassManager(scene, '/dst/data/anim');
   const registry = new EntityRegistry();
-  registry.register({
-    prefabIds: [GRASS_ID],
+  registry.register(PREFAB_DEFINITIONS.grasses, {
     restore: (_, record) => grasses.spawn(new THREE.Vector3(...record.transform.position), {
       id: record.id, transform: record.transform, components: {},
     }),
-    debugSpawn: { prefabIds: [GRASS_ID], create: () => grasses.spawn(new THREE.Vector3(4, 0, -6)) },
+    debugSpawn: () => grasses.spawn(new THREE.Vector3(4, 0, -6)),
     exportRecords: () => grasses.exportRecords().map((record) => ({ prefabId: GRASS_ID, record })),
     update: (dt, quaternion) => grasses.update(dt, quaternion),
     renderEntities: () => grasses.renderEntities,

@@ -57,7 +57,7 @@ describe('inventory state restoration', () => {
     expect(store.applySlotChanges([{ slot: from, itemId: 'torch', delta: -1 },
       { slot: hand, itemId: 'torch', delta: 1 }])).toBe(true);
     const first = store.handEquipment.get();
-    expect(first).toEqual({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
+    expect(first).toEqual({ itemId: 'torch', EQUIPSLOTS: 'HANDS', entity: store.getEntity(hand) });
     expect(transitions).toEqual([{ equipment: first, hand: { itemId: 'torch', count: 1 }, from: null }]);
     store.setRemainingFuel(hand, 40);
     expect(store.handEquipment.get()).toBe(first);
@@ -69,7 +69,8 @@ describe('inventory state restoration', () => {
     expect(store.handEquipment.get()).toBeNull();
     expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: 1 }])).toBe(true);
     const second = store.handEquipment.get();
-    expect(second).toEqual(first);
+    expect(second).toEqual({ itemId: 'torch', EQUIPSLOTS: 'HANDS', entity: store.getEntity(hand) });
+    expect(second?.entity).not.toBe(first?.entity);
     expect(second).not.toBe(first);
     // An atomic same-prefab replacement still starts a new equip lifetime.
     expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: -1 },
@@ -78,7 +79,9 @@ describe('inventory state restoration', () => {
     const saved = store.exportState();
     const last = store.handEquipment.get();
     store.replaceState(saved, {});
-    expect(store.handEquipment.get()).toEqual(last);
+    expect(store.handEquipment.get()).toEqual({ ...last, entity: store.getEntity(hand) });
+    expect(store.handEquipment.get()?.entity?.id).toBe(last?.entity?.id);
+    expect(store.handEquipment.get()?.entity).not.toBe(last?.entity);
     expect(store.handEquipment.get()).not.toBe(last);
     expect(() => store.replaceState({ ...saved, slots: [{ address: hand, item: { itemId: 'torch', count: 2 } }] }, {})).toThrow();
     expect(transitions).toHaveLength(5);
@@ -164,7 +167,7 @@ describe('inventory state restoration', () => {
     store.subscribe(listener);
     const saved = store.exportState();
     expect(saved.bufferedBuilds).toEqual([{ recipeId: 'house' }]);
-    expect(saved.slots[2].item).toEqual({ itemId: 'twigs', count: 5 });
+    expect(saved.slots[2].item).toEqual({ entityId: store.getEntity(saved.slots[2].address)!.id, itemId: 'twigs', count: 5 });
     saved.slots[2].item!.count = 40;
     saved.slots[2].address.containerId = 'changed';
     saved.bufferedBuilds[0].recipeId = 'changed';

@@ -1,4 +1,5 @@
-import { createSignal, readonlySignal, type HandEquipment, type Signal } from '@dontstarve-web/signals';
+import { ItemEntity } from '@dontstarve-web/inventory';
+import { createSignal, readonlySignal, type HandEquipment, type HandEquipmentLifecycle, type Signal } from '@dontstarve-web/signals';
 import { PlaySound, PreloadSounds, type SoundHandle, type SoundPosition } from './sound';
 import { createGroundItemSprite } from './groundItems';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -18,13 +19,6 @@ export interface TorchLifecycleOptions {
   onGroundExtinguish?(): void;
 }
 
-/** A torch's persistent state; the application supplies its authoritative storage. */
-export interface TorchFuelState {
-  getRemainingFuel(): number | null;
-  setRemainingFuel(seconds: number): boolean;
-  remove(): boolean;
-}
-
 /** torch.lua's onequip/onunequip and burnable/fueled lifecycle. */
 export class TorchController implements HandEquipment {
   public readonly itemId = TORCH_ID;
@@ -32,22 +26,32 @@ export class TorchController implements HandEquipment {
   private readonly burningState = createSignal(false);
   readonly burning = readonlySignal(this.burningState);
   private disposed = false;
-  private readonly fuel: TorchFuelState;
+  readonly entity: ItemEntity;
   private slotSignal: Signal<HandEquipment | null> | null = null;
   private equipment: HandEquipment | null = null;
   private held = false;
   private hasFire = false;
   private pendingFrames = 0;
   private pendingSeconds = 0;
-  private readonly options: TorchLifecycleOptions;
+  private options: TorchLifecycleOptions;
   private readonly ownSounds = new Set<SoundHandle>();
 
-  constructor(fuel: TorchFuelState, options: TorchLifecycleOptions = {}) {
-    this.fuel = fuel;
+  constructor(entity: ItemEntity, options: TorchLifecycleOptions = {}) {
+    if (entity.prefab !== TORCH_ID) throw new Error('TorchController requires a torch entity');
+    this.entity = entity;
     this.options = options;
   }
 
   get isBurning(): boolean { return this.burning.peek(); }
+  setPresentation(options: TorchLifecycleOptions): void { this.options = options; }
+  releasePresentation(options: TorchLifecycleOptions): void {
+    if (this.options === options) this.options = {};
+  }
+  OnDropped(): void { this.held = false; }
+  flush(): void { this.flushFuel(); }
+  private remainingFuel(): number | null {
+    return this.entity.isRemoved ? null : this.entity.components.fueled.remaining ?? TORCH_FUEL;
+  }
 
   onequip(slotSignal: Signal<HandEquipment | null>): void {
     if (this.disposed) return;
@@ -66,7 +70,7 @@ export class TorchController implements HandEquipment {
 
   ignite(playSound = true): void {
     if (this.disposed || this.isBurning) return;
-    const remaining = this.fuel.getRemainingFuel();
+    const remaining = this.remainingFuel();
     if (remaining !== null && remaining > 0) {
       this.hasFire = true;
       this.setBurning(true);
@@ -101,7 +105,7 @@ export class TorchController implements HandEquipment {
   /** External ground extinguishing; held or depleted torches use their own cleanup path. */
   OnExtinguish(): void {
     this.flushFuel();
-    if (this.disposed || this.held || !this.hasFire || (this.fuel.getRemainingFuel() ?? 0) <= 0) return;
+    if (this.disposed || this.held || !this.hasFire || (this.remainingFuel() ?? 0) <= 0) return;
     this.stopFire(true);
     this.options.returnToIdle?.();
     this.options.onGroundExtinguish?.();
@@ -125,18 +129,17 @@ export class TorchController implements HandEquipment {
 
   update(dt: number): void {
     if (!this.isBurning || this.disposed || !Number.isFinite(dt) || dt <= 0) return;
-    const remaining = this.fuel.getRemainingFuel();
+    const remaining = this.remainingFuel();
     if (remaining === null) {
       this.extinguish();
       return;
     }
     const next = Math.max(0, remaining - dt);
-    if (next > 0) this.fuel.setRemainingFuel(next);
-    else if (this.fuel.remove()) {
-      // The final one-shot outlives the removed ground entity, as during Lua's erode.
+    if (next > 0) this.entity.setRemainingFuel(next);
+    else {
+      // Emit the final one-shot before Remove invokes component disposal.
       this.stopFire(true, this.options.soundPosition);
-      this.extinguish();
-      this.dispose();
+      if (this.entity.remove()) { this.extinguish(); this.dispose(); }
     }
   }
 
@@ -173,19 +176,51 @@ export class TorchController implements HandEquipment {
   }
 }
 
-/** Ordinary drops are unlit; a lit restored ground torch owns its fuel and light. */
+/** One burnable/fueled lifecycle per inst, independent of its current owner and art. */
+export function getTorchController(entity: ItemEntity): TorchController {
+  return entity.component('torch', () => new TorchController(entity));
+}
+
+/** Equipment-scoped presentation bindings; the controller stays on the item entity. */
+export function createTorchHandLifecycle(
+  entity: ItemEntity,
+  options: { soundPosition?: SoundPosition; setLightActive(active: boolean): void },
+): HandEquipmentLifecycle {
+  const controller = getTorchController(entity);
+  const presentation = { soundPosition: options.soundPosition };
+  let stopBurning: (() => void) | undefined;
+  return {
+    onequip(slot) {
+      const equipment = slot.peek();
+      controller.setPresentation(presentation);
+      stopBurning = controller.burning.subscribe(burning => options.setLightActive(burning));
+      options.setLightActive(controller.isBurning);
+      if (slot.peek() === equipment) controller.onequip(slot);
+    },
+    onunequip() {
+      controller.onunequip();
+      stopBurning?.(); stopBurning = undefined;
+      controller.releasePresentation(presentation);
+    },
+    onFrame: dt => controller.onFrame(dt),
+    flush: () => controller.flushFuel(),
+  };
+}
+
+/** Preparing/replacing art never creates a second lifecycle for a live torch. */
 export function createTorchGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   return {
     itemIds: [TORCH_ID],
     async create(item) {
       await PreloadSounds(...TORCH_SOUNDS);
       const sprite = await createGroundItemSprite(context.assets, TORCH_ID, item.skinId);
-      let removed = false, fling: LootFling | undefined, state = item;
-      const controller = new TorchController({
-        getRemainingFuel: () => removed ? null : state.remainingFuel ?? TORCH_FUEL,
-        setRemainingFuel: (seconds) => { state.remainingFuel = seconds; return true; },
-        remove: () => { removed = true; return true; },
-      }, {
+      let fling: LootFling | undefined;
+      let state = item;
+      let entity: ItemEntity | undefined;
+      let standalone = false;
+      let controller: TorchController | undefined;
+      let stopBurning: (() => void) | undefined;
+      const options: TorchLifecycleOptions = {
         soundPosition: sprite.model.position,
         returnToIdle: () => sprite.setAnimation('idle'),
         onGroundExtinguish: () => {
@@ -195,37 +230,56 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
           fling.height = 0.1 * scale;
           fling.velocity.set(Math.cos(angle) * speed, (8 + Math.random()) * scale, Math.sin(angle) * speed);
         },
-      });
-      sprite.model.userData.torch = controller;
-      const stopBurning = controller.burning.subscribe((burning) => {
+      };
+      const syncBurning = (burning: boolean) => {
         setPrefabLocalLight(sprite.model, burning ? {
           radius: 2 * (TILE_SIZE / 4) * 1.5, falloff: 0.5, intensity: 0.75,
           colour: [180 / 255, 195 / 255, 150 / 255],
         } : null);
         if (burning) sprite.setAnimation('land');
-      });
+      };
+      const bind = () => {
+        if (!entity) {
+          standalone = !state.entity;
+          entity = state.entity ?? new ItemEntity(state);
+          controller = getTorchController(entity);
+          sprite.model.userData.torch = controller;
+          stopBurning = controller.burning.subscribe(syncBurning);
+        }
+        controller!.setPresentation(options);
+        syncBurning(controller!.isBurning);
+      };
       const removeEvents = listenInventoryEvents(sprite.model, {
-        onputininventory: () => { fling = undefined; controller.OnPutInInventory(context.inventoryOwnerPosition); },
-        onextinguish: () => controller.extinguish(),
-        onload: () => { if (state.torchLit) controller.ignite(false); },
+        onputininventory: () => { fling = undefined; controller?.OnPutInInventory(context.inventoryOwnerPosition); },
+        onextinguish: () => controller?.extinguish(),
+        ondropped: () => { bind(); controller!.OnDropped(); },
+        onload: () => { bind(); controller!.OnDropped(); if (state.torchLit) controller!.ignite(false); },
       });
       return {
         model: sprite.model,
-        isRemoved: () => removed,
-        setDefinition: (definition) => { state = definition; },
+        isRemoved: () => entity?.isRemoved ?? false,
+        setDefinition: (definition) => {
+          state = definition;
+          if (standalone && entity) entity.apply(definition);
+        },
         getDefinition: () => {
-          controller.flushFuel();
-          return { remainingFuel: state.remainingFuel, torchLit: controller.isBurning };
+          controller?.flushFuel();
+          return { remainingFuel: entity?.components.fueled.remaining ?? state.remainingFuel, torchLit: controller?.isBurning ?? false };
         },
         update(dt: number) {
-          controller.onFrame(dt); sprite.update(dt);
+          controller?.onFrame(dt); sprite.update(dt);
           if (fling) {
             fling.update(dt); sprite.model.position.copy(fling.position);
             sprite.model.children[0].position.y = fling.height;
             if (fling.settled) fling = undefined;
           }
         },
-        dispose() { removeEvents(); controller.dispose(); stopBurning(); sprite.dispose(); },
+        dispose() {
+          removeEvents(); stopBurning?.();
+          controller?.releasePresentation(options);
+          if (standalone) entity?.destroy();
+          sprite.dispose();
+        },
       };
     },
   };

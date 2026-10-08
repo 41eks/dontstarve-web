@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import type { InventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { SaplingManager, SAPLING_PREFABS } from '../../prefab/src/sapling';
 
 afterEach(() => {
@@ -16,22 +17,18 @@ it.each([['sapling', 'sapling.zip']])('spawns %s through the debug command from 
   for (const file of ['sapling.zip', 'sapling_moon.zip']) {
     files.set(file, await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
   }
-  const fetchAsset = vi.fn(async (url: string) => new Response(files.get(url.split('/').pop()!)!));
+  const fetchAsset = vi.fn(async (url: string) => new Response(new Uint8Array(files.get(url.split('/').pop()!)!)));
   vi.stubGlobal('fetch', fetchAsset);
   vi.stubGlobal('window', new EventTarget());
 
   const scene = new THREE.Scene();
   const saplings = new SaplingManager(scene, '/dst/data/anim');
   const registry = new EntityRegistry();
-  registry.register({
-    prefabIds: SAPLING_PREFABS,
+  registry.register(PREFAB_DEFINITIONS.saplings, {
     restore: (id, record) => saplings.spawn(id, new THREE.Vector3(...record.transform.position), {
       id: record.id, transform: record.transform, components: {},
     }),
-    debugSpawn: {
-      prefabIds: SAPLING_PREFABS,
-      create: (id) => saplings.spawn(id, new THREE.Vector3(id === prefabId ? 5 : -3, 0, 7)),
-    },
+    debugSpawn: (id) => saplings.spawn(id, new THREE.Vector3(id === prefabId ? 5 : -3, 0, 7)),
     exportRecords: () => saplings.exportRecords(),
     update: (dt, quaternion) => saplings.update(dt, quaternion),
     renderEntities: () => saplings.renderEntities,

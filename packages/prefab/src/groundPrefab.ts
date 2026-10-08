@@ -1,3 +1,4 @@
+import type { ItemEntity } from '@dontstarve-web/inventory';
 import type * as THREE from 'three';
 import type { GroundItemAssets } from './groundItems';
 import type { BernieWorld } from './bernie';
@@ -6,6 +7,9 @@ import type { FirefliesWorld } from './fireflies';
 import type { SoundPosition } from './sound';
 
 export interface GroundItemDefinition {
+  /** Live inst; the remaining fields are asset metadata or detached save/UI projections. */
+  entity?: ItemEntity;
+  entityId?: string;
   itemId: string;
   skinId?: string;
   name: string;

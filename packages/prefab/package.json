@@ -26,6 +26,7 @@
     "./stafflight": "./src/stafflight.ts",
     "./lantern": "./src/lantern.ts",
     "./torch": "./src/torch.ts",
+    "./handEquipment": "./src/handEquipment.ts",
     "./bernie": "./src/bernie.ts",
     "./inventoryEvents": "./src/inventoryEvents.ts",
     "./localLight": "./src/localLight.ts",

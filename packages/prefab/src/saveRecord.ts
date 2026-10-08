@@ -23,14 +23,4 @@ export function saveGroundPosition(
   return [position.x, Math.abs(height) < 1e-6 ? 0 : height, position.z];
 }
 
-let fallbackSequence = 0;
-
-export function newEntityId(): string {
-  // getRandomValues is available in browsers that do not expose randomUUID,
-  // including the HTTP development environment.
-  if (typeof globalThis.crypto?.getRandomValues === 'function') {
-    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
-    return `e_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
-  }
-  return `e_${Date.now().toString(36)}_${++fallbackSequence}_${Math.random().toString(36).slice(2)}`;
-}
+export { newItemEntityId as newEntityId } from '@dontstarve-web/inventory';

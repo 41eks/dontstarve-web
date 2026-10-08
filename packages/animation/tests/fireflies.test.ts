@@ -97,15 +97,20 @@ describe('real fireflies archive and ground transfers', () => {
     const definition = { itemId: 'fireflies', count: 2, name: '萤火虫', icon: 'fireflies.tex' };
     expect(await manager.drop(definition, new THREE.Vector3(8, 0, 9), () => false)).toBe(false);
     expect(scene.children).toHaveLength(0);
-    expect(await manager.drop(definition, new THREE.Vector3(8, 0, 9), () => true)).toBe(true);
+    const entity = manager.entities.create(definition);
+    expect(await manager.drop(definition, new THREE.Vector3(8, 0, 9), () => entity)).toBe(true);
     expect(manager.exportRecords().map(r => r.components.stack!.count)).toEqual([1, 1]);
     const records = manager.exportRecords();
+    expect(records[0].id).toBe(entity.id);
+    expect(records[1].id).not.toBe(entity.id);
     const [target] = manager.netCaptureTargets;
     expect(target.capture()).toBe(false);
     expect(scene.children).toHaveLength(2);
     pickup.mockReturnValue(true);
     expect(target.capture()).toBe(true);
-    expect(pickup).toHaveBeenLastCalledWith({ ...definition, count: 1 }, 'net', target.position.clone());
+    expect(pickup).toHaveBeenLastCalledWith(expect.objectContaining({ ...definition, count: 1,
+      entity: expect.objectContaining({ id: entity.id }),
+    }), 'net', target.position.clone());
     expect(target.capture()).toBe(false);
     expect(getPrefabLocalLight(target.model)).toBeUndefined();
     expect(manager.exportRecords()).toHaveLength(1);

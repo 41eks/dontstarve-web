@@ -1,3 +1,4 @@
+export { getHandEquipmentDefinition, preloadHandEquipment, type HandEquipmentContext, type HandEquipmentDefinition } from './handEquipment';
 export {
   createMoonTreeForest,
   type MoonTreeForest,
@@ -144,8 +145,8 @@ export {
   type ButterflyFlower, type ButterflyWorld, type ButterflyState,
 } from './butterfly';
 export { listenInventoryEvents, type PrefabInventoryEventMap } from './inventoryEvents';
-export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, TorchController, createTorchGroundFactory,
-  type TorchFuelState, type TorchLifecycleOptions } from './torch';
+export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, TorchController, getTorchController, createTorchGroundFactory,
+  type TorchLifecycleOptions } from './torch';
 export { GroundPrefabRegistry } from './groundPrefabRegistry';
 export type { GroundItemDefinition, GroundItemVisual, GroundItemFactory, GroundPrefabContext, GroundPrefabOptions } from './groundPrefab';
 export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, loadLightStaffEquipment, loadYellowStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, type YellowStaffEquipment, type LightStaffId } from './yellowstaff';

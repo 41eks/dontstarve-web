@@ -8,7 +8,7 @@ import { BULB_PLANT_LIGHT_STATES, BULB_PLANT_MAX_ON_TIME, BULB_PLANT_MAX_RECHARG
   bulbPlantRegrowTime } from '@dontstarve-web/prefab/bulb_plant';
 import { WORMHOLE_SKINS } from '@dontstarve-web/prefab/wormhole';
 import { WALL_SKIN_ARCHIVES } from '@dontstarve-web/prefab/wallSkins';
-import { FARM_PLOW_DRILLING_DURATION, FARM_PLOW_USES } from '@dontstarve-web/prefab/farm_plow';
+import { FARM_PLOW_DRILLING_DURATION, FARM_PLOW_USES, FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { PHONOGRAPH_PLAY_TIME } from '@dontstarve-web/prefab/phonograph';
 import { choice, fail, integer, number, object, string } from './validation';
 
@@ -40,12 +40,23 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
     if (keys.includes('farmPlow')) {
       const componentPath = `${path}.farmPlow`;
-      const plow = object(c.farmPlow, componentPath, ['phase', 'remainingSeconds', 'returnUses']);
+      const plow = object(c.farmPlow, componentPath, ['phase', 'remainingSeconds', 'deployItem', 'returnUses']);
       const phase = choice(plow.phase, `${componentPath}.phase`, ['drill_pre', 'drill_loop', 'collapse']);
       const remainingSeconds = number(plow.remainingSeconds, `${componentPath}.remainingSeconds`, 0, FARM_PLOW_DRILLING_DURATION);
-      const returnUses = integer(plow.returnUses, `${componentPath}.returnUses`, 0, FARM_PLOW_USES - 1);
-      if (phase === 'collapse' && (remainingSeconds !== 0 || returnUses === 0)) fail(componentPath, 'invalid fold-up state');
-      components.farmPlow = { phase, remainingSeconds, returnUses };
+      let deployItem: InventoryStack | null;
+      if (Object.hasOwn(plow, 'deployItem')) {
+        if (Object.hasOwn(plow, 'returnUses')) fail(componentPath, 'cannot combine deployItem and legacy returnUses');
+        deployItem = plow.deployItem === null ? null : stack(plow.deployItem, `${componentPath}.deployItem`);
+        if (deployItem && (deployItem.itemId !== FARM_PLOW_ITEM_ID || deployItem.count !== 1
+          || deployItem.remainingUses === undefined || deployItem.remainingUses >= FARM_PLOW_USES)) {
+          fail(`${componentPath}.deployItem`, 'expected one deployed farm_plow_item with remaining uses');
+        }
+      } else {
+        const returnUses = integer(plow.returnUses, `${componentPath}.returnUses`, 0, FARM_PLOW_USES - 1);
+        deployItem = returnUses === 0 ? null : { itemId: FARM_PLOW_ITEM_ID, count: 1, remainingUses: returnUses };
+      }
+      if (phase === 'collapse' && (remainingSeconds !== 0 || deployItem === null)) fail(componentPath, 'invalid fold-up state');
+      components.farmPlow = { phase, remainingSeconds, deployItem };
     }
     if (keys.includes('farmSoil')) {
       const componentPath = `${path}.farmSoil`;

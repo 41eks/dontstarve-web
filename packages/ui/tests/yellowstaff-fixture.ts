@@ -99,9 +99,10 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const record = stars.exportRecords()[0];
   const afterCommit = stars.exportRecords().length;
   tick(60);
-  const star = stars.renderEntities[0]?.object as THREE.Group | undefined;
-  if (!star) throw new Error(`${itemId} summon failed: ${failures.join('; ')}`);
-  const mesh = star.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const sprite = stars.renderEntities[0]?.object as THREE.Group | undefined;
+  if (!sprite) throw new Error(`${itemId} summon failed: ${failures.join('; ')}`);
+  const star = sprite.parent!;
+  const mesh = sprite.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const appeared = mesh.geometry.drawRange.count > 0 && mesh.material.every((material) => material.forceSinglePass);
   const bright = sample(30);
   const far = sample(-120, 120);

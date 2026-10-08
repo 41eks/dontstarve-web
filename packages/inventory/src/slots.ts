@@ -1,11 +1,10 @@
+import { ItemEntity } from './entity';
 import type { EquipmentKind, InventoryItemSpec, InventoryStack } from './types';
-
-function cloneStack(stack: InventoryStack | null): InventoryStack | null {
-  return stack ? { ...stack } : null;
-}
 
 export interface ItemSlot {
   get(): InventoryStack | null;
+  getEntity(): ItemEntity | null;
+  setEntity(entity: ItemEntity | null): void;
   set(stack: InventoryStack | null): void;
   accepts(spec: InventoryItemSpec): boolean;
   maxStack?(itemId: string): number;
@@ -50,24 +49,27 @@ export function inventoryItemEquipmentKind(itemId: string): EquipmentKind | unde
 }
 
 export class InventorySlot implements ItemSlot {
-  private stack: InventoryStack | null;
+  private entity: ItemEntity | null;
   private readonly itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>>;
 
   constructor(
     initialStack: InventoryStack | null = null,
     itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {},
   ) {
-    this.stack = cloneStack(initialStack);
+    this.entity = initialStack ? new ItemEntity(initialStack) : null;
     this.itemSpecs = itemSpecs;
   }
 
   get(): InventoryStack | null {
-    return cloneStack(this.stack);
+    return this.entity?.snapshot(false) ?? null;
   }
 
   set(stack: InventoryStack | null): void {
-    this.stack = cloneStack(stack);
+    this.entity = stack ? new ItemEntity(stack) : null;
   }
+
+  getEntity(): ItemEntity | null { return this.entity; }
+  setEntity(entity: ItemEntity | null): void { this.entity = entity; }
 
   accepts(): boolean {
     return true;
@@ -79,19 +81,22 @@ export class InventorySlot implements ItemSlot {
 }
 
 export class StorageSlot implements ItemSlot {
-  private stack: InventoryStack | null;
+  private entity: ItemEntity | null;
 
   constructor(initialStack: InventoryStack | null = null) {
-    this.stack = cloneStack(initialStack);
+    this.entity = initialStack ? new ItemEntity(initialStack) : null;
   }
 
   get(): InventoryStack | null {
-    return cloneStack(this.stack);
+    return this.entity?.snapshot(false) ?? null;
   }
 
   set(stack: InventoryStack | null): void {
-    this.stack = cloneStack(stack);
+    this.entity = stack ? new ItemEntity(stack) : null;
   }
+
+  getEntity(): ItemEntity | null { return this.entity; }
+  setEntity(entity: ItemEntity | null): void { this.entity = entity; }
 
   accepts(): boolean {
     return true;
@@ -99,19 +104,22 @@ export class StorageSlot implements ItemSlot {
 }
 
 export class HandSlot implements ItemSlot {
-  private stack: InventoryStack | null;
+  private entity: ItemEntity | null;
 
   constructor(initialStack: InventoryStack | null = null) {
-    this.stack = cloneStack(initialStack);
+    this.entity = initialStack ? new ItemEntity(initialStack) : null;
   }
 
   get(): InventoryStack | null {
-    return cloneStack(this.stack);
+    return this.entity?.snapshot(false) ?? null;
   }
 
   set(stack: InventoryStack | null): void {
-    this.stack = cloneStack(stack);
+    this.entity = stack ? new ItemEntity(stack) : null;
   }
+
+  getEntity(): ItemEntity | null { return this.entity; }
+  setEntity(entity: ItemEntity | null): void { this.entity = entity; }
 
   accepts(spec: InventoryItemSpec): boolean {
     return spec.equippable === 'hand';
@@ -119,19 +127,22 @@ export class HandSlot implements ItemSlot {
 }
 
 export class BodySlot implements ItemSlot {
-  private stack: InventoryStack | null;
+  private entity: ItemEntity | null;
 
   constructor(initialStack: InventoryStack | null = null) {
-    this.stack = cloneStack(initialStack);
+    this.entity = initialStack ? new ItemEntity(initialStack) : null;
   }
 
   get(): InventoryStack | null {
-    return cloneStack(this.stack);
+    return this.entity?.snapshot(false) ?? null;
   }
 
   set(stack: InventoryStack | null): void {
-    this.stack = cloneStack(stack);
+    this.entity = stack ? new ItemEntity(stack) : null;
   }
+
+  getEntity(): ItemEntity | null { return this.entity; }
+  setEntity(entity: ItemEntity | null): void { this.entity = entity; }
 
   accepts(spec: InventoryItemSpec): boolean {
     return spec.equippable === 'body';
@@ -139,19 +150,22 @@ export class BodySlot implements ItemSlot {
 }
 
 export class HeadSlot implements ItemSlot {
-  private stack: InventoryStack | null;
+  private entity: ItemEntity | null;
 
   constructor(initialStack: InventoryStack | null = null) {
-    this.stack = cloneStack(initialStack);
+    this.entity = initialStack ? new ItemEntity(initialStack) : null;
   }
 
   get(): InventoryStack | null {
-    return cloneStack(this.stack);
+    return this.entity?.snapshot(false) ?? null;
   }
 
   set(stack: InventoryStack | null): void {
-    this.stack = cloneStack(stack);
+    this.entity = stack ? new ItemEntity(stack) : null;
   }
+
+  getEntity(): ItemEntity | null { return this.entity; }
+  setEntity(entity: ItemEntity | null): void { this.entity = entity; }
 
   accepts(spec: InventoryItemSpec): boolean {
     return spec.equippable === 'head';

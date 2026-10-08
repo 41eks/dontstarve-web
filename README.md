@@ -2,6 +2,7 @@
 
 https://41eks.github.io/dontstarve-web/
 
+场景实体后续的活动区域与资源管理方案见 [按 tile 管理生命周期](docs/tile-lifecycle.md)：每个 tile 持有活动 signal，玩家跨 tile 时更新区域差集，prefab 用 `createMemo` 派生活动状态。该方案尚未接入运行时。
 
 
 ## 调试命令（debugCommand）
@@ -22,9 +23,11 @@ https://41eks.github.io/dontstarve-web/
 玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。`src/main.ts` 将物品栏状态、移动、动画和目标操作接口接入控制器；`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。
 
 
+物品现在按 Lua 的 `Inventory:GiveItem/Equip/DropItem` 与 `Stackable:Get/Put` 交接实体：背包、装备槽和地面持有同一物品实体，整件转移、拾取、丢弃和换肤保留 ID 与组件；拆堆创建新实体，合堆保留接收方实体。火把控制器随实体保留，卸下只停止燃烧，耗尽才移除实体。`c_save()` 的库存物品快照新增可选 `entityId`，地面仍保存记录 `id`；旧存档缺少物品 ID 时自动分配。`c_give`、`c_spawn` 和 `c_save` 的语法、参数和支持 ID 保持不变，细节见 [库存架构](docs/inventory-architecture.md)。
+
 `c_give("torch", 2)` 获取两把满耐久火把，每把占一格；`c_spawn("torch")` 在玩家脚下生成可拾取的满耐久火把。物品栏、装备槽和储物格在图标下方显示燃料百分比，按原版 `widgets/itemtile.lua:SetPercent()` 四舍五入，未耗尽时最低显示 `1%`。基础燃料为 `TUNING.TORCH_FUEL = 75` 秒，由 torch prefab 的 `onequip()` / `onunequip()` 管理燃烧：装备到手部时点燃并消耗，卸下或普通丢弃后停止；耗尽时由 torch 移除物品，清除手持外观和照明。燃料随转移、丢弃、拾取、清洁扫把换肤及 `c_save()` 保存恢复；旧存档未记录燃料的火把按满耐久加载。燃料每 60 个燃烧帧结算一次，扣减这段时间累计的实际 `dt`，UI 随结算刷新；转移、丢弃、拾取、换肤、熄灭和 `c_save()` 前会结算不足 60 帧的部分，保留已经消耗的燃料。当前使用基础燃烧速率，尚未接入雨水、技能加成和投掷后持续燃烧。
 
-装备变化在库存事务成功提交后发布到 [packages/signals](packages/signals/README.md) 的客户端共享 `handEquipmentState`，再依次执行旧装备卸下、新装备装备；燃料及其他库存更新不重新发布装备。应用通过 `onequip(handEquipmentState)` 绑定具体槽位，torch 通过独立的 `burning` signal 同步照明，`extinguish()` 校验装备引用后清空绑定槽位；`onunequip()` 和释放停止燃烧并解除绑定，不修改槽位值。地面火把没有槽位绑定，熄灭不会修改玩家装备。耗尽同时移除库存物品；未耗尽时显式熄灭保留库存燃料。旧 torch 不会清空新装备。signal 不写入存档；UI 操作、命令及读档仍由库存提交装备结果。
+手部装备变化在库存事务成功提交后发布到 [packages/signals](packages/signals/README.md) 的客户端共享 `handEquipmentState`，同时携带对应的物品实体引用。先在 `src/playerHandEquipment.ts` 注册共享 signal 的订阅，再由 `InventoryStore.replaceState()` 恢复存档并写入 signal；该次写入直接触发装备生命周期和手持动画，订阅注册时不回放当前值，也没有单独的初始同步。后续变化使用同一订阅，通过 prefab 注册表依次执行旧装备卸下、新装备装备，并接入手持外观、照明和光标。`main.ts` 只接入订阅器的帧更新、结算、成功转移动画和释放。燃料及其他库存更新不重新发布装备。prefab 的 `onequip(handEquipmentState)` 接收具体槽位，torch 通过独立的 `burning` signal 同步照明，`extinguish()` 校验装备引用后清空绑定槽位；`onunequip()` 和释放停止燃烧并解除绑定，不修改槽位值。地面火把没有槽位绑定，熄灭不会修改玩家装备。耗尽同时移除库存物品；未耗尽时显式熄灭保留库存燃料。旧 torch 不会清空新装备。signal 不写入存档；UI 操作、命令及读档仍由库存提交装备结果。
 
 手部 signal 的非空值必须声明 `EQUIPSLOTS = "HANDS"`，同时受 TypeScript 类型和 setter 运行时校验限制；身体装备或缺少槽位声明的对象不能写入。torch 公开只读的 `EQUIPSLOTS: "HANDS"` 属性。`c_give`、`c_spawn` 和 `c_save` 的命令参数及支持 ID 不变。
 
@@ -68,7 +71,7 @@ https://41eks.github.io/dontstarve-web/
 
 装备清洁扫把后右键留声机，可循环原版 6 种皮肤（`decor_phonograph_cawnival`、`decor_phonograph_fantasy`、`decor_phonograph_hallowed`、`decor_phonograph_handmade`、`decor_phonograph_rose`、`decor_phonograph_western`）；地面唱片支持 4 种皮肤（`record_creepyforest`、`record_drstyle`、`record_efs`、`record_hallowednights`）及对应歌曲。换肤保留实体 ID、位置、已装唱片及播放进度。手持锤子右键留声机，一次成功命中即锤毁，掉出已装唱片并播放木质坍塌特效和声音。`c_save()` 保存地面位置、皮肤、库存中的已装唱片和地面播放剩余时间，读档按进度恢复；各留声机音源独立，拾取、锤毁和退出时停止。当前未接入农作物照料、家具摆放和内部 `SetRecord("balatro")` 变体。
 
-`c_give("farm_plow_item")` 获取耕地机，第二个参数可指定数量，每台占一格、初始 4 次使用。左键物品栏中的耕地机进入部署预览，右键可种植的空地部署；预览和落点吸附到整格地皮中心（`TILE_SIZE = 12`），显示原版 `tile_outline` 使用的 `anim/gridplacer.zip`、bank/build `gridplacer`、`anim` 地皮边框。不能部署到已耕地地皮或有阻挡物的格子。钻地 15 秒后将该格改为 `WORLD_TILES.FARMING_SOIL`（ID `47`），消耗一次使用并折回物品；第 4 次用完后消失。`c_spawn("farm_plow_item")` 只生成 `idle_packed` 地面物品；`c_spawn("farm_plow")` 直接生成工作中的调试耕地机，完成后不返还物品。`c_save()` 将耕地机进度保存到实体组件，将耕地结果及原地皮 ID 保存到 `world.map.tiles`；加载后恢复。
+`c_give("farm_plow_item")` 获取耕地机，第二个参数可指定数量，每台占一格、初始 4 次使用。左键物品栏中的耕地机进入部署预览，右键可种植的空地部署；预览和落点吸附到整格地皮中心（`TILE_SIZE = 12`），显示原版 `tile_outline` 使用的 `anim/gridplacer.zip`、bank/build `gridplacer`、`anim` 地皮边框。不能部署到已耕地地皮或有阻挡物的格子。成功部署时由物品实体的 `finiteuses.use(1)` 消耗一次使用，保存扣减后的完整物品快照；钻地 15 秒后将该格改为 `WORLD_TILES.FARMING_SOIL`（ID `47`），从快照折回物品，第 4 次用完后不再返还。`c_spawn("farm_plow_item")` 只生成 `idle_packed` 地面物品；`c_spawn("farm_plow")` 直接生成工作中的调试耕地机，完成后不返还物品。`c_save()` 将耕地机进度及完整物品快照保存到 `components.farmPlow.deployItem`，包含物品 ID、数量及组件状态；完成或被锤毁时恢复该快照，保留物品 ID 和剩余使用次数。地面物品加载成功前保留返还快照。旧存档的 `returnUses` 自动迁移；`c_spawn("farm_plow")` 的快照为 `null`。耕地结果及原地皮 ID 保存到 `world.map.tiles`，加载后恢复。
 
 `c_give("farm_hoe")` / `c_give("golden_farm_hoe")` 获取园艺锄 / 黄金园艺锄，数量由第二个参数指定，每把占一格；`c_spawn("farm_hoe")` / `c_spawn("golden_farm_hoe")` 在玩家脚下生成可拾取的地面工具。地面美术分别使用 `anim/quagmire_hoe.zip` / `anim/goldenhoe.zip` 的 `idle`，基础图标均来自 `images/inventoryimages2.xml`；手持符号分别来自 `quagmire_hoe.zip:swap_quagmire_hoe` / `swap_goldenhoe.zip:swap_goldenhoe`。拖到手部装备后，右键耕地机生成的农田 tile，在鼠标落点耕坑，距离较远时自动走近；播放原版 `player_actions_till.zip` 的 `till_pre → till_loop → till_pst`，`till_loop` 第 11 帧生成 `farm_soil` 的 `till_rise → till_idle`。可重新整理破损坑或调整完整坑的位置，附近旧坑按原版坍塌规则移除或变为破损状态；普通地皮、杂物和已播种位置不允许耕坑。移动、跳跃、左键、Esc、卸下工具或切换物品取消未提交的动作。支持 Shift + 右键丢弃、左键拾回、现有清洁扫把换肤，以及皮肤和坑的 ID/位置随存档保存恢复。园艺锄支持 `farm_hoe_invisible`、`farm_hoe_rustic`；黄金园艺锄支持 `golden_farmhoe_garden`、`golden_farmhoe_invisible`，拟真皮肤隐藏手持工具。本次仅接入地面与手持美术和农田耕坑，不处理耐久或战斗。
 
@@ -78,6 +81,8 @@ https://41eks.github.io/dontstarve-web/
 
 `c_give("seeds", 10)` 获取种子，`c_spawn("seeds")` 在玩家脚下生成可拾取的原版地面种子（`anim/seeds.zip`，bank/build `seeds`，`idle`；物品图标来自 `images/inventoryimages.xml`）。Shift + 右键丢弃、左键拾回；右键物品栏种子播放 `quick_eat_pre → quick_eat`，第 12 帧消耗一粒并增加 4.6875 饥饿，上限 150，健康和理智不变。左键物品栏种子选中种植，鼠标跟随原版种子图标及剩余数量，种子仍保留在原槽；左键耕地机完成后农田 tile 上的完整坑（`farm_soil`）自动走近，在 `pickup → pickup_pst` 的第 6 帧消耗一粒，替换为原版 `farm_plant_randomseed`（`anim/farm_soil.zip` 的 `sow → sow_idle`）。正在耕地的坑、破损坑和空地不可种植；移动、跳跃、Esc、点击空地或切换物品取消未提交的操作，失败不消耗种子。`c_spawn("farm_plant_randomseed")` 直接生成播种后的外观；地面种子及已播种实体的 ID、位置和数量随 `c_save()` 保存并恢复。本次仅实现种子地面美术、进食和坑内播种，播种后保持种子阶段。
 
+
+矮星与极光可分别用 `c_give("yellowstaff")`、`c_give("opalstaff")` 获取法杖后施放，寿命分别为 24 分钟、16 分钟。玩家位置每帧读取一次，所有星体共享该位置进行 XZ 距离判断。玩家在星体地面 XZ 距离 10 格（120 场景单位）内时，每 60 个有效游戏帧结算一次寿命，按累计实际 `dt` 扣减；附近的动画和光照脉动仍逐帧更新。远离时结算不足 60 帧的部分，将星体移出场景，销毁独立动画模型的网格并停止、断开音源，仅保留位置、实体 ID 和寿命等逻辑状态；同类星体共享的纹理和材质由管理器缓存，退出时统一释放。寿命按游戏时间继续流逝；再次靠近时先统一补算，已过期的直接清除逻辑状态，未过期的在原位置重建待机模型和独立循环音效，不重播出现动画或音效。`c_save()` 会补算所有星体（包括远处星体），保存实体 ID、位置和最新剩余时间，过期星体不写入存档；读档不重播出现音效。游戏暂停期间不扣寿命。
 
 ### c_spawn 支持的对象
 

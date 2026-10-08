@@ -1,3 +1,4 @@
+import { ItemEntity, ItemEntityRegistry } from './entity';
 import { planCraft } from './craft';
 import { handEquipmentState, handEquipment } from '@dontstarve-web/signals';
 import { equipmentSlotAddress } from './addresses';
@@ -46,6 +47,7 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
 
 export class InventoryStore {
   readonly handEquipment = handEquipment;
+  readonly entities: ItemEntityRegistry;
   private readonly bufferedBuilds = new Map<string, string | undefined>();
   private readonly itemSpecs = new Map<string, InventoryItemSpec>();
   private readonly listeners = new Set<InventoryListener>();
@@ -58,7 +60,9 @@ export class InventoryStore {
     registrations: readonly RegisteredItemSlot[],
     itemSpecs: Readonly<Record<string, InventoryItemSpec>>,
     skinSpecs: Readonly<Record<string, InventorySkinSpec>> = {},
+    entities = new ItemEntityRegistry(),
   ) {
+    this.entities = entities;
     this.skinSpecs = skinSpecs;
     Object.entries(itemSpecs).forEach(([itemId, spec]) => this.itemSpecs.set(itemId, spec));
     this.registerSlots(registrations);
@@ -66,6 +70,7 @@ export class InventoryStore {
 
   registerSlots(registrations: readonly RegisteredItemSlot[]): void {
     const pendingKeys = new Set<string>();
+    const entityIds = new Set(this.registrations.flatMap(({ slot }) => slot.getEntity() ? [slot.getEntity()!.id] : []));
     const pending = registrations.map(({ address, slot }) => ({
       address: cloneAddress(address),
       slot,
@@ -79,6 +84,12 @@ export class InventoryStore {
       pendingKeys.add(key);
       const stack = slot.get();
       if (!stack) continue;
+      const entity = slot.getEntity()!;
+      if (entity.isRemoved || entity.components.inventoryitem.owner || entityIds.has(entity.id)
+        || (this.entities.get(entity.id) && this.entities.get(entity.id) !== entity)) {
+        throw new Error(`Invalid or duplicate initial item entity: ${entity.id}`);
+      }
+      entityIds.add(entity.id);
       const spec = this.requireItemSpec(stack.itemId);
       if (!Number.isSafeInteger(stack.count)
         || stack.count <= 0
@@ -88,9 +99,16 @@ export class InventoryStore {
       }
     }
     for (const registration of pending) {
+      const entity = registration.slot.getEntity();
+      if (entity) {
+        const spec = this.requireItemSpec(entity.prefab);
+        if (spec.maxUses !== undefined) entity.components.finiteuses.setMaxUses(spec.maxUses);
+        this.entities.adopt(entity);
+      }
       this.registrations.push(registration);
       this.registrationByAddress.set(addressKey(registration.address), registration);
     }
+    this.bindOwners();
     if (pending.some(({ address }) => addressKey(address) === addressKey(equipmentSlotAddress('hand')))) {
       this.publishHandEquipment();
     }
@@ -103,10 +121,10 @@ export class InventoryStore {
 
   /** Exports detached domain data, including inaccessible storage and buffered builds. */
   exportState(): InventoryState {
+    for (const { slot } of this.registrations) slot.getEntity()?.flush();
     return {
       slots: this.registrations.map(({ address, slot }) => {
-        const item = slot.get();
-        return { address: cloneAddress(address), item: item ? { ...item } : null };
+        return { address: cloneAddress(address), item: slot.getEntity()?.snapshot() ?? null };
       }),
       bufferedBuilds: [...this.bufferedBuilds].map(([recipeId, skinId]) => ({
         recipeId, ...(skinId === undefined ? {} : { skinId }),
@@ -123,6 +141,7 @@ export class InventoryStore {
       this.registrations.map(({ address }) => [addressKey(address), null]),
     );
     const seen = new Set<string>();
+    const entityIds = new Set<string>();
     const validateSkin = (itemId: string, skinId?: string) => {
       if (skinId === undefined) return;
       const skin = Object.hasOwn(this.skinSpecs, skinId) ? this.skinSpecs[skinId] : undefined;
@@ -143,6 +162,14 @@ export class InventoryStore {
           throw new Error(`Invalid saved item in ${key}`);
         }
         validateSkin(item.itemId, item.skinId);
+        const existing = item.entityId ? this.entities.get(item.entityId) : undefined;
+        if (existing && !this.registrations.some(({ slot }) => slot.getEntity() === existing)) {
+          throw new Error(`Saved item entity already belongs to the world: ${item.entityId}`);
+        }
+        if (item.entityId) {
+          if (entityIds.has(item.entityId)) throw new Error(`Duplicate saved item entity: ${item.entityId}`);
+          entityIds.add(item.entityId);
+        }
       }
       next.set(key, item ? { ...item } : null);
     }
@@ -155,7 +182,7 @@ export class InventoryStore {
       validateSkin(recipe.productId, build.skinId);
       buffered.set(build.recipeId, build.skinId);
     }
-    for (const { address, slot } of this.registrations) slot.set(next.get(addressKey(address)) ?? null);
+    this.commit(next, false, true);
     this.bufferedBuilds.clear();
     for (const [id, skin] of buffered) this.bufferedBuilds.set(id, skin);
     this.notify(this.addresses(), true);
@@ -163,6 +190,58 @@ export class InventoryStore {
 
   get(address: SlotAddress): InventoryStack | null {
     return this.registrationByAddress.get(addressKey(address))?.slot.get() ?? null;
+  }
+
+  getEntity(address: SlotAddress): ItemEntity | null {
+    return this.registrationByAddress.get(addressKey(address))?.slot.getEntity() ?? null;
+  }
+
+  /** GiveItem(inst): ownership changes, not the identity/components of the incoming item. */
+  receive(entity: ItemEntity, onReceived?: InventoryReceiveListener): boolean {
+    if (entity.isRemoved || entity.components.inventoryitem.owner) return false;
+    entity.flush();
+    if (entity.isRemoved) return false;
+    this.entities.adopt(entity);
+    const state = entity.snapshot();
+    const received = this.add(state.itemId, state.count, state.skinId, onReceived,
+      state.remainingUses, state.phonographRecord, state.remainingFuel, entity.id);
+    if (received) entity.transform.position = [0, 0, 0];
+    if (received && !this.registrations.some(({ slot }) => slot.getEntity() === entity)) this.entities.destroy(entity);
+    return received;
+  }
+
+  /** Equip/container moves use the source inst and its complete component snapshot. */
+  transfer(from: SlotAddress, to: SlotAddress, count: number, expected?: Pick<InventoryStack, 'itemId' | 'skinId'>): boolean {
+    if (!Number.isSafeInteger(count) || count <= 0 || addressKey(from) === addressKey(to)) return false;
+    const entity = this.getEntity(from);
+    entity?.flush();
+    if (!entity || entity.isRemoved || (expected && !isSameStack(entity.snapshot(), expected.itemId, expected.skinId))) return false;
+    const state = entity.snapshot();
+    return this.applySlotChanges([
+      { slot: from, itemId: state.itemId, skinId: state.skinId, delta: -count },
+      { slot: to, ...state, entityId: count === state.count ? entity.id : undefined, delta: count },
+    ]);
+  }
+
+  /** Stackable:Get: a whole stack keeps inst; a partial stack gets a new entity. */
+  extract(address: SlotAddress, count: number, expected?: ItemEntity): ItemEntity | null {
+    const entity = this.getEntity(address);
+    entity?.flush();
+    if (!entity || entity.isRemoved || (expected && entity !== expected)
+      || !Number.isSafeInteger(count) || count < 1 || count > entity.components.stackable.count) return null;
+    const next = this.snapshot();
+    const state = entity.snapshot();
+    if (count === state.count) {
+      next.set(addressKey(address), null);
+      this.commit(next, true);
+      this.notify([cloneAddress(address)], addressKey(address) === addressKey(equipmentSlotAddress('hand')));
+      return entity;
+    }
+    const split = this.entities.create({ ...state, entityId: undefined, count });
+    next.set(addressKey(address), { ...state, count: state.count - count });
+    this.commit(next);
+    this.notify([cloneAddress(address)]);
+    return split;
   }
 
   getItemSpec(itemId: string): InventoryItemSpec {
@@ -243,7 +322,7 @@ export class InventoryStore {
     return this.registrations.map(({ address }) => cloneAddress(address));
   }
 
-  add(itemId: string, count: number, skinId?: string, onReceived?: InventoryReceiveListener, remainingUses?: number, phonographRecord?: string, remainingFuel?: number): boolean {
+  add(itemId: string, count: number, skinId?: string, onReceived?: InventoryReceiveListener, remainingUses?: number, phonographRecord?: string, remainingFuel?: number, entityId?: string): boolean {
     const spec = this.itemSpecs.get(itemId);
     if (!spec || !Number.isSafeInteger(count) || count <= 0 || !this.validUses({ remainingUses, remainingFuel }, spec)) return false;
 
@@ -281,6 +360,7 @@ export class InventoryStore {
         itemId,
         ...(skinId === undefined ? {} : { skinId }),
         delta: added,
+        ...(entityId === undefined ? {} : { entityId }),
         ...(remainingUses === undefined ? {} : { remainingUses }),
         ...(remainingFuel === undefined ? {} : { remainingFuel }),
         ...(phonographRecord === undefined ? {} : { phonographRecord }),
@@ -290,6 +370,7 @@ export class InventoryStore {
         ...(remainingFuel === undefined ? {} : { remainingFuel }),
         ...(phonographRecord === undefined ? {} : { phonographRecord }) });
       remaining -= added;
+      entityId = undefined;
     }
 
     if (remaining !== 0 || !this.applySlotChanges(changes)) return false;
@@ -298,6 +379,7 @@ export class InventoryStore {
   }
 
   craft(recipe: InventoryRecipeDefinition, skinId?: string, onReceived?: InventoryReceiveListener): boolean {
+    for (const { slot } of this.registrations) slot.getEntity()?.flush();
     if (recipe.buffered && this.isBuffered(recipe.recipeId)) return false;
     const inventorySlots = this.inventorySlots();
     const ingredientSlots = this.accessibleMaterialSlots().filter(({ slot }) => !(slot instanceof InventorySlot));
@@ -312,12 +394,14 @@ export class InventoryStore {
     const next = result.items;
 
     const changed: SlotAddress[] = [];
-    slots.forEach(({ address, slot }, index) => {
+    slots.forEach(({ address }, index) => {
       const stack = next[index] ?? null;
       if (stacksEqual(current[index] ?? null, stack)) return;
-      slot.set(stack);
       changed.push(cloneAddress(address));
     });
+    const committed = this.snapshot();
+    slots.forEach(({ address }, index) => committed.set(addressKey(address), next[index] ?? null));
+    this.commit(committed);
     if (recipe.buffered) {
       this.bufferedBuilds.set(recipe.recipeId, skinId ?? recipe.productSkinId);
     }
@@ -337,12 +421,14 @@ export class InventoryStore {
   applySlotChanges(changes: readonly InventorySlotDelta[]): boolean {
     if (changes.length === 0) return true;
     const next = this.snapshot();
+    const moved: { source: string; state: InventoryStack }[] = [];
 
     for (const change of changes) {
       if (!Number.isSafeInteger(change.delta) || change.delta === 0) return false;
       const spec = this.itemSpecs.get(change.itemId);
       const registration = this.registrationByAddress.get(addressKey(change.slot));
       if (!spec || !registration || !this.validUses(change, spec) || !this.validRecord(change)) return false;
+      if (change.entityId && !this.entities.get(change.entityId)) return false;
 
       const { address, slot } = registration;
       const key = addressKey(address);
@@ -352,6 +438,8 @@ export class InventoryStore {
           || !isSameStack(current, change.itemId, change.skinId)
           || current.count < -change.delta) return false;
         const nextCount = current.count + change.delta;
+        moved.push({ source: key, state: { ...current, count: -change.delta,
+          ...(nextCount === 0 ? {} : { entityId: undefined }) } });
         next.set(key, nextCount === 0 ? null : { ...current, count: nextCount });
         continue;
       }
@@ -360,16 +448,21 @@ export class InventoryStore {
       if (current && !isSameStack(current, change.itemId, change.skinId)) return false;
       const nextCount = (current?.count ?? 0) + change.delta;
       if (nextCount > Math.min(spec.maxStack, slot.maxStack?.(change.itemId) ?? spec.maxStack)) return false;
+      const sourceIndex = moved.findIndex(({ source, state }) => source !== key
+        && state.itemId === change.itemId && state.skinId === change.skinId && state.count === change.delta);
+      const source = sourceIndex < 0 ? undefined : moved.splice(sourceIndex, 1)[0].state;
+      const entityId = current?.entityId ?? change.entityId ?? source?.entityId;
       next.set(key, {
+        ...(entityId === undefined ? {} : { entityId }),
         itemId: change.itemId,
         ...(change.skinId === undefined ? {} : { skinId: change.skinId }),
         count: nextCount,
-        ...((change.phonographRecord ?? current?.phonographRecord) === undefined ? {}
-          : { phonographRecord: change.phonographRecord ?? current?.phonographRecord }),
-        ...((change.remainingUses ?? current?.remainingUses) === undefined ? {}
-          : { remainingUses: change.remainingUses ?? current?.remainingUses }),
-        ...((change.remainingFuel ?? current?.remainingFuel) === undefined ? {}
-          : { remainingFuel: change.remainingFuel ?? current?.remainingFuel }),
+        ...((change.phonographRecord ?? current?.phonographRecord ?? source?.phonographRecord) === undefined ? {}
+          : { phonographRecord: change.phonographRecord ?? current?.phonographRecord ?? source?.phonographRecord }),
+        ...((change.remainingUses ?? current?.remainingUses ?? source?.remainingUses) === undefined ? {}
+          : { remainingUses: change.remainingUses ?? current?.remainingUses ?? source?.remainingUses }),
+        ...((change.remainingFuel ?? current?.remainingFuel ?? source?.remainingFuel) === undefined ? {}
+          : { remainingFuel: change.remainingFuel ?? current?.remainingFuel ?? source?.remainingFuel }),
       });
     }
 
@@ -377,9 +470,10 @@ export class InventoryStore {
     for (const change of changes) {
       const registration = this.registrationByAddress.get(addressKey(change.slot))!;
       const key = addressKey(registration.address);
-      registration.slot.set(next.get(key) ?? null);
       changed.set(key, cloneAddress(registration.address));
     }
+    if (!this.validEntityAssignments(next)) return false;
+    this.commit(next);
     this.notify([...changed.values()], changed.has(addressKey(equipmentSlotAddress('hand'))));
     return true;
   }
@@ -398,9 +492,7 @@ export class InventoryStore {
     const spec = this.requireItemSpec(stack.itemId);
     if (spec.maxFuel === undefined || !this.validUses({ remainingFuel }, spec)) return false;
     if (stack.remainingFuel === remainingFuel) return true;
-    registration.slot.set({ ...stack, remainingFuel });
-    this.notify([cloneAddress(address)]);
-    return true;
+    return registration.slot.getEntity()!.setRemainingFuel(remainingFuel);
   }
 
   private validUses(item: { remainingUses?: number; remainingFuel?: number }, spec: InventoryItemSpec): boolean {
@@ -426,14 +518,66 @@ export class InventoryStore {
   }
 
   private snapshot(): Map<string, InventoryStack | null> {
-    return new Map(this.registrations.map(({ address, slot }) => [addressKey(address), slot.get()]));
+    for (const { slot } of this.registrations) slot.getEntity()?.flush();
+    return new Map(this.registrations.map(({ address, slot }) => [addressKey(address), slot.getEntity()?.snapshot() ?? null]));
+  }
+
+  private validEntityAssignments(next: Map<string, InventoryStack | null>): boolean {
+    const seen = new Set<string>();
+    for (const state of next.values()) {
+      if (!state?.entityId) continue;
+      if (seen.has(state.entityId)) return false;
+      seen.add(state.entityId);
+      const entity = this.entities.get(state.entityId);
+      if (entity && (entity.prefab !== state.itemId || (entity.components.inventoryitem.owner
+        && !this.registrations.some(({ slot }) => slot.getEntity() === entity)))) return false;
+    }
+    return true;
+  }
+
+  private bindOwners(): void {
+    for (const { address, slot } of this.registrations) {
+      const entity = slot.getEntity();
+      if (!entity) continue;
+      entity.components.inventoryitem.owner = {
+        address: cloneAddress(address),
+        changed: () => { if (slot.getEntity() === entity) this.notify([cloneAddress(address)]); },
+        remove: () => slot.getEntity() === entity && this.applySlotChanges([{
+          slot: address, itemId: entity.prefab, skinId: entity.skinId, delta: -entity.components.stackable.count,
+        }]),
+      };
+    }
+  }
+
+  private commit(next: Map<string, InventoryStack | null>, keepDeparted = false, restore = false): void {
+    const old = new Set(this.registrations.flatMap(({ slot }) => slot.getEntity() ? [slot.getEntity()!] : []));
+    if (restore) for (const entity of old) {
+      entity.components.inventoryitem.owner = null;
+      this.entities.destroy(entity);
+    }
+    const retained = new Set<ItemEntity>();
+    const prepared = this.registrations.map(({ address, slot }) => {
+      const state = next.get(addressKey(address));
+      if (!state) return { slot, entity: null };
+      let entity = state.entityId ? this.entities.get(state.entityId) : undefined;
+      entity ??= this.entities.create(state);
+      entity.apply(state);
+      const spec = this.requireItemSpec(entity.prefab);
+      if (spec.maxUses !== undefined) entity.components.finiteuses.setMaxUses(spec.maxUses);
+      retained.add(entity);
+      return { slot, entity };
+    });
+    for (const entity of old) entity.components.inventoryitem.owner = null;
+    for (const { slot, entity } of prepared) slot.setEntity(entity);
+    this.bindOwners();
+    for (const entity of old) if (!retained.has(entity) && !keepDeparted) this.entities.destroy(entity);
   }
 
   private publishHandEquipment(): void {
-    const stack = this.get(equipmentSlotAddress('hand'));
-    handEquipmentState.set(stack ? Object.freeze({
-      itemId: stack.itemId, EQUIPSLOTS: 'HANDS' as const,
-      ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
+    const entity = this.getEntity(equipmentSlotAddress('hand'));
+    handEquipmentState.set(entity ? Object.freeze({
+      itemId: entity.prefab, EQUIPSLOTS: 'HANDS' as const, entity,
+      ...(entity.skinId === undefined ? {} : { skinId: entity.skinId }),
     }) : null);
   }
 

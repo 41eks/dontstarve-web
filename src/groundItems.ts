@@ -1,3 +1,4 @@
+import { ItemEntity, ItemEntityRegistry } from '@dontstarve-web/inventory';
 import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/imageAtlas';
 import * as THREE from 'three';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
@@ -29,6 +30,7 @@ const ITEM_HEIGHT = 4;
 
 interface GroundItemRecord extends GroundItemVisual {
   id: string;
+  entity: ItemEntity;
   definition: GroundItemDefinition;
   footPosition: THREE.Vector3;
   isPlayerNearby: boolean;
@@ -36,6 +38,7 @@ interface GroundItemRecord extends GroundItemVisual {
 }
 
 export class GroundItemManager {
+  readonly entities: ItemEntityRegistry;
   private readonly atlasRequests = new Map<string, Promise<ImageAtlas>>();
   private readonly archiveUrl: string;
   private readonly camera: THREE.Camera;
@@ -65,7 +68,9 @@ export class GroundItemManager {
     butterflyWorld: ButterflyWorld = { isDay: () => true, getThreatPositions: () => [], getFlowers: () => [] },
     firefliesWorld: FirefliesWorld = { isNight: () => false, getPlayerPositions: () => [] },
     bernieWorld: BernieWorld = { getSanityPercent: () => 1 },
+    entities = new ItemEntityRegistry(),
   ) {
+    this.entities = entities;
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
@@ -85,7 +90,7 @@ export class GroundItemManager {
     if (this.disposed) return;
     this.disposed = true;
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
-    for (const item of this.items.values()) item.dispose();
+    for (const item of this.items.values()) { this.entities.destroy(item.entity); item.dispose(); }
     for (const effect of this.effects) effect.dispose();
     this.effects.clear();
     this.effectAssets.dispose();
@@ -97,10 +102,10 @@ export class GroundItemManager {
   async drop(
     definition: GroundItemDefinition,
     position: THREE.Vector3,
-    takeFromInventory: () => boolean,
+    takeFromInventory: () => boolean | ItemEntity,
   ): Promise<boolean> {
     const visuals = await this.createDropVisuals(definition);
-    let taken: boolean;
+    let taken: boolean | ItemEntity;
     try {
       taken = takeFromInventory();
     } catch (error) {
@@ -111,7 +116,17 @@ export class GroundItemManager {
       visuals.forEach((visual) => visual.dispose());
       return false;
     }
-    for (const visual of visuals) this.addVisual(newEntityId(), this.singleDropDefinition(definition), position, visual, true);
+    if (taken instanceof ItemEntity) {
+      const state = taken.snapshot();
+      for (const [index, visual] of visuals.entries()) {
+        const count = visuals.length === 1 ? state.count : 1;
+        const entity = index === 0 ? taken : this.entities.create({ ...state, entityId: undefined, count });
+        if (index === 0 && visuals.length > 1) entity.apply({ ...state, count });
+        this.addVisual(entity.id, { ...definition, ...entity.snapshot(), entity }, position, visual, true);
+      }
+    } else {
+      for (const visual of visuals) this.addVisual(newEntityId(), this.singleDropDefinition(definition), position, visual, true);
+    }
     return true;
   }
 
@@ -173,11 +188,17 @@ export class GroundItemManager {
   }
 
   private addVisual(id: string, definition: GroundItemDefinition, position: THREE.Vector3, visual: GroundItemVisual, dropped = false): void {
+    const entity = definition.entity ?? (definition.entityId ? this.entities.get(definition.entityId) : undefined)
+      ?? this.entities.create({ ...definition, entityId: id });
+    this.entities.adopt(entity);
+    definition = { ...definition, ...entity.snapshot(), entity };
+    id = entity.id;
     const footPosition = new THREE.Vector3(position.x, dropped ? 0 : position.y, position.z);
+    entity.transform.position = footPosition.toArray();
     visual.model.position.copy(footPosition);
     visual.model.userData.entityId = id;
     visual.setDefinition?.(definition);
-    const record = { id, definition, footPosition, isPlayerNearby: false, ...visual };
+    const record = { id, entity, definition, footPosition, isPlayerNearby: false, ...visual };
     this.updateProximity(record);
     this.items.set(visual.model, record);
     this.scene.add(visual.model);
@@ -188,7 +209,7 @@ export class GroundItemManager {
     return [...this.items.values()].flatMap<SavedEntity>((record) => {
       const { id, footPosition } = record;
       const definition = this.currentDefinition(record);
-      if (record.isRemoved?.()) return [];
+      if (record.entity.isRemoved || record.isRemoved?.()) return [];
       return [{
         id,
         transform: {
@@ -216,7 +237,10 @@ export class GroundItemManager {
   }
 
   private currentDefinition(record: GroundItemRecord): GroundItemDefinition {
-    return { ...record.definition, ...record.getDefinition?.() };
+    record.entity.flush();
+    const definition = { ...record.definition, ...record.entity.snapshot(), ...record.getDefinition?.(), entity: record.entity };
+    if (!record.entity.isRemoved) record.entity.apply(definition);
+    return definition;
   }
 
   async insertPhonographRecord(model: THREE.Group, source: { skinId?: string; take(): boolean }): Promise<boolean> {
@@ -256,7 +280,7 @@ export class GroundItemManager {
         const position = record.footPosition.clone();
         const loaded = controller.record;
         controller.stop();
-        this.items.delete(record.model); record.dispose();
+        this.items.delete(record.model); this.entities.destroy(record.entity); record.dispose();
         if (loaded) {
           const spec = GROUND_ITEM_DEFINITIONS.record;
           void this.flingLoot([{ itemId: RECORD_ID, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas,
@@ -291,7 +315,7 @@ export class GroundItemManager {
             const prefabId = record.definition.itemId;
             const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ITEM_DEFINITIONS[prefabId])?.skinArchives ?? {});
             if (skins.length === 0) return [];
-            const isValid = () => this.items.get(record.model) === record && !record.isRemoved?.();
+            const isValid = () => this.items.get(record.model) === record && !record.entity.isRemoved && !record.isRemoved?.();
             return [{
                 id: record.id, prefabId, model: record.model, position: record.footPosition, isValid,
                 prepareNextSkin: async () => {
@@ -317,6 +341,7 @@ export class GroundItemManager {
                               definition.remainingFuel = current.remainingFuel;
                               definition.torchLit = current.torchLit;
                             }
+                            record.entity.apply({ ...record.entity.snapshot(), skinId: definition.skinId });
                             visual.setDefinition?.(definition);
                             visual.model.position.copy(record.footPosition);
                             visual.model.quaternion.copy(record.model.quaternion);
@@ -340,7 +365,7 @@ export class GroundItemManager {
     private isNetCreature(itemId: string): boolean { return this.prefabs.get(itemId)?.capture === 'net'; }
 
   private captureTarget(record: GroundItemRecord): NetCaptureTarget {
-    const isValid = () => this.items.get(record.model) === record && !record.isRemoved?.() && record.isWorkable?.() !== false;
+    const isValid = () => this.items.get(record.model) === record && !record.entity.isRemoved && !record.isRemoved?.() && record.isWorkable?.() !== false;
     return {
       id: record.id, model: record.model, position: record.footPosition, isValid,
       isClickable: () => record.isClickable?.() !== false,
@@ -393,7 +418,7 @@ export class GroundItemManager {
     }
     if (this.inserting.has(record)) return false;
     const definition = this.currentDefinition(record);
-    if (record.isRemoved?.()) return false;
+    if (record.entity.isRemoved || record.isRemoved?.()) return false;
     delete definition.playbackRemaining;
     delete definition.torchLit;
     if (!this.onPickup(definition, action, record.footPosition.clone())) return false;
@@ -424,8 +449,10 @@ export class GroundItemManager {
         if (item.fling.settled) item.fling = undefined;
       }
       item.footPosition.copy(item.model.position);
+      item.entity.transform.position = item.footPosition.toArray();
       this.updateProximity(item);
-      if (item.isRemoved?.()) {
+      if (item.entity.isRemoved || item.isRemoved?.()) {
+        this.entities.destroy(item.entity);
         this.items.delete(item.model);
         item.dispose();
       }

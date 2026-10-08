@@ -87,6 +87,10 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   await expect(items.locator('[data-item-id="torch"] .inventory-slot__percent')).toHaveText(['100%', '100%']);
   await items.locator('[data-item-id="torch"]').first().dragTo(hand);
   await expect(hand).toHaveAttribute('data-item-id', 'torch');
+  await page.evaluate(() => {
+    const entity = (window as any).torchGame.main.inventory.getEntity({ containerId: 'player:equipment', slotKey: 'hand' });
+    (window as any).originalTorch = { entity, controller: entity.component('torch', () => { throw new Error('Missing torch component'); }) };
+  });
   await expect.poll(audio).toMatchObject([{ filename: expect.stringMatching(/^wilson\.fsb-9[56]\.wav$/), loop: false, state: 'running' }]);
   // The software WebGL renderer can take more than five seconds to render 60 frames.
   await expect.poll(equippedFuel, { timeout: 30_000 }).toBeLessThan(74);
@@ -102,11 +106,12 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   const paused = await page.evaluate(() => (window as any).torchGame.main.inventory.exportState().slots
     .find((slot: any) => slot.item?.itemId === 'torch' && slot.item.remainingFuel !== undefined));
   await page.waitForTimeout(300);
-  expect(await page.evaluate((address) => (window as any).torchGame.main.inventory.get(address), paused.address)).toEqual(paused.item);
+  expect(await page.evaluate((address) => (window as any).torchGame.main.inventory.getEntity(address).snapshot(), paused.address)).toEqual(paused.item);
   await items.locator(`[data-slot-key="${paused.address.slotKey}"]`).click({ button: 'right', modifiers: ['Shift'] });
   await expect.poll(() => page.evaluate(() => (window as any).torchGame.scene.children.filter((model: any) => model.name === 'GroundItem:torch').length)).toBe(1);
   await page.evaluate(() => (window as any).torchGame.scene.children.find((model: any) => model.name === 'GroundItem:torch').userData.torch.ignite());
   const dropped = await spritePoint();
+  expect(dropped.id).toBe(paused.item.entityId);
   await submit('c_give("reskin_tool")');
   await items.locator('[data-item-id="reskin_tool"]').dragTo(hand);
   await page.mouse.click(dropped.x, dropped.y, { button: 'right' });
@@ -114,6 +119,11 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
     { timeout: 15_000 }).toBe('torch_barber');
   const skinned = await spritePoint();
   expect(skinned.id).toBe(dropped.id);
+  expect(await page.evaluate(() => {
+    const model = (window as any).torchGame.scene.children.find((model: any) => model.name === 'GroundItem:torch');
+    const original = (window as any).originalTorch;
+    return model.userData.torch === original.controller && model.userData.torch.entity === original.entity;
+  })).toBe(true);
   expect(await page.evaluate(() => (window as any).torchGame.scene.children
     .find((model: any) => model.name === 'GroundItem:torch').userData.torch.isBurning)).toBe(true);
   expect((await audio()).filter((sound: any) => sound.filename.startsWith('wilson.'))).toHaveLength(2);
@@ -135,6 +145,11 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   await page.mouse.click(pickupPoint.x, pickupPoint.y);
   const skinnedSlot = items.locator('[data-item-id="torch"][data-skin-id="torch_barber"]');
   await expect(skinnedSlot).toHaveCount(1);
+  expect(await page.evaluate(() => {
+    const store = (window as any).torchGame.main.inventory;
+    const slot = store.exportState().slots.find((slot: any) => slot.item?.skinId === 'torch_barber');
+    return store.getEntity(slot.address) === (window as any).originalTorch.entity;
+  })).toBe(true);
   const pickedFuel = await page.evaluate(() => (window as any).torchGame.main.inventory.exportState().slots
     .find((slot: any) => slot.item?.skinId === 'torch_barber').item.remainingFuel);
   await expect(skinnedSlot.locator('.inventory-slot__percent')).toHaveText(`${Math.max(1, Math.round(pickedFuel / 75 * 100))}%`);
@@ -158,6 +173,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   const save = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
   const records = save.world.entities.ground_item.filter((record: any) => record.components.stack.itemId === 'torch');
   expect(records).toHaveLength(2);
+  expect(records.find((record: any) => record.components.stack.skinId === 'torch_barber').id).toBe(paused.item.entityId);
   expect(records.find((record: any) => record.components.stack.skinId === 'torch_barber').components.stack.remainingFuel).toBe(pickedFuel);
   expect(records.find((record: any) => record.components.torch)?.components.torch).toEqual({ lit: true });
   await page.screenshot({ path: '/tmp/dontstarve-torch-durability.png' });

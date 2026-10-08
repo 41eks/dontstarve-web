@@ -1,8 +1,11 @@
+import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
+import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
+import { GroundItemManager } from '../../../src/groundItems';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { createSignal, handEquipmentState, type HandEquipment } from '@dontstarve-web/signals';
-import { TORCH_FUEL, TORCH_SOUNDS, TorchController, createTorchGroundFactory } from '../../prefab/src/torch';
+import { TORCH_FUEL, TORCH_SOUNDS, TorchController, getTorchController, createTorchGroundFactory } from '../../prefab/src/torch';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { PlaySound, PreloadSounds } from '../../prefab/src/sound';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
@@ -14,14 +17,14 @@ vi.mock('../../prefab/src/sound', () => ({
 afterEach(() => { handEquipmentState.set(null); vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function fixture(initialFuel = TORCH_FUEL) {
-  let remainingFuel: number | null = initialFuel;
+  const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: initialFuel });
   const fuel = {
-    getRemainingFuel: () => remainingFuel,
-    setRemainingFuel: vi.fn((seconds: number) => { remainingFuel = seconds; return true; }),
-    remove: vi.fn(() => { remainingFuel = null; return true; }),
+    getRemainingFuel: () => entity.isRemoved ? null : entity.components.fueled.remaining!,
+    setRemainingFuel: vi.spyOn(entity, 'setRemainingFuel'),
+    remove: vi.spyOn(entity, 'remove'),
   };
   const onBurningChange = vi.fn();
-  const torch = new TorchController(fuel);
+  const torch = new TorchController(entity);
   torch.burning.subscribe((burning) => onBurningChange(burning));
   return { torch, fuel, onBurningChange };
 }
@@ -148,6 +151,72 @@ describe('torch prefab burning lifecycle', () => {
     } finally {
       stopSlot(); stopOther(); first.torch.dispose(); next.torch.dispose();
     }
+  });
+
+  it('keeps one entity and controller through equip, asynchronous drop, reskin, pickup and save restoration', async () => {
+    vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+    const slot = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
+    const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: TORCH_FUEL, equippable: 'hand' as const } };
+    const store = new InventoryStore([{ address: slot, slot: new InventorySlot() }, { address: hand, slot: new HandSlot() }], specs,
+      { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
+    store.add('torch', 1);
+    const entity = store.getEntity(slot)!;
+    const controller = getTorchController(entity);
+    const equip = vi.spyOn(controller, 'onequip');
+    const binding = await bindPlayerHandEquipment({ setLightActive() {}, setHandAction() {} });
+    const scene = new THREE.Scene(), player = new THREE.Group();
+    const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
+    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, '', definition => store.receive(definition.entity!),
+      '/dst/data/anim', player, undefined, undefined, undefined, store.entities);
+    try {
+      store.applySlotChanges([{ slot, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
+      expect(equip).toHaveBeenCalledExactlyOnceWith(handEquipmentState);
+      controller.onFrame(0.5);
+      const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1 };
+      expect(await manager.drop(definition, new THREE.Vector3(), () => {
+        controller.onFrame(0.25);
+        return store.extract(hand, 1, entity) ?? false;
+      })).toBe(true);
+      let model = scene.children[0] as THREE.Group;
+      expect(model.userData.entityId).toBe(entity.id);
+      expect(model.userData.torch).toBe(controller);
+      expect(controller.isBurning).toBe(false);
+      expect(entity.components.fueled.remaining).toBe(74.25);
+      expect(entity.components.inventoryitem.owner).toBeNull();
+      controller.ignite();
+      const cancelled = await manager.reskinTargets[0].prepareNextSkin();
+      cancelled.dispose();
+      expect(controller.isBurning).toBe(true);
+      expect(entity.skinId).toBeUndefined();
+      const prepared = await manager.reskinTargets[0].prepareNextSkin();
+      controller.onFrame(0.375);
+      expect(prepared.apply()).toBe(true);
+      model = scene.children[0] as THREE.Group;
+      expect(entity.skinId).toBe('torch_barber');
+      expect(model.userData.torch).toBe(controller);
+      expect(controller.isBurning).toBe(true);
+      const [record] = manager.exportRecords();
+      expect(record.id).toBe(entity.id);
+      expect(record.components.stack?.remainingFuel).toBe(73.875);
+      expect(record.components.torch).toEqual({ lit: true });
+      vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
+      controller.onFrame(0.125);
+      canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0, clientX: 50, clientY: 50 }));
+      expect(manager.exportRecords()).toEqual([]);
+      expect(store.getEntity(slot)).toBe(entity);
+      expect(getTorchController(entity)).toBe(controller);
+      expect(controller.isBurning).toBe(false);
+      expect(entity.components.fueled.remaining).toBe(73.75);
+      const saved = store.exportState();
+      store.replaceState(saved, {});
+      const restored = store.getEntity(slot)!;
+      expect(restored).not.toBe(entity);
+      expect(restored.id).toBe(entity.id);
+      expect(restored.snapshot()).toEqual(entity.snapshot());
+      expect(getTorchController(restored)).not.toBe(controller);
+      expect(getTorchController(restored).isBurning).toBe(false);
+    } finally { binding.dispose(); manager.dispose(); store.entities.dispose(); }
   });
 
   it('restores a lit ground torch silently, extinguishes through its event and picks it up without affecting held equipment', async () => {

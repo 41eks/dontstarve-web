@@ -1,3 +1,4 @@
+import type { ItemEntityRegistry } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 
@@ -5,9 +6,9 @@ import { turfMap, moonTreeForest } from './building';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { camera } from './camera';
 import { GroundItemManager, type GroundItemDefinition } from './groundItems';
-import { FarmPlowPlacement, FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_DECOR_IDS } from '@dontstarve-web/prefab/farm_plow';
+import { FarmPlowPlacement, FARM_PLOW_ID, FARM_DECOR_IDS } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats, WILSON_MAX_SANITY } from './playerStats';
-import { DwarfStarManager, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
+import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
 import { GrassManager, GRASS_ID } from '@dontstarve-web/prefab/grass';
@@ -45,6 +46,7 @@ export function createSceneEntities(
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
   pickLightbulbs: (count: number, sourcePosition: THREE.Vector3) => boolean = () => false,
+  itemEntities?: ItemEntityRegistry,
 ) {
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
@@ -89,9 +91,12 @@ export function createSceneEntities(
       getPlayerPositions: () => [player.position],
     },
     { getSanityPercent: () => playerStats.sanity / WILSON_MAX_SANITY },
+    itemEntities,
   );
-  const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
-  const polarLights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, POLAR_LIGHT_ID);
+  const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
+    DWARF_STAR_ID, () => player.position);
+  const polarLights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
+    POLAR_LIGHT_ID, () => player.position);
   const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
     getLightLevel: (model) => dstLighting.sampleLightLevel(model.position, model),
   });
@@ -140,8 +145,8 @@ export function createSceneEntities(
   });
   const registry = new EntityRegistry();
   const farmPlow = new FarmPlowPlacement(view, turfMap, `${import.meta.env.BASE_URL}dst/data`,
-    async (position, remainingUses) => { await groundItems.spawnFromSave(newEntityId(), {
-      ...SAVE_CATALOG.items[FARM_PLOW_ITEM_ID], itemId: FARM_PLOW_ITEM_ID, count: 1, remainingUses,
+    async (position, item) => { await groundItems.spawnFromSave(item.entityId ?? newEntityId(), {
+      ...SAVE_CATALOG.items[item.itemId], ...item,
     }, position); },
     () => {
       const blockers = registry.renderEntities.filter(({ object }) =>

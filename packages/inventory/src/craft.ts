@@ -25,7 +25,7 @@ export function planCraft(
   const allSlots: readonly ItemSlot[] = [...slots, ...ingredientSlots];
   if (recipe.requiredItems?.some((itemId) =>
     !allSlots.some((slot) => slot.get()?.itemId === itemId))) return null;
-  const next = allSlots.map((slot) => cloneStack(slot.get()));
+  const next = allSlots.map((slot) => cloneStack(slot.getEntity()?.snapshot() ?? null));
   if (next.some((stack, index) => {
     if (!stack) return false;
     const maxStack = allSlots[index].maxStack?.(stack.itemId);
@@ -90,5 +90,9 @@ export function craft(
   slots: readonly InventorySlot[],
   ingredientSlots: readonly ItemSlot[] = [],
 ): InventoryItems | null {
-  return planCraft(recipe, slots, ingredientSlots)?.items ?? null;
+  return planCraft(recipe, slots, ingredientSlots)?.items.map(stack => {
+    if (!stack) return null;
+    const { entityId: _identity, ...state } = stack;
+    return state;
+  }) ?? null;
 }

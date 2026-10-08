@@ -31,6 +31,8 @@ export interface InventoryState {
 }
 
 export interface InventoryStack {
+  /** Persistent inst identity; absent in old saves and detached UI projections. */
+  entityId?: string;
   itemId: string;
   skinId?: string;
   count: number;
@@ -45,6 +47,7 @@ export type InventoryItems = readonly (InventoryStack | null)[];
 export type InventoryMaterialSummary = Readonly<Record<string, number>>;
 
 export interface InventorySlotDelta {
+  entityId?: string;
   slot: SlotAddress;
   itemId: string;
   skinId?: string;

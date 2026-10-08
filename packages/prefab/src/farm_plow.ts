@@ -1,3 +1,4 @@
+import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type { FarmSoilTarget, PreparedSeedPlant, PreparedFarmTill, FarmActionWorld } from '@dontstarve-web/stategraphs/farmActions';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, createArchiveSprite, type ArchiveSprite, type ArchiveSpriteDefinition } from '@dontstarve-web/animation/archiveSprite';
@@ -22,7 +23,8 @@ type FarmDecorId = typeof FARM_DECOR_IDS[number];
 export interface FarmPlowSaveState {
   phase: 'drill_pre' | 'drill_loop' | 'collapse';
   remainingSeconds: number;
-  returnUses: number;
+  /** Lua deploy_item_save_record, captured after finiteuses:Use(1); null on depletion/debug spawn. */
+  deployItem: InventoryStack | null;
 }
 export interface FarmSoilSaveState { broken: boolean; plowId?: string }
 export interface FarmDebrisSaveState { animation: 'f1' | 'f2' | 'f3' | 'f4' }
@@ -31,6 +33,7 @@ interface Plow extends FarmPlowSaveState {
   id: string; sprite: ArchiveSprite; loopSound?: SoundHandle;
   dirtTasks: { quad: number; remaining: number }[];
   finished?: boolean;
+  returning?: boolean;
 }
 interface Decor {
   id: string; prefabId: FarmDecorId; sprite: ArchiveSprite;
@@ -64,19 +67,19 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private preview?: ArchiveSprite;
   private previewOutline?: ArchiveSprite;
   private previewMaterials: THREE.Material[] = [];
-  private takeItem?: () => number | undefined;
+  private takeItem?: () => ItemEntity | undefined;
   private previewVersion = 0;
   private prepareRequest?: Promise<void>;
   private disposed = false;
   private readonly removeDigListener: () => void;
   private readonly world: WorldContext;
   private readonly turf: TurfMap;
-  private readonly returnItem: (position: THREE.Vector3, remainingUses: number) => Promise<void>;
+  private readonly returnItem: (position: THREE.Vector3, item: InventoryStack) => Promise<void>;
   private readonly blockers: () => readonly FarmPlowBlocker[];
   private readonly random: () => number;
 
   constructor(world: WorldContext, turf: TurfMap, assetBaseUrl: string,
-    returnItem: (position: THREE.Vector3, remainingUses: number) => Promise<void>,
+    returnItem: (position: THREE.Vector3, item: InventoryStack) => Promise<void>,
     blockers: () => readonly FarmPlowBlocker[] = () => [], random = Math.random) {
     this.world = world; this.turf = turf; this.returnItem = returnItem; this.blockers = blockers; this.random = random;
     this.assets = new ArchiveSpriteAssets(`${assetBaseUrl.replace(/\/$/, '')}/anim`, 'farm');
@@ -106,7 +109,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     await this.prepareRequest;
   }
 
-  async begin(takeItem: () => number | undefined): Promise<void> {
+  async begin(takeItem: () => ItemEntity | undefined): Promise<void> {
     this.cancel();
     const version = this.previewVersion;
     this.takeItem = takeItem;
@@ -152,7 +155,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
       && ![...this.decor.values()].some((item) => !item.broken && this.tileKey(item.sprite.model.position) === key);
   }
 
-  async deploy(point: THREE.Vector3, takeItem: () => number | undefined): Promise<boolean> {
+  async deploy(point: THREE.Vector3, takeItem: () => ItemEntity | undefined): Promise<boolean> {
     if (!this.canDeploy(point)) return false;
     const center = this.center(point), key = this.tileKey(center);
     const version = this.previewVersion;
@@ -166,9 +169,15 @@ export class FarmPlowPlacement implements FarmActionWorld {
       if (this.blockers().some(({ position, tags }) => !tags?.some((tag) => IGNORE_BLOCKERS.has(tag)) && this.tileKey(position) === key)) {
         sprite.dispose(); return false;
       }
-      const returnUses = takeItem();
-      if (returnUses === undefined) { sprite.dispose(); return false; }
-      this.addPlow(sprite, newEntityId(), center, { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, returnUses });
+      const item = takeItem();
+      if (!item) { sprite.dispose(); return false; }
+      if (item.prefab !== FARM_PLOW_ITEM_ID || item.isRemoved || item.components.inventoryitem.owner
+        || item.components.stackable.count !== 1) throw new Error('Deployment requires one detached farm_plow_item');
+      item.components.finiteuses.setMaxUses(FARM_PLOW_USES);
+      if (!item.components.finiteuses.use(1)) { sprite.dispose(); return false; }
+      const deployItem = item.isRemoved ? null : item.snapshot();
+      if (!item.isRemoved) item.remove();
+      this.addPlow(sprite, newEntityId(), center, { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem });
       this.cancel();
       return true;
     } catch (error) { sprite?.dispose(); throw error; }
@@ -180,12 +189,12 @@ export class FarmPlowPlacement implements FarmActionWorld {
     const sprite = await this.create('farm_plow.zip', 'farm_plow', 'idle_place', FARM_PLOW_ID);
     if (this.disposed) { sprite.dispose(); throw new Error('Farm plow has been disposed'); }
     this.addPlow(sprite, saved?.id ?? newEntityId(), this.center(point), saved?.state
-      ?? { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, returnUses: 0 });
+      ?? { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem: null });
     return sprite.model;
   }
 
   private addPlow(sprite: ArchiveSprite, id: string, position: THREE.Vector3, state: FarmPlowSaveState): void {
-    const plow: Plow = { ...state, id, sprite, dirtTasks: [] };
+    const plow: Plow = { ...state, deployItem: state.deployItem ? { ...state.deployItem } : null, id, sprite, dirtTasks: [] };
     sprite.model.position.copy(position);
     Object.assign(sprite.model.userData, { entityId: id, prefab: FARM_PLOW_ID, tags: ['scarytoprey'] });
     this.plows.set(id, plow); this.world.scene.add(sprite.model);
@@ -198,7 +207,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
   }
 
   private startDrilling(plow: Plow): void {
-    if (!this.plows.has(plow.id)) return;
+    if (!this.plows.has(plow.id) || plow.phase === 'collapse') return;
     plow.phase = 'drill_loop'; plow.sprite.start('drill_loop');
     plow.loopSound = PlaySound('farming/common/farm/plow/LP', plow.sprite.model.position);
     plow.dirtTasks = [{ quad: 1, remaining: this.random() * 0.2 }, { quad: 2, remaining: 0.2 + this.random() * 0.3 },
@@ -386,7 +395,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     plow.finished = true;
     for (const soil of this.decor.values()) if (soil.plowId === plow.id) soil.plowId = undefined;
     plow.loopSound?.stop(); plow.loopSound = undefined;
-    if (plow.returnUses > 0) this.fold(plow);
+    if (plow.deployItem !== null) this.fold(plow);
     else { this.collapseEffect(center); this.removePlow(plow); }
   }
 
@@ -397,10 +406,22 @@ export class FarmPlowPlacement implements FarmActionWorld {
     PlaySound('farming/common/farm/plow/collapse', plow.sprite.model.position);
     PlaySound('farming/common/farm/plow/dirt_puff', plow.sprite.model.position);
     plow.sprite.playOnce('collapse', () => {
-      const position = plow.sprite.model.position.clone();
-      this.removePlow(plow);
-      void this.returnItem(position, plow.returnUses).catch((error: unknown) => { if (!this.disposed) console.error('Unable to return farm plow item', error); });
+      void this.returnSavedItem(plow);
     });
+  }
+
+  private async returnSavedItem(plow: Plow): Promise<void> {
+    if (!plow.deployItem || plow.returning || this.plows.get(plow.id) !== plow) return;
+    plow.returning = true;
+    plow.phase = 'collapse'; plow.remainingSeconds = 0;
+    plow.loopSound?.stop(); plow.loopSound = undefined;
+    try {
+      await this.returnItem(plow.sprite.model.position.clone(), { ...plow.deployItem });
+      if (this.plows.get(plow.id) === plow) this.removePlow(plow);
+    } catch (error) {
+      plow.returning = false;
+      if (!this.disposed) console.error('Unable to return farm plow item', error);
+    }
   }
 
   get hammerTargets(): readonly HammerTarget[] {
@@ -413,9 +434,8 @@ export class FarmPlowPlacement implements FarmActionWorld {
         const position = plow.sprite.model.position.clone();
         this.collapseEffect(position);
         for (const soil of [...this.decor.values()]) if (soil.plowId === plow.id) this.removeSoil(soil);
-        this.removePlow(plow);
-        if (plow.returnUses > 0) void this.returnItem(position, plow.returnUses)
-          .catch((error: unknown) => { if (!this.disposed) console.error('Unable to recover hammered farm plow', error); });
+        if (plow.deployItem !== null) void this.returnSavedItem(plow);
+        else this.removePlow(plow);
       },
     }));
   }
@@ -491,9 +511,9 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private tileKey(point: Pick<THREE.Vector3, 'x' | 'z'>): string { return `${Math.floor(point.x / TILE_SIZE)},${Math.floor(point.z / TILE_SIZE)}`; }
 
   exportRecords() {
-    return [...this.plows.values()].map(({ id, sprite, phase, remainingSeconds, returnUses }) => ({
+    return [...this.plows.values()].map(({ id, sprite, phase, remainingSeconds, deployItem }) => ({
       id, transform: { position: sprite.model.position.toArray(), rotationY: 0 },
-      components: { farmPlow: { phase, remainingSeconds, returnUses } },
+      components: { farmPlow: { phase, remainingSeconds, deployItem: deployItem ? { ...deployItem } : null } },
     }));
   }
   exportDecorRecords() {
