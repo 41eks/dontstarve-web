@@ -24,6 +24,7 @@ export interface SavedEntity {
   components: {
     building?: { state: 'idle' | 'closed' | 'open'; skinId?: string };
     container?: SavedContainer;
+    stewer?: import('@dontstarve-web/prefab/cook_pot').CookPotSaveState;
     stack?: InventoryStack;
     phonograph?: { remainingSeconds: number };
     torch?: { lit: true };

@@ -32,6 +32,6 @@ UI、库存和 prefab 共用的响应式原语、装备协议与状态工厂，�
 存在状态 signal 及其实体引用不序列化，存档仍由库存导出物品快照。生命周期切换先完成旧实例清理；回调同步发布新的装备时，统一订阅器在清理结束后处理最新值，避免旧回调覆盖新装备。
 
 
-理智使用 `createSanityState(initialValue, maximum)` 创建每个角色独立的 `SanityState`。`get()` / `peek()` 读取理智点数，`set(value)` 拒绝非有限值并将其限制到 `[0, maximum]`，同值不通知；`maximum` 为正的有限数值。`percent` 是同一状态派生的只读比例视图，支持 `get()`、`peek()` 和同步 `subscribe()`，不额外保存一份比例。其订阅不会回放，消费方用 `peek()` 初始化，并持有返回的取消函数管理生命周期。
+生命、饥饿和理智分别使用 `createHealthState(initialValue, maximum)`、`createHungerState(initialValue, maximum)` 和 `createSanityState(initialValue, maximum)` 创建每个角色独立的状态。`get()` / `peek()` 读取属性点数，`set(value)` 拒绝非有限值并将其限制到 `[0, maximum]`，同值不通知；`maximum` 为正的有限数值。`percent` 是同一状态派生的只读比例视图，支持 `get()`、`peek()` 和同步 `subscribe()`，不额外保存一份比例。其订阅不会回放，消费方用 `peek()` 初始化，并持有返回的取消函数管理生命周期。
 
-应用的 `playerStats.sanity` 持有 Wilson 的状态，上限 200；`DstLightingRenderer` 接收只读 `percent` 并订阅滤镜强度与扭曲速度变化，HUD 独立订阅理智点数。`c_setsanity(percent)` 只写入状态，`getPlayerStats()` 导出用于 HUD 与存档的纯数值快照。滤镜释放时取消订阅，signal 和监听器不写入存档。
+应用的 `playerStats.health`、`playerStats.hunger` 和 `playerStats.sanity` 持有 Wilson 的状态，上限分别为 150、150、200；HUD 订阅三项属性点数，游戏退出时取消订阅。`DstLightingRenderer` 接收理智的只读 `percent` 并订阅滤镜强度与扭曲速度变化。`c_setsanity(percent)` 只写入理智状态，`getPlayerStats()` 导出用于 HUD 与存档的纯数值快照。滤镜释放时取消订阅，signal 和监听器不写入存档。

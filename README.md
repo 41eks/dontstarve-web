@@ -7,7 +7,11 @@ https://41eks.github.io/dontstarve-web/
 
 ## 调试命令（debugCommand）
 
-`c_give("backpack")` 获取背包，第二个参数为数量（默认 `1`，例如 `c_give("backpack", 2)`），每个占一格。拖到身体装备槽或右键背包即可装备，角色显示 `swap_backpack.zip` 的原版外观；右侧播放 `anim/ui_backpack_2x4.zip` 的 `open` 动画并显示 2 列 × 4 行的 8 个储物格，可与物品栏、其他容器拖放物品，材料可用于制作。Shift + 右键丢弃时使用原版 `anim/backpack.zip` 的 bank `backpack1`、`anim` 地面姿态和 `anim/swap_backpack.zip` 的 build，点击可拾回。支持 36 个原版皮肤及其实际库存图标 atlas；可在制作面板选择皮肤，或装备清洁扫把右键地面背包循环换肤。拾回和重新装备保留皮肤，隐形皮肤仅隐藏穿戴外观，地面姿态仍可见。卸下时播放 `close` 并隐藏储物格，再次装备时恢复内容；当前储物格属于玩家，同一玩家的多个背包共用这些格子。皮肤、地面背包和格子内容随 `c_save()` 保存和恢复。
+建筑容器面板的开关与屏幕定位由 `packages/ui/src/chest-inventory-panel.ts` 负责，`src/main.ts` 注入场景依赖并注册逐帧更新；此次模块迁移保持以下命令的语法、参数、行为和支持 ID 不变。
+
+`c_spawn("cookpot")` 生成烹饪锅，`c_give("twigs", 4)` 获取四根树枝。靠近并点击锅打开四个格子，每格放一份材料后点击“烹饪”：立即消耗材料并关闭面板，播放 `cooking_loop`，约 10 秒后播放 `cooking_pst → idle_full`，锅中显示原版 `beefalofeed`（蒸树枝）。配方与时长参考 `preparedfoods.lua`、`components/stewer.lua` 和 `tuning.lua`，食物图层按 `prefabs/cookpot.lua` 使用 `cook_pot_food11.zip` 的 `beefalofeed` 符号，保留锅的皮肤。烹饪中和完成后的锅不能再次打开；`c_save()` 保存剩余烹饪时间及锅内产物，读档和清洁扫把换肤保留状态。`src/cook.ts` 按 `cooking.lua` 注册食材标签、生熟／风干版本和别名，汇总四格材料后按最高配方优先级及同级权重选出产物；`src/preparedfoods.ts` 移植 68 条普通料理的配方条件和烹饪贴图元数据。现在四根树枝、或一根树枝加三个红蘑菇都可烹饪蒸树枝，后者可用 `c_give("twigs")` 和 `c_give("red_cap", 3)` 准备。只有最终产物是 `beefalofeed` 时启用按钮；若高优先级料理胜出，保留材料并禁用按钮。本阶段仍只执行蒸树枝的烹饪过程，不实现收获、进食、腐败、其它料理产物或厨师专属／非料理配方，也不新增独立 `beefalofeed` 的 `c_give` / `c_spawn` 支持。
+
+`c_give("backpack")` 获取背包，第二个参数为数量（默认 `1`，例如 `c_give("backpack", 2)`），每个占一格。拖到身体装备槽或右键背包即可装备，角色显示 `swap_backpack.zip` 的原版外观；右侧播放 `anim/ui_backpack_2x4.zip` 的 `open` 动画并显示 2 列 × 4 行的 8 个储物格，可与物品栏、其他容器拖放物品，材料可用于制作。Shift + 右键丢弃时使用原版 `anim/backpack.zip` 的 bank `backpack1`、`anim` 地面姿态和 `anim/swap_backpack.zip` 的 build，点击可拾回。支持 36 个原版皮肤及其实际库存图标 atlas；可在制作面板选择皮肤，或装备清洁扫把右键地面背包循环换肤。拾回和重新装备保留皮肤，隐形皮肤仅隐藏穿戴外观，地面姿态仍可见。卸下时播放 `close` 并隐藏储物格，再次装备时恢复内容；每个背包实体独立持有自己的 8 个格子，换包时面板切换到对应容器；未装备背包的材料不可用于制作。背包不能放入背包或箱子。内容随背包丢弃、拾回、换肤及 `c_save()` 保存和恢复，存档嵌套在该背包的 `item.container` 中。容器逻辑由 `packages/componets/src/container.ts` 的 Lua 风格 `Container` 组件负责，装备和卸下调用 `Open/Close`，内容经 `OnSave/OnLoad` 保存恢复。`toSignal()` 将容器 DTO 提供给背包面板，事务提交后统一刷新数量、皮肤和耐久，换包或关闭面板时释放订阅；沿用玩家物品栏的槽位 signal 和渲染器。旧 `player:backpack` 存档仅在归属明确时迁移到对应背包。
 
 在游戏页面按反引号键（`Backquote`，通常与 `~` 共用）打开或关闭调试控制台，输入命令后按 `Enter` 执行。执行后控制台自动关闭；`Esc` 可关闭，`↑` / `↓` 可浏览最近 50 条历史命令。执行结果或错误显示在浏览器开发者工具的 Console 中。
 
@@ -17,6 +21,8 @@ https://41eks.github.io/dontstarve-web/
 | `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、伯尼、岩石、草、树苗、池塘、虫洞、留声机、唱片和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("bernie_inactive")`、`c_spawn("rock1")`、`c_spawn("grass")`、`c_spawn("sapling")`、`c_spawn("pond")`、`c_spawn("wormhole")`、`c_spawn("nightmaregrowth")` |
 | `c_save()` | 无参数。将当前游戏状态（包括挖过的地皮、耕地地皮和月岩多人传送门）校验后导出并下载为 `initial-world.json`，同时在画面上方偏右显示原版 `anim/saving.zip` 的保存动画（`save_pre` → `save_loop` → `save_post`），结束后隐藏；保存超过 0.5 秒显示“正在保存…”。快速保存也会完整播放一轮动画；校验失败时结束提示，并在浏览器 Console 报告“保存失败”及具体字段路径，下载不会开始。要作为初始存档加载，将下载文件放到 `public/saves/initial-world.json` 后重新加载页面。 | `c_save()` |
 | `c_setsanity(percent)` | 设置 Wilson 的理智比例；`percent` 为必填的 `0` 到 `1` 数字（上限 200），写入理智 signal，由订阅同步状态栏和低理智滤镜，并随 `c_save()` 保存。调色按每 10% 一档四舍五入；实际理智、晃动速度和幅度保留连续值。 | `c_setsanity(0)`、`c_setsanity(0.175)`、`c_setsanity(1)` |
+
+物品栏支持左键点击吸附整叠物品，再点击空槽移动，或点击已占用槽位交换两边的整叠物品；同类物品也交换，拖放仍沿用原来的合堆规则。交换同时检查两边的装备类型、容器限制和堆叠容量，保留实体 ID、数量、皮肤和组件状态；无法交换时保留鼠标吸附，按 `Esc` 或再点来源槽取消。`c_save()` 保存交换后的槽位与物品状态，调试命令语法和支持 ID 不变。
 
 命令支持单引号或双引号、英文或中文括号（也可混用）、额外空白及末尾分号；`c_give` 的参数分隔符也支持中文逗号。每次提交一条命令。
 
@@ -81,7 +87,25 @@ https://41eks.github.io/dontstarve-web/
 
 
 
-`c_give("bananajuice", 2)` 获取两份香蕉奶昔，第二个参数可省略，默认一份；`c_spawn("bananajuice")` 在玩家脚下生成可拾取的一份。右键物品栏香蕉奶昔按原版 `preparedfoods.lua` 的 `fooddrink` 标签播放 `anim/player_actions_eat.zip` 中的 `quick_drink_pre → quick_drink`：第 10 帧播放 `dontstarve/wilson/sip`，第 12 帧成功扣除一份后增加 **33 理智、25 饥饿、8 生命**，Wilson 上限分别为 200、150、150。理智写入 `playerStats.sanity` signal，HUD 和低理智滤镜随订阅更新；提前按 Esc、移动或跳跃取消时不消耗、不恢复属性，物品实体或所在槽位被替换时也不提交。基础图标使用 `images/inventoryimages1.xml:bananajuice.tex`，地面仍使用 `cook_pot_food.zip` 的 `idle` 和 `cook_pot_food10.zip:bananajuice` 符号覆盖，无原版皮肤。支持 Shift + 右键丢弃和左键拾回；剩余数量、实体身份、地面位置及食用后的玩家属性随 `c_save()` 保存恢复。当前按新鲜食物的基础数值结算，尚未接入腐败、调味和角色专属食物加成。
+食用属性按原版 `preparedfoods.lua`、`prefabs/seeds.lua`、`prefabs/mushrooms.lua` 和 `tuning.lua` 的新鲜食物基础数值结算：
+
+| 物品 ID | 生命 | 饥饿 | 理智 |
+| --- | --- | --- | --- |
+| `meatballs`（肉丸） | +3 | +62.5 | +5 |
+| `seeds`（生种子） | 0 | +4.6875 | 0 |
+| `bananajuice`（香蕉奶昔） | +8 | +25 | +33 |
+| `red_cap`（生红蘑菇） | -20 | +12.5 | 0 |
+| `red_cap_cooked`（熟红蘑菇） | +1 | 0 | -10 |
+| `green_cap`（生绿蘑菇） | 0 | +12.5 | -50 |
+| `green_cap_cooked`（熟绿蘑菇） | -1 | 0 | +15 |
+| `blue_cap`（生蓝蘑菇） | +20 | +12.5 | -15 |
+| `blue_cap_cooked`（熟蓝蘑菇） | -3 | 0 | +10 |
+
+蘑菇数值来自 `prefabs/mushrooms.lua` 的生／熟数据。`c_give("red_cap", 2)` 等命令获取蘑菇，数量可省略，默认一份；`c_spawn("blue_cap_cooked")` 等命令在玩家脚下生成地面物品，支持表中六个 `*_cap` / `*_cap_cooked` ID。库存图标均来自 `images/inventoryimages.xml`，地面使用原版 `anim/mushrooms.zip` 的 `mushrooms` bank/build 和与物品 ID 同名的静态姿态，无原版皮肤。右键进食使用 `quick_eat_pre → quick_eat`，第 12 帧扣除一份后结算属性，结果限制在玩家属性范围；取消时不消耗、不结算。现有物品栏转移、丢弃、拾取和 `c_save()` 继续适用，保留实体身份、位置、数量及食用后的属性；暂不实现蘑菇采集、烹饪、种植或其他专属交互。
+
+`c_give("meatballs", 2)` 获取两份肉丸，第二个参数可省略，默认一份；`c_spawn("meatballs")` 在玩家脚下生成可拾取的一份。右键物品栏肉丸播放 `quick_eat_pre → quick_eat`，第 10 帧播放 `dontstarve/wilson/eat`，第 12 帧成功扣除一份后恢复表中的属性，超过 Wilson 上限的部分截断。取消或物品被替换时不消耗、不恢复属性。图标来自 `images/inventoryimages.xml:meatballs.tex`，地面使用原版 `anim/cook_pot_food.zip` 的 `cook_pot_food` bank/build、`idle` 和 `swap_food:meatballs` 符号覆盖，无原版皮肤。支持 Shift + 右键丢弃和左键拾回；数量、实体身份、地面位置及食用后的属性随 `c_save()` 保存恢复。
+
+`c_give("bananajuice", 2)` 获取两份香蕉奶昔，第二个参数可省略，默认一份；`c_spawn("bananajuice")` 在玩家脚下生成可拾取的一份。右键物品栏香蕉奶昔按原版 `preparedfoods.lua` 的 `fooddrink` 标签播放 `anim/player_actions_eat.zip` 中的 `quick_drink_pre → quick_drink`：第 10 帧播放 `dontstarve/wilson/sip`，第 12 帧成功扣除一份后增加 **33 理智、25 饥饿、8 生命**，Wilson 上限分别为 200、150、150。生命、饥饿、理智分别写入 `playerStats.health`、`playerStats.hunger`、`playerStats.sanity` signal，HUD 订阅三项属性更新，低理智滤镜订阅理智比例更新；提前按 Esc、移动或跳跃取消时不消耗、不恢复属性，物品实体或所在槽位被替换时也不提交。基础图标使用 `images/inventoryimages1.xml:bananajuice.tex`，地面仍使用 `cook_pot_food.zip` 的 `idle` 和 `cook_pot_food10.zip:bananajuice` 符号覆盖，无原版皮肤。支持 Shift + 右键丢弃和左键拾回；剩余数量、实体身份、地面位置及食用后的玩家属性随 `c_save()` 保存恢复。当前按新鲜食物的基础数值结算，尚未接入腐败、调味和角色专属食物加成。
 
 `c_give("seeds", 10)` 获取种子，`c_spawn("seeds")` 在玩家脚下生成可拾取的原版地面种子（`anim/seeds.zip`，bank/build `seeds`，`idle`；物品图标来自 `images/inventoryimages.xml`）。Shift + 右键丢弃、左键拾回；右键物品栏种子播放 `quick_eat_pre → quick_eat`，第 12 帧消耗一粒并增加 4.6875 饥饿，上限 150，健康和理智不变。左键物品栏种子选中种植，鼠标跟随原版种子图标及剩余数量，种子仍保留在原槽；左键耕地机完成后农田 tile 上的完整坑（`farm_soil`）自动走近，在 `pickup → pickup_pst` 的第 6 帧消耗一粒，替换为原版 `farm_plant_randomseed`（`anim/farm_soil.zip` 的 `sow → sow_idle`）。正在耕地的坑、破损坑和空地不可种植；移动、跳跃、Esc、点击空地或切换物品取消未提交的操作，失败不消耗种子。`c_spawn("farm_plant_randomseed")` 直接生成播种后的外观；地面种子及已播种实体的 ID、位置和数量随 `c_save()` 保存并恢复。本次仅实现种子地面美术、进食和坑内播种，播种后保持种子阶段。
 
@@ -126,6 +150,8 @@ https://41eks.github.io/dontstarve-web/
 | 场景装饰 | `nightmaregrowth`、`wormhole`、`multiplayer_portal_moonrock` |
 | 耕地机及耕地装饰 | `farm_plow`、`farm_plow_item`（未部署物品）、`farm_soil`、`farm_soil_debris`、`farm_plant_randomseed`（播种后外观） |
 | 种子地面物品 | `seeds` |
+| 蘑菇地面物品 | `red_cap`、`red_cap_cooked`、`green_cap`、`green_cap_cooked`、`blue_cap`、`blue_cap_cooked` |
+| 料理地面物品 | `meatballs`、`bananajuice` |
 | 火把地面物品 | `torch` |
 | 园艺锄地面物品 | `farm_hoe`、`golden_farm_hoe` |
 | 铲子地面物品 | `shovel`、`goldenshovel` |

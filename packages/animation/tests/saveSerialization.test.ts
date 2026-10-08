@@ -111,20 +111,24 @@ describe('manual JSON save', () => {
     const resaved = deserializeSave(serializeSave(saved, state, catalog), catalog);
     expect(resaved.players.local.stats).toEqual(playerStats);
   });
-  it('round trips equipped backpack contents, including the eighth slot', () => {
+  it('round trips independent equipped and ground backpack containers, including the eighth slot', () => {
+    const contents = { slotCount: 8, slots: [{ slotKey: '7', item: { entityId: 'grass_in_bag', itemId: 'cutgrass', count: 3 } }] };
     const { template, state } = fixture();
-    state.inventory.slots.push(
-      { address: { containerId: 'player:equipment', slotKey: 'body' }, item: { itemId: 'backpack', count: 1 } },
-      { address: { containerId: 'player:backpack', slotKey: '7' }, item: { itemId: 'cutgrass', count: 3 } },
-    );
+    state.inventory.slots.push({ address: { containerId: 'player:equipment', slotKey: 'body' },
+      item: { entityId: 'bag_equipped', itemId: 'backpack', count: 1, container: contents } });
+    state.entities.ground_item = [{ id: 'bag_ground', transform: { position: [1, 0, 2], rotationY: 0 },
+      components: { stack: { itemId: 'backpack', count: 1,
+        container: { slotCount: 8, slots: [{ slotKey: '0', item: { entityId: 'logs_in_bag', itemId: 'log', count: 2 } }] } } } }];
     const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
-    expect(saved.players.local.inventory.containers['player:backpack']).toEqual({
-      slotCount: 8, slots: [{ slotKey: '7', item: { itemId: 'cutgrass', count: 3 } }],
-    });
-    expect(inventoryStateFromSave(saved).slots).toContainEqual(state.inventory.slots.at(-1));
-    saved.players.local.inventory.containers['player:backpack'].slots[0].slotKey = '8';
-    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('invalid or duplicate slot');
+    const bag = saved.players.local.inventory.containers['player:equipment'].slots.find(slot => slot.slotKey === 'body')!.item;
+    expect(bag.container).toEqual(contents);
+    expect(saved.players.local.inventory.containers['player:backpack']).toBeUndefined();
+    expect(saved.world.entities.ground_item[0].components.stack!.container!.slots[0].item.itemId).toBe('log');
+    expect(inventoryStateFromSave(saved).slots.find(({ address }) => address.slotKey === 'body')!.item!.container).toEqual(contents);
+    bag.container!.slots[0].slotKey = '8';
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow(/slot/);
   });
+
   it('round trips dug terrain and rejects duplicate, invalid and out-of-bounds tiles', () => {
     const { template, state } = fixture();
     const tiles = [{ col: -1, row: 2, tileId: WORLD_TILES.DIRT }];
@@ -186,6 +190,24 @@ describe('manual JSON save', () => {
     }
     delete saved.world.entities[prefab][0].components.timer;
     expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('timer');
+  });
+
+  it('round trips cook pot progress and rejects conflicting ingredient or phase state', () => {
+    const { template, state } = fixture();
+    state.entities.cookpot = [{ id: 'pot:cooking', transform: { position: [3, 0, 6], rotationY: 0 },
+      components: { building: { state: 'closed', skinId: 'cookpot_candy' },
+        stewer: { product: 'beefalofeed', phase: 'cooking', remainingSeconds: 4.5 } } }];
+    const saved = deserializeSave(serializeSave(template, state, catalog), catalog);
+    expect(saved.world.entities.cookpot[0]).toEqual({ ...state.entities.cookpot[0], components: {
+      ...state.entities.cookpot[0].components, container: { slotCount: 4, slots: [] },
+    } });
+    const pot = saved.world.entities.cookpot[0];
+    pot.components.stewer!.phase = 'done';
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('zero remaining time');
+    pot.components.stewer!.remainingSeconds = 0;
+    expect(deserializeSave(JSON.stringify(saved), catalog).world.entities.cookpot[0]).toEqual(pot);
+    pot.components.container!.slots.push({ slotKey: '0', item: { itemId: 'twigs', count: 1 } });
+    expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('no ingredients');
   });
 
   it('round trips cook pot slots and rejects stacked ingredients while reading old idle saves', () => {

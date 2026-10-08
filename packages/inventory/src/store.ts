@@ -4,7 +4,7 @@ import {
   createHandEquipmentExistenceState, createHeadEquipmentExistenceState, createBodyEquipmentExistenceState, readonlySignal,
   type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
 } from '@dontstarve-web/signals';
-import { EQUIPMENT_KINDS, equipmentSlotAddress } from './addresses';
+import { EQUIPMENT_KINDS, equipmentSlotAddress, backpackContainerId, backpackSlotAddress, isBackpackContainerId, BACKPACK_SLOT_COUNT } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type {
@@ -136,6 +136,7 @@ export class InventoryStore {
       this.registrations.push(registration);
       this.registrationByAddress.set(addressKey(registration.address), registration);
     }
+    this.syncBackpackContainers();
     this.bindOwners();
     for (const kind of changedEquipmentKinds(pending.map(({ address }) => address))) {
       this.bindEquipmentExistenceState(kind);
@@ -177,7 +178,7 @@ export class InventoryStore {
   exportState(): InventoryState {
     for (const { slot } of this.registrations) slot.getEntity()?.flush();
     return {
-      slots: this.registrations.map(({ address, slot }) => {
+      slots: this.registrations.filter(({ address }) => !isBackpackContainerId(address.containerId)).map(({ address, slot }) => {
         return { address: cloneAddress(address), item: slot.getEntity()?.snapshot() ?? null };
       }),
       bufferedBuilds: [...this.bufferedBuilds].map(([recipeId, skinId]) => ({
@@ -203,6 +204,31 @@ export class InventoryStore {
         throw new Error(`Invalid skin ${skinId} for ${itemId}`);
       }
     };
+    const validateItem = (item: InventoryStack): void => {
+      const spec = this.requireItemSpec(item.itemId);
+      if (!Number.isSafeInteger(item.count) || item.count < 1 || item.count > spec.maxStack
+        || !this.validUses(item, spec) || !this.validRecord(item)) throw new Error('Invalid saved item');
+      validateSkin(item.itemId, item.skinId);
+      if (item.entityId) {
+        if (entityIds.has(item.entityId)) throw new Error(`Duplicate saved item entity: ${item.entityId}`);
+        entityIds.add(item.entityId);
+      }
+      if (item.container !== undefined) {
+        if (item.itemId !== 'backpack' || item.container.slotCount !== BACKPACK_SLOT_COUNT
+          || item.container.slots.length > BACKPACK_SLOT_COUNT) throw new Error('Invalid item container');
+        const keys = new Set<string>();
+        for (const { slotKey, item: child } of item.container.slots) {
+          if (!/^[0-7]$/.test(slotKey) || keys.has(slotKey) || child.itemId === 'backpack'
+            || this.requireItemSpec(child.itemId).canGoInContainer === false) throw new Error('Invalid container slot');
+          keys.add(slotKey);
+          const existing = child.entityId ? this.entities.get(child.entityId) : undefined;
+          if (existing && !this.registrations.some(({ slot }) => slot.getEntity() === existing)) {
+            throw new Error(`Item entity already belongs to the world: ${child.entityId}`);
+          }
+          validateItem(child);
+        }
+      }
+    };
     for (const { address, item } of state.slots) {
       const key = addressKey(address);
       const registration = this.registrationByAddress.get(key);
@@ -215,14 +241,10 @@ export class InventoryStore {
           || !registration.slot.accepts(spec) || !this.validUses(item, spec) || !this.validRecord(item)) {
           throw new Error(`Invalid saved item in ${key}`);
         }
-        validateSkin(item.itemId, item.skinId);
+        validateItem(item);
         const existing = item.entityId ? this.entities.get(item.entityId) : undefined;
         if (existing && !this.registrations.some(({ slot }) => slot.getEntity() === existing)) {
           throw new Error(`Saved item entity already belongs to the world: ${item.entityId}`);
-        }
-        if (item.entityId) {
-          if (entityIds.has(item.entityId)) throw new Error(`Duplicate saved item entity: ${item.entityId}`);
-          entityIds.add(item.entityId);
         }
       }
       next.set(key, item ? { ...item } : null);
@@ -266,7 +288,8 @@ export class InventoryStore {
 
   /** Equip/container moves use the source inst and its complete component snapshot. */
   transfer(from: SlotAddress, to: SlotAddress, count: number, expected?: Pick<InventoryStack, 'itemId' | 'skinId'>): boolean {
-    if (!Number.isSafeInteger(count) || count <= 0 || addressKey(from) === addressKey(to)) return false;
+    if (!Number.isSafeInteger(count) || count <= 0 || addressKey(from) === addressKey(to)
+      || !this.accessibleBackpackAddress(from) || !this.accessibleBackpackAddress(to)) return false;
     const entity = this.getEntity(from);
     entity?.flush();
     if (!entity || entity.isRemoved || (expected && !isSameStack(entity.snapshot(), expected.itemId, expected.skinId))) return false;
@@ -277,8 +300,33 @@ export class InventoryStore {
     ]);
   }
 
+  /** Exchange whole entities in one transaction, validating both receiving slots. */
+  swap(from: SlotAddress, to: SlotAddress, expected?: {
+    from: Pick<InventoryStack, 'entityId' | 'itemId' | 'skinId' | 'count'>;
+    to: Pick<InventoryStack, 'entityId' | 'itemId' | 'skinId' | 'count'>;
+  }): boolean {
+    if (addressKey(from) === addressKey(to)
+      || !this.accessibleBackpackAddress(from) || !this.accessibleBackpackAddress(to)) return false;
+    const source = this.getEntity(from), target = this.getEntity(to);
+    if (!source || !target) return false;
+    source.flush(); target.flush();
+    if (source.isRemoved || target.isRemoved || this.getEntity(from) !== source || this.getEntity(to) !== target) return false;
+    const sourceState = source.snapshot(), targetState = target.snapshot();
+    const matches = (state: InventoryStack, wanted: typeof sourceState): boolean =>
+      isSameStack(state, wanted.itemId, wanted.skinId) && state.count === wanted.count
+      && (wanted.entityId === undefined || state.entityId === wanted.entityId);
+    if (expected && (!matches(sourceState, expected.from) || !matches(targetState, expected.to))) return false;
+    return this.applySlotChanges([
+      { slot: from, ...sourceState, delta: -sourceState.count },
+      { slot: to, ...targetState, delta: -targetState.count },
+      { slot: from, ...targetState, delta: targetState.count },
+      { slot: to, ...sourceState, delta: sourceState.count },
+    ]);
+  }
+
   /** Stackable:Get: a whole stack keeps inst; a partial stack gets a new entity. */
   extract(address: SlotAddress, count: number, expected?: ItemEntity): ItemEntity | null {
+    if (!this.accessibleBackpackAddress(address)) return null;
     const entity = this.getEntity(address);
     entity?.flush();
     if (!entity || entity.isRemoved || (expected && entity !== expected)
@@ -358,7 +406,7 @@ export class InventoryStore {
   }
 
   takeItem(itemId: string, skinId?: string): boolean {
-    const registration = this.registrations.find(({ slot }) => {
+    const registration = this.accessibleMaterialSlots().find(({ slot }) => {
       const item = slot.get();
       return item?.itemId === itemId && item.skinId === skinId;
     });
@@ -481,6 +529,8 @@ export class InventoryStore {
       if (!Number.isSafeInteger(change.delta) || change.delta === 0) return false;
       const spec = this.itemSpecs.get(change.itemId);
       const registration = this.registrationByAddress.get(addressKey(change.slot));
+      if (change.delta > 0 && change.itemId === 'backpack'
+        && (registration?.slot instanceof StorageSlot || registration?.slot instanceof PreparedFoodSlot)) return false;
       if (!spec || !registration || !this.validUses(change, spec) || !this.validRecord(change)) return false;
       if (change.entityId && !this.entities.get(change.entityId)) return false;
 
@@ -511,6 +561,7 @@ export class InventoryStore {
         itemId: change.itemId,
         ...(change.skinId === undefined ? {} : { skinId: change.skinId }),
         count: nextCount,
+        ...((current?.container ?? source?.container) === undefined ? {} : { container: current?.container ?? source?.container }),
         ...((change.phonographRecord ?? current?.phonographRecord ?? source?.phonographRecord) === undefined ? {}
           : { phonographRecord: change.phonographRecord ?? current?.phonographRecord ?? source?.phonographRecord }),
         ...((change.remainingUses ?? current?.remainingUses ?? source?.remainingUses) === undefined ? {}
@@ -556,10 +607,18 @@ export class InventoryStore {
         && Number.isFinite(item.remainingFuel) && item.remainingFuel > 0 && item.remainingFuel <= spec.maxFuel));
   }
 
+  private accessibleBackpackAddress(address: SlotAddress): boolean {
+    if (!isBackpackContainerId(address.containerId)) return true;
+    const equipped = this.getEntity(equipmentSlotAddress('body'));
+    return equipped?.prefab === 'backpack' && equipped.components.container?.canbeopened === true
+      && address.containerId === backpackContainerId(equipped.id);
+  }
+
   private accessibleMaterialSlots(): readonly RegisteredItemSlot[] {
     return this.registrations.filter(({ address, slot }) => (
       !(slot instanceof StorageSlot || slot instanceof PreparedFoodSlot)
-      || this.accessibleStorageContainerIds.has(address.containerId)
+      || (isBackpackContainerId(address.containerId) ? this.accessibleBackpackAddress(address)
+        : this.accessibleStorageContainerIds.has(address.containerId))
     ));
   }
 
@@ -589,6 +648,44 @@ export class InventoryStore {
     return true;
   }
 
+  private syncBackpackContainers(): void {
+    const backpacks = this.entities.values().filter(entity => entity.components.container);
+    const live = new Set(backpacks.map(entity => backpackContainerId(entity.id)));
+    for (let index = this.registrations.length - 1; index >= 0; index--) {
+      const registration = this.registrations[index];
+      if (!isBackpackContainerId(registration.address.containerId)) continue;
+      const entityId = registration.address.containerId.slice('item:backpack:'.length);
+      const parent = this.entities.get(entityId);
+      if (!live.has(registration.address.containerId)
+        || parent?.components.container?.slots[Number(registration.address.slotKey)] !== registration.slot) {
+        this.registrationByAddress.delete(addressKey(registration.address));
+        this.registrations.splice(index, 1);
+      }
+    }
+    for (const backpack of backpacks) {
+      this.entities.adopt(backpack);
+      backpack.components.container!.slots.forEach((slot, index) => {
+        const address = backpackSlotAddress(backpack.id, index);
+        if (this.registrationByAddress.has(addressKey(address))) return;
+        const registration = { address, slot };
+        this.registrations.push(registration);
+        this.registrationByAddress.set(addressKey(address), registration);
+        const child = slot.getEntity();
+        if (child) {
+          const spec = this.requireItemSpec(child.prefab);
+          if (spec.maxUses !== undefined) child.components.finiteuses.setMaxUses(spec.maxUses);
+        }
+      });
+    }
+    const equipped = this.getEntity(equipmentSlotAddress('body'));
+    for (const backpack of backpacks) {
+      const container = backpack.components.container!;
+      if (backpack === equipped && container.canbeopened && (container.IsOpenedBy(this) || container.CanOpen())) {
+        container.Open(this);
+      } else container.Close(this);
+    }
+  }
+
   private bindOwners(): void {
     for (const { address, slot } of this.registrations) {
       const entity = slot.getEntity();
@@ -611,6 +708,7 @@ export class InventoryStore {
     }
     const retained = new Set<ItemEntity>();
     const prepared = this.registrations.map(({ address, slot }) => {
+      if (restore && isBackpackContainerId(address.containerId)) return { slot, entity: null };
       const state = next.get(addressKey(address));
       if (!state) return { slot, entity: null };
       let entity = state.entityId ? this.entities.get(state.entityId) : undefined;
@@ -623,8 +721,9 @@ export class InventoryStore {
     });
     for (const entity of old) entity.components.inventoryitem.owner = null;
     for (const { slot, entity } of prepared) slot.setEntity(entity);
-    this.bindOwners();
     for (const entity of old) if (!retained.has(entity) && !keepDeparted) this.entities.destroy(entity);
+    this.syncBackpackContainers();
+    this.bindOwners();
   }
 
   private publishEquipmentExistenceState(kind: EquipmentKind): void {
@@ -643,6 +742,11 @@ export class InventoryStore {
   }
 
   private notify(changedSlots: readonly SlotAddress[], replacedEquipment: readonly EquipmentKind[] = []): void {
+    // One complete DTO per changed container, including in-place quantity/fuel updates.
+    const containerIds = new Set(changedSlots.map(address => address.containerId).filter(isBackpackContainerId));
+    for (const id of containerIds) {
+      this.entities.get(id.slice('item:backpack:'.length))?.components.container?.publishDTO();
+    }
     // Component or unrelated inventory updates must not restart equipment lifecycles.
     for (const kind of replacedEquipment) this.publishEquipmentExistenceState(kind);
     this.listeners.forEach((listener) => listener(changedSlots));

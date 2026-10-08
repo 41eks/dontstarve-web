@@ -25,6 +25,30 @@ function parse(data: unknown = initialWorld) {
 }
 
 describe('save JSON deserialization', () => {
+  it('migrates a legacy equipped backpack and rejects ambiguous ownership and duplicate nested identities', () => {
+    const data = structuredClone(initialWorld) as any;
+    const containers = data.players.local.inventory.containers;
+    containers['player:inventory'].slots = [];
+    containers['player:equipment'].slots = [{ slotKey: 'body', item: { itemId: 'backpack', count: 1 } }];
+    containers['player:backpack'] = { slotCount: 8, slots: [{ slotKey: '7',
+      item: { entityId: 'legacy_grass', itemId: 'cutgrass', count: 3 } }] };
+    const saved = parse(data);
+    const migrated = saved.players.local.inventory.containers['player:equipment'].slots.find(slot => slot.slotKey === 'body')!.item;
+    expect(migrated.container).toEqual(containers['player:backpack']);
+    expect(saved.players.local.inventory.containers['player:backpack']).toBeUndefined();
+    containers['player:equipment'].slots = [];
+    const groundBag = data.world.entities.ground_item.find((record: any) => record.components.stack.itemId === 'backpack');
+    delete groundBag.components.stack.container;
+    expect(parse(data).world.entities.ground_item.find(record => record.id === groundBag.id)!.components.stack!.container)
+      .toEqual(containers['player:backpack']);
+    containers['player:inventory'].slots = [0, 1].map(index => ({ slotKey: String(index), item: { itemId: 'backpack', count: 1 } }));
+    expect(() => parse(data)).toThrow('ambiguous legacy backpack owner');
+    const duplicate = structuredClone(saved);
+    duplicate.players.local.inventory.containers['player:inventory'].slots.push({ slotKey: '14',
+      item: { entityId: 'legacy_grass', itemId: 'cutgrass', count: 1 } });
+    expect(() => parse(duplicate)).toThrow('duplicate item entity ID');
+  });
+
   it('restores fractional torch fuel in inventory and skinned ground items and accepts old full-fuel saves', () => {
     const data = structuredClone(initialWorld) as any;
     data.players.local.inventory.containers['player:equipment'].slots = [];

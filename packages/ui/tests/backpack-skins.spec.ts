@@ -17,7 +17,7 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
       const item = main.inventory.get(slot);
       if (item) main.inventory.applySlotChanges([{ slot, ...item, delta: -item.count }]);
     }
-    main.inventory.add('backpack', 1); main.inventory.add('reskin_tool', 1);
+    main.inventory.add('backpack', 1); main.inventory.add('reskin_tool', 1); main.inventory.add('cutgrass', 3);
     const backpackSlot = main.inventory.addresses().find((address: any) =>
       address.containerId === 'player:inventory' && main.inventory.get(address)?.itemId === 'backpack');
     const backpackId = main.inventory.getEntity(backpackSlot)!.id;
@@ -40,6 +40,11 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   const body = bar.locator('[data-slot-key="body"]');
   await bar.locator('.inventory-bar__items [data-item-id="backpack"]').first().dragTo(body);
   await expect(body).toHaveAttribute('data-item-id', 'backpack');
+  const stored = page.locator('dst-backpack-panel [data-slot-key="7"]');
+  await bar.locator('.inventory-bar__items [data-item-id="cutgrass"]').first().dragTo(stored);
+  await expect(stored).toHaveAttribute('data-item-id', 'cutgrass');
+  const container = await page.evaluate(() => (window as any).backpackSkinGame.main.inventory
+    .getEntity({ containerId: 'player:equipment', slotKey: 'body' }).snapshot().container);
   await page.keyboard.down('Shift');
   await body.click({ button: 'right' });
   await page.keyboard.up('Shift');
@@ -65,9 +70,9 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   const groundStream = await (await groundDownload).createReadStream();
   const groundChunks = [];
   for await (const chunk of groundStream!) groundChunks.push(chunk);
-  expect(JSON.parse(Buffer.concat(groundChunks).toString()).world.entities.ground_item
-    .some((entity: any) => entity.id === backpackId && entity.components.stack.itemId === 'backpack'
-      && entity.components.stack.skinId === 'backpack_babybeef')).toBe(true);
+  const groundSave = JSON.parse(Buffer.concat(groundChunks).toString());
+  const groundBag = groundSave.world.entities.ground_item.find((entity: any) => entity.id === backpackId);
+  expect(groundBag.components.stack).toMatchObject({ itemId: 'backpack', skinId: 'backpack_babybeef', container });
   const pickupPoint = await page.evaluate(() => (window as any).backpackGroundPoint());
   await page.mouse.click(pickupPoint.x, pickupPoint.y);
   const pickedUp = bar.locator('.inventory-bar__items [data-item-id="backpack"][data-skin-id="backpack_babybeef"]');
@@ -78,6 +83,7 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   await expect.poll(() => page.evaluate(() => (window as any).backpackSkinGame.player.children[0].children[0].material
     .some((material: any) => material.name === 'ground:backpack_babybeef'))).toBe(true);
   await expect(page.locator('dst-backpack-panel .inventory-slot')).toHaveCount(8);
+  await expect(stored).toHaveAttribute('data-item-id', 'cutgrass');
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
@@ -86,6 +92,13 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   for await (const chunk of stream!) chunks.push(chunk);
   const save = JSON.parse(Buffer.concat(chunks).toString());
   expect(save.players.local.inventory.containers['player:equipment'].slots.find((slot: any) => slot.slotKey === 'body').item)
-    .toEqual({ entityId: backpackId, itemId: 'backpack', skinId: 'backpack_babybeef', count: 1 });
+    .toEqual({ entityId: backpackId, itemId: 'backpack', skinId: 'backpack_babybeef', count: 1, container });
+  const reloaded = await page.evaluate(async ({ groundSave, save, url }) => {
+    const { deserializeSave } = await import(url);
+    const { SAVE_CATALOG } = await import(url.replace('save/deserialize.ts', 'save/catalog.ts'));
+    return [groundSave, save].map(document => deserializeSave(JSON.stringify(document), SAVE_CATALOG));
+  }, { groundSave, save, url: `/@fs${fileURLToPath(new URL('../../../src/save/deserialize.ts', import.meta.url))}` });
+  expect(reloaded[0].world.entities.ground_item.find((entity: any) => entity.id === backpackId).components.stack.container).toEqual(container);
+  expect(reloaded[1].players.local.inventory.containers['player:equipment'].slots.find((slot: any) => slot.slotKey === 'body').item.container).toEqual(container);
   expect(errors).toEqual([]);
 });

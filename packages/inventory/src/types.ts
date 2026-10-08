@@ -13,6 +13,7 @@ export interface InventoryItemSpec {
   icon: string;
   atlas?: string;
   equippable?: EquipmentKind;
+  canGoInContainer?: boolean;
   maxUses?: number;
   /** Full fuel duration in seconds. Missing stack fuel means a fresh item. */
   maxFuel?: number;
@@ -30,7 +31,14 @@ export interface InventoryState {
   bufferedBuilds: readonly { recipeId: string; skinId?: string }[];
 }
 
+export interface ItemContainerState {
+  slotCount: number;
+  slots: { slotKey: string; item: InventoryStack }[];
+}
+
 export interface InventoryStack {
+  /** Container belongs to this item, including when it is on the ground. */
+  container?: ItemContainerState;
   /** Persistent inst identity; absent in old saves and detached UI projections. */
   entityId?: string;
   itemId: string;

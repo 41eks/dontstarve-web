@@ -1,4 +1,7 @@
 import type { InventoryStack, SlotAddress } from './types';
+import { StorageSlot } from './slots';
+import { Container } from '../../componets/src/container';
+import { BACKPACK_SLOT_COUNT } from './addresses';
 
 let sequence = 0;
 export function newItemEntityId(): string {
@@ -59,6 +62,7 @@ export class ItemEntity {
     fueled: { remaining: number | undefined };
     finiteuses: FiniteUsesComponent;
     inventoryitem: { owner: ItemOwner | null };
+    container?: Container<InventoryStack, ItemEntity, StorageSlot>;
   };
   readonly transform: { position: [number, number, number]; rotationY: number } = { position: [0, 0, 0], rotationY: 0 };
   skinId?: string;
@@ -75,6 +79,13 @@ export class ItemEntity {
       finiteuses: new FiniteUsesComponent(this, state.remainingUses),
       inventoryitem: { owner: null },
     };
+    if (this.prefab === 'backpack') {
+      const container = new Container(this, () => new StorageSlot(), (item: InventoryStack) => new ItemEntity(item));
+      container.SetNumSlots(BACKPACK_SLOT_COUNT);
+      container.OnLoad({ items: Object.fromEntries((state.container?.slots ?? [])
+        .map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
+      this.components.container = container;
+    }
     this.apply(state);
   }
 
@@ -86,6 +97,11 @@ export class ItemEntity {
       ...(this.components.fueled.remaining === undefined ? {} : { remainingFuel: this.components.fueled.remaining }),
       ...(this.components.finiteuses.remaining === undefined ? {} : { remainingUses: this.components.finiteuses.remaining }),
       ...(this.phonographRecord === undefined ? {} : { phonographRecord: this.phonographRecord }),
+      ...(this.components.container === undefined ? {} : { container: {
+        slotCount: this.components.container.GetNumSlots(),
+        slots: Object.entries(this.components.container.OnSave().items)
+          .map(([key, item]) => ({ slotKey: String(Number(key) - 1), item })),
+      } }),
     };
   }
 
@@ -113,7 +129,10 @@ export class ItemEntity {
     return component as T;
   }
 
-  flush(): void { for (const component of this.runtime.values()) component.flush?.(); }
+  flush(): void {
+    this.components.container?.flush();
+    for (const component of this.runtime.values()) component.flush?.();
+  }
   remove(): boolean {
     if (this.removed) return false;
     const owner = this.components.inventoryitem.owner;
@@ -129,6 +148,7 @@ export class ItemEntity {
     this.components.inventoryitem.owner = null;
     for (const component of this.runtime.values()) component.dispose();
     this.runtime.clear();
+    this.components.container?.dispose();
   }
 }
 
@@ -146,10 +166,17 @@ export class ItemEntityRegistry {
     if (entity?.isRemoved) { this.entities.delete(id); return undefined; }
     return entity;
   }
+  values(): readonly ItemEntity[] {
+    return [...this.entities.values()].filter(entity => !entity.isRemoved);
+  }
   adopt(entity: ItemEntity): void {
     const existing = this.get(entity.id);
     if (entity.isRemoved || (existing && existing !== entity)) throw new Error(`Invalid item entity: ${entity.id}`);
     this.entities.set(entity.id, entity);
+    for (const slot of entity.components.container?.slots ?? []) {
+      const child = slot.getEntity();
+      if (child) this.adopt(child);
+    }
   }
   destroy(entity: ItemEntity): void {
     entity.destroy();

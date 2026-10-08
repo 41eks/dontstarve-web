@@ -1,9 +1,5 @@
 import * as THREE from 'three';
-import type { DstChestPanelElement } from '@dontstarve-web/ui';
-import { backTasks } from './animate';
-import { camera } from './camera';
-import { renderer } from './universal';
-import { player } from './player';
+import type { DstChestPanelElement } from './chest-panel';
 import { buildingContainerId, buildingContainerDefinition, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 
@@ -13,10 +9,18 @@ const ANCHOR_MARGIN = 1;
 
 export interface ChestInventoryPanelController {
   setOpen(model: THREE.Object3D, isOpen: boolean, prefab?: StorageBuildingId): void;
+  update(): void;
+}
+
+export interface ChestInventoryPanelOptions {
+  camera: THREE.Camera;
+  canvas: Pick<HTMLCanvasElement, 'getBoundingClientRect'>;
+  player: THREE.Object3D;
 }
 
 export function createChestInventoryPanel(
   element: DstChestPanelElement,
+  { camera, canvas, player }: ChestInventoryPanelOptions,
   prefab: StorageBuildingId = 'treasurechest',
 ): ChestInventoryPanelController {
   const bounds = new THREE.Box3();
@@ -65,13 +69,12 @@ export function createChestInventoryPanel(
     element.hidden = !inView;
     if (!inView) return;
 
-    const canvasBounds = renderer.domElement.getBoundingClientRect();
+    const canvasBounds = canvas.getBoundingClientRect();
     element.setAnchor(
       canvasBounds.left + (anchor.x + 1) * canvasBounds.width / 2,
       canvasBounds.top + (1 - anchor.y) * canvasBounds.height / 2,
     );
   };
-  backTasks.push(update);
   element.addEventListener('game:chest-close', () => {
     if (!element.isClosing) {
       openModel = undefined;
@@ -80,6 +83,7 @@ export function createChestInventoryPanel(
   });
 
   return {
+    update,
     setOpen(model, isOpen, buildingPrefab = prefab) {
       if (isOpen) {
         if (openModel !== model && element.slotContainer) element.close();

@@ -4,7 +4,7 @@
 
 源码根目录：`/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts/`。下文 `prefabs/*.lua`、`components/*.lua` 等路径均相对于该目录，行号对应本次读取的源码版本。
 
-清单覆盖项目 [groundItems.json](../packages/prefab/src/groundItems.json) 的 228 个 ID、[hats.json](../packages/prefab/src/hats.json) 的 82 个玩家帽子 ID，以及本次查看的 57 个世界实体和部分生物、特殊实体。它是已核对范围的快照，不是 DST 全量 prefab 注册表，也不是项目当前命令支持列表。
+清单覆盖项目 [groundItems.json](../packages/prefab/src/groundItems.json) 的 234 个 ID、[hats.json](../packages/prefab/src/hats.json) 的 82 个玩家帽子 ID，以及本次查看的 57 个世界实体和部分生物、特殊实体。2026-10-08 补充核对三色生／熟蘑菇的六个物品 ID。它是已核对范围的快照，不是 DST 全量 prefab 注册表，也不是项目当前命令支持列表。
 
 ## 分类汇总
 
@@ -35,7 +35,7 @@
 
 以下“可生成”“可入栏”均指正常服务端游戏环境下的静态源码路径；可入栏还以空间和状态条件允许为前提。后续 AI、延迟任务、角色交互和实体生命周期不由这份表保证。
 
-## 地面物品目录：228 个 ID
+## 地面物品目录：234 个 ID
 
 ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文件。共用文件的行号指向共用构造实现，不是每个 ID 的独立注册位置。Lua 文件名与 prefab ID 不必相同。
 
@@ -84,6 +84,12 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `ice` | 可生成 | 可入栏 | `prefabs/inv_rocks_ice.lua:107` |
 | `seeds` | 可生成 | 可入栏 | `prefabs/seeds.lua:100` |
 | `seeds_cooked` | 可生成 | 可入栏 | `prefabs/seeds.lua:100` |
+| `red_cap` | 可生成 | 可入栏 | `prefabs/mushrooms.lua:338` |
+| `red_cap_cooked` | 可生成 | 可入栏 | `prefabs/mushrooms.lua:396` |
+| `green_cap` | 可生成 | 可入栏 | `prefabs/mushrooms.lua:338` |
+| `green_cap_cooked` | 可生成 | 可入栏 | `prefabs/mushrooms.lua:396` |
+| `blue_cap` | 可生成 | 可入栏 | `prefabs/mushrooms.lua:338` |
+| `blue_cap_cooked` | 可生成 | 可入栏 | `prefabs/mushrooms.lua:396` |
 | `pinecone` | 可生成 | 可入栏 | `prefabs/pinecone.lua:108` |
 | `acorn_cooked` | 可生成 | 可入栏 | `prefabs/acorn.lua:121` |
 | `poop` | 可生成 | 可入栏 | `prefabs/poop.lua:89` |
@@ -425,7 +431,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 
 ## 生物与特殊实体
 
-butterfly、fireflies 已计入前面的 228 个 ID；本表重复列出它们以说明生物的分类依据。
+butterfly、fireflies 已计入前面的 234 个 ID；本表重复列出它们以说明生物的分类依据。
 
 | prefab ID | c_spawn | c_give | 源码与说明 |
 | --- | --- | --- | --- |

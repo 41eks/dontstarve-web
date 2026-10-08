@@ -1,6 +1,7 @@
 import { AssetElement } from './assets';
 import { AnimatedBackground } from './animated-background';
-import { createSignal } from '@dontstarve-web/signals';
+import { createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import type { ContainerDTO } from '../../componets/src/container';
 import { createSlotContainer, type SlotContainer, type SlotContainerKind } from './slot/slot-container';
 import type { SlotAddress, SlotItem, SlotModel, SlotSelectDetail } from './slot/slot-model';
 import { createSlotRenderer, type SlotRenderer } from './slot/slot-renderer';
@@ -30,6 +31,7 @@ export class DstChestPanelElement extends AssetElement {
   private readonly selectedSlot = createSignal<SlotAddress | null>(null);
   private background?: AnimatedBackground;
   private closing = false;
+  private stopContainerSignal?: () => void;
 
   get isClosing(): boolean { return this.closing; }
 
@@ -84,6 +86,7 @@ export class DstChestPanelElement extends AssetElement {
     if (!Number.isInteger(options.slotCount) || options.slotCount <= 0) {
       throw new RangeError(`Invalid chest slot count: ${options.slotCount}`);
     }
+    this.stopContainerSignal?.();
     this.closing = false;
     this.container = createSlotContainer({
       id: options.containerId,
@@ -98,6 +101,7 @@ export class DstChestPanelElement extends AssetElement {
   }
 
   close(): void {
+    this.stopContainerSignal?.();
     const containerId = this.container?.id;
     if (!containerId) return;
     this.disposeRenderers();
@@ -129,7 +133,39 @@ export class DstChestPanelElement extends AssetElement {
     return this.requireSlot(address).getItem();
   }
 
+  /** Application metadata maps the component DTO to UI items; UI only subscribes. */
+  bindContainer<TRecord>(signal: ReadonlySignal<ContainerDTO<TRecord>>, toItem: (record: Readonly<TRecord>) => SlotItem): () => void {
+    const containerId = this.container?.id;
+    if (!containerId) throw new Error('Open a container panel before binding its signal');
+    this.stopContainerSignal?.();
+    const update = (dto: ContainerDTO<TRecord>) => {
+      if (this.container?.id !== containerId) return;
+      if (!Number.isInteger(dto.slotCount) || dto.slotCount <= 0 || dto.slots.length !== dto.slotCount) {
+        throw new RangeError('Invalid container DTO slot count');
+      }
+      const items = dto.slots.map(record => record === null ? null : toItem(record));
+      if (this.container.slots.length !== dto.slotCount) {
+        this.container = createSlotContainer({
+          id: containerId, kind: this.container.kind,
+          slotKeys: Array.from({ length: dto.slotCount }, (_, index) => String(index)),
+        });
+        this.selectedSlot.set(null);
+        if (this.isConnected) this.render();
+      }
+      items.forEach((item, index) => this.setSlot({ containerId, slotKey: String(index) }, item));
+    };
+    update(signal.peek());
+    const stop = signal.subscribe(update);
+    const dispose = () => {
+      stop();
+      if (this.stopContainerSignal === dispose) this.stopContainerSignal = undefined;
+    };
+    this.stopContainerSignal = dispose;
+    return dispose;
+  }
+
   disconnectedCallback(): void {
+    this.stopContainerSignal?.();
     this.disposeRenderers();
     this.background?.dispose();
     this.background = undefined;

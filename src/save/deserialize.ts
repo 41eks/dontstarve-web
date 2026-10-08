@@ -87,7 +87,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   };
   const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'phonographRecord']);
+    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'phonographRecord', 'container']);
     const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
     if (entityId !== undefined) {
       if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
@@ -113,7 +113,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       || (phonographRecord !== 'record' && catalog.skins[phonographRecord]?.itemId !== 'record'))) {
       fail(`${path}.phonographRecord`, 'invalid loaded record');
     }
-    return { ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
+    const itemContainer = o.container === undefined ? undefined : (() => {
+      if (itemId !== 'backpack') fail(`${path}.container`, 'item has no container');
+      return container(o.container, `${path}.container`, numericKeys(8));
+    })();
+    return { ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
       ...(phonographRecord === undefined ? {} : { phonographRecord }),
       ...(remainingFuel === undefined ? {} : { remainingFuel }),
       ...(remainingUses === undefined ? {} : { remainingUses }) };
@@ -129,6 +133,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       if (!keys.includes(slotKey) || seen.has(slotKey)) fail(`${slotPath}.slotKey`, 'invalid or duplicate slot');
       seen.add(slotKey);
       const item = stack(slot.item, `${slotPath}.item`);
+      if (!keys.includes('hand') && (item.itemId === 'backpack' || catalog.items[item.itemId].canGoInContainer === false)
+        && path !== 'players.local.inventory.containers.player:inventory') fail(`${slotPath}.item`, 'item cannot go in a container');
       if (item.count > maxStack) fail(`${slotPath}.item.count`, `expected at most ${maxStack}`);
       if (keys.includes('hand') && catalog.items[item.itemId].equippable !== slotKey) {
         fail(`${slotPath}.item`, `item cannot be equipped in ${slotKey}`);
@@ -166,6 +172,22 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   if (player.shardId !== shardId) fail('players.local.shardId', 'player must belong to this shard');
   const inventory = object(player.inventory, 'players.local.inventory', ['containers', 'bufferedBuilds']);
   const containers = object(inventory.containers, 'players.local.inventory.containers', ['player:inventory', 'player:equipment', 'player:backpack']);
+  const playerInventory = container(containers['player:inventory'], 'players.local.inventory.containers.player:inventory', numericKeys(15));
+  const playerEquipment = container(containers['player:equipment'], 'players.local.inventory.containers.player:equipment', ['hand', 'body', 'head']);
+  // Migrate the old shared container only when its owner can be identified safely.
+  if (containers['player:backpack'] !== undefined) {
+    const legacy = container(containers['player:backpack'], 'players.local.inventory.containers.player:backpack', numericKeys(8));
+    const bags = [
+      ...[...playerInventory.slots, ...playerEquipment.slots].map(({ item }) => item),
+      ...(entities.ground_item ?? []).flatMap(record => record.components.stack ? [record.components.stack] : []),
+    ].filter(item => item.itemId === 'backpack');
+    const owner = playerEquipment.slots.find(({ slotKey, item }) => slotKey === 'body' && item.itemId === 'backpack')?.item
+      ?? (bags.length === 1 ? bags[0] : undefined);
+    if (legacy.slots.length) {
+      if (!owner || owner.container !== undefined) fail('players.local.inventory.containers.player:backpack', 'ambiguous legacy backpack owner');
+      owner.container = legacy;
+    }
+  }
   const bufferedIds = new Set<string>();
   const bufferedBuilds = array(inventory.bufferedBuilds, 'players.local.inventory.bufferedBuilds', 1000).map((value, i) => {
     const path = `players.local.inventory.bufferedBuilds[${i}]`;
@@ -229,11 +251,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
         ...(stats === undefined ? {} : { stats }),
         inventory: {
           containers: {
-            'player:inventory': container(containers['player:inventory'], 'players.local.inventory.containers.player:inventory', numericKeys(15)),
-            'player:equipment': container(containers['player:equipment'], 'players.local.inventory.containers.player:equipment', ['hand', 'body', 'head']),
-            ...(containers['player:backpack'] === undefined ? {} : {
-              'player:backpack': container(containers['player:backpack'], 'players.local.inventory.containers.player:backpack', numericKeys(8)),
-            }),
+            'player:inventory': playerInventory,
+            'player:equipment': playerEquipment,
           }, bufferedBuilds,
         },
       },

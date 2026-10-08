@@ -98,8 +98,8 @@ export class StorageSlot implements ItemSlot {
   getEntity(): ItemEntity | null { return this.entity; }
   setEntity(entity: ItemEntity | null): void { this.entity = entity; }
 
-  accepts(): boolean {
-    return true;
+  accepts(spec: InventoryItemSpec): boolean {
+    return spec.canGoInContainer !== false;
   }
 }
 

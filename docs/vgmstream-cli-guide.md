@@ -289,3 +289,15 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 `preparedfoods.lua:bananajuice` 定义 `fooddrink` 标签；`SGwilson.lua` 的 quickeat 根据该标签选择 `quick_drink_pre → quick_drink`，第 10 帧的 `DoEatSound()` 播放 `dontstarve/wilson/sip`，第 12 帧执行 EAT。动画实际在 `anim/player_actions_eat.zip` 中，不能用 `player_drink.zip` 的长饮用动画替代。
 
 核对源 `dontstarve.fev`：sip 事件引用 sound definition 1712（`/__simpleevent_sounddef__/eat Copy_2184`），文件 `sfx/wilson/player_sip_drink_DST_002.wav`，bank `sfx`，零基 `file_index = 1286`。对应 `vgmstream-cli -m -s 1287` 为单声道 44100 Hz、15014 samples（约 0.340 秒）。按 `-i -s 1287` 导出至 `public/dst/data/sound/sfx.fsb-1287.wav`，由 `sound.ts` 的统一映射预加载、解码和播放。
+
+### 蒸树枝烹饪声音
+
+`prefabs/cookpot.lua:startcookfn` 播放 `dontstarve/common/cookingpot_rattle`，`components/stewer.lua:StartCooking` 关闭容器时播放 `cookingpot_close`，`donecookfn` 停止循环并播放 `cookingpot_finish`。核对源 `dontstarve.fev` 的事件 → sound definition → bank/file_index：
+
+| 事件后缀 | sound definition | bank | file_index（零基） | vgmstream -s |
+| --- | --- | --- | --- | --- |
+| `cookingpot_rattle` | 246 | `common` | 48–54 | 49–55 |
+| `cookingpot_close` | 353 | `common` | 339 | 340 |
+| `cookingpot_finish` | 203 | `common` | 300 | 301 |
+
+按 `-i -s <index>` 导出为 `public/dst/data/sound/common.fsb-<index>.wav`，九个 WAV 与源目录已有解码 WAV 的字节一致。七个 rattle 样本选一个，由浏览器循环；关闭和完成声播放一次。锅创建前预加载；每口锅持有独立循环句柄，完成或移除时停止，读档恢复循环，换肤继续使用同一音源。

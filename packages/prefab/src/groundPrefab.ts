@@ -7,6 +7,7 @@ import type { FirefliesWorld } from './fireflies';
 import type { SoundPosition } from './sound';
 
 export interface GroundItemDefinition {
+  container?: import('@dontstarve-web/inventory').ItemContainerState;
   /** Live inst; the remaining fields are asset metadata or detached save/UI projections. */
   entity?: ItemEntity;
   entityId?: string;

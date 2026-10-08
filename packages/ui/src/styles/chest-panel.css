@@ -125,6 +125,24 @@
   row-gap: calc(var(--inventory-slot-layout-size) / 8);
 }
 
+.cook-pot-panel__cook {
+  position: absolute;
+  left: var(--chest-art-origin-x, 50%);
+  top: calc(var(--chest-art-origin-y, 50%) + 145 / 64 * var(--inventory-slot-layout-size));
+  transform: translateX(-50%);
+  padding: 5px 16px;
+  border: 2px solid #251a10;
+  border-radius: 5px;
+  background: #9a7447;
+  color: #f4dfb6;
+  font: 700 18px/1.2 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.cook-pot-panel__cook:disabled { opacity: 0.5; cursor: default; }
+.cook-pot-panel.is-opening .cook-pot-panel__cook,
+.cook-pot-panel.is-closing .cook-pot-panel__cook { visibility: hidden; }
+
 .backpack-panel {
   top: 50%;
   left: auto;

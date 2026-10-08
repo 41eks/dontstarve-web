@@ -896,6 +896,7 @@ three-roaming-save-v1.json
 
 - 普通背包：`containerId = "player:inventory"`，`slotKey = "0"` 到 `"14"`。
 - 装备栏：`containerId = "player:equipment"`，`slotKey = "hand" | "body" | "head"`。
+- 背包实体容器：运行时 `containerId = "item:backpack:<entityId>"`，`slotKey = "0"` 到 `"7"`；存档随物品嵌套在 `item.container` 或地面 `components.stack.container`，每个背包独立保存，不再导出玩家级 `player:backpack`。旧共享容器仅在归属明确时迁移。
 
 JSON 按容器分组，只写非空槽，空槽由 `slotCount` 和缺失的 `slotKey` 推导。每个 `item` 仅保存权威字段 `itemId`、`skinId` 和 `count`；名称、图标、Atlas、最大堆叠数和装备类型都从当前 `INVENTORY_ITEM_SPECS` / `INVENTORY_SKIN_SPECS` 重建，避免元数据在存档中过期。
 
@@ -1042,3 +1043,5 @@ interface SaveParticipant<T> {
 - 所有旧存档先迁移再校验，所有实体引用用两遍加载恢复。
 
 这套格式先覆盖当前单人浏览器游戏，同时给未来的容器、生命值、地形修改、多人玩家和多 Shard 留出扩展位置，而不需要把运行时引擎对象泄漏进存档协议。
+
+烹饪锅可选的 `components.stewer` 保存 `{ product: "beefalofeed", phase: "cooking" | "done", remainingSeconds }`。烹饪时剩余时间在 `(0, 9.999]`，完成后为 `0`；两种状态都要求锅关闭且材料容器为空。读档恢复 `cooking_loop` 或带原版食物符号的 `idle_full`，保留实体身份、位置和锅皮肤。旧存档没有此组件时仍恢复空锅及已有材料。

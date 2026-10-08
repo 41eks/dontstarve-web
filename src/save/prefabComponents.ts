@@ -10,6 +10,7 @@ import { WORMHOLE_SKINS } from '@dontstarve-web/prefab/wormhole';
 import { WALL_SKIN_ARCHIVES } from '@dontstarve-web/prefab/wallSkins';
 import { FARM_PLOW_DRILLING_DURATION, FARM_PLOW_USES, FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { PHONOGRAPH_PLAY_TIME } from '@dontstarve-web/prefab/phonograph';
+import { BEEFALO_FEED_COOK_TIME } from '@dontstarve-web/prefab/cook_pot';
 import { choice, fail, integer, number, object, string } from './validation';
 
 export interface EntitySaveContext {
@@ -106,6 +107,20 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
           : container(c.container, `${path}.container`, numericKeys(slotCount),
             containerDefinition!.singleItems ? 1 : Infinity);
       }
+    }
+    if (keys.includes('stewer') && c.stewer !== undefined) {
+      const p = `${path}.stewer`;
+      const stewer = object(c.stewer, p, ['product', 'phase', 'remainingSeconds']);
+      const product = choice(stewer.product, `${p}.product`, ['beefalofeed']);
+      const phase = choice(stewer.phase, `${p}.phase`, ['cooking', 'done']);
+      const remainingSeconds = number(stewer.remainingSeconds, `${p}.remainingSeconds`, 0, BEEFALO_FEED_COOK_TIME);
+      if ((phase === 'done' && remainingSeconds !== 0) || (phase === 'cooking' && remainingSeconds === 0)) {
+        fail(p, 'cooking needs remaining time; done needs zero remaining time');
+      }
+      if (components.building?.state !== 'closed' || components.container?.slots.length) {
+        fail(p, 'cooking and full pots must be closed with no ingredients');
+      }
+      components.stewer = { product, phase, remainingSeconds };
     }
     if (keys.includes('stack')) components.stack = stack(c.stack, `${path}.stack`);
     if (keys.includes('stack') && c.torch !== undefined) {

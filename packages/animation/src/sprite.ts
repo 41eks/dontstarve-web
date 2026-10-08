@@ -40,6 +40,14 @@ export interface AnimatedSpriteOptions {
   baseSymbols?: readonly string[];
   /** Additional skin animation banks drawn over the main frame in the same mesh. */
   skinAnimationBanks?: readonly string[];
+  symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
+  hiddenLayers?: readonly string[];
+}
+
+interface SymbolOverride {
+  build: ParsedBuild;
+  materials: THREE.MeshBasicMaterial[];
+  symbolHash: number;
 }
 
 interface SpriteSkin {
@@ -73,6 +81,8 @@ export class SpriteController implements TransientSpriteAnimationController {
   private onComplete?: () => void;
   private transientRestore?: () => void;
   private readonly skin?: SpriteSkin;
+  private overrides = new Map<number, SymbolOverride>();
+  private hiddenLayers = new Set<number>();
 
   constructor(
     visual: THREE.Group,
@@ -97,6 +107,14 @@ export class SpriteController implements TransientSpriteAnimationController {
   }
 
   get currentAnimation(): string { return this.animationName; }
+
+  setSymbolOverrides(overrides: Map<number, SymbolOverride>, hiddenLayers: readonly string[] = []): void {
+    this.overrides = overrides;
+    this.hiddenLayers = new Set(hiddenLayers.map(smallHash));
+    this.frameKey = '';
+    const frame = Math.floor(this.elapsed * this.animation.frameRate);
+    this.showFrame(this.loop ? frame % this.animation.frames.length : Math.min(frame, this.animation.frames.length - 1));
+  }
 
   /** Keep a live entity's clip, progress and completion callback across reskinning. */
   copyPlaybackFrom(source: SpriteController): void {
@@ -179,9 +197,14 @@ export class SpriteController implements TransientSpriteAnimationController {
     this.frameKey = key;
     const frames = [this.animation.frames[index], ...this.layers.map((layer, i) => layer.frames[layerIndices[i]])];
     const sprites = frames.flatMap((frame) => [...frame.elements]
-      .filter((element) => this.isLayerVisible(element.layerHash))
+      .filter((element) => !this.hiddenLayers.has(element.layerHash) && this.isLayerVisible(element.layerHash))
       .sort((a, b) => b.z - a.z)
       .map((element) => {
+        const override = this.overrides.get(element.imageHash);
+        if (override) {
+          const image = findImage(override.build, override.symbolHash, element.imageIndex);
+          return image ? { element, image, materials: override.materials } : undefined;
+        }
         const skin = this.skin;
         if (skin && !skin.baseSymbols.has(element.imageHash)
           && (skin.symbols === undefined || skin.symbols.has(element.imageHash))) {
@@ -212,7 +235,22 @@ export async function createAnimatedSprite(
     baseSymbols: new Set(options.baseSymbols?.map(smallHash)),
     animationBanks: new Set(options.skinAnimationBanks?.map(smallHash)),
   } : undefined;
-  return createSprite(buildPackage.build, animations, createMaterials(buildPackage), options, skin);
+  const overrides = new Map<number, SymbolOverride>();
+  const overrideMaterials = new Map<string, THREE.MeshBasicMaterial[]>();
+  for (const [symbol, source] of Object.entries(options.symbolOverrides ?? {})) {
+    const archive = await loadSpriteSkinArchive(source.archive, assetBaseUrl);
+    let materials = overrideMaterials.get(source.archive);
+    if (!materials) {
+      materials = createMaterials(archive.buildPackage);
+      overrideMaterials.set(source.archive, materials);
+    }
+    overrides.set(smallHash(symbol), { build: archive.buildPackage.build, materials, symbolHash: smallHash(source.symbol) });
+  }
+  const materials = createMaterials(buildPackage);
+  const sprite = createSprite(buildPackage.build, animations, materials, options, skin);
+  sprite.userData.ownedSpriteMaterials = [...materials, ...(skin?.materials ?? []), ...[...overrideMaterials.values()].flat()];
+  (sprite.userData.animationController as SpriteController).setSymbolOverrides(overrides, options.hiddenLayers);
+  return sprite;
 }
 
 export async function createAnimatedSpriteFactory(

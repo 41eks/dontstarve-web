@@ -74,6 +74,15 @@ def main():
     add('ice', 'ice', 'ice', 'f1', 'inv_rocks_ice')
     add('seeds', 'seeds', 'seeds', 'idle', 'seeds')
     add('seeds_cooked', 'seeds', 'seeds', 'cooked', 'seeds')
+    # mushrooms.lua's capcommonfn/cookedcommonfn share mushrooms bank/build;
+    # data.animname and data.pickloot select the distinct raw/cooked poses.
+    mushroom_data = read('mushrooms').split('local data =', 1)[1]
+    mushrooms = re.findall(r'animname\s*=\s*"([^"]+)",\s*pickloot\s*=\s*"([^"]+)"', mushroom_data)
+    if len(mushrooms) != 3:
+        raise ValueError('Expected the three source mushroom colour definitions')
+    for colour, item in mushrooms:
+        add(item, 'mushrooms', 'mushrooms', colour + '_cap', 'mushrooms')
+        add(item + '_cooked', 'mushrooms', 'mushrooms', item + '_cooked', 'mushrooms')
     add('pinecone', 'pinecone', 'pinecone', 'idle', 'pinecone')
     add('acorn_cooked', 'acorn', 'acorn', 'cooked', 'acorn')
     add('poop', 'poop', 'poop', 'dump', 'poop')

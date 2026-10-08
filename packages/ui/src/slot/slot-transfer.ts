@@ -6,8 +6,11 @@ export interface SlotTransferRequest {
   from: SlotAddress;
   to: SlotAddress;
   itemId: string;
+  entityId?: string;
   skinId?: string;
   amount: number;
+  /** Occupied-slot clicks exchange both complete stacks; drag requests keep merge behavior. */
+  swapWith?: { entityId?: string; itemId: string; skinId?: string; count: number };
 }
 
 export interface SlotDragEndResult {
@@ -49,12 +52,22 @@ function transferAmount(source: SlotModel, target: SlotModel, item: SlotItem): n
   return Math.max(0, Math.min(item.count, maxStack - (targetItem?.count ?? 0)));
 }
 
+function canSwap(source: SlotModel, target: SlotModel, item: SlotItem): boolean {
+  const other = target.getItem();
+  return other !== null && !sameSlotAddress(source.address, target.address)
+    && target.accepts(item) && source.accepts(other)
+    && item.count <= Math.min(item.maxStack, target.maxStack?.(item) ?? item.maxStack)
+    && other.count <= Math.min(other.maxStack, source.maxStack?.(other) ?? other.maxStack);
+}
+
 export class SlotTransferController {
   private drag?: ActiveDrag;
   private pickedUp?: PickedUpSlot;
   private selected?: RegisteredSlot;
   private operationId = 0;
+  private pendingSwapId?: number;
   private preview?: HTMLDivElement;
+  get isHoldingItem(): boolean { return this.pickedUp !== undefined; }
   private readonly registered = new Set<RegisteredSlot>();
   private readonly followPickedUpItem = (event: PointerEvent) => {
     this.movePreview(event.clientX, event.clientY);
@@ -155,14 +168,25 @@ export class SlotTransferController {
     const sourceItem = pickedUp.source.slot.getItem();
     if (!sourceItem
       || sourceItem.id !== pickedUp.item.id
-      || sourceItem.skinId !== pickedUp.item.skinId) {
+      || sourceItem.skinId !== pickedUp.item.skinId
+      || sourceItem.entityId !== pickedUp.item.entityId) {
       this.clearPickedUp();
       return { handled: true, request: null };
     }
 
-    const request = this.createTransferRequest(pickedUp.source.slot, target.slot, sourceItem);
-    if (request) this.clearPickedUp();
+    const request = target.slot.getItem()
+      ? this.createSwapRequest(pickedUp.source.slot, target.slot, sourceItem)
+      : this.createTransferRequest(pickedUp.source.slot, target.slot, sourceItem);
+    if (request?.swapWith) this.pendingSwapId = request.operationId;
+    else if (request) this.clearPickedUp();
     return { handled: true, request };
+  }
+
+  /** The application acknowledges an atomic swap; failed swaps keep the cursor item. */
+  completeTransfer(operationId: number, success: boolean): void {
+    if (this.pendingSwapId !== operationId) return;
+    this.pendingSwapId = undefined;
+    if (success) this.clearPickedUp();
   }
 
   move(event: PointerEvent): boolean {
@@ -243,6 +267,7 @@ export class SlotTransferController {
     this.preview?.remove();
     this.preview = undefined;
     this.pickedUp = undefined;
+    this.pendingSwapId = undefined;
   }
 
   private updatePickedUpTarget(clientX: number, clientY: number): void {
@@ -252,9 +277,28 @@ export class SlotTransferController {
     if (pickedUp.target === target) return;
     pickedUp.target?.button.classList.remove('is-drop-target');
     pickedUp.target = target;
-    if (target && transferAmount(pickedUp.source.slot, target.slot, pickedUp.item) > 0) {
+    if (target && (target.slot.getItem()
+      ? canSwap(pickedUp.source.slot, target.slot, pickedUp.item)
+      : transferAmount(pickedUp.source.slot, target.slot, pickedUp.item) > 0)) {
       target.button.classList.add('is-drop-target');
     }
+  }
+
+  private createSwapRequest(source: SlotModel, target: SlotModel, item: SlotItem): SlotTransferRequest | null {
+    if (!canSwap(source, target, item)) return null;
+    const other = target.getItem()!;
+    return {
+      operationId: ++this.operationId,
+      from: { ...source.address }, to: { ...target.address },
+      itemId: item.id, amount: item.count,
+      ...(item.entityId === undefined ? {} : { entityId: item.entityId }),
+      ...(item.skinId === undefined ? {} : { skinId: item.skinId }),
+      swapWith: {
+        itemId: other.id, count: other.count,
+        ...(other.entityId === undefined ? {} : { entityId: other.entityId }),
+        ...(other.skinId === undefined ? {} : { skinId: other.skinId }),
+      },
+    };
   }
 
   private createTransferRequest(

@@ -55,6 +55,14 @@ export interface AnimatedBuildingDefinition {
     skinSymbols?: readonly string[];
     baseSymbols?: readonly string[];
     skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
+    symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
+    hiddenLayers?: readonly string[];
+    canInteract?: (context: AnimatedBuildingEventContext) => boolean;
+    onrestore?: (context: AnimatedBuildingEventContext, components: PlacementSaveRecord['components']) => void;
+    onupdate?: (context: AnimatedBuildingEventContext, dt: number) => void;
+    exportComponents?: (context: AnimatedBuildingEventContext) => PlacementSaveRecord['components'];
+    onreskin?: (context: AnimatedBuildingEventContext) => void;
+    ondispose?: (context: AnimatedBuildingEventContext) => void;
 }
 
 export interface AnimatedBuildingEventContext {
@@ -188,6 +196,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         );
         building.model.userData.entityId = record.id;
         building.model.userData.saveRecord = record;
+        this.definitions[buildId].onrestore?.(building, record.components);
         const [x, y, z] = record.transform.position;
         building.model.position.set(x, y + building.groundOffset, z);
         this.faceCamera(building.model);
@@ -206,6 +215,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                     rotationY: 0,
                 },
                 components: {
+                    ...this.definitions[building.buildId].exportComponents?.(building),
                     building: {
                         // Persist the target state of an interaction, not a transient animation frame.
                         state: building.interactionState === undefined ? 'idle'
@@ -216,6 +226,19 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 },
             },
         }));
+    }
+
+    /** Commit a container button action only while its entity is open and in range. */
+    performOpenAction(model: THREE.Group, action: (context: AnimatedBuildingEventContext) => boolean): boolean {
+        const building = this.placed.find((instance) => instance.model === model);
+        if (!building || this.disposed || building.isPlacing || !model.visible || !model.parent) return false;
+        this.updateProximity(building);
+        const definition = this.definitions[building.buildId];
+        if (building.interactionState !== 'open' || (definition.onProximity && !building.isPlayerNearby)
+            || definition.canInteract?.(building) === false || !action(building)) return false;
+        building.interactionState = 'closed';
+        this.onInteractionChange?.({ buildId: building.buildId, model, isOpen: false });
+        return true;
     }
 
     /** Whole sprite entities and their ground-contact points for depth sorting. */
@@ -276,6 +299,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                         const disposeModel = (model: THREE.Group) => {
                             const materials = new Set<THREE.Material>();
                             model.traverse((object) => {
+                                for (const material of object.userData.ownedSpriteMaterials ?? []) materials.add(material);
                                 if (!(object instanceof THREE.Mesh)) return;
                                 object.geometry.dispose();
                                 (Array.isArray(object.material) ? object.material : [object.material]).forEach((material) => materials.add(material));
@@ -296,11 +320,13 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                                 registerSpriteRenderGroup(building.model, building.model.children[0] as THREE.Group);
                                 building.animation = replacement.animation;
                                 building.model.userData.animationController = replacement.animation;
+                                building.model.userData.ownedSpriteMaterials = replacement.model.userData.ownedSpriteMaterials;
                                 building.skinId = skinId;
                                 if (skinId === undefined) delete building.model.userData.skinId;
                                 else building.model.userData.skinId = skinId;
                                 building.groundOffset = replacement.groundOffset;
                                 building.model.position.y = footY + building.groundOffset;
+                                this.definitions[building.buildId].onreskin?.(building);
                                 if (building.isPlayerNearby) this.definitions[building.buildId].onturnon?.({
                                     model: building.model, animation: building.animation, skinId,
                                 });
@@ -320,7 +346,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
         this.pointer.dispose();
         this.cancel();
-        for (const instance of this.placed) disposeSprite(instance.model);
+        for (const instance of this.placed) {
+            this.definitions[instance.buildId].ondispose?.(instance);
+            disposeSprite(instance.model);
+        }
         this.placed.length = 0;
         // Factory-owned effects share materials; only their factory disposes them.
         for (const effect of this.effects) effect.removeFromParent();
@@ -346,6 +375,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         for (const building of this.placed) {
             this.updateProximity(building);
             building.animation.update(dt);
+            this.definitions[building.buildId].onupdate?.(building, dt);
             this.faceCamera(building.model);
         }
         for (const effect of this.effects) {
@@ -422,6 +452,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const definition = this.definitions[building.buildId];
         const interaction = definition.interaction;
         if (!interaction) return;
+        if (definition.canInteract?.(building) === false) return;
         this.updateProximity(building);
         if (definition.onProximity && !building.isPlayerNearby) return;
 
@@ -519,6 +550,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 skinSymbols: definition.skinSymbols,
                 baseSymbols: definition.baseSymbols,
                 skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
+                symbolOverrides: definition.symbolOverrides,
+                hiddenLayers: definition.hiddenLayers,
             },
         ), definition.prepare?.(), definition.hammerEffect ? this.prepareEffect(definition.hammerEffect.archive) : undefined]);
         if (this.disposed) { disposeSprite(model); throw new Error('Placement has been disposed'); }
@@ -587,6 +620,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 const index = this.placed.indexOf(building);
                 if (index < 0) return;
                 this.placed.splice(index, 1);
+                this.definitions[building.buildId].ondispose?.(building);
                 disposeSprite(building.model);
             },
         };

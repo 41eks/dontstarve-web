@@ -1,5 +1,5 @@
 import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
-import { BANANAJUICE_ID } from '@dontstarve-web/prefab/food';
+import { BANANAJUICE_ID, MUSHROOM_ITEM_IDS } from '@dontstarve-web/prefab/food';
 import { FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_DECOR_IDS, PLANTED_SEED_ID } from '@dontstarve-web/prefab/farm_plow';
 import { DWARF_STAR_DURATION, POLAR_LIGHT_DURATION, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BULB_PLANT_PREFABS } from '@dontstarve-web/prefab/bulb_plant';
@@ -36,6 +36,7 @@ const farmSoil = componentParser({ keys: ['farmSoil'] });
 const farmDebris = componentParser({ keys: ['farmDebris'] });
 const building = componentParser({ keys: ['building'] });
 const storage = componentParser({ keys: ['building', 'container'] });
+const cookPot = componentParser({ keys: ['building', 'container', 'stewer'] });
 const wall = componentParser({ keys: ['wall', 'health'] });
 const bulbSingle = componentParser({ keys: ['bulbPlant'], bulbVariants: ['single', 'springy'] });
 const bulbDouble = componentParser({ keys: ['bulbPlant'], bulbVariants: ['double'] });
@@ -51,12 +52,12 @@ export const PREFAB_DEFINITIONS = {
   pigKings: definePrefabs(['pigking'], empty),
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
-    if (spec) return (spec.container ? storage : building)(value, path, context);
+    if (spec) return (context.prefab === 'cookpot' ? cookPot : spec.container ? storage : building)(value, path, context);
     if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
     return fail(path, `missing building definition for ${context.prefab}`);
   }, PLACEABLE_BUILDING_IDS),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch'] }),
-    ['fireflies', BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'phonograph', 'record', 'seeds', BANANAJUICE_ID, 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel']),
+    ['fireflies', BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'phonograph', 'record', 'seeds', 'meatballs', BANANAJUICE_ID, ...MUSHROOM_ITEM_IDS, 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel']),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] })),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION })),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION })),

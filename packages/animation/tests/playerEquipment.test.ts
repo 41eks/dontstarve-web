@@ -26,14 +26,14 @@ it('drives hats and backpack presentation from restore/transfer signals and rele
     ], bufferedBuilds: [] }, {});
     expect(animation.setHat).toHaveBeenCalledExactlyOnceWith('strawhat', undefined);
     expect(animation.setBackpack).toHaveBeenCalledExactlyOnceWith(true, 'backpack_babybeef');
-    expect(setBackpackActive).toHaveBeenCalledExactlyOnceWith(true);
+    expect(setBackpackActive).toHaveBeenCalledExactlyOnceWith(true, store.getEntity(body)!.id);
     const backpack = store.getEntity(body)!;
     backpack.components.inventoryitem.owner!.changed();
     expect(animation.setBackpack).toHaveBeenCalledOnce();
     expect(setBackpackActive).toHaveBeenCalledOnce();
     expect(store.transfer(body, bag, 1)).toBe(true);
     expect(animation.setBackpack).toHaveBeenLastCalledWith(false, undefined);
-    expect(setBackpackActive).toHaveBeenLastCalledWith(false);
+    expect(setBackpackActive).toHaveBeenLastCalledWith(false, undefined);
     expect(store.getEntity(bag)).toBe(backpack);
     expect(store.transfer(bag, body, 1)).toBe(true);
     expect(animation.setBackpack).toHaveBeenLastCalledWith(true, 'backpack_babybeef');

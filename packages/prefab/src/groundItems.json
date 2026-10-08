@@ -645,6 +645,96 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "red_cap": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "采摘的红蘑菇",
+      "icon": "red_cap.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "red_cap",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "red_cap_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "熟红蘑菇",
+      "icon": "red_cap_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "red_cap_cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "green_cap": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "采摘的绿蘑菇",
+      "icon": "green_cap.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "green_cap",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "green_cap_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "熟绿蘑菇",
+      "icon": "green_cap_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "green_cap_cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "blue_cap": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "采摘的蓝蘑菇",
+      "icon": "blue_cap.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "blue_cap",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "blue_cap_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "熟蓝蘑菇",
+      "icon": "blue_cap_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "blue_cap_cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "pinecone": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pinecone.lua",
       "name": "松果",

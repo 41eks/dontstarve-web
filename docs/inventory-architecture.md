@@ -11,13 +11,14 @@
 | `src/inventoryItems.ts` | 合并库存显示元数据、帽子元数据、皮肤及领域限制，提供应用层物品规格与覆盖 |
 | `src/inventory.ts` | 创建玩家的 15 个物品槽和 `hand`、`body`、`head` 三个装备槽，组合为 `InventoryStore` |
 | `packages/ui/src/inventory-bar.ts` | 根据应用传入的状态显示物品与装备槽，发出交互事件 |
+| `packages/ui/src/chest-inventory-panel.ts` | 控制建筑容器面板开关和屏幕定位；相机、画布及玩家对象由应用注入，`main.ts` 注册逐帧 `update()` |
 | `src/main.ts` | 将 store 通知同步到 UI，将 UI 事件转为库存操作或游戏动作 |
 
 `InventorySlot`、`HandSlot`、`BodySlot`、`HeadSlot` 各自实现具体槽位行为，不共享实现父类。`InventorySlot` 提供物品堆叠上限；纯函数 `craft()` 根据配方输入及槽位计算新库存结果，`InventoryStore` 原子提交。
 
 应用中的 `createInventoryStore()` 默认建立空玩家槽位；`src/main.ts` 从 `src/save/initialSave.ts` 读取的 `public/saves/initial-world.json` 恢复库存，通过 `inventoryStateFromSave()` 和 `replaceState()` 应用。初始物品不再硬编码在 `src/inventoryItems.ts` 中。存档设计见 [存档文档](dst-save-system.md)。
 
-Store 通知驱动 UI 的 `setSlot()` 更新；UI 槽位模型是显示镜像。槽位地址使用稳定的 `{ containerId, slotKey }`，玩家槽位通过 `inventorySlotAddress()`、`equipmentSlotAddress()` 创建，其他容器使用其对应地址助手。
+玩家槽位由 Store 通知驱动 UI 的 `setSlot()` 更新，背包容器通过 DTO signal 驱动相同 UI 槽位模型；这些模型都是显示镜像。槽位地址使用稳定的 `{ containerId, slotKey }`，玩家槽位通过 `inventorySlotAddress()`、`equipmentSlotAddress()` 创建，其他容器使用其对应地址助手。
 
 ## 物品实体与归属
 
@@ -29,13 +30,29 @@ Store 通知驱动 UI 的 `setSlot()` 更新；UI 槽位模型是显示镜像。
 
 地面模型属于实体的表现资源。拾取移除模型，换肤替换模型，但保留实体；火把的运行时组件也保留。其他已有 prefab 的模型专用控制器仍由各自 factory 管理。`exportState()` 在结算组件后导出含 `entityId` 的快照；地面实体继续使用记录的 `id`。旧库存存档缺少 ID 时在加载时分配，后续保存保持稳定；读取拒绝重复物品 ID 以及与世界实体冲突的 ID。
 
+## 每个背包的容器
+
+源 Lua `prefabs/backpack.lua` 为每个背包添加 `container`，装备时 `Open(owner)`，卸下时 `Close(owner)`；`components/inventory.lua:GetOverflowContainer()` 返回当前 BODY 装备的容器。`inventory:OnSave()` 保存装备实体的 `GetSaveRecord()`，`container:OnSave()` 再保存其中各物品的记录，所以地面上的多个背包各自保留内容。`inventoryitem.cangoincontainer = false` 禁止把背包放进其他容器。
+
+`packages/componets/src/container.ts` 的 `Container` 对应 Lua `components/container.lua`，负责 `SetNumSlots`、槽位查询、`Open/Close`、打开者集合和 `OnSave/OnLoad`；保存只包含物品，打开者不持久化。组件通过注入槽位和物品加载函数保持独立，不依赖具体物品或 UI。Lua 方法和 `OnSave().items` 使用一基槽号，`ItemEntity` 在存档边界转换为项目的零基 `slotKey`。
+
+`ItemEntity.components.container` 持有实际 `Container` 实例，`container.slots` 持有该背包的 8 个 `StorageSlot`，Store 将同一批槽位注册到 `backpackSlotAddress(entityId, index)`，容器 ID 为 `item:backpack:<entityId>`。Store 在装备提交后对当前背包调用 `Open(store)`、对旧背包调用 `Close(store)`，只有当前可打开的背包材料可访问；面板根据身体装备 signal 的实体 ID 切换，关闭的背包仍持有内容。整件转移、丢弃、拾取、换肤都保留父子实体。`exportState()` 只导出玩家与建筑的顶层槽，背包内容通过该物品的 `container: { slotCount, slots }` 快照嵌套保存；地面 `components.stack.container` 使用相同结构，避免重复保存子物品。读档验证子槽范围、数量、皮肤、组件状态和全局身份唯一性，再重建容器。旧共享 `player:backpack` 只迁移到已装备的背包或唯一候选；非空且归属不明时拒绝加载。
+
+## 容器 DTO 与 UI signal
+
+玩家物品栏的权威 `InventorySlot` 保存 `ItemEntity`，Store 提交后由应用调用 UI 的 `setSlot()`。UI 的 `createSlotContainer()` / `createSlot()` 持有显示用 signal，`createSlotRenderer()` 通过 effect 更新 DOM。容器面板复用这套槽位模型、渲染器和输入事件。
+
+`Container.toDTO()` 返回纯显示快照 `{ slotCount, slots }`，`slots` 是零基数组，空格保留为 `null`，物品仅包含快照字段，不携带实体、owner 或控制器。`toSignal()` 延迟创建并复用该 DTO 的只读 signal，UI 用 `peek()` 初始化并订阅变化；它不提供 `set()`，也不参与存档。`SetNumSlots()`、`OnLoad()` 和释放组件在完整更新后发布 DTO；已注册槽位的转移、数量和燃料等组件变化，由 Store 在事务提交后调用 `publishDTO()`，每个受影响容器只发布一次完整快照。直接操作底层槽位的调用方也需要在提交后发布。
+
+`DstChestPanelElement.bindContainer(signal, toItem)` 接收 DTO signal，应用提供物品快照到 `SlotItem` 的元数据转换。面板仍调用现有 UI 槽位的 `setItem()`，数量、皮肤和耐久沿用共享 renderer；槽数改变时重建对应 UI 槽位。关闭、换容器和移除面板时取消旧订阅。`main.ts` 将装备背包的 `container.toSignal()` 交给面板，玩家物品栏和容器共用 `inventorySlotItem()` 的显示转换；背包内容刷新由 DTO signal 驱动，其他玩家槽仍使用原来的 Store 通知路径。
+
 ## 装备存在状态与表现
 
 手部、头部、身体装备分别使用工厂创建的 `handEquipmentExistenceState`、`headEquipmentExistenceState`、`bodyEquipmentExistenceState`，非空值的 `EQUIPSLOTS` 分别为 `HANDS`、`HEAD`、`BODY`。每个 Store 默认创建独立实例，构造函数第五个参数接受可选的状态对象，例如 `{ headEquipmentExistenceState, bodyEquipmentExistenceState }`；`handEquipment`、`headEquipment`、`bodyEquipment` 为对应的只读接口。
 
 每个装备槽位成功注册后，Store 在发布初始状态前自动建立该槽位唯一的清空监听，释放 Store 时统一取消。转移、提取、消耗或读档成功提交后，仅为被替换的装备槽发布新身份；普通组件变化或其他槽位更新不重新装备。主动清空 signal 表示移除对应槽位的当前物品，Store 核对旧实体身份后提交；普通卸下使用库存转移保留实体、皮肤和组件状态。
 
-`src/playerEquipment.ts` 统一处理同步订阅、生命周期切换、重入和释放。`src/playerHandEquipment.ts`、`src/playerHeadEquipment.ts`、`src/playerBodyEquipment.ts` 注入各自存在状态并更新玩家表现。`main.ts` 在恢复存档前注册三种绑定，移除了 `syncHeadEquipment()`、`syncBodyEquipment()` 以及库存 UI 通知里的装备轮询；初始外观也由存档提交的 signal 写入驱动。帽子继续使用 `setHat()`，背包继续使用 `setBackpack()`；身体装备绑定同时通知应用打开或关闭背包面板、恢复储物格显示并更新材料可访问性。UI 槽位同步仍由库存通知驱动。
+`src/playerEquipment.ts` 统一处理同步订阅、生命周期切换、重入和释放。`src/playerHandEquipment.ts`、`src/playerHeadEquipment.ts`、`src/playerBodyEquipment.ts` 注入各自存在状态并更新玩家表现。`main.ts` 在恢复存档前注册三种绑定，移除了 `syncHeadEquipment()`、`syncBodyEquipment()` 以及库存 UI 通知里的装备轮询；初始外观也由存档提交的 signal 写入驱动。帽子继续使用 `setHat()`，背包继续使用 `setBackpack()`；身体装备绑定同时通知应用打开或关闭背包面板、恢复储物格显示并更新材料可访问性。玩家物品栏槽位同步仍由库存通知驱动，背包内容通过容器 DTO signal 同步。
 
 ## 火把燃料与百分比
 
@@ -69,9 +86,11 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 | 事件 | 触发方式 | 应用处理 |
 | --- | --- | --- |
-| `game:slot-transfer-request` | 拖放物品 | 提交库存转移，成功后触发对应装备动画 |
+| `game:slot-transfer-request` | 拖放，或点击吸附后再点击目标槽 | 空槽移动；点击占用槽时携带 `swapWith` 并原子交换整叠物品，成功后触发对应装备动画 |
 | `game:slot-select` | 点击选择槽位 | 在转移拾取之前运行；可放置物品通过 `preventDefault()` 接管点击并进入放置模式 |
 | `game:slot-context-menu` | 右键槽位 | 根据物品与修饰键执行吃东西、装备或丢弃等动作 |
+
+点击吸附物品后，空槽执行移动，已占用槽执行整叠交换（包括同类物品）；鼠标吸附只改变 UI 预览，第一次点击不移走权威物品。`InventoryStore.swap()` 在结算两件物品的计时状态后，双向验证装备接受规则与堆叠容量，通过一次事务交换原实体。请求包含可选的双方实体 ID、皮肤和数量，过期选择拒绝提交。应用调用 `slotTransferController.completeTransfer(operationId, success)` 确认结果，成功才移除吸附预览；拒绝时可继续选择目标，或按 Esc / 再点来源槽取消。拖放继续使用原有移动和合堆规则。吸附期间点击目标槽不触发新的放置或使用动作；未吸附时，选择事件仍先于转移拾取运行。
 
 三个事件均穿过 inventory bar 的 shadow root 冒泡。`game:slot-select` 可取消，使点击建筑物品时先启动放置，而不会先把整叠物品拿起来拖放。
 

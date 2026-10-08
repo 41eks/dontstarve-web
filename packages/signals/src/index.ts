@@ -8,3 +8,5 @@ export { createBodyEquipmentExistenceState } from './bodyEquipment';
 export type { BodyEquipment, BodyEquipmentLifecycle } from './bodyEquipment';
 export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentSlot } from './equipment';
 export { createSanityState, type SanityState } from './sanity';
+export { createHealthState, type HealthState } from './health';
+export { createHungerState, type HungerState } from './hunger';

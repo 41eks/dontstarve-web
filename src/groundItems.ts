@@ -219,6 +219,7 @@ export class GroundItemManager {
         components: {
           stack: {
             itemId: definition.itemId, count: definition.count,
+            ...(definition.container === undefined ? {} : { container: definition.container }),
             ...(definition.remainingUses === undefined ? {} : { remainingUses: definition.remainingUses }),
             ...(definition.remainingFuel === undefined ? {} : { remainingFuel: definition.remainingFuel }),
             ...(definition.skinId === undefined ? {} : { skinId: definition.skinId }),

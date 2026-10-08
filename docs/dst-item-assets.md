@@ -36,6 +36,7 @@
 | --- | --- | --- |
 | 火把 | `anim/torch.zip` 与 `anim/swap_torch.zip` | 使用源地面动画及手持 build |
 | 料理 | `anim/cook_pot_food.zip` | 通过 `swap_food` 覆盖显示具体料理 |
+| 三色生／熟蘑菇 | `anim/mushrooms.zip`，bank/build 均为 `mushrooms` | `prefabs/mushrooms.lua` 选择 `red_cap` / `green_cap` / `blue_cap` 及各自的 `_cooked` 单帧姿态；六种库存图标均来自 `images/inventoryimages.xml` |
 | 普通墙物品 | `anim/wall.zip` 与对应 `anim/wall_*.zip` build | 地面物品使用 `idle`；已建墙使用独立的 `half` 姿态 |
 | `wall_dreadstone_item` | `anim/wall_dreadstone.zip` | bank、build、动画均来自此归档 |
 

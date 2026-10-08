@@ -13,6 +13,7 @@ export interface SlotContextMenuDetail {
 }
 
 export interface SlotItem {
+  entityId?: string;
   id: string;
   skinId?: string;
   name: string;

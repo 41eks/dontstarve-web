@@ -16,7 +16,14 @@ export { INVENTORY_RECEIVE_DURATION_MS, INVENTORY_RECEIVE_PULSE_MS, type Invento
 export { CursorLabelUi, type CursorPointer } from './cursor-label';
 
 export { DstChestPanelElement, type ChestCloseDetail, type OpenChestOptions } from './chest-panel';
-export { DstCookPotPanelElement } from './cook-pot-panel';
+export {
+  createChestInventoryPanel,
+  CHEST_SLOT_COUNT,
+  COOK_POT_SLOT_COUNT,
+  type ChestInventoryPanelController,
+  type ChestInventoryPanelOptions,
+} from './chest-inventory-panel';
+export { DstCookPotPanelElement, type CookRequestDetail } from './cook-pot-panel';
 export { DstIceBoxPanelElement } from './ice-box-panel';
 export { DstBackpackPanelElement } from './backpack-panel';
 export { PreparedFoodSlot } from './slot/prepared-food-slot';

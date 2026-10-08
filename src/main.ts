@@ -5,11 +5,14 @@ import {
   INVENTORY_RECIPES,
   equipmentSlotAddress,
   mountGameUi,
+  createChestInventoryPanel,
   type CraftingStateDetail,
   type CraftRequestDetail,
   type ChestCloseDetail,
+  type CookRequestDetail,
   type DebugCommandDetail,
   type SlotAddress,
+  type SlotItem,
   type SlotContextMenuDetail,
   type SlotSelectDetail,
   type SlotTransferRequest,
@@ -34,6 +37,9 @@ import { isFarmHoeTool } from '@dontstarve-web/prefab/farm_hoe';
 import { isShovelTool } from '@dontstarve-web/prefab/shovel';
 import { FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { FOOD_EFFECTS } from '@dontstarve-web/prefab/food';
+import { startCookPotCooking } from '@dontstarve-web/prefab/cook_pot';
+import { BASE_COOK_TIME, CalculateRecipe, canCookBeefaloFeed } from './cook';
+import type * as THREE from 'three';
 import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 import { DisposeSounds, UpdateSoundListener, PreloadSounds } from '@dontstarve-web/prefab/sound';
 import { disposeAnimationAssets, disposeAtlasImages } from '@dontstarve-web/animation';
@@ -41,14 +47,14 @@ import { turfMap } from './building';
 import { backTasks, frontTasks } from './animate';
 import { input } from './InputManager';
 import { view } from './view';
-import { BACKPACK_SLOT_COUNT, PLAYER_BACKPACK_CONTAINER_ID, backpackSlotAddress, inventorySlotAddress, PreparedFoodSlot, StorageSlot } from '@dontstarve-web/inventory';
+import { backpackContainerId, isBackpackContainerId, inventorySlotAddress, PreparedFoodSlot, StorageSlot, type InventoryStack } from '@dontstarve-web/inventory';
 import { player } from './player';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { bindPlayerHeadEquipment } from './playerHeadEquipment';
 import { bindPlayerBodyEquipment } from './playerBodyEquipment';
 import { cursorUi, dstLighting, renderer } from './universal';
 import { DstLightingRenderer } from './dstLighting';
-import { createChestInventoryPanel } from './chestInventoryPanel';
+import { camera } from './camera';
 import {
   STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition, isStorageBuildingId,
   type StorageBuildingId,
@@ -84,22 +90,24 @@ UpdateSoundListener(player.position);
 backTasks.push(() => UpdateSoundListener(player.position));
 
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
+gameUi.cookPotPanel.setCookingValidator(items => canCookBeefaloFeed(items.map(item =>
+  item ? { itemId: item.id, count: item.count } : null)));
 function syncPlayerStats(): void {
   gameUi.statusHud.setStats(getPlayerStats());
 }
-const stopSanityHud = playerStats.sanity.subscribe(syncPlayerStats);
+const stopStatsHud = Object.values(playerStats).map(stat => stat.subscribe(syncPlayerStats));
 syncPlayerStats();
-const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel);
-const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, 'cookpot');
-const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, 'icebox');
+const inventoryPanelOptions = { camera, canvas: renderer.domElement, player };
+const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel, inventoryPanelOptions);
+const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, inventoryPanelOptions, 'cookpot');
+const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, inventoryPanelOptions, 'icebox');
+backTasks.push(chestInventoryPanel.update, cookPotInventoryPanel.update, iceBoxInventoryPanel.update);
 export const inventory = createInventoryStore();
 export const handEquipment = inventory.handEquipment;
 export const headEquipment = inventory.headEquipment;
 export const bodyEquipment = inventory.bodyEquipment;
-inventory.registerSlots(Array.from({ length: BACKPACK_SLOT_COUNT }, (_, index) => ({
-  address: backpackSlotAddress(index), slot: new StorageSlot(),
-})));
 const storageContainers = new Map<string, StorageBuildingId>();
+const cookPotModels = new Map<string, THREE.Group>();
 function storagePanel(prefab: StorageBuildingId) {
   return prefab === 'cookpot' ? gameUi.cookPotPanel
     : prefab === 'icebox' ? gameUi.iceBoxPanel : gameUi.chestPanel;
@@ -152,12 +160,16 @@ const headEquipmentBinding = bindPlayerHeadEquipment({
 const bodyEquipmentBinding = bindPlayerBodyEquipment({
   bodyEquipmentExistenceState: inventory.bodyEquipmentExistenceState,
   animation: playerAnimation,
-  setBackpackActive(equipped) {
-    if (equipped && !gameUi.backpackPanel.slotContainer) {
-      gameUi.backpackPanel.open({ containerId: PLAYER_BACKPACK_CONTAINER_ID, slotCount: BACKPACK_SLOT_COUNT, title: '背包' });
-      Array.from({ length: BACKPACK_SLOT_COUNT }, (_, index) => backpackSlotAddress(index)).forEach(syncInventorySlot);
-    } else if (!equipped) gameUi.backpackPanel.close();
-    inventory.setStorageAccessible(PLAYER_BACKPACK_CONTAINER_ID, equipped);
+  setBackpackActive(equipped, entityId) {
+    const containerId = equipped && entityId ? backpackContainerId(entityId) : undefined;
+    if (gameUi.backpackPanel.slotContainer?.id !== containerId) gameUi.backpackPanel.close();
+    if (containerId && !gameUi.backpackPanel.slotContainer) {
+      const container = inventory.getEntity(bodySlotAddress)?.components.container;
+      if (!container) return;
+      const state = container.toSignal();
+      gameUi.backpackPanel.open({ containerId, slotCount: state.peek().slotCount, title: '背包' });
+      gameUi.backpackPanel.bindContainer(state, inventorySlotItem);
+    }
   },
 });
 
@@ -165,32 +177,38 @@ const bodyEquipmentBinding = bindPlayerBodyEquipment({
 inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
 
 function syncInventorySlot(address: SlotAddress): void {
-  const isBackpack = address.containerId === PLAYER_BACKPACK_CONTAINER_ID;
-  if (isBackpack && !gameUi.backpackPanel.slotContainer) return;
+  const isBackpack = isBackpackContainerId(address.containerId);
+  if (isBackpack) return;
   const storagePrefab = storageContainers.get(address.containerId);
   const panel = storagePrefab === undefined ? undefined : storagePanel(storagePrefab);
   if (panel && panel.slotContainer?.id !== address.containerId) return;
-  const inventoryBar = isBackpack ? gameUi.backpackPanel : panel ?? gameUi.inventoryBar;
+  const inventoryBar = panel ?? gameUi.inventoryBar;
   const stack = inventory.get(address);
   if (!stack) {
     inventoryBar.setSlot(address, null);
     return;
   }
 
+  inventoryBar.setSlot(address, inventorySlotItem(stack,
+    storagePrefab && buildingContainerDefinition(storagePrefab).singleItems ? 1 : undefined));
+}
+
+function inventorySlotItem(stack: Readonly<InventoryStack>, maxStack?: number): SlotItem {
   const spec = inventory.getStackSpec(stack);
-  inventoryBar.setSlot(address, {
+  return {
+    ...(stack.entityId === undefined ? {} : { entityId: stack.entityId }),
     id: stack.itemId,
     ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
     name: spec.name,
     count: stack.count,
-    maxStack: storagePrefab && buildingContainerDefinition(storagePrefab).singleItems ? 1 : spec.maxStack,
+    maxStack: maxStack ?? spec.maxStack,
     icon: spec.icon,
     ...(spec.atlas ? { atlas: spec.atlas } : {}),
     ...(spec.equippable ? { equippable: spec.equippable } : {}),
     ...(spec.maxFuel === undefined ? {} : {
       durabilityPercent: (stack.remainingFuel ?? spec.maxFuel) / spec.maxFuel,
     }),
-  });
+  };
 }
 
 function syncCraftingInventory(): void {
@@ -233,6 +251,7 @@ const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting,
     (buildId === 'cookpot' ? cookPotInventoryPanel : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel)
       .setOpen(model, isOpen, buildId);
     const id = buildingContainerId(buildId, entityId);
+    if (buildId === 'cookpot') cookPotModels.set(id, model);
     inventory.setStorageAccessible(id, isOpen);
     if (isOpen) {
       inventory.addresses()
@@ -254,6 +273,20 @@ const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting,
   (elapsedSeconds, dt) => gameUi.statusHud.setClock(getDstClock(elapsedSeconds), dt),
   inventory.entities,
 );
+gameUi.cookPotPanel.addEventListener('game:cook-request', event => {
+  const { containerId } = (event as CustomEvent<CookRequestDetail>).detail;
+  if (gameUi.cookPotPanel.slotContainer?.id !== containerId) return;
+  const model = cookPotModels.get(containerId);
+  if (!model) return;
+  const slots = Array.from({ length: 4 }, (_, index) => ({ containerId, slotKey: String(index) }));
+  const ingredients = slots.map(slot => inventory.get(slot));
+  if (!canCookBeefaloFeed(ingredients)) return;
+  const recipe = CalculateRecipe('cookpot', ingredients.map(item => item!.itemId));
+  if (recipe?.[0] !== 'beefalofeed') return;
+  buildingPlacement.performOpenAction(model, context => startCookPotCooking(context, () =>
+    inventory.applySlotChanges(slots.map((slot, index) => ({ slot, ...ingredients[index]!, delta: -1 }))),
+    BASE_COOK_TIME * recipe[1]));
+});
 const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor, farmPlow,
   () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
   (error) => console.error('Unable to use food', error), () => slotTransferController.clearSelection()) : undefined;
@@ -372,7 +405,7 @@ window.addEventListener('pagehide', () => {
   gameUi.inventoryBar.cancelReceiveAnimations();
   gameUi.savingIndicator.remove();
   disposeScene();
-  stopSanityHud();
+  for (const stop of stopStatsHud) stop();
   lighting.dispose();
   inventory.dispose();
   DisposeSounds();
@@ -399,16 +432,21 @@ gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
 window.addEventListener('game:slot-transfer-request', (event) => {
   const detail = (event as CustomEvent<SlotTransferRequest>).detail;
   if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) return;
-  if ((detail.from.containerId === PLAYER_BACKPACK_CONTAINER_ID || detail.to.containerId === PLAYER_BACKPACK_CONTAINER_ID)
-    && (inventory.get(bodySlotAddress)?.itemId !== 'backpack' || detail.itemId === 'backpack')) return;
 
   if (isHandSlot(detail.from) || isHandSlot(detail.to)) handEquipmentBinding.flush();
-  const transferred = inventory.transfer(detail.from, detail.to, detail.amount, {
-    itemId: detail.itemId, skinId: detail.skinId,
-  });
+  const transferred = detail.swapWith
+    ? inventory.swap(detail.from, detail.to, {
+      from: { entityId: detail.entityId, itemId: detail.itemId, skinId: detail.skinId, count: detail.amount },
+      to: detail.swapWith,
+    })
+    : inventory.transfer(detail.from, detail.to, detail.amount, {
+      itemId: detail.itemId, skinId: detail.skinId,
+    });
+  slotTransferController.completeTransfer(detail.operationId, transferred);
   if (!transferred) return;
   if (isHandSlot(detail.to)) handEquipmentBinding.playTransition('item_out', detail.itemId);
-  else if (isHandSlot(detail.from)) handEquipmentBinding.playTransition('item_in', detail.itemId);
+  else if (isHandSlot(detail.from)) handEquipmentBinding.playTransition(
+    detail.swapWith ? 'item_out' : 'item_in', detail.swapWith?.itemId ?? detail.itemId);
 });
 let selectedRecordSlot: SlotAddress | undefined;
 const recordPointer = new PointerRaycaster(view);
@@ -521,20 +559,15 @@ window.addEventListener('game:slot-context-menu', (event) => {
     cancelNetCapture(); flowerPlanting.cancel(); buildingPlacement.cancel();
     void foodActions.eat(inventoryFoodSource(slot, stack.itemId), () => {
       applyPlayerFoodEffects(foodEffects);
-      syncPlayerStats();
     }).catch((error: unknown) => console.error(`Unable to eat ${stack.itemId}`, error));
     return;
   }
-  if (stack.itemId === 'meatballs') playerAnimation?.playEat();
   if (stack.itemId === 'backpack') {
     const equipped = slot.containerId === bodySlotAddress.containerId && slot.slotKey === bodySlotAddress.slotKey;
     const target = equipped
       ? Array.from({ length: 15 }, (_, index) => inventorySlotAddress(index)).find((address) => !inventory.get(address))
       : inventory.get(bodySlotAddress) === null ? bodySlotAddress : undefined;
-    if (target) inventory.applySlotChanges([
-      { slot, itemId: stack.itemId, skinId: stack.skinId, delta: -1 },
-      { slot: target, itemId: stack.itemId, skinId: stack.skinId, delta: 1 },
-    ]);
+    if (target) inventory.transfer(slot, target, 1);
   }
 });
 gameUi.crafting.addEventListener('game:craft-request', (event) => {

@@ -7037,7 +7037,11 @@
             "stack": {
               "itemId": "backpack",
               "count": 1,
-              "skinId": "backpack_carrat"
+              "skinId": "backpack_carrat",
+              "container": {
+                "slotCount": 8,
+                "slots": []
+              }
             }
           }
         },
@@ -7267,10 +7271,6 @@
                 }
               }
             ]
-          },
-          "player:backpack": {
-            "slotCount": 8,
-            "slots": []
           }
         },
         "bufferedBuilds": []

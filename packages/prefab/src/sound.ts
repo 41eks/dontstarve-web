@@ -2,6 +2,10 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // cookpot.lua → dontstarve.fev sounddefs 246 / 353 / 203 (file_index + 1).
+  'dontstarve/common/cookingpot_rattle': { bank: 'common', streams: [49, 50, 51, 52, 53, 54, 55], loop: true },
+  'dontstarve/common/cookingpot_close': { bank: 'common', streams: [340], loop: false },
+  'dontstarve/common/cookingpot_finish': { bank: 'common', streams: [301], loop: false },
   // torch.lua → dontstarve.fev sound definitions 42/44 → file_index + 1.
   'dontstarve/wilson/torch_swing': { bank: 'wilson', streams: [95, 96], loop: false },
   'dontstarve/common/fireOut': { bank: 'common', streams: [198], loop: false },

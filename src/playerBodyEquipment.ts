@@ -5,7 +5,7 @@ import { bindPlayerEquipment } from './playerEquipment';
 export interface PlayerBodyEquipmentOptions {
   bodyEquipmentExistenceState: Signal<BodyEquipment | null>;
   animation?: Pick<WilsonAnimationController, 'setBackpack'>;
-  setBackpackActive(active: boolean): void;
+  setBackpackActive(active: boolean, entityId?: string): void;
 }
 
 export function bindPlayerBodyEquipment(options: PlayerBodyEquipmentOptions) {
@@ -16,7 +16,7 @@ export function bindPlayerBodyEquipment(options: PlayerBodyEquipmentOptions) {
       void options.animation?.setBackpack(equipped, equipment?.skinId)
         .catch((error: unknown) => console.error('Unable to equip backpack', error));
       if (options.bodyEquipmentExistenceState.peek() !== equipment) return;
-      options.setBackpackActive(equipped);
+      options.setBackpackActive(equipped, equipped ? equipment?.entity?.id : undefined);
     },
   });
 }

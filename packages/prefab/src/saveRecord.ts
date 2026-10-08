@@ -4,6 +4,7 @@ export interface PlacementSaveRecord {
   transform: { position: readonly [number, number, number]; rotationY: number };
   components: {
     building?: { state: 'idle' | 'closed' | 'open'; skinId?: string };
+    stewer?: import('./cook_pot').CookPotSaveState;
     health?: { current: number; maximum: number };
     wall?: import('./wallSkins').WallSaveState;
   };

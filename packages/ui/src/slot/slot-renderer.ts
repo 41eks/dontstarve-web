@@ -95,7 +95,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     }
     // Selection runs first so a placeable item can claim the click for placement
     // instead of being picked up for a transfer.
-    if (options.onSelect?.(options.slot)) return;
+    if (!slotTransferController.isHoldingItem && options.onSelect?.(options.slot)) return;
     const result = slotTransferController.click(event, options.slot);
     if (result.request) options.onTransfer?.(result.request);
   });

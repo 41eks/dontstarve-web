@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
-test('equipping a backpack opens eight usable side slots and preserves contents when unequipped', async ({ page }) => {
+test('equipping a backpack opens eight usable side slots and switches independent backpack contents', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -14,7 +14,7 @@ test('equipping a backpack opens eight usable side slots and preserves contents 
     if (equipped) main.inventory.applySlotChanges([
       { slot: { containerId: 'player:equipment', slotKey: 'body' }, ...equipped, delta: -equipped.count },
     ]);
-    const result = await executeDebugCommand('c_give("backpack")', main.inventory);
+    const result = await executeDebugCommand('c_give("backpack", 2)', main.inventory);
     if (!result.ok) throw new Error(result.message);
     main.inventory.add('cutgrass', 3);
     (window as any).backpackGame = { main, player };
@@ -27,7 +27,7 @@ test('equipping a backpack opens eight usable side slots and preserves contents 
   const body = bar.locator('[data-slot-key="body"]');
   const pack = page.locator('dst-backpack-panel');
   const background = pack.locator('canvas');
-  await bar.locator('.inventory-bar__items [data-item-id="backpack"]').click({ button: 'right' });
+  await bar.locator('.inventory-bar__items [data-item-id="backpack"]').first().click({ button: 'right' });
   await expect(body).toHaveAttribute('data-item-id', 'backpack');
   await expect(background).toHaveAttribute('data-archive', /\/dst\/data\/anim\/ui_backpack_2x4\.zip$/);
   await expect(background).toHaveAttribute('data-animation', 'open');
@@ -52,7 +52,7 @@ test('equipping a backpack opens eight usable side slots and preserves contents 
   const stored = pack.locator('[data-slot-key="7"]');
   await grass.dragTo(stored);
   await expect(stored).toHaveAttribute('data-item-id', 'cutgrass');
-  const count = await page.evaluate(() => (window as any).backpackGame.main.inventory.get({ containerId: 'player:backpack', slotKey: '7' }).count);
+  const count = await page.evaluate(() => (window as any).backpackGame.main.inventory.get({ containerId: document.querySelector('dst-backpack-panel')!.slotContainer!.id, slotKey: '7' }).count);
   await page.evaluate(() => {
     const panel = document.querySelector('dst-backpack-panel')!;
     panel.addEventListener('game:chest-close', () => {
@@ -62,10 +62,13 @@ test('equipping a backpack opens eight usable side slots and preserves contents 
   await body.click({ button: 'right' });
   expect(await page.evaluate(() => (window as any).backpackCloseAnimation)).toBe('close');
   await expect(pack.locator('.chest-panel')).toBeHidden();
-  await bar.locator('.inventory-bar__items [data-item-id="backpack"]').dragTo(body);
+  await bar.locator('.inventory-bar__items [data-item-id="backpack"]').nth(1).click({ button: 'right' });
+  await expect(stored).toHaveAttribute('data-item-id', '');
+  await body.click({ button: 'right' });
+  await bar.locator('.inventory-bar__items [data-item-id="backpack"]').first().dragTo(body);
   await expect(pack.locator('canvas')).toHaveAttribute('data-playing', 'false');
   await expect(stored).toHaveAttribute('data-item-id', 'cutgrass');
-  expect(await page.evaluate(() => (window as any).backpackGame.main.inventory.get({ containerId: 'player:backpack', slotKey: '7' }).count)).toBe(count);
+  expect(await page.evaluate(() => (window as any).backpackGame.main.inventory.get({ containerId: document.querySelector('dst-backpack-panel')!.slotContainer!.id, slotKey: '7' }).count)).toBe(count);
   await page.screenshot({ path: '/tmp/three-roaming-backpack.png' });
   const empty = bar.locator('.inventory-bar__items [data-item-id=""]').first();
   await stored.dragTo(empty);
