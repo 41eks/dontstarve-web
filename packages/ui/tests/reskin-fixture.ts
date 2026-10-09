@@ -44,10 +44,9 @@ export async function checkReskinCasting() {
   const items = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip',
     (item) => inventory.add(item.itemId, item.count, item.skinId), '/dst/data/anim', world.player);
   await items.spawnFromSave('e_dropped', { ...inventory.getItemSpec('reskin_tool'), itemId: 'reskin_tool', count: 1 }, new THREE.Vector3(6, 0, 0));
-  let equipped = true;
   const controller = new ReskinActionController(world, animation,
     { stop() {}, goToPoint() { return true; }, destination: undefined },
-    () => equipped ? inventory.get(equipmentSlotAddress('hand'))! : undefined,
+    inventory.handEquipment,
     () => [...buildings.reskinTargets, ...items.reskinTargets], effects);
   const failures: string[] = [];
   const check = (condition: boolean, message: string) => { if (!condition) failures.push(message); };
@@ -118,7 +117,8 @@ export async function checkReskinCasting() {
     check(await controller.request(buildings.reskinTargets[0]), 'cancel request failed');
     step(8);
     const unchanged = JSON.stringify(buildings.exportRecords());
-    equipped = false; controller.update(1 / 30); step(30);
+    inventory.transfer(equipmentSlotAddress('hand'), inventorySlotAddress(0), 1);
+    controller.update(1 / 30); step(30);
     check(JSON.stringify(buildings.exportRecords()) === unchanged && sources.length === beforeCancellation + 1, 'cancelled cast committed');
     return { failures, cases, groundSkin: record.components.stack?.skinId, cancels: true };
   } finally {

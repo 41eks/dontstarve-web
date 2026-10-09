@@ -1,3 +1,4 @@
+import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -23,7 +24,8 @@ export class BugNetCaptureController {
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
-  private readonly isEquipped: () => boolean;
+  private readonly handEquipment: HandEquipmentSignal;
+  private readonly stopEquipment: () => void;
   private readonly getTargets: () => readonly NetCaptureTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly pointer: PointerRaycaster;
@@ -39,14 +41,17 @@ export class BugNetCaptureController {
     world: WorldContext,
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
-    isEquipped: () => boolean,
+    handEquipment: HandEquipmentSignal,
     getTargets: () => readonly NetCaptureTarget[],
     isManualMovement = () => false,
   ) {
     this.world = world;
     this.animation = animation;
     this.locomotor = locomotor;
-    this.isEquipped = isEquipped;
+    this.handEquipment = handEquipment;
+    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
+      if (this.isEquipped(previous)) this.cancel();
+    });
     this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
@@ -56,6 +61,11 @@ export class BugNetCaptureController {
       }))) ?? (() => {});
     world.renderer.domElement.addEventListener('pointerdown', this.handleGroundClick);
     window.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  private isEquipped(equipment = this.handEquipment.peek()): boolean {
+    const itemId = equipment?.itemId;
+    return itemId === 'bugnet';
   }
 
   request(target: NetCaptureTarget): boolean {
@@ -102,6 +112,7 @@ export class BugNetCaptureController {
   }
 
   dispose(): void {
+    this.stopEquipment();
     this.cancel();
     this.unregisterHover();
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();

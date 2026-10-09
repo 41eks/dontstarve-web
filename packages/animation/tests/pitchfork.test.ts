@@ -8,6 +8,7 @@ import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } fro
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
+import { createHandEquipmentExistenceState } from '../../signals/src';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -95,16 +96,19 @@ function setupAction() {
   const player = new THREE.Group();
   const world = { player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas } } as unknown as WorldContext;
-  let equipped = true, manual = false, onDig: (() => void) | undefined;
+  const equipped = createHandEquipmentExistenceState();
+  equipped.set({ itemId: 'pitchfork', EQUIPSLOTS: 'HANDS' });
+  let manual = false, onDig: (() => void) | undefined;
   const animation = { isDigging: false, isCasting: false, isNetting: false,
     cancelEmote: vi.fn(), cancelDig: vi.fn(), setFacing: vi.fn(),
     playDig: vi.fn((callback: () => void) => { onDig = callback; return true; }) };
   const locomotor = { goToPoint: vi.fn((_point: THREE.Vector3) => true), stop: vi.fn(), destination: undefined };
   const map = new TurfMap(1000);
   const controller = new PitchforkActionController(world, animation as unknown as WilsonAnimationController,
-    locomotor, () => equipped, map, () => manual);
+    locomotor, equipped, map, () => manual);
   return { controller, map, canvas, player, animation, locomotor,
-    equip: (value: boolean) => { equipped = value; }, move: () => { manual = true; }, hit: () => onDig?.() };
+    equip: (value: boolean) => equipped.set(value ? { itemId: 'pitchfork', EQUIPSLOTS: 'HANDS' } : null),
+    move: () => { manual = true; }, hit: () => onDig?.() };
 }
 
 describe('pitchfork point action', () => {

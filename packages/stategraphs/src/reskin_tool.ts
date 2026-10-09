@@ -1,6 +1,7 @@
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 export interface PreparedReskin {
   /** Commit the prepared appearance only if its source entity is still valid. */
@@ -29,7 +30,8 @@ export class ReskinActionController {
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'stop' | 'goToPoint' | 'destination'>;
-  private readonly getTool: () => { skinId?: string } | undefined;
+  private readonly handEquipment: HandEquipmentSignal;
+  private readonly stopEquipment: () => void;
   private readonly getTargets: () => readonly ReskinTarget[];
   private readonly effects: ReskinEffectPresenter;
   private readonly isManualMovement: () => boolean;
@@ -45,7 +47,7 @@ export class ReskinActionController {
     world: WorldContext,
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'stop' | 'goToPoint' | 'destination'>,
-    getTool: () => { skinId?: string } | undefined,
+    handEquipment: HandEquipmentSignal,
     getTargets: () => readonly ReskinTarget[],
     effects: ReskinEffectPresenter,
     isManualMovement = () => false,
@@ -53,7 +55,10 @@ export class ReskinActionController {
     onError: (error: unknown) => void = console.error,
   ) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
-    this.getTool = getTool; this.getTargets = getTargets; this.effects = effects;
+    this.handEquipment = handEquipment; this.getTargets = getTargets; this.effects = effects;
+    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
+      if (previous?.itemId === 'reskin_tool') this.cancel();
+    });
     this.isManualMovement = isManualMovement; this.onRequest = onRequest; this.onError = onError;
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() =>
@@ -84,6 +89,11 @@ export class ReskinActionController {
       return true;
     } catch (error) { if (version === this.version) this.onError(error); return false; }
     finally { prepared?.dispose(); if (version === this.version) this.loading = false; }
+  }
+
+  private getTool() {
+    const equipment = this.handEquipment.peek();
+    return equipment?.itemId === 'reskin_tool' ? equipment : undefined;
   }
 
   cancel(): void {
@@ -129,6 +139,7 @@ export class ReskinActionController {
   }
 
   dispose(): void {
+    this.stopEquipment();
     this.cancel();
     this.unregisterHover();
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();

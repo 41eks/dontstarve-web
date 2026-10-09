@@ -34,7 +34,7 @@ export async function createEmoteFixture() {
   const draw = () => renderer.render(scene, camera);
   draw();
   return {
-    animation, emoteWheel, requests,
+    animation, emoteWheel, requests, locomotor, model,
     get worldClicks() { return worldClicks; },
     get moving() { return input.isPressed('KeyW'); },
     get velocity() { return [body.velocity.x, body.velocity.y, body.velocity.z]; },

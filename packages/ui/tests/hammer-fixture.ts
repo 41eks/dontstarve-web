@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createWilsonPlayerPrefab, type WilsonAnimationController } from '../../prefab/src/player';
 import { HammerActionController } from '../../stategraphs/src/hammer';
+import { createHandEquipmentExistenceState } from '../../signals/src';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, createGroundItemSprite } from '../../prefab/src/groundItems';
 import { Locomotor } from '../../prefab/src/locomotor';
 import type { TransientSpriteAnimationController } from '../../animation/src/sprite';
@@ -139,10 +140,11 @@ export async function checkHammer() {
   player.position.copy(target.position).add(new THREE.Vector3(0, 0, 3));
   placement.update(0);
   renderer.render(scene, camera);
-  let equipped = true;
+  const equipped = createHandEquipmentExistenceState();
+  equipped.set({ itemId: 'hammer', EQUIPSLOTS: 'HANDS' });
   let manual = false;
   const locomotor = new Locomotor(body);
-  const action = new HammerActionController(world, animation, locomotor, () => equipped,
+  const action = new HammerActionController(world, animation, locomotor, equipped,
     () => placement.hammerTargets, () => manual);
   const click = (button: number) => {
     const centre = new THREE.Box3().setFromObject(target.model).getCenter(new THREE.Vector3()).project(camera);
@@ -166,10 +168,10 @@ export async function checkHammer() {
   manual = false;
   click(2);
   await animation.setCarryItem(null);
-  equipped = false; action.update(0);
+  equipped.set(null); action.update(0);
   const unequipCancels = !animation.isHammering;
   const ignoredUnequipped = !click(2) && !animation.isHammering;
-  await animation.setCarryItem('hammer'); equipped = true;
+  await animation.setCarryItem('hammer'); equipped.set({ itemId: 'hammer', EQUIPSLOTS: 'HANDS' });
   player.position.copy(target.position).add(new THREE.Vector3(0, 0, 20));
   action.request(target); action.update(0);
   const approaches = !!locomotor.destination && !animation.isHammering;

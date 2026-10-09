@@ -42,6 +42,12 @@
 - List all static sprite facings in `imageIndices` and switch with `showImage()` rather than rebuilding the sprite. Preserve layered wall art through `overlay` with positionally paired `imageIndices`.
 - See [rendering rationale, wall masks, and frame examples](docs/dst-billboard-rendering.md).
 
+## World time and temperature
+
+- Refresh day/night progress and world temperature once every 60 active game frames. Accumulate the actual `dt` of those frames and apply the whole elapsed time in each settlement; never assume a fixed frame rate or replace this with a fixed wall-clock interval. Per-frame scheduling must not write day/night progress or world temperature signals, or refresh their UI, between settlements.
+- Settle any partial batch before saving or stopping/disposing the scene. Initialize and restore clock/temperature state immediately on load, preserving elapsed game time, seasonal temperature, and noise time through save/load. Season changes remain explicit signal updates; they must not trigger redundant per-frame writes.
+- Keep day/night and season inputs as signals and derive world temperature with `createMemo`. Release memo dependencies and clock/season presentation subscriptions when disposing the scene.
+
 ## Inventory architecture
 
 - `packages/inventory` owns authoritative state and domain types. Concrete slot kinds must not share an implementation superclass; `InventorySlot` supplies stack limits, pure `craft()` computes the result, and `InventoryStore` applies it atomically.

@@ -206,7 +206,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     const o = object(player.stats, 'players.local.stats', ['health', 'hunger', 'sanity']);
     stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity') };
   }
-  const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'random']);
+  const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'random']);
   const systems: SaveDocument['world']['systems'] = {};
   if (systemsData.clock !== undefined) {
     const o = object(systemsData.clock, 'world.systems.clock', ['day', 'phase', 'phaseProgress']);
@@ -215,6 +215,19 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   if (systemsData.season !== undefined) {
     const o = object(systemsData.season, 'world.systems.season', ['name', 'daysRemaining']);
     systems.season = { name: choice(o.name, 'world.systems.season.name', ['autumn', 'winter', 'spring', 'summer']), daysRemaining: number(o.daysRemaining, 'world.systems.season.daysRemaining') };
+  }
+  if (systemsData.worldtemperature !== undefined) {
+    const path = 'world.systems.worldtemperature';
+    const o = object(systemsData.worldtemperature, path,
+      ['daylight', 'season', 'seasontemperature', 'phasetemperature', 'noisetime']);
+    if (o.daylight !== undefined && typeof o.daylight !== 'boolean') fail(`${path}.daylight`, 'expected a boolean');
+    systems.worldtemperature = {
+      ...(o.daylight === undefined ? {} : { daylight: o.daylight as boolean }),
+      season: choice(o.season, `${path}.season`, ['autumn', 'winter', 'spring', 'summer']),
+      seasontemperature: number(o.seasontemperature, `${path}.seasontemperature`, -Number.MAX_SAFE_INTEGER),
+      phasetemperature: number(o.phasetemperature, `${path}.phasetemperature`, -Number.MAX_SAFE_INTEGER),
+      noisetime: number(o.noisetime, `${path}.noisetime`),
+    };
   }
   if (systemsData.random !== undefined) {
     const o = object(systemsData.random, 'world.systems.random', ['algorithm', 'state']);

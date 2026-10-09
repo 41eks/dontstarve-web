@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { loadFarmHoeEquipment, resolveFarmHoePlayerSprite } from '../../prefab/src/farm_hoe';
 import { FarmHoeActionController } from '../../stategraphs/src/farm_hoe';
+import { createHandEquipmentExistenceState } from '../../signals/src';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
@@ -107,14 +108,15 @@ it('approaches the target, creates one hole at till_loop frame 11, and cancels b
   await animation.setCarryItem('golden_farm_hoe');
   const { world, farm, turf } = setup(player);
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
-  let tool: { itemId: string } | undefined = { itemId: 'golden_farm_hoe' };
-  const controller = new FarmHoeActionController(world, animation, locomotor, () => tool, farm);
+  const tool = createHandEquipmentExistenceState();
+  tool.set({ itemId: 'golden_farm_hoe', EQUIPSLOTS: 'HANDS' });
+  const controller = new FarmHoeActionController(world, animation, locomotor, tool, farm);
   const point = new THREE.Vector3(3, 0, 3);
   turf.plow(point);
   try {
-    tool = { itemId: 'torch' };
+    tool.set({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
     expect(controller.request(point)).toBe(false);
-    tool = { itemId: 'golden_farm_hoe' };
+    tool.set({ itemId: 'golden_farm_hoe', EQUIPSLOTS: 'HANDS' });
     expect(controller.request(point)).toBe(true); controller.update();
     expect(locomotor.goToPoint).toHaveBeenCalled();
     expect(farm.exportDecorRecords()).toEqual([]);
@@ -137,7 +139,7 @@ it('approaches the target, creates one hole at till_loop frame 11, and cancels b
     expect(farm.exportDecorRecords()).toEqual(preserved);
     expect(controller.request(point)).toBe(true);
     await vi.waitFor(() => { controller.update(); expect(animation.isTilling).toBe(true); });
-    tool = undefined; await animation.setCarryItem(null); controller.update(); advance(animation, 60);
+    tool.set(null); await animation.setCarryItem(null); controller.update(); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
   } finally { controller.dispose(); farm.dispose(); }
 });

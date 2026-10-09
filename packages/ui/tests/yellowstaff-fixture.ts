@@ -4,6 +4,7 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { type LightStaffId } from '../../prefab/src/yellowstaff';
 import { setupLightStaffCasting } from '../../stategraphs/src/yellowstaff';
+import { createHandEquipmentExistenceState } from '../../signals/src';
 import { DwarfStarManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -65,10 +66,11 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   await animation.setCarryItem(itemId);
   const unlitHand = !getPrefabLocalLight(player);
   const stars = new DwarfStarManager(scene, '/dst/data/anim', itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight');
-  let equipped = true;
+  const equipped = createHandEquipmentExistenceState();
+  equipped.set({ itemId, EQUIPSLOTS: 'HANDS' });
   let stops = 0;
   const disposeInput = setupLightStaffCasting({ scene, camera, renderer, ground, player }, animation, stars,
-    () => equipped, () => { stops += 1; }, (error) => failures.push(String(error)));
+    equipped, () => { stops += 1; }, (error) => failures.push(String(error)));
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
     const bounds = renderer.domElement.getBoundingClientRect();
@@ -112,7 +114,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   click();
   await settle();
   tick(20);
-  equipped = false;
+  equipped.set(null);
   await animation.setCarryItem(null);
   tick(90);
   const cancelled = !animation.isCasting && stars.exportRecords().length === 1;

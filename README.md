@@ -4,16 +4,22 @@ https://41eks.github.io/dontstarve-web/
 
 场景实体后续的活动区域与资源管理方案见 [按 tile 管理生命周期](docs/tile-lifecycle.md)：每个 tile 持有活动 signal，玩家跨 tile 时更新区域差集，prefab 用 `createMemo` 派生活动状态。该方案尚未接入运行时。
 
+DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久和保存机制见 [温度系统源码总结](docs/dst-temperature.md)。昼夜和季节使用 signal，`WorldTemperature` 通过 `createMemo` 派生环境温度；主循环每 60 个活动帧按累计实际 `dt` 结算昼夜进度和世界温度。
+
 
 ## 调试命令（debugCommand）
 
 建筑容器面板的开关与屏幕定位由 `packages/ui/src/chest-inventory-panel.ts` 负责，`src/main.ts` 注入场景依赖并注册逐帧更新；此次模块迁移保持以下命令的语法、参数、行为和支持 ID 不变。
+
+`c_save()` 会先结算尚未满 60 帧的昼夜／温度时间，再把当前季节温度、昼夜温度和噪声时间保存到 `world.systems.worldtemperature`，读档后继续计算。旧存档缺少该字段时，使用存档季节（默认春季）的中点温度，并以已保存的累计游戏时间初始化噪声时间。当前季节仍需显式修改 signal，尚未自动推进；这里保存的是环境温度，HUD 的角色体温尚未接入。`c_save()` 无参数，命令语法和支持 prefab/item ID 不变。
 
 `c_spawn("cookpot")` 生成烹饪锅，`c_give("twigs", 4)` 获取四根树枝。靠近并点击锅打开四个格子，每格放一份材料后点击“烹饪”：立即消耗材料并关闭面板，播放 `cooking_loop`，约 10 秒后播放 `cooking_pst → idle_full`，锅中显示原版 `beefalofeed`（蒸树枝）。配方与时长参考 `preparedfoods.lua`、`components/stewer.lua` 和 `tuning.lua`，食物图层按 `prefabs/cookpot.lua` 使用 `cook_pot_food11.zip` 的 `beefalofeed` 符号，保留锅的皮肤。烹饪中和完成后的锅不能再次打开；`c_save()` 保存剩余烹饪时间及锅内产物，读档和清洁扫把换肤保留状态。`src/cook.ts` 按 `cooking.lua` 注册食材标签、生熟／风干版本和别名，汇总四格材料后按最高配方优先级及同级权重选出产物；`src/preparedfoods.ts` 移植 68 条普通料理的配方条件和烹饪贴图元数据。现在四根树枝、或一根树枝加三个红蘑菇都可烹饪蒸树枝，后者可用 `c_give("twigs")` 和 `c_give("red_cap", 3)` 准备。只有最终产物是 `beefalofeed` 时启用按钮；若高优先级料理胜出，保留材料并禁用按钮。本阶段仍只执行蒸树枝的烹饪过程，不实现收获、进食、腐败、其它料理产物或厨师专属／非料理配方，也不新增独立 `beefalofeed` 的 `c_give` / `c_spawn` 支持。
 
 `c_give("backpack")` 获取背包，第二个参数为数量（默认 `1`，例如 `c_give("backpack", 2)`），每个占一格。拖到身体装备槽或右键背包即可装备，角色显示 `swap_backpack.zip` 的原版外观；右侧播放 `anim/ui_backpack_2x4.zip` 的 `open` 动画并显示 2 列 × 4 行的 8 个储物格，可与物品栏、其他容器拖放物品，材料可用于制作。Shift + 右键丢弃时使用原版 `anim/backpack.zip` 的 bank `backpack1`、`anim` 地面姿态和 `anim/swap_backpack.zip` 的 build，点击可拾回。支持 36 个原版皮肤及其实际库存图标 atlas；可在制作面板选择皮肤，或装备清洁扫把右键地面背包循环换肤。拾回和重新装备保留皮肤，隐形皮肤仅隐藏穿戴外观，地面姿态仍可见。卸下时播放 `close` 并隐藏储物格，再次装备时恢复内容；每个背包实体独立持有自己的 8 个格子，换包时面板切换到对应容器；未装备背包的材料不可用于制作。背包不能放入背包或箱子。内容随背包丢弃、拾回、换肤及 `c_save()` 保存和恢复，存档嵌套在该背包的 `item.container` 中。容器逻辑由 `packages/componets/src/container.ts` 的 Lua 风格 `Container` 组件负责，装备和卸下调用 `Open/Close`，内容经 `OnSave/OnLoad` 保存恢复。`toSignal()` 将容器 DTO 提供给背包面板，事务提交后统一刷新数量、皮肤和耐久，换包或关闭面板时释放订阅；沿用玩家物品栏的槽位 signal 和渲染器。旧 `player:backpack` 存档仅在归属明确时迁移到对应背包。
 
 在游戏页面按反引号键（`Backquote`，通常与 `~` 共用）打开或关闭调试控制台，输入命令后按 `Enter` 执行。执行后控制台自动关闭；`Esc` 可关闭，`↑` / `↓` 可浏览最近 50 条历史命令。执行结果或错误显示在浏览器开发者工具的 Console 中。
+
+`src/InputManager.ts` 使用 signal 保存按键状态，`isManualMovement` 通过 `createMemo` 判断 WASD，`isActionInterrupting` 包含 WASD 与 Space，供动作控制器共用。重复按键不重复发布状态；调试控制台等输入框（包括 shadow DOM 内的输入框）不会触发移动，窗口失焦或表情轮盘切换时清空按键，页面关闭时释放输入监听和 memo。调试命令语法、参数和支持 prefab/item ID 保持不变。
 
 | 命令 | 参数与作用 | 示例 |
 | --- | --- | --- |
@@ -26,7 +32,7 @@ https://41eks.github.io/dontstarve-web/
 
 命令支持单引号或双引号、英文或中文括号（也可混用）、额外空白及末尾分号；`c_give` 的参数分隔符也支持中文逗号。每次提交一条命令。
 
-玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。`src/main.ts` 将物品栏状态、移动、动画和目标操作接口接入控制器；`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。
+玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。锤子、镐、干草叉、铲子、园艺锄、捕虫网、清洁扫把和光照法杖控制器接收只读 `inventory.handEquipment` signal，在内部判断支持的 item ID；卸装、换成另一实体或换肤会立即取消旧动作，控制器销毁时释放订阅。同一装备实体和皮肤的状态更新不重复取消，控制器不写入装备 signal。光照法杖按召唤目标 `stafflight/staffcoldlight` 选择 `yellowstaff/opalstaff`，更换装备后原先预加载或排入时间线的施法不会生成新光源。`src/main.ts` 注入装备 signal、移动、动画和目标操作接口；`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。这次接线调整保持 `c_give`、`c_spawn` 和 `c_save` 的语法、参数及支持 ID 不变。
 
 `SGwilson` 的已支持源状态按 Lua 顺序显式写成 `State({ name, tags, onenter, onupdate, timeline, ontimeout, events, onexit })`，仅填写已实现的回调；标签使用源定义，浏览器动作身份另行维护。状态图的外部状态请求使用 `request…`，进入状态后的回调使用 `onEnter…`。`ActionHandler` 支持源动态目标函数和可选条件：采矿、锤击、挖掘、捕虫读取前摇/工作标签决定拒绝、前摇或动作循环；扫把换肤使用 `CASTSPELL`，由工具的 `veryquickcast` 标签选择快施法状态。浏览器跳跃、制作和半速拾取以 `busy` 阻止新动作，跳跃期间所有动作等待落地；表情检查源 `busy/nopredict/sleeping/floating` 标签，可以打断未被这些标签阻止的工作状态。动画完成事件与状态超时独立，采矿、锤击、挖掘及耕坑的收尾动画在 `idle` 内继续播放。种植使用 `doshortaction`，第 6 帧提交，第 10 帧超时进入待机并保留动画队列，退出仅清理自己的缓冲动作。浏览器适配及暂缺的 Lua 分支见 [状态图源码核对](docs/dst-stategraphs.md)。`c_spawn`、`c_give`、`c_emote` 和 `c_save` 的语法、参数及支持 ID 保持不变。
 

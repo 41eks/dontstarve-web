@@ -11,6 +11,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
 import type { AnimElement } from '../src/animationAssets';
+import { createHandEquipmentExistenceState } from '../../signals/src';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -95,9 +96,10 @@ it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled o
   const point = new THREE.Vector3(3, 0, 3);
   turf.plow(point);
   await farm.spawnDecor('farm_soil_debris', point, { animation: 'f1' }, undefined, 'target');
-  let equipped = true;
+  const equipped = createHandEquipmentExistenceState();
+  equipped.set({ itemId: 'goldenshovel', EQUIPSLOTS: 'HANDS' });
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
-  const controller = new ShovelActionController(world, animation, locomotor, () => equipped, () => farm.digTargets);
+  const controller = new ShovelActionController(world, animation, locomotor, equipped, () => farm.digTargets);
   try {
     expect(controller.request(farm.digTargets[0])).toBe(true); controller.update(0);
     expect(locomotor.goToPoint).toHaveBeenCalled();
@@ -115,7 +117,7 @@ it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled o
     controller.cancel(); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
     expect(controller.request(farm.digTargets[0])).toBe(true); controller.update(0);
-    equipped = false; await animation.setCarryItem(null); controller.update(0); advance(animation, 60);
+    equipped.set(null); await animation.setCarryItem(null); controller.update(0); advance(animation, 60);
     expect(farm.exportDecorRecords()).toEqual(preserved);
   } finally { controller.dispose(); farm.dispose(); }
 });

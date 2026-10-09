@@ -1,3 +1,4 @@
+import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -20,7 +21,8 @@ export class PitchforkActionController {
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
-  private readonly isEquipped: () => boolean;
+  private readonly handEquipment: HandEquipmentSignal;
+  private readonly stopEquipment: () => void;
   private readonly turf: TurfMap;
   private readonly isManualMovement: () => boolean;
   private readonly onRequest: () => void;
@@ -29,7 +31,7 @@ export class PitchforkActionController {
     world: WorldContext,
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
-    isEquipped: () => boolean,
+    handEquipment: HandEquipmentSignal,
     turf: TurfMap,
     isManualMovement = () => false,
     onRequest = () => {},
@@ -37,7 +39,10 @@ export class PitchforkActionController {
     this.world = world;
     this.animation = animation;
     this.locomotor = locomotor;
-    this.isEquipped = isEquipped;
+    this.handEquipment = handEquipment;
+    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
+      if (this.isEquipped(previous)) this.cancel(true);
+    });
     this.turf = turf;
     this.isManualMovement = isManualMovement;
     this.onRequest = onRequest;
@@ -47,6 +52,11 @@ export class PitchforkActionController {
     // Consume a terraform click before container and placement handlers.
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  private isEquipped(equipment = this.handEquipment.peek()): boolean {
+    const itemId = equipment?.itemId;
+    return itemId === 'pitchfork' || itemId === 'goldenpitchfork';
   }
 
   request(point: THREE.Vector3): boolean {
@@ -62,10 +72,9 @@ export class PitchforkActionController {
     return true;
   }
 
-  cancel(): void {
+  cancel(owned = this.isEquipped()): void {
     this.actionVersion++;
     // Cancel only this controller's active action.
-    const owned = this.isEquipped();
     if (this.target || (owned && this.animation.isDigging)) this.locomotor.stop();
     this.target = undefined;
     if (owned) this.animation.cancelDig();
@@ -97,6 +106,7 @@ export class PitchforkActionController {
   }
 
   dispose(): void {
+    this.stopEquipment();
     this.cancel();
     this.unregisterHover();
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();

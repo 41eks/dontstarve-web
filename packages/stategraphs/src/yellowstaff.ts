@@ -1,28 +1,43 @@
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController } from './actionContext.ts';
-export interface StaffSummonTarget { prepare(): Promise<void>; spawn(position: THREE.Vector3): Promise<unknown>; }
+export interface StaffSummonTarget {
+  readonly prefabId: 'stafflight' | 'staffcoldlight';
+  prepare(): Promise<void>;
+  spawn(position: THREE.Vector3): Promise<unknown>;
+}
 
 /** Right-click a ground point while the authoritative hand slot contains this staff. */
 export function setupLightStaffCasting(
   world: WorldContext,
   animation: WilsonAnimationController,
   stars: StaffSummonTarget,
-  isEquipped: () => boolean,
+  handEquipment: HandEquipmentSignal,
   onStart: () => void,
   onError: (error: unknown) => void,
 ): () => void {
   const pointer = new PointerRaycaster(world);
   let preparing = false;
   let disposed = false;
+  let version = 0;
+  const itemId = stars.prefabId === 'staffcoldlight' ? 'opalstaff' : 'yellowstaff';
+  const isEquipped = () => handEquipment.peek()?.itemId === itemId;
+  const stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
+    if (previous?.itemId !== itemId) return;
+    version++;
+    preparing = false;
+    animation.stategraph.cancelAction('CASTSPELL');
+  });
   const cast = async (target: THREE.Vector3) => {
+    const castVersion = ++version;
     // Keep the clicked raycast point through loading, casting and later pointer movement.
     const summonPosition = target.clone();
     preparing = true;
     try {
       // A failed asset request must never commit a summon or leave the player busy.
       await stars.prepare();
-      if (disposed || !isEquipped() || animation.isCasting) return;
+      if (disposed || castVersion !== version || !isEquipped() || animation.isCasting) return;
       const direction = summonPosition.clone().sub(world.player.position);
       direction.y = 0;
       if (direction.lengthSq() > 0) {
@@ -36,10 +51,10 @@ export function setupLightStaffCasting(
           Math.abs(r) > Math.abs(f) && r < 0);
       }
       if (animation.playStaffCast(() => {
-        if (!disposed && isEquipped()) void stars.spawn(summonPosition).catch(onError);
+        if (!disposed && castVersion === version && isEquipped()) void stars.spawn(summonPosition).catch(onError);
       })) onStart();
     } catch (error) { onError(error); }
-    finally { preparing = false; }
+    finally { if (castVersion === version) preparing = false; }
   };
   const handlePointerDown = (event: PointerEvent) => {
     if (event.button !== 2 || event.defaultPrevented || preparing || animation.isCasting || !isEquipped()) return;
@@ -52,6 +67,8 @@ export function setupLightStaffCasting(
   world.renderer.domElement.addEventListener('pointerdown', handlePointerDown);
   return () => {
     disposed = true;
+    version++;
+    stopEquipment();
     pointer.dispose();
     world.renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
   };

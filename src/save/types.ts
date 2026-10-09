@@ -7,6 +7,7 @@ import type { NightmareGrowthSaveState } from '@dontstarve-web/prefab/nightmareg
 import type { WormholeSaveState } from '@dontstarve-web/prefab/wormhole';
 import type { WallSaveState } from '@dontstarve-web/prefab/wallSkins';
 import type { FarmPlowSaveState, FarmSoilSaveState, FarmDebrisSaveState } from '@dontstarve-web/prefab/farm_plow';
+import type { WorldTemperatureSaveData } from '../../packages/componets/src/worldtemperature';
 
 export interface SavedTransform {
   position: [number, number, number];
@@ -69,6 +70,7 @@ export interface SaveDocument {
     systems: {
       clock?: { day: number; phase: 'day' | 'dusk' | 'night' | 'full_moon'; phaseProgress: number };
       season?: { name: 'autumn' | 'winter' | 'spring' | 'summer'; daysRemaining: number };
+      worldtemperature?: WorldTemperatureSaveData;
       random?: { algorithm: 'xoshiro128ss'; state: number[] };
     };
     map: {

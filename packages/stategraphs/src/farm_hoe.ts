@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { FarmActionWorld, PreparedFarmTill } from './farmActions.ts';
 type FarmPlowPlacement = Pick<FarmActionWorld, 'canTill' | 'prepareTill'>;
@@ -25,7 +26,8 @@ export class FarmHoeActionController {
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
-  private readonly equipped: () => { itemId: string; skinId?: string } | undefined;
+  private readonly handEquipment: HandEquipmentSignal;
+  private readonly stopEquipment: () => void;
   private readonly farm: FarmPlowPlacement;
   private readonly isManualMovement: () => boolean;
   private readonly onRequest: () => void;
@@ -33,10 +35,13 @@ export class FarmHoeActionController {
 
   constructor(world: WorldContext, animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
-    equipped: () => { itemId: string; skinId?: string } | undefined, farm: FarmPlowPlacement,
+    handEquipment: HandEquipmentSignal, farm: FarmPlowPlacement,
     isManualMovement = () => false, onRequest = () => {}, onError: (error: unknown) => void = console.error) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
-    this.equipped = equipped; this.farm = farm; this.isManualMovement = isManualMovement;
+    this.handEquipment = handEquipment; this.farm = farm; this.isManualMovement = isManualMovement;
+    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
+      if (isFarmHoeTool(previous?.itemId ?? '')) this.cancel();
+    });
     this.onRequest = onRequest; this.onError = onError;
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() => this.hitTarget()
@@ -52,6 +57,8 @@ export class FarmHoeActionController {
     this.target = point.clone().setY(0); this.onRequest();
     return true;
   }
+
+  private equipped() { return this.handEquipment.peek(); }
 
   cancel(): void {
     this.version++;
@@ -134,6 +141,7 @@ export class FarmHoeActionController {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true; this.cancel();
+    this.stopEquipment();
     this.unregisterHover();
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);

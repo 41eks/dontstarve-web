@@ -7,7 +7,6 @@ import type { PlayerBody } from './types/Player';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 
 export const JUMP_VELOCITY = 10;
-const movementKeys = ['KeyW', 'KeyS', 'KeyA', 'KeyD'] as const;
 
 /** Keyboard direction and jump input; Locomotor owns horizontal velocity. */
 export function updateMovement(
@@ -34,13 +33,14 @@ export function updateMovement(
         if (input.isPressed('KeyS')) direction.sub(forward);
         if (input.isPressed('KeyA')) direction.sub(right);
         if (input.isPressed('KeyD')) direction.add(right);
-        const manual = movementKeys.some((key) => input.isPressed(key));
+        const manual = input.isManualMovement();
+        const interrupting = input.isActionInterrupting();
         const animation = player.userData.animationController as WilsonAnimationController | undefined;
-        if (animation?.isEmoting && (manual || input.isPressed('Space'))) animation.cancelEmote();
-        if (animation?.isMining && (manual || input.isPressed('Space'))) animation.cancelMine();
-        if (animation?.isHammering && (manual || input.isPressed('Space'))) animation.cancelHammer();
-        if (animation?.isDigging && (manual || input.isPressed('Space'))) animation.cancelDig();
-        if (animation?.isReskinning && (manual || input.isPressed('Space'))) animation.cancelReskin();
+        if (animation?.isEmoting && interrupting) animation.cancelEmote();
+        if (animation?.isMining && interrupting) animation.cancelMine();
+        if (animation?.isHammering && interrupting) animation.cancelHammer();
+        if (animation?.isDigging && interrupting) animation.cancelDig();
+        if (animation?.isReskinning && interrupting) animation.cancelReskin();
         const acting = animation?.isCasting || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.

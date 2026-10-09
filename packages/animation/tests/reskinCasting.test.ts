@@ -5,6 +5,7 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import { ReskinEffects, nextReskin } from '../../prefab/src/reskin_tool';
 import { type ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
+import { createHandEquipmentExistenceState } from '../../signals/src';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { GroundItemManager } from '../../../src/groundItems';
@@ -140,7 +141,9 @@ it('reskins dropped items without changing their count or entity ID and preserve
 it.each(['unequip', 'while loading'])(
   'discards pending work and emits no effect after %s cancellation', async (reason) => {
     const world = setupWorld();
-    let equipped = true, manual = false, valid = true;
+    const equipped = createHandEquipmentExistenceState();
+    equipped.set({ itemId: 'reskin_tool', EQUIPSLOTS: 'HANDS' });
+    let manual = false, valid = true;
     const apply = vi.fn(() => true), dispose = vi.fn();
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => { release = resolve; });
@@ -152,7 +155,7 @@ it.each(['unequip', 'while loading'])(
       cancelReskin: vi.fn(() => { animation.isReskinning = false; }) };
     const effects = { prepare: vi.fn(async () => {}), spawn: vi.fn() };
     const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
-      { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, () => equipped ? {} : undefined,
+      { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped,
       () => [target], effects as unknown as ReskinEffects, () => manual);
     const request = controller.request(target);
     if (reason === 'while loading') { controller.cancel(); release(); expect(await request).toBe(false); }
@@ -161,7 +164,7 @@ it.each(['unequip', 'while loading'])(
       controller.update(1 / 30);
       expect(animation.playReskin).toHaveBeenCalledOnce();
       if (reason === 'manual') manual = true;
-      if (reason === 'unequip') equipped = false;
+      if (reason === 'unequip') equipped.set(null);
       if (reason === 'target removed') valid = false;
       if (reason === 'escape') window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
       controller.update(1 / 30);

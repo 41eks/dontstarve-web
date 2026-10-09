@@ -1,3 +1,4 @@
+import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
@@ -27,7 +28,8 @@ export class PickaxeActionController {
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
-  private readonly isEquipped: () => boolean;
+  private readonly handEquipment: HandEquipmentSignal;
+  private readonly stopEquipment: () => void;
   private readonly getTargets: () => readonly PickaxeTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly onRequest: () => void;
@@ -36,7 +38,7 @@ export class PickaxeActionController {
     world: WorldContext,
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
-    isEquipped: () => boolean,
+    handEquipment: HandEquipmentSignal,
     getTargets: () => readonly PickaxeTarget[],
     isManualMovement = () => false,
     onRequest = () => {},
@@ -44,7 +46,10 @@ export class PickaxeActionController {
     this.world = world;
     this.animation = animation;
     this.locomotor = locomotor;
-    this.isEquipped = isEquipped;
+    this.handEquipment = handEquipment;
+    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
+      if (this.isEquipped(previous)) this.cancel(true);
+    });
     this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
     this.onRequest = onRequest;
@@ -58,6 +63,11 @@ export class PickaxeActionController {
     window.addEventListener('keydown', this.handleKeyDown);
   }
 
+  private isEquipped(equipment = this.handEquipment.peek()): boolean {
+    const itemId = equipment?.itemId;
+    return itemId === 'pickaxe' || itemId === 'goldenpickaxe';
+  }
+
   request(target: PickaxeTarget): boolean {
     if (!this.isEquipped() || !target.isValid() || this.animation.isMining
       || this.animation.isCasting || this.animation.isNetting) return false;
@@ -68,10 +78,9 @@ export class PickaxeActionController {
     return true;
   }
 
-  cancel(): void {
+  cancel(owned = this.isEquipped()): void {
     this.actionVersion++;
     // Only the equipped tool cancels its own action.
-    const owned = this.isEquipped();
     if (this.target || (owned && this.animation.isMining)) this.locomotor.stop();
     this.target = undefined;
     if (owned) this.animation.cancelMine();
@@ -103,6 +112,7 @@ export class PickaxeActionController {
   }
 
   dispose(): void {
+    this.stopEquipment();
     this.cancel();
     this.unregisterHover();
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();

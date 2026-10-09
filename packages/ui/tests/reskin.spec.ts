@@ -122,11 +122,12 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
     const game = (window as any).reskinGame;
     return game.main.inventory.addresses().some((slot: any) => slot.containerId === game.containerId);
   })).toBe(true);
-  await page.evaluate(() => {
+  const storedItem = await page.evaluate(() => {
     const game = (window as any).reskinGame;
     if (!game.main.inventory.applySlotChanges([
       { slot: { containerId: game.containerId, slotKey: '8' }, itemId: 'log', delta: 2 },
     ])) throw new Error('Unable to fill reskinned chest');
+    return game.main.inventory.getEntity({ containerId: game.containerId, slotKey: '8' }).snapshot();
   });
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
@@ -140,7 +141,7 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
   const chest = save.world.entities.treasurechest.find((entity: any) => entity.id === id);
   expect(chest.components.building).toEqual({ state: 'closed', skinId: 'treasurechest_ancient' });
   expect(chest.components.container).toEqual({ slotCount: 9, slots: [
-    { slotKey: '8', item: { itemId: 'log', count: 2 } },
+    { slotKey: '8', item: storedItem },
   ] });
   expect(Object.keys(save.world.entities).some((prefab) => prefab.includes('reskin') || prefab.includes('explode'))).toBe(false);
   expect(errors).toEqual([]);

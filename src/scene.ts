@@ -20,13 +20,15 @@ import { dstLighting, scene } from './universal';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
 import { initialSave } from './save/initialSave';
-import { getDstCycle } from './tuning';
 import type { RuntimeSaveState } from './save/serialize';
+import { createWorldState, createWorldClockUpdater } from './worldState';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 
 export const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
 });
+
+export const worldState = createWorldState(initialSave.world);
 
 const groundMaterial = new CANNON.Material('ground');
 const groundBody = new CANNON.Body({
@@ -124,6 +126,7 @@ export async function startScene(
     await registry.restoreAll(initialSave.world.entities);
   } catch (error) {
     registry.dispose();
+    worldState.worldtemperature.dispose();
     throw error;
   }
   const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
@@ -134,19 +137,18 @@ export async function startScene(
     updateCharacterRenderOrder(registry);
   };
   middleTasks.push(updateBeforePhysics);
+  const stopClockLighting = worldState.clock.subscribe(({ phase }) => dstLighting.setPhase(phase));
+  const stopSeasonLighting = worldState.season.subscribe(({ season }) => dstLighting.setSeason(season));
+  dstLighting.setPhase(worldState.clock.peek().phase);
+  dstLighting.setSeason(worldState.season.peek().season);
+  const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, onClockTick);
+  backTasks.push(clockUpdater.update);
   backTasks.push(updateEntities);
-  let elapsedSeconds = initialSave.world.elapsedSeconds;
-  dstLighting.setPhase(getDstCycle(elapsedSeconds).phase);
-  onClockTick?.(elapsedSeconds, 0);
-  const updateClock = (dt: number) => {
-    elapsedSeconds += dt;
-    dstLighting.setPhase(getDstCycle(elapsedSeconds).phase);
-    onClockTick?.(elapsedSeconds, dt);
-  };
-  backTasks.push(updateClock);
   const getSaveState = (): Omit<RuntimeSaveState, 'inventory'> => {
+    clockUpdater.flush();
     return {
-      entities: registry.exportRecords(), elapsedSeconds, tiles: turfMap.exportTiles(),
+      entities: registry.exportRecords(), elapsedSeconds: clockUpdater.elapsedSeconds, tiles: turfMap.exportTiles(),
+      worldtemperature: worldState.worldtemperature.OnSave(),
       // Physics may place the foot a fraction below the ground while settling.
       playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },
     };
@@ -155,13 +157,17 @@ export async function startScene(
   const stopAnimation = animate(world, camera);
   const dispose = () => {
     stopAnimation();
+    clockUpdater.flush();
     locomotor.stop();
     removeLocomotorInput();
-    for (const [tasks, task] of [[middleTasks, updateBeforePhysics], [backTasks, updateEntities], [backTasks, updateClock]] as const) {
+    stopClockLighting();
+    stopSeasonLighting();
+    for (const [tasks, task] of [[middleTasks, updateBeforePhysics], [backTasks, updateEntities], [backTasks, clockUpdater.update]] as const) {
       const index = tasks.indexOf(task);
       if (index >= 0) tasks.splice(index, 1);
     }
     registry.dispose();
+    worldState.worldtemperature.dispose();
   };
   return { ...entities, byEntityId: registry.byEntityId, getSaveState, dispose };
 }

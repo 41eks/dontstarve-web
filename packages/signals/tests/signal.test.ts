@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createEffect, createMemo, createSignal, onCleanUp, readonlySignal } from '../src';
+import { batch, createEffect, createMemo, createSignal, onCleanUp, readonlySignal } from '../src';
 
 it('notifies synchronous subscribers of every transition while batching effects', async () => {
   const value = createSignal<number | null>(0);
@@ -47,4 +47,30 @@ it('retracks conditional dependencies and leaves peek reads untracked', async ()
   second.set(11); await Promise.resolve();
   expect(observed).toEqual([1, 10, 11]);
   dispose();
+  value.dispose();
+});
+
+it('keeps memo reads cached and current synchronously, and releases dependencies on dispose', () => {
+  const input = createSignal(2);
+  let calculations = 0;
+  const derived = createMemo(() => { calculations++; return input.get() * 3; });
+  const observed: number[] = [];
+  const stop = derived.subscribe(value => observed.push(value));
+  expect(derived()).toBe(6);
+  expect(derived.peek()).toBe(6);
+  expect(calculations).toBe(1);
+  input.set(4);
+  expect(derived.get()).toBe(12);
+  expect(observed).toEqual([12]);
+  expect(calculations).toBe(2);
+  batch(() => { input.set(5); batch(() => input.set(6)); });
+  expect(derived()).toBe(18);
+  expect(observed).toEqual([12, 18]);
+  expect(calculations).toBe(3);
+  derived.dispose(); derived.dispose();
+  input.set(7);
+  expect(derived()).toBe(18);
+  expect(calculations).toBe(3);
+  expect(observed).toEqual([12, 18]);
+  stop();
 });

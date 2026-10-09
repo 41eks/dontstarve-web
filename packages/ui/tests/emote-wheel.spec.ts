@@ -82,3 +82,28 @@ test('cancel, back, repeat G, blur and shadow text input do not execute a select
   expect(await page.evaluate(() => window.emoteFixture.moving)).toBe(false);
   expect(await page.evaluate(() => window.emoteFixture.requests)).toEqual([]);
 });
+
+test('Space interrupts an emote and jumps during automatic travel; opposing movement keys cancel the destination', async ({ page }) => {
+  await page.evaluate(async () => {
+    const { animation, locomotor, model } = window.emoteFixture;
+    await animation.playEmote('dance');
+    locomotor.goToPoint(model.position.clone().set(8, 0, 0));
+  });
+  await page.keyboard.down('Space');
+  await page.evaluate(() => window.emoteFixture.tick());
+  expect(await page.evaluate(() => ({
+    emote: window.emoteFixture.animation.currentEmote,
+    velocity: window.emoteFixture.velocity,
+    destination: window.emoteFixture.locomotor.destination?.toArray(),
+  }))).toEqual({ emote: null, velocity: [6, 10, 0], destination: [8, 0, 0] });
+  await page.keyboard.up('Space');
+  await page.keyboard.down('w');
+  await page.keyboard.down('s');
+  await page.evaluate(() => window.emoteFixture.tick());
+  expect(await page.evaluate(() => ({
+    horizontalSpeed: Math.hypot(window.emoteFixture.velocity[0], window.emoteFixture.velocity[2]),
+    hasDestination: !!window.emoteFixture.locomotor.destination,
+  }))).toEqual({ horizontalSpeed: 0, hasDestination: false });
+  await page.keyboard.up('w');
+  await page.keyboard.up('s');
+});

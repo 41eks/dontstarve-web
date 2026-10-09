@@ -33,9 +33,6 @@ import {
   PointerRaycaster,
 } from '@dontstarve-web/stategraphs';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
-import { isPitchforkTool } from '@dontstarve-web/prefab/pitchfork';
-import { isFarmHoeTool } from '@dontstarve-web/prefab/farm_hoe';
-import { isShovelTool } from '@dontstarve-web/prefab/shovel';
 import { FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { FOOD_EFFECTS } from '@dontstarve-web/prefab/food';
 import { startCookPotCooking } from '@dontstarve-web/prefab/cook_pot';
@@ -65,8 +62,8 @@ import { isPlaceableBuildingId } from './placeableBuilding';
 import {
   createInventoryStore,
 } from './inventory';
-import { locomotor, startScene } from './scene';
-import { getDstClock, getDstCycle } from './tuning';
+import { locomotor, startScene, worldState } from './scene';
+import { getDstClock } from './tuning';
 import { initialSave } from './save/initialSave';
 import { inventoryStateFromSave } from './save/inventoryState';
 import { SAVE_CATALOG } from './save/catalog';
@@ -80,8 +77,8 @@ const lighting = await DstLightingRenderer.create(
   renderer,
   `${import.meta.env.BASE_URL}dst/data/images/colour_cubes`,
   {
-    season: initialSave.world.systems.season?.name ?? 'spring',
-    phase: getDstCycle(initialSave.world.elapsedSeconds).phase,
+    season: worldState.season.peek().season,
+    phase: worldState.clock.peek().phase,
     sanityPercent: playerStats.sanity.percent,
   },
 );
@@ -289,7 +286,7 @@ gameUi.cookPotPanel.addEventListener('game:cook-request', event => {
     BASE_COOK_TIME * recipe[1]));
 });
 const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor, farmPlow,
-  () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+  input.isActionInterrupting,
   (error) => console.error('Unable to use food', error), () => slotTransferController.clearSelection()) : undefined;
 if (foodActions) {
   frontTasks.push(() => foodActions.update());
@@ -310,9 +307,9 @@ function inventoryFoodSource(slot: SlotAddress, itemId: string): FoodSource {
 
 if (playerAnimation) {
   const bugNet = new BugNetCaptureController(view, playerAnimation, locomotor,
-    () => inventory.get(handSlotAddress)?.itemId === 'bugnet',
+    handEquipment,
     () => groundItems.netCaptureTargets,
-    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)));
+    input.isActionInterrupting);
   cancelNetCapture = () => bugNet.cancel();
   groundItems.setNetCaptureHandler((target) => {
     if (!bugNet.request(target)) return false;
@@ -323,65 +320,59 @@ if (playerAnimation) {
   frontTasks.push((dt) => bugNet.update(dt));
   window.addEventListener('pagehide', () => bugNet.dispose(), { once: true });
 }
-if (playerAnimation) setupLightStaffCasting(view, playerAnimation, dwarfStars,
-  () => inventory.get(handSlotAddress)?.itemId === 'yellowstaff',
-  () => locomotor.stop(),
-  (error) => console.error('Unable to summon dwarf star', error));
-if (playerAnimation) setupLightStaffCasting(view, playerAnimation, polarLights,
-  () => inventory.get(handSlotAddress)?.itemId === 'opalstaff',
-  () => locomotor.stop(),
-  (error) => console.error('Unable to summon polar light', error));
+if (playerAnimation) {
+  const stopDwarfStarCasting = setupLightStaffCasting(view, playerAnimation, dwarfStars,
+    handEquipment, () => locomotor.stop(), (error) => console.error('Unable to summon dwarf star', error));
+  const stopPolarLightCasting = setupLightStaffCasting(view, playerAnimation, polarLights,
+    handEquipment, () => locomotor.stop(), (error) => console.error('Unable to summon polar light', error));
+  window.addEventListener('pagehide', () => {
+    stopDwarfStarCasting(); stopPolarLightCasting();
+  }, { once: true });
+}
 
 if (playerAnimation) {
   const hammer = new HammerActionController(view, playerAnimation, locomotor,
-    () => inventory.get(handSlotAddress)?.itemId === 'hammer',
+    handEquipment,
     () => [...buildingPlacement.hammerTargets, ...farmPlow.hammerTargets, ...groundItems.hammerTargets],
-    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    input.isActionInterrupting,
     () => {
       cancelNetCapture();
       flowerPlanting.cancel();
       buildingPlacement.cancel();
     });
-  const handTool = () => inventory.get(handSlotAddress)?.itemId;
   const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
-    () => handTool() === 'pickaxe' || handTool() === 'goldenpickaxe',
+    handEquipment,
     () => rockManager.mineTargets,
-    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    input.isActionInterrupting,
     () => {
       cancelNetCapture();
       flowerPlanting.cancel();
       buildingPlacement.cancel();
     });
   const pitchfork = new PitchforkActionController(view, playerAnimation, locomotor,
-    () => isPitchforkTool(handTool() ?? ''), turfMap,
-    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    handEquipment, turfMap,
+    input.isActionInterrupting,
     () => {
       cancelNetCapture();
       flowerPlanting.cancel();
       buildingPlacement.cancel();
     });
   const farmHoe = new FarmHoeActionController(view, playerAnimation, locomotor,
-    () => {
-      const tool = inventory.get(handSlotAddress);
-      return tool && isFarmHoeTool(tool.itemId) ? tool : undefined;
-    }, farmPlow,
-    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    handEquipment, farmPlow,
+    input.isActionInterrupting,
     () => {
       cancelNetCapture(); foodActions?.cancel(); flowerPlanting.cancel(); buildingPlacement.cancel(); farmPlow.cancel();
     }, (error) => console.error('Unable to till farm soil', error));
   const shovel = new ShovelActionController(view, playerAnimation, locomotor,
-    () => isShovelTool(handTool() ?? ''), () => farmPlow.digTargets,
-    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    handEquipment, () => farmPlow.digTargets,
+    input.isActionInterrupting,
     () => {
       cancelNetCapture(); foodActions?.cancel(); flowerPlanting.cancel(); buildingPlacement.cancel(); farmPlow.cancel();
     });
   const reskin = new ReskinActionController(view, playerAnimation, locomotor,
-    () => {
-      const tool = inventory.get(handSlotAddress);
-      return tool?.itemId === 'reskin_tool' ? tool : undefined;
-    },
+    handEquipment,
     () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets], reskinEffects,
-    () => (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'] as const).some((key) => input.isPressed(key)),
+    input.isActionInterrupting,
     () => {
       cancelNetCapture(); hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); farmHoe.cancel(); shovel.cancel();
       flowerPlanting.cancel(); buildingPlacement.cancel();
@@ -390,7 +381,7 @@ if (playerAnimation) {
   cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); farmHoe.cancel(); shovel.cancel(); reskin.cancel(); farmPlow.cancel(); foodActions?.cancel(); };
   frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); pitchfork.update(dt); farmHoe.update(); shovel.update(dt); reskin.update(dt); });
   window.addEventListener('pagehide', () => {
-    reskin.dispose(); farmHoe.dispose(); shovel.dispose();
+    hammer.dispose(); pickaxe.dispose(); pitchfork.dispose(); reskin.dispose(); farmHoe.dispose(); shovel.dispose();
   }, { once: true });
 }
 
@@ -410,6 +401,7 @@ window.addEventListener('pagehide', () => {
   for (const stop of stopStatsHud) stop();
   lighting.dispose();
   inventory.dispose();
+  input.dispose();
   DisposeSounds();
   disposeAnimationAssets();
   disposeAtlasImages();

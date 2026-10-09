@@ -11,6 +11,7 @@ export interface RuntimeSaveState {
   elapsedSeconds: number;
   playerStats?: SavedPlayer['stats'];
   tiles?: TurfTileSave[];
+  worldtemperature?: SaveDocument['world']['systems']['worldtemperature'];
 }
 
 /** Captures current domain state; the loaded document supplies only world/session metadata. */
@@ -46,6 +47,10 @@ export function serializeSave(
     snapshot: { id: String(nextId).padStart(10, '0'), parentId, savedAt, reason: 'manual' },
     world: {
       ...structuredClone(template.world), elapsedSeconds: state.elapsedSeconds, entities,
+      systems: {
+        ...structuredClone(template.world.systems),
+        ...(state.worldtemperature === undefined ? {} : { worldtemperature: { ...state.worldtemperature } }),
+      },
       map: {
         ...structuredClone(template.world.map),
         ...(state.tiles === undefined ? {} : { tiles: structuredClone(state.tiles) }),

@@ -1,3 +1,4 @@
+import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -29,7 +30,8 @@ export class HammerActionController {
   private readonly world: WorldContext;
   private readonly animation: WilsonAnimationController;
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
-  private readonly isEquipped: () => boolean;
+  private readonly handEquipment: HandEquipmentSignal;
+  private readonly stopEquipment: () => void;
   private readonly getTargets: () => readonly HammerTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly onRequest: () => void;
@@ -38,7 +40,7 @@ export class HammerActionController {
     world: WorldContext,
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
-    isEquipped: () => boolean,
+    handEquipment: HandEquipmentSignal,
     getTargets: () => readonly HammerTarget[],
     isManualMovement = () => false,
     onRequest = () => {},
@@ -46,7 +48,10 @@ export class HammerActionController {
     this.world = world;
     this.animation = animation;
     this.locomotor = locomotor;
-    this.isEquipped = isEquipped;
+    this.handEquipment = handEquipment;
+    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
+      if (this.isEquipped(previous)) this.cancel(true);
+    });
     this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
     this.onRequest = onRequest;
@@ -60,6 +65,11 @@ export class HammerActionController {
     window.addEventListener('keydown', this.handleKeyDown);
   }
 
+  private isEquipped(equipment = this.handEquipment.peek()): boolean {
+    const itemId = equipment?.itemId;
+    return itemId === 'hammer';
+  }
+
   request(target: HammerTarget): boolean {
     if (!this.isEquipped() || !target.isValid() || this.animation.isHammering
       || this.animation.isCasting || this.animation.isNetting) return false;
@@ -70,10 +80,9 @@ export class HammerActionController {
     return true;
   }
 
-  cancel(): void {
+  cancel(owned = this.isEquipped()): void {
     this.actionVersion++;
     // Only the equipped tool cancels its own action.
-    const owned = this.isEquipped();
     if (this.target || (owned && this.animation.isHammering)) this.locomotor.stop();
     this.target = undefined;
     if (owned) this.animation.cancelHammer();
@@ -105,6 +114,7 @@ export class HammerActionController {
   }
 
   dispose(): void {
+    this.stopEquipment();
     this.cancel();
     this.unregisterHover();
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();

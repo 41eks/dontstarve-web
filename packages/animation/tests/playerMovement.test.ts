@@ -6,7 +6,7 @@ import { updateMovement } from '../../../src/updatePlayerMovement';
 import { FIXED_TIMESTEP, MAX_SUBSTEPS } from '../../../src/physicsTiming';
 import type { PlayerBody } from '../../../src/types/Player';
 
-vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false } }));
+vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
 
 it('pursues a fleeing creature at low frame rates with the actual physics substep budget', () => {
   const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(0.5), linearDamping: 0 }) as PlayerBody;

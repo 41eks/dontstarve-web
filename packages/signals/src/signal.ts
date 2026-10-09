@@ -25,6 +25,7 @@ type Effect = {
     deps: any[];            // 存它依赖的 Signal 对象
     depsIndices: number[];  // 存它在各个 Signal.subscribers 数组里的下标
     disposed: boolean;
+    synchronous: boolean;
 };
 
 type SignalNode = {
@@ -33,6 +34,24 @@ type SignalNode = {
 };
 
 let activeEffect: Effect | null = null;
+let batchDepth = 0;
+const pendingMemos = new Set<Effect>();
+
+/** Commit several inputs before recomputing their dependent memos. */
+export function batch<T>(fn: () => T): T {
+    batchDepth++;
+    try {
+        return fn();
+    } finally {
+        if (--batchDepth === 0) {
+            while (pendingMemos.size) {
+                const effects = [...pendingMemos];
+                pendingMemos.clear();
+                for (const effect of effects) effect.runner();
+            }
+        }
+    }
+}
 
 export function onCleanUp(fn: () => void) {
     if (activeEffect) {
@@ -43,13 +62,14 @@ export function onCleanUp(fn: () => void) {
 
 }
 
-export function createEffect(fn: () => void) {
+function createEffectInternal(fn: () => void, synchronous = false) {
     // 构造出一个标准的 Effect 对象
     const effect: Effect = {
         deps: [], // 初始化空账本
         depsIndices: [],
         cleanups: [],
         disposed: false,
+        synchronous,
         runner: () => {
             if (effect.disposed) return;
             // ✨ 核心清理动作：执行前，先把自己从所有旧的 Signal 依赖中清除
@@ -73,11 +93,16 @@ export function createEffect(fn: () => void) {
     return () => {
         if (effect.disposed) return;
         effect.disposed = true;
+        pendingMemos.delete(effect);
         queue.delete(effect.runner);
         cleanup(effect);
     };
 }
 
+
+export function createEffect(fn: () => void) {
+    return createEffectInternal(fn);
+}
 
 // 优化 1：直接接收初始值，简化 API
 export function createSignal<T>(initialValue: T): Signal<T> {
@@ -97,8 +122,12 @@ export function createSignal<T>(initialValue: T): Signal<T> {
 
         for (let i = 0; i < currentSubscribers.length; i++) {
             const effect = currentSubscribers[i];
-            if (effect != activeEffect) {
-                enqueue(effect.runner);
+            if (effect != activeEffect && !effect.disposed) {
+                if (effect.synchronous) {
+                    if (batchDepth > 0) pendingMemos.add(effect);
+                    else effect.runner();
+                }
+                else enqueue(effect.runner);
             }
         }
         for (const listener of [...listeners]) {
@@ -206,14 +235,28 @@ function _run() {
 };
 
 
-export function createMemo<T>(fn: () => T) {
+/** Callable, cached derived signal; dispose releases its input subscriptions. */
+export interface Memo<T> extends ReadonlySignal<T> {
+    (): T;
+    dispose(): void;
+}
+
+export function createMemo<T>(fn: () => T): Memo<T> {
     const memoState = createSignal<T | undefined>(undefined);
 
-    createEffect(() => {
+    // Derived values stay current within a game frame; presentation effects
+    // still use the normal microtask queue to batch their work.
+    const dispose = createEffectInternal(() => {
         const newValue = fn();
 
         memoState.set(newValue);
-    });
+    }, true);
 
-    return memoState.get;
+    const read = () => memoState.get() as T;
+    return Object.assign(read, {
+        get: read,
+        peek: () => memoState.peek() as T,
+        subscribe: (listener: SignalListener<T>) => memoState.subscribe((value, previous) => listener(value as T, previous as T)),
+        dispose,
+    });
 }
