@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor, CursorLabel } from './actionContext.ts';
+import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { FarmActionWorld, PreparedFarmTill } from './farmActions.ts';
 type FarmPlowPlacement = Pick<FarmActionWorld, 'canTill' | 'prepareTill'>;
 
@@ -13,7 +13,7 @@ const TILL_REACH = 4;
 /** Right-click TILL at the exact pointer point on an existing farming tile. */
 export class FarmHoeActionController {
   private readonly pointer: PointerRaycaster;
-  private readonly label: CursorLabel;
+  private readonly unregisterHover: () => void;
   private target?: THREE.Vector3;
   private prepared?: PreparedFarmTill;
   private loading = false;
@@ -38,8 +38,9 @@ export class FarmHoeActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.equipped = equipped; this.farm = farm; this.isManualMovement = isManualMovement;
     this.onRequest = onRequest; this.onError = onError;
-    this.pointer = new PointerRaycaster(world);
-    this.label = world.createCursorLabel?.(this.pointer) ?? { show() {}, hide() {}, update() {} };
+    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.unregisterHover = world.mouseActions?.register(() => this.hitTarget()
+      ? [{ action: { action: 'TILL' }, button: 'right' }] : []) ?? (() => {});
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
   }
@@ -57,13 +58,11 @@ export class FarmHoeActionController {
     if (this.target) this.locomotor.stop();
     this.target = undefined; this.loading = false;
     this.prepared?.dispose(); this.prepared = undefined;
-    this.animation.cancelTill(); this.label.hide();
+    this.animation.cancelTill();
   }
 
   update(): void {
     if (!isFarmHoeTool(this.equipped()?.itemId ?? '') || this.isManualMovement()) { this.cancel(); return; }
-    if (this.hitTarget()) this.label.show(': 耕地', 'right'); else this.label.hide();
-    this.label.update();
     if (this.prepared && !this.target && !this.animation.isTilling) {
       this.prepared.dispose(); this.prepared = undefined;
     }
@@ -134,7 +133,9 @@ export class FarmHoeActionController {
   private readonly handleKeyDown = (event: KeyboardEvent): void => { if (event.code === 'Escape') this.cancel(); };
   dispose(): void {
     if (this.disposed) return;
-    this.disposed = true; this.cancel(); this.pointer.dispose();
+    this.disposed = true; this.cancel();
+    this.unregisterHover();
+    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }

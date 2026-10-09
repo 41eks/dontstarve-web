@@ -160,6 +160,9 @@ importers:
       '@dontstarve-web/signals':
         specifier: workspace:*
         version: link:../signals
+      '@dontstarve-web/stategraphs':
+        specifier: workspace:*
+        version: link:../stategraphs
       three:
         specifier: ^0.184.0
         version: 0.184.0

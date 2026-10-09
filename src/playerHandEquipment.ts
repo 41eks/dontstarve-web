@@ -1,12 +1,13 @@
 import { ItemEntity } from '@dontstarve-web/inventory';
 import type { HandEquipment, Signal } from '@dontstarve-web/signals';
+import type { ActionDescription } from '@dontstarve-web/stategraphs';
 import { getHandEquipmentDefinition, preloadHandEquipment, type HandEquipmentContext } from '@dontstarve-web/prefab/handEquipment';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { bindPlayerEquipment } from './playerEquipment';
 
 export interface PlayerHandEquipmentOptions extends HandEquipmentContext {
   animation?: Pick<WilsonAnimationController, 'setCarryItem' | 'playItemTransition'>;
-  setHandAction(action: string | null): void;
+  setHandAction(action: ActionDescription | null): void;
   handEquipmentExistenceState: Signal<HandEquipment | null>;
 }
 

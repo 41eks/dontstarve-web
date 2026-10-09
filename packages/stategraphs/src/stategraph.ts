@@ -1,3 +1,5 @@
+import type { BufferedAction } from './bufferedaction.ts';
+
 /** DST constants.lua: one source animation frame is 1/30 second. */
 export const FRAMES = 1 / 30;
 
@@ -39,13 +41,24 @@ export function EventHandler<Context, Name extends string>(
   return { name, fn };
 }
 
-export function ActionHandler<Action extends string, Name extends string>(action: Action, state: Name) {
-  return { action, state };
+export interface StateActionHandler<Context, Name extends string> {
+  action: string;
+  deststate: (inst: StateGraphInstance<Context, Name>, action: BufferedAction) => Name | null | undefined;
+  condition?: (inst: StateGraphInstance<Context, Name>) => boolean;
+}
+
+/** scripts/stategraph.lua: string destinations are constant destination functions. */
+export function ActionHandler<Context, Name extends string>(
+  action: string, state: Name | StateActionHandler<Context, Name>['deststate'],
+  condition?: StateActionHandler<Context, Name>['condition'],
+): StateActionHandler<Context, Name> {
+  return { action, deststate: typeof state === 'string' ? () => state : state, condition };
 }
 
 /** State-local timelines and tags, mirroring scripts/stategraph.lua. */
 export class StateGraphInstance<Context, Name extends string> {
   private readonly states = new Map<Name, StateDefinition<Context, Name>>();
+  private readonly actionHandlers = new Map<string, StateActionHandler<Context, Name>>();
   private readonly listeners = new Map<string, Set<(data: unknown) => void>>();
   private current!: StateDefinition<Context, Name>;
   private tags = new Set<string>();
@@ -54,16 +67,24 @@ export class StateGraphInstance<Context, Name extends string> {
   private revision = 0;
   private clock = 0;
   private readonly scheduled = new Set<{ time: number; fn: () => void }>();
+  statemem: Record<string, unknown> = {};
   timeInState = 0;
   readonly context: Context;
 
-  constructor(context: Context, states: readonly StateDefinition<Context, Name>[]) {
+  constructor(
+    context: Context, states: readonly StateDefinition<Context, Name>[],
+    actionHandlers: readonly StateActionHandler<Context, Name>[] = [],
+  ) {
     this.context = context;
     for (const state of states) {
       if (this.states.has(state.name)) throw new Error(`Duplicate state ${state.name}`);
       this.states.set(state.name, {
         ...state, timeline: [...state.timeline ?? []].sort((a, b) => a.time - b.time),
       });
+    }
+    for (const handler of actionHandlers) {
+      if (this.actionHandlers.has(handler.action)) throw new Error(`Duplicate action handler ${handler.action}`);
+      this.actionHandlers.set(handler.action, handler);
     }
   }
 
@@ -73,11 +94,27 @@ export class StateGraphInstance<Context, Name extends string> {
   hasStateTag(tag: string): boolean { return this.tags.has(tag); }
   addStateTag(tag: string): void { this.tags.add(tag); }
   removeStateTag(tag: string): void { this.tags.delete(tag); }
+  hasAnyStateTag(...tags: readonly string[]): boolean { return tags.some(tag => this.hasStateTag(tag)); }
+
+  getActionState(action: BufferedAction): Name | null {
+    const handler = this.actionHandlers.get(action.action);
+    if (!handler || (handler.condition && !handler.condition(this))) return null;
+    const destination = handler.deststate(this, action);
+    return destination != null && this.states.has(destination) ? destination : null;
+  }
+
+  startAction(action: BufferedAction): boolean {
+    const destination = this.getActionState(action);
+    if (destination === null) return false;
+    this.goToState(destination);
+    return true;
+  }
 
   goToState(name: Name, data?: unknown): void {
     const state = this.states.get(name);
     if (!state) throw new Error(`Unknown state ${name}`);
     this.current?.onexit?.(this, name);
+    this.statemem = {};
     this.current = state;
     this.revision++;
     this.timeInState = 0;

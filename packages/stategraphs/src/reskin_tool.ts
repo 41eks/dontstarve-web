@@ -1,7 +1,7 @@
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor, CursorLabel } from './actionContext.ts';
+import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 export interface PreparedReskin {
   /** Commit the prepared appearance only if its source entity is still valid. */
   apply(): boolean;
@@ -36,11 +36,10 @@ export class ReskinActionController {
   private readonly onRequest: () => void;
   private readonly onError: (error: unknown) => void;
   private readonly pointer: PointerRaycaster;
-  private readonly label: CursorLabel;
+  private readonly unregisterHover: () => void;
   private version = 0;
   private pending?: { target: ReskinTarget; prepared: PreparedReskin; skinId?: string; started: boolean };
   private loading = false;
-  private hovering = false;
 
   constructor(
     world: WorldContext,
@@ -56,8 +55,11 @@ export class ReskinActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.getTool = getTool; this.getTargets = getTargets; this.effects = effects;
     this.isManualMovement = isManualMovement; this.onRequest = onRequest; this.onError = onError;
-    this.pointer = new PointerRaycaster(world);
-    this.label = world.createCursorLabel?.(this.pointer) ?? { show() {}, hide() {}, update() {} };
+    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.unregisterHover = world.mouseActions?.register(() =>
+      this.getTargets().filter(target => target.isValid()).map(target => ({
+        action: { action: 'CASTSPELL', modifier: 'RESKIN' }, button: 'right', model: target.model, available: !!this.getTool(),
+      }))) ?? (() => {});
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
   }
@@ -94,12 +96,6 @@ export class ReskinActionController {
   }
 
   update(_dt: number): void {
-    const hovering = !!this.hitTarget();
-    if (hovering !== this.hovering) {
-      this.hovering = hovering;
-      if (hovering) this.label.show(': 换肤', 'right'); else this.label.hide();
-    }
-    this.label.update();
     if (!this.getTool() || this.isManualMovement()) { this.cancel(); return; }
     const pending = this.pending;
     if (!pending) return;
@@ -133,7 +129,9 @@ export class ReskinActionController {
   }
 
   dispose(): void {
-    this.cancel(); this.label.hide(); this.pointer.dispose();
+    this.cancel();
+    this.unregisterHover();
+    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }

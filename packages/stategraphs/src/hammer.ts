@@ -1,7 +1,7 @@
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor, CursorLabel } from './actionContext.ts';
+import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 
 export const HAMMER_HIT_TIME = WILSON_ACTION_TIMES.mine;
 export const HAMMER_REACH = 4;
@@ -19,10 +19,9 @@ export interface HammerTarget {
 /** componentactions: HAMMER_tool + HAMMER_workable, on the right mouse button. */
 export class HammerActionController {
   private readonly pointer: PointerRaycaster;
-  private readonly label: CursorLabel;
+  private readonly unregisterHover: () => void;
   private target?: HammerTarget;
   private actionVersion = 0;
-  private hoveredId?: string;
   private readonly direction = new THREE.Vector3();
   private readonly forward = new THREE.Vector3();
   private readonly right = new THREE.Vector3();
@@ -51,8 +50,11 @@ export class HammerActionController {
     this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
     this.onRequest = onRequest;
-    this.pointer = new PointerRaycaster(world);
-    this.label = world.createCursorLabel?.(this.pointer) ?? { show() {}, hide() {}, update() {} };
+    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.unregisterHover = world.mouseActions?.register(() =>
+      this.getTargets().filter(target => target.isValid()).map(target => ({
+        action: { action: 'HAMMER' }, button: 'right', model: target.model, available: this.isEquipped(),
+      }))) ?? (() => {});
     // Register in capture so a work click cannot open a container or place a building.
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -78,7 +80,6 @@ export class HammerActionController {
   }
 
   update(_dt: number): void {
-    this.updateHover();
     if (!this.isEquipped() || this.isManualMovement()) { this.cancel(); return; }
     if (!this.target) return;
     const target = this.target;
@@ -105,8 +106,8 @@ export class HammerActionController {
 
   dispose(): void {
     this.cancel();
-    this.label.hide();
-    this.pointer.dispose();
+    this.unregisterHover();
+    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }
@@ -134,16 +135,6 @@ export class HammerActionController {
     let root: THREE.Object3D | null = hit?.object ?? null;
     while (root && !targets.some(({ model }) => model === root)) root = root.parent;
     return targets.find(({ model }) => model === root);
-  }
-
-  private updateHover(): void {
-    const hovered = this.hitTarget();
-    if (hovered?.id !== this.hoveredId) {
-      this.hoveredId = hovered?.id;
-      if (hovered) this.label.show(': 锤击', 'right');
-      else this.label.hide();
-    }
-    this.label.update();
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

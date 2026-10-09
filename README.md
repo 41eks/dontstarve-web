@@ -28,7 +28,9 @@ https://41eks.github.io/dontstarve-web/
 
 玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。`src/main.ts` 将物品栏状态、移动、动画和目标操作接口接入控制器；`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。
 
-`SGwilson` 的已支持源状态按 Lua 顺序显式写成 `State({ name, tags, onenter, onupdate, timeline, ontimeout, events, onexit })`，仅填写已实现的回调；标签使用源定义，浏览器动作身份另行维护。动画完成事件与状态超时独立，采矿、锤击、挖掘及耕坑的收尾动画在 `idle` 内继续播放。种植使用 `doshortaction`，第 6 帧提交，第 10 帧超时进入待机并保留动画队列。浏览器移动/制作/半速拾取状态及暂缺的 Lua 分支见 [状态图源码核对](docs/dst-stategraphs.md)。`c_spawn`、`c_give`、`c_emote` 和 `c_save` 的语法、参数及支持 ID 保持不变。
+`SGwilson` 的已支持源状态按 Lua 顺序显式写成 `State({ name, tags, onenter, onupdate, timeline, ontimeout, events, onexit })`，仅填写已实现的回调；标签使用源定义，浏览器动作身份另行维护。状态图的外部状态请求使用 `request…`，进入状态后的回调使用 `onEnter…`。`ActionHandler` 支持源动态目标函数和可选条件：采矿、锤击、挖掘、捕虫读取前摇/工作标签决定拒绝、前摇或动作循环；扫把换肤使用 `CASTSPELL`，由工具的 `veryquickcast` 标签选择快施法状态。浏览器跳跃、制作和半速拾取以 `busy` 阻止新动作，跳跃期间所有动作等待落地；表情检查源 `busy/nopredict/sleeping/floating` 标签，可以打断未被这些标签阻止的工作状态。动画完成事件与状态超时独立，采矿、锤击、挖掘及耕坑的收尾动画在 `idle` 内继续播放。种植使用 `doshortaction`，第 6 帧提交，第 10 帧超时进入待机并保留动画队列，退出仅清理自己的缓冲动作。浏览器适配及暂缺的 Lua 分支见 [状态图源码核对](docs/dst-stategraphs.md)。`c_spawn`、`c_give`、`c_emote` 和 `c_save` 的语法、参数及支持 ID 保持不变。
+
+悬停文字按 Lua 的动作选择与 `hoverer` 分工统一显示：共享鼠标命中，按源优先级分别选择左右键动作，文字取自源简体中文字符串；控制器只注册动作候选。左键显示原版左键图标及动作文字，右键显示原版右键图标及 `: 动作文字`，可以同时显示两条；建造预览提示优先，鼠标位于 UI 上时隐藏世界提示，文字限制在屏幕边界内。用 `c_give("bugnet")`、`c_give("hammer")`、`c_give("reskin_tool")` 获取并装备相应工具后，目标上分别显示“捕捉”“敲”“打扫”；播种提示为“栽种”，铲子/干草叉为“挖”。选中唱片后，仅在靠近且可插片的留声机上显示“放置唱片”。卸装或目标失效后提示自动清除。详见 [鼠标悬停动作文字](docs/dst-hover-text.md)。这些命令的参数和支持 prefab/item ID 保持不变。
 
 
 物品现在按 Lua 的 `Inventory:GiveItem/Equip/DropItem` 与 `Stackable:Get/Put` 交接实体：背包、装备槽和地面持有同一物品实体，整件转移、拾取、丢弃和换肤保留 ID 与组件；拆堆创建新实体，合堆保留接收方实体。火把控制器随实体保留，卸下只停止燃烧，耗尽才移除实体。`c_save()` 的库存物品快照新增可选 `entityId`，地面仍保存记录 `id`；旧存档缺少物品 ID 时自动分配。`c_give`、`c_spawn` 和 `c_save` 的语法、参数和支持 ID 保持不变，细节见 [库存架构](docs/inventory-architecture.md)。

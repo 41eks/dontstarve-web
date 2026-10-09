@@ -1,6 +1,7 @@
 import { BufferedAction } from './bufferedaction.ts';
-import { ActionHandler, EventHandler, FRAMES, State as DefineState, StateGraphInstance, TimeEvent } from './stategraph.ts';
-import type { StateDefinition } from './stategraph.ts';
+import type { BufferedActionObject } from './bufferedaction.ts';
+import { ActionHandler as DefineActionHandler, EventHandler, FRAMES, State as DefineState, StateGraphInstance, TimeEvent } from './stategraph.ts';
+import type { StateActionHandler, StateDefinition } from './stategraph.ts';
 
 export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
 export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'pickup';
@@ -8,7 +9,7 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'mine_start' | 'mine' | 'hammer_start' | 'hammer'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
   | 'quickeat' | 'doshortaction' | 'till_start' | 'till' | 'dig_start' | 'dig';
-export type WilsonAction = 'MINE' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'RESKIN' | 'EAT' | 'PLANT' | 'TILL' | 'DIG';
+export type WilsonAction = 'MINE' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
@@ -40,6 +41,7 @@ export interface WilsonStateGraphHost {
 
 type WilsonInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName>;
 const State = DefineState<WilsonStateGraph, WilsonStateName>;
+const ActionHandler = DefineActionHandler<WilsonStateGraph, WilsonStateName>;
 const clip = (key: WilsonAnimationKey, name: string = key): WilsonAnimationClip => ({ key, name });
 
 /**
@@ -52,7 +54,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
   State({
     name: 'idle',
     tags: ['idle', 'canrotate'],
-    onenter: (inst, pushanim) => inst.context.enterIdle(pushanim === true),
+    onenter: (inst, pushanim) => inst.context.onEnterIdle(pushanim === true),
   }),
   State({
     name: 'mine_start',
@@ -219,7 +221,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
   State({
     name: 'quickeat',
     tags: ['busy', 'keep_pocket_rummage'],
-    onenter: (inst) => inst.context.playQuickEatClips(),
+    onenter: (inst) => inst.context.onEnterQuickEat(),
     timeline: [
       TimeEvent(10 * FRAMES, (inst) => inst.context.host.playSound(inst.context.isDrinking ? 'sip' : 'eat')),
       TimeEvent(12 * FRAMES, (inst) => {
@@ -239,6 +241,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     tags: ['doing', 'busy', 'keepchannelcasting', 'keep_pocket_rummage'],
     onenter: (inst) => {
       inst.context.playClips([clip('pickup'), clip('pickup_pst')]);
+      inst.statemem.action = inst.context.getBufferedAction();
       inst.setTimeout(10 * FRAMES);
     },
     timeline: [
@@ -248,7 +251,9 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       }),
     ],
     ontimeout: (inst) => inst.goToState('idle', true),
-    onexit: (inst) => inst.context.clearBufferedAction(),
+    onexit: (inst) => {
+      if (inst.context.getBufferedAction() === inst.statemem.action) inst.context.clearBufferedAction();
+    },
   }),
   State({
     name: 'item_in',
@@ -312,7 +317,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
   State({
     name: 'emote',
     tags: ['busy', 'pausepredict'],
-    onenter: (inst) => inst.context.playEmoteClips(),
+    onenter: (inst) => inst.context.onEnterEmote(),
     timeline: [
       TimeEvent(.5, (inst) => {
         inst.removeStateTag('busy');
@@ -372,16 +377,17 @@ const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = 
   }),
   State({
     name: 'jump',
-    tags: ['jumping'],
+    tags: ['jumping', 'busy'],
     onenter: (inst) => inst.context.playClips([{ ...clip('jump'), loop: true }]),
   }),
   State({
     name: 'build',
-    tags: ['crafting'],
+    tags: ['crafting', 'busy'],
     onenter: (inst) => inst.context.playClips([{ ...clip('build', 'build_loop'), loop: true }]),
   }),
   State({
     name: 'pickup',
+    tags: ['busy'],
     onenter: (inst) => inst.context.playClips([{ ...clip('pickup'), playbackRate: .5 }]),
     events: [
       EventHandler('animover', (inst) => {
@@ -391,14 +397,47 @@ const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = 
   }),
 ];
 
-const actionHandlers = [
-  ActionHandler('MINE', 'mine_start'), ActionHandler('HAMMER', 'hammer_start'),
-  ActionHandler('NET', 'bugnet_start'), ActionHandler('TERRAFORM', 'terraform'),
-  ActionHandler('CASTSPELL', 'castspell'), ActionHandler('RESKIN', 'veryquickcastspell'),
-  ActionHandler('EAT', 'quickeat'), ActionHandler('PLANT', 'doshortaction'),
+/** SGwilson.lua action handlers for the supported, unmounted player/tool branches. */
+const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = [
+  ActionHandler('MINE', (inst) => {
+    if (inst.hasStateTag('premine')) return null;
+    return inst.hasStateTag('mining') ? 'mine' : 'mine_start';
+  }),
+  ActionHandler('HAMMER', (inst) => {
+    if (inst.hasStateTag('prehammer')) return null;
+    return inst.hasStateTag('hammering') ? 'hammer' : 'hammer_start';
+  }),
+  ActionHandler('DIG', (inst) => {
+    if (inst.hasStateTag('predig')) return null;
+    return inst.hasStateTag('digging') ? 'dig' : 'dig_start';
+  }),
+  ActionHandler('NET', (inst, action) => {
+    // The source nabbag branch requires an unported state.
+    if (action.invobject?.hasTag('nabbag')) return null;
+    if (!action.invobject?.hasTag('NET_tool')) return 'doshortaction';
+    if (inst.hasStateTag('prenet')) return null;
+    return inst.hasStateTag('netting') ? 'bugnet' : 'bugnet_start';
+  }),
+  ActionHandler('PLANT', 'doshortaction'),
+  ActionHandler('TERRAFORM', 'terraform'),
+  ActionHandler('EAT', (inst) => {
+    if (inst.hasStateTag('busy')) return null;
+    // FoodActionController validates edible food; only quickeat is connected.
+    // Source food preference, slow/meat eating and floating branches remain unported.
+    return 'quickeat';
+  }),
+  ActionHandler('CASTSPELL', (_inst, action) => {
+    const tool = action.invobject;
+    // These source destinations need states/assets not yet implemented.
+    if (tool?.hasTag('gnarwail_horn') || tool?.hasTag('guitar')
+      || tool?.hasTag('cointosscast') || tool?.hasTag('crushitemcast')
+      || tool?.hasTag('quickcast')) return null;
+    if (tool?.hasTag('veryquickcast')) return 'veryquickcastspell';
+    if (tool?.hasTag('mermbuffcast')) return null;
+    return 'castspell';
+  }),
   ActionHandler('TILL', 'till_start'),
-  ActionHandler('DIG', 'dig_start'),
-] as const;
+];
 
 export class WilsonStateGraph {
   readonly host: WilsonStateGraphHost;
@@ -412,12 +451,13 @@ export class WilsonStateGraph {
   private emoteClips: readonly WilsonAnimationClip[] = [];
   private foodDrink = false;
   private activeAction: WilsonAction | null = null;
+  private activeInvobject: BufferedActionObject | undefined;
   private cancelAnimation: (() => void) | undefined;
   private animationCompleted = false;
 
   constructor(host: WilsonStateGraphHost) {
     this.host = host;
-    this.sg = new StateGraphInstance(this, [...states, ...applicationStates]);
+    this.sg = new StateGraphInstance(this, [...states, ...applicationStates], actionHandlers);
     this.sg.listenForEvent('newstate', () => this.host.onStateChanged(this.sg.stateName));
     this.sg.goToState('idle');
   }
@@ -442,11 +482,16 @@ export class WilsonStateGraph {
   get animationDone(): boolean { return this.animationCompleted; }
 
   /** Browser action ownership is separate from Lua's state tags. */
-  isPerformingAction(action: WilsonAction): boolean { return this.activeAction === action; }
+  isPerformingAction(action: WilsonAction, invobjectPrefab?: string): boolean {
+    return this.activeAction === action
+      && (invobjectPrefab === undefined || this.activeInvobject?.prefab === invobjectPrefab);
+  }
 
-  enterIdle(pushanim: boolean): void {
+  /** Called by idle.onenter after the state has already been entered. */
+  onEnterIdle(pushanim: boolean): void {
     this.clearBufferedAction();
     this.activeAction = null;
+    this.activeInvobject = undefined;
     // Resume movement/crafting requested by browser input during an action.
     // Keep Lua's idle state while a pushed post-animation is still playing.
     if (!pushanim && (this.crafting || this.movementState !== 'idle')) {
@@ -492,42 +537,46 @@ export class WilsonStateGraph {
     }
   }
 
-  start(state: WilsonMovementState): void {
+  /** Record requested movement; resume it when the current action finishes. */
+  requestMovement(state: WilsonMovementState): void {
     if (state !== 'idle' && this.stateName === 'emote') this.cancelEmote();
     if (state === this.movementState) return;
     this.movementState = state;
     if (!this.crafting && !this.isOneShot && this.stateName !== 'emote') this.sg.goToState(state);
   }
 
-  setCrafting(crafting: boolean): void {
+  /** Update the persistent browser crafting request and reconcile the state. */
+  requestCrafting(crafting: boolean): void {
     if (crafting === this.crafting) return;
     this.crafting = crafting;
     if (crafting && (this.activeAction !== null || this.stateName === 'emote')) this.finish();
     else if (!this.isOneShot) this.sg.goToState(crafting ? 'build' : this.movementState);
   }
 
-  playOneShot(state: WilsonOneShotState): void {
+  /** Request a visual state, interrupting any buffered action. */
+  requestOneShot(state: WilsonOneShotState): void {
     this.clearBufferedAction();
     this.activeAction = null;
+    this.activeInvobject = undefined;
     this.sg.goToState(state);
   }
 
-  canStartAction(action: WilsonAction): boolean {
-    return !this.isOneShot && !this.crafting
-      && (!this.isJumping || action === 'NET' || action === 'CASTSPELL');
-  }
-
   pushBufferedAction(action: BufferedAction<WilsonAction>, foodDrink = false): boolean {
-    if (!this.canStartAction(action.action) || !action.isValid()) return false;
-    const handler = actionHandlers.find((entry) => entry.action === action.action);
-    if (!handler) return false;
+    // Browser input admission mirrors PlayerController:IsBusy(). The generic
+    // stategraph resolves the action's source destination without this UI guard.
+    if (this.hasStateTag('busy') || !action.isValid()) return false;
+    const destination = this.sg.getActionState(action);
+    if (destination === null) return false;
     this.clearBufferedAction();
     this.bufferedAction = action;
     this.activeAction = action.action;
+    this.activeInvobject = action.invobject;
     this.foodDrink = action.action === 'EAT' && foodDrink;
-    this.sg.goToState(handler.state);
+    this.sg.goToState(destination);
     return true;
   }
+
+  getBufferedAction(): BufferedAction<WilsonAction> | null { return this.bufferedAction; }
 
   performBufferedAction(): void {
     const action = this.bufferedAction;
@@ -540,7 +589,7 @@ export class WilsonStateGraph {
   }
 
   /** SGwilson quickeat chooses drink clips for fooddrink-tagged inventory food. */
-  playQuickEatClips(): void {
+  onEnterQuickEat(): void {
     this.playClips(this.foodDrink
       ? [clip('quick_drink_pre'), clip('quick_drink')]
       : [clip('quick_eat_pre'), clip('quick_eat')]);
@@ -559,13 +608,18 @@ export class WilsonStateGraph {
   finish(pushanim = false): void {
     this.clearBufferedAction();
     this.activeAction = null;
+    this.activeInvobject = undefined;
     // Lua's GoToState("idle", true) preserves the current animation queue.
     // Ordinary completion resumes the browser's requested movement/crafting state.
     this.sg.goToState(pushanim ? 'idle' : this.crafting ? 'build' : this.movementState, pushanim);
   }
 
-  canEmote(): boolean { return !this.isOneShot && !this.crafting && !this.isJumping; }
-  playEmote(names: readonly string[], loop: boolean): boolean {
+  canEmote(): boolean {
+    // SGwilson.lua's emote event, for the supported unmounted player branch.
+    return !this.sg.hasAnyStateTag('busy', 'nopredict', 'sleeping', 'floating');
+  }
+  /** Validate the request, prepare its clips, then enter the emote state. */
+  requestEmote(names: readonly string[], loop: boolean): boolean {
     if (!this.canEmote() || !names.length) return false;
     this.emoteClips = names.map((name, index) => ({
       key: 'emote', name, loop: loop && index === names.length - 1,
@@ -573,6 +627,13 @@ export class WilsonStateGraph {
     this.sg.goToState('emote');
     return true;
   }
-  playEmoteClips(): void { this.playClips(this.emoteClips); }
+  /** Called only by emote.onenter to play the prepared animation queue. */
+  onEnterEmote(): void {
+    // An accepted emote can interrupt working states that have no busy tag.
+    this.clearBufferedAction();
+    this.activeAction = null;
+    this.activeInvobject = undefined;
+    this.playClips(this.emoteClips);
+  }
   cancelEmote(): void { if (this.stateName === 'emote') this.finish(); }
 }

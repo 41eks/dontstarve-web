@@ -1,7 +1,7 @@
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor, CursorLabel } from './actionContext.ts';
+import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { TerraformMap as TurfMap } from './farmActions.ts';
 
 export const PITCHFORK_DIG_TIME = WILSON_ACTION_TIMES.terraform;
@@ -10,10 +10,9 @@ export const PITCHFORK_REACH = 4;
 /** TERRAFORM is a right-click point action, snapped to the source map tile. */
 export class PitchforkActionController {
   private readonly pointer: PointerRaycaster;
-  private readonly label: CursorLabel;
+  private readonly unregisterHover: () => void;
   private target?: THREE.Vector3;
   private actionVersion = 0;
-  private hovering = false;
   private readonly direction = new THREE.Vector3();
   private readonly forward = new THREE.Vector3();
   private readonly right = new THREE.Vector3();
@@ -42,8 +41,9 @@ export class PitchforkActionController {
     this.turf = turf;
     this.isManualMovement = isManualMovement;
     this.onRequest = onRequest;
-    this.pointer = new PointerRaycaster(world);
-    this.label = world.createCursorLabel?.(this.pointer) ?? { show() {}, hide() {}, update() {} };
+    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.unregisterHover = world.mouseActions?.register(() => this.hitTarget()
+      ? [{ action: { action: 'TERRAFORM' }, button: 'right' }] : []) ?? (() => {});
     // Consume a terraform click before container and placement handlers.
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -72,7 +72,6 @@ export class PitchforkActionController {
   }
 
   update(_dt: number): void {
-    this.updateHover();
     if (!this.isEquipped() || this.isManualMovement()) { this.cancel(); return; }
     if (!this.target) return;
     const target = this.target;
@@ -99,8 +98,8 @@ export class PitchforkActionController {
 
   dispose(): void {
     this.cancel();
-    this.label.hide();
-    this.pointer.dispose();
+    this.unregisterHover();
+    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }
@@ -126,16 +125,6 @@ export class PitchforkActionController {
     if (!this.isEquipped()) return undefined;
     const point = this.pointer.groundPoint();
     return point && this.turf.canTerraform(point) ? point : undefined;
-  }
-
-  private updateHover(): void {
-    const hovering = this.hitTarget() !== undefined;
-    if (hovering !== this.hovering) {
-      this.hovering = hovering;
-      if (hovering) this.label.show(': 铲地', 'right');
-      else this.label.hide();
-    }
-    this.label.update();
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {

@@ -1,7 +1,7 @@
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonMovementState, type WilsonOneShotState } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonMovementState, type WilsonOneShotState } from '@dontstarve-web/stategraphs';
 import {
   createMaterials,
   findImage,
@@ -67,6 +67,12 @@ export interface WilsonPlayerPrefabOptions {
   mass?: number;
   shapeRadius?: number;
 }
+
+/** Source tags: bugnet tool component and reskin_tool.lua's veryquickcast. */
+const ACTION_TOOL_METADATA: Partial<Record<WilsonCarryItem, { tags: readonly string[]; spelltype?: string }>> = {
+  bugnet: { tags: ['NET_tool'] },
+  reskin_tool: { tags: ['veryquickcast'], spelltype: 'RESKIN' },
+};
 
 const facingValues: Record<WilsonFacing, number> = { down: 8, side: 5, up: 2 };
 const normalArmLayerHash = smallHash('ARM_normal');
@@ -178,7 +184,7 @@ class WilsonController implements WilsonAnimationController {
 
   start(state: WilsonMovementState) {
     if (state !== 'idle' && this.isEmoting) this.cancelEmote();
-    this.stategraph.start(state);
+    this.stategraph.requestMovement(state);
   }
 
   playEat() {
@@ -220,7 +226,7 @@ class WilsonController implements WilsonAnimationController {
         ...loaded, id, clips: definition.variants[Math.floor(Math.random() * definition.variants.length)],
         loop: definition.loop === true,
       };
-      if (!this.stategraph.playEmote(this.emote.clips, this.emote.loop)) {
+      if (!this.stategraph.requestEmote(this.emote.clips, this.emote.loop)) {
         this.emote = null;
         return false;
       }
@@ -239,24 +245,28 @@ class WilsonController implements WilsonAnimationController {
     this.emote = null;
   }
 
-  get isCasting(): boolean { return this.stategraph.isPerformingAction('CASTSPELL'); }
+  get isCasting(): boolean { return this.stategraph.isPerformingAction('CASTSPELL') && !this.isReskinning; }
   get isNetting(): boolean { return this.stategraph.isPerformingAction('NET'); }
   get isMining(): boolean { return this.stategraph.isPerformingAction('MINE'); }
   get isHammering(): boolean { return this.stategraph.isPerformingAction('HAMMER'); }
   get isDigging(): boolean { return this.stategraph.isPerformingAction('TERRAFORM'); }
-  get isReskinning(): boolean { return this.stategraph.isPerformingAction('RESKIN'); }
+  get isReskinning(): boolean { return this.stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'); }
 
   private startAction(action: WilsonAction, execute: () => void | boolean, ready: boolean, foodDrink = false): boolean {
-    if (!ready || !this.stategraph.canStartAction(action)) return false;
+    if (!ready || this.stategraph.hasStateTag('busy')) return false;
     this.cancelEmote();
-    return this.stategraph.pushBufferedAction(new BufferedAction(action, execute), foodDrink);
+    const tool = this.carryItem;
+    const metadata = tool ? ACTION_TOOL_METADATA[tool] : undefined;
+    const invobject: BufferedActionObject | undefined = tool
+      ? { prefab: tool, spelltype: metadata?.spelltype, hasTag: tag => metadata?.tags.includes(tag) ?? false } : undefined;
+    return this.stategraph.pushBufferedAction(new BufferedAction(action, execute, undefined, { invobject }), foodDrink);
   }
 
   playReskin(onCast: () => void): boolean {
-    return this.startAction('RESKIN', onCast, this.carryItem === 'reskin_tool' && !!this.reskinToolEquipment);
+    return this.startAction('CASTSPELL', onCast, this.carryItem === 'reskin_tool' && !!this.reskinToolEquipment);
   }
 
-  cancelReskin(): void { this.stategraph.cancelAction('RESKIN'); }
+  cancelReskin(): void { if (this.isReskinning) this.stategraph.cancelAction('CASTSPELL'); }
 
   playDig(onDig: () => void): boolean {
     return this.startAction('TERRAFORM', onDig, isPitchforkTool(this.carryItem ?? '') && !!this.pitchforkEquipment);
@@ -307,7 +317,7 @@ class WilsonController implements WilsonAnimationController {
 
   setCrafting(crafting: boolean) {
     if (crafting) this.cancelEmote();
-    this.stategraph.setCrafting(crafting);
+    this.stategraph.requestCrafting(crafting);
   }
 
   setFacing(facing: WilsonFacing, mirrored = false) {
@@ -554,7 +564,7 @@ class WilsonController implements WilsonAnimationController {
 
   private startOneShot(state: WilsonOneShotState) {
     this.cancelEmote();
-    this.stategraph.playOneShot(state);
+    this.stategraph.requestOneShot(state);
   }
 
   private showFrame(index: number) {

@@ -26,6 +26,9 @@ export class PointerRaycaster {
     private clientX = 0;
     private clientY = 0;
     private hasPointerPosition = false;
+    private cacheGround = false;
+    private groundCached = false;
+    private cachedGround?: THREE.Intersection;
 
     constructor(world: Pick<WorldContext, 'camera' | 'renderer' | 'ground'>) {
         this.camera = world.camera;
@@ -51,10 +54,14 @@ export class PointerRaycaster {
     }
 
     trackPointer(event: PointerEvent): void {
+        this.groundCached = false;
         this.clientX = event.clientX;
         this.clientY = event.clientY;
         this.hasPointerPosition = true;
     }
+
+    beginFrame(): void { this.cacheGround = true; this.groundCached = false; }
+    endFrame(): void { this.cacheGround = false; this.groundCached = false; }
 
     groundPoint(): THREE.Vector3 | undefined {
         return this.groundHit()?.point.clone();
@@ -92,7 +99,10 @@ export class PointerRaycaster {
     };
 
     private groundHit(): THREE.Intersection | undefined {
+        if (this.cacheGround && this.groundCached) return this.cachedGround;
         this.ground.updateWorldMatrix(true, false);
-        return this.raycastPointer([this.ground], false);
+        this.cachedGround = this.raycastPointer([this.ground], false);
+        this.groundCached = true;
+        return this.cachedGround;
     }
 }

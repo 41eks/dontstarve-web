@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor, CursorLabel } from './actionContext.ts';
+import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { FarmActionWorld, FarmSoilTarget, PreparedSeedPlant } from './farmActions.ts';
 type FarmPlowPlacement = Pick<FarmActionWorld, 'soilTargets' | 'prepareSeedPlant'>;
 
@@ -11,7 +11,7 @@ export interface FoodSource { isValid(): boolean; take(): boolean; prepareEat?()
 /** Inventory food uses timed quick eating/drinking; seeds can also be planted. */
 export class FoodActionController {
   private readonly pointer: PointerRaycaster;
-  private readonly label: CursorLabel;
+  private readonly unregisterHover: () => void;
   private source?: FoodSource;
   private target?: FarmSoilTarget;
   private prepared?: PreparedSeedPlant;
@@ -41,8 +41,11 @@ export class FoodActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.farm = farm; this.isManualMovement = isManualMovement; this.onError = onError;
     this.onDeselect = onDeselect;
-    this.pointer = new PointerRaycaster(world);
-    this.label = world.createCursorLabel?.(this.pointer) ?? { show() {}, hide() {}, update() {} };
+    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.unregisterHover = world.mouseActions?.register(() =>
+      this.farm.soilTargets.filter(target => target.isValid()).map(target => ({
+        action: { action: 'PLANT' }, button: 'left', model: target.model, available: !!this.source?.isValid(),
+      }))) ?? (() => {});
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
   }
@@ -68,18 +71,16 @@ export class FoodActionController {
     if (this.target) this.locomotor.stop();
     this.target = undefined; this.source = undefined; this.loading = false;
     this.prepared?.dispose(); this.prepared = undefined;
-    this.animation.cancelFoodAction(); this.label.hide(); this.onDeselect();
+    this.animation.cancelFoodAction(); this.onDeselect();
   }
 
   update(): void {
     if (this.isManualMovement()) { this.cancel(); return; }
     if (this.source && !this.source.isValid()) {
       if (this.target || this.prepared || this.loading) this.cancel();
-      else { this.source = undefined; this.label.hide(); this.onDeselect(); }
+      else { this.source = undefined; this.onDeselect(); }
       return;
     }
-    if (this.hoveredTarget()) this.label.show(': 种植', 'left'); else this.label.hide();
-    this.label.update();
     if (this.prepared && !this.target && !this.animation.stategraph.isPerformingAction('PLANT')) {
       this.prepared.dispose(); this.prepared = undefined;
     }
@@ -159,7 +160,9 @@ export class FoodActionController {
 
   dispose(): void {
     if (this.disposed) return;
-    this.disposed = true; this.cancel(); this.pointer.dispose();
+    this.disposed = true; this.cancel();
+    this.unregisterHover();
+    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }

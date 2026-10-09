@@ -1,6 +1,7 @@
 // src/main.ts
 
 import './style.css';
+import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import {
   INVENTORY_RECIPES,
   equipmentSlotAddress,
@@ -133,7 +134,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
 }
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
 const handSlotAddress = equipmentSlotAddress('hand');
-const handPointer = new PointerRaycaster(view);
+const handPointer = view.mouseActions?.pointer ?? new PointerRaycaster(view);
 const bodySlotAddress = equipmentSlotAddress('body');
 
 function isHandSlot(address: SlotAddress): boolean {
@@ -320,6 +321,7 @@ if (playerAnimation) {
     return true;
   });
   frontTasks.push((dt) => bugNet.update(dt));
+  window.addEventListener('pagehide', () => bugNet.dispose(), { once: true });
 }
 if (playerAnimation) setupLightStaffCasting(view, playerAnimation, dwarfStars,
   () => inventory.get(handSlotAddress)?.itemId === 'yellowstaff',
@@ -449,14 +451,14 @@ window.addEventListener('game:slot-transfer-request', (event) => {
     detail.swapWith ? 'item_out' : 'item_in', detail.swapWith?.itemId ?? detail.itemId);
 });
 let selectedRecordSlot: SlotAddress | undefined;
-const recordPointer = new PointerRaycaster(view);
-const recordLabel = view.createCursorLabel?.(recordPointer);
-frontTasks.push(() => {
-  if (selectedRecordSlot && inventory.get(selectedRecordSlot)?.itemId === 'record') recordLabel?.show(': 放入唱片', 'left');
-  else recordLabel?.hide();
-  recordLabel?.update();
-});
-window.addEventListener('pagehide', () => { recordPointer.dispose(); recordLabel?.hide(); }, { once: true });
+const unregisterRecordHover = view.mouseActions?.register(() => groundItems.phonographTargets.map(target => ({
+  action: { action: 'GIVE', modifier: 'PLACE_ITEM', invobject: {
+    prefab: 'record', hasTag: () => false, getDisplayName: () => GROUND_ITEM_DEFINITIONS.record.name,
+  } },
+  button: 'left', model: target.model,
+  available: target.canInsert && !!selectedRecordSlot && inventory.get(selectedRecordSlot)?.itemId === 'record',
+})));
+window.addEventListener('pagehide', () => unregisterRecordHover?.(), { once: true });
 groundItems.setPhonographRecordSource(() => {
   const slot = selectedRecordSlot;
   const stack = slot && inventory.get(slot);

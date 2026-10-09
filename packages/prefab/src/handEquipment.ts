@@ -1,5 +1,6 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { HandEquipmentLifecycle } from '@dontstarve-web/signals';
+import type { ActionDescription } from '@dontstarve-web/stategraphs';
 import type { WilsonCarryItem } from './player';
 import { createTorchHandLifecycle, TORCH_SOUNDS } from './torch';
 import { PreloadSounds, type SoundPosition } from './sound';
@@ -9,7 +10,7 @@ export interface HandEquipmentContext {
   setLightActive(active: boolean): void;
 }
 export interface HandEquipmentDefinition {
-  readonly handAction?: string;
+  readonly handAction?: ActionDescription;
   preload?(): Promise<void>;
   createLifecycle?(entity: ItemEntity, context: HandEquipmentContext): HandEquipmentLifecycle;
 }
@@ -18,8 +19,8 @@ export interface HandEquipmentDefinition {
 const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
   torch: { preload: () => PreloadSounds(...TORCH_SOUNDS), createLifecycle: createTorchHandLifecycle },
   lantern: {},
-  yellowstaff: { handAction: ': 施放法术' },
-  opalstaff: { handAction: ': 施放法术' },
+  yellowstaff: { handAction: { action: 'CASTSPELL' } },
+  opalstaff: { handAction: { action: 'CASTSPELL' } },
   bugnet: {},
   hammer: {},
   reskin_tool: {},

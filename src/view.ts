@@ -1,3 +1,4 @@
+import { PlayerActionPicker, PointerRaycaster } from '@dontstarve-web/stategraphs';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 
 import { ground } from './building';
@@ -10,3 +11,7 @@ export const view: WorldContext = {
   scene, camera, renderer, ground, player,
   createCursorLabel: (pointer) => cursorUi.createLabel(pointer),
 };
+
+view.mouseActions = new PlayerActionPicker(new PointerRaycaster(view));
+cursorUi.setMouseActions(view.mouseActions);
+window.addEventListener('pagehide', () => view.mouseActions?.dispose(), { once: true });

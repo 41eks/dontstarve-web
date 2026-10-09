@@ -1,7 +1,7 @@
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor, CursorLabel } from './actionContext.ts';
+import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 
 export const BUGNET_HIT_TIME = WILSON_ACTION_TIMES.net;
 export const BUGNET_CAPTURE_RANGE = 4;
@@ -27,11 +27,10 @@ export class BugNetCaptureController {
   private readonly getTargets: () => readonly NetCaptureTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly pointer: PointerRaycaster;
-  private readonly label: CursorLabel;
+  private readonly unregisterHover: () => void;
   private target?: NetCaptureTarget;
   private actionVersion = 0;
   private repathRemaining = 0;
-  private hoveredId?: string;
   private readonly direction = new THREE.Vector3();
   private readonly forward = new THREE.Vector3();
   private readonly right = new THREE.Vector3();
@@ -50,8 +49,11 @@ export class BugNetCaptureController {
     this.isEquipped = isEquipped;
     this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
-    this.pointer = new PointerRaycaster(world);
-    this.label = world.createCursorLabel?.(this.pointer) ?? { show() {}, hide() {}, update() {} };
+    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.unregisterHover = world.mouseActions?.register(() =>
+      this.getTargets().filter(target => target.isValid() && target.isClickable?.() !== false).map(target => ({
+        action: { action: 'NET' }, button: 'left', model: target.model, available: this.isEquipped(),
+      }))) ?? (() => {});
     world.renderer.domElement.addEventListener('pointerdown', this.handleGroundClick);
     window.addEventListener('keydown', this.handleKeyDown);
   }
@@ -72,7 +74,6 @@ export class BugNetCaptureController {
   }
 
   update(dt: number): void {
-    this.updateHover();
     if (!this.target) return;
     const target = this.target;
     if (!this.isEquipped() || !target.isValid() || this.isManualMovement()) {
@@ -100,6 +101,14 @@ export class BugNetCaptureController {
     }
   }
 
+  dispose(): void {
+    this.cancel();
+    this.unregisterHover();
+    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
+    this.world.renderer.domElement.removeEventListener('pointerdown', this.handleGroundClick);
+    window.removeEventListener('keydown', this.handleKeyDown);
+  }
+
   private distanceSquared(target: ButterflyCaptureTarget): number {
     return (this.world.player.position.x - target.position.x) ** 2
       + (this.world.player.position.z - target.position.z) ** 2;
@@ -115,20 +124,6 @@ export class BugNetCaptureController {
     const side = this.direction.dot(this.right);
     this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
       Math.abs(side) > Math.abs(forward) && side < 0);
-  }
-
-  private updateHover(): void {
-    const targets = this.isEquipped() ? this.getTargets().filter((target) => target.isValid() && target.isClickable?.() !== false) : [];
-    const hit = this.pointer.raycastPointer(targets.map(({ model }) => model));
-    let root: THREE.Object3D | null = hit?.object ?? null;
-    while (root && !targets.some(({ model }) => model === root)) root = root.parent;
-    const hovered = targets.find(({ model }) => model === root);
-    if (hovered?.id !== this.hoveredId) {
-      this.hoveredId = hovered?.id;
-      if (hovered) this.label.show(': 捕捉', 'left');
-      else this.label.hide();
-    }
-    this.label.update();
   }
 
   private readonly handleGroundClick = (event: PointerEvent) => {

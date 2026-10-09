@@ -237,6 +237,15 @@ export class GroundItemManager {
     this.recordSource = source;
   }
 
+  /** Shared hover selection uses the same insertion availability as the click path. */
+  get phonographTargets(): readonly { model: THREE.Group; canInsert: boolean }[] {
+    return [...this.items.values()].filter(record => record.definition.itemId === PHONOGRAPH_ID
+      && !record.entity.isRemoved && !record.isRemoved?.()).map(record => ({
+      model: record.model,
+      canInsert: !this.inserting.has(record) && isPlayerNearby(this.player.position, record.footPosition, false),
+    }));
+  }
+
   private currentDefinition(record: GroundItemRecord): GroundItemDefinition {
     record.entity.flush();
     const definition = { ...record.definition, ...record.entity.snapshot(), ...record.getDefinition?.(), entity: record.entity };

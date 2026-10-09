@@ -107,6 +107,6 @@ it('preserves the latest equipment when unequip synchronously supersedes a trans
     expect(ui.animation.setCarryItem.mock.calls.some(([item]) => item === 'yellowstaff')).toBe(false);
     expect(ui.setHandAction).toHaveBeenLastCalledWith(null);
     slot.set(staff);
-    expect(ui.setHandAction).toHaveBeenLastCalledWith(': 施放法术');
+    expect(ui.setHandAction).toHaveBeenLastCalledWith({ action: 'CASTSPELL' });
   } finally { binding.dispose(); entity.destroy(); }
 });

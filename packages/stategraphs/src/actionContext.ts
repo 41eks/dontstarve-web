@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { WilsonStateGraph } from './SGwilson.ts';
 import type { PointerRaycaster } from './pointerRaycaster.ts';
+import type { PlayerActionPicker } from './playeractionpicker.ts';
 
 /** Services supplied by the application and prefab implementations to actions. */
 export interface CursorLabel {
@@ -15,6 +16,7 @@ export interface ActionWorldContext {
   renderer: THREE.WebGLRenderer;
   ground: THREE.Object3D;
   player: THREE.Object3D;
+  mouseActions?: PlayerActionPicker;
   createCursorLabel?: (pointer: PointerRaycaster) => CursorLabel;
 }
 

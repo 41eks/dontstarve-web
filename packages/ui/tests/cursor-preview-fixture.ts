@@ -30,11 +30,14 @@ export async function checkCursorPreview() {
   const ui = new CursorLabelUi(renderer.domElement, '/dst/data/fonts/controllers.zip');
   await ui.ready;
   const pointer = { hasPointer: true, isOverGround: true, pointerClientX: 200, pointerClientY: 220 };
-  ui.setHandAction(': 施放法术', pointer);
-  const glyph = ui.element.shadowRoot!.querySelector('canvas')!;
-  const text = ui.element.shadowRoot!.querySelector('span')!;
-  const labelState = () => ({ hidden: ui.element.hidden, text: text.textContent,
-    glyph: glyph.dataset.glyph, colour: getComputedStyle(text).color });
+  ui.setHandAction({ action: 'CASTSPELL' }, pointer);
+  const visibleRow = () => ui.element.shadowRoot!.querySelector<HTMLDivElement>('.label:not([hidden])')!;
+  const glyph = visibleRow().querySelector('canvas')!;
+  const labelState = () => {
+    const row = visibleRow(), text = row.querySelector('span')!, glyph = row.querySelector('canvas')!;
+    return { hidden: ui.element.hidden, text: text.textContent,
+      glyph: glyph.hidden ? undefined : glyph.dataset.glyph, colour: getComputedStyle(text).color };
+  };
   const rightPixels = glyph.getContext('2d')!.getImageData(0, 0, glyph.width, glyph.height).data;
   const rightGlyph = {
     width: glyph.width, height: glyph.height,
@@ -79,7 +82,8 @@ export async function checkCursorPreview() {
   const chestPreview = chest.renderEntities[0].object;
   const building = { inScene: chestPreview.parent === scene, override: getPrefabLightOverride(chestPreview),
     footY: chest.renderEntities[0].footPosition.y, label: labelState() };
-  const leftPixels = glyph.getContext('2d')!.getImageData(0, 0, glyph.width, glyph.height).data;
+  const leftGlyph = visibleRow().querySelector('canvas')!;
+  const leftPixels = leftGlyph.getContext('2d')!.getImageData(0, 0, leftGlyph.width, leftGlyph.height).data;
   const differentButtons = rightPixels.some((value, index) => value !== leftPixels[index]);
   renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 220 }));
   const placed = { inScene: chestPreview.parent === scene, override: getPrefabLightOverride(chestPreview) ?? null,

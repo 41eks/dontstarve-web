@@ -5,7 +5,6 @@ import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext } from './worldContext';
-import type { CursorLabel } from './buildCursor';
 
 export const BULB_PLANT_ID = 'flower_cave';
 export const BULB_PLANT_PREFABS = ['flower_cave', 'flower_cave_double', 'flower_cave_triple'] as const;
@@ -231,10 +230,10 @@ export class BulbPlantManager {
   private readonly random: () => number;
   private disposed = false;
   private pointer?: PointerRaycaster;
-  private cursor?: CursorLabel;
+  private unregisterHover?: () => void;
+  private ownsPointer = true;
   private canvas?: HTMLCanvasElement;
   private giveFruit?: (count: number, sourcePosition: THREE.Vector3) => boolean;
-  private hoveredId?: string;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: BulbPlantWorld, random = Math.random) {
     this.scene = scene;
@@ -273,12 +272,14 @@ export class BulbPlantManager {
       plant.model.quaternion.copy(cameraQuaternion);
       plant.controller.update(dt);
     }
-    this.updateHover();
   }
 
   setupInteraction(world: WorldContext, giveFruit: (count: number, sourcePosition: THREE.Vector3) => boolean): void {
-    this.pointer = new PointerRaycaster(world);
-    this.cursor = world.createCursorLabel?.(this.pointer);
+    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.ownsPointer = !world.mouseActions;
+    this.unregisterHover = world.mouseActions?.register(() => [...this.plants].map(plant => ({
+      action: { action: 'PICK' }, button: 'left', model: plant.model, available: plant.controller.canPick,
+    })));
     this.giveFruit = giveFruit;
     this.canvas = world.renderer.domElement;
     this.canvas.addEventListener('pointerdown', this.handlePointerDown);
@@ -295,18 +296,6 @@ export class BulbPlantManager {
     return [...this.plants].find(plant => plant.model === root);
   }
 
-  private updateHover(): void {
-    if (!this.pointer) return;
-    const plant = this.hitPlant();
-    const id = plant?.model.userData.entityId;
-    if (id !== this.hoveredId) {
-      this.hoveredId = id;
-      if (plant) this.cursor?.show(': 采摘荧光果', 'left');
-      else this.cursor?.hide();
-    }
-    this.cursor?.update();
-  }
-
   private readonly handlePointerDown = (event: PointerEvent) => {
     if (event.button !== 0 || event.defaultPrevented || !this.pointer) return;
     this.pointer.trackPointer(event);
@@ -314,7 +303,6 @@ export class BulbPlantManager {
     if (!plant) return;
     event.preventDefault();
     plant.controller.tryPick((count) => this.giveFruit?.(count, plant.model.position.clone()) ?? false);
-    this.updateHover();
   };
 
   get renderEntities() {
@@ -332,8 +320,8 @@ export class BulbPlantManager {
     if (this.disposed) return;
     this.disposed = true;
     this.canvas?.removeEventListener('pointerdown', this.handlePointerDown);
-    this.pointer?.dispose();
-    this.cursor?.hide();
+    this.unregisterHover?.();
+    if (this.ownsPointer) this.pointer?.dispose();
     for (const { model, controller, factory } of this.plants) {
       controller.dispose();
       factory.disposeSprite(model);

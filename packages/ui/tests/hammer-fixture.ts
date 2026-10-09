@@ -26,9 +26,7 @@ export async function checkHammer() {
   camera.updateMatrixWorld();
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial());
   scene.add(ground);
-  const labels: string[] = [];
-  const world = { scene, player, camera, ground, renderer,
-    createCursorLabel: () => ({ show: (text: string) => labels.push(text), hide() {}, update() {} }) };
+  const world = { scene, player, camera, ground, renderer };
   const placement = new PlaceableBuildingPlacement(world, () => false);
   const ids: PlaceableBuildingId[] = ['cookpot', 'firepit', 'icebox', 'researchlab', 'researchlab2', 'researchlab3',
     'researchlab4', 'treasurechest', 'tent', 'dragonflychest', 'saltbox', 'nightlight', 'pighouse', 'mushroom_light', 'mushroom_light2', 'wall_stone', 'campfire'];
@@ -185,7 +183,7 @@ export async function checkHammer() {
     maxStack: inventorySpec.maxStack, equippable: inventorySpec.equippable,
     campfireExcluded: !placement.hammerTargets.some((entry) => entry.id === 'hammer_campfire'),
     openingResumed, litHit, ignoredLeft, consumedRight, manualCancels, missedHit,
-    unequipCancels, ignoredUnequipped, approaches, reachesTarget, hoverLabel: labels.includes(': 锤击') };
+    unequipCancels, ignoredUnequipped, approaches, reachesTarget };
 }
 
 /** Exercise the real host loot callback, persistence and pickup after destruction. */

@@ -1,6 +1,7 @@
 export { BufferedAction } from './bufferedaction.ts';
+export type { BufferedActionObject, BufferedActionObjects } from './bufferedaction.ts';
 export { ActionHandler, EventHandler, FRAMES, State, StateGraphInstance, TimeEvent } from './stategraph.ts';
-export type { StateDefinition, StateEvent, TimelineEvent } from './stategraph.ts';
+export type { StateActionHandler, StateDefinition, StateEvent, TimelineEvent } from './stategraph.ts';
 export { WilsonStateGraph, WILSON_ACTION_TIMES } from './SGwilson.ts';
 export type {
   WilsonAction, WilsonAnimationClip, WilsonAnimationKey, WilsonMovementState,
@@ -19,3 +20,7 @@ export * from './reskin_tool.ts';
 export * from './yellowstaff.ts';
 export * from './pointerRaycaster.ts';
 export * from './farmActions.ts';
+export { ACTIONS, getActionPriority, getActionString } from './actions.ts';
+export type { ActionDescription, MouseActionId } from './actions.ts';
+export { PlayerActionPicker } from './playeractionpicker.ts';
+export type { MouseActionCandidate, MouseActions } from './playeractionpicker.ts';

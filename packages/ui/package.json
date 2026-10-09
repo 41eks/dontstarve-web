@@ -16,6 +16,7 @@
     "controller-font:check": "python3 scripts/import-controller-font.py --check"
   },
   "dependencies": {
+    "@dontstarve-web/stategraphs": "workspace:*",
     "@dontstarve-web/animation": "workspace:*",
     "@dontstarve-web/inventory": "workspace:*",
     "@dontstarve-web/prefab": "workspace:*",
