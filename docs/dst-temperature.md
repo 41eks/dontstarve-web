@@ -26,7 +26,9 @@
 
 [packages/componets/src/worldtemperature.ts](../packages/componets/src/worldtemperature.ts) 提供 `WorldTemperature` 类，移植世界温度的季节项、昼夜项、噪声时间、全局修正及保存／恢复逻辑。昼夜与季节输入使用 [packages/signals/src/world.ts](../packages/signals/src/world.ts) 导出的全局唯一单例 `clockstate`、`seasonstate`，环境温度由 `createMemo` 派生，并作为只读 signal 提供给宿主。
 
-[src/worldState.ts](../src/worldState.ts) 创建会话的温度组件、恢复全局昼夜与季节输入，并将 `worldState.clock`、`worldState.season` 指向上述单例；`worldState.moonPhase` 指向同模块的月相单例 `moonphasestate`，从累计游戏时间恢复并按现有 20 天周期推进。[src/scene.ts](../src/scene.ts) 导出运行时 `worldState` 并接入主循环。每 60 个活动游戏帧累计实际 `dt`，统一更新昼夜进度、月相 signal 和噪声时间；中间帧只累计时间，不写这些输入，也不刷新时钟 UI。保存或停止场景前结算不足 60 帧的部分。昼夜与季节的光照使用同一份 signal，温度和光照 effect 在场景销毁时释放，单例保留；满月照明由夜晚和月相派生，温度的昼夜阶段保持 `night`。规则记录在 [AGENTS.md](../AGENTS.md) 的“World time and temperature”中。
+[src/worldState.ts](../src/worldState.ts) 创建会话的温度组件、恢复全局昼夜与季节输入，并将 `worldState.clock`、`worldState.season` 指向上述单例；`worldState.moonPhase` 指向同模块的月相单例 `moonphasestate`，从累计游戏时间恢复并按现有 20 天周期推进。[src/scene.ts](../src/scene.ts) 导出运行时 `worldState` 并接入主循环。每 60 个活动游戏帧累计实际 `dt`，统一更新昼夜进度、月相 signal 和噪声时间；`clockstate` 同时发布天数、全天进度、昼夜段数和月相盈亏。中间帧只累计世界时间，不写这些输入，也不更新时钟指针和日期。保存或停止场景前结算不足 60 帧的部分。昼夜与季节的光照使用同一份 signal，温度和光照 effect 在场景销毁时释放，单例保留；满月照明由夜晚和月相派生，温度的昼夜阶段保持 `night`。规则记录在 [AGENTS.md](../AGENTS.md) 的“World time and temperature”中。
+
+[packages/ui/src/world-clock.ts](../packages/ui/src/world-clock.ts) 用 `createMemo` 和 `createEffect` 直接读取世界 signal，没有 `setClock()` 或应用到 HUD 的时钟状态回调。指针、日期、扇区和文字缓存到静态 Canvas；活动游戏帧通过 `advanceClockAnimation(dt)` 推进装饰动画并与缓存图层合成，使用当帧的实际 `dt`，不重复应用 60 帧结算时间。没有独立 RAF 或墙钟定时器，暂停时动画也停止。HUD 移除、重新挂载和场景销毁会释放 clock 的 effect、memo 及帧任务。
 
 现阶段季节没有自动推进组件。旧存档使用 `world.systems.season.name`（默认春季）的中点温度，并以 `world.elapsedSeconds` 初始化噪声时间；新存档恢复保存的季节温度和噪声时间，再按累计游戏时间恢复当前昼夜进度。修改季节 signal 会立即派生温度并更新季节光照，不需要逐帧重复写入。环境温度尚未接入 HUD 的角色体温显示。
 

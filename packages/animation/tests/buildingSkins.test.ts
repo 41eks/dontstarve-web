@@ -200,4 +200,41 @@ describe('DST building skins', () => {
     expect(placement.exportRecords()[1].record).toEqual(record);
     await expect(placement.spawn(prefabId, 'missing_skin')).rejects.toThrow('Unsupported');
   });
+
+  it('commits prepared skins through the skin signal and releases cancelled or removed preparations once', async () => {
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
+    const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
+      camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
+    const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
+    const model = await placement.spawnFromSave('researchlab4', { id: 'lab:signal', transform: { position: [3, 0, 4], rotationY: 0 },
+      components: { building: { state: 'idle' } } });
+    const signal = model.userData.skinIdSignal;
+    const changes: unknown[] = [];
+    const stop = signal.subscribe((skinId: unknown) => changes.push(skinId));
+    const originalMesh = meshOf(model);
+    const disposeOldGeometry = vi.spyOn(originalMesh.geometry, 'dispose');
+    const cancelled = await placement.reskinTargets[0].prepareNextSkin();
+    cancelled.dispose(); cancelled.dispose();
+    expect(signal.peek()).toBeUndefined();
+    expect(meshOf(model)).toBe(originalMesh);
+    expect(changes).toEqual([]);
+
+    const prepared = await placement.reskinTargets[0].prepareNextSkin();
+    expect(prepared.apply()).toBe(true);
+    prepared.dispose();
+    expect(changes).toEqual([signal.peek()]);
+    expect(signal.peek()).toBeDefined();
+    expect(disposeOldGeometry).toHaveBeenCalledOnce();
+    expect(placement.exportRecords()[0].record).toMatchObject({ id: 'lab:signal',
+      transform: { position: [3, 0, 4], rotationY: 0 }, components: { building: { skinId: signal.peek() } } });
+    const pending = await placement.reskinTargets[0].prepareNextSkin();
+    const disposeCurrent = vi.spyOn(meshOf(model).geometry, 'dispose');
+    placement.dispose();
+    expect(pending.apply()).toBe(false);
+    pending.dispose(); pending.dispose();
+    expect(disposeCurrent).toHaveBeenCalledOnce();
+    expect(changes).toHaveLength(1);
+    stop();
+  });
 });

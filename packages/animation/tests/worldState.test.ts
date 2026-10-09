@@ -31,8 +31,8 @@ describe('session world temperature', () => {
   it('settles clock, moon phase and temperature every 60 active frames using actual dt and flushes partial batches', () => {
     const initialElapsedSeconds = 10 * 480 - 0.5;
     const state = createWorldState({ elapsedSeconds: initialElapsedSeconds, systems: {} });
-    const tick = vi.fn(), observed = vi.fn();
-    const updater = createWorldClockUpdater(state, initialElapsedSeconds, tick);
+    const observed = vi.fn();
+    const updater = createWorldClockUpdater(state, initialElapsedSeconds);
     const stop = state.temperature.subscribe(observed);
     const clock = state.clock.peek(), temperature = state.temperature.peek();
     expect(state.moonPhase.peek()).toBe('threequarter');
@@ -48,22 +48,20 @@ describe('session world temperature', () => {
     expect(state.worldtemperature.OnSave().noisetime).toBe(initialElapsedSeconds);
     expect(state.moonPhase.peek()).toBe('threequarter');
     expect(observed).not.toHaveBeenCalled();
-    expect(tick.mock.calls).toEqual([[initialElapsedSeconds, 0]]);
     elapsed += 0.1;
     updater.update(0.1);
     expect(observed).toHaveBeenCalledOnce();
     expect(state.clock.peek().phase).toBe('day');
     expect(state.moonPhase.peek()).toBe('full');
     expect(state.worldtemperature.OnSave().noisetime).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
-    expect(tick).toHaveBeenLastCalledWith(expect.closeTo(initialElapsedSeconds + elapsed, 10), expect.closeTo(elapsed, 10));
     const settled = state.temperature.peek();
     updater.update(0.25);
     expect(state.temperature.peek()).toBe(settled);
     updater.flush();
     expect(state.worldtemperature.OnSave().noisetime).toBeCloseTo(updater.elapsedSeconds, 10);
-    expect(tick).toHaveBeenLastCalledWith(expect.closeTo(initialElapsedSeconds + elapsed + 0.25, 10), 0.25);
+    const flushedClock = state.clock.peek();
     updater.flush();
-    expect(tick).toHaveBeenCalledTimes(3);
+    expect(state.clock.peek()).toBe(flushedClock);
     const before = updater.elapsedSeconds;
     expect(() => updater.update(-1)).toThrow(RangeError);
     expect(updater.elapsedSeconds).toBe(before);

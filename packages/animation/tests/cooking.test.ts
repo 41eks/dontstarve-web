@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
-import foods from '../../../src/preparedfoods';
+import foods from '../../componets/src/preparedfoods';
 import {
   AddCookerRecipe, BASE_COOK_TIME, CalculateRecipe, GetCandidateRecipes, GetIngredientValues,
-  GetRecipe, IsCookingIngredient, canCookBeefaloFeed,
-} from '../../../src/cook';
+  GetRecipe, IsCookingIngredient,
+} from '../../componets/src/cooking';
 import { BEEFALO_FEED_COOK_TIME } from '../../prefab/src/cook_pot';
 
 it('uses source ingredient tags, cooked/dried forms and the inconsistent meat aliases', () => {
@@ -21,16 +21,12 @@ it('uses source ingredient tags, cooked/dried forms and the inconsistent meat al
 
 it('resolves mixed roughage by tags and lets higher-priority recipes win', () => {
   const mixed = ['twigs', 'red_cap', 'red_cap', 'red_cap'];
-  const items = mixed.map(itemId => ({ itemId, count: 1 }));
   expect(CalculateRecipe('cookpot', mixed)).toEqual(['beefalofeed', .5]);
-  expect(canCookBeefaloFeed(items)).toBe(true);
-  expect(canCookBeefaloFeed(Array.from({ length: 4 }, () => ({ itemId: 'twigs', count: 1 })))).toBe(true);
-  expect(canCookBeefaloFeed([...items.slice(0, 3), null])).toBe(false);
-  expect(canCookBeefaloFeed([...items.slice(0, 3), { itemId: 'log', count: 1 }])).toBe(false);
+  expect(CalculateRecipe('cookpot', ['twigs', 'twigs', 'twigs', 'twigs'])).toEqual(['beefalofeed', .5]);
   const banana = GetIngredientValues(['twigs', 'cave_banana', 'ice', 'red_cap']);
   expect(foods.beefalofeed.test('cookpot', banana.names, banana.tags)).toBe(true);
   expect(GetCandidateRecipes('cookpot', banana).map(recipe => recipe.name)).toEqual(['bananapop']);
-  expect(canCookBeefaloFeed(['twigs', 'cave_banana', 'ice', 'red_cap'].map(itemId => ({ itemId, count: 1 })))).toBe(false);
+  expect(CalculateRecipe('cookpot', ['twigs', 'cave_banana', 'ice', 'red_cap'])).toEqual(['bananapop', .5]);
   expect(CalculateRecipe('cookpot', ['twigs', 'red_cap', 'red_cap', 'monstermeat'])).toEqual(['kabobs', 2]);
   expect(foods.beefalofeed.test('cookpot', {}, { inedible: 0 })).toBe(true);
   expect(foods.beefalofeed.test('cookpot', {}, { inedible: 1, monster: 0 })).toBe(false);

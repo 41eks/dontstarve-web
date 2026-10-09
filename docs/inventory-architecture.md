@@ -106,6 +106,8 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 网页屏蔽浏览器原生右键菜单，游戏使用自己的右键映射。
 
+右键输入参考 `widgets/invslot.lua:OnControl()` → `DropItem()` / `UseItem()` → `components/inventory_replica.lua` 的职责边界：`SlotModel.item` 暴露只读 UI 投影 signal，renderer 将右键和修饰键写入 input signal，`bindSlotContextMenuInput()` 在每次输入时读取槽位投影并产生 `drop/use` 请求。`inventoryBar.contextMenu` 同步发布请求，应用订阅后核对实际物品实体、类型和皮肤，再调用库存和场景动作。输入使用同步 `subscribe()`，避免 effect 合并连续点击；槽位投影变化不触发操作，重新连接不重放旧请求。renderer 断开时释放输入订阅，场景显式停止时释放应用订阅。原有 `game:slot-context-menu` 事件及其 `{ slot, shiftKey }` detail 继续跨 shadow root 冒泡，网页的 Shift + 右键仍丢弃一个物品。
+
 ## 当前动作与动画
 
 `packages/prefab/src/food.ts` 定义已接入食物的源 Lua 数值：种子为 4.6875 饥饿，香蕉奶昔为 8 生命、25 饥饿、33 理智。`bananajuice` 来自 `preparedfoods.lua:571`，数值分别为 `TUNING.HEALING_MEDSMALL`、`CALORIES_MED`、`SANITY_LARGE`；共享 `prefabs/preparedfoods.lua` 将这些数值装到 edible 组件，`fooddrink` 标签决定喝饮料动画。
@@ -123,3 +125,13 @@ Shift + 右键已占用的库存或装备槽，在玩家当前地面位置丢弃
 成功丢弃或普通拾取都播放 `anim/player_actions_item.zip` 的 `pickup`。`packages/stategraphs/src/SGwilson.ts` 为 `pickup` 设置 `playbackRate: 0.5`，即源动画的一半速度。
 
 地面模型的源原点是脚点，供排序、拾取与存档使用；不能因为图片较高或有多层部件而改用图片中心。
+
+## 锅组件与烹饪请求
+
+世界建筑的 container 在 prefab 初始化时建立，并注册其实际 slots 到 InventoryStore；读档阶段先注册的槽位通过 BindSlots() 交给同一个 container 使用，避免双份库存。容器 DTO signal 直接绑定面板，事务完成后发布投影。
+
+Lua 链路是 containers.lua:buttoninfo.fn → ACTIONS.COOK.fn → stewer:StartCooking()。UI 只提交请求，按钮按容器满格状态启用；动作检查其他开启者与可烹饪状态，已在烹饪的重复请求不重新计时。stewer 从自己的 container 读取原料实体，经 cooking.CalculateRecipe() 得到产物和时间，在开始回调后关闭容器、销毁内容并禁止打开。DestroyContents() 通过实体的库存 owner 移除材料，UI 投影不参与权威消耗。
+
+components/stewer.ts 管理烹饪任务、readytocook/donecooking 标签、原料与厨师记录及保存恢复；prefab/cook_pot.ts 将开始、继续、完成回调接到动画和声音，并按配方的 build、symbol 和 potlevel 显示锅中产物。外部存档仍保留 product/phase/remainingSeconds 的已有格式，新增可选 ingredient_prefabs 与 chef_id，旧存档可继续读取。目前的分支覆盖开始、完成和恢复，收获及锅内腐败另行实现。
+
+建筑换肤的逻辑状态由 skinId signal 持有；prepareNextSkin() 准备美术，apply() 校验当前皮肤和交互状态后只 set()。表现订阅同步替换已准备的美术，保留实体根、组件、脚点和动画进度。取消、失效或移除释放待用资源及订阅，保存读取 skinId.peek()。

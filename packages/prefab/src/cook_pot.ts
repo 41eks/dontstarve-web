@@ -10,32 +10,89 @@ import type { AnimatedBuildingEventContext } from './animatedBuildingPlacement';
 import type * as THREE from 'three';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
-// tuning.lua: night_time = 30 * 2; BASE_COOK_TIME = night_time * .3333.
-// preparedfoods.lua: beefalofeed.cooktime = .5, overridebuild = cook_pot_food11.
-export const BEEFALO_FEED_COOK_TIME = 30 * 2 * .3333 * .5;
+import { Stewer, type StewerSaveData } from '../../componets/src/stewer';
+import { BASE_COOK_TIME, GetRecipe, recipes } from '../../componets/src/cooking';
+import { createMaterials, loadBuild, smallHash, type BuildPackage } from '../../animation/src/animationAssets';
+import { SpriteController } from '../../animation/src/sprite';
+import { createBuildingContainer } from './containers';
+
+export const BEEFALO_FEED_COOK_TIME = BASE_COOK_TIME * GetRecipe('cookpot', 'beefalofeed')!.cooktime;
 export interface CookPotSaveState {
-    product: 'beefalofeed';
+    product: string;
     phase: 'cooking' | 'done';
     remainingSeconds: number;
+    ingredient_prefabs?: readonly string[];
+    chef_id?: string;
+}
+
+const foodBuilds = new Map<string, BuildPackage>();
+async function prepareFoodBuilds(): Promise<void> {
+    const builds = new Set(Object.values(recipes.cookpot).map(recipe => recipe.overridebuild ?? 'cook_pot_food'));
+    await Promise.all([...builds].map(async build => {
+        foodBuilds.set(build, await loadBuild(`${build}.zip`, `${import.meta.env.BASE_URL}dst/data/anim`));
+    }));
+}
+
+function initializeFoodArt(model: THREE.Group): void {
+    model.userData.cookFoodMaterials = new Map();
+}
+
+/** cookpot.lua:SetProductSymbol uses each recipe's build, symbol and potlevel. */
+function showProduct(model: THREE.Group): void {
+    const stewer = model.userData.components.stewer as Stewer;
+    if (!stewer.product) return;
+    const recipe = stewer.GetRecipeForProduct();
+    const buildName = recipe?.overridebuild ?? 'cook_pot_food';
+    const build = foodBuilds.get(buildName)!;
+    let materials = model.userData.cookFoodMaterials.get(buildName);
+    if (!materials) {
+        materials = createMaterials(build);
+        model.userData.cookFoodMaterials.set(buildName, materials);
+        model.userData.ownedSpriteMaterials.push(...materials);
+    }
+    const level = recipe?.potlevel ?? 'mid';
+    (model.userData.animationController as SpriteController).setSymbolOverrides(new Map([
+        [smallHash('swap_cooked'), { build: build.build, materials, symbolHash: smallHash(recipe?.overridesymbolname ?? stewer.product) }],
+    ]), ['high', 'mid', 'low'].filter(candidate => candidate !== level).map(candidate => `swap_${candidate}`));
 }
 
 export function cookPotState(model: THREE.Group): CookPotSaveState | undefined {
-    return model.userData.stewer;
+    const stewer = model.userData.components?.stewer as Stewer | undefined;
+    if (!stewer?.product) return undefined;
+    const saved = stewer.OnSave();
+    return {
+        product: stewer.product, phase: stewer.IsDone() ? 'done' : 'cooking', remainingSeconds: stewer.GetTimeToCook(),
+        ...(saved.ingredient_prefabs === undefined ? {} : { ingredient_prefabs: saved.ingredient_prefabs }),
+        ...(saved.chef_id === undefined ? {} : { chef_id: saved.chef_id }),
+    };
 }
 
-export function startCookPotCooking({ model, animation }: AnimatedBuildingEventContext, consume: () => boolean,
-    cookTime = BEEFALO_FEED_COOK_TIME): boolean {
-    if (cookPotState(model) || !consume()) return false;
-    model.userData.stewer = { product: 'beefalofeed', phase: 'cooking', remainingSeconds: cookTime } satisfies CookPotSaveState;
-    animation.start('cooking_loop');
-    PlaySound('dontstarve/common/cookingpot_close', model.position);
+function continueCooking(model: THREE.Group): void {
+    model.userData.animationController.start('cooking_loop');
+    (model.userData.stewerSound as SoundHandle | undefined)?.stop();
     model.userData.stewerSound = PlaySound('dontstarve/common/cookingpot_rattle', model.position);
-    return true;
 }
 
-function restoreCookingAnimation({ model, animation }: AnimatedBuildingEventContext): void {
-    const state = cookPotState(model);
-    if (state) animation.start(state.phase === 'cooking' ? 'cooking_loop' : 'idle_full');
+function initializePot({ model }: AnimatedBuildingEventContext): void {
+    initializeFoodArt(model);
+    const tags = new Set<string>();
+    model.userData.tags = tags;
+    const components = model.userData.components;
+    const stewer = new Stewer({ prefab: 'cookpot', components,
+        addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) });
+    components.stewer = stewer;
+    stewer.onstartcooking = () => continueCooking(model);
+    stewer.oncontinuecooking = () => continueCooking(model);
+    stewer.ondonecooking = () => {
+        showProduct(model);
+        (model.userData.stewerSound as SoundHandle | undefined)?.stop();
+        delete model.userData.stewerSound;
+        PlaySound('dontstarve/common/cookingpot_finish', model.position);
+        model.userData.animationController.playOnce('cooking_pst', () => model.userData.animationController.start('idle_full'));
+    };
+    stewer.oncontinuedone = () => { showProduct(model); model.userData.animationController.start('idle_full'); };
+    // Compatibility projection only; the component is the sole authoritative state.
+    Object.defineProperty(model.userData, 'stewer', { configurable: true, get: () => cookPotState(model) });
 }
 
 /** DST uses cookpot as the prefab ID and cook_pot as its animation bank/build. */
@@ -54,36 +111,39 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 
 export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.cookpot,
+    interaction: { ...definitions.animatedBuildings.cookpot.interaction, closeImmediately: true },
     onbuilt,
-    prepare: () => PreloadSounds('dontstarve/common/cookingpot_rattle', 'dontstarve/common/cookingpot_close', 'dontstarve/common/cookingpot_finish'),
-    symbolOverrides: { swap_cooked: { archive: 'cook_pot_food11.zip', symbol: 'beefalofeed' } },
-    // cookpot.lua SetProductSymbol: default potlevel shows swap_mid only.
-    hiddenLayers: ['swap_high', 'swap_low'],
-    canInteract: ({ model }) => cookPotState(model) === undefined,
-    onrestore: (context, components) => {
-        if (components.stewer) context.model.userData.stewer = { ...components.stewer };
-        restoreCookingAnimation(context);
-        if (components.stewer?.phase === 'cooking') {
-            context.model.userData.stewerSound = PlaySound('dontstarve/common/cookingpot_rattle', context.model.position);
-        }
+    prepare: async () => { await Promise.all([prepareFoodBuilds(), PreloadSounds('dontstarve/common/cookingpot_rattle', 'dontstarve/common/cookingpot_close', 'dontstarve/common/cookingpot_finish')]); },
+    oninit: initializePot,
+    createContainer: inst => createBuildingContainer('cookpot', inst),
+    canInteract: ({ model }) => model.userData.components?.container?.canbeopened !== false,
+    onclose: ({ model, animation }) => {
+        if (!(model.userData.components.stewer as Stewer).IsCooking()) animation.start('idle_empty');
+        PlaySound('dontstarve/common/cookingpot_close', model.position);
     },
-    onreskin: restoreCookingAnimation,
+    onrestore: ({ model }, components) => {
+        const state = components.stewer;
+        if (state) (model.userData.components.stewer as Stewer).OnLoad({
+            product: state.product, done: state.phase === 'done',
+            ...(state.phase === 'cooking' ? { remainingtime: state.remainingSeconds } : {}),
+            ingredient_prefabs: state.ingredient_prefabs, chef_id: state.chef_id,
+        } satisfies StewerSaveData);
+    },
+    onreskin: ({ model }) => {
+        initializeFoodArt(model);
+        const stewer = model.userData.components.stewer as Stewer;
+        if (stewer.IsCooking()) model.userData.animationController.start('cooking_loop');
+        else if (stewer.IsDone()) { showProduct(model); model.userData.animationController.start('idle_full'); }
+    },
     exportComponents: ({ model }) => {
         const state = cookPotState(model);
-        return state ? { stewer: { ...state } } : {};
+        return state ? { stewer: state } : {};
     },
-    onupdate: ({ model, animation }, dt) => {
-        const state = cookPotState(model);
-        if (!state || state.phase !== 'cooking') return;
-        state.remainingSeconds = Math.max(0, state.remainingSeconds - Math.max(0, dt));
-        if (state.remainingSeconds > 0) return;
-        state.phase = 'done';
+    onupdate: ({ model }, dt) => (model.userData.components.stewer as Stewer).LongUpdate(dt),
+    ondispose: ({ model }) => {
         (model.userData.stewerSound as SoundHandle | undefined)?.stop();
-        delete model.userData.stewerSound;
-        PlaySound('dontstarve/common/cookingpot_finish', model.position);
-        animation.playOnce('cooking_pst', () => animation.start('idle_full'));
+        (model.userData.components.stewer as Stewer).OnRemoveFromEntity();
     },
-    ondispose: ({ model }) => (model.userData.stewerSound as SoundHandle | undefined)?.stop(),
 };
 
 const COOK_POT_DEFINITIONS: Readonly<Record<CookPotId, AnimatedBuildingDefinition>> = {

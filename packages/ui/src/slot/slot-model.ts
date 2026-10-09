@@ -1,4 +1,4 @@
-import { createSignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { SlotAddress } from '@dontstarve-web/inventory';
 
 export type { SlotAddress } from '@dontstarve-web/inventory';
@@ -28,6 +28,7 @@ export interface SlotItem {
 
 export interface SlotModel {
   readonly address: SlotAddress;
+  readonly item: ReadonlySignal<SlotItem | null>;
   getItem(): SlotItem | null;
   setItem(item: SlotItem | null): void;
   accepts(item: SlotItem): boolean;
@@ -44,6 +45,7 @@ export function createSlot(options: CreateSlotOptions): SlotModel {
 
   return {
     address: { ...options.address },
+    item: readonlySignal(item),
     getItem: item.get,
     setItem: item.set,
     accepts: options.accepts ?? (() => true),

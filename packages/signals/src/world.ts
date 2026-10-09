@@ -16,9 +16,19 @@ export interface ClockTick {
   timeinphase: number;
 }
 
+/** Optional clocktick presentation fields; temperature-only Lua saves omit them. */
+export interface ClockCalendar {
+  cycles: number;
+  time: number;
+  daySegments: number;
+  duskSegments: number;
+  waxing: boolean;
+  playerAge: number;
+}
+
 /** A loaded Lua save preserves the temperature term without guessing calendar progress. */
 export type SeasonState = SeasonTick | { season: WorldSeason; temperature: number };
-export type ClockState = ClockTick | { phase: WorldPhase; temperature: number };
+export type ClockState = (ClockTick | { phase: WorldPhase; temperature: number }) & Partial<ClockCalendar>;
 
 function finite(value: number, name: string): number {
   if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite`);
@@ -46,9 +56,26 @@ function validateSeason(data: SeasonState): SeasonState {
 
 function validateClock(data: ClockState): ClockState {
   if (!['day', 'dusk', 'night'].includes(data.phase)) throw new RangeError(`Invalid phase: ${data.phase}`);
+  const calendar: Partial<ClockCalendar> = {};
+  for (const key of ['cycles', 'playerAge', 'daySegments', 'duskSegments'] as const) {
+    const value = data[key];
+    if (value === undefined) continue;
+    if (!Number.isInteger(value) || value < 0 || (key.endsWith('Segments') && value > 16)) {
+      throw new RangeError(`Invalid ${key}: ${value}`);
+    }
+    calendar[key] = value;
+  }
+  if ((data.daySegments ?? 10) + (data.duskSegments ?? 4) > 16) {
+    throw new RangeError('Clock segments must fit within 16 segments');
+  }
+  if (data.time !== undefined) calendar.time = progress(data.time, 'time');
+  if (data.waxing !== undefined) {
+    if (typeof data.waxing !== 'boolean') throw new TypeError('waxing must be a boolean');
+    calendar.waxing = data.waxing;
+  }
   return Object.freeze('temperature' in data
-    ? { phase: data.phase, temperature: finite(data.temperature, 'phasetemperature') }
-    : { phase: data.phase, timeinphase: progress(data.timeinphase, 'timeinphase') });
+    ? { ...calendar, phase: data.phase, temperature: finite(data.temperature, 'phasetemperature') }
+    : { ...calendar, phase: data.phase, timeinphase: progress(data.timeinphase, 'timeinphase') });
 }
 
 function validateMoonPhase(phase: WorldMoonPhase): WorldMoonPhase {

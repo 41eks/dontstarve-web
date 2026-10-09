@@ -7,6 +7,7 @@ import {
 import { EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, BACKPACK_SLOT_COUNT } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
+import type { Container } from '../../componets/src/container';
 import type {
   EquipmentKind,
   InventoryItemSpec,
@@ -72,6 +73,7 @@ export class InventoryStore {
   private readonly itemSpecs = new Map<string, InventoryItemSpec>();
   private readonly listeners = new Set<InventoryListener>();
   private readonly accessibleStorageContainerIds = new Set<string>();
+  private readonly worldContainers = new Map<string, Container<InventoryStack, ItemEntity, ItemSlot>>();
   private readonly skinSpecs: Readonly<Record<string, InventorySkinSpec>>;
   private readonly registrationByAddress = new Map<string, RegisteredItemSlot>();
   private readonly registrations: RegisteredItemSlot[] = [];
@@ -122,7 +124,7 @@ export class InventoryStore {
       if (!Number.isSafeInteger(stack.count)
         || stack.count <= 0
         || stack.count > Math.min(spec.maxStack, slot.maxStack?.(stack.itemId) ?? spec.maxStack)
-        || !slot.accepts(spec) || !this.validUses(stack, spec) || !this.validRecord(stack)) {
+        || !slot.accepts(spec, stack.itemId) || !this.validUses(stack, spec) || !this.validRecord(stack)) {
         throw new RangeError(`Invalid initial stack for ${stack.itemId} in ${key}`);
       }
     }
@@ -142,6 +144,32 @@ export class InventoryStore {
       this.bindEquipmentExistenceState(kind);
       this.publishEquipmentExistenceState(kind);
     }
+  }
+
+  registerContainer(containerId: string, container: Container<InventoryStack, ItemEntity, ItemSlot>): void {
+    const existing = container.slots.map((_, index) => this.registrationByAddress.get(addressKey({ containerId, slotKey: String(index) })));
+    if (existing.some(Boolean)) {
+      if (existing.some(slot => !slot)) throw new Error('Partially registered world container');
+      container.BindSlots(existing.map(slot => slot!.slot));
+    } else this.registerSlots(container.slots.map((slot, index) => ({ address: { containerId, slotKey: String(index) }, slot })));
+    this.worldContainers.set(containerId, container);
+  }
+
+  getContainer(containerId: string): Container<InventoryStack, ItemEntity, ItemSlot> | undefined {
+    return this.worldContainers.get(containerId);
+  }
+
+  unregisterContainer(containerId: string, container: Container<InventoryStack, ItemEntity, ItemSlot>): void {
+    if (this.worldContainers.get(containerId) !== container) return;
+    container.DestroyContents();
+    const removed = this.registrations.filter(registration => registration.address.containerId === containerId);
+    for (const registration of removed) this.registrationByAddress.delete(addressKey(registration.address));
+    for (let index = this.registrations.length - 1; index >= 0; index--) {
+      if (this.registrations[index].address.containerId === containerId) this.registrations.splice(index, 1);
+    }
+    this.worldContainers.delete(containerId);
+    this.accessibleStorageContainerIds.delete(containerId);
+    this.notify(removed.map(registration => registration.address));
   }
 
   subscribe(listener: InventoryListener): () => void {
@@ -238,7 +266,7 @@ export class InventoryStore {
         const spec = this.requireItemSpec(item.itemId);
         if (!Number.isSafeInteger(item.count) || item.count <= 0
           || item.count > Math.min(spec.maxStack, registration.slot.maxStack?.(item.itemId) ?? spec.maxStack)
-          || !registration.slot.accepts(spec) || !this.validUses(item, spec) || !this.validRecord(item)) {
+          || !registration.slot.accepts(spec, item.itemId) || !this.validUses(item, spec) || !this.validRecord(item)) {
           throw new Error(`Invalid saved item in ${key}`);
         }
         validateItem(item);
@@ -562,7 +590,7 @@ export class InventoryStore {
         continue;
       }
 
-      if (!slot.accepts(spec)) return false;
+      if (!slot.accepts(spec, change.itemId)) return false;
       if (current && !isSameStack(current, change.itemId, change.skinId)) return false;
       const nextCount = (current?.count ?? 0) + change.delta;
       if (nextCount > Math.min(spec.maxStack, slot.maxStack?.(change.itemId) ?? spec.maxStack)) return false;
@@ -756,6 +784,7 @@ export class InventoryStore {
   }
 
   private notify(changedSlots: readonly SlotAddress[], replacedEquipment: readonly EquipmentKind[] = []): void {
+    for (const id of new Set(changedSlots.map(address => address.containerId))) this.worldContainers.get(id)?.publishDTO();
     // One complete DTO per changed container, including in-place quantity/fuel updates.
     const containerIds = new Set(changedSlots.map(address => address.containerId).filter(isBackpackContainerId));
     for (const id of containerIds) {

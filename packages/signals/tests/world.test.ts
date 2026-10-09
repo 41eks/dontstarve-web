@@ -19,7 +19,9 @@ it('exports world singletons and publishes immutable validated snapshots', () =>
   const stopClock = clockstate.subscribe(clockChanged), stopSeason = seasonstate.subscribe(seasonChanged);
   const stopMoon = moonphasestate.subscribe(moonChanged);
   try {
-    const tick = { phase: 'night' as const, timeinphase: 0.5 };
+    const tick = { phase: 'night' as const, timeinphase: 0.5, cycles: 3, time: 0.9375,
+      daySegments: 10, duskSegments: 4, waxing: false };
+    const snapshot = { ...tick };
     clockstate.set(tick);
     seasonstate.set({ season: 'winter', temperature: -25 });
     moonphasestate.set('full');
@@ -27,7 +29,7 @@ it('exports world singletons and publishes immutable validated snapshots', () =>
     expect(sharedMoonPhase.get()).toBe('full');
     expect(moonChanged).toHaveBeenCalledExactlyOnceWith('full', 'new');
     tick.timeinphase = 1;
-    expect(sharedClock.get()).toEqual({ phase: 'night', timeinphase: 0.5 });
+    expect(sharedClock.get()).toEqual(snapshot);
     expect(sharedSeason.get()).toEqual({ season: 'winter', temperature: -25 });
     expect(Object.isFrozen(clockstate.peek())).toBe(true);
     expect(Object.isFrozen(seasonstate.peek())).toBe(true);
@@ -51,6 +53,7 @@ it('rejects invalid singleton updates without replacing state or publishing', ()
   const stopMoon = moonphasestate.subscribe(changed);
   try {
     expect(() => clockstate.set({ phase: 'night', timeinphase: 1.1 })).toThrow(RangeError);
+    expect(() => clockstate.set({ phase: 'day', timeinphase: 0, cycles: -1 })).toThrow(RangeError);
     expect(() => seasonstate.set({ season: 'winter', progress: NaN })).toThrow(RangeError);
     expect(() => clockstate.set({ phase: 'day', temperature: Infinity })).toThrow(RangeError);
     expect(() => seasonstate.set({ season: 'winter', temperature: -Infinity })).toThrow(RangeError);

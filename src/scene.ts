@@ -1,4 +1,4 @@
-import type { ItemEntityRegistry } from '@dontstarve-web/inventory';
+import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
@@ -116,8 +116,8 @@ export async function startScene(
   pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
-  onClockTick?: (elapsedSeconds: number, dt: number) => void,
   itemEntities?: ItemEntityRegistry,
+  inventory?: Pick<InventoryStore, 'registerContainer' | 'unregisterContainer'>,
 ) {
   const blockDisabledController = (event: PointerEvent) => {
     if (player.userData.controllerEnabled !== false) return;
@@ -126,7 +126,7 @@ export async function startScene(
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
   player.userData.locomotor = locomotor;
   const entities = createSceneEntities(world, worldState, consumeBufferedBuild, pickupGroundItem,
-    onBuildingInteraction, onFlowerPlanted, itemEntities);
+    onBuildingInteraction, onFlowerPlanted, itemEntities, inventory);
   const { registry } = entities;
   try {
     await registry.restoreAll(initialSave.world.entities);
@@ -145,7 +145,7 @@ export async function startScene(
     updateCharacterRenderOrder(registry);
   };
   middleTasks.push(updateBeforePhysics);
-  const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, onClockTick);
+  const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds);
   backTasks.push(clockUpdater.update);
   backTasks.push(updateEntities);
   const getSaveState = (): Omit<RuntimeSaveState, 'inventory'> => {

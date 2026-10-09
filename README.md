@@ -9,11 +9,17 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 ## 调试命令（debugCommand）
 
+物品栏右键参考 Lua `widgets/invslot.lua:OnControl/DropItem/UseItem` 的分工：UI 将右键输入写入 input signal，读取 slot 的只读 `item` signal，并同步发布 `drop/use` 请求；应用验证物品实体后执行丢弃、进食、种花或背包装卸。连续右键分别处理，槽位投影更新不会重放动作；UI 断开和场景停止时释放对应订阅。`game:slot-context-menu` 仍跨 shadow root 冒泡；沿用网页已有的 Shift + 右键丢弃一个物品。`c_give`、`c_spawn`、`c_save` 的语法、参数和支持 ID 保持不变。
+
+世界时钟直接读取世界 signal，已删除 `setClock()` 状态转发接口。指针和日期仍每 60 个活动帧结算刷新；装饰动画逐活动游戏帧播放，暂停时停止，不累计第二份世界时间。以下调试命令的语法、参数和支持 ID 不变。
+
 建筑容器面板的开关与屏幕定位由 `packages/ui/src/chest-inventory-panel.ts` 负责，`src/main.ts` 注入场景依赖并注册逐帧更新；此次模块迁移保持以下命令的语法、参数、行为和支持 ID 不变。
 
 `c_save()` 会先结算尚未满 60 帧的昼夜／温度时间，再把当前季节温度、昼夜温度和噪声时间保存到 `world.systems.worldtemperature`，读档后继续计算。昼夜、季节和月相使用 `packages/signals` 导出的全局唯一单例 `clockstate`、`seasonstate`、`moonphasestate`，读档恢复现有单例的值，月相按累计游戏时间和现有 20 天周期恢复。`DstLightingRenderer` 用 `createEffect` 读取三个 signal 更新光照，不复制它们的状态；夜晚且月相为 `full` 时显示满月光照。旧存档缺少温度字段时，使用存档季节（默认春季）的中点温度，并以已保存的累计游戏时间初始化噪声时间。当前季节仍需显式修改 signal，尚未自动推进；这里保存的是环境温度，HUD 的角色体温尚未接入。`c_save()` 无参数，命令语法和支持 prefab/item ID 不变。
 
-`c_spawn("cookpot")` 生成烹饪锅，`c_give("twigs", 4)` 获取四根树枝。靠近并点击锅打开四个格子，每格放一份材料后点击“烹饪”：立即消耗材料并关闭面板，播放 `cooking_loop`，约 10 秒后播放 `cooking_pst → idle_full`，锅中显示原版 `beefalofeed`（蒸树枝）。配方与时长参考 `preparedfoods.lua`、`components/stewer.lua` 和 `tuning.lua`，食物图层按 `prefabs/cookpot.lua` 使用 `cook_pot_food11.zip` 的 `beefalofeed` 符号，保留锅的皮肤。烹饪中和完成后的锅不能再次打开；`c_save()` 保存剩余烹饪时间及锅内产物，读档和清洁扫把换肤保留状态。`src/cook.ts` 按 `cooking.lua` 注册食材标签、生熟／风干版本和别名，汇总四格材料后按最高配方优先级及同级权重选出产物；`src/preparedfoods.ts` 移植 68 条普通料理的配方条件和烹饪贴图元数据。现在四根树枝、或一根树枝加三个红蘑菇都可烹饪蒸树枝，后者可用 `c_give("twigs")` 和 `c_give("red_cap", 3)` 准备。只有最终产物是 `beefalofeed` 时启用按钮；若高优先级料理胜出，保留材料并禁用按钮。本阶段仍只执行蒸树枝的烹饪过程，不实现收获、进食、腐败、其它料理产物或厨师专属／非料理配方，也不新增独立 `beefalofeed` 的 `c_give` / `c_spawn` 支持。
+`c_spawn("cookpot")` 生成烹饪锅；`c_give("twigs", 4)` 准备四份树枝，或用 `c_give("twigs")` 与 `c_give("red_cap", 3)` 准备树枝和红蘑菇。靠近并点击锅，把材料放入四个格子；烹饪按钮按 Lua `containers.lua` 只检查容器是否装满，原料由容器按 `cooking.IsCookingIngredient()` 限制。UI 提交 `COOK` 请求，动作检查正在烹饪、其他开启者和满容器状态，再调用锅自己的 `stewer.StartCooking()`：读取真实原料实体，计算配方与时间，关闭容器、销毁原料并禁止打开。`main.ts` 只接入通用容器与动作服务，不保存锅列表、判断配方或扣材料。`packages/componets/src/cooking.ts` 与 `preparedfoods.ts` 按源 Lua 定义食材标签、别名和 68 条普通料理；不再限定最终产物为 `beefalofeed`。四根树枝和树枝加三个红蘑菇约 10 秒后得到蒸树枝；一根树枝、两个红蘑菇和一份怪物肉按更高优先级得到肉串。锅内食物按 recipe 的 `overridebuild`、`overridesymbolname` 和 `potlevel` 选择原版图层，完成时播放 `cooking_pst → idle_full`。`c_save()` 保存产物、剩余烹饪时间、原料记录、身份、位置及锅皮肤；读档和清洁扫把换肤保留组件与状态，兼容已有蒸树枝存档。此处实现烹饪开始、完成及恢复；收获、锅内腐败和厨师专属配方仍待实现。命令语法、参数及支持的 `c_give` / `c_spawn` ID 不变。
+
+建筑的 `skinId` 使用 signal，`reskinTargets.prepareNextSkin()` 先准备原版资源，成功提交时只设置皮肤 signal。表现订阅替换美术、保留动画进度与地面脚点，并释放旧资源；根实体、容器和烹饪组件保持不变。取消准备或移除实体不改变皮肤，准备资源只释放一次；保存读取当前 signal。用 `c_give("reskin_tool")` 装备清洁扫把后，按现有换肤方式操作建筑，并可用 `c_save()` 保存选中的皮肤。
 
 `c_give("backpack")` 获取背包，第二个参数为数量（默认 `1`，例如 `c_give("backpack", 2)`），每个占一格。拖到身体装备槽或右键背包即可装备，角色显示 `swap_backpack.zip` 的原版外观；右侧播放 `anim/ui_backpack_2x4.zip` 的 `open` 动画并显示 2 列 × 4 行的 8 个储物格，可与物品栏、其他容器拖放物品，材料可用于制作。Shift + 右键丢弃时使用原版 `anim/backpack.zip` 的 bank `backpack1`、`anim` 地面姿态和 `anim/swap_backpack.zip` 的 build，点击可拾回。支持 36 个原版皮肤及其实际库存图标 atlas；可在制作面板选择皮肤，或装备清洁扫把右键地面背包循环换肤。拾回和重新装备保留皮肤，隐形皮肤仅隐藏穿戴外观，地面姿态仍可见。卸下时播放 `close` 并隐藏储物格，再次装备时恢复内容；每个背包实体独立持有自己的 8 个格子，换包时面板切换到对应容器；未装备背包的材料不可用于制作。背包不能放入背包或箱子。内容随背包丢弃、拾回、换肤及 `c_save()` 保存和恢复，存档嵌套在该背包的 `item.container` 中。容器逻辑由 `packages/componets/src/container.ts` 的 Lua 风格 `Container` 组件负责，装备和卸下调用 `Open/Close`，内容经 `OnSave/OnLoad` 保存恢复。`toSignal()` 将容器 DTO 提供给背包面板，事务提交后统一刷新数量、皮肤和耐久，换包或关闭面板时释放订阅；沿用玩家物品栏的槽位 signal 和渲染器。旧 `player:backpack` 存档仅在归属明确时迁移到对应背包。
 

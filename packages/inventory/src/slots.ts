@@ -6,7 +6,7 @@ export interface ItemSlot {
   getEntity(): ItemEntity | null;
   setEntity(entity: ItemEntity | null): void;
   set(stack: InventoryStack | null): void;
-  accepts(spec: InventoryItemSpec): boolean;
+  accepts(spec: InventoryItemSpec, itemId?: string): boolean;
   maxStack?(itemId: string): number;
 }
 

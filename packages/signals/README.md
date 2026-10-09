@@ -13,6 +13,8 @@ UI、库存和 prefab 共用的响应式原语、装备协议与状态工厂，�
 
 月相由同一模块导出的全局唯一单例 `moonphasestate` 持有，初始为 `'new'`，支持 `'new'`、`'quarter'`、`'half'`、`'threequarter'`、`'full'`。世界时钟按现有 20 天周期每 60 个活动帧结算更新，从存档累计游戏时间恢复；同值不通知，无效月相保留原值并抛出 `RangeError`。光照用 `createEffect` 读取三个世界 signal，夜晚且月相为 `'full'` 时派生满月外观，不复制昼夜、季节或月相状态。
 
+`clockstate` 的可选 `cycles`、`time`、`daySegments`、`duskSegments`、`waxing`、`playerAge` 字段用于时钟表现；世界时钟在初始化、60 帧结算和部分结算时发布日历快照。天数和段数须为非负整数，昼夜段数之和不超过 16，全天进度 `time` 位于 `[0, 1]`，`waxing` 为布尔值。UI 直接通过 memo/effect 消费世界状态；装饰动画逐活动帧推进，指针和日期仍只由 signal 更新。
+
 装备存在状态由工厂创建，包内没有全局装备状态：
 
 | 工厂 | Store 的可写状态 | 只读接口 | 非空装备的 `EQUIPSLOTS` |

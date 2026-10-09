@@ -232,19 +232,24 @@ test('renders the inventory and equipment slots and emits selection events', asy
   ]);
 });
 
-test('emits an inventory slot context-menu event and suppresses the native menu', async ({ page }) => {
+test('routes right-click input through slot signals and preserves the bubbling context-menu event', async ({ page }) => {
   await openFixture(page);
 
   await page.evaluate(() => {
     const inventoryBar = document.querySelector('dst-inventory-bar') as HTMLElement & {
       setSlot(ref: unknown, item: unknown): void;
+      contextMenu: { subscribe(listener: (request: unknown) => void): () => void };
     };
     inventoryBar.setSlot({ containerId: 'player:inventory', slotKey: '0' }, {
+      entityId: 'food-entity',
       id: 'meatballs',
       name: '肉丸',
       count: 1,
       maxStack: 40,
       icon: 'meatballs.tex',
+    });
+    inventoryBar.contextMenu.subscribe(request => {
+      (window as typeof window & { slotContextRequest?: unknown }).slotContextRequest = request;
     });
     window.addEventListener('game:slot-context-menu', (event) => {
       (window as typeof window & { slotContextMenu?: unknown }).slotContextMenu = {
@@ -272,6 +277,19 @@ test('emits an inventory slot context-menu event and suppresses the native menu'
   await expect.poll(() => page.evaluate(() =>
     (window as typeof window & { nativeContextMenuPrevented?: boolean }).nativeContextMenuPrevented,
   )).toBe(true);
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { slotContextRequest?: unknown }).slotContextRequest,
+  )).toMatchObject({ action: 'use', item: { entityId: 'food-entity', id: 'meatballs' } });
+
+  await page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot').first().click({
+    button: 'right', modifiers: ['Shift'],
+  });
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { slotContextRequest?: unknown }).slotContextRequest,
+  )).toMatchObject({ action: 'drop', shiftKey: true });
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & { slotContextMenu?: unknown }).slotContextMenu,
+  )).toMatchObject({ detail: { shiftKey: true } });
 });
 
 test('updates individual inventory signals and emits an atomic transfer request', async ({ page }) => {

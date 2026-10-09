@@ -1,21 +1,22 @@
-import { createSignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { SlotAddress, SlotItem, SlotModel } from './slot-model';
 
 /** UI mirror of the authoritative PreparedFoodSlot in packages/inventory. */
 export class PreparedFoodSlot implements SlotModel {
   readonly address: SlotAddress;
-  private readonly item = createSignal<SlotItem | null>(null);
+  private readonly itemState = createSignal<SlotItem | null>(null);
+  readonly item = readonlySignal(this.itemState);
 
   constructor(address: SlotAddress) {
     this.address = { ...address };
   }
 
   getItem(): SlotItem | null {
-    return this.item.get();
+    return this.itemState.get();
   }
 
   setItem(item: SlotItem | null): void {
-    this.item.set(item);
+    this.itemState.set(item);
   }
 
   accepts(): boolean {

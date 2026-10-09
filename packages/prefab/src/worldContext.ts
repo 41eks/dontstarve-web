@@ -7,6 +7,8 @@ import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionConte
  * and the ground, so prefabs receive them instead of creating their own.
  */
 export interface WorldContext extends ActionWorldContext {
+    registerContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
+    unregisterContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
     /** Place destruction loot in the application's authoritative ground-item store. */
     dropLoot?: (items: readonly { itemId: string; count: number }[], position: THREE.Vector3) => void;
 }

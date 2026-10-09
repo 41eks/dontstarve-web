@@ -1,5 +1,5 @@
 import { AssetElement } from './assets';
-import { INITIAL_CLOCK_STATE, WorldClock, type WorldClockState } from './world-clock';
+import { WorldClock } from './world-clock';
 import styles from './styles/status-hud.css?inline';
 
 type MeterDefinition = {
@@ -16,7 +16,6 @@ const meters: MeterDefinition[] = [
 
 export class DstStatusHudElement extends AssetElement {
   private clock?: WorldClock;
-  private clockState: WorldClockState = INITIAL_CLOCK_STATE;
   private stats = Object.fromEntries(meters.map(({ kind, value }) => [kind, value]));
 
   constructor() {
@@ -25,13 +24,16 @@ export class DstStatusHudElement extends AssetElement {
   }
 
   disconnectedCallback(): void {
+    this.dispose();
+  }
+
+  dispose(): void {
     this.clock?.dispose();
     this.clock = undefined;
   }
 
-  setClock(state: WorldClockState, dt = 0): void {
-    this.clockState = { ...state };
-    this.clock?.update(this.clockState, dt);
+  advanceClockAnimation(dt: number): void {
+    this.clock?.advanceAnimation(dt);
   }
 
   setStats(stats: { health: number; hunger: number; sanity: number }): void {
@@ -52,7 +54,7 @@ export class DstStatusHudElement extends AssetElement {
       <style>${styles}</style>
       <section class="survival-hud" aria-label="生存状态">
         <div class="survival-hud__calendar">
-          <div class="world-clock" role="img" tabindex="0" aria-label="世界第 ${this.clockState.cycles + 1} 日">
+          <div class="world-clock" role="img" tabindex="0">
             <canvas class="world-clock__animation" aria-hidden="true"></canvas>
           </div>
           <div class="season-clock" aria-label="当前季节：冬">
@@ -69,7 +71,6 @@ export class DstStatusHudElement extends AssetElement {
     `;
 
     this.clock = new WorldClock(root.querySelector<HTMLCanvasElement>('.world-clock__animation')!, this.dataAsset(''));
-    this.clock.update(this.clockState);
 
     const meterRow = root.querySelector<HTMLElement>('.survival-hud__meters')!;
     meters.forEach((meter) => meterRow.append(this.createMeter({ ...meter, value: Math.round(this.stats[meter.kind]) })));

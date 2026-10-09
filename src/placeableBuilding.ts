@@ -6,7 +6,6 @@ import {
 import {
     AnimatedBuildingPlacement,
     type AnimatedBuildingInteractionChange,
-    type AnimatedBuildingEventContext,
 } from '@dontstarve-web/prefab/animatedBuildingPlacement';
 import {
     RESEARCH_LAB_DEFINITIONS,
@@ -134,8 +133,8 @@ export class PlaceableBuildingPlacement {
         return [...this.animated.exportRecords(), ...this.walls.exportRecords()];
     }
 
-    performOpenAction(model: import('three').Group, action: (context: AnimatedBuildingEventContext) => boolean): boolean {
-        return this.animated.performOpenAction(model, action);
+    performContainerAction(model: import('three').Object3D, action: 'COOK', doer: object): boolean {
+        return this.animated.performContainerAction(model, action, doer);
     }
 
     dispose(): void {

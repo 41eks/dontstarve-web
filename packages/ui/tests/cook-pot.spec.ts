@@ -64,7 +64,9 @@ test('cooks one twig with three red caps and reloads its progress and finished f
   await expect(button).toBeVisible();
   await expect(button).toBeDisabled();
   for (const [index, itemId] of ['twigs', 'red_cap', 'red_cap', 'red_cap'].entries()) {
-    await page.locator(`dst-inventory-bar .inventory-bar__items [data-item-id="${itemId}"]`).click();
+    // Picking up a stack moves it into the authoritative cursor; subsequent
+    // single-item placements use its remaining contents without picking up again.
+    if (index < 2) await page.locator(`dst-inventory-bar .inventory-bar__items [data-item-id="${itemId}"]`).click();
     await panel.locator(`[data-slot-key="${index}"]`).click();
     await expect(panel.locator(`[data-slot-key="${index}"]`)).toHaveAttribute('data-item-id', itemId);
     if (index < 3) await expect(button).toBeDisabled();
@@ -85,11 +87,11 @@ test('cooks one twig with three red caps and reloads its progress and finished f
   await expect.poll(async () => (await state())?.animation, { timeout: 25_000 }).toBe('idle_full');
   const finished = await saveGame();
   expect(finished.world.entities.cookpot[0]).toEqual({ ...record, components: { ...record.components,
-    stewer: { product: 'beefalofeed', phase: 'done', remainingSeconds: 0 } } });
+    stewer: { ...record.components.stewer, phase: 'done', remainingSeconds: 0 } } });
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: finished }));
   await page.reload(); await prepare();
   expect(await state()).toEqual({ id: record.id, animation: 'idle_full',
-    stewer: { product: 'beefalofeed', phase: 'done', remainingSeconds: 0 } });
+    stewer: { ...record.components.stewer, phase: 'done', remainingSeconds: 0 } });
   await page.screenshot({ path: '/tmp/dontstarve-beefalofeed.png' });
   expect(errors).toEqual([]);
 });

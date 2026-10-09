@@ -78,13 +78,17 @@ export {
 } from './slot/slot-model';
 export { createSlotRenderer, type CreateSlotRendererOptions, type SlotRenderer } from './slot/slot-renderer';
 export {
+  bindSlotContextMenuInput,
+  type SlotSecondaryInput,
+  type SlotContextMenuRequest,
+} from './slot/slot-input';
+export {
   SlotTransferController,
   slotTransferController,
   type SlotDragEndResult,
   type SlotTransferRequest,
 } from './slot/slot-transfer';
 export { DstStatusHudElement } from './status-hud';
-export type { WorldClockState } from './world-clock';
 export { DstSavingIndicatorElement } from './saving-indicator';
 
 export interface MountGameUiOptions {

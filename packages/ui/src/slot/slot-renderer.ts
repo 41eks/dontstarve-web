@@ -1,6 +1,7 @@
 import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
 import { SlotReceiveAnimation, type InventoryReceiveSource } from './slot-receive-animation';
-import { createEffect } from '@dontstarve-web/signals';
+import { createEffect, createSignal } from '@dontstarve-web/signals';
+import { bindSlotContextMenuInput, type SlotContextMenuRequest, type SlotSecondaryInput } from './slot-input';
 import { sameSlotAddress, type SlotAddress, type SlotModel } from './slot-model';
 import { slotTransferController, type SlotTransferRequest } from './slot-transfer';
 
@@ -13,7 +14,7 @@ export interface CreateSlotRendererOptions {
   selectedSlot?(): SlotAddress | null;
   /** Return true to claim the click and skip the transfer pick-up. */
   onSelect?(slot: SlotModel): boolean;
-  onContextMenu?(slot: SlotModel, event: MouseEvent): void;
+  onContextMenu?(request: SlotContextMenuRequest): void;
   onTransfer?(request: SlotTransferRequest): void;
 }
 
@@ -49,6 +50,8 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
 
   let disposeEffect: (() => void) | undefined;
   let unregister: (() => void) | undefined;
+  let stopContextMenu: (() => void) | undefined;
+  const secondaryInput = createSignal<SlotSecondaryInput | null>(null);
   let suppressNextClick = false;
   const receiveAnimation = new SlotReceiveAnimation(button, () => options.slot.getItem());
 
@@ -101,7 +104,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   });
   button.addEventListener('contextmenu', (event) => {
     event.preventDefault();
-    options.onContextMenu?.(options.slot, event);
+    secondaryInput.set({ shiftKey: event.shiftKey });
   });
   button.addEventListener('pointerdown', (event) => {
     slotTransferController.begin(event, options.slot);
@@ -122,11 +125,18 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     button,
     connect() {
       if (disposeEffect) return;
+      const contextMenu = bindSlotContextMenuInput(secondaryInput, options.slot);
+      const stopRequests = contextMenu.request.subscribe(request => {
+        if (request) options.onContextMenu?.(request);
+      });
+      stopContextMenu = () => { stopRequests(); contextMenu.dispose(); };
       unregister = slotTransferController.register(options.slot, button);
       disposeEffect = createEffect(update);
     },
     disconnect() {
       receiveAnimation.cancel();
+      stopContextMenu?.();
+      stopContextMenu = undefined;
       disposeEffect?.();
       disposeEffect = undefined;
       unregister?.();

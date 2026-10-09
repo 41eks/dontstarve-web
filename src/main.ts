@@ -10,11 +10,9 @@ import {
   type CraftingStateDetail,
   type CraftRequestDetail,
   type ChestCloseDetail,
-  type CookRequestDetail,
   type DebugCommandDetail,
   type SlotAddress,
   type SlotItem,
-  type SlotContextMenuDetail,
   type SlotSelectDetail,
   type SlotTransferRequest,
   slotTransferController,
@@ -36,9 +34,6 @@ import {
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { FOOD_EFFECTS } from '@dontstarve-web/prefab/food';
-import { startCookPotCooking } from '@dontstarve-web/prefab/cook_pot';
-import { BASE_COOK_TIME, CalculateRecipe, canCookBeefaloFeed } from './cook';
-import type * as THREE from 'three';
 import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 import { UpdateSoundListener, PreloadSounds } from '@dontstarve-web/prefab/sound';
 import { turfMap } from './building';
@@ -46,7 +41,7 @@ import { backTasks, frontTasks, registerFrontTask } from './animate';
 import { input } from './InputManager';
 import { view, actionEvents } from './view';
 import { spellCastMap } from './spellCastMap';
-import { backpackContainerId, isBackpackContainerId, inventorySlotAddress, cursorSlotAddress, PreparedFoodSlot, StorageSlot, type InventoryStack } from '@dontstarve-web/inventory';
+import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type InventoryStack } from '@dontstarve-web/inventory';
 import { player } from './player';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { bindPlayerHeadEquipment } from './playerHeadEquipment';
@@ -55,8 +50,7 @@ import { cursorUi, dstLighting, renderer } from './universal';
 import { DstLightingRenderer } from './dstLighting';
 import { camera } from './camera';
 import {
-  STORAGE_BUILDING_IDS, buildingContainerId, buildingContainerDefinition, isStorageBuildingId,
-  type StorageBuildingId,
+  STORAGE_BUILDING_IDS, buildingContainerId, createBuildingContainer, isStorageBuildingId,
 } from '@dontstarve-web/prefab/containers';
 import { executeDebugCommand } from './debugCommands';
 import { isPlaceableBuildingId } from './placeableBuilding';
@@ -64,7 +58,6 @@ import {
   createInventoryStore,
 } from './inventory';
 import { locomotor, startScene } from './scene';
-import { getDstClock } from './tuning';
 import { initialSave } from './save/initialSave';
 import { inventoryStateFromSave } from './save/inventoryState';
 import { SAVE_CATALOG } from './save/catalog';
@@ -87,14 +80,12 @@ UpdateSoundListener(player.position);
 backTasks.push(() => UpdateSoundListener(player.position));
 
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
-gameUi.cookPotPanel.setCookingValidator(items => canCookBeefaloFeed(items.map(item =>
-  item ? { itemId: item.id, count: item.count } : null)));
 function syncPlayerStats(): void {
   gameUi.statusHud.setStats(getPlayerStats());
 }
 Object.values(playerStats).forEach(stat => stat.subscribe(syncPlayerStats));
 syncPlayerStats();
-const inventoryPanelOptions = { camera, canvas: renderer.domElement, player };
+const inventoryPanelOptions = { camera, canvas: renderer.domElement, player, toItem: inventorySlotItem };
 const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel, inventoryPanelOptions);
 const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, inventoryPanelOptions, 'cookpot');
 const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, inventoryPanelOptions, 'icebox');
@@ -104,24 +95,10 @@ const cursorAddress = cursorSlotAddress();
 export const handEquipment = inventory.handEquipment;
 export const headEquipment = inventory.headEquipment;
 export const bodyEquipment = inventory.bodyEquipment;
-const storageContainers = new Map<string, StorageBuildingId>();
-const cookPotModels = new Map<string, THREE.Group>();
-function storagePanel(prefab: StorageBuildingId) {
-  return prefab === 'cookpot' ? gameUi.cookPotPanel
-    : prefab === 'icebox' ? gameUi.iceBoxPanel : gameUi.chestPanel;
-}
-function registerStorage(prefab: StorageBuildingId, entityId: string): void {
-  const containerId = buildingContainerId(prefab, entityId);
-  if (storageContainers.has(containerId)) return;
-  const definition = buildingContainerDefinition(prefab);
-  inventory.registerSlots(Array.from({ length: definition.slotCount }, (_, index) => ({
-    address: { containerId, slotKey: String(index) },
-    slot: definition.singleItems ? new PreparedFoodSlot() : new StorageSlot(),
-  })));
-  storageContainers.set(containerId, prefab);
-}
 for (const prefab of STORAGE_BUILDING_IDS) {
-  for (const record of initialSave.world.entities[prefab] ?? []) registerStorage(prefab, record.id);
+  for (const record of initialSave.world.entities[prefab] ?? []) {
+    inventory.registerContainer(buildingContainerId(prefab, record.id), createBuildingContainer(prefab, {}));
+  }
 }
 for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]) {
   panel.addEventListener('game:chest-close', (event) => {
@@ -180,20 +157,18 @@ const bodyEquipmentBinding = bindPlayerBodyEquipment({
 handEquipmentBinding.withoutTransitions(() => inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES));
 
 function syncInventorySlot(address: SlotAddress): void {
-  const isBackpack = isBackpackContainerId(address.containerId);
-  if (isBackpack) return;
-  const storagePrefab = storageContainers.get(address.containerId);
-  const panel = storagePrefab === undefined ? undefined : storagePanel(storagePrefab);
-  if (panel && panel.slotContainer?.id !== address.containerId) return;
-  const inventoryBar = panel ?? gameUi.inventoryBar;
+  // World containers and backpacks bind their component DTO signals directly.
+  if (address.containerId !== inventorySlotAddress(0).containerId
+    && address.containerId !== handSlotAddress.containerId
+    && address.containerId !== cursorAddress.containerId) return;
+  const inventoryBar = gameUi.inventoryBar;
   const stack = inventory.getEntity(address)?.snapshot();
   if (!stack) {
     inventoryBar.setSlot(address, null);
     return;
   }
 
-  inventoryBar.setSlot(address, inventorySlotItem(stack,
-    storagePrefab && buildingContainerDefinition(storagePrefab).singleItems ? 1 : undefined));
+  inventoryBar.setSlot(address, inventorySlotItem(stack));
 }
 
 function inventorySlotItem(stack: Readonly<InventoryStack>, maxStack?: number): SlotItem {
@@ -246,22 +221,21 @@ const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting,
   ({ buildId, isOpen, model }) => {
     if (!isStorageBuildingId(buildId)) return;
     const entityId = String(model.userData.entityId);
-    registerStorage(buildId, entityId);
     (buildId === 'cookpot' ? cookPotInventoryPanel : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel)
       .setOpen(model, isOpen, buildId);
     const id = buildingContainerId(buildId, entityId);
-    if (buildId === 'cookpot') cookPotModels.set(id, model);
     inventory.setStorageAccessible(id, isOpen);
-    if (isOpen) {
-      inventory.addresses()
-        .filter(({ containerId }) => containerId === id)
-        .forEach(syncInventorySlot);
-    }
   },
   () => playerAnimation?.playPickup(),
-  (elapsedSeconds, dt) => gameUi.statusHud.setClock(getDstClock(elapsedSeconds), dt),
   inventory.entities,
+  inventory,
 );
+for (const panel of [chestInventoryPanel, cookPotInventoryPanel, iceBoxInventoryPanel]) {
+  panel.bindActions(buildingPlacement);
+  registerDisposal(() => panel.dispose());
+}
+registerDisposal(registerFrontTask(dt => gameUi.statusHud.advanceClockAnimation(dt)));
+registerDisposal(() => gameUi.statusHud.dispose());
 const picking = new PickActionController(view, {
   giveItem: (itemId, count, sourcePosition) => inventory.add(itemId, count, undefined,
     inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition)),
@@ -269,20 +243,6 @@ const picking = new PickActionController(view, {
   playerAnimation?.playPickup();
 });
 registerDisposal(() => picking.dispose());
-gameUi.cookPotPanel.addEventListener('game:cook-request', event => {
-  const { containerId } = (event as CustomEvent<CookRequestDetail>).detail;
-  if (gameUi.cookPotPanel.slotContainer?.id !== containerId) return;
-  const model = cookPotModels.get(containerId);
-  if (!model) return;
-  const slots = Array.from({ length: 4 }, (_, index) => ({ containerId, slotKey: String(index) }));
-  const ingredients = slots.map(slot => inventory.get(slot));
-  if (!canCookBeefaloFeed(ingredients)) return;
-  const recipe = CalculateRecipe('cookpot', ingredients.map(item => item!.itemId));
-  if (recipe?.[0] !== 'beefalofeed') return;
-  buildingPlacement.performOpenAction(model, context => startCookPotCooking(context, () =>
-    inventory.applySlotChanges(slots.map((slot, index) => ({ slot, ...ingredients[index]!, delta: -1 }))),
-    BASE_COOK_TIME * recipe[1]));
-});
 const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor, farmPlow,
   input.isActionInterrupting,
   (error) => console.error('Unable to use food', error), () => slotTransferController.clearSelection()) : undefined;
@@ -426,13 +386,15 @@ window.addEventListener('game:slot-select', (event) => {
     console.error(`Unable to start ${stack.itemId} placement`, error);
   });
 });
-window.addEventListener('game:slot-context-menu', (event) => {
-  const { slot, shiftKey } = (event as CustomEvent<SlotContextMenuDetail>).detail;
+registerDisposal(gameUi.inventoryBar.contextMenu.subscribe((request) => {
+  if (!request) return;
+  const { slot, action, item } = request;
   actionEvents.emit('action:interrupt', { reason: 'slot-context-menu' });
   if (isHandSlot(slot)) handEquipmentBinding.flush();
   const stack = inventory.get(slot);
-  if (!stack) return;
-  if (shiftKey) {
+  if (!stack || !item || stack.itemId !== item.id || stack.skinId !== item.skinId
+    || (item.entityId !== undefined && inventory.getEntity(slot)?.id !== item.entityId)) return;
+  if (action === 'drop') {
     actionEvents.emit('action:interrupt', { reason: 'drop' });
     const spec = inventory.getStackSpec(stack);
     const position = player.position.clone();
@@ -485,7 +447,7 @@ window.addEventListener('game:slot-context-menu', (event) => {
       : inventory.get(bodySlotAddress) === null ? bodySlotAddress : undefined;
     if (target) inventory.transfer(slot, target, 1);
   }
-});
+}));
 gameUi.crafting.addEventListener('game:craft-request', (event) => {
   actionEvents.emit('action:interrupt', { reason: 'craft' });
   const { recipeId, skinId } = (event as CustomEvent<CraftRequestDetail>).detail;

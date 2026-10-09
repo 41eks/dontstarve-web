@@ -5,6 +5,7 @@ export interface PlacementSaveRecord {
   components: {
     building?: { state: 'idle' | 'closed' | 'open'; skinId?: string };
     stewer?: import('./cook_pot').CookPotSaveState;
+    container?: { slotCount: number; slots: { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] };
     health?: { current: number; maximum: number };
     wall?: import('./wallSkins').WallSaveState;
   };

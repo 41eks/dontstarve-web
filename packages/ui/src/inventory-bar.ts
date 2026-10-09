@@ -11,7 +11,8 @@ import {
   type EquipmentKind,
   type SlotAddress,
 } from '@dontstarve-web/inventory';
-import { createSignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
+import type { SlotContextMenuRequest } from './slot/slot-input';
 import { createSlotContainer, type SlotContainer } from './slot/slot-container';
 import type {
   SlotContextMenuDetail,
@@ -66,6 +67,8 @@ export class DstInventoryBarElement extends AssetElement {
   private stopCursor?: () => void;
 
   private readonly selectedSlot = createSignal<SlotAddress | null>(null);
+  private readonly contextMenuState = createSignal<SlotContextMenuRequest | null>(null);
+  readonly contextMenu = readonlySignal(this.contextMenuState);
   private readonly renderers: SlotRenderer[] = [];
   private initialized = false;
 
@@ -177,7 +180,7 @@ export class DstInventoryBarElement extends AssetElement {
       backgroundUrl: () => this.asset(`bag/${descriptor.backgroundAsset}`),
       selectedSlot: this.selectedSlot.get,
       onSelect: (slot) => this.selectSlot(slot),
-      onContextMenu: (slot, event) => this.openSlotContextMenu(slot, event),
+      onContextMenu: (request) => this.openSlotContextMenu(request),
       onTransfer: (request) => this.dispatchTransfer(request),
     });
     this.renderers.push(renderer);
@@ -200,11 +203,12 @@ export class DstInventoryBarElement extends AssetElement {
     return select.defaultPrevented;
   }
 
-  private openSlotContextMenu(slot: SlotModel, event: MouseEvent): void {
+  private openSlotContextMenu(request: SlotContextMenuRequest): void {
+    this.contextMenuState.set(request);
     this.dispatchEvent(new CustomEvent<SlotContextMenuDetail>('game:slot-context-menu', {
       bubbles: true,
       composed: true,
-      detail: { slot: { ...slot.address }, shiftKey: event.shiftKey },
+      detail: { slot: { ...request.slot }, shiftKey: request.shiftKey },
     }));
   }
 

@@ -5,18 +5,11 @@ import type { SlotAddress, SlotItem } from './slot/slot-model';
 export interface CookRequestDetail { containerId: string; }
 
 export class DstCookPotPanelElement extends DstChestPanelElement {
-  private cookingValidator: (items: readonly (SlotItem | null)[]) => boolean = items => items.every(item => item?.count === 1);
   protected override get containerKind(): SlotContainerKind { return 'cookpot'; }
   protected override get defaultPanelArchive(): string { return 'ui_cookpot_1x4.zip'; }
   protected override get defaultColumns(): number { return 1; }
   protected override get backgroundAsset(): string { return 'preparedfood_slot.tex'; }
   protected override get backgroundAtlas(): string { return 'images/hud2.xml'; }
-
-  /** Recipe rules belong to the application; the panel only mirrors availability. */
-  setCookingValidator(validator: (items: readonly (SlotItem | null)[]) => boolean): void {
-    this.cookingValidator = validator;
-    this.updateCookButton();
-  }
 
   override setSlot(address: SlotAddress, item: SlotItem | null): void {
     super.setSlot(address, item);
@@ -43,7 +36,8 @@ export class DstCookPotPanelElement extends DstChestPanelElement {
 
   private updateCookButton(): void {
     const button = this.shadowRoot?.querySelector<HTMLButtonElement>('.cook-pot-panel__cook');
-    if (button) button.disabled = this.slotContainer?.slots.length !== 4
-      || !this.cookingValidator(this.slotContainer.slots.map(slot => slot.getItem()));
+    // containers.lua:buttoninfo.validfn checks IsFull(), independently of recipes.
+    if (button) button.disabled = !this.slotContainer?.slots.length
+      || !this.slotContainer.slots.every(slot => slot.item.peek() !== null);
   }
 }

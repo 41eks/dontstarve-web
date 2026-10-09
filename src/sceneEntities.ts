@@ -1,4 +1,4 @@
-import type { ItemEntityRegistry } from '@dontstarve-web/inventory';
+import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 
@@ -48,10 +48,12 @@ export function createSceneEntities(
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
   itemEntities?: ItemEntityRegistry,
+  inventory?: Pick<InventoryStore, 'registerContainer' | 'unregisterContainer'>,
 ) {
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
-    { ...view, dropLoot: (items, position) => {
+    { ...view, registerContainer: inventory ? (id, container) => inventory.registerContainer(id, container) : undefined,
+      unregisterContainer: inventory ? (id, container) => inventory.unregisterContainer(id, container) : undefined, dropLoot: (items, position) => {
       void groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
         .catch((error: unknown) => console.error('Unable to drop building loot', error));
     } },

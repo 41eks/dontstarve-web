@@ -1,12 +1,14 @@
 import { ItemEntity } from './entity';
 import type { ItemSlot } from './slots';
-import type { InventoryStack } from './types';
+import type { InventoryStack, InventoryItemSpec } from './types';
 
 /** One ingredient per cook pot slot; independent of the item's inventory stack limit. */
 export class PreparedFoodSlot implements ItemSlot {
   private entity: ItemEntity | null = null;
+  private readonly itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean;
 
-  constructor(initialStack: InventoryStack | null = null) {
+  constructor(initialStack: InventoryStack | null = null, itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean = () => true) {
+    this.itemTest = itemTest;
     this.set(initialStack);
   }
 
@@ -25,8 +27,8 @@ export class PreparedFoodSlot implements ItemSlot {
     this.entity = entity;
   }
 
-  accepts(): boolean {
-    return true;
+  accepts(spec: InventoryItemSpec, itemId?: string): boolean {
+    return this.itemTest(spec, itemId);
   }
 
   maxStack(): number {

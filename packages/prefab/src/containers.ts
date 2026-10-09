@@ -1,4 +1,18 @@
 import definitions from './definitions.json' with { type: 'json' };
+import { ItemEntity, PreparedFoodSlot, StorageSlot, type ItemSlot, type InventoryStack } from '@dontstarve-web/inventory';
+import { Container } from '../../componets/src/container';
+import { IsCookingIngredient } from '../../componets/src/cooking';
+
+export type BuildingContainer = Container<InventoryStack, ItemEntity, ItemSlot>;
+
+export function createBuildingContainer(prefab: StorageBuildingId, inst: object): BuildingContainer {
+    const definition = buildingContainerDefinition(prefab);
+    const container = new Container<InventoryStack, ItemEntity, ItemSlot>(inst,
+        () => definition.singleItems ? new PreparedFoodSlot(null, (_spec, itemId) => prefab !== 'cookpot' || (itemId !== undefined && IsCookingIngredient(itemId))) : new StorageSlot(),
+        record => new ItemEntity(record));
+    container.SetNumSlots(definition.slotCount);
+    return container;
+}
 
 export interface BuildingContainerDefinition {
     slotCount: number;

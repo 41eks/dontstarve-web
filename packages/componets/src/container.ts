@@ -28,12 +28,22 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   readonly inst: object;
   canbeopened = true;
   openlimit?: number;
+  onopenfn?: (inst: object, doer?: object) => void;
+  onclosefn?: (inst: object, doer?: object) => void;
   private readonly slotList: TSlot[] = [];
   private readonly openlist = new Set<object>();
   private readonly createSlot: () => TSlot;
   private readonly loadItem: (record: TRecord) => TItem;
   private dtoState?: Signal<ContainerDTO<TRecord>>;
   private dtoView?: ReadonlySignal<ContainerDTO<TRecord>>;
+  private readonly lifecycleListeners = new Set<() => void>();
+
+  subscribeLifecycle(listener: () => void): () => void {
+    this.lifecycleListeners.add(listener);
+    return () => { this.lifecycleListeners.delete(listener); };
+  }
+
+  private publishLifecycle(): void { for (const listener of this.lifecycleListeners) listener(); }
 
   constructor(inst: object, createSlot: () => TSlot, loadItem: (record: TRecord) => TItem) {
     this.inst = inst;
@@ -66,6 +76,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   /** Call once after committing all slots/components in an inventory transaction. */
   publishDTO(): void {
     this.dtoState?.set(this.toDTO());
+    this.publishLifecycle();
   }
 
   SetNumSlots(numslots: number): void {
@@ -75,6 +86,27 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     const added = Array.from({ length: numslots - this.numslots }, () => this.createSlot());
     this.slotList.push(...added);
     if (added.length) this.publishDTO();
+  }
+
+  /** Adopt already registered authoritative slots when attaching a loaded world entity. */
+  BindSlots(slots: readonly TSlot[]): void {
+    if (!this.IsEmpty() || slots.length !== this.numslots) throw new Error('Cannot replace populated container slots');
+    this.slotList.splice(0, this.slotList.length, ...slots);
+    this.publishDTO();
+  }
+
+  /** container.lua removes items through their inventory owner before destroying them. */
+  DestroyContents(): void {
+    for (const slot of this.slotList) {
+      const item = slot.getEntity();
+      if (!item) continue;
+      const removable = item as TItem & { remove?: () => boolean };
+      if (removable.remove) {
+        if (removable.remove() && slot.getEntity() === item) slot.setEntity(null);
+      }
+      else { slot.setEntity(null); item.destroy(); }
+    }
+    this.publishDTO();
   }
 
   GetNumSlots(): number { return this.numslots; }
@@ -102,12 +134,19 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
 
   /** As in Lua, callers check canbeopened/CanOpen before requesting Open. */
   Open(doer?: object): void {
-    if (doer) this.openlist.add(doer);
+    if (!doer || this.openlist.has(doer)) return;
+    const wasOpen = this.IsOpen();
+    this.openlist.add(doer);
+    if (!wasOpen) this.onopenfn?.(this.inst, doer);
+    this.publishLifecycle();
   }
 
   Close(doer?: object): void {
+    const wasOpen = this.IsOpen();
     if (doer) this.openlist.delete(doer);
     else this.openlist.clear();
+    if (wasOpen && !this.IsOpen()) this.onclosefn?.(this.inst, doer);
+    if (wasOpen) this.publishLifecycle();
   }
 
   IsOpen(): boolean { return this.opencount > 0; }

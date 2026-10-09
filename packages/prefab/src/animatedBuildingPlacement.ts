@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
 import {
     createAnimatedSprite,
     createAnimatedSpriteFactory,
+    SpriteController,
     type AnimatedSpriteFactory,
     type SpriteAnimationController,
     type TransientSpriteAnimationController,
@@ -19,6 +21,8 @@ import { nextReskin } from './reskin_tool';
 import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { isPlayerNearby } from './playerProximity';
+import { createBuildingContainer, isStorageBuildingId } from './containers';
+import { performCookAction } from '../../stategraphs/src/cook';
 
 export interface AnimatedBuildingDefinition {
     archive: string;
@@ -64,6 +68,8 @@ export interface AnimatedBuildingDefinition {
     exportComponents?: (context: AnimatedBuildingEventContext) => PlacementSaveRecord['components'];
     onreskin?: (context: AnimatedBuildingEventContext) => void;
     ondispose?: (context: AnimatedBuildingEventContext) => void;
+    oninit?: (context: AnimatedBuildingEventContext) => void;
+    createContainer?: (inst: object) => import('./containers').BuildingContainer;
 }
 
 export interface AnimatedBuildingEventContext {
@@ -90,6 +96,7 @@ export interface AnimatedBuildingToggleInteraction {
     closedAnimation: string;
     openAnimation: string;
     openAnimationLoop?: boolean;
+    closeImmediately?: boolean;
 }
 
 export interface AnimatedBuildingInteractionChange<BuildId extends string> {
@@ -108,7 +115,10 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
     isPlayerNearby: boolean;
-    skinId?: string;
+    readonly skinId: Signal<string | undefined>;
+    readonly preparedSkins: Map<string | undefined, AnimatedBuildingInstance<BuildId>>;
+    stopSkin?: () => void;
+    skinArtReleased?: boolean;
     workLeft?: number;
     effectFactory?: AnimatedSpriteFactory;
 }
@@ -117,6 +127,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly actionEvents: WorldContext['actionEvents'];
     private readonly stopActionEvents: () => void;
     private disposed = false;
+    private readonly worldContext: WorldContext;
     private readonly canvas: HTMLCanvasElement;
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.Camera;
@@ -144,6 +155,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         consumeBufferedBuild: (buildId: BuildId) => boolean,
         onInteractionChange?: (change: AnimatedBuildingInteractionChange<BuildId>) => void,
     ) {
+        this.worldContext = world;
         this.actionEvents = world.actionEvents;
         this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
         this.canvas = world.renderer.domElement;
@@ -192,6 +204,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.setOpacity(building.model, 1);
         this.faceCamera(building.model);
         this.placed.push(building);
+        this.initializeComponents(building);
     }
 
     /** Restores a logical record directly, without crafting or placement callbacks. */
@@ -202,7 +215,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         );
         building.model.userData.entityId = record.id;
         building.model.userData.saveRecord = record;
-        this.definitions[buildId].onrestore?.(building, record.components);
+        this.initializeComponents(building);
+        const container = building.model.userData.components?.container;
+        if (!this.worldContext.registerContainer && record.components.container) {
+            container?.OnLoad({ items: Object.fromEntries(record.components.container.slots.map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
+        }
+        this.definitions[buildId].onrestore?.(this.eventContext(building), record.components);
         const [x, y, z] = record.transform.position;
         building.model.position.set(x, y + building.groundOffset, z);
         this.faceCamera(building.model);
@@ -221,30 +239,46 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                     rotationY: 0,
                 },
                 components: {
-                    ...this.definitions[building.buildId].exportComponents?.(building),
+                    ...(building.model.userData.components?.container ? { container: {
+                        slotCount: building.model.userData.components.container.GetNumSlots(),
+                        slots: Object.entries(building.model.userData.components.container.OnSave().items)
+                            .map(([slot, item]) => ({ slotKey: String(Number(slot) - 1), item: item as import('@dontstarve-web/inventory').InventoryStack })),
+                    } } : {}),
+                    ...this.definitions[building.buildId].exportComponents?.(this.eventContext(building)),
                     building: {
                         // Persist the target state of an interaction, not a transient animation frame.
                         state: building.interactionState === undefined ? 'idle'
                             : building.interactionState === 'open' || building.interactionState === 'opening'
                                 ? 'open' : 'closed',
-                        ...(building.skinId === undefined ? {} : { skinId: building.skinId }),
+                        ...(building.skinId.peek() === undefined ? {} : { skinId: building.skinId.peek() }),
                     },
                 },
             },
         }));
     }
 
-    /** Commit a container button action only while its entity is open and in range. */
-    performOpenAction(model: THREE.Group, action: (context: AnimatedBuildingEventContext) => boolean): boolean {
-        const building = this.placed.find((instance) => instance.model === model);
+    performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean {
+        const building = this.placed.find(instance => instance.model === model);
         if (!building || this.disposed || building.isPlacing || !model.visible || !model.parent) return false;
         this.updateProximity(building);
-        const definition = this.definitions[building.buildId];
-        if (building.interactionState !== 'open' || (definition.onProximity && !building.isPlayerNearby)
-            || definition.canInteract?.(building) === false || !action(building)) return false;
-        building.interactionState = 'closed';
-        this.onInteractionChange?.({ buildId: building.buildId, model, isOpen: false });
-        return true;
+        if (this.definitions[building.buildId].onProximity && !building.isPlayerNearby) return false;
+        return action === 'COOK' && performCookAction({ components: model.userData.components ?? {} }, doer);
+    }
+
+    private initializeComponents(building: AnimatedBuildingInstance<BuildId>): void {
+        const { model, buildId } = building;
+        this.bindSkin(building);
+        const container = this.definitions[buildId].createContainer?.(model)
+            ?? (isStorageBuildingId(buildId) ? createBuildingContainer(buildId, model) : undefined);
+        if (container) {
+            model.userData.components = { container };
+            this.worldContext.registerContainer?.(`world:${buildId}:${String(model.userData.entityId)}`, container);
+            container.onclosefn = () => {
+                if (building.interactionState !== 'open' && building.interactionState !== 'opening') return;
+                this.closeInteraction(building);
+            };
+        }
+        this.definitions[buildId].oninit?.(this.eventContext(building));
     }
 
     /** Whole sprite entities and their ground-contact points for depth sorting. */
@@ -288,62 +322,109 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     get reskinTargets(): readonly ReskinTarget[] {
         return this.placed.filter(({ buildId }) => Object.keys(this.definitions[buildId].skinArchives ?? {}).length > 0)
-            .map((building) => {
-                const isValid = () => this.placed.includes(building) && !building.isPlacing
+            .map(building => {
+                const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing
                     && building.model.visible && building.model.parent !== null
                     && building.interactionState !== 'opening' && building.interactionState !== 'closing';
                 return {
                     id: String(building.model.userData.entityId), prefabId: building.buildId, model: building.model,
                     position: building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)), isValid,
                     prepareNextSkin: async () => {
-                        const previousSkin = building.skinId;
+                        const previousSkin = building.skinId.peek();
                         const previousState = building.interactionState;
                         const skinId = nextReskin(Object.keys(this.definitions[building.buildId].skinArchives!), previousSkin);
                         const replacement = await this.createInstance(building.buildId, skinId, false,
                             previousState === 'open' ? 'open' : previousState === 'closed' ? 'closed' : 'idle');
+                        if (!isValid() || building.skinId.peek() !== previousSkin || building.interactionState !== previousState) {
+                            this.releasePreparedSkin(replacement);
+                            return { apply: () => false, dispose: () => {} };
+                        }
+                        building.preparedSkins.set(skinId, replacement);
                         let used = false;
-                        const disposeModel = (model: THREE.Group) => {
-                            const materials = new Set<THREE.Material>();
-                            model.traverse((object) => {
-                                for (const material of object.userData.ownedSpriteMaterials ?? []) materials.add(material);
-                                if (!(object instanceof THREE.Mesh)) return;
-                                object.geometry.dispose();
-                                (Array.isArray(object.material) ? object.material : [object.material]).forEach((material) => materials.add(material));
-                            });
-                            for (const material of materials) {
-                                if (material instanceof THREE.MeshBasicMaterial) material.map?.dispose();
-                                material.dispose();
-                            }
-                            model.clear();
-                        };
                         return {
                             apply: () => {
-                                if (used || !isValid() || building.skinId !== previousSkin || building.interactionState !== previousState) return false;
-                                const footY = building.model.position.y - building.groundOffset;
-                                // Keep the entity root: open container panels and IDs retain their references.
-                                disposeModel(building.model);
-                                for (const child of [...replacement.model.children]) building.model.add(child);
-                                registerSpriteRenderGroup(building.model, building.model.children[0] as THREE.Group);
-                                building.animation = replacement.animation;
-                                building.model.userData.animationController = replacement.animation;
-                                building.model.userData.ownedSpriteMaterials = replacement.model.userData.ownedSpriteMaterials;
-                                building.skinId = skinId;
-                                if (skinId === undefined) delete building.model.userData.skinId;
-                                else building.model.userData.skinId = skinId;
-                                building.groundOffset = replacement.groundOffset;
-                                building.model.position.y = footY + building.groundOffset;
-                                this.definitions[building.buildId].onreskin?.(building);
-                                if (building.isPlayerNearby) this.definitions[building.buildId].onturnon?.({
-                                    model: building.model, animation: building.animation, skinId,
-                                });
+                                if (used || !isValid() || building.skinId.peek() !== previousSkin
+                                    || building.interactionState !== previousState || building.preparedSkins.get(skinId) !== replacement) return false;
+                                building.skinId.set(skinId);
                                 used = true;
                                 return true;
                             },
-                            dispose: () => { if (!used) { disposeModel(replacement.model); used = true; } },
+                            dispose: () => {
+                                if (used) return;
+                                if (building.preparedSkins.get(skinId) === replacement) building.preparedSkins.delete(skinId);
+                                this.releasePreparedSkin(replacement);
+                                used = true;
+                            },
                         };
                     },
                 };
             });
+    }
+
+    private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
+        return { model: building.model, animation: building.animation, skinId: building.skinId.peek() };
+    }
+
+    /** Skin changes update presentation; the entity root and components retain their identity. */
+    private bindSkin(building: AnimatedBuildingInstance<BuildId>): void {
+        building.model.userData.skinIdSignal = readonlySignal(building.skinId);
+        building.stopSkin = building.skinId.subscribe(skinId => {
+            const replacement = building.preparedSkins.get(skinId);
+            if (!replacement) throw new Error('Skin assets must be prepared before committing a skin change');
+            building.preparedSkins.delete(skinId);
+            replacement.skinArtReleased = true;
+            const footY = building.model.position.y - building.groundOffset;
+            (replacement.animation as SpriteController).copyPlaybackFrom(building.animation as SpriteController);
+            this.disposeBuildingArt(building.model);
+            for (const child of [...replacement.model.children]) building.model.add(child);
+            registerSpriteRenderGroup(building.model, building.model.children[0] as THREE.Group);
+            building.animation = replacement.animation;
+            building.model.userData.animationController = replacement.animation;
+            building.model.userData.ownedSpriteMaterials = replacement.model.userData.ownedSpriteMaterials;
+            if (skinId === undefined) delete building.model.userData.skinId;
+            else building.model.userData.skinId = skinId;
+            building.groundOffset = replacement.groundOffset;
+            building.model.position.y = footY + building.groundOffset;
+            this.definitions[building.buildId].onreskin?.(this.eventContext(building));
+            if (building.isPlayerNearby) this.definitions[building.buildId].onturnon?.(this.eventContext(building));
+        });
+    }
+
+    private disposeBuildingArt(model: THREE.Group): void {
+        const materials = new Set<THREE.Material>();
+        model.traverse(object => {
+            for (const material of object.userData.ownedSpriteMaterials ?? []) materials.add(material);
+            if (!(object instanceof THREE.Mesh)) return;
+            object.geometry.dispose();
+            for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material);
+        });
+        for (const material of materials) {
+            if (material instanceof THREE.MeshBasicMaterial) material.map?.dispose();
+            material.dispose();
+        }
+        model.clear();
+    }
+
+    private releaseSkin(building: AnimatedBuildingInstance<BuildId>): void {
+        building.stopSkin?.();
+        building.stopSkin = undefined;
+        for (const replacement of building.preparedSkins.values()) this.releasePreparedSkin(replacement);
+        building.preparedSkins.clear();
+    }
+
+    private releasePreparedSkin(replacement: AnimatedBuildingInstance<BuildId>): void {
+        if (replacement.skinArtReleased) return;
+        replacement.skinArtReleased = true;
+        disposeSprite(replacement.model);
+    }
+
+    private releaseContainer(building: AnimatedBuildingInstance<BuildId>): void {
+        const container = building.model.userData.components?.container;
+        if (!container) return;
+        container.onclosefn = undefined;
+        container.onopenfn = undefined;
+        this.worldContext.unregisterContainer?.(`world:${building.buildId}:${String(building.model.userData.entityId)}`, container);
+        container.dispose();
     }
 
     dispose(): void {
@@ -354,7 +435,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.pointer.dispose();
         this.cancel();
         for (const instance of this.placed) {
-            this.definitions[instance.buildId].ondispose?.(instance);
+            this.definitions[instance.buildId].ondispose?.(this.eventContext(instance));
+            this.releaseContainer(instance);
+            this.releaseSkin(instance);
             disposeSprite(instance.model);
         }
         this.placed.length = 0;
@@ -382,7 +465,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         for (const building of this.placed) {
             this.updateProximity(building);
             building.animation.update(dt);
-            this.definitions[building.buildId].onupdate?.(building, dt);
+            this.definitions[building.buildId].onupdate?.(this.eventContext(building), dt);
             this.faceCamera(building.model);
         }
         for (const effect of this.effects) {
@@ -422,12 +505,13 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.setOpacity(placedBuilding.model, 1);
         placedBuilding.model.visible = true;
         this.placed.push(placedBuilding);
+        this.initializeComponents(placedBuilding);
         this.active = undefined;
         this.cursor.hide();
         onbuilt?.({
             model: placedBuilding.model,
             animation: placedBuilding.animation,
-            skinId: placedBuilding.skinId,
+            skinId: placedBuilding.skinId.peek(),
             onComplete: () => { placedBuilding.isPlacing = false; },
         });
     }
@@ -459,15 +543,18 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const definition = this.definitions[building.buildId];
         const interaction = definition.interaction;
         if (!interaction) return;
-        if (definition.canInteract?.(building) === false) return;
+        if (definition.canInteract?.(this.eventContext(building)) === false) return;
         this.updateProximity(building);
         if (definition.onProximity && !building.isPlayerNearby) return;
 
         if (building.interactionState === 'closed') {
+            const container = building.model.userData.components?.container;
+            if (container && (!container.canbeopened || !container.CanOpen())) return;
+            container?.Open(this.player);
             definition.onopen?.({
                 model: building.model,
                 animation: building.animation,
-                skinId: building.skinId,
+                skinId: building.skinId.peek(),
             });
             if (interaction.openAnimationLoop) {
                 building.interactionState = 'open';
@@ -501,17 +588,19 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (!interaction || (building.interactionState !== 'open'
             && building.interactionState !== 'opening')) return;
 
-        building.interactionState = 'closing';
+        building.interactionState = interaction.closeImmediately ? 'closed' : 'closing';
+        building.model.userData.components?.container?.Close(this.player);
         definition.onclose?.({
             model: building.model,
             animation: building.animation,
-            skinId: building.skinId,
+            skinId: building.skinId.peek(),
         });
         this.onInteractionChange?.({
             buildId: building.buildId,
             isOpen: false,
             model: building.model,
         });
+        if (interaction.closeImmediately) return;
         building.animation.playOnce(interaction.closeAnimation, () => {
             building.animation.start(interaction.closedAnimation);
             building.interactionState = 'closed';
@@ -574,7 +663,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             ...(definition.interaction ? { interactionState: state === 'open' ? 'open' as const : 'closed' as const } : {}),
             isPlacing: false,
             isPlayerNearby: state === 'open',
-            ...(skinArchive === undefined ? {} : { skinId }),
+            skinId: createSignal(skinId),
+            preparedSkins: new Map(),
         };
         if (skinArchive !== undefined) model.userData.skinId = skinId;
         if (state === 'open' && definition.interaction?.openAnimationLoop) {
@@ -603,7 +693,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private hammerContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingHammerContext {
         const position = building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0));
         return {
-            model: building.model, animation: building.animation, skinId: building.skinId,
+            model: building.model, animation: building.animation, skinId: building.skinId.peek(),
             position, isPlayerNearby: building.isPlayerNearby,
             dropLoot: (items) => this.dropLoot?.(items, position.clone()),
             spawnEffect: () => {
@@ -627,7 +717,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 const index = this.placed.indexOf(building);
                 if (index < 0) return;
                 this.placed.splice(index, 1);
-                this.definitions[building.buildId].ondispose?.(building);
+                this.definitions[building.buildId].ondispose?.(this.eventContext(building));
+                this.releaseSkin(building);
+                this.releaseContainer(building);
                 disposeSprite(building.model);
             },
         };
@@ -662,7 +754,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         onProximityChange?.({
             model: building.model,
             animation: building.animation,
-            skinId: building.skinId,
+            skinId: building.skinId.peek(),
         });
     }
 

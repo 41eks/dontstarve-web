@@ -210,6 +210,10 @@ describe('manual JSON save', () => {
     expect(saved.world.entities.cookpot[0]).toEqual({ ...state.entities.cookpot[0], components: {
       ...state.entities.cookpot[0].components, container: { slotCount: 4, slots: [] },
     } });
+    const ordinary = structuredClone(saved);
+    ordinary.world.entities.cookpot[0].components.stewer = { product: 'kabobs', phase: 'cooking', remainingSeconds: 30,
+      ingredient_prefabs: ['twigs', 'red_cap', 'red_cap', 'monstermeat'], chef_id: 'chef' };
+    expect(deserializeSave(JSON.stringify(ordinary), catalog).world.entities.cookpot[0]).toEqual(ordinary.world.entities.cookpot[0]);
     const pot = saved.world.entities.cookpot[0];
     pot.components.stewer!.phase = 'done';
     expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('zero remaining time');

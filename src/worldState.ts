@@ -21,8 +21,11 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     noisetime: world.elapsedSeconds,
   });
   const cycle = getDstCycle(world.elapsedSeconds);
-  worldtemperature.OnClockTick({ phase: cycle.phase, timeinphase: cycle.phaseProgress });
-  moonphasestate.set(getDstClock(world.elapsedSeconds).moonPhase);
+  const { moonPhase, ...clock } = getDstClock(world.elapsedSeconds);
+  batch(() => {
+    clockstate.set({ ...clock, timeinphase: cycle.phaseProgress });
+    moonphasestate.set(moonPhase);
+  });
   worldtemperature.OnUpdate(0);
   return { temperature: worldtemperature.temperature, clock: clockstate,
     season: seasonstate, moonPhase: moonphasestate, worldtemperature };
@@ -32,7 +35,6 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
 export function createWorldClockUpdater(
   state: WorldState,
   initialElapsedSeconds: number,
-  onClockTick?: (elapsedSeconds: number, dt: number) => void,
 ) {
   let elapsedSeconds = initialElapsedSeconds;
   let pendingFrames = 0, pendingSeconds = 0;
@@ -42,12 +44,12 @@ export function createWorldClockUpdater(
     pendingFrames = 0;
     pendingSeconds = 0;
     const cycle = getDstCycle(elapsedSeconds);
+    const { moonPhase, ...clock } = getDstClock(elapsedSeconds);
     batch(() => {
-      state.clock.set({ phase: cycle.phase, timeinphase: cycle.phaseProgress });
-      state.moonPhase.set(getDstClock(elapsedSeconds).moonPhase);
+      state.clock.set({ ...clock, timeinphase: cycle.phaseProgress });
+      state.moonPhase.set(moonPhase);
       state.worldtemperature.OnUpdate(dt);
     });
-    onClockTick?.(elapsedSeconds, dt);
   };
   const updateClock = (dt: number) => {
     if (!Number.isFinite(dt) || dt < 0) throw new RangeError('dt must be finite and nonnegative');
@@ -56,6 +58,5 @@ export function createWorldClockUpdater(
     pendingSeconds += dt;
     if (++pendingFrames === 60) flush();
   };
-  onClockTick?.(elapsedSeconds, 0);
   return { update: updateClock, flush, get elapsedSeconds() { return elapsedSeconds; } };
 }

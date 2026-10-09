@@ -1,12 +1,21 @@
 import { expect, test, type Page } from '@playwright/test';
-import { getDstClock, TUNING } from '../../../src/tuning';
+import { fileURLToPath } from 'node:url';
+import { getDstClock, getDstCycle, TUNING } from '../../../src/tuning';
 import type { DstStatusHudElement } from '../src/status-hud';
 
 async function setTime(page: Page, elapsedSeconds: number, dt = 0) {
-  await page.evaluate(({ state, dt }) => {
+  await page.evaluate(async ({ state, timeinphase, dt, signalsUrl }) => {
     const hud = document.querySelector('dst-status-hud') as DstStatusHudElement;
-    hud.setClock(state, dt);
-  }, { state: getDstClock(elapsedSeconds), dt });
+    hud.advanceClockAnimation(dt);
+    const { clockstate, moonphasestate, batch } = await import(signalsUrl);
+    const { moonPhase, ...clock } = state;
+    batch(() => {
+      clockstate.set({ ...clock, timeinphase });
+      moonphasestate.set(moonPhase);
+    });
+    await Promise.resolve();
+  }, { state: getDstClock(elapsedSeconds), timeinphase: getDstCycle(elapsedSeconds).phaseProgress, dt,
+    signalsUrl: `/@fs${fileURLToPath(new URL('../../signals/src/index.ts', import.meta.url))}` });
 }
 
 test('follows world time, daytime segment pulses and source phase transitions', async ({ page }, testInfo) => {
@@ -37,6 +46,26 @@ test('follows world time, daytime segment pulses and source phase transitions', 
   await setTime(page, TUNING.DAY_TIME_DEFAULT);
   await expect(clock).toHaveAttribute('data-animation', 'trans_day_dusk');
   await expect(clock).toHaveAttribute('data-rotation', '225.00');
+  const decorativeFrames = await clock.evaluate((canvas: HTMLCanvasElement) => {
+    const hud = document.querySelector('dst-status-hud') as DstStatusHudElement;
+    const observer = new MutationObserver(() => {});
+    observer.observe(canvas, { attributes: true, attributeFilter: ['data-rotation', 'data-day', 'data-phase'] });
+    const frames = [canvas.toDataURL()];
+    for (let frame = 0; frame < 8; frame++) {
+      hud.advanceClockAnimation(1 / 60);
+      frames.push(canvas.toDataURL());
+    }
+    const progressWrites = observer.takeRecords().length;
+    observer.disconnect();
+    return { distinctFrames: new Set(frames).size, progressWrites };
+  });
+  expect(decorativeFrames.distinctFrames).toBeGreaterThan(1);
+  expect(decorativeFrames.progressWrites).toBe(0);
+  await expect(clock).toHaveAttribute('data-rotation', '225.00');
+  // Pausing during a transition must freeze both its pixels and settled clock progress.
+  const pausedTransition = await clock.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+  await page.waitForTimeout(100);
+  expect(await clock.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(pausedTransition);
   await setTime(page, 302, 2);
   await expect(clock).toHaveAttribute('data-animation', 'idle_dusk');
   await setTime(page, TUNING.DAY_TIME_DEFAULT + TUNING.DUSK_TIME_DEFAULT);

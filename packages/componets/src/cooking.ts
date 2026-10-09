@@ -1,5 +1,4 @@
 import foods, { type IngredientNames, type IngredientTags, type PreparedFoodRecipe } from './preparedfoods';
-import type { InventoryStack } from '@dontstarve-web/inventory';
 
 /** scripts/cooking.lua: ingredient registration, aggregation and recipe selection. */
 export const ingredients: Record<string, { tags: IngredientTags }> = Object.create(null);
@@ -120,9 +119,3 @@ export function CalculateRecipe(cooker: string, names: readonly string[], random
   return undefined;
 }
 
-/** Only the existing beefalofeed cooking process is playable in this stage. */
-export function canCookBeefaloFeed(items: readonly (Pick<InventoryStack, 'itemId' | 'count'> | null)[]): boolean {
-  if (items.length !== 4 || items.some(item => !item || item.count !== 1 || !IsCookingIngredient(item.itemId))) return false;
-  const candidates = GetCandidateRecipes('cookpot', GetIngredientValues(items.map(item => item!.itemId)));
-  return candidates.length === 1 && candidates[0].name === 'beefalofeed';
-}

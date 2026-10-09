@@ -4,24 +4,21 @@ import {
 } from '@dontstarve-web/animation/animationAssets';
 import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
 import type { DecodedTexture } from '@dontstarve-web/animation/parseKtex';
+import { createMemo, createEffect, clockstate, moonphasestate, type WorldPhase, type WorldMoonPhase } from '@dontstarve-web/signals';
 
-type ClockPhase = 'day' | 'dusk' | 'night';
-export interface WorldClockState {
+type ClockPhase = WorldPhase;
+interface WorldClockState {
   cycles: number;
   phase: ClockPhase;
   /** Fraction of the complete day, as in clocktick.time. */
   time: number;
   daySegments: number;
   duskSegments: number;
-  moonPhase: 'new' | 'quarter' | 'half' | 'threequarter' | 'full';
+  moonPhase: WorldMoonPhase;
   waxing: boolean;
   playerAge?: number;
 }
 
-export const INITIAL_CLOCK_STATE: WorldClockState = {
-  cycles: 0, phase: 'day', time: 0, daySegments: 10, duskSegments: 4,
-  moonPhase: 'new', waxing: true,
-};
 type AnimationAsset = {
   buildPackage: BuildPackage;
   atlases: HTMLCanvasElement[];
@@ -137,7 +134,18 @@ function animationAt(asset: AnimationAsset, first: string | undefined, idle: str
 /** UIClockPage's layered DST clock, fitted to the survival HUD. */
 export class WorldClock {
   private assets?: ClockAssets;
-  private state?: WorldClockState;
+  private readonly state = createMemo<WorldClockState>(() => {
+    const clock = clockstate.get();
+    const daySegments = clock.daySegments ?? 10, duskSegments = clock.duskSegments ?? 4;
+    const phaseStart = clock.phase === 'day' ? 0 : clock.phase === 'dusk' ? daySegments : daySegments + duskSegments;
+    const phaseSegments = clock.phase === 'day' ? daySegments : clock.phase === 'dusk' ? duskSegments : 16 - daySegments - duskSegments;
+    return { cycles: clock.cycles ?? 0, phase: clock.phase,
+      time: clock.time ?? (phaseStart + ('timeinphase' in clock ? clock.timeinphase : 0) * phaseSegments) / 16,
+      daySegments, duskSegments, moonPhase: moonphasestate.get(), waxing: clock.waxing ?? true,
+      playerAge: clock.playerAge };
+  });
+  private readonly stopClockEffect: () => void;
+  private readonly faceCanvas = document.createElement('canvas');
   private clockTransition?: string;
   private clockElapsed = 0;
   private moonAnimation = 'hidden';
@@ -156,12 +164,19 @@ export class WorldClock {
     canvas.parentElement!.addEventListener('mouseleave', this.hideSurvived);
     canvas.parentElement!.addEventListener('focus', this.showSurvived);
     canvas.parentElement!.addEventListener('blur', this.hideSurvived);
+    let previous: WorldClockState | undefined;
+    this.stopClockEffect = createEffect(() => {
+      const state = this.state.get();
+      this.selectAnimations(state, previous);
+      previous = state;
+      this.drawFace();
+      this.draw();
+    });
     void loadClockAssets(dataRoot).then((assets) => {
       if (this.disposed) return;
       this.assets = assets;
       this.resize();
       canvas.dataset.state = 'ready';
-      this.draw();
     }).catch((error: unknown) => {
       if (this.disposed) return;
       canvas.dataset.state = 'error';
@@ -170,7 +185,10 @@ export class WorldClock {
   }
 
   dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
+    this.stopClockEffect();
+    this.state.dispose();
     this.observer.disconnect();
     this.canvas.parentElement!.removeEventListener('mouseenter', this.showSurvived);
     this.canvas.parentElement!.removeEventListener('mouseleave', this.hideSurvived);
@@ -178,21 +196,28 @@ export class WorldClock {
     this.canvas.parentElement!.removeEventListener('blur', this.hideSurvived);
   }
 
-  private readonly showSurvived = () => { this.focused = true; this.draw(); };
-  private readonly hideSurvived = () => { this.focused = false; this.draw(); };
+  private readonly showSurvived = () => { this.focused = true; this.drawFace(); this.draw(); };
+  private readonly hideSurvived = () => { this.focused = false; this.drawFace(); this.draw(); };
 
   private resize(): void {
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.max(1, Math.round(this.canvas.clientWidth * ratio));
     this.canvas.height = Math.max(1, Math.round(this.canvas.clientHeight * ratio));
+    this.faceCanvas.width = this.canvas.width;
+    this.faceCanvas.height = this.canvas.height;
+    this.drawFace();
     this.draw();
   }
 
-  /** World events and animation time both follow the simulation, including pauses. */
-  update(state: WorldClockState, dt = 0): void {
-    this.clockElapsed += Math.max(0, dt) * 1000;
-    this.moonElapsed += Math.max(0, dt) * 1000;
-    const previous = this.state;
+  /** Only active game frames advance decorative animation, never clock progress. */
+  advanceAnimation(dt: number): void {
+    if (this.disposed || !Number.isFinite(dt) || dt <= 0) return;
+    this.clockElapsed += dt * 1000;
+    this.moonElapsed += dt * 1000;
+    this.draw();
+  }
+
+  private selectAnimations(state: WorldClockState, previous?: WorldClockState): void {
     if (previous?.phase !== state.phase) {
       this.clockTransition = previous ? TRANSITIONS[state.phase] : undefined;
       this.clockElapsed = 0;
@@ -218,16 +243,12 @@ export class WorldClock {
         this.clockElapsed = 0;
       }
     }
-    this.state = { ...state };
-    this.draw();
   }
 
   private draw(): void {
-    if (this.disposed || !this.assets || !this.state) return;
+    if (this.disposed || !this.assets) return;
     const assets = this.assets;
-    const { phase, time, cycles, moonPhase, waxing, daySegments, duskSegments } = this.state;
-    const day = cycles + 1;
-    const rotation = time * 360;
+    const { phase, moonPhase, waxing } = this.state.peek();
     const { canvas } = this;
     const context = canvas.getContext('2d')!;
     const scale = Math.min(canvas.width / 182, canvas.height / 144);
@@ -257,6 +278,24 @@ export class WorldClock {
     }
     const clock = animationAt(assets.clock, this.clockTransition, `idle_${phase}`, this.clockElapsed);
     drawAnimation(context, assets.clock, clock.animation, clock.frame);
+    context.resetTransform();
+    context.drawImage(this.faceCanvas, 0, 0);
+    if (canvas.dataset.animation !== clock.animation.name) canvas.dataset.animation = clock.animation.name;
+  }
+
+  /** Rebuild settled clock progress only on signal changes, resize or user focus. */
+  private drawFace(): void {
+    if (this.disposed || !this.assets) return;
+    const assets = this.assets;
+    const state = this.state.peek();
+    const { phase, time, cycles, moonPhase, waxing, daySegments, duskSegments } = state;
+    const day = cycles + 1, rotation = time * 360;
+    const canvas = this.faceCanvas;
+    const context = canvas.getContext('2d')!;
+    const scale = Math.min(canvas.width / 182, canvas.height / 144);
+    context.resetTransform();
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.setTransform(scale, 0, 0, scale, canvas.width / 2 + 20 * scale, canvas.height / 2);
     const centeredImage = (image: HTMLCanvasElement, size: number) => {
       context.drawImage(image, -image.width * size / 2, -image.height * size / 2, image.width * size, image.height * size);
     };
@@ -282,15 +321,16 @@ export class WorldClock {
     context.font = "700 16px Georgia, 'Noto Sans SC', serif";
     context.fillText(this.focused ? '已生存' : '世界', 5, -12);
     context.font = "700 20px Georgia, 'Noto Sans SC', serif";
-    context.fillText(`${this.focused ? this.state.playerAge ?? day : day}日`, 5, 12);
+    context.fillText(`${this.focused ? state.playerAge ?? day : day}日`, 5, 12);
     context.shadowBlur = 0;
-    canvas.dataset.phase = phase;
-    canvas.dataset.animation = clock.animation.name;
-    canvas.dataset.moon = phase === 'night' ? 'visible' : 'hidden';
-    canvas.dataset.rotation = rotation.toFixed(2);
-    canvas.dataset.day = String(day);
-    canvas.dataset.moonPhase = moonPhase;
-    canvas.dataset.moonSymbol = moonSymbols[moonPhase];
-    canvas.parentElement!.setAttribute('aria-label', `世界第 ${day} 日，${{ day: '白天', dusk: '黄昏', night: '夜晚' }[phase]}`);
+    const target = this.canvas;
+    target.dataset.phase = phase;
+    target.dataset.moon = phase === 'night' ? 'visible' : 'hidden';
+    target.dataset.rotation = rotation.toFixed(2);
+    target.dataset.day = String(day);
+    target.dataset.moonPhase = moonPhase;
+    target.dataset.moonSymbol = moonPhase === 'full' || moonPhase === 'new' ? `moon_${moonPhase}`
+      : `moon_${moonPhase === 'threequarter' ? 'three_quarter' : moonPhase}${waxing ? '_wax' : ''}`;
+    target.parentElement!.setAttribute('aria-label', `世界第 ${day} 日，${{ day: '白天', dusk: '黄昏', night: '夜晚' }[phase]}`);
   }
 }
