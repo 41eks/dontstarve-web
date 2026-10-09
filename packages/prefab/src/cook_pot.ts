@@ -75,11 +75,15 @@ function continueCooking(model: THREE.Group): void {
 
 function initializePot({ model }: AnimatedBuildingEventContext): void {
     initializeFoodArt(model);
-    const tags = new Set<string>();
+    const tags: string[] = [];
     model.userData.tags = tags;
     const components = model.userData.components;
     const stewer = new Stewer({ prefab: 'cookpot', components,
-        addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) });
+        addTag: tag => { if (!tags.includes(tag)) tags.push(tag); },
+        removeTag: tag => {
+            const index = tags.indexOf(tag);
+            if (index >= 0) tags.splice(index, 1);
+        } });
     components.stewer = stewer;
     stewer.onstartcooking = () => continueCooking(model);
     stewer.oncontinuecooking = () => continueCooking(model);

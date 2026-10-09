@@ -24,6 +24,35 @@
 
 实现参考源 Lua 的 `components/inventory.lua:GiveItem/Equip/RemoveItem/DropItem`、`components/inventoryitem.lua:OnPutInInventory/OnDropped` 和 `components/stackable.lua:Get/Put`。库存槽和装备槽持有同一个 `inst`；进入库存时设置 owner、移出场景，丢弃时清除 owner、返回场景。整叠移动保留实体，拆出部分才生成新实体；合堆保留接收方实体，完全合入的实体被移除。
 
+### Lua 的持有关系、槽位与空间位置
+
+Lua 使用双向关联：inventory/container 保存物品成员与槽位，物品的 inventoryitem 组件保存持有者，inst 的 Transform 保存空间位置。这三种信息各自有明确职责。
+
+源码根目录为 `/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts/`；下面的文件路径及行号相对于该目录，行号对应此次核对的本地版本。
+
+| 信息 | Lua 中的归属 |
+| --- | --- |
+| 普通物品栏中的成员与槽位 | `inventory.itemslots[slot] = inst` |
+| 装备与鼠标持有物 | `inventory.equipslots` 与 `inventory.activeitem` |
+| 箱子、锅、背包等容器中的成员与槽位 | `container.slots[slot] = inst` |
+| 物品的直接持有者 | `inst.components.inventoryitem.owner`，指向玩家或容器的 **inst**，不是 inventory/container 组件或槽位地址 |
+| 物品的空间坐标 | `inst.Transform`；入栏后物品成为 owner 的子实体，局部坐标为 `(0, 0, 0)` |
+| 是否移出正常场景 | `inst.inlimbo`、`INLIMBO` 标签及引擎场景状态 |
+
+`components/inventoryitem.lua:315` 的 `GetSlotNum()` 根据 owner 找到其 container 或 inventory，再调用 `GetItemSlot(self.inst)` 查询槽位；物品不维护另一份权威的当前槽号。装备与鼠标持有关系由 `equipslots` / `activeitem` 表示。移出物品时记录的 `prevslot`、`prevcontainer` 是上一归属的提示，不是当前槽位状态，见 `components/container.lua:1040`。
+
+进入库存或容器时，`inventoryitem:OnPutInInventory(owner)` 设置 owner，调用 `owner:AddChild(inst)`、`inst:RemoveFromScene()`，并把 Transform 的局部坐标设为零。`RemoveFromScene()` 将实体置于 INLIMBO，隐藏表现、停用物理并暂停相应动画和行为；物品实体与组件仍然存在。源码见 `components/inventoryitem.lua:344` 和 `entityscript.lua:348`。
+
+移出时，inventory/container 先移除其成员引用，再调用 `inventoryitem:OnRemoved()`：解除父子关系、清空 owner、调用 `ReturnToScene()` 并唤醒相应行为。丢弃流程继续设置掉落位置和物理行为；`OnDropped()` 在解除持有关系前取得 owner 或物品自身的世界坐标，再执行 `OnRemoved()` 与 `DoDropPhysics()`。源码见 `components/inventoryitem.lua:365`、`:374`，以及 `components/inventory.lua:1390` 的 `RemoveItem()`。
+
+`owner == nil` 只表示没有持有者，不能单独作为“正在地面上”的判据；还要结合实体有效性、INLIMBO 和场景生命周期。Lua 不通过一个独立的 ground 容器维护地面槽位，地面物品由实体系统和自身 Transform、Physics 等组件参与世界。
+
+保存时，`inventory:OnSave()` 按普通槽、装备槽和 activeitem 嵌套保存各物品的 `GetSaveRecord()`；`container:OnSave()` 按容器槽位保存相同记录。`EntityScript:GetSaveRecord()` 从该 inst 的 Transform 读取位置并保存组件数据。世界保存遍历全局 `Ents`，检查实体有效性、持久化标志、prefab、Transform 和没有父实体等条件；持有物作为 owner 的子实体随其组件嵌套保存，避免再次作为世界顶层实体保存。源码见 `components/inventory.lua:192`、`components/container.lua:979`、`entityscript.lua:248` 和 `mainfunctions.lua:1088`。
+
+对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 保存持有关系与 Transform，GroundItemManager 管理地面表现、拾取和相关场景行为。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。项目的 `ItemOwner.address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
+
+### 项目的物品实体
+
 `packages/inventory/src/entity.ts` 的 `ItemEntity` 保存稳定 ID、prefab、skin、transform、stackable/fueled/finiteuses 状态、inventoryitem owner 和运行时组件。各具体槽位直接保存实体引用，`getEntity()` 返回引用，`get()` 返回用于 UI 与领域计算的独立快照。`InventoryStack` 是快照类型，不再是槽位中的另一份可变权威状态。`ItemEntityRegistry` 由库存和 `GroundItemManager` 共用。
 
 `InventoryStore.transfer()` 从源实体取得完整状态，验证后原子提交；整件转移使用同一个引用。`extract()` 交出整件原实体或创建部分堆叠的新实体，`receive()` 接收地面的实体并按需合堆。空间不足、目标不接受或源实体已被替换时不改变归属。消耗和移除仍由 store 提交，entity 的 owner 回调检查槽位是否还持有自己，避免旧实体影响替代物。制造仍先使用纯函数计算快照，提交时复用剩余材料的实体并为新产品创建实体。
