@@ -1,4 +1,5 @@
-import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
+import { bindActionCancellation } from './actionEvents.ts';
+import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -23,9 +24,9 @@ export class PitchforkActionController {
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
+  private readonly stopActionEvents: () => void;
   private readonly turf: TurfMap;
   private readonly isManualMovement: () => boolean;
-  private readonly onRequest: () => void;
 
   constructor(
     world: WorldContext,
@@ -34,18 +35,20 @@ export class PitchforkActionController {
     handEquipment: HandEquipmentSignal,
     turf: TurfMap,
     isManualMovement = () => false,
-    onRequest = () => {},
   ) {
     this.world = world;
     this.animation = animation;
     this.locomotor = locomotor;
     this.handEquipment = handEquipment;
-    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
-      if (this.isEquipped(previous)) this.cancel(true);
+    this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
+      isEquipped: equipment => this.isEquipped(equipment),
+      cancel: () => this.cancel(true),
+      update: dt => this.update(dt),
+      registerFrameTask: world.registerFrameTask,
     });
     this.turf = turf;
     this.isManualMovement = isManualMovement;
-    this.onRequest = onRequest;
+    this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() => this.hitTarget()
       ? [{ action: { action: 'TERRAFORM' }, button: 'right' }] : []) ?? (() => {});
@@ -63,12 +66,12 @@ export class PitchforkActionController {
     if (!this.isEquipped() || !this.turf.canTerraform(point) || this.animation.isDigging
       || this.animation.isCasting || this.animation.isNetting) return false;
     this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'TERRAFORM' });
     this.animation.cancelEmote();
     const center = this.turf.tileCenter(point);
     const edge = this.turf.size / 2 - 1e-6;
     this.target = new THREE.Vector3(THREE.MathUtils.clamp(center.x, -edge, edge), 0,
       THREE.MathUtils.clamp(center.z, -edge, edge));
-    this.onRequest();
     return true;
   }
 
@@ -106,6 +109,7 @@ export class PitchforkActionController {
   }
 
   dispose(): void {
+    this.stopActionEvents();
     this.stopEquipment();
     this.cancel();
     this.unregisterHover();

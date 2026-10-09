@@ -2,6 +2,7 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '@dontstarve-web/animation/beefaloSprite';
 import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import type { ReadonlySignal, WorldPhase, WorldSeason } from '@dontstarve-web/signals';
 import { Locomotor, type LocomotorOptions } from './locomotor';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
@@ -22,13 +23,18 @@ export const BEEFALO_BEHAVIOR = {
 } as const;
 
 export interface BeefaloWorld {
-  isDay(): boolean;
-  isNight(): boolean;
+  phase: WorldPhase;
+  season: WorldSeason;
   getPlayerPositions(): readonly THREE.Vector3[];
   findPath: NonNullable<LocomotorOptions['findPath']>;
   constrainPosition(position: THREE.Vector3): void;
   /** Host applies periodicspawner's density and spacing rules. */
   spawnPoop(position: THREE.Vector3): void;
+}
+
+export interface BeefaloManagerWorld extends Omit<BeefaloWorld, 'phase' | 'season'> {
+  clock: ReadonlySignal<{ phase: BeefaloWorld['phase'] }>;
+  season: ReadonlySignal<{ season: BeefaloWorld['season'] }>;
 }
 
 export interface BeefaloSaveState {
@@ -102,7 +108,7 @@ export class BeefaloController {
       this.world.spawnPoop(position);
     }
 
-    if (this.world.isNight()) {
+    if (this.world.phase === 'night') {
       if (this.currentState !== 'sleep_pre' && this.currentState !== 'sleep') {
         this.locomotor.stop();
         this.faceTarget = undefined;
@@ -204,7 +210,7 @@ export class BeefaloController {
   dispose(): void { this.disposed = true; this.locomotor.stop(); }
 
   private startWalking(): boolean {
-    const radius = this.world.isDay() ? BEEFALO_BEHAVIOR.wanderDay : BEEFALO_BEHAVIOR.wanderNight;
+    const radius = this.world.phase === 'day' ? BEEFALO_BEHAVIOR.wanderDay : BEEFALO_BEHAVIOR.wanderNight;
     for (let attempt = 0; attempt < 4; attempt++) {
       const angle = this.random() * Math.PI * 2;
       const distance = radius * (0.2 + this.random() * 0.8);
@@ -263,12 +269,16 @@ export class BeefaloManager {
   private readonly world: BeefaloWorld;
   private readonly material = new CANNON.Material({ friction: 0, restitution: 0 });
   private readonly contactMaterials: CANNON.ContactMaterial[];
+  private readonly stopClock: () => void;
+  private readonly stopSeason: () => void;
 
-  constructor(scene: THREE.Scene, physics: CANNON.World, assetBaseUrl: string, world: BeefaloWorld) {
+  constructor(scene: THREE.Scene, physics: CANNON.World, assetBaseUrl: string, world: BeefaloManagerWorld) {
     this.scene = scene;
     this.physics = physics;
     this.assetBaseUrl = assetBaseUrl;
-    this.world = world;
+    this.world = { ...world, phase: world.clock.peek().phase, season: world.season.peek().season };
+    this.stopClock = world.clock.subscribe(({ phase }) => { this.world.phase = phase; });
+    this.stopSeason = world.season.subscribe(({ season }) => { this.world.season = season; });
     // MakeCharacterPhysics sets friction to zero. Cannon otherwise cancels the
     // low walking speed on this heavy, fixed-rotation body's ground contacts.
     const materials = new Set([physics.defaultMaterial, ...physics.bodies.map((body) => body.material)
@@ -344,6 +354,8 @@ export class BeefaloManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopClock();
+    this.stopSeason();
     for (const beefalo of this.beefalos) {
       beefalo.dispose();
       this.physics.removeBody(beefalo.body);

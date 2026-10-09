@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { bindActionCancellation } from './actionEvents.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { FarmActionWorld, FarmSoilTarget, PreparedSeedPlant } from './farmActions.ts';
@@ -12,6 +13,7 @@ export interface FoodSource { isValid(): boolean; take(): boolean; prepareEat?()
 export class FoodActionController {
   private readonly pointer: PointerRaycaster;
   private readonly unregisterHover: () => void;
+  private readonly stopActionEvents: () => void;
   private source?: FoodSource;
   private target?: FarmSoilTarget;
   private prepared?: PreparedSeedPlant;
@@ -41,6 +43,7 @@ export class FoodActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.farm = farm; this.isManualMovement = isManualMovement; this.onError = onError;
     this.onDeselect = onDeselect;
+    this.stopActionEvents = bindActionCancellation(world, this, 'food', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() =>
       this.farm.soilTargets.filter(target => target.isValid()).map(target => ({
@@ -51,11 +54,16 @@ export class FoodActionController {
   }
 
   begin(source: FoodSource): void {
-    this.cancel(); this.source = source; this.animation.cancelEmote();
+    if (this.disposed || !source.isValid()) return;
+    this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'SEED_SELECT' });
+    this.source = source; this.animation.cancelEmote();
   }
 
   async eat(source: FoodSource, onEaten: () => void): Promise<boolean> {
+    if (this.disposed || !source.isValid()) return false;
     this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'EAT' });
     const version = this.version;
     await source.prepareEat?.();
     if (this.disposed || version !== this.version || !source.isValid()) return false;
@@ -160,6 +168,7 @@ export class FoodActionController {
 
   dispose(): void {
     if (this.disposed) return;
+    this.stopActionEvents();
     this.disposed = true; this.cancel();
     this.unregisterHover();
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();

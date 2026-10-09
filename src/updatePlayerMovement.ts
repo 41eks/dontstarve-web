@@ -41,7 +41,8 @@ export function updateMovement(
         if (animation?.isHammering && interrupting) animation.cancelHammer();
         if (animation?.isDigging && interrupting) animation.cancelDig();
         if (animation?.isReskinning && interrupting) animation.cancelReskin();
-        const acting = animation?.isCasting || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        const castingBusy = animation?.isCasting && animation.stategraph.hasStateTag('busy');
+        const acting = castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.
         else locomotor.update(speed, Math.min(dt, MAX_PHYSICS_FRAME_TIME), manual ? direction : undefined);

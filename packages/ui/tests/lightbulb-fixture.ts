@@ -4,8 +4,11 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createLightbulbGroundSprite } from '../../prefab/src/lightbulb';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
 export async function checkLightbulbLighting() {
+  clockstate.set({ phase: 'night', timeinphase: 0 });
+  seasonstate.set({ season: 'spring', progress: 0.5 });
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(400, 400);
   document.body.append(renderer.domElement);
@@ -72,6 +75,7 @@ export async function checkLightbulbLighting() {
   const restored = await manager.spawnFromSave('restored-bulb', definition, new THREE.Vector3(5, 0, 0));
   const restoredBrightness = sample(5);
   const restoredLit = !!getPrefabLocalLight(restored);
+  lighting.dispose();
   renderer.dispose();
   return { baseline, parameters, glowing, disabled, reenabled, disposed,
     failedDrop, failedDropBrightness, dropped, failedPickupCount, failedPickupBrightness,

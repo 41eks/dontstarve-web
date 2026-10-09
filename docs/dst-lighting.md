@@ -212,6 +212,8 @@ inst.Light:SetIntensity(intensity)
 - 支持四季、白天、黄昏、夜晚、满月以及降水亮度。
 - 世界按 [`src/tuning.ts`](../src/tuning.ts) 移植的 `tuning.lua` 默认周期自动切换：每段 30 秒，一天 16 段（480 秒），白天 10 段（300 秒）、黄昏 4 段（120 秒）、夜晚 2 段（60 秒）。`cycles` 表示已完成的天数，从 0 开始。
 - 使用存档的 `world.elapsedSeconds` 恢复周期，首次渲染直接使用对应时段的环境色和 LUT；之后时段切换使用 4／6／8 秒过渡。季节取存档的 `world.systems.season.name`，缺省为春季。这里使用 `tuning.lua` 的默认昼夜分配，尚未接入 `components/seasons.lua` 的季节段数调整。
+- `DstLightingRenderer` 在 LUT 加载完成后用 `createEffect` 读取 `packages/signals` 的 `clockstate.get()`、`seasonstate.get()`、`moonphasestate.get()`，自动追踪依赖并在微任务中合并变化；加载期间发生的变化也用于首次渲染。控制器不复制昼夜、季节或月相，`getPhase()`、`getSeason()` 直接读取 signal，只保留颜色、LUT 和计时等渐变数据。进度变化不会重启渐变；`dispose()` 释放 effect 并取消尚未执行的更新。
+- 世界时钟按现有 20 天周期在每次 60 帧结算时更新月相 signal。夜晚且月相为 `full` 时派生 `full_moon` 光照，实际昼夜阶段仍为 `night`，温度与牛的夜间行为保持夜晚规则。读档从 `world.elapsedSeconds` 恢复月相。
 - 将火把装备到手部后照亮角色附近。
 
 由于项目中的 DST 动画精灵多数使用不接受 Three.js 灯光的 `MeshBasicMaterial`，仅添加 `THREE.AmbientLight` 无法让角色和树木受光。当前 [`src/dstLocalLighting.ts`](../src/dstLocalLighting.ts) 先生成环境光与火把合成的世界 XZ 光照贴图，场景材质逐像素采样并在显示颜色空间乘色，随后把场景渲染到离屏纹理并统一执行 Colour Cube 调色。全屏调色阶段不再重复乘环境色，避免夜晚把局部照明压黑。多光源合成及 Lua 到 shader 的参数转换尚未还原，目前采用明确标注的估计规则。
@@ -226,8 +228,11 @@ inst.Light:SetIntensity(intensity)
 控制器提供以下接口：
 
 ```ts
-dstLighting.setSeason('winter');
-dstLighting.setPhase('dusk');
+import { clockstate, seasonstate, moonphasestate } from '@dontstarve-web/signals';
+
+seasonstate.set({ season: 'winter', progress: 0.5 });
+clockstate.set({ phase: 'dusk', timeinphase: 0 });
+moonphasestate.set('full'); // 夜晚时显示满月光照
 dstLighting.setWeatherLight(0.8);
 dstLighting.setPrecipitation(1);
 dstLighting.setTorchOwner(player); // 装备火把时；卸下传 null
@@ -250,4 +255,4 @@ DST 的整体灯光风格来自三类效果的组合：
 
 `DstLightingRenderer.create()` 的 `initialState.sanityPercent` 接受该只读视图。加载 LUT 后，滤镜订阅比例变化并通过 `peek()` 应用最新值，因此加载期间发生的理智变化也能正确初始化。后续变化同步更新分档调色强度、连续扭曲幅度和速度；渲染每帧仅推进时间与昼夜/季节渐变。滤镜不导入全局玩家状态，外部不再直接调用滤镜的理智 setter。
 
-HUD 独立订阅理智点数，`c_setsanity(percent)` 只写入 signal。保存通过 `getPlayerStats()` 导出包含理智数值的快照，不序列化 signal；重载恢复数值后由滤镜订阅初始化画面。`DstLightingRenderer.dispose()` 取消订阅并释放 LUT、后处理与局部光照资源，页面关闭也取消 HUD 订阅。
+HUD 独立订阅理智点数，`c_setsanity(percent)` 只写入 signal。保存通过 `getPlayerStats()` 导出包含理智数值的快照，不序列化 signal；重载恢复数值后由滤镜订阅初始化画面。`DstLightingRenderer.dispose()` 取消订阅并释放 LUT、后处理与局部光照资源，`pagehide` 不释放滤镜资源或取消 HUD 订阅。

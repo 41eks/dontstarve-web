@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
-test('clicks swap occupied inventory and backpack slots, cancel incompatible drops and preserve saved items', async ({ page }) => {
+test('cursor swaps, rejected placement and save reload preserve inventory and backpack entities', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -24,9 +24,13 @@ test('clicks swap occupied inventory and backpack slots, cancel incompatible dro
   await expect(first).toHaveAttribute('data-item-id', 'torch');
   await first.click();
   await expect(preview).toHaveAttribute('data-item-id', 'torch');
+  await expect(first).toHaveAttribute('data-item-id', '');
+  await expect(preview.locator('.slot-drag-preview__percent')).toHaveText('31%');
   await second.hover();
   await expect(second).toHaveClass(/is-drop-target/);
   await second.click();
+  await expect(preview).toHaveAttribute('data-item-id', 'log');
+  await page.keyboard.press('Escape');
   await expect(preview).toHaveCount(0);
   await expect(first).toHaveAttribute('data-item-id', 'log');
   await expect(second).toHaveAttribute('data-item-id', 'torch');
@@ -35,7 +39,7 @@ test('clicks swap occupied inventory and backpack slots, cancel incompatible dro
   await first.click();
   await bar.locator('[data-slot-key="hand"]').click();
   await expect(preview).toHaveAttribute('data-item-id', 'log');
-  await expect(first).toHaveAttribute('data-item-id', 'log');
+  await expect(first).toHaveAttribute('data-item-id', '');
   await page.keyboard.press('Escape');
   await expect(preview).toHaveCount(0);
 
@@ -53,6 +57,8 @@ test('clicks swap occupied inventory and backpack slots, cancel incompatible dro
   await expect(packSlot).toHaveAttribute('data-item-id', 'log');
   await second.click();
   await packSlot.click();
+  await expect(preview).toHaveAttribute('data-item-id', 'log');
+  await page.keyboard.press('Escape');
   await expect(preview).toHaveCount(0);
   await expect(packSlot).toHaveAttribute('data-item-id', 'torch');
   await expect(packSlot.locator('.inventory-slot__percent')).toHaveText('31%');
@@ -61,6 +67,10 @@ test('clicks swap occupied inventory and backpack slots, cancel incompatible dro
   await first.click();
   await expect(first).toHaveAttribute('data-item-id', 'log');
   await expect(second).toHaveAttribute('data-item-id', '');
+
+  await packSlot.click();
+  await expect(preview).toHaveAttribute('data-item-id', 'torch');
+  await expect(packSlot).toHaveAttribute('data-item-id', '');
 
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
@@ -77,6 +87,17 @@ test('clicks swap occupied inventory and backpack slots, cancel incompatible dro
   const containers = saved.players.local.inventory.containers;
   expect(containers['player:inventory'].slots.find(slot => slot.slotKey === '2')!.item).toEqual(original.logs);
   const bag = containers['player:equipment'].slots.find(slot => slot.slotKey === 'body')!.item;
-  expect(bag.container!.slots.find(slot => slot.slotKey === '0')!.item).toEqual(original.torch);
+  expect(bag.container!.slots).toEqual([]);
+  expect(containers['player:cursor'].slots[0].item).toEqual(original.torch);
+  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
+  await page.reload();
+  expect(await page.evaluate(async url => {
+    const { inventory } = await import(url);
+    return inventory.getEntity({ containerId: 'player:cursor', slotKey: '0' })?.snapshot();
+  }, urls.main)).toEqual(original.torch);
+  await page.mouse.move(300, 300);
+  await expect(preview.locator('.slot-drag-preview__percent')).toHaveText('31%');
+  await page.keyboard.press('Escape');
+  await expect(preview).toHaveCount(0);
   expect(errors).toEqual([]);
 });

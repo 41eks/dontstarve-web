@@ -19,6 +19,7 @@ import {
 import { dstLighting, scene } from './universal';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
+import { bindActionCancellation } from '@dontstarve-web/stategraphs';
 import { initialSave } from './save/initialSave';
 import type { RuntimeSaveState } from './save/serialize';
 import { createWorldState, createWorldClockUpdater } from './worldState';
@@ -115,18 +116,25 @@ export async function startScene(
   pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
-  pickLightbulbs: (count: number, sourcePosition: THREE.Vector3) => boolean = () => false,
   onClockTick?: (elapsedSeconds: number, dt: number) => void,
   itemEntities?: ItemEntityRegistry,
 ) {
-  const entities = createSceneEntities(world, consumeBufferedBuild, pickupGroundItem,
-    onBuildingInteraction, onFlowerPlanted, pickLightbulbs, itemEntities);
+  const blockDisabledController = (event: PointerEvent) => {
+    if (player.userData.controllerEnabled !== false) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+  };
+  view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
+  player.userData.locomotor = locomotor;
+  const entities = createSceneEntities(world, worldState, consumeBufferedBuild, pickupGroundItem,
+    onBuildingInteraction, onFlowerPlanted, itemEntities);
   const { registry } = entities;
   try {
     await registry.restoreAll(initialSave.world.entities);
   } catch (error) {
+    view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     registry.dispose();
     worldState.worldtemperature.dispose();
+    dstLighting.dispose();
     throw error;
   }
   const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
@@ -137,10 +145,6 @@ export async function startScene(
     updateCharacterRenderOrder(registry);
   };
   middleTasks.push(updateBeforePhysics);
-  const stopClockLighting = worldState.clock.subscribe(({ phase }) => dstLighting.setPhase(phase));
-  const stopSeasonLighting = worldState.season.subscribe(({ season }) => dstLighting.setSeason(season));
-  dstLighting.setPhase(worldState.clock.peek().phase);
-  dstLighting.setSeason(worldState.season.peek().season);
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, onClockTick);
   backTasks.push(clockUpdater.update);
   backTasks.push(updateEntities);
@@ -154,22 +158,32 @@ export async function startScene(
     };
   };
   const removeLocomotorInput = setupLocomotorInput(view, locomotor);
+  const stopMovementEvents = bindActionCancellation(view, locomotor, 'movement', () => locomotor.stop());
   const stopAnimation = animate(world, camera);
+  const disposals = new Set<() => void>();
+  const registerDisposal = (cleanup: () => void) => {
+    disposals.add(cleanup);
+    return () => { disposals.delete(cleanup); };
+  };
   const dispose = () => {
+    view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
+    if (player.userData.locomotor === locomotor) delete player.userData.locomotor;
     stopAnimation();
     clockUpdater.flush();
     locomotor.stop();
     removeLocomotorInput();
-    stopClockLighting();
-    stopSeasonLighting();
+    stopMovementEvents();
+    for (const cleanup of disposals) cleanup();
+    disposals.clear();
     for (const [tasks, task] of [[middleTasks, updateBeforePhysics], [backTasks, updateEntities], [backTasks, clockUpdater.update]] as const) {
       const index = tasks.indexOf(task);
       if (index >= 0) tasks.splice(index, 1);
     }
     registry.dispose();
     worldState.worldtemperature.dispose();
+    dstLighting.dispose();
   };
-  return { ...entities, byEntityId: registry.byEntityId, getSaveState, dispose };
+  return { ...entities, byEntityId: registry.byEntityId, getSaveState, registerDisposal, dispose };
 }
 
 export function scene_add(model:THREE.Object3D){

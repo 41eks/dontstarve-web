@@ -3,8 +3,7 @@ import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAni
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
-import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import type { WorldContext } from './worldContext';
+import { Pickable, type PickableSaveState } from './components/pickable';
 
 export const BULB_PLANT_ID = 'flower_cave';
 export const BULB_PLANT_PREFABS = ['flower_cave', 'flower_cave_double', 'flower_cave_triple'] as const;
@@ -16,12 +15,10 @@ export const BULB_PLANT_VARIANTS = ['single', 'springy', 'double', 'triple'] as 
 export const BULB_PLANT_LIGHT_STATES = ['ON', 'CHARGED', 'RECHARGING'] as const;
 export type BulbPlantVariant = typeof BULB_PLANT_VARIANTS[number];
 export type BulbPlantLightState = typeof BULB_PLANT_LIGHT_STATES[number];
-export interface BulbPlantSaveState {
+export interface BulbPlantSaveState extends PickableSaveState {
   variant: BulbPlantVariant;
   lightState: BulbPlantLightState;
   remainingSeconds?: number;
-  picked?: boolean;
-  regrowSeconds?: number;
 }
 export interface BulbPlantRecord {
   id: string;
@@ -61,7 +58,7 @@ export interface BulbPlantWorld {
   getLightLevel(model: THREE.Group): number;
 }
 
-/** flower_cave's lighting and pickable state; the host owns inventory transfers. */
+/** flower_cave's light cycle and animation callbacks for its pickable component. */
 export class BulbPlantController {
   private state: BulbPlantLightState;
   private timer?: number;
@@ -73,8 +70,7 @@ export class BulbPlantController {
   private inLight = false;
   private animationVersion = 0;
   private disposed = false;
-  private picked = false;
-  private regrowRemaining?: number;
+  readonly pickable: Pickable;
   private readonly model: THREE.Group;
   private readonly animation: SpriteAnimationController;
   private readonly world: BulbPlantWorld;
@@ -90,28 +86,25 @@ export class BulbPlantController {
     this.variant = variant;
     this.state = saved?.lightState ?? 'CHARGED';
     this.timer = saved?.remainingSeconds;
-    this.picked = saved?.picked ?? false;
-    this.regrowRemaining = saved?.regrowSeconds;
     this.lightOn = this.state === 'ON';
-    Object.assign(model.userData, { tags: ['plant'], bulbPlantController: this });
+    Object.assign(model.userData, { tags: [...(model.userData.tags ?? []), 'plant'], bulbPlantController: this });
+    this.pickable = new Pickable(model, 'lightbulb', bulbPlantRegrowTime(variant),
+      variant === 'double' ? 2 : variant === 'triple' ? 3 : 1,
+      () => this.onPicked(), () => {
+        this.beginRecharge();
+        this.playSequence('grow', 'idle', true);
+      }, saved);
     this.refreshLight();
   }
 
   get lightState(): BulbPlantLightState { return this.state; }
-  get canPick(): boolean { return !this.disposed && !this.picked; }
-  get productCount(): number { return this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1; }
-
-  tryPick(giveFruit: (count: number) => boolean): boolean {
-    if (!this.canPick || !giveFruit(this.productCount)) return false;
+  private onPicked(): void {
     if (this.state === 'ON') this.state = 'RECHARGING';
     this.timer = undefined;
     this.lightOn = false;
     this.tweenElapsed = this.tweenDuration;
-    this.picked = true;
-    this.regrowRemaining = bulbPlantRegrowTime(this.variant);
     this.playSequence('picking', 'picked');
     this.refreshLight();
-    return true;
   }
 
   update(dt: number): void {
@@ -125,11 +118,10 @@ export class BulbPlantController {
     // Advance through timer boundaries so frame stalls preserve source durations.
     while (remaining > 0) {
       const step = Math.min(remaining, this.awake ? Infinity : this.wakeRemaining,
-        this.timer ?? Infinity, this.regrowRemaining ?? Infinity);
+        this.timer ?? Infinity, this.pickable.remainingSeconds ?? Infinity);
       this.tweenElapsed = Math.min(this.tweenDuration, this.tweenElapsed + step);
       if (!this.awake) this.wakeRemaining -= step;
       if (this.timer !== undefined) this.timer -= step;
-      if (this.regrowRemaining !== undefined) this.regrowRemaining -= step;
       remaining -= step;
       if (!this.awake && this.wakeRemaining <= 0) {
         this.awake = true;
@@ -143,18 +135,13 @@ export class BulbPlantController {
           if (this.inLight) this.turnOn();
         }
       }
-      if (this.regrowRemaining !== undefined && this.regrowRemaining <= 0) {
-        this.regrowRemaining = undefined;
-        this.picked = false;
-        this.beginRecharge();
-        this.playSequence('grow', 'idle', true);
-      }
+      this.pickable.update(step);
     }
     this.refreshLight();
   }
 
   turnOn(): void {
-    if (this.disposed || this.picked || this.state !== 'CHARGED') return;
+    if (this.disposed || !this.pickable.canBePicked || this.state !== 'CHARGED') return;
     this.setState('ON');
     this.lightOn = true;
     this.tweenElapsed = 0;
@@ -179,12 +166,13 @@ export class BulbPlantController {
 
   exportState(variant: BulbPlantVariant): BulbPlantSaveState {
     return { variant, lightState: this.state, ...(this.timer === undefined ? {} : { remainingSeconds: this.timer }),
-      ...(this.picked ? { picked: true, regrowSeconds: this.regrowRemaining } : {}) };
+      ...this.pickable.exportState() };
   }
 
   dispose(): void {
     this.disposed = true;
     this.animationVersion++;
+    this.pickable.dispose();
     setPrefabLocalLight(this.model, null);
   }
 
@@ -208,7 +196,7 @@ export class BulbPlantController {
   private refreshLight(): void {
     setPrefabLocalLight(this.model, bulbPlantLight(this.lightOn, this.tweenElapsed / this.tweenDuration, this.variant));
     this.model.userData.bulbPlantLightState = this.state;
-    this.model.userData.bulbPlantPicked = this.picked;
+    this.model.userData.bulbPlantPicked = !this.pickable.canBePicked;
   }
 }
 
@@ -229,11 +217,6 @@ export class BulbPlantManager {
   private readonly world: BulbPlantWorld;
   private readonly random: () => number;
   private disposed = false;
-  private pointer?: PointerRaycaster;
-  private unregisterHover?: () => void;
-  private ownsPointer = true;
-  private canvas?: HTMLCanvasElement;
-  private giveFruit?: (count: number, sourcePosition: THREE.Vector3) => boolean;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: BulbPlantWorld, random = Math.random) {
     this.scene = scene;
@@ -274,37 +257,6 @@ export class BulbPlantManager {
     }
   }
 
-  setupInteraction(world: WorldContext, giveFruit: (count: number, sourcePosition: THREE.Vector3) => boolean): void {
-    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    this.ownsPointer = !world.mouseActions;
-    this.unregisterHover = world.mouseActions?.register(() => [...this.plants].map(plant => ({
-      action: { action: 'PICK' }, button: 'left', model: plant.model, available: plant.controller.canPick,
-    })));
-    this.giveFruit = giveFruit;
-    this.canvas = world.renderer.domElement;
-    this.canvas.addEventListener('pointerdown', this.handlePointerDown);
-  }
-
-  private pickableModels(): THREE.Group[] {
-    return [...this.plants].filter(plant => plant.controller.canPick).map(plant => plant.model);
-  }
-
-  private hitPlant() {
-    const hit = this.pointer?.raycastPointer(this.pickableModels());
-    let root: THREE.Object3D | null = hit?.object ?? null;
-    while (root && ![...this.plants].some(plant => plant.model === root)) root = root.parent;
-    return [...this.plants].find(plant => plant.model === root);
-  }
-
-  private readonly handlePointerDown = (event: PointerEvent) => {
-    if (event.button !== 0 || event.defaultPrevented || !this.pointer) return;
-    this.pointer.trackPointer(event);
-    const plant = this.hitPlant();
-    if (!plant) return;
-    event.preventDefault();
-    plant.controller.tryPick((count) => this.giveFruit?.(count, plant.model.position.clone()) ?? false);
-  };
-
   get renderEntities() {
     return [...this.plants].map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
   }
@@ -319,9 +271,6 @@ export class BulbPlantManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.canvas?.removeEventListener('pointerdown', this.handlePointerDown);
-    this.unregisterHover?.();
-    if (this.ownsPointer) this.pointer?.dispose();
     for (const { model, controller, factory } of this.plants) {
       controller.dispose();
       factory.disposeSprite(model);

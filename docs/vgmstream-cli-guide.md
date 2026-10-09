@@ -133,6 +133,8 @@ play duration: 4399 samples (0:00.100 seconds)
 
 FEV 映射解析可以参考 AssetArchive 的 `src-tauri/src/fmodparse.rs`（`FmodEvent::resolve_def()`、`FmodSoundDefFile.file_index`），零基 FSB 索引的链接见 `src-tauri/src/scripts/assetloader.lua` 的 `Fev:GetEventByPath()` 和 `FsbLoader:GetSampleInfoByIndex()`。
 
+黄／蓝法杖的 `staff.lua` 配置 `castsound = "dontstarve/common/staffteleport"`，事件引用 sound definition 909，仍是 `common.fsb` 的零基 283／提取 284；`use_gemstaff` 是状态图的默认回退。耗尽的 `onfinished` 使用 `dontstarve/common/gem_shatter`，引用 sound definition 917、`sfx/objects/gem_shatter.wav`、`common.fsb` 零基 202／提取 203。按 `-i -s 203` 导出 `public/dst/data/sound/common.fsb-203.wav`，与源已解码 `common.fsb#203.wav` 字节一致。两者沿用 `sound.ts` 的统一映射，在准备 CASTSPELL 前预加载。
+
 ### 矮星 metadata 与导出命令
 
 先用 `/usr/bin/vgmstream-cli -h` 核对安装版本的参数，再列出 metadata。以下命令只读取源 bank，不在其旁边生成 WAV：

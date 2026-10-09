@@ -66,9 +66,15 @@
 
 `HandEquipment` 要求公开字面量属性 `readonly EQUIPSLOTS: 'HANDS'`，共享 setter 同时做运行时校验；身体装备或缺少该属性的对象不能写入，失败不修改状态、不通知订阅者，`null` 仍可清空。torch 实现该结构类型，公开 `itemId = 'torch'` 与 `EQUIPSLOTS = 'HANDS'`；库存只为成功提交到手部槽的物品发布此属性，存档仍使用库存领域字段，不保存运行时槽位声明。
 
-手部动作控制器接收只读 `InventoryStore.handEquipment`，在控制器内部判断工具 ID，不接收应用层的 `isEquipped()` 或过滤后的物品查询函数。镐、干草叉、铲子和园艺锄分别接受其普通／金制 ID；锤子、捕虫网和清洁扫把分别检查 `hammer`、`bugnet`、`reskin_tool`。法杖施法输入按召唤目标 `stafflight/staffcoldlight` 在内部选择 `yellowstaff/opalstaff`。控制器直接读取 signal 中的皮肤和实体身份，在卸装、实体替换（即使 ID 和皮肤相同）或换肤时同步取消旧动作，阻止已经排入时间线或正在异步预加载的旧动作提交。`packages/stategraphs/src/handEquipment.ts` 仅共享身份变化的订阅判断，不维护工具 ID 清单；同一实体、同一 ID 和同一皮肤的重新发布不触发取消。`dispose()` 或施法输入的返回清理函数释放装备订阅和输入监听，控制器从不修改注入的只读 signal。
+手部动作控制器接收只读 `InventoryStore.handEquipment`，在控制器内部判断工具 ID，不接收应用层的 `isEquipped()` 或过滤后的物品查询函数。镐、干草叉、铲子和园艺锄分别接受其普通／金制 ID；锤子、捕虫网和清洁扫把分别检查 `hammer`、`bugnet`、`reskin_tool`。法杖实体由 prefab 配置 `SpellCaster` 和 `castonpoint` / `castonpointwater` 标签；通用 `SpellCastActionController` 读取真实装备实体的组件与能力，法术函数按法杖自身 prefab 选择星体。施法输入不含法杖 ID 或星体管理器，取消只针对自己持有的 `BufferedAction`。控制器直接读取 signal 中的皮肤和实体身份，在卸装、实体替换（即使 ID 和皮肤相同）或换肤时同步取消旧动作，阻止已经排入时间线或正在异步预加载的旧动作提交。`packages/stategraphs/src/handEquipment.ts` 仅共享身份变化的订阅判断，不维护工具 ID 清单；同一实体、同一 ID 和同一皮肤的重新发布不触发取消。`dispose()` 或施法输入的返回清理函数释放装备订阅和输入监听，控制器从不修改注入的只读 signal。
 
-torch 的只读 `burning` signal 独立表示燃烧状态，`onequip()` 点燃时设为 `true`，卸下、释放或耗尽后设为 `false`。`onunequip()` 和 `dispose()` 不修改 `handEquipmentExistenceState`，切换装备时不会清掉新值。燃尽时停止燃烧并校验绑定 signal 仍包含自己的装备引用，再调用 `slotSignal.set(null)`。`InventoryStore` 在手部槽位成功注册后、发布初始状态前自动建立唯一的清空监听，包括构造时和后续 `registerSlots()` 注册；注册失败或仅注册其他槽位不会重复建立手部监听，应用无需手动绑定。监听核对旧 signal 的实体就是当前手部物品，原子清空槽位并清理实体，并随 Store 的 `dispose()` 释放；库存自身已完成的转移、空槽位和其他实体的请求跳过。普通 `extinguish()` 不改变装备 signal。未绑定槽位的地面火把不修改玩家状态；未耗尽的燃料保留在库存中。装备火把耗尽由 signal 清空请求触发库存移除；地面或没有库存 owner 的本地火把仍移除自己的实体。旧绑定已经被替换时，不清空新装备；旧物品通过自己的 owner 移除。`src/playerHandEquipment.ts` 先注册注入手部 signal 的 `subscribe()`，直接使用 signal 中的实体引用；随后 `InventoryStore.replaceState()` 从存档恢复库存并写入 signal，由该次写入触发生命周期和手持动画。订阅不回放当前值，也没有单独的初始同步。`packages/prefab/src/handEquipment.ts` 注册各手部 prefab 的手持外观、光标与生命周期工厂；torch 的装备工厂负责绑定控制器、声音位置及燃烧订阅。`main.ts` 只注入玩家表现接口、调度统一订阅器的帧更新和结算、请求成功转移动画并在关闭时释放；卸下不销毁实体上的控制器。同步订阅处理同一任务内的装备变化；生命周期回调导致嵌套转移时，先完成旧生命周期，再处理最新装备，避免重入时旧回调清理或覆盖新实例。UI 的 `createEffect()` 仍在微任务中合并刷新。页面关闭时释放装备、燃烧和库存对手部 signal 的订阅。手动 `set(null)` 移除手部物品；正常卸下使用库存转移，保留实体及状态。
+主程序通过 `ActionWorldContext.registerFrameTask` 注入 `registerFrontTask()`，不逐帧遍历所有手部动作控制器。锤子、镐、干草叉、铲子、园艺锄、捕虫网和清洁扫把在内部通过 `bindHandEquipmentUpdate()` 按装备 signal 注册／移除自己的帧任务，只有当前匹配工具的控制器参加物理更新前的逐帧调度。构造时同步当前装备，支持读档后已装备的工具；同一身份重复发布不重复注册。卸装、替换或换肤时先移除旧任务并取消旧动作，再根据最新 signal 注册任务，`dispose()` 同时移除任务和订阅。法杖施法仍由输入事件及状态图时间线驱动，无需独立帧任务。未注入调度服务的独立宿主可显式调用控制器的 `update()`。
+
+前置任务按本帧快照执行。注册函数返回的移除回调会同时停用任务包装函数，确保帧中换装不会执行已缓存的旧任务，也不会因数组变化跳过其他任务；新注册的任务从下一帧开始执行。
+
+动作间的打断使用 `packages/signals/src/EventEmitter.ts` 的类型化同步事件。`src/view.ts` 创建玩家场景的 `actionEvents` 并通过 `ActionWorldContext` 注入；动作验证成功后发送 `action:begin`，包含动作类别与发起者 `owner`，其他订阅者先取消自己的工作，随后发起者设置新目标、动画或异步加载。`PICK` 在背包接收成功后才发送事件，失败时保留现有动作。选槽、右键物品、丢弃、制作和表情轮发送带原因的 `action:interrupt`；`packages/stategraphs/src/actionEvents.ts` 保留不同操作的打断范围，例如普通选槽不取消捕捉或建筑预览，表情轮打断全部交互并停止移动。控制器通过 `bindActionCancellation()` 订阅自身所属类别，跳过自己的开始事件，取消逻辑及加载版本校验仍由各模块管理。`main.ts` 不保留 `cancelHandTool`、`cancelNetCapture` 或动作控制器的逐项取消回调；控制器 `dispose()`、施法输入的清理函数与场景显式销毁释放事件订阅、输入监听和帧任务。
+
+torch 的只读 `burning` signal 独立表示燃烧状态，`onequip()` 点燃时设为 `true`，卸下、释放或耗尽后设为 `false`。`onunequip()` 和 `dispose()` 不修改 `handEquipmentExistenceState`，切换装备时不会清掉新值。燃尽时停止燃烧并校验绑定 signal 仍包含自己的装备引用，再调用 `slotSignal.set(null)`。`InventoryStore` 在手部槽位成功注册后、发布初始状态前自动建立唯一的清空监听，包括构造时和后续 `registerSlots()` 注册；注册失败或仅注册其他槽位不会重复建立手部监听，应用无需手动绑定。监听核对旧 signal 的实体就是当前手部物品，原子清空槽位并清理实体，并随 Store 的 `dispose()` 释放；库存自身已完成的转移、空槽位和其他实体的请求跳过。普通 `extinguish()` 不改变装备 signal。未绑定槽位的地面火把不修改玩家状态；未耗尽的燃料保留在库存中。装备火把耗尽由 signal 清空请求触发库存移除；地面或没有库存 owner 的本地火把仍移除自己的实体。旧绑定已经被替换时，不清空新装备；旧物品通过自己的 owner 移除。`src/playerHandEquipment.ts` 先注册注入手部 signal 的 `subscribe()`，直接使用 signal 中的实体引用；随后 `InventoryStore.replaceState()` 从存档恢复库存并写入 signal，由该次写入触发生命周期和手持动画。订阅不回放当前值，也没有单独的初始同步。`packages/prefab/src/handEquipment.ts` 注册各手部 prefab 的手持外观、光标与生命周期工厂；torch 的装备工厂负责绑定控制器、声音位置及燃烧订阅。`main.ts` 只注入玩家表现接口、调度统一订阅器的帧更新和结算、初始化时显式抑制转移动画，并保留页面内显式释放接口；卸下不销毁实体上的控制器。同步订阅处理同一任务内的装备变化；生命周期回调导致嵌套转移时，先完成旧生命周期，再处理最新装备，避免重入时旧回调清理或覆盖新实例。UI 的 `createEffect()` 仍在微任务中合并刷新。页面内显式销毁装备绑定或库存时释放对应订阅；`pagehide` 不执行资源清理。手动 `set(null)` 移除手部物品；正常卸下使用库存转移，保留实体及状态。
 
 inventory 负责权威状态和原子写入，`InventoryStore.setRemainingFuel()` 不决定燃烧或耗尽行为，也不写入零燃料的临时库存物品；玩家装备火把的耗尽路径通过 signal 请求清空，实际移除由库存订阅执行。应用将比例同步到 UI 的 `SlotItem.durabilityPercent`，共享 slot renderer 在物品、装备和储物槽中显示相同百分比。燃料字段随库存转移、地面掉落、换肤、拾取与存档保存保留；异步加载掉落美术时，原实体继续消耗燃料，实际提交丢弃时先结算再交接引用。
 
@@ -88,13 +94,15 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 | 事件 | 触发方式 | 应用处理 |
 | --- | --- | --- |
-| `game:slot-transfer-request` | 拖放，或点击吸附后再点击目标槽 | 空槽移动；点击占用槽时携带 `swapWith` 并原子交换整叠物品，成功后触发对应装备动画 |
+| `game:slot-transfer-request` | 拖放，或点击拿起／放下鼠标物品 | 使用真实鼠标槽转移；点击占用槽时携带 `swapWith` 并原子交换，成功后触发对应装备动画 |
 | `game:slot-select` | 点击选择槽位 | 在转移拾取之前运行；可放置物品通过 `preventDefault()` 接管点击并进入放置模式 |
 | `game:slot-context-menu` | 右键槽位 | 根据物品与修饰键执行吃东西、装备或丢弃等动作 |
 
-点击吸附物品后，空槽执行移动，已占用槽执行整叠交换（包括同类物品）；鼠标吸附只改变 UI 预览，第一次点击不移走权威物品。`InventoryStore.swap()` 在结算两件物品的计时状态后，双向验证装备接受规则与堆叠容量，通过一次事务交换原实体。请求包含可选的双方实体 ID、皮肤和数量，过期选择拒绝提交。应用调用 `slotTransferController.completeTransfer(operationId, success)` 确认结果，成功才移除吸附预览；拒绝时可继续选择目标，或按 Esc / 再点来源槽取消。拖放继续使用原有移动和合堆规则。吸附期间点击目标槽不触发新的放置或使用动作；未吸附时，选择事件仍先于转移拾取运行。
+鼠标槽使用 `cursorSlotAddress()` 的稳定地址 `{ containerId: "player:cursor", slotKey: "0" }`，由应用注册一个 `InventorySlot`，权威实体仍归 `InventoryStore` 管理。左键拿起立即执行原槽到鼠标槽的整叠转移，UI 只订阅投影并绘制鼠标图标。点击空槽放下；点击占用槽使用 `InventoryStore.swap()` 原子交换鼠标与目标，目标原物品继续由鼠标持有。`completeTransfer()` 仅确认成功后记录来源地址并刷新投影；失败不清空鼠标槽。Esc 通过冒泡的 `game:cursor-return-request` 请求 `InventoryStore.returnCursor()`，优先完整放回来源槽，其次普通物品栏；没有可接受的完整空位时保持持有。鼠标槽不参与自动接收、制造产物分配或自动材料消耗，拖放继续使用直接移动和合堆。未持有物品时，可取消的 `game:slot-select` 仍先于转移请求执行，建造和播种可认领点击进入自己的动作预览。
 
-三个事件均穿过 inventory bar 的 shadow root 冒泡。`game:slot-select` 可取消，使点击建筑物品时先启动放置，而不会先把整叠物品拿起来拖放。
+唱片插入直接读取鼠标槽，移除专用 `selectedRecordSlot` 和唱片右键选择分支。插入前捕获实际实体与皮肤，提交前核对鼠标槽仍持有同一实体，并由库存事务扣除一张；异步加载或目标校验失败不会消耗物品。
+
+`game:cursor-return-request` 携带可选的来源地址，请求归还鼠标槽内物品；这些事件均穿过 inventory bar 的 shadow root 冒泡。`game:slot-select` 可取消，使点击建筑物品时先启动放置，而不会先把整叠物品拿起来拖放。
 
 网页屏蔽浏览器原生右键菜单，游戏使用自己的右键映射。
 
@@ -106,7 +114,9 @@ torch 的专用 ground factory 注册 `onputininventory` 和 `onextinguish`。�
 
 右键 `meatballs` 调用 `WilsonAnimationController.playEat()`，播放 `anim/player_actions_eat.zip`；当前只播放动作，不消耗该堆物品。
 
-将火把移入手部装备槽播放 `item_out`，移回物品栏播放 `item_in`，两者均使用 `anim/player_actions_item.zip`。应用也对当前支持的部分手持工具使用此转移动画；具体物品判断位于 `src/main.ts`。动画只在库存转移成功后播放。
+手部拿出／收起动画集中在 `src/playerHandEquipment.ts`，从装备 signal 的前后状态派生：`null → 装备` 播放新物品的 `item_out`，`装备 → null` 播放旧物品的 `item_in`，更换装备实体播放新物品的 `item_out`。动画使用 `anim/player_actions_item.zip`，具体手持物品由 prefab 的手部定义解析；同一实体换肤或重复发布身份仅同步外观，不重复播放转移动画。
+
+绑定器等待 `setCarryItem()` 完成美术加载后才播放动画，并核对表现请求版本及当前 signal；被后续换装、耗尽或销毁覆盖的异步完成不会播放旧动画。已移除的旧物品（包括燃料耗尽）不播放 `item_in`。初始化通过 `handEquipmentBinding.withoutTransitions(() => inventory.replaceState(...))` 保持生命周期和外观同步，抑制读档时的拿出／收起动画；失败的库存事务不会改变装备 signal，因此也不会触发动画。`src/main.ts` 只提交转移、报告结果和结算燃料，不再按转移方向选择动画。
 
 Shift + 右键已占用的库存或装备槽，在玩家当前地面位置丢弃一个物品。帽子及注册的目录物品使用源动画/build，其他未注册物品回退到其库存图标。普通掉落物点击拾取成功后回到物品栏；专用生物 prefab 可定义不同捕获或交互行为。
 

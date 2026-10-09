@@ -7,6 +7,8 @@ export {
   isBackpackContainerId,
   PLAYER_EQUIPMENT_CONTAINER_ID,
   PLAYER_INVENTORY_CONTAINER_ID,
+  PLAYER_CURSOR_CONTAINER_ID,
+  cursorSlotAddress,
   equipmentSlotAddress,
   inventorySlotAddress,
   backpackSlotAddress,

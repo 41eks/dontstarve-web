@@ -231,15 +231,17 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 
 应用中用 `c_give("yellowstaff")` 获取魔杖，拖入手部装备栏后右键地面施法。
 `player_staff.zip` 播放 `staff_pre → staff`，第 13 帧调用
-`PlaySound('dontstarve/wilson/use_gemstaff')`，第 53 帧生成矮星；重复点击不重复提交，
+`PlaySound('dontstarve/common/staffteleport')`，第 53 帧生成矮星并扣一次耐久与 20 理智；重复点击不重复提交，
 施法过程中停止移动，卸下魔杖或开始其他动作会取消尚未提交的召唤。
+
+`getLightStaffController(entity, world)` 在真实物品实体上配置 `SpellCaster`，按法杖自身 ID 选择 `stafflight` / `staffcoldlight`，黄／蓝法杖分别为 20／50 次。`onequip(slotSignal)` 绑定装备生命周期，卸下只解除绑定，耗尽通过实体的库存 owner 移除。`SpellCastActionController` 读取组件和能力标签、共享鼠标动作选择器及真实 `BufferedAction.invobject`，不包含法杖 ID、星体 Manager 或法术函数；异步准备完成后进入状态图，过远先接近，尚未提交的装备替换使旧动作失效。第 53 帧释放临时光效的取消所有权，剩余光效自然结束；第 69 帧解除 busy 并恢复世界输入。
 
 `@dontstarve-web/prefab/stafflight` 的 `DwarfStarManager` 管理独立的矮星
 （源 prefab ID `stafflight`）。`star_hot.zip` 播放 `appear → idle_loop → disappear`，
 局部光源每 20 秒脉动一次，半径为 33～36 世界单位。矮星固定在右键 raycaster
 命中的地面点，持续 24 分钟（1440 秒），到期播放
 消失动画并在 1 秒后移除；存档保存各自的落点和剩余寿命，恢复时继续计时。
-`prepare()` 可提前加载资源，`spawn(position)` 召唤，`update(dt, cameraQuaternion)`
+`prepare()` 可提前加载资源，`spawnPrepared(position)` 同步提交预加载的召唤，`spawn(position)` 提供异步加载入口，`update(dt, cameraQuaternion)`
 更新动画与光照，`exportRecords()` 返回可保存记录，`dispose()` 释放共享精灵资源并停止所属声音。
 
 `prepare()` 同时预加载矮星音频：出现时播放 `dontstarve/common/staff_star_create`，
@@ -257,7 +259,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `dontstarve/common/icebox_open` / `icebox_close`（`sfx.fsb` 流 383 / 382）及木箱开关声
 `dontstarve/wilson/chest_open` / `chest_close`（`wilson.fsb` 流 15 / 14）。循环行为由事件映射
 决定；返回句柄的 `stop()` 停止该次播放，`PreloadSounds(...paths)` 预加载共享音频，
-`DisposeSounds()` 在游戏关闭时停止全部声音并释放音频上下文。
+`DisposeSounds()` 用于页面内显式结束游戏时停止全部声音并释放音频上下文；`pagehide` 不调用该清理。
 
 锤子与两种鹤嘴锄在装备时预加载音效，在共享 `pickaxe_loop` 第 7 帧分别调用
 `PlaySound('dontstarve/wilson/hit')` 和 `PlaySound('dontstarve/wilson/use_pick_rock')`。

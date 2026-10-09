@@ -7,6 +7,7 @@ import {
   InventoryStore,
   equipmentSlotAddress,
   inventorySlotAddress,
+  cursorSlotAddress,
   type InventoryStack,
 } from '@dontstarve-web/inventory';
 import {
@@ -62,7 +63,7 @@ export function createInventoryStore(
     { address: equipmentSlotAddress('head'), slot: new HeadSlot() },
   ];
   return new InventoryStore(
-    [...inventorySlots, ...equipmentSlots],
+    [...inventorySlots, ...equipmentSlots, { address: cursorSlotAddress(), slot: new InventorySlot(null, INVENTORY_ITEM_SPECS) }],
     INVENTORY_ITEM_SPECS,
     INVENTORY_SKIN_SPECS,
   );

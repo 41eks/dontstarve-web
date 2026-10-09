@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createWilsonPlayerPrefab, type WilsonAnimationController } from '../../prefab/src/player';
 import { HammerActionController } from '../../stategraphs/src/hammer';
-import { createHandEquipmentExistenceState } from '../../signals/src';
+import { createHandEquipmentExistenceState, createSignal } from '../../signals/src';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, createGroundItemSprite } from '../../prefab/src/groundItems';
 import { Locomotor } from '../../prefab/src/locomotor';
 import type { TransientSpriteAnimationController } from '../../animation/src/sprite';
@@ -194,7 +194,10 @@ export async function checkResearchLabDestruction() {
   const { World } = await import('cannon-es');
   const { player } = await import('../../../src/player');
   const pickedUp: { itemId: string; count: number }[] = [];
-  const entities = createSceneEntities(new World(), () => false, (item) => {
+  const entities = createSceneEntities(new World(), {
+    clock: createSignal({ phase: 'day', timeinphase: 0 }),
+    season: createSignal({ season: 'spring', progress: 0 }),
+  }, () => false, (item) => {
     pickedUp.push(item); return true;
   });
   const ids = ['researchlab', 'researchlab2', 'researchlab3', 'researchlab4'] as const;

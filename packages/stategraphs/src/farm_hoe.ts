@@ -1,6 +1,7 @@
+import { bindActionCancellation } from './actionEvents.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
+import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { FarmActionWorld, PreparedFarmTill } from './farmActions.ts';
 type FarmPlowPlacement = Pick<FarmActionWorld, 'canTill' | 'prepareTill'>;
@@ -28,21 +29,25 @@ export class FarmHoeActionController {
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
+  private readonly stopActionEvents: () => void;
   private readonly farm: FarmPlowPlacement;
   private readonly isManualMovement: () => boolean;
-  private readonly onRequest: () => void;
   private readonly onError: (error: unknown) => void;
 
   constructor(world: WorldContext, animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal, farm: FarmPlowPlacement,
-    isManualMovement = () => false, onRequest = () => {}, onError: (error: unknown) => void = console.error) {
+    isManualMovement = () => false, onError: (error: unknown) => void = console.error) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.handEquipment = handEquipment; this.farm = farm; this.isManualMovement = isManualMovement;
-    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
-      if (isFarmHoeTool(previous?.itemId ?? '')) this.cancel();
+    this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
+      isEquipped: equipment => isFarmHoeTool(equipment?.itemId ?? ''),
+      cancel: () => this.cancel(),
+      update: () => this.update(),
+      registerFrameTask: world.registerFrameTask,
     });
-    this.onRequest = onRequest; this.onError = onError;
+    this.onError = onError;
+    this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() => this.hitTarget()
       ? [{ action: { action: 'TILL' }, button: 'right' }] : []) ?? (() => {});
@@ -53,8 +58,10 @@ export class FarmHoeActionController {
   request(point: THREE.Vector3): boolean {
     if (this.disposed || !isFarmHoeTool(this.equipped()?.itemId ?? '') || !this.farm.canTill(point)
       || this.animation.isTilling || this.animation.isCasting || this.animation.isNetting) return false;
-    this.cancel(); this.animation.cancelEmote();
-    this.target = point.clone().setY(0); this.onRequest();
+    this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'TILL' });
+    this.animation.cancelEmote();
+    this.target = point.clone().setY(0);
     return true;
   }
 
@@ -139,6 +146,7 @@ export class FarmHoeActionController {
   };
   private readonly handleKeyDown = (event: KeyboardEvent): void => { if (event.code === 'Escape') this.cancel(); };
   dispose(): void {
+    this.stopActionEvents();
     if (this.disposed) return;
     this.disposed = true; this.cancel();
     this.stopEquipment();

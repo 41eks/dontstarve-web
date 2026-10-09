@@ -18,7 +18,7 @@
 | `quickeat` | 根据饮品选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`；第 10 帧声音、第 12 帧提交并移除 `busy` |
 | `doshortaction` | `pickup → pickup_pst`；第 6 帧移除 `busy` 并提交，第 10 帧状态超时进入 `idle, true`；退出仅清理该状态自己的缓冲动作 |
 | `item_in` / `item_out` | 源标签 `idle, nodangle, keepchannelcasting`；动画完成后进入待机 |
-| `castspell` | `staff_pre → staff`；第 13 帧声音、第 53 帧提交、第 69 帧移除 `busy`；退出释放浏览器施法照明 |
+| `castspell` | `staff_pre → staff`；第 13 帧声音、第 53 帧提交并释放光效取消所有权、第 69 帧移除 `busy` 并恢复控制；提交前退出清理照明 |
 | `veryquickcastspell` | `atk_pre → atk`；进入时声音，第 9 帧提交并移除 `busy` |
 | `emote` | 播放传入动画队列，仅最后一段可循环；0.5 秒移除 `busy, pausepredict` |
 | `till_start` / `till` | `till_pre → till_loop`；loop 第 4 帧挖掘声、第 11 帧提交、第 12 帧出土声、第 22 帧移除 `busy`；在 `idle` 播放 `till_pst` |
@@ -57,6 +57,8 @@
 
 不再提供自定义 `RESKIN` 动作或基于 `isOneShot/crafting/isJumping` 的 `canStartAction()` 白名单。工作动作在源前摇标签移除后，可由新的显式请求直接回到动作循环；按住输入自动重复仍依赖尚未移植的控制器分支。
 
+普通法杖由 `SpellCastActionController` 从共享 `PlayerActionPicker` 的标签候选构造 `CASTSPELL`。真实 `ItemEntity` 作为 `invobject`，动作有效性核对原实体仍被持有且 `spellcaster.CanCast` 通过；执行时调用实体组件的 `CastSpell`，原始落点随动作保持。`castspell.onenter` 停止移动并禁用世界控制，声音与光色来自实际 `invobject.castsound/fxcolour`。第 13 帧播声，第 53 帧在 `PerformBufferedAction` 前释放光效取消所有权，避免最后一次耐久引起的卸装清掉已提交光效；第 69 帧恢复控制，退出状态也恢复控制。`isActionActive(bufferedAction)` 按动作引用核对归属，旧控制器不能取消替换动作。
+
 ## 尚未移植的源分支
 
 - 骑乘、重物、变身、特殊角色、预测、天气及其他组件驱动的待机分支和 `idle.onupdate`。
@@ -64,6 +66,6 @@
 - `bugnet.onenter` 的 `dontstarve/wilson/use_bugnet` 声音和工具专属声音覆盖；当前只使用已映射的默认提交声音。
 - `NET` 的 `nabbag` 目标，以及 `CASTSPELL` 的独角鲸角、吉他、抛币、粉碎物品、`quickcast` 和鱼人增益分支；这些工具标签不会误走普通施法状态。
 - 翻转工具的 `till2_*` 动画分支、完整 `eat` 状态、喂食、暂停饥饿、齿轮食物音效选择、进食后状态队列及口袋翻找。
-- `doshortaction` 的静默、海狸和按住动作分支；`castspell` 的完整源特效及玩家控制器；表情的额外特效、声音、镜头和装备回调；`item_in` 的跟随特效清理。
+- `doshortaction` 的静默、海狸和按住动作分支；`castspell` 的完整 `staffcastfx` 网格、骑乘和额外目标特效；表情的额外特效、声音、镜头和装备回调；`item_in` 的跟随特效清理。
 
 验证使用 `pnpm --filter @dontstarve-web/stategraphs test`，覆盖代表性的提交、取消、跨状态动画保留和运行器回调顺序；实际动画/装备接线由 `packages/animation/tests` 的玩家与动作测试覆盖。

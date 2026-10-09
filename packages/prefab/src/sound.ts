@@ -35,6 +35,8 @@ const sounds = {
   'dontstarve/common/staff_star_LP': { bank: 'common', streams: [274], loop: true },
   'dontstarve/wilson/use_gemstaff': { bank: 'common', streams: [284], loop: false },
   'dontstarve/common/staffteleport': { bank: 'common', streams: [284], loop: false },
+  // staff.lua onfinished → sounddef 917 → gem_shatter.wav, zero-based file_index 202.
+  'dontstarve/common/gem_shatter': { bank: 'common', streams: [203], loop: false },
   // FEV has three simultaneous layers, each with one sound definition.
   'dontstarve/common/staff_coldlight_LP': { bank: 'sfx', streams: [796], loop: true,
     layers: [{ bank: 'sfx', streams: [797] }, { bank: 'common', streams: [158] }] },

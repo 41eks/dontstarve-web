@@ -3,6 +3,11 @@ import type { EquipmentKind, SlotAddress } from './types';
 export const INVENTORY_SLOT_COUNT = 15;
 export const PLAYER_INVENTORY_CONTAINER_ID = 'player:inventory';
 export const PLAYER_EQUIPMENT_CONTAINER_ID = 'player:equipment';
+export const PLAYER_CURSOR_CONTAINER_ID = 'player:cursor';
+
+export function cursorSlotAddress(): SlotAddress {
+  return { containerId: PLAYER_CURSOR_CONTAINER_ID, slotKey: '0' };
+}
 export function backpackContainerId(entityId: string): string {
   if (!entityId) throw new TypeError('Backpack entity ID must not be empty');
   return `item:backpack:${entityId}`;

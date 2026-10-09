@@ -12,6 +12,7 @@ import type { BuildingContainerDefinition } from './containers';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext } from './worldContext';
+import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { nextReskin } from './reskin_tool';
@@ -113,6 +114,8 @@ interface AnimatedBuildingInstance<BuildId extends string> {
 }
 
 export class AnimatedBuildingPlacement<BuildId extends string> {
+    private readonly actionEvents: WorldContext['actionEvents'];
+    private readonly stopActionEvents: () => void;
     private disposed = false;
     private readonly canvas: HTMLCanvasElement;
     private readonly scene: THREE.Scene;
@@ -141,6 +144,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         consumeBufferedBuild: (buildId: BuildId) => boolean,
         onInteractionChange?: (change: AnimatedBuildingInteractionChange<BuildId>) => void,
     ) {
+        this.actionEvents = world.actionEvents;
+        this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
         this.canvas = world.renderer.domElement;
         this.scene = world.scene;
         this.camera = world.camera;
@@ -160,6 +165,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (this.active) return Promise.resolve();
         if (this.loading) return this.loading;
 
+        this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(`: 建造 ${this.definitions[buildId].buildLabel}`, 'left');
         const previewVersion = ++this.previewVersion;
         const request = this.createPreview(buildId, previewVersion, skinId)
@@ -343,6 +349,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+        this.stopActionEvents();
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
         this.pointer.dispose();
         this.cancel();

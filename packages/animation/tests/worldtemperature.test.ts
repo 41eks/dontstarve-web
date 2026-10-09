@@ -1,12 +1,25 @@
-import { describe, expect, it, vi } from 'vitest';
-import { WorldTemperature, type WorldTemperatureSeason } from '../../componets/src/worldtemperature';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { batch, clockstate, seasonstate, type WorldSeason } from '../../signals/src';
+import { WorldTemperature, type WorldTemperatureOptions } from '../../componets/src/worldtemperature';
+
+const components: WorldTemperature[] = [];
+function createTemperature(options: WorldTemperatureOptions = {}) {
+  const component = new WorldTemperature(options);
+  components.push(component);
+  return component;
+}
+beforeEach(() => batch(() => {
+  seasonstate.set({ season: 'autumn', progress: 0.5 });
+  clockstate.set({ phase: 'day', timeinphase: 0 });
+}));
+afterEach(() => { for (const component of components.splice(0)) component.dispose(); });
 
 describe('worldtemperature.lua temperature component', () => {
   it('combines seasonal curves, phase progress and noise, publishing reactively', () => {
     const perlin = vi.fn(() => 0.5), tick = vi.fn();
-    const world = new WorldTemperature({ perlin, onTemperatureTick: tick });
+    const world = createTemperature({ perlin, onTemperatureTick: tick });
     expect(tick.mock.calls).toEqual([[30]]);
-    const seasons: [WorldTemperatureSeason, number[]][] = [
+    const seasons: [WorldSeason, number[]][] = [
       ['autumn', [55, 30, 5]], ['winter', [5, -25, 5]],
       ['spring', [5, 30, 55]], ['summer', [55, 95, 55]],
     ];
@@ -37,7 +50,7 @@ describe('worldtemperature.lua temperature component', () => {
 
   it('keeps noise extremes unclamped and applies modifiers around their locus', () => {
     const perlin = vi.fn(() => 1), tick = vi.fn();
-    const world = new WorldTemperature({ perlin, onTemperatureTick: tick });
+    const world = createTemperature({ perlin, onTemperatureTick: tick });
     world.OnSeasonTick({ season: 'summer', progress: 0.5 });
     world.OnClockTick({ phase: 'day', timeinphase: 0.5 });
     world.OnUpdate(0);
@@ -55,7 +68,7 @@ describe('worldtemperature.lua temperature component', () => {
   });
 
   it('preserves deterministic noise across JSON save/load and different update batches', () => {
-    const world = new WorldTemperature();
+    const world = createTemperature();
     world.OnSeasonTick({ season: 'spring', progress: 0.4 });
     world.OnClockTick({ phase: 'night', timeinphase: 0.5 });
     world.SetTemperatureMod(0.6, 0);
@@ -63,7 +76,7 @@ describe('worldtemperature.lua temperature component', () => {
     expect(world.GetTemperature()).not.toBe(19 * 0.6);
     const saved = JSON.parse(JSON.stringify(world.OnSave()));
     expect(saved).toEqual({ season: 'spring', seasontemperature: 25, phasetemperature: -6, noisetime: 13.25 });
-    const tick = vi.fn(), restored = new WorldTemperature({ onTemperatureTick: tick });
+    const tick = vi.fn(), restored = createTemperature({ onTemperatureTick: tick });
     restored.SetTemperatureMod(0.6, 0);
     restored.OnLoad(saved);
     expect(restored.OnSave()).toEqual(world.OnSave());
@@ -80,7 +93,7 @@ describe('worldtemperature.lua temperature component', () => {
   });
 
   it('rejects invalid updates and loads without changing state or publishing', () => {
-    const tick = vi.fn(), world = new WorldTemperature({ onTemperatureTick: tick });
+    const tick = vi.fn(), world = createTemperature({ onTemperatureTick: tick });
     world.OnUpdate(17);
     const saved = world.OnSave(), temperature = world.GetTemperature();
     tick.mockClear();
@@ -92,5 +105,19 @@ describe('worldtemperature.lua temperature component', () => {
     expect(world.OnSave()).toEqual(saved);
     expect(world.GetTemperature()).toBe(temperature);
     expect(tick).not.toHaveBeenCalled();
+  });
+
+  it('shares singleton inputs across components without resetting them and releases disposed memo dependencies', () => {
+    seasonstate.set({ season: 'winter', progress: 0.5 });
+    clockstate.set({ phase: 'night', timeinphase: 0.5 });
+    const world = createTemperature({ perlin: () => 0.5 });
+    const other = createTemperature({ perlin: () => 0.5 });
+    expect(world.GetTemperature()).toBe(-31);
+    expect(other.GetTemperature()).toBe(-31);
+    world.dispose();
+    seasonstate.set({ season: 'spring', progress: 0.5 });
+    expect(other.GetTemperature()).toBe(24);
+    expect(world.GetTemperature()).toBe(-31);
+    expect(clockstate.peek()).toEqual({ phase: 'night', timeinphase: 0.5 });
   });
 });

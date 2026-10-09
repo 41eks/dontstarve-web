@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 
 const url = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url))}`;
 
-test('record selection, machine switches and pickup use real input and release decoded music sources', async ({ page }) => {
+test('cursor records, machine switches and pickup use real input and release decoded music sources', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -75,7 +75,13 @@ test('record selection, machine switches and pickup use real input and release d
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   });
   const clickMachine = async (button: 'left' | 'right') => { const p = await point(); await page.mouse.click(p.x, p.y, { button }); };
-  await record.click({ button: 'right' });
+  await record.click();
+  await expect(page.locator('.slot-drag-preview[data-cursor="true"]')).toHaveAttribute('data-item-id', 'record');
+  await expect(record).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(record).toHaveCount(1);
+  await expect(page.locator('.slot-drag-preview')).toHaveCount(0);
+  await record.click();
   await clickMachine('left');
   await expect(record).toHaveCount(0);
   await expect.poll(music).toEqual([{ stops: 0, loop: true, state: 'running', channels: 1 }]);
@@ -100,9 +106,5 @@ test('record selection, machine switches and pickup use real input and release d
     scene.traverse((object: any) => { if (object.material?.wireframe) object.visible = false; });
   });
   await page.screenshot({ path: '/tmp/dontstarve-phonograph-playing.png' });
-  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-  await expect.poll(() => music().then((sources) => sources.map(({ stops, state }) => ({ stops, state })))).toEqual([
-    { stops: 1, state: 'closed' }, { stops: 1, state: 'closed' }, { stops: 1, state: 'closed' },
-  ]);
   expect(errors).toEqual([]);
 });

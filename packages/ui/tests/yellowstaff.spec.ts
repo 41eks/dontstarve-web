@@ -17,13 +17,18 @@ for (const itemId of ['yellowstaff'] as const) {
       return checkYellowStaff(itemId);
     }, { url: `/@fs${fileURLToPath(new URL('./yellowstaff-fixture.ts', import.meta.url))}`, itemId });
     expect(result.failures).toEqual([]);
+    expect(result.savedCommand.ok).toBe(true);
+    expect(result.restoredStaff).toEqual(result.savedStaff);
+    expect(result.restoredStaff).toMatchObject({ itemId: 'yellowstaff', count: 1, remainingUses: 19 });
+    expect(result.savedSanity).toBe(80);
+    expect(result.restoredStar).toEqual(result.starSave);
     expect(result.skins).toBe(4);
     expect(result).toMatchObject({ unlitHand: true, ignoredLeft: true, busy: true, beforeCommit: 0,
       given: { ok: true }, transferred: true,
       prefabId: itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight',
-      afterCommit: 1, remainingSeconds: itemId === 'opalstaff' ? 960 : 1440, fixedPosition: true,
+      afterCommit: 1, remainingSeconds: (itemId === 'opalstaff' ? 960 : 1440) - 3 / 30, fixedPosition: true,
       survivesUntilExpiry: true, expiresAtLifetime: true, lifetimeRemoved: true,
-      stops: 2, appeared: true, cancelled: true, noCastingLight: true,
+      sanity: 80, remainingUses: 19, appeared: true, cancelled: true, noCastingLight: true,
       ignoredUnequipped: true, restoredLit: true, expiredNotSaved: true, expiredRemoved: true, survivor: 1 });
     expect(result.position[0]).toBeCloseTo(30);
     expect(result.position[1]).toBe(0);

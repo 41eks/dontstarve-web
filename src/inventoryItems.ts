@@ -1,5 +1,6 @@
 import { HAT_ITEM_SPECS } from '@dontstarve-web/prefab/hats';
 import { TORCH_FUEL } from '@dontstarve-web/prefab/torch';
+import { LIGHT_STAFF_USES, isLightStaff } from '@dontstarve-web/prefab/yellowstaff';
 import {
   INVENTORY_ITEM_DISPLAY_SPECS,
   INVENTORY_SKIN_SPECS,
@@ -24,6 +25,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       maxStack: inventoryItemMaxStack(itemId),
       ...(itemId === 'backpack' ? { canGoInContainer: false } : {}),
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
+      ...(isLightStaff(itemId) ? { maxUses: LIGHT_STAFF_USES[itemId] } : {}),
       ...(itemId === 'torch' ? { maxFuel: TORCH_FUEL } : {}),
       ...(equippable === undefined ? {} : { equippable }),
     }];

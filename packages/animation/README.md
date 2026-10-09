@@ -83,8 +83,8 @@ const region = await getAtlasImage('images/crafting_menu.xml', 'pinslot_bg');
 
 为返回的元素设置宽高，内部 CSS 会居中并保持小图比例。`ready` 等待共享图片解码完成；
 失败时拒绝 Promise，同时设置 `data-error` 并触发 `error` 事件。图集加载失败后下次查询会重试。
-注册按图集路径去重，同名小图通过图集路径区分。游戏关闭时调用 `disposeAtlasImages()`
-释放 Blob URL 和注册表；下一次初始化重新注册。
+注册按图集路径去重，同名小图通过图集路径区分。页面内显式结束游戏时可调用 `disposeAtlasImages()`
+释放 Blob URL 和注册表；下一次初始化重新注册。`pagehide` 不执行该清理。
 
 UI 的批量注册入口是 `packages/ui/src/image-atlases.ts`；资源包路径只在此处配置，
 制作、HUD、物品栏和接收动画的调用方不再传入 `archiveUrl`。

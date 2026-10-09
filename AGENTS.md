@@ -1,5 +1,16 @@
 # Repository instructions
 
+## Lua parity and missing implementations
+
+- Align TypeScript implementations with the corresponding DST Lua source: preserve responsibility boundaries, tags and components, action selection and buffering, stategraph timing and lifecycle, validation, state transitions, consumption, and save/load behavior.
+- If Lua alignment depends on missing functionality in `packages/prefab`, `packages/brains`, `packages/componets`, or another package, add the smallest source-faithful implementation in the owning package as part of the same change. Do not bypass missing implementations with application-level prefab special cases, callback chains, or duplicate controllers.
+- Read the relevant prefab, component, brain, action, and stategraph Lua before implementing a behavior. Keep the minimal implementation within the source branches needed by the task; do not invent behavior or leave a required dependency unimplemented.
+
+## Page lifecycle
+
+- Do not register resource cleanup on `pagehide`; leaving the page does not require application-managed disposal. Do not move the same cleanup to `beforeunload` or `unload`, or add a shutdown manager solely for page departure.
+- Keep explicit disposal and subscription cleanup for lifecycles within the running page, including entity removal, unequipping, scene teardown or reinitialization, and tests.
+
 ## Representative tests
 
 - Keep tests focused on representative behavior: a normal flow, a meaningful boundary or cancellation, and state/resource preservation where relevant. Avoid adding a separate test for every prefab, cosmetic skin, equivalent command spelling, or combination of inputs handled by the same implementation.
@@ -28,7 +39,7 @@
 - Verify source Lua event → FEV event → sound definition → bank/file mapping; do not choose streams by name similarity. Convert zero-based FEV `file_index` to one-based extraction indices. Distinguish prefab appearance audio from player casting audio.
 - Decoded WAVs are the filename exception: preserve the bank's relative directory and use `<bank>.fsb-<index>.wav` with `-`, not `#`. Compare exported bytes with an existing decoded source WAV when available.
 - Centralize event mappings and playback in `packages/prefab/src/sound.ts` using `PlaySound`, `PreloadSounds`, and `DisposeSounds`; do not add a separate audio class/file per prefab or special Vite sound middleware.
-- Preload/decode before spawning or timed actions, resume audio during a user gesture, give each entity an independent looping source, and stop/disconnect its sounds on removal. Dispose all sounds at game shutdown.
+- Preload/decode before spawning or timed actions, resume audio during a user gesture, give each entity an independent looping source, and stop/disconnect its sounds on removal. Dispose all sounds on explicit game shutdown within the running page; do not trigger this cleanup on `pagehide`.
 
 ## Billboard drawing order and wall facing
 
@@ -55,6 +66,7 @@
 - Equipment prefabs must use signal dependency injection to update equipped status when durability or fuel is exhausted. Receive the concrete slot signal at equip time (for example, `onequip(slotSignal)`), bind it while equipped, and release the reference on `onunequip()` or disposal without changing its value. Before clearing the bound signal with `set(null)`, verify that it still contains the same equipment instance so an old item cannot clear its replacement. Prefabs must not directly import global player equipment state; unbound ground items must not modify player equipment status. Inventory item removal still goes through `InventoryStore`.
 - Settle remaining fuel and food freshness once every 60 active game frames. Accumulate the actual `dt` of those frames and apply the whole elapsed time in each settlement so consumption and spoilage rates remain independent of frame rate. Per-frame scheduling must not write these values or refresh their UI. Settle any partial batch before saving, transferring, dropping, picking up, reskinning, or stopping the item's timer, preserving elapsed time and item state across lifecycle changes.
 - Use stable `{ containerId, slotKey }` addresses and the existing address helpers, including `inventorySlotAddress()` and `equipmentSlotAddress()` for player slots.
+- The cursor holds an authoritative inventory entity at `cursorSlotAddress()`, not a second UI-owned item copy. Preserve it through failed placement, cancellation, and save/load; exclude it from automatic item allocation and crafting materials or products.
 - Keep `game:slot-transfer-request`, `game:slot-select`, and `game:slot-context-menu` bubbling across the inventory bar's shadow root. Selection must remain cancelable and run before transfer pickup so placement can claim the click with `preventDefault()`.
 - Play inventory transfer, drop, and pickup result animations only after the operation succeeds. Preserve ground models' source origin as the foot point for ordering, pickup, and saves.
 - See [inventory wiring, initial state, and gameplay behavior](docs/inventory-architecture.md).

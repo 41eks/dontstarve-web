@@ -8,6 +8,10 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { getPrefabLightOverride } from '../../prefab/src/localLight';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
+import { EventEmitter, createHandEquipmentExistenceState } from '../../signals/src';
+import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
+import { ReskinActionController, type ReskinTarget } from '../../stategraphs/src/reskin_tool';
+import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
 
 vi.mock('../src/sprite', () => ({ createAnimatedSprite: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSprite: vi.fn() }));
@@ -38,6 +42,7 @@ function setup(kind: 'animated' | 'wall') {
   const cursor = { hidden: true };
   const canvas = new EventTarget();
   const world = {
+    actionEvents: new EventEmitter<PlayerActionEvents>(),
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas },
     createCursorLabel: () => ({
@@ -77,6 +82,53 @@ function setup(kind: 'animated' | 'wall') {
   const load = kind === 'animated' ? vi.mocked(createAnimatedSprite) : vi.mocked(createStaticSprite);
   return { world, cursor, store, recipe, consume, onbuilt, placement, begin, click, load };
 }
+
+it('an accepted action cancels a paid preview through events, skips its own cancellation and invalidates late loading', async () => {
+  const { world, store, placement, begin, consume, cursor } = setup('animated');
+  await placement.spawn('building');
+  const existing = world.scene.children[0];
+  await begin();
+  const paidState = store.exportState();
+  const preview = world.scene.children[1];
+  const geometry = vi.spyOn((preview.children[0] as THREE.Mesh).geometry, 'dispose');
+  const equipped = createHandEquipmentExistenceState();
+  equipped.set({ itemId: 'reskin_tool', EQUIPSLOTS: 'HANDS' });
+  let valid = false, release!: () => void;
+  const ready = new Promise<void>(resolve => { release = resolve; });
+  const prepared = { apply: vi.fn(() => true), dispose: vi.fn() };
+  const target: ReskinTarget = { id: 'target', prefabId: 'icebox', model: new THREE.Group(),
+    position: new THREE.Vector3(1, 0, 0), isValid: () => valid,
+    prepareNextSkin: async () => { await ready; return prepared; } };
+  const animation = { isReskinning: false, cancelEmote: vi.fn(), cancelReskin: vi.fn(), playReskin: vi.fn() };
+  const controller = new ReskinActionController(world, animation as unknown as ActionAnimationController,
+    { stop: vi.fn(), goToPoint: () => true, destination: undefined }, equipped, () => [target],
+    { prepare: async () => {}, spawn: vi.fn() });
+  const cancel = vi.spyOn(controller, 'cancel');
+  try {
+    expect(await controller.request(target)).toBe(false);
+    expect(world.scene.children).toEqual([existing, preview]);
+    expect(cancel).not.toHaveBeenCalled();
+    valid = true;
+    const request = controller.request(target);
+    expect(cancel).toHaveBeenCalledOnce(); // The owner resets itself once; its event skips itself.
+    expect(world.scene.children).toEqual([existing]);
+    expect(geometry).toHaveBeenCalledOnce();
+    expect(cursor.hidden).toBe(true);
+    expect(store.exportState()).toEqual(paidState);
+    expect(consume).not.toHaveBeenCalled();
+    world.actionEvents!.emit('action:interrupt', { reason: 'slot-select' });
+    release();
+    expect(await request).toBe(false);
+    expect(prepared.apply).not.toHaveBeenCalled();
+    expect(prepared.dispose).toHaveBeenCalledOnce();
+    expect(animation.playReskin).not.toHaveBeenCalled();
+    controller.dispose();
+    cancel.mockClear();
+    world.actionEvents!.emit('action:interrupt', { reason: 'emote' });
+    expect(cancel).not.toHaveBeenCalled();
+    expect(store.exportState()).toEqual(paidState);
+  } finally { release(); controller.dispose(); placement.dispose(); store.dispose(); }
+});
 
 it.each(['animated', 'wall'] as const)('%s right-click removes only the preview and lets the paid build resume', async (kind) => {
   const { world, cursor, store, recipe, consume, onbuilt, placement, begin, click } = setup(kind);

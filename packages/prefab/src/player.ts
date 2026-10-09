@@ -21,7 +21,7 @@ import {
 } from './hats';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { LanternLightController, loadLanternEquipment, resolveLanternPlayerSprite, type LanternEquipment } from './lantern';
-import { isLightStaff, loadLightStaffEquipment, OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR, resolveYellowStaffPlayerSprite, StaffCastingLight, type YellowStaffEquipment } from './yellowstaff';
+import { isLightStaff, loadLightStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, type YellowStaffEquipment } from './yellowstaff';
 import { loadBugNetEquipment, resolveBugNetPlayerSprite, type BugNetEquipment } from './bugnet';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
 import { loadHammerEquipment, resolveHammerPlayerSprite, type HammerEquipment } from './hammer';
@@ -164,17 +164,19 @@ class WilsonController implements WilsonAnimationController {
     this.renderer = new SpriteFrameRenderer(visual);
     this.stategraph = new WilsonStateGraph({
       playAnimation: (clip) => this.selectAnimation(clip),
-      playSound: (cue) => {
+      playSound: (cue, castsound) => {
         const event = cue === 'dig' ? 'dontstarve/wilson/dig' : cue === 'tillEmerge' ? 'dontstarve_DLC001/creatures/mole/emerge'
           : cue === 'sip' ? 'dontstarve/wilson/sip' : cue === 'eat' ? 'dontstarve/wilson/eat' : cue === 'reskin' ? 'dontstarve/wilson/attack_weapon'
-          : cue === 'cast' ? (this.carryItem === 'opalstaff' ? 'dontstarve/common/staffteleport' : 'dontstarve/wilson/use_gemstaff')
+          : cue === 'cast' ? (castsound as import('./sound').SoundEventPath ?? 'dontstarve/wilson/use_gemstaff')
             : cue === 'hammer' ? 'dontstarve/wilson/hit' : 'dontstarve/wilson/use_pick_rock';
         PlaySound(event);
       },
-      setCasting: (casting) => {
-        if (casting) this.castingLight.start(this.carryItem === 'opalstaff' ? OPALSTAFF_COLOUR : YELLOWSTAFF_COLOUR);
+      setCasting: (casting, colour) => {
+        if (casting) this.castingLight.start(colour);
         else this.castingLight.stop();
       },
+      setControllerEnabled: enabled => { visual.parent!.userData.controllerEnabled = enabled; },
+      stopMovement: () => visual.parent!.userData.locomotor?.stop(),
       onStateChanged: (name) => {
         this.carryItem = this.equippedCarryItem;
         if (name !== 'emote') this.emote = null;
@@ -298,10 +300,6 @@ class WilsonController implements WilsonAnimationController {
     return this.startAction('NET', onCatch, this.carryItem === 'bugnet' && !!this.netEquipment);
   }
 
-  playStaffCast(onCast: () => void): boolean {
-    return this.startAction('CASTSPELL', onCast, isLightStaff(this.carryItem) && !!this.staffEquipment);
-  }
-
   playItemTransition(state: 'item_in' | 'item_out', item: WilsonCarryItem = 'torch') {
     this.startOneShot(state);
     if (state === 'item_in') {
@@ -354,7 +352,7 @@ class WilsonController implements WilsonAnimationController {
       try {
         const [equipment] = await Promise.all([
           loadLightStaffEquipment(this.lanternAssets, item, skinId),
-          PreloadSounds(item === 'opalstaff' ? 'dontstarve/common/staffteleport' : 'dontstarve/wilson/use_gemstaff'),
+          PreloadSounds('dontstarve/common/staffteleport'),
         ]);
         if (request !== this.carryRequest) return;
         this.staffEquipment = equipment;

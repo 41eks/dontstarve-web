@@ -13,11 +13,13 @@
     "./pitchfork": "./src/pitchfork.ts",
     "./farm_hoe": "./src/farm_hoe.ts",
     "./food": "./src/food.ts",
+    "./pick": "./src/pick.ts",
     "./reskin_tool": "./src/reskin_tool.ts",
-    "./yellowstaff": "./src/yellowstaff.ts",
+    "./spellcaster": "./src/spellcaster.ts",
     "./pointerRaycaster": "./src/pointerRaycaster.ts",
     "./farmActions": "./src/farmActions.ts",
-    "./actionContext": "./src/actionContext.ts"
+    "./actionContext": "./src/actionContext.ts",
+    "./actionEvents": "./src/actionEvents.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

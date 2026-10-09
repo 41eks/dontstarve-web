@@ -1,16 +1,17 @@
-import { batch, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { WorldTemperature, type WorldTemperatureClockState, type WorldTemperatureSeasonState } from '../packages/componets/src/worldtemperature';
+import { batch, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type Signal, type ClockState, type SeasonState, type WorldMoonPhase } from '@dontstarve-web/signals';
+import { WorldTemperature } from '../packages/componets/src/worldtemperature';
 import type { SaveDocument } from './save/types';
-import { getDstCycle } from './tuning';
+import { getDstCycle, getDstClock } from './tuning';
 
 export interface WorldState {
   readonly temperature: ReadonlySignal<number>;
-  readonly clock: Signal<WorldTemperatureClockState>;
-  readonly season: Signal<WorldTemperatureSeasonState>;
+  readonly clock: Signal<ClockState>;
+  readonly season: Signal<SeasonState>;
+  readonly moonPhase: Signal<WorldMoonPhase>;
   readonly worldtemperature: WorldTemperature;
 }
 
-/** Session-owned world state; temperaturetick is published through a read-only signal. */
+/** Session temperature derived from the shared clock/season singleton signals. */
 export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeconds' | 'systems'>): WorldState {
   const worldtemperature = new WorldTemperature();
   // Until seasons.lua is ported, retain the loaded seasonal term. Legacy saves start
@@ -21,9 +22,10 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   });
   const cycle = getDstCycle(world.elapsedSeconds);
   worldtemperature.OnClockTick({ phase: cycle.phase, timeinphase: cycle.phaseProgress });
+  moonphasestate.set(getDstClock(world.elapsedSeconds).moonPhase);
   worldtemperature.OnUpdate(0);
-  return { temperature: worldtemperature.temperature, clock: worldtemperature.clock,
-    season: worldtemperature.season, worldtemperature };
+  return { temperature: worldtemperature.temperature, clock: clockstate,
+    season: seasonstate, moonPhase: moonphasestate, worldtemperature };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */
@@ -42,6 +44,7 @@ export function createWorldClockUpdater(
     const cycle = getDstCycle(elapsedSeconds);
     batch(() => {
       state.clock.set({ phase: cycle.phase, timeinphase: cycle.phaseProgress });
+      state.moonPhase.set(getDstClock(elapsedSeconds).moonPhase);
       state.worldtemperature.OnUpdate(dt);
     });
     onClockTick?.(elapsedSeconds, dt);

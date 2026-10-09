@@ -4,7 +4,7 @@ import definitions from '../../prefab/src/definitions.json' with { type: 'json' 
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../../ui/src/inventory-items';
 import { HAT_ITEM_SPECS } from '../../prefab/src/hats';
 import { TORCH_FUEL } from '../../prefab/src/torch';
-import { InventorySlot, InventoryStore, inventorySlotAddress, inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
+import { InventorySlot, InventoryStore, inventorySlotAddress, cursorSlotAddress, inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src';
 import { INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS, INVENTORY_SKIN_SPECS } from '../../ui/src/categories/shared';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
 import { chestContainerId, cookPotContainerId, inventoryStateFromSave } from '../../../src/save/inventoryState';
@@ -29,6 +29,8 @@ function fixture() {
   template.snapshot.parentId = null;
   // Tests add their own equipment; local gameplay saves may already equip an item.
   template.players.local.inventory.containers['player:equipment'].slots = [];
+  // Cooking cases create their own pot; local gameplay saves may contain another loaded pot.
+  template.world.entities.cookpot = [];
   for (const chest of template.world.entities.treasurechest ?? []) {
     chest.components.container = { slotCount: 9, slots: [] };
   }
@@ -58,31 +60,38 @@ describe('manual JSON save', () => {
     expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('expected one deployed farm_plow_item');
   });
 
-  it('exports c_give entities through c_save, restores their identity and rejects conflicting IDs', async () => {
+  it('exports held c_give entities through c_save, restores the cursor and rejects conflicting IDs', async () => {
     const { template, state } = fixture();
-    const createStore = () => new InventoryStore([0, 1].map(index => ({
-      address: inventorySlotAddress(index), slot: new InventorySlot(),
+    const cursor = cursorSlotAddress();
+    const createStore = () => new InventoryStore([inventorySlotAddress(0), inventorySlotAddress(1), cursor].map(address => ({
+      address, slot: new InventorySlot(),
     })), catalog.items);
     const store = createStore();
     expect((await executeDebugCommand('c_give("torch", 2)', store, () => false)).ok).toBe(true);
     const entity = store.getEntity(inventorySlotAddress(0))!;
     store.setRemainingFuel(inventorySlotAddress(0), 23.125);
+    expect(store.transfer(inventorySlotAddress(0), cursor, 1)).toBe(true);
     let json = '';
     expect((await executeDebugCommand('c_save()', store, () => false, () => {
       json = serializeSave(template, { ...state, inventory: store.exportState() }, catalog);
     })).ok).toBe(true);
     const saved = deserializeSave(json, catalog);
     const items = saved.players.local.inventory.containers['player:inventory'].slots;
-    expect(items[0].item).toEqual(entity.snapshot());
+    expect(saved.players.local.inventory.containers['player:cursor'].slots[0].item).toEqual(entity.snapshot());
     const restored = createStore();
     restored.replaceState(inventoryStateFromSave(saved), {});
-    expect(restored.getEntity(inventorySlotAddress(0))).not.toBe(entity);
-    expect(restored.getEntity(inventorySlotAddress(0))!.snapshot()).toEqual(entity.snapshot());
-    items[1].item.entityId = entity.id;
+    expect(restored.getEntity(cursor)).not.toBe(entity);
+    expect(restored.getEntity(cursor)!.snapshot()).toEqual(entity.snapshot());
+    const legacy = JSON.parse(json);
+    delete legacy.players.local.inventory.containers['player:cursor'];
+    expect(deserializeSave(JSON.stringify(legacy), catalog).players.local.inventory.containers['player:cursor'])
+      .toEqual({ slotCount: 1, slots: [] });
+    items[0].item.entityId = entity.id;
     expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('duplicate item entity ID');
     const conflicting = deserializeSave(json, catalog);
     conflicting.world.entities.ground_item[0].id = entity.id;
     expect(() => deserializeSave(JSON.stringify(conflicting), catalog)).toThrow('duplicate item entity ID');
+    store.dispose(); restored.dispose();
   });
 
   it('round trips empty portal groups and spawned portals without accepting unsupported prefabs or components', () => {
@@ -269,7 +278,10 @@ describe('manual JSON save', () => {
     expect(saved.world.entities.treasurechest[1].components.container).toEqual({ slotCount: 9, slots: [] });
     expect(saved.world.entities.treasurechest.every((chest) => chest.components.building?.state === 'closed')).toBe(true);
     const inventory = inventoryStateFromSave(saved);
-    expect(inventory.slots).toEqual(state.inventory.slots);
+    const byAddress = (slots: typeof inventory.slots) => new Map(slots.map(slot => [
+      `${slot.address.containerId}/${slot.address.slotKey}`, slot.item,
+    ]));
+    expect(byAddress(inventory.slots)).toEqual(byAddress(state.inventory.slots));
     expect(inventory.bufferedBuilds).toEqual(state.inventory.bufferedBuilds);
     expect(template).toEqual(beforeTemplate);
     expect(state).toEqual(beforeState);

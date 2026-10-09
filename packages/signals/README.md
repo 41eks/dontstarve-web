@@ -9,6 +9,10 @@ UI、库存和 prefab 共用的响应式原语、装备协议与状态工厂，�
 - `createMemo(fn)` 返回派生值的读取函数。
 - `readonlySignal(signal)` 暴露没有 `set()` 的读取和订阅接口，状态写入由拥有者负责。
 
+世界昼夜与季节由 `clockstate`、`seasonstate` 两个全局唯一单例持有，从本包统一导出。初始值分别为 `{ phase: 'day', timeinphase: 0 }` 和 `{ season: 'autumn', progress: 0.5 }`。`set()` 校验阶段／季节、有限数值及 `[0, 1]` 进度，保存不可变快照；无效写入保留原值且不通知订阅者。读档可写入 `{ phase, temperature }` 或 `{ season, temperature }`，保留源保存的温度项。创建 `WorldTemperature` 不重置这两个状态；场景加载恢复它们，温度、光照和牛的行为共享同一份输入。场景销毁只释放消费者的订阅，单例保留。
+
+月相由同一模块导出的全局唯一单例 `moonphasestate` 持有，初始为 `'new'`，支持 `'new'`、`'quarter'`、`'half'`、`'threequarter'`、`'full'`。世界时钟按现有 20 天周期每 60 个活动帧结算更新，从存档累计游戏时间恢复；同值不通知，无效月相保留原值并抛出 `RangeError`。光照用 `createEffect` 读取三个世界 signal，夜晚且月相为 `'full'` 时派生满月外观，不复制昼夜、季节或月相状态。
+
 装备存在状态由工厂创建，包内没有全局装备状态：
 
 | 工厂 | Store 的可写状态 | 只读接口 | 非空装备的 `EQUIPSLOTS` |

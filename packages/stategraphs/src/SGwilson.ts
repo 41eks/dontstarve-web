@@ -34,8 +34,10 @@ export interface WilsonAnimationClip {
 export interface WilsonStateGraphHost {
   /** Select the art and return its effective playback duration in seconds. */
   playAnimation(clip: WilsonAnimationClip): number;
-  playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'sip' | 'dig' | 'tillEmerge'): void;
-  setCasting(casting: boolean): void;
+  playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'sip' | 'dig' | 'tillEmerge', event?: string): void;
+  setCasting(casting: boolean, colour?: readonly [number, number, number]): void;
+  setControllerEnabled?(enabled: boolean): void;
+  stopMovement?(): void;
   onStateChanged(name: WilsonStateName): void;
 }
 
@@ -280,19 +282,32 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     tags: ['doing', 'busy', 'canrotate'],
     onenter: (inst) => {
       inst.context.playClips([clip('staff_pre'), clip('staff')]);
-      inst.context.host.setCasting(true);
+      inst.context.host.setControllerEnabled?.(false);
+      inst.context.host.stopMovement?.();
+      inst.statemem.committed = false;
+      inst.statemem.castsound = inst.context.getBufferedAction()?.invobject?.castsound ?? 'dontstarve/wilson/use_gemstaff';
+      inst.context.host.setCasting(true, inst.context.getBufferedAction()?.invobject?.fxcolour ?? [1, 1, 1]);
     },
     timeline: [
-      TimeEvent(13 * FRAMES, (inst) => inst.context.host.playSound('cast')),
-      TimeEvent(53 * FRAMES, (inst) => inst.context.performBufferedAction()),
-      TimeEvent(69 * FRAMES, (inst) => inst.removeStateTag('busy')),
+      TimeEvent(13 * FRAMES, (inst) => inst.context.host.playSound('cast', inst.statemem.castsound as string)),
+      TimeEvent(53 * FRAMES, (inst) => {
+        inst.statemem.committed = true; // Lua releases cancellation ownership before PerformBufferedAction.
+        inst.context.performBufferedAction();
+      }),
+      TimeEvent(69 * FRAMES, (inst) => {
+        inst.removeStateTag('busy');
+        inst.context.host.setControllerEnabled?.(true);
+      }),
     ],
     events: [
       EventHandler('animqueueover', (inst) => {
         if (inst.context.animationDone) inst.goToState('idle');
       }),
     ],
-    onexit: (inst) => inst.context.host.setCasting(false),
+    onexit: (inst) => {
+      inst.context.host.setControllerEnabled?.(true);
+      if (!inst.statemem.committed) inst.context.host.setCasting(false);
+    },
   }),
   State({
     name: 'veryquickcastspell',
@@ -451,6 +466,7 @@ export class WilsonStateGraph {
   private emoteClips: readonly WilsonAnimationClip[] = [];
   private foodDrink = false;
   private activeAction: WilsonAction | null = null;
+  private activeBufferedAction: BufferedAction<WilsonAction> | undefined;
   private activeInvobject: BufferedActionObject | undefined;
   private cancelAnimation: (() => void) | undefined;
   private animationCompleted = false;
@@ -486,11 +502,13 @@ export class WilsonStateGraph {
     return this.activeAction === action
       && (invobjectPrefab === undefined || this.activeInvobject?.prefab === invobjectPrefab);
   }
+  isActionActive(action: BufferedAction<WilsonAction>): boolean { return this.activeBufferedAction === action; }
 
   /** Called by idle.onenter after the state has already been entered. */
   onEnterIdle(pushanim: boolean): void {
     this.clearBufferedAction();
     this.activeAction = null;
+    this.activeBufferedAction = undefined;
     this.activeInvobject = undefined;
     // Resume movement/crafting requested by browser input during an action.
     // Keep Lua's idle state while a pushed post-animation is still playing.
@@ -557,6 +575,7 @@ export class WilsonStateGraph {
   requestOneShot(state: WilsonOneShotState): void {
     this.clearBufferedAction();
     this.activeAction = null;
+    this.activeBufferedAction = undefined;
     this.activeInvobject = undefined;
     this.sg.goToState(state);
   }
@@ -570,6 +589,7 @@ export class WilsonStateGraph {
     this.clearBufferedAction();
     this.bufferedAction = action;
     this.activeAction = action.action;
+    this.activeBufferedAction = action;
     this.activeInvobject = action.invobject;
     this.foodDrink = action.action === 'EAT' && foodDrink;
     this.sg.goToState(destination);
@@ -608,6 +628,7 @@ export class WilsonStateGraph {
   finish(pushanim = false): void {
     this.clearBufferedAction();
     this.activeAction = null;
+    this.activeBufferedAction = undefined;
     this.activeInvobject = undefined;
     // Lua's GoToState("idle", true) preserves the current animation queue.
     // Ordinary completion resumes the browser's requested movement/crafting state.
@@ -632,6 +653,7 @@ export class WilsonStateGraph {
     // An accepted emote can interrupt working states that have no busy tag.
     this.clearBufferedAction();
     this.activeAction = null;
+    this.activeBufferedAction = undefined;
     this.activeInvobject = undefined;
     this.playClips(this.emoteClips);
   }

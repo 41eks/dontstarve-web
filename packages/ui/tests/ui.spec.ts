@@ -82,8 +82,7 @@ test('shows four prepared food slots to the right and transfers one item from a 
     expect(boxes[i]!.x).toBeCloseTo(boxes[0]!.x, 1);
     if (i > 0) expect(boxes[i]!.y).toBeGreaterThan(boxes[i - 1]!.y);
   }
-  await page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot').nth(0).click();
-  await slots.nth(0).click();
+  await page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot').nth(0).dragTo(slots.nth(0));
   await expect.poll(() => page.evaluate(() =>
     (window as typeof window & { potTransfers: unknown[] }).potTransfers,
   )).toEqual([{

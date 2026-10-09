@@ -74,18 +74,23 @@ export class DwarfStarManager {
   }
 
   async prepare(): Promise<void> {
-    await Promise.all([this.factory(), PreloadSounds('dontstarve/common/staff_star_create', this.loopEvent)]);
+    const [factory] = await Promise.all([this.factory(), PreloadSounds('dontstarve/common/staff_star_create', this.loopEvent)]);
+    this.spriteFactory = factory;
   }
 
   async spawn(position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }): Promise<THREE.Group> {
+    await this.prepare();
+    return this.spawnPrepared(position, saved);
+  }
+
+  /** Preloaded CASTSPELL commits synchronously at its source stategraph frame. */
+  spawnPrepared(position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }): THREE.Group {
     const remainingSeconds = saved?.remainingSeconds ?? this.duration;
     if (![position.x, position.y, position.z].every(Number.isFinite)
       || !Number.isFinite(remainingSeconds) || remainingSeconds <= 0 || remainingSeconds > this.duration)
       throw new RangeError(`Invalid ${this.prefabId} position or lifetime`);
-    await this.prepare();
-    const factory = await this.factory();
     if (this.disposed) throw new Error('Dwarf star manager has been disposed');
-    this.spriteFactory = factory;
+    if (!this.spriteFactory) throw new Error('Dwarf star assets must be prepared before spawning');
     const model = new THREE.Group();
     model.name = this.prefabId;
     model.position.set(position.x, 0, position.z);

@@ -4,6 +4,8 @@ import { getActionString } from './actions.ts';
 export interface BufferedActionObject {
   readonly prefab?: string;
   readonly spelltype?: string;
+  readonly castsound?: string;
+  readonly fxcolour?: readonly [number, number, number];
   getDisplayName?(): string;
   hasTag(tag: string): boolean;
 }

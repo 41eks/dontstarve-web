@@ -1,4 +1,5 @@
-import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
+import { bindActionCancellation } from './actionEvents.ts';
+import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -26,6 +27,7 @@ export class BugNetCaptureController {
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
+  private readonly stopActionEvents: () => void;
   private readonly getTargets: () => readonly NetCaptureTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly pointer: PointerRaycaster;
@@ -49,11 +51,15 @@ export class BugNetCaptureController {
     this.animation = animation;
     this.locomotor = locomotor;
     this.handEquipment = handEquipment;
-    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
-      if (this.isEquipped(previous)) this.cancel();
+    this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
+      isEquipped: equipment => this.isEquipped(equipment),
+      cancel: () => this.cancel(),
+      update: dt => this.update(dt),
+      registerFrameTask: world.registerFrameTask,
     });
     this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
+    this.stopActionEvents = bindActionCancellation(world, this, 'net', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() =>
       this.getTargets().filter(target => target.isValid() && target.isClickable?.() !== false).map(target => ({
@@ -72,6 +78,7 @@ export class BugNetCaptureController {
     if (!this.isEquipped() || !target.isValid() || target.isClickable?.() === false
       || this.animation.isNetting || this.animation.isCasting) return false;
     this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'NET' });
     this.target = target;
     this.repathRemaining = 0;
     return true;
@@ -112,6 +119,7 @@ export class BugNetCaptureController {
   }
 
   dispose(): void {
+    this.stopActionEvents();
     this.stopEquipment();
     this.cancel();
     this.unregisterHover();

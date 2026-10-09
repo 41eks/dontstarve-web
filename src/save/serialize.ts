@@ -27,6 +27,7 @@ export function serializeSave(
   const containers = new Map<string, SavedContainer>();
   containers.set('player:inventory', { slotCount: 15, slots: [] });
   containers.set('player:equipment', { slotCount: 3, slots: [] });
+  containers.set('player:cursor', { slotCount: 1, slots: [] });
   const entities = structuredClone(state.entities);
   for (const prefab of STORAGE_BUILDING_IDS) {
     for (const chest of entities[prefab] ?? []) {
@@ -65,6 +66,7 @@ export function serializeSave(
           containers: {
             'player:inventory': containers.get('player:inventory')!,
             'player:equipment': containers.get('player:equipment')!,
+            'player:cursor': containers.get('player:cursor')!,
           },
           bufferedBuilds: state.inventory.bufferedBuilds.map((build) => ({ ...build })),
         },

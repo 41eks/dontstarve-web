@@ -1,27 +1,27 @@
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import type { DstEmoteWheelElement, EmoteRequestDetail, EmoteWheelToggleDetail } from '@dontstarve-web/ui';
 import { input } from './InputManager';
+import type { EventEmitter } from '@dontstarve-web/signals';
+import type { PlayerActionEvents } from '@dontstarve-web/stategraphs';
 
 export function setupEmoteWheel(
   wheel: DstEmoteWheelElement,
   canvas: HTMLCanvasElement,
   animation: WilsonAnimationController | undefined,
-  stopMovement: () => void,
-  cancelInteractions: () => void,
+  actionEvents: EventEmitter<PlayerActionEvents> | undefined,
   updateCursor: () => void,
 ): () => void {
   const handleToggle = (event: Event) => {
     const { isOpen } = (event as CustomEvent<EmoteWheelToggleDetail>).detail;
     input.setBlocked(isOpen);
     if (isOpen) {
-      stopMovement();
-      cancelInteractions();
+      actionEvents?.emit('action:interrupt', { reason: 'emote' });
     }
     updateCursor();
   };
   const handleRequest = (event: Event) => {
     const { emote } = (event as CustomEvent<EmoteRequestDetail>).detail;
-    stopMovement();
+    actionEvents?.emit('action:interrupt', { reason: 'emote' });
     void animation?.playEmote(emote).catch((error: unknown) => {
       console.error(`Unable to play emote ${emote}`, error);
     });

@@ -5,8 +5,11 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createLanternGroundSprite } from '../../prefab/src/lantern';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
 export async function checkLanternLighting() {
+  clockstate.set({ phase: 'night', timeinphase: 0 });
+  seasonstate.set({ season: 'spring', progress: 0.5 });
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(400, 400);
   document.body.append(renderer.domElement);
@@ -106,6 +109,7 @@ export async function checkLanternLighting() {
   const restored = await manager.spawnFromSave('restored-lantern', definition, new THREE.Vector3(-30, 0, 0));
   const save = { itemId: record.components.stack?.itemId, foot: record.transform.position,
     restoredLit: !!getPrefabLocalLight(restored), restoredBrightness: sample(-30) };
+  lighting.dispose();
   renderer.dispose();
   return { baseline, hand, emptyHand, backpack, staleEquip, failures, skins: skins.length - 1,
     failedDrop, twoLights, failedPickupCount, pickedUp, save };

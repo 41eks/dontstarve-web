@@ -1,4 +1,5 @@
-import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
+import { bindActionCancellation } from './actionEvents.ts';
+import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
@@ -32,9 +33,9 @@ export class HammerActionController {
   private readonly locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
+  private readonly stopActionEvents: () => void;
   private readonly getTargets: () => readonly HammerTarget[];
   private readonly isManualMovement: () => boolean;
-  private readonly onRequest: () => void;
 
   constructor(
     world: WorldContext,
@@ -43,18 +44,20 @@ export class HammerActionController {
     handEquipment: HandEquipmentSignal,
     getTargets: () => readonly HammerTarget[],
     isManualMovement = () => false,
-    onRequest = () => {},
   ) {
     this.world = world;
     this.animation = animation;
     this.locomotor = locomotor;
     this.handEquipment = handEquipment;
-    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
-      if (this.isEquipped(previous)) this.cancel(true);
+    this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
+      isEquipped: equipment => this.isEquipped(equipment),
+      cancel: () => this.cancel(true),
+      update: dt => this.update(dt),
+      registerFrameTask: world.registerFrameTask,
     });
     this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
-    this.onRequest = onRequest;
+    this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() =>
       this.getTargets().filter(target => target.isValid()).map(target => ({
@@ -74,9 +77,9 @@ export class HammerActionController {
     if (!this.isEquipped() || !target.isValid() || this.animation.isHammering
       || this.animation.isCasting || this.animation.isNetting) return false;
     this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'HAMMER' });
     this.animation.cancelEmote();
     this.target = target;
-    this.onRequest();
     return true;
   }
 
@@ -114,6 +117,7 @@ export class HammerActionController {
   }
 
   dispose(): void {
+    this.stopActionEvents();
     this.stopEquipment();
     this.cancel();
     this.unregisterHover();

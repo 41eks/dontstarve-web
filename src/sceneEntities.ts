@@ -38,14 +38,15 @@ import { findGroundPath } from '@dontstarve-web/prefab/locomotor';
 import { EntityRegistry } from './entityRegistry';
 import { PREFAB_DEFINITIONS } from './prefabDefinitions';
 import { disposeSprite } from '@dontstarve-web/prefab/disposeSprite';
+import type { WorldState } from './worldState';
 
 export function createSceneEntities(
   world: CANNON.World,
+  worldState: Pick<WorldState, 'clock' | 'season'>,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   pickupGroundItem: (item: GroundItemDefinition, action: 'pickup' | 'net', sourcePosition: THREE.Vector3) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
-  pickLightbulbs: (count: number, sourcePosition: THREE.Vector3) => boolean = () => false,
   itemEntities?: ItemEntityRegistry,
 ) {
   scene.add(moonTreeForest.group);
@@ -100,7 +101,6 @@ export function createSceneEntities(
   const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
     getLightLevel: (model) => dstLighting.sampleLightLevel(model.position, model),
   });
-  bulbPlants.setupInteraction(view, pickLightbulbs);
   const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const grasses = new GrassManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const saplings = new SaplingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
@@ -110,8 +110,8 @@ export function createSceneEntities(
   const nightmareGrowths = new NightmareGrowthManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const pendingPoop = new Set<THREE.Vector3>();
   const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    isDay: () => dstLighting.getPhase() === 'day',
-    isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
+    clock: worldState.clock,
+    season: worldState.season,
     getPlayerPositions: () => [player.position],
     findPath(start, target) {
       const radius = BEEFALO_BEHAVIOR.radius;

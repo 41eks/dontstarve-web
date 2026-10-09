@@ -13,7 +13,7 @@ export const ACTIONS = {
   PICK: { priority: 0, strings: { GENERIC: '采集' } },
   PICKUP: { priority: 1, strings: { GENERIC: '拾起' } },
   GIVE: { priority: 0, strings: { GENERIC: '给予', PLACE_ITEM: '放置{item}' } },
-  CASTSPELL: { priority: -1, strings: { GENERIC: '施放法术', RESKIN: '打扫' } },
+  CASTSPELL: { priority: -1, distance: 20, rmb: true, strings: { GENERIC: '施放法术', RESKIN: '打扫' } },
 } as const;
 
 export type MouseActionId = keyof typeof ACTIONS;

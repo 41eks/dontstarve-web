@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
-import type { ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type WorldSeason } from '@dontstarve-web/signals';
 import { DstLocalLighting } from './dstLocalLighting';
 
-export type DstSeason = 'autumn' | 'winter' | 'spring' | 'summer';
+export type DstSeason = WorldSeason;
 export type DstLightPhase = 'day' | 'dusk' | 'night' | 'full_moon';
 
 export interface DstLightingState {
-  season: DstSeason;
-  phase: DstLightPhase;
   sanityPercent?: ReadonlySignal<number>;
 }
 
@@ -33,6 +31,11 @@ const PHASE_BLEND_SECONDS: Record<DstLightPhase, number> = {
 };
 
 const SEASON_BLEND_SECONDS = 10;
+function currentLightPhase(): DstLightPhase {
+  const { phase } = clockstate.get();
+  const moonPhase = moonphasestate.get();
+  return phase === 'night' && moonPhase === 'full' ? 'full_moon' : phase;
+}
 const SANITY_GRADING_STEPS = 10;
 // postprocess_distort.ksh's orbit repeats every 2π / TIME_SCALE seconds.
 const DISTORTION_PERIOD = Math.PI * 2 / 50;
@@ -224,7 +227,7 @@ export class DstLightingRenderer {
   static async create(
     renderer: THREE.WebGLRenderer,
     colourCubeRoot: string,
-    initialState: DstLightingState = { season: 'spring', phase: 'night' },
+    initialState: DstLightingState = {},
   ): Promise<DstLightingRenderer> {
     const uniquePaths = [...new Set([
       ...Object.values(LUT_PATHS).flatMap((phases) => Object.values(phases)),
@@ -247,11 +250,10 @@ export class DstLightingRenderer {
   private readonly ambientStart = new THREE.Vector3();
   private readonly ambientCurrent = new THREE.Vector3();
   private readonly ambientTarget = new THREE.Vector3();
-  private season: DstSeason = 'spring';
-  private phase: DstLightPhase = 'night';
   private weatherLight = 1;
   private sanityPercent = 1;
   private stopSanitySubscription?: () => void;
+  private readonly stopWorldLighting: () => void;
   private disposed = false;
   private distortionSpeed = 0;
   private ambientBlendRemaining = 0;
@@ -266,11 +268,11 @@ export class DstLightingRenderer {
   ) {
     this.renderer = renderer;
     this.textures = textures;
-    this.season = initialState.season;
-    this.phase = initialState.phase;
-    const initialLut = this.requireLut(this.season, this.phase);
-    const initialInsanityLut = this.requireInsanityLut(this.phase);
-    this.ambientCurrent.copy(ambientFor(this.season, this.phase));
+    const season = seasonstate.peek().season;
+    const phase = this.getPhase();
+    const initialLut = this.requireLut(season, phase);
+    const initialInsanityLut = this.requireInsanityLut(phase);
+    this.ambientCurrent.copy(ambientFor(season, phase));
     this.ambientStart.copy(this.ambientCurrent);
     this.ambientTarget.copy(this.ambientCurrent);
 
@@ -326,11 +328,23 @@ export class DstLightingRenderer {
     }
     this.applySanityPercent(initialState.sanityPercent?.peek() ?? 1);
     this.applyAmbientUniform();
+    // Retain the previous rendering palette only to select transition duration.
+    let previousPalette = LUT_PATHS[season];
+    this.stopWorldLighting = createEffect(() => {
+      const season = seasonstate.get().season;
+      const phase = currentLightPhase();
+      const palette = LUT_PATHS[season];
+      const duration = palette !== previousPalette ? SEASON_BLEND_SECONDS : PHASE_BLEND_SECONDS[phase];
+      previousPalette = palette;
+      this.transitionAmbient(ambientFor(season, phase), duration);
+      this.transitionLut(this.requireLut(season, phase), this.requireInsanityLut(phase), duration);
+    });
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopWorldLighting();
     this.stopSanitySubscription?.();
     this.stopSanitySubscription = undefined;
     this.localLighting.dispose();
@@ -342,26 +356,12 @@ export class DstLightingRenderer {
   }
 
   getSeason(): DstSeason {
-    return this.season;
+    return seasonstate.peek().season;
   }
 
   getPhase(): DstLightPhase {
-    return this.phase;
-  }
-
-  setSeason(season: DstSeason): void {
-    if (season === this.season) return;
-    this.season = season;
-    this.transitionAmbient(SEASON_BLEND_SECONDS);
-    this.transitionLut(SEASON_BLEND_SECONDS);
-  }
-
-  setPhase(phase: DstLightPhase): void {
-    if (phase === this.phase) return;
-    this.phase = phase;
-    const duration = PHASE_BLEND_SECONDS[phase];
-    this.transitionAmbient(duration);
-    this.transitionLut(duration);
+    const { phase } = clockstate.peek();
+    return phase === 'night' && moonphasestate.peek() === 'full' ? 'full_moon' : phase;
   }
 
   getSanityPercent(): number {
@@ -386,7 +386,7 @@ export class DstLightingRenderer {
   }
 
   setPrecipitation(intensity: number, snow = false): void {
-    this.setWeatherLight(calculateDstWeatherLight(this.season, this.phase, intensity, snow));
+    this.setWeatherLight(calculateDstWeatherLight(this.getSeason(), this.getPhase(), intensity, snow));
   }
 
   setTorchOwner(owner: THREE.Object3D | null): void {
@@ -446,16 +446,15 @@ export class DstLightingRenderer {
     this.renderer.render(this.postScene, this.postCamera);
   }
 
-  private transitionAmbient(duration: number): void {
+  private transitionAmbient(target: THREE.Vector3, duration: number): void {
+    if (this.ambientTarget.equals(target)) return;
     this.ambientStart.copy(this.ambientCurrent);
-    this.ambientTarget.copy(ambientFor(this.season, this.phase));
+    this.ambientTarget.copy(target);
     this.ambientBlendRemaining = duration;
     this.ambientBlendTotal = duration;
   }
 
-  private transitionLut(duration: number): void {
-    const destination = this.requireLut(this.season, this.phase);
-    const insanityDestination = this.requireInsanityLut(this.phase);
+  private transitionLut(destination: THREE.DataTexture, insanityDestination: THREE.DataTexture, duration: number): void {
     if (destination === this.material.uniforms.destinationLut.value
       && insanityDestination === this.material.uniforms.destinationInsanityLut.value) return;
     this.material.uniforms.sourceInsanityLut.value = this.material.uniforms.destinationInsanityLut.value;

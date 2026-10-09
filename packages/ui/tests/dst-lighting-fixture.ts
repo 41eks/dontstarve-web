@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { getDstCycle } from '../../../src/tuning';
+import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
 export async function checkDstLocalLighting() {
+  clockstate.set({ phase: 'night', timeinphase: 0 });
+  seasonstate.set({ season: 'spring', progress: 0.5 });
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(400, 400);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -54,26 +57,30 @@ export async function checkDstLocalLighting() {
   lighting.setTorchOwner(null);
   draw();
   const removed = { centre: sample(12, 0), instance: sample(0, 2) };
-  lighting.setPhase('day');
+  clockstate.set({ phase: 'day', timeinphase: 0 });
+  await Promise.resolve();
   lighting.update(4);
   draw();
   const day = { near: sample(0, 0), far: sample(15, 0) };
   // Drive the renderer with the same elapsed-time cycle used by the world.
-  const cycleFrames = [
+  const cycleFrames = [];
+  for (const { elapsed, blend } of [
     { elapsed: 300, blend: 6 },
     { elapsed: 420, blend: 8 },
     { elapsed: 480, blend: 4 },
-  ].map(({ elapsed, blend }) => {
+  ]) {
     const cycle = getDstCycle(elapsed);
-    lighting.setPhase(cycle.phase);
+    clockstate.set({ phase: cycle.phase, timeinphase: cycle.phaseProgress });
+    await Promise.resolve();
     lighting.update(blend / 2);
     draw();
     const halfway = sample(15, 0);
     lighting.update(blend / 2);
     draw();
-    return { ...cycle, halfway, colour: sample(15, 0) };
-  });
+    cycleFrames.push({ ...cycle, halfway, colour: sample(15, 0) });
+  }
   const restoredBackground = scene.background === background;
+  lighting.dispose();
   renderer.dispose();
   return { night, torch, instances, moved, removed, day, cycleFrames, restoredBackground };
 }

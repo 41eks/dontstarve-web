@@ -6,6 +6,8 @@ import {
   PLAYER_INVENTORY_CONTAINER_ID,
   equipmentSlotAddress,
   inventorySlotAddress,
+  cursorSlotAddress,
+  PLAYER_CURSOR_CONTAINER_ID,
   type EquipmentKind,
   type SlotAddress,
 } from '@dontstarve-web/inventory';
@@ -19,7 +21,7 @@ import type {
 } from './slot/slot-model';
 import { createSlotRenderer, type SlotRenderer } from './slot/slot-renderer';
 import type { InventoryReceiveSource } from './slot/slot-receive-animation';
-import type { SlotTransferRequest } from './slot/slot-transfer';
+import { slotTransferController, type SlotTransferRequest } from './slot/slot-transfer';
 import styles from './styles/inventory-bar.css?inline';
 import slotStyles from './styles/slot.css?inline';
 
@@ -60,6 +62,9 @@ export class DstInventoryBarElement extends AssetElement {
     accepts: (slotKey, item) => item.equippable === slotKey,
   });
 
+  private readonly cursor = createSlotContainer({ id: PLAYER_CURSOR_CONTAINER_ID, kind: 'inventory', slotKeys: ['0'] });
+  private stopCursor?: () => void;
+
   private readonly selectedSlot = createSignal<SlotAddress | null>(null);
   private readonly renderers: SlotRenderer[] = [];
   private initialized = false;
@@ -70,7 +75,7 @@ export class DstInventoryBarElement extends AssetElement {
   }
 
   get containers(): readonly SlotContainer[] {
-    return [this.inventory, this.equipment];
+    return [this.inventory, this.equipment, this.cursor];
   }
 
   setSlot(address: SlotAddress, item: InventoryBarItem | null): void {
@@ -96,6 +101,9 @@ export class DstInventoryBarElement extends AssetElement {
   }
 
   protected render(): void {
+    if (!this.stopCursor) this.stopCursor = slotTransferController.bindCursor(this.cursor.getSlot(cursorSlotAddress().slotKey), origin => {
+      this.dispatchEvent(new CustomEvent('game:cursor-return-request', { bubbles: true, composed: true, detail: { origin } }));
+    });
     if (this.initialized) {
       this.shadowRoot!
         .querySelector<HTMLImageElement>('.inventory-bar__inspect img')!
@@ -211,12 +219,14 @@ export class DstInventoryBarElement extends AssetElement {
   private requireSlot(address: SlotAddress): SlotModel {
     const container = address.containerId === this.inventory.id
       ? this.inventory
-      : address.containerId === this.equipment.id ? this.equipment : undefined;
+      : address.containerId === this.equipment.id ? this.equipment
+      : address.containerId === this.cursor.id ? this.cursor : undefined;
     if (!container) throw new RangeError(`Unknown inventory container: ${address.containerId}`);
     return container.getSlot(address.slotKey);
   }
 
   private disposeRenderers(): void {
+    this.stopCursor?.(); this.stopCursor = undefined;
     this.renderers.forEach((renderer) => renderer.disconnect());
   }
 }

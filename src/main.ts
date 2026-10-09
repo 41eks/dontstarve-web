@@ -20,7 +20,7 @@ import {
   slotTransferController,
 } from '@dontstarve-web/ui';
 import {
-  setupLightStaffCasting,
+  SpellCastActionController,
   BugNetCaptureController,
   HammerActionController,
   PickaxeActionController,
@@ -28,6 +28,7 @@ import {
   FarmHoeActionController,
   ShovelActionController,
   FoodActionController,
+  PickActionController,
   type FoodSource,
   ReskinActionController,
   PointerRaycaster,
@@ -39,13 +40,13 @@ import { startCookPotCooking } from '@dontstarve-web/prefab/cook_pot';
 import { BASE_COOK_TIME, CalculateRecipe, canCookBeefaloFeed } from './cook';
 import type * as THREE from 'three';
 import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
-import { DisposeSounds, UpdateSoundListener, PreloadSounds } from '@dontstarve-web/prefab/sound';
-import { disposeAnimationAssets, disposeAtlasImages } from '@dontstarve-web/animation';
+import { UpdateSoundListener, PreloadSounds } from '@dontstarve-web/prefab/sound';
 import { turfMap } from './building';
-import { backTasks, frontTasks } from './animate';
+import { backTasks, frontTasks, registerFrontTask } from './animate';
 import { input } from './InputManager';
-import { view } from './view';
-import { backpackContainerId, isBackpackContainerId, inventorySlotAddress, PreparedFoodSlot, StorageSlot, type InventoryStack } from '@dontstarve-web/inventory';
+import { view, actionEvents } from './view';
+import { spellCastMap } from './spellCastMap';
+import { backpackContainerId, isBackpackContainerId, inventorySlotAddress, cursorSlotAddress, PreparedFoodSlot, StorageSlot, type InventoryStack } from '@dontstarve-web/inventory';
 import { player } from './player';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { bindPlayerHeadEquipment } from './playerHeadEquipment';
@@ -62,7 +63,7 @@ import { isPlaceableBuildingId } from './placeableBuilding';
 import {
   createInventoryStore,
 } from './inventory';
-import { locomotor, startScene, worldState } from './scene';
+import { locomotor, startScene } from './scene';
 import { getDstClock } from './tuning';
 import { initialSave } from './save/initialSave';
 import { inventoryStateFromSave } from './save/inventoryState';
@@ -77,8 +78,6 @@ const lighting = await DstLightingRenderer.create(
   renderer,
   `${import.meta.env.BASE_URL}dst/data/images/colour_cubes`,
   {
-    season: worldState.season.peek().season,
-    phase: worldState.clock.peek().phase,
     sanityPercent: playerStats.sanity.percent,
   },
 );
@@ -93,7 +92,7 @@ gameUi.cookPotPanel.setCookingValidator(items => canCookBeefaloFeed(items.map(it
 function syncPlayerStats(): void {
   gameUi.statusHud.setStats(getPlayerStats());
 }
-const stopStatsHud = Object.values(playerStats).map(stat => stat.subscribe(syncPlayerStats));
+Object.values(playerStats).forEach(stat => stat.subscribe(syncPlayerStats));
 syncPlayerStats();
 const inventoryPanelOptions = { camera, canvas: renderer.domElement, player };
 const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel, inventoryPanelOptions);
@@ -101,6 +100,7 @@ const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, inv
 const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, inventoryPanelOptions, 'icebox');
 backTasks.push(chestInventoryPanel.update, cookPotInventoryPanel.update, iceBoxInventoryPanel.update);
 export const inventory = createInventoryStore();
+const cursorAddress = cursorSlotAddress();
 export const handEquipment = inventory.handEquipment;
 export const headEquipment = inventory.headEquipment;
 export const bodyEquipment = inventory.bodyEquipment;
@@ -149,6 +149,11 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
   soundPosition: player.position,
   setLightActive: active => dstLighting.setTorchOwner(active ? player : null),
   setHandAction: action => cursorUi.setHandAction(action, handPointer),
+  lightStaffWorld: {
+    map: spellCastMap,
+    preparePrefab: prefab => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).prepare(),
+    spawnPrefab: (prefab, position) => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).spawnPrepared(position),
+  },
 });
 
 const headEquipmentBinding = bindPlayerHeadEquipment({
@@ -172,7 +177,7 @@ const bodyEquipmentBinding = bindPlayerBodyEquipment({
 });
 
 // Restore only after subscribing: committed signal writes drive all equipment.
-inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
+handEquipmentBinding.withoutTransitions(() => inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES));
 
 function syncInventorySlot(address: SlotAddress): void {
   const isBackpack = isBackpackContainerId(address.containerId);
@@ -181,7 +186,7 @@ function syncInventorySlot(address: SlotAddress): void {
   const panel = storagePrefab === undefined ? undefined : storagePanel(storagePrefab);
   if (panel && panel.slotContainer?.id !== address.containerId) return;
   const inventoryBar = panel ?? gameUi.inventoryBar;
-  const stack = inventory.get(address);
+  const stack = inventory.getEntity(address)?.snapshot();
   if (!stack) {
     inventoryBar.setSlot(address, null);
     return;
@@ -206,6 +211,9 @@ function inventorySlotItem(stack: Readonly<InventoryStack>, maxStack?: number): 
     ...(spec.maxFuel === undefined ? {} : {
       durabilityPercent: (stack.remainingFuel ?? spec.maxFuel) / spec.maxFuel,
     }),
+    ...(spec.maxUses === undefined ? {} : {
+      durabilityPercent: (stack.remainingUses ?? spec.maxUses) / spec.maxUses,
+    }),
   };
 }
 
@@ -226,15 +234,8 @@ frontTasks.push(dt => {
   headEquipmentBinding.update(dt);
   bodyEquipmentBinding.update(dt);
 });
-window.addEventListener('pagehide', () => {
-  handEquipmentBinding.dispose();
-  headEquipmentBinding.dispose();
-  bodyEquipmentBinding.dispose();
-}, { once: true });
 
-let cancelNetCapture = () => {};
-let cancelHandTool = () => {};
-const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, farmPlow, rockManager, wormholes, reskinEffects, registry, getSaveState, dispose: disposeScene } = await startScene(
+const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, farmPlow, rockManager, wormholes, reskinEffects, registry, getSaveState, registerDisposal } = await startScene(
   (buildingId, skinId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId, skinId),
   (item, action, sourcePosition) => {
     const effect = inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition);
@@ -258,19 +259,16 @@ const { buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting,
     }
   },
   () => playerAnimation?.playPickup(),
-  (count, sourcePosition) => {
-    if (!inventory.add('lightbulb', count, undefined,
-      inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition))) return false;
-    cancelNetCapture();
-    locomotor.stop();
-    flowerPlanting.cancel();
-    buildingPlacement.cancel();
-    playerAnimation?.playPickup();
-    return true;
-  },
   (elapsedSeconds, dt) => gameUi.statusHud.setClock(getDstClock(elapsedSeconds), dt),
   inventory.entities,
 );
+const picking = new PickActionController(view, {
+  giveItem: (itemId, count, sourcePosition) => inventory.add(itemId, count, undefined,
+    inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition)),
+}, () => {
+  playerAnimation?.playPickup();
+});
+registerDisposal(() => picking.dispose());
 gameUi.cookPotPanel.addEventListener('game:cook-request', event => {
   const { containerId } = (event as CustomEvent<CookRequestDetail>).detail;
   if (gameUi.cookPotPanel.slotContainer?.id !== containerId) return;
@@ -289,8 +287,8 @@ const foodActions = playerAnimation ? new FoodActionController(view, playerAnima
   input.isActionInterrupting,
   (error) => console.error('Unable to use food', error), () => slotTransferController.clearSelection()) : undefined;
 if (foodActions) {
-  frontTasks.push(() => foodActions.update());
-  window.addEventListener('pagehide', () => foodActions.dispose(), { once: true });
+  registerDisposal(registerFrontTask(() => foodActions.update()));
+  registerDisposal(() => foodActions.dispose());
 }
 function inventoryFoodSource(slot: SlotAddress, itemId: string): FoodSource {
   const entity = inventory.getEntity(slot), skinId = entity?.skinId;
@@ -306,106 +304,48 @@ function inventoryFoodSource(slot: SlotAddress, itemId: string): FoodSource {
 }
 
 if (playerAnimation) {
+  view.registerFrameTask = registerFrontTask;
   const bugNet = new BugNetCaptureController(view, playerAnimation, locomotor,
     handEquipment,
     () => groundItems.netCaptureTargets,
     input.isActionInterrupting);
-  cancelNetCapture = () => bugNet.cancel();
-  groundItems.setNetCaptureHandler((target) => {
-    if (!bugNet.request(target)) return false;
-    flowerPlanting.cancel();
-    buildingPlacement.cancel();
-    return true;
-  });
-  frontTasks.push((dt) => bugNet.update(dt));
-  window.addEventListener('pagehide', () => bugNet.dispose(), { once: true });
+  registerDisposal(() => bugNet.dispose());
+  groundItems.setNetCaptureHandler(target => bugNet.request(target));
 }
 if (playerAnimation) {
-  const stopDwarfStarCasting = setupLightStaffCasting(view, playerAnimation, dwarfStars,
-    handEquipment, () => locomotor.stop(), (error) => console.error('Unable to summon dwarf star', error));
-  const stopPolarLightCasting = setupLightStaffCasting(view, playerAnimation, polarLights,
-    handEquipment, () => locomotor.stop(), (error) => console.error('Unable to summon polar light', error));
-  window.addEventListener('pagehide', () => {
-    stopDwarfStarCasting(); stopPolarLightCasting();
-  }, { once: true });
-}
+  const spellcast = new SpellCastActionController(view, playerAnimation, locomotor, handEquipment, {
+    position: player.position,
+    hasTag: tag => player.userData.tags?.includes(tag) ?? false,
+    components: { sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) } },
+  }, input.isActionInterrupting, (error) => console.error('Unable to cast spell', error));
+  registerDisposal(() => spellcast.dispose());
 
-if (playerAnimation) {
   const hammer = new HammerActionController(view, playerAnimation, locomotor,
     handEquipment,
     () => [...buildingPlacement.hammerTargets, ...farmPlow.hammerTargets, ...groundItems.hammerTargets],
-    input.isActionInterrupting,
-    () => {
-      cancelNetCapture();
-      flowerPlanting.cancel();
-      buildingPlacement.cancel();
-    });
+    input.isActionInterrupting);
   const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
-    handEquipment,
-    () => rockManager.mineTargets,
-    input.isActionInterrupting,
-    () => {
-      cancelNetCapture();
-      flowerPlanting.cancel();
-      buildingPlacement.cancel();
-    });
+    handEquipment, () => rockManager.mineTargets, input.isActionInterrupting);
   const pitchfork = new PitchforkActionController(view, playerAnimation, locomotor,
-    handEquipment, turfMap,
-    input.isActionInterrupting,
-    () => {
-      cancelNetCapture();
-      flowerPlanting.cancel();
-      buildingPlacement.cancel();
-    });
+    handEquipment, turfMap, input.isActionInterrupting);
   const farmHoe = new FarmHoeActionController(view, playerAnimation, locomotor,
-    handEquipment, farmPlow,
-    input.isActionInterrupting,
-    () => {
-      cancelNetCapture(); foodActions?.cancel(); flowerPlanting.cancel(); buildingPlacement.cancel(); farmPlow.cancel();
-    }, (error) => console.error('Unable to till farm soil', error));
+    handEquipment, farmPlow, input.isActionInterrupting,
+    (error) => console.error('Unable to till farm soil', error));
   const shovel = new ShovelActionController(view, playerAnimation, locomotor,
-    handEquipment, () => farmPlow.digTargets,
-    input.isActionInterrupting,
-    () => {
-      cancelNetCapture(); foodActions?.cancel(); flowerPlanting.cancel(); buildingPlacement.cancel(); farmPlow.cancel();
-    });
+    handEquipment, () => farmPlow.digTargets, input.isActionInterrupting);
   const reskin = new ReskinActionController(view, playerAnimation, locomotor,
     handEquipment,
     () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets], reskinEffects,
-    input.isActionInterrupting,
-    () => {
-      cancelNetCapture(); hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); farmHoe.cancel(); shovel.cancel();
-      flowerPlanting.cancel(); buildingPlacement.cancel();
-    },
-    (error) => console.error('Unable to reskin target', error));
-  cancelHandTool = () => { hammer.cancel(); pickaxe.cancel(); pitchfork.cancel(); farmHoe.cancel(); shovel.cancel(); reskin.cancel(); farmPlow.cancel(); foodActions?.cancel(); };
-  frontTasks.push((dt) => { hammer.update(dt); pickaxe.update(dt); pitchfork.update(dt); farmHoe.update(); shovel.update(dt); reskin.update(dt); });
-  window.addEventListener('pagehide', () => {
-    hammer.dispose(); pickaxe.dispose(); pitchfork.dispose(); reskin.dispose(); farmHoe.dispose(); shovel.dispose();
-  }, { once: true });
+    input.isActionInterrupting, (error) => console.error('Unable to reskin target', error));
+  for (const controller of [hammer, pickaxe, pitchfork, farmHoe, shovel, reskin]) {
+    registerDisposal(() => controller.dispose());
+  }
 }
 
-setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
-  () => locomotor.stop(), () => {
-    cancelNetCapture();
-    cancelHandTool();
-    flowerPlanting.cancel();
-    buildingPlacement.cancel();
-  }, () => cursorUi.update());
+registerDisposal(setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
+  actionEvents, () => cursorUi.update()));
 
 let lastSavedSnapshotId = initialSave.snapshot.id;
-window.addEventListener('pagehide', () => {
-  gameUi.inventoryBar.cancelReceiveAnimations();
-  gameUi.savingIndicator.remove();
-  disposeScene();
-  for (const stop of stopStatsHud) stop();
-  lighting.dispose();
-  inventory.dispose();
-  input.dispose();
-  DisposeSounds();
-  disposeAnimationAssets();
-  disposeAtlasImages();
-}, { once: true });
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => gameUi.savingIndicator.whileSaving(() => {
@@ -434,54 +374,46 @@ window.addEventListener('game:slot-transfer-request', (event) => {
       to: detail.swapWith,
     })
     : inventory.transfer(detail.from, detail.to, detail.amount, {
-      itemId: detail.itemId, skinId: detail.skinId,
+      itemId: detail.itemId, entityId: detail.entityId, skinId: detail.skinId,
     });
   slotTransferController.completeTransfer(detail.operationId, transferred);
-  if (!transferred) return;
-  if (isHandSlot(detail.to)) handEquipmentBinding.playTransition('item_out', detail.itemId);
-  else if (isHandSlot(detail.from)) handEquipmentBinding.playTransition(
-    detail.swapWith ? 'item_out' : 'item_in', detail.swapWith?.itemId ?? detail.itemId);
 });
-let selectedRecordSlot: SlotAddress | undefined;
-const unregisterRecordHover = view.mouseActions?.register(() => groundItems.phonographTargets.map(target => ({
+window.addEventListener('game:cursor-return-request', event => {
+  const { origin } = (event as CustomEvent<{ origin?: SlotAddress }>).detail;
+  inventory.returnCursor(origin);
+});
+view.mouseActions?.register(() => groundItems.phonographTargets.map(target => ({
   action: { action: 'GIVE', modifier: 'PLACE_ITEM', invobject: {
     prefab: 'record', hasTag: () => false, getDisplayName: () => GROUND_ITEM_DEFINITIONS.record.name,
   } },
   button: 'left', model: target.model,
-  available: target.canInsert && !!selectedRecordSlot && inventory.get(selectedRecordSlot)?.itemId === 'record',
+  available: target.canInsert && inventory.get(cursorAddress)?.itemId === 'record',
 })));
-window.addEventListener('pagehide', () => unregisterRecordHover?.(), { once: true });
 groundItems.setPhonographRecordSource(() => {
-  const slot = selectedRecordSlot;
-  const stack = slot && inventory.get(slot);
-  if (!slot || stack?.itemId !== 'record') return undefined;
+  const entity = inventory.getEntity(cursorAddress);
+  const stack = inventory.get(cursorAddress);
+  if (!entity || stack?.itemId !== 'record') return undefined;
   return { skinId: stack.skinId, take: () => {
-    if (selectedRecordSlot !== slot) return false;
-    const current = inventory.get(slot);
+    if (inventory.getEntity(cursorAddress) !== entity) return false;
+    const current = inventory.get(cursorAddress);
     if (current?.itemId !== 'record' || current.skinId !== stack.skinId) return false;
-    if (!inventory.applySlotChanges([{ slot, itemId: 'record', skinId: stack.skinId, delta: -1 }])) return false;
-    selectedRecordSlot = undefined;
+    if (!inventory.applySlotChanges([{ slot: cursorAddress, entityId: entity.id, itemId: 'record', skinId: stack.skinId, delta: -1 }])) return false;
     playerAnimation?.playPickup();
     return true;
   } };
 });
-window.addEventListener('keydown', (event) => {
-  if (['Escape', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'].includes(event.code)) selectedRecordSlot = undefined;
-});
 window.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
-  cancelHandTool();
-  flowerPlanting.cancel();
+  actionEvents.emit('action:interrupt', { reason: 'slot-select' });
   const stack = inventory.get(slot);
-  selectedRecordSlot = undefined;
   if (stack?.itemId === 'seeds' && foodActions) {
-    event.preventDefault(); cancelNetCapture(); locomotor.stop(); buildingPlacement.cancel();
+    event.preventDefault();
     foodActions.begin(inventoryFoodSource(slot, stack.itemId));
     slotTransferController.showSelection(slot);
     return;
   }
   if (stack?.itemId === FARM_PLOW_ITEM_ID) {
-    event.preventDefault(); locomotor.stop(); buildingPlacement.cancel();
+    event.preventDefault();
     const entity = inventory.getEntity(slot);
     if (!entity) return;
     void farmPlow.begin(() => inventory.extract(slot, 1, entity) ?? undefined).catch((error: unknown) => console.error('Unable to deploy farm plow', error));
@@ -490,20 +422,18 @@ window.addEventListener('game:slot-select', (event) => {
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
   // Placement claims the click so the stack is not picked up for a transfer.
   event.preventDefault();
-  locomotor.stop();
   void buildingPlacement.begin(stack.itemId, stack.skinId).catch((error: unknown) => {
     console.error(`Unable to start ${stack.itemId} placement`, error);
   });
 });
 window.addEventListener('game:slot-context-menu', (event) => {
   const { slot, shiftKey } = (event as CustomEvent<SlotContextMenuDetail>).detail;
-  cancelHandTool();
-  selectedRecordSlot = undefined;
+  actionEvents.emit('action:interrupt', { reason: 'slot-context-menu' });
   if (isHandSlot(slot)) handEquipmentBinding.flush();
   const stack = inventory.get(slot);
   if (!stack) return;
   if (shiftKey) {
-    flowerPlanting.cancel();
+    actionEvents.emit('action:interrupt', { reason: 'drop' });
     const spec = inventory.getStackSpec(stack);
     const position = player.position.clone();
     const entity = inventory.getEntity(slot);
@@ -532,14 +462,7 @@ window.addEventListener('game:slot-context-menu', (event) => {
     });
     return;
   }
-  if (stack.itemId === 'record') {
-    locomotor.stop(); flowerPlanting.cancel(); buildingPlacement.cancel();
-    selectedRecordSlot = slot;
-    return;
-  }
   if (stack.itemId === 'butterfly') {
-    locomotor.stop();
-    buildingPlacement.cancel();
     void flowerPlanting.begin(() => inventory.applySlotChanges([{
       slot, itemId: 'butterfly', delta: -1,
       ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
@@ -550,7 +473,6 @@ window.addEventListener('game:slot-context-menu', (event) => {
   }
   const foodEffects = FOOD_EFFECTS[stack.itemId];
   if (foodEffects && foodActions) {
-    cancelNetCapture(); flowerPlanting.cancel(); buildingPlacement.cancel();
     void foodActions.eat(inventoryFoodSource(slot, stack.itemId), () => {
       applyPlayerFoodEffects(foodEffects);
     }).catch((error: unknown) => console.error(`Unable to eat ${stack.itemId}`, error));
@@ -565,7 +487,7 @@ window.addEventListener('game:slot-context-menu', (event) => {
   }
 });
 gameUi.crafting.addEventListener('game:craft-request', (event) => {
-  cancelHandTool();
+  actionEvents.emit('action:interrupt', { reason: 'craft' });
   const { recipeId, skinId } = (event as CustomEvent<CraftRequestDetail>).detail;
   const recipe = INVENTORY_RECIPES[recipeId];
   if (!recipe) return;
@@ -575,8 +497,6 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   // Buffered builds place as soon as they are crafted. Walls are not buffered:
   // crafting only fills the inventory, and placing starts from the slot click.
   if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {
-    flowerPlanting.cancel();
-    locomotor.stop();
     void buildingPlacement.begin(recipeId, inventory.bufferedSkin(recipeId)).catch((error: unknown) => {
       console.error(`Unable to start ${recipeId} placement`, error);
     });
@@ -584,7 +504,6 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
 });
 gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
   const { crafting } = (event as CustomEvent<CraftingStateDetail>).detail;
-  if (crafting) cancelHandTool();
-  if (crafting) locomotor.stop();
+  if (crafting) actionEvents.emit('action:interrupt', { reason: 'crafting' });
   playerAnimation?.setCrafting(crafting);
 });

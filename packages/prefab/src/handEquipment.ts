@@ -4,23 +4,25 @@ import type { ActionDescription } from '@dontstarve-web/stategraphs';
 import type { WilsonCarryItem } from './player';
 import { createTorchHandLifecycle, TORCH_SOUNDS } from './torch';
 import { PreloadSounds, type SoundPosition } from './sound';
+import { getLightStaffController, type LightStaffWorld } from './yellowstaff';
 
 export interface HandEquipmentContext {
   soundPosition?: SoundPosition;
   setLightActive(active: boolean): void;
+  lightStaffWorld?: LightStaffWorld;
 }
 export interface HandEquipmentDefinition {
   readonly handAction?: ActionDescription;
   preload?(): Promise<void>;
-  createLifecycle?(entity: ItemEntity, context: HandEquipmentContext): HandEquipmentLifecycle;
+  createLifecycle?(entity: ItemEntity, context: HandEquipmentContext): HandEquipmentLifecycle | undefined;
 }
 
 /** Source hand prefabs declare their presentation and equip lifecycle together. */
 const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
   torch: { preload: () => PreloadSounds(...TORCH_SOUNDS), createLifecycle: createTorchHandLifecycle },
   lantern: {},
-  yellowstaff: { handAction: { action: 'CASTSPELL' } },
-  opalstaff: { handAction: { action: 'CASTSPELL' } },
+  yellowstaff: { createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
+  opalstaff: { createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   bugnet: {},
   hammer: {},
   reskin_tool: {},

@@ -11,7 +11,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 建筑容器面板的开关与屏幕定位由 `packages/ui/src/chest-inventory-panel.ts` 负责，`src/main.ts` 注入场景依赖并注册逐帧更新；此次模块迁移保持以下命令的语法、参数、行为和支持 ID 不变。
 
-`c_save()` 会先结算尚未满 60 帧的昼夜／温度时间，再把当前季节温度、昼夜温度和噪声时间保存到 `world.systems.worldtemperature`，读档后继续计算。旧存档缺少该字段时，使用存档季节（默认春季）的中点温度，并以已保存的累计游戏时间初始化噪声时间。当前季节仍需显式修改 signal，尚未自动推进；这里保存的是环境温度，HUD 的角色体温尚未接入。`c_save()` 无参数，命令语法和支持 prefab/item ID 不变。
+`c_save()` 会先结算尚未满 60 帧的昼夜／温度时间，再把当前季节温度、昼夜温度和噪声时间保存到 `world.systems.worldtemperature`，读档后继续计算。昼夜、季节和月相使用 `packages/signals` 导出的全局唯一单例 `clockstate`、`seasonstate`、`moonphasestate`，读档恢复现有单例的值，月相按累计游戏时间和现有 20 天周期恢复。`DstLightingRenderer` 用 `createEffect` 读取三个 signal 更新光照，不复制它们的状态；夜晚且月相为 `full` 时显示满月光照。旧存档缺少温度字段时，使用存档季节（默认春季）的中点温度，并以已保存的累计游戏时间初始化噪声时间。当前季节仍需显式修改 signal，尚未自动推进；这里保存的是环境温度，HUD 的角色体温尚未接入。`c_save()` 无参数，命令语法和支持 prefab/item ID 不变。
 
 `c_spawn("cookpot")` 生成烹饪锅，`c_give("twigs", 4)` 获取四根树枝。靠近并点击锅打开四个格子，每格放一份材料后点击“烹饪”：立即消耗材料并关闭面板，播放 `cooking_loop`，约 10 秒后播放 `cooking_pst → idle_full`，锅中显示原版 `beefalofeed`（蒸树枝）。配方与时长参考 `preparedfoods.lua`、`components/stewer.lua` 和 `tuning.lua`，食物图层按 `prefabs/cookpot.lua` 使用 `cook_pot_food11.zip` 的 `beefalofeed` 符号，保留锅的皮肤。烹饪中和完成后的锅不能再次打开；`c_save()` 保存剩余烹饪时间及锅内产物，读档和清洁扫把换肤保留状态。`src/cook.ts` 按 `cooking.lua` 注册食材标签、生熟／风干版本和别名，汇总四格材料后按最高配方优先级及同级权重选出产物；`src/preparedfoods.ts` 移植 68 条普通料理的配方条件和烹饪贴图元数据。现在四根树枝、或一根树枝加三个红蘑菇都可烹饪蒸树枝，后者可用 `c_give("twigs")` 和 `c_give("red_cap", 3)` 准备。只有最终产物是 `beefalofeed` 时启用按钮；若高优先级料理胜出，保留材料并禁用按钮。本阶段仍只执行蒸树枝的烹饪过程，不实现收获、进食、腐败、其它料理产物或厨师专属／非料理配方，也不新增独立 `beefalofeed` 的 `c_give` / `c_spawn` 支持。
 
@@ -19,7 +19,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 在游戏页面按反引号键（`Backquote`，通常与 `~` 共用）打开或关闭调试控制台，输入命令后按 `Enter` 执行。执行后控制台自动关闭；`Esc` 可关闭，`↑` / `↓` 可浏览最近 50 条历史命令。执行结果或错误显示在浏览器开发者工具的 Console 中。
 
-`src/InputManager.ts` 使用 signal 保存按键状态，`isManualMovement` 通过 `createMemo` 判断 WASD，`isActionInterrupting` 包含 WASD 与 Space，供动作控制器共用。重复按键不重复发布状态；调试控制台等输入框（包括 shadow DOM 内的输入框）不会触发移动，窗口失焦或表情轮盘切换时清空按键，页面关闭时释放输入监听和 memo。调试命令语法、参数和支持 prefab/item ID 保持不变。
+`src/InputManager.ts` 使用 signal 保存按键状态，`isManualMovement` 通过 `createMemo` 判断 WASD，`isActionInterrupting` 包含 WASD 与 Space，供动作控制器共用。重复按键不重复发布状态；调试控制台等输入框（包括 shadow DOM 内的输入框）不会触发移动，窗口失焦或表情轮盘切换时清空按键，输入管理器的 `dispose()` 用于页面内显式释放监听和 memo；`pagehide` 不执行资源清理。调试命令语法、参数和支持 prefab/item ID 保持不变。
 
 | 命令 | 参数与作用 | 示例 |
 | --- | --- | --- |
@@ -28,11 +28,13 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 | `c_save()` | 无参数。将当前游戏状态（包括挖过的地皮、耕地地皮和月岩多人传送门）校验后导出并下载为 `initial-world.json`，同时在画面上方偏右显示原版 `anim/saving.zip` 的保存动画（`save_pre` → `save_loop` → `save_post`），结束后隐藏；保存超过 0.5 秒显示“正在保存…”。快速保存也会完整播放一轮动画；校验失败时结束提示，并在浏览器 Console 报告“保存失败”及具体字段路径，下载不会开始。要作为初始存档加载，将下载文件放到 `public/saves/initial-world.json` 后重新加载页面。 | `c_save()` |
 | `c_setsanity(percent)` | 设置 Wilson 的理智比例；`percent` 为必填的 `0` 到 `1` 数字（上限 200），写入理智 signal，由订阅同步状态栏和低理智滤镜，并随 `c_save()` 保存。调色按每 10% 一档四舍五入；实际理智、晃动速度和幅度保留连续值。 | `c_setsanity(0)`、`c_setsanity(0.175)`、`c_setsanity(1)` |
 
-物品栏支持左键点击吸附整叠物品，再点击空槽移动，或点击已占用槽位交换两边的整叠物品；同类物品也交换，拖放仍沿用原来的合堆规则。交换同时检查两边的装备类型、容器限制和堆叠容量，保留实体 ID、数量、皮肤和组件状态；无法交换时保留鼠标吸附，按 `Esc` 或再点来源槽取消。`c_save()` 保存交换后的槽位与物品状态，调试命令语法和支持 ID 不变。
+物品栏左键点击普通物品时，将整叠实体从原槽转移到真实鼠标槽 `player:cursor/0`，图标、数量和耐久跟随鼠标。再点击空槽放下，点击已占用槽则交换鼠标槽与目标槽的整叠物品（包括同类物品），换出的物品继续由鼠标持有；拖放仍执行移动或合堆。失败时保留鼠标物品；`Esc` 尝试放回来源槽，再尝试普通物品栏，无法完整放回时继续持有。鼠标槽不作为 `c_give`、普通拾取或制造产物的自动接收槽，也不自动消耗其中的制造材料。`c_save()` 保存鼠标槽内的实体 ID、数量、皮肤、燃料和容器等状态，读档恢复鼠标持有；旧存档缺少该容器时初始化为空。调试命令语法、参数和支持 prefab/item ID 不变。
+
+手部拿出／收起动画统一由 `src/playerHandEquipment.ts` 订阅装备 signal：装备时播放 `item_out`，正常卸装时播放 `item_in`，换成另一实体时播放新装备的 `item_out`，同一实体换肤不重复播放。动画等待手持美术加载完成，并跳过已被后续换装或关闭取消的请求；读档初始化和物品耗尽移除不播放转移动画。主程序只处理库存转移结果与燃料结算。`c_give`、`c_spawn`、`c_save` 的语法、参数和支持 ID 不变。
 
 命令支持单引号或双引号、英文或中文括号（也可混用）、额外空白及末尾分号；`c_give` 的参数分隔符也支持中文逗号。每次提交一条命令。
 
-玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。锤子、镐、干草叉、铲子、园艺锄、捕虫网、清洁扫把和光照法杖控制器接收只读 `inventory.handEquipment` signal，在内部判断支持的 item ID；卸装、换成另一实体或换肤会立即取消旧动作，控制器销毁时释放订阅。同一装备实体和皮肤的状态更新不重复取消，控制器不写入装备 signal。光照法杖按召唤目标 `stafflight/staffcoldlight` 选择 `yellowstaff/opalstaff`，更换装备后原先预加载或排入时间线的施法不会生成新光源。`src/main.ts` 注入装备 signal、移动、动画和目标操作接口；`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。这次接线调整保持 `c_give`、`c_spawn` 和 `c_save` 的语法、参数及支持 ID 不变。
+玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。锤子、镐、干草叉、铲子、园艺锄、捕虫网、清洁扫把和光照法杖控制器接收只读 `inventory.handEquipment` signal，在内部判断支持的 item ID；卸装、换成另一实体或换肤会立即取消旧动作，控制器销毁时释放订阅。同一装备实体和皮肤的状态更新不重复取消，控制器不写入装备 signal。光照法杖按召唤目标 `stafflight/staffcoldlight` 选择 `yellowstaff/opalstaff`，更换装备后原先预加载或排入时间线的施法不会生成新光源。`src/main.ts` 注入装备 signal、`registerFrameTask` 帧调度服务、移动、动画和目标操作接口；控制器根据 signal 自行注册／移除帧任务，每帧只更新当前装备对应的手部动作控制器，读档后已有装备也立即注册。卸装和销毁会移除任务，同一身份重复发布不重复注册；法杖由输入事件与状态图时间线驱动，无独立帧任务。`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。这次接线调整保持 `c_give`、`c_spawn` 和 `c_save` 的语法、参数及支持 ID 不变。
 
 `SGwilson` 的已支持源状态按 Lua 顺序显式写成 `State({ name, tags, onenter, onupdate, timeline, ontimeout, events, onexit })`，仅填写已实现的回调；标签使用源定义，浏览器动作身份另行维护。状态图的外部状态请求使用 `request…`，进入状态后的回调使用 `onEnter…`。`ActionHandler` 支持源动态目标函数和可选条件：采矿、锤击、挖掘、捕虫读取前摇/工作标签决定拒绝、前摇或动作循环；扫把换肤使用 `CASTSPELL`，由工具的 `veryquickcast` 标签选择快施法状态。浏览器跳跃、制作和半速拾取以 `busy` 阻止新动作，跳跃期间所有动作等待落地；表情检查源 `busy/nopredict/sleeping/floating` 标签，可以打断未被这些标签阻止的工作状态。动画完成事件与状态超时独立，采矿、锤击、挖掘及耕坑的收尾动画在 `idle` 内继续播放。种植使用 `doshortaction`，第 6 帧提交，第 10 帧超时进入待机并保留动画队列，退出仅清理自己的缓冲动作。浏览器适配及暂缺的 Lua 分支见 [状态图源码核对](docs/dst-stategraphs.md)。`c_spawn`、`c_give`、`c_emote` 和 `c_save` 的语法、参数及支持 ID 保持不变。
 
@@ -55,7 +57,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 原版 Lua 中哪些 prefab 可用 `c_spawn`、哪些可通过 `c_give` 入栏，见 [prefab 命令静态核对表](docs/dst-prefab-console.md)。该表记录源码调查结果；本项目当前支持的 ID 以本文下方对象列表及物品定义为准。
 
-低理智滤镜使用原版 `images/colour_cubes/insane_day_cc.tex`、`insane_dusk_cc.tex` 和 `insane_night_cc.tex`，按昼夜与季节调色同步渐变。调色将理智比例四舍五入到最近的 10% 档位（0%、10%、…、100%），再按 `colourcube.lua` 的平方曲线计算 `(1 - 档位比例)²`；例如 `c_setsanity(0.175)` 保留理智 35/200，调色按 20% 计算，强度为 0.64；`c_setsanity(0.149)` 按 10% 计算，强度为 0.81。原版 Lua 的曲线未作这种分档。世界画面边缘按 `postprocess_distort.ksh` 晃动，速度和幅度仍使用实际理智比例，速度为原版扭曲系数 `1` 时的一半，中心保持稳定；HUD 不受滤镜影响。旧存档未提供理智时沿用状态栏的 35/200，`c_setsanity(1)` 可恢复满理智画面。 `playerStats.sanity` 是工厂创建的理智点数 signal，可通过 `set(value)` 更新有限数值并自动限制在 0 到 200；`percent` 是同一状态的只读比例视图。滤镜在创建时接收并订阅该视图，状态栏独立订阅理智变化；直接写入 signal 也会更新两处，调试命令无需手动刷新。保存通过 `getPlayerStats()` 导出纯数值快照，读档先创建 signal，再初始化滤镜；滤镜 `dispose()` 和页面关闭会释放订阅及渲染资源。
+低理智滤镜使用原版 `images/colour_cubes/insane_day_cc.tex`、`insane_dusk_cc.tex` 和 `insane_night_cc.tex`，按昼夜与季节调色同步渐变。调色将理智比例四舍五入到最近的 10% 档位（0%、10%、…、100%），再按 `colourcube.lua` 的平方曲线计算 `(1 - 档位比例)²`；例如 `c_setsanity(0.175)` 保留理智 35/200，调色按 20% 计算，强度为 0.64；`c_setsanity(0.149)` 按 10% 计算，强度为 0.81。原版 Lua 的曲线未作这种分档。世界画面边缘按 `postprocess_distort.ksh` 晃动，速度和幅度仍使用实际理智比例，速度为原版扭曲系数 `1` 时的一半，中心保持稳定；HUD 不受滤镜影响。旧存档未提供理智时沿用状态栏的 35/200，`c_setsanity(1)` 可恢复满理智画面。 `playerStats.sanity` 是工厂创建的理智点数 signal，可通过 `set(value)` 更新有限数值并自动限制在 0 到 200；`percent` 是同一状态的只读比例视图。滤镜在创建时接收并订阅该视图，状态栏独立订阅理智变化；直接写入 signal 也会更新两处，调试命令无需手动刷新。保存通过 `getPlayerStats()` 导出纯数值快照，读档先创建 signal，再初始化滤镜；滤镜 `dispose()` 用于页面内显式释放订阅及渲染资源；`pagehide` 不执行清理。
 
 调色资源由 `src/main.ts` 显式调用 `DstLightingRenderer.create()` 并行加载，完成后通过 `game:lighting-ready` 事件发布实例，`src/universal.ts` 接收后供场景使用。场景在事件完成后启动；加载失败会中止启动。单独导入 `universal.ts` 不会请求调色资源或读取存档。
 
@@ -85,9 +87,9 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 
 
-`c_spawn("phonograph")` 在玩家当前位置生成留声机；`c_give("phonograph", 2)` 获取两台，每台占一格。`c_give("record")` 获取唱片，`c_spawn("record")` 生成地面唱片。走近留声机后，右键物品栏中的唱片选择它，再左键留声机插入；插片播放 `open` → `play_loop`，旧唱片原样掉落。右键已装唱片的留声机开关播放，空机不能开启；播放 64 秒后回到 `idle` 并播放原版结束声。Esc、移动键或选择其他物品取消插片选择。左键地面留声机拾回时停止播放，保留唱片；Shift + 右键丢弃后保持关闭，可再右键开启。留声机和唱片均使用各自源动画及实际库存 atlas，不可装备。
+`c_spawn("phonograph")` 在玩家当前位置生成留声机；`c_give("phonograph", 2)` 获取两台，每台占一格。`c_give("record")` 获取唱片，`c_spawn("record")` 生成地面唱片。走近留声机后，左键物品栏中的唱片拿到鼠标槽，再左键留声机插入；插片播放 `open` → `play_loop`，旧唱片原样掉落。右键已装唱片的留声机开关播放，空机不能开启；播放 64 秒后回到 `idle` 并播放原版结束声。只有鼠标槽中的唱片可用于插片；插入成功后消耗，目标不可用或鼠标物品已更换时保留物品。`Esc` 尝试将唱片放回物品栏。左键地面留声机拾回时停止播放，保留唱片；Shift + 右键丢弃后保持关闭，可再右键开启。留声机和唱片均使用各自源动画及实际库存 atlas，不可装备。
 
-装备清洁扫把后右键留声机，可循环原版 6 种皮肤（`decor_phonograph_cawnival`、`decor_phonograph_fantasy`、`decor_phonograph_hallowed`、`decor_phonograph_handmade`、`decor_phonograph_rose`、`decor_phonograph_western`）；地面唱片支持 4 种皮肤（`record_creepyforest`、`record_drstyle`、`record_efs`、`record_hallowednights`）及对应歌曲。换肤保留实体 ID、位置、已装唱片及播放进度。手持锤子右键留声机，一次成功命中即锤毁，掉出已装唱片并播放木质坍塌特效和声音。`c_save()` 保存地面位置、皮肤、库存中的已装唱片和地面播放剩余时间，读档按进度恢复；各留声机音源独立，拾取、锤毁和退出时停止。当前未接入农作物照料、家具摆放和内部 `SetRecord("balatro")` 变体。
+装备清洁扫把后右键留声机，可循环原版 6 种皮肤（`decor_phonograph_cawnival`、`decor_phonograph_fantasy`、`decor_phonograph_hallowed`、`decor_phonograph_handmade`、`decor_phonograph_rose`、`decor_phonograph_western`）；地面唱片支持 4 种皮肤（`record_creepyforest`、`record_drstyle`、`record_efs`、`record_hallowednights`）及对应歌曲。换肤保留实体 ID、位置、已装唱片及播放进度。手持锤子右键留声机，一次成功命中即锤毁，掉出已装唱片并播放木质坍塌特效和声音。`c_save()` 保存地面位置、皮肤、库存中的已装唱片和地面播放剩余时间，读档按进度恢复；各留声机音源独立，拾取、锤毁或显式销毁场景时停止；`pagehide` 不停止或释放音源。当前未接入农作物照料、家具摆放和内部 `SetRecord("balatro")` 变体。
 
 `c_give("farm_plow_item")` 获取耕地机，第二个参数可指定数量，每台占一格、初始 4 次使用。左键物品栏中的耕地机进入部署预览，右键可种植的空地部署；预览和落点吸附到整格地皮中心（`TILE_SIZE = 12`），显示原版 `tile_outline` 使用的 `anim/gridplacer.zip`、bank/build `gridplacer`、`anim` 地皮边框。不能部署到已耕地地皮或有阻挡物的格子。成功部署时由物品实体的 `finiteuses.use(1)` 消耗一次使用，保存扣减后的完整物品快照；钻地 15 秒后将该格改为 `WORLD_TILES.FARMING_SOIL`（ID `47`），从快照折回物品，第 4 次用完后不再返还。`c_spawn("farm_plow_item")` 只生成 `idle_packed` 地面物品；`c_spawn("farm_plow")` 直接生成工作中的调试耕地机，完成后不返还物品。`c_save()` 将耕地机进度及完整物品快照保存到 `components.farmPlow.deployItem`，包含物品 ID、数量及组件状态；完成或被锤毁时恢复该快照，保留物品 ID 和剩余使用次数。地面物品加载成功前保留返还快照。旧存档的 `returnUses` 自动迁移；`c_spawn("farm_plow")` 的快照为 `null`。耕地结果及原地皮 ID 保存到 `world.map.tiles`，加载后恢复。
 
@@ -120,9 +122,13 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 `c_give("seeds", 10)` 获取种子，`c_spawn("seeds")` 在玩家脚下生成可拾取的原版地面种子（`anim/seeds.zip`，bank/build `seeds`，`idle`；物品图标来自 `images/inventoryimages.xml`）。Shift + 右键丢弃、左键拾回；右键物品栏种子播放 `quick_eat_pre → quick_eat`，第 12 帧消耗一粒并增加 4.6875 饥饿，上限 150，健康和理智不变。左键物品栏种子选中种植，鼠标跟随原版种子图标及剩余数量，种子仍保留在原槽；左键耕地机完成后农田 tile 上的完整坑（`farm_soil`）自动走近，在 `pickup → pickup_pst` 的第 6 帧消耗一粒，替换为原版 `farm_plant_randomseed`（`anim/farm_soil.zip` 的 `sow → sow_idle`）。正在耕地的坑、破损坑和空地不可种植；移动、跳跃、Esc、点击空地或切换物品取消未提交的操作，失败不消耗种子。`c_spawn("farm_plant_randomseed")` 直接生成播种后的外观；地面种子及已播种实体的 ID、位置和数量随 `c_save()` 保存并恢复。本次仅实现种子地面美术、进食和坑内播种，播种后保持种子阶段。
 
 
-矮星与极光可分别用 `c_give("yellowstaff")`、`c_give("opalstaff")` 获取法杖后施放，寿命分别为 24 分钟、16 分钟。玩家位置每帧读取一次，所有星体共享该位置进行 XZ 距离判断。玩家在星体地面 XZ 距离 10 格（120 场景单位）内时，每 60 个有效游戏帧结算一次寿命，按累计实际 `dt` 扣减；附近的动画和光照脉动仍逐帧更新。远离时结算不足 60 帧的部分，将星体移出场景，销毁独立动画模型的网格并停止、断开音源，仅保留位置、实体 ID 和寿命等逻辑状态；同类星体共享的纹理和材质由管理器缓存，退出时统一释放。寿命按游戏时间继续流逝；再次靠近时先统一补算，已过期的直接清除逻辑状态，未过期的在原位置重建待机模型和独立循环音效，不重播出现动画或音效。`c_save()` 会补算所有星体（包括远处星体），保存实体 ID、位置和最新剩余时间，过期星体不写入存档；读档不重播出现音效。游戏暂停期间不扣寿命。
+矮星与极光可分别用 `c_give("yellowstaff")`、`c_give("opalstaff")` 获取法杖后施放，寿命分别为 24 分钟、16 分钟。法杖装备到手部后右键地面，通用 `spellcaster` 通过 `castonpoint` / `castonpointwater` 标签提供 `CASTSPELL`；原版距离 20 单位换算为 60 场景单位，超出距离时先走近。黄法杖满耐久 20 次，蓝法杖 50 次；`staff_pre → staff` 第 13 帧播放法杖配置的 `staffteleport`，第 53 帧同步生成星体、扣一次耐久与 20 理智，第 69 帧恢复世界输入和移动。提前取消、替换装备或落点无效时不生成、不消耗；最后一次使用通过库存移除法杖并播放宝石碎裂声。UI 显示剩余耐久比例；`c_save()` 保留法杖实体 ID、数量、皮肤、剩余次数、玩家理智和星体位置／寿命，旧存档缺省剩余次数按满耐久加载。玩家位置每帧读取一次，所有星体共享该位置进行 XZ 距离判断。玩家在星体地面 XZ 距离 10 格（120 场景单位）内时，每 60 个有效游戏帧结算一次寿命，按累计实际 `dt` 扣减；附近的动画和光照脉动仍逐帧更新。远离时结算不足 60 帧的部分，将星体移出场景，销毁独立动画模型的网格并停止、断开音源，仅保留位置、实体 ID 和寿命等逻辑状态；同类星体共享的纹理和材质由管理器缓存，退出时统一释放。寿命按游戏时间继续流逝；再次靠近时先统一补算，已过期的直接清除逻辑状态，未过期的在原位置重建待机模型和独立循环音效，不重播出现动画或音效。`c_save()` 会补算所有星体（包括远处星体），保存实体 ID、位置和最新剩余时间，过期星体不写入存档；读档不重播出现音效。游戏暂停期间不扣寿命。
 
 ### c_spawn 支持的对象
+
+通过 `c_give` 获取工具或放置物品后，动作切换由共享的 `action:begin` / `action:interrupt` 事件通知各模块取消自身工作；选槽、制作和表情轮保留各自的打断范围。开始事件排除发起者，异步加载被打断后不再提交旧动作；采集成功后才发送开始事件。事件与清理规则见 [库存与动作接线](docs/inventory-architecture.md)。
+
+`c_spawn("flower_cave")`、`c_spawn("flower_cave_double")`、`c_spawn("flower_cave_triple")` 生成单头、双头和三头灯草。按 Lua 的 `plant` / `pickable` 标签提供通用左键 `PICK` 动作；燃烧（`fire`）或 `intense` 状态不可采集。采集分别获得 1、2、3 个 `lightbulb`，灯草立即熄灭并播放 `picking` → `picked`；再生时间分别为 1440、2160、2880 游戏秒，再生后恢复 `pickable` 标签并开始充能。背包接收失败时保留灯草状态。`c_save()` 保存实体 ID、位置、外观变体、光照状态与采集后的剩余再生时间，读档后恢复相应标签和计时。
 
 `c_spawn("wormhole")` 在玩家当前位置生成虫洞，使用原版 `anim/teleporter_worm.zip` 的 bank `teleporter_worm` 和 `anim/teleporter_worm_build.zip` 的 build `teleporter_worm_build`。玩家进入 12 个场景单位内（原版 4 单位）播放 `open_pre` → `open_loop`，超过 15 个场景单位（原版 5 单位）播放 `open_pst` → `idle_loop`；距离只计算地面 XZ 平面。开口第 10 帧切入地面背景层，闭合第 4 帧恢复以地面原点排序的世界层，所有状态保持原版 billboard 朝向。用 `c_give("reskin_tool")` 获取清洁扫把并装备到手部，右键虫洞按 `wormhole_claw`、`wormhole_fantasy`、`wormhole_gothic`、`wormhole_lureplant`、`wormhole_spider`、`wormhole_worm` 顺序换肤，再回到默认外观；资源为原版 `anim/dynamic/wormhole_*.zip` / `.dyn`。换肤保留实体 ID、位置和当前动画进度；位置、实体 ID 和皮肤随 `c_save()` 保存，读档后根据玩家距离重新决定开闭。虫洞属于场景实体，通过 `c_spawn` 生成；当前不包含传送、配对、物品投喂或虫洞音效。
 

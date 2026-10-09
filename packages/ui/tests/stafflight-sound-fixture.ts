@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { DwarfStarManager } from '../../prefab/src/stafflight';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { BufferedAction } from '../../stategraphs/src';
 import { DisposeSounds } from '../../prefab/src/sound';
 
 export async function prepareStarAudioCheck() {
@@ -27,7 +28,9 @@ export async function prepareStarAudioCheck() {
   const animation = player.userData.animationController as WilsonAnimationController;
   await animation.setCarryItem('yellowstaff');
   let casts = 0;
-  animation.playStaffCast(() => { casts += 1; });
+  animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
+    invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
+  }));
   for (let i = 0; i < 12; i++) animation.update(1 / 30);
   const beforeSoundFrame = sources.length;
   animation.update(1 / 30);
@@ -36,7 +39,9 @@ export async function prepareStarAudioCheck() {
   const afterCastSources = sources.length;
   await animation.setCarryItem(null);
   await animation.setCarryItem('yellowstaff');
-  animation.playStaffCast(() => { casts += 1; });
+  animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
+    invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
+  }));
   for (let i = 0; i < 12; i++) animation.update(1 / 30);
   await animation.setCarryItem(null);
   for (let i = 0; i < 30; i++) animation.update(1 / 30);

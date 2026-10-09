@@ -5,8 +5,11 @@ import { setPrefabLightOverride, getPrefabLightOverride } from '../../prefab/src
 import { TreasureChestPlacement } from '../../prefab/src/treasurechest';
 import { WallsPlacement } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
+import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
 export async function checkCursorPreview() {
+  clockstate.set({ phase: 'night', timeinphase: 0 });
+  seasonstate.set({ season: 'spring', progress: 0.5 });
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(400, 400);
   renderer.domElement.style.cssText = 'position:fixed;left:0;top:0;width:400px;height:400px';
@@ -63,7 +66,8 @@ export async function checkCursorPreview() {
   setPrefabLightOverride(preview, null);
   draw();
   const committed = { preview: sample(-6, 0), ground: sample(6, 0) };
-  lighting.setPhase('day');
+  clockstate.set({ phase: 'day', timeinphase: 0 });
+  await Promise.resolve();
   lighting.update(4);
   draw();
   const dayLabel = labelState();
@@ -103,6 +107,7 @@ export async function checkCursorPreview() {
   blocker.remove();
   ui.setHandAction(null, pointer);
   const unequippedHidden = ui.element.hidden;
+  lighting.dispose();
   renderer.dispose();
   ui.dispose();
   return { night, torch, committed, dayLabel, rightGlyph, differentButtons,

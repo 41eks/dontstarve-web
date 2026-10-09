@@ -2,6 +2,8 @@ import type * as THREE from 'three';
 import type { WilsonStateGraph } from './SGwilson.ts';
 import type { PointerRaycaster } from './pointerRaycaster.ts';
 import type { PlayerActionPicker } from './playeractionpicker.ts';
+import type { EventEmitter } from '../../signals/src/EventEmitter.ts';
+import type { PlayerActionEvents } from './actionEvents.ts';
 
 /** Services supplied by the application and prefab implementations to actions. */
 export interface CursorLabel {
@@ -17,7 +19,10 @@ export interface ActionWorldContext {
   ground: THREE.Object3D;
   player: THREE.Object3D;
   mouseActions?: PlayerActionPicker;
+  actionEvents?: EventEmitter<PlayerActionEvents>;
   createCursorLabel?: (pointer: PointerRaycaster) => CursorLabel;
+  /** Register an action update in the host's pre-physics phase; return its removal callback. */
+  registerFrameTask?: (update: (dt: number) => void) => () => void;
 }
 
 export interface ActionLocomotor {
@@ -50,7 +55,6 @@ export interface ActionAnimationController {
   cancelTill(): void;
   cancelEmote(): void;
   playBugNet(onCatch: () => void): boolean;
-  playStaffCast(onCast: () => void): boolean;
   playQuickEat(onEat: () => boolean, foodDrink?: boolean): boolean;
   playPlant(onPlant: () => boolean): boolean;
   cancelFoodAction(): void;

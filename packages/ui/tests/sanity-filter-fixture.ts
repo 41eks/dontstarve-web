@@ -1,16 +1,19 @@
 import * as THREE from 'three';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
-import { createSanityState } from '@dontstarve-web/signals';
+import { createSanityState, clockstate, seasonstate, moonphasestate } from '@dontstarve-web/signals';
 import { DstLightingRenderer, type DstLightPhase } from '../../../src/dstLighting';
 
 export async function checkSanityFilter() {
+  clockstate.set({ phase: 'day', timeinphase: 0 });
+  seasonstate.set({ season: 'spring', progress: 0.5 });
+  moonphasestate.set('new');
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(128, 128);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.body.append(renderer.domElement);
   const sanity = createSanityState(35, 200);
   const lighting = await DstLightingRenderer.create(renderer, '/dst/data/images/colour_cubes', {
-    season: 'spring', phase: 'day', sanityPercent: sanity.percent,
+    sanityPercent: sanity.percent,
   });
   const initialPercent = lighting.getSanityPercent();
   const scene = new THREE.Scene();
@@ -45,7 +48,9 @@ export async function checkSanityFilter() {
   };
   const phases = [];
   for (const phase of ['day', 'dusk', 'night', 'full_moon'] as DstLightPhase[]) {
-    lighting.setPhase(phase);
+    clockstate.set({ phase: phase === 'full_moon' ? 'night' : phase, timeinphase: 0 });
+    moonphasestate.set(phase === 'full_moon' ? 'full' : 'new');
+    await Promise.resolve();
     lighting.update(10);
     sanity.set(200);
     const normal = draw();
@@ -64,10 +69,13 @@ export async function checkSanityFilter() {
   }
   // Spring uses the same ambient LUT for dusk/night, but different insane LUTs.
   sanity.set(0);
-  lighting.setPhase('dusk');
+  moonphasestate.set('new');
+  clockstate.set({ phase: 'dusk', timeinphase: 0 });
+  await Promise.resolve();
   lighting.update(6);
   const dusk = draw();
-  lighting.setPhase('night');
+  clockstate.set({ phase: 'night', timeinphase: 0 });
+  await Promise.resolve();
   lighting.update(4);
   const halfway = draw();
   lighting.update(4);
@@ -110,7 +118,8 @@ export async function checkSanityFilter() {
   // resizing, DPR and large time deltas must not introduce bright scanlines.
   scene.background = background;
   sanity.set(0);
-  lighting.setPhase('day');
+  clockstate.set({ phase: 'day', timeinphase: 0 });
+  await Promise.resolve();
   lighting.update(4);
   const reference = draw();
   let maxBoundaryError = 0;

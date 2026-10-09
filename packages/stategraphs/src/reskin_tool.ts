@@ -1,7 +1,8 @@
+import { bindActionCancellation } from './actionEvents.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
 import { PointerRaycaster } from './pointerRaycaster.ts';
-import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
+import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 export interface PreparedReskin {
   /** Commit the prepared appearance only if its source entity is still valid. */
@@ -32,10 +33,10 @@ export class ReskinActionController {
   private readonly locomotor: Pick<Locomotor, 'stop' | 'goToPoint' | 'destination'>;
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
+  private readonly stopActionEvents: () => void;
   private readonly getTargets: () => readonly ReskinTarget[];
   private readonly effects: ReskinEffectPresenter;
   private readonly isManualMovement: () => boolean;
-  private readonly onRequest: () => void;
   private readonly onError: (error: unknown) => void;
   private readonly pointer: PointerRaycaster;
   private readonly unregisterHover: () => void;
@@ -51,15 +52,18 @@ export class ReskinActionController {
     getTargets: () => readonly ReskinTarget[],
     effects: ReskinEffectPresenter,
     isManualMovement = () => false,
-    onRequest = () => {},
     onError: (error: unknown) => void = console.error,
   ) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.handEquipment = handEquipment; this.getTargets = getTargets; this.effects = effects;
-    this.stopEquipment = watchHandEquipment(handEquipment, (_equipment, previous) => {
-      if (previous?.itemId === 'reskin_tool') this.cancel();
+    this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
+      isEquipped: equipment => equipment?.itemId === 'reskin_tool',
+      cancel: () => this.cancel(),
+      update: dt => this.update(dt),
+      registerFrameTask: world.registerFrameTask,
     });
-    this.isManualMovement = isManualMovement; this.onRequest = onRequest; this.onError = onError;
+    this.isManualMovement = isManualMovement; this.onError = onError;
+    this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.unregisterHover = world.mouseActions?.register(() =>
       this.getTargets().filter(target => target.isValid()).map(target => ({
@@ -73,8 +77,8 @@ export class ReskinActionController {
     const tool = this.getTool();
     if (!tool || !target.isValid() || this.loading || this.animation.isReskinning) return false;
     this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'RESKIN' });
     const version = this.version;
-    this.onRequest();
     this.animation.cancelEmote();
     this.loading = true;
     let prepared: PreparedReskin | undefined;
@@ -139,6 +143,7 @@ export class ReskinActionController {
   }
 
   dispose(): void {
+    this.stopActionEvents();
     this.stopEquipment();
     this.cancel();
     this.unregisterHover();

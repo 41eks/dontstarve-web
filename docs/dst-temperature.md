@@ -24,19 +24,20 @@
 
 ## 世界温度组件
 
-[packages/componets/src/worldtemperature.ts](../packages/componets/src/worldtemperature.ts) 提供 `WorldTemperature` 类，移植世界温度的季节项、昼夜项、噪声时间、全局修正及保存／恢复逻辑。昼夜与季节输入是 signal，环境温度由 `createMemo` 派生，并作为只读 signal 提供给宿主。
+[packages/componets/src/worldtemperature.ts](../packages/componets/src/worldtemperature.ts) 提供 `WorldTemperature` 类，移植世界温度的季节项、昼夜项、噪声时间、全局修正及保存／恢复逻辑。昼夜与季节输入使用 [packages/signals/src/world.ts](../packages/signals/src/world.ts) 导出的全局唯一单例 `clockstate`、`seasonstate`，环境温度由 `createMemo` 派生，并作为只读 signal 提供给宿主。
 
-[src/worldState.ts](../src/worldState.ts) 创建每个会话的世界状态；[src/scene.ts](../src/scene.ts) 导出运行时 `worldState` 并接入主循环。每 60 个活动游戏帧累计实际 `dt`，统一更新昼夜进度 signal 和噪声时间；中间帧只累计时间，不写这两个输入，也不刷新时钟 UI。保存或停止场景前结算不足 60 帧的部分。昼夜与季节的光照使用同一份 signal，温度和光照订阅在场景销毁时释放。规则记录在 [AGENTS.md](../AGENTS.md) 的“World time and temperature”中。
+[src/worldState.ts](../src/worldState.ts) 创建会话的温度组件、恢复全局昼夜与季节输入，并将 `worldState.clock`、`worldState.season` 指向上述单例；`worldState.moonPhase` 指向同模块的月相单例 `moonphasestate`，从累计游戏时间恢复并按现有 20 天周期推进。[src/scene.ts](../src/scene.ts) 导出运行时 `worldState` 并接入主循环。每 60 个活动游戏帧累计实际 `dt`，统一更新昼夜进度、月相 signal 和噪声时间；中间帧只累计时间，不写这些输入，也不刷新时钟 UI。保存或停止场景前结算不足 60 帧的部分。昼夜与季节的光照使用同一份 signal，温度和光照 effect 在场景销毁时释放，单例保留；满月照明由夜晚和月相派生，温度的昼夜阶段保持 `night`。规则记录在 [AGENTS.md](../AGENTS.md) 的“World time and temperature”中。
 
 现阶段季节没有自动推进组件。旧存档使用 `world.systems.season.name`（默认春季）的中点温度，并以 `world.elapsedSeconds` 初始化噪声时间；新存档恢复保存的季节温度和噪声时间，再按累计游戏时间恢复当前昼夜进度。修改季节 signal 会立即派生温度并更新季节光照，不需要逐帧重复写入。环境温度尚未接入 HUD 的角色体温显示。
 
 ```ts
 import { WorldTemperature } from '../packages/componets/src/worldtemperature';
+import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
 const worldtemperature = new WorldTemperature();
 
-worldtemperature.season.set({ season: 'spring', progress: 0.5 });
-worldtemperature.clock.set({ phase: 'day', timeinphase: 0.5 });
+seasonstate.set({ season: 'spring', progress: 0.5 });
+clockstate.set({ phase: 'day', timeinphase: 0.5 });
 worldtemperature.OnUpdate(1); // 宿主传入这一批活动帧累计的实际秒数
 console.log(worldtemperature.temperature.peek());
 
@@ -47,11 +48,11 @@ worldtemperature.dispose();
 
 | 接口 | 行为 |
 | --- | --- |
-| `new WorldTemperature({ perlin?, onTemperatureTick? })` | 默认秋季中点、白天阶段起点和噪声时间 0；可选回调收到初始温度及后续温度变化 |
-| `season` / `clock` | 可写输入 signal；按季节／阶段进度赋值，也支持加载保存的温度项 |
+| `new WorldTemperature({ perlin?, onTemperatureTick? })` | 使用单例的当前季节／昼夜状态，噪声时间初始为 0；可选回调收到初始温度及后续温度变化 |
+| `seasonstate` / `clockstate`（signals 包） | 全局唯一的可写输入 signal；按季节／阶段进度赋值，也支持加载保存的温度项 |
 | `temperature` | 可调用的只读 memo，支持 `get/peek/subscribe`；读取缓存，不重复计算 |
-| `OnSeasonTick({ season, progress })` | Lua 风格的 `season.set()` 适配接口 |
-| `OnClockTick({ phase, timeinphase })` | Lua 风格的 `clock.set()` 适配接口 |
+| `OnSeasonTick({ season, progress })` | Lua 风格的 `seasonstate.set()` 适配接口 |
+| `OnClockTick({ phase, timeinphase })` | Lua 风格的 `clockstate.set()` 适配接口 |
 | `OnUpdate(dt)` / `LongUpdate(dt)` | 按宿主结算的累计秒数推进噪声时间，自动重新派生温度；`dt = 0` 不推进时间 |
 | `SetTemperatureMod(multiplier, locus)` | 设置全局倍率和中心值，自动重新派生；洞穴使用 `(0.6, 0)` |
 | `GetTemperature()` | 读取温度 memo |

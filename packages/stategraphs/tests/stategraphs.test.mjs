@@ -71,7 +71,7 @@ for (const [label, action, commitFrame, invobject] of [
   }
 }
 
-test('cast sound precedes commitment and its light stops on exit or interruption', () => {
+test('cast sound precedes commitment, committed effects keep running and early interruption removes them', () => {
   const { graph, sounds, casting } = actor();
   graph.pushBufferedAction(new BufferedAction('CASTSPELL', () => {}));
   assert.deepEqual(casting, [true]);
@@ -80,13 +80,13 @@ test('cast sound precedes commitment and its light stops on exit or interruption
   graph.update(FRAMES);
   assert.deepEqual(sounds, ['cast']);
   graph.update(100 * FRAMES);
-  assert.deepEqual(casting, [true, false]);
+  assert.deepEqual(casting, [true]);
   graph.pushBufferedAction(new BufferedAction('CASTSPELL', () => {}));
   graph.update(12 * FRAMES);
   graph.cancelAction();
   graph.update(10);
   assert.deepEqual(sounds, ['cast']);
-  assert.deepEqual(casting, [true, false, true, false]);
+  assert.deepEqual(casting, [true, true, false]);
 });
 
 test('a performaction listener can cancel before the action runs and unsubscribe afterward', () => {

@@ -6,6 +6,8 @@ import { mountGameUi } from '../src';
 import { setupEmoteWheel } from '../../../src/emoteWheel';
 import { input } from '../../../src/InputManager';
 import { updateMovement } from '../../../src/updatePlayerMovement';
+import { EventEmitter } from '../../signals/src';
+import { bindActionCancellation, type PlayerActionEvents } from '../../stategraphs/src';
 
 export async function createEmoteFixture() {
   const { emoteWheel } = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
@@ -28,7 +30,9 @@ export async function createEmoteFixture() {
   const movement = updateMovement(camera, model, body, locomotor);
   const requests: string[] = [];
   let worldClicks = 0;
-  setupEmoteWheel(emoteWheel, renderer.domElement, animation, () => locomotor.stop(), () => {}, () => {});
+  const actionEvents = new EventEmitter<PlayerActionEvents>();
+  bindActionCancellation({ actionEvents }, locomotor, 'movement', () => locomotor.stop());
+  setupEmoteWheel(emoteWheel, renderer.domElement, animation, actionEvents, () => {});
   emoteWheel.addEventListener('game:emote-request', (event) => requests.push((event as CustomEvent<{ emote: string }>).detail.emote));
   renderer.domElement.addEventListener('pointerdown', () => worldClicks++);
   const draw = () => renderer.render(scene, camera);

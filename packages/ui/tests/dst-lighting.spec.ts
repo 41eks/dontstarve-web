@@ -29,24 +29,29 @@ test('application lighting starts in the saved elapsed-time phase without a star
   test.setTimeout(120_000);
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async (urls) => {
+    const { scene } = await import(urls.universal);
     let readyCount = 0;
     let publishedLighting: unknown;
+    let initialLightLevel: number | undefined;
     window.addEventListener('game:lighting-ready', (event) => {
       readyCount++;
       publishedLighting = event.detail;
+      // Measure initial ambient before saved local-light entities enter the scene.
+      initialLightLevel = event.detail.sampleLightLevel(scene.position);
     });
     await import(urls.main);
-    const [{ dstLighting, scene }, { initialSave }, { getDstCycle }] = await Promise.all([
+    const [{ dstLighting }, { initialSave }, { getDstClock }] = await Promise.all([
       import(urls.universal), import(urls.save), import(urls.tuning),
     ]);
+    const clock = getDstClock(initialSave.world.elapsedSeconds);
     return {
       readyCount,
       publishedSharedInstance: publishedLighting === dstLighting,
       phase: dstLighting.getPhase(),
-      expectedPhase: getDstCycle(initialSave.world.elapsedSeconds).phase,
+      expectedPhase: clock.phase === 'night' && clock.moonPhase === 'full' ? 'full_moon' : clock.phase,
       season: dstLighting.getSeason(),
       expectedSeason: initialSave.world.systems.season?.name ?? 'spring',
-      lightLevel: dstLighting.sampleLightLevel(scene.position),
+      lightLevel: initialLightLevel,
     };
   }, {
     main: `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`,

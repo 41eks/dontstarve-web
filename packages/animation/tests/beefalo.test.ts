@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BEEFALO_BEHAVIOR, BeefaloController, BeefaloManager, type BeefaloWorld } from '../../prefab/src/beefalo';
+import { BEEFALO_BEHAVIOR, BeefaloController, BeefaloManager, type BeefaloWorld, type BeefaloManagerWorld } from '../../prefab/src/beefalo';
+import { createSignal } from '@dontstarve-web/signals';
 import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '../src/beefaloSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 
@@ -15,14 +16,13 @@ function setup(random = () => 0) {
   const animation = { start: vi.fn(), update: vi.fn(), setFacing: vi.fn(), playTransient: vi.fn(),
     playOnce: vi.fn((_clip: string, callback?: () => void) => { complete = callback; }) };
   let players: THREE.Vector3[] = [];
-  let night = false;
-  const world: BeefaloWorld = { isDay: () => !night, isNight: () => night,
+  const world: BeefaloWorld = { phase: 'day', season: 'spring',
     getPlayerPositions: () => players, findPath: vi.fn((_start, target) => [target]),
     constrainPosition: vi.fn(), spawnPoop: vi.fn() };
   const controller = new BeefaloController(model, body, animation, world, undefined, random);
   return { controller, model, body, animation, world,
     setPlayers: (value: THREE.Vector3[]) => { players = value; },
-    setNight: (value: boolean) => { night = value; },
+    setNight: (value: boolean) => { world.phase = value ? 'night' : 'day'; },
     complete: () => { const callback = complete; complete = undefined; callback?.(); },
     tick: (seconds: number) => {
       for (let i = 0; i < Math.round(seconds * 10); i++) {
@@ -101,6 +101,55 @@ function serveAssets() {
 }
 
 describe('original beefalo assets', () => {
+  it('initializes and subscribes to world signals, shares updates with later spawns, and releases subscriptions', async () => {
+    serveAssets();
+    const clock = createSignal<{ phase: BeefaloWorld['phase'] }>({ phase: 'night' });
+    const season = createSignal<{ season: BeefaloWorld['season'] }>({ season: 'winter' });
+    const clockPeek = vi.spyOn(clock, 'peek'), seasonPeek = vi.spyOn(season, 'peek');
+    const stopClock = vi.fn(), stopSeason = vi.fn();
+    const subscribeClock = clock.subscribe, subscribeSeason = season.subscribe;
+    vi.spyOn(clock, 'subscribe').mockImplementation((listener) => {
+      const stop = subscribeClock(listener);
+      return () => { stop(); stopClock(); };
+    });
+    vi.spyOn(season, 'subscribe').mockImplementation((listener) => {
+      const stop = subscribeSeason(listener);
+      return () => { stop(); stopSeason(); };
+    });
+    const physics = new CANNON.World();
+    const manager = new BeefaloManager(new THREE.Scene(), physics, '/dst/data/anim', {
+      clock, season, getPlayerPositions: () => [], findPath: (_start, target) => [target],
+      constrainPosition() {}, spawnPoop() {},
+    });
+    try {
+      const model = await manager.spawn(new THREE.Vector3(10, 0, 20));
+      const controller = model.userData.beefaloController as BeefaloController;
+      const world = (controller as any).world as BeefaloWorld;
+      expect(world).toMatchObject({ phase: 'night', season: 'winter' });
+      manager.update(0.1);
+      expect(controller.state).toBe('sleep_pre');
+      const records = manager.exportRecords();
+      clock.set({ phase: 'dusk' });
+      season.set({ season: 'spring' });
+      expect(world).toMatchObject({ phase: 'dusk', season: 'spring' });
+      expect(manager.exportRecords()).toEqual(records);
+      manager.update(0.1);
+      expect(controller.state).toBe('sleep_pst');
+      const later = await manager.spawn(new THREE.Vector3(30, 0, 40));
+      expect((later.userData.beefaloController as any).world).toBe(world);
+      expect(clockPeek).toHaveBeenCalledOnce();
+      expect(seasonPeek).toHaveBeenCalledOnce();
+      manager.dispose(); manager.dispose();
+      clock.set({ phase: 'day' });
+      season.set({ season: 'summer' });
+      expect(world).toMatchObject({ phase: 'dusk', season: 'spring' });
+      expect(stopClock).toHaveBeenCalledOnce();
+      expect(stopSeason).toHaveBeenCalledOnce();
+      expect(physics.bodies).toHaveLength(0);
+      expect(manager.exportRecords()).toEqual([]);
+    } finally { manager.dispose(); }
+  });
+
   it('shares the two build atlases, merges frames, hides HEAT, and preserves one-shot completion across facing changes', async () => {
     serveAssets();
     const factory = await createBeefaloSpriteFactory('/dst/data/anim');
@@ -135,7 +184,8 @@ describe('original beefalo assets', () => {
     const floor = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: new CANNON.Material('ground') });
     floor.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     physics.addBody(floor);
-    const world: BeefaloWorld = { isDay: () => true, isNight: () => false, getPlayerPositions: () => [],
+    const world: BeefaloManagerWorld = {
+      clock: createSignal({ phase: 'day' }), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
       findPath: (_start, target) => [target], constrainPosition() {}, spawnPoop() {} };
     const manager = new BeefaloManager(scene, physics, '/dst/data/anim', world);
     const model = await manager.spawn(new THREE.Vector3());

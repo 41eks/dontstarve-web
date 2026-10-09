@@ -7,6 +7,7 @@ import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { newEntityId } from './saveRecord';
 import type { WorldContext } from './worldContext';
+import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 
 // flower.lua chooses f1–f10, with a 1% chance of rose. butterfly.lua's placer
 // uses f1; OnDeploy consumes one butterfly and spawns a planted flower.
@@ -40,12 +41,14 @@ export class FlowerPlanting {
   private takeButterfly?: () => boolean;
   private previewVersion = 0;
   private disposed = false;
+  private readonly stopActionEvents: () => void;
 
   constructor(world: WorldContext, assetBaseUrl: string, onPlant?: () => void, random = Math.random) {
     this.world = world;
     this.assetBaseUrl = assetBaseUrl;
     this.random = random;
     this.onPlant = onPlant;
+    this.stopActionEvents = bindActionCancellation(world, this, 'flower', () => this.cancel());
     this.pointer = new PointerRaycaster(world);
     this.cursor = new BuildCursor(world, this.pointer);
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
@@ -55,6 +58,7 @@ export class FlowerPlanting {
   async begin(takeButterfly: () => boolean): Promise<void> {
     if (this.disposed) throw new Error('Flower planting has been disposed');
     this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'FLOWER_PLANT' });
     const version = this.previewVersion;
     this.takeButterfly = takeButterfly;
     this.cursor.show(': 种植花朵（Esc 取消）', 'right');
@@ -87,6 +91,7 @@ export class FlowerPlanting {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopActionEvents();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     window.removeEventListener('keydown', this.handleKeyDown);
     this.pointer.dispose();

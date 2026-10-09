@@ -19,7 +19,6 @@ Object.assign(renderer.domElement.style, {
 // renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 const cursorUi = new CursorLabelUi(renderer.domElement, `${import.meta.env.BASE_URL}dst/data/fonts/controllers.zip`);
-window.addEventListener('pagehide', () => cursorUi.dispose(), { once: true });
 
 let displayWidth = 0;
 let displayHeight = 0;

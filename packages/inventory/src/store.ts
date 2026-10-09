@@ -4,7 +4,7 @@ import {
   createHandEquipmentExistenceState, createHeadEquipmentExistenceState, createBodyEquipmentExistenceState, readonlySignal,
   type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
 } from '@dontstarve-web/signals';
-import { EQUIPMENT_KINDS, equipmentSlotAddress, backpackContainerId, backpackSlotAddress, isBackpackContainerId, BACKPACK_SLOT_COUNT } from './addresses';
+import { EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, BACKPACK_SLOT_COUNT } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type {
@@ -272,6 +272,18 @@ export class InventoryStore {
     return this.registrationByAddress.get(addressKey(address))?.slot.getEntity() ?? null;
   }
 
+  /** Return the whole held stack; a rejected destination never consumes the cursor item. */
+  returnCursor(preferred?: SlotAddress): boolean {
+    const cursor = cursorSlotAddress();
+    const entity = this.getEntity(cursor);
+    if (!entity) return true;
+    entity.flush();
+    const count = entity.components.stackable.count;
+    const candidates = [...(preferred ? [preferred] : []), ...this.inventorySlots().map(({ address }) => address)];
+    return candidates.some(address => this.getEntity(cursor) === entity
+      && this.transfer(cursor, address, count, entity.snapshot()));
+  }
+
   /** GiveItem(inst): ownership changes, not the identity/components of the incoming item. */
   receive(entity: ItemEntity, onReceived?: InventoryReceiveListener): boolean {
     if (entity.isRemoved || entity.components.inventoryitem.owner) return false;
@@ -287,15 +299,16 @@ export class InventoryStore {
   }
 
   /** Equip/container moves use the source inst and its complete component snapshot. */
-  transfer(from: SlotAddress, to: SlotAddress, count: number, expected?: Pick<InventoryStack, 'itemId' | 'skinId'>): boolean {
+  transfer(from: SlotAddress, to: SlotAddress, count: number, expected?: Pick<InventoryStack, 'itemId' | 'skinId' | 'entityId'>): boolean {
     if (!Number.isSafeInteger(count) || count <= 0 || addressKey(from) === addressKey(to)
       || !this.accessibleBackpackAddress(from) || !this.accessibleBackpackAddress(to)) return false;
     const entity = this.getEntity(from);
     entity?.flush();
-    if (!entity || entity.isRemoved || (expected && !isSameStack(entity.snapshot(), expected.itemId, expected.skinId))) return false;
+    if (!entity || entity.isRemoved || (expected && (!isSameStack(entity.snapshot(), expected.itemId, expected.skinId)
+      || (expected.entityId !== undefined && expected.entityId !== entity.id)))) return false;
     const state = entity.snapshot();
     return this.applySlotChanges([
-      { slot: from, itemId: state.itemId, skinId: state.skinId, delta: -count },
+      { slot: from, entityId: entity.id, itemId: state.itemId, skinId: state.skinId, delta: -count },
       { slot: to, ...state, entityId: count === state.count ? entity.id : undefined, delta: count },
     ]);
   }
@@ -539,6 +552,7 @@ export class InventoryStore {
       const current = next.get(key) ?? null;
       if (change.delta < 0) {
         if (!current
+          || (change.entityId !== undefined && change.entityId !== current.entityId)
           || !isSameStack(current, change.itemId, change.skinId)
           || current.count < -change.delta) return false;
         const nextCount = current.count + change.delta;
@@ -615,7 +629,7 @@ export class InventoryStore {
   }
 
   private accessibleMaterialSlots(): readonly RegisteredItemSlot[] {
-    return this.registrations.filter(({ address, slot }) => (
+    return this.registrations.filter(({ address, slot }) => address.containerId !== PLAYER_CURSOR_CONTAINER_ID && (
       !(slot instanceof StorageSlot || slot instanceof PreparedFoodSlot)
       || (isBackpackContainerId(address.containerId) ? this.accessibleBackpackAddress(address)
         : this.accessibleStorageContainerIds.has(address.containerId))
@@ -625,7 +639,7 @@ export class InventoryStore {
   private inventorySlots(): readonly RegisteredInventorySlot[] {
     return this.registrations.filter(
       (registration): registration is RegisteredInventorySlot => (
-        registration.slot instanceof InventorySlot
+        registration.slot instanceof InventorySlot && registration.address.containerId !== PLAYER_CURSOR_CONTAINER_ID
       ),
     );
   }

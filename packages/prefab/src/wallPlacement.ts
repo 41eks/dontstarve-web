@@ -8,6 +8,7 @@ import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { snapToWallSlotCenter } from './tile';
 import type { WorldContext } from './worldContext';
+import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
@@ -76,6 +77,8 @@ function snapToWallSlot(point: THREE.Vector3): THREE.Vector3 {
  * `AnimatedBuildingPlacement`.
  */
 export class WallPlacement<BuildId extends string> {
+    private readonly actionEvents: WorldContext['actionEvents'];
+    private readonly stopActionEvents: () => void;
     private disposed = false;
     private readonly canvas: HTMLCanvasElement;
     private readonly scene: THREE.Scene;
@@ -98,6 +101,8 @@ export class WallPlacement<BuildId extends string> {
         definitions: Readonly<Record<BuildId, WallDefinition>>,
         consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean,
     ) {
+        this.actionEvents = world.actionEvents;
+        this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
         this.canvas = world.renderer.domElement;
         this.scene = world.scene;
         this.camera = world.camera;
@@ -115,6 +120,7 @@ export class WallPlacement<BuildId extends string> {
         if (this.active) return Promise.resolve();
         if (this.loading) return this.loading;
 
+        this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(`: 建造 ${this.definitions[buildId].buildLabel}`, 'left');
         const previewVersion = ++this.previewVersion;
         const request = this.createPreview(buildId, previewVersion, skinId)
@@ -243,6 +249,7 @@ export class WallPlacement<BuildId extends string> {
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
+        this.stopActionEvents();
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
         this.pointer.dispose();
         this.cancel();

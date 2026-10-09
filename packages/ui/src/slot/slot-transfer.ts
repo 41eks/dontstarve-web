@@ -1,3 +1,4 @@
+import { createEffect } from '@dontstarve-web/signals';
 import { createAtlasImage } from '@dontstarve-web/animation/atlasImage';
 import { sameSlotAddress, type SlotAddress, type SlotItem, type SlotModel } from './slot-model';
 
@@ -9,7 +10,7 @@ export interface SlotTransferRequest {
   entityId?: string;
   skinId?: string;
   amount: number;
-  /** Occupied-slot clicks exchange both complete stacks; drag requests keep merge behavior. */
+  /** Occupied-slot clicks exchange the cursor and target; drag requests keep merge behavior. */
   swapWith?: { entityId?: string; itemId: string; skinId?: string; count: number };
 }
 
@@ -38,12 +39,6 @@ interface ActiveDrag {
   target?: RegisteredSlot;
 }
 
-interface PickedUpSlot {
-  item: SlotItem;
-  source: RegisteredSlot;
-  target?: RegisteredSlot;
-}
-
 function transferAmount(source: SlotModel, target: SlotModel, item: SlotItem): number {
   if (sameSlotAddress(source.address, target.address) || !target.accepts(item)) return 0;
   const targetItem = target.getItem();
@@ -62,25 +57,31 @@ function canSwap(source: SlotModel, target: SlotModel, item: SlotItem): boolean 
 
 export class SlotTransferController {
   private drag?: ActiveDrag;
-  private pickedUp?: PickedUpSlot;
+  private cursor?: SlotModel;
+  private cursorOrigin?: SlotAddress;
+  private cursorTarget?: RegisteredSlot;
+  private pendingPickup?: { operationId: number; origin: SlotAddress };
+  private pointer = { x: 0, y: 0 };
+  private returnCursor?: (origin?: SlotAddress) => void;
   private selected?: RegisteredSlot;
   private operationId = 0;
-  private pendingSwapId?: number;
   private preview?: HTMLDivElement;
-  get isHoldingItem(): boolean { return this.pickedUp !== undefined; }
+  get isHoldingItem(): boolean { return !!this.cursor?.getItem(); }
   private readonly registered = new Set<RegisteredSlot>();
-  private readonly followPickedUpItem = (event: PointerEvent) => {
+  private readonly followCursor = (event: PointerEvent) => {
+    this.pointer = { x: event.clientX, y: event.clientY };
     this.movePreview(event.clientX, event.clientY);
-    this.updatePickedUpTarget(event.clientX, event.clientY);
+    this.updateCursorTarget(event.clientX, event.clientY);
   };
-  private readonly cancelPickedUpItemOnEscape = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') { this.clearPickedUp(); this.clearSelection(); }
+  private readonly handleEscape = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') { this.returnCursor?.(this.cursorOrigin); this.clearSelection(); }
   };
   private readonly followSelection = (event: PointerEvent) => this.movePreview(event.clientX, event.clientY);
 
   /** An application action owns the click; show its item without starting a transfer. */
   showSelection(address: SlotAddress): void {
-    this.clearSelection(); this.clearPickedUp(); this.clearDrag();
+    if (this.isHoldingItem) return;
+    this.clearSelection(); this.clearDrag();
     const source = [...this.registered].find(({ slot }) => sameSlotAddress(slot.address, address));
     const item = source?.slot.getItem();
     if (!source || !item) return;
@@ -89,7 +90,7 @@ export class SlotTransferController {
     this.createPreview(source.button, item, rect.left + rect.width / 2, rect.top + rect.height / 2);
     this.preview!.dataset.selection = 'true';
     document.addEventListener('pointermove', this.followSelection);
-    document.addEventListener('keydown', this.cancelPickedUpItemOnEscape);
+    document.addEventListener('keydown', this.handleEscape);
   }
 
   syncSelection(slot: SlotModel): void {
@@ -105,7 +106,7 @@ export class SlotTransferController {
   clearSelection(): void {
     if (!this.selected) return;
     document.removeEventListener('pointermove', this.followSelection);
-    document.removeEventListener('keydown', this.cancelPickedUpItemOnEscape);
+    document.removeEventListener('keydown', this.handleEscape);
     this.preview?.remove(); this.preview = undefined; this.selected = undefined;
   }
 
@@ -116,14 +117,14 @@ export class SlotTransferController {
       this.registered.delete(registered);
       if (this.selected === registered) this.clearSelection();
       if (this.drag?.source === registered || this.drag?.target === registered) this.cancel();
-      if (this.pickedUp?.source === registered || this.pickedUp?.target === registered) {
-        this.clearPickedUp();
+      if (this.cursorTarget === registered) {
+        registered.button.classList.remove('is-drop-target'); this.cursorTarget = undefined;
       }
     };
   }
 
   begin(event: PointerEvent, slot: SlotModel): boolean {
-    if (event.button !== 0 || this.drag || this.pickedUp) return false;
+    if (event.button !== 0 || this.drag || this.isHoldingItem) return false;
     const item = slot.getItem();
     if (!item) return false;
 
@@ -142,51 +143,65 @@ export class SlotTransferController {
     return true;
   }
 
+  /** The UI reads the authoritative cursor projection and only requests domain transfers. */
+  bindCursor(slot: SlotModel, onReturn: (origin?: SlotAddress) => void): () => void {
+    this.cursor = slot;
+    this.returnCursor = onReturn;
+    const stop = createEffect(() => this.refreshCursor());
+    return () => {
+      stop();
+      if (this.cursor !== slot) return;
+      this.clearCursorPreview();
+      this.cursor = undefined; this.returnCursor = undefined;
+    };
+  }
+
   click(event: MouseEvent, slot: SlotModel): SlotClickResult {
-    if (event.button !== 0 || event.detail === 0) return { handled: false, request: null };
-
-    const target = [...this.registered].find((entry) => entry.slot === slot);
-    if (!target) return { handled: false, request: null };
-
-    if (!this.pickedUp) {
+    if (event.button !== 0 || event.detail === 0 || !this.cursor) return { handled: false, request: null };
+    this.pointer = { x: event.clientX, y: event.clientY };
+    const held = this.cursor.getItem();
+    if (!held) {
       const item = slot.getItem();
       if (!item) return { handled: false, request: null };
-      this.pickedUp = { item, source: target };
-      target.button.classList.add('is-dragging');
-      this.createPreview(target.button, item, event.clientX, event.clientY);
-      document.addEventListener('pointermove', this.followPickedUpItem);
-      document.addEventListener('keydown', this.cancelPickedUpItemOnEscape);
-      return { handled: true, request: null };
+      this.clearSelection();
+      const request = this.createTransferRequest(slot, this.cursor, item);
+      if (request) this.pendingPickup = { operationId: request.operationId, origin: { ...slot.address } };
+      return { handled: true, request };
     }
-
-    const pickedUp = this.pickedUp;
-    if (target === pickedUp.source) {
-      this.clearPickedUp();
-      return { handled: true, request: null };
-    }
-
-    const sourceItem = pickedUp.source.slot.getItem();
-    if (!sourceItem
-      || sourceItem.id !== pickedUp.item.id
-      || sourceItem.skinId !== pickedUp.item.skinId
-      || sourceItem.entityId !== pickedUp.item.entityId) {
-      this.clearPickedUp();
-      return { handled: true, request: null };
-    }
-
-    const request = target.slot.getItem()
-      ? this.createSwapRequest(pickedUp.source.slot, target.slot, sourceItem)
-      : this.createTransferRequest(pickedUp.source.slot, target.slot, sourceItem);
-    if (request?.swapWith) this.pendingSwapId = request.operationId;
-    else if (request) this.clearPickedUp();
+    const request = slot.getItem()
+      ? this.createSwapRequest(this.cursor, slot, held)
+      : this.createTransferRequest(this.cursor, slot, held);
     return { handled: true, request };
   }
 
-  /** The application acknowledges an atomic swap; failed swaps keep the cursor item. */
+  /** Publish a preview only after the application has committed the transfer. */
   completeTransfer(operationId: number, success: boolean): void {
-    if (this.pendingSwapId !== operationId) return;
-    this.pendingSwapId = undefined;
-    if (success) this.clearPickedUp();
+    if (this.pendingPickup?.operationId === operationId) {
+      if (success) this.cursorOrigin = this.pendingPickup.origin;
+      this.pendingPickup = undefined;
+    }
+    this.refreshCursor();
+  }
+
+  private refreshCursor(): void {
+    const item = this.cursor?.getItem();
+    if (!item) {
+      this.clearCursorPreview();
+      this.cursorOrigin = undefined;
+      return;
+    }
+    this.clearSelection();
+    this.cursorTarget?.button.classList.remove('is-drop-target');
+    this.cursorTarget = undefined;
+    const source = [...this.registered].find(({ slot }) => sameSlotAddress(slot.address, this.cursorOrigin ?? null))
+      ?? [...this.registered][0];
+    this.createPreview(source?.button, item, this.pointer.x, this.pointer.y);
+    this.preview!.dataset.cursor = 'true';
+    this.preview!.dataset.containerId = this.cursor!.address.containerId;
+    this.preview!.dataset.slotKey = this.cursor!.address.slotKey;
+    document.addEventListener('pointermove', this.followCursor);
+    document.addEventListener('keydown', this.handleEscape);
+    this.updateCursorTarget(this.pointer.x, this.pointer.y);
   }
 
   move(event: PointerEvent): boolean {
@@ -224,6 +239,7 @@ export class SlotTransferController {
 
     const sourceItem = drag.source.slot.getItem();
     const request = sourceItem?.id === drag.item.id && sourceItem.skinId === drag.item.skinId
+      && sourceItem.entityId === drag.item.entityId
       ? this.createTransferRequest(drag.source.slot, target.slot, sourceItem)
       : null;
     return {
@@ -237,7 +253,7 @@ export class SlotTransferController {
     this.clearDrag();
   }
 
-  private findTarget(clientX: number, clientY: number, source: RegisteredSlot): RegisteredSlot | undefined {
+  private findTarget(clientX: number, clientY: number, source?: RegisteredSlot): RegisteredSlot | undefined {
     for (const registered of this.registered) {
       if (registered === source || !registered.button.isConnected) continue;
       const rect = registered.button.getBoundingClientRect();
@@ -258,28 +274,24 @@ export class SlotTransferController {
     this.drag = undefined;
   }
 
-  private clearPickedUp(): void {
-    if (!this.pickedUp) return;
-    this.pickedUp.source.button.classList.remove('is-dragging');
-    this.pickedUp.target?.button.classList.remove('is-drop-target');
-    document.removeEventListener('pointermove', this.followPickedUpItem);
-    document.removeEventListener('keydown', this.cancelPickedUpItemOnEscape);
-    this.preview?.remove();
-    this.preview = undefined;
-    this.pickedUp = undefined;
-    this.pendingSwapId = undefined;
+  private clearCursorPreview(): void {
+    this.cursorTarget?.button.classList.remove('is-drop-target');
+    this.cursorTarget = undefined;
+    document.removeEventListener('pointermove', this.followCursor);
+    if (!this.selected) document.removeEventListener('keydown', this.handleEscape);
+    if (this.preview?.dataset.cursor === 'true') { this.preview.remove(); this.preview = undefined; }
   }
 
-  private updatePickedUpTarget(clientX: number, clientY: number): void {
-    const pickedUp = this.pickedUp;
-    if (!pickedUp) return;
-    const target = this.findTarget(clientX, clientY, pickedUp.source);
-    if (pickedUp.target === target) return;
-    pickedUp.target?.button.classList.remove('is-drop-target');
-    pickedUp.target = target;
+  private updateCursorTarget(clientX: number, clientY: number): void {
+    const item = this.cursor?.getItem();
+    if (!item || !this.cursor) return;
+    const target = this.findTarget(clientX, clientY);
+    if (this.cursorTarget === target) return;
+    this.cursorTarget?.button.classList.remove('is-drop-target');
+    this.cursorTarget = target;
     if (target && (target.slot.getItem()
-      ? canSwap(pickedUp.source.slot, target.slot, pickedUp.item)
-      : transferAmount(pickedUp.source.slot, target.slot, pickedUp.item) > 0)) {
+      ? canSwap(this.cursor, target.slot, item)
+      : transferAmount(this.cursor, target.slot, item) > 0)) {
       target.button.classList.add('is-drop-target');
     }
   }
@@ -312,27 +324,28 @@ export class SlotTransferController {
       from: { ...source.address },
       to: { ...target.address },
       itemId: item.id,
+      ...(item.entityId === undefined ? {} : { entityId: item.entityId }),
       ...(item.skinId === undefined ? {} : { skinId: item.skinId }),
       amount,
     };
   }
 
   private createPreview(
-    sourceButton: HTMLButtonElement,
+    sourceButton: HTMLButtonElement | undefined,
     item: SlotItem,
     clientX: number,
     clientY: number,
   ): void {
     this.preview?.remove();
-    const sourceIcon = sourceButton.querySelector<HTMLElement>('.inventory-slot__icon');
+    const sourceIcon = sourceButton?.querySelector<HTMLElement>('.inventory-slot__icon');
     const preview = document.createElement('div');
     preview.className = 'slot-drag-preview';
     preview.dataset.itemId = item.id;
     preview.dataset.skinId = item.skinId ?? '';
     preview.setAttribute('aria-hidden', 'true');
     const sourceRect = sourceIcon?.getBoundingClientRect()
-      ?? sourceButton.querySelector<HTMLElement>('.inventory-slot__content')?.getBoundingClientRect()
-      ?? sourceButton.getBoundingClientRect();
+      ?? sourceButton?.querySelector<HTMLElement>('.inventory-slot__content')?.getBoundingClientRect()
+      ?? sourceButton?.getBoundingClientRect() ?? { width: 48, height: 48 };
     Object.assign(preview.style, {
       position: 'fixed',
       zIndex: '2147483647',
@@ -346,8 +359,8 @@ export class SlotTransferController {
       transform: 'translate(-50%, -50%)',
     });
 
-    if (sourceIcon) {
-      const image = createAtlasImage('slot-drag-preview__icon', sourceIcon.dataset.atlas!, sourceIcon.dataset.element!);
+    {
+      const image = createAtlasImage('slot-drag-preview__icon', item.atlas ?? 'images/inventoryimages.xml', item.icon);
       Object.assign(image.style, {
         display: 'block',
         width: '100%',
@@ -370,6 +383,15 @@ export class SlotTransferController {
         textShadow: '-1px -1px #21180e, 1px -1px #21180e, -1px 1px #21180e, 1px 1px #21180e',
       });
       preview.append(count);
+    }
+
+    if (item.durabilityPercent !== undefined) {
+      const percent = document.createElement('span');
+      percent.className = 'slot-drag-preview__percent';
+      percent.textContent = `${item.durabilityPercent > 0 ? Math.max(1, Math.round(item.durabilityPercent * 100)) : 0}%`;
+      Object.assign(percent.style, { position: 'absolute', bottom: '-12px', color: '#fff',
+        font: '700 12px/1 sans-serif', textShadow: '0 1px 2px #21180e' });
+      preview.append(percent);
     }
 
     document.body.append(preview);

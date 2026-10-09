@@ -896,9 +896,10 @@ three-roaming-save-v1.json
 
 - 普通背包：`containerId = "player:inventory"`，`slotKey = "0"` 到 `"14"`。
 - 装备栏：`containerId = "player:equipment"`，`slotKey = "hand" | "body" | "head"`。
+- 鼠标槽：`containerId = "player:cursor"`，`slotKey = "0"`，`slotCount = 1`。保存完整物品快照，读档恢复鼠标持有；旧存档缺少该容器时按空槽加载。鼠标位置及归还来源地址不保存，重载后 Esc 尝试放回普通物品栏。
 - 背包实体容器：运行时 `containerId = "item:backpack:<entityId>"`，`slotKey = "0"` 到 `"7"`；存档随物品嵌套在 `item.container` 或地面 `components.stack.container`，每个背包独立保存，不再导出玩家级 `player:backpack`。旧共享容器仅在归属明确时迁移。
 
-JSON 按容器分组，只写非空槽，空槽由 `slotCount` 和缺失的 `slotKey` 推导。每个 `item` 仅保存权威字段 `itemId`、`skinId` 和 `count`；名称、图标、Atlas、最大堆叠数和装备类型都从当前 `INVENTORY_ITEM_SPECS` / `INVENTORY_SKIN_SPECS` 重建，避免元数据在存档中过期。
+JSON 按容器分组，只写非空槽，空槽由 `slotCount` 和缺失的 `slotKey` 推导。每个 `item` 保存权威字段 `entityId`、`itemId`、`skinId`、`count` 以及已支持的燃料、使用次数、唱片和嵌套容器状态；名称、图标、Atlas、最大堆叠数和装备类型都从当前 `INVENTORY_ITEM_SPECS` / `INVENTORY_SKIN_SPECS` 重建，避免元数据在存档中过期。
 
 `bufferedBuilds` 是 `InventoryStore` 的权威状态，也必须保存。读取时需要校验：
 

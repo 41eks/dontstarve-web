@@ -1,5 +1,6 @@
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type { FarmSoilTarget, PreparedSeedPlant, PreparedFarmTill, FarmActionWorld } from '@dontstarve-web/stategraphs/farmActions';
+import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, createArchiveSprite, type ArchiveSprite, type ArchiveSpriteDefinition } from '@dontstarve-web/animation/archiveSprite';
 import { BuildCursor } from './buildCursor';
@@ -55,6 +56,7 @@ function spriteDefinition(archive: string, bank: string, animation: string): Arc
 
 /** farm_plow.lua's deployment, timer, terraform and fold-up lifecycle. */
 export class FarmPlowPlacement implements FarmActionWorld {
+  private readonly stopActionEvents: () => void;
   private readonly assets: ArchiveSpriteAssets;
   private readonly pointer: PointerRaycaster;
   private readonly cursor: BuildCursor;
@@ -82,6 +84,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     returnItem: (position: THREE.Vector3, item: InventoryStack) => Promise<void>,
     blockers: () => readonly FarmPlowBlocker[] = () => [], random = Math.random) {
     this.world = world; this.turf = turf; this.returnItem = returnItem; this.blockers = blockers; this.random = random;
+    this.stopActionEvents = bindActionCancellation(world, this, 'deploy', () => this.cancel());
     this.assets = new ArchiveSpriteAssets(`${assetBaseUrl.replace(/\/$/, '')}/anim`, 'farm');
     this.pointer = new PointerRaycaster(world);
     this.cursor = new BuildCursor(world, this.pointer);
@@ -110,7 +113,9 @@ export class FarmPlowPlacement implements FarmActionWorld {
   }
 
   async begin(takeItem: () => ItemEntity | undefined): Promise<void> {
+    if (this.disposed) throw new Error('Farm plow has been disposed');
     this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DEPLOY' });
     const version = this.previewVersion;
     this.takeItem = takeItem;
     this.cursor.show('鼠标右键：布署', 'right');
@@ -529,6 +534,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     return sprites.map(({ model: object }) => ({ object, footPosition: object.position.clone().setY(0), cameraDepth: 0 }));
   }
   dispose(): void {
+    this.stopActionEvents();
     if (this.disposed) return;
     this.disposed = true; this.cancel(); this.pointer.dispose(); this.removeDigListener();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);

@@ -66,9 +66,12 @@ export class ItemEntity {
   };
   readonly transform: { position: [number, number, number]; rotationY: number } = { position: [0, 0, 0], rotationY: 0 };
   skinId?: string;
+  castsound?: string;
+  fxcolour?: readonly [number, number, number];
   phonographRecord?: string;
   private readonly runtime = new Map<string, ItemRuntimeComponent>();
   private removed = false;
+  private readonly tags = new Set<string>();
 
   constructor(state: InventoryStack) {
     this.id = state.entityId ?? newItemEntityId();
@@ -90,6 +93,12 @@ export class ItemEntity {
   }
 
   get isRemoved(): boolean { return this.removed; }
+  hasTag(tag: string): boolean { return this.tags.has(tag); }
+  addTag(tag: string): void { this.tags.add(tag); }
+  removeTag(tag: string): void { this.tags.delete(tag); }
+  getComponent<T extends ItemRuntimeComponent>(name: string): T | undefined {
+    return this.runtime.get(name) as T | undefined;
+  }
   snapshot(includeIdentity = true): InventoryStack {
     return {
       ...(includeIdentity ? { entityId: this.id } : {}), itemId: this.prefab, count: this.components.stackable.count,

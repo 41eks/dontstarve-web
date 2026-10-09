@@ -2,10 +2,13 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createHandEquipmentExistenceState } from '../../signals/src';
 import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
+import { HammerActionController } from '../../stategraphs/src/hammer';
 import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
-import { setupLightStaffCasting } from '../../stategraphs/src/yellowstaff';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { ActionWorldContext, ActionAnimationController } from '../../stategraphs/src/actionContext';
+import { frontTasks, registerFrontTask } from '../../../src/animate';
+
+vi.mock('../../../src/universal', () => ({}));
 
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -14,6 +17,51 @@ function context() {
   return { player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
 }
+
+it('registers only the equipped controller, handles restored equipment and removes captured tasks on replacement/disposal', () => {
+  const equipment = createHandEquipmentExistenceState(), world = context();
+  world.registerFrameTask = registerFrontTask;
+  const first = { itemId: 'goldenpickaxe', EQUIPSLOTS: 'HANDS' as const,
+    entity: { id: 'pickaxe', prefab: 'goldenpickaxe', isRemoved: false } };
+  equipment.set(first);
+  const animation = { isMining: false, isHammering: false, isCasting: false, isNetting: false,
+    cancelMine: vi.fn(), cancelHammer: vi.fn() } as unknown as ActionAnimationController;
+  const locomotor = { goToPoint: () => true, stop: vi.fn(), destination: undefined };
+  const hammer = new HammerActionController(world, animation, locomotor, equipment, () => []);
+  const pickaxe = new PickaxeActionController(world, animation, locomotor, equipment, () => []);
+  const hammerUpdate = vi.spyOn(hammer, 'update'), pickaxeUpdate = vi.spyOn(pickaxe, 'update');
+  try {
+    expect(frontTasks).toHaveLength(1);
+    const originalTask = frontTasks[0];
+    originalTask(0.1);
+    expect(pickaxeUpdate).toHaveBeenCalledExactlyOnceWith(0.1);
+    expect(hammerUpdate).not.toHaveBeenCalled();
+    equipment.set({ ...first });
+    expect(frontTasks).toEqual([originalTask]);
+    equipment.set({ ...first, entity: { ...first.entity, id: 'replacement' } });
+    expect(frontTasks).toHaveLength(1);
+    expect(frontTasks[0]).not.toBe(originalTask);
+    originalTask(0.2);
+    expect(pickaxeUpdate).toHaveBeenCalledOnce();
+    const replacedTask = frontTasks[0];
+    equipment.set({ itemId: 'hammer', EQUIPSLOTS: 'HANDS' });
+    expect(frontTasks).toHaveLength(1);
+    replacedTask(0.2);
+    frontTasks[0](0.3);
+    expect(pickaxeUpdate).toHaveBeenCalledOnce();
+    expect(hammerUpdate).toHaveBeenCalledExactlyOnceWith(0.3);
+    const captured = [...frontTasks];
+    equipment.set(null);
+    expect(frontTasks).toEqual([]);
+    captured.forEach(task => task(0.4));
+    expect(hammerUpdate).toHaveBeenCalledOnce();
+    equipment.set({ itemId: 'hammer', EQUIPSLOTS: 'HANDS' });
+    hammer.dispose(); pickaxe.dispose();
+    expect(frontTasks).toEqual([]);
+    equipment.set(first);
+    expect(frontTasks).toEqual([]);
+  } finally { hammer.dispose(); pickaxe.dispose(); }
+});
 
 it('uses its own tool IDs, preserves component republishing and immediately cancels same-ID replacement', () => {
   const equipment = createHandEquipmentExistenceState();
@@ -77,38 +125,4 @@ it('discards a prepared reskin after the equipped entity changes during loading 
   animation.cancelReskin.mockClear();
   equipment.set(null);
   expect(animation.cancelReskin).not.toHaveBeenCalled();
-});
-
-it('selects the cold-light staff internally and cancels a same-ID replacement during preparation', async () => {
-  const equipment = createHandEquipmentExistenceState();
-  equipment.set({ itemId: 'yellowstaff', EQUIPSLOTS: 'HANDS' });
-  const world = context(), canvas = world.renderer.domElement;
-  Object.assign(canvas, { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
-  vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(1, 0, 0));
-  let release!: () => void, cast: (() => void) | undefined;
-  const ready = new Promise<void>(resolve => { release = resolve; });
-  const stars = { prefabId: 'staffcoldlight' as const, prepare: vi.fn(() => ready), spawn: vi.fn(async () => {}) };
-  const animation = { isCasting: false, setFacing: vi.fn(), stategraph: { cancelAction: vi.fn() },
-    playStaffCast: vi.fn((callback: () => void) => { cast = callback; return true; }) };
-  const stop = setupLightStaffCasting(world, animation as unknown as ActionAnimationController, stars, equipment, vi.fn(), vi.fn());
-  const click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown', { cancelable: true }),
-    { button: 2, clientX: 50, clientY: 50 }));
-  click();
-  expect(stars.prepare).not.toHaveBeenCalled();
-  const first = { itemId: 'opalstaff', EQUIPSLOTS: 'HANDS' as const,
-    entity: { id: 'first', prefab: 'opalstaff', isRemoved: false } };
-  equipment.set(first);
-  click();
-  expect(stars.prepare).toHaveBeenCalledOnce();
-  equipment.set({ ...first, entity: { ...first.entity, id: 'replacement' } });
-  release(); await Promise.resolve();
-  expect(animation.playStaffCast).not.toHaveBeenCalled();
-  click(); await Promise.resolve();
-  expect(animation.playStaffCast).toHaveBeenCalledOnce();
-  cast?.();
-  expect(stars.spawn).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(1, 0, 0));
-  stop();
-  animation.stategraph.cancelAction.mockClear();
-  equipment.set(null);
-  expect(animation.stategraph.cancelAction).not.toHaveBeenCalled();
 });

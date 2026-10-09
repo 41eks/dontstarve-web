@@ -19,8 +19,9 @@ export interface MouseActions {
 export class PlayerActionPicker {
   readonly pointer: PointerRaycaster;
   private readonly providers = new Set<() => readonly MouseActionCandidate[]>();
+  private readonly isEnabled: () => boolean;
 
-  constructor(pointer: PointerRaycaster) { this.pointer = pointer; }
+  constructor(pointer: PointerRaycaster, isEnabled = () => true) { this.pointer = pointer; this.isEnabled = isEnabled; }
 
   register(provider: () => readonly MouseActionCandidate[]): () => void {
     this.providers.add(provider);
@@ -28,6 +29,7 @@ export class PlayerActionPicker {
   }
 
   getMouseActions(): MouseActions {
+    if (!this.isEnabled()) return {};
     this.pointer.beginFrame();
     try {
       const candidates = [...this.providers].flatMap(provider => provider());
