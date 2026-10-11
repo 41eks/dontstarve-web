@@ -120,7 +120,7 @@ export const BUTTERFLY_DEFINITIONS: Readonly<Record<ButterflyPrefabId, Butterfly
 /** An entity as the brains see it: tags, a ground position and a validity flag. */
 function positionOf(transform: ItemEntity['transform']): () => THREE.Vector3 {
   const scratch = new THREE.Vector3();
-  return () => scratch.fromArray(transform.position);
+  return () => scratch.copy(transform.position);
 }
 
 class SimpleEntity implements BrainEntity {
@@ -381,11 +381,11 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
   private stepMotor(dt: number): void {
     if (this.motorSpeed <= 0) return;
     const radians = this.rotation / RADIANS;
-    const position = this.scratch.fromArray(this.transform.position);
+    const position = this.scratch.copy(this.transform.position);
     position.x += Math.cos(radians) * this.motorSpeed * dt;
     position.z -= Math.sin(radians) * this.motorSpeed * dt;
     this.butterflyWorld.constrainPosition?.(position);
-    this.transform.position = position.toArray();
+    this.transform.position.copy(position);
   }
 
   tagsChanged?: () => void;

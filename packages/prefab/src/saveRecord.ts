@@ -9,6 +9,7 @@ export interface PlacementSaveRecord {
     health?: { current: number; maximum: number };
     wall?: import('./wallSkins').WallSaveState;
     sculptingtable?: { itemname: string };
+    birdcage?: import('./birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };
     moonbase?: import('./moonbase').MoonbaseSaveState;
   };

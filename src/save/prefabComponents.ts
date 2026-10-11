@@ -3,7 +3,8 @@ import type { SavedContainer, SavedEntity, SavedTransform } from './types';
 import type { SaveCatalog } from './deserialize';
 import type { BulbPlantVariant } from '@dontstarve-web/prefab/bulb_plant';
 import { FLOWER_ANIMATIONS } from '@dontstarve-web/prefab/flower';
-import { BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
+import { BEEFALO_BEARD_BITS, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
+import type { BeardSave } from '../../packages/componets/src/beard';
 import { BULB_PLANT_LIGHT_STATES, BULB_PLANT_MAX_ON_TIME, BULB_PLANT_MAX_RECHARGE_TIME,
   bulbPlantRegrowTime } from '@dontstarve-web/prefab/bulb_plant';
 import { WORMHOLE_SKINS } from '@dontstarve-web/prefab/wormhole';
@@ -11,9 +12,12 @@ import { WALL_SKIN_ARCHIVES } from '@dontstarve-web/prefab/wallSkins';
 import { FARM_PLOW_DRILLING_DURATION, FARM_PLOW_USES, FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { PHONOGRAPH_PLAY_TIME } from '@dontstarve-web/prefab/phonograph';
 import { SCULPTABLE_MATERIALS } from '@dontstarve-web/prefab/sculptingtable';
+import { CAGE_STATES } from '@dontstarve-web/prefab/birdcage';
+import { BIRD_IDS, isBirdId } from '@dontstarve-web/prefab/birds';
 import { MOONBASE_TIMER_LIMITS } from '@dontstarve-web/prefab/moonbase';
+import { LAVA_POND_ROCK_TYPES } from '@dontstarve-web/prefab/lava_pond';
 import { BASE_COOK_TIME, GetRecipe } from '../../packages/componets/src/cooking';
-import { choice, fail, integer, number, object, string } from './validation';
+import { array, choice, fail, integer, number, object, string } from './validation';
 
 export interface EntitySaveContext {
   readonly prefab: string;
@@ -39,6 +43,19 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     const { keys } = schema;
     const c = object(value, path, keys);
     const components: SavedEntity['components'] = {};
+    if (keys.includes('lavaPond') && c.lavaPond !== undefined) {
+      const p = `${path}.lavaPond`, pond = object(c.lavaPond, p, ['rocks']);
+      components.lavaPond = {};
+      if (pond.rocks !== undefined) components.lavaPond.rocks = array(pond.rocks, `${p}.rocks`).map((value, i) => {
+        const r = `${p}.rocks[${i}]`, rock = object(value, r, ['rocktype', 'offset']);
+        // Lua uses an empty string for the unnumbered first rock prefab.
+        if (typeof rock.rocktype !== 'string' || !(LAVA_POND_ROCK_TYPES as readonly string[]).includes(rock.rocktype)) fail(`${r}.rocktype`, 'unknown lava pond rock type');
+        const offset = array(rock.offset, `${r}.offset`, 3);
+        if (offset.length !== 3) fail(`${r}.offset`, 'expected three coordinates');
+        return { rocktype: rock.rocktype as typeof LAVA_POND_ROCK_TYPES[number],
+          offset: offset.map((value, axis) => number(value, `${r}.offset[${axis}]`, -Number.MAX_SAFE_INTEGER)) as [number, number, number] };
+      });
+    }
     if (keys.includes('pickable') && c.pickable !== undefined) {
       const p = `${path}.pickable`;
       const pickable = object(c.pickable, p, ['picked', 'regrowSeconds', 'paused']);
@@ -127,7 +144,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (skinId !== undefined && !Object.hasOwn(building.skinArchives ?? {}, skinId)) fail(`${path}.building.skinId`, 'unsupported building skin');
       components.building = { state, ...(skinId === undefined ? {} : { skinId }) };
       if (b.burnt !== undefined) {
-        if (b.burnt !== true || (prefab !== 'treasurechest' && prefab !== 'cookpot')) fail(`${path}.building.burnt`, 'expected a burnt combustible building');
+        if (b.burnt !== true || (prefab !== 'treasurechest' && prefab !== 'cookpot' && prefab !== 'winterometer')) fail(`${path}.building.burnt`, 'expected a burnt combustible building');
         components.building.burnt = true;
       }
       if (isContainer && (!b.burnt || c.container !== undefined)) {
@@ -141,6 +158,23 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       const componentPath = `${path}.sculptingtable`;
       const table = object(c.sculptingtable, componentPath, ['itemname']);
       components.sculptingtable = { itemname: choice(table.itemname, `${componentPath}.itemname`, Object.keys(SCULPTABLE_MATERIALS)) };
+    }
+    if (keys.includes('birdcage') && c.birdcage !== undefined) {
+      const p = `${path}.birdcage`, cage = object(c.birdcage, p, ['cageState', 'birdType', 'occupant', 'item']);
+      // The poisoned (sick) state needs the unported toadstool gas.
+      const cageState = choice(cage.cageState, `${p}.cageState`,
+        [CAGE_STATES.DEAD, CAGE_STATES.SKELETON, CAGE_STATES.EMPTY, CAGE_STATES.FULL]);
+      const birdType = cage.birdType === undefined ? undefined : choice(cage.birdType, `${p}.birdType`, BIRD_IDS);
+      const occupant = cage.occupant === undefined ? undefined : stack(cage.occupant, `${p}.occupant`);
+      const item = cage.item === undefined ? undefined : stack(cage.item, `${p}.item`);
+      if (occupant && (!isBirdId(occupant.itemId) || occupant.count !== 1)) fail(`${p}.occupant`, 'expected one bird');
+      if (item && item.count !== 1) fail(`${p}.item`, 'expected one shelved item');
+      if ((cageState === CAGE_STATES.FULL) !== (occupant !== undefined)) fail(p, 'an occupied cage needs exactly one occupant');
+      if (cageState === CAGE_STATES.FULL && occupant!.itemId !== birdType) fail(`${p}.birdType`, 'must match the occupant');
+      const shelved = cageState === CAGE_STATES.DEAD ? 'smallmeat' : cageState === CAGE_STATES.SKELETON ? 'spoiled_food' : undefined;
+      if (item?.itemId !== shelved) fail(`${p}.item`, shelved ? `expected ${shelved} on the shelf` : 'unexpected shelved item');
+      components.birdcage = { cageState, ...(birdType === undefined ? {} : { birdType }),
+        ...(occupant ? { occupant } : {}), ...(item ? { item } : {}) };
     }
     if (keys.includes('workable') && c.workable !== undefined) {
       const p = `${path}.workable`, work = object(c.workable, p, ['workleft', 'maxwork']);
@@ -219,11 +253,13 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     }
     if (keys.includes('beefalo')) {
       const componentPath = `${path}.beefalo`;
-      const beefalo = object(c.beefalo, componentPath, ['home', 'heading', 'poopRemainingSeconds']);
+      const beefalo = object(c.beefalo, componentPath, ['home', 'heading', 'poopRemainingSeconds', 'beard']);
       const home = transform({ position: beefalo.home, rotationY: 0 }, `${componentPath}.home`, true).position;
       components.beefalo = { home, heading: number(beefalo.heading, `${componentPath}.heading`, 0, 360),
         poopRemainingSeconds: number(beefalo.poopRemainingSeconds, `${componentPath}.poopRemainingSeconds`,
-          Number.MIN_VALUE, BEEFALO_BEHAVIOR.poopMaxSeconds) };
+          Number.MIN_VALUE, BEEFALO_BEHAVIOR.poopMaxSeconds),
+        // beard.lua OnSave; saves from before the beard component keep the full, hairy default.
+        ...beefalo.beard === undefined ? {} : { beard: beard(beefalo.beard, `${componentPath}.beard`) } };
     }
     if (keys.includes('bulbPlant')) {
       const componentPath = `${path}.bulbPlant`;
@@ -261,4 +297,10 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     }
     return components;
   };
+}
+
+function beard(value: unknown, path: string): BeardSave {
+  const data = object(value, path, ['growth', 'growthaccumulator', 'bits']);
+  return { growth: integer(data.growth, `${path}.growth`), growthaccumulator: number(data.growthaccumulator, `${path}.growthaccumulator`),
+    bits: integer(data.bits, `${path}.bits`, 0, BEEFALO_BEARD_BITS) };
 }

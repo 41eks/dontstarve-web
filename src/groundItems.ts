@@ -282,9 +282,9 @@ export class GroundItemManager {
     this.prefabs.get(entity.prefab)?.configureEntity?.(entity);
     definition = { ...definition, ...entity.snapshot(), entity };
     id = entity.id;
-    entity.transform.position = [position.x, dropped ? 0 : position.y, position.z];
+    entity.transform.position.set(position.x, dropped ? 0 : position.y, position.z);
     visual.bindTransform?.(entity.transform);
-    visual.model.position.fromArray(entity.transform.position);
+    visual.model.position.copy(entity.transform.position);
     visual.model.userData.entityId = id;
     visual.setDefinition?.(definition);
     visual.bindEntity?.(entity);
@@ -323,7 +323,7 @@ export class GroundItemManager {
       entity.ListenForEvent('onremove', () => this.removeVisual(record)),
       entity.ListenForEvent('perished', () => { void this.replacePerished(record).catch((error: unknown) =>
         console.error(`Unable to replace perished ${entity.prefab}`, error)); }),
-      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.fromArray(entity.transform.position); model.dispatchEvent({ type: 'ondropped' }); }),
+      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); model.dispatchEvent({ type: 'ondropped' }); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
     // An inst that perished between holders is replaced once it reaches the ground.
@@ -357,7 +357,7 @@ export class GroundItemManager {
         visual.dispose(); this.pendingDrops.delete(entity.id); return;
       }
       this.pendingDrops.delete(entity.id);
-      this.addVisual(entity.id, definition, new THREE.Vector3().fromArray(entity.transform.position), visual, true);
+      this.addVisual(entity.id, definition, entity.transform.position.clone(), visual, true);
     }).catch((error: unknown) => console.error('Unable to render dropped item', error));
   }
 
@@ -366,14 +366,14 @@ export class GroundItemManager {
     const footPosition = new THREE.Vector3();
     return Object.defineProperty(record, 'footPosition', {
       enumerable: true,
-      get: () => footPosition.fromArray(record.entity.transform.position),
+      get: () => footPosition.copy(record.entity.transform.position),
     }) as GroundItemRecord;
   }
 
   private addFlungVisual(definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual): void {
     const entity = definition.entity ?? (definition.entityId ? this.entities.get(definition.entityId) : undefined)
       ?? this.entities.create({ ...definition, entityId: newEntityId() });
-    entity.transform.position = origin.toArray();
+    entity.transform.position.copy(origin);
     const fling = new LootFling(entity.transform);
     this.addVisual(entity.id, { ...definition, entity }, fling.position, visual, true);
     this.items.get(visual.model)!.fling = fling;
@@ -383,7 +383,7 @@ export class GroundItemManager {
     const pending = [...this.pendingDrops.values()].filter(({ entity }) => !entity.isRemoved && entity.persists && !entity.components.inventoryitem.owner)
       .map(({ entity }) => {
         const { entityId: _entityId, ...stack } = entity.snapshot();
-        return { id: entity.id, transform: { position: [...entity.transform.position] as [number, number, number], rotationY: 0 },
+        return { id: entity.id, transform: { position: entity.transform.position.toArray(), rotationY: 0 },
           components: { stack } };
       });
     return [...pending, ...[...this.items.values()].flatMap<SavedEntity>((record) => {
@@ -393,7 +393,7 @@ export class GroundItemManager {
       return [{
         id,
         transform: {
-          position: [...record.entity.transform.position],
+          position: record.entity.transform.position.toArray(),
           rotationY: 0,
         },
         components: {
@@ -559,7 +559,7 @@ export class GroundItemManager {
     if ((event.button !== 0 && event.button !== 2) || event.defaultPrevented || this.items.size === 0) return;
 
     // Input can arrive between active frames after an entity was teleported.
-    for (const record of this.items.values()) record.model.position.fromArray(record.entity.transform.position);
+    for (const record of this.items.values()) record.model.position.copy(record.entity.transform.position);
     const bounds = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
     this.pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
@@ -602,7 +602,7 @@ export class GroundItemManager {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     this.prefabs.update(dt, cameraQuaternion);
     for (const item of this.items.values()) {
-      item.model.position.fromArray(item.entity.transform.position);
+      item.model.position.copy(item.entity.transform.position);
       item.model.quaternion.copy(cameraQuaternion);
       item.update?.(dt);
       if (item.fling) {
@@ -610,7 +610,7 @@ export class GroundItemManager {
         item.model.children[0].position.y = item.fling.height;
         if (item.fling.settled) item.fling = undefined;
       }
-      item.model.position.fromArray(item.entity.transform.position);
+      item.model.position.copy(item.entity.transform.position);
       this.updateProximity(item);
       if (item.entity.isRemoved || item.isRemoved?.()) {
         this.removeVisual(item);

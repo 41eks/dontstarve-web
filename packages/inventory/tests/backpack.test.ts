@@ -82,7 +82,7 @@ describe('entity-owned backpack containers', () => {
     const dropped = inventory.extract(body, 1, second)!;
     expect(dropped).toBe(second);
     expect(dropped.components.container!.IsOpen()).toBe(false);
-    dropped.transform.position = [2, 0, 3];
+    dropped.transform.position.set(2, 0, 3);
     dropped.apply({ ...dropped.snapshot(), skinId: 'backpack_babybeef' });
     expect(dropped.components.container!.slots[0].getEntity()).toBe(log);
     expect(inventory.materialSummary().log).toBe(0);
@@ -91,7 +91,7 @@ describe('entity-owned backpack containers', () => {
     expect(groundState.container!.slots[0].item.entityId).toBe(log.id);
     const groundReload = store();
     const loadedBag = new ItemEntity(groundState);
-    loadedBag.transform.position = [2, 0, 3];
+    loadedBag.transform.position.set(2, 0, 3);
     expect(groundReload.receive(loadedBag)).toBe(true);
     expect(groundReload.transfer(a, body, 1)).toBe(true);
     expect(groundReload.getEntity(secondSlot)!.id).toBe(log.id);

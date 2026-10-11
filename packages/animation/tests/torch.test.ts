@@ -230,12 +230,12 @@ describe('torch prefab burning lifecycle', () => {
       firefliesWorld: { isNight: () => false, getPlayerPositions: () => [] }, getNeighbours: () => [] });
     const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1, remainingFuel: 20, torchLit: true };
     const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 18 });
-    entity.transform.position = [4, 0, 6];
+    entity.transform.position.set(4, 0, 6);
     const visual = await factory.create(definition);
     try {
       const held = { itemId: 'hammer', EQUIPSLOTS: 'HANDS' as const };
       handEquipmentExistenceState.set(held);
-      visual.model.position.fromArray(entity.transform.position);
+      visual.model.position.copy(entity.transform.position);
       // Prepared visual receives the actual state committed after an asynchronous drop.
       visual.setDefinition?.({ ...definition, remainingFuel: 18, entity });
       visual.model.dispatchEvent({ type: 'onload' });
@@ -253,8 +253,8 @@ describe('torch prefab burning lifecycle', () => {
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', visual.model.position);
       const before = visual.model.position.clone();
       visual.update?.(0.1);
-      expect(new THREE.Vector3().fromArray(entity.transform.position).distanceTo(before)).toBeLessThan(1);
-      visual.model.position.fromArray(entity.transform.position);
+      expect(entity.transform.position.clone().distanceTo(before)).toBeLessThan(1);
+      visual.model.position.copy(entity.transform.position);
       expect(visual.model.position.y).toBe(0);
       expect(visual.model.children[0].position.y).toBeGreaterThan(0);
       expect(visual.model.position.distanceTo(before)).toBeLessThan(1);

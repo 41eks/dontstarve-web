@@ -1,4 +1,6 @@
+import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
+import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
 import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
 import { createInventoryStore } from './inventory';
@@ -18,6 +20,7 @@ import { GrassManager, GRASS_ID } from '@dontstarve-web/prefab/grass';
 import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
 import { SaplingManager } from '@dontstarve-web/prefab/sapling';
 import { PondManager, POND_ID } from '@dontstarve-web/prefab/pond';
+import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { PortalManager, PORTAL_ID } from '@dontstarve-web/prefab/portal';
 import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
@@ -46,7 +49,7 @@ import type { WorldState } from './worldState';
 
 export function createSceneEntities(
   world: CANNON.World,
-  worldState: Pick<WorldState, 'clock' | 'season' | 'fullMoon'>,
+  worldState: Pick<WorldState, 'clock' | 'season' | 'fullMoon' | 'temperature'>,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
@@ -58,7 +61,12 @@ export function createSceneEntities(
   const dynamicMusic = scheduler ? new DynamicMusic(scheduler, path => PlaySound(path)) : undefined;
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
-    { ...view, scheduler, dynamicMusic, fullMoon: worldState.fullMoon, itemEntities: sceneInventory.entities, registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
+    { ...view, scheduler, dynamicMusic, fullMoon: worldState.fullMoon,
+      getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
+      isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
+      spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
+      dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
+      registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
       unregisterContainer: (id, container) => sceneInventory.unregisterContainer(id, container), dropLoot: (items, position) => {
       void groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
         .catch((error: unknown) => console.error('Unable to drop building loot', error));
@@ -122,11 +130,15 @@ export function createSceneEntities(
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
   const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const lavaPonds = new LavaPondManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, { scheduler });
   const wormholes = new WormholeManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, () => [player.position]);
   const portals = new PortalManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const nightmareGrowths = new NightmareGrowthManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const pendingPoop = new Set<THREE.Vector3>();
   const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    scheduler,
+    // The scheduler runs on world seconds (src/scene.ts), so the next boundary is the next multiple of the day length.
+    secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
     clock: worldState.clock,
     season: worldState.season,
     getPlayerPositions: () => [player.position],
@@ -146,6 +158,10 @@ export function createSceneEntities(
       const edge = initialSave.world.map.generator.options.size / 2 - BEEFALO_BEHAVIOR.radius;
       position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
       position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
+    },
+    spawnPrize(prefab, count, position) {
+      void groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count }], position)
+        .catch((error: unknown) => console.error(`Unable to spawn beefalo ${prefab}`, error));
     },
     spawnPoop(position) {
       const positions = [...pendingPoop, ...groundItems.exportRecords()
@@ -359,6 +375,25 @@ export function createSceneEntities(
     // Ponds are ground layers, below the foot-sorted billboards.
     dispose: () => ponds.dispose(),
   });
+  registry.register(PREFAB_DEFINITIONS.lavaPonds, {
+    restore: (_, record) => lavaPonds.spawn(new THREE.Vector3(...record.transform.position), {
+      id: record.id, transform: record.transform, components: { lavaPond: record.components.lavaPond },
+    }),
+    debugSpawn: () => lavaPonds.spawn(player.position.clone().setY(0)),
+    exportRecords: () => lavaPonds.exportRecords().filter(record => record.prefabId === LAVA_POND_ID),
+    update: (dt, quaternion) => lavaPonds.update(dt, quaternion),
+    renderEntities: () => lavaPonds.renderEntities,
+    dispose: () => lavaPonds.dispose(),
+  });
+  registry.register(PREFAB_DEFINITIONS.lavaPondRocks, {
+    restore: (id, record) => lavaPonds.spawnRock(id, new THREE.Vector3(...record.transform.position), {
+      id: record.id, transform: record.transform, components: {},
+    }),
+    debugSpawn: (id) => lavaPonds.spawnRock(id, player.position.clone().setY(0)),
+    exportRecords: () => lavaPonds.exportRecords().filter(record => record.prefabId !== LAVA_POND_ID),
+    // The pool family owns the shared manager's update, rendering and disposal.
+    dispose: () => {},
+  });
   registry.register(PREFAB_DEFINITIONS.nightmareGrowths, {
     restore: (_, record) => nightmareGrowths.spawn(new THREE.Vector3(...record.transform.position), {
       id: record.id, transform: record.transform, components: { nightmareGrowth: record.components.nightmareGrowth! },
@@ -401,5 +436,5 @@ export function createSceneEntities(
     finally { dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
   };
   return { registry, dispose, moonTreeForest, buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants,
-    beefalos, rockManager, grasses, saplings, ponds, wormholes, portals, nightmareGrowths, reskinEffects, farmPlow };
+    beefalos, rockManager, grasses, saplings, ponds, lavaPonds, wormholes, portals, nightmareGrowths, reskinEffects, farmPlow };
 }

@@ -54,6 +54,10 @@ export function sculptingtable_init_fn(skinId: string): PrefabSkinInitialization
   return basic_init_fn(skinId, 'sculpting_station');
 }
 
+export function winterometer_init_fn(skinId: string): PrefabSkinInitialization {
+  return basic_init_fn(skinId, 'winter_meter');
+}
+
 export function mushroom_light_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'mushroom_light');
 }
@@ -86,4 +90,9 @@ export function wall_hay_init_fn(skinId: string): PrefabSkinInitialization {
 
 export function wall_wood_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'wall_wood');
+}
+
+/** prefabskin.lua birdcage_init_fn; birdcage_gothicp has build_name_override = "birdcage_gothic". */
+export function birdcage_init_fn(skinId: string): PrefabSkinInitialization {
+  return basic_init_fn(skinId === 'birdcage_gothicp' ? 'birdcage_gothic' : skinId, 'bird_cage');
 }

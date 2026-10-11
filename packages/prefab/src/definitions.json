@@ -418,6 +418,37 @@
         "sculptingtable_swamp": "dynamic/sculptingtable_swamp.zip"
       },
       "hammerAnimation": "hit"
+    },
+    "winterometer": {
+      "archive": "winter_meter.zip",
+      "buildLabel": "温度测量仪",
+      "idleAnimation": "idle",
+      "name": "Winterometer",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "winterometer_circus": "dynamic/winterometer_circus.zip",
+        "winterometer_mystical": "dynamic/winterometer_mystical.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "birdcage": {
+      "archive": "bird_cage.zip",
+      "buildLabel": "鸟笼",
+      "idleAnimation": "idle_empty",
+      "name": "Birdcage",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "birdcage_adventure": "dynamic/birdcage_adventure.zip",
+        "birdcage_circus": "dynamic/birdcage_circus.zip",
+        "birdcage_curly": "dynamic/birdcage_curly.zip",
+        "birdcage_gothic": "dynamic/birdcage_gothic.zip",
+        "birdcage_gothicp": "dynamic/birdcage_gothic.zip",
+        "birdcage_ornamental": "dynamic/birdcage_ornamental.zip",
+        "birdcage_pirate": "dynamic/birdcage_pirate.zip",
+        "birdcage_romantic": "dynamic/birdcage_romantic.zip"
+      }
     }
   },
   "walls": {

@@ -8,6 +8,7 @@ export const PERISH_MED = 10 * TOTAL_DAY_TIME;
 export const PERISH_FRESH = .5;
 export const PERISH_STALE = .2;
 const PERISH_GROUND_MULT = 1.5;
+export const PERISH_CAGE_MULT = .25;
 const PERISH_WET_MULT = 1.3;
 const PERISH_WINTER_MULT = .75;
 const PERISH_SUMMER_MULT = 1.25;
@@ -58,6 +59,8 @@ export class Perishable {
   perishfn?: (inst: PerishableInst) => void;
   /** perishable.lua SetLocalMultiplier, evaluated at each settlement so holder changes take effect. */
   localMultiplier?: () => number;
+  /** perishable.lua Update: with no owner, a caged occupant uses occupier:GetOwner() (a "cage", PERISH_CAGE_MULT). */
+  occupierCage?: () => boolean;
   private readonly percentMemo;
   private readonly stageMemo;
   private readonly inst: PerishableInst;
@@ -169,7 +172,7 @@ export class Perishable {
   private rateModifier(): number {
     const owner = this.inst.components.inventoryitem.owner;
     // Player inventory and backpacks have no preserver/fridge tags; the ground uses PERISH_GROUND_MULT.
-    let modifier = owner ? 1 : PERISH_GROUND_MULT;
+    let modifier = owner ? 1 : this.occupierCage?.() ? PERISH_CAGE_MULT : PERISH_GROUND_MULT;
     if (this.inst.GetIsWet()) modifier *= PERISH_WET_MULT;
     const temperature = this.world?.temperature();
     if (temperature !== undefined && temperature < 0) modifier *= PERISH_WINTER_MULT;

@@ -31,6 +31,7 @@ import { isAxeTool, loadAxeEquipment, type AxeEquipment, type AxeTool } from './
 import { isPitchforkTool, loadPitchforkEquipment, resolvePitchforkPlayerSprite, type PitchforkEquipment, type PitchforkTool } from './pitchfork';
 import { isFarmHoeTool, loadFarmHoeEquipment, resolveFarmHoePlayerSprite, type FarmHoeEquipment, type FarmHoeTool } from './farm_hoe';
 import { isShovelTool, loadShovelEquipment, resolveShovelPlayerSprite, type ShovelEquipment, type ShovelTool } from './shovel';
+import { equipSamePrefab } from './player_common';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { BookFxController, type BookFxPrefab } from './book_fx';
 import { loadReskinToolEquipment } from './reskin_tool';
@@ -51,6 +52,8 @@ export interface WilsonAnimationController extends ActionAnimationController {
   playEmote(emote: WilsonEmote): Promise<boolean>;
   start(state: WilsonMovementState): void;
   playEat(): void;
+  /** Inventory searched when a broken tool is replaced by another of the same prefab. */
+  bindInventory(inventory: Parameters<typeof equipSamePrefab>[0]): void;
   playItemTransition(state: 'item_in' | 'item_out', item?: WilsonCarryItem): void;
   playPickup(): void;
   setCrafting(crafting: boolean): void;
@@ -135,6 +138,7 @@ class WilsonController implements WilsonAnimationController {
   private readonly castingLight: StaffCastingLight;
   private animation!: Animation;
   private makeSound?: SoundHandle;
+  private shaveSound?: SoundHandle;
   /** The player inst's combat component, read by the attack state. */
   combat?: WilsonCombat;
   private frameIndex = -1;
@@ -161,6 +165,7 @@ class WilsonController implements WilsonAnimationController {
   private readonly symbolOverrides = new Map<number, { source: CarryBuild; hash: number }>();
   private readonly bookFx: BookFxController;
   private bookLayerSound?: SoundHandle;
+  private inventory?: Parameters<typeof equipSamePrefab>[0];
   private readonly assetBaseUrl: string;
 
   constructor(
@@ -189,12 +194,17 @@ class WilsonController implements WilsonAnimationController {
       getCombat: () => this.combat,
       playSound: (cue, castsound) => {
         if (cue === 'attack') { PlaySound(castsound as SoundEventPath); return; }
+        if (cue === 'shave') {
+          this.shaveSound?.stop();
+          this.shaveSound = PlaySound('dontstarve/wilson/shave_LP');
+          return;
+        }
         if (cue === 'make') {
           this.makeSound?.stop();
           this.makeSound = PlaySound('dontstarve/wilson/make_trap');
           return;
         }
-        const event = cue === 'dig' ? 'dontstarve/wilson/dig' : cue === 'tillEmerge' ? 'dontstarve_DLC001/creatures/mole/emerge'
+        const event = cue === 'useBreak' ? 'dontstarve/wilson/use_break' : cue === 'dig' ? 'dontstarve/wilson/dig' : cue === 'tillEmerge' ? 'dontstarve_DLC001/creatures/mole/emerge'
           : cue === 'sip' ? 'dontstarve/wilson/sip' : cue === 'eat' ? 'dontstarve/wilson/eat' : cue === 'reskin' ? 'dontstarve/wilson/attack_weapon'
           : cue === 'cast' ? (castsound as SoundEventPath ?? 'dontstarve/wilson/use_gemstaff')
             : cue === 'bookLight' ? 'dontstarve/common/use_book_light' : cue === 'bookClose' ? 'dontstarve/common/use_book_close'
@@ -214,15 +224,20 @@ class WilsonController implements WilsonAnimationController {
         if (skin?.build.symbols.has(smallHash(skinSymbol))) this.overrideSymbol(symbol, skinBuild, skinSymbol);
         else this.overrideSymbol(symbol, build, sourceSymbol);
       },
-      stopSound: () => { this.makeSound?.stop(); this.makeSound = undefined; },
+      stopSound: cue => {
+        if (cue === 'shave') { this.shaveSound?.stop(); this.shaveSound = undefined; return; }
+        this.makeSound?.stop(); this.makeSound = undefined;
+      },
       setCasting: (casting, colour) => {
         if (casting) this.castingLight.start(colour);
         else this.castingLight.stop();
       },
       setControllerEnabled: enabled => { visual.parent!.userData.controllerEnabled = enabled; },
       stopMovement: () => visual.parent!.userData.locomotor?.stop(),
+      equipSamePrefab: (prefab) => this.inventory !== undefined && equipSamePrefab(this.inventory, prefab),
       onStateChanged: (name) => {
-        this.carryItem = this.equippedCarryItem;
+        // toolbroke hides ARM_carry and shows ARM_normal.
+        this.carryItem = name === 'toolbroke' ? null : this.equippedCarryItem;
         if (name !== 'emote') this.emote = null;
       },
     });
@@ -231,6 +246,13 @@ class WilsonController implements WilsonAnimationController {
   start(state: WilsonMovementState) {
     if (state !== 'idle' && this.isEmoting) this.cancelEmote();
     this.stategraph.requestMovement(state);
+  }
+
+  /** Inventory searched when a broken tool is replaced by another of the same prefab. */
+  bindInventory(inventory: Parameters<typeof equipSamePrefab>[0]): void { this.inventory = inventory; }
+
+  prepareToolBroke(): Promise<unknown> {
+    return Promise.all([this.bookFx.prepare('brokentool'), PreloadSounds('dontstarve/wilson/use_break')]);
   }
 
   playEat() {
@@ -776,7 +798,7 @@ class WilsonController implements WilsonAnimationController {
 }
 
 export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Group> {
-  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe] = await Promise.all([
+  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions] = await Promise.all([
     loadBuild('willow.zip', assetBaseUrl),
     loadBuild('swap_torch.zip', assetBaseUrl),
     loadAnim('torch.zip', assetBaseUrl),
@@ -792,7 +814,8 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
     loadAnim('player_attacks.zip', assetBaseUrl),
     loadAnim('player_actions_till.zip', assetBaseUrl),
     loadAnim('player_actions_axe.zip', assetBaseUrl),
-    PreloadSounds('dontstarve/wilson/make_trap', 'dontstarve/wilson/attack_whoosh',
+    loadAnim('player_actions.zip', assetBaseUrl),
+    PreloadSounds('dontstarve/wilson/make_trap', 'dontstarve/wilson/shave_LP', 'dontstarve/wilson/attack_whoosh',
       'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword'),
   ]);
   if (buildPackage.build.name.toLowerCase() !== 'willow') {
@@ -855,10 +878,12 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
     till_pre: till,
     till_loop: till,
     till_pst: till,
+    hit: actions,
   }, createMaterials(buildPackage), {
     build: torchBuildPackage.build,
     materials: createMaterials(torchBuildPackage),
   }, assetBaseUrl);
+  await controller.prepareToolBroke();
   player.userData.animationController = controller;
   player.userData.stategraph = controller.stategraph;
   return player;

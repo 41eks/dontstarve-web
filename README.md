@@ -40,7 +40,9 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 | 命令 | 参数与作用 | 示例 |
 | --- | --- | --- |
 | `c_give("item_id", count)` | 向物品栏添加物品。`count` 可省略，默认 `1`，必须为正的安全整数；按堆叠上限分配。未知物品或物品栏空间不足时失败。 | `c_give("torch")`、`c_give("opalstaff")`、`c_give("pitchfork")`、`c_give("hammer")`、`c_give("book_silviculture")`、`c_give("meatballs", 10)` |
-| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、伯尼、岩石、草、树苗、池塘、虫洞、留声机、唱片和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("bernie_inactive")`、`c_spawn("rock1")`、`c_spawn("grass")`、`c_spawn("sapling")`、`c_spawn("pond")`、`c_spawn("wormhole")`、`c_spawn("nightmaregrowth")` |
+| `c_spawn("prefab_id")` | 生成一个当前支持的场景对象。建筑和墙生成在玩家前方，洞穴植物、萤火虫、伯尼、岩石、草、树苗、池塘、虫洞、留声机、唱片和梦魇疯长生成在玩家当前位置，皮弗娄牛生成在玩家附近的空地。 | `c_spawn("cookpot")`、`c_spawn("beefalo")`、`c_spawn("bernie_inactive")`、`c_spawn("rock1")`、`c_spawn("grass")`、`c_spawn("sapling")`、`c_spawn("pond")`、`c_spawn("wormhole")`、`c_spawn("lava_pond")` 无额外参数，在玩家脚点生成熔岩池。使用原版 `anim/lava_tile.zip` 的 bank/build `lava_tile` 和 `bubble_lava` 循环动画，池面贴地并位于背景层；局部橙色光保留原版 radius 1.5（场景 4.5）、falloff/intensity 0.66 和 colour `(235,121,12)/255`。池实例挂通用 `heater`，`GetHeat(observer)` 固定返回 500，默认供热、启用距离衰减且无额外半径截断；通过已有 `FindEntities` 查询 `HASHEATER` 实例。静态胶囊障碍半径为 1.95 DST 单位（场景 5.85）。位置确定后按 Lua 的 0 延迟任务随机生成 2～4 块焦岩，7 种外观来自 `anim/scorched_rock.zip` 的 `idle` / `idle2`～`idle7`；焦岩分别以真实脚点进行 billboard 排序。`c_spawn("lava_pond_rock")` 和 `c_spawn("lava_pond_rock2")`～`c_spawn("lava_pond_rock7")` 可独立生成焦岩，实际不存在 `lava_pond_rock1`。这些实体均不能用 `c_give` 入栏，且没有原版皮肤。`c_save()` 保存池的身份、位置和焦岩类型／相对布局，读档直接恢复布局，不重新随机或重复生成；随池生成的焦岩不独立入档，独立生成的焦岩按其实际 prefab ID 保存身份和位置。移除池会取消尚未执行的初始化任务，释放光照、碰撞体、焦岩和 heater 标签。当前只实现热源供给端；角色体温、触碰点燃、火焰传播／伤害、熔岩池烹饪、龙蝇事件及音乐尚未接入，暖石仍保持不实现温度的范围。
+
+`c_spawn("nightmaregrowth")` |
 | `c_save()` | 无参数。将当前游戏状态（包括挖过的地皮、耕地地皮和月岩多人传送门）校验后导出并下载为 `initial-world.json`，同时在画面上方偏右显示原版 `anim/saving.zip` 的保存动画（`save_pre` → `save_loop` → `save_post`），结束后隐藏；保存超过 0.5 秒显示“正在保存…”。快速保存也会完整播放一轮动画；校验失败时结束提示，并在浏览器 Console 报告“保存失败”及具体字段路径，下载不会开始。要作为初始存档加载，将下载文件放到 `public/saves/initial-world.json` 后重新加载页面。 | `c_save()` |
 | `c_setsanity(percent)` | 设置 Wilson 的理智比例；`percent` 为必填的 `0` 到 `1` 数字（上限 200），写入理智 signal，由订阅同步状态栏和低理智滤镜，并随 `c_save()` 保存。调色按每 10% 一档四舍五入；实际理智、晃动速度和幅度保留连续值。 | `c_setsanity(0)`、`c_setsanity(0.175)`、`c_setsanity(1)` |
 
@@ -60,6 +62,10 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 物品现在按 Lua 的 `Inventory:GiveItem/Equip/DropItem` 与 `Stackable:Get/Put` 交接实体：背包、装备槽和地面持有同一物品实体，整件转移、拾取、丢弃和换肤保留 ID 与组件；拆堆创建新实体，合堆保留接收方实体。火把控制器随实体保留，卸下只停止燃烧，耗尽才移除实体。`c_save()` 的库存物品快照新增可选 `entityId`，地面仍保存记录 `id`；旧存档缺少物品 ID 时自动分配。`c_give`、`c_spawn` 和 `c_save` 的语法、参数和支持 ID 保持不变，细节见 [库存架构](docs/inventory-architecture.md)。
 
 `c_give("torch", 2)` 获取两把满耐久火把，每把占一格；`c_spawn("torch")` 在玩家脚下生成可拾取的满耐久火把。物品栏、装备槽和储物格在图标下方显示燃料百分比，按原版 `widgets/itemtile.lua:SetPercent()` 四舍五入，未耗尽时最低显示 `1%`。基础燃料为 `TUNING.TORCH_FUEL = 75` 秒，由 torch prefab 的 `onequip()` / `onunequip()` 管理燃烧：装备到手部时点燃并消耗，卸下或普通丢弃后停止；装备火把耗尽时校验仍属于当前绑定装备，再将该库存的 `handEquipmentExistenceState` 设为 `null`；玩家 `InventoryStore` 订阅该变化，清空手部槽并清理实体，随后清除手持外观和照明。燃料随转移、丢弃、拾取、清洁扫把换肤及 `c_save()` 保存恢复；旧存档未记录燃料的火把按满耐久加载。燃料每 60 个燃烧帧结算一次，扣减这段时间累计的实际 `dt`，UI 随结算刷新；转移、丢弃、拾取、换肤、熄灭和 `c_save()` 前会结算不足 60 帧的部分，保留已经消耗的燃料。当前使用基础燃烧速率，尚未接入雨水、技能加成和投掷后持续燃烧。
+
+`c_give("heatrock", count)` 获取暖石，`count` 为数量、默认 1；每块占一格，不能装备。`c_spawn("heatrock")` 在玩家脚点生成可拾取暖石。使用原版 `anim/heat_rock.zip` 的 bank/build `heat_rock`，按 `heatrock.lua` 的初始设置循环播放 `3`，库存显示 `heat_rock3.tex`；`heat_rock1`～`heat_rock5` 的实际 atlas 均已收录。暖石保留原版 `fueled` 的 100 点初始耐久，已有耐久可保存恢复。装备 `c_give("reskin_tool")` 获取的清洁扫把，右键地面暖石可按 `heatrock_fantasy`、`heatrock_fire`、`heatrock_planet`、默认外观循环换肤，使用各自原版动态 build 和第 3 档图标。拾取、丢弃、换肤及 `c_save()` 保存读档保留身份、数量、位置、皮肤和耐久。当前固定使用第 3 档，不实现温度、供热／制冷、温度档位变化、热光照或温度导致的耐久消耗。
+
+`c_give("razor")` 获取剃刀，`c_spawn("razor")` 在玩家脚点生成地面剃刀；剃刀每格一件、不可装备，也没有耐久。地面美术使用原版 `anim/razor.zip` 的 bank `razor` 与 `anim/swap_razor.zip` 的 build，物品栏图标取自 `inventoryimages.xml` 的 `razor.tex`；三款原版皮肤 `razor_barber`、`razor_scissors`、`razor_straight` 可用 `c_give("reskin_tool")` 的清洁扫把右键地面剃刀循环换肤，身份与位置保持。`c_spawn("beefalo")` 生成的皮弗娄牛现在按 `beard`、`sleeper` 组件工作：夜间由 sleeper 每 4 ± 0.5 秒（游戏时间）检测并入睡，天亮后同样周期检测醒来。左键点击物品栏里的剃刀，让它被鼠标举着，再左键点击牛：玩家走近后进入 `shave` 状态（`build_pre → build_loop`，循环声 `dontstarve/wilson/shave_LP`），1 秒后提交 `SHAVE`。牛醒着时状态以 `AWAKEBEEFALO` 拒绝，胡须为零时以 `NOBITS` 拒绝，鼠标上的剃刀都保持不变；牛睡着时掉落 3 份 `beefalowool`、换成 `beefalo_shaved_build` 并播放 `shave`，之后继续睡，醒着则播放 `sleep_pst`。毛量按 `beard` 的 `daysgrowth` 回调，剃光后第 3 天的 `OnHairGrowth` 让牛在下次进入待机时依次播放 `hair_growth_pre`、`hair_growth`，恢复 3 份毛；`bits`、`daysgrowth` 是组件私有 signal，`has_beard` 标签和 `beefalo_build` / `beefalo_shaved_build` 外观都由 `beard.hairy` memo 派生，详见 [DST 事件与 signal 映射](docs/dst-event.md#beefalo胡须与睡眠)。`c_save()` 保存牛的 `components.beefalo.beard`（`growth`、`growthaccumulator`、`bits`），读档按 `beard.lua:OnLoad` 重放日回调，已剃光的牛直接显示剃光外观；鼠标上的剃刀随 `player:cursor/0` 保存恢复，缺少 `beard` 字段的旧存档按满毛加载。刷毛 `brushable`、驯化 `domesticatable`、牛铃 `beefbell` 和皮肤 `skinner_beefalo` 尚未移植，所以剃毛暂不改变顺从度。命令语法、参数不变，新增 `c_spawn` / `c_give` ID：`razor`。
 
 `c_give("lantern", count)` 获取满燃料提灯，每盏占一格；`c_spawn("lantern")` 在玩家脚下生成已点亮的提灯。燃料与开关按 `prefabs/mininglantern.lua` 的 `fueled` / `machine` 组件挂在物品实体上：满燃料 `TUNING.LANTERN_LIGHTTIME = (night_time + dusk_time) × 2.6 = 468` 秒；装备时有燃料就开灯，卸下或放入物品栏关灯，掉在地上关灯后再开灯；只有开着时耗油。开灯按 `SetFirstPeriod` 额外扣一次首段燃料（满燃料 1/60 秒，否则 0.5 秒）。燃料每 60 个活动帧结算一次，转移、丢弃、拾取和 `c_save()` 前结算未满一批的部分。光照半径和亮度随燃料百分比从 3→5、0.4→0.6 插值，并从同一实体的开关与燃料 signal 派生。与火把不同，燃料耗尽只关灯，提灯以 0% 燃料保留在手上、物品栏或地面，并以 `remainingFuel: 0` 保存；空提灯无法再点亮。地面提灯另存 `lantern: { ison }`，读档时按 `machine:OnLoad` 恢复开关（旧存档缺少该字段时视为开启）。尚未实现加燃料（`CAVE` 燃料）、手动开关、开关音效与循环音效，以及耗尽时的 `torchranout` 自动换装。
 
@@ -98,6 +104,9 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 `c_spawn("moonbase")` 在玩家前方生成月亮石，使用原版 `anim/moonbase.zip` 的 bank/build `moonbase` 和初始 `med` 破损姿态，默认不发光。用 `c_give("moonrocknugget", 2)` 获取月岩，左键拿到鼠标上，再右键月亮石：玩家自动走近，按 `REPAIR → dolongaction` 在 1 秒后消耗一块月岩，修复值从 4 增加到 6，播放 `fix_full → full` 及原版三层 `moonbase/repair` 音效；修复完成后不再接受月岩。用 `c_give("yellowstaff")` 获取唤星者魔杖，拿到鼠标上后左键已修复的月亮石，玩家走近并按 `GIVE → give/give_pst` 在第 13 帧插杖；已有魔杖时拒收。空鼠标左键月亮石用 `PICK` 取回魔杖，插入与取回均播放 `moonbase/moonstaff_place`，修复、插杖和取杖在提交前可用移动、跳跃或 Esc 取消，物品不会提前扣除。插杖外观使用 `staffs.zip` 的 `yellowstaff` 符号覆盖 `swap_staffs`，保留四款原版魔杖皮肤、身份和剩余耐久；可先用已有清洁扫把流程给地面魔杖换肤。`c_save()` 保存月亮石身份、脚点、修复值及所持魔杖完整状态，读档恢复修复状态和魔杖覆盖；恢复插杖音效沿用 Lua 的 `OnStaffGiven`。已接入满月充能：满月夜开始后等待 10 秒（满月中途插杖至少等 1 秒），充能持续 49.9 秒；18.7 秒进入第二阶段、37.4 秒进入第三阶段，播放原版光束、脉冲和阶段音乐。第二、三阶段带 `intense` 标签，暂时不能取杖；提前取回或月落会停止充能并清空进度，重新插入从头开始。完成后按 Lua 创建新的满耐久 `opalstaff`（50 次），对应皮肤由原版 `granted_items` 映射，例如 `starstaff_crystal → moonstaff_crystal`；旧魔杖实体移除，新魔杖身份随保存读档保留。转化后出现 `staffcoldlightfx`，取回时移除其光照和独立循环声。保存时记录各具名计时的剩余时间和暂停状态，读档重建截止时间，恢复当前阶段、取杖锁定、音效及特效；瞬时 FX 不单独入档。可直接插入已有 `opalstaff`，它只显示冷星、不再次充能。默认世界在第 11、31 等天的夜间满月；需要快速准备测试场景时，可用 `c_save()` 导出存档，将 `world.elapsedSeconds` 改为 `5220`（第 11 天夜晚开始），再加载该存档。月兽暂未实现。`c_spawn("moonrocknugget")` 生成月岩地面物品，使用原版 `anim/moonrock_nugget.zip` 的 bank `moonrocknugget`、build `moonrock_nugget`、`idle` 和实际库存图标 atlas；地面数量、身份、位置随保存读档保留。
 
 `c_spawn("sculptingtable")` 在玩家前方生成陶轮，也可在制作栏用 2 石砖、2 木板和 4 树枝制作后摆放（摆放时播放 `place` 与 `sculpting_table/craft`）。美术使用原版 `anim/sculpting_station.zip`，支持 `sculptingtable_gothic`、`sculptingtable_swamp` 两款皮肤并可用清洁扫把换肤。准备 `c_give("marble")` 或 `c_give("cutstone")`，拿到鼠标上后走近陶轮左键点击：玩家自动走近并按 `GIVE` 第 13 帧提交，由 `sculptingtable.lua` 的 `trader` / `pickable` 组件接收一块材料（`marble` 覆盖 `marble.zip` 的 `marble01`，`cutstone` 覆盖 `cutstone.zip` 的 `cutstone01`），已有材料时拒收（`SLOTFULL`），其他物品拒收（`NOTSCULPTABLE`）。放入、取回材料时播放原版 `moonbase/moonstaff_place`（木质放置声叠加随机石块碰撞声）；读档恢复已有材料时也按 Lua `giveitem` 播放，换肤不播放。陶轮上的材料可左键走近取回，也会随锤击（4 次）与配方材料一起掉出；`c_save()` 保存 `sculptingtable.itemname`，读档恢复显示且不扣除物品。当前未接入原版的素描收录、雕刻科技、月圆夜棋子掉落、燃烧和月亮玻璃。`c_spawn("cutstone")`、`c_spawn("marble")` 生成对应地面物品。
+`c_spawn("winterometer")` 在玩家前方生成温度测量仪，也可在制作栏用 2 木板和 2 金块制作后摆放（摆放时播放 `place` 与 `winter_meter_craft`）。美术使用原版 `anim/winter_meter.zip`，支持 `winterometer_circus`、`winterometer_mystical` 两款皮肤并可用清洁扫把换肤。按 `winterometer.lua` 每秒（首次延迟 0）读取 `GetLocalTemperature`，把 `meter` 动画停在 `1 - clamp(T, 0, 70) / 70` 处；锤击（4 次，配方材料掉落）播放 `hit` 期间暂停读取，动画结束后恢复，烧毁后停止。局部温度目前只回退到世界温度（温度覆盖器、喷气孔尚未移植），因此 `c_spawn("lava_pond")` 的 `heater` 不会改变它的读数，这与原版一致。`c_save()` 保存位置和皮肤，烧毁时写入 `building.burnt`，读档后恢复读数。
+
+`c_spawn("birdcage")` 在玩家前方生成空鸟笼（`birdcage.lua` 的初始状态 `_empty`、`idle_empty`），也可在制作栏制作后摆放（摆放时播放 `place` 与 `birdcage_craft`）。鸟用 `c_give("crow")`、`c_give("robin")`、`c_give("robin_winter")` 或 `c_give("canary")` 获得（不可叠加；`c_spawn` 同名 ID 生成 `SGbird` `stunned_loop` 姿势的地面鸟，可再拾取，野外飞行、`birdbrain`、`birdspawner` 与 `flyaway` 超时未移植）。把鼠标上的鸟点到鸟笼执行 `STORE`（“关入鸟笼”）：同一个实体离开鼠标，鸟笼显示 `flap` → `idle_bird`，从 `anim/<鸟>_build.zip` 以 `AddOverrideBuild` 覆盖鸟的符号，并开启 `trader`；之后每 6 秒按饥饿度（鸟的 `perishable` 百分比）选择 `caw/flap/hop`、`idle_bird2`、`idle_bird3` 及啼叫、拍翅声。喂肉类（`meats.lua` 与 MEAT 料理）约 2 秒后掉落 `bird_egg`，喂种子或对应蔬菜掉落 `<蔬菜>_seeds`，其他种子有 33% 掉落 `guano`（原版缩小的粪便缩放尚未移植），并让鸟饱腹；`bird_egg`、`rottenegg`、`woby_treat` 和不可食用物被拒绝并播放 `flap`。夜晚且鸟不饥饿（≥33%）时鸟笼进入 `sleep_pre → sleep_loop`，睡眠时拒绝喂食，白天或饥饿（<33%）醒来播放 `sleep_pst`。鸟笼内的鸟按 `PERISH_CAGE_MULT` 变饿（`BIRD_PERISH_TIME` = 5 天，随身携带按 1 倍，落在地面不再变饿），饿死时由 `perished` 事件触发 `occupiable` 的 `onemptied → onperishfn`：播放 `death`、死亡音，生成 `smallmeat` 放在笼内货架（`idle_death`）；货架上的 `smallmeat` 腐烂后（`PERISH_FAST` → `spoiled_food`）变成 `idle_skeleton` 骷髅状态。携带中的鸟饿死则被其战利品（`feather_<鸟>` 或 `smallmeat`）替换。左键或右键占用的鸟笼执行 `HARVEST`（释放）把原鸟（保留饥饿度）放回物品栏；饿死或骷髅状态下 `TAKEITEM`（“打扫”）取走货架物品并恢复空笼。锤击 4 次播放当前状态的 `hit_*`（占用时再加 `flap`），拆除时鸟或货架物品连同配方材料落地。美术使用原版 `anim/bird_cage.zip`，支持 `birdcage_adventure`、`birdcage_circus`、`birdcage_curly`、`birdcage_gothic`、`birdcage_gothicp`、`birdcage_ornamental`、`birdcage_pirate`、`birdcage_romantic` 皮肤并可用清洁扫把换肤（`gothicp` 使用 `birdcage_gothic` 的构建），换肤保留笼中的鸟。`c_save()` 保存位置、皮肤和 `building.birdcage`（`CAGE_STATE`、`bird_type`、笼中的鸟及货架物品的 `ItemEntity` 状态，含身份与饥饿度），读档按原版顺序恢复占用、状态和货架。尚未移植：蟾蜍菇毒气使金丝雀中毒（`_sick`、`canary_poisoned`）、突变鸟与裂隙鸟、`bird_egg_cooked`、`sanityaura` 和 `luckuser` 概率修正。
 
 `c_spawn("wardrobe")` 在玩家前方生成衣柜，使用原版 `anim/wardrobe.zip` 的 bank/build `wardrobe` 和 `closed` 外观。当前仅实现贴图显示，无开关门、换装或锤击交互；位置随 `c_save()` 保存并在加载时恢复。
 
@@ -163,7 +172,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 | 不新鲜（饥饿 ×0.667） | -20 | +8.3375 | 0 |
 | 腐烂（饥饿 ×0.5，理智固定 -`SANITY_SMALL`） | -20 | +6.25 | -10 |
 
-负的生命值不受腐烂影响。`bananapop`（香蕉冻）按 `prefabs/preparedfoods.lua` 使用配方的 `perishtime = PERISH_SUPERFAST`（3 天，1440 秒），其余规则与 `red_cap` 相同，腐烂后同样替换为 `spoiled_food`；`c_give("bananapop", count)` 放入物品栏，`c_spawn("bananapop")` 在玩家脚下生成，烹饪锅采收的产物也以满新鲜度开始。香蕉冻尚未接入食用（属性、降温效果），锅内成品腐烂和食材新鲜度传递仍待实现。新鲜度以 `freshnessPercent` 随库存和地面存档保存，读档后从中恢复剩余时间并继续腐烂。`c_spawn("spoiled_food")` 在玩家脚下生成腐烂物，`c_give("spoiled_food", count)` 放入物品栏。
+负的生命值不受腐烂影响。`bananapop`（香蕉冻）按 `prefabs/preparedfoods.lua` 使用配方的 `perishtime = PERISH_SUPERFAST`（3 天，1440 秒），其余规则与 `red_cap` 相同，腐烂后同样替换为 `spoiled_food`；`c_give("bananapop", count)` 放入物品栏，`c_spawn("bananapop")` 在玩家脚下生成，烹饪锅采收的产物也以满新鲜度开始。香蕉冻可食用（生命 +20、饥饿 +12.5、理智 +33，随腐烂阶段折算；`temperature` 降温效果尚未实现），锅内成品腐烂和食材新鲜度传递仍待实现。新鲜度以 `freshnessPercent` 随库存和地面存档保存，读档后从中恢复剩余时间并继续腐烂。`c_spawn("spoiled_food")` 在玩家脚下生成腐烂物，`c_give("spoiled_food", count)` 放入物品栏。
 
 `c_give("meatballs", 2)` 获取两份肉丸，第二个参数可省略，默认一份；`c_spawn("meatballs")` 在玩家脚下生成可拾取的一份。右键物品栏肉丸播放 `quick_eat_pre → quick_eat`，第 10 帧播放 `dontstarve/wilson/eat`，第 12 帧成功扣除一份后恢复表中的属性，超过 Wilson 上限的部分截断。取消或物品被替换时不消耗、不恢复属性。图标来自 `images/inventoryimages.xml:meatballs.tex`，地面使用原版 `anim/cook_pot_food.zip` 的 `cook_pot_food` bank/build、`idle` 和 `swap_food:meatballs` 符号覆盖，无原版皮肤。支持 Shift + 右键丢弃和左键拾回；数量、实体身份、地面位置及食用后的属性随 `c_save()` 保存恢复。
 
@@ -219,7 +228,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 | 类型 | prefab_id |
 | --- | --- |
-| 建筑 | `cookpot`、`firepit`、`icebox`、`treasurechest`、`tent`、`moonbase`、`wardrobe`、`dragonflychest`、`campfire`、`saltbox`、`nightlight`、`pighouse`、`sculptingtable`、`mushroom_light`、`mushroom_light2` |
+| 建筑 | `cookpot`、`firepit`、`icebox`、`treasurechest`、`tent`、`moonbase`、`wardrobe`、`dragonflychest`、`campfire`、`saltbox`、`nightlight`、`pighouse`、`sculptingtable`、`winterometer`、`birdcage`、`mushroom_light`、`mushroom_light2` |
 | 科技建筑 | `researchlab`、`researchlab2`、`researchlab3`、`researchlab4` |
 | 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap`，以及各自的 `wall_*_item`（两种 ID 均生成建成的墙） |
 | 洞穴植物 | `flower_cave`、`flower_cave_double`、`flower_cave_triple` |
@@ -228,14 +237,18 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 | 草丛 | `grass` |
 | 树苗 | `sapling`、`sapling_moon` |
 | 池塘 | `pond` |
+| 熔岩池及焦岩 | `lava_pond`、`lava_pond_rock`、`lava_pond_rock2`～`lava_pond_rock7` |
 | 场景装饰 | `nightmaregrowth`、`wormhole`、`multiplayer_portal_moonrock` |
 | 耕地机及耕地装饰 | `farm_plow`、`farm_plow_item`（未部署物品）、`farm_soil`、`farm_soil_debris`、`farm_plant_randomseed`、`farm_plant_<carrot|corn|pumpkin|eggplant|durian|pomegranate|dragonfruit|watermelon|tomato|potato|asparagus|onion|garlic|pepper>`（播种后外观） |
 | 种子地面物品 | `seeds`、`<veggie>_seeds` |
 | 蘑菇地面物品 | `red_cap`、`red_cap_cooked`、`green_cap`、`green_cap_cooked`、`blue_cap`、`blue_cap_cooked` |
 | 腐烂物 | `spoiled_food` |
+| 鸟与鸟蛋 | `crow`、`robin`、`robin_winter`、`canary`（地面为 `stunned_loop` 姿势）、`bird_egg`、`rottenegg`、`smallmeat` |
 | 料理地面物品 | `meatballs`、`bananajuice`、`bananapop` |
 | 手部工具地面物品 | `torch`、`lantern`、`hammer`、`bugnet`、`pickaxe`、`goldenpickaxe`、`axe`、`goldenaxe`、`moonglassaxe`、`reskin_tool`、`greenstaff`、`opalstaff` |
 | 武器地面物品 | `nightsword` |
+| 暖石地面物品 | `heatrock` |
+| 剃刀地面物品 | `razor` |
 | 书本地面物品 | `book_silviculture` |
 | 彩虹宝石地面物品 | `opalpreciousgem` |
 | 墙体拆除材料 | `dreadstone`、`wagpunk_bits` |

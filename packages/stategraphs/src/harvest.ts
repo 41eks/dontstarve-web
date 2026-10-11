@@ -162,6 +162,8 @@ export class HarvestActionController {
     const actions = this.picker.getMouseActions();
     const action = event.button === 0 ? actions.left : actions.right;
     if (action?.action !== 'HARVEST' || !action.target) { this.cancel(); return; }
+    // Occupiable targets share the action id and belong to OccupiableActionController.
+    if (!(action.target as Partial<HarvestTarget>).component) return;
     event.preventDefault(); event.stopImmediatePropagation();
     this.request(action.target as HarvestTarget);
   };

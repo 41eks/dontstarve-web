@@ -33,7 +33,7 @@ it('restores container contents, drops their live entities at the building foot 
     expect(inventory.getEntity(address)).toBeNull();
     expect(dropped).toEqual([item]);
     expect(item.snapshot()).toEqual(before);
-    expect(item.transform.position).toEqual([3, 0, -6]);
+    expect(item.transform.position.toArray()).toEqual([3, 0, -6]);
     expect(dropLoot).not.toHaveBeenCalled();
     target.playHit(); target.playHit();
     expect(target.entity.hasTag('HAMMER_workable')).toBe(false);

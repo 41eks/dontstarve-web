@@ -161,6 +161,31 @@ play duration: 4399 samples (0:00.100 seconds)
 
 FEV 映射解析可以参考 AssetArchive 的 `src-tauri/src/fmodparse.rs`（`FmodEvent::resolve_def()`、`FmodSoundDefFile.file_index`），零基 FSB 索引的链接见 `src-tauri/src/scripts/assetloader.lua` 的 `Fev:GetEventByPath()` 和 `FsbLoader:GetSampleInfoByIndex()`。
 
+### FEV 事件解析命令行工具
+
+`packages/prefab/scripts/fev-events.py` 是 `fmodparse.rs` 的 Python 移植版，只读 `.fev`，不写任何文件。它解析事件路径 → sound definition → bank / `file_index`，输出对应的 `vgmstream -s` 索引（`file_index + 1`）。事件路径不含工程名前缀：`dontstarve/wilson/use_break` 写作 `wilson/use_break`。
+
+```bash
+# 精确事件路径
+python3 -I packages/prefab/scripts/fev-events.py \
+  /data/copy/AssetArchive-Dev/data/DST/data/sound/dontstarve.fev wilson/use_break wilson/hit
+# 按子串搜索事件
+python3 -I packages/prefab/scripts/fev-events.py \
+  /data/copy/AssetArchive-Dev/data/DST/data/sound/dontstarve.fev --substring use_break
+```
+
+输出示例：
+
+```
+wilson/use_break
+  sounddef 65: sfx/wilson/Tool_Break.wav bank=wilson file_index=93 vgmstream -s 94 (555 ms)
+```
+
+多层事件会列出所有 sound definition 引用的样本。拿到索引后，先用 `vgmstream-cli -m -s <index> <bank>.fsb` 核对 `stream name` 与 FEV 引用文件名一致，再按本文的 `-i` 方式导出。已用 `wilson/hit`（sfx 零基 422、423，对应 `sound.ts` 的 423、424）验证过解析结果。
+
+`SGwilson.lua` 的 `toolbroke` 状态播放 `dontstarve/wilson/use_break`：sounddef 65、`sfx/wilson/Tool_Break.wav`、`wilson` bank 零基 93，提取索引 94；`-i -s 94` 导出的 `public/dst/data/sound/wilson.fsb-94.wav` 与源已解码 `wilson.fsb#94.wav` 字节一致。
+
+
 黄／蓝法杖的 `staff.lua` 配置 `castsound = "dontstarve/common/staffteleport"`，事件引用 sound definition 909，仍是 `common.fsb` 的零基 283／提取 284；`use_gemstaff` 是状态图的默认回退。耗尽的 `onfinished` 使用 `dontstarve/common/gem_shatter`，引用 sound definition 917、`sfx/objects/gem_shatter.wav`、`common.fsb` 零基 202／提取 203。按 `-i -s 203` 导出 `public/dst/data/sound/common.fsb-203.wav`，与源已解码 `common.fsb#203.wav` 字节一致。两者沿用 `sound.ts` 的统一映射，在准备 CASTSPELL 前预加载。
 
 ### 矮星 metadata 与导出命令
@@ -392,3 +417,11 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 | `destroy_tool` | 982 | 189 | 190 | `sfx/objects/destroy_tool_1.wav` |
 
 用安装版本的 `-h` 核对参数，以 `-m -s` 检查 metadata，再以 `-i -s <索引> -o public/dst/data/sound/common.fsb-<索引>.wav` 导出；四份文件均与源目录对应 `common.fsb#<索引>.wav` 字节一致。绿法杖没有自定义 `castsound`，第 13 帧使用 `SGwilson` 的默认 `dontstarve/wilson/use_gemstaff`；提交前统一预加载施法声、材料声、拆解声及耗尽声。
+
+### 剃毛循环声
+
+`SGwilson.lua` 的 `shave` 状态以具名声音 `shave` 播放 `dontstarve/wilson/shave_LP`，退出时 `KillSound("shave")`。用 `fev-events.py` 解析得到 sounddef 82：`sfx/wilson/Shave_1..6.wav`，bank `wilson`，零基 `file_index` 87–92，提取索引 88–93。逐个 `-m -s` 核对 `stream name` 为 `Shave_1`…`Shave_6`，再以 `-i -s 88..93` 导出 `public/dst/data/sound/wilson.fsb-88.wav` 至 `-93.wav`，六份均与源目录已解码的 `wilson.fsb#<index>.wav` 字节一致。`sound.ts` 把它登记为循环声，状态退出和停止时停止音源。
+
+### 温度测量仪建造声
+
+`prefabs/winterometer.lua:onbuilt` 播放 `dontstarve/common/winter_meter_craft`。`dontstarve.fev`（`fev-events.py common/winter_meter_craft`）解析为 sounddef 1331 → `sfx/objects/craftable/Thermal_measurer_craft.wav`，bank `common`、零基 `file_index` 175（提取索引 176）。已用 `-m -s 176` 核对流名 `Thermal_measurer_craft`，以 `-i -s 176` 导出 `public/dst/data/sound/common.fsb-176.wav`，与源目录已有的 `common.fsb#176.wav` 字节一致；事件不循环，映射在 `sound.ts`。

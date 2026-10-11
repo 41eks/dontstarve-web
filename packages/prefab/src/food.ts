@@ -4,6 +4,7 @@ import { PERISH_FAST, PERISH_MED } from '../../componets/src/perishable';
 import { foods } from '../../componets/src/preparedfoods';
 import { SEEDS_HUNGER } from './seeds';
 import { MOONBUTTERFLY_PERISH_TIME } from './moonbutterflyTuning';
+import { BIRD_IDS, BIRD_PERISH_TIME } from './birds';
 import { VEGGIE_FOOD_EFFECTS, VEGGIE_PERISH_TIMES } from './veggies';
 
 export const BANANAJUICE_ID = 'bananajuice';
@@ -29,6 +30,8 @@ export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
   // preparedfoods.lua: bananajuice → HEALING_MEDSMALL / CALORIES_MED / SANITY_LARGE.
   // prefabs/preparedfoods.lua installs edible; the fooddrink tag selects quick drinking.
   [BANANAJUICE_ID]: { health: 8, hunger: 25, sanity: 33, foodDrink: true },
+  // preparedfoods.lua: bananapop → HEALING_MED / CALORIES_SMALL / SANITY_LARGE (VEGGIE, not a drink).
+  bananapop: { health: 20, hunger: 12.5, sanity: 33 },
   // prefabs/mushrooms.lua's data table, resolved against tuning.lua.
   // prefabs/moontree_blossom.lua: HEALING_TINY, no hunger, VEGGIE.
   moon_tree_blossom: { health: 1, hunger: 0, sanity: 0 },
@@ -50,6 +53,12 @@ export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: nu
   moon_tree_blossom: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   // prefabs/moonbutterflywings.lua: PERISH_FAST, spoiled_food.
   moonbutterflywings: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
+  // prefabs/meats.lua smallmeat: PERISH_FAST, spoiled_food.
+  smallmeat: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
+  // prefabs/egg.lua: bird_egg spoils in PERISH_MED into rottenegg.
+  bird_egg: { perishTime: PERISH_MED, replacement: 'rottenegg' },
+  // prefabs/birds.lua MakeFeedableSmallLivestock(BIRD_PERISH_TIME): a starved bird is replaced by its loot, not a goop prefab.
+  ...Object.fromEntries(BIRD_IDS.map(id => [id, { perishTime: BIRD_PERISH_TIME }])),
   // prefabs/moonbutterfly.lua: MOONBUTTERFLY_PERISH_TIME; no replacement (removed in an inventory, dies on the ground).
   moonbutterfly: { perishTime: MOONBUTTERFLY_PERISH_TIME },
   // prefabs/preparedfoods.lua uses the recipe's perishtime.

@@ -27,7 +27,7 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
   const controller = new ButterflyController(BUTTERFLY_DEFINITIONS[prefab], entity.transform, animation, world, () => [], () => 0, dropLoot);
   return {
     animation, controller, world, entity,
-    position: () => new THREE.Vector3().fromArray(entity.transform.position),
+    position: () => entity.transform.position.clone(),
     setThreats: (value: THREE.Vector3[]) => { threats = value; },
     setFlowers: (value: ButterflyFlower[]) => { flowers = value; },
     setDay: (value: boolean) => { day = value; },
@@ -121,7 +121,7 @@ describe('moonbutterfly', () => {
     s.tick(10);
     expect(s.controller.state).not.toBe('land');
     // Carried 30 units from home (beyond MAX_WANDER_DIST 20): Wander heads back.
-    s.entity.transform.position = [30, 0, 0];
+    s.entity.transform.position.set(30, 0, 0);
     s.tick(8);
     expect(s.position().x).toBeLessThan(30);
   });

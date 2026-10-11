@@ -75,16 +75,14 @@ function continueCooking(model: THREE.Group): void {
 
 function initializePot({ model }: AnimatedBuildingEventContext): void {
     initializeFoodArt(model);
-    const tags: string[] = [];
-    model.userData.tags = tags;
+    model.userData.tags ??= [];
     const components = model.userData.components;
+    // actionEntity.removeTag replaces userData.tags, so always go through the model.
     const stewer = new Stewer({ prefab: 'cookpot', components,
         getPosition: () => model.userData.getGroundPosition(),
-        addTag: tag => { if (!tags.includes(tag)) tags.push(tag); },
-        removeTag: tag => {
-            const index = tags.indexOf(tag);
-            if (index >= 0) tags.splice(index, 1);
-        } }, (prefab, count = 1) => model.userData.dropLoot([{ itemId: prefab, count }]));
+        addTag: tag => { if (!model.userData.tags.includes(tag)) model.userData.tags.push(tag); },
+        removeTag: tag => { model.userData.tags = model.userData.tags.filter((value: string) => value !== tag); },
+        }, (prefab, count = 1) => model.userData.dropLoot([{ itemId: prefab, count }]));
     components.stewer = stewer;
     stewer.onstartcooking = () => continueCooking(model);
     stewer.oncontinuecooking = () => continueCooking(model);

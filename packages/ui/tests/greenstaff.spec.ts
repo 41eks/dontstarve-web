@@ -52,12 +52,12 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
       { slot, ...snapshot, skinId: 'greenstaff_clockwork', delta: 1 }]);
     const ground = scene.children.filter((model: any) => model.userData.itemId === 'opalstaff');
     const target = ground.at(-1), opal = main.inventory.entities.get(target.userData.entityId);
-    opal.transform.position = [player.position.x + 12, 0, player.position.z];
+    opal.transform.position.set(player.position.x + 12, 0, player.position.z);
     (window as any).greenGame.opalId = opal.id;
     // Move the other command-spawned objects aside so only opalstaff is under the pointer.
     for (const model of scene.children.filter((model: any) => ['greenstaff', 'opalpreciousgem'].includes(model.userData.itemId))) {
       const item = main.inventory.entities.get(model.userData.entityId);
-      item.transform.position = [player.position.x - 24, 0, player.position.z + 12];
+      item.transform.position.set(player.position.x - 24, 0, player.position.z + 12);
     }
   });
   await expect.poll(() => page.evaluate(() => {

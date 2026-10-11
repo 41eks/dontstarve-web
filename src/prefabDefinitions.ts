@@ -1,6 +1,8 @@
 import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
+import { HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';
 import { BURNABLE_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/burnableItems';
 import { BANANAJUICE_ID, MUSHROOM_ITEM_IDS } from '@dontstarve-web/prefab/food';
+import { BIRD_IDS } from '@dontstarve-web/prefab/birds';
 import { VEGGIE_ITEM_IDS } from '@dontstarve-web/prefab/veggies';
 import { FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_DECOR_IDS, PLANTED_SEED_IDS } from '@dontstarve-web/prefab/farm_plow';
 import { DWARF_STAR_DURATION, POLAR_LIGHT_DURATION, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
@@ -9,6 +11,7 @@ import { ROCK_PREFABS } from '@dontstarve-web/prefab/rocks';
 import { GRASS_ID, GRASS_REGROW_TIME } from '@dontstarve-web/prefab/grass';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
+import { LAVA_POND_ID, LAVA_POND_ROCK_IDS } from '@dontstarve-web/prefab/lava_pond';
 import { WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { PORTAL_ID } from '@dontstarve-web/prefab/portal';
 import { NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
@@ -39,6 +42,7 @@ const farmDebris = componentParser({ keys: ['farmDebris'] });
 const building = componentParser({ keys: ['building'] });
 const storage = componentParser({ keys: ['building', 'container'] });
 const sculptingTable = componentParser({ keys: ['building', 'sculptingtable'] });
+const birdcage = componentParser({ keys: ['building', 'birdcage'] });
 const moonbase = componentParser({ keys: ['building', 'workable', 'moonbase'] });
 const cookPot = componentParser({ keys: ['building', 'container', 'stewer'] });
 const wall = componentParser({ keys: ['wall', 'health'] });
@@ -57,12 +61,13 @@ export const PREFAB_DEFINITIONS = {
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable
+      : context.prefab === 'birdcage' ? birdcage
       : context.prefab === 'moonbase' ? moonbase : spec.container ? storage : building)(value, path, context);
     if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
     return fail(path, `missing building definition for ${context.prefab}`);
   }, PLACEABLE_BUILDING_IDS),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    ['fireflies', BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'moon_tree_blossom', 'butterfly', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'reskin_tool', 'greenstaff', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash']),
+    ['fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'moon_tree_blossom', 'butterfly', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'reskin_tool', 'greenstaff', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash']),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] })),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),
@@ -73,6 +78,8 @@ export const PREFAB_DEFINITIONS = {
   grasses: definePrefabs([GRASS_ID], componentParser({ keys: ['pickable'], regrowTime: GRASS_REGROW_TIME }), true),
   saplings: definePrefabs(SAPLING_PREFABS, componentParser({ keys: ['pickable'], regrowTime: SAPLING_REGROW_TIME }), true),
   ponds: definePrefabs([POND_ID], empty, true),
+  lavaPonds: definePrefabs([LAVA_POND_ID], componentParser({ keys: ['lavaPond'] }), true),
+  lavaPondRocks: definePrefabs(LAVA_POND_ROCK_IDS, empty, true),
   nightmareGrowths: definePrefabs([NIGHTMAREGROWTH_ID], componentParser({ keys: ['nightmareGrowth'] }), true),
   wormholes: definePrefabs([WORMHOLE_ID], componentParser({ keys: ['wormhole'] }), true),
   portals: definePrefabs([PORTAL_ID], empty, true),

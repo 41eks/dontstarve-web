@@ -14,7 +14,7 @@ export const LOOT_FLING = {
 export class LootFling {
   private readonly transform: ItemEntity['transform'];
   /** Detached projection; the entity transform owns the trajectory's ground position. */
-  get position(): THREE.Vector3 { return new THREE.Vector3().fromArray(this.transform.position); }
+  get position(): THREE.Vector3 { return this.transform.position.clone(); }
   readonly velocity: THREE.Vector3;
   height = 0;
   settled = false;
@@ -31,8 +31,7 @@ export class LootFling {
     const dz = -Math.sin(angle);
     // FlingItem starts outside the sum of the item/dropper physics radii.
     const radius = (dropperRadius + LOOT_FLING.inventoryRadius) * WORLD_SCALE;
-    const [x, , z] = transform.position;
-    transform.position = [x + dx * radius, 0, z + dz * radius];
+    transform.position.set(transform.position.x + dx * radius, 0, transform.position.z + dz * radius);
     this.velocity = new THREE.Vector3(dx * speed, ySpeed, dz * speed);
   }
 
@@ -42,8 +41,8 @@ export class LootFling {
     while (remaining > 0 && !this.settled) {
       const landingTime = (this.velocity.y + Math.sqrt(this.velocity.y ** 2 + 2 * this.gravity * this.height)) / this.gravity;
       const step = Math.min(remaining, landingTime);
-      this.transform.position[0] += this.velocity.x * step;
-      this.transform.position[2] += this.velocity.z * step;
+      this.transform.position.x += this.velocity.x * step;
+      this.transform.position.z += this.velocity.z * step;
       this.height = Math.max(0, this.height + this.velocity.y * step - 0.5 * this.gravity * step * step);
       this.velocity.y -= this.gravity * step;
       remaining = Math.max(0, remaining - step);

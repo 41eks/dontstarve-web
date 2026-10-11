@@ -2,7 +2,11 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '@dontstarve-web/animation/beefaloSprite';
 import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import type { ReadonlySignal, WorldPhase, WorldSeason } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, type ReadonlySignal, type WorldPhase, type WorldSeason } from '@dontstarve-web/signals';
+import { Beard, type BeardSave } from '../../componets/src/beard';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { Sleeper } from '../../componets/src/sleeper';
+import { actionEntity } from './actionEntity';
 import { Locomotor, type LocomotorOptions } from './locomotor';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
@@ -22,9 +26,19 @@ export const BEEFALO_BEHAVIOR = {
   poopDensityRadius: 20 * WORLD_SCALE,
 } as const;
 
+/** TUNING.BEEFALO_BEARD_BITS / BEEFALO_HAIR_GROWTH_DAYS. */
+export const BEEFALO_BEARD_BITS = 3;
+export const BEEFALO_HAIR_GROWTH_DAYS = 3;
+export const BEEFALO_PRIZE = 'beefalowool';
+
 export interface BeefaloWorld {
   phase: WorldPhase;
   season: WorldSeason;
+  scheduler: GameTimeScheduler;
+  /** Seconds from scheduler time `now` to the world's next day boundary; the world owns the day length. */
+  secondsUntilNextDay(now: number): number;
+  /** beard.lua SpawnPrefab(prize) launched from the beefalo's position. */
+  spawnPrize(prefab: string, count: number, position: THREE.Vector3): void;
   getPlayerPositions(): readonly THREE.Vector3[];
   findPath: NonNullable<LocomotorOptions['findPath']>;
   constrainPosition(position: THREE.Vector3): void;
@@ -32,7 +46,8 @@ export interface BeefaloWorld {
   spawnPoop(position: THREE.Vector3): void;
 }
 
-export interface BeefaloManagerWorld extends Omit<BeefaloWorld, 'phase' | 'season'> {
+export interface BeefaloManagerWorld extends Omit<BeefaloWorld, 'phase' | 'season' | 'scheduler'> {
+  scheduler?: GameTimeScheduler;
   clock: ReadonlySignal<{ phase: BeefaloWorld['phase'] }>;
   season: ReadonlySignal<{ season: BeefaloWorld['season'] }>;
 }
@@ -41,6 +56,8 @@ export interface BeefaloSaveState {
   home: [number, number, number];
   heading: number;
   poopRemainingSeconds: number;
+  /** beard.lua OnSave; absent in saves written before the beard component existed. */
+  beard?: BeardSave;
 }
 
 export interface BeefaloRecord {
@@ -50,9 +67,12 @@ export interface BeefaloRecord {
 }
 
 export type BeefaloState = 'idle' | 'walk_pre' | 'walk' | 'walk_pst' | 'graze_pre' | 'graze' | 'graze_pst'
-  | 'shake' | 'bellow' | 'sleep_pre' | 'sleep' | 'sleep_pst';
+  | 'shake' | 'bellow' | 'sleep_pre' | 'sleep' | 'sleep_pst' | 'shaved' | 'hair_growth' | 'hair_growth_pop';
 
-/** A passive wild adult: locomotion, idle actions, FaceEntity, sleep and manure. */
+/** SGBeefalo.lua state tags that matter to the sleeper test and the stategraph events. */
+const BUSY_STATES: ReadonlySet<BeefaloState> = new Set(['sleep_pre', 'sleep', 'sleep_pst', 'shaved', 'hair_growth', 'hair_growth_pop']);
+
+/** A passive wild adult: locomotion, idle actions, FaceEntity, sleeper, beard and manure. */
 export class BeefaloController {
   private currentState: BeefaloState = 'idle';
   private readonly locomotor: Locomotor;
@@ -67,6 +87,12 @@ export class BeefaloController {
   private grazeRemaining = 0;
   private poopRemaining: number;
   private disposed = false;
+  /** inst.hairGrowthPending: set by the day-3 callback, consumed when idle is next entered. */
+  private readonly hairGrowthPendingState = createSignal(false);
+  readonly hairGrowthPending = readonlySignal(this.hairGrowthPendingState);
+  private readonly stopAppearance: () => void;
+  readonly beard: Beard;
+  readonly sleeper: Sleeper;
   readonly model: THREE.Group;
   readonly body: CANNON.Body;
   private readonly animation: FacingSpriteAnimationController;
@@ -87,8 +113,43 @@ export class BeefaloController {
     }
     this.poopRemaining = saved?.poopRemainingSeconds ?? this.nextPoopTime();
     this.locomotor = new Locomotor(body, { findPath: world.findPath, arriveDistance: 0.3 });
+    // "bearded" comes from the beard component and "has_beard" from its hair, both through HasTag.
     Object.assign(model.userData, { prefab: 'beefalo', beefaloController: this,
-      tags: ['beefalo', 'animal', 'largecreature', 'bearded'] });
+      tags: ['beefalo', 'animal', 'largecreature'] });
+    this.beard = new Beard(this, {
+      scheduler: world.scheduler,
+      secondsUntilNextDay: now => world.secondsUntilNextDay(now),
+      spawnPrize: (prefab, count, point) => world.spawnPrize(prefab, count, new THREE.Vector3(point.x, point.y, point.z)),
+    });
+    this.beard.SetBits(BEEFALO_BEARD_BITS);
+    // assume the beefalo has already grown its hair
+    this.beard.SetDaysGrowth(BEEFALO_HAIR_GROWTH_DAYS + 1);
+    this.beard.onreset = () => this.onResetBeard();
+    this.beard.canshavetest = () => this.canShaveTest();
+    this.beard.prize = BEEFALO_PRIZE;
+    // OnShaved only calls ApplyBuildOverrides; the build follows the hairy memo, but Shave still needs this day marker.
+    this.beard.AddCallback(0, () => undefined);
+    this.beard.AddCallback(BEEFALO_HAIR_GROWTH_DAYS, () => {
+      if (this.beard.bits.peek() === 0) this.hairGrowthPendingState.set(true);
+    });
+    const controller = this, beefaloWorld = world;
+    this.sleeper = new Sleeper({
+      isValid: () => !controller.disposed,
+      PushEvent: (name, data) => controller.PushEvent(name, data),
+      world: { get isNight() { return beefaloWorld.phase === 'night'; } },
+      get sg() { return controller.sg; },
+      get components() { return controller.components; },
+    }, world.scheduler, random);
+    this.sleeper.SetResistance(3);
+    const beard = this.beard;
+    model.userData.components = { beard, sleeper: this.sleeper,
+      beefalo: { HasTag: (tag: string) => tag === 'has_beard' ? beard.hairy.peek() : undefined } };
+    actionEntity(model, 'beefalo');
+    // getbasebuild: no has_beard means beefalo_shaved_build. Reads only this inst's hairy memo.
+    this.stopAppearance = createEffect(() => this.animation.setShaved(!beard.hairy.get()));
+    // beard.lua OnLoad replays the day callbacks; beefalo.lua OnLoadPostPass needs nothing more because
+    // the bare build and has_beard tag follow the loaded bit count.
+    if (saved?.beard) this.beard.OnLoad(saved.beard);
     this.idle();
     this.wanderRemaining = 1 + random() * 3;
   }
@@ -108,7 +169,9 @@ export class BeefaloController {
       this.world.spawnPoop(position);
     }
 
-    if (this.world.phase === 'night') {
+    // Shave and hair growth are animation-driven; the sleeper keeps testing meanwhile.
+    if (this.currentState === 'shaved' || this.currentState === 'hair_growth' || this.currentState === 'hair_growth_pop') return;
+    if (this.sleeper.IsAsleep()) {
       if (this.currentState !== 'sleep_pre' && this.currentState !== 'sleep') {
         this.locomotor.stop();
         this.faceTarget = undefined;
@@ -204,10 +267,57 @@ export class BeefaloController {
   exportState(): BeefaloSaveState {
     return { home: this.home.toArray(), heading: THREE.MathUtils.euclideanModulo(
       THREE.MathUtils.radToDeg(Math.atan2(-this.direction.z, this.direction.x)), 360),
-    poopRemainingSeconds: this.poopRemaining };
+    poopRemainingSeconds: this.poopRemaining, beard: this.beard.OnSave() };
   }
 
-  dispose(): void { this.disposed = true; this.locomotor.stop(); }
+  dispose(): void {
+    this.disposed = true;
+    this.locomotor.stop();
+    this.stopAppearance();
+    this.beard.dispose();
+    this.sleeper.dispose();
+  }
+
+  // --- the inst surface read by beard, sleeper and component actions
+  isValid(): boolean { return !this.disposed; }
+  getPosition(): { x: number; y: number; z: number } { const { x, y, z } = this.model.position; return { x, y, z }; }
+  PushEvent(name: string, data?: unknown): void { this.model.dispatchEvent({ type: name, data } as never); }
+  get sg(): { hasStateTag(tag: string): boolean } {
+    return { hasStateTag: tag => (tag === 'busy' && BUSY_STATES.has(this.currentState))
+      || (tag === 'sleeping' && (this.currentState === 'sleep_pre' || this.currentState === 'sleep')) };
+  }
+  get components() { return { locomotor: { Stop: () => this.locomotor.stop() } }; }
+
+  /** beefalo.lua CanShaveTest, with no health, beef bell or partner to consult. */
+  private canShaveTest(): { ok: true } | { ok: false; reason?: string } {
+    return this.sleeper.IsAsleep() ? { ok: true } : { ok: false, reason: 'AWAKEBEEFALO' };
+  }
+
+  /** beefalo.lua OnResetBeard (brushable, domesticatable and skinner_beefalo are not ported). */
+  private onResetBeard(): void {
+    this.locomotor.stop();
+    this.faceTarget = undefined;
+    this.setState('shaved');
+    // SGBeefalo.lua shaved: animover → sleeping while asleep, otherwise wake.
+    this.once('shave', () => {
+      if (this.sleeper.IsAsleep()) { this.setState('sleep'); this.animation.start('sleep_loop'); } else {
+        this.setState('sleep_pst');
+        this.once('sleep_pst', () => this.idle());
+      }
+    });
+  }
+
+  /** SGBeefalo.lua hair_growth → hair_growth_pop, entered from idle while hairGrowthPending. */
+  private startHairGrowth(): void {
+    this.locomotor.stop();
+    this.setState('hair_growth');
+    this.once('hair_growth_pre', () => {
+      this.setState('hair_growth_pop');
+      this.beard.SetBits(BEEFALO_BEARD_BITS);
+      this.hairGrowthPendingState.set(false);
+      this.once('hair_growth', () => this.idle());
+    });
+  }
 
   private startWalking(): boolean {
     const radius = this.world.phase === 'day' ? BEEFALO_BEHAVIOR.wanderDay : BEEFALO_BEHAVIOR.wanderNight;
@@ -235,6 +345,7 @@ export class BeefaloController {
   }
 
   private idle(): void {
+    if (this.hairGrowthPendingState.peek()) { this.startHairGrowth(); return; }
     this.setState('idle');
     this.idleRemaining = 1 + this.random();
     this.animation.start('idle_loop');
@@ -271,12 +382,19 @@ export class BeefaloManager {
   private readonly contactMaterials: CANNON.ContactMaterial[];
   private readonly stopClock: () => void;
   private readonly stopSeason: () => void;
+  private readonly scheduler: GameTimeScheduler;
+  private readonly ownsScheduler: boolean;
 
   constructor(scene: THREE.Scene, physics: CANNON.World, assetBaseUrl: string, world: BeefaloManagerWorld) {
     this.scene = scene;
     this.physics = physics;
     this.assetBaseUrl = assetBaseUrl;
-    this.world = { ...world, phase: world.clock.peek().phase, season: world.season.peek().season };
+    this.ownsScheduler = world.scheduler === undefined;
+    this.scheduler = world.scheduler ?? new GameTimeScheduler();
+    const initialClock = world.clock.peek();
+    this.world = {
+      ...world, scheduler: this.scheduler, phase: initialClock.phase, season: world.season.peek().season,
+    };
     this.stopClock = world.clock.subscribe(({ phase }) => { this.world.phase = phase; });
     this.stopSeason = world.season.subscribe(({ season }) => { this.world.season = season; });
     // MakeCharacterPhysics sets friction to zero. Cannon otherwise cancels the
@@ -336,7 +454,10 @@ export class BeefaloManager {
     return model;
   }
 
-  update(dt: number): void { for (const beefalo of this.beefalos) beefalo.update(dt); }
+  update(dt: number): void {
+    if (this.ownsScheduler && Number.isFinite(dt) && dt > 0) this.scheduler.advance(Math.min(dt, 0.1));
+    for (const beefalo of this.beefalos) beefalo.update(dt);
+  }
   sync(cameraQuaternion: THREE.Quaternion): void { for (const beefalo of this.beefalos) beefalo.sync(cameraQuaternion); }
 
   get renderEntities() {
@@ -356,6 +477,7 @@ export class BeefaloManager {
     this.disposed = true;
     this.stopClock();
     this.stopSeason();
+    if (this.ownsScheduler) this.scheduler.dispose();
     for (const beefalo of this.beefalos) {
       beefalo.dispose();
       this.physics.removeBody(beefalo.body);

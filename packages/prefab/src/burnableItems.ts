@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -58,7 +57,7 @@ export class BurnableItemController {
     this.burnable.SetOnExtinguishFn(() => { entity.persists = true; }); // DefaultExtinguishFn
     this.burnable.SetOnBurntFn(() => {
       const count = Math.min(ASH_MAX_STACK, entity.components.stackable.count);
-      const position = new THREE.Vector3().fromArray(entity.transform.position);
+      const position = entity.transform.position.clone();
       // DefaultBurntFn creates one ash stack at the original inst's position, then removes the inst.
       if (!this.presentation?.ash.spawn(position, count)) throw new Error('Burning item requires prepared ash output');
       this.burntState.set(true);

@@ -28,6 +28,7 @@ import { view, actionEvents } from './view';
 import { spellCastMap } from './spellCastMap';
 import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type InventoryStack } from '@dontstarve-web/inventory';
 import { player } from './player';
+import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { bindPlayerHeadEquipment } from './playerHeadEquipment';
 import { bindPlayerBodyEquipment } from './playerBodyEquipment';
@@ -92,9 +93,15 @@ const pickupDoer: PickupDoer = {
   components: { inventory },
   hasTag: tag => tag === 'player' || (player.userData.tags?.includes(tag) ?? false),
   GetPosition: () => player.position,
-  PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
+  PushEvent: (name, data) => {
+    // player_common.lua listens for itemranout; SGwilson.lua handles toolbroke.
+    if (name === 'toolbroke') playerAnimation?.stategraph.pushEvent(name, data);
+    else if (name === 'itemranout') OnItemRanOut(inventory, data);
+    player.dispatchEvent({ type: name, data } as never);
+  },
 };
 inventory.bindActor(pickupDoer);
+playerAnimation?.bindInventory(inventory);
 player.userData.components = { ...player.userData.components, inventory };
 const handSlotAddress = equipmentSlotAddress('hand');
 const handPointer = view.mouseActions?.pointer ?? new PointerRaycaster(view);

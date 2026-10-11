@@ -88,7 +88,13 @@ importers:
       '@dontstarve-web/signals':
         specifier: workspace:*
         version: link:../signals
+      three:
+        specifier: ^0.184.0
+        version: 0.184.0
     devDependencies:
+      '@types/three':
+        specifier: ^0.184.1
+        version: 0.184.1
       typescript:
         specifier: ~6.0.2
         version: 6.0.3

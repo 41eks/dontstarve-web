@@ -62,6 +62,8 @@ const sounds = {
     layers: [{ bank: 'sfx', streams: [1246, 1247, 1248, 1249, 1237, 1242, 1243, 1244, 1245, 1238, 1239, 1240, 1241] }] },
   // moontree.lua on_chop_tree_down → dontstarve.fev treeFall: tree_fall_1.wav, forest file_index 8.
   'dontstarve/forest/treeFall': { bank: 'forest', streams: [9], loop: false },
+  // winterometer.lua onbuilt → dontstarve.fev sounddef 1331 (Thermal_measurer_craft.wav) → common file_index 175.
+  'dontstarve/common/winter_meter_craft': { bank: 'common', streams: [176], loop: false },
   // sculptingtable.lua onbuilt → dontstarve.fev sounddef sfx/together/sculpting_table/sculpting_station_craft-01.wav → sfx stream 910.
   'dontstarve/common/together/sculpting_table/craft': { bank: 'sfx', streams: [910], loop: false },
   // moonbase.lua / sculptingtable.lua → dontstarve.fev sounddefs 2381 + 2355, two simultaneous layers.
@@ -87,6 +89,28 @@ const sounds = {
   'dontstarve/common/destroy_straw': { bank: 'common', streams: [63], loop: false },
   // butterfly.lua OnWorked → FEV sounddef 183 → zero-based file_index 21–23.
   'dontstarve/common/butterfly_trap': { bank: 'common', streams: [22, 23, 24], loop: false },
+  // birdcage.lua → dontstarve.fev sounddefs 307 (bird_wingflap_1..6, birds file_index 25–30) and 1338 (Birdcage_craft, sfx file_index 345).
+  'dontstarve/birds/wingflap_cage': { bank: 'birds', streams: [26, 27, 28, 29, 30, 31], loop: false },
+  'dontstarve/common/birdcage_craft': { bank: 'sfx', streams: [346], loop: false },
+  // birds.lua BIRD_SOUNDS.chirp → sounddefs 304 / 305 / 306 (birds) and 2175 (together canary_chirp_dst_1..12), file_index + 1.
+  'dontstarve/birds/chirp_crow': { bank: 'birds', streams: [14, 15, 16], loop: false },
+  'dontstarve/birds/chirp_robin': { bank: 'birds', streams: [4, 5, 6], loop: false },
+  'dontstarve/birds/chirp_junco': { bank: 'birds', streams: [1, 2, 3], loop: false },
+  'dontstarve/birds/chirp_canary': { bank: 'together', streams: [748, 749, 750, 751, 752, 753, 754, 755, 756, 757, 758, 759], loop: false },
+  // birds.lua BIRD_SOUNDS.death → sounddefs 3171+3170 / 3169+3170 / 3196+3170 (chirp over bird_fall_drop_dead, sfx file_index 126–128)
+  // and 2177+1370 (canary_death_2 over canary_cough_dst_4..6, together file_index 762–766).
+  'dontstarve/birds/death_crow': { bank: 'birds', streams: [14, 15, 16], loop: false,
+    layers: [{ bank: 'sfx', streams: [127, 128, 129] }] },
+  'dontstarve/birds/death_robin': { bank: 'birds', streams: [4, 5, 6], loop: false,
+    layers: [{ bank: 'sfx', streams: [127, 128, 129] }] },
+  'dontstarve/birds/death_junco': { bank: 'birds', streams: [1, 2, 3], loop: false,
+    layers: [{ bank: 'sfx', streams: [127, 128, 129] }] },
+  'dontstarve/birds/death_canary': { bank: 'together', streams: [766, 767], loop: false,
+    layers: [{ bank: 'together', streams: [763, 764, 765] }] },
+  // SGwilson.lua shave → dontstarve.fev sounddef 82 (sfx/wilson/Shave_1..6.wav) → wilson file_index 87–92.
+  'dontstarve/wilson/shave_LP': { bank: 'wilson', streams: [88, 89, 90, 91, 92, 93], loop: true },
+  // SGwilson.lua toolbroke → dontstarve.fev sounddef 65 (sfx/wilson/Tool_Break.wav) → wilson file_index 93.
+  'dontstarve/wilson/use_break': { bank: 'wilson', streams: [94], loop: false },
   'dontstarve/wilson/use_pick_rock': { bank: 'wilson', streams: [124], loop: false },
   // rock_break_fx.lua → dontstarve.fev sounddef 84 → wilson file_index 24 (Stone_break.wav).
   'dontstarve/wilson/rock_break': { bank: 'wilson', streams: [25], loop: false },

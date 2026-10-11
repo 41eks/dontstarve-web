@@ -54,6 +54,31 @@ createEffect(() => {
 
 环境 signal 的变化不会单独触发这个 effect；它只在首次运行或自身依赖变化时读取最新环境值。若环境变化需要改变植物生长或照明，由负责该行为的组件／环境系统处理并更新实体自身状态，再驱动表现；不能期待 `.peek()` 自动提供环境变化通知。
 
+## beefalo：胡须与睡眠
+
+`beard.lua` 的 `bits`、`daysgrowth`、`daysgrowthaccumulator` 是 [Beard](../packages/componets/src/beard.ts) 的私有 signal，只读视图对外；`hairy`（`bits > 0`）是纯 memo。`Shave`、`OnDayComplete`、`Reset`、`OnLoad` 在组件内按 Lua 顺序执行，成对写入用 `batch()`，回调与领域判断读取 `peek()` 的权威值，不读尚未提交的 memo。每日生长是调度器上到下一个日界的一个 `ComponentTimer`（私有 signal 快照，对外只读的 `dayTimerState`）：世界侧注入 `secondsUntilNextDay(now)`，`Beard` 不读时钟或 tuning，也不订阅全局时钟；到期执行 `OnDayComplete` 再登记下一个日界，跨多天时逐天补发，等待期间 signal 不变；销毁写入 `stopped`、撤销任务并释放 memo。timer 不入档，读档按当前世界时间重新登记。
+
+标签不保存副本：`Beard.HasTag('bearded')` 恒为真，牛的 `has_beard` 经 `HasTag` 从 `hairy` 派生，实体 `hasTag()` 读取同一份。表现 effect 只订阅牛自己的 `hairy`（`get()`），把 `beefalo_shaved_build` 与 `beefalo_build` 切换交给精灵控制器；世界昼夜等环境值由领域代码读取，不加入 effect 依赖。`hairGrowthPending` 对应 Lua 的 `inst.hairGrowthPending`，是牛私有的 signal，由第 3 天回调置位，`idle` 状态读取并在 `hair_growth_pop` 清除。
+
+[Sleeper](../packages/componets/src/sleeper.ts) 的 `isasleep` 是私有 signal，周期测试（4 ± 0.5 秒）由 `ComponentTimer` 在共享游戏时间调度器上登记，等待期间不逐帧扣减；`GoToSleep`、`WakeUp`、`StartTesting`、`StopTesting` 分别更新 signal 与 timer，销毁时停止测试。
+
+## 鸟笼：鸟的饥饿、饿死与腐烂
+
+鸟的饥饿就是 [Perishable](../packages/componets/src/perishable.ts) 的剩余时间：私有 `timer` signal 区分 `perishing`／`paused`／`perished`／`stopped`，`percent` 与 `stage` 是纯 memo。`MakeFeedableSmallLivestock` 的“放入物品栏开始、落地停止”由 `localMultiplier` 表达（有 `inventoryitem.owner` 或 `occupier` 的 owner 为 1，否则为 0），读档不必重放 `OnPutInInventory`；`occupierCage` 对应 `perishable.lua` 里无 owner 时取 `occupier:GetOwner()`，笼内用 `PERISH_CAGE_MULT`。所有鸟和货架物品仍按每 60 个有效游戏帧结算一次，鸟笼的 `update(dt)` 只累计时间，保存前 `flush()`。
+
+[Occupiable](../packages/componets/src/occupiable.ts) 的 `occupant` 是私有 signal（对外只读），`occupied`／`bird_occupiable` 标签随它同步。`Occupy` 先写 occupant，再执行 `occupier.onoccupied` 与 `onoccupied`，最后登记 `perished` 和 `onremove` 监听；`perished` 的顺序与 Lua 一致：`onemptied` → `onperishfn(cage, bird)`（此时 occupant 仍可读）→ 清除 occupant → 销毁鸟。`onperishfn` 里货架组件移除 `occupiable`，随后 `setOccupant(nil)` 仍会写回 `bird_occupiable`，与 Lua 属性监听在已移除组件上的行为一致；STORE 的可用性读取组件的 `CanOccupy`，不依赖这个标签。
+
+[Birdcage](../packages/prefab/src/birdcage.ts) 把 `CAGE_STATE`、`bird_type` 保存在私有 signal，`status`（`GENERIC／OCCUPIED／HUNGRY／STARVING／SLEEPING／DEAD／SKELETON`）由 `cageState`、占用鸟的 `percent` 和睡眠 signal 派生。动画、声音、货架转换只在 `Occupy`、`perished`、`TakeItem` 等领域方法里执行，不放在 memo 或表现 effect 中。每 6 秒的待机动画是调度器上的一个 `ComponentTimer`（占用时启动，睡眠、空笼和腐烂时停止，到期后重新登记）；`sleeper` 的 4 ± 0.5 秒测试也是调度器任务，睡眠测试读取注入的 `isNight`，不订阅全局时钟；60 帧后的消化、各帧的啼叫等一次性任务由调度器登记，销毁时统一取消。
+
+```text
+鸟的 perishable 到期 → perished 事件 → occupiable.onemptied（空笼）→ onBirdStarve
+  → CAGE_STATE = _death，播放 death，货架放入 smallmeat
+smallmeat 的 perishable 到期 → perished 事件 → 调度器 0 秒后 → CAGE_STATE = _skeleton，货架放入 spoiled_food
+TAKEITEM → shelf.ontakeitem → 恢复 occupiable → CAGE_STATE = _empty
+```
+
+保存时 `occupant` 和笼内物品是 `ItemEntity` 快照（身份、剩余饥饿度），`CAGE_STATE`、`bird_type` 与它们一起入档；读档先占用鸟再写 `CAGE_STATE` 与 `bird_type`，最后把笼内物品放回货架（对应 `OnLoad` → `OnLoadPostPass`）。调度器任务和 memo 不入档；占用时重新登记待机动画，货架物品用恢复后的 `perishable` 继续腐烂。
+
 ## 原版移除流程与源码依据
 
 本地 DST 源码根目录为 `/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts`。相关入口是 `entityscript.lua`、`mainfunctions.lua`、`prefabs/flower_cave.lua`、`components/pickable.lua`、`prefabs/ash.lua`、`components/disappears.lua`、`standardcomponents.lua`、`prefabs/stafflight.lua`、`components/timer.lua` 和 `tuning.lua`。

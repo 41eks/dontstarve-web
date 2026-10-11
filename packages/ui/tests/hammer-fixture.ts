@@ -66,9 +66,9 @@ export async function checkResearchLabDestruction() {
     // Isolate one material stack and pick it up through the public pointer path.
     const groundModel = entities.groundItems.renderEntities[0].object;
     const address = groundModel.userData.entityId;
-    for (const { object } of entities.groundItems.renderEntities.slice(1)) object.userData.pickupTarget.entity.transform.position[0] += 100;
-    groundModel.userData.pickupTarget.entity.transform.position = player.position.clone().setY(0).add(new THREE.Vector3(5, 0, 0)).toArray();
-    groundModel.position.fromArray(groundModel.userData.pickupTarget.entity.transform.position);
+    for (const { object } of entities.groundItems.renderEntities.slice(1)) object.userData.pickupTarget.entity.transform.position.x += 100;
+    groundModel.userData.pickupTarget.entity.transform.position.copy(player.position).setY(0).add(new THREE.Vector3(5, 0, 0));
+    groundModel.position.copy(groundModel.userData.pickupTarget.entity.transform.position);
     const { scene, renderer } = await import('../../../src/universal');
     camera.position.copy(groundModel.position).add(new THREE.Vector3(0, 20, 35));
     camera.lookAt(groundModel.position);

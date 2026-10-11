@@ -9,11 +9,19 @@ import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionConte
 export interface WorldContext extends ActionWorldContext {
     itemEntities?: import('@dontstarve-web/inventory').ItemEntityRegistry;
     scheduler?: import('../../componets/src/gameTimeScheduler').GameTimeScheduler;
+    /** GetLocalTemperature at a DST ground position, in scene units. */
+    getLocalTemperature?: (x: number, z: number) => number;
     fullMoon?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
     dynamicMusic?: import('../../componets/src/dynamicmusic').DynamicMusic;
     registerContainer?: (id: string, container: import('./containers').BuildingContainer,
         saved?: { slots: readonly { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] }) => void;
     unregisterContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
+    /** TheWorld.state.isnight. */
+    isNight?: () => boolean;
+    /** SpawnPrefab for an inventory item: a configured inst that nothing owns yet. */
+    spawnItem?: (state: import('@dontstarve-web/inventory').InventoryStack) => import('@dontstarve-web/inventory').ItemEntity;
+    /** inventoryitem:OnDropped for an existing inst, placed on the ground at the position. */
+    dropItem?: (entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3) => void;
     /** Place destruction loot in the application's authoritative ground-item store. */
     dropLoot?: (items: readonly { itemId: string; count: number }[], position: THREE.Vector3) => void;
 }

@@ -1,5 +1,5 @@
 import { HAT_DEFINITIONS, HAT_RECIPES, HAT_SKIN_SPECS } from '@dontstarve-web/prefab/hats';
-import { GROUND_ITEM_SKIN_SPECS } from '@dontstarve-web/prefab/groundItems';
+import { GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS } from '@dontstarve-web/prefab/groundItems';
 import recipeDataJson from '@dontstarve-web/animation/recipes.json' with { type: 'json' };
 import type { InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
 import {
@@ -170,8 +170,9 @@ function createIngredient(source: SourceIngredient): RecipeIngredient {
   }
 
   const amount = typeof source.amount === 'number' ? source.amount : 0;
-  const atlas = stringValue(source.atlas);
-  const image = stringValue(source.image) ?? `${source.type}.tex`;
+  const display = GROUND_ITEM_DISPLAY_SPECS[source.type];
+  const atlas = stringValue(source.atlas) ?? display?.atlas;
+  const image = stringValue(source.image) ?? display?.icon ?? `${source.type}.tex`;
   return {
     id: source.type,
     name: ingredientNames[source.type] ?? humanize(source.type),
@@ -200,8 +201,9 @@ export function createRecipe(id: string): Recipe {
 
   const product = stringValue(source.config.product) ?? id;
   const hat = HAT_DEFINITIONS[product];
-  const image = hat?.icon ?? stringValue(source.config.image) ?? `${product}.tex`;
-  const atlas = hat?.atlas ?? stringValue(source.config.atlas);
+  const display = GROUND_ITEM_DISPLAY_SPECS[product];
+  const image = hat?.icon ?? stringValue(source.config.image) ?? display?.icon ?? `${product}.tex`;
+  const atlas = hat?.atlas ?? stringValue(source.config.atlas) ?? display?.atlas;
   return {
     id,
     name: recipeNames[id] ?? humanize(id),
@@ -217,8 +219,8 @@ export function createRecipe(id: string): Recipe {
     }),
     skins: (recipeSkins[product] ?? []).map((skin) => ({
       ...skin,
-      inventoryAtlas: HAT_SKIN_SPECS[skin.id]?.atlas ?? 'images/inventoryimages.xml',
-      inventoryIcon: HAT_SKIN_SPECS[skin.id]?.icon ?? `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
+      inventoryAtlas: INVENTORY_SKIN_SPECS[skin.id]?.atlas ?? 'images/inventoryimages.xml',
+      inventoryIcon: INVENTORY_SKIN_SPECS[skin.id]?.icon ?? `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
     })),
   };
 }

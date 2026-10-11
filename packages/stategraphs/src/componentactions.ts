@@ -19,12 +19,15 @@ export interface ComponentActionEntity extends WorkInst {
     lighter?: Lighter;
     burnable?: Burnable;
     propagator?: Propagator;
+    heater?: import('../../componets/src/heater').Heater;
+    beard?: import('../../componets/src/beard').Beard;
     health?: import('../../componets/src/health').Health;
     combat?: import('../../componets/src/combat').Combat;
     weapon?: import('../../componets/src/weapon').Weapon;
     repairable?: import('../../componets/src/repairable').Repairable;
     repairer?: import('../../componets/src/repairer').Repairer;
     trader?: import('../../componets/src/trader').Trader<import('../../componets/src/trader').TradeItem>;
+    occupiable?: { readonly occupanttype: string | undefined; CanOccupy(item: any): boolean; Occupy(item: any): boolean };
   };
 }
 
