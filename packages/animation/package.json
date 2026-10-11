@@ -1,0 +1,40 @@
+{
+  "name": "@dontstarve-web/animation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./imageAtlas": "./src/imageAtlas.ts",
+    "./parseKtex": "./src/parseKtex.ts",
+    "./animationAssets": "./src/animationAssets.ts",
+    "./renderOrder": "./src/renderOrder.ts",
+    "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
+    "./sprite": "./src/sprite.ts",
+    "./archiveSprite": "./src/archiveSprite.ts",
+    "./beefaloSprite": "./src/beefaloSprite.ts",
+    "./wallSprite": "./src/wallSprite.ts",
+    "./prefabskin": "./src/prefabskin.ts",
+    "./recipes.json": "./recipes.json",
+    "./bitmapFont": "./src/bitmapFont.ts",
+    "./atlasImage": "./src/atlasImage.ts"
+  },
+  "scripts": {
+    "recipes:check": "node scripts/extract-recipes.mjs --check",
+    "recipes:generate": "node scripts/extract-recipes.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3"
+  },
+  "peerDependencies": {
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/three": "^0.184.1",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.1"
+  }
+}

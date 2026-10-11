@@ -1,0 +1,894 @@
+import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
+import * as CANNON from 'cannon-es';
+import * as THREE from 'three';
+import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonCombat, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonMovementState, type WilsonOneShotState } from '@dontstarve-web/stategraphs';
+import {
+  createMaterials,
+  findImage,
+  loadAnim,
+  loadAnimationArchive,
+  loadBuild,
+  smallHash,
+  SpriteFrameRenderer,
+  type Animation,
+  type ParsedAnim,
+  type ParsedBuild,
+  type ResolvedSprite,
+} from '@dontstarve-web/animation/animationAssets';
+import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import {
+  HatActivationController, HatEquipmentAssets, isHatPlayerElementVisible, resolveHatSprites, type HatEquipment,
+} from './hats';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
+import { LanternLightController, loadLanternEquipment, resolveLanternPlayerSprite, type LanternEquipment } from './lantern';
+import { isStaff, loadLightStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, type YellowStaffEquipment } from './yellowstaff';
+import { loadBugNetEquipment, resolveBugNetPlayerSprite, type BugNetEquipment } from './bugnet';
+import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
+import { loadHammerEquipment, resolveHammerPlayerSprite, type HammerEquipment } from './hammer';
+import { loadNightswordEquipment, resolveNightswordPlayerSprite, type NightswordEquipment } from './nightsword';
+import { isPickaxeTool, loadPickaxeEquipment, resolvePickaxePlayerSprite, type PickaxeEquipment, type PickaxeTool } from './pickaxe';
+import { isAxeTool, loadAxeEquipment, type AxeEquipment, type AxeTool } from './axe';
+import { isPitchforkTool, loadPitchforkEquipment, resolvePitchforkPlayerSprite, type PitchforkEquipment, type PitchforkTool } from './pitchfork';
+import { isFarmHoeTool, loadFarmHoeEquipment, resolveFarmHoePlayerSprite, type FarmHoeEquipment, type FarmHoeTool } from './farm_hoe';
+import { isShovelTool, loadShovelEquipment, resolveShovelPlayerSprite, type ShovelEquipment, type ShovelTool } from './shovel';
+import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
+import { BookFxController, type BookFxPrefab } from './book_fx';
+import { loadReskinToolEquipment } from './reskin_tool';
+import { resolveReskinToolPlayerSprite, type ReskinToolEquipment } from './reskin_tool';
+
+export type WilsonFacing = 'up' | 'down' | 'side';
+export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'bugnet' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
+type ReadAnimationKey = 'action_uniqueitem_pre' | 'book';
+type WilsonAnimations = Record<Exclude<WilsonAnimationKey, 'emote' | ReadAnimationKey>, ParsedAnim>;
+/** player_common_extensions.lua AddOverrideBuild; its anims are loaded with the first READ. */
+const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
+
+export interface WilsonAnimationController extends ActionAnimationController {
+  readonly currentEmote: WilsonEmote | null;
+  readonly isEmoting: boolean;
+  /** The player inst's combat component, read by the attack state. */
+  combat?: WilsonCombat;
+  playEmote(emote: WilsonEmote): Promise<boolean>;
+  start(state: WilsonMovementState): void;
+  playEat(): void;
+  playItemTransition(state: 'item_in' | 'item_out', item?: WilsonCarryItem): void;
+  playPickup(): void;
+  setCrafting(crafting: boolean): void;
+  setCarryItem(item: WilsonCarryItem | null, skinId?: string): Promise<void>;
+  /** The equipped lantern's machine.ison and fuel percent; carrying alone does not light it. */
+  setLanternLight(ison: boolean, fuelPercent: number): void;
+  setHat(itemId: string | null, skinId?: string): Promise<void>;
+  setBackpack(equipped: boolean, skinId?: string): Promise<void>;
+  /** Normalized sanity; defaults to full until the application supplies state. */
+  setSanityPercent(percent: number): void;
+  update(dt: number, jumpProgress?: number): void;
+}
+
+export type PlayerBody = CANNON.Body & { canJump: boolean };
+
+export interface WilsonPlayerPrefab {
+  body: PlayerBody;
+  model: THREE.Group;
+  setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
+}
+
+export interface WilsonPlayerPrefabOptions {
+  mass?: number;
+  shapeRadius?: number;
+}
+
+/** Source tags: bugnet tool component and reskin_tool.lua's veryquickcast. */
+const ACTION_TOOL_METADATA: Partial<Record<WilsonCarryItem, { tags: readonly string[]; spelltype?: string }>> = {
+  bugnet: { tags: ['NET_tool'] },
+  reskin_tool: { tags: ['veryquickcast'], spelltype: 'RESKIN' },
+};
+
+const facingValues: Record<WilsonFacing, number> = { down: 8, side: 5, up: 2 };
+const normalArmLayerHash = smallHash('ARM_normal');
+const carryArmLayerHash = smallHash('ARM_carry');
+const swapObjectHash = smallHash('swap_object');
+const swapTorchHash = smallHash('swap_torch');
+const lanternOverlayHash = smallHash('lantern_overlay');
+
+interface CarryBuild {
+  build: ParsedBuild;
+  materials: THREE.MeshBasicMaterial[];
+}
+
+interface EmoteAssets {
+  animations: ParsedAnim;
+  props?: CarryBuild;
+}
+
+interface ActiveEmote extends EmoteAssets {
+  id: WilsonEmote;
+  clips: readonly string[];
+  loop: boolean;
+}
+
+class WilsonController implements WilsonAnimationController {
+  private readonly renderer: SpriteFrameRenderer;
+  private readonly materials: THREE.MeshBasicMaterial[];
+  readonly stategraph: WilsonStateGraph;
+  private state: WilsonAnimationKey = 'idle';
+  private clipName = 'idle_loop';
+  private facing: WilsonFacing = 'down';
+  private mirrored = false;
+  private equippedCarryItem: WilsonCarryItem | null = null;
+  private carryItem: WilsonCarryItem | null = null;
+  private carryKey = '';
+  private carryRequest = 0;
+  private readonly lanternAssets: GroundItemAssets;
+  private readonly lanternLight: LanternLightController;
+  private lanternEquipment: LanternEquipment | null = null;
+  private lanternOn = false;
+  private staffEquipment: YellowStaffEquipment | null = null;
+  private netEquipment: BugNetEquipment | null = null;
+  private hammerEquipment: HammerEquipment | null = null;
+  private nightswordEquipment: NightswordEquipment | null = null;
+  private pickaxeEquipment: PickaxeEquipment | null = null;
+  private axeEquipment: AxeEquipment | null = null;
+  private pitchforkEquipment: PitchforkEquipment | null = null;
+  private farmHoeEquipment: FarmHoeEquipment | null = null;
+  private shovelEquipment: ShovelEquipment | null = null;
+  private reskinToolEquipment: ReskinToolEquipment | null = null;
+  private readonly castingLight: StaffCastingLight;
+  private animation!: Animation;
+  private makeSound?: SoundHandle;
+  /** The player inst's combat component, read by the attack state. */
+  combat?: WilsonCombat;
+  private frameIndex = -1;
+  private readonly visual: THREE.Group;
+  private readonly build: ParsedBuild;
+  private readonly animations: WilsonAnimations;
+  private readonly torch: CarryBuild;
+  private readonly hatAssets: HatEquipmentAssets;
+  private readonly hatActivation: HatActivationController;
+  private hat: HatEquipment | null = null;
+  private hatRequest = 0;
+  private hatKey = '';
+  private hatElapsed = 0;
+  private backpack: readonly CarryBuild[] | null = null;
+  private backpackKey = '';
+  private backpackRequest = 0;
+  private readonly emoteAssets = new Map<string, Promise<EmoteAssets>>();
+  private emote: ActiveEmote | null = null;
+  private emoteRequest = 0;
+  private emotePending = false;
+  private uniqueItemAnimations: ParsedAnim | null = null;
+  /** Loaded builds by name, for AnimState:OverrideSymbol and AddOverrideBuild. */
+  private readonly symbolBuilds = new Map<string, CarryBuild>();
+  private readonly symbolOverrides = new Map<number, { source: CarryBuild; hash: number }>();
+  private readonly bookFx: BookFxController;
+  private bookLayerSound?: SoundHandle;
+  private readonly assetBaseUrl: string;
+
+  constructor(
+    visual: THREE.Group,
+    build: ParsedBuild,
+    animations: WilsonAnimations,
+    materials: THREE.MeshBasicMaterial[],
+    torch: CarryBuild,
+    assetBaseUrl: string,
+  ) {
+    this.visual = visual;
+    this.build = build;
+    this.animations = animations;
+    this.materials = materials;
+    this.torch = torch;
+    this.assetBaseUrl = assetBaseUrl;
+    this.lanternAssets = new GroundItemAssets(assetBaseUrl);
+    this.lanternLight = new LanternLightController(visual.parent!);
+    this.castingLight = new StaffCastingLight(visual.parent!);
+    this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
+    this.hatActivation = new HatActivationController(visual.parent!);
+    this.renderer = new SpriteFrameRenderer(visual);
+    this.bookFx = new BookFxController(this.lanternAssets, visual);
+    this.stategraph = new WilsonStateGraph({
+      playAnimation: (clip) => this.selectAnimation(clip),
+      getCombat: () => this.combat,
+      playSound: (cue, castsound) => {
+        if (cue === 'attack') { PlaySound(castsound as SoundEventPath); return; }
+        if (cue === 'make') {
+          this.makeSound?.stop();
+          this.makeSound = PlaySound('dontstarve/wilson/make_trap');
+          return;
+        }
+        const event = cue === 'dig' ? 'dontstarve/wilson/dig' : cue === 'tillEmerge' ? 'dontstarve_DLC001/creatures/mole/emerge'
+          : cue === 'sip' ? 'dontstarve/wilson/sip' : cue === 'eat' ? 'dontstarve/wilson/eat' : cue === 'reskin' ? 'dontstarve/wilson/attack_weapon'
+          : cue === 'cast' ? (castsound as SoundEventPath ?? 'dontstarve/wilson/use_gemstaff')
+            : cue === 'bookLight' ? 'dontstarve/common/use_book_light' : cue === 'bookClose' ? 'dontstarve/common/use_book_close'
+              : cue === 'hammer' ? 'dontstarve/wilson/hit' : 'dontstarve/wilson/use_pick_rock';
+        PlaySound(event);
+      },
+      playNamedSound: (_name, event) => {
+        this.bookLayerSound?.stop();
+        this.bookLayerSound = PlaySound(event as SoundEventPath);
+      },
+      isPlayingNamedSound: () => this.bookLayerSound?.isPlaying() ?? false,
+      setNamedSoundVolume: (_name, volume) => this.bookLayerSound?.setVolume(volume),
+      spawnFx: (prefab, followSymbol) => this.bookFx.spawn(prefab, followSymbol),
+      overrideSymbol: (symbol, build, sourceSymbol) => this.overrideSymbol(symbol, build, sourceSymbol),
+      overrideItemSkinSymbol: (symbol, skinBuild, skinSymbol, build, sourceSymbol) => {
+        const skin = this.symbolBuilds.get(skinBuild);
+        if (skin?.build.symbols.has(smallHash(skinSymbol))) this.overrideSymbol(symbol, skinBuild, skinSymbol);
+        else this.overrideSymbol(symbol, build, sourceSymbol);
+      },
+      stopSound: () => { this.makeSound?.stop(); this.makeSound = undefined; },
+      setCasting: (casting, colour) => {
+        if (casting) this.castingLight.start(colour);
+        else this.castingLight.stop();
+      },
+      setControllerEnabled: enabled => { visual.parent!.userData.controllerEnabled = enabled; },
+      stopMovement: () => visual.parent!.userData.locomotor?.stop(),
+      onStateChanged: (name) => {
+        this.carryItem = this.equippedCarryItem;
+        if (name !== 'emote') this.emote = null;
+      },
+    });
+  }
+
+  start(state: WilsonMovementState) {
+    if (state !== 'idle' && this.isEmoting) this.cancelEmote();
+    this.stategraph.requestMovement(state);
+  }
+
+  playEat() {
+    this.startOneShot('eat');
+  }
+
+  playQuickEat(onEat: () => boolean, foodDrink = false): boolean {
+    return this.startAction('EAT', onEat, true, foodDrink);
+  }
+  playPlant(onPlant: () => boolean): boolean { return this.startAction('PLANT', onPlant, true); }
+  cancelFoodAction(): void {
+    if (this.stategraph.isPerformingAction('EAT') || this.stategraph.isPerformingAction('PLANT')) this.stategraph.cancelAction();
+  }
+
+  get isReading(): boolean { return this.stategraph.isPerformingAction('READ'); }
+
+  async prepareRead(book: BufferedActionObject): Promise<void> {
+    const fx = (['book_fx', book.def?.fx_over_prefab, book.def?.fx_under_prefab] as const)
+      .filter((prefab): prefab is BookFxPrefab => prefab !== undefined);
+    const sounds = ['dontstarve/common/use_book_light', 'dontstarve/common/use_book_close',
+      book.castsound ?? 'dontstarve/common/book_spell', ...book.def?.layer_sound ? [book.def.layer_sound.sound] : []];
+    const [animations] = await Promise.all([
+      this.uniqueItemAnimations ?? this.lanternAssets.loadAnimation(`${UNIQUE_ITEM_BUILD}.zip`),
+      this.loadSymbolBuild(`${UNIQUE_ITEM_BUILD}.zip`),
+      book.swap_build ? this.loadSymbolBuild(`${book.swap_build}.zip`) : undefined,
+      book.skinBuild ? this.loadSymbolBuild(`dynamic/${book.skinBuild}.zip`) : undefined,
+      this.bookFx.prepare(...fx),
+      PreloadSounds(...sounds as SoundEventPath[]),
+    ]);
+    this.uniqueItemAnimations = animations;
+  }
+
+  playRead(book: BufferedActionObject, onRead: () => boolean): boolean {
+    if (this.stategraph.hasStateTag('busy') || !this.uniqueItemAnimations
+      || (book.swap_build && !this.symbolBuilds.has(book.swap_build))) return false;
+    this.cancelEmote();
+    return this.stategraph.pushBufferedAction(new BufferedAction('READ', onRead, undefined, { invobject: book }));
+  }
+
+  cancelRead(): void { this.stategraph.cancelAction('READ'); }
+
+  private async loadSymbolBuild(archive: string): Promise<void> {
+    const build = await this.lanternAssets.loadBuild(archive);
+    this.symbolBuilds.set(build.build.name.toLowerCase(), build);
+  }
+
+  private overrideSymbol(symbol: string, build: string, sourceSymbol: string): void {
+    const source = this.symbolBuilds.get(build);
+    if (!source) throw new Error(`Override build ${build} has not been loaded`);
+    this.symbolOverrides.set(smallHash(symbol), { source, hash: smallHash(sourceSymbol) });
+    this.refreshFrame();
+  }
+
+  get currentEmote(): WilsonEmote | null { return this.emote?.id ?? null; }
+  get isEmoting(): boolean { return this.emotePending || this.emote !== null; }
+
+  async playEmote(id: WilsonEmote): Promise<boolean> {
+    const definition: WilsonEmoteDefinition | undefined = WILSON_EMOTES[id];
+    if (!definition || !this.stategraph.canEmote()) return false;
+    this.cancelEmote();
+    const request = ++this.emoteRequest;
+    this.emotePending = true;
+    try {
+      let assets = this.emoteAssets.get(definition.archive);
+      if (!assets) {
+        assets = definition.props
+          ? loadAnimationArchive(definition.archive, this.assetBaseUrl).then(({ animations, buildPackage }) => ({
+            animations, props: { build: buildPackage.build, materials: createMaterials(buildPackage) },
+          }))
+          : loadAnim(definition.archive, this.assetBaseUrl).then((animations) => ({ animations }));
+        this.emoteAssets.set(definition.archive, assets);
+        void assets.catch(() => this.emoteAssets.delete(definition.archive));
+      }
+      const loaded = await assets;
+      if (request !== this.emoteRequest) return false;
+      this.emotePending = false;
+      this.emote = {
+        ...loaded, id, clips: definition.variants[Math.floor(Math.random() * definition.variants.length)],
+        loop: definition.loop === true,
+      };
+      if (!this.stategraph.requestEmote(this.emote.clips, this.emote.loop)) {
+        this.emote = null;
+        return false;
+      }
+      return true;
+    } catch (error) {
+      if (request !== this.emoteRequest) return false;
+      this.cancelEmote();
+      throw error;
+    }
+  }
+
+  cancelEmote(): void {
+    ++this.emoteRequest;
+    this.emotePending = false;
+    this.stategraph.cancelEmote();
+    this.emote = null;
+  }
+
+  get isCasting(): boolean { return this.stategraph.isPerformingAction('CASTSPELL') && !this.isReskinning; }
+  get isNetting(): boolean { return this.stategraph.isPerformingAction('NET'); }
+  get isMining(): boolean { return this.stategraph.isPerformingAction('MINE'); }
+  get isChopping(): boolean { return this.stategraph.isPerformingAction('CHOP'); }
+  get isHammering(): boolean { return this.stategraph.isPerformingAction('HAMMER'); }
+  get isDigging(): boolean { return this.stategraph.isPerformingAction('TERRAFORM'); }
+  get isReskinning(): boolean { return this.stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'); }
+
+  private startAction(action: WilsonAction, execute: () => void | boolean, ready: boolean, foodDrink = false): boolean {
+    if (!ready || this.stategraph.hasStateTag('busy')) return false;
+    this.cancelEmote();
+    const tool = this.carryItem;
+    const metadata = tool ? ACTION_TOOL_METADATA[tool] : undefined;
+    const invobject: BufferedActionObject | undefined = tool
+      ? { prefab: tool, spelltype: metadata?.spelltype, hasTag: tag => metadata?.tags.includes(tag) ?? false } : undefined;
+    return this.stategraph.pushBufferedAction(new BufferedAction(action, execute, undefined, { invobject }), foodDrink);
+  }
+
+  playReskin(onCast: () => void): boolean {
+    return this.startAction('CASTSPELL', onCast, this.carryItem === 'reskin_tool' && !!this.reskinToolEquipment);
+  }
+
+  cancelReskin(): void { if (this.isReskinning) this.stategraph.cancelAction('CASTSPELL'); }
+
+  playDig(onDig: () => void): boolean {
+    return this.startAction('TERRAFORM', onDig, isPitchforkTool(this.carryItem ?? '') && !!this.pitchforkEquipment);
+  }
+
+  cancelDig(): void { this.stategraph.cancelAction('TERRAFORM'); }
+  playShovelDig(onDig: () => boolean): boolean {
+    return this.startAction('DIG', onDig, isShovelTool(this.carryItem ?? '') && !!this.shovelEquipment);
+  }
+  cancelShovelDig(): void { this.stategraph.cancelAction('DIG'); }
+  get isShoveling(): boolean { return this.stategraph.isPerformingAction('DIG'); }
+  get isTilling(): boolean { return this.stategraph.isPerformingAction('TILL'); }
+  playTill(onTill: () => boolean): boolean {
+    return this.startAction('TILL', onTill, isFarmHoeTool(this.carryItem ?? '') && !!this.farmHoeEquipment);
+  }
+  cancelTill(): void { this.stategraph.cancelAction('TILL'); }
+
+  playMine(onHit: () => void | boolean): boolean {
+    const hammer = this.carryItem === 'hammer';
+    const ready = hammer ? !!this.hammerEquipment : isPickaxeTool(this.carryItem ?? '') && !!this.pickaxeEquipment;
+    return this.startAction(hammer ? 'HAMMER' : 'MINE', onHit, ready);
+  }
+
+  playHammer(onHit: () => void): boolean { return this.playMine(onHit); }
+
+  playChop(onHit: () => void | boolean): boolean {
+    return this.startAction('CHOP', onHit, isAxeTool(this.carryItem ?? '') && !!this.axeEquipment);
+  }
+
+  /** ATTACK with the equipped inst as invobject; its tags select the attack branch. */
+  playAttack(onHit: () => boolean, target: BufferedActionObject, invobject?: BufferedActionObject): boolean {
+    if (this.stategraph.hasStateTag('busy')) return false;
+    this.cancelEmote();
+    return this.stategraph.pushBufferedAction(new BufferedAction('ATTACK', onHit, undefined, { invobject, target }));
+  }
+  get isAttacking(): boolean { return this.stategraph.hasStateTag('attack') || this.stategraph.isPerformingAction('ATTACK'); }
+  cancelAttack(): void { if (this.stategraph.isPerformingAction('ATTACK')) this.stategraph.cancelAction('ATTACK'); }
+  cancelMine(): void { this.stategraph.cancelAction('MINE'); }
+  cancelChop(): void { this.stategraph.cancelAction('CHOP'); }
+  cancelHammer(): void { this.stategraph.cancelAction('HAMMER'); }
+
+  playBugNet(onCatch: () => void): boolean {
+    return this.startAction('NET', onCatch, this.carryItem === 'bugnet' && !!this.netEquipment);
+  }
+
+  playItemTransition(state: 'item_in' | 'item_out', item: WilsonCarryItem = 'torch') {
+    this.startOneShot(state);
+    if (state === 'item_in') {
+      this.carryItem = item;
+      this.frameIndex = -1;
+      this.showFrame(0);
+    }
+  }
+
+  playPickup() {
+    this.startOneShot('pickup');
+  }
+
+  setCrafting(crafting: boolean) {
+    if (crafting) this.cancelEmote();
+    this.stategraph.requestCrafting(crafting);
+  }
+
+  setFacing(facing: WilsonFacing, mirrored = false) {
+    if (facing === this.facing && mirrored === this.mirrored) return;
+    this.facing = facing;
+    this.mirrored = mirrored;
+    this.visual.scale.x = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
+    // Facing changes select different art without restarting the state timeline.
+    this.selectAnimation(this.stategraph.animationClip);
+    this.showCurrentFrame();
+  }
+
+  async setCarryItem(item: WilsonCarryItem | null, skinId?: string): Promise<void> {
+    const key = item === null ? '' : `${item}:${skinId ?? ''}`;
+    if (key === this.carryKey) return;
+    this.carryKey = key;
+    const request = ++this.carryRequest;
+    this.stategraph.pushEvent('unequip');
+    this.equippedCarryItem = item;
+    this.lanternLight.setLit(false);
+    if (item === 'lantern') {
+      try {
+        const equipment = await loadLanternEquipment(this.lanternAssets, skinId);
+        if (request !== this.carryRequest) return;
+        this.lanternEquipment = equipment;
+        this.lanternLight.setLit(this.lanternOn);
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (isStaff(item)) {
+      try {
+        const [equipment] = await Promise.all([
+          loadLightStaffEquipment(this.lanternAssets, item, skinId),
+          PreloadSounds(item === 'greenstaff' ? 'dontstarve/wilson/use_gemstaff' : 'dontstarve/common/staffteleport'),
+        ]);
+        if (request !== this.carryRequest) return;
+        this.staffEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item === 'bugnet') {
+      try {
+        const [equipment] = await Promise.all([
+          loadBugNetEquipment(this.lanternAssets, skinId), PreloadSounds('dontstarve/wilson/dig'),
+        ]);
+        if (request !== this.carryRequest) return;
+        this.netEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item === 'hammer') {
+      try {
+        const [equipment] = await Promise.all([
+          loadHammerEquipment(this.lanternAssets, skinId), PreloadSounds('dontstarve/wilson/hit'),
+        ]);
+        if (request !== this.carryRequest) return;
+        this.hammerEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item === 'nightsword') {
+      try {
+        const equipment = await loadNightswordEquipment(this.lanternAssets, skinId);
+        if (request !== this.carryRequest) return;
+        this.nightswordEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item && isPickaxeTool(item)) {
+      try {
+        const [equipment] = await Promise.all([
+          loadPickaxeEquipment(this.lanternAssets, item, skinId), PreloadSounds('dontstarve/wilson/use_pick_rock'),
+        ]);
+        if (request !== this.carryRequest) return;
+        this.pickaxeEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item && isAxeTool(item)) {
+      try {
+        const [equipment] = await Promise.all([
+          loadAxeEquipment(this.lanternAssets, item, skinId),
+          PreloadSounds('dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeFall'),
+        ]);
+        if (request !== this.carryRequest) return;
+        this.axeEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item && isPitchforkTool(item)) {
+      try {
+        const [equipment] = await Promise.all([
+          loadPitchforkEquipment(this.lanternAssets, item, skinId), PreloadSounds('dontstarve/wilson/dig'),
+        ]);
+        if (request !== this.carryRequest) return;
+        this.pitchforkEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item && isFarmHoeTool(item)) {
+      try {
+        const equipment = await loadFarmHoeEquipment(this.lanternAssets, item, skinId);
+        if (request !== this.carryRequest) return;
+        this.farmHoeEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item && isShovelTool(item)) {
+      try {
+        const equipment = await loadShovelEquipment(this.lanternAssets, item, skinId);
+        if (request !== this.carryRequest) return;
+        this.shovelEquipment = equipment;
+        if (item === 'goldenshovel') PlaySound('dontstarve/wilson/equip_item_gold');
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (item === 'reskin_tool') {
+      try {
+        const [equipment] = await Promise.all([
+          loadReskinToolEquipment(this.lanternAssets, skinId), PreloadSounds('dontstarve/wilson/attack_weapon'),
+        ]);
+        if (request !== this.carryRequest) return;
+        this.reskinToolEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
+    if (this.state === 'item_in' && this.stategraph.isOneShot) return;
+    this.carryItem = item;
+    const currentFrame = Math.max(0, this.frameIndex);
+    this.frameIndex = -1;
+    this.showFrame(currentFrame);
+  }
+
+  async setHat(itemId: string | null, skinId?: string): Promise<void> {
+    const key = itemId === null ? '' : `${itemId}\n${skinId ?? ''}`;
+    if (key === this.hatKey) return;
+    this.hatKey = key;
+    const request = ++this.hatRequest;
+    this.hat = null;
+    this.hatActivation.setHat(null);
+    this.hatElapsed = 0;
+    this.refreshFrame();
+    if (itemId === null) return;
+    try {
+      const hat = await this.hatAssets.load(itemId, skinId);
+      if (request !== this.hatRequest) return;
+      this.hat = hat;
+      this.hatActivation.setHat(hat);
+      this.refreshFrame();
+    } catch (error) {
+      if (request !== this.hatRequest) return;
+      this.hatKey = '';
+      throw error;
+    }
+  }
+
+  setLanternLight(ison: boolean, fuelPercent: number): void {
+    this.lanternOn = ison;
+    this.lanternLight.setFuelPercent(fuelPercent);
+    this.lanternLight.setLit(ison && this.equippedCarryItem === 'lantern' && this.lanternEquipment !== null);
+    this.refreshFrame();
+  }
+
+  async setBackpack(equipped: boolean, skinId?: string): Promise<void> {
+    const key = equipped ? `backpack:${skinId ?? ''}` : '';
+    if (key === this.backpackKey) return;
+    this.backpackKey = key;
+    const request = ++this.backpackRequest;
+    this.backpack = null;
+    this.refreshFrame();
+    if (!equipped) return;
+    try {
+      const skinArchive = skinId ? GROUND_ITEM_DEFINITIONS.backpack.skinArchives[skinId] : undefined;
+      if (skinId && !skinArchive) throw new Error(`Unknown backpack skin: ${skinId}`);
+      const [base, skin] = await Promise.all([
+        this.lanternAssets.loadBuild('swap_backpack.zip'),
+        skinArchive ? this.lanternAssets.loadBuild(skinArchive) : undefined,
+      ]);
+      if (request !== this.backpackRequest) return;
+      this.backpack = skin ? [skin, base] : [base];
+      this.refreshFrame();
+    } catch (error) {
+      if (request !== this.backpackRequest) return;
+      this.backpackKey = '';
+      throw error;
+    }
+  }
+
+  setSanityPercent(percent: number): void {
+    this.hatActivation.setSanityPercent(percent);
+    this.refreshFrame();
+  }
+
+  private refreshFrame() {
+    const currentFrame = Math.max(0, this.frameIndex);
+    this.frameIndex = -1;
+    this.showFrame(currentFrame);
+  }
+
+  update(dt: number, jumpProgress?: number) {
+    const step = Math.max(0, Math.min(dt, 0.1));
+    const fxWasAnimating = this.bookFx.isAnimating;
+    this.bookFx.update(step);
+    if (fxWasAnimating) this.frameIndex = -1;
+    this.stategraph.update(step);
+    this.castingLight.update(step);
+    this.hatElapsed += step;
+    const hatWasAnimating = this.hatActivation.isAnimating;
+    this.hatActivation.update(step);
+    if (hatWasAnimating && !this.hatActivation.isAnimating) this.frameIndex = -1;
+    this.showCurrentFrame(jumpProgress);
+  }
+
+  private showCurrentFrame(jumpProgress?: number) {
+    if (this.state === 'jump' && jumpProgress !== undefined) {
+      const progress = THREE.MathUtils.clamp(jumpProgress, 0, 1);
+      this.showFrame(Math.min(this.animation.frames.length - 1, Math.floor(progress * this.animation.frames.length)));
+      return;
+    }
+    const clip = this.stategraph.animationClip;
+    const speed = (clip.frameRate ?? this.animation.frameRate) * (clip.playbackRate ?? 1);
+    const frame = Math.floor(this.stategraph.animationTime * speed);
+    this.showFrame(clip.loop ? frame % this.animation.frames.length : Math.min(frame, this.animation.frames.length - 1));
+  }
+
+  private selectAnimation(clip: WilsonAnimationClip): number {
+    this.state = clip.key;
+    this.clipName = clip.name;
+    const parsed = this.state === 'emote' ? this.emote!.animations
+      : this.state === 'action_uniqueitem_pre' || this.state === 'book' ? this.uniqueItemAnimations : this.animations[this.state];
+    if (!parsed) throw new Error(`Wilson animation ${clip.name} has not been loaded`);
+    const bankHash = smallHash('wilson');
+    const facing = facingValues[this.facing];
+    const candidates = parsed.animations.filter((animation) =>
+      animation.name === this.clipName && animation.bankHash === bankHash);
+    this.animation = candidates.find((animation) => animation.facing === facing) ??
+      candidates.find((animation) => (animation.facing & facing) !== 0) ?? candidates[0];
+    if (!this.animation) throw new Error(`Wilson animation ${this.clipName} is unavailable`);
+    this.frameIndex = -1;
+    this.showFrame(0);
+    return this.animation.frames.length / ((clip.frameRate ?? this.animation.frameRate) * (clip.playbackRate ?? 1));
+  }
+
+  private startOneShot(state: WilsonOneShotState) {
+    this.cancelEmote();
+    this.stategraph.requestOneShot(state);
+  }
+
+  private showFrame(index: number) {
+    if (index === this.frameIndex && !this.hat?.definition.equip.follow && !this.hatActivation.isAnimating
+      && !this.bookFx.isAnimating) return;
+    this.frameIndex = index;
+    const bookFx = this.bookFx.resolve(this.animation.frames[index].elements);
+    const sprites = [...this.animation.frames[index].elements]
+      .filter((element) => isHatPlayerElementVisible(element, this.hat?.definition.equip.mode ?? null))
+      .filter((element) => !this.hatActivation.hidesSwapHat || element.imageHash !== smallHash('swap_hat'))
+      .filter((element) => this.carryItem && this.state !== 'build'
+        ? element.layerHash !== normalArmLayerHash
+        : element.layerHash !== carryArmLayerHash)
+      .filter((element) => element.layerHash !== lanternOverlayHash
+        || (this.carryItem === 'lantern' && this.lanternLight.isLit && this.state !== 'build'))
+      .sort((a, b) => b.z - a.z)
+      .flatMap((element): ResolvedSprite[] => {
+        const followers = bookFx.followers.get(element);
+        if (followers) return followers;
+        const override = this.symbolOverrides.get(element.imageHash);
+        if (override) {
+          const image = findImage(override.source.build, override.hash, element.imageIndex);
+          return image ? [{ element, image, materials: override.source.materials }] : [];
+        }
+        if (this.backpack && element.imageHash === smallHash('swap_body')) {
+          const source = this.backpack.find(({ build }) => build.symbols.has(element.imageHash));
+          const image = source && findImage(source.build, element.imageHash, element.imageIndex);
+          return image ? [{ element, image, materials: source.materials }] : [];
+        }
+        if (this.hat && element.imageHash === smallHash(
+          this.hat.definition.equip.mode === 'fullhelm' ? 'headbase_hat' : 'swap_hat',
+        )) return resolveHatSprites(this.hat, element, this.hatElapsed);
+        if (this.carryItem === 'lantern' && this.lanternEquipment && this.state !== 'build'
+          && (element.imageHash === swapObjectHash || element.imageHash === lanternOverlayHash)) {
+          return resolveLanternPlayerSprite(this.lanternEquipment, element);
+        }
+        if (isStaff(this.carryItem) && this.staffEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) {
+          return resolveYellowStaffPlayerSprite(this.staffEquipment, element);
+        }
+        if (this.carryItem === 'bugnet' && this.netEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolveBugNetPlayerSprite(this.netEquipment, element);
+        if (this.carryItem === 'hammer' && this.hammerEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolveHammerPlayerSprite(this.hammerEquipment, element);
+        if (this.carryItem === 'nightsword' && this.nightswordEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolveNightswordPlayerSprite(this.nightswordEquipment, element);
+        if (isPickaxeTool(this.carryItem ?? '') && this.pickaxeEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolvePickaxePlayerSprite(this.pickaxeEquipment, element);
+        if (isAxeTool(this.carryItem ?? '') && this.axeEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolvePickaxePlayerSprite(this.axeEquipment, element);
+        if (isPitchforkTool(this.carryItem ?? '') && this.pitchforkEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolvePitchforkPlayerSprite(this.pitchforkEquipment, element);
+        if (isFarmHoeTool(this.carryItem ?? '') && this.farmHoeEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolveFarmHoePlayerSprite(this.farmHoeEquipment, element);
+        if (isShovelTool(this.carryItem ?? '') && this.shovelEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolveShovelPlayerSprite(this.shovelEquipment, element);
+        if (this.carryItem === 'reskin_tool' && this.reskinToolEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolveReskinToolPlayerSprite(this.reskinToolEquipment, element);
+        const usesTorch = this.state !== 'build'
+          && this.carryItem === 'torch'
+          && element.imageHash === swapObjectHash;
+        const source = usesTorch ? this.torch : { build: this.build, materials: this.materials };
+        const image = findImage(
+          source.build,
+          usesTorch ? swapTorchHash : element.imageHash,
+          element.imageIndex,
+        );
+        if (image) return [{ element, image, materials: source.materials }];
+        const uniqueItem = this.symbolBuilds.get(UNIQUE_ITEM_BUILD);
+        const uniqueImage = uniqueItem && findImage(uniqueItem.build, element.imageHash, element.imageIndex);
+        if (uniqueImage) return [{ element, image: uniqueImage, materials: uniqueItem.materials }];
+        const props = this.emote?.props;
+        const propImage = props && findImage(props.build, element.imageHash, element.imageIndex);
+        return propImage ? [{ element, image: propImage, materials: props!.materials }] : [];
+      });
+    const anchor = this.animation.frames[index].elements.find((element) =>
+      element.imageHash === smallHash(this.hat?.definition.equip.activated?.symbol ?? 'hair'));
+    const fx = anchor ? this.hatActivation.resolve(anchor, this.mirrored) : { back: [], front: [] };
+    this.renderer.show([...fx.back, ...sprites, ...fx.front, ...bookFx.front]);
+  }
+}
+
+export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Group> {
+  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe] = await Promise.all([
+    loadBuild('willow.zip', assetBaseUrl),
+    loadBuild('swap_torch.zip', assetBaseUrl),
+    loadAnim('torch.zip', assetBaseUrl),
+    loadAnim('player_idles.zip', assetBaseUrl),
+    loadAnim('player_basic.zip', assetBaseUrl),
+    loadAnim('player_jump.zip', assetBaseUrl),
+    loadAnim('player_actions_item.zip', assetBaseUrl),
+    loadAnim('player_actions_eat.zip', assetBaseUrl),
+    loadAnim('player_staff.zip', assetBaseUrl),
+    loadAnim('player_actions_bugnet.zip', assetBaseUrl),
+    loadAnim('player_actions_pickaxe.zip', assetBaseUrl),
+    loadAnim('player_actions_shovel.zip', assetBaseUrl),
+    loadAnim('player_attacks.zip', assetBaseUrl),
+    loadAnim('player_actions_till.zip', assetBaseUrl),
+    loadAnim('player_actions_axe.zip', assetBaseUrl),
+    PreloadSounds('dontstarve/wilson/make_trap', 'dontstarve/wilson/attack_whoosh',
+      'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword'),
+  ]);
+  if (buildPackage.build.name.toLowerCase() !== 'willow') {
+    throw new Error(`Expected Willow build, received ${buildPackage.build.name}`);
+  }
+  if (torchBuildPackage.build.name.toLowerCase() !== 'swap_torch'
+    || !torchAnimation.animations.some((animation) => animation.bankHash === smallHash('torch'))) {
+    throw new Error('Expected the torch animation and swap_torch build');
+  }
+
+  const player = new THREE.Group();
+  player.name = 'Willow';
+  player.position.set(0, 30, 0);
+  player.userData.billboard = true;
+
+  const visual = new THREE.Group();
+  const assetToWorldScale = 0.02;
+  visual.scale.set(assetToWorldScale, -assetToWorldScale, assetToWorldScale);
+  player.add(visual);
+  registerSpriteRenderGroup(player, visual);
+
+  const controller = new WilsonController(visual, buildPackage.build, {
+    idle,
+    walk: movement,
+    run: movement,
+    jump,
+    build: itemActions,
+    build_pre: itemActions,
+    build_loop: itemActions,
+    build_pst: itemActions,
+    eat,
+    quick_eat_pre: eat,
+    quick_eat: eat,
+    quick_drink_pre: eat,
+    quick_drink: eat,
+    item_in: itemActions,
+    item_out: itemActions,
+    pickup: itemActions,
+    pickup_pst: itemActions,
+    give: itemActions,
+    give_pst: itemActions,
+    light_fire: itemActions,
+    light_fire_pst: itemActions,
+    atk_pre: attacks,
+    atk: attacks,
+    punch: attacks,
+    toolpunch: attacks,
+    staff_pre: staff,
+    staff,
+    bugnet_pre: net,
+    bugnet: net,
+    pickaxe_pre: hammer,
+    pickaxe_loop: hammer,
+    pickaxe_pst: hammer,
+    chop_pre: axe,
+    chop_loop: axe,
+    shovel_pre: shovel,
+    shovel_loop: shovel,
+    shovel_pst: shovel,
+    till_pre: till,
+    till_loop: till,
+    till_pst: till,
+  }, createMaterials(buildPackage), {
+    build: torchBuildPackage.build,
+    materials: createMaterials(torchBuildPackage),
+  }, assetBaseUrl);
+  player.userData.animationController = controller;
+  player.userData.stategraph = controller.stategraph;
+  return player;
+}
+
+export async function createWilsonPlayerPrefab(
+  assetBaseUrl: string,
+  options: WilsonPlayerPrefabOptions = {},
+): Promise<WilsonPlayerPrefab> {
+  const model = await createWilsonPlayer(assetBaseUrl);
+  const shapeRadius = options.shapeRadius ?? 4.5;
+  const material = new CANNON.Material('player');
+  const body = new CANNON.Body({
+    mass: options.mass ?? 5,
+    shape: new CANNON.Sphere(shapeRadius),
+    position: new CANNON.Vec3(model.position.x, model.position.y, model.position.z)
+      .vadd(new CANNON.Vec3(0, shapeRadius, 0)),
+    material,
+    fixedRotation: true,
+  }) as PlayerBody;
+  body.canJump = false;
+  body.addEventListener('collide', () => {
+    body.canJump = true;
+  });
+
+  return {
+    body,
+    model,
+    setNormal(cameraWorldQuaternion) {
+      model.quaternion.copy(cameraWorldQuaternion);
+    },
+  };
+}

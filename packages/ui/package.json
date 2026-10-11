@@ -1,0 +1,36 @@
+{
+  "name": "@dontstarve-web/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cursor-label": "./src/cursor-label.ts"
+  },
+  "scripts": {
+    "categories:check": "node scripts/generate-categories.mjs --check",
+    "categories:generate": "node scripts/generate-categories.mjs",
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "controller-font:import": "python3 scripts/import-controller-font.py",
+    "controller-font:check": "python3 scripts/import-controller-font.py --check",
+    "item-meters:import": "python3 scripts/import-item-meters.py",
+    "item-meters:check": "python3 scripts/import-item-meters.py --check"
+  },
+  "dependencies": {
+    "@dontstarve-web/stategraphs": "workspace:*",
+    "@dontstarve-web/animation": "workspace:*",
+    "@dontstarve-web/inventory": "workspace:*",
+    "@dontstarve-web/prefab": "workspace:*",
+    "@dontstarve-web/signals": "workspace:*"
+  },
+  "peerDependencies": {
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.184.1",
+    "@playwright/test": "^1.63.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.14"
+  }
+}

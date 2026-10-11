@@ -1,0 +1,35 @@
+{
+  "name": "@dontstarve-web/stategraphs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./SGwilson": "./src/SGwilson.ts",
+    "./hammer": "./src/hammer.ts",
+    "./pickaxe": "./src/pickaxe.ts",
+    "./bugnet": "./src/bugnet.ts",
+    "./shovel": "./src/shovel.ts",
+    "./pitchfork": "./src/pitchfork.ts",
+    "./farm_hoe": "./src/farm_hoe.ts",
+    "./food": "./src/food.ts",
+    "./pick": "./src/pick.ts",
+    "./reskin_tool": "./src/reskin_tool.ts",
+    "./spellcaster": "./src/spellcaster.ts",
+    "./pointerRaycaster": "./src/pointerRaycaster.ts",
+    "./farmActions": "./src/farmActions.ts",
+    "./actionContext": "./src/actionContext.ts",
+    "./actionEvents": "./src/actionEvents.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "@types/three": "^0.184.1"
+  },
+  "peerDependencies": {
+    "three": "^0.184.0"
+  }
+}

@@ -1,0 +1,87 @@
+import * as THREE from 'three';
+import { expect, it, vi } from 'vitest';
+import { GameTimeScheduler } from '../../prefab/src/components/gameTimeScheduler';
+import { ComponentTimer } from '../../prefab/src/components/timer';
+import { Pickable } from '../../prefab/src/components/pickable';
+
+it('publishes timer snapshots only at transitions and executes chained tasks at their actual deadlines', () => {
+  const scheduler = new GameTimeScheduler(20);
+  const deadlines: number[] = [];
+  const followup = new ComponentTimer(scheduler, () => deadlines.push(scheduler.now));
+  const timer = new ComponentTimer(scheduler, () => { deadlines.push(scheduler.now); followup.start(2); });
+  const changed = vi.fn();
+  const stop = timer.snapshot.subscribe(changed);
+  timer.start(5);
+  const waiting = timer.snapshot.peek();
+  scheduler.advance(4);
+  expect(timer.snapshot.peek()).toBe(waiting);
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(timer.remainingSeconds).toBe(1);
+  scheduler.advance(10);
+  expect(deadlines).toEqual([25, 27]);
+  expect(timer.snapshot.peek()).toEqual({ status: 'expired' });
+  expect(changed).toHaveBeenCalledTimes(2);
+  timer.start(1); timer.stop();
+  scheduler.advance(2);
+  expect(deadlines).toEqual([25, 27]);
+  expect(timer.snapshot.peek()).toEqual({ status: 'stopped' });
+  expect('set' in timer.snapshot).toBe(false);
+  expect(() => scheduler.advance(-1)).toThrow();
+  stop(); scheduler.dispose();
+});
+
+it('preserves paused regrowth through restoration and applies spring growth only on scheduling/resume', () => {
+  const scheduler = new GameTimeScheduler();
+  let spring = false;
+  const timing = { scheduler, growthDuration: (time: number) => time * (spring ? .75 : 1) };
+  const model = new THREE.Group();
+  model.userData.tags = ['plant', 'renewable'];
+  const onRegen = vi.fn(), order: string[] = [];
+  let pickable: Pickable;
+  pickable = new Pickable(model, 'cutgrass', 1440, 1, () => {
+    expect(pickable.canBePicked).toBe(true);
+    order.push('prefab');
+  }, onRegen, undefined, timing);
+  const loot = {};
+  const picker = { loot, giveItem: () => { order.push('product'); return true; } };
+  const onPicked = (event: { data: unknown }) => {
+    expect(event.data).toEqual({ picker, loot, plant: model });
+    expect(pickable.state.phase.peek()).toBe('picked');
+    order.push('event');
+  };
+  model.addEventListener('picked' as never, onPicked as never);
+  pickable.pick(picker);
+  expect(order).toEqual(['product', 'prefab', 'event']);
+  const timer = pickable.state.timer.peek();
+  scheduler.advance(100);
+  expect(pickable.state.timer.peek()).toBe(timer);
+  pickable.pause();
+  expect(pickable.state.regrowing.peek()).toBe(false);
+  scheduler.advance(2000);
+  const saved = pickable.exportState();
+  expect(saved).toEqual({ picked: true, paused: true, regrowSeconds: 1340 });
+  pickable.dispose();
+  model.removeEventListener('picked' as never, onPicked as never);
+  const restored = new Pickable(new THREE.Group(), 'cutgrass', 1440, 1, undefined, onRegen, saved, timing);
+  spring = true;
+  restored.resume();
+  expect(restored.remainingSeconds).toBe(1005);
+  scheduler.advance(1004.5);
+  expect(restored.canBePicked).toBe(false);
+  scheduler.advance(.5);
+  expect(restored.canBePicked).toBe(true);
+  expect(onRegen).toHaveBeenCalledOnce();
+  expect(restored.exportState()).toEqual({});
+  restored.pause();
+  restored.pick(picker); // A mature plant can still be picked in winter.
+  expect(restored.exportState()).toEqual({ picked: true, paused: true });
+  scheduler.advance(1440);
+  expect(restored.canBePicked).toBe(false);
+  restored.resume();
+  expect(restored.remainingSeconds).toBe(1080);
+  restored.dispose();
+  scheduler.advance(1440);
+  expect(onRegen).toHaveBeenCalledOnce();
+  expect(restored.state.phase.peek()).toBe('removed');
+  scheduler.dispose();
+});

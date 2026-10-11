@@ -1,0 +1,6 @@
+import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
+
+// tuning.lua: MOONBUTTERFLY_SPEED, MOONBUTTERFLY_PERISH_TIME = total_day_time / 2, MOONBUTTERFLY_PERISH_INV_MODIFIER.
+export const MOONBUTTERFLY_SPEED = 2.5;
+export const MOONBUTTERFLY_PERISH_TIME = TOTAL_DAY_TIME / 2;
+export const MOONBUTTERFLY_PERISH_INV_MODIFIER = .25;

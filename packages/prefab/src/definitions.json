@@ -1,0 +1,528 @@
+{
+  "animatedBuildings": {
+    "wardrobe": {
+      "archive": "wardrobe.zip",
+      "buildLabel": "衣柜",
+      "idleAnimation": "closed",
+      "name": "Wardrobe",
+      "onProximity": false,
+      "scale": 0.02
+    },
+    "moonbase": {
+      "archive": "moonbase.zip",
+      "buildLabel": "月亮石",
+      "idleAnimation": "med",
+      "name": "MoonBase",
+      "onProximity": false,
+      "scale": 0.02
+    },
+    "firepit": {
+      "archive": "firepit.zip",
+      "buildLabel": "火坑",
+      "idleAnimation": "idle",
+      "previewAnimation": "preview",
+      "name": "FirePit",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "firepit_fanged": "dynamic/firepit_fanged.zip",
+        "firepit_fangedp": "dynamic/firepit_fanged.zip",
+        "firepit_firebird": "dynamic/firepit_firebird.zip",
+        "firepit_hole": "dynamic/firepit_hole.zip",
+        "firepit_hole_alt": "dynamic/firepit_hole.zip",
+        "firepit_kiln": "dynamic/firepit_kiln.zip",
+        "firepit_kiln_alt": "dynamic/firepit_kiln.zip",
+        "firepit_lava": "dynamic/firepit_lava.zip",
+        "firepit_stonehenge": "dynamic/firepit_stonehenge.zip",
+        "firepit_victorian": "dynamic/firepit_victorian.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "icebox": {
+      "archive": "ice_box.zip",
+      "buildLabel": "冰箱",
+      "idleAnimation": "closed",
+      "interaction": {
+        "closeAnimation": "close",
+        "closedAnimation": "closed",
+        "openAnimation": "open"
+      },
+      "name": "IceBox",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "icebox_coffin": "dynamic/icebox_coffin.zip",
+        "icebox_crystal": "dynamic/icebox_crystal.zip",
+        "icebox_kitchen": "dynamic/icebox_kitchen.zip",
+        "icebox_porcelain": "dynamic/icebox_porcelain.zip",
+        "icebox_victorian": "dynamic/icebox_victorian.zip"
+      },
+      "container": {
+        "slotCount": 9,
+        "columns": 3,
+        "singleItems": false,
+        "panelArchive": "ui_chest_3x3.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "cookpot": {
+      "archive": "cook_pot.zip",
+      "buildLabel": "烹饪锅",
+      "idleAnimation": "idle_empty",
+      "interaction": {
+        "closeAnimation": "idle_empty",
+        "closedAnimation": "idle_empty",
+        "openAnimation": "cooking_pre_loop",
+        "openAnimationLoop": true
+      },
+      "name": "CookPot",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "cookpot_candy": "dynamic/cookpot_candy.zip",
+        "cookpot_cauldron": "dynamic/cookpot_cauldron.zip",
+        "cookpot_cauldronp": "dynamic/cookpot_cauldron.zip",
+        "cookpot_clay": "dynamic/cookpot_clay.zip",
+        "cookpot_kitchen": "dynamic/cookpot_kitchen.zip",
+        "cookpot_planet": "dynamic/cookpot_planet.zip",
+        "cookpot_survival": "dynamic/cookpot_survival.zip",
+        "cookpot_tureen": "dynamic/cookpot_tureen.zip"
+      },
+      "container": {
+        "slotCount": 4,
+        "columns": 1,
+        "singleItems": true
+      },
+      "hammerAnimation": "hit_empty"
+    },
+    "researchlab": {
+      "archive": "researchlab.zip",
+      "buildLabel": "科学机器",
+      "name": "ResearchLab",
+      "onProximity": true,
+      "scale": 0.016,
+      "skinArchives": {
+        "researchlab_gothic": "dynamic/researchlab_gothic.zip",
+        "researchlab_green": "dynamic/researchlab_green.zip",
+        "researchlab_party": "dynamic/researchlab_party.zip",
+        "researchlab_retro": "dynamic/researchlab_retro.zip"
+      },
+      "baseSymbols": [
+        "bolt_b",
+        "bolt_c",
+        "rayFX",
+        "glowFX",
+        "sparkleFX",
+        "shadow_plume",
+        "shadow_wisp"
+      ],
+      "hammerAnimation": "hit"
+    },
+    "researchlab2": {
+      "archive": "researchlab2.zip",
+      "buildLabel": "炼金引擎",
+      "name": "ResearchLab2",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "researchlab2_alchemytable": "dynamic/researchlab2_alchemytable.zip",
+        "researchlab2_crystal": "dynamic/researchlab2_crystal.zip",
+        "researchlab2_gothic": "dynamic/researchlab2_gothic.zip",
+        "researchlab2_pod": "dynamic/researchlab2_pod.zip",
+        "researchlab2_science": "dynamic/researchlab2_science.zip",
+        "researchlab2_science_resurrected": "dynamic/researchlab2_science.zip"
+      },
+      "baseSymbols": [
+        "shadow_plume",
+        "shadow_wisp"
+      ],
+      "skinAnimationBanks": {
+        "researchlab2_pod": [
+          "researchlab2_pod_fx"
+        ]
+      },
+      "hammerAnimation": "hit"
+    },
+    "researchlab3": {
+      "archive": "researchlab3.zip",
+      "buildLabel": "暗影操控器",
+      "name": "ResearchLab3",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "researchlab3_adventure": "dynamic/researchlab3_adventure.zip",
+        "researchlab3_ancient": "dynamic/researchlab3_ancient.zip",
+        "researchlab3_crystal": "dynamic/researchlab3_crystal.zip",
+        "researchlab3_monster": "dynamic/researchlab3_monster.zip",
+        "researchlab3_nature": "dynamic/researchlab3_nature.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "researchlab4": {
+      "archive": "researchlab4.zip",
+      "buildLabel": "灵子分解器",
+      "name": "ResearchLab4",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "researchlab4_catcoon_costume": "dynamic/researchlab4_catcoon_costume.zip",
+        "researchlab4_catcoon_costumep": "dynamic/researchlab4_catcoon_costume.zip",
+        "researchlab4_chef": "dynamic/researchlab4_chef.zip",
+        "researchlab4_chester_costume": "dynamic/researchlab4_chester_costume.zip",
+        "researchlab4_chester_costumep": "dynamic/researchlab4_chester_costume.zip",
+        "researchlab4_derby": "dynamic/researchlab4_derby.zip",
+        "researchlab4_festive_bell_red_firehound": "dynamic/researchlab4_festive_bell_red_firehound.zip",
+        "researchlab4_fish": "dynamic/researchlab4_fish.zip",
+        "researchlab4_glommer_costume": "dynamic/researchlab4_glommer_costume.zip",
+        "researchlab4_glommer_costumep": "dynamic/researchlab4_glommer_costume.zip",
+        "researchlab4_hutch_costume": "dynamic/researchlab4_hutch_costume.zip",
+        "researchlab4_hutch_costumep": "dynamic/researchlab4_hutch_costume.zip",
+        "researchlab4_merchant": "dynamic/researchlab4_merchant.zip",
+        "researchlab4_minigolf_green": "dynamic/researchlab4_minigolf_green.zip",
+        "researchlab4_minigolf_purple": "dynamic/researchlab4_minigolf_purple.zip",
+        "researchlab4_minigolf_red": "dynamic/researchlab4_minigolf_red.zip",
+        "researchlab4_tophat_circus": "dynamic/researchlab4_tophat_circus.zip",
+        "researchlab4_tophat_harlequin": "dynamic/researchlab4_tophat_harlequin.zip",
+        "researchlab4_tophat_spiked": "dynamic/researchlab4_tophat_spiked.zip",
+        "researchlab4_tophat_wizard": "dynamic/researchlab4_tophat_wizard.zip",
+        "researchlab4_western": "dynamic/researchlab4_western.zip",
+        "researchlab4_witch_pyre": "dynamic/researchlab4_witch_pyre.zip"
+      },
+      "skinSymbols": [
+        "machine_hat"
+      ],
+      "hammerAnimation": "hit"
+    },
+    "treasurechest": {
+      "archive": "treasure_chest.zip",
+      "buildLabel": "箱子",
+      "idleAnimation": "closed",
+      "interaction": {
+        "closeAnimation": "close",
+        "closedAnimation": "closed",
+        "openAnimation": "open"
+      },
+      "name": "TreasureChest",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "treasurechest_ancient": "dynamic/treasurechest_ancient.zip",
+        "treasurechest_upgraded_ancient": "dynamic/treasurechest_ancient.zip",
+        "treasurechest_cake": "dynamic/treasurechest_cake.zip",
+        "treasurechest_upgraded_cake": "dynamic/treasurechest_cake.zip",
+        "treasurechest_carpetbag": "dynamic/treasurechest_carpetbag.zip",
+        "treasurechest_upgraded_carpetbag": "dynamic/treasurechest_carpetbag.zip",
+        "treasurechest_clock": "dynamic/treasurechest_clock.zip",
+        "treasurechest_upgraded_clock": "dynamic/treasurechest_clock.zip",
+        "treasurechest_corruption": "dynamic/treasurechest_corruption.zip",
+        "treasurechest_upgraded_corruption": "dynamic/treasurechest_corruption.zip",
+        "treasurechest_cotl_basic": "dynamic/treasurechest_cotl_basic.zip",
+        "treasurechest_upgraded_cotl_basic": "dynamic/treasurechest_cotl_basic.zip",
+        "treasurechest_cotl_fancy": "dynamic/treasurechest_cotl_fancy.zip",
+        "treasurechest_upgraded_cotl_fancy": "dynamic/treasurechest_cotl_fancy.zip",
+        "treasurechest_crimson": "dynamic/treasurechest_crimson.zip",
+        "treasurechest_upgraded_crimson": "dynamic/treasurechest_crimson.zip",
+        "treasurechest_cupid": "dynamic/treasurechest_cupid.zip",
+        "treasurechest_upgraded_cupid": "dynamic/treasurechest_cupid.zip",
+        "treasurechest_gingerbread": "dynamic/treasurechest_gingerbread.zip",
+        "treasurechest_upgraded_gingerbread": "dynamic/treasurechest_gingerbread.zip",
+        "treasurechest_monster": "dynamic/treasurechest_monster.zip",
+        "treasurechest_upgraded_monster": "dynamic/treasurechest_monster.zip",
+        "treasurechest_posh": "dynamic/treasurechest_posh.zip",
+        "treasurechest_upgraded_posh": "dynamic/treasurechest_posh.zip",
+        "treasurechest_poshprint": "dynamic/treasurechest_poshprint.zip",
+        "treasurechest_upgraded_poshprint": "dynamic/treasurechest_poshprint.zip",
+        "treasurechest_sacred": "dynamic/treasurechest_sacred.zip",
+        "treasurechest_upgraded_sacred": "dynamic/treasurechest_sacred.zip",
+        "treasurechest_steamertrunk": "dynamic/treasurechest_steamertrunk.zip",
+        "treasurechest_upgraded_steamertrunk": "dynamic/treasurechest_steamertrunk.zip",
+        "treasurechest_traincase": "dynamic/treasurechest_traincase.zip",
+        "treasurechest_upgraded_traincase": "dynamic/treasurechest_traincase.zip",
+        "treasurechest_traveltrunk": "dynamic/treasurechest_traveltrunk.zip",
+        "treasurechest_upgraded_traveltrunk": "dynamic/treasurechest_traveltrunk.zip",
+        "treasurechest_vintage": "dynamic/treasurechest_vintage.zip",
+        "treasurechest_upgraded_vintage": "dynamic/treasurechest_vintage.zip",
+        "treasurechest_cupidalt": "dynamic/treasurechest_cupid.zip"
+      },
+      "container": {
+        "slotCount": 9,
+        "columns": 3,
+        "singleItems": false,
+        "panelArchive": "ui_chest_3x3.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "tent": {
+      "archive": "tent.zip",
+      "buildLabel": "帐篷",
+      "name": "Tent",
+      "onProximity": false,
+      "scale": 0.02,
+      "hammerAnimation": "hit"
+    },
+    "dragonflychest": {
+      "archive": "dragonfly_chest.zip",
+      "buildLabel": "龙鳞宝箱",
+      "idleAnimation": "closed",
+      "name": "DragonflyChest",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "dragonflychest_fantasy": "dynamic/dragonflychest_fantasy.zip",
+        "dragonflychest_kraken": "dynamic/dragonflychest_kraken.zip",
+        "dragonflychest_upgraded_fantasy": "dynamic/dragonflychest_fantasy.zip",
+        "dragonflychest_upgraded_kraken": "dynamic/dragonflychest_kraken.zip"
+      },
+      "interaction": {
+        "closeAnimation": "close",
+        "closedAnimation": "closed",
+        "openAnimation": "open"
+      },
+      "container": {
+        "slotCount": 12,
+        "columns": 3,
+        "singleItems": false,
+        "panelArchive": "ui_chester_shadow_3x4.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "campfire": {
+      "archive": "campfire.zip",
+      "buildLabel": "营火",
+      "idleAnimation": "idle",
+      "name": "Campfire",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "campfire_cabin": "dynamic/campfire_cabin.zip"
+      },
+      "previewAnimation": "preview"
+    },
+    "saltbox": {
+      "archive": "saltbox.zip",
+      "buildLabel": "盐盒",
+      "idleAnimation": "closed",
+      "name": "SaltBox",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "saltbox_kitchen": "dynamic/saltbox_kitchen.zip",
+        "saltbox_nautical": "dynamic/saltbox_nautical.zip",
+        "saltbox_shaker": "dynamic/saltbox_shaker.zip",
+        "saltbox_victorian": "dynamic/saltbox_victorian.zip"
+      },
+      "interaction": {
+        "closeAnimation": "close",
+        "closedAnimation": "closed",
+        "openAnimation": "open"
+      },
+      "container": {
+        "slotCount": 9,
+        "columns": 3,
+        "singleItems": false,
+        "panelArchive": "ui_chest_3x3.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "nightlight": {
+      "archive": "nightmare_torch.zip",
+      "buildLabel": "暗夜灯",
+      "idleAnimation": "idle",
+      "name": "NightLight",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "nightmare_torch_relic": "dynamic/nightmare_torch_relic.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "pighouse": {
+      "archive": "pig_house.zip",
+      "buildLabel": "猪屋",
+      "idleAnimation": "idle",
+      "name": "PigHouse",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "pighouse_cabin": "dynamic/pighouse_cabin.zip",
+        "pighouse_gothic": "dynamic/pighouse_gothic.zip",
+        "pighouse_logcabin": "dynamic/pighouse_logcabin.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "mushroom_light": {
+      "archive": "mushroom_light.zip",
+      "buildLabel": "蘑菇灯",
+      "idleAnimation": "idle",
+      "name": "MushroomLight",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "mushroom_light_an": "dynamic/mushroom_light_an.zip",
+        "mushroom_light_cawnival": "dynamic/mushroom_light_cawnival.zip",
+        "mushroom_light_festive": "dynamic/mushroom_light_festive.zip",
+        "mushroom_light_hallowed": "dynamic/mushroom_light_hallowed.zip",
+        "mushroom_light_tiffany": "dynamic/mushroom_light_tiffany.zip"
+      },
+      "interaction": {
+        "closeAnimation": "idle",
+        "closedAnimation": "idle",
+        "openAnimation": "idle",
+        "openAnimationLoop": true
+      },
+      "container": {
+        "slotCount": 4,
+        "columns": 1,
+        "singleItems": true,
+        "panelArchive": "ui_lamp_1x4.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "mushroom_light2": {
+      "archive": "mushroom_light2.zip",
+      "buildLabel": "菌伞灯",
+      "idleAnimation": "idle",
+      "name": "MushroomLight2",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "mushroom_light2_an": "dynamic/mushroom_light2_an.zip",
+        "mushroom_light2_cawnival": "dynamic/mushroom_light2_cawnival.zip",
+        "mushroom_light2_hallowed": "dynamic/mushroom_light2_hallowed.zip",
+        "mushroom_light2_lily": "dynamic/mushroom_light2_lily.zip",
+        "mushroom_light2_victorian": "dynamic/mushroom_light2_victorian.zip"
+      },
+      "interaction": {
+        "closeAnimation": "idle",
+        "closedAnimation": "idle",
+        "openAnimation": "idle",
+        "openAnimationLoop": true
+      },
+      "container": {
+        "slotCount": 4,
+        "columns": 1,
+        "singleItems": true,
+        "panelArchive": "ui_lamp_1x4.zip"
+      },
+      "hammerAnimation": "hit"
+    },
+    "sculptingtable": {
+      "archive": "sculpting_station.zip",
+      "buildLabel": "陶轮",
+      "idleAnimation": "idle",
+      "name": "SculptingTable",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "sculptingtable_gothic": "dynamic/sculptingtable_gothic.zip",
+        "sculptingtable_swamp": "dynamic/sculptingtable_swamp.zip"
+      },
+      "hammerAnimation": "hit"
+    }
+  },
+  "walls": {
+    "wall_stone": {
+      "archive": "wall_stone.zip",
+      "buildLabel": "石墙",
+      "frontImageIndex": 14,
+      "name": "WallStone",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_stone_2": {
+      "archive": "wall_stone_2.zip",
+      "buildLabel": "档案馆石墙",
+      "frontImageIndex": 14,
+      "name": "WallStone2",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_wood": {
+      "archive": "wall_wood.zip",
+      "buildLabel": "木墙",
+      "frontImageIndex": 14,
+      "name": "WallWood",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_hay": {
+      "archive": "wall_hay.zip",
+      "buildLabel": "草墙",
+      "frontImageIndex": 14,
+      "multColour": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "name": "WallHay",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_ruins": {
+      "archive": "wall_ruins.zip",
+      "buildLabel": "铥墙",
+      "frontImageIndex": 14,
+      "name": "WallRuins",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_ruins_2": {
+      "archive": "wall_ruins_2.zip",
+      "buildLabel": "档案馆铥墙",
+      "frontImageIndex": 14,
+      "name": "WallRuins2",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_moonrock": {
+      "archive": "wall_moonrock.zip",
+      "buildLabel": "月岩墙",
+      "frontImageIndex": 14,
+      "name": "WallMoonrock",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    },
+    "wall_dreadstone": {
+      "animationArchive": "wall_dreadstone.zip",
+      "archive": "wall_dreadstone.zip",
+      "buildLabel": "绝望石墙",
+      "frontImageIndex": 14,
+      "name": "WallDreadstone",
+      "overlay": {
+        "symbol": "wall_segment_red",
+        "frontImageIndex": 9,
+        "sideImageIndex": 2
+      },
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment_base"
+    },
+    "wall_scrap": {
+      "archive": "wall_scrap.zip",
+      "buildLabel": "废料墙",
+      "frontImageIndex": 14,
+      "name": "WallScrap",
+      "scale": 0.02,
+      "sideImageIndex": 4,
+      "symbol": "wall_segment"
+    }
+  },
+  "moonTree": {
+    "archive": "moon_tree.zip",
+    "animationName": "sway1_loop_tall",
+    "scale": 0.02,
+    "loadRadiusTiles": 10
+  },
+  "pigKing": {
+    "archive": "pig_king.zip",
+    "animationName": "idle",
+    "scale": 0.02
+  }
+}
