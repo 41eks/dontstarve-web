@@ -4,7 +4,7 @@
 
 源码根目录：`/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts/`。下文 `prefabs/*.lua`、`components/*.lua` 等路径均相对于该目录，行号对应本次读取的源码版本。
 
-清单覆盖项目 [groundItems.json](../packages/prefab/src/groundItems.json) 的 234 个 ID、[hats.json](../packages/prefab/src/hats.json) 的 82 个玩家帽子 ID，以及本次查看的 57 个世界实体和部分生物、特殊实体。2026-10-08 补充核对三色生／熟蘑菇的六个物品 ID，2026-10-11 补充核对 `book_silviculture`、`dug_sapling`、`dug_sapling_moon`、`marble`、`moon_tree_blossom`、`moonbutterfly`、`moonbutterflywings` 和 `sculptingtable`，2026-10-12 补充核对 `bird_egg`、`rottenegg`，并确认 `birdcage` 与四种鸟的入栏形态。它是已核对范围的快照，不是 DST 全量 prefab 注册表，也不是项目当前命令支持列表。
+清单覆盖项目 [groundItems.json](../packages/prefab/src/groundItems.json) 的 235 个 ID、[hats.json](../packages/prefab/src/hats.json) 的 82 个玩家帽子 ID，以及本次查看的 57 个世界实体和部分生物、特殊实体。2026-10-08 补充核对三色生／熟蘑菇的六个物品 ID，2026-10-11 补充核对 `book_silviculture`、`book_rain`、`dug_sapling`、`dug_sapling_moon`、`marble`、`moon_tree_blossom`、`moonbutterfly`、`moonbutterflywings` 和 `sculptingtable`，2026-10-12 补充核对 `bird_egg`、`rottenegg`，并确认 `birdcage` 与四种鸟的入栏形态。它是已核对范围的快照，不是 DST 全量 prefab 注册表，也不是项目当前命令支持列表。
 
 ## 分类汇总
 
@@ -146,6 +146,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `opalpreciousgem` | 可生成 | 可入栏 | `prefabs/gem.lua:74`、`:96`；`buildgem("opal", true)` |
 | `reskin_tool` | 可生成 | 可入栏 | `prefabs/reskin_tool.lua:386` |
 | `book_silviculture` | 可生成 | 可入栏 | `prefabs/books.lua:1031`（`MakeBook` 共享构造）；`componentactions.lua:2525` 仅向带 `reader` 标签的玩家提供 READ |
+| `book_rain` | 可生成 | 可入栏 | `prefabs/books.lua:809`（`MakeBook` 共享构造）；`componentactions.lua:2525` 仅向带 `reader` 标签的玩家提供 READ；成功阅读由 `components/book.lua:OnRead` 生成 `fx.lua:3052` 的 `fx_book_rain` |
 | `hammer` | 可生成 | 可入栏 | `prefabs/hammer.lua:86` |
 | `bugnet` | 可生成 | 可入栏 | `prefabs/bugnet.lua:74` |
 | `razor` | 可生成 | 可入栏 | `prefabs/razor.lua:30`、`:32` 的 `inventoryitem` 与 `shaver`；无 `stackable`、`equippable` 或 `finiteuses`，由鼠标举着对睡着的牛使用 |

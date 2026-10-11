@@ -5,6 +5,15 @@ test('cursor swaps, rejected placement and save reload preserve inventory and ba
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
+  await page.route('**/saves/initial-world.json', async route => {
+    const response = await route.fetch(), save = await response.json();
+    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
+    save.players.local.inventory.containers['player:inventory'].slots = [
+      { slotKey: '2', item: { itemId: 'torch', count: 1 } },
+      { slotKey: '4', item: { itemId: 'log', count: 8 } },
+    ];
+    await route.fulfill({ response, json: save });
+  });
   await page.goto('/tests/dst-lighting.html');
   const urls = Object.fromEntries(['main', 'save/deserialize', 'save/catalog'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));

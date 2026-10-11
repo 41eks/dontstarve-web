@@ -429,6 +429,12 @@ export class InventoryStore {
     return this.receiveToSlots(entity, this.inventorySlots(), onReceived);
   }
 
+  /** Return a rejected detached item to its source slot, including the active cursor. */
+  receiveAt(address: SlotAddress, entity: ItemEntity): boolean {
+    const registration = this.registrationByAddress.get(addressKey(address));
+    return !!registration && this.accessibleBackpackAddress(address) && this.receiveToSlots(entity, [registration]);
+  }
+
   private receiveToSlots(entity: ItemEntity, slots: readonly RegisteredItemSlot[], onReceived?: InventoryReceiveListener): boolean {
     if (entity.isRemoved || entity.components.inventoryitem.owner) return false;
     entity.flush();

@@ -127,7 +127,8 @@ export class TurfMap {
     for (const [name, assets] of [['DECIDUOUS', deciduous], ['WOODFLOOR', woodfloor], ['FARMING_SOIL', farming]] as const) {
       const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
       mesh.name = `TurfBlend:${name}`;
-      mesh.renderOrder = -1 + GROUND_TILE_DEFINITIONS[name].renderOrder * 0.1;
+      mesh.renderOrder = -1 + GROUND_TILE_DEFINITIONS[name].renderOrder
+        / (Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder)) + 1);
       mesh.receiveShadow = true;
       this.visual.add(mesh);
       this.layers.set(WORLD_TILES[name], { mesh, assets });

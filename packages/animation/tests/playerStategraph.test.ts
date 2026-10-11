@@ -62,3 +62,23 @@ it('keeps the source mining timeline when Willow changes facing and emits one ac
   expect(hit).toHaveBeenCalledOnce();
   expect(animation.stategraph.stateName).toBe('idle');
 });
+
+it('performs a drop on the doshortaction frame and reports a cancelled drop', async () => {
+  const animation = (await createWilsonPlayer('/dst/data/anim')).userData.animationController as WilsonAnimationController;
+  const drop = vi.fn(() => true), cancelled = vi.fn();
+  expect(animation.playDrop(drop, cancelled)).toBe(true);
+  expect(animation.stategraph.stateName).toBe('doshortaction');
+  for (let frame = 0; frame < 5; frame++) animation.update(1 / 30);
+  expect(drop).not.toHaveBeenCalled();
+  for (let frame = 0; frame < 3; frame++) animation.update(1 / 30);
+  expect(drop).toHaveBeenCalledOnce();
+  expect(cancelled).not.toHaveBeenCalled();
+  for (let frame = 0; frame < 30; frame++) animation.update(1 / 30);
+
+  const never = vi.fn(() => true);
+  expect(animation.playDrop(never, cancelled)).toBe(true);
+  animation.stategraph.cancelAction('DROP');
+  expect(cancelled).toHaveBeenCalledOnce();
+  for (let frame = 0; frame < 30; frame++) animation.update(1 / 30);
+  expect(never).not.toHaveBeenCalled();
+});

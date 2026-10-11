@@ -2,7 +2,8 @@ import {
   ArchiveSpriteAssets, createArchiveSprite,
   type ArchiveSprite, type ArchiveSpriteDefinition,
 } from '@dontstarve-web/animation/archiveSprite';
-import type { InventorySkinSpec } from '@dontstarve-web/inventory';
+import type { InventoryItemSpec, InventorySkinSpec } from '@dontstarve-web/inventory';
+import type { GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
@@ -17,6 +18,8 @@ export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly name: string;
   readonly icon: string;
   readonly atlas: string;
+  /** tiledefs.lua's terrain key, independent of the inventory and ground art. */
+  readonly groundTile?: GroundTileName;
   readonly symbolOverrides: Readonly<Record<string, { archive: string; symbol: string }>>;
   readonly skinArchives: Readonly<Record<string, string>>;
 }
@@ -26,6 +29,12 @@ export const GROUND_ITEM_DEFINITIONS = catalog.items as unknown as Readonly<Reco
 export const GROUND_ITEM_DISPLAY_SPECS = Object.fromEntries(Object.entries(GROUND_ITEM_DEFINITIONS)
   .map(([id, { name, icon, atlas }]) => [id, { name, icon, atlas }]));
 export const GROUND_ITEM_SKIN_SPECS: Readonly<Record<string, InventorySkinSpec>> = catalog.skinSpecs;
+export const TURF_ITEM_IDS = Object.keys(GROUND_ITEM_DEFINITIONS)
+  .filter(id => GROUND_ITEM_DEFINITIONS[id].groundTile !== undefined);
+/** turfs.lua: STACK_SIZE_MEDITEM; no equipped art or source skins. */
+export const TURF_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = Object.fromEntries(
+  TURF_ITEM_IDS.map(id => [id, { ...GROUND_ITEM_DISPLAY_SPECS[id], maxStack: 20 }]),
+);
 
 export function createGroundItemFactory(context: GroundPrefabContext): GroundItemFactory {
   const fires = new Set<ArchiveSprite>();

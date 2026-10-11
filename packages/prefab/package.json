@@ -10,6 +10,8 @@
     "./gameTimeScheduler": "./src/components/gameTimeScheduler.ts",
     "./reskin_tool": "./src/reskin_tool.ts",
     "./sound": "./src/sound.ts",
+    "./rain": "./src/rain.ts",
+    "./world_fx": "./src/world_fx.ts",
     "./razor": "./src/razor.ts",
     "./player_common": "./src/player_common.ts",
     "./pitchfork": "./src/pitchfork.ts",

@@ -230,8 +230,8 @@ describe('craft', () => {
       ingredients: {},
       buffered: false,
     }, [
-      new InventorySlot({ itemId: 'axe', count: 40 }),
-      new InventorySlot(),
+      new InventorySlot({ itemId: 'axe', count: 40 }, { axe: { maxStack: 40 } }),
+      new InventorySlot(null, { axe: { maxStack: 40 } }),
     ]);
 
     expect(next).toEqual([

@@ -18,6 +18,8 @@ export const ACTIONS = {
   TAKEITEM: { priority: 0, strings: { GENERIC: '拿取物品', BIRDCAGE: '打扫' } },
   GIVE: { priority: 0, strings: { GENERIC: '给予', PLACE_ITEM: '放置{item}' } },
   REPAIR: { priority: 0, rmb: true, strings: { GENERIC: '修复' } },
+  ADDFUEL: { priority: 0, strings: { GENERIC: '添加燃料' } },
+  ADDWETFUEL: { priority: 0, strings: { GENERIC: '添加受潮的燃料' } },
   CASTSPELL: { priority: -1, distance: 20, rmb: true, strings: { GENERIC: '施放法术', RESKIN: '打扫' } },
   LIGHT: { priority: -4, strings: { GENERIC: '点燃' } },
   READ: { priority: 0, strings: { GENERIC: '阅读' } },

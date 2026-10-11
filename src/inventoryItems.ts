@@ -1,4 +1,6 @@
 import { HAT_ITEM_SPECS } from '@dontstarve-web/prefab/hats';
+import { TURF_ITEM_SPECS } from '@dontstarve-web/prefab/groundItems';
+import { configureLightbulbEntity, LIGHTBULB_ID } from '@dontstarve-web/prefab/lightbulb';
 import { RECORD_ITEM_SPECS } from '@dontstarve-web/prefab/records';
 import { BOOK_ITEM_SPECS } from '@dontstarve-web/prefab/books';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity } from '@dontstarve-web/prefab/burnableItems';
@@ -31,6 +33,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...display,
       maxStack: inventoryItemMaxStack(itemId),
       configureEntity: isBirdId(itemId) ? configureBirdEntity
+        : itemId === LIGHTBULB_ID ? configureLightbulbEntity
         : itemId === HEATROCK_ID ? configureHeatRockEntity
         : itemId === RAZOR_ID ? configureRazorEntity
         : itemId === 'moonrocknugget' ? configureMoonrockNugget
@@ -51,6 +54,6 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
         ? { perishTime: PERISHABLE_FOODS[itemId].perishTime, perishReplacement: PERISHABLE_FOODS[itemId].replacement } : {}),
       ...(equippable === undefined ? {} : { equippable }),
     }];
-  })), ...HAT_ITEM_SPECS, ...RECORD_ITEM_SPECS, ...BOOK_ITEM_SPECS };
+  })), ...HAT_ITEM_SPECS, ...RECORD_ITEM_SPECS, ...BOOK_ITEM_SPECS, ...TURF_ITEM_SPECS };
 
 export { INVENTORY_SKIN_SPECS };

@@ -39,6 +39,8 @@ import { FlowerPlanting } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
 import { initialSave } from './save/initialSave';
 import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
+import { RainEffect } from '@dontstarve-web/prefab/rain';
+import { WorldFx } from '@dontstarve-web/prefab/world_fx';
 import { SAVE_CATALOG } from './save/catalog';
 import { findGroundPath } from '@dontstarve-web/prefab/locomotor';
 
@@ -49,7 +51,7 @@ import type { WorldState } from './worldState';
 
 export function createSceneEntities(
   world: CANNON.World,
-  worldState: Pick<WorldState, 'clock' | 'season' | 'fullMoon' | 'temperature'>,
+  worldState: Pick<WorldState, 'clock' | 'season' | 'fullMoon' | 'temperature' | 'weather'>,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
@@ -61,7 +63,7 @@ export function createSceneEntities(
   const dynamicMusic = scheduler ? new DynamicMusic(scheduler, path => PlaySound(path)) : undefined;
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
-    { ...view, scheduler, dynamicMusic, fullMoon: worldState.fullMoon,
+    { ...view, physics: world, scheduler, dynamicMusic, fullMoon: worldState.fullMoon,
       getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
       isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
@@ -430,11 +432,28 @@ export function createSceneEntities(
     renderEntities: () => reskinEffects.renderEntities,
     dispose: () => reskinEffects.dispose(),
   });
+  const worldFx = new WorldFx(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  registry.register(PREFAB_DEFINITIONS.worldFx, {
+    exportRecords: () => [],
+    update: (dt, quaternion) => worldFx.update(dt, quaternion),
+    renderEntities: () => worldFx.renderEntities,
+    dispose: () => worldFx.dispose(),
+  });
+  const rain = new RainEffect({
+    scene, dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`, animationBaseUrl: `${import.meta.env.BASE_URL}dst/data/anim`,
+    getFocus: () => player.position, camera, rate: worldState.weather.rainRate,
+  });
+  registry.register(PREFAB_DEFINITIONS.rain, {
+    exportRecords: () => [],
+    update: (dt, quaternion) => rain.update(dt, quaternion),
+    renderEntities: () => rain.renderEntities,
+    dispose: () => rain.dispose(),
+  });
   registry.assertDefinitions(Object.values(PREFAB_DEFINITIONS));
   const dispose = () => {
     try { registry.dispose(); }
     finally { dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
   };
   return { registry, dispose, moonTreeForest, buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants,
-    beefalos, rockManager, grasses, saplings, ponds, lavaPonds, wormholes, portals, nightmareGrowths, reskinEffects, farmPlow };
+    beefalos, rockManager, grasses, saplings, ponds, lavaPonds, wormholes, portals, nightmareGrowths, reskinEffects, worldFx, farmPlow };
 }

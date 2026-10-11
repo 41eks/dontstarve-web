@@ -10,7 +10,7 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
   | 'quickeat' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
   | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave';
-export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM';
+export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
@@ -763,6 +763,10 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   ActionHandler('PICKUP', 'doshortaction'),
   ActionHandler('HARVEST', 'dolongaction'),
   ActionHandler('STORE', 'doshortaction'),
+  ActionHandler('ADDFUEL', 'doshortaction'),
+  ActionHandler('ADDWETFUEL', 'doshortaction'),
+  // SGwilson.lua DROP: heavylifting_drop and the floater branch belong to unported mechanics.
+  ActionHandler('DROP', 'doshortaction'),
   // SGwilson.lua TAKEITEM: the inventoryitemholder_take and target.takeitem branches belong to unported holders.
   ActionHandler('TAKEITEM', 'dolongaction'),
   ActionHandler('REPAIR', (_inst, action) => action.target?.hasTag('repairshortaction') ? 'doshortaction' : 'dolongaction'),

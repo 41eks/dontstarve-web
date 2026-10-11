@@ -1,7 +1,8 @@
 import type * as THREE from 'three';
+import type { ReadonlySignal } from '@dontstarve-web/signals';
 import type { InventoryItemSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { BookDef, BufferedActionObject } from '@dontstarve-web/stategraphs';
-import { Book, type BookReaderInst, type BookResult } from '../../componets/src/book';
+import { Book, type BookFxWorld, type BookReaderInst, type BookResult } from '../../componets/src/book';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FindEntities, type FoundEntity } from './actionEntity';
 import { configureBurnableItemEntity } from './burnableItems';
@@ -10,12 +11,18 @@ import catalog from './groundItems.json' with { type: 'json' };
 import { TILE_SIZE } from './tile';
 
 export const BOOK_SILVICULTURE_ID = 'book_silviculture';
-export type BookId = typeof BOOK_SILVICULTURE_ID;
+export const BOOK_RAIN_ID = 'book_rain';
+export type BookId = typeof BOOK_SILVICULTURE_ID | typeof BOOK_RAIN_ID;
 
 /** Services books.lua reaches through TheSim, TheWorld and inst:DoTaskInTime. */
-export interface BookWorld {
+export interface BookWorld extends BookFxWorld<BookReader> {
   readonly root: THREE.Object3D;
   readonly scheduler: GameTimeScheduler;
+  /** TheWorld.state.precipitation and the `ms_forceprecipitation` event. */
+  readonly weather: {
+    readonly preciptype: ReadonlySignal<string>;
+    ForcePrecipitation(enable: boolean): void;
+  };
 }
 export type BookReader = BookReaderInst & { getPosition(): { x: number; z: number } };
 export type BookComponent = Book<ItemEntity, BookReader, BookWorld>;
@@ -64,6 +71,16 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
       return [true];
     },
   },
+  book_rain: {
+    uses: BOOK_USES_LARGE,
+    read_sanity: -SANITY_LARGE,
+    fx: 'fx_book_rain',
+    // The farming-soil moisture the Lua adds around the reader needs farming_manager, which is not ported.
+    fn(_inst, _reader, world) {
+      world.weather.ForcePrecipitation(world.weather.preciptype.peek() === 'none');
+      return [true];
+    },
+  },
 };
 
 export function isBook(itemId: string): itemId is BookId { return Object.hasOwn(BOOK_DEFS, itemId); }
@@ -93,6 +110,7 @@ export function configureBookEntity(entity: ItemEntity): void {
   entity.components.book = book;
   book.SetOnRead(def.fn);
   book.SetReadSanity(def.read_sanity);
+  book.SetFx(def.fx);
   configureBurnableItemEntity(entity);
 }
 
@@ -103,5 +121,8 @@ export function getBookComponent(entity: ItemEntity): BookComponent | undefined 
 export const BOOK_ITEM_SPECS: Readonly<Record<BookId, InventoryItemSpec>> = {
   book_silviculture: { name: catalog.items.book_silviculture.name, icon: catalog.items.book_silviculture.icon,
     atlas: catalog.items.book_silviculture.atlas, maxStack: 1,
+    maxUses: BOOK_USES_LARGE, configureEntity: configureBookEntity },
+  book_rain: { name: catalog.items.book_rain.name, icon: catalog.items.book_rain.icon,
+    atlas: catalog.items.book_rain.atlas, maxStack: 1,
     maxUses: BOOK_USES_LARGE, configureEntity: configureBookEntity },
 };

@@ -219,7 +219,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     const o = object(player.stats, 'players.local.stats', ['health', 'hunger', 'sanity']);
     stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity') };
   }
-  const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'random']);
+  const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'random']);
   const systems: SaveDocument['world']['systems'] = {};
   if (systemsData.clock !== undefined) {
     const o = object(systemsData.clock, 'world.systems.clock', ['day', 'phase', 'phaseProgress']);
@@ -240,6 +240,16 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       seasontemperature: number(o.seasontemperature, `${path}.seasontemperature`, -Number.MAX_SAFE_INTEGER),
       phasetemperature: number(o.phasetemperature, `${path}.phasetemperature`, -Number.MAX_SAFE_INTEGER),
       noisetime: number(o.noisetime, `${path}.noisetime`),
+    };
+  }
+  if (systemsData.weather !== undefined) {
+    const path = 'world.systems.weather';
+    const o = object(systemsData.weather, path, ['moisture', 'moisturefloor', 'moistureceil', 'preciptype', 'peakprecipitationrate']);
+    systems.weather = {
+      moisture: number(o.moisture, `${path}.moisture`), moisturefloor: number(o.moisturefloor, `${path}.moisturefloor`),
+      moistureceil: number(o.moistureceil, `${path}.moistureceil`),
+      preciptype: choice(o.preciptype, `${path}.preciptype`, ['none', 'rain', 'snow']),
+      peakprecipitationrate: number(o.peakprecipitationrate, `${path}.peakprecipitationrate`, 0, 1),
     };
   }
   if (systemsData.random !== undefined) {

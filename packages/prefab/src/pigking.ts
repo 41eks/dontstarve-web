@@ -5,6 +5,7 @@ import {
   type SpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
 import type { PointerContext } from './worldContext';
+import { MakeObstaclePhysics } from './standardcomponents';
 import definitions from './definitions.json' with { type: 'json' };
 
 export interface PigKingPrefabOptions {
@@ -20,9 +21,6 @@ export interface PigKingPrefab {
   update(dt: number): void;
 }
 
-const pigKingHeight = 24;
-const pigKingWidth = pigKingHeight * (384 / 344);
-const pigKingDepth = 1;
 
 export async function createPigKing(
   assetBaseUrl: string,
@@ -40,34 +38,14 @@ export async function createPigKing(
   standee.position.y += position.y - bounds.min.y;
 
   const animation = standee.userData.animationController as SpriteAnimationController;
-  const body = new CANNON.Body({
-    mass: 0,
-    shape: new CANNON.Box(new CANNON.Vec3(
-      pigKingWidth / 4,
-      pigKingHeight / 2,
-      pigKingDepth / 4,
-    )),
-    position: new CANNON.Vec3(
-      standee.position.x,
-      position.y + pigKingHeight / 2,
-      standee.position.z,
-    ),
-  });
-  const cameraZ = new THREE.Vector3();
+  // pigking.lua: MakeObstaclePhysics(inst, 2, .5)
+  const body = MakeObstaclePhysics({ x: standee.position.x, y: position.y, z: standee.position.z }, 2, .5);
 
   return {
     body,
     standee,
     setNormal(cameraWorldQuaternion) {
       standee.quaternion.copy(cameraWorldQuaternion);
-
-      cameraZ.set(0, 0, 1).applyQuaternion(cameraWorldQuaternion);
-      cameraZ.y = 0;
-      if (cameraZ.lengthSq() === 0) return;
-      cameraZ.normalize();
-      const bodyRotationY = Math.atan2(cameraZ.x, cameraZ.z);
-      body.quaternion.setFromEuler(0, bodyRotationY, 0);
-      body.aabbNeedsUpdate = true;
     },
     setupInteraction({ camera, renderer }) {
       const raycaster = new THREE.Raycaster();

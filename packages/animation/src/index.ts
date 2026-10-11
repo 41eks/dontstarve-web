@@ -28,7 +28,7 @@ export {
   type StaticSpriteOptions,
   type StaticSpriteOverlay,
 } from './wallSprite';
-export { setSpriteEntityRenderOrder } from './renderOrder';
+export { compareRenderEntries, setSpriteEntityRenderOrder } from './renderOrder';
 export {
   ArchiveSpriteAssets, createArchiveSprite,
   type ArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions, type ArchiveSpriteBuild,

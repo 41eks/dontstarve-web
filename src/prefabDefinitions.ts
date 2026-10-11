@@ -1,5 +1,6 @@
 import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
 import { HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';
+import { TURF_ITEM_IDS } from '@dontstarve-web/prefab/groundItems';
 import { BURNABLE_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/burnableItems';
 import { BANANAJUICE_ID, MUSHROOM_ITEM_IDS } from '@dontstarve-web/prefab/food';
 import { BIRD_IDS } from '@dontstarve-web/prefab/birds';
@@ -67,7 +68,7 @@ export const PREFAB_DEFINITIONS = {
     return fail(path, `missing building definition for ${context.prefab}`);
   }, PLACEABLE_BUILDING_IDS),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    ['fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'moon_tree_blossom', 'butterfly', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'reskin_tool', 'greenstaff', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash']),
+    [...TURF_ITEM_IDS, 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'moon_tree_blossom', 'butterfly', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'reskin_tool', 'greenstaff', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash']),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] })),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),
@@ -84,6 +85,8 @@ export const PREFAB_DEFINITIONS = {
   wormholes: definePrefabs([WORMHOLE_ID], componentParser({ keys: ['wormhole'] }), true),
   portals: definePrefabs([PORTAL_ID], empty, true),
   reskinEffects: definePrefabs([], empty),
+  rain: definePrefabs([], empty),
+  worldFx: definePrefabs([], empty),
 } as const;
 
 export function prefabSaveParsers(definitions: readonly PrefabDefinition[]): ReadonlyMap<string, PrefabComponentParser> {

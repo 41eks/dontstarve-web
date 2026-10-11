@@ -21,6 +21,8 @@ export interface FoodEffects {
 
 /** Source edible values; food effects are applied only after inventory consumption succeeds. */
 export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
+  // lightbulb.lua: HEALING_TINY, zero hunger, default zero sanity, VEGGIE.
+  lightbulb: { health: 1, hunger: 0, sanity: 0 },
   // prefabs/seeds.lua: raw seeds → health 0, hunger CALORIES_TINY / 2, default sanity 0.
   seeds: { health: 0, hunger: SEEDS_HUNGER, sanity: 0 },
   // prefabs/veggies.lua: raw, cooked, dried and seed items.
@@ -47,6 +49,7 @@ export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
 
 /** SetPerishTime, StartPerishing and spoiled_food replacement from the owning prefab file. */
 export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: number; readonly replacement?: string }>> = {
+  lightbulb: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   // prefabs/mushrooms.lua capcommonfn.
   red_cap: { perishTime: PERISH_MED, replacement: 'spoiled_food' },
   // prefabs/moontree_blossom.lua: PERISH_FAST, spoiled_food.

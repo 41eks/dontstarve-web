@@ -94,6 +94,22 @@ done
 
 检查 CLI `-h` 和所有新样本 `-m -s` metadata 后，用 `-i` 新增导出 `sfx.fsb-790/792/793/794/795.wav` 和 `music.fsb-25/26.wav`；7 份 WAV 均与源目录已有解码 WAV 字节一致。全部事件统一预加载和播放，退出／移除停止各实体循环音源。
 
+### 雨声
+
+`components/weather.lua:StartAmbientRainSound` 播放 `dontstarve/AMB/rain`（雨罩、树下和雨伞的 `rain/rain_on_umbrella` 等事件未接入），随后只用 `SetParameter("rain", "intensity", rate)` 更新强度。`fev-events.py` 显示该事件有三个同时循环的层，均在 `forest_stream.fsb`：
+
+| sound definition | 源样本 | FEV file_index | `vgmstream -s` | `-m` 流名 | 层 |
+| --- | --- | --- | --- | --- | --- |
+| 2019 | `sfx/ambience/amb_rain_heavy_LP.wav` | 73 | 74 | `amb_rain_heavy_LP` | 重雨 |
+| 2018 | `sfx/ambience/amb_rain_medium_LP.wav` | 75 | 76 | `amb_rain_medium_LP` | 中雨 |
+| 2017 | `sfx/ambience/amb_rain_light_LP.wav` | 74 | 75 | `amb_rain_light_LP` | 轻雨 |
+
+`fev-events.py` 不解析包络；各层的 `intensity` 音量曲线来自 FEV 事件层的包络点索引和 `EPRP` 点表。`EPRP` 头为 `'EPRP'`、块长度 u32、点数 u32，之后每点 12 字节：`x` float、`y` float、曲线形状 u32；包络点索引（月基地光束的 357–359 同理）直接指向该表。`AMB/rain` 三个包络依次为点 `6,14,15`（重雨：0→0.404 为 0，0.404→0.697 升到 1）、`6,16,17`（中雨：0→0.343 升到 1，其后保持）、`3,18,9`（轻雨：恒为 1）。包络在端点外保持端点值。三份样本用 `-i` 导出到 `public/dst/data/sound/forest_stream.fsb-74/75/76.wav`，均与源目录已有的 `forest_stream.fsb#<index>.wav` 字节一致。`sound.ts` 的 `intensity` 字段按层保存包络，`SoundHandle.setParameter('intensity', value)` 在各层独立增益节点上求值；月基地光束共用同一机制。
+
+### 求雨书特效声
+
+`fx.lua` 的 `fx_book_rain` 在成功阅读 `book_rain` 时播放 `wickerbottom_rework/book_spells/rain`。`wickerbottom_rework.fev` 有两个同时播放的 sound definition：9（`book_rain_DST.wav`，file_index 9，`-s 10`）和 20（`book_rain_sparkle.wav`，file_index 10，`-s 11`），均为单声道 44100 Hz。两份样本用 `-m -s` 核对流名后以 `-i` 导出为 `wickerbottom_rework.fsb-10.wav`、`wickerbottom_rework.fsb-11.wav`，与源目录已有的解码 WAV 字节一致；`sound.ts` 映射为两层一次性播放。
+
 ### 建筑燃烧声
 
 建筑燃烧声来自 `prefabs/fire.lua` 的 `dontstarve/common/campfire`，不是火把的拿出声。`dontstarve.fev` 对应三个同时播放的 sound definition：1762 使用 common 的零基索引 148–151，1765 使用 152–155，1766 使用 157–160；分别以 `vgmstream -i -s 149..152 / 153..156 / 158..161` 导出。实际提取使用单个数值索引，输出 `sound/common.fsb-<index>.wav`；所有 12 份 WAV 均与资源目录现有解码 WAV 字节一致。三个循环层由 `packages/prefab/src/sound.ts` 统一映射，建筑各自创建音源，熄灭、烧毁及移除时停止。熄火声复用上面的 `fireOut` 映射。
@@ -359,7 +375,7 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 
 ### 玩家采收制作声
 
-`SGwilson.lua:dolongaction` 进入时播放 `dontstarve/wilson/make_trap`（句柄 `make`），1 秒超时或退出时停止。源 `dontstarve.fev` 事件含 sound definition 1758、1759 两层，分别引用 `sfx/wilson/MakeWhoosh1_1.wav` 至 `_5.wav` 与 `MakeWhoosh2_1.wav` 至 `_5.wav`；bank 均为 `wilson`，零基 `file_index` 为 70–74 和 75–79，对应提取索引 71–75 和 76–80。用已安装 CLI 的 `-h` 核对参数、`-m -s 71 -S 80` 检查 metadata 后，按 `-i` 导出十个 `public/dst/data/sound/wilson.fsb-<index>.wav`；与源目录已有的对应 WAV 字节一致。两层各选一个样本由浏览器循环，映射、预加载和播放使用统一 `sound.ts`，状态超时或取消释放玩家持有的句柄。
+`SGwilson.lua:dolongaction` 进入时播放 `dontstarve/wilson/make_trap`（句柄 `make`），1 秒超时或退出时停止。源 `dontstarve.fev` 事件含 sound definition 1758、1759 两层，分别引用 `sfx/wilson/MakeWhoosh1_1.wav` 至 `_5.wav` 与 `MakeWhoosh2_1.wav` 至 `_5.wav`；bank 均为 `wilson`，零基 `file_index` 为 70–74 和 75–79，对应提取索引 71–75 和 76–80。用已安装 CLI 的 `-h` 核对参数、`-m -s 71 -S 80` 检查 metadata 后，按 `-i` 导出十个 `public/dst/data/sound/wilson.fsb-<index>.wav`；与源目录已有的对应 WAV 字节一致。这些是 112～181 毫秒的短样本。按用户要求让声音跟随采集动画，每个 `build_loop` 周期触发一次双层短音效，每层随机选一个原样本且 `loop=false`；不按 WAV 长度首尾循环，不在跨过多个周期的长帧中集中补播。`dolongaction` 开始／结束仍控制声音的有效区间，准备和结束姿态不重复播放，取消立即停止最近一组音源。映射、预加载和播放继续使用统一 `sound.ts`。
 
 ### 捕捉与坍塌补充事件
 
@@ -425,3 +441,7 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 ### 温度测量仪建造声
 
 `prefabs/winterometer.lua:onbuilt` 播放 `dontstarve/common/winter_meter_craft`。`dontstarve.fev`（`fev-events.py common/winter_meter_craft`）解析为 sounddef 1331 → `sfx/objects/craftable/Thermal_measurer_craft.wav`，bank `common`、零基 `file_index` 175（提取索引 176）。已用 `-m -s 176` 核对流名 `Thermal_measurer_craft`，以 `-i -s 176` 导出 `public/dst/data/sound/common.fsb-176.wav`，与源目录已有的 `common.fsb#176.wav` 字节一致；事件不循环，映射在 `sound.ts`。
+
+### 灯草采摘完成声
+
+`prefabs/flower_cave.lua:onpickedfn` 在成功采摘时播放 `dontstarve/wilson/pickup_lightbulb`，与 `picking → picked` 同时触发，和玩家的 `make_trap` 操作声分别归属。`fev-events.py sound/dontstarve.fev wilson/pickup_lightbulb` 解析为 sounddef 1023 → `sfx/wilson/Harvest_Plant.wav` → bank `wilson` / 零基 `file_index=66`，提取索引 67。检查安装 CLI 的 `-h`、`-m -s 67`（`Harvest_Plant`，9324 个 44100 Hz 样本），再用 `-i -s 67` 导出 `public/dst/data/sound/wilson.fsb-67.wav`，与源目录已有 `wilson.fsb#67.wav` 字节一致。灯草生成前预加载；每次成功采摘播放一次，取消不触发，移除停止。

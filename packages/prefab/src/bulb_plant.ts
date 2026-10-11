@@ -7,6 +7,7 @@ import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
+import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
 export const BULB_PLANT_PREFABS = ['flower_cave', 'flower_cave_double', 'flower_cave_triple'] as const;
@@ -79,6 +80,7 @@ export class BulbPlantController {
   private inLight = false;
   private animationVersion = 0;
   private disposed = false;
+  private pickSound?: SoundHandle;
   readonly pickable: Pickable;
   private readonly model: THREE.Group;
   private readonly animation: SpriteAnimationController;
@@ -130,6 +132,8 @@ export class BulbPlantController {
 
   get lightState(): BulbPlantLightState { return this.lightMode.peek(); }
   private onPicked(): void {
+    this.pickSound?.stop();
+    this.pickSound = PlaySound('dontstarve/wilson/pickup_lightbulb', this.model.position);
     if (this.lightState === 'ON') this.lightMode.set('RECHARGING');
     this.turnoffTimer.stop();
     this.rechargeTimer.stop();
@@ -191,6 +195,7 @@ export class BulbPlantController {
     this.wakeTimer.stop(); this.rechargeTimer.stop(); this.turnoffTimer.stop();
     this.appearanceMemo.dispose();
     this.pickable.dispose();
+    this.pickSound?.stop(); this.pickSound = undefined;
     if (this.ownsScheduler) this.scheduler.dispose();
     setPrefabLocalLight(this.model, null);
   }
@@ -251,7 +256,10 @@ export class BulbPlantManager {
       : prefabId === 'flower_cave_triple' ? 'triple' : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(this.random() * 2))]);
     let request = this.factories.get(variant);
     if (!request) {
-      request = createAnimatedSpriteFactory(this.assetBaseUrl, `bulb_plant_${variant}.zip`);
+      request = Promise.all([
+        createAnimatedSpriteFactory(this.assetBaseUrl, `bulb_plant_${variant}.zip`),
+        PreloadSounds('dontstarve/wilson/pickup_lightbulb'),
+      ]).then(([factory]) => factory);
       this.factories.set(variant, request);
       void request.catch(() => this.factories.delete(variant));
     }

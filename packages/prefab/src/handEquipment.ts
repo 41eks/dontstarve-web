@@ -3,7 +3,7 @@ import type { HandEquipmentLifecycle } from '@dontstarve-web/signals';
 import type { ActionDescription } from '@dontstarve-web/stategraphs';
 import type { WilsonCarryItem } from './player';
 import { configureTorchEntity, createTorchHandLifecycle, TORCH_SOUNDS } from './torch';
-import { createLanternHandLifecycle, LANTERN_FUEL } from './lantern';
+import { configureLanternEntity, createLanternHandLifecycle, LANTERN_FUEL } from './lantern';
 import { PreloadSounds, type SoundPosition } from './sound';
 import { getLightStaffController, type LightStaffWorld } from './yellowstaff';
 import { configureBugNetEntity } from './bugnet';
@@ -45,7 +45,7 @@ export interface HandEquipmentDefinition {
 /** Source hand prefabs declare their presentation and equip lifecycle together. */
 const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
   torch: { weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureTorchEntity, preload: () => PreloadSounds(...TORCH_SOUNDS), createLifecycle: createTorchHandLifecycle },
-  lantern: { tags: ['light'], maxFuel: LANTERN_FUEL, createLifecycle: createLanternHandLifecycle },
+  lantern: { tags: ['light'], maxFuel: LANTERN_FUEL, configureEntity: configureLanternEntity, createLifecycle: createLanternHandLifecycle },
   yellowstaff: { tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   opalstaff: { tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   greenstaff: { tags: ['nopunch'], maxUses: GREENSTAFF_USES, createLifecycle: (entity, context) => context.greenStaffWorld ? getGreenStaffController(entity, context.greenStaffWorld) : undefined },

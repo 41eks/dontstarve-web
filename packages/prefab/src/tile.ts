@@ -10,10 +10,10 @@ export interface TileCoord {
 }
 
 /** 墙贴图的宽度（忽略 alpha 通道，取整张贴图）：`wall_segment-14` = 195px */
-export const WALL_TEXTURE_WIDTH = 195;
+export const WALL_TEXTURE_WIDTH = 192;
 
 /** 墙的缩放，墙渲染宽度 = WALL_TEXTURE_WIDTH * WALL_SCALE = 3.9 世界单位 */
-export const WALL_SCALE = 0.02;
+export const WALL_SCALE = 0.03;
 
 /** 一面墙在世界中的宽度 */
 export const WALL_WIDTH = WALL_TEXTURE_WIDTH * WALL_SCALE;

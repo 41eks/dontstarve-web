@@ -1,7 +1,7 @@
 import type { ActionWorldContext } from './actionContext.ts';
 
 export type PlayerActionKind = 'ATTACK' | 'HAMMER' | 'MINE' | 'CHOP' | 'TERRAFORM' | 'TILL' | 'DIG'
-  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'FLOWER_PLANT' | 'BUILD' | 'DEPLOY' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM';
+  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'FLOWER_PLANT' | 'BUILD' | 'DEPLOY' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL';
 export type ActionInterruptReason = 'slot-select' | 'slot-context-menu' | 'drop' | 'craft' | 'crafting' | 'emote';
 export interface PlayerActionEvents {
   'action:begin': { owner: object; action: PlayerActionKind };
@@ -14,7 +14,7 @@ interface CancellationRule {
   interrupts: readonly ActionInterruptReason[];
 }
 const inventoryInterrupts = ['slot-select', 'slot-context-menu', 'craft', 'crafting', 'emote'] as const;
-const inventoryActions = ['EAT', 'READ', 'SEED_SELECT', 'FLOWER_PLANT', 'BUILD', 'DEPLOY', 'HARVEST', 'PICKUP', 'GIVE', 'REPAIR', 'STORE', 'TAKEITEM'] as const;
+const inventoryActions = ['EAT', 'READ', 'SEED_SELECT', 'FLOWER_PLANT', 'BUILD', 'DEPLOY', 'HARVEST', 'PICKUP', 'GIVE', 'REPAIR', 'STORE', 'TAKEITEM', 'ADDFUEL', 'ADDWETFUEL'] as const;
 const workActions = ['ATTACK', 'HAMMER', 'MINE', 'CHOP', 'TERRAFORM', 'TILL', 'DIG', 'CASTSPELL', 'LIGHT'] as const;
 
 /** Existing interruption scopes, expressed as action categories rather than controller instances. */

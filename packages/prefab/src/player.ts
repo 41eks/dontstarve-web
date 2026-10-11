@@ -31,6 +31,7 @@ import { isAxeTool, loadAxeEquipment, type AxeEquipment, type AxeTool } from './
 import { isPitchforkTool, loadPitchforkEquipment, resolvePitchforkPlayerSprite, type PitchforkEquipment, type PitchforkTool } from './pitchfork';
 import { isFarmHoeTool, loadFarmHoeEquipment, resolveFarmHoePlayerSprite, type FarmHoeEquipment, type FarmHoeTool } from './farm_hoe';
 import { isShovelTool, loadShovelEquipment, resolveShovelPlayerSprite, type ShovelEquipment, type ShovelTool } from './shovel';
+import { MakeCharacterPhysics } from './standardcomponents';
 import { equipSamePrefab } from './player_common';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { BookFxController, type BookFxPrefab } from './book_fx';
@@ -56,6 +57,7 @@ export interface WilsonAnimationController extends ActionAnimationController {
   bindInventory(inventory: Parameters<typeof equipSamePrefab>[0]): void;
   playItemTransition(state: 'item_in' | 'item_out', item?: WilsonCarryItem): void;
   playPickup(): void;
+  playDrop(onDrop: () => boolean, onCancel: () => void): boolean;
   setCrafting(crafting: boolean): void;
   setCarryItem(item: WilsonCarryItem | null, skinId?: string): Promise<void>;
   /** The equipped lantern's machine.ison and fuel percent; carrying alone does not light it. */
@@ -138,6 +140,8 @@ class WilsonController implements WilsonAnimationController {
   private readonly castingLight: StaffCastingLight;
   private animation!: Animation;
   private makeSound?: SoundHandle;
+  private makeSoundActive = false;
+  private makeSoundCycle = -1;
   private shaveSound?: SoundHandle;
   /** The player inst's combat component, read by the attack state. */
   combat?: WilsonCombat;
@@ -201,7 +205,9 @@ class WilsonController implements WilsonAnimationController {
         }
         if (cue === 'make') {
           this.makeSound?.stop();
-          this.makeSound = PlaySound('dontstarve/wilson/make_trap');
+          this.makeSound = undefined;
+          this.makeSoundActive = true;
+          this.makeSoundCycle = -1;
           return;
         }
         const event = cue === 'useBreak' ? 'dontstarve/wilson/use_break' : cue === 'dig' ? 'dontstarve/wilson/dig' : cue === 'tillEmerge' ? 'dontstarve_DLC001/creatures/mole/emerge'
@@ -227,6 +233,8 @@ class WilsonController implements WilsonAnimationController {
       stopSound: cue => {
         if (cue === 'shave') { this.shaveSound?.stop(); this.shaveSound = undefined; return; }
         this.makeSound?.stop(); this.makeSound = undefined;
+        this.makeSoundActive = false;
+        this.makeSoundCycle = -1;
       },
       setCasting: (casting, colour) => {
         if (casting) this.castingLight.start(colour);
@@ -261,6 +269,19 @@ class WilsonController implements WilsonAnimationController {
 
   playQuickEat(onEat: () => boolean, foodDrink = false): boolean {
     return this.startAction('EAT', onEat, true, foodDrink);
+  }
+  /** ACTIONS.DROP: doshortaction performs the drop on its frame 6; onCancel runs if the action never performs. */
+  playDrop(onDrop: () => boolean, onCancel: () => void): boolean {
+    if (this.stategraph.hasStateTag('busy')) return false;
+    this.cancelEmote();
+    const action = new BufferedAction<WilsonAction>('DROP', onDrop);
+    const stop = this.stategraph.listenForEvent('actionfailed', data => {
+      if ((data as { action?: unknown } | undefined)?.action === action) { stop(); onCancel(); }
+    });
+    action.addSuccessAction(stop);
+    if (this.stategraph.pushBufferedAction(action)) return true;
+    stop();
+    return false;
   }
   playPlant(onPlant: () => boolean): boolean { return this.startAction('PLANT', onPlant, true); }
   cancelFoodAction(): void {
@@ -691,6 +712,14 @@ class WilsonController implements WilsonAnimationController {
     const clip = this.stategraph.animationClip;
     const speed = (clip.frameRate ?? this.animation.frameRate) * (clip.playbackRate ?? 1);
     const frame = Math.floor(this.stategraph.animationTime * speed);
+    if (this.makeSoundActive && this.state === 'build_loop' && clip.loop) {
+      const cycle = Math.floor(frame / this.animation.frames.length);
+      if (cycle !== this.makeSoundCycle) {
+        this.makeSoundCycle = cycle;
+        this.makeSound?.stop();
+        this.makeSound = PlaySound('dontstarve/wilson/make_trap');
+      }
+    }
     this.showFrame(clip.loop ? frame % this.animation.frames.length : Math.min(frame, this.animation.frames.length - 1));
   }
 
@@ -894,15 +923,16 @@ export async function createWilsonPlayerPrefab(
   options: WilsonPlayerPrefabOptions = {},
 ): Promise<WilsonPlayerPrefab> {
   const model = await createWilsonPlayer(assetBaseUrl);
-  const shapeRadius = options.shapeRadius ?? 4.5;
+  // player_common.lua: MakeCharacterPhysics(inst, 75, .5)
+  const physics = MakeCharacterPhysics(options.mass ?? 75, 0.5);
+  const shapeRadius = options.shapeRadius ?? (physics.shape as CANNON.Sphere).radius;
   const material = new CANNON.Material('player');
   const body = new CANNON.Body({
-    mass: options.mass ?? 5,
+    ...physics,
     shape: new CANNON.Sphere(shapeRadius),
     position: new CANNON.Vec3(model.position.x, model.position.y, model.position.z)
       .vadd(new CANNON.Vec3(0, shapeRadius, 0)),
     material,
-    fixedRotation: true,
   }) as PlayerBody;
   body.canJump = false;
   body.addEventListener('collide', () => {

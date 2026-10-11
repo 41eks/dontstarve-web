@@ -296,6 +296,10 @@ groundItems.setPhonographRecordSource(() => {
 });
 window.addEventListener('game:slot-select', (event) => {
   const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
+  if (inventory.getEntity(cursorAddress)) {
+    if (disposalActions.useFuel(slot)) event.preventDefault();
+    return;
+  }
   actionEvents.emit('action:interrupt', { reason: 'slot-select' });
   const stack = inventory.get(slot);
   if (stack && SEED_ITEM_IDS.includes(stack.itemId) && disposalActions.beginFood(slot, stack.itemId)) {

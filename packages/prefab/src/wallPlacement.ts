@@ -1,3 +1,4 @@
+import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { disposeSprite } from './disposeSprite';
 import {
@@ -22,6 +23,7 @@ import { GroundItemAssets } from './groundItems';
 import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
+import { MakeObstaclePhysics } from './standardcomponents';
 import { Health } from '../../componets/src/health';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import { createMemo, createSignal, readonlySignal, type Memo, type Signal } from '@dontstarve-web/signals';
@@ -131,6 +133,8 @@ interface WallInstance<BuildId extends string> extends WallArt {
     /** resolveanimtoplay(health percent), derived from the health signal. */
     healthAnim: Memo<string>;
     stopHealthAnim: () => void;
+    /** walls.lua MakeObstaclePhysics(inst, .5); present once placed, in the world only while health > 0. */
+    body?: CANNON.Body;
 }
 
 /** A live, attackable wall for combat target selection. */
@@ -227,7 +231,7 @@ export class WallPlacement<BuildId extends string> {
         wall.model.visible = true;
         this.setOpacity(wall.model, 1);
         this.faceCamera(wall.model);
-        this.placed.add(wall);
+        this.place(wall);
     }
 
     async spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): Promise<THREE.Group> {
@@ -241,7 +245,7 @@ export class WallPlacement<BuildId extends string> {
         if (saved) wall.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
         this.faceCamera(wall.model);
         this.scene.add(wall.model);
-        this.placed.add(wall);
+        this.place(wall);
         return wall.model;
     }
 
@@ -390,7 +394,7 @@ export class WallPlacement<BuildId extends string> {
         const placedWall = this.active;
         placedWall.model.visible = true;
         this.setOpacity(placedWall.model, 1);
-        this.placed.add(placedWall);
+        this.place(placedWall);
         this.active = undefined;
         this.cursor.hide();
     };
@@ -494,6 +498,7 @@ export class WallPlacement<BuildId extends string> {
         // onhealthchange: a live wall plays <anim>_hit then holds <anim>; a broken wall holds `broken`.
         health.ondelta = (_inst, _oldPercent, newPercent) => {
             if (newPercent > 0) wall.animation.playTransient(`${healthAnim.peek()}_hit`);
+            this.setObstacle(wall, newPercent > 0);
         };
         // onhit, shared by combat.onhitfn and workable:SetOnWorkCallback.
         const onhit = () => {
@@ -574,7 +579,25 @@ export class WallPlacement<BuildId extends string> {
         };
     }
 
+    private place(wall: WallInstance<BuildId>): void {
+        this.placed.add(wall);
+        const ground = wall.model.position.clone().setY(wall.model.position.y - wall.groundOffset);
+        wall.body = MakeObstaclePhysics(ground, .5);
+        this.setObstacle(wall, !wall.health.IsDead());
+    }
+
+    /** walls.lua makeobstacle/clearobstacle: Physics:SetActive follows health > 0. */
+    private setObstacle(wall: WallInstance<BuildId>, active: boolean): void {
+        const { body } = wall;
+        const physics = this.world.physics;
+        if (!body || !physics) return;
+        if (active && body.world !== physics) physics.addBody(body);
+        else if (!active && body.world === physics) physics.removeBody(body);
+    }
+
     private disposeWallComponents(wall: WallInstance<BuildId>): void {
+        this.setObstacle(wall, false);
+        wall.body = undefined;
         wall.model.userData.removed = true;
         wall.stopSkin();
         wall.preparedSkin = undefined;
