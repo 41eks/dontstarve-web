@@ -7,29 +7,30 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000023",
-    "parentId": "0000000022",
-    "savedAt": "2026-10-11T15:17:27.676Z",
+    "id": "0000000024",
+    "parentId": "0000000023",
+    "savedAt": "2026-10-12T10:05:06.093Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 5023.2841000034205,
+    "elapsedSeconds": 4372.610700002994,
     "systems": {
       "worldtemperature": {
+        "daylight": true,
         "season": "winter",
         "seasontemperature": -25,
-        "phasetemperature": 0,
-        "noisetime": 5828.2841000029475
+        "phasetemperature": 1.414518222615452,
+        "noisetime": 5877.610700002852
       },
       "weather": {
-        "moisture": 2080,
+        "moisture": 1840.7312990053013,
         "moisturefloor": 1080,
         "moistureceil": 2160,
         "preciptype": "snow",
         "peakprecipitationrate": 0.7906782011227431,
-        "snowlevel": 0.08
+        "snowlevel": 0.1597562336648996
       }
     },
     "map": {
@@ -6369,7 +6370,7 @@
                     "entityId": "e_5de5481dfe59039eb6655af84d8dca32",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.8893307291666676
+                    "freshnessPercent": 0.8816234479166826
                   }
                 },
                 {
@@ -6378,7 +6379,7 @@
                     "entityId": "e_1dba80208926f5175f3325190979330c",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.8893307291666676
+                    "freshnessPercent": 0.8816234479166826
                   }
                 },
                 {
@@ -6387,7 +6388,7 @@
                     "entityId": "e_e59bc725b7807bd8dae74d0663fd6a9c",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.8893307291666676
+                    "freshnessPercent": 0.8816234479166826
                   }
                 },
                 {
@@ -6850,7 +6851,7 @@
             "stack": {
               "itemId": "lightbulb",
               "count": 1,
-              "freshnessPercent": 0.9549598437500184
+              "freshnessPercent": 0.9356916406250554
             }
           }
         },
@@ -6868,7 +6869,7 @@
             "stack": {
               "itemId": "lightbulb",
               "count": 1,
-              "freshnessPercent": 0.9549598437500184
+              "freshnessPercent": 0.9356916406250554
             }
           }
         },
@@ -7000,9 +7001,9 @@
           "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
           "transform": {
             "position": [
-              91.11028284888951,
+              83.55198221606722,
               0,
-              -12.383639495497203
+              -36.375680291132
             ],
             "rotationY": 0
           },
@@ -7017,9 +7018,9 @@
           "id": "e_5f98f9a627feea2fb75d1ffa516e94b7",
           "transform": {
             "position": [
-              -14.943934036226894,
+              -11.39943502230267,
               0,
-              286.28918793953477
+              288.3781528833202
             ],
             "rotationY": 0
           },
@@ -7034,9 +7035,9 @@
           "id": "e_d96125953f2a5c9abf3006c7e9814f8b",
           "transform": {
             "position": [
-              -51.41686502048908,
+              -40.44694823547292,
               0,
-              189.80125394262706
+              198.61642261173668
             ],
             "rotationY": 0
           },
@@ -7051,9 +7052,9 @@
           "id": "e_bb2e6b7bc2ac993bbee65beff6992d46",
           "transform": {
             "position": [
-              -129.53306268780227,
+              -145.6314604261275,
               0,
-              -27.760279347054443
+              -35.428564349739986
             ],
             "rotationY": 0
           },
@@ -7068,9 +7069,9 @@
           "id": "e_7d80c7aec9e512f51989a11a65b96473",
           "transform": {
             "position": [
-              -58.968516849769216,
+              -73.44744213599779,
               0,
-              13.06621900642269
+              15.922892113580806
             ],
             "rotationY": 0
           },
@@ -7202,24 +7203,6 @@
           }
         },
         {
-          "id": "e_8c93768383b35e63145e7cc3c8141347",
-          "transform": {
-            "position": [
-              13.7496837257966,
-              0,
-              34.88557305897684
-            ],
-            "rotationY": 0
-          },
-          "components": {
-            "stack": {
-              "itemId": "yellowstaff",
-              "count": 1,
-              "skinId": "starstaff_crystal"
-            }
-          }
-        },
-        {
           "id": "e_b334f24acb83f2eebcc0af2853c292c4",
           "transform": {
             "position": [
@@ -7310,6 +7293,108 @@
               "count": 1
             }
           }
+        },
+        {
+          "id": "e_83cc3d6b764103181c8b312a3d97027c",
+          "transform": {
+            "position": [
+              17.354311829589413,
+              0,
+              33.25261782466214
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "nightmarefuel",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_a22b759a185627ded958a2382180afe7",
+          "transform": {
+            "position": [
+              13.71351274917221,
+              0,
+              31.084308163713867
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "nightmarefuel",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_2906fcaec11cdf26bf97cc5ca5d21f16",
+          "transform": {
+            "position": [
+              17.06574225528281,
+              0,
+              41.78085570271154
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "nightmarefuel",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_9164235b4592217d5f92b93a3201ca2f",
+          "transform": {
+            "position": [
+              14.810935352394049,
+              0,
+              42.979302653409015
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "nightmarefuel",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_2fbf368436f85ab080dd40d3770e9ce1",
+          "transform": {
+            "position": [
+              15.979976494455403,
+              0,
+              33.27274367301684
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "livinglog",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_1af70186cd45e63cf66be3c1d9e7e1d8",
+          "transform": {
+            "position": [
+              15.29745665174714,
+              0,
+              39.063954286165696
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "livinglog",
+              "count": 1
+            }
+          }
         }
       ],
       "flower": [],
@@ -7332,7 +7417,7 @@
             "bulbPlant": {
               "variant": "triple",
               "lightState": "RECHARGING",
-              "remainingSeconds": 111.78292739984136
+              "remainingSeconds": 62.45632740026758
             }
           }
         }
@@ -7342,9 +7427,9 @@
           "id": "e_fbc93491832fbc0f9ee1870641d45c24",
           "transform": {
             "position": [
-              -9.58936376644143,
+              -21.371678077046603,
               0,
-              -5.367119314044789
+              0.4183457554772832
             ],
             "rotationY": 0
           },
@@ -7355,8 +7440,8 @@
                 0,
                 0.22546845008602653
               ],
-              "heading": 214.6039620694105,
-              "poopRemainingSeconds": 33,
+              "heading": 284.91313355778414,
+              "poopRemainingSeconds": 25,
               "knownlocations": {
                 "locations": [
                   {
@@ -7489,56 +7574,6 @@
       ],
       "wormhole": [],
       "multiplayer_portal_moonrock": [],
-      "insanityrock": [
-        {
-          "id": "e_insanityrock_000001",
-          "transform": {
-            "position": [
-              -25.5,
-              0,
-              25.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_insanityrock_000002",
-          "transform": {
-            "position": [
-              -1.5,
-              0,
-              -1.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_insanityrock_000003",
-          "transform": {
-            "position": [
-              0.75,
-              0,
-              50.0625
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        },
-        {
-          "id": "e_insanityrock_000004",
-          "transform": {
-            "position": [
-              25.5,
-              0,
-              25.5
-            ],
-            "rotationY": 0
-          },
-          "components": {}
-        }
-      ],
       "sanityrock": [
         {
           "id": "e_sanityrock_000001",
@@ -7588,6 +7623,56 @@
           },
           "components": {}
         }
+      ],
+      "insanityrock": [
+        {
+          "id": "e_insanityrock_000001",
+          "transform": {
+            "position": [
+              -25.5,
+              0,
+              25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000002",
+          "transform": {
+            "position": [
+              -1.5,
+              0,
+              -1.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000003",
+          "transform": {
+            "position": [
+              0.75,
+              0,
+              50.0625
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000004",
+          "transform": {
+            "position": [
+              25.5,
+              0,
+              25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
       ]
     }
   },
@@ -7597,22 +7682,30 @@
       "shardId": "master",
       "transform": {
         "position": [
-          38.77626258552073,
+          20.482223440131364,
           0,
-          48.22271869588647
+          24.429317189012167
         ],
         "rotationY": 0
       },
       "stats": {
         "health": 150,
         "hunger": 130,
-        "sanity": 163
+        "sanity": 143
       },
       "inventory": {
         "containers": {
           "player:inventory": {
             "slotCount": 15,
             "slots": [
+              {
+                "slotKey": "0",
+                "item": {
+                  "entityId": "e_d6e9715654097a08e39fd806095c55fb",
+                  "itemId": "yellowstaff",
+                  "count": 1
+                }
+              },
               {
                 "slotKey": "2",
                 "item": {
@@ -7627,7 +7720,7 @@
                   "entityId": "e_5d692812dc3a6f33e8090c3c02807002",
                   "itemId": "bananapop",
                   "count": 8,
-                  "freshnessPercent": 0.7210165972222052
+                  "freshnessPercent": 0.6953256597222548
                 }
               },
               {
@@ -7716,7 +7809,7 @@
                   "entityId": "e_dc92af1ac7c2b93a8512ab98678209f3",
                   "itemId": "greenstaff",
                   "count": 1,
-                  "remainingUses": 4
+                  "remainingUses": 3
                 }
               },
               {
