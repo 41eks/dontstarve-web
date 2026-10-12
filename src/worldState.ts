@@ -25,7 +25,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     season: world.systems.season?.name ?? 'spring',
     noisetime: world.elapsedSeconds,
   });
-  const weather = new Weather({ totalDayTime: TUNING.TOTAL_DAY_TIME, temperature: () => worldtemperature.temperature.peek() });
+  const weather = new Weather({ totalDayTime: TUNING.TOTAL_DAY_TIME, temperature: () => worldtemperature.temperature.get() });
   weather.OnLoad(world.systems.weather ?? {});
   const cycle = getDstCycle(world.elapsedSeconds);
   const { moonPhase, ...clock } = getDstClock(world.elapsedSeconds);

@@ -14,6 +14,7 @@
     "./staticLayout": "./src/staticLayout.ts",
     "./nightmarerock": "./src/nightmarerock.ts",
     "./rain": "./src/rain.ts",
+    "./snow": "./src/snow.ts",
     "./world_fx": "./src/world_fx.ts",
     "./razor": "./src/razor.ts",
     "./player_common": "./src/player_common.ts",

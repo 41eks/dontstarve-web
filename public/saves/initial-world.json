@@ -15,20 +15,21 @@
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 5623.2841000034205,
+    "elapsedSeconds": 5023.2841000034205,
     "systems": {
       "worldtemperature": {
-        "season": "spring",
-        "seasontemperature": 30,
+        "season": "winter",
+        "seasontemperature": -25,
         "phasetemperature": 0,
         "noisetime": 5828.2841000029475
       },
       "weather": {
-        "moisture": 3061.5235473765333,
-        "moisturefloor": 344.9872280991223,
-        "moistureceil": 3109.5223698675895,
-        "preciptype": "rain",
-        "peakprecipitationrate": 0.7906782011227431
+        "moisture": 2080,
+        "moisturefloor": 1080,
+        "moistureceil": 2160,
+        "preciptype": "snow",
+        "peakprecipitationrate": 0.7906782011227431,
+        "snowlevel": 0.08
       }
     },
     "map": {

@@ -90,6 +90,7 @@ export const PREFAB_DEFINITIONS = {
   portals: definePrefabs([PORTAL_ID], empty, true),
   reskinEffects: definePrefabs([], empty),
   rain: definePrefabs([], empty),
+  snow: definePrefabs([], empty),
   worldFx: definePrefabs([], empty),
 } as const;
 

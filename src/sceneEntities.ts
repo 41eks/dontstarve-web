@@ -42,6 +42,7 @@ import { view } from './view';
 import { initialSave } from './save/initialSave';
 import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
 import { RainEffect } from '@dontstarve-web/prefab/rain';
+import { SnowEffect } from '@dontstarve-web/prefab/snow';
 import { WorldFx } from '@dontstarve-web/prefab/world_fx';
 import { SAVE_CATALOG } from './save/catalog';
 import { findGroundPath } from '@dontstarve-web/prefab/locomotor';
@@ -476,6 +477,16 @@ export function createSceneEntities(
     update: (dt, quaternion) => rain.update(dt, quaternion),
     renderEntities: () => rain.renderEntities,
     dispose: () => rain.dispose(),
+  });
+  const snow = new SnowEffect({
+    scene, dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
+    getFocus: () => player.position, camera, rate: worldState.weather.snowRate, cover: worldState.weather.snowCover,
+    groundSize: initialSave.world.map.generator.options.size,
+  });
+  registry.register(PREFAB_DEFINITIONS.snow, {
+    exportRecords: () => [],
+    update: (dt, quaternion) => snow.update(dt, quaternion),
+    dispose: () => snow.dispose(),
   });
   registry.assertDefinitions(Object.values(PREFAB_DEFINITIONS));
   const dispose = () => {
