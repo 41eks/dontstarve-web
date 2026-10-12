@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createTurfGround } from '../../prefab/src/turf';
-import { createPigKingSetPiece } from '../../prefab/src/setpieces/pigking';
+import { TILE_SIZE, snapToTileCenter } from '../../prefab/src/tile';
 import { GroundItemAssets, createGroundItemSprite } from '../../prefab/src/groundItems';
 
 export async function checkTurfOcclusion() {
@@ -9,17 +9,20 @@ export async function checkTurfOcclusion() {
   scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
   const ground = await createTurfGround({ assetBaseUrl: '/dst/data', noiseTexture: 'Ground_noise_deciduous' });
   const feet = new THREE.Vector3(6, 0, 6);
-  const piece = await createPigKingSetPiece({ assetBaseUrl: '/dst/data', position: feet });
-  piece.pigKing.standee.visible = false;
+  // A woodfloor overlay on the nine tiles around the feet, painted over the base terrain at its height.
+  const overlay = await createTurfGround({ assetBaseUrl: '/dst/data', noiseTexture: 'noise_woodfloor', size: 3 * TILE_SIZE });
+  const center = snapToTileCenter(feet);
+  overlay.position.set(center.x, feet.y, center.z);
+  overlay.renderOrder = -1;
   // Solid colours make the complete framebuffer comparable to a sprite-only
   // reference. Add the overlay first to exercise explicit terrain ordering.
-  for (const [mesh, color] of [[ground, 0x00ff00], [piece.turf, 0x0000ff]] as const) {
+  for (const [mesh, color] of [[ground, 0x00ff00], [overlay, 0x0000ff]] as const) {
     const material = mesh.material as THREE.MeshLambertMaterial;
     material.map = null;
     material.color.set(color);
     material.needsUpdate = true;
   }
-  scene.add(piece.group, ground);
+  scene.add(overlay, ground);
   const renderer = new THREE.WebGLRenderer();
   const target = new THREE.WebGLRenderTarget(256, 256);
   renderer.setRenderTarget(target);
@@ -41,10 +44,10 @@ export async function checkTurfOcclusion() {
         ));
         camera.lookAt(feet);
         sprite.model.quaternion.copy(camera.quaternion);
-        ground.visible = piece.turf.visible = false;
+        ground.visible = overlay.visible = false;
         renderer.render(scene, camera);
         renderer.readRenderTargetPixels(target, 0, 0, 256, 256, reference);
-        ground.visible = piece.turf.visible = true;
+        ground.visible = overlay.visible = true;
         renderer.render(scene, camera);
         renderer.readRenderTargetPixels(target, 0, 0, 256, 256, actual);
         comparisons++;

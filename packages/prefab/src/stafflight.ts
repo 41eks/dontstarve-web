@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal, type Signal, type SeasonState } from '@dontstarve-web/signals';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
@@ -80,15 +80,17 @@ export class DwarfStarManager {
   private readonly animationBaseUrl: string;
   private readonly duration: number;
   private readonly getPlayerPosition?: () => Pick<THREE.Vector3, 'x' | 'z'>;
+  private readonly season?: ReadonlySignal<SeasonState>;
   private elapsedSeconds = 0;
   readonly prefabId: StaffLightId;
 
   constructor(scene: THREE.Scene, animationBaseUrl: string, prefabId: StaffLightId = DWARF_STAR_ID,
-    getPlayerPosition?: () => Pick<THREE.Vector3, 'x' | 'z'>) {
+    getPlayerPosition?: () => Pick<THREE.Vector3, 'x' | 'z'>, season?: ReadonlySignal<SeasonState>) {
     this.scene = scene;
     this.animationBaseUrl = animationBaseUrl;
     this.prefabId = prefabId;
     this.getPlayerPosition = getPlayerPosition;
+    this.season = season;
     this.duration = prefabId === POLAR_LIGHT_ID ? POLAR_LIGHT_DURATION : DWARF_STAR_DURATION;
   }
 
@@ -129,7 +131,7 @@ export class DwarfStarManager {
     if (this.prefabId === DWARF_STAR_ID) {
       const inst = actionEntity(model, this.prefabId);
       inst.components.propagator = star.propagator = new Propagator(inst, 'default', radius =>
-        FindEntities(this.scene, model.position.x, model.position.z, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4);
+        FindEntities(this.scene, model.position.x, model.position.z, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4, undefined, this.season);
       // stafflight.lua: bare propagator, heatoutput 15, spreading from creation until removal.
       star.propagator.heatoutput = 15;
       star.propagator.spreading.set(true);

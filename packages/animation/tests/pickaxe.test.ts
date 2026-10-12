@@ -26,7 +26,7 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
       expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
       const entity = inventory.getEntity(hand)!;
       const lifecycle = getPickaxeLifecycle(entity);
-      lifecycle.onequip(inventory.handEquipmentExistenceState);
+      lifecycle.onequip();
       expect(entity.hasTag('MINE_tool')).toBe(true);
       expect(entity.signals.durabilityPercent.peek()).toBe(1);
       entity.components.finiteuses.useForAction('MINE');
@@ -44,7 +44,7 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
     inventory.add('pickaxe', 1, undefined, undefined, 1);
     inventory.transfer(inventorySlotAddress(0), hand, 1);
     const old = inventory.getEntity(hand)!, lifecycle = getPickaxeLifecycle(old);
-    lifecycle.onequip(inventory.handEquipmentExistenceState);
+    lifecycle.onequip();
     // Even a stale binding must not clear another instance's equipment identity.
     const detached = inventory.extract(hand, 1, old)!;
     inventory.add('goldenpickaxe', 1);

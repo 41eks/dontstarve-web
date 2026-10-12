@@ -142,11 +142,11 @@ export class Birdcage {
     occupiable: Occupiable<ItemEntity, CageEntity> | undefined;
     readonly shelf: Shelf<ItemEntity, CageEntity>;
     readonly trader: Trader<TradeItem>;
-    sleeper: Sleeper | undefined;
+    private readonly sleeperSignal = createSignal<Sleeper | undefined>(undefined);
+    get sleeper(): Sleeper | undefined { return this.sleeperSignal.peek(); }
     readonly status: ReadonlySignal<BirdcageStatus | undefined>;
     private readonly statusMemo;
-    /** sleeper.isasleep as the cage reports it; the sleeper itself exists only while a bird is inside. */
-    private readonly asleep = createSignal(false);
+    private stopSleepAnimation: (() => void) | undefined;
     private readonly animation: CageAnimation;
     private readonly animationTask: ComponentTimer | undefined;
     private chirpsound: SoundEventPath | undefined;
@@ -155,12 +155,14 @@ export class Birdcage {
     private readonly cancels = new Set<() => void>();
     private disposed = false;
     private readonly context: AnimatedBuildingEventContext;
+    private readonly sleepWorld: SleeperInst['world'];
     private readonly entity: CageEntity;
     private readonly random: () => number;
     resources: BirdcageResources | undefined;
 
     constructor(context: AnimatedBuildingEventContext, random: () => number = Math.random) {
         this.context = context;
+        this.sleepWorld = { isNight: context.world?.isNight ?? readonlySignal(createSignal(false)) };
         this.random = random;
         this.resources = context.prepared as BirdcageResources | undefined;
         const entity = this.entity = actionEntity(context.model, BIRDCAGE_ID);
@@ -209,7 +211,7 @@ export class Birdcage {
         if (state === CAGE_STATES.FULL) {
             const percent = this.occupiable?.occupant.get()?.components.perishable.percent.get();
             const hunger = percent ?? 1;
-            return this.asleep.get() ? 'SLEEPING' : hunger < .33 ? 'STARVING' : hunger < .66 ? 'HUNGRY' : 'OCCUPIED';
+            return this.sleeperSignal.get()?.isasleep.get() ? 'SLEEPING' : hunger < .33 ? 'STARVING' : hunger < .66 ? 'HUNGRY' : 'OCCUPIED';
         }
         if (state === CAGE_STATES.DEAD || state === CAGE_STATES.SICK) return 'DEAD';
         return 'SKELETON';
@@ -282,8 +284,20 @@ export class Birdcage {
             const sleeper = new Sleeper(this.sleeperInst(), scheduler, this.random);
             sleeper.sleeptestfn = () => this.shouldSleep();
             sleeper.waketestfn = () => this.shouldWake();
-            this.sleeper = sleeper;
+            this.sleeperSignal.set(sleeper);
             (this.entity.components as Record<string, unknown>).sleeper = sleeper;
+            this.stopSleepAnimation = sleeper.isasleep.subscribe(asleep => {
+                if (!this.occupiable?.IsOccupied()) return;
+                if (asleep) {
+                    this.stopAnimationTask();
+                    this.animation.play('sleep_pre');
+                    this.animation.push('sleep_loop', true);
+                } else {
+                    this.animation.play('sleep_pst');
+                    this.pushStateAnim('idle', true);
+                    this.startAnimationTask();
+                }
+            });
         }
         this.trader.Enable();
         this.setBirdType(bird.prefab);
@@ -305,9 +319,10 @@ export class Birdcage {
     }
 
     private removeSleeper(): void {
+        this.stopSleepAnimation?.();
+        this.stopSleepAnimation = undefined;
         this.sleeper?.dispose();
-        this.sleeper = undefined;
-        this.asleep.set(false);
+        this.sleeperSignal.set(undefined);
         delete (this.entity.components as Record<string, unknown>).sleeper;
     }
 
@@ -333,11 +348,8 @@ export class Birdcage {
         const cage = this;
         return {
             isValid: () => !cage.disposed,
-            PushEvent(name) {
-                if (name === 'gotosleep') cage.goToSleep();
-                else if (name === 'onwakeup') cage.wakeUp();
-            },
-            get world() { return { isNight: cage.context.world?.isNight?.() ?? false }; },
+            PushEvent: (name, data) => cage.entity.PushEvent?.(name, data),
+            world: this.sleepWorld,
             components: {},
         };
     }
@@ -348,7 +360,7 @@ export class Birdcage {
         return {
             isValid: () => cage.getBird() !== undefined,
             PushEvent() {},
-            get world() { return { isNight: cage.context.world?.isNight?.() ?? false }; },
+            world: this.sleepWorld,
             components: {},
         };
     }
@@ -361,22 +373,6 @@ export class Birdcage {
     private shouldWake(): boolean {
         const bird = this.getBird();
         return bird !== undefined && DefaultWakeTest(this.birdInst()) || this.hungerOf(bird) < .33;
-    }
-
-    private goToSleep(): void {
-        this.asleep.set(true);
-        if (!this.occupiable?.IsOccupied()) return;
-        this.stopAnimationTask();
-        this.animation.play('sleep_pre');
-        this.animation.push('sleep_loop', true);
-    }
-
-    private wakeUp(): void {
-        this.asleep.set(false);
-        if (!this.occupiable?.IsOccupied()) return;
-        this.animation.play('sleep_pst');
-        this.pushStateAnim('idle', true);
-        this.startAnimationTask();
     }
 
     // --- periodic idle animation ---------------------------------------------------------------

@@ -14,6 +14,7 @@ import { TILE_SIZE } from './tile';
 export const BURNABLE_ITEM_DEFINITIONS: Readonly<Record<string, { burnTime: number; tags: readonly string[]; fxLevel?: 2 | 3 }>> = {
   cutgrass: { burnTime: 30 * .25, tags: ['cattoy', 'renewable', 'cutgrass'] },
   log: { burnTime: 30 * .5, tags: ['log'] },
+  poop: { burnTime: 30 * .5, tags: [] }, // poop.lua MakeSmallBurnable(MED_BURNTIME).
   dug_grass: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 }, // plantables.lua LARGE_BURNTIME.
   dug_sapling: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
   dug_sapling_moon: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
@@ -65,7 +66,10 @@ export class BurnableItemController {
       entity.remove();
     });
   }
-  bind(presentation: BurnPresentation): void { this.presentation = presentation; }
+  bind(presentation: BurnPresentation): void {
+    this.presentation = presentation;
+    this.propagator.setSeason(presentation.context.season);
+  }
   release(presentation: BurnPresentation): void {
     if (this.presentation === presentation) this.presentation = undefined;
   }

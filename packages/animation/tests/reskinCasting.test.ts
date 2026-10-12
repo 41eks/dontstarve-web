@@ -8,7 +8,7 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import { ReskinEffects, nextReskin } from '../../prefab/src/reskin_tool';
 import { type ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
-import { createHandEquipmentExistenceState } from '../../signals/src';
+import { createEquipmentExistenceState } from '../../signals/src';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { GroundItemManager } from '../../../src/groundItems';
@@ -146,7 +146,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
 
 it('selects an unskinnable target by tags and fails at the cast frame without changing it', async () => {
   const world = setupWorld();
-  const equipped = createHandEquipmentExistenceState();
+  const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   equipped.set(tool);
   const prepareNextSkin = vi.fn();
@@ -177,7 +177,7 @@ it('selects an unskinnable target by tags and fails at the cast frame without ch
 it.each(['unequip', 'while loading'])(
   'discards pending work and emits no effect after %s cancellation', async (reason) => {
     const world = setupWorld();
-    const equipped = createHandEquipmentExistenceState();
+    const equipped = createEquipmentExistenceState('HANDS');
     equipped.set(actionTool('reskin_tool'));
     let manual = false, valid = true;
     const apply = vi.fn(() => true), dispose = vi.fn();

@@ -8,6 +8,8 @@
     "./imageAtlas": "./src/imageAtlas.ts",
     "./parseKtex": "./src/parseKtex.ts",
     "./animationAssets": "./src/animationAssets.ts",
+    "./hatAssets": "./src/hatAssets.ts",
+    "./lightOverride": "./src/lightOverride.ts",
     "./renderOrder": "./src/renderOrder.ts",
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",

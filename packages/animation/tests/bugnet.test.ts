@@ -12,7 +12,7 @@ import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../invento
 import { Locomotor } from '../../prefab/src/locomotor';
 import { updateMovement } from '../../../src/updatePlayerMovement';
 import { FIXED_TIMESTEP, MAX_SUBSTEPS } from '../../../src/physicsTiming';
-import { createHandEquipmentExistenceState } from '../../signals/src';
+import { createEquipmentExistenceState } from '../../signals/src';
 import type { PlayerBody } from '../../../src/types/Player';
 
 vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
@@ -26,7 +26,7 @@ function setup() {
   const world = { player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas } } as unknown as WorldContext;
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
-  const equipped = createHandEquipmentExistenceState();
+  const equipped = createEquipmentExistenceState('HANDS');
   const net = actionTool('bugnet');
   equipped.set(net);
   let manual = false;
@@ -155,7 +155,7 @@ describe('original bugnet assets and Wilson action', () => {
     const world = { player, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
     const target: ButterflyCaptureTarget = { id: 'moving', entity: netEntity(() => target.capture()), model: new THREE.Group(),
       position: new THREE.Vector3(8, 0, 0), isValid: () => true, capture: vi.fn(() => true) };
-    const equipped = createHandEquipmentExistenceState();
+    const equipped = createEquipmentExistenceState('HANDS');
     const net = actionTool('bugnet');
   equipped.set(net);
     const capture = new BugNetCaptureController(world, animation, locomotor, equipped, () => [target]);

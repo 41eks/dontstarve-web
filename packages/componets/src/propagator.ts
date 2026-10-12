@@ -1,20 +1,38 @@
 import { Vector3 } from 'three';
-import { createMemo, createSignal, readonlySignal } from '../../signals/src';
+import { createMemo, createSignal, readonlySignal, type ReadonlySignal, type SeasonState } from '../../signals/src';
 import { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { BurnableInst } from './burnable';
+
+const SPRING_FIRE_RANGE_MOD = .67; // tuning.lua
+
+// standardcomponents.lua MakeSmall/MediumPropagator, plus bare AddComponent("propagator").
+// Each randomized value is [base, random variation].
+const PROPAGATOR_SETTINGS = {
+  default: { flashpoint: [100, 0], propagaterange: [3, 0], heatoutput: [5, 0], decayrate: 1, acceptsheat: false },
+  small: { flashpoint: [5, 5], propagaterange: [3, 2], heatoutput: [3, 2], decayrate: .5, acceptsheat: true },
+  medium: { flashpoint: [15, 10], propagaterange: [5, 2], heatoutput: [5, 3.5], decayrate: .5, acceptsheat: true },
+} as const;
+
+function randomValue([base, variation]: readonly [number, number]): number {
+  if (variation === 0) return base;
+  return base + Math.random() * variation;
+}
 
 /** Dry-weather structure heat branches of components/propagator.lua. */
 export class Propagator {
   readonly flashpoint: number;
   readonly propagaterange: number;
+  private readonly seasonSignal = createSignal<ReadonlySignal<SeasonState> | undefined>(undefined);
+  private readonly propagationRangeMemo;
+  readonly propagationRange: ReadonlySignal<number>;
   heatoutput: number;
   readonly decayrate: number;
   acceptsheat: boolean;
   currentheat = createSignal(0);
   private heatThisUpdate = 0;
   private maxHeatThisUpdate = 0;
-  /** Written by burnable (Ignite/Extinguish) or the owning prefab; the effect below owns the update task. */
+  /** Written by burnable (Ignite/Extinguish) or the owning prefab; changes manage the update task. */
   readonly spreading = createSignal(false);
   private readonly stopTask: () => void;
   private pauseheating = false;
@@ -28,8 +46,9 @@ export class Propagator {
   readonly inst: BurnableInst;
   private readonly nearby: (radius: number) => readonly BurnableInst[];
   private readonly unitsPerMeter: number;
-  constructor(inst: BurnableInst, size: 'small' | 'medium' | 'default',
-    nearby: (radius: number) => readonly BurnableInst[], unitsPerMeter = 1, scheduler?: GameTimeScheduler) {
+  constructor(inst: BurnableInst, size: keyof typeof PROPAGATOR_SETTINGS,
+    nearby: (radius: number) => readonly BurnableInst[], unitsPerMeter = 1, scheduler?: GameTimeScheduler,
+    season?: ReadonlySignal<SeasonState>) {
     this.inst = inst; this.nearby = nearby; this.unitsPerMeter = unitsPerMeter;
     this.scheduler = scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !scheduler;
@@ -37,17 +56,25 @@ export class Propagator {
     this.updatingMemo = createMemo(() => this.updateTimer.snapshot.get().status === 'scheduled');
     this.timer = this.updateTimer.snapshot;
     this.updating = readonlySignal(this.updatingMemo);
-    // Bare AddComponent("propagator") is a heat source, without Make*Propagator's receiver setup.
-    this.flashpoint = size === 'default' ? 100 : size === 'small' ? 5 + Math.random() * 5 : 15 + Math.random() * 10;
-    this.propagaterange = size === 'default' ? 3 : size === 'small' ? 3 + Math.random() * 2 : 5 + Math.random() * 2;
-    this.heatoutput = size === 'default' ? 5 : size === 'small' ? 3 + Math.random() * 2 : 5 + Math.random() * 3.5;
-    this.decayrate = size === 'default' ? 1 : .5;
-    this.acceptsheat = size !== 'default';
+    const settings = PROPAGATOR_SETTINGS[size];
+    this.flashpoint = randomValue(settings.flashpoint);
+    this.propagaterange = randomValue(settings.propagaterange);
+    this.seasonSignal.set(season);
+    this.propagationRangeMemo = createMemo(() => this.propagaterange
+      * (this.seasonSignal.get()?.get().season === 'spring' ? SPRING_FIRE_RANGE_MOD : 1));
+    this.propagationRange = readonlySignal(this.propagationRangeMemo);
+    this.heatoutput = randomValue(settings.heatoutput);
+    this.decayrate = settings.decayrate;
+    this.acceptsheat = settings.acceptsheat;
     // this.calculateHeatCap();
     this.heatThisUpdate = 0;
     this.maxHeatThisUpdate = this.flashpoint / (1 + 3 * (1 - (1 - Math.random()) ** 3)) * .5;
     // Synchronous, so Ignite/Extinguish arm or cancel the task before the next scheduler advance.
     this.stopTask = this.spreading.subscribe(() => this.reschedule());
+  }
+  /** Inject world state when an inventory inst first enters the ground prefab system. */
+  setSeason(season: ReadonlySignal<SeasonState> | undefined): void {
+    if (!this.removed) this.seasonSignal.set(season);
   }
   /** StartUpdating while spreading or holding heat; StopUpdating once spreading ended and the heat is gone. */
   private reschedule(): void {
@@ -87,7 +114,7 @@ export class Propagator {
     if (spreading) {
       const origin = this.inst.getPosition();
       const offset = new Vector3();
-      const range = this.propagaterange * this.unitsPerMeter;
+      const range = this.propagationRange.peek() * this.unitsPerMeter;
       for (const target of this.nearby(range)) {
         if (target === this.inst || target.isRemoved || target.hasTag('INLIMBO')) continue;
         // Positions are on the ground plane (y is 0), so the squared distance is the dot product of the offset.
@@ -101,7 +128,7 @@ export class Propagator {
   }
   dispose(): void {
     this.stopTask(); this.spreading.set(false); this.removed = true;
-    this.updateTimer.stop(); this.updatingMemo.dispose();
+    this.updateTimer.stop(); this.updatingMemo.dispose(); this.propagationRangeMemo.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
   }
   // private calculateHeatCap(): void {

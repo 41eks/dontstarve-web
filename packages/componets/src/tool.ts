@@ -1,5 +1,8 @@
 import type { WorkAction, WorkInst } from './workable';
 
+/** tool.lua actions: work actions plus instruments' ACTIONS.PLAY. */
+export type ToolAction = WorkAction | 'PLAY';
+
 export interface ToolInst extends WorkInst {
   /** Returns the unsubscribe function. */
   ListenForEvent?(name: string, listener: (data: unknown) => void): () => void;
@@ -11,7 +14,7 @@ export interface ToolInst extends WorkInst {
 
 /** components/tool.lua: capability belongs to the item, independent of its prefab ID. */
 export class Tool {
-  private readonly actions = new Map<WorkAction, number>();
+  private readonly actions = new Map<ToolAction, number>();
   private readonly inst: ToolInst;
   private readonly stopPercentListener?: () => void;
   constructor(inst: ToolInst) {
@@ -24,12 +27,12 @@ export class Tool {
       inst.components.inventoryitem?.owner?.PushEvent('toolbroke', { tool: inst });
     });
   }
-  SetAction(action: WorkAction, effectiveness = 1): void {
+  SetAction(action: ToolAction, effectiveness = 1): void {
     this.actions.set(action, effectiveness);
     this.inst.addTag(`${action}_tool`);
   }
-  CanDoAction(action: WorkAction): boolean { return this.actions.has(action); }
-  GetEffectiveness(action: WorkAction): number { return this.actions.get(action) ?? 0; }
+  CanDoAction(action: ToolAction): boolean { return this.actions.has(action); }
+  GetEffectiveness(action: ToolAction): number { return this.actions.get(action) ?? 0; }
   dispose(): void {
     this.stopPercentListener?.();
     this.inst.removeTag('tool');

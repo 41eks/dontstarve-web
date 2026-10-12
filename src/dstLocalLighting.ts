@@ -3,19 +3,8 @@ import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { getPrefabLightOverride, getPrefabLocalLight, type PrefabLocalLight } from '@dontstarve-web/prefab/localLight';
 
 // DST tiles are 4 units wide; this scene uses TILE_SIZE (12).
-// The Lua values are known. Their conversion to shader constants is estimated:
-// RC = radius * world scale * 1.5, K0 = log(falloff), K1 = -2, colour *= intensity.
-export const TORCH_LIGHT_ESTIMATE = {
-  radius: 2 * (TILE_SIZE / 4) * 1.5,
-  falloff: 0.5,
-  intensity: 0.75,
-  colour: new THREE.Vector3(180 / 255, 195 / 255, 150 / 255),
-  k0: Math.log(0.5),
-  k1: -2,
-} as const;
-
 const LIGHTMAP_SIZE = 256;
-const LIGHTMAP_SPAN = TORCH_LIGHT_ESTIMATE.radius * 6;
+const LIGHTMAP_SPAN = 2 * (TILE_SIZE / 4) * 6;
 
 const VERTEX_SHADER = /* glsl */`
   varying vec2 vUv;
@@ -63,7 +52,6 @@ export class DstLocalLighting {
   private readonly lightOverrides = new WeakMap<THREE.Material, { value: number }>();
   private readonly ownerPosition = new THREE.Vector3();
   private readonly prefabLights: { owner: THREE.Object3D; settings: PrefabLocalLight }[] = [];
-  private torchOwner: THREE.Object3D | null = null;
   private readonly ambient = { value: new THREE.Vector3() };
   private readonly extents = { value: new THREE.Vector4(0, 0, 1 / LIGHTMAP_SPAN, 1 / LIGHTMAP_SPAN) };
   private readonly lightmap = { value: this.target.texture };
@@ -99,16 +87,11 @@ export class DstLocalLighting {
   }
 
   dispose(): void {
-    this.torchOwner = null;
     this.prefabLights.length = 0;
     this.target.dispose();
     this.lightmapMaterial.dispose();
     for (const quad of this.scene.children) if (quad instanceof THREE.Mesh) quad.geometry.dispose();
     this.scene.clear();
-  }
-
-  setTorchOwner(owner: THREE.Object3D | null): void {
-    this.torchOwner = owner;
   }
 
   /** CPU counterpart of the estimated lightmap, for prefab LightWatchers. */
@@ -127,21 +110,11 @@ export class DstLocalLighting {
       const settings = getPrefabLocalLight(owner);
       if (owner.parent && settings) accumulate(owner, settings);
     }
-    if (this.torchOwner) accumulate(this.torchOwner, {
-      radius: TORCH_LIGHT_ESTIMATE.radius, intensity: TORCH_LIGHT_ESTIMATE.intensity,
-      falloff: TORCH_LIGHT_ESTIMATE.falloff, colour: TORCH_LIGHT_ESTIMATE.colour.toArray(),
-    });
     return Math.min(1, colour.x) * 0.2126 + Math.min(1, colour.y) * 0.7152 + Math.min(1, colour.z) * 0.0722;
   }
 
   renderLightmap(renderer: THREE.WebGLRenderer): void {
     const sources = [...this.prefabLights];
-    if (this.torchOwner) sources.push({ owner: this.torchOwner, settings: {
-      radius: TORCH_LIGHT_ESTIMATE.radius,
-      falloff: TORCH_LIGHT_ESTIMATE.falloff,
-      intensity: TORCH_LIGHT_ESTIMATE.intensity,
-      colour: [TORCH_LIGHT_ESTIMATE.colour.x, TORCH_LIGHT_ESTIMATE.colour.y, TORCH_LIGHT_ESTIMATE.colour.z],
-    } });
     const lights = sources.map(({ owner, settings }) => ({
       settings, position: owner.getWorldPosition(new THREE.Vector3()),
     }));

@@ -9,7 +9,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { getPrefabLightOverride } from '../../prefab/src/localLight';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
-import { EventEmitter, createHandEquipmentExistenceState } from '../../signals/src';
+import { EventEmitter, createEquipmentExistenceState } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { ReskinActionController, type ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
@@ -95,7 +95,7 @@ it('an accepted action cancels a paid preview through events, skips its own canc
   const paidState = store.exportState();
   const preview = world.scene.children[1];
   const geometry = vi.spyOn((preview.children[0] as THREE.Mesh).geometry, 'dispose');
-  const equipped = createHandEquipmentExistenceState();
+  const equipped = createEquipmentExistenceState('HANDS');
   equipped.set(actionTool('reskin_tool'));
   let valid = false, release!: () => void;
   const ready = new Promise<void>(resolve => { release = resolve; });

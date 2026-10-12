@@ -5,7 +5,7 @@ import { GROUND_TILE_DEFINITIONS, groundTileGeometry, groundTileVariant, loadGro
 
 // tiledefs.lua preserves these vanilla GROUND IDs in WORLD_TILES.
 export const WORLD_TILES = {
-  INVALID: 0, DIRT: 4, WOODFLOOR: GROUND_TILE_DEFINITIONS.WOODFLOOR.tileId,
+  INVALID: 0, DIRT: 4, GRASS: GROUND_TILE_DEFINITIONS.GRASS.tileId, WOODFLOOR: GROUND_TILE_DEFINITIONS.WOODFLOOR.tileId,
   DECIDUOUS: GROUND_TILE_DEFINITIONS.DECIDUOUS.tileId,
   FARMING_SOIL: GROUND_TILE_DEFINITIONS.FARMING_SOIL.tileId,
 } as const;
@@ -46,7 +46,7 @@ export class TurfMap {
     return this.dugTiles.get(key)?.tileId ?? this.originalTiles.get(key) ?? WORLD_TILES.DECIDUOUS;
   }
 
-  /** Registers generated set-piece terrain without overwriting saved dug tiles. */
+  /** Registers generated terrain without overwriting saved dug tiles. */
   setOriginalTile(world: Vector2, tileId: number): void {
     this.originalTiles.set(this.key(world), tileId);
     this.rebuildGeometry();
@@ -56,7 +56,7 @@ export class TurfMap {
 
   canTerraform(world: Vector2): boolean {
     const tile = this.getTileAtWorld(world);
-    return tile === WORLD_TILES.DECIDUOUS || tile === WORLD_TILES.WOODFLOOR || tile === WORLD_TILES.FARMING_SOIL;
+    return tile === WORLD_TILES.DECIDUOUS || tile === WORLD_TILES.GRASS || tile === WORLD_TILES.WOODFLOOR || tile === WORLD_TILES.FARMING_SOIL;
   }
 
   canPlant(world: Vector2): boolean {
@@ -116,15 +116,15 @@ export class TurfMap {
   /** tilemanager: layered atlas masks + noise, in source ground render order. */
   async createVisual(assetBaseUrl: string): Promise<THREE.Group> {
     if (this.visual) return this.visual;
-    const [dirt, deciduous, woodfloor, farming] = await Promise.all([
-      this.createDirtMesh(assetBaseUrl), loadGroundTileAssets(assetBaseUrl, 'DECIDUOUS'),
+    const [dirt, deciduous, grass, woodfloor, farming] = await Promise.all([
+      this.createDirtMesh(assetBaseUrl), loadGroundTileAssets(assetBaseUrl, 'DECIDUOUS'), loadGroundTileAssets(assetBaseUrl, 'GRASS'),
       loadGroundTileAssets(assetBaseUrl, 'WOODFLOOR'),
       loadGroundTileAssets(assetBaseUrl, 'FARMING_SOIL'),
     ]);
     this.visual = new THREE.Group();
     this.visual.name = 'EditableTurf';
     this.visual.add(dirt);
-    for (const [name, assets] of [['DECIDUOUS', deciduous], ['WOODFLOOR', woodfloor], ['FARMING_SOIL', farming]] as const) {
+    for (const [name, assets] of [['DECIDUOUS', deciduous], ['GRASS', grass], ['WOODFLOOR', woodfloor], ['FARMING_SOIL', farming]] as const) {
       const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
       mesh.name = `TurfBlend:${name}`;
       mesh.renderOrder = -1 + GROUND_TILE_DEFINITIONS[name].renderOrder

@@ -62,12 +62,6 @@ export {
   type PigKingPrefabOptions,
 } from './pigking';
 export {
-  PIG_KING_SET_PIECE,
-  createPigKingSetPiece,
-  type PigKingSetPiece,
-  type PigKingSetPieceOptions,
-} from './setpieces/pigking';
-export {
   createWilsonPlayer,
   createWilsonPlayerPrefab,
   type PlayerBody,
@@ -162,7 +156,7 @@ export { GREENSTAFF_USES, GREENSTAFF_COLOUR, GreenStaffController, getGreenStaff
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,
   dwarfStarLight, polarLight, DwarfStarManager, type DwarfStarRecord, type StaffLightId } from './stafflight';
 export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE,
-  type SoundEventPath, type SoundHandle, type SoundPosition } from './sound';
+  type SoundEventPath, type SoundHandle } from './sound';
 export { FIREFLIES_ID, FIREFLIES_LIGHT, FirefliesAssets, FirefliesController, createFirefliesGroundSprite, type FirefliesWorld } from './fireflies';
 export {
   BULB_PLANT_ID, BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS, BULB_PLANT_LIGHT_STATES, BULB_PLANT_LIGHT,
@@ -187,7 +181,7 @@ export {
 
 export {
   HAT_DEFINITIONS, HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_RECIPES, HAT_CRAFTING_DEFINITIONS,
-  isHatId, HatEquipmentAssets, isHatPlayerElementVisible, resolveHatSprites, createHatGroundSprite,
+  isHatId, HatEquipmentAssets, createHatPlayerVisibility, resolveHatSprites, createHatGroundSprite,
   type HatDefinition, type HatEquipMode, type HatEquipment, type HatGroundSprite,
 } from './hats';
 

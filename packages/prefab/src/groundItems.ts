@@ -11,6 +11,7 @@ import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableI
 import { configureBookEntity, isBook } from './books';
 import { configureHeatRockEntity, HEATROCK_ID } from './heatrock';
 import { configureRazorEntity, RAZOR_ID } from './razor';
+import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';
 import { configureBirdEntity, isBirdId } from './birds';
 
 export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
@@ -43,6 +44,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
     configureEntity: entity => isBirdId(entity.prefab) ? configureBirdEntity(entity)
       : entity.prefab === HEATROCK_ID ? configureHeatRockEntity(entity)
       : entity.prefab === RAZOR_ID ? configureRazorEntity(entity)
+      : entity.prefab === PANFLUTE_ID ? configurePanfluteEntity(entity)
       : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity),
     async create(item) {
       const sprite = await createGroundItemSprite(context.assets, item.itemId, item.skinId);

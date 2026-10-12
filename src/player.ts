@@ -1,9 +1,11 @@
 import { createWilsonPlayerPrefab } from '@dontstarve-web/prefab/player';
 import * as CANNON from 'cannon-es';
 import { initialSave } from './save/initialSave';
+import { playerStats } from './playerStats';
 
 const playerPrefab = await createWilsonPlayerPrefab(
   `${import.meta.env.BASE_URL}dst/data/anim`,
+  { sanityPercent: playerStats.sanity.percent },
 );
 playerPrefab.model.position.set(...initialSave.players.local.transform.position);
 playerPrefab.model.userData.saveRecord = initialSave.players.local;

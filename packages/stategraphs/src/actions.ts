@@ -22,8 +22,10 @@ export const ACTIONS = {
   ADDWETFUEL: { priority: 0, strings: { GENERIC: '添加受潮的燃料' } },
   CASTSPELL: { priority: -1, distance: 20, rmb: true, strings: { GENERIC: '施放法术', RESKIN: '打扫' } },
   LIGHT: { priority: -4, strings: { GENERIC: '点燃' } },
+  PLAY: { priority: 0, strings: { GENERIC: '演奏' } },
   READ: { priority: 0, strings: { GENERIC: '阅读' } },
   SHAVE: { priority: 0, strings: { GENERIC: '刮', SELF: '给自己刮胡子' } },
+  SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
 } as const;
 
 export type MouseActionId = keyof typeof ACTIONS;

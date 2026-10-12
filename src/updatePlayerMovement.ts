@@ -42,8 +42,11 @@ export function updateMovement(
         if (animation?.isHammering && interrupting) animation.cancelHammer();
         if (animation?.isDigging && interrupting) animation.cancelDig();
         if (animation?.isReskinning && interrupting) animation.cancelReskin();
-        const castingBusy = (animation?.isCasting || animation?.isReading) && animation.stategraph.hasStateTag('busy');
-        const acting = castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        // Movement while asleep is the locomote event that wakes the sleeper; the sleeper never walks.
+        const sleeping = animation?.isSleeping === true;
+        if (sleeping && (manual || locomotor.destination)) animation!.wakeFromBed();
+        const castingBusy = (animation?.isCasting || animation?.isReading || animation?.isPlayingInstrument) && animation.stategraph.hasStateTag('busy');
+        const acting = sleeping || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.
         else locomotor.update(speed, Math.min(dt, MAX_PHYSICS_FRAME_TIME), manual ? direction : undefined);

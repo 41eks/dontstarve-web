@@ -1,20 +1,22 @@
 import { Vector3, type Object3D } from 'three';
-import type { EventEmitter } from '@dontstarve-web/signals';
+import { clockstate, createMemo, readonlySignal, type EventEmitter } from '@dontstarve-web/signals';
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, slotTransferController, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
   AttackActionController, SpellCastActionController, BugNetCaptureController, HammerActionController,
   LighterActionController, PickaxeActionController, PitchforkActionController,
   FarmHoeActionController, ShovelActionController, FoodActionController,
-  PickActionController, HarvestActionController, OccupiableActionController, PickupActionController, ReadActionController, ItemUseActionController,
-  ReskinActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
+  PickActionController, HarvestActionController, OccupiableActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
+  ReskinActionController, SleepActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Reader } from '../packages/componets/src/reader';
+import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatInst } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 import type { StorageBuildingId } from '@dontstarve-web/prefab/containers';
@@ -101,7 +103,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'moonTreeForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'grasses' | 'saplings' | 'scheduler' | 'weather'>;
+  'moonTreeForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'beefalos'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -121,7 +123,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTreeForest, buildingPlacement, groundItems, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, grasses, saplings, scheduler, weather } = scene;
+      const { moonTreeForest, buildingPlacement, groundItems, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, grasses, saplings, scheduler, weather, beefalos } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -198,6 +200,48 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const occupiables = new OccupiableActionController(view, playerAnimation, locomotor, (item, position) =>
           inventory.GiveItem(item as ItemEntity, position), isActionInterrupting);
         frameControllers.push(itemUse, picking, pickup, harvesting, occupiables);
+        // sleepingbaguser.lua on the player: per-tick hunger, sanity and health while in a bed.
+        const phase = createMemo(() => clockstate.get().phase);
+        const sleeper = new SleepingBagUser({
+          scheduler, phase: readonlySignal(phase),
+          hunger: { doDelta: delta => playerStats.hunger.set(playerStats.hunger.peek() + delta), isStarving: () => playerStats.hunger.peek() <= 0 },
+          sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta), getPercentWithPenalty: () => playerStats.sanity.percent.peek() },
+          health: { doDelta: delta => playerStats.health.set(playerStats.health.peek() + delta) },
+          goToWakeup: () => playerAnimation.goToWakeup(),
+        });
+        // Pointer input is blocked while the controller is disabled, so waking listens ahead of the canvas.
+        const wakeOnPointer = (event: PointerEvent) => { if (event.target === renderer.domElement) playerAnimation.wakeFromBed(); };
+        const setSleeperState = (sleeping: boolean) => {
+          // playercontroller:Enable(false) and inventory:Hide() while asleep.
+          view.player.userData.controllerEnabled = !sleeping;
+          gameUi.inventoryBar.style.visibility = sleeping ? 'hidden' : '';
+          if (sleeping) window.addEventListener('pointerdown', wakeOnPointer, true);
+          else window.removeEventListener('pointerdown', wakeOnPointer, true);
+        };
+        // SGwilson.lua tent onenter; tents are not siesta huts, so only the day refuses them.
+        const bedRefusal = (bed: { hasTag(tag: string): boolean }) =>
+          clockstate.peek().phase === 'day' ? '光线太亮了。'
+            : bed.hasTag('burnt') ? '我没有在那里面睡觉的强烈欲望。'
+              // TUNING.CALORIES_MED
+              : playerStats.hunger.peek() < 25 ? '我太饿了，睡不着，我肚子的咕咕叫声会让我一直醒着的！' : undefined;
+        playerAnimation.bindSleep({
+          setSleeperState,
+          setHidden: hidden => { view.player.visible = !hidden; },
+          failReason: bedRefusal,
+          announce: reason => console.info(reason),
+          canCommit: bed => clockstate.peek().phase !== 'day' && !bed.hasTag('hassleeper') && !bed.hasTag('burnt'),
+          get hasBed() { return sleeper.bed !== undefined; },
+          wakeBed: nostatechange => sleeper.bed?.DoWakeUp(nostatechange),
+        });
+        const sleeping = new SleepActionController(view, playerAnimation, locomotor, sleeper, isActionInterrupting);
+        frameControllers.push(sleeping);
+        actionControllers.push({ dispose() {
+          sleeper.bed?.DoWakeUp(true);
+          setSleeperState(false);
+          view.player.visible = true;
+          playerAnimation.bindSleep(undefined);
+          sleeper.dispose(); phase.dispose();
+        } });
       }
       const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor, farmPlow,
         isActionInterrupting,
@@ -251,6 +295,29 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       const readActions = playerAnimation
         ? new ReadActionController(view, playerAnimation, locomotor, isActionInterrupting) : undefined;
       if (readActions) frameControllers.push(readActions);
+      const playActions = playerAnimation
+        ? new PlayActionController(view, playerAnimation, locomotor, isActionInterrupting) : undefined;
+      if (playActions) frameControllers.push(playActions);
+      const playInventoryInstrument = (slot: SlotAddress, entity: ItemEntity) => {
+        const isValid = () => !entity.isRemoved && inventory.getEntity(slot) === entity;
+        const skinArchive = entity.skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[entity.prefab]?.skinArchives[entity.skinId];
+        return playActions!.play({
+          instrument: {
+            prefab: entity.prefab, hasTag: tag => entity.hasTag(tag),
+            ...(skinArchive ? { skinBuild: skinArchive.replace(/^dynamic\/|\.zip$/g, '') } : {}),
+          },
+          ...(skinArchive ? { skinArchive } : {}),
+          isValid,
+          // ACTIONS.PLAY.fn, then BufferedAction:Do's finiteuses:OnUsedAsItem.
+          play: () => {
+            if (!isValid()) return false;
+            const played = entity.components.instrument!.Play(readerInst,
+              range => beefalos.entitiesNear(player.position, range) as never[]);
+            if (played) entity.components.finiteuses.useForAction('PLAY');
+            return played;
+          },
+        });
+      };
       const readInventoryBook = async (slot: SlotAddress, entity: ItemEntity) => {
         const isValid = () => !entity.isRemoved && inventory.getEntity(slot) === entity;
         const book = bookActionObject(entity);
@@ -374,6 +441,10 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           return;
         }
         const entity = inventory.getEntity(slot);
+        if (playActions && entity && PlayActionController.canPlay(entity)) {
+          void playInventoryInstrument(slot, entity).catch((error: unknown) => console.error(`Unable to play ${stack.itemId}`, error));
+          return;
+        }
         if (readActions && entity && ReadActionController.canRead(readerInst, entity)) {
           void readInventoryBook(slot, entity).catch((error: unknown) => console.error(`Unable to read ${stack.itemId}`, error));
           return;

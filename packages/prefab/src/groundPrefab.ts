@@ -4,7 +4,7 @@ import type { GroundItemAssets } from './groundItems';
 import type { BernieWorld } from './bernie';
 import type { ButterflyWorld } from './butterfly';
 import type { FirefliesWorld } from './fireflies';
-import type { SoundPosition } from './sound';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 export interface GroundItemDefinition {
   container?: import('@dontstarve-web/inventory').ItemContainerState;
@@ -44,9 +44,11 @@ export interface GroundItemVisual {
 }
 
 export interface GroundPrefabOptions {
+  scheduler?: GameTimeScheduler;
+  season?: import('@dontstarve-web/signals').ReadonlySignal<import('@dontstarve-web/signals').SeasonState>;
   scene: THREE.Scene;
   animationBaseUrl: string;
-  inventoryOwnerPosition?: SoundPosition;
+  inventoryOwnerPosition?: THREE.Vector3;
   bernieWorld: BernieWorld;
   butterflyWorld: ButterflyWorld;
   firefliesWorld: FirefliesWorld;

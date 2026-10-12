@@ -116,6 +116,8 @@ export interface AnimatedBuildingEventContext {
     prepared?: AnimatedBuildingPreparedResources;
     itemEntities?: WorldContext['itemEntities'];
     world?: WorldContext;
+    /** inst:Remove(): releases the building's art, components and physics. */
+    remove?: () => void;
 }
 
 export interface AnimatedBuildingBuiltContext extends AnimatedBuildingEventContext {
@@ -277,7 +279,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     exportRecords(): PlacedEntitySaveRecord[] {
-        return this.placed.map((building) => ({
+        // inst.persists = false: buildings that are being destroyed are not saved.
+        return this.placed.filter(building => building.model.userData.persists !== false).map((building) => ({
             prefabId: building.buildId,
             record: {
                 id: building.model.userData.entityId as string,
@@ -400,7 +403,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 if ((position.x - origin.x) ** 2 + (position.z - origin.z) ** 2 <= radius ** 2) targets.push(target);
             });
             return targets;
-        }, TILE_SIZE / 4);
+        }, TILE_SIZE / 4, undefined, this.worldContext.season);
         building.model.userData.burningSignal = burnable.burning;
         building.stopBurning = burnable.burning.subscribe(burning => {
             if (!burning) { this.releaseFire(building); return; }
@@ -553,7 +556,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
         return { model: building.model, animation: building.animation, skinId: building.skinId.peek(), prepared: building.prepared,
-            itemEntities: this.worldContext.itemEntities, world: this.worldContext };
+            itemEntities: this.worldContext.itemEntities, world: this.worldContext,
+            remove: () => this.hammerContext(building).remove() };
     }
 
     /** Skin changes update presentation; the entity root and components retain their identity. */

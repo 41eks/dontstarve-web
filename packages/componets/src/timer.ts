@@ -1,4 +1,4 @@
-import { batch, createSignal, readonlySignal } from '../../signals/src';
+import { batch, createSignal, readonlySignal } from '../../signals/src/signal.ts';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 
 export type TimerSnapshot =

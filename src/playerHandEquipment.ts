@@ -1,5 +1,5 @@
 import { ItemEntity } from '@dontstarve-web/inventory';
-import type { HandEquipment, Signal } from '@dontstarve-web/signals';
+import type { EquipmentOwner, HandEquipment, Signal } from '@dontstarve-web/signals';
 import type { ActionDescription } from '@dontstarve-web/stategraphs';
 import { getHandEquipmentDefinition, preloadHandEquipment, type HandEquipmentContext } from '@dontstarve-web/prefab/handEquipment';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
@@ -9,6 +9,7 @@ export interface PlayerHandEquipmentOptions extends HandEquipmentContext {
   animation?: Pick<WilsonAnimationController, 'setCarryItem' | 'playItemTransition'>;
   setHandAction(action: ActionDescription | null): void;
   handEquipmentExistenceState: Signal<HandEquipment | null>;
+  owner?: EquipmentOwner;
 }
 
 /** Application wiring observes the injected existence state; prefabs own item behavior. */
@@ -21,6 +22,7 @@ export async function bindPlayerHandEquipment(options: PlayerHandEquipmentOption
   let silentDepth = 0;
   const binding = bindPlayerEquipment({
     existenceState: slot,
+    owner: options.owner,
     createLifecycle(equipment) {
       const entry = getHandEquipmentDefinition(equipment.itemId);
       if (entry && equipment.entity instanceof ItemEntity && !equipment.entity.isRemoved) {

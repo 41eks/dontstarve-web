@@ -1,6 +1,42 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ActionHandler, BufferedAction, FRAMES, StateGraphInstance, TimeEvent, WilsonStateGraph } from '../src/index.ts';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler.ts';
+
+test('scheduler-backed state timers stay discrete, prioritize timeout and cancel on exit or disposal', () => {
+  const scheduler = new GameTimeScheduler(), events = [];
+  const graph = new StateGraphInstance({}, [
+    { name: 'active',
+      onenter: sg => sg.setTimeout(.4),
+      timeline: [
+        TimeEvent(.2, sg => events.push(['timeline', sg.timeInState])),
+        TimeEvent(.4, () => events.push(['obsolete'])),
+      ],
+      ontimeout: sg => { events.push(['timeout', sg.timeInState]); sg.goToState('stopped'); },
+    },
+    { name: 'stopped' },
+  ], [], scheduler);
+  graph.goToState('active');
+  const waiting = graph.timeoutSnapshot.peek();
+  scheduler.advanceTo(.39);
+  assert.equal(graph.timeoutSnapshot.peek(), waiting);
+  assert.deepEqual(events, [['timeline', .2]]);
+  scheduler.advanceTo(.4);
+  assert.deepEqual(events, [['timeline', .2], ['timeout', .4]]);
+  assert.equal(graph.stateName, 'stopped');
+  assert.deepEqual(graph.timeoutSnapshot.peek(), { status: 'stopped' });
+  graph.goToState('active');
+  scheduler.advance(.1);
+  graph.goToState('stopped');
+  scheduler.advance(1);
+  assert.equal(events.length, 2);
+  graph.goToState('active');
+  graph.schedule(.1, () => events.push(['engine']));
+  graph.dispose();
+  scheduler.advance(1);
+  assert.equal(events.length, 2);
+  assert.deepEqual(graph.timelineSnapshot.peek(), { status: 'stopped' });
+});
 
 function taggedObject(prefab, tags = []) {
   return { prefab, hasTag: tag => tags.includes(tag) };

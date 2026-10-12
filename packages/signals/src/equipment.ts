@@ -17,9 +17,18 @@ export interface Equipment<S extends EquipmentSlot = EquipmentSlot> {
   readonly entity?: EquipmentEntity;
 }
 
-/** Unequip releases the injected binding without changing its value. */
-export interface EquipmentLifecycle<S extends EquipmentSlot> {
-  onequip(existenceState: Signal<Equipment<S> | null>): void;
+export type HandEquipment = Equipment<'HANDS'>;
+export type HeadEquipment = Equipment<'HEAD'>;
+export type BodyEquipment = Equipment<'BODY'>;
+
+/** The equipping actor's event sink (inventoryitem.owner:PushEvent); released on unequip. */
+export interface EquipmentOwner {
+  PushEvent(name: string, data?: unknown): void;
+}
+
+/** Unequip releases the injected owner; removal goes through the item entity and its inventory owner. */
+export interface EquipmentLifecycle {
+  onequip(owner?: EquipmentOwner): void;
   onunequip(): void;
   onFrame?(dt: number): void;
   flush?(): void;
@@ -27,9 +36,9 @@ export interface EquipmentLifecycle<S extends EquipmentSlot> {
 
 /**
  * Creates an independent, initially empty equipment existence state.
- * Inventory publishes identity after committing a slot change. A bound prefab
- * may clear its current identity on depletion; the owning store removes the item.
- * Normal unequip uses inventory transfer. Burning and fuel are separate state.
+ * Inventory publishes identity after committing a slot change; it is observed,
+ * not a removal request. A depleted prefab removes its own entity through its
+ * injected owner. Burning and fuel are separate state.
  */
 export function createEquipmentExistenceState<S extends EquipmentSlot>(slot: S): Signal<Equipment<S> | null> {
   const state = createSignal<Equipment<S> | null>(null);

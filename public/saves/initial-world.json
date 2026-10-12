@@ -7,22 +7,28 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000022",
-    "parentId": "0000000021",
-    "savedAt": "2026-10-11T08:46:51.658Z",
+    "id": "0000000023",
+    "parentId": "0000000022",
+    "savedAt": "2026-10-11T15:17:27.676Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 5536.807000003344,
+    "elapsedSeconds": 5623.2841000034205,
     "systems": {
       "worldtemperature": {
-        "daylight": true,
         "season": "spring",
         "seasontemperature": 30,
-        "phasetemperature": 2.1852491779834855,
-        "noisetime": 5741.807000002983
+        "phasetemperature": 0,
+        "noisetime": 5828.2841000029475
+      },
+      "weather": {
+        "moisture": 3061.5235473765333,
+        "moisturefloor": 344.9872280991223,
+        "moistureceil": 3109.5223698675895,
+        "preciptype": "rain",
+        "peakprecipitationrate": 0.7906782011227431
       }
     },
     "map": {
@@ -6362,7 +6368,7 @@
                     "entityId": "e_5de5481dfe59039eb6655af84d8dca32",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.9073467916666601
+                    "freshnessPercent": 0.8893307291666676
                   }
                 },
                 {
@@ -6371,7 +6377,7 @@
                     "entityId": "e_1dba80208926f5175f3325190979330c",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.9073467916666601
+                    "freshnessPercent": 0.8893307291666676
                   }
                 },
                 {
@@ -6380,7 +6386,7 @@
                     "entityId": "e_e59bc725b7807bd8dae74d0663fd6a9c",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.9073467916666601
+                    "freshnessPercent": 0.8893307291666676
                   }
                 },
                 {
@@ -6548,7 +6554,27 @@
           }
         }
       ],
-      "tent": [],
+      "tent": [
+        {
+          "id": "e_fcd57700781ecbdfc636246cfb256848",
+          "transform": {
+            "position": [
+              45.84733039738621,
+              0,
+              41.151650884020995
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {
+              "state": "idle"
+            },
+            "finiteuses": {
+              "uses": 15
+            }
+          }
+        }
+      ],
       "moonbase": [
         {
           "id": "e_d7a96790e7461092885f0cbb344f39e4",
@@ -6618,6 +6644,9 @@
           "components": {
             "building": {
               "state": "idle"
+            },
+            "birdcage": {
+              "cageState": "_empty"
             }
           }
         }
@@ -6819,7 +6848,8 @@
           "components": {
             "stack": {
               "itemId": "lightbulb",
-              "count": 1
+              "count": 1,
+              "freshnessPercent": 0.9549598437500184
             }
           }
         },
@@ -6836,7 +6866,8 @@
           "components": {
             "stack": {
               "itemId": "lightbulb",
-              "count": 1
+              "count": 1,
+              "freshnessPercent": 0.9549598437500184
             }
           }
         },
@@ -6957,10 +6988,10 @@
               "itemId": "lantern",
               "count": 1,
               "skinId": "lantern_tesla",
-              "remainingFuel": 21.7479333332974
+              "remainingFuel": 0
             },
             "lantern": {
-              "ison": true
+              "ison": false
             }
           }
         },
@@ -6968,9 +6999,9 @@
           "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
           "transform": {
             "position": [
-              65.03020128660347,
+              91.11028284888951,
               0,
-              -19.33111204557435
+              -12.383639495497203
             ],
             "rotationY": 0
           },
@@ -6985,9 +7016,9 @@
           "id": "e_5f98f9a627feea2fb75d1ffa516e94b7",
           "transform": {
             "position": [
-              -30.298715009144974,
+              -14.943934036226894,
               0,
-              270.2093385180557
+              286.28918793953477
             ],
             "rotationY": 0
           },
@@ -7002,9 +7033,9 @@
           "id": "e_d96125953f2a5c9abf3006c7e9814f8b",
           "transform": {
             "position": [
-              -59.40726581215486,
+              -51.41686502048908,
               0,
-              193.4615029088965
+              189.80125394262706
             ],
             "rotationY": 0
           },
@@ -7019,9 +7050,9 @@
           "id": "e_bb2e6b7bc2ac993bbee65beff6992d46",
           "transform": {
             "position": [
-              -127.99613376540279,
+              -129.53306268780227,
               0,
-              -1.9837798922210268
+              -27.760279347054443
             ],
             "rotationY": 0
           },
@@ -7036,9 +7067,9 @@
           "id": "e_7d80c7aec9e512f51989a11a65b96473",
           "transform": {
             "position": [
-              -68.30897019021201,
+              -58.968516849769216,
               0,
-              -25.813868835129576
+              13.06621900642269
             ],
             "rotationY": 0
           },
@@ -7299,8 +7330,8 @@
           "components": {
             "bulbPlant": {
               "variant": "triple",
-              "lightState": "ON",
-              "remainingSeconds": 84.26002739991782
+              "lightState": "RECHARGING",
+              "remainingSeconds": 111.78292739984136
             }
           }
         }
@@ -7310,9 +7341,9 @@
           "id": "e_fbc93491832fbc0f9ee1870641d45c24",
           "transform": {
             "position": [
-              -11.64823718108293,
+              -9.58936376644143,
               0,
-              4.250870995724136
+              -5.367119314044789
             ],
             "rotationY": 0
           },
@@ -7323,8 +7354,18 @@
                 0,
                 0.22546845008602653
               ],
-              "heading": 232.1578332745588,
-              "poopRemainingSeconds": 8.119871133567466,
+              "heading": 214.6039620694105,
+              "poopRemainingSeconds": 33,
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -17.695081993185838,
+                    "y": 0,
+                    "z": 0.22546845008602653
+                  }
+                ]
+              },
               "beard": {
                 "growth": 5,
                 "growthaccumulator": 0,
@@ -7446,7 +7487,107 @@
         }
       ],
       "wormhole": [],
-      "multiplayer_portal_moonrock": []
+      "multiplayer_portal_moonrock": [],
+      "insanityrock": [
+        {
+          "id": "e_insanityrock_000001",
+          "transform": {
+            "position": [
+              -25.5,
+              0,
+              25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000002",
+          "transform": {
+            "position": [
+              -1.5,
+              0,
+              -1.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000003",
+          "transform": {
+            "position": [
+              0.75,
+              0,
+              50.0625
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000004",
+          "transform": {
+            "position": [
+              25.5,
+              0,
+              25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "sanityrock": [
+        {
+          "id": "e_sanityrock_000001",
+          "transform": {
+            "position": [
+              -13.125,
+              0,
+              9.5625
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_sanityrock_000002",
+          "transform": {
+            "position": [
+              -12.375,
+              0,
+              37.6875
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_sanityrock_000003",
+          "transform": {
+            "position": [
+              13.3125,
+              0,
+              36.75
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_sanityrock_000004",
+          "transform": {
+            "position": [
+              13.6875,
+              0,
+              11.25
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ]
     }
   },
   "players": {
@@ -7455,16 +7596,16 @@
       "shardId": "master",
       "transform": {
         "position": [
-          -31.85633006698646,
+          38.77626258552073,
           0,
-          32.3728699607656
+          48.22271869588647
         ],
         "rotationY": 0
       },
       "stats": {
         "health": 150,
-        "hunger": 105,
-        "sanity": 115
+        "hunger": 130,
+        "sanity": 163
       },
       "inventory": {
         "containers": {
@@ -7484,8 +7625,8 @@
                 "item": {
                   "entityId": "e_5d692812dc3a6f33e8090c3c02807002",
                   "itemId": "bananapop",
-                  "count": 10,
-                  "freshnessPercent": 0.7810701388888472
+                  "count": 8,
+                  "freshnessPercent": 0.7210165972222052
                 }
               },
               {
@@ -7493,7 +7634,7 @@
                 "item": {
                   "entityId": "e_ce28f3798d0a92bc24c1b1c2cbf99ed3",
                   "itemId": "green_cap_cooked",
-                  "count": 17,
+                  "count": 16,
                   "freshnessPercent": 0.9730257500000054
                 }
               },
@@ -7525,8 +7666,8 @@
                 "slotKey": "9",
                 "item": {
                   "entityId": "e_701ca836d4dd5f0477d8a36ec530658b",
-                  "itemId": "twigs",
-                  "count": 20
+                  "itemId": "panflute",
+                  "count": 1
                 }
               },
               {
@@ -7541,8 +7682,9 @@
                 "slotKey": "11",
                 "item": {
                   "entityId": "e_a2d7407423ea49b87bb1170e99ee5852",
-                  "itemId": "hammer",
-                  "count": 1
+                  "itemId": "book_rain",
+                  "count": 1,
+                  "remainingUses": 4
                 }
               },
               {

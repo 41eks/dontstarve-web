@@ -47,12 +47,17 @@ async function setup() {
 describe('dwarf star source sounds', () => {
 
   it('mutes at and beyond the cutoff, with a configurable maximum distance', () => {
-    expect(inverseSquareAttenuation(0)).toBe(1);
-    expect(inverseSquareAttenuation(12)).toBe(1);
-    expect(inverseSquareAttenuation(SOUND_MAX_DISTANCE - 1)).toBeGreaterThan(0);
-    expect(inverseSquareAttenuation(SOUND_MAX_DISTANCE)).toBe(0);
-    expect(inverseSquareAttenuation(SOUND_MAX_DISTANCE + 1)).toBe(0);
-    expect(inverseSquareAttenuation(30, 12, 30)).toBe(0);
+    const listener = new THREE.Vector3(), position = new THREE.Vector3();
+    expect(inverseSquareAttenuation(position, listener)).toBe(1);
+    expect(inverseSquareAttenuation(position.set(12, 0, 0), listener)).toBe(1);
+    expect(inverseSquareAttenuation(position.set(SOUND_MAX_DISTANCE - 1, 0, 0), listener)).toBeGreaterThan(0);
+    expect(inverseSquareAttenuation(position.set(SOUND_MAX_DISTANCE, 0, 0), listener)).toBe(0);
+    expect(inverseSquareAttenuation(position.set(SOUND_MAX_DISTANCE + 1, 0, 0), listener)).toBe(0);
+    expect(inverseSquareAttenuation(position.set(30, 0, 0), listener, 12, 30)).toBe(0);
+    position.set(12, 0, 12);
+    expect(inverseSquareAttenuation(position, listener)).toBe(.5);
+    expect(position.toArray()).toEqual([12, 0, 12]);
+    expect(listener.toArray()).toEqual([0, 0, 0]);
   });
 
   it('attenuates independent stars as the player moves and releases their gains', async () => {
@@ -63,8 +68,7 @@ describe('dwarf star source sounds', () => {
     const far = await manager.spawn(new THREE.Vector3(24, 0, 0));
     expect(s.gains.map(({ gain }) => gain.value)).toEqual([1, 1, 0.25, 0.25]);
     expect(s.sources.map((source) => source.connect.mock.calls[0][0])).toEqual(s.gains);
-    // Height does not change ground distance, including jumps and the player's model offset.
-    UpdateSoundListener(new THREE.Vector3(48, 30, 0));
+    UpdateSoundListener(new THREE.Vector3(48, 0, 0));
     expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 0.25, 0.25]);
     far.position.x = 48;
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));

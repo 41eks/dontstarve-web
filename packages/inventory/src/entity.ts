@@ -173,6 +173,7 @@ export class ItemEntity {
     container?: Container<InventoryStack, ItemEntity, StorageSlot>;
     tool?: import('../../componets/src/tool').Tool;
     shaver?: import('../../componets/src/shaver').Shaver;
+    instrument?: ItemRuntimeComponent & { Play(musician: unknown, listeners: (range: number) => Iterable<never>): boolean };
     workable?: import('../../componets/src/workable').Workable;
     spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
     lighter?: import('../../componets/src/lighter').Lighter;
@@ -182,6 +183,7 @@ export class ItemEntity {
     weapon?: import('../../componets/src/weapon').Weapon;
     repairer?: import('../../componets/src/repairer').Repairer;
     fuel?: Fuel;
+    tradable?: import('../../componets/src/tradable').Tradable;
   };
   readonly signals: InventoryItemSignals;
   /** Display-only itemtile freshness for items without a perishable timer. */

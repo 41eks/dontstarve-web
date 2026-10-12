@@ -11,6 +11,8 @@ export async function checkResearchLabDestruction() {
   const entities = createSceneEntities(new World(), {
     clock: createSignal({ phase: 'day', timeinphase: 0 }),
     season: createSignal({ season: 'spring', progress: 0 }),
+    // The rain effect only reads the weather's rain rate.
+    weather: { rainRate: createSignal(0) },
   }, () => false);
   const { scene, renderer } = await import('../../../src/universal');
   const { camera } = await import('../../../src/camera');

@@ -7212,7 +7212,107 @@
         }
       ],
       "wormhole": [],
-      "multiplayer_portal_moonrock": []
+      "multiplayer_portal_moonrock": [],
+      "insanityrock": [
+        {
+          "id": "e_insanityrock_000001",
+          "transform": {
+            "position": [
+              -25.5,
+              0,
+              25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000002",
+          "transform": {
+            "position": [
+              -1.5,
+              0,
+              -1.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000003",
+          "transform": {
+            "position": [
+              0.75,
+              0,
+              50.0625
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_insanityrock_000004",
+          "transform": {
+            "position": [
+              25.5,
+              0,
+              25.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "sanityrock": [
+        {
+          "id": "e_sanityrock_000001",
+          "transform": {
+            "position": [
+              -13.125,
+              0,
+              9.5625
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_sanityrock_000002",
+          "transform": {
+            "position": [
+              -12.375,
+              0,
+              37.6875
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_sanityrock_000003",
+          "transform": {
+            "position": [
+              13.3125,
+              0,
+              36.75
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "e_sanityrock_000004",
+          "transform": {
+            "position": [
+              13.6875,
+              0,
+              11.25
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ]
     }
   },
   "players": {

@@ -256,3 +256,13 @@ DST 的整体灯光风格来自三类效果的组合：
 `DstLightingRenderer.create()` 的 `initialState.sanityPercent` 接受该只读视图。加载 LUT 后，滤镜订阅比例变化并通过 `peek()` 应用最新值，因此加载期间发生的理智变化也能正确初始化。后续变化同步更新分档调色强度、连续扭曲幅度和速度；渲染每帧仅推进时间与昼夜/季节渐变。滤镜不导入全局玩家状态，外部不再直接调用滤镜的理智 setter。
 
 HUD 独立订阅理智点数，`c_setsanity(percent)` 只写入 signal。保存通过 `getPlayerStats()` 导出包含理智数值的快照，不序列化 signal；重载恢复数值后由滤镜订阅初始化画面。`DstLightingRenderer.dispose()` 取消订阅并释放 LUT、后处理与局部光照资源，`pagehide` 不释放滤镜资源或取消 HUD 订阅。
+
+### 低理智红色边缘花纹
+
+花纹来自 HUD 动画，源码是 `screens/playerhud.lua:CreateOverlays()` 与 `GoInsane()`：bank/build 均为 `vig`，正常循环播放 `basic`，收到 `goinsane` 后循环播放 `insane`，收到 `gosane` 后恢复 `basic`。`prefabs/hud.lua` 声明资源 `anim/vig.zip`；两段动画均为 12 fps，分别有 7 帧和 64 帧。它不是 `postprocess_distort.ksh` 的一部分，也不是月狂的 `overlays_lunacy.tex`。
+
+[`SanityVignette`](../packages/ui/src/sanity-vignette.ts) 加载逐字节镜像到 `public/dst/data/anim/vig.zip` 的源归档，按源矩阵与层序绘制到透明 canvas。对应 `ANCHOR_MIDDLE` 与 `SCALEMODE_FIXEDSCREEN_NONDYNAMIC`，画布保持原版 1280×720 坐标、固定中央原点，再随视口缩放；不按每帧包围盒裁切或重新居中。花纹位于世界调色之后、HUD 控件之下，不接受环境光和理智 LUT，也不截获鼠标输入。
+
+[`src/main.ts`](../src/main.ts) 注入现有 `Sanity.sane` 只读 signal，由展示 effect 切换动画；阈值留在 `sanity` 组件中：Wilson 理智 ≤30/200 进入疯狂，≥35/200 恢复，中间区间保持前一状态。按游戏的 `dt` 推进动画，`dt = 0` 时保持当前帧，对应 `AnimateWhilePaused(false)`；切换到另一段动画从第 0 帧开始。读档后按组件的初始状态选择动画，不保存花纹播放时间。显式场景销毁移除画布、释放 effect 与画布资源，并注销推进任务。
+
+验证命令：`c_setsanity(0.1)` 显示红色花纹，`c_setsanity(0.16)` 保持花纹，`c_setsanity(0.175)` 恢复普通暗角。`c_setsanity(0.1); c_save()` 导出低理智存档，重载后重新显示花纹。`packages/ui/tests/sanity-filter.spec.ts` 验证原版红色像素位于边缘、中心透明、帧推进与停止、恢复和销毁，以及完整游戏的保存／重载；原有扭曲与调色测试继续单独覆盖后处理。

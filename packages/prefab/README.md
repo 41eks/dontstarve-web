@@ -4,7 +4,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 
 - `createWilsonPlayer` / `createWilsonPlayerPrefab`
 - `createPigKing`
-- `createPigKingSetPiece`：猪王及周围 3 × 3 的 `turf_woodfloor` 地皮。
+- `placeStaticLayout`（`staticLayout`）：`default_pigking` 静态布局的地皮与岩石坐标，由地图生成层登记；`NightmareRockManager`（`nightmarerock`）对应 `sanityrock` / `insanityrock`。
 - `createMoonTreeForest`
 - `TorchController`：`torch.lua` 的装备点燃、卸下熄灭、燃料消耗及耗尽移除；燃料通过调用方的权威状态读写接口保存，独立的只读 `burning` signal 发布燃烧状态，照明通过同步订阅更新。signal 原语来自公共包 `@dontstarve-web/signals`。
 - `ProximityEntities`：保留实体位置，仅创建玩家 XZ 距离加载半径内的模型，离开后移除并释放模型。
@@ -60,14 +60,12 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 制作时选择的箱子皮肤会映射到 `${import.meta.env.BASE_URL}dst/data/anim/dynamic/`
 下对应的 DST build，并在预览、放置及后续开关动画中保持不变。
 
-`createPigKing` 只创建猪王的模型、碰撞体和动画交互。`createPigKingSetPiece`
-通过包主入口或 `@dontstarve-web/prefab/setpieces/pigking` 导入，接收 DST data 根路径
-和可选的猪王脚点位置，返回包含猪王及木地板地皮的 `group`、`pigKing`、`turf`、
-`footPosition` 和九块地皮的坐标。木地板对齐地图格，覆盖猪王所在格及周围八格；
-使用原始 `levels/textures/noise_woodfloor.tex`，不再使用独立的 PNG 装饰地板。
+`createPigKing` 对应 `pigking.lua`：模型、障碍物碰撞体、`trader` 组件和 `SGpigking` 状态机（昼夜睡觉、金块交易、拒绝），不创建任何地皮。
+猪王周围的地皮和岩石属于地图生成层（原版 `default_pigking.lua` 静态布局），由
+`scripts/import-static-layouts.py` 生成的 `staticLayouts.json` 驱动：`placeStaticLayout('default_pigking', feet, 'pigking')`
+返回 40 块 `GRASS`、12 块 `WOODFLOOR` 的格子中心和 8 块岩石的位置，主场景把格子登记到 `TurfMap.setOriginalTile`。
 `TurfMap`（`@dontstarve-web/prefab/turfMap`）提供按格查询、挖地、稀疏存档和
-`createVisual(assetBaseUrl)`。主场景将猪王木地板格登记到该地图，由统一地皮层替代
-set piece 的整块地板。`groundTiles.json` 从 `tiledefs.lua` 提取 ID、atlas/noise 路径和
+`createVisual(assetBaseUrl)`。主场景将猪王木地板格登记到该地图，由统一地皮层绘制。`groundTiles.json` 从 `tiledefs.lua` 提取 ID、atlas/noise 路径和
 绘制顺序；`pnpm --filter @dontstarve-web/prefab ground-tiles:import` 导入原版资产，
 `ground-tiles:check` 校验源字节和定义。`groundTiles.ts` 根据八邻格选择 48 个源 atlas
 图块，并按 `ground.ksh` 的方式将 atlas RGBA 与世界坐标噪声相乘。内部同种格用完整
@@ -75,10 +73,9 @@ set piece 的整块地板。`groundTiles.json` 从 `tiledefs.lua` 提取 ID、at
 
 基础 turf 与木地板均不写入深度缓冲，避免裁掉动画图像延伸到脚点下方的部分；
 两者保持相同地面高度，按 `renderOrder` 的 `-2`、`-1` 顺序绘制。
-应用从存档中的每个 `pigking` 记录恢复整个 set piece，无需单独保存固定地皮布局。
+应用从存档中的每个 `pigking` 记录恢复猪王，并按其位置登记木地板，无需单独保存固定地皮布局。
 
-调用方负责传入 `${import.meta.env.BASE_URL}dst/data/anim` 形式的动画资源根路径，
-set piece 则传入 `${import.meta.env.BASE_URL}dst/data`；prefab 包不依赖应用的 Vite base 配置。
+调用方负责传入 `${import.meta.env.BASE_URL}dst/data/anim` 形式的动画资源根路径；prefab 包不依赖应用的 Vite base 配置。
 
 月树默认有 500 个实体记录，加载半径为 10 格（`10 * TILE_SIZE = 120` 个世界单位）；地图分布沿用原有的
 1000 × 1000 区域和出生点空地。月树使用通用动画精灵，共享一次加载的动画资源和
@@ -112,9 +109,11 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 分别合入玩家帧的前后绘制顺序，保留最终棱镜皮肤的 `p4_piece` / `fx_glow`
 覆盖。用源冠冕贴图的局部模糊加色光晕近似原版 bloom；模糊限制在图集元素边界内，
 光晕也合入玩家几何体。独立的光源子节点使用原版半径 4（本场景 12）、强度 0.8、衰减 0.5 和空容器
-的黄绿色光。`setSanityPercent(percent)` 接收 0–1，高于 0.85 激活；降到阈值时立即
-关灯，播放 `activate_pst`，第 8 帧恢复静态帽子。当前应用没有权威理智状态，默认
-按满理智展示；卸下或换帽立即清除动画及光源，不与手持提灯的光源互相覆盖。
+的黄绿色光。创建玩家时通过 `options.sanityPercent` 注入拥有者的只读理智比例 signal，
+激活 memo 直接读取该 signal，高于 0.85 激活；降到阈值时立即关灯，播放
+`activate_pst`，第 8 帧恢复静态帽子。应用传入 `playerStats.sanity.percent`，
+未注入状态的独立预览默认按满理智展示；卸下或换帽立即清除动画及光源，
+并解除 memo 对理智的依赖，不与手持提灯的光源互相覆盖。
 
 `HAT_CRAFTING_DEFINITIONS` 保留 52 条原始配方及科技、角色、技能、制作站
 元数据。`HAT_RECIPES` 提供现有 InventoryStore 可以执行的 51 条背包配方；
@@ -259,6 +258,7 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `sound/common.fsb-274.wav`；声音在用户交互后启用。提取方法见根目录 `AGENTS.md`。
 
 通用音频 API 由 `@dontstarve-web/prefab/sound` 提供，直接调用 `PlaySound('事件路径')`。
+位置参数统一使用现有地面 `THREE.Vector3`：`PlaySound(path, position?, offsetSeconds?)`、`UpdateSoundListener(position)`，以及 `inverseSquareAttenuation(position, listenerPosition, referenceDistance?, maxDistance?)`。声源保留位置引用，监听器复用一个向量保存当前坐标；衰减通过 `distanceToSquared()` 计算平方距离，避免开方、拆分 XZ 坐标和每次更新创建临时向量。距离计算不修改传入的向量；省略声源位置仍以完整音量播放。
 支持 `dontstarve/common/staff_star_create`、`dontstarve/common/staff_star_LP` 和
 `dontstarve/wilson/use_gemstaff`（流 284，`sound/common.fsb-284.wav`），以及
 `dontstarve/wilson/hit`（`sfx.fsb` 流 423 / 424，等权随机）和

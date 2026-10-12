@@ -12,6 +12,7 @@ export interface WorldContext extends ActionWorldContext {
     physics?: CANNON.World;
     itemEntities?: import('@dontstarve-web/inventory').ItemEntityRegistry;
     scheduler?: import('../../componets/src/gameTimeScheduler').GameTimeScheduler;
+    season?: import('@dontstarve-web/signals').ReadonlySignal<import('@dontstarve-web/signals').SeasonState>;
     /** GetLocalTemperature at a DST ground position, in scene units. */
     getLocalTemperature?: (x: number, z: number) => number;
     fullMoon?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
@@ -20,13 +21,14 @@ export interface WorldContext extends ActionWorldContext {
         saved?: { slots: readonly { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] }) => void;
     unregisterContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
     /** TheWorld.state.isnight. */
-    isNight?: () => boolean;
+    isNight?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
     /** SpawnPrefab for an inventory item: a configured inst that nothing owns yet. */
     spawnItem?: (state: import('@dontstarve-web/inventory').InventoryStack) => import('@dontstarve-web/inventory').ItemEntity;
     /** inventoryitem:OnDropped for an existing inst, placed on the ground at the position. */
     dropItem?: (entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3) => void;
     /** Place destruction loot in the application's authoritative ground-item store. */
-    dropLoot?: (items: readonly { itemId: string; count: number }[], position: THREE.Vector3) => void;
+    dropLoot?: (items: readonly { itemId: string; count: number }[], position: THREE.Vector3,
+        launch?: () => import('./lootFling').LootLaunch) => void;
 }
 
 /** The subset a prefab needs to turn raw pointer events into raycasts. */

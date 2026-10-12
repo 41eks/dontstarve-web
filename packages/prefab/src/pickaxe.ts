@@ -1,28 +1,22 @@
 import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { HandEquipment, HandEquipmentLifecycle, Signal } from '@dontstarve-web/signals';
+import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { Tool } from '../../componets/src/tool';
 
 export const PICKAXE_USES = 33; // tuning.lua; gold consumes 1 / GOLDENTOOLFACTOR = .25 per MINE.
 
 /** pickaxe.lua / axe.lua: finiteuses removes the inst; an equipped item clears its injected slot. */
-export class FiniteUsesToolLifecycle implements HandEquipmentLifecycle {
-  private slot?: Signal<HandEquipment | null>;
-  private equipment: HandEquipment | null = null;
+export class FiniteUsesToolLifecycle implements EquipmentLifecycle {
   constructor(entity: ItemEntity) {
-    entity.components.finiteuses.setOnFinished(() => {
-      const slot = this.slot, equipment = this.equipment;
-      if (slot && equipment?.entity === entity && slot.peek() === equipment) slot.set(null);
-      return entity.isRemoved || entity.remove();
-    });
+    entity.components.finiteuses.setOnFinished(() => entity.isRemoved || entity.remove());
   }
-  onequip(slot: Signal<HandEquipment | null>): void { this.slot = slot; this.equipment = slot.peek(); }
-  onunequip(): void { this.slot = undefined; this.equipment = null; }
-  dispose(): void { this.onunequip(); }
+  onequip(): void {}
+  onunequip(): void {}
+  dispose(): void {}
 }
 
-export function getPickaxeLifecycle(entity: ItemEntity): HandEquipmentLifecycle {
+export function getPickaxeLifecycle(entity: ItemEntity): EquipmentLifecycle {
   return entity.component('pickaxe', () => new FiniteUsesToolLifecycle(entity));
 }
 

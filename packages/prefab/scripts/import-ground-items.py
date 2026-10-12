@@ -115,6 +115,8 @@ def main():
     heatrock_images('heat_rock')
     # razor.lua: bank razor from razor.zip with the swap_razor build; the cursor-held shaver has no equipped art.
     add('razor', 'razor', 'swap_razor', 'idle', 'razor', animation_archive='razor.zip')
+    # panflute.lua: bank/build pan_flute from pan_flute.zip; SGwilson's play_flute overrides pan_flute01 from the same build.
+    add('panflute', 'pan_flute', 'pan_flute', 'idle', 'panflute', animation_archive='pan_flute.zip')
     # moonbutterfly.lua uses the butterfly bank from butterfly_basic.zip with its own build.
     add('moonbutterfly', 'butterfly', 'butterfly_moon', 'idle', 'moonbutterfly', animation_archive='butterfly_basic.zip', loop=True)
     add('moonbutterflywings', 'moonbutterfly_wings', 'moonbutterfly_wings', 'idle', 'moonbutterflywings')
@@ -140,6 +142,8 @@ def main():
     add('pinecone', 'pinecone', 'pinecone', 'idle', 'pinecone')
     add('acorn_cooked', 'acorn', 'acorn', 'cooked', 'acorn')
     add('poop', 'poop', 'poop', 'dump', 'poop')
+    # poop.lua spawns flies as a NOCLICK/DECOR child, not as an inventory item.
+    assets.add('anim/flies.zip')
     add('spoiled_food', 'spoiled', 'spoiled_food', 'idle', 'spoiledfood')
     for colour in ['red', 'blue', 'purple', 'green', 'orange', 'yellow']:
         add(colour + 'gem', 'gems', 'gems', colour + 'gem_idle', 'gem', loop=True)

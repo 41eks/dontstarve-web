@@ -110,6 +110,10 @@ done
 
 `fx.lua` 的 `fx_book_rain` 在成功阅读 `book_rain` 时播放 `wickerbottom_rework/book_spells/rain`。`wickerbottom_rework.fev` 有两个同时播放的 sound definition：9（`book_rain_DST.wav`，file_index 9，`-s 10`）和 20（`book_rain_sparkle.wav`，file_index 10，`-s 11`），均为单声道 44100 Hz。两份样本用 `-m -s` 核对流名后以 `-i` 导出为 `wickerbottom_rework.fsb-10.wav`、`wickerbottom_rework.fsb-11.wav`，与源目录已有的解码 WAV 字节一致；`sound.ts` 映射为两层一次性播放。
 
+### 帐篷睡眠与拆除声
+
+`prefabs/tent.lua` 使用三个事件：`dontstarve/common/tent_sleep`（睡觉时每个 `sleep_loop` 周期的第 33、47 帧各播一次）、`tent_dis_pre` 和 `tent_dis_twirl`（耐久用尽时的 `destroy`，后者延迟 16 帧）。`dontstarve.fev` 解析：`tent_sleep` 的 sounddef 1334 在 `sfx.fsb` 的 11 个 `tent_sleep_loop1..11.wav` 中等权选一个（file_index 394–404，`-s 395..405`，其中 `loop10`/`loop11` 排在 `loop2` 之前）；`tent_dis_pre` 的 sounddef 171 是 `common.fsb` 的 `Tent_dissappear_pre.wav`（file_index 102，`-s 103`）；`tent_dis_twirl` 的 sounddef 172 是 `Tent_dissappear_twirl.wav`（file_index 103，`-s 104`）。13 份样本均用 `-m -s` 核对流名，再以 `-i` 导出，与源目录已有的 `<bank>.fsb#<index>.wav` 字节一致；三个事件在 `sound.ts` 中均为一次性播放。
+
 ### 建筑燃烧声
 
 建筑燃烧声来自 `prefabs/fire.lua` 的 `dontstarve/common/campfire`，不是火把的拿出声。`dontstarve.fev` 对应三个同时播放的 sound definition：1762 使用 common 的零基索引 148–151，1765 使用 152–155，1766 使用 157–160；分别以 `vgmstream -i -s 149..152 / 153..156 / 158..161` 导出。实际提取使用单个数值索引，输出 `sound/common.fsb-<index>.wav`；所有 12 份 WAV 均与资源目录现有解码 WAV 字节一致。三个循环层由 `packages/prefab/src/sound.ts` 统一映射，建筑各自创建音源，熄灭、烧毁及移除时停止。熄火声复用上面的 `fireOut` 映射。
@@ -445,3 +449,10 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 ### 灯草采摘完成声
 
 `prefabs/flower_cave.lua:onpickedfn` 在成功采摘时播放 `dontstarve/wilson/pickup_lightbulb`，与 `picking → picked` 同时触发，和玩家的 `make_trap` 操作声分别归属。`fev-events.py sound/dontstarve.fev wilson/pickup_lightbulb` 解析为 sounddef 1023 → `sfx/wilson/Harvest_Plant.wav` → bank `wilson` / 零基 `file_index=66`，提取索引 67。检查安装 CLI 的 `-h`、`-m -s 67`（`Harvest_Plant`，9324 个 44100 Hz 样本），再用 `-i -s 67` 导出 `public/dst/data/sound/wilson.fsb-67.wav`，与源目录已有 `wilson.fsb#67.wav` 字节一致。灯草生成前预加载；每次成功采摘播放一次，取消不触发，移除停止。
+
+
+### 便便的苍蝇循环声
+
+`poop.lua` 生成、丢弃或读档恢复时拥有 `flies` 子实体；`flies.lua:onfar` 与 `OnWake` 播放 `dontstarve/common/flies`，`onnear`、`OnSleep` 和移除停止具名 `flies` 声音。核对源 `dontstarve.fev`：sound definition 56 → `sfx/objects/Flies_soothed_DST_-001.wav` 至 `_007.wav` → bank `common`，零基 file_index 74～80，提取索引 75～81。
+
+安装 CLI 的 `-h` 已核对，`-m -s 75 -S 81` 显示七个 44100 Hz 单声道样本，长度约 0.785～0.797 秒。以 `-i -s <index> -o public/dst/data/sound/common.fsb-<index>.wav` 导出，七份均与已有源 `common.fsb#<index>.wav` 字节一致。事件映射在统一 `sound.ts`，创建前预加载，浏览器每份苍蝇独立选择一个样本循环，靠近、拾取、燃烧和实体移除停止并断开对应音源。

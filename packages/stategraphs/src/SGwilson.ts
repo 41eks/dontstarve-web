@@ -9,14 +9,14 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'mine_start' | 'mine' | 'chop_start' | 'chop' | 'hammer_start' | 'hammer'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
   | 'quickeat' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
-  | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave';
-export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL';
+  | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute';
+export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
   | 'quick_eat_pre' | 'quick_eat' | 'quick_drink_pre' | 'quick_drink' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst'
   | 'build_pre' | 'build_loop' | 'build_pst' | 'light_fire' | 'light_fire_pst'
-  | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit';
+  | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit' | 'wakeup' | 'flute';
 
 export const WILSON_ACTION_TIMES = {
   mine: 7 * FRAMES, net: 10 * FRAMES, terraform: 25 * FRAMES,
@@ -44,7 +44,25 @@ export interface WilsonFx {
   pushEvent(name: 'fail_fx'): void;
 }
 
+/** What SGwilson.lua's tent and wakeup states reach through the sleeper's components and the HUD. */
+export interface WilsonSleepHost {
+  /** SetSleeperSleepState / SetSleeperAwakeState: player controller, inventory and speech while asleep. */
+  setSleeperState(sleeping: boolean): void;
+  /** inst:Hide() / inst:Show() with the dynamic shadow. */
+  setHidden(hidden: boolean): void;
+  /** The tent state's refusal reason (too bright, burning, too hungry), or undefined when the bed is allowed. */
+  failReason(bed: BufferedActionObject): string | undefined;
+  announce(reason: string): void;
+  /** The ontimeout checks: the bag is still a free tent for the current phase and is not burning. */
+  canCommit(bed: BufferedActionObject): boolean;
+  /** inst.sleepingbag ~= nil */
+  readonly hasBed: boolean;
+  /** inst.sleepingbag.components.sleepingbag:DoWakeUp(nostatechange) */
+  wakeBed(nostatechange: boolean): void;
+}
+
 export interface WilsonStateGraphHost {
+  sleep?: WilsonSleepHost;
   /** Select the art and return its effective playback duration in seconds. */
   playAnimation(clip: WilsonAnimationClip): number;
   playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'sip' | 'dig' | 'tillEmerge' | 'make'
@@ -53,7 +71,9 @@ export interface WilsonStateGraphHost {
   getCombat?(): WilsonCombat | undefined;
   stopSound?(cue: 'make' | 'shave'): void;
   /** SoundEmitter's named handle: KillSound then PlaySound, PlayingSound and SetVolume. */
-  playNamedSound?(name: 'book_layer_sound', event: string): void;
+  playNamedSound?(name: 'book_layer_sound' | 'flute', event: string): void;
+  /** SoundEmitter:KillSound(name). */
+  stopNamedSound?(name: 'book_layer_sound' | 'flute'): void;
   isPlayingNamedSound?(name: 'book_layer_sound'): boolean;
   setNamedSoundVolume?(name: 'book_layer_sound', volume: number): void;
   /** SpawnPrefab parented to the player, optionally Follower:FollowSymbol on a player symbol. */
@@ -61,6 +81,8 @@ export interface WilsonStateGraphHost {
   /** player_common.lua OnItemRanOut/toolbroke exit: equip another item of this prefab from the inventory. */
   equipSamePrefab?(prefab: string): boolean;
   overrideSymbol?(symbol: string, build: string, sourceSymbol: string): void;
+  /** AnimState:ClearOverrideSymbol. */
+  clearOverrideSymbol?(symbol: string): void;
   overrideItemSkinSymbol?(symbol: string, skinBuild: string, skinSymbol: string, build: string, sourceSymbol: string): void;
   setCasting(casting: boolean, colour?: readonly [number, number, number]): void;
   setControllerEnabled?(enabled: boolean): void;
@@ -125,6 +147,74 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.context.host.stopSound?.('shave');
       if (inst.context.getBufferedAction() === inst.statemem.action) inst.context.clearBufferedAction();
     },
+  }),
+  State({
+    // SGwilson.lua tent: the bed vets the sleeper, then the player hides inside and is woken by movement.
+    name: 'tent',
+    tags: ['tent', 'busy', 'silentmorph'],
+    onenter: (inst) => {
+      const { host } = inst.context, sleep = host.sleep;
+      host.stopMovement?.();
+      const action = inst.context.getBufferedAction();
+      const reason = action?.target && sleep?.failReason(action.target);
+      if (!action?.target || !sleep || reason) {
+        inst.context.clearBufferedAction();
+        inst.goToState('idle');
+        if (reason) sleep?.announce(reason);
+        return;
+      }
+      inst.context.playClips([clip('pickup')]);
+      inst.setTimeout(6 * FRAMES);
+      sleep.setSleeperState(true);
+    },
+    ontimeout: (inst) => {
+      const { host } = inst.context, sleep = host.sleep!;
+      const action = inst.context.getBufferedAction();
+      if (!action?.target || !sleep.canCommit(action.target)) {
+        // Edge cases: no failure dialogue.
+        inst.context.clearBufferedAction();
+        inst.context.playClips([clip('pickup_pst')]);
+        inst.goToState('idle', true);
+        return;
+      }
+      inst.context.performBufferedAction();
+      sleep.setHidden(true);
+      inst.addStateTag('sleeping');
+      inst.removeStateTag('busy');
+    },
+    events: [
+      // Movement while asleep wakes the sleeper first (Lua: the locomote handler's bedroll/tent branch).
+      EventHandler('locomote', (inst) => {
+        const sleep = inst.context.host.sleep;
+        if (sleep?.hasBed && inst.hasStateTag('sleeping')) sleep.wakeBed(false);
+      }),
+    ],
+    onexit: (inst) => {
+      const sleep = inst.context.host.sleep!;
+      sleep.setHidden(false);
+      if (sleep.hasBed) {
+        // Interrupted while "sleeping".
+        sleep.wakeBed(true);
+        sleep.setSleeperState(false);
+      } else if (!inst.statemem.iswaking) {
+        // Interrupted before "sleeping", or woken through the wakeup state.
+        sleep.setSleeperState(false);
+      }
+    },
+  }),
+  State({
+    name: 'wakeup',
+    tags: ['busy', 'waking', 'nomorph', 'nodangle'],
+    onenter: (inst) => {
+      inst.context.host.setControllerEnabled?.(false);
+      inst.context.playClips([clip('wakeup')]);
+    },
+    events: [
+      EventHandler('animover', (inst) => {
+        if (inst.context.animationDone) inst.goToState('idle');
+      }),
+    ],
+    onexit: (inst) => inst.context.host.sleep?.setSleeperState(false),
   }),
   State({
     name: 'toolbroke',
@@ -695,6 +785,33 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       else if (host.isPlayingNamedSound?.('book_layer_sound')) host.setNamedSoundVolume?.('book_layer_sound', .5);
     },
   }),
+  State({
+    // Unmounted branch with the stock pan flute build; instrument asset/sound overrides belong to unported instruments.
+    name: 'play_flute',
+    tags: ['doing', 'busy', 'playing'],
+    onenter: (inst) => {
+      const { host } = inst.context;
+      host.stopMovement?.();
+      inst.context.playClips([clip('action_uniqueitem_pre'), clip('flute')]);
+      const skinBuild = inst.context.getBufferedAction()?.invobject?.skinBuild;
+      if (skinBuild) host.overrideItemSkinSymbol?.('pan_flute01', skinBuild, 'pan_flute01', 'pan_flute', 'pan_flute01');
+      else host.overrideSymbol?.('pan_flute01', 'pan_flute', 'pan_flute01');
+    },
+    timeline: [
+      TimeEvent(30 * FRAMES, (inst) => {
+        if (inst.context.performBufferedAction()) inst.context.host.playNamedSound?.('flute', 'dontstarve/wilson/flute_LP');
+        else inst.statemem.action_failed = true;
+      }),
+      TimeEvent(36 * FRAMES, (inst) => { if (inst.statemem.action_failed) inst.removeStateTag('busy'); }),
+      TimeEvent(52 * FRAMES, (inst) => { if (!inst.statemem.action_failed) inst.removeStateTag('busy'); }),
+      TimeEvent(85 * FRAMES, (inst) => { if (!inst.statemem.action_failed) inst.context.host.stopNamedSound?.('flute'); }),
+    ],
+    events: [EventHandler('animqueueover', (inst) => { if (inst.context.animationDone) inst.goToState('idle'); })],
+    onexit: (inst) => {
+      inst.context.host.stopNamedSound?.('flute');
+      inst.context.host.clearOverrideSymbol?.('pan_flute01');
+    },
+  }),
 ];
 
 /** Browser movement/visual adapters; Lua's locomotion states are not ported here. */
@@ -779,6 +896,8 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   }),
   ActionHandler('LIGHT', 'catchonfire'),
   ActionHandler('SHAVE', 'shave'),
+  // The bedroll branch (action.invobject) is not ported; tents go to the tent state.
+  ActionHandler('SLEEPIN', (_inst, action) => action.invobject ? null : 'tent'),
   ActionHandler('TERRAFORM', 'terraform'),
   ActionHandler('EAT', (inst) => {
     if (inst.hasStateTag('busy')) return null;
@@ -799,6 +918,8 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   ActionHandler('TILL', 'till_start'),
   // simplebook (cookbook_open) and aspiring_bookworm (book_peruse) readers are not ported.
   ActionHandler('READ', 'book'),
+  // Only the flute branch of SGwilson's PLAY handler is ported.
+  ActionHandler('PLAY', (_inst, action) => action.invobject?.hasTag('flute') ? 'play_flute' : null),
 ];
 
 export class WilsonStateGraph {
@@ -1024,4 +1145,17 @@ export class WilsonStateGraph {
     this.playClips(this.emoteClips);
   }
   cancelEmote(): void { if (this.stateName === 'emote') this.finish(); }
+
+  /** Sleepers are in tent/waking states; movement input wakes them through the locomote event. */
+  get isSleeping(): boolean { return this.sg.hasAnyStateTag('tent', 'waking'); }
+  /** inst.sg:GoToState("wakeup") from sleepingbaguser:DoWakeUp. */
+  wakeUp(): void {
+    this.clearBufferedAction();
+    this.activeAction = null;
+    this.activeBufferedAction = undefined;
+    this.activeInvobject = undefined;
+    this.sg.goToState('wakeup');
+  }
+  /** The locomote event for a sleeper. */
+  pushLocomote(): void { this.sg.pushEvent('locomote'); }
 }

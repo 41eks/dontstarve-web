@@ -28,7 +28,7 @@ function fixture(itemId: LightStaffId, remainingUses?: number, prepare = async (
   const map = { isAboveGroundAtPoint: vi.fn(() => true), isOceanAtPoint: () => false, isGroundTargetBlocked: () => blocked };
   const spawn = vi.fn(), worldServices = { map, preparePrefab: vi.fn(prepare), spawnPrefab: spawn };
   const staff = getLightStaffController(entity, worldServices);
-  staff.onequip(store.handEquipmentExistenceState);
+  staff.onequip();
   const sound = vi.fn(), casting = vi.fn();
   const graph = new WilsonStateGraph({
     playAnimation: clip => (clip.key === 'staff_pre' ? 15 : clip.key === 'staff' ? 65 : 30) / 30,
@@ -109,7 +109,7 @@ it('invalidates preparation on a new action or same-prefab replacement and prese
     const replacementStaff = getLightStaffController(replacement, s.worldServices);
     s.store.swap(s.hand, inventorySlotAddress(0));
     s.staff.onunequip();
-    replacementStaff.onequip(s.store.handEquipmentExistenceState);
+    replacementStaff.onequip();
     release();
     await ready; await Promise.resolve(); await Promise.resolve();
     expect(s.graph.stateName).toBe('idle');

@@ -1,0 +1,133 @@
+{
+ "default_pigking": {
+  "ground": [
+   [
+    null,
+    null,
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    null,
+    null
+   ],
+   [
+    null,
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    null
+   ],
+   [
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "WOODFLOOR",
+    "WOODFLOOR",
+    "GRASS",
+    "GRASS",
+    "GRASS"
+   ],
+   [
+    "GRASS",
+    "GRASS",
+    "WOODFLOOR",
+    "WOODFLOOR",
+    "WOODFLOOR",
+    "WOODFLOOR",
+    "GRASS",
+    "GRASS"
+   ],
+   [
+    "GRASS",
+    "GRASS",
+    "WOODFLOOR",
+    "WOODFLOOR",
+    "WOODFLOOR",
+    "WOODFLOOR",
+    "GRASS",
+    "GRASS"
+   ],
+   [
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "WOODFLOOR",
+    "WOODFLOOR",
+    "GRASS",
+    "GRASS",
+    "GRASS"
+   ],
+   [
+    null,
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    null
+   ],
+   [
+    null,
+    null,
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    "GRASS",
+    null,
+    null
+   ]
+  ],
+  "objects": [
+   {
+    "prefab": "insanityrock",
+    "x": -2.125,
+    "y": 0.125
+   },
+   {
+    "prefab": "insanityrock",
+    "x": -0.125,
+    "y": -2.125
+   },
+   {
+    "prefab": "insanityrock",
+    "x": 0.0625,
+    "y": 2.171875
+   },
+   {
+    "prefab": "insanityrock",
+    "x": 2.125,
+    "y": 0.125
+   },
+   {
+    "prefab": "pigking",
+    "x": 0.0,
+    "y": 0.0
+   },
+   {
+    "prefab": "sanityrock",
+    "x": -1.09375,
+    "y": -1.203125
+   },
+   {
+    "prefab": "sanityrock",
+    "x": -1.03125,
+    "y": 1.140625
+   },
+   {
+    "prefab": "sanityrock",
+    "x": 1.109375,
+    "y": 1.0625
+   },
+   {
+    "prefab": "sanityrock",
+    "x": 1.140625,
+    "y": -1.0625
+   }
+  ]
+ }
+}

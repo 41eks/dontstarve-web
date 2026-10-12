@@ -14,6 +14,7 @@ import { DstSavingIndicatorElement } from './saving-indicator';
 export { INVENTORY_RECEIVE_DURATION_MS, INVENTORY_RECEIVE_PULSE_MS, type InventoryReceiveSource } from './slot/slot-receive-animation';
 
 export { CursorLabelUi, type CursorPointer } from './cursor-label';
+export { SanityVignette } from './sanity-vignette';
 
 export { DstChestPanelElement, type ChestCloseDetail, type OpenChestOptions } from './chest-panel';
 export {

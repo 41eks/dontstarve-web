@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createHandEquipmentExistenceState } from '../../signals/src';
+import { createEquipmentExistenceState } from '../../signals/src';
 import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
 import { HammerActionController } from '../../stategraphs/src/hammer';
 import { ReskinActionController } from '../../stategraphs/src/reskin_tool';
@@ -21,7 +21,7 @@ function context() {
 }
 
 it('registers only the equipped controller, handles restored equipment and removes captured tasks on replacement/disposal', () => {
-  const equipment = createHandEquipmentExistenceState(), world = context();
+  const equipment = createEquipmentExistenceState('HANDS'), world = context();
   world.registerFrameTask = registerFrontTask;
   const first = actionTool('goldenpickaxe');
   equipment.set(first);
@@ -65,7 +65,7 @@ it('registers only the equipped controller, handles restored equipment and remov
 });
 
 it('uses tool components, preserves component republishing and immediately cancels same-ID replacement', () => {
-  const equipment = createHandEquipmentExistenceState();
+  const equipment = createEquipmentExistenceState('HANDS');
   equipment.set({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
   const first = actionTool('goldenpickaxe');
   let hit: (() => void) | undefined;
@@ -106,7 +106,7 @@ it('uses tool components, preserves component republishing and immediately cance
 });
 
 it('discards a prepared reskin after the equipped entity changes during loading and releases subscriptions', async () => {
-  const equipment = createHandEquipmentExistenceState();
+  const equipment = createEquipmentExistenceState('HANDS');
   const first = actionTool('reskin_tool');
   equipment.set(first);
   let release!: () => void;

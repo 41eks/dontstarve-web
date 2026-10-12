@@ -60,11 +60,11 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   await expect.poll(() => page.evaluate(() => (window as any).razorGame.scene.children
     .filter((model: any) => model.userData.itemId === 'razor')
     .map((model: any) => model.children[0].children[0].geometry.drawRange.count > 0))).toEqual([true]);
-  // The wild wander timer is not under test here; keep the target in place.
+  // Wandering is not under test here; stop its brain while testing the player's tool input.
   await page.evaluate(() => {
     const { scene, player, playerBody } = (window as any).razorGame;
     const model = scene.children.find((model: any) => model.userData.prefab === 'beefalo');
-    model.userData.beefaloController.wanderRemaining = 1e9;
+    model.userData.beefaloController.brain.Stop();
     playerBody.position.set(model.position.x - 6, playerBody.shapes[0].radius, model.position.z + 6);
     player.position.set(model.position.x - 6, 0, model.position.z + 6);
   });
@@ -109,12 +109,13 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   // Night: the sleeper puts it to sleep by itself, and the same click shaves it, drops three wool and
   // keeps it sleeping in the shaved build. DST nights start at 420 s of the 480 s day.
   const day = await saveGame();
+  expect(day.world.entities.beefalo[0].components.beefalo.knownlocations).toEqual({ locations: [] });
   expect(day.world.entities.ground_item.filter((entry: any) => entry.components.stack.itemId === 'razor')).toHaveLength(1);
   day.world.elapsedSeconds = 425;
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: day }));
   await page.reload(); await prepare();
   await expect(cursor).toHaveAttribute('data-item-id', 'razor');
-  await expect.poll(async () => (await beefalo())?.state, { timeout: 20_000 }).toBe('sleep');
+  await expect.poll(async () => (await beefalo())?.state, { timeout: 20_000 }).toBe('sleeping');
   expect(await beefalo()).toMatchObject({ bits: 3, asleep: true });
   await page.evaluate(() => {
     const { scene, player, playerBody } = (window as any).razorGame;

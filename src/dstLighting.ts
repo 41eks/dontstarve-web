@@ -389,10 +389,6 @@ export class DstLightingRenderer {
     this.setWeatherLight(calculateDstWeatherLight(this.getSeason(), this.getPhase(), intensity, snow));
   }
 
-  setTorchOwner(owner: THREE.Object3D | null): void {
-    this.localLighting.setTorchOwner(owner);
-  }
-
   sampleLightLevel(position: THREE.Vector3, exclude?: THREE.Object3D): number {
     return this.localLighting.sampleLightLevel(position, exclude);
   }

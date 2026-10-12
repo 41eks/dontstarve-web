@@ -7,6 +7,7 @@ import {
   INVENTORY_RECIPES,
   equipmentSlotAddress,
   mountGameUi,
+  SanityVignette,
   type CraftingStateDetail,
   type CraftRequestDetail,
   type ChestCloseDetail,
@@ -32,7 +33,7 @@ import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { bindPlayerHeadEquipment } from './playerHeadEquipment';
 import { bindPlayerBodyEquipment } from './playerBodyEquipment';
-import { cursorUi, dstLighting, renderer } from './universal';
+import { cursorUi, renderer } from './universal';
 import { DstLightingRenderer } from './dstLighting';
 import {
   STORAGE_BUILDING_IDS, buildingContainerId, createBuildingContainer, isStorageBuildingId,
@@ -118,9 +119,12 @@ window.addEventListener('contextmenu', (event) => {
 
 const handEquipmentBinding = await bindPlayerHandEquipment({
   handEquipmentExistenceState: inventory.handEquipmentExistenceState,
+  owner: pickupDoer,
   animation: playerAnimation,
   soundPosition: player.position,
-  setLightActive: active => dstLighting.setTorchOwner(active ? player : null),
+  lightParent: player,
+  followSymbol: playerAnimation && ((symbol, x, y) => playerAnimation.followSymbol(symbol, x, y)),
+  dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
   setLanternLight: (ison, fuelPercent) => playerAnimation?.setLanternLight(ison, fuelPercent),
   setHandAction: action => cursorUi.setHandAction(action, handPointer),
   lightStaffWorld: {
@@ -223,10 +227,16 @@ const sceneResources = await startScene(
 );
 const { buildingPlacement, groundItems, dwarfStars, polarLights, farmPlow, registry, getSaveState, disposalEvents } = sceneResources;
 const playerSanity = new Sanity({ ...pickupDoer, sg: playerAnimation?.stategraph }, playerStats.sanity);
+const sanityVignette = await SanityVignette.create(playerSanity.sane, `${import.meta.env.BASE_URL}dst/data/anim`);
+document.body.append(sanityVignette.canvas);
+const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));
 const stopSanityUpdate = registerFrontTask(dt => playerSanity.OnUpdate(dt));
 player.userData.components ??= {};
 player.userData.components.sanity = playerSanity;
 disposalEvents.on('dispose', () => {
+  headEquipmentBinding.dispose();
+  stopVignetteUpdate();
+  sanityVignette.dispose();
   stopSanityUpdate();
   playerSanity.dispose();
   if (player.userData.components.sanity === playerSanity) delete player.userData.components.sanity;

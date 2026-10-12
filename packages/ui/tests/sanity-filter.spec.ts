@@ -2,6 +2,26 @@ import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
+test('source vig animation draws red screen edges, follows sanity state and releases its overlay', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async url => (await import(url)).checkSanityVignette(),
+    `/@fs${fileURLToPath(new URL('./sanity-vignette-fixture.ts', import.meta.url))}`);
+  expect(result.edgeRedPixels).toBeGreaterThan(1000);
+  expect(result.centreAlpha).toBe(0);
+  expect(result.initialFrame).toBe('0');
+  expect(result.advancedFrame).toBe('1');
+  expect(result.animated).toBe(true);
+  expect(result.paused).toBe(true);
+  expect(result.stillInsane).toBe('insane');
+  expect(result.restored).toBe(true);
+  expect(result.restoredAnimation).toBe('basic');
+  expect(result.blocksInput).toBe(false);
+  expect(result.disposed).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test('insanity LUTs use discrete grading levels, fade across phases and distort only screen edges', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -67,6 +87,8 @@ test('game restores saved sanity and synchronizes debug commands, HUD and manual
     return dstLighting.getSanityPercent();
   }, urls);
   expect(initial).toBe(0.6);
+  const vignette = page.locator('canvas.sanity-vignette');
+  await expect(vignette).toHaveAttribute('data-animation', 'basic');
   const meter = page.locator('dst-status-hud .survival-meter--sanity');
   await expect(meter).toHaveAttribute('aria-label', '精神值 120');
   const submit = async (command: string) => page.evaluate((command) => {
@@ -85,26 +107,30 @@ test('game restores saved sanity and synchronizes debug commands, HUD and manual
   await page.evaluate(async url => (await import(url)).playerStats.sanity.set(100), urls.stats);
   await expect(meter.locator('output')).toHaveText('100');
   expect(await page.evaluate(async url => (await import(url)).dstLighting.getSanityPercent(), urls.universal)).toBe(0.5);
-  await submit('c_setsanity(0.175)');
+  await submit('c_setsanity(0.1)');
+  await expect(vignette).toHaveAttribute('data-animation', 'insane');
   const downloadPromise = page.waitForEvent('download');
   await submit('c_save()');
   const download = await downloadPromise;
   const saved = JSON.parse(await readFile((await download.path())!, 'utf8'));
-  expect(saved.players.local.stats).toEqual({ health: 140, hunger: 90, sanity: 35 });
+  expect(saved.players.local.stats).toEqual({ health: 140, hunger: 90, sanity: 20 });
   await submit('c_setsanity(1)');
   await expect(meter.locator('output')).toHaveText('200');
+  await expect(vignette).toHaveAttribute('data-animation', 'basic');
   expect(await page.evaluate(async (url) => (await import(url)).dstLighting.getSanityPercent(), urls.universal)).toBe(1);
   await expect(page.locator('dst-status-hud .world-clock__animation')).toHaveAttribute('data-state', 'ready');
   await page.screenshot({ path: '/tmp/dontstarve-sanity-full.png' });
   await submit('c_setsanity(0)');
   await expect(meter.locator('output')).toHaveText('0');
+  await expect(vignette).toHaveAttribute('data-animation', 'insane');
   await page.screenshot({ path: '/tmp/dontstarve-sanity-zero.png' });
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
   await page.reload();
   expect(await page.evaluate(async urls => {
     await import(urls.main);
     return (await import(urls.universal)).dstLighting.getSanityPercent();
-  }, urls)).toBe(0.175);
-  await expect(meter.locator('output')).toHaveText('35');
+  }, urls)).toBe(0.1);
+  await expect(meter.locator('output')).toHaveText('20');
+  await expect(vignette).toHaveAttribute('data-animation', 'insane');
   expect(errors).toEqual([]);
 });

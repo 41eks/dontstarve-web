@@ -66,6 +66,8 @@
 
 库存书本由 `ReadActionController` 构造 `READ`：`invobject` 投影书本的 `def`、`swap_build`、`swap_prefix` 与皮肤 build，执行时调用玩家 `reader` 组件的 `Read`，再由 `book` 组件扣耐久与理智。`book` 进入时停止移动并生成 `book_fx`，动画结束后带着 `book_fx` 进入 `book2`；`book2` 覆盖书本符号、生成 `def.fx_under_prefab` 跟随 `swap_book_fx_under`，按 `layer_sound.frame` 安排命名层音效。第 19 帧翻页，第 50 帧分离 `book_fx`、播放 `castsound`、移除 `busy` 并 `PerformBufferedAction()`（返回值为假时 `book_fx` 收到 `fail_fx`），第 51 帧合书，第 52 帧再次移除 `busy`。退出时恢复 `player_actions_uniqueitem` 符号、移除未分离的特效，取消未到期的层音效或把正在播放的层音效降为一半音量。`performBufferedAction()` 现在返回执行结果，供该分支判断失败。
 
+帐篷睡觉使用 `SLEEPIN` → `tent`（无 `invobject` 的分支；带 `invobject` 的床卷 `bedroll` 未移植）。`SleepActionController` 提供场景左键候选（空闲且有耐久的 `sleepingbag`），走到 `SLEEPIN_REACH` 内后推入缓冲动作；`tent` 进入时停止移动，宿主 `sleep.failReason()` 检查白天、烧毁和饥饿（`IsNearDanger` 未移植），失败则清除动作回到 `idle` 并由 `sleep.announce()` 输出文字；通过后播放 `pickup`、`SetSleeperSleepState`（禁用控制器、收起物品栏）并设置 6 帧超时。超时再校验 `canCommit()`（帐篷空闲、非白天、未烧毁），失败时播放 `pickup_pst` 回到 `idle`；成功则执行缓冲动作（`bag.DoSleep(doer)`）、隐藏角色、加 `sleeping` 标签并移除 `busy`。`locomote` 事件在有床且带 `sleeping` 时调用 `bag.DoWakeUp()`，浏览器的 WASD 与点击地面把输入转成该事件；`sleepingbaguser:DoWakeUp()` 进入 `wakeup`（`busy`/`waking`，播放 `wakeup`，动画结束回 `idle`，退出恢复控制器与物品栏）。`tent` 的 `onexit` 在“睡着时被打断”时以 `nostatechange` 唤醒床，不再进入 `wakeup`。
+
 ## 尚未移植的源分支
 
 - 骑乘、重物、变身、特殊角色、预测、天气及其他组件驱动的待机分支和 `idle.onupdate`。

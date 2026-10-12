@@ -33,6 +33,8 @@ export interface PrefabComponentSchema {
   readonly bulbVariants?: readonly BulbPlantVariant[];
   /** pickable.lua regentime bounding a saved regrow task. */
   readonly regrowTime?: number;
+  /** finiteuses.lua maximum bounding the saved uses. */
+  readonly finiteUses?: number;
 }
 
 export type PrefabComponentParser = (value: unknown, path: string, context: EntitySaveContext) => SavedEntity['components'];
@@ -181,6 +183,10 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       const maxwork = number(work.maxwork, `${p}.maxwork`, 6, 6);
       components.workable = { maxwork, workleft: number(work.workleft, `${p}.workleft`, 0, maxwork) };
     }
+    if (keys.includes('finiteuses') && c.finiteuses !== undefined) {
+      const p = `${path}.finiteuses`, finite = object(c.finiteuses, p, ['uses']);
+      components.finiteuses = { uses: number(finite.uses, `${p}.uses`, 0, schema.finiteUses) };
+    }
     if (keys.includes('moonbase') && c.moonbase !== undefined) {
       const p = `${path}.moonbase`, moonbase = object(c.moonbase, p, ['staff', 'timer']);
       components.moonbase = {};
@@ -253,11 +259,26 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     }
     if (keys.includes('beefalo')) {
       const componentPath = `${path}.beefalo`;
-      const beefalo = object(c.beefalo, componentPath, ['home', 'heading', 'poopRemainingSeconds', 'beard']);
+      const beefalo = object(c.beefalo, componentPath, ['home', 'heading', 'poopRemainingSeconds', 'beard', 'knownlocations']);
       const home = transform({ position: beefalo.home, rotationY: 0 }, `${componentPath}.home`, true).position;
+      let knownlocations: NonNullable<SavedEntity['components']['beefalo']>['knownlocations'];
+      if (beefalo.knownlocations !== undefined) {
+        const locationsPath = `${componentPath}.knownlocations`;
+        const saved = object(beefalo.knownlocations, locationsPath, ['locations']);
+        const names = new Set<string>();
+        knownlocations = { locations: array(saved.locations, `${locationsPath}.locations`).map((value, index) => {
+          const p = `${locationsPath}.locations[${index}]`, location = object(value, p, ['name', 'x', 'y', 'z']);
+          const name = string(location.name, `${p}.name`);
+          if (names.has(name)) fail(`${p}.name`, 'duplicate location name');
+          names.add(name);
+          const [x, y, z] = transform({ position: [location.x, location.y, location.z], rotationY: 0 }, p, true).position;
+          return { name, x, y, z };
+        }) };
+      }
       components.beefalo = { home, heading: number(beefalo.heading, `${componentPath}.heading`, 0, 360),
         poopRemainingSeconds: number(beefalo.poopRemainingSeconds, `${componentPath}.poopRemainingSeconds`,
-          Number.MIN_VALUE, BEEFALO_BEHAVIOR.poopMaxSeconds),
+          0, BEEFALO_BEHAVIOR.poopMaxSeconds),
+        ...(knownlocations === undefined ? {} : { knownlocations }),
         // beard.lua OnSave; saves from before the beard component keep the full, hairy default.
         ...beefalo.beard === undefined ? {} : { beard: beard(beefalo.beard, `${componentPath}.beard`) } };
     }

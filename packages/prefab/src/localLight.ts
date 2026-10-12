@@ -1,4 +1,5 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
+import { getLightOverride, setLightOverride } from '@dontstarve-web/animation/lightOverride';
 
 /** Renderer-independent light description; radius is in this scene's world units. */
 export interface PrefabLocalLight {
@@ -9,17 +10,10 @@ export interface PrefabLocalLight {
 }
 
 const LOCAL_LIGHT_KEY = 'dstPrefabLocalLight';
-const LIGHT_OVERRIDE_KEY = 'dstLightOverride';
 
 /** Minimum material light, matching AnimState:SetLightOverride. No emitted light. */
-export function setPrefabLightOverride(owner: THREE.Object3D | THREE.Material, value: number | null): void {
-  if (value === null) delete owner.userData[LIGHT_OVERRIDE_KEY];
-  else owner.userData[LIGHT_OVERRIDE_KEY] = Math.min(1, Math.max(0, value));
-}
-
-export function getPrefabLightOverride(owner: THREE.Object3D | THREE.Material): number | undefined {
-  return owner.userData[LIGHT_OVERRIDE_KEY] as number | undefined;
-}
+export const setPrefabLightOverride = setLightOverride;
+export const getPrefabLightOverride = getLightOverride;
 
 /** The entity origin is the light centre, independently of its billboard art. */
 export function setPrefabLocalLight(owner: THREE.Object3D, light: PrefabLocalLight | null): void {
@@ -29,4 +23,16 @@ export function setPrefabLocalLight(owner: THREE.Object3D, light: PrefabLocalLig
 
 export function getPrefabLocalLight(owner: THREE.Object3D): PrefabLocalLight | undefined {
   return owner.userData[LOCAL_LIGHT_KEY] as PrefabLocalLight | undefined;
+}
+
+/** SpawnPrefab(light fx) + entity:SetParent(owner.entity). The returned remover is inst:Remove(). */
+export function attachPrefabLight(parent: THREE.Object3D, name: string, light: PrefabLocalLight): () => void {
+  const node = new THREE.Object3D();
+  node.name = name;
+  setPrefabLocalLight(node, light);
+  parent.add(node);
+  return () => {
+    setPrefabLocalLight(node, null);
+    node.removeFromParent();
+  };
 }

@@ -1,13 +1,8 @@
 export { createSignal, createEffect, createMemo, batch, onCleanUp, readonlySignal } from './signal';
 export { EventEmitter } from './EventEmitter';
 export type { Signal, ReadonlySignal, SignalListener, Memo } from './signal';
-export { createHandEquipmentExistenceState } from './handEquipment';
-export type { HandEquipment, HandEquipmentEntity, HandEquipmentLifecycle } from './handEquipment';
-export { createHeadEquipmentExistenceState } from './headEquipment';
-export type { HeadEquipment, HeadEquipmentLifecycle } from './headEquipment';
-export { createBodyEquipmentExistenceState } from './bodyEquipment';
-export type { BodyEquipment, BodyEquipmentLifecycle } from './bodyEquipment';
-export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentSlot } from './equipment';
+export { createEquipmentExistenceState } from './equipment';
+export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentOwner, EquipmentSlot, HandEquipment, HeadEquipment, BodyEquipment } from './equipment';
 export { createSanityState, type SanityState } from './sanity';
 export { createHealthState, type HealthState } from './health';
 export { createHungerState, type HungerState } from './hunger';

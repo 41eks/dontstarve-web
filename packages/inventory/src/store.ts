@@ -1,7 +1,7 @@
 import { ItemEntity, ItemEntityRegistry } from './entity';
 import { planCraft } from './craft';
 import {
-  batch, createHandEquipmentExistenceState, createHeadEquipmentExistenceState, createBodyEquipmentExistenceState, readonlySignal,
+  batch, createEquipmentExistenceState, readonlySignal,
   type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
 } from '@dontstarve-web/signals';
 import { EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, PLAYER_EQUIPMENT_CONTAINER_ID, BACKPACK_SLOT_COUNT } from './addresses';
@@ -172,7 +172,6 @@ export class InventoryStore {
   private readonly skinSpecs: Readonly<Record<string, InventorySkinSpec>>;
   private readonly registrationByAddress = new Map<string, RegisteredItemSlot>();
   private readonly registrations: RegisteredItemSlot[] = [];
-  private readonly equipmentSubscriptions = new Map<EquipmentKind, () => void>();
 
   constructor(
     registrations: readonly RegisteredItemSlot[],
@@ -181,9 +180,9 @@ export class InventoryStore {
     entities = new ItemEntityRegistry(),
     equipmentExistenceStates: EquipmentExistenceStates = {},
   ) {
-    this.handEquipmentExistenceState = equipmentExistenceStates.handEquipmentExistenceState ?? createHandEquipmentExistenceState();
-    this.headEquipmentExistenceState = equipmentExistenceStates.headEquipmentExistenceState ?? createHeadEquipmentExistenceState();
-    this.bodyEquipmentExistenceState = equipmentExistenceStates.bodyEquipmentExistenceState ?? createBodyEquipmentExistenceState();
+    this.handEquipmentExistenceState = equipmentExistenceStates.handEquipmentExistenceState ?? createEquipmentExistenceState('HANDS');
+    this.headEquipmentExistenceState = equipmentExistenceStates.headEquipmentExistenceState ?? createEquipmentExistenceState('HEAD');
+    this.bodyEquipmentExistenceState = equipmentExistenceStates.bodyEquipmentExistenceState ?? createEquipmentExistenceState('BODY');
     this.handEquipment = readonlySignal(this.handEquipmentExistenceState);
     this.headEquipment = readonlySignal(this.headEquipmentExistenceState);
     this.bodyEquipment = readonlySignal(this.bodyEquipmentExistenceState);
@@ -236,7 +235,6 @@ export class InventoryStore {
     this.syncBackpackContainers();
     this.bindOwners();
     for (const kind of changedEquipmentKinds(pending.map(({ address }) => address))) {
-      this.bindEquipmentExistenceState(kind);
       this.publishEquipmentExistenceState(kind);
     }
   }
@@ -284,27 +282,7 @@ export class InventoryStore {
     return () => this.listeners.delete(listener);
   }
 
-  /** Each equipment slot binds once before publishing; null removes its current item. */
-  private bindEquipmentExistenceState(kind: EquipmentKind): void {
-    if (this.equipmentSubscriptions.has(kind)) return;
-    const address = equipmentSlotAddress(kind);
-    const state = kind === 'hand' ? this.handEquipmentExistenceState
-      : kind === 'head' ? this.headEquipmentExistenceState : this.bodyEquipmentExistenceState;
-    const stop = state.subscribe((equipment: Equipment | null, previous: Equipment | null) => {
-      if (equipment !== null || state.peek() !== null) return;
-      const entity = this.getEntity(address);
-      // Own transfers already emptied the slot; foreign/stale equipment cannot remove its replacement.
-      if (!entity || previous?.entity !== entity) return;
-      this.applySlotChanges([{
-        slot: address, itemId: entity.prefab, skinId: entity.skinId, delta: -entity.components.stackable.count,
-      }]);
-    });
-    this.equipmentSubscriptions.set(kind, stop);
-  }
-
   dispose(): void {
-    for (const stop of this.equipmentSubscriptions.values()) stop();
-    this.equipmentSubscriptions.clear();
     this.listeners.clear();
     this.entities.dispose();
   }

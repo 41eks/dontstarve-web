@@ -4,6 +4,12 @@ import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory,
   type SpriteAnimationController } from './sprite';
 
 export interface FacingSpriteAnimationController extends SpriteAnimationController {
+  readonly currentAnimation: string;
+  readonly currentAnimationLength: number;
+  /** Lua AnimState animation queue; events are delivered independently of state changes. */
+  playAnimation(name: string, loop?: boolean): void;
+  pushAnimation(name: string, loop?: boolean): void;
+  onAnimationEvent?: (event: 'animover' | 'animqueueover') => void;
   /** A single FACING_* bit; changing art preserves playback and one-shot callbacks. */
   setFacing(facing: number, mirrored?: boolean): void;
   /** AnimState:SetBuild("beefalo_shaved_build"), or back to "beefalo_build". */
@@ -19,6 +25,10 @@ class BeefaloSpriteController extends SpriteController implements FacingSpriteAn
   private facing?: number;
   private readonly hairy: BeefaloBuild;
   protected shaved?: BeefaloBuild;
+  onAnimationEvent?: FacingSpriteAnimationController['onAnimationEvent'];
+  private readonly queue: { name: string; loop: boolean }[] = [];
+  private playbackRevision = 0;
+  private animationDone = false;
 
   constructor(...args: ConstructorParameters<typeof SpriteController>) {
     super(...args);
@@ -28,6 +38,46 @@ class BeefaloSpriteController extends SpriteController implements FacingSpriteAn
   setShaved(shaved: boolean): void {
     const choice = shaved ? this.shaved : this.hairy;
     if (choice) this.setBuild(choice.build, choice.materials);
+  }
+
+  override start(name: string): void { this.playAnimation(name, true); }
+
+  override playOnce(name: string, onComplete?: () => void): void {
+    this.playbackRevision++;
+    this.queue.length = 0;
+    this.animationDone = false;
+    super.playOnce(name, onComplete);
+  }
+
+  playAnimation(name: string, loop = false): void {
+    this.playbackRevision++;
+    this.queue.length = 0;
+    this.playQueuedAnimation(name, loop);
+  }
+
+  pushAnimation(name: string, loop = false): void {
+    if (this.animationDone) this.playQueuedAnimation(name, loop);
+    else {
+      this.queue.push({ name, loop });
+      // A queued clip follows the current iteration of a looping animation.
+      if (this.loop) this.elapsed %= this.currentAnimationLength;
+      this.loop = false;
+    }
+  }
+
+  private playQueuedAnimation(name: string, loop: boolean): void {
+    const revision = this.playbackRevision;
+    this.animationDone = false;
+    super.playOnce(name, () => {
+      if (revision !== this.playbackRevision) return;
+      this.animationDone = true;
+      this.onAnimationEvent?.('animover');
+      if (revision !== this.playbackRevision) return;
+      const next = this.queue.shift();
+      if (next) this.playQueuedAnimation(next.name, next.loop);
+      else this.onAnimationEvent?.('animqueueover');
+    });
+    this.loop = loop;
   }
 
   setFacing(facing: number, mirrored = false) {

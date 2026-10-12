@@ -185,7 +185,7 @@ export class PickablePlantManager {
         if ((point.x - model.position.x) ** 2 + (point.z - model.position.z) ** 2 <= radius ** 2) nearby.push(other);
       });
       return nearby;
-    }, TILE_SIZE / 4, this.scheduler);
+    }, TILE_SIZE / 4, this.scheduler, this.world.season);
     entity.components.propagator = propagator;
     const persistence = createSignal(true);
     const phase = createMemo(() => pickable.state.removed.get() ? 'removed'

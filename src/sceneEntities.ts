@@ -9,6 +9,7 @@ import * as THREE from 'three';
 
 import { turfMap, moonTreeForest } from './building';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
 import { camera } from './camera';
 import { GroundItemManager } from './groundItems';
 import { FarmPlowPlacement, FARM_PLOW_ID, FARM_DECOR_IDS } from '@dontstarve-web/prefab/farm_plow';
@@ -24,6 +25,7 @@ import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond'
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { PortalManager, PORTAL_ID } from '@dontstarve-web/prefab/portal';
 import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
+import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import { pigKings } from './pigking';
@@ -51,7 +53,7 @@ import type { WorldState } from './worldState';
 
 export function createSceneEntities(
   world: CANNON.World,
-  worldState: Pick<WorldState, 'clock' | 'season' | 'fullMoon' | 'temperature' | 'weather'>,
+  worldState: Pick<WorldState, 'clock' | 'season' | 'fullMoon' | 'isNight' | 'temperature' | 'weather'>,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
@@ -63,14 +65,14 @@ export function createSceneEntities(
   const dynamicMusic = scheduler ? new DynamicMusic(scheduler, path => PlaySound(path)) : undefined;
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
-    { ...view, physics: world, scheduler, dynamicMusic, fullMoon: worldState.fullMoon,
+    { ...view, physics: world, scheduler, season: worldState.season, dynamicMusic, fullMoon: worldState.fullMoon,
       getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
-      isNight: () => dstLighting.getPhase() === 'night' || dstLighting.getPhase() === 'full_moon',
+      isNight: worldState.isNight,
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
       registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
-      unregisterContainer: (id, container) => sceneInventory.unregisterContainer(id, container), dropLoot: (items, position) => {
-      void groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
+      unregisterContainer: (id, container) => sceneInventory.unregisterContainer(id, container), dropLoot: (items, position, launch) => {
+      void groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch)
         .catch((error: unknown) => console.error('Unable to drop building loot', error));
     } },
     consumeBufferedBuild,
@@ -111,9 +113,11 @@ export function createSceneEntities(
     },
     { getSanityPercent: () => playerStats.sanity.percent.peek() },
     itemEntities,
+    scheduler,
+    worldState.season,
   );
   const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
-    DWARF_STAR_ID, () => player.position);
+    DWARF_STAR_ID, () => player.position, worldState.season);
   const polarLights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
     POLAR_LIGHT_ID, () => player.position);
   const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
@@ -142,6 +146,7 @@ export function createSceneEntities(
     // The scheduler runs on world seconds (src/scene.ts), so the next boundary is the next multiple of the day length.
     secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
     clock: worldState.clock,
+    isNight: worldState.isNight,
     season: worldState.season,
     getPlayerPositions: () => [player.position],
     findPath(start, target) {
@@ -165,12 +170,12 @@ export function createSceneEntities(
       void groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count }], position)
         .catch((error: unknown) => console.error(`Unable to spawn beefalo ${prefab}`, error));
     },
-    spawnPoop(position) {
-      const positions = [...pendingPoop, ...groundItems.exportRecords()
+    getPoopPositions() {
+      return [...pendingPoop, ...groundItems.exportRecords()
         .filter((record) => record.components.stack?.itemId === 'poop')
         .map((record) => new THREE.Vector3(...record.transform.position))];
-      if (positions.some((point) => point.distanceToSquared(position) < BEEFALO_BEHAVIOR.poopSpacing ** 2)
-        || positions.filter((point) => point.distanceToSquared(position) <= BEEFALO_BEHAVIOR.poopDensityRadius ** 2).length >= 2) return;
+    },
+    spawnPoop(position) {
       pendingPoop.add(position);
       void groundItems.spawnFromSave(newEntityId(), {
         ...SAVE_CATALOG.items.poop, itemId: 'poop', count: 1,
@@ -243,12 +248,20 @@ export function createSceneEntities(
     dispose: () => { unbindTrees(); moonTreeForest.dispose(); },
   });
   const kingsById = new Map(pigKings.map((king) => [king.record.id, king]));
-  const removeKingInteractions = pigKings.map((king) => {
+  pigKings.forEach((king) => {
     world.addBody(king.body);
-    scene.add(king.setPiece.group);
-    king.setPiece.turf.visible = false;
-    for (const tile of king.setPiece.tiles) turfMap.setOriginalTile(tile.position, WORLD_TILES.WOODFLOOR);
-    return king.setupInteraction(view);
+    scene.add(king.standee);
+    // default_pigking.lua BG_TILES: the layout's grass and woodfloor tiles around the king.
+    for (const { tile, position } of placeStaticLayout('default_pigking', king.feet, 'pigking').tiles) {
+      turfMap.setOriginalTile(position, WORLD_TILES[tile]);
+    }
+    king.bind({
+      camera, scheduler, isNight: worldState.isNight,
+      dropLoot: (items, position, launch) => {
+        void groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch)
+          .catch((error: unknown) => console.error('Unable to drop pig king gold', error));
+      },
+    });
   });
   registry.register(PREFAB_DEFINITIONS.pigKings, {
     restore: (_, record) => {
@@ -263,11 +276,10 @@ export function createSceneEntities(
     beforePhysics: (dt) => pigKings.forEach((king) => king.update(dt)),
     update: (_, quaternion) => pigKings.forEach((king) => king.setNormal(quaternion)),
     renderEntities: () => pigKings.map((king) => ({
-      object: king.standee, footPosition: king.setPiece.footPosition, cameraDepth: 0,
+      object: king.standee, footPosition: king.feet, cameraDepth: 0,
     })),
     dispose: () => {
-      removeKingInteractions.forEach((remove) => remove());
-      for (const king of pigKings) { world.removeBody(king.body); disposeSprite(king.setPiece.group); }
+      for (const king of pigKings) { king.dispose(); world.removeBody(king.body); disposeSprite(king.standee); }
     },
   });
   registry.register(PREFAB_DEFINITIONS.buildings, {
@@ -438,6 +450,22 @@ export function createSceneEntities(
     update: (dt, quaternion) => worldFx.update(dt, quaternion),
     renderEntities: () => worldFx.renderEntities,
     dispose: () => worldFx.dispose(),
+  });
+  const nightmareRocks = new NightmareRockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    scheduler, physics: world, fx: worldFx,
+    // AllPlayers: the local player, once its sanity component is attached.
+    getPlayers: () => player.userData.components?.sanity
+      ? [{ position: player.position, sanity: player.userData.components.sanity }] : [],
+  });
+  registry.register(PREFAB_DEFINITIONS.nightmareRocks, {
+    restore: (id, record) => nightmareRocks.spawn(id, new THREE.Vector3(...record.transform.position), {
+      id: record.id, transform: record.transform, components: {},
+    }),
+    debugSpawn: (id) => nightmareRocks.spawn(id, player.position.clone()),
+    exportRecords: () => nightmareRocks.exportRecords(),
+    update: (dt, quaternion) => nightmareRocks.update(dt, quaternion),
+    renderEntities: () => nightmareRocks.renderEntities,
+    dispose: () => nightmareRocks.dispose(),
   });
   const rain = new RainEffect({
     scene, dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`, animationBaseUrl: `${import.meta.env.BASE_URL}dst/data/anim`,

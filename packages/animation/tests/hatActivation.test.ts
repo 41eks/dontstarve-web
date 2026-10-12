@@ -7,6 +7,7 @@ import { LanternLightController } from '../../prefab/src/lantern';
 import { smallHash, type AnimElement } from '../src/animationAssets';
 import { createWilsonPlayer } from '../../prefab/src/player';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { createSanityState } from '@dontstarve-web/signals';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -31,9 +32,17 @@ describe('Enlightened Crown source activation', () => {
     const lantern = new LanternLightController(owner);
     lantern.setLit(true);
     const lanternLight = getPrefabLocalLight(owner);
-    const crown = new HatActivationController(owner);
+    const crownLight = () => { const node = owner.getObjectByName('HatActivationLight'); return node && getPrefabLocalLight(node); };
+    const sanity = createSanityState(169, 200);
+    const sanityRead = vi.spyOn(sanity.percent, 'get');
+    const crown = new HatActivationController(owner, sanity.percent);
+    expect(sanityRead).not.toHaveBeenCalled();
     crown.setHat(hat);
-    expect(getPrefabLocalLight(crown.model)).toMatchObject({ radius: 12, intensity: 0.8, falloff: 0.5 });
+    expect(crown.activated.peek()).toBe(false);
+    expect(crownLight()).toBeUndefined();
+    sanity.set(171);
+    expect(crown.activated.peek()).toBe(true);
+    expect(crownLight()).toMatchObject({ radius: 12, intensity: 0.8, falloff: 0.5 });
     const initial = crown.resolve(anchor, false);
     // Base art has five pieces; the bloom shader supplies their five halos.
     expect([...initial.back, ...initial.front]).toHaveLength(10);
@@ -53,8 +62,9 @@ describe('Enlightened Crown source activation', () => {
     expect(getPrefabLightOverride(glow.materials[0])).toBe(1);
     expect(glow.materials[0].forceSinglePass).toBe(true);
 
-    crown.setSanityPercent(0.85);
-    expect(getPrefabLocalLight(crown.model)).toBeUndefined();
+    sanity.set(170);
+    expect(crown.activated.peek()).toBe(false);
+    expect(crownLight()).toBeUndefined();
     expect(crown.hidesSwapHat).toBe(true);
     crown.update(8 / 30);
     expect(crown.hidesSwapHat).toBe(false);
@@ -62,19 +72,35 @@ describe('Enlightened Crown source activation', () => {
     crown.update(7 / 30);
     expect(crown.isAnimating).toBe(false);
     expect(crown.resolve(anchor, false)).toEqual({ back: [], front: [] });
-    crown.setSanityPercent(0.86);
+    sanity.set(172);
     expect(crown.resolve(anchor, false)).toEqual(initial);
     crown.setHat(null);
-    expect(getPrefabLocalLight(crown.model)).toBeUndefined();
+    expect(crownLight()).toBeUndefined();
     expect(getPrefabLocalLight(owner)).toEqual(lanternLight);
     expect(crown.isAnimating).toBe(false);
+    sanityRead.mockClear();
+    sanity.set(200);
+    expect(sanityRead).not.toHaveBeenCalled();
+    crown.setHat(hat);
+    expect(crown.activated.peek()).toBe(true);
+    crown.dispose();
+    sanityRead.mockClear();
+    sanity.set(0);
+    expect(sanityRead).not.toHaveBeenCalled();
+    expect(crownLight()).toBeUndefined();
+    lantern.dispose();
   });
 
   it('updates FX while Wilson is idle and merges both FX layers around the player geometry', async () => {
     sourceAssets();
-    const player = await createWilsonPlayer('/crown-test');
+    const sanity = createSanityState(169, 200);
+    const player = await createWilsonPlayer('/crown-test', { sanityPercent: sanity.percent });
     const controller = player.userData.animationController;
-    await controller.setHat('alterguardianhat');
+    const pendingHat = controller.setHat('alterguardianhat');
+    sanity.set(200);
+    await pendingHat;
+    const lightOwner = player.children.find(child => child.name === 'HatActivationLight')!;
+    expect(getPrefabLocalLight(lightOwner)).toBeDefined();
     const visual = player.children[0];
     const mesh = visual.children[0] as THREE.Mesh;
     controller.update(0.1);
@@ -99,7 +125,7 @@ describe('Enlightened Crown source activation', () => {
       expect(shader.uniforms.dstLightOverride.value).toBe(getPrefabLightOverride(material) ?? 0);
     }
     await controller.setHat('strawhat');
-    expect(getPrefabLocalLight(player.children.find(child => child.name === 'HatActivationLight')!)).toBeUndefined();
+    expect(player.children.some(child => child.name === 'HatActivationLight')).toBe(false);
     expect((mesh.material as THREE.Material[]).some(material => material.name.includes('hat_alterguardian_equipped'))).toBe(false);
   });
 });

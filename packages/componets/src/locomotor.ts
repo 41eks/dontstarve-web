@@ -44,9 +44,14 @@ class Dest {
 
 const distanceSquared = (a: LocoMotorPoint, b: LocoMotorPoint) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
 
+export interface LocoMotorOptions {
+  arriveDistance?: number;
+  findPath?: (start: LocoMotorPoint, target: LocoMotorPoint) => readonly LocoMotorPoint[] | null;
+}
+
 /**
- * components/locomotor.lua for ground-plane creatures without a pathfinder: destinations are
- * approached directly, and the stategraph's moving state starts the motor.
+ * components/locomotor.lua: the stategraph starts the motor, while destinations retain movement
+ * intent across StopMoving. Hosts may inject ground paths; flying creatures approach directly.
  */
 export class LocoMotor {
   walkspeed = DEFAULT_WALK_SPEED;
@@ -60,8 +65,14 @@ export class LocoMotor {
   private arrive_dist = ARRIVE_STEP;
   private updating = false;
   private readonly inst: LocoMotorInst;
+  private readonly options: LocoMotorOptions;
+  private path: readonly LocoMotorPoint[] = [];
+  private pathIndex = 0;
 
-  constructor(inst: LocoMotorInst) { this.inst = inst; }
+  constructor(inst: LocoMotorInst, options: LocoMotorOptions = {}) {
+    this.inst = inst; this.options = options;
+    this.arrive_dist = options.arriveDistance ?? ARRIVE_STEP;
+  }
 
   get isUpdating(): boolean { return this.updating; }
   GetWalkSpeed(): number { return this.walkspeed; }
@@ -81,6 +92,12 @@ export class LocoMotor {
     this.updating = true;
   }
 
+  /** LocoMotor:StopMoving only stops the motor; the brain's destination and movement intent survive. */
+  StopMoving(): void {
+    this.isrunning = false;
+    this.inst.setMotorSpeed(0);
+  }
+
   RunForward(direct = false): void {
     this.isrunning = true;
     if (direct) this.wantstomoveforward = true;
@@ -90,6 +107,8 @@ export class LocoMotor {
 
   Clear(): void {
     this.dest = undefined;
+    this.path = [];
+    this.pathIndex = 0;
     this.atdestfn = undefined;
     this.wantstomoveforward = false;
     this.wantstorun = false;
@@ -130,6 +149,8 @@ export class LocoMotor {
   }
 
   GoToEntity(target: LocoMotorTarget, action?: BufferedAction, run = false): void {
+    this.path = [];
+    this.pathIndex = 0;
     this.dest = new Dest(target);
     this.SetBufferedAction(action);
     this.wantstomoveforward = true;
@@ -147,8 +168,13 @@ export class LocoMotor {
   GoToPoint(point?: LocoMotorPoint, action?: BufferedAction, run = false): void {
     const destination = point ?? action?.pos;
     if (!destination) throw new Error('GoToPoint requires a point or an action position');
+    const path = this.options.findPath?.(this.inst.getPosition(), destination);
+    if (this.options.findPath && !path?.length) { this.Stop(); return; }
+    this.path = path ?? [];
+    this.pathIndex = 0;
     this.dest = new Dest(undefined, { ...destination });
-    this.arrive_dist = action ? action.arrivedist ?? action.distance ?? ARRIVE_STEP : ARRIVE_STEP;
+    const arriveDistance = this.options.arriveDistance ?? ARRIVE_STEP;
+    this.arrive_dist = action ? action.arrivedist ?? action.distance ?? arriveDistance : arriveDistance;
     this.wantstorun = run;
     this.wantstomoveforward = true;
     this.SetBufferedAction(action);
@@ -159,6 +185,8 @@ export class LocoMotor {
   Stop(): void {
     this.isrunning = false;
     this.dest = undefined;
+    this.path = [];
+    this.pathIndex = 0;
     this.wantstomoveforward = false;
     this.wantstorun = false;
     this.inst.setMotorSpeed(0);
@@ -169,6 +197,8 @@ export class LocoMotor {
   WalkInDirection(direction: number, shouldRun = false): void {
     this.SetBufferedAction(undefined);
     this.dest = undefined;
+    this.path = [];
+    this.pathIndex = 0;
     if (!this.inst.sg || this.inst.sg.hasStateTag('canrotate')) this.SetMoveDir(direction);
     this.wantstomoveforward = true;
     this.wantstorun = shouldRun;
@@ -220,7 +250,10 @@ export class LocoMotor {
       if (!arriveCheckOnly) {
         const canrotate = !sg || sg.hasStateTag('canrotate');
         if (canrotate && !(sg?.hasStateTag('busy'))) {
-          this.SetMoveDir(this.inst.getAngleToPoint(destination.x, destination.y, destination.z));
+          while (this.pathIndex < this.path.length - 1
+            && distanceSquared(position, this.path[this.pathIndex]) <= arriveDistanceSquared) this.pathIndex++;
+          const point = this.path[this.pathIndex] ?? destination;
+          this.SetMoveDir(this.inst.getAngleToPoint(point.x, point.y, point.z));
         }
         this.wantstomoveforward = true;
       }
@@ -233,7 +266,8 @@ export class LocoMotor {
     if (shouldLocomote) this.inst.PushEvent('locomote');
     else if (!this.wantstomoveforward) this.updating = false;
 
-    if (isMoving) {
+    // locomote may have just entered walk_stop; never restart its stopped motor.
+    if (sg?.hasStateTag('moving')) {
       let speed = this.isrunning ? this.GetRunSpeed() : this.GetWalkSpeed();
       if (this.dest?.isValid()) {
         const distanceToDestination = distanceSquared(this.dest.getPoint(), this.inst.getPosition());
