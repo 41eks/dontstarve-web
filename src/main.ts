@@ -352,3 +352,16 @@ gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
   if (crafting) actionEvents.emit('action:interrupt', { reason: 'crafting' });
   playerAnimation?.setCrafting(crafting);
 });
+
+/** All startup resources and bindings are ready, and the complete scene has rendered. */
+export const gameReady = new Promise<void>((resolve, reject) => {
+  requestAnimationFrame(() => {
+    try {
+      lighting.render(view.scene, view.camera);
+      renderer.domElement.dataset.loaded = 'true';
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+});

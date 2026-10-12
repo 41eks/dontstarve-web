@@ -6,6 +6,8 @@ import { CursorLabelUi } from '@dontstarve-web/ui/cursor-label';
 const scene = new THREE.Scene();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.domElement.dataset.gameCanvas = '';
+renderer.domElement.dataset.loaded = 'false';
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight, false);

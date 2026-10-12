@@ -8,10 +8,10 @@ import styles from "./style.module.css"
 const WORLDGEN_PURPLE: [number, number, number] = [202 / 255, 48 / 255, 209 / 255]
 
 type GeneratingWorldPageProps = {
-  onReady?: () => void
+  loadError?: string
 }
 
-export default function GeneratingWorldPage({ onReady }: GeneratingWorldPageProps) {
+export default function GeneratingWorldPage({ loadError }: GeneratingWorldPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const threeStageRef = useRef<GeneratingWorldThreeStage>()
@@ -20,27 +20,29 @@ export default function GeneratingWorldPage({ onReady }: GeneratingWorldPageProp
   const handsRef = useRef<KleiAnimationAsset>()
   const frameRef = useRef(0)
   const handsFrameRef = useRef<[number, number]>([0, 0])
-  const readyRef = useRef(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [stageSize, setStageSize] = useState({ width: window.innerWidth, height: window.innerHeight })
 
   useEffect(() => {
+    let active = true
     document.title = "世界生成中"
     Promise.all([
       loadGeneratingWorldAsset(),
       loadKleiAnimationAsset(assetUrl("creepy-hands")),
     ]).then(([world, hands]) => {
+      if (!active) return
       worldRef.current = world
       handsRef.current = hands
       handsFrameRef.current = [0, Math.floor(hands.animation.frames.length / 2)]
       setLoading(false)
     }).catch(reason => {
+      if (!active) return
       setError(reason instanceof Error ? reason.message : String(reason))
       setLoading(false)
-      onReady?.()
     })
-  }, [onReady])
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     const stage = stageRef.current
@@ -63,15 +65,11 @@ export default function GeneratingWorldPage({ onReady }: GeneratingWorldPageProp
     const stage = createGeneratingWorldThreeStage(canvas, world, hands)
     stage.resize(stageSize.width, stageSize.height)
     threeStageRef.current = stage
-    if (!readyRef.current) {
-      readyRef.current = true
-      onReady?.()
-    }
     return () => {
       stage.dispose()
       if (threeStageRef.current === stage) threeStageRef.current = undefined
     }
-  }, [loading, onReady])
+  }, [loading])
 
   useEffect(() => {
     threeStageRef.current?.resize(stageSize.width, stageSize.height)
@@ -120,7 +118,7 @@ export default function GeneratingWorldPage({ onReady }: GeneratingWorldPageProp
   }, [loading])
 
   return (
-    <main className={styles.page} aria-label="世界生成中">
+    <main className={styles.page} aria-label="世界生成中" aria-busy={!loadError}>
       <audio ref={audioRef} src={assetUrl("audio/worldgen.wav")} preload="auto" loop />
       <div className={styles.stage} ref={stageRef}>
         <AtlasSprite
@@ -132,8 +130,8 @@ export default function GeneratingWorldPage({ onReady }: GeneratingWorldPageProp
           alt="世界生成界面的紫色纹理背景"
         />
         <canvas className={styles.animationCanvas} ref={canvasRef} />
-        {loading && <div className={styles.loader}><i /><span>世界正在生成</span></div>}
-        {error && <div className={styles.error}><b>资源载入失败</b><span>{error}</span></div>}
+        {loading && !loadError && <div className={styles.loader}><i /><span>世界正在生成</span></div>}
+        {(loadError || error) && <div className={styles.error}><b>{loadError ? "游戏载入失败" : "资源载入失败"}</b><span>{loadError || error}</span></div>}
       </div>
     </main>
   )

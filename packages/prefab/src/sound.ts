@@ -23,6 +23,8 @@ const sounds = {
   // fire.lua → dontstarve.fev sounddefs 1762 / 1765 / 1766, three simultaneous layers.
   'dontstarve/common/campfire': { bank: 'common', streams: [149, 150, 151, 152], loop: true,
     layers: [{ bank: 'common', streams: [153, 154, 155, 156] }, { bank: 'common', streams: [158, 159, 160, 161] }] },
+  // livinglog.lua onignite → dontstarve.fev sounddef 631 → leif file_index 66–69 (livinglog_burn_1..4).
+  'dontstarve/creatures/leif/livinglog_burn': { bank: 'leif', streams: [67, 68, 69, 70], loop: false },
   // tent.lua → dontstarve.fev sounddefs 1334 (eleven tent_sleep_loop variants, sfx file_index 394–404), 171 and 172.
   'dontstarve/common/tent_sleep': { bank: 'sfx', streams: [395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405], loop: false },
   'dontstarve/common/tent_dis_pre': { bank: 'common', streams: [103], loop: false },
@@ -180,11 +182,12 @@ export interface SoundHandle {
   stop(): void;
   /** SoundEmitter:PlayingSound for this handle. */
   isPlaying(): boolean;
-  /** SoundEmitter:SetVolume, multiplied with distance attenuation. */
+  /** SoundEmitter:SetVolume, multiplied with overall volume and distance attenuation. */
   setVolume(volume: number): void;
   setParameter?(name: string, value: number): void;
 }
 export const SOUND_MAX_DISTANCE = TILE_SIZE * 8;
+const SOUND_VOLUME = 0.7;
 
 /** Full volume within one tile, inverse-square falloff, then silence at the cutoff. */
 export function inverseSquareAttenuation(
@@ -204,7 +207,7 @@ const soundGains = new Map<SoundHandle, { position?: Vector3; gain: GainNode; vo
 const listener = new Vector3();
 
 function updateGain({ position, gain, volume }: { position?: Vector3; gain: GainNode; volume: number }): void {
-  gain.gain.value = volume * (position ? inverseSquareAttenuation(position, listener) : 1);
+  gain.gain.value = SOUND_VOLUME * volume * (position ? inverseSquareAttenuation(position, listener) : 1);
 }
 
 /** Call each frame after movement; source positions are retained by reference. */
@@ -276,7 +279,7 @@ export async function PreloadSounds(...paths: SoundEventPath[]): Promise<void> {
   })));
 }
 
-/** Optional ground position enables distance attenuation; omitted positions play at full volume. */
+/** Optional ground position enables distance attenuation; all sounds use the overall volume multiplier. */
 export function PlaySound(path: SoundEventPath, position?: Vector3, offsetSeconds = 0): SoundHandle {
   const audio = getContext();
   const filenames = soundLayers(path).map((files) => files.length === 1 ? files[0] : files[Math.floor(Math.random() * files.length)]);

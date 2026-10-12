@@ -7,13 +7,14 @@ import type { BurnableInst } from '../../componets/src/burnable';
 import type { GroundPrefabContext, GroundItemVisual, PreparedGroundSpawn } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { setPrefabLocalLight } from './localLight';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
-// cutgrass.lua / log.lua / books.lua: MakeSmallBurnable(SMALL/MED_BURNTIME), MakeSmallPropagator.
-export const BURNABLE_ITEM_DEFINITIONS: Readonly<Record<string, { burnTime: number; tags: readonly string[]; fxLevel?: 2 | 3 }>> = {
+// cutgrass.lua / log.lua / livinglog.lua / books.lua: MakeSmallBurnable(SMALL/MED_BURNTIME), MakeSmallPropagator.
+export const BURNABLE_ITEM_DEFINITIONS: Readonly<Record<string, { burnTime: number; tags: readonly string[]; fxLevel?: 2 | 3; igniteSound?: SoundEventPath }>> = {
   cutgrass: { burnTime: 30 * .25, tags: ['cattoy', 'renewable', 'cutgrass'] },
   log: { burnTime: 30 * .5, tags: ['log'] },
+  livinglog: { burnTime: 30 * .5, tags: [], igniteSound: 'dontstarve/creatures/leif/livinglog_burn' }, // onignite scream.
   poop: { burnTime: 30 * .5, tags: [] }, // poop.lua MakeSmallBurnable(MED_BURNTIME).
   dug_grass: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 }, // plantables.lua LARGE_BURNTIME.
   dug_sapling: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
@@ -94,13 +95,15 @@ export function configureBurnableItemEntity(entity: ItemEntity): void {
 
 /** Existing ground art, generic fire FX and a prepared ash stack; all resources precede ignition. */
 export async function createBurnableItemVisual(context: GroundPrefabContext,
-  sprite: ArchiveSprite, fires: Set<ArchiveSprite>, fxLevel: 2 | 3 = 2): Promise<GroundItemVisual> {
+  itemId: string, sprite: ArchiveSprite, fires: Set<ArchiveSprite>, fxLevel: 2 | 3 = 2): Promise<GroundItemVisual> {
   if (!context.prepareSpawn) throw new Error('Burnable ground items require prepared ground output');
+  const igniteSound = BURNABLE_ITEM_DEFINITIONS[itemId].igniteSound;
   const prepared = await Promise.allSettled([
     createArchiveSprite(context.assets, { animationArchive: 'fire.zip', buildArchives: ['fire.zip'],
       bank: 'fire', animation: `level${fxLevel}`, loop: true }, { name: 'fire' }),
     context.prepareSpawn({ ...catalog.items.ash, itemId: 'ash', count: ASH_MAX_STACK }),
-    PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut'),
+    PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut',
+      ...(igniteSound ? [igniteSound] : [])),
   ]);
   if (prepared.some(result => result.status === 'rejected')) {
     for (const result of prepared) if (result.status === 'fulfilled') result.value?.dispose();
@@ -111,6 +114,7 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
   const presentation = { context, ash };
   let controller: BurnableItemController | undefined;
   let stopBurning: (() => void) | undefined;
+  let stopIgnite: (() => void) | undefined;
   let sound: SoundHandle | undefined;
   let disposed = false;
   const clearFire = () => {
@@ -141,6 +145,8 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
       sprite.model.userData.persistenceSignal = entity.persistence;
       stopBurning = controller.burnable.burning.subscribe(syncBurning);
       syncBurning(controller.burnable.IsBurning());
+      // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
+      if (igniteSound) stopIgnite = entity.ListenForEvent('onignite', () => { PlaySound(igniteSound, sprite.model.position); });
     },
     update(dt) {
       controller?.update(dt);
@@ -151,7 +157,7 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
     dispose() {
       if (disposed) return;
       disposed = true;
-      stopBurning?.(); controller?.release(presentation);
+      stopBurning?.(); stopIgnite?.(); controller?.release(presentation);
       clearFire(); fire.dispose(); ash.dispose(); sprite.dispose();
     },
   };
