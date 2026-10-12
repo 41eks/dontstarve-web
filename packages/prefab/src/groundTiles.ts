@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { parseKtex } from '@dontstarve-web/animation/parseKtex';
+import { loadKtexTexture } from '@dontstarve-web/animation/textureLoader';
 import { parseImageAtlasXml, type ImageAtlasElement } from '@dontstarve-web/animation/imageAtlas';
 import definitions from './groundTiles.json';
 import { TILE_SIZE } from './tile';
@@ -41,8 +41,7 @@ async function fetchAsset(root: string, path: string): Promise<Response> {
 }
 
 async function texture(root: string, path: string, repeat: boolean): Promise<THREE.DataTexture> {
-  const response = await fetchAsset(root, path);
-  const decoded = parseKtex(new Uint8Array(await response.arrayBuffer()), path);
+  const decoded = await loadKtexTexture(`${root.replace(/\/$/, '')}/${path}`);
   const result = new THREE.DataTexture(decoded.pixels, decoded.width, decoded.height, THREE.RGBAFormat);
   result.name = path;
   result.colorSpace = THREE.SRGBColorSpace;
@@ -69,6 +68,8 @@ export async function loadGroundTileAssets(root: string, name: GroundTileName): 
     depthWrite: false, transparent: true, alphaTest: 0.105,
   });
   material.forceSinglePass = true;
+  // This atlas is injected by onBeforeCompile rather than a built-in material map.
+  material.userData.prewarmTextures = [atlas];
   material.onBeforeCompile = (shader) => {
     shader.uniforms.dstGroundTileAtlas = { value: atlas };
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `

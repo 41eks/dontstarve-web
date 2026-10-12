@@ -27,6 +27,7 @@ import { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import type { DisposalEvents } from './registerDisposal';
+import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 
 export const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
@@ -167,12 +168,44 @@ export async function startScene(
   };
   const removeLocomotorInput = setupLocomotorInput(view, locomotor);
   const stopMovementEvents = bindActionCancellation(view, locomotor, 'movement', () => locomotor.stop());
-  const stopAnimation = animate(world, camera);
+  let animation: ReturnType<typeof animate> | undefined;
+  let startPromise: Promise<void> | undefined;
+  let disposed = false;
+  let preparing = false;
+  const preparation = new AbortController();
+  const start = (): Promise<void> => {
+    if (startPromise) return startPromise;
+    startPromise = (async () => {
+      if (disposed) throw new Error('Cannot start a disposed scene');
+      const { width, height } = view.renderer.domElement.getBoundingClientRect();
+      camera.aspect = width / Math.max(1, height);
+      camera.updateProjectionMatrix();
+      camera.getWorldQuaternion(cameraWorldQuaternion);
+      setPlayerNormal(cameraWorldQuaternion);
+      // Prepare lazy nearby art without advancing brains, physics or game time.
+      entities.moonTreeForest.updateNearby(player.position);
+      entities.moonTreeForest.setNormals(cameraWorldQuaternion);
+      updateCharacterRenderOrder(registry);
+      preparing = true;
+      try {
+        await dstLighting.prewarm(scene, camera, preparation.signal);
+      } finally {
+        preparing = false;
+      }
+      if (disposed) throw new Error('Scene disposed while preparing');
+      animation = animate(world, camera);
+      await animation.ready;
+    })();
+    return startPromise;
+  };
   const disposalEvents = new EventEmitter<DisposalEvents>();
   const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    preparation.abort();
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     if (player.userData.locomotor === locomotor) delete player.userData.locomotor;
-    stopAnimation();
+    animation?.stop();
     clockUpdater.flush();
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     locomotor.stop();
@@ -183,12 +216,19 @@ export async function startScene(
       const index = tasks.indexOf(task);
       if (index >= 0) tasks.splice(index, 1);
     }
-    entities.dispose();
-    scheduler.dispose();
-    worldState.dispose();
-    dstLighting.dispose();
+    const releaseResources = () => {
+      entities.dispose();
+      scheduler.dispose();
+      worldState.dispose();
+      dstLighting.dispose();
+      disposeTextureAssets();
+    };
+    // compileAsync still polls its materials: retain them until the in-flight
+    // batch settles, while aborting all subsequent uploads and scene startup.
+    if (preparing) void startPromise?.catch(() => undefined).then(releaseResources);
+    else releaseResources();
   };
-  return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather, getSaveState, disposalEvents, dispose };
+  return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather, getSaveState, disposalEvents, start, dispose };
 }
 
 export function scene_add(model:THREE.Object3D){

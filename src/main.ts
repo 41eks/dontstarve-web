@@ -62,6 +62,7 @@ const lighting = await DstLightingRenderer.create(
   },
 );
 window.dispatchEvent(new CustomEvent('game:lighting-ready', { detail: lighting }));
+input.setBlocked(true);
 
 UpdateSoundListener(player.position);
 backTasks.push(() => UpdateSoundListener(player.position));
@@ -354,14 +355,11 @@ gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
 });
 
 /** All startup resources and bindings are ready, and the complete scene has rendered. */
-export const gameReady = new Promise<void>((resolve, reject) => {
-  requestAnimationFrame(() => {
-    try {
-      lighting.render(view.scene, view.camera);
-      renderer.domElement.dataset.loaded = 'true';
-      resolve();
-    } catch (error) {
-      reject(error);
-    }
-  });
+export const gameReady = sceneResources.start().then(() => {
+  renderer.domElement.dataset.loaded = 'true';
+  input.setBlocked(false);
+}).catch(error => {
+  sceneResources.dispose();
+  throw error;
 });
+await gameReady;
