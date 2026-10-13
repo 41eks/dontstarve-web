@@ -32,6 +32,21 @@ export function groundTileVariant(own: boolean, cardinal: number, diagonal: numb
 export interface GroundTileAssets {
   readonly material: THREE.MeshLambertMaterial;
   readonly elements: ReadonlyMap<string, ImageAtlasElement>;
+  readonly atlas: THREE.Texture;
+}
+
+/** Geometry and borrowed source atlases for a map-wide ground overlay.
+ * Each consecutive geometry group uses the atlas at its material index.
+ * The overlay owns the geometry; terrain assets retain ownership of the atlases.
+ */
+export interface GroundOverlayGeometry {
+  readonly geometry: THREE.BufferGeometry;
+  readonly atlases: readonly THREE.Texture[];
+}
+
+export interface GroundOverlaySource {
+  createLandOverlay(): GroundOverlayGeometry;
+  onTerrainChanged(listener: () => void): () => void;
 }
 
 async function fetchAsset(root: string, path: string): Promise<Response> {
@@ -91,7 +106,48 @@ export async function loadGroundTileAssets(root: string, name: GroundTileName): 
   };
   material.customProgramCacheKey = () => 'dst-ground-atlas-noise-v1';
   material.addEventListener('dispose', () => { noise.dispose(); atlas.dispose(); });
-  return { material, elements };
+  return { material, elements, atlas };
+}
+
+/** Straight-alpha RGBA pixels, top row first. */
+export interface GroundTilePixels { readonly data: Uint8ClampedArray; readonly width: number; readonly height: number }
+
+/** What MapLayerManager:CreateRenderLayer receives: the tile atlas and its noise texture. */
+export interface GroundTileLayerImage {
+  readonly cells: ReadonlyMap<number, GroundTilePixels>;
+  readonly noise: GroundTilePixels;
+  readonly renderOrder: number;
+}
+
+/**
+ * MapLayerManager:CreateRenderLayer inputs for a tile: all 48 map_edge masks
+ * and the tile's own minimap noise (tiledefs.lua `minimap_tile_def`).
+ */
+export async function loadGroundTileMinimapLayer(root: string, name: GroundTileName): Promise<GroundTileLayerImage> {
+  const { minimap } = definitions[name];
+  const base = root.replace(/\/$/, '');
+  const [atlas, noise, xml] = await Promise.all([
+    loadKtexTexture(`${base}/${minimap.texture}`), loadKtexTexture(`${base}/${minimap.noise}`),
+    fetchAsset(root, minimap.atlas).then((response) => response.text()),
+  ]);
+  const elements = parseImageAtlasXml(xml, minimap.atlas).elements;
+  const cells = new Map<number, GroundTilePixels>();
+  for (let variant = 1; variant <= 48; variant++) {
+    const cell = elements.get(String(variant).padStart(2, '0'));
+    if (!cell) throw new Error(`Minimap atlas lacks mask ${variant}: ${minimap.atlas}`);
+    // parseKtex's rows are top-down; invert XML's bottom-up V coordinates.
+    const x0 = Math.floor(cell.u1 * atlas.width), x1 = Math.ceil(cell.u2 * atlas.width);
+    const y0 = Math.floor((1 - cell.v2) * atlas.height), y1 = Math.ceil((1 - cell.v1) * atlas.height);
+    const width = x1 - x0, height = y1 - y0;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      const from = ((y0 + y) * atlas.width + x0) * 4;
+      data.set(atlas.pixels.subarray(from, from + width * 4), y * width * 4);
+    }
+    cells.set(variant, { data, width, height });
+  }
+  return { cells, renderOrder: definitions[name].renderOrder,
+    noise: { data: Uint8ClampedArray.from(noise.pixels), width: noise.width, height: noise.height } };
 }
 
 export interface GroundTileQuad { col: number; row: number; variant: number }

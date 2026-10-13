@@ -8,10 +8,11 @@ export interface ProximityEntity {
   model?: THREE.Group;
 }
 
-/** Keeps only nearby entity models alive. Distance is measured on the XZ plane. */
+/** Keeps only nearby entity models alive, using their ground-contact positions. */
 export class ProximityEntities {
   readonly group = new THREE.Group();
-  readonly entities: readonly ProximityEntity[];
+  private readonly entityList: ProximityEntity[];
+  private nextId: number;
   private readonly loaded = new Set<ProximityEntity>();
   private readonly radiusSquared: number;
   private readonly createModel: (entity: ProximityEntity) => THREE.Group;
@@ -28,16 +29,35 @@ export class ProximityEntities {
     if (entityIds && (entityIds.length !== positions.length
       || new Set(entityIds).size !== entityIds.length
       || entityIds.some((id) => !id))) throw new Error('Invalid persistent entity IDs');
-    this.entities = positions.map((position, id) => ({
+    this.entityList = positions.map((position, id) => ({
       id, position, ...(entityIds ? { saveId: entityIds[id] } : {}),
     }));
+    this.nextId = this.entityList.length;
     this.radiusSquared = radius * radius;
     this.createModel = createModel;
     this.disposeModel = disposeModel;
   }
 
+  get entities(): readonly ProximityEntity[] { return this.entityList; }
+
   get activeEntities(): ReadonlySet<ProximityEntity> {
     return this.loaded;
+  }
+
+  add(position: THREE.Vector3, saveId: string): ProximityEntity {
+    if (this.entityList.some(entity => entity.saveId === saveId)) throw new Error(`Duplicate entity ID: ${saveId}`);
+    const entity = { id: this.nextId++, saveId, position: position.clone() };
+    this.entityList.push(entity);
+    return entity;
+  }
+
+  /** Permanently remove the logical entity as well as its loaded model. */
+  remove(entity: ProximityEntity): boolean {
+    const index = this.entityList.indexOf(entity);
+    if (index < 0) return false;
+    if (entity.model) this.unload(entity);
+    this.entityList.splice(index, 1);
+    return true;
   }
 
   update(playerPosition: THREE.Vector3): void {
@@ -61,9 +81,7 @@ export class ProximityEntities {
   }
 
   private isNearby(entity: ProximityEntity, player: THREE.Vector3): boolean {
-    const dx = entity.position.x - player.x;
-    const dz = entity.position.z - player.z;
-    return dx * dx + dz * dz <= this.radiusSquared;
+    return entity.position.distanceToSquared(player) <= this.radiusSquared;
   }
 
   private unload(entity: ProximityEntity): void {

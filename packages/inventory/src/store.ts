@@ -1,5 +1,6 @@
 import { ItemEntity, ItemEntityRegistry } from './entity';
 import { planCraft } from './craft';
+import { Vector3 } from 'three';
 import {
   batch, createEquipmentExistenceState, readonlySignal,
   type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
@@ -61,6 +62,8 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
       && left.freshnessPercent === right.freshnessPercent
       && left.wet === right.wet
       && left.phonographRecord === right.phonographRecord
+      && left.temperature?.current === right.temperature?.current
+      && left.highTemp === right.highTemp && left.lowTemp === right.lowTemp
       && left.count === right.count;
 }
 
@@ -257,6 +260,7 @@ export class InventoryStore {
       item.transform.position.set(position.x, position.y, position.z);
       this.DropItem(item, position);
     };
+    this.bindOwners();
   }
 
   getContainer(containerId: string): Container<InventoryStack, ItemEntity, ItemSlot> | undefined {
@@ -491,6 +495,8 @@ export class InventoryStore {
       return entity;
     }
     const split = this.entities.create({ ...state, entityId: undefined, count });
+    // stackable:Get spawns another instance of the same prefab, including its components.
+    this.configureItem(split);
     next.set(addressKey(address), { ...state, count: state.count - count });
     this.commit(next);
     this.notify([cloneAddress(address)]);
@@ -503,9 +509,9 @@ export class InventoryStore {
 
   getStackSpec(stack: InventoryStack): InventoryItemSpec {
     const item = this.requireItemSpec(stack.itemId);
-    if (!stack.skinId) return item;
-    const skin = this.skinSpecs[stack.skinId];
-    return skin ? { ...item, name: skin.name, icon: skin.icon, atlas: skin.atlas } : item;
+    const skin = stack.skinId ? this.skinSpecs[stack.skinId] : undefined;
+    const appearance = stack.entityId ? this.entities.get(stack.entityId)?.components.inventoryitem.image.peek() : undefined;
+    return { ...item, ...(skin ? { name: skin.name, icon: skin.icon, atlas: skin.atlas } : {}), ...appearance };
   }
 
   count(itemId: string): number {
@@ -730,6 +736,12 @@ export class InventoryStore {
         itemId: change.itemId,
         ...(change.skinId === undefined ? {} : { skinId: change.skinId }),
         count: nextCount,
+        ...((current?.temperature ?? source?.temperature ?? incoming?.temperature) === undefined ? {}
+          : { temperature: current?.temperature ?? source?.temperature ?? incoming?.temperature }),
+        ...((current?.highTemp ?? source?.highTemp ?? incoming?.highTemp) === undefined ? {}
+          : { highTemp: current?.highTemp ?? source?.highTemp ?? incoming?.highTemp }),
+        ...((current?.lowTemp ?? source?.lowTemp ?? incoming?.lowTemp) === undefined ? {}
+          : { lowTemp: current?.lowTemp ?? source?.lowTemp ?? incoming?.lowTemp }),
         ...(freshnessPercent === undefined ? {} : { freshnessPercent }),
         ...((change.wet ?? current?.wet ?? source?.wet ?? incoming?.wet) === undefined ? {}
           : { wet: change.wet ?? current?.wet ?? source?.wet ?? incoming?.wet }),
@@ -782,7 +794,7 @@ export class InventoryStore {
 
   private validUses(item: { remainingUses?: number; remainingFuel?: number; freshnessPercent?: number; wet?: boolean }, spec: InventoryItemSpec): boolean {
     return (item.remainingUses === undefined || (spec.maxUses !== undefined
-      && Number.isSafeInteger(item.remainingUses / (spec.useStep ?? 1))
+      && Number.isFinite(item.remainingUses) && isWholeSteps(item.remainingUses / (spec.useStep ?? 1))
       && item.remainingUses > 0 && item.remainingUses <= spec.maxUses))
       && (item.remainingFuel === undefined || (spec.maxFuel !== undefined
         && Number.isFinite(item.remainingFuel) && item.remainingFuel >= 0 && item.remainingFuel <= spec.maxFuel))
@@ -879,8 +891,20 @@ export class InventoryStore {
     for (const { address, slot } of this.registrations) {
       const entity = slot.getEntity();
       if (!entity) continue;
+      const ownerPosition = new Vector3();
       entity.components.inventoryitem.owner = {
         address: cloneAddress(address),
+        hasTag: tag => this.worldContainers.get(address.containerId)?.hasTag(tag) ?? false,
+        getPosition: () => {
+          if (isBackpackContainerId(address.containerId)) {
+            const backpack = this.entities.get(address.containerId.slice('item:backpack:'.length));
+            if (backpack) return backpack.components.inventoryitem.owner?.getPosition?.() ?? backpack.getPosition();
+          }
+          const inst = this.worldContainers.get(address.containerId)?.inst as
+            { getPosition?(): import('three').Vector3; userData?: { getGroundPosition?(): import('three').Vector3 }; position?: import('three').Vector3 } | undefined;
+          const position = inst?.getPosition?.() ?? inst?.userData?.getGroundPosition?.() ?? inst?.position ?? this.actor.GetPosition();
+          return position instanceof Vector3 ? position : ownerPosition.set(position.x, position.y, position.z);
+        },
         changed: () => { if (slot.getEntity() === entity) this.notify([cloneAddress(address)]); },
         // Items in a backpack have the backpack as owner in DST, which has no player handlers.
         PushEvent: (name, data) => { if (!isBackpackContainerId(address.containerId)) this.actor.PushEvent(name, data); },
@@ -965,4 +989,9 @@ export class InventoryStore {
     if (!spec) throw new Error(`Unknown inventory item: ${itemId}`);
     return spec;
   }
+}
+
+/** Fractional steps (book restoration) accumulate float error; whole steps are compared with a tolerance. */
+function isWholeSteps(steps: number): boolean {
+  return Math.abs(steps - Math.round(steps)) < 1e-9;
 }

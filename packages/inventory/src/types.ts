@@ -55,6 +55,10 @@ export interface ItemContainerState {
 }
 
 export interface InventoryStack {
+  /** temperature.lua and heatrock.lua persistence; presentation range is rebuilt on load. */
+  temperature?: import('../../componets/src/temperature').TemperatureSaveData;
+  highTemp?: number;
+  lowTemp?: number;
   /** Container belongs to this item, including when it is on the ground. */
   container?: ItemContainerState;
   /** Persistent inst identity; absent in old saves and detached UI projections. */

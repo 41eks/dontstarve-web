@@ -1,6 +1,8 @@
 /** Sprite configuration produced by the visual part of DST's skin initializers. */
 export interface PrefabSkinInitialization {
   archive: string;
+  /** Separate build zip when the bank zip carries no build.bin (moondial.zip + moondial_build.zip). */
+  buildArchive?: string;
   skinArchive: string;
 }
 
@@ -33,6 +35,10 @@ export function dragonflychest_init_fn(skinId: string): PrefabSkinInitialization
   return basic_init_fn(skinId.replace('dragonflychest_upgraded_', 'dragonflychest_'), 'dragonfly_chest');
 }
 
+export function bookstation_init_fn(skinId: string): PrefabSkinInitialization {
+  return basic_init_fn(skinId, 'bookstation');
+}
+
 export function campfire_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'campfire');
 }
@@ -52,6 +58,11 @@ export function pighouse_init_fn(skinId: string): PrefabSkinInitialization {
 
 export function sculptingtable_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'sculpting_station');
+}
+
+/** moondial_init_fn: OverrideItemSkinSymbol("basin", build_name, "basin", ..., "moondial_build"). */
+export function moondial_init_fn(skinId: string): PrefabSkinInitialization {
+  return { archive: 'moondial.zip', buildArchive: 'moondial_build.zip', skinArchive: `dynamic/${skinId}.zip` };
 }
 
 export function winterometer_init_fn(skinId: string): PrefabSkinInitialization {

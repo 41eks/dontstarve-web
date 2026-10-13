@@ -11,6 +11,8 @@ export interface OccupantItem {
   hasTag(tag: string): boolean;
   ListenForEvent(name: string, listener: (data: unknown) => void): () => void;
   getComponent<T extends { dispose(): void }>(name: string): T | undefined;
+  /** Settle against the current holder before the occupier's owner changes. */
+  flush(): void;
   /** occupier:Remove(): the occupant is destroyed after it perished. */
   destroy(): void;
 }
@@ -62,6 +64,8 @@ export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst =
   Occupy(occupier: Item | undefined): boolean {
     const occupierComponent = occupier?.getComponent<Occupier<Inst>>('occupier');
     if (this.IsOccupied() || !occupier || !occupierComponent || occupier.isRemoved) return false;
+    occupier.flush();
+    if (occupier.isRemoved || this.IsOccupied()) return false;
     // occupiableonperish / occupiableonremove are registered after the callbacks, as in Lua.
     this.setOccupant(occupier);
     occupierComponent.SetOwner(this.inst);
@@ -88,6 +92,8 @@ export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst =
   Harvest(): Item | undefined {
     const item = this.occupantState.peek();
     if (!item) return undefined;
+    item.flush();
+    if (item.isRemoved || this.occupantState.peek() !== item) return undefined;
     item.getComponent<Occupier<Inst>>('occupier')?.SetOwner(undefined);
     this.stopListening?.();
     this.setOccupant(undefined);

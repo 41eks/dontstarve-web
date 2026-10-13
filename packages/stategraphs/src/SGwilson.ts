@@ -9,14 +9,16 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'mine_start' | 'mine' | 'chop_start' | 'chop' | 'hammer_start' | 'hammer'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
   | 'quickeat' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
-  | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute';
-export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY';
+  | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute'
+  | 'slip' | 'slip_pst' | 'slip_fall' | 'slip_fall_loop' | 'slip_fall_pst';
+export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
   | 'quick_eat_pre' | 'quick_eat' | 'quick_drink_pre' | 'quick_drink' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst'
   | 'build_pre' | 'build_loop' | 'build_pst' | 'light_fire' | 'light_fire_pst'
-  | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit' | 'wakeup' | 'flute';
+  | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit' | 'wakeup' | 'flute'
+  | 'slip_pre' | 'slip_loop' | 'slip_pst' | 'slip_fall_pre' | 'slip_fall_idle' | 'slip_fall_pst';
 
 export const WILSON_ACTION_TIMES = {
   mine: 7 * FRAMES, net: 10 * FRAMES, terraform: 25 * FRAMES,
@@ -61,8 +63,22 @@ export interface WilsonSleepHost {
   wakeBed(nostatechange: boolean): void;
 }
 
+/** What SGwilson.lua's slip states reach: slipperyfeet, the locomotor motor velocity and sounds. */
+export interface WilsonSlipHost {
+  /** inst.components.locomotor:GetRunSpeed() in DST units. */
+  runSpeed(): number;
+  /** Physics:SetMotorVel(speed, 0, 0) along the current heading, DST units; undefined releases the motor. */
+  setMotorSpeed(speed: number | undefined): void;
+  /** inst.components.slipperyfeet:SetCurrent(0). */
+  resetSlipperiness(): void;
+  /** inst.components.locomotor:WantsToMoveForward() */
+  wantsToMoveForward(): boolean;
+  playSound(event: 'iceslab_slipping' | 'slip_fall_whoop' | 'slip_fall_thud' | 'hurt', volume?: number): void;
+}
+
 export interface WilsonStateGraphHost {
   sleep?: WilsonSleepHost;
+  slip?: WilsonSlipHost;
   /** Select the art and return its effective playback duration in seconds. */
   playAnimation(clip: WilsonAnimationClip): number;
   playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'sip' | 'dig' | 'tillEmerge' | 'make'
@@ -257,6 +273,118 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     events: [EventHandler('animqueueover', inst => {
       if (inst.context.animationDone) inst.goToState('idle');
     })],
+  }),
+  // SGwilson.lua "Slipping states". Footsteps (PlayFootstep) and analog-stick polling are not ported;
+  // held movement keys push "locomote" each frame while slipping instead.
+  State({
+    name: 'slip',
+    tags: ['busy', 'nopredict', 'nomorph', 'jumping', 'overridelocomote'],
+    onenter: (inst, speed) => {
+      const slip = inst.context.host.slip!;
+      inst.context.host.stopMovement?.();
+      inst.context.clearBufferedAction();
+      slip.resetSlipperiness();
+      inst.context.playClips([clip('slip_pre'), clip('slip_loop')]);
+      slip.playSound('iceslab_slipping');
+      inst.statemem.speed = typeof speed === 'number' ? speed : slip.runSpeed();
+      slip.setMotorSpeed(inst.statemem.speed as number * 0.6);
+    },
+    timeline: [
+      TimeEvent(6 * FRAMES, inst => inst.context.host.slip!.setMotorSpeed(inst.statemem.speed as number * 0.3)),
+      TimeEvent(10 * FRAMES, inst => inst.context.host.slip!.playSound('iceslab_slipping')),
+      TimeEvent(12 * FRAMES, inst => inst.context.host.slip!.setMotorSpeed(inst.statemem.speed as number * 0.25)),
+      TimeEvent(18 * FRAMES, inst => {
+        inst.context.host.slip!.setMotorSpeed(inst.statemem.speed as number * 0.2);
+        inst.statemem.checkfall = true;
+      }),
+      TimeEvent(20 * FRAMES, inst => inst.context.host.slip!.playSound('iceslab_slipping', .5)),
+    ],
+    events: [
+      EventHandler('locomote', inst => {
+        if (inst.context.host.slip!.wantsToMoveForward() && inst.statemem.checkfall) {
+          inst.statemem.slipping = true;
+          inst.goToState('slip_fall', inst.statemem.speed as number * 0.25);
+        }
+      }),
+      EventHandler('animqueueover', inst => {
+        if (!inst.context.animationDone) return;
+        inst.statemem.slipping = true;
+        inst.goToState('slip_pst', inst.statemem.speed);
+      }),
+    ],
+    onexit: inst => {
+      if (inst.statemem.slipping) return;
+      inst.context.host.slip!.setMotorSpeed(undefined);
+      inst.context.host.stopMovement?.();
+    },
+  }),
+  State({
+    name: 'slip_pst',
+    tags: ['busy', 'nopredict', 'nomorph', 'jumping'],
+    onenter: (inst, speed) => {
+      inst.context.playClips([clip('slip_pst')]);
+      inst.statemem.speed = typeof speed === 'number' ? speed : inst.context.host.slip!.runSpeed();
+      inst.context.host.slip!.setMotorSpeed(inst.statemem.speed as number * 0.15);
+    },
+    timeline: [TimeEvent(2 * FRAMES, inst => inst.context.host.slip!.setMotorSpeed(inst.statemem.speed as number * 0.1))],
+    events: [EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('idle'); })],
+    onexit: inst => {
+      inst.context.host.slip!.setMotorSpeed(undefined);
+      inst.context.host.stopMovement?.();
+    },
+  }),
+  State({
+    name: 'slip_fall',
+    tags: ['busy', 'nopredict', 'nomorph', 'jumping'],
+    onenter: (inst, speed) => {
+      const slip = inst.context.host.slip!;
+      inst.context.host.stopMovement?.();
+      inst.context.clearBufferedAction();
+      slip.resetSlipperiness();
+      inst.context.playClips([clip('slip_fall_pre')]);
+      slip.playSound('slip_fall_whoop');
+      if (typeof speed === 'number') {
+        inst.statemem.speed = speed;
+        slip.setMotorSpeed(speed * 0.8);
+      }
+    },
+    timeline: [
+      TimeEvent(10 * FRAMES, inst => inst.context.host.slip!.playSound('slip_fall_thud')),
+      // The source holds frame 13's speed for two frames on purpose.
+      ...([[11, .64], [13, .32], [14, .16], [15, .08], [16, .04], [17, 0]] as const).map(([frame, factor]) =>
+        TimeEvent<WilsonStateGraph, WilsonStateName>(frame * FRAMES, inst => {
+          const { slip } = inst.context.host;
+          if (frame === 11) slip!.playSound('hurt');
+          if (typeof inst.statemem.speed === 'number') slip!.setMotorSpeed(inst.statemem.speed * factor);
+        })),
+    ],
+    events: [EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('slip_fall_loop'); })],
+    onexit: inst => {
+      if (typeof inst.statemem.speed !== 'number') return;
+      inst.context.host.slip!.setMotorSpeed(undefined);
+      inst.context.host.stopMovement?.();
+    },
+  }),
+  State({
+    name: 'slip_fall_loop',
+    tags: ['busy', 'nomorph', 'overridelocomote'],
+    onenter: inst => {
+      const slip = inst.context.host.slip!;
+      inst.context.host.stopMovement?.();
+      inst.context.clearBufferedAction();
+      slip.resetSlipperiness();
+      inst.context.playClips([clip('slip_fall_idle')]);
+    },
+    events: [
+      EventHandler('locomote', inst => { if (inst.context.host.slip!.wantsToMoveForward()) inst.goToState('slip_fall_pst'); }),
+      EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('slip_fall_pst'); }),
+    ],
+  }),
+  State({
+    name: 'slip_fall_pst',
+    tags: ['busy', 'nomorph'],
+    onenter: inst => inst.context.playClips([clip('slip_fall_pst')]),
+    timeline: [TimeEvent(12 * FRAMES, inst => inst.goToState('idle', true))],
   }),
   State({
     name: 'idle',
@@ -818,12 +946,12 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
 const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
   State({
     name: 'walk',
-    tags: ['moving'],
+    tags: ['moving', 'running'],
     onenter: (inst) => inst.context.playClips([{ ...clip('walk', 'run_loop'), loop: true, frameRate: 16 }]),
   }),
   State({
     name: 'run',
-    tags: ['moving'],
+    tags: ['moving', 'running'],
     onenter: (inst) => inst.context.playClips([{ ...clip('run', 'run_loop'), loop: true }]),
   }),
   State({
@@ -877,6 +1005,7 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
     return inst.hasStateTag('netting') ? 'bugnet' : 'bugnet_start';
   }),
   ActionHandler('PLANT', 'doshortaction'),
+  ActionHandler('DEPLOY', 'doshortaction'),
   ActionHandler('PICKUP', 'doshortaction'),
   ActionHandler('HARVEST', 'dolongaction'),
   ActionHandler('STORE', 'doshortaction'),
@@ -952,6 +1081,10 @@ export class WilsonStateGraph {
       this.activeInvobject = undefined;
       this.sg.goToState('toolbroke', (data as { tool?: WilsonBrokenTool } | undefined)?.tool);
     });
+    // SGwilson.lua EventHandler("feetslipped")
+    this.sg.listenForEvent('feetslipped', () => {
+      if (this.sg.hasStateTag('running') && !this.sg.hasStateTag('noslip') && this.host.slip) this.sg.goToState('slip');
+    });
     this.sg.goToState('idle');
   }
 
@@ -963,6 +1096,9 @@ export class WilsonStateGraph {
   get isJumping(): boolean { return this.movementState === 'jump'; }
   get isDrinking(): boolean { return this.foodDrink && this.stateName === 'quickeat'; }
   hasStateTag(tag: string): boolean { return this.sg.hasStateTag(tag); }
+  hasAnyStateTag(...tags: string[]): boolean { return this.sg.hasAnyStateTag(...tags); }
+  /** Browser input is held off while the slip states own the motor. */
+  get isSlipping(): boolean { return this.stateName.startsWith('slip'); }
   listenForEvent(name: string, fn: (data: unknown) => void): () => void { return this.sg.listenForEvent(name, fn); }
   pushEvent(name: string, data?: unknown): void {
     this.sg.pushEvent(name, data);

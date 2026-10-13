@@ -2,6 +2,7 @@ import { AssetElement } from './assets';
 import { AnimatedBackground } from './animated-background';
 import { createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { ContainerDTO } from '../../componets/src/container';
+import type { BuildingContainerDefinition } from '../../prefab/src/containers';
 import { createSlotContainer, type SlotContainer, type SlotContainerKind } from './slot/slot-container';
 import type { SlotAddress, SlotItem, SlotModel, SlotSelectDetail } from './slot/slot-model';
 import { createSlotRenderer, type SlotRenderer } from './slot/slot-renderer';
@@ -16,6 +17,7 @@ export interface OpenChestOptions {
   panelArchive?: string;
   columns?: number;
   singleItems?: boolean;
+  slotGrid?: BuildingContainerDefinition['slotGrid'];
 }
 
 export interface ChestCloseDetail {
@@ -27,6 +29,7 @@ export class DstChestPanelElement extends AssetElement {
   private panelTitle = '箱子';
   private panelArchive = 'ui_chest_3x3.zip';
   private columns = 3;
+  private slotGrid?: BuildingContainerDefinition['slotGrid'];
   private readonly renderers: SlotRenderer[] = [];
   private readonly selectedSlot = createSignal<SlotAddress | null>(null);
   private background?: AnimatedBackground;
@@ -96,6 +99,7 @@ export class DstChestPanelElement extends AssetElement {
     this.panelTitle = options.title ?? '箱子';
     this.panelArchive = options.panelArchive ?? this.defaultPanelArchive;
     this.columns = options.columns ?? this.defaultColumns;
+    this.slotGrid = options.slotGrid;
     this.selectedSlot.set(null);
     if (this.isConnected) this.render();
   }
@@ -212,6 +216,15 @@ export class DstChestPanelElement extends AssetElement {
     if (!this.container) return;
 
     const grid = root.querySelector<HTMLElement>('.chest-panel__slots')!;
+    if (this.slotGrid) {
+      const { x, y, columnSpacing, rowSpacing } = this.slotGrid;
+      const rows = Math.ceil(this.container.slots.length / this.columns);
+      // Centre the grid at Lua's slot centres, relative to the animation origin.
+      panel.style.setProperty('--storage-offset-x', String((x + (this.columns - 1) * columnSpacing / 2) / 64));
+      panel.style.setProperty('--storage-offset-y', String((-y + (rows - 1) * rowSpacing / 2) / 64));
+      panel.style.setProperty('--storage-column-gap', `calc((${columnSpacing} / 64 - 1 / 0.9) * var(--inventory-slot-layout-size))`);
+      panel.style.setProperty('--storage-row-gap', `calc((${rowSpacing} / 64 - 1 / 0.9) * var(--inventory-slot-layout-size))`);
+    }
     panel.setAttribute('aria-label', this.panelTitle);
     panel.querySelector('.chest-panel__close')?.setAttribute('aria-label', `关闭${this.panelTitle}`);
     panel.querySelector('h2')!.textContent = this.panelTitle;

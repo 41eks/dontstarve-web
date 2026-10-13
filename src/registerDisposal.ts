@@ -25,6 +25,8 @@ import { bookActionObject, type BookReader, type BookWorld } from '@dontstarve-w
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { PreloadSounds } from '@dontstarve-web/prefab/sound';
 import { backTasks, registerFrontTask } from './animate';
+import { TurfDeployment } from '@dontstarve-web/prefab/turfDeployment';
+import { turfTileName } from '@dontstarve-web/prefab/turfs';
 import type { turfMap } from './building';
 import type { startScene } from './scene';
 import type { bindPlayerHandEquipment } from './playerHandEquipment';
@@ -103,7 +105,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'moonTreeForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'beefalos'>;
+  'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'beefalos'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -123,7 +125,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTreeForest, buildingPlacement, groundItems, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, grasses, saplings, scheduler, weather, beefalos } = scene;
+      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, grasses, saplings, scheduler, weather, moon, beefalos } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -286,7 +288,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       const reader = new Reader<PlayerReaderInst, BookWorld>(readerInst);
       readerInst.components.reader = reader;
       const bookWorld: BookWorld = {
-        root: view.scene, scheduler, weather,
+        root: view.scene, scheduler, weather, moon,
         spawnFx(prefab, { getPosition }) {
           const { x, z } = getPosition();
           if (isWorldFx(prefab)) worldFx.spawn(prefab, new Vector3(x, 0, z));
@@ -370,21 +372,28 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
           handEquipment, () => rockManager.mineTargets, isActionInterrupting);
+        const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation, locomotor, () => {
+          const address = cursorSlotAddress(), entity = inventory.getEntity(address);
+          if (!entity || !turfTileName(entity.prefab)) return undefined;
+          const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity;
+          return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
+            putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); } };
+        }, isActionInterrupting);
         const pitchfork = new PitchforkActionController(view, playerAnimation, locomotor,
           handEquipment, turfMap, isActionInterrupting);
         const farmHoe = new FarmHoeActionController(view, playerAnimation, locomotor,
           handEquipment, farmPlow, isActionInterrupting,
           (error) => console.error('Unable to till farm soil', error));
         const shovel = new ShovelActionController(view, playerAnimation, locomotor,
-          handEquipment, () => [...farmPlow.digTargets, ...grasses.digTargets, ...saplings.digTargets], isActionInterrupting);
+          handEquipment, () => [...farmPlow.digTargets, ...grasses.digTargets, ...saplings.digTargets, ...moonTreeForest.digTargets, ...evergreenForest.digTargets, ...deciduousForest.digTargets], isActionInterrupting);
         const reskin = new ReskinActionController(view, playerAnimation, locomotor,
           handEquipment,
           () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets], reskinEffects,
           isActionInterrupting, (error) => console.error('Unable to reskin target', error));
         const lighter = new LighterActionController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting);
         const axe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, () => moonTreeForest.chopTargets, isActionInterrupting, 'CHOP');
-        actionControllers.push(spellcast, hammer, pickaxe, axe, pitchfork, farmHoe, shovel, reskin, lighter);
+          handEquipment, () => [...moonTreeForest.chopTargets, ...evergreenForest.chopTargets, ...deciduousForest.chopTargets], isActionInterrupting, 'CHOP');
+        actionControllers.push(spellcast, hammer, pickaxe, axe, pitchfork, turfDeployment, farmHoe, shovel, reskin, lighter);
       }
 
       const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
@@ -431,11 +440,12 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           });
           return;
         }
-        if (stack.itemId === 'butterfly') {
-          void flowerPlanting.begin(() => inventory.applySlotChanges([{
-            slot, itemId: 'butterfly', delta: -1,
+        if (stack.itemId === 'butterfly' || stack.itemId === 'moonbutterfly') {
+          const original = inventory.getEntity(slot);
+          void flowerPlanting.begin(() => inventory.getEntity(slot) === original && !original?.isRemoved && inventory.applySlotChanges([{
+            slot, itemId: stack.itemId, delta: -1,
             ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
-          }])).catch((error: unknown) => {
+          }]), stack.itemId).catch((error: unknown) => {
             console.error('Unable to start butterfly planting', error);
           });
           return;

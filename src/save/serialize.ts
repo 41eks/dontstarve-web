@@ -13,6 +13,7 @@ export interface RuntimeSaveState {
   tiles?: TurfTileSave[];
   worldtemperature?: SaveDocument['world']['systems']['worldtemperature'];
   weather?: SaveDocument['world']['systems']['weather'];
+  moon?: SaveDocument['world']['systems']['moon'];
 }
 
 /** Captures current domain state; the loaded document supplies only world/session metadata. */
@@ -54,6 +55,7 @@ export function serializeSave(
         ...structuredClone(template.world.systems),
         ...(state.worldtemperature === undefined ? {} : { worldtemperature: { ...state.worldtemperature } }),
         ...(state.weather === undefined ? {} : { weather: { ...state.weather } }),
+        ...(state.moon === undefined ? {} : { moon: { ...state.moon } }),
       },
       map: {
         ...structuredClone(template.world.map),

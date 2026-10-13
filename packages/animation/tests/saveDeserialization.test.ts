@@ -9,6 +9,7 @@ import { TORCH_FUEL } from '../../prefab/src/torch';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { TurfMap } from '../../prefab/src/turfMap';
 
 const catalog: SaveCatalog = {
   items: Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([id, spec]) => [id, {
@@ -28,6 +29,17 @@ function parse(data: unknown = initialWorld) {
 }
 
 describe('save JSON deserialization', () => {
+  it('exports and reloads the initial island terrain with retained entity identity and state', () => {
+    const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+    const map = new TurfMap(template.world.map.generator.options.size, template.world.map.tiles);
+    const state = { entities: template.world.entities, tiles: map.exportTiles(),
+      playerTransform: template.players.local.transform, inventory: inventoryStateFromSave(template),
+      elapsedSeconds: template.world.elapsedSeconds };
+    const restored = deserializeSave(serializeSave(template, state, SAVE_CATALOG), SAVE_CATALOG);
+    expect(restored.world.map.tiles).toEqual(template.world.map.tiles);
+    expect(restored.world.entities).toEqual(template.world.entities);
+    expect(restored.players.local).toEqual(template.players.local);
+  });
   it('exports and reloads beefalo named locations, an imminent zero-second spawn and legacy saves', () => {
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     const beefalo = {

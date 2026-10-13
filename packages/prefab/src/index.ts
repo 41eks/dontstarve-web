@@ -12,6 +12,10 @@ export {
   DragonflyChestPlacement, type DragonflyChestId,
 } from './dragonfly_chest';
 export {
+  BOOKSTATION_DEFINITION, BOOKSTATION_ID, BOOKSTATION_SKIN_ARCHIVES, Bookstation,
+  BookstationPlacement, type BookstationId,
+} from './bookstation';
+export {
   CAMPFIRE_DEFINITION, CAMPFIRE_ID, CAMPFIRE_SKIN_ARCHIVES,
   CampfirePlacement, type CampfireId,
 } from './campfire';
@@ -116,6 +120,7 @@ export {
   TENT_ID,
 } from './tent';
 export { MOONBASE_DEFINITION, MOONBASE_ID } from './moonbase';
+export { MOONDIAL_DEFINITION, MOONDIAL_ID } from './moondial';
 export { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, SCULPTABLE_MATERIALS, isSculptableMaterial } from './sculptingtable';
 export { WARDROBE_DEFINITION, WARDROBE_ID } from './wardrobe';
 export { loadReskinToolEquipment, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';

@@ -24,6 +24,7 @@ export async function checkTurfBlending() {
     renderer.readRenderTargetPixels(target, 0, 0, 480, 480, result);
     return result;
   };
+  const original = pixels();
   map.dig({ x: 6, z: 6 });
   const edge = visual.getObjectByName('TurfBlend:DECIDUOUS')!;
   edge.visible = false;
@@ -37,12 +38,37 @@ export async function checkTurfBlending() {
   const outsideUnchanged = equal(pixel(withoutEdges, 100, 240), pixel(blended, 100, 240));
   const changedPixels = blended.reduce((count, value, i) => count + Number(i % 4 === 0
     && (value !== withoutEdges[i] || blended[i + 1] !== withoutEdges[i + 1] || blended[i + 2] !== withoutEdges[i + 2])), 0);
+  // A new lower-priority turf must receive the original forest's inward edge,
+  // while its outward skirts stay underneath complete neighbouring forest cells.
+  await map.prepareTurf('COTL_BRICK');
+  map.setTile(0, 0, WORLD_TILES.COTL_BRICK);
+  const brickBlended = pixels();
+  edge.visible = false;
+  const brickWithoutForest = pixels();
+  edge.visible = true;
+  let inwardChangedPixels = 0, outsideChangedPixels = 0;
+  for (let y = 0; y < 480; y++) for (let x = 0; x < 480; x++) {
+    const i = (y * 480 + x) * 4;
+    const inside = x >= 120 && x < 360 && y >= 120 && y < 360;
+    const differs = (reference: Uint8Array) => [0, 1, 2].some(channel => Math.abs(brickBlended[i + channel] - reference[i + channel]) > 2);
+    if (inside && differs(brickWithoutForest)) inwardChangedPixels++;
+    if (!inside && differs(original)) outsideChangedPixels++;
+  }
+  const brickCenterUnchanged = equal(pixel(brickBlended, 240, 240), pixel(brickWithoutForest, 240, 240));
+  const restored = new TurfMap(120, map.exportTiles());
+  const restoredVisual = await restored.createVisual('/dst/data');
+  visual.removeFromParent(); scene.add(restoredVisual);
+  const restoredPixels = pixels();
+  const reloadPreservesPixels = restoredPixels.every((value, i) => value === brickBlended[i]);
+  restored.dispose(); scene.add(visual);
   // Show a larger patch, a stepped boundary and a dug woodfloor hole for inspection.
   for (const [x, z] of [[18, 6], [6, 18], [18, 18], [30, 6], [-6, 6]]) map.dig({ x, z });
   for (let x = 0; x < 3; x++) for (let z = 0; z < 3; z++) {
     map.setOriginalTile({ x: -30 + x * 12, z: -30 + z * 12 }, WORLD_TILES.WOODFLOOR);
   }
   map.dig({ x: -18, z: -18 });
+  map.setTile(0, 0, WORLD_TILES.COTL_BRICK);
+  map.setTile(-2, -2, WORLD_TILES.COTL_BRICK);
   camera.left = camera.bottom = -60;
   camera.right = camera.top = 60;
   camera.position.set(0, 50, 0);
@@ -51,5 +77,6 @@ export async function checkTurfBlending() {
   renderer.setRenderTarget(null);
   renderer.render(scene, camera);
   target.dispose();
-  return { centerUnchanged, edgeChanged, outsideUnchanged, changedPixels };
+  return { centerUnchanged, edgeChanged, outsideUnchanged, changedPixels,
+    brick: { centerUnchanged: brickCenterUnchanged, inwardChangedPixels, outsideChangedPixels, reloadPreservesPixels } };
 }

@@ -1,4 +1,4 @@
-export { createSignal, createEffect, createMemo, batch, onCleanUp, readonlySignal } from './signal';
+export { createSignal, createEffect, createMemo, watchSignal, batch, onCleanUp, readonlySignal } from './signal';
 export { EventEmitter } from './EventEmitter';
 export type { Signal, ReadonlySignal, SignalListener, Memo } from './signal';
 export { createEquipmentExistenceState } from './equipment';

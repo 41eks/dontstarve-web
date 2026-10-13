@@ -50,7 +50,7 @@ test('application lighting starts in the saved elapsed-time phase without a star
       phase: dstLighting.getPhase(),
       expectedPhase: clock.phase === 'night' && clock.moonPhase === 'full' ? 'full_moon' : clock.phase,
       season: dstLighting.getSeason(),
-      expectedSeason: initialSave.world.systems.season?.name ?? 'spring',
+      expectedSeason: initialSave.world.systems.worldtemperature?.season ?? initialSave.world.systems.season?.name ?? 'spring',
       lightLevel: initialLightLevel,
     };
   }, {

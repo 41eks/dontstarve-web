@@ -12,6 +12,7 @@
     "./hatAssets": "./src/hatAssets.ts",
     "./lightOverride": "./src/lightOverride.ts",
     "./renderOrder": "./src/renderOrder.ts",
+    "./sceneRenderPass": "./src/sceneRenderPass.ts",
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",
     "./archiveSprite": "./src/archiveSprite.ts",

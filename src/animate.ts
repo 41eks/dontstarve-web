@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { PerspectiveCamera } from 'three';
 import { cursorUi, dstLighting, resizeRendererToDisplaySize, scene } from './universal';
+import { IsAutopaused } from './autopause';
 import { FIXED_TIMESTEP, MAX_SUBSTEPS } from './physicsTiming';
+import { createDebugFpsDisplay } from './debugFps';
 
 type Updatable = (dt: number) => void;
 
@@ -25,6 +27,7 @@ export function registerFrontTask(update: Updatable): () => void {
 
 export function animate(world: World, camera: PerspectiveCamera) {
     const timer = new THREE.Timer();
+    const fpsDisplay = import.meta.env.DEV ? createDebugFpsDisplay() : undefined;
     let active = true;
     let firstFrame = true;
     let resolveReady!: () => void;
@@ -36,13 +39,16 @@ export function animate(world: World, camera: PerspectiveCamera) {
         active = false;
         cancelAnimationFrame(frameId);
         timer.dispose();
+        fpsDisplay?.dispose();
         if (firstFrame) rejectReady(new Error('Scene stopped before its first frame'));
     }
-    function tick() {
+    function tick(timestamp: number) {
         if (!active) return;
         try {
             timer.update();
-            const dt = firstFrame ? 0 : timer.getDelta();
+            // The timer keeps running while paused, so resuming never replays the paused interval.
+            const elapsed = firstFrame ? 0 : timer.getDelta();
+            const dt = IsAutopaused() ? 0 : elapsed;
 
             [...frontTasks].forEach((listener) => listener(dt));
             middleTasks.forEach((listener) => listener(dt));
@@ -59,6 +65,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
 
             dstLighting.render(scene, camera);
             cursorUi.update();
+            fpsDisplay?.update(timestamp);
             if (firstFrame) {
                 firstFrame = false;
                 resolveReady();

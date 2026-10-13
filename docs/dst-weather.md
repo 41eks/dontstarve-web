@@ -170,6 +170,20 @@ alpha = first + second + third
 
 纹理按世界坐标重复，周期为 `TILE_SIZE × 8`（当前 96 场景单位），覆盖量只更新 shader 参数与可见性，不修改 `TurfMap` 的实际地皮数据，也不重建整个地表几何。停雪时保留覆盖，融雪到零才隐藏。
 
+## 池塘结冰
+
+`PondManager` 接收 `Weather.snowLevel` 只读信号，对应 `pond.lua` 的 `WatchWorldState("snowlevel", OnSnowLevel)`。原版按**积雪量**而非直接按温度结冰，温度只通过天气的降雪和融雪间接起作用：`snowlevel > 0.02` 播放 `frozen`，不高于该值恢复循环 `idle`。管理器用 `createEffect` 读取信号并更新所有池塘的 `userData.frozen`，之后生成或读档的池塘按当前状态初始化。`frozen` 不保存，由读档后的积雪量重新推导。冻结时池塘添加 `SlipperyFeetTarget` 组件（标签 `slipperyfeettarget`，半径 `1.95 × WORLD_SCALE`，`SlipperyRate`：玩家速度大于 `WILSON_RUN_SPEED` 为 50，否则为 5），解冻时移除组件和标签。尚未实现冻结时的碰撞组、`watersource`、`fishable`、`childspawner`、水草和冰冻音效 `pondfreeze`；扩展时读取 `pond.lua` 并在所属组件内实现。
+
+### 玩家在冰面滑倒
+
+对应 `components/slipperyfeet.lua`、`slipperyfeettarget.lua` 和 `SGwilson.lua` 的 `slip`、`slip_pst`、`slip_fall`、`slip_fall_loop`、`slip_fall_pst`：
+
+- `SlipperyFeet`（`packages/componets/src/slipperyfeet.ts`）每秒用游戏时间调度器的 `ComponentTimer` 查找 12 范围内的 `slipperyfeettarget`；站在其中后进入 `ice_entity` 来源，监听 `newstate`，在带 `running` 且不带 `noslip` 的状态（`walk`、`run`）累积 `速度² / 6 × dt × 冰面速率 × (0.7～1)`，达到 `24`（`WILSON_RUN_SPEED × 4`）推送 `feetslipped`；离开后按加速度衰减。逐帧 `update(dt)` 只在有更新原因时运行。
+- `feetslipped` 在 `running` 状态进入 `slip`：前进速度 0.6→0.3→0.25→0.2，18 帧后若仍按住方向键进入 `slip_fall`，否则动画结束进入 `slip_pst`。`slip_fall` 在第 11 帧播放受伤音并按 0.64…0.04 衰减，之后经 `slip_fall_loop`（按键或动画结束）到 `slip_fall_pst`。
+- 滑行方向取进入前最后的移动朝向；滑行期间浏览器输入由状态图接管，按住方向键每帧推送 `locomote`，对应 Lua 的 `IsLocalAnalogTriggered`。`Physics:GetMotorSpeed` 取指令速度（`速度 / WORLD_SCALE`），不取受接触摩擦影响的刚体速度。
+- 动画 `player_slip.zip`；声音 `iceslab_slipping`（`sfx` 提取索引 309–316）、`slip_fall_whoop`（332–335）、`slip_fall_thud`（336–340）、`wilson/hurt`（`wilson` 107–109），均经 `fev-events.py` 解析并用 `-m -s` 核对流名，`-i` 导出的 WAV 与源已解码 WAV 字节一致。
+- 尚未实现：海洋冰面来源、`nonslipgrit` 防滑、旋转（WX-78）、`PlayFootstep`、手柄模拟摇杆轮询、`ForceStopHeavyLifting`。
+
 ## 资源、光照、加载与销毁
 
 - DST 纹理、动画和声音资源从原数据目录镜像到 `public/dst/data`，保留路径和原文件名，运行时使用 `${import.meta.env.BASE_URL}dst/data/`。不要用库存图标、自制图片或屏幕 DOM 雪花代替已有原版资源。
@@ -208,6 +222,9 @@ alpha = first + second + third
 | [weather.test.ts](../packages/animation/tests/weather.test.ts) | 冬季降雪、严格阈值与迟滞、季节／温度订阅释放、积雪／融雪、60 帧与尾帧结算、导出／加载兼容与原子校验 |
 | [books.test.ts](../packages/animation/tests/books.test.ts) | 求雨书请求、消耗、降水自然停止及状态恢复 |
 | [rain.spec.ts](../packages/ui/tests/rain.spec.ts) | 真实雨丝／水花、三层循环雨声与强度、停止、重新下雨和清理 |
+| [slipperyfeet.test.ts](../packages/animation/tests/slipperyfeet.test.ts) | 持续累积、`feetslipped`、`slip`→`slip_fall`／`slip_pst` 的运动速度和声音、离开冰面衰减、组件释放 |
+| [pond-slip.spec.ts](../packages/ui/tests/pond-slip.spec.ts) | 真实游戏中在冻结池塘上行走触发滑倒，松开按键仍沿原方向滑行，随后恢复 |
+| [pondFreeze.test.ts](../packages/animation/tests/pondFreeze.test.ts) | 池塘随积雪量冻结／解冻、新池塘沿用当前状态、销毁后停止监听 |
 | [snow.spec.ts](../packages/ui/tests/snow.spec.ts) | GPU 雪花与白色积雪遮罩、1～2 倍稳定随机尺寸、两个镜头朝向的下落、概率柔边与中央清晰度、前方透明深度物体不能遮挡雪花、停止和资源释放、实际 `c_save()`／重载 |
 
 涉及状态规则时运行相关领域测试；涉及 shader、声音或排序时运行对应浏览器测试。保持正常流程、重要边界／停止和资源／状态保留的代表性覆盖，不为每个等价参数或镜头方向重复新增测试。

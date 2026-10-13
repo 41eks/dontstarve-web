@@ -40,13 +40,13 @@ export function equippedActionEntity(equipment: HandEquipment | null | undefined
   return entity && 'hasTag' in entity && 'components' in entity ? entity as unknown as ComponentActionEntity : undefined;
 }
 
-/** EQUIPPED.tool + ISVALID.workable, for the supported NET/HAMMER/MINE branches. */
-export function collectEquippedActions(tool: ComponentActionEntity | undefined, target: Pick<ComponentActionEntity, 'hasTag' | 'isRemoved'> & { readonly prefab?: string }, right: boolean): ('NET' | 'HAMMER' | 'MINE' | 'CHOP' | 'CASTSPELL' | 'LIGHT')[] {
+/** EQUIPPED.tool + ISVALID.workable, for the supported tool actions. */
+export function collectEquippedActions(tool: ComponentActionEntity | undefined, target: Pick<ComponentActionEntity, 'hasTag' | 'isRemoved'> & { readonly prefab?: string }, right: boolean): ('NET' | 'HAMMER' | 'MINE' | 'CHOP' | 'DIG' | 'CASTSPELL' | 'LIGHT')[] {
   if (!tool || tool.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) return [];
-  const actions: ('NET' | 'HAMMER' | 'MINE' | 'CHOP' | 'CASTSPELL' | 'LIGHT')[] = [];
+  const actions: ('NET' | 'HAMMER' | 'MINE' | 'CHOP' | 'DIG' | 'CASTSPELL' | 'LIGHT')[] = [];
   if (tool.components.tool) {
-    for (const action of ['NET', 'HAMMER', 'MINE', 'CHOP'] as const) {
-      if (tool.hasTag(`${action}_tool`) && (right || action !== 'HAMMER')
+    for (const action of ['NET', 'HAMMER', 'MINE', 'CHOP', 'DIG'] as const) {
+      if (tool.hasTag(`${action}_tool`) && (right || (action !== 'HAMMER' && action !== 'DIG'))
         && target.hasTag(`${action}_workable`)) { actions.push(action); break; }
     }
   }

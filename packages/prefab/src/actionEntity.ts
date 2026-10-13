@@ -54,17 +54,17 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
 
 export type FoundEntity = ComponentActionEntity & { getPosition(): THREE.Vector3 };
 
-/** TheSim:FindEntities on the ground plane: radius, then must/cant/oneof tag filters. */
-export function FindEntities(root: THREE.Object3D, x: number, z: number, radius: number,
+/** TheSim:FindEntities on the ground plane: must/cant/oneof tag filters, then radius. */
+export function FindEntities(root: THREE.Object3D, position: THREE.Vector3, radius: number,
   mustTags: readonly string[] = [], cantTags: readonly string[] = [], oneOfTags: readonly string[] = []): FoundEntity[] {
   const found: FoundEntity[] = [];
+  const radiusSquared = radius ** 2;
   root.traverse(object => {
     const inst = object.userData.actionEntity as FoundEntity | undefined;
     if (!inst || inst.isRemoved || typeof inst.getPosition !== 'function') return;
-    const position = inst.getPosition();
-    if ((position.x - x) ** 2 + (position.z - z) ** 2 > radius ** 2) return;
     if (mustTags.some(tag => !inst.hasTag(tag)) || cantTags.some(tag => inst.hasTag(tag))
       || (oneOfTags.length > 0 && !oneOfTags.some(tag => inst.hasTag(tag)))) return;
+    if (inst.getPosition().distanceToSquared(position) > radiusSquared) return;
     found.push(inst);
   });
   return found;

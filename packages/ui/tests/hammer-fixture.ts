@@ -7,12 +7,14 @@ export async function checkResearchLabDestruction() {
   const { createSceneEntities } = await import('../../../src/sceneEntities');
   const { World } = await import('cannon-es');
   const { player } = await import('../../../src/player');
+  const { worldState } = await import('../../../src/scene');
   const pickedUp: { itemId: string; count: number }[] = [];
-  const entities = createSceneEntities(new World(), {
+  const entities = await createSceneEntities(new World(), {
+    ...worldState,
     clock: createSignal({ phase: 'day', timeinphase: 0 }),
     season: createSignal({ season: 'spring', progress: 0 }),
-    // The rain effect only reads the weather's rain rate.
-    weather: { rainRate: createSignal(0) },
+    fullMoon: createSignal(false),
+    isNight: createSignal(false),
   }, () => false);
   const { scene, renderer } = await import('../../../src/universal');
   const { camera } = await import('../../../src/camera');

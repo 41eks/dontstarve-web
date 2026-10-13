@@ -286,6 +286,37 @@
       },
       "hammerAnimation": "hit"
     },
+    "bookstation": {
+      "archive": "bookstation.zip",
+      "buildLabel": "书架",
+      "idleAnimation": "idle",
+      "name": "Bookstation",
+      "onProximity": true,
+      "scale": 0.02,
+      "skinArchives": {
+        "bookstation_house": "dynamic/bookstation_house.zip"
+      },
+      "interaction": {
+        "closeAnimation": "hit",
+        "closedAnimation": "idle",
+        "openAnimation": "hit",
+        "closeImmediately": true,
+        "openImmediately": true
+      },
+      "container": {
+        "slotCount": 20,
+        "columns": 4,
+        "singleItems": false,
+        "panelArchive": "ui_bookstation_4x5.zip",
+        "slotGrid": {
+          "x": -114,
+          "y": 37,
+          "columnSpacing": 75,
+          "rowSpacing": 79
+        }
+      },
+      "hammerAnimation": "hit"
+    },
     "campfire": {
       "archive": "campfire.zip",
       "buildLabel": "营火",
@@ -418,6 +449,19 @@
         "sculptingtable_swamp": "dynamic/sculptingtable_swamp.zip"
       },
       "hammerAnimation": "hit"
+    },
+    "moondial": {
+      "archive": "moondial.zip",
+      "buildArchive": "moondial_build.zip",
+      "buildLabel": "月晷",
+      "idleAnimation": "idle_new",
+      "name": "Moondial",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "moondial_an": "dynamic/moondial_an.zip"
+      },
+      "skinSymbols": ["basin"]
     },
     "winterometer": {
       "archive": "winter_meter.zip",

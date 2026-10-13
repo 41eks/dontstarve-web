@@ -1,4 +1,5 @@
 import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
+import type { Vector3 } from 'three';
 
 export type WorkAction = 'NET' | 'HAMMER' | 'MINE' | 'DIG' | 'CHOP';
 
@@ -17,7 +18,7 @@ export interface WorkableInst extends WorkInst {
 export interface Worker {
   PushEvent?(name: string, data: unknown): void;
   /** Ground position of the worker, e.g. for a tree's fall direction. */
-  getPosition?(): { x: number; z: number };
+  getPosition?(): Vector3;
   components?: { inventory?: { GiveItem(entity: unknown, source?: { x: number; y: number; z: number }): boolean } };
 }
 
@@ -35,6 +36,8 @@ export class Workable {
   readonly maxwork = readonlySignal(this.maxworkState);
   private readonly enabledState = createSignal(true);
   private readonly disposedState = createSignal(false);
+  private readonly lastworktimeState = createSignal<number | undefined>(undefined);
+  readonly lastworktime = readonlySignal(this.lastworktimeState);
   readonly workleft = readonlySignal(this.workleftState);
   readonly enabled = readonlySignal(this.enabledState);
   readonly action = readonlySignal(this.actionState);
@@ -48,7 +51,9 @@ export class Workable {
   savestate = false;
 
   private readonly inst: WorkableInst;
-  constructor(inst: WorkableInst) {
+  private readonly now?: () => number;
+  constructor(inst: WorkableInst, now?: () => number) {
+    this.now = now;
     this.inst = inst;
     this.canBeWorkedMemo = createMemo(() => canWork(this.disposedState.get(), inst.removal.get(),
       this.enabledState.get(), this.workleftState.get()));
@@ -82,6 +87,7 @@ export class Workable {
 
   WorkedBy(worker: Worker, numworks = 1): boolean {
     if (!this.CanBeWorked()) return false;
+    if (this.now) this.lastworktimeState.set(this.now());
     if (numworks > 0) {
       const remaining = this.workleftState.peek();
       const next = remaining <= 1 ? 0 : remaining - numworks;

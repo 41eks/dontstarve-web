@@ -18,6 +18,7 @@ describe('session world temperature', () => {
     expect(state.isNight.peek()).toBe(true);
     expect('set' in state.isNight).toBe(false);
     const updater = createWorldClockUpdater(state, initialElapsedSeconds);
+    const perishSnapshot = state.perishClock.snapshot.peek();
     const stop = state.temperature.subscribe(observed);
     const clock = state.clock.peek(), temperature = state.temperature.peek();
     expect(state.moonPhase.peek()).toBe('threequarter');
@@ -30,6 +31,8 @@ describe('session world temperature', () => {
     updater.update(0);
     expect(state.clock.peek()).toBe(clock);
     expect(state.temperature.peek()).toBe(temperature);
+    expect(state.perishClock.snapshot.peek()).toBe(perishSnapshot);
+    expect(state.perishClock.GetTick().time).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
     expect(state.worldtemperature.OnSave().noisetime).toBe(initialElapsedSeconds);
     expect(state.moonPhase.peek()).toBe('threequarter');
     expect(observed).not.toHaveBeenCalled();
@@ -42,6 +45,7 @@ describe('session world temperature', () => {
     expect(nightChanges).toHaveBeenCalledExactlyOnceWith(false, true);
     expect(state.moonPhase.peek()).toBe('full');
     expect(state.worldtemperature.OnSave().noisetime).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
+    expect(state.perishClock.snapshot.peek().time).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
     const settled = state.temperature.peek();
     updater.update(0.25);
     expect(state.temperature.peek()).toBe(settled);

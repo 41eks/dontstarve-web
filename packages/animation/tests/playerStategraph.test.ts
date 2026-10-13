@@ -13,13 +13,15 @@ beforeEach(() => {
 });
 afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-it('loads the Willow build with shared player animations and renders every facing with equipment', async () => {
+it('loads the Maxwell build with shared player animations and renders every facing with equipment', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
-  expect(player.name).toBe('Willow');
+  expect(player.name).toBe('Maxwell');
+  expect(player.userData.artCharacter).toBe('waxwell');
+  expect(player.MiniMapEntity.icon).toBe('waxwell.png');
   expect(player.userData.stategraph).toBe(animation.stategraph);
   const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
-  expect(urls).toContain('/dst/data/anim/willow.zip');
+  expect(urls).toContain('/dst/data/anim/waxwell.zip');
   expect(urls).not.toContain('/dst/data/anim/wilson.zip');
   await animation.setHat('strawhat');
   await animation.setCarryItem('torch');
@@ -39,7 +41,7 @@ it('loads the Willow build with shared player animations and renders every facin
   }
 });
 
-it('keeps the source mining timeline when Willow changes facing and emits one action notification', async () => {
+it('keeps the source mining timeline when Maxwell changes facing and emits one action notification', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
   await animation.setCarryItem('pickaxe');

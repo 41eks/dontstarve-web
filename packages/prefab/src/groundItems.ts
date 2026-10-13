@@ -9,10 +9,13 @@ import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
-import { configureHeatRockEntity, HEATROCK_ID } from './heatrock';
+import { configureHeatRockEntity, HEATROCK_ID, type HeatRock } from './heatrock';
+import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import { configureRazorEntity, RAZOR_ID } from './razor';
 import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';
 import { configureBirdEntity, isBirdId } from './birds';
+import { configureBackpackEntity } from './backpack';
+import { configureTurfEntity, turfTileName } from './turfs';
 
 export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly source: string;
@@ -34,20 +37,37 @@ export const TURF_ITEM_IDS = Object.keys(GROUND_ITEM_DEFINITIONS)
   .filter(id => GROUND_ITEM_DEFINITIONS[id].groundTile !== undefined);
 /** turfs.lua: STACK_SIZE_MEDITEM; no equipped art or source skins. */
 export const TURF_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = Object.fromEntries(
-  TURF_ITEM_IDS.map(id => [id, { ...GROUND_ITEM_DISPLAY_SPECS[id], maxStack: 20 }]),
+  TURF_ITEM_IDS.map(id => [id, { ...GROUND_ITEM_DISPLAY_SPECS[id], maxStack: 20, configureEntity: configureTurfEntity }]),
 );
 
 export function createGroundItemFactory(context: GroundPrefabContext): GroundItemFactory {
   const fires = new Set<ArchiveSprite>();
   return {
     itemIds: Object.keys(GROUND_ITEM_DEFINITIONS),
-    configureEntity: entity => isBirdId(entity.prefab) ? configureBirdEntity(entity)
+    configureEntity: entity => turfTileName(entity.prefab) ? configureTurfEntity(entity)
+      : isBirdId(entity.prefab) ? configureBirdEntity(entity)
+      : entity.prefab === 'backpack' ? configureBackpackEntity(entity)
       : entity.prefab === HEATROCK_ID ? configureHeatRockEntity(entity)
       : entity.prefab === RAZOR_ID ? configureRazorEntity(entity)
       : entity.prefab === PANFLUTE_ID ? configurePanfluteEntity(entity)
       : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity),
     async create(item) {
       const sprite = await createGroundItemSprite(context.assets, item.itemId, item.skinId);
+      if (item.itemId === HEATROCK_ID) {
+        let stopWatching: (() => void) | undefined;
+        return {
+          ...sprite,
+          get currentAnimation() { return sprite.currentAnimation; },
+          bindEntity(entity) {
+            stopWatching?.();
+            const rock = entity.getComponent<HeatRock>('heatrock');
+            if (!rock) return;
+            const range = watchSignal(rock.range, stop => { stopWatching = stop; });
+            createEffect(() => { sprite.setAnimation(String(range.get())); });
+          },
+          dispose() { stopWatching?.(); sprite.dispose(); },
+        };
+      }
       if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return sprite;
       try { return await createBurnableItemVisual(context, item.itemId, sprite, fires, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel); }
       catch (error) { sprite.dispose(); throw error; }
@@ -83,6 +103,7 @@ export async function createGroundItemSprite(
   });
   return {
     ...sprite,
+    get currentAnimation() { return sprite.currentAnimation; },
     dispose() { removeInventoryEvents(); sprite.dispose(); },
   };
 }

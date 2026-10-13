@@ -1,6 +1,8 @@
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
+import { FindEntities } from '../packages/prefab/src/actionEntity';
+import type { TemperatureSource } from '../packages/componets/src/temperature';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
 import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
 import { createInventoryStore } from './inventory';
@@ -10,8 +12,11 @@ import * as THREE from 'three';
 import { turfMap, moonTreeForest } from './building';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
-import { camera } from './camera';
+import { camera, followCamera } from './camera';
 import { GroundItemManager } from './groundItems';
+import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
+import { GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-web/prefab/groundItems';
+import { DockKitPlacement } from '@dontstarve-web/prefab/dock_kit';
 import { FarmPlowPlacement, FARM_PLOW_ID, FARM_DECOR_IDS } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
 import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
@@ -44,17 +49,23 @@ import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
 import { RainEffect } from '@dontstarve-web/prefab/rain';
 import { SnowEffect } from '@dontstarve-web/prefab/snow';
 import { WorldFx } from '@dontstarve-web/prefab/world_fx';
+import { OceanWaves } from '@dontstarve-web/prefab/ocean_waves';
+import { WaveManager, type WaveMap } from '../packages/componets/src/wavemanager';
+import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
+import { TILE_SIZE } from '../packages/prefab/src/tile';
 import { SAVE_CATALOG } from './save/catalog';
 import { findGroundPath } from '@dontstarve-web/prefab/locomotor';
+import { createDeciduousForest, type DeciduousSpawnId } from '@dontstarve-web/prefab/deciduoustrees';
+import { createEvergreenForest, type EvergreenSpawnId } from '@dontstarve-web/prefab/evergreens';
 
 import { EntityRegistry } from './entityRegistry';
 import { PREFAB_DEFINITIONS } from './prefabDefinitions';
 import { disposeSprite } from '@dontstarve-web/prefab/disposeSprite';
 import type { WorldState } from './worldState';
 
-export function createSceneEntities(
+export async function createSceneEntities(
   world: CANNON.World,
-  worldState: Pick<WorldState, 'clock' | 'season' | 'fullMoon' | 'isNight' | 'temperature' | 'weather'>,
+  worldState: Pick<WorldState, 'clock' | 'season' | 'moon' | 'fullMoon' | 'isNight' | 'temperature' | 'weather' | 'perishClock'>,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
@@ -63,12 +74,18 @@ export function createSceneEntities(
   scheduler?: GameTimeScheduler,
 ) {
   const sceneInventory = inventory ?? createInventoryStore();
+  sceneInventory.entities.bindPerishWorld({ perishClock: worldState.perishClock });
+  sceneInventory.entities.bindTemperatureWorld({
+    temperature: worldState.temperature, clock: worldState.clock, unitScale: WORLD_SCALE,
+    findHeaters: (position, radius, ignoredTags) => FindEntities(scene, position, radius, ['HASHEATER'], ignoredTags) as TemperatureSource[],
+  });
   const dynamicMusic = scheduler ? new DynamicMusic(scheduler, path => PlaySound(path)) : undefined;
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
     { ...view, physics: world, scheduler, season: worldState.season, dynamicMusic, fullMoon: worldState.fullMoon,
+      moon: worldState.moon,
       getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
-      isNight: worldState.isNight,
+      isNight: worldState.isNight, perishClock: worldState.perishClock,
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
       registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
@@ -80,7 +97,15 @@ export function createSceneEntities(
     onBuildingInteraction,
   );
   const reskinEffects = new ReskinEffects(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
-  const flowerPlanting = new FlowerPlanting(view, `${import.meta.env.BASE_URL}dst/data/anim`, onFlowerPlanted);
+  const flowerPlanting = new FlowerPlanting(view, `${import.meta.env.BASE_URL}dst/data/anim`, onFlowerPlanted, Math.random, {
+    forest: moonTreeForest,
+    canPlant: position => turfMap.canPlant(position) || turfMap.getTileAtWorld(position) === WORLD_TILES.GRASS,
+    getBlockers: () => registry.renderEntities.filter(({ object }) => !object.userData.placer)
+      .map(({ object, footPosition }) => ({ position: footPosition,
+        tags: object.userData.tags,
+        inventoryRadius: object.userData.itemId ? object.userData.physicsRadius ?? .5 : undefined,
+        smartRadius: object.userData.deploySmartRadius })),
+  }, scheduler ? { scheduler, season: worldState.season, spawnAsh: position => spawnAsh(position) } : undefined);
   const groundItems = new GroundItemManager(
     scene,
     camera,
@@ -117,6 +142,12 @@ export function createSceneEntities(
     scheduler,
     worldState.season,
   );
+  // DefaultBurntFn: one ash at the burnt inst's position.
+  const spawnAsh = (position: THREE.Vector3) => {
+    void groundItems.spawnFromSave(newEntityId(), { ...SAVE_CATALOG.items.ash, itemId: 'ash', count: 1 },
+      new THREE.Vector3(position.x, 0, position.z))
+      .catch((error: unknown) => console.error('Unable to spawn ash', error));
+  };
   const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
     DWARF_STAR_ID, () => player.position, worldState.season);
   const polarLights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
@@ -136,7 +167,7 @@ export function createSceneEntities(
     scheduler, season: worldState.season,
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
-  const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, worldState.weather.snowLevel);
   const lavaPonds = new LavaPondManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, { scheduler });
   const wormholes = new WormholeManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, () => [player.position]);
   const portals = new PortalManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
@@ -185,6 +216,25 @@ export function createSceneEntities(
     },
   });
   const registry = new EntityRegistry();
+  const evergreenForest = await createEvergreenForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
+    camera, scene, scheduler, physics: world, season: worldState.season, spawnAsh,
+    growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
+    dropLoot: (items, position) => {
+      void groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
+        .catch((error: unknown) => console.error('Unable to drop evergreen loot', error));
+    },
+  });
+  scene.add(evergreenForest.group);
+  const deciduousForest = await createDeciduousForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
+    camera, scene, scheduler, physics: world, season: worldState.season, spawnAsh,
+    secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
+    growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
+    dropLoot: (items, position) => {
+      void groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
+        .catch((error: unknown) => console.error('Unable to drop deciduous tree loot', error));
+    },
+  });
+  scene.add(deciduousForest.group);
   const farmPlow = new FarmPlowPlacement(view, turfMap, `${import.meta.env.BASE_URL}dst/data`,
     async (position, item) => { await groundItems.spawnFromSave(item.entityId ?? newEntityId(), {
       ...SAVE_CATALOG.items[item.itemId], ...item,
@@ -195,8 +245,21 @@ export function createSceneEntities(
         .map(({ object, footPosition }) => ({ position: footPosition, tags: object.userData.tags as string[] | undefined }));
       // The complete forest blocks tiles, including trees outside the visual loading radius.
       for (const tree of moonTreeForest.entities) blockers.push({ position: tree.position, tags: undefined });
+      for (const tree of deciduousForest.entities) blockers.push({ position: tree.position, tags: undefined });
+      for (const tree of evergreenForest.entities) blockers.push({ position: tree.position, tags: undefined });
       return blockers;
     });
+  // Docks stand in the water: any registered entity there blocks, trees and grass included.
+  const dockKit = new DockKitPlacement(view, turfMap, `${import.meta.env.BASE_URL}dst/data`, () =>
+    registry.renderEntities.filter(({ object }) => !object.userData.placer)
+      .map(({ object, footPosition }) => ({ position: footPosition, tags: object.userData.tags as string[] | undefined,
+        inventoryRadius: object.userData.itemId ? object.userData.physicsRadius ?? .5 : undefined, smartRadius: object.userData.deploySmartRadius })));
+  registry.register(PREFAB_DEFINITIONS.dockKit, {
+    exportRecords: () => [],
+    update: () => dockKit.update(),
+    renderEntities: () => dockKit.renderEntities,
+    dispose: () => dockKit.dispose(),
+  });
   farmPlow.setDebrisLootHandler((itemId, position) => groundItems.flingLoot([
     { ...SAVE_CATALOG.items[itemId], itemId, count: 1 },
   ], position));
@@ -224,6 +287,11 @@ export function createSceneEntities(
   const treesById = new Map(moonTreeForest.entities.map((entity) => [entity.saveId!, entity]));
   const unbindTrees = moonTreeForest.bindWorld({
     camera,
+    scene,
+    scheduler,
+    season: worldState.season,
+    spawnAsh,
+    growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
     dropLoot: (items, position) => {
       void groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
         .catch((error: unknown) => console.error('Unable to drop tree loot', error));
@@ -233,8 +301,12 @@ export function createSceneEntities(
     restore: (_, record) => {
       const tree = treesById.get(record.id);
       if (!tree) throw new Error(`Missing logical tree: ${record.id}`);
-      moonTreeForest.restoreState(record.id, record.components.moonTree);
+      moonTreeForest.restoreState(record.id, record.components.moonTree, record.components.growable);
       return tree;
+    },
+    debugSpawn: async id => {
+      moonTreeForest.spawnTree(id as 'moon_tree' | 'moon_tree_short' | 'moon_tree_normal' | 'moon_tree_tall',
+        new THREE.Vector3(player.position.x, 0, player.position.z));
     },
     exportRecords: () => moonTreeForest.entities.map((entity) => ({ prefabId: 'moon_tree', record: {
       id: entity.saveId!, transform: { position: entity.position.toArray(), rotationY: 0 },
@@ -247,6 +319,31 @@ export function createSceneEntities(
     },
     renderEntities: () => moonTreeForest.renderEntities,
     dispose: () => { unbindTrees(); moonTreeForest.dispose(); },
+  });
+  registry.register(PREFAB_DEFINITIONS.moonTreeSaplings, {
+    restore: (_, record) => moonTreeForest.spawnSapling(new THREE.Vector3(...record.transform.position),
+      { ...record, components: { saplingTimer: record.components.saplingTimer! } }),
+    debugSpawn: async () => { moonTreeForest.spawnSapling(new THREE.Vector3(player.position.x, 0, player.position.z)); },
+    exportRecords: () => moonTreeForest.exportSaplings().map(record => ({ prefabId: 'moonbutterfly_sapling', record })),
+    dispose() {},
+  });
+  registry.register(PREFAB_DEFINITIONS.evergreens, {
+    restore: (_, record) => evergreenForest.spawn('evergreen', new THREE.Vector3(...record.transform.position),
+      { ...record, components: { ...record.components, growable: record.components.growable! } }),
+    debugSpawn: async prefab => { evergreenForest.spawn(prefab as EvergreenSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
+    exportRecords: () => evergreenForest.exportRecords().map(record => ({ prefabId: 'evergreen', record })),
+    update: (dt, quaternion) => { evergreenForest.updateNearby(player.position); evergreenForest.update(dt, quaternion); },
+    renderEntities: () => evergreenForest.renderEntities,
+    dispose: () => evergreenForest.dispose(),
+  });
+  registry.register(PREFAB_DEFINITIONS.deciduousTrees, {
+    restore: (_, record) => deciduousForest.spawn('deciduoustree', new THREE.Vector3(...record.transform.position),
+      { ...record, components: { deciduoustree: record.components.deciduoustree!, growable: record.components.growable! } }),
+    debugSpawn: async prefab => { deciduousForest.spawn(prefab as DeciduousSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
+    exportRecords: () => deciduousForest.exportRecords().map(record => ({ prefabId: 'deciduoustree', record })),
+    update: (dt, quaternion) => { deciduousForest.updateNearby(player.position); deciduousForest.update(dt, quaternion); },
+    renderEntities: () => deciduousForest.renderEntities,
+    dispose: () => deciduousForest.dispose(),
   });
   const kingsById = new Map(pigKings.map((king) => [king.record.id, king]));
   pigKings.forEach((king) => {
@@ -279,6 +376,7 @@ export function createSceneEntities(
     renderEntities: () => pigKings.map((king) => ({
       object: king.standee, footPosition: king.feet, cameraDepth: 0,
     })),
+    miniMapEntities: () => pigKings.map(king => king.MiniMapEntity),
     dispose: () => {
       for (const king of pigKings) { king.dispose(); world.removeBody(king.body); disposeSprite(king.standee); }
     },
@@ -309,13 +407,14 @@ export function createSceneEntities(
     exportRecords: () => groundItems.exportRecords().map((record) => ({ prefabId: 'ground_item', record })),
     update: (dt, quaternion) => groundItems.update(dt, quaternion),
     renderEntities: () => groundItems.renderEntities,
+    miniMapEntities: () => groundItems.miniMapEntities,
     dispose: () => groundItems.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.flowers, {
     restore: (_, record) => flowerPlanting.spawnFromSave(record.id,
       record.components.flower!.animation, new THREE.Vector3(...record.transform.position)),
     exportRecords: () => flowerPlanting.exportRecords().map((record) => ({ prefabId: 'flower', record })),
-    update: (_, quaternion) => flowerPlanting.update(quaternion),
+    update: (dt, quaternion) => flowerPlanting.update(quaternion, dt),
     renderEntities: () => flowerPlanting.renderEntities,
     dispose: () => flowerPlanting.dispose(),
   });
@@ -482,17 +581,46 @@ export function createSceneEntities(
     scene, dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
     getFocus: () => player.position, camera, rate: worldState.weather.snowRate, cover: worldState.weather.snowCover,
     groundSize: initialSave.world.map.generator.options.size,
+    groundOverlay: turfMap,
   });
   registry.register(PREFAB_DEFINITIONS.snow, {
     exportRecords: () => [],
     update: (dt, quaternion) => snow.update(dt, quaternion),
     dispose: () => snow.dispose(),
   });
+  // The only ocean tile is OCEAN_COASTAL; INVALID (outside the map) is neither land nor water.
+  const waveMap: WaveMap = {
+    tileSize: TILE_SIZE,
+    tileAt: (x, z) => turfMap.getTileAtWorld({ x, z }),
+    isLandTile: tile => tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL,
+    isOceanTile: tile => tile === WORLD_TILES.OCEAN_COASTAL,
+  };
+  const oceanWaves = new OceanWaves(scene, waveMap, WORLD_SCALE, `${import.meta.env.BASE_URL}dst/data/anim`);
+  await oceanWaves.prepare();
+  const waveManager = new WaveManager({
+    map: waveMap, spawner: oceanWaves, scale: WORLD_SCALE,
+    tiles: new Map([[WORLD_TILES.OCEAN_COASTAL, 'shore']]),
+    cameraDistance: () => followCamera.getDistance() / WORLD_SCALE,
+    playerPosition: () => player.position,
+  });
+  registry.register(PREFAB_DEFINITIONS.oceanWaves, {
+    exportRecords: () => [],
+    update: (dt, quaternion) => { waveManager.OnUpdate(dt); oceanWaves.update(dt, quaternion); },
+    dispose: () => oceanWaves.dispose(),
+  });
   registry.assertDefinitions(Object.values(PREFAB_DEFINITIONS));
+  const stopDugTurf = turfMap.onDig((point, tileId) => {
+    const itemId = turfItemForTile(tileId);
+    if (!itemId) return;
+    const spec = GROUND_ITEM_DISPLAY_SPECS[itemId];
+    void groundItems.flingLoot([{ itemId, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas }],
+      new THREE.Vector3(point.x, 0, point.z)).catch((error: unknown) => console.error('Unable to drop dug turf', error));
+  });
   const dispose = () => {
+    stopDugTurf();
     try { registry.dispose(); }
     finally { dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
   };
-  return { registry, dispose, moonTreeForest, buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants,
-    beefalos, rockManager, grasses, saplings, ponds, lavaPonds, wormholes, portals, nightmareGrowths, reskinEffects, worldFx, farmPlow };
+  return { registry, dispose, moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants,
+    beefalos, rockManager, grasses, saplings, ponds, lavaPonds, wormholes, portals, nightmareGrowths, reskinEffects, worldFx, farmPlow, dockKit };
 }

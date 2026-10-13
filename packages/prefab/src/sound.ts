@@ -23,6 +23,10 @@ const sounds = {
   // fire.lua → dontstarve.fev sounddefs 1762 / 1765 / 1766, three simultaneous layers.
   'dontstarve/common/campfire': { bank: 'common', streams: [149, 150, 151, 152], loop: true,
     layers: [{ bank: 'common', streams: [153, 154, 155, 156] }, { bank: 'common', streams: [158, 159, 160, 161] }] },
+  // fire.lua firelevels 5–6 → dontstarve.fev sounddef 78 → common file_index 324 and 157–159 (+ 1).
+  'dontstarve/common/forestfire': { bank: 'common', streams: [325, 158, 159, 160], loop: true },
+  // evergreens.lua chop_down_burnt_tree → dontstarve.fev sounddef 118 → forest file_index 4 (+ 1).
+  'dontstarve/forest/treeCrumble': { bank: 'forest', streams: [5], loop: false },
   // livinglog.lua onignite → dontstarve.fev sounddef 631 → leif file_index 66–69 (livinglog_burn_1..4).
   'dontstarve/creatures/leif/livinglog_burn': { bank: 'leif', streams: [67, 68, 69, 70], loop: false },
   // tent.lua → dontstarve.fev sounddefs 1334 (eleven tent_sleep_loop variants, sfx file_index 394–404), 171 and 172.
@@ -39,6 +43,11 @@ const sounds = {
   'dontstarve/sanity/shadowrock_reveal': { bank: 'sanity', streams: [48], loop: false, layers: [{ bank: 'sanity', streams: [49, 50, 51, 52] }] },
   'dontstarve/sanity/shadowrock_down': { bank: 'sanity', streams: [47], loop: false, layers: [{ bank: 'sanity', streams: [49, 50, 51, 52] }] },
   'dontstarve/sanity/shadowrock_conseal': { bank: 'sanity', streams: [47], loop: false, layers: [{ bank: 'sanity', streams: [49, 50, 51, 52] }] },
+  // SGwilson.lua slip states → dontstarve.fev sounddefs 1689 / 3070 / 3069 (sfx file_index + 1) and 47 (wilson hurt).
+  'dontstarve/movement/iceslab_slipping': { bank: 'sfx', streams: [309, 310, 311, 312, 313, 314, 315, 316], loop: false },
+  'dontstarve/movement/slip_fall_whoop': { bank: 'sfx', streams: [332, 333, 334, 335], loop: false },
+  'dontstarve/movement/slip_fall_thud': { bank: 'sfx', streams: [336, 337, 338, 339, 340], loop: false },
+  'dontstarve/characters/wilson/hurt': { bank: 'wilson', streams: [107, 108, 109], loop: false },
   'dontstarve/wilson/equip_item_gold': { bank: 'wilson', streams: [115], loop: false },
   'dontstarve/wilson/dig': { bank: 'wilson', streams: [64, 65, 66], loop: false },
   'dontstarve_DLC001/creatures/mole/emerge': { bank: 'mole', streams: [2, 3, 4], loop: false },
@@ -84,10 +93,34 @@ const sounds = {
     layers: [{ bank: 'sfx', streams: [1246, 1247, 1248, 1249, 1237, 1242, 1243, 1244, 1245, 1238, 1239, 1240, 1241] }] },
   // moontree.lua on_chop_tree_down → dontstarve.fev treeFall: tree_fall_1.wav, forest file_index 8.
   'dontstarve/forest/treeFall': { bank: 'forest', streams: [9], loop: false },
+  // moonbutterfly.lua / moontree.lua → dontstarve.fev sounddefs 91 / 92 / 130, file_index + 1.
+  'dontstarve/wilson/plant_tree': { bank: 'wilson', streams: [24], loop: false },
+  'dontstarve/forest/treeGrow': { bank: 'forest', streams: [6], loop: false },
+  'dontstarve/forest/treeGrowFromWilt': { bank: 'forest', streams: [8], loop: false },
+  // evergreens.lua GrowOld → dontstarve.fev sounddef 127 → forest file_index 6.
+  'dontstarve/forest/treeWilt': { bank: 'forest', streams: [7], loop: false },
+  // fx.lua leaf FX → dontstarve_DLC001.fev sounddef 39 → amb_stream file_index 88–97.
+  'dontstarve_DLC001/fall/leaf_rustle': { bank: 'amb_stream', streams: [89, 91, 92, 93, 94, 95, 96, 97, 98, 90], loop: false },
   // winterometer.lua onbuilt → dontstarve.fev sounddef 1331 (Thermal_measurer_craft.wav) → common file_index 175.
   'dontstarve/common/winter_meter_craft': { bank: 'common', streams: [176], loop: false },
   // sculptingtable.lua onbuilt → dontstarve.fev sounddef sfx/together/sculpting_table/sculpting_station_craft-01.wav → sfx stream 910.
   'dontstarve/common/together/sculpting_table/craft': { bank: 'sfx', streams: [910], loop: false },
+  // dock_kit.lua on_deploy PlaySoundWithParams(intensity = .8) → turnoftides.fev common/together/boat/damage: four layers,
+  // sounddefs 160 (armoured_1..8), 165 (cargo_1..8), 128 (kickdrum_1..2), 142 (woodbreak_DST-001..026), turnoftides
+  // file_index + 1. Volume envelopes (EPRP 24–25, 26–28, 29–30, 10 + 31) are linear in `intensity`; the layer-0
+  // "FMOD Highpass Simple" filter envelope (EPRP 22–23) is not modelled.
+  'dontstarve/common/together/boat/damage': { bank: 'turnoftides', streams: [89, 90, 91, 92, 93, 94, 95, 96], loop: false,
+    layers: [{ bank: 'turnoftides', streams: [97, 98, 99, 100, 101, 102, 103, 104] }, { bank: 'turnoftides', streams: [40, 41] },
+      { bank: 'turnoftides', streams: [869, 894, 870, 871, 872, 873, 874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886,
+        887, 888, 889, 890, 891, 892, 893] }],
+    intensity: [[[0, .041763], [.993251, 0]], [[0, .01], [.257593, 0], [.986502, 1]], [[0, .23], [.990921, .67]],
+      [[0, 0], [.994521, .41]]] },
+  // moondial.lua / SGmoondial.lua → dontstarve.fev sounddefs 2361 (fill_2_1..4), 2362/2363 (full_LP, one sample),
+  // 2367 (water_movement_1..5) and 2366 (place), together file_index 1324–1328, 1336–1341 (+ 1).
+  'dontstarve/common/together/moondial/fill': { bank: 'together', streams: [1325, 1326, 1327, 1328], loop: false },
+  'dontstarve/common/together/moondial/full_LP': { bank: 'together', streams: [1329], loop: true },
+  'dontstarve/common/together/moondial/water_movement': { bank: 'together', streams: [1338, 1339, 1340, 1341, 1342], loop: false },
+  'dontstarve/common/together/moondial/craft': { bank: 'together', streams: [1337], loop: false },
   // moonbase.lua / sculptingtable.lua → dontstarve.fev sounddefs 2381 + 2355, two simultaneous layers.
   // place_structure_wood (common file_index 232) + one of 18 Medium_rock_impact variants (sfx file_index + 1).
   'dontstarve/common/together/moonbase/moonstaff_place': { bank: 'common', streams: [233], loop: false,
@@ -175,6 +208,11 @@ const sounds = {
   // fx.lua fx_book_rain → wickerbottom_rework.fev sounddefs 9 / 20 (file_index 9 / 10 → book_rain_DST, book_rain_sparkle).
   'wickerbottom_rework/book_spells/rain': { bank: 'wickerbottom_rework', streams: [10], loop: false,
     layers: [{ bank: 'wickerbottom_rework', streams: [11] }] },
+  // bookstation.lua onbuilt → wickerbottom_rework.fev bookstation/place → sounddef 24 (bookstation_place_DST_v2, file_index 23).
+  'wickerbottom_rework/bookstation/place': { bank: 'wickerbottom_rework', streams: [24], loop: false },
+  // fx.lua fx_book_moon → wickerbottom_rework.fev book_spells/moon sounddefs 6 / 21 (file_index 7 / 8 → book_moon_DST, book_moon_sparkle).
+  'wickerbottom_rework/book_spells/moon': { bank: 'wickerbottom_rework', streams: [8], loop: false,
+    layers: [{ bank: 'wickerbottom_rework', streams: [9] }] },
   'wickerbottom_rework/book_spells/fail': { bank: 'wickerbottom_rework', streams: [3], loop: false },
 } as const;
 export type SoundEventPath = keyof typeof sounds;

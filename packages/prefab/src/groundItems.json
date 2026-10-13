@@ -1277,6 +1277,51 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "dock_kit": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/dock_kit.lua",
+      "name": "码头套装",
+      "icon": "dock_kit.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "dock_kit.zip",
+      "buildArchives": [
+        "dock_kit.zip"
+      ],
+      "bank": "dock_kit",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "papyrus": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/papyrus.lua",
+      "name": "莎草纸",
+      "icon": "papyrus.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "papyrus.zip",
+      "buildArchives": [
+        "papyrus.zip"
+      ],
+      "bank": "papyrus",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "featherpencil": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/featherpencil.lua",
+      "name": "羽毛笔",
+      "icon": "featherpencil.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "feather_pencil.zip",
+      "buildArchives": [
+        "feather_pencil.zip"
+      ],
+      "bank": "feather_pencil",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "rocks": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_rocks.lua",
       "name": "石头",
@@ -2339,6 +2384,21 @@
       ],
       "bank": "books",
       "animation": "book_rain",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "book_moon": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/books.lua",
+      "name": "月之魔典",
+      "icon": "book_moon.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "books.zip",
+      "buildArchives": [
+        "books.zip"
+      ],
+      "bank": "books",
+      "animation": "book_moon",
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {}

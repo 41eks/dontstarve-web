@@ -8,6 +8,29 @@ UI、库存和 prefab 共用的响应式原语、装备协议与状态工厂，�
 - `createEffect(fn)` 立即执行一次，后续在微任务中合并更新；返回释放函数，同时取消排队执行并运行 `onCleanUp(fn)` 注册的清理。
 - `createMemo(fn)` 返回派生值的读取函数。
 - `readonlySignal(signal)` 暴露没有 `set()` 的读取和订阅接口，状态写入由拥有者负责。
+- `watchSignal(source, registerCleanup)` 返回标准可写 signal，接口仍为 `get()`、`set()`、`peek()`、`subscribe()`，没有 `.effect()` 或 `.dispose()`。每个 class 对同一世界输入创建一个本地 signal，源 signal 只登记一条同步 effect；class 的多个普通 `createEffect` / memo 和 subscriber 都登记在本地 signal 中。
+- 本地 `get()` 除了正常跟踪依赖，还登记所属消费者的生命周期；本地 `subscribe()` 登记取消函数。class 不需要逐个保存这些消费者的释放函数。effect 之后因条件变化改为读取其他输入，也仍归原本的 class 管理；手动释放 effect／subscriber 时会同时从本地生命周期记录中移除。
+- `registerCleanup(stop)` 只登记一份统一清理：取消本地 subscriber、停止本地消费者的完整 effect（包括其其他输入依赖）、取消排队执行并运行 effect cleanup，最后断开源同步。重复清理无影响；其他 class 的本地实例及源 signal 保持工作。批量事务中停止时，本地 signal 保留最后的源值。
+- 同步沿用现有同步／批量结算规则；普通 `createEffect` 仍在微任务中合并执行。本地 `set()` 不回写源 signal，源后续更新会覆盖本地值。对象值不深拷贝；断开生命周期后返回的对象仍是普通 signal，可独立读写。
+
+```ts
+class SeasonObserver {
+  private readonly cleanups: (() => void)[] = [];
+  private readonly season: Signal<SeasonState>;
+
+  constructor(source: ReadonlySignal<SeasonState>, onChange: (season: SeasonState) => void) {
+    this.season = watchSignal(source, stop => { this.cleanups.push(stop); });
+    createEffect(() => onChange(this.season.get()));
+    createEffect(() => console.log(this.season.get().season));
+  }
+
+  dispose(): void {
+    for (const stop of this.cleanups.splice(0).reverse()) stop();
+  }
+}
+```
+
+本地 signal 应保持为所属 class 的私有输入；消费者一旦读取它，就归这个 class 生命周期管理，停止时整个 effect 会被清理。不要把同一个本地 signal 交给生命周期独立的其他 class；其他 class 应分别从世界 signal 创建自己的本地 signal。普通 JavaScript class 没有自动析构回调，仍由实体移除／场景销毁调用 class 的 `dispose()`。`DeciduousTreeLeaves` 只保存本地 signal 的统一清理函数，季节回调继续用普通 `createEffect`，季节转换、初始化／读档和调试命令行为不变。
 
 世界昼夜与季节由 `clockstate`、`seasonstate` 两个全局唯一单例持有，从本包统一导出。初始值分别为 `{ phase: 'day', timeinphase: 0 }` 和 `{ season: 'autumn', progress: 0.5 }`。`set()` 校验阶段／季节、有限数值及 `[0, 1]` 进度，保存不可变快照；无效写入保留原值且不通知订阅者。读档可写入 `{ phase, temperature }` 或 `{ season, temperature }`，保留源保存的温度项。创建 `WorldTemperature` 不重置这两个状态；场景加载恢复它们，温度、光照和牛的行为共享同一份输入。场景销毁只释放消费者的订阅，单例保留。
 

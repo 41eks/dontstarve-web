@@ -123,6 +123,7 @@ export function createChestInventoryPanel(
           slotCount: container.slotCount,
           columns: container.columns,
           panelArchive: container.panelArchive,
+          slotGrid: container.slotGrid,
           singleItems: container.singleItems,
           title: definitions.animatedBuildings[buildingPrefab].buildLabel,
         });

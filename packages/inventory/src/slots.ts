@@ -46,7 +46,10 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   goldenshovel: 1,
   book_silviculture: 1,
   book_rain: 1,
+  book_moon: 1,
+  featherpencil: 20, // featherpencil.lua: TUNING.STACK_SIZE_MEDITEM.
   log: 20,
+  dock_kit: 20, // dock_kit.lua: TUNING.STACK_SIZE_MEDITEM.
   dug_grass: 10, // plantables.lua: TUNING.STACK_SIZE_LARGEITEM.
   dug_sapling: 10,
   dug_sapling_moon: 10,
@@ -105,9 +108,12 @@ export class InventorySlot implements ItemSlot {
 
 export class StorageSlot implements ItemSlot {
   private entity: ItemEntity | null;
+  private readonly itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean;
 
-  constructor(initialStack: InventoryStack | null = null) {
+  /** `itemTest` is the widget's itemtestfn; chests accept everything that can go in a container. */
+  constructor(initialStack: InventoryStack | null = null, itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean = () => true) {
     this.entity = initialStack ? new ItemEntity(initialStack) : null;
+    this.itemTest = itemTest;
   }
 
   get(): InventoryStack | null {
@@ -121,8 +127,8 @@ export class StorageSlot implements ItemSlot {
   getEntity(): ItemEntity | null { return this.entity; }
   setEntity(entity: ItemEntity | null): void { this.entity = entity; }
 
-  accepts(spec: InventoryItemSpec): boolean {
-    return spec.canGoInContainer !== false;
+  accepts(spec: InventoryItemSpec, itemId?: string): boolean {
+    return spec.canGoInContainer !== false && this.itemTest(spec, itemId);
   }
 }
 

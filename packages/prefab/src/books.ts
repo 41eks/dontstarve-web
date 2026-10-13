@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { ReadonlySignal } from '@dontstarve-web/signals';
+import type { ReadonlySignal, WorldMoonPhase } from '@dontstarve-web/signals';
 import type { InventoryItemSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { BookDef, BufferedActionObject } from '@dontstarve-web/stategraphs';
 import { Book, type BookFxWorld, type BookReaderInst, type BookResult } from '../../componets/src/book';
@@ -12,7 +12,8 @@ import { TILE_SIZE } from './tile';
 
 export const BOOK_SILVICULTURE_ID = 'book_silviculture';
 export const BOOK_RAIN_ID = 'book_rain';
-export type BookId = typeof BOOK_SILVICULTURE_ID | typeof BOOK_RAIN_ID;
+export const BOOK_MOON_ID = 'book_moon';
+export type BookId = typeof BOOK_SILVICULTURE_ID | typeof BOOK_RAIN_ID | typeof BOOK_MOON_ID;
 
 /** Services books.lua reaches through TheSim, TheWorld and inst:DoTaskInTime. */
 export interface BookWorld extends BookFxWorld<BookReader> {
@@ -23,13 +24,24 @@ export interface BookWorld extends BookFxWorld<BookReader> {
     readonly preciptype: ReadonlySignal<string>;
     ForcePrecipitation(enable: boolean): void;
   };
+  /** TheWorld.state.moonphase and the `ms_setmoonphase` event. */
+  readonly moon: {
+    readonly phase: ReadonlySignal<WorldMoonPhase>;
+    SetMoonPhase(phase: WorldMoonPhase): void;
+  };
 }
-export type BookReader = BookReaderInst & { getPosition(): { x: number; z: number } };
+export type BookReader = BookReaderInst & { getPosition(): THREE.Vector3 };
 export type BookComponent = Book<ItemEntity, BookReader, BookWorld>;
 
 // TUNING.BOOK_USES_LARGE, TUNING.SANITY_LARGE.
+/** TUNING.BOOKSTATION_RESTORE_AMOUNT: the fraction of the maximum a bookstation restores per period. */
+export const BOOKSTATION_RESTORE_AMOUNT = .01;
+/** Whole uses and restored amounts (integer maximum * 1%) are all multiples of this, whatever the book's maximum. */
+export const BOOK_USE_STEP = .01;
+const BOOK_USES_SMALL = 3;
 const BOOK_USES_LARGE = 5;
 const SANITY_LARGE = 33;
+const SANITY_HUGE = 50;
 const SILVICULTURE_RANGE = 30 * (TILE_SIZE / 4);
 const SILVICULTURE_ONEOF_TAGS = ['leif', 'silviculture', 'tree', 'winter_tree'];
 const SILVICULTURE_CANT_TAGS = ['magicgrowth', 'player', 'FX', 'pickable', 'stump', 'withered', 'barren', 'INLIMBO', 'ancienttree'];
@@ -59,8 +71,7 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
     fx_under_prefab: 'fx_roots_under_book',
     layer_sound: { frame: 17, sound: 'wickerbottom_rework/book_spells/silviculture' },
     fn(_inst, reader, world) {
-      const { x, z } = reader.getPosition();
-      const ents = FindEntities(world.root, x, z, SILVICULTURE_RANGE, [], SILVICULTURE_CANT_TAGS, SILVICULTURE_ONEOF_TAGS)
+      const ents = FindEntities(world.root, reader.getPosition(), SILVICULTURE_RANGE, [], SILVICULTURE_CANT_TAGS, SILVICULTURE_ONEOF_TAGS)
         .filter(v => (v.components as GrowthTarget['components']).pickable !== undefined || v.hasTag('leif')) as GrowthTarget[];
       if (ents.length === 0) return [false, 'NOSILVICULTURE'];
       trygrowth(ents.splice(Math.floor(Math.random() * ents.length), 1)[0]);
@@ -81,8 +92,22 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
       return [true];
     },
   },
+  book_moon: {
+    uses: BOOK_USES_SMALL,
+    read_sanity: -SANITY_HUGE,
+    fx: 'fx_book_moon',
+    // The cave refusal (NOMOONINCAVES) needs a cave world; the project only has the forest.
+    // ANNOUNCE_BOOK_MOON_DAYTIME needs the unported talker component.
+    fn(_inst, _reader, world) {
+      if (world.moon.phase.peek() === 'full') return [false, 'ALREADYFULLMOON'];
+      world.moon.SetMoonPhase('full');
+      return [true];
+    },
+  },
 };
 
+/** Items with the `bookcabinet_item` tag: books.lua MakeBook and papyrus.lua (cookbook.lua is not ported). */
+export function isBookCabinetItem(itemId: string): boolean { return isBook(itemId) || itemId === 'papyrus'; }
 export function isBook(itemId: string): itemId is BookId { return Object.hasOwn(BOOK_DEFS, itemId); }
 export function getBookDef(itemId: BookId): BookDef { return BOOK_DEFS[itemId]; }
 
@@ -121,8 +146,11 @@ export function getBookComponent(entity: ItemEntity): BookComponent | undefined 
 export const BOOK_ITEM_SPECS: Readonly<Record<BookId, InventoryItemSpec>> = {
   book_silviculture: { name: catalog.items.book_silviculture.name, icon: catalog.items.book_silviculture.icon,
     atlas: catalog.items.book_silviculture.atlas, maxStack: 1,
-    maxUses: BOOK_USES_LARGE, configureEntity: configureBookEntity },
+    maxUses: BOOK_USES_LARGE, useStep: BOOK_USE_STEP, configureEntity: configureBookEntity },
+  book_moon: { name: catalog.items.book_moon.name, icon: catalog.items.book_moon.icon,
+    atlas: catalog.items.book_moon.atlas, maxStack: 1,
+    maxUses: BOOK_USES_SMALL, useStep: BOOK_USE_STEP, configureEntity: configureBookEntity },
   book_rain: { name: catalog.items.book_rain.name, icon: catalog.items.book_rain.icon,
     atlas: catalog.items.book_rain.atlas, maxStack: 1,
-    maxUses: BOOK_USES_LARGE, configureEntity: configureBookEntity },
+    maxUses: BOOK_USES_LARGE, useStep: BOOK_USE_STEP, configureEntity: configureBookEntity },
 };

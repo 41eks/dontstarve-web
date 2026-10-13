@@ -1,8 +1,18 @@
 import * as THREE from 'three';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
+import { SlipperyFeetTarget } from '../../componets/src/slipperyfeettarget';
+import { WILSON_RUN_SPEED } from '../../componets/src/slipperyfeet';
+import { actionEntity } from './actionEntity';
+import { WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
 
 export const POND_ID = 'pond' as const;
+/** pond.lua MakePondPhysics(inst, 1.95), in scene units. */
+const POND_RADIUS = 1.95 * WORLD_SCALE;
+/** pond.lua SlipperyRate: running faster than WILSON_RUN_SPEED slips ten times faster. */
+const slipperyRate = (_: unknown, target: unknown) =>
+  (target as { getMotorSpeed(): number }).getMotorSpeed() > WILSON_RUN_SPEED ? 50 : 5;
 
 export interface PondRecord {
   id: string;
@@ -10,17 +20,50 @@ export interface PondRecord {
   components: Record<string, never>;
 }
 
-/** pond.lua: marsh_tile bank/build, looping idle, OnGround background layer. */
+/** pond.lua OnSnowLevel: snowlevel above this freezes the pond. */
+export const POND_FREEZE_SNOWLEVEL = .02;
+
+/** pond.lua: marsh_tile bank/build, looping idle, OnGround background layer; frozen follows snowlevel. */
 export class PondManager {
   private factoryRequest?: Promise<AnimatedSpriteFactory>;
   private readonly ponds = new Set<THREE.Group>();
   private readonly scene: THREE.Scene;
   private readonly assetBaseUrl: string;
+  private readonly stopSnowLevel?: () => void;
+  private frozen = false;
   private disposed = false;
 
-  constructor(scene: THREE.Scene, assetBaseUrl: string) {
+  /** `snowLevel` is the weather's read-only snowlevel (WatchWorldState("snowlevel", OnSnowLevel)). */
+  constructor(scene: THREE.Scene, assetBaseUrl: string, snowLevel?: ReadonlySignal<number>) {
     this.scene = scene;
     this.assetBaseUrl = assetBaseUrl;
+    if (snowLevel) this.stopSnowLevel = createEffect(() => this.onSnowLevel(snowLevel.get()));
+  }
+
+  private onSnowLevel(snowlevel: number): void {
+    const frozen = snowlevel > POND_FREEZE_SNOWLEVEL;
+    if (frozen === this.frozen) return;
+    this.frozen = frozen;
+    for (const model of this.ponds) this.applyFrozen(model, true);
+  }
+
+  private applyFrozen(model: THREE.Group, animate: boolean): void {
+    model.userData.frozen = this.frozen;
+    const entity = actionEntity(model, POND_ID), components = entity.components as { slipperyfeettarget?: SlipperyFeetTarget };
+    if (this.frozen && !components.slipperyfeettarget) {
+      components.slipperyfeettarget = new SlipperyFeetTarget({
+        addTag: tag => entity.addTag(tag), removeTag: tag => entity.removeTag(tag),
+        getPosition: () => entity.getPosition(), getPhysicsRadius: () => POND_RADIUS,
+      });
+      components.slipperyfeettarget.SetSlipperyRate(slipperyRate);
+    } else if (!this.frozen && components.slipperyfeettarget) {
+      components.slipperyfeettarget.OnRemoveFromEntity();
+      delete components.slipperyfeettarget;
+    }
+    const controller = model.userData.animationController as SpriteAnimationController;
+    if (this.frozen) controller.playOnce('frozen');
+    else controller.start('idle');
+    if (!animate) controller.update(0);
   }
 
   async spawn(position: THREE.Vector3, saved?: PondRecord): Promise<THREE.Group> {
@@ -45,6 +88,7 @@ export class PondManager {
       billboard: false, prefab: POND_ID, entityId: saved?.id ?? newEntityId(),
     });
     this.ponds.add(model);
+    this.applyFrozen(model, false);
     this.scene.add(model);
     return model;
   }
@@ -67,6 +111,7 @@ export class PondManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopSnowLevel?.();
     for (const model of this.ponds) model.removeFromParent();
     this.ponds.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);

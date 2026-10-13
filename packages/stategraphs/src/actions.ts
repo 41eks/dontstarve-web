@@ -24,6 +24,7 @@ export const ACTIONS = {
   LIGHT: { priority: -4, strings: { GENERIC: '点燃' } },
   PLAY: { priority: 0, strings: { GENERIC: '演奏' } },
   READ: { priority: 0, strings: { GENERIC: '阅读' } },
+  DEPLOY: { priority: 0, distance: 1.1, strings: { GENERIC: '放置' } },
   SHAVE: { priority: 0, strings: { GENERIC: '刮', SELF: '给自己刮胡子' } },
   SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
 } as const;

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { getPrefabLightOverride, getPrefabLocalLight, type PrefabLocalLight } from '@dontstarve-web/prefab/localLight';
 import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
+import type { ScenePassLighting } from '@dontstarve-web/animation/sceneRenderPass';
 
 // DST tiles are 4 units wide; this scene uses TILE_SIZE (12).
 const LIGHTMAP_SIZE = 256;
@@ -85,6 +86,10 @@ export class DstLocalLighting {
 
   setAmbientColour(colour: THREE.Vector3): void {
     this.ambient.value.copy(colour);
+  }
+
+  getRenderPassLighting(): ScenePassLighting {
+    return { texture: this.lightmap.value, extents: this.extents.value, ambient: this.ambient.value };
   }
 
   async prewarm(renderer: THREE.WebGLRenderer, signal?: AbortSignal): Promise<void> {

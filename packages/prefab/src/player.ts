@@ -38,8 +38,11 @@ import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from 
 import { BookFxController, type BookFxPrefab } from './book_fx';
 import { loadReskinToolEquipment } from './reskin_tool';
 import { resolveReskinToolPlayerSprite, type ReskinToolEquipment } from './reskin_tool';
+import { MiniMapEntity } from './minimapEntity';
 
 export type WilsonFacing = 'up' | 'down' | 'side';
+/** waxwell.lua MakePlayerCharacter: Maxwell's playable character build. */
+export const PLAYER_ART_CHARACTER = 'waxwell' as const;
 export interface SymbolFollower {
   readonly node: THREE.Object3D;
   remove(): void;
@@ -84,9 +87,12 @@ export type PlayerBody = CANNON.Body & { canJump: boolean };
 
 export interface WilsonPlayerPrefab {
   body: PlayerBody;
-  model: THREE.Group;
+  model: PlayerModel;
+  readonly MiniMapEntity: MiniMapEntity;
   setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
 }
+
+export type PlayerModel = THREE.Group & { readonly MiniMapEntity: MiniMapEntity };
 
 export interface WilsonPlayerPrefabOptions {
   mass?: number;
@@ -264,6 +270,16 @@ class WilsonController implements WilsonAnimationController {
       },
       setControllerEnabled: enabled => { visual.parent!.userData.controllerEnabled = enabled; },
       stopMovement: () => visual.parent!.userData.locomotor?.stop(),
+      slip: {
+        runSpeed: () => visual.parent!.userData.runSpeed as number,
+        setMotorSpeed: speed => { visual.parent!.userData.motorSpeed = speed; },
+        resetSlipperiness: () => (visual.parent!.userData.slipperyfeet as { SetCurrent(value: number): void } | undefined)?.SetCurrent(0),
+        wantsToMoveForward: () => visual.parent!.userData.wantsToMoveForward === true,
+        playSound: (event, volume) => {
+          const handle = PlaySound(event === 'hurt' ? 'dontstarve/characters/wilson/hurt' : `dontstarve/movement/${event}`);
+          if (volume !== undefined) handle.setVolume(volume);
+        },
+      },
       equipSamePrefab: (prefab) => this.inventory !== undefined && equipSamePrefab(this.inventory, prefab),
       onStateChanged: (name) => {
         // toolbroke hides ARM_carry and shows ARM_normal.
@@ -904,9 +920,9 @@ class WilsonController implements WilsonAnimationController {
 export async function createWilsonPlayer(
   assetBaseUrl: string,
   options: Pick<WilsonPlayerPrefabOptions, 'sanityPercent'> = {},
-): Promise<THREE.Group> {
-  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions] = await Promise.all([
-    loadBuild('willow.zip', assetBaseUrl),
+): Promise<PlayerModel> {
+  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip] = await Promise.all([
+    loadBuild(`${PLAYER_ART_CHARACTER}.zip`, assetBaseUrl),
     loadBuild('swap_torch.zip', assetBaseUrl),
     loadAnim('torch.zip', assetBaseUrl),
     loadAnim('player_idles.zip', assetBaseUrl),
@@ -922,19 +938,29 @@ export async function createWilsonPlayer(
     loadAnim('player_actions_till.zip', assetBaseUrl),
     loadAnim('player_actions_axe.zip', assetBaseUrl),
     loadAnim('player_actions.zip', assetBaseUrl),
-    PreloadSounds('dontstarve/wilson/make_trap', 'dontstarve/wilson/shave_LP', 'dontstarve/wilson/attack_whoosh',
+    loadAnim('player_slip.zip', assetBaseUrl),
+    PreloadSounds('dontstarve/movement/iceslab_slipping', 'dontstarve/movement/slip_fall_whoop',
+      'dontstarve/movement/slip_fall_thud', 'dontstarve/characters/wilson/hurt', 'dontstarve/wilson/make_trap', 'dontstarve/wilson/shave_LP', 'dontstarve/wilson/attack_whoosh',
       'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword'),
   ]);
-  if (buildPackage.build.name.toLowerCase() !== 'willow') {
-    throw new Error(`Expected Willow build, received ${buildPackage.build.name}`);
+  if (buildPackage.build.name.toLowerCase() !== PLAYER_ART_CHARACTER) {
+    throw new Error(`Expected ${PLAYER_ART_CHARACTER} build, received ${buildPackage.build.name}`);
   }
   if (torchBuildPackage.build.name.toLowerCase() !== 'swap_torch'
     || !torchAnimation.animations.some((animation) => animation.bankHash === smallHash('torch'))) {
     throw new Error('Expected the torch animation and swap_torch build');
   }
 
-  const player = new THREE.Group();
-  player.name = 'Willow';
+  const group = new THREE.Group();
+  const player = Object.assign(group, { MiniMapEntity: new MiniMapEntity(group.position) });
+  // player_common.lua common initialization uses the character name, not the
+  // shared Wilson animation bank. Maxwell's playable prefab is waxwell.
+  player.MiniMapEntity.SetIcon(`${buildPackage.build.name.toLowerCase()}.png`);
+  player.MiniMapEntity.SetPriority(10);
+  player.MiniMapEntity.SetCanUseCache(false);
+  player.MiniMapEntity.SetDrawOverFogOfWar(true);
+  player.name = 'Maxwell';
+  player.userData.artCharacter = PLAYER_ART_CHARACTER;
   player.position.set(0, 30, 0);
   player.userData.billboard = true;
 
@@ -987,6 +1013,8 @@ export async function createWilsonPlayer(
     till_pst: till,
     hit: actions,
     wakeup: actions,
+    slip_pre: slip, slip_loop: slip, slip_pst: slip,
+    slip_fall_pre: slip, slip_fall_idle: slip, slip_fall_pst: slip,
   }, createMaterials(buildPackage), {
     build: torchBuildPackage.build,
     materials: createMaterials(torchBuildPackage),
@@ -1021,6 +1049,7 @@ export async function createWilsonPlayerPrefab(
   return {
     body,
     model,
+    MiniMapEntity: model.MiniMapEntity,
     setNormal(cameraWorldQuaternion) {
       model.quaternion.copy(cameraWorldQuaternion);
     },

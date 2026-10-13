@@ -8,6 +8,8 @@
     "./cursor-label": "./src/cursor-label.ts"
   },
   "scripts": {
+    "self-inspect:import": "node scripts/import-self-inspect-icons.mjs",
+    "self-inspect:check": "node scripts/import-self-inspect-icons.mjs --check",
     "categories:check": "node scripts/generate-categories.mjs --check",
     "categories:generate": "node scripts/generate-categories.mjs",
     "test": "playwright test",

@@ -88,6 +88,7 @@ export class DstDebugConsoleElement extends AssetElement {
       .querySelector<HTMLFormElement>('.debug-console__form')!
       .addEventListener('submit', this.handleSubmit);
     this.requireInput().addEventListener('keydown', this.handleInputKeyDown);
+    this.requireInput().addEventListener('keyup', (event) => event.stopPropagation());
     void this.renderBackground();
   }
 
@@ -100,6 +101,8 @@ export class DstDebugConsoleElement extends AssetElement {
   };
 
   private readonly handleInputKeyDown = (event: KeyboardEvent): void => {
+    // Keys typed into the console never reach the game's window-level key listeners.
+    event.stopPropagation();
     if (event.key === 'Escape') {
       event.preventDefault();
       this.close();

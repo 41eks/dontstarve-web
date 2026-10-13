@@ -44,6 +44,10 @@ export interface SavedEntity {
     wormhole?: WormholeSaveState;
     wall?: WallSaveState;
     moonTree?: MoonTreeSaveState;
+    evergreen?: { stump?: true; burnt?: true; burntcone?: true };
+    deciduoustree?: import('../../packages/prefab/src/deciduousTreeLeaves').DeciduousTreeSave;
+    growable?: import('../../packages/componets/src/growable').GrowableSave;
+    saplingTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     sculptingtable?: { itemname: string };
     birdcage?: import('@dontstarve-web/prefab/birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };
@@ -84,6 +88,8 @@ export interface SaveDocument {
       season?: { name: 'autumn' | 'winter' | 'spring' | 'summer'; daysRemaining: number };
       worldtemperature?: WorldTemperatureSaveData;
       weather?: WeatherSaveData;
+      /** clock.lua OnSave mooomphasecycle: one-based index into the 20-step moon cycle. */
+      moon?: { mooomphasecycle: number };
       random?: { algorithm: 'xoshiro128ss'; state: number[] };
     };
     map: {

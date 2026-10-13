@@ -15,12 +15,15 @@ export const BURNABLE_ITEM_DEFINITIONS: Readonly<Record<string, { burnTime: numb
   cutgrass: { burnTime: 30 * .25, tags: ['cattoy', 'renewable', 'cutgrass'] },
   log: { burnTime: 30 * .5, tags: ['log'] },
   livinglog: { burnTime: 30 * .5, tags: [], igniteSound: 'dontstarve/creatures/leif/livinglog_burn' }, // onignite scream.
+  papyrus: { burnTime: 30 * .25, tags: ['cattoy', 'bookcabinet_item'] }, // papyrus.lua MakeSmallBurnable(SMALL_BURNTIME).
+  featherpencil: { burnTime: 30 * .25, tags: ['cattoy'] },
   poop: { burnTime: 30 * .5, tags: [] }, // poop.lua MakeSmallBurnable(MED_BURNTIME).
   dug_grass: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 }, // plantables.lua LARGE_BURNTIME.
   dug_sapling: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
   dug_sapling_moon: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
   book_silviculture: { burnTime: 30 * .5, tags: [] }, // books.lua tags belong to configureBookEntity.
   book_rain: { burnTime: 30 * .5, tags: [] },
+  book_moon: { burnTime: 30 * .5, tags: [] },
 };
 const ASH_MAX_STACK = 40; // ash.lua: TUNING.STACK_SIZE_SMALLITEM
 

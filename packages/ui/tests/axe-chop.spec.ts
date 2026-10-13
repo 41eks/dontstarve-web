@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
   [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
 
-test('an equipped axe chops a moon tree with right-click, drops loot and keeps the stump across save and load', async ({ page }) => {
+test('chops a moon tree, reloads its stump, and digs it with a shovel, preserving loot and removal through saves', async ({ page }) => {
   test.setTimeout(180_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -38,7 +38,11 @@ test('an equipped axe chops a moon tree with right-click, drops loot and keeps t
     const point = await page.evaluate(() => {
       const { scene, camera, renderer } = (window as any).chopGame;
       const tree = scene.children.find((model: any) => model.name === 'MoonTreeForest').children[0];
-      const ndc = tree.position.clone().setY(3).project(camera);
+      const mesh = tree.children[0].children[0]; mesh.updateWorldMatrix(true, false);
+      const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.index;
+      const point = tree.position.clone().multiplyScalar(0), vertex = point.clone();
+      for (let i = 0; i < 3; i++) { vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex); }
+      const ndc = point.multiplyScalar(1 / 3).project(camera);
       const rect = renderer.domElement.getBoundingClientRect();
       return { x: rect.left + (ndc.x + 1) * rect.width / 2, y: rect.top + (1 - ndc.y) * rect.height / 2 };
     });
@@ -57,7 +61,7 @@ test('an equipped axe chops a moon tree with right-click, drops loot and keeps t
   const uses = async () => (await saveGame()).players.local.inventory.containers['player:equipment'].slots[0].item.remainingUses ?? 100;
   await clickTree();
   await expect.poll(uses, { timeout: 20_000 }).toBeLessThan(100);
-  expect((await saveGame()).world.entities.moon_tree[0].components).toEqual({});
+  expect((await saveGame()).world.entities.moon_tree[0].components).toMatchObject({ moonTree: { size: 'tall' }, growable: { stage: 3 } });
 
   // Sixteen strikes in total; keep clicking while the tree stands.
   for (let attempt = 0; attempt < 40 && !(await treeAnimation())?.match(/^(fall|stump)/); attempt++) {
@@ -65,7 +69,7 @@ test('an equipped axe chops a moon tree with right-click, drops loot and keeps t
   }
   await expect.poll(treeAnimation, { timeout: 20_000 }).toBe('stump_tall');
   const felled = await saveGame();
-  expect(felled.world.entities.moon_tree[0].components).toEqual({ moonTree: { stump: true } });
+  expect(felled.world.entities.moon_tree[0].components).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
   await expect.poll(async () => (await saveGame()).world.entities.ground_item?.length ?? 0).toBeGreaterThanOrEqual(6);
   const loot = (await saveGame()).world.entities.ground_item.map((record: any) => record.components.stack.itemId);
   expect(loot.filter((itemId: string) => itemId === 'log')).toHaveLength(4);
@@ -74,6 +78,28 @@ test('an equipped axe chops a moon tree with right-click, drops loot and keeps t
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: felled }));
   await page.reload(); await prepare();
   await expect.poll(treeAnimation).toBe('stump_tall');
-  expect((await saveGame()).world.entities.moon_tree[0].components).toEqual({ moonTree: { stump: true } });
+  expect((await saveGame()).world.entities.moon_tree[0].components).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+
+  await hand.dragTo(bar.locator('.inventory-bar__items .inventory-slot[data-item-id=""]').first());
+  await submit('c_give("shovel")');
+  await bar.locator('.inventory-bar__items [data-item-id="shovel"]').dragTo(hand);
+  await expect(hand).toHaveAttribute('data-item-id', 'shovel');
+  await clickTree();
+  await expect.poll(treeAnimation, { timeout: 20_000 }).toBeNull();
+  await expect.poll(async () => ((await saveGame()).world.entities.ground_item ?? [])
+    .filter((record: any) => record.components.stack.itemId === 'log')
+    .reduce((total: number, record: any) => total + record.components.stack.count, 0)).toBe(6);
+  const dug = await saveGame();
+  expect(dug.world.entities.moon_tree ?? []).toEqual([]);
+  const savedShovel = dug.players.local.inventory.containers['player:equipment'].slots[0].item;
+  expect(savedShovel).toMatchObject({ itemId: 'shovel', remainingUses: 24 });
+  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: dug }));
+  await page.reload(); await prepare();
+  await expect.poll(treeAnimation).toBeNull();
+  const restored = await saveGame();
+  expect(restored.world.entities.moon_tree ?? []).toEqual([]);
+  expect(restored.players.local.inventory.containers['player:equipment'].slots[0].item).toEqual(savedShovel);
+  expect(restored.world.entities.ground_item.filter((record: any) => record.components.stack.itemId === 'log'))
+    .toEqual(dug.world.entities.ground_item.filter((record: any) => record.components.stack.itemId === 'log'));
   expect(errors).toEqual([]);
 });

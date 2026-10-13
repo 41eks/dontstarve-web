@@ -11,6 +11,8 @@ import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
 const FX_PREFABS = {
   fx_book_rain: { archive: 'fx_book_rain.zip', bank: 'fx_book_rain', anim: 'play_fx',
     sound: 'wickerbottom_rework/book_spells/rain' },
+  fx_book_moon: { archive: 'fx_book_moon.zip', bank: 'fx_book_moon', anim: 'play_fx',
+    sound: 'wickerbottom_rework/book_spells/moon' },
   sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
 } as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number }>;

@@ -60,7 +60,13 @@ export const PREFAB_DEFINITIONS = {
   plantedSeeds: definePrefabs(PLANTED_SEED_IDS, empty, true),
   farmDecor: definePrefabs(FARM_DECOR_IDS, (value, path, context) =>
     (context.prefab === 'farm_soil' ? farmSoil : farmDebris)(value, path, context), true),
-  moonTrees: definePrefabs(['moon_tree'], componentParser({ keys: ['moonTree'] })),
+  moonTrees: definePrefabs(['moon_tree'], componentParser({ keys: ['moonTree', 'growable'] }),
+    ['moon_tree', 'moon_tree_short', 'moon_tree_normal', 'moon_tree_tall']),
+  moonTreeSaplings: definePrefabs(['moonbutterfly_sapling'], componentParser({ keys: ['saplingTimer'] }), true),
+  deciduousTrees: definePrefabs(['deciduoustree'], componentParser({ keys: ['deciduoustree', 'growable'] }),
+    ['deciduoustree', 'deciduoustree_short', 'deciduoustree_normal', 'deciduoustree_tall']),
+  evergreens: definePrefabs(['evergreen'], componentParser({ keys: ['evergreen', 'growable'], growthStages: 4 }),
+    ['evergreen', 'evergreen_short', 'evergreen_normal', 'evergreen_tall']),
   pigKings: definePrefabs(['pigking'], empty),
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
@@ -71,7 +77,7 @@ export const PREFAB_DEFINITIONS = {
     return fail(path, `missing building definition for ${context.prefab}`);
   }, PLACEABLE_BUILDING_IDS),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    [...TURF_ITEM_IDS, 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'moon_tree_blossom', 'butterfly', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash']),
+    [...TURF_ITEM_IDS, 'backpack', 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'moon_tree_blossom', 'pinecone', 'acorn', 'butterfly', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash']),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] })),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),
@@ -92,6 +98,8 @@ export const PREFAB_DEFINITIONS = {
   rain: definePrefabs([], empty),
   snow: definePrefabs([], empty),
   worldFx: definePrefabs([], empty),
+  oceanWaves: definePrefabs([], empty),
+  dockKit: definePrefabs([], empty),
 } as const;
 
 export function prefabSaveParsers(definitions: readonly PrefabDefinition[]): ReadonlyMap<string, PrefabComponentParser> {

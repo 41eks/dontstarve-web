@@ -24,6 +24,10 @@
 
 ## 世界温度组件
 
+冰箱的保鲜与暖石降温已接入：[temperature.ts](../packages/componets/src/temperature.ts) 实现非玩家库存物品的温度更新、冰箱冷却、固有保温、昼夜隔热、附近热源及温度事件；[heatrock.ts](../packages/prefab/src/heatrock.ts) 处理暖石档位、原版皮肤图标、温度极值和循环耐久。`prefabs/icebox.lua` 没有自身 `temperature`／`heater`，只通过 `fridge` 标签影响容器内物品。角色体温和暖石热光照仍未实现。
+
+容器的持有者标签通过库存 owner 读取，保鲜由 `Perishable` 在既有 10 秒调度中处理，暖石自身的 `Temperature.OnUpdate(dt)` 使用活动游戏帧的实际 `dt`。正常冰箱中带 `frozen` 标签的易腐物停止腐烂；`nocool`／`lowcool` 使用普通冰箱保鲜倍率，`nocool` 跳过暖石冷却，`lowcool` 使用每秒 −0.5°C。`WorldPerishClock.GetFrozenTick()` 记录冻结物品的环境温度积分，负温区间不计腐烂，避免一次结算跨过温度边界时错算。库存和地面保存记录中的 `temperature.current` 与暖石的 `highTemp`／`lowTemp` 随身份、皮肤、燃料一起保存；档位和图标读档时重建，不消耗一次耐久。代表性覆盖见 [icebox.test.ts](../packages/animation/tests/icebox.test.ts) 和 [heatrock.test.ts](../packages/animation/tests/heatrock.test.ts)。
+
 [packages/componets/src/worldtemperature.ts](../packages/componets/src/worldtemperature.ts) 提供 `WorldTemperature` 类，移植世界温度的季节项、昼夜项、噪声时间、全局修正及保存／恢复逻辑。昼夜与季节输入使用 [packages/signals/src/world.ts](../packages/signals/src/world.ts) 导出的全局唯一单例 `clockstate`、`seasonstate`，环境温度由 `createMemo` 派生，并作为只读 signal 提供给宿主。
 
 [src/worldState.ts](../src/worldState.ts) 创建会话的温度组件、恢复全局昼夜与季节输入，并将 `worldState.clock`、`worldState.season` 指向上述单例；`worldState.moonPhase` 指向同模块的月相单例 `moonphasestate`，从累计游戏时间恢复并按现有 20 天周期推进。[src/scene.ts](../src/scene.ts) 导出运行时 `worldState` 并接入主循环。每 60 个活动游戏帧累计实际 `dt`，统一更新昼夜进度、月相 signal 和噪声时间；`clockstate` 同时发布天数、全天进度、昼夜段数和月相盈亏。中间帧只累计世界时间，不写这些输入，也不更新时钟指针和日期。保存或停止场景前结算不足 60 帧的部分。昼夜与季节的光照使用同一份 signal，温度和光照 effect 在场景销毁时释放，单例保留；满月照明由夜晚和月相派生，温度的昼夜阶段保持 `night`。规则记录在 [AGENTS.md](../AGENTS.md) 的“World time and temperature”中。

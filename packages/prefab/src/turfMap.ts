@@ -1,24 +1,34 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TILE_SIZE, snapToTileCenter, type Vector2 } from './tile';
-import { GROUND_TILE_DEFINITIONS, groundTileGeometry, groundTileVariant, loadGroundTileAssets,
-  type GroundTileAssets, type GroundTileQuad } from './groundTiles';
+import { GROUND_TILE_DEFINITIONS, groundTileGeometry, loadGroundTileMinimapLayer, groundTileVariant, loadGroundTileAssets,
+  type GroundTileAssets, type GroundTileLayerImage, type GroundTileQuad, type GroundOverlayGeometry, type GroundTileName } from './groundTiles';
+import { OceanSurface } from './ocean';
+import { loadMinimapOcean, type MinimapOceanData } from './minimapOcean';
+import type { ClockState, ReadonlySignal } from '@dontstarve-web/signals';
 
 // tiledefs.lua preserves these vanilla GROUND IDs in WORLD_TILES.
 export const WORLD_TILES = {
+  ...Object.fromEntries(Object.entries(GROUND_TILE_DEFINITIONS).map(([name, tile]) => [name, tile.tileId])) as {
+    readonly [K in GroundTileName]: (typeof GROUND_TILE_DEFINITIONS)[K]['tileId'];
+  },
   INVALID: 0, DIRT: 4, GRASS: GROUND_TILE_DEFINITIONS.GRASS.tileId, WOODFLOOR: GROUND_TILE_DEFINITIONS.WOODFLOOR.tileId,
   DECIDUOUS: GROUND_TILE_DEFINITIONS.DECIDUOUS.tileId,
   FARMING_SOIL: GROUND_TILE_DEFINITIONS.FARMING_SOIL.tileId,
+  OCEAN_COASTAL: GROUND_TILE_DEFINITIONS.OCEAN_COASTAL.tileId,
+  MONKEY_DOCK: GROUND_TILE_DEFINITIONS.MONKEY_DOCK.tileId,
 } as const;
 
 export interface TurfTileSave {
   /** Signed grid coordinates: floor(world x/z / TILE_SIZE). */
   col: number;
   row: number;
-  tileId: typeof WORLD_TILES.DIRT | typeof WORLD_TILES.FARMING_SOIL;
-  underTileId?: typeof WORLD_TILES.DIRT | typeof WORLD_TILES.DECIDUOUS;
+  tileId: number;
+  /** undertile component: the tile restored when a farm soil is dug or a dock is destroyed. */
+  underTileId?: number;
 }
 
-/** Generated terrain plus sparse, authoritative TERRAFORM changes. */
+/** Generated terrain plus authoritative saved tile overrides and TERRAFORM changes. */
 export class TurfMap {
   readonly size: number;
   private readonly originalTiles = new Map<string, number>();
@@ -27,7 +37,20 @@ export class TurfMap {
   private dirtAssets?: GroundTileAssets;
   private visual?: THREE.Group;
   private readonly layers = new Map<number, { mesh: THREE.Mesh; assets: GroundTileAssets }>();
-  private readonly listeners = new Set<(world: Vector2) => void>();
+  private readonly listeners = new Set<(world: Vector2, originalTileId: number) => void>();
+  private readonly terrainListeners = new Set<() => void>();
+  private ocean?: OceanSurface;
+  private assetBaseUrl?: string;
+  private minimapLayers?: Promise<Map<number, GroundTileLayerImage>>;
+  private minimapOceanData?: Promise<MinimapOceanData>;
+  private readonly layerRequests = new Map<GroundTileName, Promise<void>>();
+
+  private terrainNames(): GroundTileName[] {
+    const ids = new Set([...this.dugTiles.values()].map(tile => tile.tileId));
+    return (Object.keys(GROUND_TILE_DEFINITIONS) as GroundTileName[]).filter(name =>
+      ['DIRT', 'DECIDUOUS', 'GRASS', 'WOODFLOOR', 'FARMING_SOIL', 'MONKEY_DOCK', 'OCEAN_COASTAL'].includes(name)
+      || ids.has(WORLD_TILES[name]) || this.layers.has(WORLD_TILES[name]));
+  }
 
   constructor(size: number, savedTiles: readonly TurfTileSave[] = []) {
     this.size = size;
@@ -52,11 +75,147 @@ export class TurfMap {
     this.rebuildGeometry();
   }
 
+  /** Inclusive-exclusive signed cell range [min, max) covering the generated world on both axes. */
+  cellRange(): { min: number; max: number } {
+    return { min: Math.floor(-this.size / 2 / TILE_SIZE), max: Math.ceil(this.size / 2 / TILE_SIZE) };
+  }
+
+  /** Tile id of a signed grid cell; INVALID outside the world. */
+  tileIdAtCell(col: number, row: number): number { return this.tileAt(col, row); }
+
+  /** undertile:GetTileUnderneath for a signed grid cell. */
+  underTileAtCell(col: number, row: number): number | undefined { return this.dugTiles.get(`${col},${row}`)?.underTileId; }
+
+  /** Signed cells currently holding `tileId` as a saved override. */
+  cellsOfTile(tileId: number): [number, number][] {
+    return [...this.dugTiles.values()].filter(tile => tile.tileId === tileId).map(tile => [tile.col, tile.row]);
+  }
+
+  /** Map:SetTile plus the undertile component's record (dock tiles keep the ocean tile they cover). */
+  setTile(col: number, row: number, tileId: TurfTileSave['tileId'], underTileId?: TurfTileSave['underTileId']): void {
+    if (this.tileAt(col, row) === WORLD_TILES.INVALID) throw new RangeError('Tile is outside the world');
+    this.dugTiles.set(`${col},${row}`, { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }) });
+    this.rebuildGeometry();
+  }
+
+  /** Minimap render layer images (map_edge masks + mini noise) per tile id. Loaded once from the assets root of createVisual(). */
+  tileLayerImages(): Promise<Map<number, GroundTileLayerImage>> {
+    if (!this.minimapLayers) {
+      const root = this.assetBaseUrl;
+      if (root === undefined) return Promise.reject(new Error('Create terrain visuals before reading minimap layers'));
+      const names = this.terrainNames();
+      this.minimapLayers = Promise.all(names.map(async name =>
+        [WORLD_TILES[name], await loadGroundTileMinimapLayer(root, name)] as const)).then(entries => new Map(entries));
+    }
+    return this.minimapLayers;
+  }
+
+  /** Land render masks, including skirts in neighbouring cells. UI consumes the
+   * same eight-neighbour variant selection as the world terrain renderer.
+   */
+  tileLayerQuads(): ReadonlyMap<number, readonly GroundTileQuad[]> {
+    const names = this.terrainNames().filter(name => name !== 'OCEAN_COASTAL');
+    const layers = new Map<number, GroundTileQuad[]>();
+    const { min, max } = this.cellRange();
+    for (const name of names) {
+      const tileId = WORLD_TILES[name];
+      const quads: GroundTileQuad[] = [];
+      for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
+        if (this.tileAt(col, row) === WORLD_TILES.INVALID) continue;
+        const variant = this.variantAt(col, row, tileId);
+        if (variant !== 17) quads.push({ col, row, variant });
+      }
+      layers.set(tileId, quads);
+    }
+    return layers;
+  }
+
+  /** Data of the separate minimapocean.ksh pass that draws every ocean tile. */
+  minimapOcean(): Promise<MinimapOceanData> {
+    if (this.assetBaseUrl === undefined) return Promise.reject(new Error('Create terrain visuals before reading minimap ocean data'));
+    return this.minimapOceanData ??= loadMinimapOcean(this.assetBaseUrl);
+  }
+
   tileCenter(world: Vector2): Vector2 { return snapToTileCenter(world); }
+
+  isOceanAtWorld(world: Vector2): boolean { return this.getTileAtWorld(world) === WORLD_TILES.OCEAN_COASTAL; }
+
+  bindOceanClock(clock: ReadonlySignal<ClockState>): void { this.ocean?.bindClock(clock); }
+  update(dt: number): void { this.ocean?.update(dt); }
+
+  /** ground_overlay.ksh samples the same atlas alpha as the underlying terrain,
+   * including land skirts extending into ocean cells, with world-space noise UVs.
+   */
+  createLandOverlay(): GroundOverlayGeometry {
+    if (!this.dirtAssets) throw new Error('Create terrain visuals before ground overlays');
+    const terrain = new Map<number, { assets: GroundTileAssets; quads: GroundTileQuad[] }>([
+      [WORLD_TILES.DIRT, { assets: this.dirtAssets, quads: [] }],
+    ]);
+    for (const [tileId, { assets }] of [...this.layers].sort((a, b) => a[1].mesh.renderOrder - b[1].mesh.renderOrder)) {
+      if (tileId !== WORLD_TILES.OCEAN_COASTAL) terrain.set(tileId, { assets, quads: [] });
+    }
+    const min = Math.floor(-this.size / 2 / TILE_SIZE), max = Math.ceil(this.size / 2 / TILE_SIZE);
+    for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
+      const tileId = this.tileAt(col, row);
+      if (tileId !== WORLD_TILES.OCEAN_COASTAL) {
+        terrain.get(tileId)?.quads.push({ col, row, variant: 1 });
+      } else {
+        for (const [landId, { quads }] of terrain) {
+          const variant = this.variantAt(col, row, landId);
+          if (variant !== 17) quads.push({ col, row, variant });
+        }
+      }
+    }
+    const parts: THREE.BufferGeometry[] = [], atlases: THREE.Texture[] = [];
+    for (const { assets, quads } of terrain.values()) {
+      if (!quads.length) continue;
+      parts.push(groundTileGeometry(quads, assets, this.size));
+      atlases.push(assets.atlas);
+    }
+    if (!parts.length) return { geometry: new THREE.BufferGeometry(), atlases };
+    const geometry = mergeGeometries(parts, true);
+    for (const part of parts) part.dispose();
+    if (!geometry) throw new Error('Unable to merge land overlay geometry');
+    return { geometry, atlases };
+  }
+
+  onTerrainChanged(listener: () => void): () => void {
+    this.terrainListeners.add(listener);
+    return () => this.terrainListeners.delete(listener);
+  }
 
   canTerraform(world: Vector2): boolean {
     const tile = this.getTileAtWorld(world);
-    return tile === WORLD_TILES.DECIDUOUS || tile === WORLD_TILES.GRASS || tile === WORLD_TILES.WOODFLOOR || tile === WORLD_TILES.FARMING_SOIL;
+    return tile !== WORLD_TILES.DIRT && tile !== WORLD_TILES.OCEAN_COASTAL
+      && Object.values(GROUND_TILE_DEFINITIONS).some(definition => definition.tileId === tile && !definition.cannotBeDug);
+  }
+
+  /** map.lua CanPlaceTurfAtPoint: only bare dirt accepts turf. */
+  canPlaceTurf(point: THREE.Vector3): boolean { return this.getTileAtWorld(point) === WORLD_TILES.DIRT; }
+
+  /** Prepare the terrain and minimap art before buffering DEPLOY. */
+  prepareTurf(name: GroundTileName): Promise<void> {
+    if (this.layers.has(WORLD_TILES[name]) || name === 'DIRT') return Promise.resolve();
+    const pending = this.layerRequests.get(name);
+    if (pending) return pending;
+    const root = this.assetBaseUrl, visual = this.visual;
+    if (root === undefined || !visual) return Promise.reject(new Error('Create terrain visuals before deploying turf'));
+    const request = Promise.all([loadGroundTileAssets(root, name), loadGroundTileMinimapLayer(root, name), this.tileLayerImages()])
+      .then(([assets, mini, layers]) => {
+        if (this.visual !== visual) { assets.material.dispose(); return; }
+        const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
+        mesh.name = `TurfBlend:${name}`;
+        mesh.renderOrder = -1 + 0.4 * GROUND_TILE_DEFINITIONS[name].renderOrder
+          / (Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder)) + 1);
+        mesh.receiveShadow = true;
+        visual.add(mesh);
+        this.layers.set(WORLD_TILES[name], { mesh, assets });
+        layers.set(WORLD_TILES[name], mini);
+        this.rebuildGeometry();
+      });
+    this.layerRequests.set(name, request);
+    void request.catch(() => this.layerRequests.delete(name));
+    return request;
   }
 
   canPlant(world: Vector2): boolean {
@@ -72,12 +231,12 @@ export class TurfMap {
     if (!this.canPlow(world)) return false;
     const col = Math.floor(world.x / TILE_SIZE), row = Math.floor(world.z / TILE_SIZE);
     this.dugTiles.set(`${col},${row}`, { col, row, tileId: WORLD_TILES.FARMING_SOIL,
-      underTileId: this.getTileAtWorld(world) as typeof WORLD_TILES.DIRT | typeof WORLD_TILES.DECIDUOUS });
+      underTileId: this.getTileAtWorld(world) });
     this.rebuildGeometry();
     return true;
   }
 
-  onDig(listener: (world: Vector2) => void): () => void {
+  onDig(listener: (world: Vector2, originalTileId: number) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
@@ -85,14 +244,17 @@ export class TurfMap {
   /** terraformer.lua: SetTile(..., WORLD_TILES.DIRT); dirt cannot be dug again. */
   dig(world: Vector2): boolean {
     if (!this.canTerraform(world)) return false;
+    const originalTileId = this.getTileAtWorld(world);
     const center = snapToTileCenter(world);
     const col = Math.floor(center.x / TILE_SIZE), row = Math.floor(center.z / TILE_SIZE);
     const key = `${col},${row}`;
-    if (this.dugTiles.get(key)?.tileId === WORLD_TILES.FARMING_SOIL
-      && this.dugTiles.get(key)?.underTileId !== WORLD_TILES.DIRT) this.dugTiles.delete(key);
+    const previous = this.dugTiles.get(key);
+    if (previous?.tileId === WORLD_TILES.FARMING_SOIL && previous.underTileId !== undefined) {
+      this.dugTiles.set(key, { col, row, tileId: previous.underTileId });
+    }
     else this.dugTiles.set(key, { col, row, tileId: WORLD_TILES.DIRT });
     this.rebuildGeometry();
-    for (const listener of this.listeners) listener(world);
+    for (const listener of this.listeners) listener(world, originalTileId);
     return true;
   }
 
@@ -104,7 +266,6 @@ export class TurfMap {
     if (this.dirt) return this.dirt;
     this.dirtAssets = await loadGroundTileAssets(assetBaseUrl, 'DIRT');
     const material = this.dirtAssets.material;
-    material.transparent = false;
     this.dirt = new THREE.Mesh(new THREE.BufferGeometry(), material);
     this.dirt.name = 'DugTurf:DIRT';
     this.dirt.renderOrder = -1.5;
@@ -116,15 +277,16 @@ export class TurfMap {
   /** tilemanager: layered atlas masks + noise, in source ground render order. */
   async createVisual(assetBaseUrl: string): Promise<THREE.Group> {
     if (this.visual) return this.visual;
-    const [dirt, deciduous, grass, woodfloor, farming] = await Promise.all([
+    this.assetBaseUrl = assetBaseUrl;
+    const [dirt, deciduous, grass, woodfloor, farming, dock] = await Promise.all([
       this.createDirtMesh(assetBaseUrl), loadGroundTileAssets(assetBaseUrl, 'DECIDUOUS'), loadGroundTileAssets(assetBaseUrl, 'GRASS'),
       loadGroundTileAssets(assetBaseUrl, 'WOODFLOOR'),
-      loadGroundTileAssets(assetBaseUrl, 'FARMING_SOIL'),
+      loadGroundTileAssets(assetBaseUrl, 'FARMING_SOIL'), loadGroundTileAssets(assetBaseUrl, 'MONKEY_DOCK'),
     ]);
     this.visual = new THREE.Group();
     this.visual.name = 'EditableTurf';
     this.visual.add(dirt);
-    for (const [name, assets] of [['DECIDUOUS', deciduous], ['GRASS', grass], ['WOODFLOOR', woodfloor], ['FARMING_SOIL', farming]] as const) {
+    for (const [name, assets] of [['DECIDUOUS', deciduous], ['GRASS', grass], ['WOODFLOOR', woodfloor], ['FARMING_SOIL', farming], ['MONKEY_DOCK', dock]] as const) {
       const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
       mesh.name = `TurfBlend:${name}`;
       // LAYER_GROUND: stay within [-1, -0.6), below snow (-0.55) and LAYER_BACKGROUND decor (-0.5).
@@ -134,7 +296,19 @@ export class TurfMap {
       this.visual.add(mesh);
       this.layers.set(WORLD_TILES[name], { mesh, assets });
     }
+    if ([...this.dugTiles.values()].some(tile => tile.tileId === WORLD_TILES.OCEAN_COASTAL)) {
+      const assets = await loadGroundTileAssets(assetBaseUrl, 'OCEAN_COASTAL');
+      this.ocean = new OceanSurface(assets.material, { size: this.size, tileSize: TILE_SIZE,
+        isOceanTileAt: (col, row) => this.tileAt(col, row) === WORLD_TILES.OCEAN_COASTAL });
+      const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
+      mesh.name = 'TurfOcean:OCEAN_COASTAL';
+      mesh.renderOrder = -1.75;
+      this.ocean.attach(mesh);
+      this.visual.add(mesh);
+      this.layers.set(WORLD_TILES.OCEAN_COASTAL, { mesh, assets });
+    }
     this.rebuildGeometry();
+    await Promise.all(this.terrainNames().filter(name => name !== 'DIRT' && name !== 'OCEAN_COASTAL').map(name => this.prepareTurf(name)));
     return this.visual;
   }
 
@@ -159,6 +333,11 @@ export class TurfMap {
     if (!this.dirt || !this.dirtAssets) return;
     const quads = [...this.dugTiles.values()].filter(({ tileId }) => tileId === WORLD_TILES.DIRT)
       .map((tile) => ({ ...tile, variant: 1 }));
+    for (const tile of this.dugTiles.values()) {
+      if (tile.tileId !== WORLD_TILES.OCEAN_COASTAL) continue;
+      const variant = this.variantAt(tile.col, tile.row, WORLD_TILES.DIRT);
+      if (variant !== 17) quads.push({ ...tile, variant });
+    }
     const geometry = groundTileGeometry(quads, this.dirtAssets, this.size);
     this.dirt.geometry.dispose();
     this.dirt.geometry = geometry;
@@ -166,16 +345,26 @@ export class TurfMap {
     for (const [tileId, { mesh, assets }] of this.layers) {
       const candidates = new Set<string>();
       if (tileId === WORLD_TILES.DECIDUOUS) {
-        // The generated deciduous plane is already full. Only dug cells need skirts.
-        for (const key of this.dugTiles.keys()) candidates.add(key);
-      } else if (tileId === WORLD_TILES.FARMING_SOIL) {
+        // The base plane fills distant unchanged cells. Around edited/generated
+        // terrain, render its full cells as well as skirts at the source layer
+        // order, so lower layers' skirts cannot leak over the original ground.
+        for (const key of new Set([...this.originalTiles.keys(), ...this.dugTiles.keys()])) {
+          const [col, row] = key.split(',').map(Number);
+          for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+            candidates.add(`${col + dx},${row + dz}`);
+          }
+        }
+      } else if (tileId === WORLD_TILES.FARMING_SOIL || tileId === WORLD_TILES.MONKEY_DOCK || tileId === WORLD_TILES.OCEAN_COASTAL) {
         for (const [key, tile] of this.dugTiles) {
           if (tile.tileId !== tileId) continue;
           const [col, row] = key.split(',').map(Number);
-          for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) candidates.add(`${col + dx},${row + dz}`);
+          if (tileId === WORLD_TILES.OCEAN_COASTAL) candidates.add(key);
+          else for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) candidates.add(`${col + dx},${row + dz}`);
         }
       } else {
-        for (const [key, original] of this.originalTiles) {
+        const tiles = new Map(this.originalTiles);
+        for (const [key, tile] of this.dugTiles) tiles.set(key, tile.tileId);
+        for (const [key, original] of tiles) {
           if (original !== tileId) continue;
           const [col, row] = key.split(',').map(Number);
           for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
@@ -194,5 +383,23 @@ export class TurfMap {
       mesh.geometry = groundTileGeometry(edgeQuads, assets, this.size);
       mesh.visible = edgeQuads.length > 0;
     }
+    this.ocean?.rebuildColours();
+    for (const listener of this.terrainListeners) listener();
+  }
+
+  dispose(): void {
+    this.ocean?.dispose();
+    this.ocean = undefined;
+    this.visual?.removeFromParent();
+    this.dirt?.geometry.dispose();
+    this.dirtAssets?.material.dispose();
+    for (const { mesh, assets } of this.layers.values()) { mesh.geometry.dispose(); assets.material.dispose(); }
+    this.layers.clear();
+    this.layerRequests.clear();
+    this.listeners.clear();
+    this.terrainListeners.clear();
+    this.visual = undefined;
+    this.dirt = undefined;
+    this.dirtAssets = undefined;
   }
 }
