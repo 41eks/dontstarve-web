@@ -12,7 +12,7 @@ async function setup() {
   const events = new EventTarget();
   vi.stubGlobal('window', events);
   const sources: {
-    buffer: AudioBuffer | null; loop: boolean; onended: (() => void) | null;
+    buffer: AudioBuffer | null; loop: boolean; playbackRate: { value: number }; onended: (() => void) | null;
     start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>;
     connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn>;
   }[] = [];
@@ -28,7 +28,7 @@ async function setup() {
       return gain;
     }),
     createBufferSource: vi.fn(() => {
-      const source = { buffer: null as AudioBuffer | null, loop: false, onended: null as (() => void) | null,
+      const source = { buffer: null as AudioBuffer | null, loop: false, playbackRate: { value: 1 }, onended: null as (() => void) | null,
         start: vi.fn(), stop: vi.fn(), connect: vi.fn(), disconnect: vi.fn() };
       sources.push(source);
       return source;
@@ -194,4 +194,19 @@ describe('dwarf star source sounds', () => {
     s.events.dispatchEvent(new Event('pointerdown'));
     expect(s.context.resume).not.toHaveBeenCalled();
   });
+});
+
+
+it('mole sleep uses one short lowered sample rather than a raw sniff loop', async () => {
+  const s = await setup();
+  await PreloadSounds('dontstarve_DLC001/creatures/mole/sniff', 'dontstarve_DLC001/creatures/mole/sleep');
+  const sniff = PlaySound('dontstarve_DLC001/creatures/mole/sniff');
+  const sleep = PlaySound('dontstarve_DLC001/creatures/mole/sleep');
+  expect(s.sources.map(source => source.loop)).toEqual([false, false]);
+  expect(s.sources[0].playbackRate.value).toBe(1);
+  expect(s.sources[1].playbackRate.value).toBeCloseTo(2 ** -.25);
+  expect(s.gains[1].gain.value).toBeCloseTo(.07079457491636276 * .7);
+  sniff.stop(); expect(s.sources[0].stop).toHaveBeenCalledTimes(1);
+  expect(s.sources[1].stop).not.toHaveBeenCalled();
+  s.sources[1].onended!(); expect(sleep.isPlaying()).toBe(false);
 });

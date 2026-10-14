@@ -23,6 +23,8 @@ export interface BufferedActionObject {
   readonly swap_prefix?: string;
   readonly skinBuild?: string;
   getDisplayName?(): string;
+  /** entityscript.lua PushEvent, for example SGwilson's startlongaction on the target. */
+  PushEvent?(name: string, data?: unknown): void;
   hasTag(tag: string): boolean;
 }
 

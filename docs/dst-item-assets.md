@@ -72,6 +72,10 @@ python3 packages/prefab/scripts/import-ground-items.py --check
 
 默认源目录是 `/data/copy/AssetArchive-Dev/data/DST/data`。其他来源可通过 `--source <DST data 目录>` 指定；`--check` 校验生成的定义及源资产字节，避免扁平化路径或替换资源内容。
 
+## fence_item
+
+`prefabs/fence.lua` 的 `MakeInvItem("fence_item", "fence", "fence", false)` 使用 bank/build `fence`、动画 `inventory`（`anim/fence.zip`），库存图标为 `images/inventoryimages.xml` 的 `fence_item.tex`。`import-ground-items.py` 将其作为 `animation_archive='fence.zip'` 的普通地面物品导入，并自动收录 13 款源皮肤（`fence_<名称>_item` → `dynamic/fence_<名称>.zip`，图标 `inventoryimages2.xml`）。已建成的 `fence` 另外需要窄 bank 的 `anim/fence_thin.zip`（只含动画，build 仍用 `fence.zip`），导入器把它一并镜像，`--check` 校验路径与字节。
+
 ## razor
 
 `razor.lua` 使用 bank `razor` 与 build `swap_razor`，动画包为 `anim/razor.zip`（clip `idle`），物品栏图标为 `inventoryimages.xml` 的 `razor.tex`。`import-ground-items.py` 将其作为 `animation_archive='razor.zip'` 的普通地面物品导入，并自动收录三款原版皮肤 `razor_barber`、`razor_scissors`、`razor_straight` 的 `dynamic/*.zip` 与对应图标；`--check` 校验源路径与字节。razor 不可装备，没有手持美术，只通过鼠标举着使用。

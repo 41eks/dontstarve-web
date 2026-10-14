@@ -1,3 +1,5 @@
+import { MolehillManager, type MolehillRecord } from '../packages/prefab/src/molehill';
+import { MoleBait } from '../packages/prefab/src/molebait';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
@@ -22,10 +24,17 @@ import { playerStats } from './playerStats';
 import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
+import { RockAvocadoSaplingManager, ROCK_AVOCADO_SAPLING_ID } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
+import { RockAvocadoBushManager, ROCK_AVOCADO_BUSH_ID } from '@dontstarve-web/prefab/rock_avocado_bush';
+import { BerrybushManager, BERRYBUSH_ID } from '@dontstarve-web/prefab/berrybush';
+import { MonkeytailManager, MONKEYTAIL_ID } from '@dontstarve-web/prefab/monkeytail';
 import { GrassManager, GRASS_ID } from '@dontstarve-web/prefab/grass';
-import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
+import { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
+import { WorldWind } from '../packages/componets/src/worldwind';
+import { TumbleweedManager, TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumbleweed';
 import { SaplingManager } from '@dontstarve-web/prefab/sapling';
 import { PondManager, POND_ID } from '@dontstarve-web/prefab/pond';
+import { HotspringManager } from '@dontstarve-web/prefab/hotspring';
 import { LavaPondManager, LAVA_POND_ID } from '@dontstarve-web/prefab/lava_pond';
 import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { PortalManager, PORTAL_ID } from '@dontstarve-web/prefab/portal';
@@ -65,7 +74,7 @@ import type { WorldState } from './worldState';
 
 export async function createSceneEntities(
   world: CANNON.World,
-  worldState: Pick<WorldState, 'clock' | 'season' | 'moon' | 'fullMoon' | 'isNight' | 'temperature' | 'weather' | 'perishClock'>,
+  worldState: Pick<WorldState, 'clock' | 'season' | 'moon' | 'fullMoon' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'scheduler' | 'temperature' | 'weather' | 'perishClock'>,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
@@ -85,7 +94,7 @@ export async function createSceneEntities(
     { ...view, physics: world, scheduler, season: worldState.season, dynamicMusic, fullMoon: worldState.fullMoon,
       moon: worldState.moon,
       getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
-      isNight: worldState.isNight, perishClock: worldState.perishClock,
+      cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, isNight: worldState.isNight, perishClock: worldState.perishClock,
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
       registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
@@ -106,6 +115,41 @@ export async function createSceneEntities(
         inventoryRadius: object.userData.itemId ? object.userData.physicsRadius ?? .5 : undefined,
         smartRadius: object.userData.deploySmartRadius })),
   }, scheduler ? { scheduler, season: worldState.season, spawnAsh: position => spawnAsh(position) } : undefined);
+  const worldFx = new WorldFx(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  const moleScheduler = scheduler ?? worldState.scheduler;
+  const moleBaits = new Map<string, MoleBait>();
+  const moleWalkable = (point: THREE.Vector3) => {
+    const tile = turfMap.getTileAtWorld(point);
+    const radius = .5 * WORLD_SCALE;
+    const edge = initialSave.world.map.generator.options.size / 2 - radius;
+    return tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL && Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
+      && !world.bodies.some(body => body.type === CANNON.Body.STATIC && body.collisionResponse &&
+        body.shapes.some(shape => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere) && (() => {
+          body.updateAABB(); const b = body.aabb;
+          return point.x >= b.lowerBound.x - radius && point.x <= b.upperBound.x + radius && point.z >= b.lowerBound.z - radius && point.z <= b.upperBound.z + radius;
+        })());
+  };
+  const molehills: MolehillManager = new MolehillManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading,
+    isWalkable: moleWalkable,
+    findPath: (start, target) => findGroundPath(new THREE.Vector3(start.x, start.y, start.z),
+      new THREE.Vector3(target.x, target.y, target.z), { cellSize: 1.5, isWalkable: moleWalkable }),
+    spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
+    dropItem: (entity, position) => sceneInventory.DropItem(entity, position),
+    showMole: (entity, position) => { void groundItems.spawnFromSave(entity.id, {
+      ...SAVE_CATALOG.items.mole, ...entity.snapshot(), entity,
+    }, position).catch((error: unknown) => console.error('Unable to render mole', error)); },
+    dropLoot: (itemId, position) => { void groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position)
+      .catch((error: unknown) => console.error('Unable to drop mole loot', error)); },
+    getEntities: () => {
+      for (const entity of sceneInventory.entities.values()) if (entity.components.bait && !moleBaits.has(entity.id))
+        moleBaits.set(entity.id, new MoleBait(entity, moleScheduler, moleWalkable));
+      for (const [id, bait] of moleBaits) if (bait.entity.isRemoved) { bait.dispose(); moleBaits.delete(id); }
+      return [...moleBaits.values(), ...molehills.habitat.getMoles(),
+        { prefab: 'wilson', components: {}, isValid: () => true, hasTag: (tag: string) => tag === 'scarytoprey',
+          getPosition: () => player.position, getPhysicsRadius: () => .5 * WORLD_SCALE }];
+    },
+  });
   const groundItems = new GroundItemManager(
     scene,
     camera,
@@ -141,6 +185,8 @@ export async function createSceneEntities(
     itemEntities,
     scheduler,
     worldState.season,
+    worldFx,
+    molehills.habitat,
   );
   // DefaultBurntFn: one ash at the burnt inst's position.
   const spawnAsh = (position: THREE.Vector3) => {
@@ -159,6 +205,25 @@ export async function createSceneEntities(
   const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
+  const rockAvocadoBushes = new RockAvocadoBushManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    scheduler, season: worldState.season, rain: worldState.weather.preciptype, snowLevel: worldState.weather.snowLevel,
+    physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+    prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
+  });
+  const rockAvocadoSaplings = new RockAvocadoSaplingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    scheduler, season: worldState.season, bushes: rockAvocadoBushes,
+    prepareSpawn: definition => groundItems.prepareSpawn(definition),
+  });
+  const berrybushes = new BerrybushManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    scheduler, season: worldState.season, rain: worldState.weather.preciptype, snowLevel: worldState.weather.snowLevel,
+    physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+    prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
+  });
+  const monkeytails = new MonkeytailManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    scheduler, season: worldState.season, rain: worldState.weather.preciptype,
+    getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
+    prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
+  });
   const grasses = new GrassManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
     scheduler, season: worldState.season,
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
@@ -169,6 +234,28 @@ export async function createSceneEntities(
   });
   const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, worldState.weather.snowLevel);
   const lavaPonds = new LavaPondManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, { scheduler });
+  // forest.lua adds worldwind to the world; its change task needs a scheduler even when the caller supplies none.
+  const windScheduler = scheduler ?? new GameTimeScheduler();
+  const worldWind = new WorldWind(windScheduler);
+  const tumbleweeds = new TumbleweedManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
+    scheduler: windScheduler, wind: worldWind, cameraHeading: view.cameraHeading,
+    isOnValidGround: position => { const tile = turfMap.getTileAtWorld(position);
+      return tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL; },
+    constrainPosition: position => {
+      const edge = initialSave.world.map.generator.options.size / 2 - WORLD_SCALE;
+      position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
+      position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
+    },
+    dropLoot: (items, position) => {
+      // Prefabs this project cannot spawn yet (trinkets, creatures, blueprints) are not dropped.
+      const counts = new Map<string, number>();
+      for (const itemId of items) if (Object.hasOwn(SAVE_CATALOG.items, itemId)) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
+      if (counts.size === 0) return;
+      void groundItems.flingLoot([...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })), position)
+        .catch((error: unknown) => console.error('Unable to drop tumbleweed loot', error));
+    },
+  });
+  const hotsprings = new HotspringManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`);
   const wormholes = new WormholeManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, () => [player.position]);
   const portals = new PortalManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const nightmareGrowths = new NightmareGrowthManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
@@ -178,7 +265,7 @@ export async function createSceneEntities(
     // The scheduler runs on world seconds (src/scene.ts), so the next boundary is the next multiple of the day length.
     secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
     clock: worldState.clock,
-    isNight: worldState.isNight,
+    getWatchWorldContent: worldState.getWatchWorldContent,
     season: worldState.season,
     getPlayerPositions: () => [player.position],
     findPath(start, target) {
@@ -438,6 +525,14 @@ export async function createSceneEntities(
     renderEntities: () => bulbPlants.renderEntities,
     dispose: () => bulbPlants.dispose(),
   });
+  registry.register(PREFAB_DEFINITIONS.molehills, {
+    restore: (_, record) => molehills.spawn(new THREE.Vector3(...record.transform.position), record as MolehillRecord),
+    debugSpawn: () => molehills.spawn(player.position.clone().setY(0)),
+    exportRecords: () => molehills.exportRecords().map(record => ({ prefabId: 'molehill', record })),
+    beforePhysics: dt => { if (!scheduler) moleScheduler.advance(dt); },
+    update: (dt, quaternion) => molehills.update(dt, quaternion), renderEntities: () => molehills.renderEntities,
+    dispose: () => { molehills.dispose(); for (const bait of moleBaits.values()) bait.dispose(); moleBaits.clear(); },
+  });
   registry.register(PREFAB_DEFINITIONS.beefalos, {
     restore: (_, record) => beefalos.spawn(new THREE.Vector3(...record.transform.position), {
       id: record.id, transform: record.transform, components: { beefalo: record.components.beefalo! },
@@ -458,6 +553,38 @@ export async function createSceneEntities(
     update: (dt, quaternion) => rockManager.update(dt, quaternion),
     renderEntities: () => rockManager.renderEntities,
     dispose: () => rockManager.dispose(),
+  });
+  registry.register(PREFAB_DEFINITIONS.rockAvocadoSaplings, {
+    restore: (_, record) => rockAvocadoSaplings.spawn(new THREE.Vector3(...record.transform.position), record),
+    debugSpawn: () => rockAvocadoSaplings.spawn(player.position.clone()),
+    exportRecords: () => rockAvocadoSaplings.exportRecords().map(record => ({ prefabId: ROCK_AVOCADO_SAPLING_ID, record })),
+    update: (dt, quaternion) => rockAvocadoSaplings.update(dt, quaternion),
+    renderEntities: () => rockAvocadoSaplings.renderEntities,
+    dispose: () => rockAvocadoSaplings.dispose(),
+  });
+  registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {
+    restore: (_, record) => rockAvocadoBushes.spawn(new THREE.Vector3(...record.transform.position), record),
+    debugSpawn: () => rockAvocadoBushes.spawn(player.position.clone()),
+    exportRecords: () => rockAvocadoBushes.exportRecords().map(record => ({ prefabId: ROCK_AVOCADO_BUSH_ID, record })),
+    update: (dt, quaternion) => rockAvocadoBushes.update(dt, quaternion),
+    renderEntities: () => rockAvocadoBushes.renderEntities,
+    dispose: () => rockAvocadoBushes.dispose(),
+  });
+  registry.register(PREFAB_DEFINITIONS.berrybushes, {
+    restore: (_, record) => berrybushes.spawn(new THREE.Vector3(...record.transform.position), record),
+    debugSpawn: () => berrybushes.spawn(player.position.clone()),
+    exportRecords: () => berrybushes.exportRecords().map(record => ({ prefabId: BERRYBUSH_ID, record })),
+    update: (dt, quaternion) => berrybushes.update(dt, quaternion),
+    renderEntities: () => berrybushes.renderEntities,
+    dispose: () => berrybushes.dispose(),
+  });
+  registry.register(PREFAB_DEFINITIONS.monkeytails, {
+    restore: (_, record) => monkeytails.spawn(new THREE.Vector3(...record.transform.position), record),
+    debugSpawn: () => monkeytails.spawn(player.position.clone()),
+    exportRecords: () => monkeytails.exportRecords().map(record => ({ prefabId: MONKEYTAIL_ID, record })),
+    update: (dt, quaternion) => monkeytails.update(dt, quaternion),
+    renderEntities: () => monkeytails.renderEntities,
+    dispose: () => monkeytails.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.grasses, {
     restore: (_, record) => grasses.spawn(new THREE.Vector3(...record.transform.position), {
@@ -508,6 +635,26 @@ export async function createSceneEntities(
     // The pool family owns the shared manager's update, rendering and disposal.
     dispose: () => {},
   });
+  registry.register(PREFAB_DEFINITIONS.tumbleweeds, {
+    restore: (_, record) => tumbleweeds.spawn(new THREE.Vector3(...record.transform.position), {
+      id: record.id, transform: record.transform, components: {},
+    }),
+    debugSpawn: () => tumbleweeds.spawn(player.position.clone().setY(0)),
+    exportRecords: () => tumbleweeds.exportRecords().map(record => ({ prefabId: TUMBLEWEED_ID, record })),
+    beforePhysics: dt => { if (!scheduler) windScheduler.advance(Math.min(dt, .1)); tumbleweeds.beforePhysics(dt); },
+    update: (_, quaternion) => tumbleweeds.sync(quaternion),
+    renderEntities: () => tumbleweeds.renderEntities,
+    dispose: () => { tumbleweeds.dispose(); worldWind.dispose(); if (!scheduler) windScheduler.dispose(); },
+  });
+  registry.register(PREFAB_DEFINITIONS.hotsprings, {
+    restore: (_, record) => hotsprings.spawn(new THREE.Vector3(...record.transform.position), {
+      id: record.id, transform: record.transform, components: { hotspring: record.components.hotspring },
+    }),
+    debugSpawn: () => hotsprings.spawn(player.position.clone().setY(0)),
+    exportRecords: () => hotsprings.exportRecords(),
+    update: (dt) => hotsprings.update(dt),
+    dispose: () => hotsprings.dispose(),
+  });
   registry.register(PREFAB_DEFINITIONS.nightmareGrowths, {
     restore: (_, record) => nightmareGrowths.spawn(new THREE.Vector3(...record.transform.position), {
       id: record.id, transform: record.transform, components: { nightmareGrowth: record.components.nightmareGrowth! },
@@ -544,7 +691,6 @@ export async function createSceneEntities(
     renderEntities: () => reskinEffects.renderEntities,
     dispose: () => reskinEffects.dispose(),
   });
-  const worldFx = new WorldFx(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   registry.register(PREFAB_DEFINITIONS.worldFx, {
     exportRecords: () => [],
     update: (dt, quaternion) => worldFx.update(dt, quaternion),
@@ -622,5 +768,5 @@ export async function createSceneEntities(
     finally { dynamicMusic?.dispose(); if (!inventory) sceneInventory.dispose(); }
   };
   return { registry, dispose, moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, dwarfStars, polarLights, flowerPlanting, bulbPlants,
-    beefalos, rockManager, grasses, saplings, ponds, lavaPonds, wormholes, portals, nightmareGrowths, reskinEffects, worldFx, farmPlow, dockKit };
+    beefalos, molehills, rockManager, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, ponds, lavaPonds, hotsprings, tumbleweeds, worldWind, wormholes, portals, nightmareGrowths, reskinEffects, worldFx, farmPlow, dockKit };
 }

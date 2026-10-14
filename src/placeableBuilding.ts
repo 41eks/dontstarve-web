@@ -23,6 +23,7 @@ import {
     isWallId,
     type WallId,
 } from '@dontstarve-web/prefab/walls';
+import { FencePlacement, FENCE_IDS, isFenceId, type FenceId } from '@dontstarve-web/prefab/fence';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import type { PlacementSaveRecord } from '@dontstarve-web/prefab/saveRecord';
 import { TENT_DEFINITION, TENT_ID } from '@dontstarve-web/prefab/tent';
@@ -48,7 +49,7 @@ export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | typeof TENT_ID
     | DragonflyChestId | BookstationId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID | typeof WARDROBE_ID;
-export type PlaceableBuildingId = AnimatedBuildingId | WallId;
+export type PlaceableBuildingId = AnimatedBuildingId | WallId | FenceId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
 const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
@@ -95,7 +96,7 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     ...MUSHROOM_LIGHT_DEFINITIONS,
 } as const;
 
-export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [...ANIMATED_BUILDING_IDS, ...WALL_IDS];
+export const PLACEABLE_BUILDING_IDS: readonly PlaceableBuildingId[] = [...ANIMATED_BUILDING_IDS, ...WALL_IDS, ...FENCE_IDS];
 
 export function isPlaceableBuildingId(value: string): value is PlaceableBuildingId {
     return PLACEABLE_BUILDING_IDS.some((buildingId) => buildingId === value);
@@ -108,6 +109,7 @@ export function isPlaceableBuildingId(value: string): value is PlaceableBuilding
 export class PlaceableBuildingPlacement {
     private readonly animated: AnimatedBuildingPlacement<AnimatedBuildingId>;
     private readonly walls: WallsPlacement;
+    private readonly fences: FencePlacement;
 
     constructor(
         world: WorldContext,
@@ -121,31 +123,36 @@ export class PlaceableBuildingPlacement {
             onInteractionChange,
         );
         this.walls = new WallsPlacement(world, consumeBufferedBuild);
+        this.fences = new FencePlacement(world, consumeBufferedBuild);
     }
 
     begin(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
+        if (isFenceId(buildId)) {
+            this.animated.cancel(); this.walls.cancel();
+            return this.fences.begin(buildId, skinId);
+        }
         if (isWallId(buildId)) {
-            this.animated.cancel();
+            this.animated.cancel(); this.fences.cancel();
             return this.walls.begin(buildId, skinId);
         }
-        this.walls.cancel();
+        this.walls.cancel(); this.fences.cancel();
         return this.animated.begin(buildId, skinId);
     }
 
     spawn(buildId: PlaceableBuildingId, skinId?: string): Promise<void> {
-        return isWallId(buildId)
-            ? this.walls.spawn(buildId, skinId)
+        return isFenceId(buildId) ? this.fences.spawn(buildId, skinId)
+            : isWallId(buildId) ? this.walls.spawn(buildId, skinId)
             : this.animated.spawn(buildId, skinId);
     }
 
     spawnFromSave(buildId: PlaceableBuildingId, record: PlacementSaveRecord) {
-        return isWallId(buildId)
-            ? this.walls.spawnFromSave(buildId, record)
+        return isFenceId(buildId) ? this.fences.spawnFromSave(buildId, record)
+            : isWallId(buildId) ? this.walls.spawnFromSave(buildId, record)
             : this.animated.spawnFromSave(buildId, record);
     }
 
     exportRecords() {
-        return [...this.animated.exportRecords(), ...this.walls.exportRecords()];
+        return [...this.animated.exportRecords(), ...this.walls.exportRecords(), ...this.fences.exportRecords()];
     }
 
     performContainerAction(model: import('three').Object3D, action: 'COOK', doer: object): boolean {
@@ -155,24 +162,26 @@ export class PlaceableBuildingPlacement {
     dispose(): void {
         this.animated.dispose();
         this.walls.dispose();
+        this.fences.dispose();
     }
 
     cancel(): void {
         this.animated.cancel();
         this.walls.cancel();
+        this.fences.cancel();
     }
 
     get renderEntities() {
-        return [...this.animated.renderEntities, ...this.walls.renderEntities];
+        return [...this.animated.renderEntities, ...this.walls.renderEntities, ...this.fences.renderEntities];
     }
 
     get hammerTargets() {
-        return [...this.animated.hammerTargets, ...this.walls.hammerTargets];
+        return [...this.animated.hammerTargets, ...this.walls.hammerTargets, ...this.fences.hammerTargets];
     }
 
-    /** Placed insts with combat and live health; walls are the only ported structures with combat. */
+    /** Placed insts with combat and live health; walls and fences are the only ported structures with combat. */
     get combatTargets() {
-        return this.walls.combatTargets;
+        return [...this.walls.combatTargets, ...this.fences.combatTargets];
     }
 
     get spellTargets() { return this.animated.spellTargets; }
@@ -180,11 +189,12 @@ export class PlaceableBuildingPlacement {
     get giveTargets() { return this.animated.giveTargets; }
 
     get reskinTargets() {
-        return [...this.animated.reskinTargets, ...this.walls.reskinTargets];
+        return [...this.animated.reskinTargets, ...this.walls.reskinTargets, ...this.fences.reskinTargets];
     }
 
     update(dt: number): void {
         this.animated.update(dt);
         this.walls.update(dt);
+        this.fences.update(dt);
     }
 }

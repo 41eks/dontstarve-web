@@ -11,6 +11,8 @@ export interface ComponentActionEntity extends WorkInst {
   readonly _cached_reskinname?: Map<string, string | undefined>;
   readonly prefab: string;
   readonly components: {
+    eater?: import('../../componets/src/eater').Eater;
+    pickable?: { CanBeFertilized(): boolean; Fertilize(item: import('../../componets/src/trader').TradeItem): boolean };
     workable?: Workable;
     tool?: Tool;
     spellcaster?: SpellCasterComponent;
@@ -19,6 +21,7 @@ export interface ComponentActionEntity extends WorkInst {
     lighter?: Lighter;
     burnable?: Burnable;
     propagator?: Propagator;
+    bathbombable?: import('../../componets/src/bathbombable').BathBombable;
     heater?: import('../../componets/src/heater').Heater;
     beard?: import('../../componets/src/beard').Beard;
     health?: import('../../componets/src/health').Health;

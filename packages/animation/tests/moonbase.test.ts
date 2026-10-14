@@ -36,7 +36,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   vi.stubGlobal('window', new EventTarget());
   const world = {
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
+    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
   world.player.position.set(30, 0, 40);
@@ -90,7 +90,7 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
+    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options } as unknown as WorldContext;
   const placement = new PlaceableBuildingPlacement(world, () => false);
   if (saved) await placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');

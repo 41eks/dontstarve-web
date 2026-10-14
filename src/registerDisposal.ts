@@ -25,6 +25,8 @@ import { bookActionObject, type BookReader, type BookWorld } from '@dontstarve-w
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { PreloadSounds } from '@dontstarve-web/prefab/sound';
 import { backTasks, registerFrontTask } from './animate';
+import { PlantDeployment } from '../packages/prefab/src/plantDeployment';
+import { PLANTABLES } from '@dontstarve-web/prefab/plantables';
 import { TurfDeployment } from '@dontstarve-web/prefab/turfDeployment';
 import { turfTileName } from '@dontstarve-web/prefab/turfs';
 import type { turfMap } from './building';
@@ -105,7 +107,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'beefalos'>;
+  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'beefalos' | 'molehills'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -125,7 +127,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, grasses, saplings, scheduler, weather, moon, beefalos } = scene;
+      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, beefalos } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -314,7 +316,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           play: () => {
             if (!isValid()) return false;
             const played = entity.components.instrument!.Play(readerInst,
-              range => beefalos.entitiesNear(player.position, range) as never[]);
+              range => [...beefalos.entitiesNear(player.position, range), ...molehills.habitat.getMoles().filter(mole => mole.isValid() && mole.getPosition().distanceToSquared(player.position) <= (range * TILE_SIZE / 4) ** 2)] as never[]);
             if (played) entity.components.finiteuses.useForAction('PLAY');
             return played;
           },
@@ -356,7 +358,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         attackerInst.components.combat = combat;
         playerAnimation.combat = combat;
         actionControllers.push(new AttackActionController(view, playerAnimation, locomotor, handEquipment,
-          { inst: attackerInst, combat }, () => buildingPlacement.combatTargets, isActionInterrupting, unit));
+          { inst: attackerInst, combat }, () => [...buildingPlacement.combatTargets, ...groundItems.combatTargets], isActionInterrupting, unit));
       }
       if (playerAnimation) {
         const spellcast = new SpellCastActionController(view, playerAnimation, locomotor, handEquipment, {
@@ -371,7 +373,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           () => [...buildingPlacement.hammerTargets, ...farmPlow.hammerTargets, ...groundItems.hammerTargets],
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, () => rockManager.mineTargets, isActionInterrupting);
+          handEquipment, () => [...rockManager.mineTargets, ...groundItems.mineTargets], isActionInterrupting);
         const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity || !turfTileName(entity.prefab)) return undefined;
@@ -379,21 +381,36 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
             putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); } };
         }, isActionInterrupting);
+        const plantDeployment = new PlantDeployment(view, playerAnimation, locomotor, () => {
+          const address = cursorSlotAddress(), entity = inventory.getEntity(address);
+          if (!entity || !PLANTABLES[entity.prefab]) return undefined;
+          const skinId = entity.skinId;
+          const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity && entity.skinId === skinId;
+          return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
+            putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); } };
+        }, {
+          plants: { rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings, rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes },
+          canPlant: point => turfMap.canDeployPlantAtPoint(point),
+          getBlockers: () => scene.registry.renderEntities.filter(({ object }) => object.visible && !object.userData.placer)
+            .map(({ object, footPosition }) => ({ position: footPosition, tags: object.userData.tags,
+              smartRadius: object.userData.deploySmartRadius,
+              inventoryRadius: object.userData.itemId ? object.userData.physicsRadius ?? .5 * (TILE_SIZE / 4) : undefined })),
+        }, isActionInterrupting);
         const pitchfork = new PitchforkActionController(view, playerAnimation, locomotor,
           handEquipment, turfMap, isActionInterrupting);
         const farmHoe = new FarmHoeActionController(view, playerAnimation, locomotor,
           handEquipment, farmPlow, isActionInterrupting,
           (error) => console.error('Unable to till farm soil', error));
         const shovel = new ShovelActionController(view, playerAnimation, locomotor,
-          handEquipment, () => [...farmPlow.digTargets, ...grasses.digTargets, ...saplings.digTargets, ...moonTreeForest.digTargets, ...evergreenForest.digTargets, ...deciduousForest.digTargets], isActionInterrupting);
+          handEquipment, () => [...farmPlow.digTargets, ...molehills.digTargets, ...rockAvocadoSaplings.digTargets, ...rockAvocadoBushes.digTargets, ...berrybushes.digTargets, ...monkeytails.digTargets, ...grasses.digTargets, ...saplings.digTargets, ...moonTreeForest.digTargets, ...evergreenForest.digTargets, ...deciduousForest.digTargets], isActionInterrupting);
         const reskin = new ReskinActionController(view, playerAnimation, locomotor,
           handEquipment,
-          () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets], reskinEffects,
+          () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets, ...berrybushes.reskinTargets], reskinEffects,
           isActionInterrupting, (error) => console.error('Unable to reskin target', error));
         const lighter = new LighterActionController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting);
         const axe = new PickaxeActionController(view, playerAnimation, locomotor,
           handEquipment, () => [...moonTreeForest.chopTargets, ...evergreenForest.chopTargets, ...deciduousForest.chopTargets], isActionInterrupting, 'CHOP');
-        actionControllers.push(spellcast, hammer, pickaxe, axe, pitchfork, turfDeployment, farmHoe, shovel, reskin, lighter);
+        actionControllers.push(spellcast, hammer, pickaxe, axe, pitchfork, turfDeployment, plantDeployment, farmHoe, shovel, reskin, lighter);
       }
 
       const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
@@ -482,6 +499,15 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       });
       return {
         useFuel(slot: SlotAddress): boolean {
+          const livestock = inventory.getEntity(slot), food = inventory.getEntity(cursorSlotAddress());
+          if (itemUse && livestock?.hasTag('small_livestock') && food && livestock.components.eater?.CanEat(food)) {
+            return itemUse.request('FEED', {
+              prefab: livestock.prefab, model: player, components: livestock.components,
+              hasTag: tag => livestock.hasTag(tag), addTag: tag => livestock.addTag(tag), removeTag: tag => livestock.removeTag(tag),
+              getPosition: () => player.position,
+              get isRemoved() { return livestock.isRemoved || inventory.getEntity(slot) !== livestock; },
+            });
+          }
           const entity = inventory.getEntity(slot), fuel = inventory.getEntity(cursorSlotAddress());
           if (!itemUse || !entity || !fuel?.components.fuel || !entity.components.fueled.CanAcceptFuelItem(fuel)) return false;
           return itemUse.request(fuel.GetIsWet() ? 'ADDWETFUEL' : 'ADDFUEL', {

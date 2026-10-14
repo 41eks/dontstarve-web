@@ -34,6 +34,9 @@ export class Combat {
     this.getWeapon = getWeapon;
   }
 
+  target?: CombatInst;
+  DropTarget(): void { this.target = undefined; }
+
   SetDefaultDamage(damage: number): void { this.defaultdamage = damage; }
   SetAttackPeriod(period: number): void { this.min_attack_period = period; }
   SetRange(attack: number, hit = attack): void { this.attackrange = attack; this.hitrange = hit; }
@@ -60,7 +63,7 @@ export class Combat {
 
   /** replica combat:CanTarget for the ported cases: live, attackable, not in limbo. */
   CanTarget(target: CombatInst): boolean {
-    return target !== this.inst && !target.isRemoved && !target.hasTag('INLIMBO') && !target.hasTag('notarget')
+    return target !== this.inst && !target.isRemoved && !target.hasTag('INLIMBO') && !target.hasTag('notarget') && !target.hasTag('noattack')
       && target.components.combat !== undefined && target.components.health !== undefined && !target.components.health.IsDead();
   }
 

@@ -4,6 +4,7 @@ import {
   type ParsedAnim, type ParsedBuild, type ResolvedSprite, type SpriteMaterialOptions,
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
+import { selectsFacing } from './facing';
 
 /** Animation/build sources supplied by callers; no prefab or inventory metadata. */
 export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
@@ -19,6 +20,8 @@ export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
 
 export interface ArchiveSpriteOptions {
   skinArchive?: string;
+  /** Give this sprite private material copies at this opacity, adjustable later with `setOpacity()`. */
+  opacity?: number;
   name?: string;
   scale?: number;
 }
@@ -90,6 +93,13 @@ export interface ArchiveSprite {
   playOnce(name: string, onComplete?: () => void): void;
   setAnimation(name: string): void;
   setPaused(paused: boolean): void;
+  /** Only for sprites created with `options.opacity`, whose materials are private. */
+  setOpacity(opacity: number): void;
+  /**
+   * Eight-faced insts select, among clips of the same name, the one whose `facing` mask contains this FACING bit,
+   * mirrored horizontally when the clip lists both a facing and its left-hand mirror.
+   */
+  setFacing(facing: number): void;
   /** Geometry belongs to the entity; shared materials belong to its asset cache. */
   dispose(): void;
 }
@@ -100,13 +110,37 @@ export async function createArchiveSprite(
   definition: ArchiveSpriteDefinition,
   options: ArchiveSpriteOptions = {},
 ): Promise<ArchiveSprite> {
-  const [parsed, builds, skin] = await Promise.all([
+  const [parsed, sharedBuilds, sharedSkin] = await Promise.all([
     assets.loadAnimation(definition.animationArchive),
     Promise.all(definition.buildArchives.map((archive) => assets.loadBuild(archive, definition))),
     options.skinArchive ? assets.loadBuild(options.skinArchive, definition) : undefined,
   ]);
-  const initialAnimation = parsed.animations.find(({ name, bankHash }) =>
-    name === definition.animation && bankHash === smallHash(definition.bank));
+  // Translucent previews cannot share the asset cache's materials with opaque insts.
+  const ownedMaterials: THREE.MeshBasicMaterial[] = [];
+  const own = <T extends ArchiveSpriteBuild | undefined>(source: T): T => {
+    if (!source || options.opacity === undefined) return source;
+    const materials = source.materials.map(material => { const copy = material.clone(); ownedMaterials.push(copy); return copy; });
+    return { build: source.build, materials } as T;
+  };
+  const builds = sharedBuilds.map(own);
+  const skin = own(sharedSkin);
+  const applyOpacity = (opacity: number) => {
+    for (const material of ownedMaterials) {
+      material.transparent = opacity < 1; material.opacity = opacity; material.needsUpdate = true;
+    }
+  };
+  if (options.opacity !== undefined) applyOpacity(options.opacity);
+  const bankHash = smallHash(definition.bank);
+  let facing: number | undefined;
+  let flipped = false;
+  const findClip = (name: string) => {
+    const candidates = parsed.animations.filter(clip => clip.name === name && clip.bankHash === bankHash);
+    const selected = facing === undefined ? undefined
+      : candidates.map(clip => ({ clip, ...selectsFacing(clip.facing, facing!) })).find(({ matches }) => matches);
+    flipped = selected?.flipped ?? false;
+    return selected?.clip ?? candidates[0];
+  };
+  const initialAnimation = findClip(definition.animation);
   if (!initialAnimation?.frames.length) throw new Error(`Missing sprite animation ${definition.bank}:${definition.animation}`);
   let animation = initialAnimation;
   const overrides = new Map(Object.entries(definition.symbolOverrides ?? {}).map(([symbol, override]) =>
@@ -157,11 +191,12 @@ export async function createArchiveSprite(
       });
     // Preserve genuinely empty source frames rather than inventing replacement art.
     renderer.show(sprites);
+    visual.scale.x = flipped ? -scale : scale;
     previousFrame = index;
   };
   const selectAnimation = (name: string, shouldLoop: boolean, complete?: () => void) => {
     if (disposed) return;
-    const next = parsed.animations.find((clip) => clip.name === name && clip.bankHash === smallHash(definition.bank));
+    const next = findClip(name);
     if (!next?.frames.length) throw new Error(`Missing sprite animation ${definition.bank}:${name}`);
     animation = next;
     loop = shouldLoop;
@@ -189,9 +224,23 @@ export async function createArchiveSprite(
     setAnimation(name: string) {
       if (animation.name !== name) selectAnimation(name, definition.loop);
     },
+    setOpacity(opacity: number) {
+      if (options.opacity === undefined) throw new Error(`Sprite ${model.name} does not own its materials`);
+      applyOpacity(opacity);
+    },
+    setFacing(value: number) {
+      if (disposed || facing === value) return;
+      facing = value;
+      const next = findClip(animation.name);
+      if (!next?.frames.length) return;
+      animation = next;
+      previousFrame = -1;
+      update(0);
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
+      ownedMaterials.forEach(material => material.dispose());
       model.removeFromParent();
       visual.traverse((object) => {
         if (object instanceof THREE.Mesh) object.geometry.dispose();

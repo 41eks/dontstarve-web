@@ -10,7 +10,7 @@ import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inven
 import { loadBuild } from '../src/animationAssets';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import * as wallSprites from '../src/wallSprite';
-import type { ReadonlySignal } from '@dontstarve-web/signals';
+import { createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -25,7 +25,7 @@ function setup(consume: (id: WallId, skinId?: string) => boolean = () => false) 
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 12, 40); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
   const canvas = new EventTarget();
-  const world = { scene: new THREE.Scene(), camera, ground: new THREE.Group(), player: new THREE.Group(),
+  const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
     renderer: { domElement: canvas }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
   return { world, canvas, placement: new WallsPlacement(world, consume) };

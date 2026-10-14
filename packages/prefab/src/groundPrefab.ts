@@ -7,6 +7,7 @@ import type { FirefliesWorld } from './fireflies';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 export interface GroundItemDefinition {
+  mole?: import('@dontstarve-web/inventory').InventoryStack['mole'];
   container?: import('@dontstarve-web/inventory').ItemContainerState;
   /** Live inst; the remaining fields are asset metadata or detached save/UI projections. */
   entity?: ItemEntity;
@@ -43,7 +44,15 @@ export interface GroundItemVisual {
   dispose(): void;
 }
 
+/** The transient fx spawner shared with the rest of the scene. */
+export interface GroundFx {
+  prepare(prefab: import('./world_fx').WorldFxPrefab): Promise<void>;
+  spawn(prefab: import('./world_fx').WorldFxPrefab, position: THREE.Vector3): void;
+}
+
 export interface GroundPrefabOptions {
+  moleWorld?: import('./molehill').MoleHabitat;
+  fx?: GroundFx;
   scheduler?: GameTimeScheduler;
   season?: import('@dontstarve-web/signals').ReadonlySignal<import('@dontstarve-web/signals').SeasonState>;
   scene: THREE.Scene;
@@ -61,7 +70,7 @@ export interface GroundPrefabOptions {
 export interface PreparedGroundSpawn {
   /** Actual committed inst, available after spawning a prepared stack. */
   readonly spawnedEntity?: ItemEntity;
-  spawn(position: THREE.Vector3, count?: number): boolean;
+  spawn(position: THREE.Vector3, count?: number, launch?: import('./lootFling').LootLaunch): boolean;
   dispose(): void;
 }
 

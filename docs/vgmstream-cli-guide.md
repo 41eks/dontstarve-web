@@ -116,6 +116,10 @@ done
 
 ### 建筑燃烧声
 
+`prefabs/gunpowder.lua` 的引信声 `dontstarve/common/blackpowder_fuse_LP` 与 `explode_small.lua` 的爆炸声 `dontstarve/common/blackpowder_explo` 以 `fev-events.py` 解析 `sound/dontstarve.fev`：前者 sounddef 614 → `sfx/objects/blackpowder_fuse_LP.wav`，bank `common`、零基 file_index 146（`-s 147`），循环；后者 sounddef 615 在 `blackpowder_explo_1..3.wav` 中等权选一（file_index 143–145，`-s 144..146`），一次性。四份样本用 `-m -s` 核对流名后以 `-i` 导出为 `common.fsb-144..147.wav`，与源目录已有的 `common.fsb#<index>.wav` 字节一致。引信声由火药各自创建音源，熄灭、爆炸或移除时停止；爆炸声由 `WorldFx` 的 `explode_small` 在生成时播放。
+
+`prefabs/fence.lua` 的 `ondeploywall` 播放 `dontstarve/common/place_structure_wood`：`dontstarve.fev` sounddef 472 → `sfx/objects/place_structure_wood.wav`，bank `common`、零基 file_index 232（`-s 233`），一次性。该流此前已作为月亮基地放置声的一层以 `-i` 导出为 `common.fsb-233.wav`，与源目录已有的 `common.fsb#233.wav` 字节一致；`sound.ts` 为栅栏单独映射该事件，放置成功时播放。
+
 建筑燃烧声来自 `prefabs/fire.lua` 的 `dontstarve/common/campfire`，不是火把的拿出声。`dontstarve.fev` 对应三个同时播放的 sound definition：1762 使用 common 的零基索引 148–151，1765 使用 152–155，1766 使用 157–160；分别以 `vgmstream -i -s 149..152 / 153..156 / 158..161` 导出。实际提取使用单个数值索引，输出 `sound/common.fsb-<index>.wav`；所有 12 份 WAV 均与资源目录现有解码 WAV 字节一致。三个循环层由 `packages/prefab/src/sound.ts` 统一映射，建筑各自创建音源，熄灭、烧毁及移除时停止。熄火声复用上面的 `fireOut` 映射。
 
 ### 从 sfx.fsb 提取 `dontstarve/HUD/craft_up`
@@ -460,3 +464,9 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 ### 月晷音效
 
 `SGmoondial.lua` 使用四个事件，`dontstarve.fev` 解析如下（bank 均为 `together`，`-s` = file_index + 1）：`fill` sounddef 2361（`moondial_fill_2_1..4`，file_index 1324–1327）、`full_LP` sounddef 2362/2363（同一 `moondial_full_LP.wav`，file_index 1328，循环，作为单层映射）、`water_movement` sounddef 2367（`moondial_water_movement_1..5`，file_index 1337–1341）、`craft` sounddef 2366（`moondial_place.wav`，file_index 1336）。11 份样本用 `-m -s` 核对流名后以 `-i` 导出为 `together.fsb-1325..1329/1337..1342.wav`，与源目录已有的 `together.fsb#<index>.wav` 字节一致。`hit` 事件（sounddef 2364）在状态图里没有被播放，未导出。
+
+### 鼹鼠
+
+`SGmole.lua` → `dontstarve_DLC001.fev` 的 `creatures/mole/*`：death sounddef 12 → mole 1；emerge/retract 14/15 → 2–4；emerge_voice 18 → 5–7；hurt 13 → 8–10；jump 68 → 11；pickup 70 → 12–13；sniff/sleep 16/69 → 14–25；move 17 → 26。这里的数字已经把零基 file_index 加 1。用安装 CLI 的 `-h` 和逐流 `-m -s` 验证，再用 `-i` 导出 `sound/mole.fsb-<index>.wav`，全部 26 个流均与源目录既有解码 WAV 字节一致。统一在 `sound.ts` 预加载，鼹鼠各自持有 move/sniff/sleep 音源，拾取、回巢、移除时停止并断开连接。
+
+鼹鼠 `sleep` / `sniff` 的底层样本相同，但 FEV 事件 pitch 分别为 −0.25 / 0 八度，可用 `fev-events.py <dontstarve_DLC001.fev> creatures/mole/sleep creatures/mole/sniff --properties` 核对。sleep/sniff 的事件音量均为 0.0707945749（约 −23 dB），其余鼹鼠事件同样按 `--properties` 核对音量／音调。浏览器用 `playbackRate = 2 ** pitchOctaves` 保留原版睡眠降调，两个短事件均不循环原始 WAV，按状态图的离散时间线再次触发。[FMOD 的八度与线性倍率换算](https://qa.fmod.com/t/fmod-ex-to-fmod-studio-pitch-values/18220)。

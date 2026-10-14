@@ -125,6 +125,7 @@ export { SCULPTING_TABLE_DEFINITION, SCULPTING_TABLE_ID, SCULPTABLE_MATERIALS, i
 export { WARDROBE_DEFINITION, WARDROBE_ID } from './wardrobe';
 export { loadReskinToolEquipment, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';
 export { resolveReskinToolPlayerSprite, type ReskinToolEquipment } from './reskin_tool';
+export { FencePlacement, FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId } from './fence';
 export {
   WALL_DEFINITIONS,
   WALL_IDS,
@@ -158,6 +159,7 @@ export { GroundPrefabRegistry } from './groundPrefabRegistry';
 export type { GroundItemDefinition, GroundItemVisual, GroundItemFactory, GroundPrefabContext, GroundPrefabOptions } from './groundPrefab';
 export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, loadLightStaffEquipment, loadYellowStaffEquipment, resolveYellowStaffPlayerSprite, StaffCastingLight, getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_SANITY_COST, type LightStaffWorld, type YellowStaffEquipment, type LightStaffId } from './yellowstaff';
 export { GREENSTAFF_USES, GREENSTAFF_COLOUR, GreenStaffController, getGreenStaffController, deconstructionLoot, type GreenStaffWorld, type DeconstructionTarget } from './greenstaff';
+export { TRIDENT_ID, TRIDENT_DAMAGE, TRIDENT_USES, TRIDENT_STRUM_SOUND, TridentController, getTridentController, loadTridentEquipment, resolveTridentPlayerSprite, type TridentWorld, type TridentEquipment } from './trident';
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,
   dwarfStarLight, polarLight, DwarfStarManager, type DwarfStarRecord, type StaffLightId } from './stafflight';
 export { PlaySound, PreloadSounds, DisposeSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE,

@@ -136,7 +136,7 @@ export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
     // dropitems: the held block comes out with the recipe loot.
     hammerHeldLoot: ({ model }) => {
         const { pickable } = stateOf(model);
-        return pickable.canInteractWith ? [{ itemId: pickable.product, count: 1 }] : [];
+        return pickable.canInteractWith && pickable.product ? [{ itemId: pickable.product, count: 1 }] : [];
     },
     skinInit: sculptingtable_init_fn,
     prepare,
@@ -162,6 +162,6 @@ export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
     // onsave: data.itemname = caninteractwith and product or nil.
     exportComponents: ({ model }) => {
         const { pickable } = stateOf(model);
-        return pickable.canInteractWith ? { sculptingtable: { itemname: pickable.product } } : {};
+        return pickable.canInteractWith && pickable.product ? { sculptingtable: { itemname: pickable.product } } : {};
     },
 };

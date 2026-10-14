@@ -1,18 +1,17 @@
-import { readonlySignal, createEffect, createSignal, type ReadonlySignal } from '../../signals/src';
-import type { GameTimeScheduler } from './gameTimeScheduler';
+import { readonlySignal, createEffect, createSignal, WorldContentKey, type GetWatchWorldContent, type WorldPhase } from '../../signals/src';
 import { ComponentTimer } from './timer';
 
 /**
  * What components/sleeper.lua reads from its inst. Not ported (the beefalo has none of them yet):
- * homeseeker, teamattacker, freezable, light watching, and the sleepiness/diminishing-returns drugs.
+ * teamattacker, freezable, light watching, and the sleepiness/diminishing-returns drugs.
  */
 export interface SleeperInst {
   isValid(): boolean;
   PushEvent(name: string, data?: unknown): void;
-  /** TheWorld.state.isnight; the overworld sleeps at night. */
-  readonly world: { readonly isNight: ReadonlySignal<boolean> };
+  isNear?(home: { getPosition(): unknown }, distance: number): boolean;
   readonly sg?: { hasStateTag(tag: string): boolean };
   readonly components: {
+    homeseeker?: { home?: { isValid(): boolean; getPosition(): unknown } };
     health?: { IsDead?(): boolean; takingfiredamage?: boolean };
     combat?: { target?: unknown };
     burnable?: { IsBurning?(): boolean };
@@ -20,12 +19,13 @@ export interface SleeperInst {
   };
 }
 
-export type SleeperTest = (inst: SleeperInst) => boolean;
+export type SleeperTest = (inst: SleeperInst, cycle: WorldPhase) => boolean;
 
-/** sleeper.lua StandardSleepChecks, without the unported homeseeker/freezable/teamattacker terms. */
+/** sleeper.lua StandardSleepChecks, including home proximity; freezable/teamattacker are unported. */
 export function StandardSleepChecks(inst: SleeperInst): boolean {
   const { combat, burnable } = inst.components;
-  return !(combat?.target) && !burnable?.IsBurning?.() && !inst.sg?.hasStateTag('busy');
+  const home = inst.components.homeseeker?.home;
+  return !(home?.isValid() && inst.isNear?.(home, 40)) && !(combat?.target) && !burnable?.IsBurning?.() && !inst.sg?.hasStateTag('busy');
 }
 
 export function StandardWakeChecks(inst: SleeperInst): boolean {
@@ -33,8 +33,8 @@ export function StandardWakeChecks(inst: SleeperInst): boolean {
   return !!combat?.target || !!burnable?.IsBurning?.() || !!health?.takingfiredamage;
 }
 
-export const DefaultSleepTest: SleeperTest = inst => StandardSleepChecks(inst) && inst.world.isNight.get();
-export const DefaultWakeTest: SleeperTest = inst => StandardWakeChecks(inst) || !inst.world.isNight.get();
+export const DefaultSleepTest: SleeperTest = (inst, cycle) => StandardSleepChecks(inst) && cycle === 'night';
+export const DefaultWakeTest: SleeperTest = (inst, cycle) => StandardWakeChecks(inst) || cycle !== 'night';
 
 /** sleeper.lua tests run on game time; an effect also tests day/night signal changes. */
 export class Sleeper {
@@ -56,20 +56,27 @@ export class Sleeper {
   private disposed = false;
   private readonly inst: SleeperInst;
   private readonly random: () => number;
-  private readonly stopNight: () => void;
+  private readonly cleanups: (() => void)[] = [];
+  private readonly cycle;
 
-  constructor(inst: SleeperInst, scheduler: GameTimeScheduler, random: () => number = Math.random) {
+  constructor(inst: SleeperInst, getWatchWorldContent: GetWatchWorldContent, random: () => number = Math.random) {
+    this.cycle = getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
+    const { scheduler } = this.cycle;
     this.inst = inst;
     this.random = random;
     this.test = new ComponentTimer(scheduler, () => this.runTest());
     this.wearoff = new ComponentTimer(scheduler, () => this.WearOff());
     this.delayedSleep = new ComponentTimer(scheduler, () => this.GoToSleep(this.delayedSleepTime));
-    this.stopNight = createEffect(() => {
-      // Always track day/night, even when testing is stopped or a custom test short-circuits.
-      inst.world.isNight.get();
-      this.runTest();
+    createEffect(() => {
+      // Always track cycle, even when testing is stopped or a custom test short-circuits.
+      this.runTest(this.cycle.get());
     });
     this.StartTesting();
+  }
+
+  SetNocturnal(nocturnal: boolean): void {
+    this.sleeptestfn = nocturnal ? (inst, cycle) => StandardSleepChecks(inst) && cycle === 'day' : DefaultSleepTest;
+    this.waketestfn = nocturnal ? (inst, cycle) => StandardWakeChecks(inst) || cycle !== 'day' : DefaultWakeTest;
   }
 
   SetResistance(resist: number): void { this.resistance = resist; }
@@ -109,11 +116,11 @@ export class Sleeper {
     this.test.stop();
   }
 
-  private runTest(): void {
+  private runTest(cycle: WorldPhase = this.cycle.peek()): void {
     if (this.disposed || !this.testing) return;
     if (this.IsAsleep()) {
-      if (this.waketestfn(this.inst)) this.WakeUp();
-    } else if (this.sleeptestfn(this.inst)) this.GoToSleep();
+      if (this.waketestfn(this.inst, cycle)) this.WakeUp();
+    } else if (this.sleeptestfn(this.inst, cycle)) this.GoToSleep();
     if (this.testing) this.StartTesting();
   }
 
@@ -139,7 +146,7 @@ export class Sleeper {
 
   dispose(): void {
     this.disposed = true;
-    this.stopNight();
+    this.cleanups.splice(0).forEach(stop => stop());
     this.StopTesting();
     this.wearoff.stop();
     this.delayedSleep.stop();

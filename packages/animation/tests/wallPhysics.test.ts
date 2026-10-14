@@ -1,3 +1,4 @@
+import { createSignal } from '@dontstarve-web/signals';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -21,7 +22,7 @@ function setup() {
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 12, 40); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
   const physics = new CANNON.World();
-  const world = { physics, scene: new THREE.Scene(), camera, ground: new THREE.Group(), player: new THREE.Group(),
+  const world = { physics, scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
   return { physics, placement: new WallsPlacement(world, () => false) };

@@ -14,6 +14,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "ROAD"
     },
     "turf_cotl_brick": {
@@ -30,6 +31,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "COTL_BRICK"
     },
     "turf_pebblebeach": {
@@ -46,6 +48,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "PEBBLEBEACH"
     },
     "turf_monkey_ground": {
@@ -62,6 +65,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "MONKEY_GROUND"
     },
     "turf_shellbeach": {
@@ -78,6 +82,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "SHELLBEACH"
     },
     "turf_marsh": {
@@ -94,6 +99,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "MARSH"
     },
     "turf_rocky": {
@@ -110,6 +116,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "ROCKY"
     },
     "turf_savanna": {
@@ -126,6 +133,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "SAVANNA"
     },
     "turf_forest": {
@@ -142,6 +150,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "FOREST"
     },
     "turf_grass": {
@@ -158,6 +167,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "GRASS"
     },
     "turf_deciduous": {
@@ -174,6 +184,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "DECIDUOUS"
     },
     "turf_desertdirt": {
@@ -190,6 +201,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "DESERT_DIRT"
     },
     "turf_cave": {
@@ -206,6 +218,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "CAVE"
     },
     "turf_fungus": {
@@ -222,6 +235,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "FUNGUS"
     },
     "turf_fungus_red": {
@@ -238,6 +252,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "FUNGUSRED"
     },
     "turf_fungus_green": {
@@ -254,6 +269,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "FUNGUSGREEN"
     },
     "turf_fungus_moon": {
@@ -270,6 +286,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "FUNGUSMOON"
     },
     "turf_sinkhole": {
@@ -286,6 +303,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "SINKHOLE"
     },
     "turf_underrock": {
@@ -302,6 +320,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "UNDERROCK"
     },
     "turf_vent": {
@@ -318,6 +337,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "VENT"
     },
     "turf_mud": {
@@ -334,6 +354,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "MUD"
     },
     "turf_archive": {
@@ -350,6 +371,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "ARCHIVE"
     },
     "turf_vault": {
@@ -366,6 +388,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "VAULT_CLEAN"
     },
     "turf_ruinsbrick_glow": {
@@ -382,6 +405,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "BRICK_GLOW"
     },
     "turf_ruinsbrick": {
@@ -398,6 +422,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "BRICK"
     },
     "turf_ruinstiles_glow": {
@@ -414,6 +439,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "TILES_GLOW"
     },
     "turf_ruinstiles": {
@@ -430,6 +456,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "TILES"
     },
     "turf_ruinstrim_glow": {
@@ -446,6 +473,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "TRIM_GLOW"
     },
     "turf_ruinstrim": {
@@ -462,6 +490,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "TRIM"
     },
     "turf_meteor": {
@@ -478,6 +507,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "METEOR"
     },
     "turf_dragonfly": {
@@ -494,6 +524,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "SCALE"
     },
     "turf_woodfloor": {
@@ -510,6 +541,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "WOODFLOOR"
     },
     "turf_cotl_gold": {
@@ -526,6 +558,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "COTL_GOLD"
     },
     "turf_checkerfloor": {
@@ -542,6 +575,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "CHECKER"
     },
     "turf_mosaic_grey": {
@@ -558,6 +592,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "MOSAIC_GREY"
     },
     "turf_mosaic_red": {
@@ -574,6 +609,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "MOSAIC_RED"
     },
     "turf_mosaic_blue": {
@@ -590,6 +626,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "MOSAIC_BLUE"
     },
     "turf_carpetfloor2": {
@@ -606,6 +643,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "CARPET2"
     },
     "turf_carpetfloor": {
@@ -622,6 +660,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "CARPET"
     },
     "turf_beard_rug": {
@@ -638,6 +677,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "moleBait": true,
       "groundTile": "BEARD_RUG"
     },
     "cutgrass": {
@@ -743,7 +783,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true
     },
     "flint": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/flint.lua",
@@ -758,7 +799,9 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 1.0
     },
     "goldnugget": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/goldnugget.lua",
@@ -773,7 +816,9 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 2.0
     },
     "gears": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gears.lua",
@@ -788,7 +833,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true
     },
     "charcoal": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/charcoal.lua",
@@ -803,7 +849,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true
     },
     "pigskin": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pigskin.lua",
@@ -878,7 +925,9 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 2.0
     },
     "livinglog": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/livinglog.lua",
@@ -960,7 +1009,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true
     },
     "beefalowool": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/beefalowool.lua",
@@ -1050,7 +1100,9 @@
       "animation": "anim",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 3.0
     },
     "thulecite_pieces": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/thulecite_pieces.lua",
@@ -1065,7 +1117,9 @@
       "animation": "anim",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 1.0
     },
     "guano": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/guano.lua",
@@ -1260,7 +1314,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true
     },
     "moonrocknugget": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moonrocknugget.lua",
@@ -1275,7 +1330,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "elementalFoodHunger": 1.0
     },
     "dock_kit": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/dock_kit.lua",
@@ -1322,6 +1378,87 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "foliage": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/foliage.lua",
+      "name": "蕨叶",
+      "icon": "foliage.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "foliage.zip",
+      "buildArchives": [
+        "foliage.zip"
+      ],
+      "bank": "foliage",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "beardhair": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/beardhair.lua",
+      "name": "胡须",
+      "icon": "beardhair.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "beardhair.zip",
+      "buildArchives": [
+        "beardhair.zip"
+      ],
+      "bank": "beardhair",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cookingrecipecard": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/cookingrecipecard.lua",
+      "name": "食谱卡",
+      "icon": "cookingrecipecard.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cookingrecipecard.zip",
+      "buildArchives": [
+        "cookingrecipecard.zip"
+      ],
+      "bank": "cookingrecipecard",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "scrapbook_page": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/scrapbook_page.lua",
+      "name": "丢失的图鉴页面",
+      "icon": "scrapbook_page.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "scrapbook_page.zip",
+      "buildArchives": [
+        "scrapbook_page.zip"
+      ],
+      "bank": "scrapbook_page",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "blueprint": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/blueprint.lua",
+      "name": "蓝图",
+      "icon": "blueprint.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "blueprint.zip",
+      "buildArchives": [
+        "blueprint.zip"
+      ],
+      "bank": "blueprint",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "inventoryImageVariants": {
+        "blueprint_rare.tex": {
+          "icon": "blueprint_rare.tex",
+          "atlas": "images/inventoryimages.xml"
+        }
+      }
+    },
     "rocks": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_rocks.lua",
       "name": "石头",
@@ -1335,7 +1472,9 @@
       "animation": "f1",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 1.0
     },
     "ice": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_rocks_ice.lua",
@@ -1350,7 +1489,8 @@
       "animation": "f1",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true
     },
     "marble": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_marble.lua",
@@ -1365,7 +1505,8 @@
       "animation": "anim",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true
     },
     "heatrock": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/heatrock.lua",
@@ -1552,6 +1693,757 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "trinket_1": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "熔化的弹珠",
+      "icon": "trinket_1.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "1",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_2": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "假卡祖笛",
+      "icon": "trinket_2.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "2",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_3": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "戈尔迪之结",
+      "icon": "trinket_3.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "3",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_4": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "地精爷爷",
+      "icon": "trinket_4.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "4",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_5": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "迷你火箭",
+      "icon": "trinket_5.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "5",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_6": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "烂电线",
+      "icon": "trinket_6.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "6",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_7": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "杯子和球",
+      "icon": "trinket_7.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "7",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_8": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "硬化橡胶塞",
+      "icon": "trinket_8.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "8",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_9": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "不搭的纽扣",
+      "icon": "trinket_9.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "9",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_10": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "二手假牙",
+      "icon": "trinket_10.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "10",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_11": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "机器人玩偶",
+      "icon": "trinket_11.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "11",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_12": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "干瘪的触手",
+      "icon": "trinket_12.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "12",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_13": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "地精奶奶",
+      "icon": "trinket_13.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "13",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_14": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "漏水的茶杯",
+      "icon": "trinket_14.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "14",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_15": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "白色主教",
+      "icon": "trinket_15.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "15",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_16": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "黑色主教",
+      "icon": "trinket_16.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "16",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_17": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "弯曲的叉子",
+      "icon": "trinket_17.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "17",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_18": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "玩具木马",
+      "icon": "trinket_18.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "18",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_19": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "失衡陀螺",
+      "icon": "trinket_19.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "19",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_20": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "痒痒挠",
+      "icon": "trinket_20.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "20",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_21": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "破搅拌器",
+      "icon": "trinket_21.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "21",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_22": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "磨损的纱线",
+      "icon": "trinket_22.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "22",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_23": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "鞋拔子",
+      "icon": "trinket_23.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "23",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_24": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "幸运猫扎尔",
+      "icon": "trinket_24.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "24",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_25": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "臭气制造器",
+      "icon": "trinket_25.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "25",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_26": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "土豆杯",
+      "icon": "trinket_26.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "26",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_27": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "钢丝衣架",
+      "icon": "trinket_27.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "27",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_28": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "白色战车",
+      "icon": "trinket_28.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "28",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_29": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "黑色战车",
+      "icon": "trinket_29.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "29",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_30": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "白色骑士",
+      "icon": "trinket_30.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "30",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_31": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "黑色骑士",
+      "icon": "trinket_31.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "31",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_32": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "立方氧化锆球",
+      "icon": "trinket_32.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "32",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_33": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "蜘蛛指环",
+      "icon": "trinket_33.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "33",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_34": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "猴爪",
+      "icon": "trinket_34.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "34",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_35": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "空的长生不老药",
+      "icon": "trinket_35.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "35",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_36": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "人造尖牙",
+      "icon": "trinket_36.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "36",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_37": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "断桩",
+      "icon": "trinket_37.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "37",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_38": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "双筒望远镜",
+      "icon": "trinket_38.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "38",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_39": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "单只手套",
+      "icon": "trinket_39.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "39",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_40": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "蜗牛秤",
+      "icon": "trinket_40.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "40",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_41": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "黏液罐",
+      "icon": "trinket_41.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "41",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_42": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "玩具眼镜蛇",
+      "icon": "trinket_42.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "42",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_43": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "鳄鱼玩具",
+      "icon": "trinket_43.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "43",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_44": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "破碎的玻璃罐",
+      "icon": "trinket_44.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "44",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_45": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "奇怪的收音机",
+      "icon": "trinket_45.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "45",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "trinket_46": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
+      "name": "损坏的吹风机",
+      "icon": "trinket_46.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trinkets.zip",
+      "buildArchives": [
+        "trinkets.zip"
+      ],
+      "bank": "trinkets",
+      "animation": "46",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "bathbomb": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bathbomb.lua",
+      "name": "沐浴球",
+      "icon": "bathbomb.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "bath_bomb.zip",
+      "buildArchives": [
+        "bath_bomb.zip"
+      ],
+      "bank": "bath_bomb",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/seeds.lua",
       "name": "种子",
@@ -1732,6 +2624,51 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "gunpowder": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gunpowder.lua",
+      "name": "火药",
+      "icon": "gunpowder.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gunpowder.zip",
+      "buildArchives": [
+        "gunpowder.zip"
+      ],
+      "bank": "gunpowder",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "fence_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/fence.lua",
+      "name": "木栅栏",
+      "icon": "fence_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "fence.zip",
+      "buildArchives": [
+        "fence.zip"
+      ],
+      "bank": "fence",
+      "animation": "inventory",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "fence_ancient_item": "dynamic/fence_ancient.zip",
+        "fence_factory_item": "dynamic/fence_factory.zip",
+        "fence_fantasy_item": "dynamic/fence_fantasy.zip",
+        "fence_gingerbread_item": "dynamic/fence_gingerbread.zip",
+        "fence_gothic_item": "dynamic/fence_gothic.zip",
+        "fence_picketbrown_item": "dynamic/fence_picketbrown.zip",
+        "fence_pickettan_item": "dynamic/fence_pickettan.zip",
+        "fence_picketwhite_item": "dynamic/fence_picketwhite.zip",
+        "fence_rose_item": "dynamic/fence_rose.zip",
+        "fence_shell_item": "dynamic/fence_shell.zip",
+        "fence_victorianblack_item": "dynamic/fence_victorianblack.zip",
+        "fence_victorianbrass_item": "dynamic/fence_victorianbrass.zip",
+        "fence_victorianbronze_item": "dynamic/fence_victorianbronze.zip"
+      }
+    },
     "redgem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
       "name": "红宝石",
@@ -1745,7 +2682,9 @@
       "animation": "redgem_idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 5.0
     },
     "bluegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -1760,7 +2699,9 @@
       "animation": "bluegem_idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 5.0
     },
     "purplegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -1775,7 +2716,9 @@
       "animation": "purplegem_idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 5.0
     },
     "greengem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -1790,7 +2733,9 @@
       "animation": "greengem_idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 5.0
     },
     "orangegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -1805,7 +2750,9 @@
       "animation": "orangegem_idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 5.0
     },
     "yellowgem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -1820,7 +2767,9 @@
       "animation": "yellowgem_idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 5.0
     },
     "opalpreciousgem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -1835,7 +2784,9 @@
       "animation": "opalgem_idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 5.0
     },
     "feather_crow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -2202,6 +3153,118 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "rock_avocado_fruit": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/rock_avocado_fruit.lua",
+      "name": "石果",
+      "icon": "rock_avocado_fruit_rockhard.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "rock_avocado_fruit.zip",
+      "buildArchives": [
+        "rock_avocado_fruit_build.zip"
+      ],
+      "bank": "rock_avo_fruit_master",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 2.0
+    },
+    "rock_avocado_fruit_ripe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/rock_avocado_fruit.lua",
+      "name": "成熟石果",
+      "icon": "rock_avocado_fruit_ripe.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "rock_avocado_fruit.zip",
+      "buildArchives": [
+        "rock_avocado_fruit_build.zip"
+      ],
+      "bank": "rock_avo_fruit_master",
+      "animation": "idle_split_open",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true
+    },
+    "rock_avocado_fruit_ripe_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/rock_avocado_fruit.lua",
+      "name": "熟石果",
+      "icon": "rock_avocado_fruit_ripe_cooked.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "rock_avocado_fruit.zip",
+      "buildArchives": [
+        "rock_avocado_fruit_build.zip"
+      ],
+      "bank": "rock_avo_fruit_master",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "rock_avocado_fruit_sprout": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/rock_avocado_fruit.lua",
+      "name": "发芽的石果",
+      "icon": "rock_avocado_fruit_sprout.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "rock_avocado_fruit.zip",
+      "buildArchives": [
+        "rock_avocado_fruit_build.zip"
+      ],
+      "bank": "rock_avo_fruit_master",
+      "animation": "idle_seed",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dug_rock_avocado_bush": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
+      "name": "石果灌木丛",
+      "icon": "dug_rock_avocado_bush.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "rock_avocado.zip",
+      "buildArchives": [
+        "rock_avocado_build.zip"
+      ],
+      "bank": "rock_avocado",
+      "animation": "dropped",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dug_berrybush": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
+      "name": "浆果丛",
+      "icon": "dug_berrybush.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "berrybush.zip",
+      "buildArchives": [
+        "berrybush.zip"
+      ],
+      "bank": "berrybush",
+      "animation": "dropped",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "dug_berrybush_cawnival": "dynamic/berrybush_cawnival.zip",
+        "dug_berrybush_mystical": "dynamic/berrybush_mystical.zip",
+        "dug_berrybush_swamp": "dynamic/berrybush_swamp.zip"
+      }
+    },
+    "dug_monkeytail": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
+      "name": "猴尾草",
+      "icon": "dug_monkeytail.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "grass.zip",
+      "buildArchives": [
+        "reeds_monkeytails.zip"
+      ],
+      "bank": "grass",
+      "animation": "dropped",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "dug_grass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
       "name": "草丛",
@@ -2244,6 +3307,21 @@
       "bank": "sapling_moon",
       "animation": "dropped",
       "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "mole": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mole.lua",
+      "name": "鼹鼠",
+      "icon": "mole.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mole_basic.zip",
+      "buildArchives": [
+        "mole_build.zip"
+      ],
+      "bank": "mole",
+      "animation": "idle_under",
+      "loop": true,
       "symbolOverrides": {},
       "skinArchives": {}
     },
@@ -2334,6 +3412,23 @@
         "greenstaff_an": "dynamic/greenstaff_an.zip",
         "greenstaff_clockwork": "dynamic/greenstaff_clockwork.zip",
         "greenstaff_planet": "dynamic/greenstaff_planet.zip"
+      }
+    },
+    "trident": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trident.lua",
+      "name": "刺耳三叉戟",
+      "icon": "trident.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "trident.zip",
+      "buildArchives": [
+        "trident.zip"
+      ],
+      "bank": "trident",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "trident_merm": "dynamic/trident_merm.zip"
       }
     },
     "reskin_tool": {
@@ -5775,6 +6870,24 @@
       "icon": "decor_phonograph_western.tex",
       "atlas": "images/inventoryimages1.xml"
     },
+    "dug_berrybush_cawnival": {
+      "itemId": "dug_berrybush",
+      "name": "鸦年华灌木丛",
+      "icon": "dug_berrybush_cawnival.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "dug_berrybush_mystical": {
+      "itemId": "dug_berrybush",
+      "name": "月亮灌木",
+      "icon": "dug_berrybush_mystical.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "dug_berrybush_swamp": {
+      "itemId": "dug_berrybush",
+      "name": "苔藓浆果灌木丛",
+      "icon": "dug_berrybush_swamp.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
     "farm_hoe_invisible": {
       "itemId": "farm_hoe",
       "name": "拟真园艺锄",
@@ -5785,6 +6898,84 @@
       "itemId": "farm_hoe",
       "name": "家纺园艺锄",
       "icon": "farm_hoe_rustic.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_ancient_item": {
+      "itemId": "fence_item",
+      "name": "古代栅栏",
+      "icon": "fence_ancient_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_factory_item": {
+      "itemId": "fence_item",
+      "name": "管道篱笆",
+      "icon": "fence_factory_item.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "fence_fantasy_item": {
+      "itemId": "fence_item",
+      "name": "魔幻篱笆",
+      "icon": "fence_fantasy_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_gingerbread_item": {
+      "itemId": "fence_item",
+      "name": "姜饼篱笆",
+      "icon": "fence_gingerbread_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_gothic_item": {
+      "itemId": "fence_item",
+      "name": "哥特栅栏",
+      "icon": "fence_gothic_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_picketbrown_item": {
+      "itemId": "fence_item",
+      "name": "胡桃尖篱笆",
+      "icon": "fence_picketbrown_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_pickettan_item": {
+      "itemId": "fence_item",
+      "name": "灰白尖篱笆",
+      "icon": "fence_pickettan_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_picketwhite_item": {
+      "itemId": "fence_item",
+      "name": "白色尖篱笆",
+      "icon": "fence_picketwhite_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_rose_item": {
+      "itemId": "fence_item",
+      "name": "玫瑰栅栏",
+      "icon": "fence_rose_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_shell_item": {
+      "itemId": "fence_item",
+      "name": "贝艺栅栏",
+      "icon": "fence_shell_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_victorianblack_item": {
+      "itemId": "fence_item",
+      "name": "铸铁篱笆",
+      "icon": "fence_victorianblack_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_victorianbrass_item": {
+      "itemId": "fence_item",
+      "name": "古董黄铜篱笆",
+      "icon": "fence_victorianbrass_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fence_victorianbronze_item": {
+      "itemId": "fence_item",
+      "name": "古董青铜篱笆",
+      "icon": "fence_victorianbronze_item.tex",
       "atlas": "images/inventoryimages2.xml"
     },
     "golden_farmhoe_garden": {
@@ -6331,6 +7522,12 @@
       "itemId": "torch",
       "name": "电中子火炬",
       "icon": "torch_tesla.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "trident_merm": {
+      "itemId": "trident",
+      "name": "力挽狂澜三叉戟",
+      "icon": "trident_merm.tex",
       "atlas": "images/inventoryimages3.xml"
     },
     "wall_dreadstone_relicitem": {

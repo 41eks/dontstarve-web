@@ -14,7 +14,8 @@ gears charcoal pigskin silk stinger houndstooth nitre livinglog nightmarefuel
 petals petals_evil ash beefalowool boneshard butterflywings honey honeycomb
 thulecite thulecite_pieces guano tentaclespots spidergland slurtleslime
 slurtle_shellpieces walrus_tusk deerclops_eyeball bearger_fur dragon_scales
-glommerfuel acorn dreadstone wagpunk_bits moonrocknugget dock_kit papyrus featherpencil'''.split()
+glommerfuel acorn dreadstone wagpunk_bits moonrocknugget dock_kit papyrus featherpencil
+foliage beardhair cookingrecipecard scrapbook_page blueprint'''.split()
 
 
 def main():
@@ -59,6 +60,13 @@ def main():
             'bank': bank, 'animation': animation, 'loop': loop,
             'symbolOverrides': overrides or {}, 'skinArchives': {},
         }
+        source_text = read(source)
+        if 'AddTag("molebait")' in source_text and 'AddComponent("bait")' in source_text:
+            if source != 'rock_avocado_fruit' or item in ('rock_avocado_fruit', 'rock_avocado_fruit_ripe'):
+                definition['moleBait'] = True
+        if 'foodtype = FOODTYPE.ELEMENTAL' in source_text and (source != 'rock_avocado_fruit' or item == 'rock_avocado_fruit'):
+            hunger = re.search(r'edible.hungervalue\s*=\s*(\d+(?:\.\d+)?)', source_text)
+            definition['elementalFoodHunger'] = float(hunger[1]) if hunger else 10
         items[item] = definition
         assets.update('anim/' + path for path in [animation_archive, *builds])
 
@@ -82,6 +90,9 @@ def main():
         build = re.search(r'SetBuild\("([^"]+)"\)', constructor)[1]
         clip = re.search(r'PlayAnimation\("([^"]+)"(?:,\s*(true|false))?\)', constructor)
         add(item, bank, build, clip[1], item, loop=clip[2] == 'true' or item == 'nightmarefuel')
+        # cookingrecipecard.lua names each card after a random recipe; without one the name keeps no placeholder.
+        if item == 'cookingrecipecard':
+            items[item]['name'] = items[item]['name'].replace('{item}', '')
         # Preserve source render settings separately from the texture's alpha.
         mult_colour = re.search(r'SetMultColour\(([^)]+)\)', constructor)
         if mult_colour:
@@ -136,6 +147,20 @@ def main():
     assets.add('anim/sculpting_station.zip')
     # lava_pond.lua: ground-oriented pool plus separately sorted scorched rock children.
     assets.update(['anim/lava_tile.zip', 'anim/scorched_rock.zip'])
+    # trinkets.lua MakeTrinket: bank/build `trinkets` from trinkets.zip, one numbered clip per trinket.
+    num_trinkets = int(re.search(r'NUM_TRINKETS\s*=\s*(\d+)', (scripts / 'constants.lua').read_text())[1])
+    for number in range(1, num_trinkets + 1):
+        add(f'trinket_{number}', 'trinkets', 'trinkets', str(number), 'trinkets', animation_archive='trinkets.zip')
+    # blueprint.lua: a rare blueprint switches to bank/build blueprint_rare and the blueprint_rare inventory image.
+    assets.add('anim/blueprint_rare.zip')
+    if 'blueprint_rare.tex' not in icons:
+        raise ValueError('No inventory icon for blueprint_rare')
+    items['blueprint']['inventoryImageVariants'] = {'blueprint_rare.tex': {'icon': 'blueprint_rare.tex', 'atlas': icons['blueprint_rare.tex']}}
+    # hotspring.lua: crater_pool bank/build; bathbomb.lua: bath_bomb bank/build, the item that lights it.
+    assets.add('anim/crater_pool.zip')
+    add('bathbomb', 'bath_bomb', 'bath_bomb', 'idle', 'bathbomb')
+    # tumbleweed.lua: four-faced bank/build tumbleweed (move_pre/move_loop/move_pst/idle) and the break fx.
+    assets.add('anim/tumbleweed.zip')
     add('seeds', 'seeds', 'seeds', 'idle', 'seeds')
     add('seeds_cooked', 'seeds', 'seeds', 'cooked', 'seeds')
     # mushrooms.lua's capcommonfn/cookedcommonfn share mushrooms bank/build;
@@ -153,6 +178,13 @@ def main():
     # poop.lua spawns flies as a NOCLICK/DECOR child, not as an inventory item.
     assets.add('anim/flies.zip')
     add('spoiled_food', 'spoiled', 'spoiled_food', 'idle', 'spoiledfood')
+    # gunpowder.lua ground art; explode_small.lua plays anim/explode.zip (bank/build explode, clip small) as its fx.
+    add('gunpowder', 'gunpowder', 'gunpowder', 'idle', 'gunpowder')
+    # fence.lua MakeInvItem: bank/build `fence`, clip `inventory`. The placed `fence` uses bank `fence` (wide) and
+    # `fence_thin` (narrow) with build `fence`.
+    add('fence_item', 'fence', 'fence', 'inventory', 'fence')
+    assets.add('anim/fence_thin.zip')
+    assets.add('anim/explode.zip')
     for colour in ['red', 'blue', 'purple', 'green', 'orange', 'yellow']:
         add(colour + 'gem', 'gems', 'gems', colour + 'gem_idle', 'gem', loop=True)
     add('opalpreciousgem', 'gems', 'gems', 'opalgem_idle', 'gem', loop=True)
@@ -192,10 +224,22 @@ def main():
     add('record', 'records', 'records', 'idle', 'records')
     add('lightbulb', 'bulb', 'bulb', 'idle', 'lightbulb')
     # plantables.lua: dug grass uses the grass bank, grass1 build and dropped pose.
+    add('rock_avocado_fruit', 'rock_avo_fruit_master', 'rock_avocado_fruit_build', 'idle', 'rock_avocado_fruit', animation_archive='rock_avocado_fruit.zip', icon_name='rock_avocado_fruit_rockhard')
+    for item, clip in [('rock_avocado_fruit_ripe', 'idle_split_open'), ('rock_avocado_fruit_ripe_cooked', 'cooked'), ('rock_avocado_fruit_sprout', 'idle_seed')]:
+        add(item, 'rock_avo_fruit_master', 'rock_avocado_fruit_build', clip, 'rock_avocado_fruit', animation_archive='rock_avocado_fruit.zip')
+    add('dug_rock_avocado_bush', 'rock_avocado', 'rock_avocado_build', 'dropped', 'plantables', animation_archive='rock_avocado.zip')
+    add('dug_berrybush', 'berrybush', 'berrybush', 'dropped', 'plantables')
+    assets.add('anim/snow.zip')
+    add('dug_monkeytail', 'grass', 'reeds_monkeytails', 'dropped', 'plantables', animation_archive='grass.zip')
     add('dug_grass', 'grass', 'grass1', 'dropped', 'plantables', animation_archive='grass.zip')
     # plantables.lua: dug saplings use their own bank/build and dropped pose.
     for item in ['sapling', 'sapling_moon']:
         add('dug_' + item, item, item, 'dropped', 'plantables')
+    assets.add('anim/mole_move_fx.zip')
+
+    # mole.lua uses a split animation bank/build; the live prefab selects SGmole clips.
+    add('mole', 'mole', 'mole_build', 'idle_under', 'mole', animation_archive='mole_basic.zip', loop=True)
+
     # Live butterflies use this bank/build; SGbutterfly selects the flight clips
     # after OnDropped switches the stategraph to idle.
     add('butterfly', 'butterfly', 'butterfly_basic', 'idle', 'butterfly', loop=True)
@@ -209,6 +253,10 @@ def main():
     add('opalstaff', 'staffs', 'staffs', 'opalstaff', 'staff')
     add('greenstaff', 'staffs', 'staffs', 'greenstaff', 'staff')
     assets.update(['anim/swap_staffs.zip', 'anim/player_staff.zip', 'anim/star_hot.zip', 'anim/star_cold.zip', 'anim/moonbase_fx.zip'])
+    # trident.lua: ground bank/build trident from trident.zip, held swap_trident; SGwilson play_strum uses player_strum.zip.
+    # fx.lua crab_king_waterspout (bank Bubble_fx) is the spell's water-column fx.
+    add('trident', 'trident', 'trident', 'idle', 'trident')
+    assets.update(['anim/swap_trident.zip', 'anim/player_strum.zip', 'anim/crab_king_bubble_fx.zip'])
     # reskin_tool.lua uses its idle ground pose and a separate held build.
     add('reskin_tool', 'reskin_tool', 'reskin_tool', 'idle', 'reskin_tool')
     assets.add('anim/swap_reskin_tool.zip')

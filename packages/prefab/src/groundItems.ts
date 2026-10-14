@@ -15,6 +15,9 @@ import { configureRazorEntity, RAZOR_ID } from './razor';
 import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';
 import { configureBirdEntity, isBirdId } from './birds';
 import { configureBackpackEntity } from './backpack';
+import { configureRockAvocadoFruitEntity } from './rock_avocado_fruit';
+import { configurePlantableEntity } from './plantables';
+import { configureFertilizerEntity, FERTILIZER_CYCLES } from './fertilizers';
 import { configureTurfEntity, turfTileName } from './turfs';
 
 export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
@@ -44,13 +47,17 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
   const fires = new Set<ArchiveSprite>();
   return {
     itemIds: Object.keys(GROUND_ITEM_DEFINITIONS),
-    configureEntity: entity => turfTileName(entity.prefab) ? configureTurfEntity(entity)
+    configureEntity: entity => {
+      configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
+      if (Object.hasOwn(FERTILIZER_CYCLES, entity.prefab)) configureFertilizerEntity(entity);
+      return turfTileName(entity.prefab) ? configureTurfEntity(entity)
       : isBirdId(entity.prefab) ? configureBirdEntity(entity)
       : entity.prefab === 'backpack' ? configureBackpackEntity(entity)
       : entity.prefab === HEATROCK_ID ? configureHeatRockEntity(entity)
       : entity.prefab === RAZOR_ID ? configureRazorEntity(entity)
       : entity.prefab === PANFLUTE_ID ? configurePanfluteEntity(entity)
-      : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity),
+      : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity);
+    },
     async create(item) {
       const sprite = await createGroundItemSprite(context.assets, item.itemId, item.skinId);
       if (item.itemId === HEATROCK_ID) {

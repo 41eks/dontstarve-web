@@ -26,7 +26,8 @@ import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { Health } from '../../componets/src/health';
 import { Combat, type CombatInst } from '../../componets/src/combat';
-import { createMemo, createSignal, readonlySignal, type Memo, type Signal } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, type Memo, type Signal } from '@dontstarve-web/signals';
+import { FACING_CARDINAL } from '@dontstarve-web/animation/facing';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 
 /** DST distance unit in world units. */
@@ -145,7 +146,6 @@ export interface WallCombatTarget {
     isValid(): boolean;
 }
 
-const HEADING_STEP = 45;
 
 function snapToWallSlot(point: THREE.Vector3): THREE.Vector3 {
     const snapped = snapToWallSlotCenter(point);
@@ -175,7 +175,8 @@ export class WallPlacement<BuildId extends string> {
     private previewVersion = 0;
     private readonly placed = new Set<WallInstance<BuildId>>();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
-    private readonly cameraDirection = new THREE.Vector3();
+    private readonly facing: Signal<number>;
+    private readonly cleanups: (() => void)[] = [];
     private readonly world: WorldContext;
     private readonly effectAssets = new GroundItemAssets(`${import.meta.env.BASE_URL}dst/data/anim`);
     private readonly effects = new Set<ArchiveSprite>();
@@ -197,6 +198,13 @@ export class WallPlacement<BuildId extends string> {
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.pointer = new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
+        this.facing = watchSignal(world.cameraFacing, stop => this.cleanups.push(stop));
+        // A heading crossing a 45-degree sector re-faces the preview and every placed wall.
+        createEffect(() => {
+            const facing = this.facing.get();
+            if (this.active) this.updateFacing(this.active, facing);
+            for (const wall of this.placed) this.updateFacing(wall, facing);
+        });
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -347,6 +355,7 @@ export class WallPlacement<BuildId extends string> {
         if (this.disposed) return;
         this.disposed = true;
         this.stopActionEvents();
+        this.cleanups.splice(0).forEach(stop => stop());
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
         this.pointer.dispose();
         this.cancel();
@@ -370,11 +379,8 @@ export class WallPlacement<BuildId extends string> {
     update(dt = 0) {
         for (const effect of this.effects) { this.faceCamera(effect.model); effect.update(dt); }
         this.cursor.update();
-        const showFront = !this.isDiagonalHeading();
-        if (this.active) this.updateFacing(this.active, showFront);
         for (const wall of this.placed) {
             this.faceCamera(wall.model);
-            this.updateFacing(wall, showFront);
             wall.animation.update(dt);
         }
     }
@@ -409,6 +415,7 @@ export class WallPlacement<BuildId extends string> {
         this.setOpacity(instance.model, 0.65);
         instance.model.visible = false;
         this.active = instance;
+        this.updateFacing(instance, this.facing.peek());
         this.cursor.setPreview(instance.model, instance.groundOffset, snapToWallSlot);
         this.cursor.update();
     }
@@ -425,9 +432,9 @@ export class WallPlacement<BuildId extends string> {
             skin?.archive ?? definition.archive,
             {
                 imageIndices: [definition.sideImageIndex, definition.frontImageIndex],
-                imageIndex: this.isDiagonalHeading()
-                    ? definition.sideImageIndex
-                    : definition.frontImageIndex,
+                imageIndex: this.isFrontFacing(this.facing.peek())
+                    ? definition.frontImageIndex
+                    : definition.sideImageIndex,
                 name: definition.name,
                 scale: definition.scale,
                 symbol: definition.symbol,
@@ -548,7 +555,7 @@ export class WallPlacement<BuildId extends string> {
             wall.model.position.y = footY + wall.groundOffset;
             if (skinId === undefined) delete wall.model.userData.skinId;
             else wall.model.userData.skinId = skinId;
-            this.updateFacing(wall, !this.isDiagonalHeading());
+            this.updateFacing(wall, this.facing.peek());
         });
     }
 
@@ -581,6 +588,7 @@ export class WallPlacement<BuildId extends string> {
 
     private place(wall: WallInstance<BuildId>): void {
         this.placed.add(wall);
+        this.updateFacing(wall, this.facing.peek());
         const ground = wall.model.position.clone().setY(wall.model.position.y - wall.groundOffset);
         wall.body = MakeObstaclePhysics(ground, .5);
         this.setObstacle(wall, !wall.health.IsDead());
@@ -623,27 +631,17 @@ export class WallPlacement<BuildId extends string> {
         return snapToWallSlot(target);
     }
 
-    private updateFacing(wall: WallInstance<BuildId>, showFront: boolean) {
+    private updateFacing(wall: WallInstance<BuildId>, facing: number) {
         const definition = this.definitions[wall.buildId];
         wall.animation.showImage(
-            showFront ? definition.frontImageIndex : definition.sideImageIndex,
+            this.isFrontFacing(facing) ? definition.frontImageIndex : definition.sideImageIndex,
         );
-        wall.animation.setFacing(showFront ? 8 : 128);
+        wall.animation.setFacing(facing);
     }
 
-    /**
-     * The wall is eight-faced and never rotated, so the game picks its art from
-     * `rotation + camera heading` (see `components/placer.lua`, "rotate against
-     * the camera"). A diagonal heading therefore selects the oblique `facing=240`
-     * art, a cardinal one the front `facing=15` art.
-     */
-    private isDiagonalHeading(): boolean {
-        this.camera.getWorldDirection(this.cameraDirection);
-        this.cameraDirection.y = 0;
-        if (this.cameraDirection.lengthSq() === 0) return false;
-        const heading = Math.atan2(-this.cameraDirection.z, -this.cameraDirection.x);
-        const steps = Math.round(THREE.MathUtils.radToDeg(heading) / HEADING_STEP);
-        return THREE.MathUtils.euclideanModulo(steps, 2) === 1;
+    /** `facing=15` animations cover RIGHT/UP/LEFT/DOWN; `facing=240` covers the four diagonals. */
+    private isFrontFacing(facing: number): boolean {
+        return (facing & FACING_CARDINAL) !== 0;
     }
 
     private faceCamera(model: THREE.Object3D) {

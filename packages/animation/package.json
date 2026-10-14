@@ -19,6 +19,7 @@
     "./beefaloSprite": "./src/beefaloSprite.ts",
     "./wallSprite": "./src/wallSprite.ts",
     "./prefabskin": "./src/prefabskin.ts",
+    "./facing": "./src/facing.ts",
     "./recipes.json": "./recipes.json",
     "./bitmapFont": "./src/bitmapFont.ts",
     "./atlasImage": "./src/atlasImage.ts"

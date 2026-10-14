@@ -55,6 +55,8 @@ export interface ItemContainerState {
 }
 
 export interface InventoryStack {
+  /** mole.lua health, home delay and carried inventory; transient stategraph states are not saved. */
+  mole?: { health: number; needsHomeElapsed?: number; items: InventoryStack[] };
   /** temperature.lua and heatrock.lua persistence; presentation range is rebuilt on load. */
   temperature?: import('../../componets/src/temperature').TemperatureSaveData;
   highTemp?: number;

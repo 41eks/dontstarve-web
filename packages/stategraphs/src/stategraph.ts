@@ -74,6 +74,7 @@ export class StateGraphInstance<Context, Name extends string> {
   private readonly timelineTimer?: ComponentTimer;
   private enteredAt = 0;
   private disposed = false;
+  private pausedAt: number | undefined;
   private readonly cancelScheduled = new Set<() => void>();
   statemem: Record<string, unknown> = {};
   timeInState = 0;
@@ -216,6 +217,7 @@ export class StateGraphInstance<Context, Name extends string> {
   }
 
   update(dt: number): void {
+    if (this.pausedAt !== undefined) return;
     if (!Number.isFinite(dt) || dt < 0) throw new Error('Invalid stategraph timestep');
     if (this.disposed) return;
     if (this.scheduler) {
@@ -260,6 +262,21 @@ export class StateGraphInstance<Context, Name extends string> {
       if (revision !== this.revision) updateDt = 0;
     }
     throw new Error('Stategraph did not advance time');
+  }
+
+  /** The engine suspends stategraph time while an inst is removed from the scene. */
+  pause(): void {
+    if (this.pausedAt !== undefined || this.disposed) return;
+    this.pausedAt = this.scheduler?.now ?? this.clock;
+    this.timeoutTimer?.pause(); this.timelineTimer?.pause();
+  }
+  resume(): void {
+    if (this.pausedAt === undefined || this.disposed) return;
+    if (this.scheduler) {
+      this.enteredAt += this.scheduler.now - this.pausedAt;
+      for (const timer of [this.timeoutTimer, this.timelineTimer]) if (timer?.snapshot.peek().status === 'paused') timer.start(timer.remainingSeconds!);
+    }
+    this.pausedAt = undefined;
   }
 
   dispose(): void {

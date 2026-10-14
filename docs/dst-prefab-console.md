@@ -52,8 +52,13 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `rope` | 可生成 | 可入栏 | `prefabs/rope.lua:61` |
 | `cutstone` | 可生成 | 可入栏 | `prefabs/cutstone.lua:33` |
 | `marble` | 可生成 | 可入栏 | `prefabs/inv_marble.lua:36` |
+| `foliage`、`beardhair`、`scrapbook_page` | 可生成 | 可入栏 | `prefabs/foliage.lua`、`beardhair.lua`、`scrapbook_page.lua`：仅接入地面美术、库存图标和堆叠 40；干燥、雪人装饰、图鉴教学、燃烧等交互未实现 |
+| `cookingrecipecard`、`blueprint` | 可生成 | 可入栏 | `prefabs/cookingrecipecard.lua`、`blueprint.lua`：仅接入地面美术和图标（`blueprint_rare` 作为稀有变体资源），不堆叠；随机配方、命名、教学与燃烧未实现 |
+| `trinket_1`～`trinket_46` | 可生成 | 可入栏 | `prefabs/trinkets.lua` 按 `NUM_TRINKETS = 46` 注册的实际 ID：`trinkets.zip` 的编号剪辑与 `inventoryimages.xml` 图标，堆叠 40；可交易、诱饵、弹药、海钓配件等交互未实现 |
 | `moon_tree_blossom` | 可生成 | 可入栏 | `prefabs/moontree_blossom.lua` 的 `inventoryitem` 分支 |
 | `moonbutterflywings` | 可生成 | 可入栏 | `prefabs/moonbutterflywings.lua` 的 `inventoryitem` 分支 |
+| `mole` | 可生成 | 可入栏（活体、每只一槽） | `prefabs/mole.lua` 的 `inventoryitem`、`MakeFeedableSmallLivestock`；地下不可拾取，锤击击晕后可拾取 |
+| `molehill` | 可生成 | 无 inventoryitem，不能入栏 | `prefabs/molehill.lua`：单子代 `spawner`、50 槽 inventory、1 次 DIG |
 | `moonbutterfly` | 可生成 | 可入栏 | `prefabs/moonbutterfly.lua:163`（`canbepickedup = false`，需捕虫网） |
 | `dreadstone` | 可生成 | 可入栏 | `prefabs/dreadstone.lua:36` |
 | `wagpunk_bits` | 可生成 | 可入栏 | `prefabs/wagpunk_bits.lua:34` |
@@ -119,6 +124,9 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `pinecone` | 可生成 | 可入栏 | `prefabs/pinecone.lua:108` |
 | `acorn_cooked` | 可生成 | 可入栏 | `prefabs/acorn.lua:121` |
 | `poop` | 可生成 | 可入栏 | `prefabs/poop.lua:89` |
+| `gunpowder` | 可生成 | 可入栏 | `prefabs/gunpowder.lua:85` |
+| `fence_item` | 可生成 | 可入栏 | `prefabs/fence.lua:939` |
+| `fence` | 可生成 | 不可入栏 | `prefabs/fence.lua:938` |
 | `spoiled_food` | 可生成 | 可入栏 | `prefabs/spoiledfood.lua:126` |
 | `redgem` | 可生成 | 可入栏 | `prefabs/gem.lua:74` |
 | `bluegem` | 可生成 | 可入栏 | `prefabs/gem.lua:74` |
@@ -146,6 +154,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `moonrocknugget` | 可生成 | 可入栏 | `prefabs/moonrocknugget.lua:57`；原版 `repairer` 的 moonrock 材质与 2 点修复值 |
 | `opalstaff` | 可生成 | 可入栏 | `prefabs/staff.lua:770` |
 | `greenstaff` | 可生成 | 可入栏 | `prefabs/staff.lua:770`、`:953`；配方目标施法与 5 次耐久 |
+| `trident` | 可生成 | 可入栏 | `prefabs/trident.lua`；200 次耐久，仅可对水面点施法（`spellcaster.canuseonpoint_water`），经 `SGwilson.lua` 的 `play_strum`；`c_save()` 保留耐久与皮肤 `trident_merm` |
 | `opalpreciousgem` | 可生成 | 可入栏 | `prefabs/gem.lua:74`、`:96`；`buildgem("opal", true)` |
 | `reskin_tool` | 可生成 | 可入栏 | `prefabs/reskin_tool.lua:386` |
 | `book_silviculture` | 可生成 | 可入栏 | `prefabs/books.lua:1031`（`MakeBook` 共享构造）；`componentactions.lua:2525` 仅向带 `reader` 标签的玩家提供 READ |
@@ -460,10 +469,15 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `flower_cave_double` | 可生成 | 不能入栏 | `prefabs/flower_cave.lua` |
 | `flower_cave_triple` | 可生成 | 不能入栏 | `prefabs/flower_cave.lua` |
 | `grass` | 可生成 | 不能入栏 | `prefabs/grass.lua` |
+| `berrybush` | 可生成 | 不能入栏 | `prefabs/berrybush.lua` normal 分支：`PICK` 浆果、动态再生、冬季暂停、`DIG` 铲取与施肥移植；支持三款原版皮肤 |
+| `monkeytail` | 可生成 | 不能入栏 | `prefabs/monkeytail.lua`：`PICK` 芦苇、冬季暂停再生、`DIG` 挖取；移植后施肥恢复 5–7 次采摘额度 |
 | `sapling` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
 | `sapling_moon` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
 | `sanityrock`、`insanityrock` | 可生成 | 不能入栏 | `prefabs/nightmarerock.lua`：无 inventoryitem；项目已接入 `SGnightmarerock`（`raise` / `lower` / `conceal` / `reveal`）、障碍物随激活开关，以及 `sanity_raise` / `sanity_lower` 特效；静态布局 `default_pigking` 在猪王周围放置各 4 块，可由 `c_save()` 保存位置与实体 ID |
 | `pond` | 可生成 | 不能入栏 | `prefabs/pond.lua` |
+| `tumbleweed` | 可生成 | 不能入栏 | `prefabs/tumbleweed.lua`、`components/blowinwind.lua`、`components/worldwind.lua`：风向驱动滚动、`PICK` 触发 `startlongaction` 停止／重启、3 件加权战利品与 `break` 特效；未接入燃烧、音效和作祟，无 prefab 的战利品不掉落 |
+| `hotspring` | 可生成 | 不能入栏 | `prefabs/hotspring.lua`：heater（`HOTSPRING_HEAT` PASSIVE 45 / ACTIVE 90）、投入沐浴球后点亮的光源与 `bathbombable`；项目已接入这三条分支及 `isbathbombed` 存档，结晶、沐浴池、蒸汽、水源和音效未接入 |
+| `bathbomb` | 可生成 | 可 `c_give` | `prefabs/bathbomb.lua`：`bathbomb`、`fuel`（`MED_FUEL`）、可燃、堆叠 20、无 perishable；`BATHBOMB` 动作经 `bathbomb` 与 `bathbombable` 标签匹配，库存图标 `bathbomb.tex`（`inventoryimages1.xml`） |
 | `lava_pond` | 可生成 | 不能入栏 | `prefabs/lava_pond.lua`：有 heater，无 inventoryitem；项目已接入供热接口、外观、障碍和布局存档 |
 | `lava_pond_rock`、`lava_pond_rock2`～`lava_pond_rock7` | 可生成 | 不能入栏 | `prefabs/lava_pond.lua:makerock` 的 7 个实际 ID；无 inventoryitem，独立生成时可持久化，池的子焦岩不独立持久化 |
 | `pond_mos` | 可生成 | 不能入栏 | `prefabs/pond.lua` |
@@ -507,6 +521,8 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 | prefab / 场景 | 静态源码结论 | 源码位置 |
 | --- | --- | --- |
 | `wall_stone` 与 `wall_stone_item` 等墙 | 建成墙只能生成；墙物品可生成、可入栏。原版 c_spawn("wall_stone_item") 生成墙物品。 | `prefabs/walls.lua:218`（物品组件）、`:377`、`:378`（两个注册项） |
+| `berrybush` 与 `dug_berrybush` | 前者是世界植物，仅可生成；后者由 plantables.lua 添加 inventoryitem，两种命令均可用。健康植株可铲取移植，缺肥／枯萎时铲取只掉两根树枝；普通浆果丛的三款源皮肤在两种形态间映射。 | `prefabs/berrybush.lua:dig_up_common`、`prefabs/plantables.lua:121` |
+| `monkeytail` 与 `dug_monkeytail` | 前者是世界植物，仅可生成；后者由 plantables.lua 添加 inventoryitem，两种命令均可用，可栽种回猴尾草。 | `prefabs/monkeytail.lua:156`、`prefabs/plantables.lua:93`、`:174` |
 | `farm_plow` 与 `farm_plow_item` | 前者是部署后的工作机器，不能入栏；后者是打包物品，支持两种命令。 | `prefabs/farm_plow.lua:309`、`:362`、`:363` |
 | `bernie_inactive`、`bernie_active`、`bernie_big` | inactive 可生成与入栏；active 的 OnPickup 转换为 inactive 并交给玩家；big 没有 inventoryitem。 | `prefabs/bernie_inactive.lua:272`、`prefabs/bernie_active.lua:22`、`:75`、`:158`、`prefabs/bernie_big.lua` |
 | `backpack` | 有 inventoryitem，但 cangoincontainer=false；不能放普通格，GiveItem 可能放鼠标持有位置，取决于库存状态。 | `prefabs/backpack.lua:268`、`:269`；`components/inventory.lua:1177` |
@@ -528,3 +544,11 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 | torch 等普通物品 | 原版两种命令都可用；项目的 torch 已支持 c_give 与 c_spawn，其他普通物品的 c_spawn 仍需单独出现在 debugSpawnIds 中。 |
 
 此表记录源码调查及对应的项目实现说明；当前命令支持范围以 README 和注册表为准。
+
+2026-10-14 补充石果灌木：`prefabs/rock_avocado_bush.lua` 注册世界实体 `rock_avocado_bush`（无 inventoryitem，只支持 `c_spawn`）；`prefabs/plantables.lua` 的 `name = "rock_avocado_bush"` 经共享构造注册 `dug_rock_avocado_bush`，带 inventoryitem 与 stackable，可 `c_spawn` / `c_give`；`prefabs/rock_avocado_fruit.lua` 注册硬壳 `rock_avocado_fruit`，库存实际图名为 `rock_avocado_fruit_rockhard`，同样支持两种命令。支持灌木采摘、四阶段生长、移植与施肥，以及硬壳果实的库存／地面形态。
+
+2026-10-14 补充火药：`prefabs/gunpowder.lua` 注册 `gunpowder`，带 inventoryitem 与 stackable，可 `c_spawn` / `c_give`；`explode_small` 是其爆炸特效 prefab，无 inventoryitem，不作为独立命令目标。火药 `MakeSmallBurnable(3 + math.random() * 3)` 且 `SetOnBurntFn(nil)`，烧尽由 `burnable.lua:DoneBurning` 调用 `explosive:OnBurnt()`，范围 3 DST 单位内对 `workable` 执行 `WorkedBy(10 * 叠数)`（背包物品最多处理 20 件，按各自叠数放大）、点燃无 `fueled` 的 `burnable` 并推送 `explosion`；硬壳石果因此被整堆开采，超出上限而幸存的石果由 `OnExplosion_rock_avocado_fruit_full` 的 `LaunchAt` 弹开。战斗伤害、码头伤害、`explosiveresist` 和屏幕闪动尚未实现。
+
+2026-10-14 补充木栅栏：`prefabs/fence.lua` 注册世界实体 `fence`（无 inventoryitem，只支持 `c_spawn`）和部署物 `fence_item`（`stackable` `STACK_SIZE_MEDITEM`、`inventoryitem`、`deployable` `DEPLOYMODE.WALL`，可 `c_spawn` / `c_give`）。与项目的 `wall_*_item` 别名不同，`c_spawn("fence_item")` 生成地面物品而不是建成栅栏，建成栅栏用 `c_spawn("fence")`。同文件还有 `fence_gate`、`fence_gate_item`、`quagmire_park_gate` 和 `fence_junk`，`fence_electric*` 与 `fence_rotator` 在其他文件，均不在当前范围内。
+
+2026-10-14 补充开壳与石果芽：同一 `prefabs/rock_avocado_fruit.lua` 注册 `rock_avocado_fruit_ripe`、`rock_avocado_fruit_ripe_cooked`、`rock_avocado_fruit_sprout`，均带 inventoryitem 与 stackable，可 `c_spawn` / `c_give`；世界幼苗 `rock_avocado_fruit_sprout_sapling` 没有 inventoryitem，只可 `c_spawn`。硬壳果实的 `workable` 为 `MINE`，普通命中开 1 个，按单果 65% 熟果 / 1% 芽 / 34% 石头抽签；芽部署后生成世界幼苗，`timer.grow` 为 `5 * day_time = 1500` 秒，`seed_growth` 结束生成原生 `rock_avocado_bush`。`timer` 保存正在等待的计时器，破土动画与烧毁进度无自定义存档。命令、剩余石果数量、产物、工具耐久、幼苗身份／位置与剩余生长时间均纳入保存／恢复验证。

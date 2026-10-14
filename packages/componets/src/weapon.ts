@@ -23,6 +23,7 @@ export class Weapon {
   SetRange(attack: number, hit = attack): void { this.attackrange = attack; this.hitrange = hit; }
   SetOnAttack(fn: Weapon['onattack']): void { this.onattack = fn; }
   GetDamage(): number { return this.damage; }
+  hasTag(tag: string): boolean { return (this.inst as { hasTag?(tag: string): boolean }).hasTag?.(tag) ?? false; }
 
   /** OnAttack: callbacks, then finiteuses:Use(attackwear) when the item has uses. */
   OnAttack(attacker: object, target: object): void {

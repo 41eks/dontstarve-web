@@ -12,6 +12,8 @@ export interface BrainEntity extends LocoMotorTarget {
 
 /** Component surface read by the ported brains and behaviours. */
 export interface BrainComponents {
+  inventory?: import('../../componets/src/inventory').Inventory;
+  bait?: import('../../componets/src/bait').Bait;
   locomotor?: LocoMotor;
   pollinator?: Pollinator<BrainEntity>;
   knownlocations?: KnownLocations;

@@ -28,7 +28,7 @@ const UNIT = TILE_SIZE / 4;
 function setup() {
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 12, 40); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
-  const world = { scene: new THREE.Scene(), camera, ground: new THREE.Group(), player: new THREE.Group(),
+  const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
   return { world, placement: new WallsPlacement(world, () => false) };

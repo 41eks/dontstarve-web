@@ -75,7 +75,7 @@ def main():
         if {element.attrib['name'] for element in mini_elements} != {f'{n:02}' for n in range(1, 49)}:
             raise ValueError(f'Unexpected minimap tile variants: {mini_atlas_path}')
         definitions[tile['name']] = {
-            'tileId': tile['tileId'],
+            'tileId': tile['tileId'], 'plantable': tile['land'] and not tile['hard'],
             'name': name, 'atlas': atlas_path, 'texture': texture_path, 'noise': noise_path,
             'renderOrder': tile['renderOrder'], 'cannotBeDug': ground.get('cannotbedug') == 'true',
             'minimapColour': tile['minimapColour'],

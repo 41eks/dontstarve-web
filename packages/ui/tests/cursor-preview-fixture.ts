@@ -6,7 +6,7 @@ import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { TreasureChestPlacement } from '../../prefab/src/treasurechest';
 import { WallsPlacement } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import { clockstate, seasonstate } from '@dontstarve-web/signals';
+import { clockstate, createSignal, seasonstate } from '@dontstarve-web/signals';
 
 export async function checkCursorPreview() {
   clockstate.set({ phase: 'night', timeinphase: 0 });
@@ -77,7 +77,7 @@ export async function checkCursorPreview() {
   // Real animation/build assets: previews stay in the scene and foot sorting,
   // and both successful placement and cancellation clear the light override.
   const player = new THREE.Object3D();
-  const world: WorldContext = { scene, camera, renderer, ground, player,
+  const world: WorldContext = { scene, camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer, ground, player,
     createCursorLabel: (value) => ui.createLabel(value) };
   const chest = new TreasureChestPlacement(world, () => true);
   const wall = new WallsPlacement(world, () => true);

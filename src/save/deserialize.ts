@@ -93,7 +93,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   };
   const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'container', 'temperature', 'highTemp', 'lowTemp']);
+    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'mole', 'container', 'temperature', 'highTemp', 'lowTemp']);
     const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
     if (entityId !== undefined) {
       if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
@@ -137,11 +137,18 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       || (phonographRecord !== 'record' && catalog.skins[phonographRecord]?.itemId !== 'record'))) {
       fail(`${path}.phonographRecord`, 'invalid loaded record');
     }
+    const mole = o.mole === undefined ? undefined : (() => {
+      if (itemId !== 'mole') fail(`${path}.mole`, 'item has no mole component');
+      const p = `${path}.mole`, data = object(o.mole, p, ['health', 'needsHomeElapsed', 'items']);
+      return { health: number(data.health, `${p}.health`, 0, 30),
+        ...(data.needsHomeElapsed === undefined ? {} : { needsHomeElapsed: number(data.needsHomeElapsed, `${p}.needsHomeElapsed`) }),
+        items: array(data.items, `${p}.items`, 3).map((item, i) => stack(item, `${p}.items[${i}]`)) };
+    })();
     const itemContainer = o.container === undefined ? undefined : (() => {
       if (itemId !== 'backpack') fail(`${path}.container`, 'item has no container');
       return container(o.container, `${path}.container`, numericKeys(8));
     })();
-    return { ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
+    return { ...(mole === undefined ? {} : { mole }), ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
       ...(phonographRecord === undefined ? {} : { phonographRecord }),
       ...(temperature === undefined ? {} : { temperature }),
       ...(highTemp === undefined ? {} : { highTemp }),

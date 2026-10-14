@@ -17,6 +17,8 @@ import { PERISH_MED, Perishable } from '../../componets/src/perishable';
 import { batch, createSignal } from '../../signals/src';
 import { WorldPerishClock } from '../../componets/src/worldperishclock';
 import { PERISHABLE_FOODS, getFoodEffects } from '../../prefab/src/food';
+import { configureIceEntity } from '../../prefab/src/ice';
+import { PERISH_FAST, PERISH_SUPERFAST } from '../../componets/src/perishable';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -378,4 +380,27 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     expect(spoiled).toMatchObject({ transform: { position: before.ground_item.find(record => record.id === 'spawn:red_cap')!.transform.position },
       components: { stack: { itemId: 'spoiled_food', count: 1 } } });
   } finally { registry.dispose(); restored?.dispose(); inventory.dispose(); restoredInventory.dispose(); clock.dispose(); restoredClock?.dispose(); }
+});
+
+it('gives meat and ice source perish times: meat spoils into spoiled_food, a held ice stack just melts away', () => {
+  const store = new InventoryStore([
+    { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
+  ], {
+    meat: { name: '肉', icon: 'meat.tex', maxStack: 40,
+      perishTime: PERISHABLE_FOODS.meat.perishTime, perishReplacement: PERISHABLE_FOODS.meat.replacement },
+    ice: { name: '冰', icon: 'ice.tex', maxStack: 40, perishTime: PERISHABLE_FOODS.ice.perishTime, configureEntity: configureIceEntity },
+    spoiled_food: specs.spoiled_food,
+  });
+  store.add('meat', 2); store.add('ice', 3);
+  expect(store.getEntity(a)!.components.perishable.perishtime.peek()).toBe(PERISH_FAST);
+  const ice = store.getEntity(b)!;
+  expect(ice.components.perishable.perishtime.peek()).toBe(PERISH_SUPERFAST);
+  expect(ice.hasTag('frozen')).toBe(true);
+
+  for (const slot of [a, b]) {
+    const perishable = store.getEntity(slot)!.components.perishable;
+    perishable.onFrame(PERISH_SUPERFAST + 1); perishable.flush();
+  }
+  expect(store.get(a)).toMatchObject({ itemId: 'meat', count: 2 });
+  expect(store.get(b)).toBeNull();
 });

@@ -178,6 +178,12 @@ export class ItemEntity {
   readonly id: string;
   readonly prefab: string;
   readonly components: {
+    eater?: import('../../componets/src/eater').Eater;
+    edible?: import('../../componets/src/edible').Edible;
+    health?: import('../../componets/src/health').Health;
+    combat?: import('../../componets/src/combat').Combat;
+    bait?: import('../../componets/src/bait').Bait;
+    sleeper?: import('../../componets/src/sleeper').Sleeper;
     stackable: StackableComponent;
     fueled: FueledComponent;
     finiteuses: FiniteUsesComponent;
@@ -186,14 +192,17 @@ export class ItemEntity {
     equippable?: Equippable;
     container?: Container<InventoryStack, ItemEntity, StorageSlot>;
     tool?: import('../../componets/src/tool').Tool;
+    fertilizer?: import('../../componets/src/fertilizer').Fertilizer;
+    bathbomb?: import('../../componets/src/bathbomb').BathBomb;
     shaver?: import('../../componets/src/shaver').Shaver;
-    deployable?: import('../../componets/src/deployable').Deployable;
+    deployable?: import('../../componets/src/deployable').Deployable<any>;
     instrument?: ItemRuntimeComponent & { Play(musician: unknown, listeners: (range: number) => Iterable<never>): boolean };
     workable?: import('../../componets/src/workable').Workable;
     spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
     lighter?: import('../../componets/src/lighter').Lighter;
     burnable?: import('../../componets/src/burnable').Burnable;
     propagator?: import('../../componets/src/propagator').Propagator;
+    explosive?: import('../../componets/src/explosive').Explosive;
     book?: import('../../componets/src/book').BookComponent;
     weapon?: import('../../componets/src/weapon').Weapon;
     repairer?: import('../../componets/src/repairer').Repairer;
@@ -221,6 +230,7 @@ export class ItemEntity {
     }
     return this.miniMapEntity;
   }
+  mole?: InventoryStack['mole'];
   skinId?: string;
   highTemp?: number;
   lowTemp?: number;
@@ -290,7 +300,9 @@ export class ItemEntity {
   }
   snapshot(includeIdentity = true): InventoryStack {
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
+    const mole = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['mole']> }>('mole')?.OnSave() ?? this.mole;
     return {
+      ...(mole === undefined ? {} : { mole }),
       ...(temperature === undefined ? {} : { temperature }),
       ...(this.highTemp === undefined ? {} : { highTemp: Math.ceil(this.highTemp) }),
       ...(this.lowTemp === undefined ? {} : { lowTemp: Math.floor(this.lowTemp) }),
@@ -312,6 +324,7 @@ export class ItemEntity {
   /** Store commits call this only after the complete transaction has been validated. */
   apply(state: InventoryStack): void {
     if (state.itemId !== this.prefab || this.isRemoved) throw new Error('Cannot change a removed entity or its prefab');
+    this.mole = state.mole;
     this.skinId = state.skinId;
     this.highTemp = state.highTemp;
     this.lowTemp = state.lowTemp;
