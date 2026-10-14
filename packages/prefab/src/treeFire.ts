@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, type ReadonlySignal, type SeasonState } from '@dontstarve-web/signals';
+import { createEffect, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { loadAnim, loadBuild } from '@dontstarve-web/animation/animationAssets';
 import {
   createSpriteFactory, type AnimatedSpriteFactory, type TransientSpriteAnimationController,
@@ -89,7 +89,6 @@ export interface BurnEnvironment {
   /** The scene searched for propagator neighbours and receiving the fire effects. */
   readonly root: THREE.Object3D;
   readonly fire: FireFxHost;
-  readonly season?: ReadonlySignal<SeasonState>;
 }
 
 export interface BurnSpec {
@@ -127,7 +126,7 @@ export class BurnableBinding {
         if (other.getPosition().distanceToSquared(origin) <= radiusSquared) neighbours.push(other);
       });
       return neighbours;
-    }, TILE_SIZE / 4, env.scheduler, env.season, spec.propagatorValues);
+    }, TILE_SIZE / 4, env.scheduler, getBoundWatchWorldContent(), spec.propagatorValues);
     inst.components.burnable = this.burnable;
     inst.components.propagator = this.propagator;
     this.stopEffect = createEffect(() => {

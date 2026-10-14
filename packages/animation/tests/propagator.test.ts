@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createSignal, type SeasonState } from '../../signals/src';
+import { getBoundWatchWorldContent } from '../../signals/src';
+import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Propagator } from '../../componets/src/propagator';
 import { actionEntity } from '../../prefab/src/actionEntity';
@@ -11,19 +12,19 @@ import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
 afterEach(() => vi.restoreAllMocks());
 
 it('uses the current spring radius for neighbour queries and heat falloff without restarting the timer', () => {
-  const season = createSignal<SeasonState>({ season: 'autumn', progress: 0 });
   const scheduler = new GameTimeScheduler();
+  const { season, unbind } = bindTestWorld(scheduler);
   const source = actionEntity(new THREE.Group(), 'stafflight');
   const near = actionEntity(new THREE.Group(), 'log'), far = actionEntity(new THREE.Group(), 'cutgrass');
   near.model.position.x = 6;
   far.model.position.x = 7.5;
   const nearHeat = vi.fn(), farHeat = vi.fn();
   for (const [target, receive] of [[near, nearHeat], [far, farHeat]] as const) {
-    target.components.propagator = new Propagator(target, 'small', () => [], 3, scheduler, season);
+    target.components.propagator = new Propagator(target, 'small', () => [], 3, scheduler, getBoundWatchWorldContent());
     vi.spyOn(target.components.propagator, 'AddHeat').mockImplementation(receive);
   }
   const nearby = vi.fn((radius: number) => [near, far].filter(target => target.getPosition().length() <= radius));
-  const propagator = new Propagator(source, 'default', nearby, 3, scheduler, season);
+  const propagator = new Propagator(source, 'default', nearby, 3, scheduler, getBoundWatchWorldContent());
   source.components.propagator = propagator;
   propagator.heatoutput = 15;
   propagator.spreading.set(true);
@@ -64,17 +65,17 @@ it('binds a persistent inventory propagator to world season and releases the pre
   configureBurnableItemEntity(entity);
   const controller = entity.getComponent<BurnableItemController>('burnable_item')!;
   const propagator = controller.propagator;
-  const first = createSignal<SeasonState>({ season: 'spring', progress: 0 });
-  const next = createSignal<SeasonState>({ season: 'winter', progress: 0 });
-  const presentation = (season: typeof first) => ({ context: { season } as unknown as GroundPrefabContext,
+  const worldA = bindTestWorld(new GameTimeScheduler()), first = worldA.season;
+  first.set({ season: 'spring', progress: 0 });
+  const presentation = () => ({ context: {} as unknown as GroundPrefabContext,
     ash: { spawn: vi.fn(() => true), dispose: vi.fn() } });
-  const firstArt = presentation(first), nextArt = presentation(next);
+  const firstArt = presentation(), nextArt = presentation();
   expect(propagator.propagationRange.peek()).toBe(4);
   controller.bind(firstArt);
   expect(propagator.propagationRange.peek()).toBeCloseTo(4 * .67);
   controller.release(firstArt);
-  first.set({ season: 'summer', progress: 0 });
-  expect(propagator.propagationRange.peek()).toBe(4);
+  const worldB = bindTestWorld(new GameTimeScheduler()), next = worldB.season;
+  next.set({ season: 'winter', progress: 0 });
   controller.bind(nextArt);
   expect(propagator.propagationRange.peek()).toBe(4);
   const readFirst = vi.spyOn(first, 'get');
@@ -87,3 +88,4 @@ it('binds a persistent inventory propagator to world season and releases the pre
   next.set({ season: 'summer', progress: 0 });
   expect(propagator.propagationRange.peek()).toBeCloseTo(4 * .67);
 });
+

@@ -8,6 +8,7 @@ import { FlowerPlanting } from '../../prefab/src/flower';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
+import { bindTestWorld } from './worldContentFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -18,11 +19,13 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 async function setup() {
   const scheduler = new GameTimeScheduler(), camera = new THREE.PerspectiveCamera(), dropLoot = vi.fn();
+  const { snowLevel, unbind } = bindTestWorld(scheduler);
   const forest = await createMoonTreeForest('/dst/data/anim', { positions: [], random: () => .5, loadRadius: 20 });
   let spring = false;
   forest.bindWorld({ camera, scene: new THREE.Scene(), spawnAsh: vi.fn(), scheduler, dropLoot, growthDuration: seconds => seconds * (spring ? .75 : 1) });
   forest.updateNearby(new THREE.Vector3());
-  return { forest, scheduler, camera, dropLoot, setSpring: () => { spring = true; } };
+  return { forest, scheduler, camera, dropLoot, snowLevel, setSpring: () => { spring = true; },
+    dispose: () => { forest.dispose(); unbind(); scheduler.dispose(); } };
 }
 
 it('plants one moonbutterfly with original baby-tree art and cycles short/normal/tall work and growth, accelerating new spring tasks', async () => {
@@ -63,7 +66,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     s.scheduler.advance(1125);
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 337 } });
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeGrowFromWilt', tree.position);
-  } finally { planting.dispose(); s.forest.dispose(); }
+  } finally { planting.dispose(); s.dispose(); }
 });
 
 it('keeps logical growth while unloaded and stops growth when chopping or digging plants', async () => {
@@ -87,5 +90,37 @@ it('keeps logical growth while unloaded and stops growth when chopping or diggin
     s.scheduler.advance(300);
     expect(s.forest.entities).toEqual([]);
     expect(s.forest.exportSaplings()).toEqual([]);
-  } finally { s.forest.dispose(); }
+  } finally { s.dispose(); }
+});
+
+it('shows source snow art at the cover threshold, restores it on reload and releases unloaded tree effects', async () => {
+  const s = await setup();
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  const drawnIndices = (model: THREE.Group) => {
+    let count = 0;
+    model.traverse(object => { if (object instanceof THREE.Mesh) count += object.geometry.drawRange.count; });
+    return count;
+  };
+  try {
+    const tree = s.forest.spawnTree('moon_tree_tall', new THREE.Vector3(3, 0, 0));
+    const model = tree.model!, bareIndices = drawnIndices(model);
+    expect(model.userData.tags).toContain('SnowCovered');
+    s.snowLevel.set(.014); await settle();
+    expect(drawnIndices(model)).toBe(bareIndices);
+    s.snowLevel.set(.015); await settle();
+    expect(drawnIndices(model)).toBeGreaterThan(bareIndices);
+    const oldAnimation = model.userData.animationController;
+    const hide = vi.spyOn(oldAnimation, 'hideLayer');
+    s.snowLevel.set(0);
+    s.forest.updateNearby(new THREE.Vector3(500, 0, 0));
+    await settle();
+    expect(hide).not.toHaveBeenCalled();
+    s.snowLevel.set(.5);
+    s.forest.updateNearby(new THREE.Vector3());
+    expect(tree.model).not.toBe(model);
+    expect(drawnIndices(tree.model!)).toBeGreaterThan(bareIndices);
+    s.snowLevel.set(0); await settle();
+    expect(drawnIndices(tree.model!)).toBe(bareIndices);
+    expect(hide).not.toHaveBeenCalled();
+  } finally { s.dispose(); }
 });

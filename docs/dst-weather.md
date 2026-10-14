@@ -170,6 +170,8 @@ alpha = first + second + third
 
 纹理按世界坐标重复，周期为 `TILE_SIZE × 8`（当前 96 场景单位），覆盖量只更新 shader 参数与可见性，不修改 `TurfMap` 的实际地皮数据，也不重建整个地表几何。停雪时保留覆盖，融雪到零才隐藏。
 
+实体雪层由 prefab 按 `MakeSnowCoveredPristine` 决定是否启用，并传入共享 `snow.zip` 美术。`SpriteController` 构造时接收世界内容 getter，取得私有 `WorldContentKey.SnowLevel` 信号，通过普通 `createEffect` 更新雪层；覆盖阈值为 `weather.lua` 的 0.015。构造和换肤提交时立即应用当前雪量，换肤保留播放进度与回调并释放旧 controller；取消预备换肤、卸载模型或移除实体时释放对应 controller 的监听。雪层由当前雪量派生，不另存动画控制器 signal，也不保存雪层可见性。
+
 ## 池塘结冰
 
 `PondManager` 接收 `Weather.snowLevel` 只读信号，对应 `pond.lua` 的 `WatchWorldState("snowlevel", OnSnowLevel)`。原版按**积雪量**而非直接按温度结冰，温度只通过天气的降雪和融雪间接起作用：`snowlevel > 0.02` 播放 `frozen`，不高于该值恢复循环 `idle`。管理器用 `createEffect` 读取信号并更新所有池塘的 `userData.frozen`，之后生成或读档的池塘按当前状态初始化。`frozen` 不保存，由读档后的积雪量重新推导。冻结时池塘添加 `SlipperyFeetTarget` 组件（标签 `slipperyfeettarget`，半径 `1.95 × WORLD_SCALE`，`SlipperyRate`：玩家速度大于 `WILSON_RUN_SPEED` 为 50，否则为 5），解冻时移除组件和标签。尚未实现冻结时的碰撞组、`watersource`、`fishable`、`childspawner`、水草和冰冻音效 `pondfreeze`；扩展时读取 `pond.lua` 并在所属组件内实现。

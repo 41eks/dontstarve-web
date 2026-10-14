@@ -1,4 +1,4 @@
-import { createMemo, createSignal, readonlySignal, type ReadonlySignal, type SeasonState } from '../../signals/src';
+import { createMemo, createSignal, readonlySignal, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal, type SeasonState } from '../../signals/src';
 import { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { BurnableInst } from './burnable';
@@ -23,7 +23,9 @@ function randomValue([base, variation]: readonly [number, number]): number {
 export class Propagator {
   readonly flashpoint: number;
   readonly propagaterange: number;
-  private readonly seasonSignal = createSignal<ReadonlySignal<SeasonState> | undefined>(undefined);
+  /** Own copy of the watched season: the watch cleanup disposes memos that read it, so the range memo reads this. */
+  private readonly seasonSignal = createSignal<SeasonState | undefined>(undefined);
+  private stopSeason?: () => void;
   private readonly propagationRangeMemo;
   readonly propagationRange: ReadonlySignal<number>;
   heatoutput: number;
@@ -48,10 +50,11 @@ export class Propagator {
   private readonly unitsPerMeter: number;
   constructor(inst: BurnableInst, size: keyof typeof PROPAGATOR_SETTINGS,
     nearby: (radius: number) => readonly BurnableInst[], unitsPerMeter = 1, scheduler?: GameTimeScheduler,
-    season?: ReadonlySignal<SeasonState>, fixed?: { propagaterange?: number; heatoutput?: number }) {
+    getWatchWorldContent?: GetWatchWorldContent, fixed?: { propagaterange?: number; heatoutput?: number }) {
     this.inst = inst; this.nearby = nearby; this.unitsPerMeter = unitsPerMeter;
-    this.scheduler = scheduler ?? new GameTimeScheduler();
-    this.ownsScheduler = !scheduler;
+    const season = this.watchSeason(getWatchWorldContent);
+    this.scheduler = scheduler ?? season?.scheduler ?? new GameTimeScheduler();
+    this.ownsScheduler = !scheduler && !season;
     this.updateTimer = new ComponentTimer(this.scheduler, () => this.updateHeat());
     this.updatingMemo = createMemo(() => this.updateTimer.snapshot.get().status === 'scheduled');
     this.timer = this.updateTimer.snapshot;
@@ -59,9 +62,8 @@ export class Propagator {
     const settings = PROPAGATOR_SETTINGS[size];
     this.flashpoint = randomValue(settings.flashpoint);
     this.propagaterange = fixed?.propagaterange ?? randomValue(settings.propagaterange);
-    this.seasonSignal.set(season);
     this.propagationRangeMemo = createMemo(() => this.propagaterange
-      * (this.seasonSignal.get()?.get().season === 'spring' ? SPRING_FIRE_RANGE_MOD : 1));
+      * (this.seasonSignal.get()?.season === 'spring' ? SPRING_FIRE_RANGE_MOD : 1));
     this.propagationRange = readonlySignal(this.propagationRangeMemo);
     this.heatoutput = fixed?.heatoutput ?? randomValue(settings.heatoutput);
     this.decayrate = settings.decayrate;
@@ -72,9 +74,17 @@ export class Propagator {
     // Synchronous, so Ignite/Extinguish arm or cancel the task before the next scheduler advance.
     this.stopTask = this.spreading.subscribe(() => this.reschedule());
   }
-  /** Inject world state when an inventory inst first enters the ground prefab system. */
-  setSeason(season: ReadonlySignal<SeasonState> | undefined): void {
-    if (!this.removed) this.seasonSignal.set(season);
+  /** Bind world content when an inventory inst first enters the ground prefab system. */
+  setWorldContent(getWatchWorldContent: GetWatchWorldContent | undefined): void {
+    if (this.removed) return;
+    this.stopSeason?.(); this.stopSeason = undefined;
+    this.seasonSignal.set(undefined);
+    this.watchSeason(getWatchWorldContent);
+  }
+  private watchSeason(getWatchWorldContent?: GetWatchWorldContent) {
+    const season = getWatchWorldContent?.(WorldContentKey.Season, stop => { this.stopSeason = stop; });
+    if (season) { this.seasonSignal.set(season.peek()); season.subscribe(value => this.seasonSignal.set(value)); }
+    return season;
   }
   /** StartUpdating while spreading or holding heat; StopUpdating once spreading ended and the heat is gone. */
   private reschedule(): void {
@@ -125,7 +135,7 @@ export class Propagator {
   }
   dispose(): void {
     this.stopTask(); this.spreading.set(false); this.removed = true;
-    this.updateTimer.stop(); this.updatingMemo.dispose(); this.propagationRangeMemo.dispose();
+    this.updateTimer.stop(); this.updatingMemo.dispose(); this.propagationRangeMemo.dispose(); this.stopSeason?.();
     if (this.ownsScheduler) this.scheduler.dispose();
   }
   // private calculateHeatCap(): void {

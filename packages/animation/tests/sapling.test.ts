@@ -14,6 +14,8 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { bindTestWorld, tickWorld } from './worldContentFixture';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createSignal, type SeasonState } from '../../signals/src';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -26,9 +28,10 @@ function setup() {
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
     inventory, '/dst/data/anim', player);
-  const season = createSignal<SeasonState>({ season: 'autumn', progress: 0 });
+  const scheduler = new GameTimeScheduler();
+  const { season } = bindTestWorld(scheduler);
   const saplings = new SaplingManager(scene, '/dst/data/anim', {
-    season, prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling),
+    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling),
   });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.saplings, {
@@ -44,7 +47,7 @@ function setup() {
     inventory: inventory.exportState(), elapsedSeconds: 100, playerTransform: { position: [0, 0, 0], rotationY: 0 },
   }, SAVE_CATALOG);
   const dispose = () => { registry.dispose(); ground.dispose(); inventory.dispose(); };
-  return { inventory, scene, player, ground, saplings, season, registry, save, dispose,
+  return { inventory, scene, player, ground, saplings, season, scheduler, registry, save, dispose,
     worker: createPickupDoer(player, inventory) };
 }
 
@@ -64,7 +67,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     expect(s.inventory.count('twigs')).toBe(1);
     expect(animation.currentAnimation).toBe('picked');
     expect(model.userData.tags).not.toContain('pickable');
-    s.saplings.update(1000, new THREE.Quaternion());
+    tickWorld(s.scheduler, s.saplings, 1000, new THREE.Quaternion());
 
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     const [record] = saved.world.entities.sapling;
@@ -74,10 +77,10 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     expect(copy.userData.animationController.currentAnimation).toBe('empty');
     expect(copy.userData.entityId).toBe(model.userData.entityId);
 
-    s.saplings.update(920, new THREE.Quaternion());
+    tickWorld(s.scheduler, s.saplings, 920, new THREE.Quaternion());
     expect(model.userData.pickablePlantState.phase.peek()).toBe('ready');
     expect(animation.currentAnimation).toBe('grow');
-    for (let frame = 0; frame < 45; frame++) s.saplings.update(1 / 30, new THREE.Quaternion());
+    for (let frame = 0; frame < 45; frame++) tickWorld(s.scheduler, s.saplings, 1 / 30, new THREE.Quaternion());
     expect(animation.currentAnimation).toBe('sway');
     // Regrowth tasks may not exceed TUNING.SAPLING_REGROW_TIME.
     const invalid = JSON.parse(s.save());
@@ -105,7 +108,7 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     expect(collectEquippedActions(torch, model.userData.actionEntity, true)).toContain('LIGHT');
     model.userData.components.burnable.Ignite();
     expect(s.saplings.exportRecords()).toEqual([]);
-    s.saplings.update(20, new THREE.Quaternion());
+    tickWorld(s.scheduler, s.saplings, 20, new THREE.Quaternion());
     expect(model.parent).toBeNull();
     expect(s.ground.exportRecords().at(-1)?.components.stack).toMatchObject({ itemId: 'ash', count: 1 });
   } finally { s.dispose(); }

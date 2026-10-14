@@ -212,8 +212,7 @@ export class FlowerPlanting {
           this.burning!.spawnAsh(model.position.clone());
           this.removeFlower(flower);
         },
-      }, { scheduler: this.burning.scheduler, root: this.world.scene, fire: this.fireFx,
-        season: this.burning.season ?? this.world.season });
+      }, { scheduler: this.burning.scheduler, root: this.world.scene, fire: this.fireFx });
     }
     return flower;
   }

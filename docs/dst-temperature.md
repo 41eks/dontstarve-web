@@ -28,7 +28,7 @@
 
 容器的持有者标签通过库存 owner 读取，保鲜由 `Perishable` 在既有 10 秒调度中处理，暖石自身的 `Temperature.OnUpdate(dt)` 使用活动游戏帧的实际 `dt`。正常冰箱中带 `frozen` 标签的易腐物停止腐烂；`nocool`／`lowcool` 使用普通冰箱保鲜倍率，`nocool` 跳过暖石冷却，`lowcool` 使用每秒 −0.5°C。`WorldPerishClock.GetFrozenTick()` 记录冻结物品的环境温度积分，负温区间不计腐烂，避免一次结算跨过温度边界时错算。库存和地面保存记录中的 `temperature.current` 与暖石的 `highTemp`／`lowTemp` 随身份、皮肤、燃料一起保存；档位和图标读档时重建，不消耗一次耐久。代表性覆盖见 [icebox.test.ts](../packages/animation/tests/icebox.test.ts) 和 [heatrock.test.ts](../packages/animation/tests/heatrock.test.ts)。
 
-[packages/componets/src/worldtemperature.ts](../packages/componets/src/worldtemperature.ts) 提供 `WorldTemperature` 类，移植世界温度的季节项、昼夜项、噪声时间、全局修正及保存／恢复逻辑。昼夜与季节输入使用 [packages/signals/src/world.ts](../packages/signals/src/world.ts) 导出的全局唯一单例 `clockstate`、`seasonstate`，环境温度由 `createMemo` 派生，并作为只读 signal 提供给宿主。
+[WorldTemperature](../packages/componets/src/worldtemperature.ts) 保持 Lua 组件的职责，持有并用纯 `createMemo` 计算温度 signal，管理季节项、昼夜项、噪声时间、全局修正及保存／恢复。它对 `clockstate`、`seasonstate` 各创建一份私有 `watchSignal`，memo 读取本地 `get()`，保存读取本地 `peek()`。世界初始化恢复状态后，将该 memo 的只读视图注入 [worldContent.ts](../packages/signals/src/worldContent.ts) 的 `Temperature` 来源；世界内容接口只解析和监听原信号。消费者使用 `getWatchWorldContent(WorldContentKey.Temperature, registerCleanup)` 创建独立监听，并取得共享 scheduler；组件释放会断开自己的输入桥接和温度 memo。
 
 [src/worldState.ts](../src/worldState.ts) 创建会话的温度组件、恢复全局昼夜与季节输入，并将 `worldState.clock`、`worldState.season` 指向上述单例；`worldState.moonPhase` 指向同模块的月相单例 `moonphasestate`，从累计游戏时间恢复并按现有 20 天周期推进。[src/scene.ts](../src/scene.ts) 导出运行时 `worldState` 并接入主循环。每 60 个活动游戏帧累计实际 `dt`，统一更新昼夜进度、月相 signal 和噪声时间；`clockstate` 同时发布天数、全天进度、昼夜段数和月相盈亏。中间帧只累计世界时间，不写这些输入，也不更新时钟指针和日期。保存或停止场景前结算不足 60 帧的部分。昼夜与季节的光照使用同一份 signal，温度和光照 effect 在场景销毁时释放，单例保留；满月照明由夜晚和月相派生，温度的昼夜阶段保持 `night`。规则记录在 [AGENTS.md](../AGENTS.md) 的“World time and temperature”中。
 
@@ -66,7 +66,7 @@ worldtemperature.dispose();
 | `GetDebugString()` | 返回当前温度、全局倍率和中心值 |
 | `dispose()` | 释放温度 memo 的输入订阅和可选温度回调 |
 
-`createMemo` 保持可调用的原接口，并提供只读 signal 方法与 `dispose()`。依赖改变时同步更新派生缓存，确保同一帧的其他实体和保存操作能读取最新值；普通 `createEffect` 仍按微任务批量执行。每次 60 帧结算使用 `batch()` 同时写入昼夜进度和噪声时间，使温度 memo 在批次结束后只重新计算一次；加载也批量恢复各输入，避免发布中间温度。主循环读取的是 `worldState.temperature`，不维护第二份温度数值。
+`createMemo` 保持可调用的原接口，并提供只读 signal 方法与 `dispose()`。依赖改变时同步更新派生缓存，确保同一帧的其他实体和保存操作能读取最新值；普通 `createEffect` 仍按微任务批量执行。每次 60 帧结算使用 `batch()` 同时写入昼夜进度和噪声时间，使温度信号在批次结束后发布完整的结算结果；加载也批量恢复各输入，避免发布中间温度。主循环读取的是 `worldState.temperature`，不维护第二份温度数值。
 
 `c_save()` 将结算后的组件快照写入可选字段 `world.systems.worldtemperature`，反序列化校验并恢复这些值。缺少该字段的旧存档保持兼容；信号、memo 和订阅不进入 JSON。加载时允许以 `{ season, temperature }` 或 `{ phase, temperature }` 恢复源温度项，避免根据温度猜测日历进度；后续正常更新使用 `{ season, progress }` 和 `{ phase, timeinphase }`。
 

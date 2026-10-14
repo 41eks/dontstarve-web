@@ -1,9 +1,10 @@
 import { batch, createSignal, readonlySignal } from '../../signals/src/signal.ts';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
+import type { WorldWindChange } from '../../signals/src/worldContent';
 
 /** The `windchange` payload: every change is a fresh object, even if the new angle repeats the old one. */
-export interface WorldWindChange { readonly angle: number; readonly velocity: number; }
+export type { WorldWindChange } from '../../signals/src/worldContent';
 
 /** components/worldwind.lua: TUNING.SEG_TIME = 30, so the next change comes 15 to 30 seconds later. */
 export const WORLD_WIND_MIN_CHANGE_TIME = 15;

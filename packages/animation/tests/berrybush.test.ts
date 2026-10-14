@@ -6,7 +6,6 @@ import { BerrybushManager, BERRYBUSH_MAX_REGROW_TIME } from '../../prefab/src/be
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
-import { createSignal, type SeasonState } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -16,6 +15,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -29,9 +29,8 @@ function setup() {
   const scheduler = new GameTimeScheduler();
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const season = createSignal<SeasonState>({ season: 'autumn', progress: 0 });
-  const snowLevel = createSignal(0);
-  const bushes = new BerrybushManager(scene, '/dst/data/anim', { scheduler, physics, season, snowLevel,
+  const { season, snowLevel } = bindTestWorld(scheduler);
+  const bushes = new BerrybushManager(scene, '/dst/data/anim', { physics,
     prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.berrybushes, {
@@ -168,4 +167,51 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     s.advance(10000); expect(s.bushes.exportRecords()).toEqual([]);
     expect(s.physics.bodies).toHaveLength(0);
   } finally { s.dispose(); restored.dispose(); }
+});
+
+it('updates snow art after spawning and reskinning and cleans up each removed plant independently', async () => {
+  const s = setup();
+  const drawnIndices = (model: THREE.Group) => {
+    let count = 0;
+    model.traverse(object => { if (object instanceof THREE.Mesh) count += object.geometry.drawRange.count; });
+    return count;
+  };
+  try {
+    s.snowLevel.set(.5);
+    const first = await s.bushes.spawn(new THREE.Vector3()), second = await s.bushes.spawn(new THREE.Vector3(20, 0, 0));
+    const initialSnow = drawnIndices(first), secondSnow = drawnIndices(second);
+    s.snowLevel.set(.014); await settleEffects();
+    expect(drawnIndices(first)).toBeLessThan(initialSnow);
+    s.snowLevel.set(.015); await settleEffects();
+    expect(drawnIndices(first)).toBe(initialSnow);
+    const oldController = first.userData.animationController;
+    const oldHide = vi.spyOn(oldController, 'hideLayer'), oldShow = vi.spyOn(oldController, 'showLayer');
+    const skin = await s.bushes.reskinTargets[0].prepareNextSkin();
+    expect(skin.apply()).toBe(true); skin.dispose();
+    expect(first.userData.animationController).not.toBe(oldController);
+    const reskinnedSnow = drawnIndices(first);
+    s.snowLevel.set(0); await settleEffects();
+    expect(drawnIndices(first)).toBeLessThan(reskinnedSnow);
+    s.snowLevel.set(.5); await settleEffects();
+    expect(drawnIndices(first)).toBe(reskinnedSnow);
+    expect(oldHide).not.toHaveBeenCalled(); expect(oldShow).not.toHaveBeenCalled();
+    // A prepared replacement reads the latest snow even if applied before its queued effect runs.
+    const nextSkin = await s.bushes.reskinTargets[0].prepareNextSkin();
+    s.snowLevel.set(0);
+    expect(nextSkin.apply()).toBe(true); nextSkin.dispose();
+    const bareReplacement = drawnIndices(first);
+    await settleEffects();
+    expect(drawnIndices(first)).toBe(bareReplacement);
+    // Discarding a prepared skin also releases its controller without touching the live plant.
+    const canceled = await s.bushes.reskinTargets[0].prepareNextSkin();
+    canceled.dispose();
+    s.snowLevel.set(.5); await settleEffects();
+    expect(drawnIndices(first)).toBeGreaterThan(bareReplacement);
+    const hide = vi.spyOn(first.userData.animationController, 'hideLayer');
+    s.snowLevel.set(0);
+    s.bushes.remove(first);
+    await settleEffects();
+    expect(hide).not.toHaveBeenCalled();
+    expect(drawnIndices(second)).toBeLessThan(secondSnow);
+  } finally { s.dispose(); }
 });

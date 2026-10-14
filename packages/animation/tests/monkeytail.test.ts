@@ -19,6 +19,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -31,11 +32,11 @@ function setup() {
   const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as THREE.WebGLRenderer;
   const scheduler = new GameTimeScheduler();
   const ground = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const season = createSignal<SeasonState>({ season: 'autumn', progress: 0 });
+  const { season } = bindTestWorld(scheduler);
   const rain = createSignal<'none' | 'rain' | 'snow'>('none');
   let temperature = 20;
   const monkeytails = new MonkeytailManager(scene, '/dst/data/anim', {
-    scheduler, season, rain, getLocalTemperature: () => temperature,
+    rain, getLocalTemperature: () => temperature,
     prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling),
   });
   const registry = new EntityRegistry();

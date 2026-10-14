@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createMemo, readonlySignal, type ReadonlySignal, type SeasonState } from '@dontstarve-web/signals';
+import { createMemo, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -41,7 +41,6 @@ interface Sapling {
 }
 export interface RockAvocadoSaplingWorld {
   scheduler?: GameTimeScheduler;
-  season?: ReadonlySignal<SeasonState>;
   bushes: Pick<RockAvocadoBushManager, 'prepareNaturalSpawn'>;
   prepareSpawn(definition: GroundItemDefinition): Promise<PreparedGroundSpawn>;
 }
@@ -126,7 +125,7 @@ export class RockAvocadoSaplingManager {
               && inst.getPosition().distanceToSquared(model.position) <= radius ** 2) nearby.push(inst);
           });
           return nearby;
-        }, 3, this.scheduler, this.world.season);
+        }, 3, this.scheduler, getBoundWatchWorldContent());
         Object.assign(entity.components, { workable, timer, burnable, propagator });
         const startGrowing = () => { if (!timer.TimerExists('grow')) timer.StartTimer('grow', ROCK_AVOCADO_SPROUT_GROW_TIME); };
         burnable.SetOnIgniteFn(() => timer.StopTimer('grow'));

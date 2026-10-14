@@ -26,7 +26,7 @@ function setup() {
   const fx = new WorldFx(scene, '/dst/data/anim');
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player,
-    undefined, undefined, undefined, undefined, undefined, undefined, fx);
+    undefined, undefined, undefined, undefined, undefined, fx);
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.groundItems, {
     restore: (_, record) => ground.spawnFromSave(record.id,

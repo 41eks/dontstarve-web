@@ -3,22 +3,41 @@ import type { SeasonState, WorldPhase } from './world';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 
 /** Named world inputs; compatible with erasableSyntaxOnly. */
-export const WorldContentKey = { Cycle: 'cycle', Season: 'season' } as const;
+export const WorldContentKey = {
+  Cycle: 'cycle', Season: 'season', Temperature: 'temperature', Wind: 'wind', PerishClock: 'perishTick', SnowLevel: 'snowLevel',
+} as const;
 export type WorldContentKey = typeof WorldContentKey[keyof typeof WorldContentKey];
 
 export interface WorldContentValues {
   cycle: WorldPhase;
   season: SeasonState;
+  temperature: number;
+  wind: WorldWindChange;
+  perishTick: PerishTick;
+  snowLevel: number;
 }
+
+export interface WorldWindChange { readonly angle: number; readonly velocity: number; }
+export interface PerishTick { readonly time: number; readonly total: number; }
+/** Live and historical prefix queries are separate from the last published snapshot. */
+export interface PerishClock {
+  GetTick(time?: number): PerishTick;
+  /** Frozen perishables do not decay during recorded intervals below freezing. */
+  GetFrozenTick?(time?: number): PerishTick;
+}
+
 export type WorldContentSources = { readonly [K in WorldContentKey]: ReadonlySignal<WorldContentValues[K]> };
 
 export type WorldContentEnvironment = WorldContentSources & {
   readonly scheduler: GameTimeScheduler;
+  /** Standalone contexts may omit the world prefix service. */
+  readonly perishClock?: PerishClock;
 };
 
 /** The signal belongs to the consumer; the scheduler remains owned by the world. */
 export interface WorldContentSignal<T> extends Signal<T> {
   readonly scheduler: GameTimeScheduler;
+  readonly perishClock?: PerishClock;
 }
 
 /** Bound to world sources, never to a consumer's cleanup or local signals. */
@@ -39,6 +58,15 @@ export function bindWorldContent(sources: WorldContentEnvironment): () => void {
   return () => { if (currentWorld === sources) currentWorld = undefined; };
 }
 
+/** Standalone contexts without a world binding can skip world-driven behaviour. */
+export function isWorldContentBound(): boolean { return currentWorld !== undefined; }
+
+/** The bound world's getter for consumers that take world content as a parameter; undefined when standalone. */
+export function getBoundWatchWorldContent(): GetWatchWorldContent | undefined {
+  const world = currentWorld;
+  return world ? (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, world) : undefined;
+}
+
 /** A key resolves to a shared world input; each caller receives its own lifecycle-managed signal. */
 export function getWatchWorldContent<K extends WorldContentKey>(
   key: K, registerCleanup: (stop: () => void) => void,
@@ -51,5 +79,8 @@ export function getWatchWorldContent<K extends WorldContentKey>(
   if (!source) throw new Error(`World content ${key} is not bound`);
   if (!world.scheduler) throw new Error('World scheduler is not bound');
   const local = watchSignal<WorldContentValues[K]>(source, registerCleanup);
-  return Object.defineProperty(local, 'scheduler', { value: world.scheduler, enumerable: true }) as WorldContentSignal<WorldContentValues[K]>;
+  return Object.defineProperties(local, {
+    scheduler: { value: world.scheduler, enumerable: true },
+    perishClock: { value: world.perishClock, enumerable: true },
+  }) as WorldContentSignal<WorldContentValues[K]>;
 }

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
-import { watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { WorldContentKey, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { BlowInWind } from '../../componets/src/blowinwind';
 import { ComponentTimer } from '../../componets/src/timer';
 import { DEFAULT_RUN_SPEED, DEFAULT_WALK_SPEED, LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
@@ -56,6 +56,7 @@ export function rollTumbleweedLoot(random: () => number = Math.random): string[]
 }
 
 export interface TumbleweedWorld {
+  getWatchWorldContent?: import('@dontstarve-web/signals').GetWatchWorldContent;
   scheduler: GameTimeScheduler;
   /** `TheWorld.components.worldwind`; absent worlds leave tumbleweeds idle until a long action restarts them. */
   wind?: WorldWind;
@@ -118,10 +119,12 @@ class Tumbleweed {
     const onLongAction = () => this.onLongAction();
     this.model.addEventListener('startlongaction' as never, onLongAction);
     this.cleanups.push(() => this.model.removeEventListener('startlongaction' as never, onLongAction));
-    if (world.wind) {
-      this.angle = varyAngle(world.wind.GetWindAngle(), this.random);
+    const wind = world.getWatchWorldContent
+      ? world.getWatchWorldContent(WorldContentKey.Wind, stop => this.cleanups.push(stop))
+      : world.wind ? watchSignal(world.wind.windchange, stop => this.cleanups.push(stop)) : undefined;
+    if (wind) {
+      this.angle = varyAngle(wind.peek().angle, this.random);
       this.blowinwind.Start(this.angle * DEGREES);
-      const wind = watchSignal(world.wind.windchange, stop => this.cleanups.push(stop));
       wind.subscribe(change => this.doDirectionChange(change));
     }
     this.sprite.start('move_loop');

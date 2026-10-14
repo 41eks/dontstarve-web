@@ -15,7 +15,9 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createSignal, type SeasonState } from '../../signals/src';
+import { bindTestWorld, tickWorld } from './worldContentFixture';
 import { getPickActions } from '../../stategraphs/src/pick';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -29,8 +31,9 @@ function setup() {
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
     inventory, '/dst/data/anim', player);
   const worker = createPickupDoer(player, inventory);
+  const scheduler = new GameTimeScheduler();
+  bindTestWorld(scheduler);
   const grass = new GrassManager(scene, '/dst/data/anim', {
-    season: createSignal<SeasonState>({ season: 'autumn', progress: 0 }),
     prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling),
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
@@ -39,7 +42,7 @@ function setup() {
     elapsedSeconds: 100, playerTransform: { position: [3, 0, 6], rotationY: 0 },
   }, SAVE_CATALOG);
   const dispose = () => { grass.dispose(); ground.dispose(); inventory.dispose(); };
-  return { inventory, scene, player, ground, worker, grass, save, dispose };
+  return { inventory, scene, player, ground, worker, grass, scheduler, save, dispose };
 }
 
 it('digs mature/picked grass through workable, preserves dug-item commands and reloads fractional shovel uses and loot', async () => {
@@ -101,7 +104,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     expect(s.inventory.GetEquippedItem('hand')).toBeNull();
     expect(s.inventory.handEquipment.peek()).toBeNull();
     expect(s.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('dug_grass');
-    s.grass.update(2000, new THREE.Quaternion());
+    tickWorld(s.scheduler, s.grass, 2000, new THREE.Quaternion());
     expect(s.grass.exportRecords()).toEqual([]);
     expect(s.ground.exportRecords()).toHaveLength(4);
   } finally { registry.dispose(); s.dispose(); restored.dispose(); }
@@ -120,7 +123,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(s.grass.exportRecords()).toEqual([]);
     expect(getPickActions(s.scene).find(action => action.model === model)?.available).toBe(false);
     expect(s.grass.digTargets[0].isValid()).toBe(true);
-    s.grass.update(10, new THREE.Quaternion());
+    tickWorld(s.scheduler, s.grass, 10, new THREE.Quaternion());
     expect(burnable.timer.peek()).toBe(timer);
     burnable.Extinguish();
     const record = s.grass.exportRecords()[0];
@@ -132,7 +135,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     s.inventory.configureItem(torch);
     expect(collectEquippedActions(torch, model.userData.actionEntity, true)).toContain('LIGHT');
     burnable.Ignite();
-    s.grass.update(20, new THREE.Quaternion());
+    tickWorld(s.scheduler, s.grass, 20, new THREE.Quaternion());
     expect(state.phase.peek()).toBe('removed');
     expect(model.parent).toBeNull();
     expect(s.grass.digTargets).toEqual([]);
@@ -143,7 +146,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     expect(saved.world.entities.grass).toEqual([]);
     expect(saved.world.entities.ground_item).toEqual(s.ground.exportRecords());
-    s.grass.update(1440, new THREE.Quaternion());
+    tickWorld(s.scheduler, s.grass, 1440, new THREE.Quaternion());
     expect(s.ground.exportRecords()).toHaveLength(1);
   } finally { s.dispose(); }
 });

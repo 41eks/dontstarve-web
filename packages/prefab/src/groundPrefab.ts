@@ -54,7 +54,6 @@ export interface GroundPrefabOptions {
   moleWorld?: import('./molehill').MoleHabitat;
   fx?: GroundFx;
   scheduler?: GameTimeScheduler;
-  season?: import('@dontstarve-web/signals').ReadonlySignal<import('@dontstarve-web/signals').SeasonState>;
   scene: THREE.Scene;
   animationBaseUrl: string;
   inventoryOwnerPosition?: THREE.Vector3;
