@@ -16,6 +16,7 @@ import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment } from './treeFire';
+import type { WorldEventEmitter } from './worldContext';
 
 export const EVERGREEN_SPAWN_IDS = ['evergreen', 'evergreen_short', 'evergreen_normal', 'evergreen_tall'] as const;
 export type EvergreenSpawnId = typeof EVERGREEN_SPAWN_IDS[number];
@@ -44,7 +45,7 @@ export interface EvergreenWorld {
   /** Searched for propagator neighbours; receives fire effects. */
   scene: THREE.Object3D;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
-  spawnAsh(position: THREE.Vector3): void;
+  worldEvents: WorldEventEmitter;
   scheduler?: GameTimeScheduler;
   physics?: CANNON.World;
   growthDuration?(seconds: number): number;
@@ -134,7 +135,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   };
   /** DefaultBurntFn on a stump: one ash, then the inst is removed. */
   const burnStump = (tree: Tree) => {
-    world.spawnAsh(tree.logical.position.clone());
+    world.worldEvents.emit('spawnAsh', tree.logical.position.clone());
     remove(tree);
   };
   const burntChanges = (tree: Tree) => {

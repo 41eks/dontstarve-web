@@ -50,7 +50,7 @@ export class TurfDeployment {
     this.world = world; this.turf = turf; this.animation = animation; this.locomotor = locomotor;
     this.getSource = getSource; this.isManualMovement = isManualMovement;
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    this.assets = new ArchiveSpriteAssets(`${import.meta.env.BASE_URL}dst/data/anim`, 'turf-grid');
+    this.assets = new ArchiveSpriteAssets('turf-grid');
     this.stopActions = bindActionCancellation(world, this, 'deploy', () => this.cancel());
     this.stopHover = world.mouseActions?.register(() => {
       const source = this.getSource(), point = this.pointer.groundPoint();

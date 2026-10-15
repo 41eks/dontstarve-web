@@ -1,8 +1,10 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { Tool } from '../../componets/src/tool';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
 import type { GroundItemAssets } from './groundItems';
 import { FiniteUsesToolLifecycle, loadHeldToolEquipment, type HeldToolEquipment } from './pickaxe';
+import { PreloadSounds } from './sound';
 
 export const AXE_USES = 100; // tuning.lua AXE_USES.
 
@@ -50,3 +52,9 @@ const AXE_SWAP: Readonly<Record<AxeTool, { archive: string; symbol: string }>> =
 export function loadAxeEquipment(assets: GroundItemAssets, tool: AxeTool, skinId?: string): Promise<AxeEquipment> {
   return loadHeldToolEquipment(assets, tool, AXE_SWAP[tool], skinId);
 }
+
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareAxeVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const [equipment] = await Promise.all([loadAxeEquipment(assets, item.prefab as AxeTool, item.skinId), PreloadSounds('dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeFall')]);
+  return handEquipmentVisual(item, equipment.builds, equipment.symbol);
+};

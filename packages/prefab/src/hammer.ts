@@ -1,7 +1,8 @@
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Tool } from '../../componets/src/tool';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { PreloadSounds } from './sound';
 
 export function configureHammerEntity(entity: ItemEntity): void {
   entity.addTag('hammer'); // hammer.lua: SGmole distinguishes the weapon by this source tag.
@@ -26,15 +27,8 @@ export async function loadHammerEquipment(assets: GroundItemAssets, skinId?: str
   return { builds: skin ? [skin, base] : [base] };
 }
 
-/** hammer.lua: swap_object uses swap_hammer; inventory and ground art stay separate. */
-export function resolveHammerPlayerSprite(equipment: HammerEquipment, element: AnimElement): ResolvedSprite[] {
-  const symbol = smallHash('swap_hammer');
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, symbol, element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-    // hammer_invisible supplies only the ground frame (8). Missing held frames
-    // in an explicitly overridden symbol mean hidden art, not base-tool fallback.
-    if (source.build.symbols.has(symbol)) return [];
-  }
-  return [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareHammerVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const [equipment] = await Promise.all([loadHammerEquipment(assets, item.skinId), PreloadSounds('dontstarve/wilson/hit')]);
+  return handEquipmentVisual(item, equipment.builds, 'swap_hammer');
+};

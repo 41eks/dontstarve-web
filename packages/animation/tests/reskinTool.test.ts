@@ -45,7 +45,7 @@ it('gives separate sweepers through the application inventory, resolves their ic
 });
 
 it('renders source ground and held art for the base sweeper and brush skin, then removes held art', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
   const skins = ['reskin_tool_brush'];

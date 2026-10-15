@@ -8,7 +8,13 @@ import {
     type AnimatedBuildingHammerContext,
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
-import { PlaySound, PreloadSounds } from './sound';
+import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import type { Group } from 'three';
+import { actionEntity } from './actionEntity';
+import { Prototyper } from '../../componets/src/prototyper';
+import { CreateTechTree } from '../../componets/src/techtree';
+import { WORLD_SCALE } from './standardcomponents';
+import type { SpriteController } from '@dontstarve-web/animation/sprite';
 
 export const RESEARCH_LAB_IDS = [
     'researchlab',
@@ -44,24 +50,53 @@ export const RESEARCH_LAB_SKIN_ARCHIVES: Readonly<Record<ResearchLabId, Readonly
     researchlab4: definitions.animatedBuildings.researchlab4.skinArchives,
 };
 
+const idleSoundPaths = {
+    researchlab: 'dontstarve/common/researchmachine_lvl1_idle_LP',
+    researchlab2: 'dontstarve/common/researchmachine_lvl2_idle_LP',
+    researchlab3: 'dontstarve/common/researchmachine_lvl3_idle_LP',
+    researchlab4: 'dontstarve/common/researchmachine_lvl4_idle_LP',
+} as const;
+const idleSounds = new WeakMap<Group, SoundHandle>();
+
+function stopIdleSound(model: Group): void {
+    idleSounds.get(model)?.stop();
+    idleSounds.delete(model);
+}
+
 function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void {
-    animation.playOnce('place', () => {
-        animation.start('idle');
-        onComplete();
-    });
+    animation.playOnce('place', onComplete);
+    (animation as SpriteController).pushAnimation('idle');
 }
 
-function onturnon({ animation }: AnimatedBuildingEventContext): void {
-    animation.start('proximity_loop');
+function onturnon(id: ResearchLabId, { model, animation }: AnimatedBuildingEventContext): void {
+    if (actionEntity(model, id).hasTag('burnt')) return;
+    const controller = animation as SpriteController;
+    if (id === 'researchlab3' && controller.currentAnimation !== 'proximity_loop') {
+        if (controller.currentAnimation === 'place') controller.pushAnimation('proximity_pre');
+        else controller.playOnce('proximity_pre');
+        controller.pushAnimation('proximity_loop', true);
+    } else if (id !== 'researchlab3' && (controller.currentAnimation === 'place' || controller.currentAnimation === 'proximity_loop')) {
+        controller.pushAnimation('proximity_loop', true);
+    } else controller.start('proximity_loop');
+    if (!idleSounds.get(model)?.isPlaying()) idleSounds.set(model, PlaySound(idleSoundPaths[id], model.position));
 }
 
-function onturnoff({ animation }: AnimatedBuildingEventContext): void {
-    animation.start('idle');
+function onturnoff(id: ResearchLabId, { model, animation }: AnimatedBuildingEventContext): void {
+    stopIdleSound(model);
+    if (actionEntity(model, id).hasTag('burnt')) return;
+    if (id === 'researchlab' || id === 'researchlab2') animation.playOnce('idle');
+    else {
+        const controller = animation as SpriteController;
+        if (id === 'researchlab3') controller.pushAnimation('proximity_pst');
+        controller.pushAnimation('idle');
+    }
 }
 
-function onhit({ animation, isPlayerNearby }: AnimatedBuildingHammerContext): void {
+function onhit({ model, animation }: AnimatedBuildingHammerContext): void {
     // scienceprototyper.lua and magicprototyper.lua: hit, then the on/off loop.
-    animation.playOnce('hit', () => animation.start(isPlayerNearby ? 'proximity_loop' : 'idle'));
+    const on = model.userData.components?.prototyper?.on === true;
+    animation.playOnce('hit');
+    (animation as SpriteController).pushAnimation(on ? 'proximity_loop' : 'idle', on);
 }
 
 function onhammered(id: ResearchLabId, { position, dropLoot, spawnEffect, remove }: AnimatedBuildingHammerContext): void {
@@ -74,10 +109,33 @@ function onhammered(id: ResearchLabId, { position, dropLoot, spawnEffect, remove
 }
 
 function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
+    const levels = {
+        researchlab: { SCIENCE: 1, MAGIC: 1 }, researchlab2: { SCIENCE: 2, MAGIC: 1 },
+        researchlab3: { MAGIC: 3 }, researchlab4: { MAGIC: 2 },
+    };
     return {
-        ...definitions.animatedBuildings[id], onbuilt, onturnon, onturnoff, onhit,
+        ...definitions.animatedBuildings[id], onProximity: false, onbuilt, onhit,
+        oninit: (context) => {
+            const inst = actionEntity(context.model, id);
+            inst.addTag('structure');
+            inst.addTag(`level${RESEARCH_LAB_IDS.indexOf(id) + 1}`);
+            const prototyper = new Prototyper(inst, 4 * WORLD_SCALE);
+            prototyper.trees = CreateTechTree(levels[id]);
+            // Skin replacement preserves the component and its users, but replaces the controller.
+            const currentContext = () => ({ ...context,
+                animation: context.model.userData.animationController as SpriteController });
+            prototyper.onturnon = () => onturnon(id, currentContext());
+            prototyper.onturnoff = () => onturnoff(id, currentContext());
+            inst.components.prototyper = prototyper;
+        },
+        ondispose: ({ model }) => {
+            const inst = actionEntity(model, id);
+            inst.components.prototyper?.OnRemoveFromEntity();
+            delete inst.components.prototyper;
+            stopIdleSound(model);
+        },
         hammerWorkLeft: 4,
-        prepare: () => PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood'),
+        prepare: () => PreloadSounds(idleSoundPaths[id], 'dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood'),
         hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
         onhammered: (context) => onhammered(id, context),
     };

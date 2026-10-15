@@ -28,7 +28,7 @@ describe('pitchfork source art and TERRAFORM timing', () => {
   it.each(['pitchfork'] as PitchforkTool[])('loads %s ground, held and skinned art and digs at frame 25 once', async (tool) => {
     expect(inventoryItemEquipmentKind(tool)).toBe('hand');
     expect(inventoryItemMaxStack(tool)).toBe(1);
-    const assets = new GroundItemAssets('/dst/data/anim');
+    const assets = new GroundItemAssets();
     const ground = await createGroundItemSprite(assets, tool);
     const mesh = ground.model.children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);

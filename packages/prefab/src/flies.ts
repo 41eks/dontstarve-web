@@ -5,6 +5,7 @@ import { ComponentTimer } from '../../componets/src/timer';
 import { PlayerProx } from '../../componets/src/playerprox';
 import { PlaySound, type SoundHandle } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
+import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 
 export const FLIES_SOUND = 'dontstarve/common/flies';
 
@@ -20,13 +21,13 @@ export class FliesController {
   private animationRevision = 0;
 
   constructor(sprite: ArchiveSprite, position: Vector3, scheduler: GameTimeScheduler,
-    players: () => readonly Vector3[]) {
+    getWatchWorldContent?: GetWatchWorldContent) {
     this.sprite = sprite; this.position = position;
     sprite.model.visible = true;
     Object.assign(sprite.model.userData, { prefab: 'flies', tags: ['NOCLICK', 'DECOR'], fliesController: this });
     // The decorative child must not enlarge the parent's pickup target.
     sprite.model.traverse(object => { object.raycast = () => {}; });
-    this.playerprox = new PlayerProx({ isValid: () => !this.disposed, getPosition: () => position }, scheduler, players);
+    this.playerprox = new PlayerProx({ isValid: () => !this.disposed, getPosition: () => position }, scheduler, getWatchWorldContent);
     this.playerprox.SetDist(2 * WORLD_SCALE, 3 * WORLD_SCALE);
     this.playerprox.SetOnPlayerNear(() => {
       this.stopSound();

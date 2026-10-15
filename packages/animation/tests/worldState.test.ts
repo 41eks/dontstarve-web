@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createWorldState, createWorldClockUpdater } from '../../../src/worldState';
 import { getDstCycle } from '../../../src/tuning';
-import { clockstate, seasonstate, moonphasestate, WorldContentKey } from '../../signals/src';
+import { clockstate, seasonstate, moonphasestate, WorldContentKey, GetTileStateAtPoint } from '../../signals/src';
+import { Vector3 } from 'three';
 
 function updateClock(state: ReturnType<typeof createWorldState>, elapsedSeconds: number, dt: number) {
   const cycle = getDstCycle(elapsedSeconds);
@@ -10,11 +11,72 @@ function updateClock(state: ReturnType<typeof createWorldState>, elapsedSeconds:
 }
 
 describe('session world temperature', () => {
+  it('binds cached tile queries to player snapshots and releases their pending updates with the world', async () => {
+    const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+    const position = new Vector3();
+    const active = state.getTileStateAtPoint(position, 0)!;
+    const reads = vi.spyOn(state.playerpositions, 'get');
+    try {
+      expect(GetTileStateAtPoint(position, 0)).toBe(active);
+      expect(active()).toBe(false);
+      state.playerpositions.set([new Vector3()]);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(active()).toBe(true);
+      state.playerpositions.set([new Vector3(12, 0, 0)]);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(active()).toBe(false);
+      expect(GetTileStateAtPoint(new Vector3(1, 0, 1), 0)).toBe(active);
+      state.playerpositions.set([new Vector3()]);
+      state.dispose();
+      reads.mockClear();
+      state.playerpositions.set([new Vector3(24, 0, 0)]);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(reads).not.toHaveBeenCalled();
+      expect(active()).toBe(false);
+      expect(() => GetTileStateAtPoint(position)).toThrow('not bound');
+    } finally { reads.mockRestore(); state.dispose(); }
+  });
+
+  it('publishes independent player position snapshots every 60 active frames, including across clock flushes', () => {
+    const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+    const players = [new Vector3(3, 0, 4), new Vector3(8, 0, 9)];
+    const positions = vi.fn(() => players);
+    const updater = createWorldClockUpdater(state, 0, positions);
+    try {
+      const initial = state.playerpositions.peek();
+      expect(initial).toEqual(players);
+      expect(initial[0]).not.toBe(players[0]);
+      players[0].set(12, 0, 15);
+      for (let frame = 0; frame < 59; frame++) {
+        updater.update(frame % 2 === 0 ? .01 : .04);
+        updater.update(0);
+        if (frame === 29) updater.flush();
+      }
+      expect(state.playerpositions.peek()).toBe(initial);
+      expect(initial[0]).toEqual(new Vector3(3, 0, 4));
+      expect(positions).toHaveBeenCalledOnce();
+      updater.update(.02);
+      const published = state.playerpositions.peek();
+      expect(published).toEqual(players);
+      expect(published).not.toBe(initial);
+      expect(positions).toHaveBeenCalledTimes(2);
+      players.pop();
+      players[0].set(20, 0, 30);
+      for (let frame = 0; frame < 59; frame++) updater.update(.02);
+      expect(state.playerpositions.peek()).toBe(published);
+      expect(published).toHaveLength(2);
+      expect(published[0]).toEqual(new Vector3(12, 0, 15));
+      updater.update(.02);
+      expect(state.playerpositions.peek()).toEqual([new Vector3(20, 0, 30)]);
+    } finally { state.dispose(); }
+  });
+
   it('injects component wind and perish signals at init, preserves live queries and stops world tasks on disposal', () => {
     const state = createWorldState({ elapsedSeconds: 0, systems: {} });
     const cleanups: (() => void)[] = [];
     const wind = state.getWatchWorldContent(WorldContentKey.Wind, stop => cleanups.push(stop));
     const perish = state.getWatchWorldContent(WorldContentKey.PerishClock, stop => cleanups.push(stop));
+    const moon = state.getWatchWorldContent(WorldContentKey.Moon, stop => cleanups.push(stop));
     const windChanged = vi.fn(), perishChanged = vi.fn();
     wind.subscribe(windChanged); perish.subscribe(perishChanged);
     const updater = createWorldClockUpdater(state, 0);
@@ -26,6 +88,9 @@ describe('session world temperature', () => {
       expect(wind.scheduler).toBe(state.scheduler);
       expect(perish.scheduler).toBe(wind.scheduler);
       expect(perish.perishClock).toBe(state.perishClock);
+      expect(moon.peek()).toEqual(state.moon.peek());
+      state.SetMoonPhase('half', false);
+      expect(moon.peek()).toEqual({ phase: 'half', waxing: false });
 
       updater.update(1);
       state.scheduler.advanceTo(updater.elapsedSeconds);

@@ -1,9 +1,9 @@
-import { createSignal, readonlySignal } from '../../signals/src/signal.ts';
+import { createSignal, readonlySignal, createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal } from '../../signals/src';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
+import type { Vector3 } from 'three';
 
-interface Position { x: number; z: number }
-export interface PlayerProxInst { isValid(): boolean; getPosition(): Position }
+export interface PlayerProxInst { isValid(): boolean; getPosition(): Vector3 }
 
 /** playerprox.lua's default AnyPlayer mode. No save data; world sleep stops its periodic task. */
 export class PlayerProx {
@@ -16,15 +16,21 @@ export class PlayerProx {
   private far = 3;
   private period = 10 / 30;
   private readonly inst: PlayerProxInst;
-  private readonly players: () => readonly Position[];
+  private readonly playerpositions?: WorldContentSignal<Vector3[]>;
+  private stopPlayers?: () => void;
   private onnear?: () => void;
   private onfar?: () => void;
 
-  constructor(inst: PlayerProxInst, scheduler: GameTimeScheduler, players: () => readonly Position[]) {
-    this.inst = inst; this.players = players;
+  constructor(inst: PlayerProxInst, scheduler: GameTimeScheduler, getWatchWorldContent?: GetWatchWorldContent) {
+    this.inst = inst;
+    this.playerpositions = getWatchWorldContent?.(WorldContentKey.PlayerPositions, stop => { this.stopPlayers = stop; });
     this.timer = new ComponentTimer(scheduler, () => {
       this.ForceUpdate();
       if (this.enabled && !this.disposed) this.timer.start(this.period);
+    });
+    if (this.playerpositions) createEffect(() => {
+      this.playerpositions!.get();
+      this.ForceUpdate();
     });
     this.Schedule();
   }
@@ -41,7 +47,7 @@ export class PlayerProx {
     if (!this.enabled || this.disposed || !this.inst.isValid()) return;
     const origin = this.inst.getPosition(), wasClose = this.close.peek();
     const distance = wasClose ? this.far : this.near;
-    const isClose = this.players().some(point => (point.x - origin.x) ** 2 + (point.z - origin.z) ** 2 < distance ** 2);
+    const isClose = this.playerpositions?.peek().some(point => point.distanceToSquared(origin) < distance ** 2) ?? false;
     if (wasClose === isClose) return;
     this.close.set(isClose);
     if (isClose) this.onnear?.(); else this.onfar?.();
@@ -49,5 +55,7 @@ export class PlayerProx {
   Stop(): void { this.enabled = false; this.timer.stop(); }
   OnEntityWake(): void { this.Schedule(); this.ForceUpdate(); }
   OnEntitySleep(): void { this.ForceUpdate(); this.Stop(); }
-  dispose(): void { this.disposed = true; this.Stop(); }
+  dispose(): void {
+    this.disposed = true; this.Stop(); this.stopPlayers?.(); this.stopPlayers = undefined;
+  }
 }

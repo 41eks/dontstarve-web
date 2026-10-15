@@ -1,8 +1,8 @@
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { PreloadSounds } from './sound';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Tool } from '../../componets/src/tool';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { PlaySound, PreloadSounds } from './sound';
 
 export const SHOVEL_USES = 25; // tuning.lua; gold consumes 1 / GOLDENTOOLFACTOR = .25 per DIG.
 export function configureShovelEntity(entity: ItemEntity): void {
@@ -40,13 +40,9 @@ export async function loadShovelEquipment(assets: GroundItemAssets, tool: Shovel
   return { tool, symbol: swap.symbol, builds: [skin ?? base] };
 }
 
-export function resolveShovelPlayerSprite(equipment: ShovelEquipment, element: AnimElement): ResolvedSprite[] {
-  const symbol = smallHash(equipment.symbol);
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, symbol, element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-    // Source invisible skins override the held symbol with no visible frame.
-    if (source.build.symbols.has(symbol)) return [];
-  }
-  return [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareShovelVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const equipment = await loadShovelEquipment(assets, item.prefab as ShovelTool, item.skinId);
+  const visual = handEquipmentVisual(item, equipment.builds, equipment.symbol);
+  return { ...visual, onequip(owner) { visual.onequip(owner); if (item.prefab === 'goldenshovel') PlaySound('dontstarve/wilson/equip_item_gold'); } };
+};

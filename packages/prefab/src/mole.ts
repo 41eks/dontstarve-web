@@ -296,7 +296,7 @@ export function configureMoleEntity(entity: ItemEntity): void {
   if (!entity.components.inventoryitem.owner) perishable.StopPerishing();
 }
 export function createMoleGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const assets = new ArchiveSpriteAssets(context.animationBaseUrl, 'mole');
+  const assets = new ArchiveSpriteAssets('mole');
   return {
     itemIds: [MOLE_ID], configureEntity: configureMoleEntity,
     create: async () => {

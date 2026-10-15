@@ -1,6 +1,29 @@
 # 按 tile 管理场景实体生命周期
 
-本文记录后续实施方案：每个 tile 持有一个活动状态 signal，玩家跨 tile 时由场景管理器更新变化的 tile，prefab 用 `createMemo` 派生自身的活动状态。当前 [stafflight.ts](../packages/prefab/src/stafflight.ts) 仍逐帧检查距离，[ProximityEntities](../packages/prefab/src/proximityEntities.ts) 仍遍历实体检查距离；本文中的统一 tile 管理器、响应式接入和调度接口尚未实现。
+本文记录按 tile 管理生命周期的实施方案：每个 tile 持有一个活动状态 signal，玩家跨 tile 时更新变化的 tile，prefab 读取缓存 memo 派生自身的活动状态。活动网格和温泉的显隐接入已实现；当前 [stafflight.ts](../packages/prefab/src/stafflight.ts) 仍逐帧检查距离，[ProximityEntities](../packages/prefab/src/proximityEntities.ts) 仍遍历实体检查距离，统一的场景生命周期调度和资源卸载尚未实现。
+
+[worldContent.ts](../packages/signals/src/worldContent.ts) 已提供 `GetTileStateAtPoint(position, radius = 10)`，从当前绑定世界解析 tile 查询服务，返回固定位置的 `Memo<boolean> | undefined`，调用方无需传入玩家位置源。世界初始化时通过 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `GetTileStateAtPoint(playerPosition)` 柯里化绑定源，将返回的查询函数注入 `WorldContentEnvironment.getTileStateAtPoint`；`world.getTileStateAtPoint(position, radius)` 始终查询所属世界，全局导出查询当前绑定世界。signals 包只定义服务协议和解析入口，网格计算及缓存仍由 tileManager 管理。
+
+当前 `WorldState` 从自己的 `playerpositions` 快照纯派生首个玩家位置；没有玩家时为 `undefined`，所有 tile inactive。位置沿用现有初始化和每 60 活动帧采样，不改变更新频率或增加多人并集。范围采用下述方形规则，半径须为非负整数；目标超出 84×84 网格或 X/Z 无效时返回 `undefined`，玩家 X/Z 无效时发布 inactive。缓存按世界绑定的位置源隔离，同一世界、tile 和半径的查询始终返回同一个 memo；不同世界或半径独立。
+
+每个位置源仅创建一个私有 `watchSignal` 桥接和一个普通 `createEffect` 管理器。每个已使用的半径拥有独立的 84×84 `titlestates: Signal<boolean>[][]`。玩家跨 tile 后，先遍历旧活动方形区域，将不属于新区域的格子设为 inactive；重叠区域保持原值。随后从新玩家格开始，按方形螺旋逐圈激活新区域，超过活动半径立即停止，仅写入变化的 signal。整个过程用 `batch()` 一起提交，先关闭旧区域再激活新区域，传送也不会遗留旧 active 格。
+
+第 0 圈为玩家格；其余各圈从负 X、负 Z 的角开始，依次沿 +X、+Z、−X、−Z 遍历四边，角点不重复。地图边缘裁剪每条边，玩家在地图外时跳过完全不相交的内圈，不因单个越界格终止遍历。玩家坐标无效时只关闭旧区域，没有全图兜底遍历。
+
+同 tile 内移动直接跳过遍历。每个缓存 memo 仅执行 `createMemo(() => state.get())`，不直接依赖玩家位置，因而只有活动值变化的 tile memo 会重算。查询复用更新好的状态；新半径第一次查询时初始化网格。每次跨 tile 至多检查旧、新两个活动区域，即 `2 × (2R + 1)²` 格，地图边缘进一步裁剪；默认 `R = 10` 至多 882 格，不再扫描全图 7056 格。当前已实现单玩家方形区域差集与半径短路；多人并集和缓冲圈仍待接入。
+
+返回值支持 `awake()`、`get()`、`peek()`、`subscribe()`。memo 由缓存拥有，单个 prefab 移除时只释放自己的 effect／订阅，不调用共享 memo 的 `dispose()`；`WorldState.dispose()` 调用 `DisposeTileStates(playerPosition)` 统一释放全部 memo、排队的管理器 effect 和位置监听，再释放首个玩家位置 memo。显式调用某个 tile memo 的 `dispose()` 会将它从缓存移除，下次查询重新创建；某半径的最后一个 memo 释放时回收对应网格，整个缓存的最后一个 memo 释放时解除位置桥接。重复查询不增加引用计数，重复释放无影响。普通管理器 effect 按现有微任务调度，位置写入后的派生结果在后续宏任务观察；尚未接入帧阶段、缓冲圈和实体生命周期。
+
+[hotspring.ts](../packages/prefab/src/hotspring.ts) 先接入显隐与碰撞切换：场景向管理器注入所属世界的查询函数，每个温泉用私有 `watchSignal` 监听脚点所属 tile，并通过普通 effect 更新活动集合、场景模型和物理体。inactive 时停止该温泉动画更新，保留原模型、逻辑记录、heater、bathbombable 和存档状态；返回范围时恢复同一实例，不重播生成或投入沐浴球动作。此阶段不释放休眠模型资源，不实现 Lua 的蒸汽 FX 分支。单个温泉永久移除时清理自己的监听，不释放共享 memo，也不影响同 tile 其他温泉。没有注入 tile 服务或查询返回 `undefined`（包括超出网格）时回退为 active，保证模型、碰撞体和动画正常工作；返回值为有效 memo 且状态为 `false` 时仍按 inactive 处理。
+
+```ts
+import { GetTileStateAtPoint } from '@dontstarve-web/signals';
+
+const active = GetTileStateAtPoint(position); // 默认 10 格，同 tile 共用缓存 memo
+const stop = active?.subscribe(isActive => queueTransition(isActive));
+// prefab 永久移除时只取消自己的订阅；共享 memo 随世界释放。
+stop?.();
+```
 
 开发约束见 [AGENTS.md](../AGENTS.md)，响应式原语见 [packages/signals](../packages/signals/README.md)，存档与渲染规则见 [存档系统](dst-save-system.md)、[billboard 绘制](dst-billboard-rendering.md)。
 
@@ -116,11 +139,11 @@ const stopWatching = createEffect(() => {
 
 ### 现有 createMemo 的实施前提
 
-[signal.ts](../packages/signals/src/signal.ts) 当前的 `createMemo` 用内部 `createEffect` 计算缓存，依赖变化在微任务中处理。因此 `tile.active.set(false)` 后立即读取 `awake()`，可能仍读到旧值；同一个任务内的多次修改也会合并。不能假设 tile 的同步 `subscribe()` 与 memo 的更新时间相同。
+[signal.ts](../packages/signals/src/signal.ts) 当前的 `createMemo` 使用同步内部 effect 计算缓存；`batch()` 在最外层提交时结算 memo，再通知同步订阅者。普通 `createEffect` 仍在微任务中合并更新，观察它的结果时在后续宏任务断言。
 
-实施时需要建立明确的帧阶段：更新游戏时钟及位置 → 发布 tile 变化 → 完成 memo／effect 更新 → 提交生命周期转换 → 更新活动实体 → 渲染。响应式调度器需要提供可控的刷新阶段，或提供等价的同步派生值机制；仅添加一个 transition 队列，不能解决 memo 尚未更新的问题。`queueTransition()` 按实体合并同一提交阶段的最终活动状态，并先处理卸载，再处理加载。保存、停止游戏和场景退出也需要处理或取消待提交转换。
+实施时仍需要建立明确的帧阶段：更新游戏时钟及位置 → 发布 tile 变化 → 完成 memo／effect 更新 → 提交生命周期转换 → 更新活动实体 → 渲染。同步 memo 已能提供派生状态，但不能假设普通 effect 的转换队列已经提交；保持现有响应式调度语义。`queueTransition()` 按实体合并同一提交阶段的最终活动状态，并先处理卸载，再处理加载。保存、停止游戏和场景退出也需要处理或取消待提交转换。
 
-当前 `createMemo` 只返回 getter，未暴露内部 effect 的释放函数。仅调用示例中的 `stopWatching()`，不会解除 memo 对 tile 的订阅。实施前必须补齐 memo 的可释放所有权，例如可释放的 memo accessor 或响应式 scope，确保永久移除 prefab 时清理内部依赖与排队任务。本文不把 `memo.dispose()` 或刷新接口描述为现有 API。
+当前 `createMemo` 返回可调用的 `Memo<T>`，支持 `get()`、`peek()`、`subscribe()` 和 `dispose()`。仅调用示例中的 `stopWatching()` 不会解除独立 memo 对 tile 的订阅；拥有者还需释放 `awake`，或通过私有 `watchSignal` 的统一清理释放其拥有的消费者，确保永久移除 prefab 时清理内部依赖与排队任务。
 
 ## active 与 inactive 的生命周期
 

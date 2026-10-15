@@ -66,7 +66,7 @@ it('derives rotation parity, banks and eight-faced facings from fence.lua and th
 });
 
 it('selects the facing clip and mirrors left-hand views of the shared side art', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   try {
     const sprite = await createArchiveSprite(assets, { animationArchive: 'fence.zip', buildArchives: ['fence.zip'],
       bank: 'fence', animation: 'idle', loop: false });
@@ -171,7 +171,7 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
 }, 20000);
 
 it('draws the fence item and every item skin from the shared catalog, matching the world skins', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   try {
     const itemSkins = Object.keys(GROUND_ITEM_DEFINITIONS.fence_item.skinArchives);
     expect(itemSkins.map(skin => fenceWorldSkin('fence_item', skin))).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));

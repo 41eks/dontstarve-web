@@ -65,15 +65,15 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
   let ground = true;
   const wind = new WorldWind(scheduler, () => 0);
   const sources: WorldContentEnvironment = {
-    snowLevel: createSignal(0), scheduler, wind: wind.windchange, perishTick: createSignal({ time: 0, total: 0 }),
+    playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), scheduler, wind: wind.windchange, perishTick: createSignal({ time: 0, total: 0 }),
     temperature: createSignal(30), cycle: createSignal('day'), season: createSignal({ season: 'spring', progress: .5 }),
   };
   const world: TumbleweedWorld = { scheduler, wind,
     getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), cameraHeading: heading, random: () => .5,
     isOnValidGround: () => ground, constrainPosition: () => undefined,
     dropLoot: (items, position) => drops.push({ items, position }) };
-  const manager = new TumbleweedManager(scene, physics, '/dst/data/anim', world);
-  const restoredManager = new TumbleweedManager(new THREE.Scene(), new CANNON.World(), '/dst/data/anim', { ...world, wind: undefined, getWatchWorldContent: undefined });
+  const manager = new TumbleweedManager(scene, physics, world);
+  const restoredManager = new TumbleweedManager(new THREE.Scene(), new CANNON.World(), { ...world, wind: undefined, getWatchWorldContent: undefined });
   const quaternion = new THREE.Quaternion();
   const step = (seconds: number) => {
     for (let i = 0; i < Math.round(seconds * 30); i++) {

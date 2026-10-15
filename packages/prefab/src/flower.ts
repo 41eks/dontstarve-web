@@ -6,7 +6,7 @@ import {
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { newEntityId } from './saveRecord';
-import type { WorldContext } from './worldContext';
+import type { WorldContext, WorldEventEmitter } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import type { MoonTreeForest } from './moontree';
 import { actionEntity } from './actionEntity';
@@ -19,7 +19,7 @@ export interface FlowerBurningWorld {
   scheduler: GameTimeScheduler;
   season?: ReadonlySignal<SeasonState>;
   /** DefaultBurntFn: one ash at the burnt flower's position. */
-  spawnAsh(position: THREE.Vector3): void;
+  worldEvents: WorldEventEmitter;
 }
 
 export interface ButterflyPlantingWorld {
@@ -209,7 +209,7 @@ export class FlowerPlanting {
         onIgnite: () => { flower.persists = false; },
         onExtinguish: () => { flower.persists = true; },
         onBurnt: () => {
-          this.burning!.spawnAsh(model.position.clone());
+          this.burning!.worldEvents.emit('spawnAsh', model.position.clone());
           this.removeFlower(flower);
         },
       }, { scheduler: this.burning.scheduler, root: this.world.scene, fire: this.fireFx });

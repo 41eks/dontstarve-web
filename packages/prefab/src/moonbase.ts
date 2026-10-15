@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
 import { ItemEntity, type ItemEntityRegistry, type InventoryStack } from '@dontstarve-web/inventory';
 import { createSpriteFactory, loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
@@ -61,21 +61,29 @@ class Moonbase {
   private readonly ownsScheduler: boolean;
   private readonly world: WorldContext | undefined;
   private readonly fullMoon;
+  private readonly moon?: WorldContentSignal<WorldMoonState>;
+  private readonly cycle?: WorldContentSignal<WorldPhase>;
+  private readonly cleanups: (() => void)[] = [];
   private readonly initializer: ComponentTimer;
   private readonly musicPulse: ComponentTimer;
-  private stopFullMoon?: () => void;
   private effects: MoonbaseEffects;
   private disposed = false;
   constructor(model: THREE.Group, resources: MoonbaseResources, items?: ItemEntityRegistry, world?: WorldContext) {
     this.model = model; this.resources = resources; this.items = items;
     this.world = world; this.ownsScheduler = !world?.scheduler;
     this.scheduler = world?.scheduler ?? new GameTimeScheduler();
-    this.fullMoon = world?.fullMoon ?? readonlySignal(createSignal(false));
+    this.moon = world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
+    this.cycle = world?.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
+    this.fullMoon = createMemo(() => this.isFullMoon(true));
     this.timer = new Timer(this.scheduler, name => this.onTimerDone(name), Object.keys(MOONBASE_TIMER_LIMITS));
     this.effects = new MoonbaseEffects(model, world?.scene ?? new THREE.Scene(), this.scheduler, resources);
     this.musicPulse = new ComponentTimer(this.scheduler, () => this.pushMusic());
     this.initializer = new ComponentTimer(this.scheduler, () => {
-      this.stopFullMoon = this.fullMoon.subscribe(full => {
+      let previous = this.fullMoon.peek();
+      createEffect(() => {
+        const full = this.isFullMoon(true);
+        if (full === previous) return;
+        previous = full;
         if (full) this.timer.StartTimer('fullmoonstartdelay', MOONBASE_CHARGE_DELAY);
         else this.timer.StopTimer('fullmoonstartdelay');
         this.toggleCharge();
@@ -111,6 +119,11 @@ class Moonbase {
     model.userData.components.moonbase = this;
     this.makeRepairable();
     this.initializer.start(0);
+  }
+  private isFullMoon(track = false): boolean {
+    const moon = track ? this.moon?.get() : this.moon?.peek();
+    const cycle = track ? this.cycle?.get() : this.cycle?.peek();
+    return moon?.phase === 'full' && cycle === 'night';
   }
   private chargePhase(track = false): MoonbaseChargePhase {
     const staff = track ? this.staffState.get() : this.staffState.peek();
@@ -289,7 +302,9 @@ class Moonbase {
   }
   dispose(): void {
     if (this.disposed) return;
-    this.disposed = true; this.stopFullMoon?.(); this.initializer.stop(); this.musicPulse.stop(); this.timer.dispose(); this.effects.dispose();
+    this.disposed = true;
+    this.cleanups.splice(0).forEach(stop => stop()); this.fullMoon.dispose();
+    this.initializer.stop(); this.musicPulse.stop(); this.timer.dispose(); this.effects.dispose();
     for (const sound of this.sounds) sound.stop();
     this.sounds.clear();
     const staff = this.staffState.peek();

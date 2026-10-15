@@ -1,7 +1,9 @@
+import { AnimState } from '../src/animState';
+import { smallHash } from '../src/animationAssets';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { configureShovelEntity, loadShovelEquipment, resolveShovelPlayerSprite } from '../../prefab/src/shovel';
+import { configureShovelEntity, loadShovelEquipment } from '../../prefab/src/shovel';
 import { ShovelActionController } from '../../stategraphs/src/shovel';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
@@ -25,7 +27,7 @@ function setup(player = new THREE.Group(), random = () => 0.9) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
-  const farm = new FarmPlowPlacement(world, turf, '/dst/data', async () => {}, () => [], random);
+  const farm = new FarmPlowPlacement(world, turf, async () => {}, () => [], random);
   return { farm, turf, world };
 }
 function advance(animation: WilsonAnimationController, frames: number) {
@@ -33,7 +35,7 @@ function advance(animation: WilsonAnimationController, frames: number) {
 }
 
 it('loads original ground and separate equipped art, visible skins and hidden equipped symbols', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   try {
     const regular = await createGroundItemSprite(assets, 'shovel', 'shovel_feathered');
     const gold = await createGroundItemSprite(assets, 'goldenshovel');
@@ -48,11 +50,15 @@ it('loads original ground and separate equipped art, visible skins and hidden eq
     expect((await loadShovelEquipment(assets, 'shovel')).builds[0].build.name).toBe('swap_shovel');
     expect((await loadShovelEquipment(assets, 'goldenshovel')).builds[0].build.name).toBe('swap_goldenshovel');
     const skin = await loadShovelEquipment(assets, 'shovel', 'shovel_feathered');
-    const frames = resolveShovelPlayerSprite(skin, { imageIndex: 0 } as AnimElement);
+    const anim = new AnimState(() => {});
+    const anchor = { imageHash: smallHash('swap_object'), imageIndex: 0 } as AnimElement;
+    anim.OverrideSymbol('swap_object', skin.builds, skin.symbol);
+    const frames = anim.ResolveSymbol(anchor)!;
     expect(frames).toHaveLength(1);
     expect(frames[0].materials[0].name).toBe('ground:shovel_feathered');
-    expect(resolveShovelPlayerSprite(await loadShovelEquipment(assets, 'goldenshovel', 'goldenshovel_invisible'),
-      { imageIndex: 0 } as AnimElement)).toHaveLength(0);
+    const invisible = await loadShovelEquipment(assets, 'goldenshovel', 'goldenshovel_invisible');
+    anim.OverrideSymbol('swap_object', invisible.builds, invisible.symbol);
+    expect(anim.ResolveSymbol(anchor)).toHaveLength(0);
   } finally { assets.dispose(); }
 });
 

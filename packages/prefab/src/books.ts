@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { ReadonlySignal, WorldMoonPhase } from '@dontstarve-web/signals';
+import { WorldContentKey, type GetWatchWorldContent, type ReadonlySignal, type WorldMoonPhase } from '@dontstarve-web/signals';
 import type { InventoryItemSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { BookDef, BufferedActionObject } from '@dontstarve-web/stategraphs';
 import { Book, type BookFxWorld, type BookReaderInst, type BookResult } from '../../componets/src/book';
@@ -19,6 +19,7 @@ export type BookId = typeof BOOK_SILVICULTURE_ID | typeof BOOK_RAIN_ID | typeof 
 export interface BookWorld extends BookFxWorld<BookReader> {
   readonly root: THREE.Object3D;
   readonly scheduler: GameTimeScheduler;
+  readonly getWatchWorldContent: GetWatchWorldContent;
   /** TheWorld.state.precipitation and the `ms_forceprecipitation` event. */
   readonly weather: {
     readonly preciptype: ReadonlySignal<string>;
@@ -26,7 +27,6 @@ export interface BookWorld extends BookFxWorld<BookReader> {
   };
   /** TheWorld.state.moonphase and the `ms_setmoonphase` event. */
   readonly moon: {
-    readonly phase: ReadonlySignal<WorldMoonPhase>;
     SetMoonPhase(phase: WorldMoonPhase): void;
   };
 }
@@ -99,9 +99,13 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
     // The cave refusal (NOMOONINCAVES) needs a cave world; the project only has the forest.
     // ANNOUNCE_BOOK_MOON_DAYTIME needs the unported talker component.
     fn(_inst, _reader, world) {
-      if (world.moon.phase.peek() === 'full') return [false, 'ALREADYFULLMOON'];
-      world.moon.SetMoonPhase('full');
-      return [true];
+      const cleanups: (() => void)[] = [];
+      try {
+        const moon = world.getWatchWorldContent(WorldContentKey.Moon, stop => cleanups.push(stop));
+        if (moon.peek().phase === 'full') return [false, 'ALREADYFULLMOON'];
+        world.moon.SetMoonPhase('full');
+        return [true];
+      } finally { cleanups.forEach(stop => stop()); }
     },
   },
 };

@@ -35,7 +35,7 @@ export class GroundPrefabRegistry {
   private readonly ownsScheduler: boolean;
 
   constructor(options: GroundPrefabOptions) {
-    this.assets = new GroundItemAssets(options.animationBaseUrl);
+    this.assets = new GroundItemAssets();
     this.ownsScheduler = options.scheduler === undefined;
     this.scheduler = options.scheduler ?? new GameTimeScheduler();
     const context = { ...options, scheduler: this.scheduler, assets: this.assets };

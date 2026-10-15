@@ -31,7 +31,7 @@ export async function checkReskinCasting() {
   player.position.set(0, 0, 8); scene.add(player);
   const animation = player.userData.animationController as WilsonAnimationController;
   const world = { scene, renderer, camera, ground, player };
-  const effects = new ReskinEffects(scene, '/dst/data/anim');
+  const effects = new ReskinEffects(scene);
   const buildings = new AnimatedBuildingPlacement(world, { treasurechest: TREASURE_CHEST_DEFINITION }, () => false);
   const root = await buildings.spawnFromSave('treasurechest', { id: 'e_chest',
     transform: { position: [0, 0, 0], rotationY: 0 }, components: { building: { state: 'open' } } });

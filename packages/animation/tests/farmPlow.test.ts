@@ -24,7 +24,7 @@ function setup() {
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
   const returnItem = vi.fn(async () => {});
   const blockers: { position: THREE.Vector3; tags?: string[] }[] = [];
-  const plow = new FarmPlowPlacement(world, turf, '/dst/data', returnItem, () => blockers, () => 0.5);
+  const plow = new FarmPlowPlacement(world, turf, returnItem, () => blockers, () => 0.5);
   const advance = async (seconds: number) => {
     for (let i = 0; i < Math.ceil(seconds / 0.1); i++) {
       plow.update(0.1, new THREE.Quaternion());
@@ -39,7 +39,7 @@ function item(remainingUses?: number) {
 }
 
 it('loads original packed ground art and the actual inventory atlas', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   try {
     const item = await createGroundItemSprite(assets, 'farm_plow_item');
     expect(GROUND_ITEM_DEFINITIONS.farm_plow_item).toMatchObject({

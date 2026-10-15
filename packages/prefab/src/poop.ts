@@ -50,7 +50,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
         if (disposed || controller || !entity || entity.isRemoved || entity.components.inventoryitem.owner) return;
         sprite.model.add(flies.model);
         controller = new FliesController(flies, entity.transform.position, context.scheduler!,
-          () => context.firefliesWorld.getPlayerPositions());
+          context.firefliesWorld.getWatchWorldContent);
         children.set(flies.model, { object: flies.model, footPosition: entity.transform.position,
           cameraDepth: 0, sortGroup: sprite.model.id, sortLayer: 2 });
         sprite.model.userData.flies = flies.model;

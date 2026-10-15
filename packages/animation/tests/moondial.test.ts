@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createSignal, readonlySignal, type WorldMoonPhase } from '@dontstarve-web/signals';
+import { bindTestWorld } from './worldContentFixture';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { MOONDIAL_DEFINITION, MOONDIAL_ID } from '../../prefab/src/moondial';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -19,11 +19,11 @@ async function createPlacement() {
   const stop = vi.fn();
   const play = vi.spyOn(sound, 'PlaySound').mockReturnValue({ stop, isPlaying: () => true, setVolume: vi.fn() });
   const scheduler = new GameTimeScheduler();
-  const moon = createSignal<{ phase: WorldMoonPhase; waxing: boolean }>({ phase: 'new', waxing: true });
+  const { moon, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler, moon: readonlySignal(moon) } as unknown as WorldContext;
+    ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler, getWatchWorldContent } as unknown as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { [MOONDIAL_ID]: MOONDIAL_DEFINITION }, () => false);
-  return { placement, scheduler, moon, play, stop };
+  return { placement, scheduler, moon, play, stop, dispose: () => { placement.dispose(); unbind(); scheduler.dispose(); } };
 }
 
 const finish = (sprite: SpriteController, seconds = 4) => { for (let i = 0; i < seconds * 30; i++) sprite.update(1 / 30); };
@@ -36,7 +36,7 @@ const dayMoon = (day: number) => {
 };
 
 it('keeps phase look and playback through reskin and records only its skin', async () => {
-  const { placement, moon } = await createPlacement();
+  const { placement, moon, dispose } = await createPlacement();
   try {
     await placement.spawn(MOONDIAL_ID);
     moon.set(dayMoon(14)); // waning half
@@ -47,5 +47,10 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     expect((model.userData.animationController as SpriteController).currentAnimation).toBe('wane_to_half');
     expect(getPrefabLightOverride(model)).toBe(.1);
     expect(placement.exportRecords()[0].record.components.building).toMatchObject({ skinId: 'moondial_an' });
-  } finally { placement.dispose(); }
+    placement.dispose();
+    const readMoon = vi.spyOn(moon, 'get');
+    moon.set({ phase: 'full', waxing: true });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(readMoon).not.toHaveBeenCalled();
+  } finally { dispose(); }
 });

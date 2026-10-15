@@ -1,7 +1,7 @@
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Equippable } from '../../componets/src/equippable';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
 
 export const NIGHTSWORD_DAPPERNESS = -100 / (30 * 10); // tuning.lua CRAZINESS_MED; -20 sanity/minute.
 
@@ -23,7 +23,8 @@ export async function loadNightswordEquipment(assets: GroundItemAssets, skinId?:
   return { build: await assets.loadBuild(skinArchive ?? 'swap_nightmaresword.zip') };
 }
 
-export function resolveNightswordPlayerSprite(equipment: NightswordEquipment, element: AnimElement): ResolvedSprite[] {
-  const image = findImage(equipment.build.build, smallHash('swap_nightmaresword'), element.imageIndex);
-  return image ? [{ element, image, materials: equipment.build.materials }] : [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareNightswordVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const equipment = await loadNightswordEquipment(assets, item.skinId);
+  return handEquipmentVisual(item, [equipment.build], 'swap_nightmaresword');
+};

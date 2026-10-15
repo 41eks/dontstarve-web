@@ -33,7 +33,7 @@ it('creates individual unequippable stones with source tags and preserves their 
 });
 
 it('renders the source neutral pose for base and skinned stones and resolves their crafting icons', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   try {
     for (const skin of [undefined, 'heatrock_fantasy']) {
       const sprite = await createGroundItemSprite(assets, 'heatrock', skin);

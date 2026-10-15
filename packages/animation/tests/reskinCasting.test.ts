@@ -67,7 +67,7 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
 it.each([undefined, 'reskin_tool_brush'])(
   'draws %s puff with its source build and removes it at animation end', async (skinId) => {
     const scene = new THREE.Scene();
-    const effects = new ReskinEffects(scene, '/dst/data/anim');
+    const effects = new ReskinEffects(scene);
     await effects.prepare(skinId);
     effects.spawn({ prefabId: 'cookpot', position: new THREE.Vector3(4, 0, 7) }, skinId);
     const [{ object, footPosition }] = effects.renderEntities;

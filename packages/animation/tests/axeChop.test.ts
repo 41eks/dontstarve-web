@@ -1,3 +1,5 @@
+import { EventEmitter } from '@dontstarve-web/signals';
+import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -55,7 +57,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'], loadRadius: 20,
   });
   scene.add(forest.group);
-  forest.bindWorld({ camera, scene: new THREE.Scene(), spawnAsh: vi.fn(), dropLoot });
+  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), dropLoot });
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
   const controller = new PickaxeActionController(world, animation, locomotor, inventory.handEquipment, () => forest.chopTargets, undefined, 'CHOP');
@@ -121,7 +123,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
       positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'], loadRadius: 20,
     });
     try {
-      restored.bindWorld({ camera, scene: new THREE.Scene(), spawnAsh: vi.fn(), dropLoot });
+      restored.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), dropLoot });
       restored.restoreState('tree', { stump: true });
       restored.updateNearby(player.position);
       expect(restored.entities[0].model!.userData.animationController.currentAnimation).toBe('stump_tall');
@@ -144,7 +146,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     positions: [new THREE.Vector3(1, 0, 0), new THREE.Vector3(8, 0, 0)],
     entityIds: ['stump', 'standing'], loadRadius: 20,
   });
-  forest.bindWorld({ camera, scene: new THREE.Scene(), spawnAsh: vi.fn(), dropLoot });
+  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), dropLoot });
   forest.restoreState('stump', { stump: true });
   player.position.set(1, 0, 3);
   forest.updateNearby(player.position);

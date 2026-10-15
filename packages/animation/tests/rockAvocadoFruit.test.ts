@@ -35,7 +35,7 @@ function setup() {
   const { season, snowLevel } = bindTestWorld(scheduler);
   const bushes = new RockAvocadoBushManager(scene, '/dst/data/anim', { physics,
     prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
-  const sprouts = new RockAvocadoSaplingManager(scene, '/dst/data/anim', { scheduler, season, bushes,
+  const sprouts = new RockAvocadoSaplingManager(scene, { scheduler, season, bushes,
     prepareSpawn: definition => ground.prepareSpawn(definition) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {

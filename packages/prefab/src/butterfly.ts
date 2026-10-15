@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import {
   createAnimatedSpriteFactory,
   createSpriteFactory,
@@ -66,7 +67,7 @@ export interface ButterflyFlower {
 }
 
 export interface ButterflyWorld {
-  isDay(): boolean;
+  getWatchWorldContent?: GetWatchWorldContent;
   /** Player and other entities carrying DST's scarytoprey tag. */
   getThreatPositions(): readonly THREE.Vector3[];
   getFlowers(): readonly ButterflyFlower[];
@@ -202,6 +203,8 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
   private readonly animation: ButterflyAnimation;
   private readonly sharedEntities: ButterflyEntities;
   private readonly butterflyWorld: ButterflyWorld;
+  private readonly cycle?: WorldContentSignal<WorldPhase>;
+  private readonly cleanups: (() => void)[] = [];
   private readonly getOthers: () => readonly ButterflyCreature[];
   private readonly randomSource: () => number;
   private readonly onAnimationOver: () => void;
@@ -217,6 +220,7 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
     this.transform = transform;
     this.animation = animation;
     this.butterflyWorld = butterflyWorld;
+    this.cycle = butterflyWorld.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
     this.getOthers = getOthers;
     this.randomSource = random;
     this.dropLootItems = dropLoot;
@@ -334,6 +338,7 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
     this.valid = false;
     this.brain.Stop();
     this.stopPhysics();
+    this.cleanups.splice(0).forEach(stop => stop());
   }
   isValid(): boolean { return this.valid && !this.removed; }
 
@@ -360,6 +365,11 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
     this.bufferedaction = undefined;
     this.removed = true;
     this.valid = false;
+  }
+
+  dispose(): void {
+    this.onPutInInventory();
+    this.cleanups.splice(0).forEach(stop => stop());
   }
 
   /** One frame: brain, locomotor, stategraph, then the physics motor. */
@@ -407,7 +417,8 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
         .sort((a, b) => distanceSquared(origin, a.getPosition()) - distanceSquared(origin, b.getPosition()));
     };
     return {
-      get isDay() { return world.isDay(); },
+      // butterflybrain.lua tests isday when the behaviour tree evaluates its go-home branch.
+      get isDay() { return (creature.cycle?.peek() ?? 'day') === 'day'; },
       findEntity: (from, radius, fn, must, cant, oneOf) =>
         find(from, radius, must, cant, oneOf).find(entity => fn === undefined || fn(entity, from)),
       getClosestInstWithTag: (tags, from, radius) => find(from, radius, tags)[0],
@@ -477,7 +488,7 @@ export class ButterflyAssets {
       },
       update: (dt: number) => creature?.update(dt),
       isRemoved: () => creature?.removed ?? false,
-      dispose() { removeInventoryEvents(); creature?.onPutInInventory(); factory.disposeSprite(model); },
+      dispose() { removeInventoryEvents(); creature?.dispose(); factory.disposeSprite(model); },
     };
   }
 }

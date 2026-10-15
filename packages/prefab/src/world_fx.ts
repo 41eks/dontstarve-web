@@ -45,9 +45,9 @@ export class WorldFx {
   private readonly active = new Set<FxInstance>();
   private disposed = false;
 
-  constructor(scene: THREE.Scene, animationBaseUrl: string) {
+  constructor(scene: THREE.Scene) {
     this.scene = scene;
-    this.assets = new GroundItemAssets(animationBaseUrl);
+    this.assets = new GroundItemAssets();
   }
 
   /** Load art and sound before the effect is spawned. */

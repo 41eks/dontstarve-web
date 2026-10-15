@@ -1,3 +1,5 @@
+import { EventEmitter } from '@dontstarve-web/signals';
+import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -22,7 +24,7 @@ async function setup() {
   const { snowLevel, unbind } = bindTestWorld(scheduler);
   const forest = await createMoonTreeForest('/dst/data/anim', { positions: [], random: () => .5, loadRadius: 20 });
   let spring = false;
-  forest.bindWorld({ camera, scene: new THREE.Scene(), spawnAsh: vi.fn(), scheduler, dropLoot, growthDuration: seconds => seconds * (spring ? .75 : 1) });
+  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), scheduler, dropLoot, growthDuration: seconds => seconds * (spring ? .75 : 1) });
   forest.updateNearby(new THREE.Vector3());
   return { forest, scheduler, camera, dropLoot, snowLevel, setSpring: () => { spring = true; },
     dispose: () => { forest.dispose(); unbind(); scheduler.dispose(); } };

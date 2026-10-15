@@ -1,7 +1,7 @@
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { PreloadSounds } from './sound';
 import type { FarmHoeTool } from '@dontstarve-web/stategraphs/farm_hoe';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { PreloadSounds } from './sound';
 
 export { isFarmHoeTool, type FarmHoeTool } from '@dontstarve-web/stategraphs/farm_hoe';
 export interface FarmHoeEquipment {
@@ -25,13 +25,8 @@ export async function loadFarmHoeEquipment(assets: GroundItemAssets, tool: FarmH
   return { tool, symbol: swap.symbol, builds: [skin ?? base] };
 }
 
-export function resolveFarmHoePlayerSprite(equipment: FarmHoeEquipment, element: AnimElement): ResolvedSprite[] {
-  const symbol = smallHash(equipment.symbol);
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, symbol, element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-    // Source invisible skins override the held symbol with no visible frame.
-    if (source.build.symbols.has(symbol)) return [];
-  }
-  return [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareFarmHoeVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const equipment = await loadFarmHoeEquipment(assets, item.prefab as FarmHoeTool, item.skinId);
+  return handEquipmentVisual(item, equipment.builds, equipment.symbol);
+};

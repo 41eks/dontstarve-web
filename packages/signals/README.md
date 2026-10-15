@@ -50,7 +50,15 @@ createEffect(() => this.runTest(this.cycle.get()));
 
 `WorldWind` 和 `WorldPerishClock` 同样保留组件内的计算、计时和清理。世界 init 创建两者并注入原有来源：`Wind`（`wind`）对应 `worldwind.windchange` 的 `{ angle, velocity }`，重复角度仍因新对象而通知；`PerishClock`（`perishTick`）对应 `perishClock.snapshot` 的已结算 `{ time, total }`。风滚草在游戏场景内通过 `getWatchWorldContent(WorldContentKey.Wind, registerCleanup)` 创建私有监听，保留初始风向与后续变风的区别。
 
+`Moon`（`moon`）对应 `{ phase, waxing }`，在世界 init 时注入原有月相 memo 的只读视图；月相和盈亏状态一起发布。月晷通过 `getWatchWorldContent(WorldContentKey.Moon, registerCleanup)` 创建私有监听；月台各自监听 Moon 与 Cycle，并用纯 memo 派生满月夜。月之魔典只在一次阅读动作内创建并释放 Moon 监听，写入仍走 `SetMoonPhase`，保存与恢复仍由世界时钟负责。
+
+蝴蝶与萤火虫各自通过 `WorldContentKey.Cycle` 读取世界昼夜，不再从光照渲染器的 phase 反推。满月仍是 `night`；蝴蝶在行为树检查 `isday` 时读取私有信号，萤火虫在普通 effect 中统一处理光照显隐：读取私有昼夜／位置输入、放置状态及检查 timer 的只读状态；昼夜切换和丢弃后的 2～3 秒检查由游戏时间调度器推进，淡出后的 NET 禁用也由调度器完成，入栏／移除取消任务。逐帧更新只推进动画与光照插值。
+
 `SnowLevel`（`snowLevel`）在世界 init 时注入 `Weather.snowLevel` 的原有只读信号，计算、保存和恢复由天气组件负责。Pond 接收 `getWatchWorldContent` 并自行创建私有 SnowLevel signal，用普通 effect 的 `get()` 调用冻结／解冻方法；清理统一登记到池塘管理器。天气和世界时间仍按 60 活动帧结算。
+
+`PlayerPositions`（`playerpositions`）对应 `Vector3[]` 玩家位置快照。场景初始化时发布当前玩家位置，之后每 60 个活动游戏帧发布新的数组与位置副本；暂停帧不计数，时钟的保存／停止部分结算不会提前刷新位置或重置位置采样计数。当前场景记录本地玩家，协议支持多名玩家，不写入存档。萤火虫在 controller 中通过 getter 创建私有位置监听，用普通 effect 的 `get()` 响应位置快照变化，先按 Cycle 短路，白天不读取位置输入；便便苍蝇则由 `playerprox` 组件创建自己的私有监听，并调用组件方法刷新靠近／离开状态。位置查询使用 `Vector3.distanceToSquared()`，范围按 `TILE_SIZE / 4` 缩放；监听随拥有者的显式释放清理。
+
+`GetTileStateAtPoint(position, radius = 10)` 查询当前绑定世界的活动状态，返回缓存的 `Memo<boolean> | undefined`；`world.getTileStateAtPoint` 是固定绑定所属世界的同一查询服务。世界 init 通过 `tileManager.GetTileStateAtPoint(playerPosition)` 柯里化绑定来源，向 `WorldContentEnvironment.getTileStateAtPoint` 注入查询函数，调用方无需传递 `playerPosition`。signals 仅定义 `TileStateQuery` 协议并解析服务，不依赖游戏组件或计算网格。当前世界从上述快照纯派生首个玩家位置，无玩家时 inactive，采样频率不变；多人并集尚未接入。相同世界、tile 和半径共享一个 memo，消费者只释放自己的订阅；世界 dispose 统一释放网格缓存、排队的 effect 和位置派生 memo。半径为非负整数，默认使用方形范围；无效目标或网格外返回 `undefined`，未绑定 tile 服务时抛错。详见 [tile 生命周期](../../docs/tile-lifecycle.md)。
 
 本地 signal 同时附带只读 `perishClock` 服务引用（独立上下文可缺省），实际世界传入同一个组件的 `GetTick()`／`GetFrozenTick()` 接口，支持尚未发布及历史时间段的查询。快照只在 60 帧结算或显式 Flush 时发布；逐帧累计不写 signal。释放本地监听不会销毁这些共享服务，世界负责停止风向 timer、释放腐烂时钟的温度输入和共享 scheduler。数据／服务协议在本包定义，组件路径保留类型重新导出；组件实现仍在 `packages/componets`。
 

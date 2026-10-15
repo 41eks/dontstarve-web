@@ -9,6 +9,7 @@
     "./parseKtex": "./src/parseKtex.ts",
     "./textureLoader": "./src/textureLoader.ts",
     "./animationAssets": "./src/animationAssets.ts",
+    "./preloadArchives": "./src/preloadArchives.ts",
     "./hatAssets": "./src/hatAssets.ts",
     "./lightOverride": "./src/lightOverride.ts",
     "./renderOrder": "./src/renderOrder.ts",
@@ -22,7 +23,8 @@
     "./facing": "./src/facing.ts",
     "./recipes.json": "./recipes.json",
     "./bitmapFont": "./src/bitmapFont.ts",
-    "./atlasImage": "./src/atlasImage.ts"
+    "./atlasImage": "./src/atlasImage.ts",
+    "./animState": "./src/animState.ts"
   },
   "scripts": {
     "recipes:check": "node scripts/extract-recipes.mjs --check",

@@ -1,15 +1,14 @@
-import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
-import type { AnimElement, ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { findImage, smallHash } from '@dontstarve-web/animation/animationAssets';
-import * as THREE from 'three';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
-import { setPrefabLocalLight } from './localLight';
-import { TILE_SIZE } from './tile';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle } from '@dontstarve-web/signals';
+import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
 import type { SpellCastDoer, SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
+import * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { setPrefabLocalLight } from './localLight';
 import { PlaySound, PreloadSounds } from './sound';
+import { TILE_SIZE } from './tile';
 
 export const YELLOWSTAFF_ID = 'yellowstaff';
 export const YELLOWSTAFF_COLOUR = [223 / 255, 208 / 255, 69 / 255] as const;
@@ -87,14 +86,6 @@ export async function loadLightStaffEquipment(assets: GroundItemAssets, itemId: 
   return { builds: skin ? [skin, base] : [base], symbol: `swap_${itemId}` };
 }
 
-export function resolveYellowStaffPlayerSprite(equipment: YellowStaffEquipment, element: AnimElement): ResolvedSprite[] {
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, smallHash(equipment.symbol), element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-  }
-  return [];
-}
-
 /** staff_castinglight.lua's expanding light, on a separate child of the caster. */
 export class StaffCastingLight {
   readonly model = new THREE.Group();
@@ -136,3 +127,9 @@ export class StaffCastingLight {
     });
   }
 }
+
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareYellowstaffVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const [equipment] = await Promise.all([loadLightStaffEquipment(assets, item.prefab as StaffId, item.skinId), PreloadSounds(item.prefab === 'greenstaff' ? 'dontstarve/wilson/use_gemstaff' : 'dontstarve/common/staffteleport')]);
+  return handEquipmentVisual(item, equipment.builds, equipment.symbol);
+};

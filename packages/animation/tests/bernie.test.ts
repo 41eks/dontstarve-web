@@ -12,7 +12,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source art (%s)', async (skinId) => {
   let sanity = 1;
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const sprite = await createBernieGroundSprite(assets, { getSanityPercent: () => sanity }, skinId);
   const { model } = sprite;
   const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
@@ -78,7 +78,7 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
 
 it('finishes a busy transformation using the latest sanity and cancels it on inventory/load events', async () => {
   let sanity = 1;
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const sprite = await createBernieGroundSprite(assets, { getSanityPercent: () => sanity });
   const animation = () => sprite.model.userData.animation;
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) sprite.update(1 / 30); };

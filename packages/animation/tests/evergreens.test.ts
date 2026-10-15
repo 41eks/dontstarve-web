@@ -1,3 +1,5 @@
+import { EventEmitter } from '@dontstarve-web/signals';
+import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -22,7 +24,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function setup() {
   const scheduler = new GameTimeScheduler(), camera = new THREE.PerspectiveCamera(), physics = new CANNON.World();
   const dropLoot = vi.fn(); let spring = false;
-  const forest = await createEvergreenForest('/dst/data/anim', { camera, scene: new THREE.Scene(), physics, scheduler, dropLoot, spawnAsh: vi.fn(),
+  const forest = await createEvergreenForest('/dst/data/anim', { camera, scene: new THREE.Scene(), physics, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>(),
     growthDuration: seconds => seconds * (spring ? .75 : 1) }, () => .5, 20);
   forest.updateNearby(new THREE.Vector3());
   return { forest, scheduler, camera, physics, dropLoot, spring: () => { spring = true; } };

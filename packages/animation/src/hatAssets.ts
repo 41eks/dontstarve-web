@@ -200,26 +200,6 @@ function createHatBloomMaterials(source: HatBuild): THREE.MeshBasicMaterial[] {
 }
 
 const hashSet = (names: readonly string[]) => new Set(names.map(smallHash));
-const hairHashes = hashSet(['hair', 'hairfront', 'hairpigtails']);
-const faceHashes = hashSet(['face', 'swap_face', 'beard', 'cheeks']);
-const hatHairHash = smallHash('HAIR_HAT');
-const headHash = smallHash('headbase');
-const hatHeadHash = smallHash('headbase_hat');
-const swapHatHash = smallHash('swap_hat');
-
-/** DST visibility groups also contain layers named head/hairfront in the ANIM data. */
-export function isHatPlayerElementVisible(element: AnimElement, mode: HatEquipMode | null): boolean {
-  if (element.imageHash === swapHatHash) return mode !== null && mode !== 'fullhelm';
-  if (element.imageHash === hatHeadHash) return mode === 'normal' || mode === 'fullhelm';
-  if (element.imageHash === hatHairHash || element.layerHash === hatHairHash) return mode === 'normal';
-  if (element.imageHash === headHash) return mode === null || mode === 'opentop';
-  if (hairHashes.has(element.imageHash)) return mode === null || mode === 'opentop';
-  if (faceHashes.has(element.imageHash)) return mode !== 'fullhelm';
-  if (element.layerHash === smallHash('HEAD_HAT_HELM')) return mode === 'fullhelm';
-  if (element.layerHash === smallHash('HEAD_HAT_NOHELM')) return mode === 'normal';
-  return true;
-}
-
 export function compose(parent: Matrix2D, child: Matrix2D): Matrix2D {
   const [a, b, c, d, tx, ty] = parent;
   const [e, f, g, h, ux, uy] = child;

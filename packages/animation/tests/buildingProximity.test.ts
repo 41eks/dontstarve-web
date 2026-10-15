@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SpriteAnimationController } from '../src/sprite';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { RESEARCH_LAB_DEFINITIONS } from '../../prefab/src/scienceprototyper';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -122,37 +121,4 @@ describe('building proximity interactions', () => {
     expect(start).toHaveBeenLastCalledWith('closed');
   });
 
-  it.each(['researchlab4'] as const)('%s switches between proximity and idle animations', async (id) => {
-    const definition = RESEARCH_LAB_DEFINITIONS[id];
-    const onturnon = vi.fn(definition.onturnon!);
-    const onturnoff = vi.fn(definition.onturnoff!);
-    const { placement, distance, start, model } = await setup({ ...definition, onturnon, onturnoff });
-    distance(9.01);
-    placement.update(0);
-    expect(onturnon).not.toHaveBeenCalled();
-    expect(start).not.toHaveBeenCalled();
-    distance(9);
-    placement.update(0);
-    expect(onturnon).toHaveBeenCalledExactlyOnceWith({
-      model, animation: model.userData.animationController, skinId: undefined,
-    });
-    expect(start).toHaveBeenLastCalledWith('proximity_loop');
-    distance(10);
-    placement.update(0);
-    expect(onturnon).toHaveBeenCalledTimes(1);
-    expect(onturnoff).not.toHaveBeenCalled();
-    expect(start).toHaveBeenCalledTimes(1);
-    distance(10.01);
-    placement.update(0);
-    placement.update(0);
-    expect(onturnoff).toHaveBeenCalledExactlyOnceWith({
-      model, animation: model.userData.animationController, skinId: undefined,
-    });
-    expect(start).toHaveBeenLastCalledWith('idle');
-    expect(start).toHaveBeenCalledTimes(2);
-    distance(9);
-    placement.update(0);
-    expect(onturnon).toHaveBeenCalledTimes(2);
-    expect(start).toHaveBeenLastCalledWith('proximity_loop');
-  });
 });

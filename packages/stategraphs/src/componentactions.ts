@@ -11,6 +11,8 @@ export interface ComponentActionEntity extends WorkInst {
   readonly _cached_reskinname?: Map<string, string | undefined>;
   readonly prefab: string;
   readonly components: {
+    builder?: import('../../componets/src/builder').Builder;
+    prototyper?: import('../../componets/src/prototyper').Prototyper;
     eater?: import('../../componets/src/eater').Eater;
     pickable?: { CanBeFertilized(): boolean; Fertilize(item: import('../../componets/src/trader').TradeItem): boolean };
     workable?: Workable;

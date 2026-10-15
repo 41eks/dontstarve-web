@@ -106,8 +106,13 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
   });
 }
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
-const pickupDoer: PickupDoer = {
+const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: unknown) => void): () => void } = {
   components: { inventory },
+  ListenForEvent(name, listener) {
+    const handler = (event: { data?: unknown }) => listener(event.data);
+    player.addEventListener(name as never, handler);
+    return () => player.removeEventListener(name as never, handler);
+  },
   hasTag: tag => tag === 'player' || (player.userData.tags?.includes(tag) ?? false),
   GetPosition: () => player.position,
   PushEvent: (name, data) => {
@@ -141,7 +146,6 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
   lightParent: player,
   followSymbol: playerAnimation && ((symbol, x, y) => playerAnimation.followSymbol(symbol, x, y)),
   dataBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
-  setLanternLight: (ison, fuelPercent) => playerAnimation?.setLanternLight(ison, fuelPercent),
   setHandAction: action => cursorUi.setHandAction(action, handPointer),
   lightStaffWorld: {
     map: spellCastMap,
@@ -157,10 +161,12 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
 });
 
 const headEquipmentBinding = bindPlayerHeadEquipment({
+  owner: pickupDoer,
   headEquipmentExistenceState: inventory.headEquipmentExistenceState,
   animation: playerAnimation,
 });
 const bodyEquipmentBinding = bindPlayerBodyEquipment({
+  owner: pickupDoer,
   bodyEquipmentExistenceState: inventory.bodyEquipmentExistenceState,
   animation: playerAnimation,
   setBackpackActive(equipped, entityId) {

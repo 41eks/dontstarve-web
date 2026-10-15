@@ -1,7 +1,9 @@
+import { AnimState } from '../src/animState';
+import { smallHash } from '../src/animationAssets';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { loadFarmHoeEquipment, resolveFarmHoePlayerSprite } from '../../prefab/src/farm_hoe';
+import { loadFarmHoeEquipment } from '../../prefab/src/farm_hoe';
 import { FarmHoeActionController } from '../../stategraphs/src/farm_hoe';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
@@ -25,7 +27,7 @@ function setup(player = new THREE.Group()) {
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
   const blockers: { position: THREE.Vector3; tags?: string[] }[] = [];
-  const farm = new FarmPlowPlacement(world, turf, '/dst/data', async () => {}, () => blockers);
+  const farm = new FarmPlowPlacement(world, turf, async () => {}, () => blockers);
   return { farm, turf, world, blockers };
 }
 function advance(animation: WilsonAnimationController, frames: number) {
@@ -33,7 +35,7 @@ function advance(animation: WilsonAnimationController, frames: number) {
 }
 
 it('resolves both source ground builds, the separate golden held build and invisible equipment', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   try {
     const ordinary = await createGroundItemSprite(assets, 'farm_hoe');
     const gold = await createGroundItemSprite(assets, 'golden_farm_hoe', 'golden_farmhoe_garden');
@@ -49,11 +51,15 @@ it('resolves both source ground builds, the separate golden held build and invis
     const golden = await loadFarmHoeEquipment(assets, 'golden_farm_hoe');
     expect(golden.builds[0].build.name).toBe('swap_goldenhoe');
     const garden = await loadFarmHoeEquipment(assets, 'golden_farm_hoe', 'golden_farmhoe_garden');
-    const heldSkin = resolveFarmHoePlayerSprite(garden, { imageIndex: 0 } as AnimElement);
+    const anim = new AnimState(() => {});
+    const anchor = { imageHash: smallHash('swap_object'), imageIndex: 0 } as AnimElement;
+    anim.OverrideSymbol('swap_object', garden.builds, garden.symbol);
+    const heldSkin = anim.ResolveSymbol(anchor)!;
     expect(heldSkin).toHaveLength(1);
     expect(heldSkin[0].materials[0].name).toBe('ground:golden_farmhoe_garden');
     const invisible = await loadFarmHoeEquipment(assets, 'golden_farm_hoe', 'golden_farmhoe_invisible');
-    expect(resolveFarmHoePlayerSprite(invisible, { imageIndex: 0 } as AnimElement)).toHaveLength(0);
+    anim.OverrideSymbol('swap_object', invisible.builds, invisible.symbol);
+    expect(anim.ResolveSymbol(anchor)).toHaveLength(0);
   } finally { assets.dispose(); }
 });
 

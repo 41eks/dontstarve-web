@@ -470,3 +470,7 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 `SGmole.lua` → `dontstarve_DLC001.fev` 的 `creatures/mole/*`：death sounddef 12 → mole 1；emerge/retract 14/15 → 2–4；emerge_voice 18 → 5–7；hurt 13 → 8–10；jump 68 → 11；pickup 70 → 12–13；sniff/sleep 16/69 → 14–25；move 17 → 26。这里的数字已经把零基 file_index 加 1。用安装 CLI 的 `-h` 和逐流 `-m -s` 验证，再用 `-i` 导出 `sound/mole.fsb-<index>.wav`，全部 26 个流均与源目录既有解码 WAV 字节一致。统一在 `sound.ts` 预加载，鼹鼠各自持有 move/sniff/sleep 音源，拾取、回巢、移除时停止并断开连接。
 
 鼹鼠 `sleep` / `sniff` 的底层样本相同，但 FEV 事件 pitch 分别为 −0.25 / 0 八度，可用 `fev-events.py <dontstarve_DLC001.fev> creatures/mole/sleep creatures/mole/sniff --properties` 核对。sleep/sniff 的事件音量均为 0.0707945749（约 −23 dB），其余鼹鼠事件同样按 `--properties` 核对音量／音调。浏览器用 `playbackRate = 2 ** pitchOctaves` 保留原版睡眠降调，两个短事件均不循环原始 WAV，按状态图的离散时间线再次触发。[FMOD 的八度与线性倍率换算](https://qa.fmod.com/t/fmod-ex-to-fmod-studio-pitch-values/18220)。
+
+### 科技站启用循环声
+
+`scienceprototyper.lua` / `magicprototyper.lua` 的 `onturnon` 播放 `researchmachine_lvl1..4_idle_LP`，`onturnoff` 停止 `idlesound`。用 `fev-events.py` 核对 `dontstarve.fev`：sounddefs 244、245、619、944 分别映射到 `common` 的零基索引 247、248、250、212，即提取索引 248、249、251、213。CLI `-h` 与逐流 `-m -s` 已核对，流名依次为 `researchmachine_lvl1_idle_LP`、`researchmachine_lvl2_idle_LP`、`researchmachine_lvl3_idle`、`magichat_LP`；四份均以 `-i` 导出为 `sound/common.fsb-<index>.wav`，与源目录已有 WAV 字节一致。前三个 FEV 事件音量为 0.1584893167；第四个为 0.1、音调 −0.25 八度。统一 `sound.ts` 预加载和播放，每站独立循环，停用、烧毁或移除停止；换肤保留音源。

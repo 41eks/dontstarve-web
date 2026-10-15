@@ -100,6 +100,8 @@ export interface WilsonStateGraphHost {
   /** AnimState:ClearOverrideSymbol. */
   clearOverrideSymbol?(symbol: string): void;
   overrideItemSkinSymbol?(symbol: string, skinBuild: string, skinSymbol: string, build: string, sourceSymbol: string): void;
+  showLayer?(layer: string): void;
+  hideLayer?(layer: string): void;
   setCasting(casting: boolean, colour?: readonly [number, number, number]): void;
   setControllerEnabled?(enabled: boolean): void;
   stopMovement?(): void;
@@ -240,6 +242,8 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       host.stopMovement?.();
       inst.context.playClips([clip('hit')]);
       host.playSound('useBreak');
+      host.hideLayer?.('ARM_carry');
+      host.showLayer?.('ARM_normal');
       const broken = tool as WilsonBrokenTool | undefined;
       if (!broken?.nobrokentoolfx) host.spawnFx?.('brokentool');
       inst.statemem.toolname = broken?.prefab;

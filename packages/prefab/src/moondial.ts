@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { createEffect, createSignal, readonlySignal, watchSignal, type WorldMoonPhase } from '@dontstarve-web/signals';
+import { createEffect, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase } from '@dontstarve-web/signals';
 import { loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { moondial_init_fn } from '@dontstarve-web/animation/prefabskin';
@@ -49,6 +49,7 @@ class Moondial {
     private readonly context: AnimatedBuildingEventContext;
     private resources: MoondialResources;
     private readonly cleanups: (() => void)[] = [];
+    private readonly moon?: WorldContentSignal<WorldMoonState>;
     private readonly pending = new Set<() => void>();
     private readonly sounds = new Set<SoundHandle>();
     private loop?: SoundHandle;
@@ -61,12 +62,12 @@ class Moondial {
         this.resources = context.prepared as MoondialResources;
         const model = context.model;
         actionEntity(model, MOONDIAL_ID).addTag('structure');
-        const source = context.world?.moon ?? readonlySignal(createSignal({ phase: 'new' as WorldMoonPhase, waxing: true }));
-        const moon = watchSignal(source, stop => { this.cleanups.push(stop); });
+        this.moon = context.world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
+        if (!this.moon) { this.onMoonPhaseChanged(false); this.idle(); return; }
         // WatchWorldState("moonphase", onmoonphasechagned): the first run is the constructor's own call (phase == nil).
         let first = true;
         createEffect(() => {
-            const { phase, waxing } = moon.get();
+            const { phase, waxing } = this.moon!.get();
             const changed = phase !== this.phase;
             this.phase = phase; this.waxing = waxing;
             if (first) { first = false; this.onMoonPhaseChanged(false); this.idle(); } else if (changed) this.onMoonPhaseChanged(true);

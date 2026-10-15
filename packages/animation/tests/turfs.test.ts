@@ -16,7 +16,7 @@ beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
 afterEach(() => vi.unstubAllGlobals());
 
 it('renders shared, renamed and independent turf poses from native builds and resolves crafting atlases', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   try {
     // Sample the shared bank with a renamed clip, drama build, and separate CotL/beard builds.
     for (const [id, clip, build] of [

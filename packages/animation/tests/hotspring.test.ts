@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { HotspringManager, HOTSPRING_LIGHT } from '../../prefab/src/hotspring';
+import { HotspringManager, HOTSPRING_LIGHT } from '../../prefab/src/hotspring.ts';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { GroundItemManager } from '../../../src/groundItems';
@@ -16,19 +16,21 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
+import { createWorldState } from '../../../src/worldState';
+import type { TileStateQuery } from '../../signals/src';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-function setup() {
+function setup(getTileStateAtPoint?: TileStateQuery) {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
   const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as THREE.WebGLRenderer;
   const ground = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const physics = new CANNON.World();
-  const springs = new HotspringManager(scene, physics, '/dst/data/anim');
+  const springs = new HotspringManager(scene, physics, '/dst/data/anim', getTileStateAtPoint);
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.hotsprings, {
     restore: (_, record) => springs.spawn(new THREE.Vector3(...record.transform.position), {
@@ -112,4 +114,85 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(FindEntities(s.scene, model!.position, 1, ['HASHEATER'])).toEqual([]);
     expect(getPrefabLocalLight(model!)).toBeUndefined();
   } finally { toss?.dispose(); s.dispose(); restored.dispose(); }
+});
+
+it('keeps a spring active when the injected tile query returns undefined', async () => {
+  const query = vi.fn(() => undefined);
+  const s = setup(query);
+  try {
+    const position = new THREE.Vector3(5, 0, 6);
+    const model = await s.springs.spawn(position);
+    const update = vi.spyOn(model.userData.animationController, 'update');
+    expect(query).toHaveBeenCalledExactlyOnceWith(model.position);
+    expect(model.position).toEqual(position);
+    expect(model.parent).toBe(s.scene);
+    expect(s.physics.bodies).toEqual([model.userData.physicsBody]);
+    s.springs.update(.1);
+    expect(update).toHaveBeenCalledExactlyOnceWith(.1);
+    s.springs.remove(model);
+    expect(model.parent).toBeNull();
+    expect(s.physics.bodies).toEqual([]);
+  } finally { s.dispose(); }
+});
+
+it('toggles tile visibility, physics and animation while preserving inactive saves and cleaning up each spring independently', async () => {
+  const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+  state.playerpositions.set([new THREE.Vector3()]);
+  const s = setup(state.getTileStateAtPoint), restored = setup(state.getTileStateAtPoint);
+  try {
+    const first = await s.springs.spawn(new THREE.Vector3(), {
+      id: 'tile-spring', transform: { position: [0, 0, 0], rotationY: 0 }, components: { hotspring: { isbathbombed: true } },
+    });
+    const second = await s.springs.spawn(new THREE.Vector3(1, 0, 1));
+    const firstBody = first.userData.physicsBody, secondBody = second.userData.physicsBody;
+    const firstAnimation = vi.spyOn(first.userData.animationController, 'update');
+    const secondAnimation = vi.spyOn(second.userData.animationController, 'update');
+    const addBody = vi.spyOn(s.physics, 'addBody');
+    const records = s.springs.exportRecords();
+    expect(first.parent).toBe(s.scene); expect(second.parent).toBe(s.scene);
+    expect(s.physics.bodies).toEqual([firstBody, secondBody]);
+    s.springs.update(.1);
+    expect(firstAnimation).toHaveBeenCalledOnce(); expect(secondAnimation).toHaveBeenCalledOnce();
+
+    state.playerpositions.set([new THREE.Vector3(300, 0, 0)]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(first.parent).toBeNull(); expect(second.parent).toBeNull();
+    expect(s.physics.bodies).toEqual([]);
+    s.springs.update(5);
+    expect(firstAnimation).toHaveBeenCalledOnce(); expect(secondAnimation).toHaveBeenCalledOnce();
+    expect(s.springs.exportRecords()).toEqual(records);
+    expect(first.userData.actionEntity.components.heater.GetHeat()).toBe(90);
+    let json = '';
+    expect(await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).toMatchObject({ ok: true });
+    const saved = deserializeSave(json, SAVE_CATALOG);
+    expect(saved.world.entities.hotspring).toEqual(records.map(entry => entry.record));
+    const loaded = await restored.springs.spawn(new THREE.Vector3(...saved.world.entities.hotspring[0].transform.position), saved.world.entities.hotspring[0]);
+    expect(loaded.parent).toBeNull(); expect(restored.physics.bodies).toEqual([]);
+    expect(restored.springs.exportRecords()[0]).toEqual(records[0]);
+    expect(loaded.userData.animationController.currentAnimation).toBe('glow_loop');
+
+    // 移除一个休眠实例，不能停止同 tile 的其他实例，也不能在回到范围时复活。
+    s.springs.remove(first);
+    state.playerpositions.set([new THREE.Vector3()]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(first.parent).toBeNull(); expect(first.userData.removed).toBe(true);
+    expect(second.parent).toBe(s.scene); expect(loaded.parent).toBe(restored.scene);
+    expect(s.physics.bodies).toEqual([secondBody]);
+    expect(addBody).toHaveBeenCalledExactlyOnceWith(secondBody);
+    expect(restored.physics.bodies).toEqual([loaded.userData.physicsBody]);
+    expect(getPrefabLocalLight(loaded)).toEqual(HOTSPRING_LIGHT);
+    s.springs.update(.1);
+    expect(secondAnimation).toHaveBeenCalledTimes(2);
+    state.playerpositions.set([new THREE.Vector3(1, 0, 1)]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(addBody).toHaveBeenCalledOnce();
+
+    state.playerpositions.set([new THREE.Vector3(300, 0, 0)]);
+    s.springs.dispose(); restored.springs.dispose();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    state.playerpositions.set([new THREE.Vector3()]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(s.physics.bodies).toEqual([]); expect(restored.physics.bodies).toEqual([]);
+    expect(second.parent).toBeNull(); expect(loaded.parent).toBeNull();
+  } finally { s.dispose(); restored.dispose(); state.dispose(); }
 });

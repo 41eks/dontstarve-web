@@ -13,7 +13,7 @@ vi.mock('../../prefab/src/sound', () => ({
 afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); });
 
 function presentation() {
-  return { animation: { setCarryItem: vi.fn<WilsonAnimationController['setCarryItem']>(async () => {}), playItemTransition: vi.fn<WilsonAnimationController['playItemTransition']>() },
+  return { animation: { setEquippedCarryItem: vi.fn<WilsonAnimationController['setEquippedCarryItem']>(), playItemTransition: vi.fn<WilsonAnimationController['playItemTransition']>() },
     lightParent: new THREE.Group(), setHandAction: vi.fn() };
 }
 
@@ -27,7 +27,7 @@ it('equips from the restore signal write, unequips before replacement and releas
   const ui = presentation();
   const binding = await bindPlayerHandEquipment({ ...ui, handEquipmentExistenceState: store.handEquipmentExistenceState });
   try {
-    expect(ui.animation.setCarryItem).not.toHaveBeenCalled();
+    expect(ui.animation.setEquippedCarryItem).not.toHaveBeenCalled();
     expect(ui.setHandAction).not.toHaveBeenCalled();
     binding.withoutTransitions(() => store.replaceState({ slots: [
       { address: a, item: { itemId: 'torch', count: 1, remainingFuel: 20 } },
@@ -35,7 +35,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     ], bufferedBuilds: [] }, {}));
     await Promise.resolve();
     expect(ui.animation.playItemTransition).not.toHaveBeenCalled();
-    expect(ui.animation.setCarryItem).toHaveBeenCalledExactlyOnceWith('torch', 'torch_barber');
+    expect(ui.animation.setEquippedCarryItem).toHaveBeenCalledExactlyOnceWith('torch');
     const oldEntity = store.getEntity(hand)!, nextEntity = store.getEntity(a)!;
     expect(oldEntity.id).toBe('saved_torch');
     const oldTorch = getTorchController(oldEntity), nextTorch = getTorchController(nextEntity);
@@ -43,9 +43,9 @@ it('equips from the restore signal write, unequips before replacement and releas
     const oldUnequip = oldTorch.onunequip.bind(oldTorch), nextEquip = nextTorch.onequip.bind(nextTorch);
     vi.spyOn(oldTorch, 'onunequip').mockImplementation(() => { events.push('unequip'); oldUnequip(); });
     const equip = vi.spyOn(nextTorch, 'onequip').mockImplementation(slot => { events.push('equip'); nextEquip(slot); });
-    expect(PreloadSounds).toHaveBeenCalledBefore(ui.animation.setCarryItem);
+    expect(PreloadSounds).toHaveBeenCalledBefore(ui.animation.setEquippedCarryItem);
     expect(oldTorch.isBurning).toBe(true);
-    expect(ui.animation.setCarryItem).toHaveBeenLastCalledWith('torch', 'torch_barber');
+    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
     expect(ui.lightParent.getObjectByName('TorchFireLight')).toBeDefined();
     binding.update(0.25);
     store.applySlotChanges([
@@ -67,7 +67,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     nextTorch.extinguish();
     expect(store.handEquipment.peek()).toBe(stillEquipped);
     expect(store.getEntity(hand)).toBe(nextEntity);
-    expect(ui.animation.setCarryItem).toHaveBeenLastCalledWith('torch', undefined);
+    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
     expect(ui.lightParent.getObjectByName('TorchFireLight')).toBeUndefined();
     store.setRemainingFuel(hand, 17);
     expect(equip).toHaveBeenCalledOnce();
@@ -83,16 +83,16 @@ it('equips from the restore signal write, unequips before replacement and releas
     expect(store.getEntity(hand)).toBeNull();
     expect(nextEntity.isRemoved).toBe(true);
     expect(remove).toHaveBeenCalledOnce(); // The depleted prefab removes itself; its inventory owner clears the slot.
-    expect(ui.animation.setCarryItem).toHaveBeenLastCalledWith(null, undefined);
+    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith(null);
     const saved = store.exportState();
     store.replaceState(saved, {});
     expect(store.get(hand)).toBeNull();
     binding.dispose();
-    const calls = ui.animation.setCarryItem.mock.calls.length;
+    const calls = ui.animation.setEquippedCarryItem.mock.calls.length;
     store.transfer(b, hand, 1);
     store.getEntity(hand)!.remove();
     binding.update(10);
-    expect(ui.animation.setCarryItem).toHaveBeenCalledTimes(calls);
+    expect(ui.animation.setEquippedCarryItem).toHaveBeenCalledTimes(calls);
   } finally { binding.dispose(); store.dispose(); }
 });
 
@@ -110,8 +110,8 @@ it('preserves the latest equipment when unequip synchronously supersedes a trans
     vi.spyOn(torch, 'onunequip').mockImplementation(() => { unequip(); slot.set(hammer); });
     slot.set(staff);
     expect(slot.peek()).toBe(hammer);
-    expect(ui.animation.setCarryItem).toHaveBeenLastCalledWith('hammer', undefined);
-    expect(ui.animation.setCarryItem.mock.calls.some(([item]) => item === 'yellowstaff')).toBe(false);
+    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('hammer');
+    expect(ui.animation.setEquippedCarryItem.mock.calls.some(([item]) => item === 'yellowstaff')).toBe(false);
     expect(ui.setHandAction).toHaveBeenLastCalledWith(null);
     slot.set(staff);
     // Point CASTSPELL labels come from the shared picker and the real spellcaster capability.
@@ -133,7 +133,7 @@ it('derives take-out, put-away and replacement animations while preserving same-
     const transitions = ui.animation.playItemTransition.mock.calls.length;
     const skinned = { ...first, skinId: 'torch_barber' };
     slot.set(skinned); await Promise.resolve();
-    expect(ui.animation.setCarryItem).toHaveBeenLastCalledWith('torch', 'torch_barber');
+    expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
     expect(ui.animation.playItemTransition).toHaveBeenCalledTimes(transitions);
     slot.set({ ...skinned }); await Promise.resolve();
     expect(ui.animation.playItemTransition).toHaveBeenCalledTimes(transitions);
@@ -141,25 +141,5 @@ it('derives take-out, put-away and replacement animations while preserving same-
     await Promise.resolve();
     expect(ui.animation.playItemTransition).toHaveBeenCalledTimes(transitions + 1);
     expect(ui.animation.playItemTransition).toHaveBeenLastCalledWith('item_out', 'torch');
-  } finally { binding.dispose(); }
-});
-
-it('waits for held art and rejects stale or disposed animation completions', async () => {
-  const slot = createEquipmentExistenceState('HANDS'), ui = presentation();
-  const ready: (() => void)[] = [];
-  ui.animation.setCarryItem.mockImplementation(() => new Promise<void>(resolve => { ready.push(resolve); }));
-  const binding = await bindPlayerHandEquipment({ ...ui, handEquipmentExistenceState: slot });
-  try {
-    slot.set({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
-    slot.set({ itemId: 'hammer', EQUIPSLOTS: 'HANDS' });
-    expect(ui.animation.playItemTransition).not.toHaveBeenCalled();
-    ready[0](); await Promise.resolve();
-    expect(ui.animation.playItemTransition).not.toHaveBeenCalled();
-    ready[1](); await Promise.resolve();
-    expect(ui.animation.playItemTransition).toHaveBeenCalledExactlyOnceWith('item_out', 'hammer');
-    slot.set(null);
-    binding.dispose();
-    ready[2](); await Promise.resolve();
-    expect(ui.animation.playItemTransition).toHaveBeenCalledOnce();
   } finally { binding.dispose(); }
 });

@@ -6,6 +6,14 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.route('**/saves/initial-world.json', async route => {
+    const response = await route.fetch(), save = await response.json();
+    // This flow creates its own backpack, sweeper and contents.
+    save.world.entities = {};
+    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
+    save.players.local.inventory.bufferedBuilds = [];
+    await route.fulfill({ response, json: save });
+  });
   await page.goto('/tests/dst-lighting.html');
   await page.evaluate(async (urls) => {
     const main = await import(urls.main);
@@ -75,11 +83,10 @@ test('drops source backpack ground art, reskins with a sweeper, picks up and equ
   expect(groundBag.components.stack).toMatchObject({ itemId: 'backpack', skinId: 'backpack_babybeef', container });
   const pickupPoint = await page.evaluate(() => (window as any).backpackGroundPoint());
   await page.mouse.click(pickupPoint.x, pickupPoint.y);
-  const pickedUp = bar.locator('.inventory-bar__items [data-item-id="backpack"][data-skin-id="backpack_babybeef"]');
-  await expect(pickedUp).toBeVisible();
-  await expect(pickedUp.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'backpack_babybeef.tex');
-  await pickedUp.dragTo(body);
+  // actions.lua PICKUP equips an equippable item when its slot is empty.
+  await expect(body).toHaveAttribute('data-item-id', 'backpack');
   await expect(body).toHaveAttribute('data-skin-id', 'backpack_babybeef');
+  await expect(body.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'backpack_babybeef.tex');
   await expect.poll(() => page.evaluate(() => (window as any).backpackSkinGame.player.children[0].children[0].material
     .some((material: any) => material.name === 'ground:backpack_babybeef'))).toBe(true);
   await expect(page.locator('dst-backpack-panel .inventory-slot')).toHaveCount(8);

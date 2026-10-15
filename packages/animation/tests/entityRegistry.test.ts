@@ -22,6 +22,26 @@ function registration(): EntityRegistration<string> {
 }
 
 describe('entity registry', () => {
+  it('preserves explicit lifecycle order when managers are constructed in dependency order', () => {
+    const early = definePrefabs([], health), late = definePrefabs([], health);
+    const registry = new EntityRegistry([early, late]);
+    const calls: string[] = [];
+    for (const [definition, name] of [[late, 'late'], [early, 'early']] as const) {
+      registry.register(definition, {
+        exportRecords: () => [],
+        beforePhysics: () => calls.push(`${name}:beforePhysics`),
+        update: () => calls.push(`${name}:update`),
+        dispose: () => calls.push(`${name}:dispose`),
+      });
+    }
+    registry.beforePhysics(.1);
+    registry.update(.1, new THREE.Quaternion());
+    registry.dispose();
+    expect(calls).toEqual([
+      'early:beforePhysics', 'late:beforePhysics', 'early:update', 'late:update', 'late:dispose', 'early:dispose',
+    ]);
+  });
+
   it('uses one new definition for debug aliases, export, save validation and restoration', async () => {
     const custom = definePrefabs(['custom_world'], health, ['custom_world', 'custom_alias']);
     const registry = new EntityRegistry();

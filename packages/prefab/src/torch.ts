@@ -1,19 +1,20 @@
 import { ItemEntity } from '@dontstarve-web/inventory';
-import { createSignal, readonlySignal, type HandEquipment, type EquipmentLifecycle, type EquipmentOwner } from '@dontstarve-web/signals';
-import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
-import { createGroundItemSprite } from './groundItems';
-import { listenInventoryEvents } from './inventoryEvents';
+import { createSignal, readonlySignal, type EquipmentLifecycle, type EquipmentOwner, type HandEquipment } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
+import { Lighter } from '../../componets/src/lighter';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from './groundItems';
+import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import { listenInventoryEvents } from './inventoryEvents';
 import { attachPrefabLight, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { LootFling } from './lootFling';
+import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
-import { TorchFireEffect, TORCH_FIRE_OFFSET_Y } from './torchfire';
-import { Lighter } from '../../componets/src/lighter';
+import { TORCH_FIRE_OFFSET_Y, TorchFireEffect } from './torchfire';
 
 export function configureTorchEntity(entity: ItemEntity): void {
   entity.components.lighter = entity.component('lighter', () => new Lighter(entity));
 }
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
 export const TORCH_ID = 'torch';
 /** tuning.lua: TORCH_FUEL = night_time * 1.25, with a default 30 * 2 second night. */
@@ -312,3 +313,10 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
     },
   };
 }
+
+export const prepareTorchVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const archive = item.skinId ? GROUND_ITEM_DEFINITIONS.torch.skinArchives[item.skinId] : undefined;
+  if (item.skinId && !archive) throw new Error(`Unknown torch skin: ${item.skinId}`);
+  const [base, skin] = await Promise.all([assets.loadBuild('swap_torch.zip'), archive ? assets.loadBuild(archive) : undefined]);
+  return handEquipmentVisual(item, skin ? [skin, base] : [base], 'swap_torch');
+};

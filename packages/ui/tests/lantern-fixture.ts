@@ -4,7 +4,7 @@ import { DstLightingRenderer } from '../../../src/dstLighting';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { createLanternGroundSprite } from '../../prefab/src/lantern';
+import { createLanternHandLifecycle, createLanternGroundSprite } from '../../prefab/src/lantern';
 import { ItemEntity } from '../../inventory/src';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
@@ -25,6 +25,10 @@ export async function checkLanternLighting() {
   camera.up.set(0, 0, -1);
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld();
+  const lightAt = (owner: THREE.Object3D) => {
+    const node = owner.getObjectByName('lanternlight');
+    return node && getPrefabLocalLight(node);
+  };
   const pixel = new Uint8Array(4);
   const sample = (x: number, z = -8) => {
     lighting.render(scene, camera);
@@ -39,12 +43,15 @@ export async function checkLanternLighting() {
   scene.add(player);
   const controller = player.userData.animationController as WilsonAnimationController;
   await controller.setCarryItem('lantern');
-  // The equip lifecycle reports machine.ison and fuel; carrying alone does not light it.
-  controller.setLanternLight(true, 1);
-  const hand = { lit: !!getPrefabLocalLight(player), brightness: sample(0) };
+  const handEntity = new ItemEntity({ itemId: 'lantern', count: 1 });
+  const handLifecycle = createLanternHandLifecycle(handEntity, {
+    lightParent: player, AnimState: controller.AnimState,
+  });
+  handLifecycle.onequip();
+  const hand = { lit: !!lightAt(player), brightness: sample(0) };
   const failures: string[] = [];
   const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS.lantern.skinArchives)];
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   for (const skin of skins) {
     const expectedBuild = skin ? GROUND_ITEM_DEFINITIONS.lantern.skinArchives[skin]
       .split('/').at(-1)!.replace('.zip', '') : 'swap_lantern';
@@ -67,21 +74,26 @@ export async function checkLanternLighting() {
     ground.model.position.set(60, 0, 0);
     ground.model.quaternion.copy(camera.quaternion);
     lighting.render(scene, camera);
-    if (!getPrefabLocalLight(ground.model)) failures.push(`unlit ground ${skin}`);
+    if (!lightAt(ground.model)) failures.push(`unlit ground ${skin}`);
     entity.setRemainingFuel(0);
-    if (getPrefabLocalLight(ground.model)) failures.push(`empty fuel ${skin}`);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    if (lightAt(ground.model)) failures.push(`empty fuel ${skin}`);
     ground.dispose();
     entity.destroy();
   }
-  controller.setLanternLight(true, 0);
-  const emptyHand = !getPrefabLocalLight(player);
-  controller.setLanternLight(true, 1);
+  handEntity.setRemainingFuel(0);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const emptyHand = !lightAt(player);
+  handEntity.setRemainingFuel(468);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  handLifecycle.onunequip();
+  handEntity.components.inventoryitem.OnPutInInventory({ hasTag: () => true, GetPosition: () => player.position, PushEvent() {} });
   await controller.setCarryItem(null);
-  const backpack = { unlit: !getPrefabLocalLight(player), brightness: sample(0) };
+  const backpack = { unlit: !lightAt(player), brightness: sample(0) };
   const pending = controller.setCarryItem('lantern', skins[1]);
   await controller.setCarryItem(null);
   await pending;
-  const staleEquip = !getPrefabLocalLight(player);
+  const staleEquip = !lightAt(player);
 
 
   const pickupPlayer = new THREE.Group();
@@ -118,8 +130,9 @@ export async function checkLanternLighting() {
   const record = manager.exportRecords()[0];
   const restored = await manager.spawnFromSave('restored-lantern', definition, new THREE.Vector3(-30, 0, 0));
   const save = { itemId: record.components.stack?.itemId, foot: record.transform.position,
-    restoredLit: !!getPrefabLocalLight(restored), restoredBrightness: sample(-30) };
+    restoredLit: !!lightAt(restored), restoredBrightness: sample(-30) };
   pickup.dispose(); manager.dispose();
+  handEntity.destroy();
   lighting.dispose();
   renderer.dispose();
   return { baseline, hand, emptyHand, backpack, staleEquip, failures, skins: skins.length - 1,

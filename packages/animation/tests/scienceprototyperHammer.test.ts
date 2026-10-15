@@ -4,9 +4,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ResearchLabPlacement, RESEARCH_LAB_IDS, RESEARCH_LAB_HAMMER_LOOT } from '../../prefab/src/scienceprototyper';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { TransientSpriteAnimationController } from '../src/sprite';
+import { Builder } from '../../componets/src/builder';
+import { actionEntity, FindEntities } from '../../prefab/src/actionEntity';
+import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { PlaySound } from '../../prefab/src/sound';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn() }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(
     new URL(`../../../public${String(url)}`, import.meta.url),
@@ -26,13 +30,16 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
     id: `test_${id}`, transform: { position: [3, 0, 4], rotationY: 0 },
     components: { building: { state: 'idle', ...(skinId ? { skinId } : {}) } },
   });
+  const builder = new Builder(actionEntity(world.player as THREE.Group, 'waxwell'), {
+    findEntities: (...args) => FindEntities(world.scene, ...args), researchMachineDistance: 4 * WORLD_SCALE,
+  });
   const animation = () => model.userData.animationController as TransientSpriteAnimationController;
   const finish = () => { for (let i = 0; i < 80; i++) placement.update(1 / 30); };
-  return { placement, model, world, animation, finish, dropLoot };
+  return { placement, model, world, animation, finish, dropLoot, builder };
 }
 
 it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and removes its record on hit four', async (id) => {
-  const { placement, model, world, animation, finish, dropLoot } = await setup(id);
+  const { placement, model, world, animation, finish, dropLoot, builder } = await setup(id);
   try {
     const target = placement.hammerTargets[0];
     const before = placement.exportRecords();
@@ -64,20 +71,24 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
     finish();
     expect(effect.parent).toBeNull();
     expect(placement.renderEntities).toEqual([]);
-  } finally { placement.dispose(); }
+  } finally { builder.dispose(); placement.dispose(); }
 });
 
 it('preserves work through reskinning and restores proximity after hits', async () => {
-  const { placement, model, world, animation, finish, dropLoot } = await setup('researchlab2', 'researchlab2_pod');
+  const { placement, model, world, animation, finish, dropLoot, builder } = await setup('researchlab2', 'researchlab2_pod');
   try {
     world.player.position.copy(model.position);
+    builder.OnUpdate();
     placement.update(0);
     expect(animation().currentAnimation).toBe('proximity_loop');
     placement.hammerTargets[0].playHit();
     finish();
     expect(animation().currentAnimation).toBe('proximity_loop');
     const prepared = await placement.reskinTargets[0].prepareNextSkin();
+    const prototyper = model.userData.components.prototyper;
     expect(prepared.apply()).toBe(true);
+    expect(model.userData.components.prototyper).toBe(prototyper);
+    expect(prototyper.on).toBe(true);
     prepared.dispose();
     for (let i = 0; i < 2; i++) { placement.hammerTargets[0].playHit(); finish(); }
     expect(dropLoot).not.toHaveBeenCalled();
@@ -91,7 +102,7 @@ it('preserves work through reskinning and restores proximity after hits', async 
     await Promise.resolve();
     expect(effect.parent).toBeNull();
     expect(disposeMaterial).toHaveBeenCalledOnce();
-  } finally { placement.dispose(); }
+  } finally { builder.dispose(); placement.dispose(); }
 });
 
 it('matches unburnt Lua recipe salvage quantities', () => {
@@ -101,4 +112,53 @@ it('matches unburnt Lua recipe salvage quantities', () => {
     researchlab3: [{ itemId: 'livinglog', count: 2 }, { itemId: 'purplegem', count: 1 }, { itemId: 'nightmarefuel', count: 4 }],
     researchlab4: [{ itemId: 'rabbit', count: 2 }, { itemId: 'boards', count: 2 }, { itemId: 'tophat', count: 1 }],
   });
+});
+
+it('queues magic station transitions across reskinning, then rebuilds transient use state on load', async () => {
+  const { placement, model, world, animation, builder } = await setup('researchlab3');
+  let restored: ResearchLabPlacement | undefined;
+  try {
+    world.player.position.copy(actionEntity(model, 'researchlab3').getPosition());
+    placement.update(0);
+    expect(animation().currentAnimation).toBe('idle'); // Placement does not select a station.
+    builder.OnUpdate();
+    expect(animation().currentAnimation).toBe('proximity_pre');
+    const component = model.userData.components.prototyper;
+    const sound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
+    const prepared = await placement.reskinTargets[0].prepareNextSkin();
+    expect(prepared.apply()).toBe(true);
+    prepared.dispose();
+    expect(model.userData.components.prototyper).toBe(component);
+    for (let i = 0; i < 300; i++) placement.update(1 / 30);
+    expect(animation().currentAnimation).toBe('proximity_loop');
+    expect(sound.stop).not.toHaveBeenCalled();
+    const record = placement.exportRecords()[0].record;
+    expect(record.components).not.toHaveProperty('prototyper');
+    world.player.position.x += 4 * WORLD_SCALE + .01;
+    builder.OnUpdate();
+    expect(component.on).toBe(false);
+    expect(animation().currentAnimation).toBe('proximity_loop'); // PushAnimation waits for the current pass.
+    expect(sound.stop).toHaveBeenCalledOnce();
+    for (let i = 0; i < 300; i++) placement.update(1 / 30);
+    expect(animation().currentAnimation).toBe('idle');
+    placement.dispose();
+
+    restored = new ResearchLabPlacement(world, () => true);
+    const loaded = await restored.spawnFromSave('researchlab3', record);
+    expect(loaded.userData.components.prototyper.on).toBe(false);
+    world.player.position.copy(actionEntity(loaded, 'researchlab3').getPosition());
+    builder.OnUpdate();
+    expect(loaded.userData.components.prototyper.on).toBe(true);
+    expect(builder.accessible_tech_trees.peek().MAGIC).toBe(3);
+    expect(restored.exportRecords()[0].record).toEqual(record);
+    restored.dispose();
+    restored = new ResearchLabPlacement(world, () => true);
+    const burnt = await restored.spawnFromSave('researchlab3', { ...record,
+      components: { ...record.components, building: { ...record.components.building, burnt: true } } });
+    builder.OnUpdate();
+    expect(burnt.userData.components.prototyper).toBeUndefined();
+    expect(actionEntity(burnt, 'researchlab3').hasTag('prototyper')).toBe(false);
+    expect(builder.current_prototyper).toBeUndefined();
+    expect(builder.accessible_tech_trees.peek().MAGIC).toBe(0);
+  } finally { builder.dispose(); placement.dispose(); restored?.dispose(); }
 });

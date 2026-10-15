@@ -1,5 +1,6 @@
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { PlaySound, PreloadSounds } from './sound';
 
 type PitchforkBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
 
@@ -36,13 +37,12 @@ export async function loadPitchforkEquipment(
   return { tool, symbol: swap.symbol, builds: skin ? [skin, base] : [base] };
 }
 
-export function resolvePitchforkPlayerSprite(equipment: PitchforkEquipment, element: AnimElement): ResolvedSprite[] {
-  const symbol = smallHash(equipment.symbol);
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, symbol, element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-    // Missing held frames in an explicitly overridden symbol mean hidden art.
-    if (source.build.symbols.has(symbol)) return [];
-  }
-  return [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const preparePitchforkVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const [equipment] = await Promise.all([loadPitchforkEquipment(assets, item.prefab as PitchforkTool, item.skinId), PreloadSounds('dontstarve/wilson/dig', 'dontstarve/wilson/equip_item_gold')]);
+  const visual = handEquipmentVisual(item, equipment.builds, equipment.symbol, [], false);
+  return { ...visual, onequip(owner) {
+    visual.onequip(owner);
+    if (item.prefab === 'goldenpitchfork') PlaySound('dontstarve/wilson/equip_item_gold');
+  } };
+};

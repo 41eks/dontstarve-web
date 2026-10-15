@@ -98,12 +98,12 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private readonly blockers: () => readonly FarmPlowBlocker[];
   private readonly random: () => number;
 
-  constructor(world: WorldContext, turf: TurfMap, assetBaseUrl: string,
+  constructor(world: WorldContext, turf: TurfMap,
     returnItem: (position: THREE.Vector3, item: InventoryStack) => Promise<void>,
     blockers: () => readonly FarmPlowBlocker[] = () => [], random = Math.random) {
     this.world = world; this.turf = turf; this.returnItem = returnItem; this.blockers = blockers; this.random = random;
     this.stopActionEvents = bindActionCancellation(world, this, 'deploy', () => this.cancel());
-    this.assets = new ArchiveSpriteAssets(`${assetBaseUrl.replace(/\/$/, '')}/anim`, 'farm');
+    this.assets = new ArchiveSpriteAssets('farm');
     this.pointer = new PointerRaycaster(world);
     this.cursor = new BuildCursor(world, this.pointer);
     this.removeDigListener = turf.onDig((point) => {

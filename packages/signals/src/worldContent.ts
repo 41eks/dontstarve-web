@@ -1,21 +1,28 @@
-import { watchSignal, type ReadonlySignal, type Signal } from './signal';
-import type { SeasonState, WorldPhase } from './world';
+import { watchSignal, type Memo, type ReadonlySignal, type Signal } from './signal';
+import type { SeasonState, WorldPhase, WorldMoonPhase } from './world';
 import type { GameTimeScheduler } from './gameTimeScheduler';
+import type { Vector3 } from 'three';
 
 /** Named world inputs; compatible with erasableSyntaxOnly. */
 export const WorldContentKey = {
-  Cycle: 'cycle', Season: 'season', Temperature: 'temperature', Wind: 'wind', PerishClock: 'perishTick', SnowLevel: 'snowLevel',
+  Cycle: 'cycle', Moon: 'moon', Season: 'season', Temperature: 'temperature', Wind: 'wind', PerishClock: 'perishTick', SnowLevel: 'snowLevel',
+  PlayerPositions: 'playerpositions',
 } as const;
 export type WorldContentKey = typeof WorldContentKey[keyof typeof WorldContentKey];
 
 export interface WorldContentValues {
   cycle: WorldPhase;
+  moon: WorldMoonState;
   season: SeasonState;
   temperature: number;
   wind: WorldWindChange;
   perishTick: PerishTick;
   snowLevel: number;
+  playerpositions: Vector3[];
 }
+
+/** Publish moonphase and iswaxingmoon together, without an intermediate mixed pair. */
+export interface WorldMoonState { readonly phase: WorldMoonPhase; readonly waxing: boolean; }
 
 export interface WorldWindChange { readonly angle: number; readonly velocity: number; }
 export interface PerishTick { readonly time: number; readonly total: number; }
@@ -28,10 +35,15 @@ export interface PerishClock {
 
 export type WorldContentSources = { readonly [K in WorldContentKey]: ReadonlySignal<WorldContentValues[K]> };
 
+/** The world binds player positions once; consumers query a cached tile memo. */
+export type TileStateQuery = (position: Vector3, radius?: number) => Memo<boolean> | undefined;
+
 export type WorldContentEnvironment = WorldContentSources & {
   readonly scheduler: GameTimeScheduler;
   /** Standalone contexts may omit the world prefix service. */
   readonly perishClock?: PerishClock;
+  /** Standalone contexts may omit tile activity. The world owns its cache and cleanup. */
+  readonly getTileStateAtPoint?: TileStateQuery;
 };
 
 /** The signal belongs to the consumer; the scheduler remains owned by the world. */
@@ -48,6 +60,7 @@ export type GetWatchWorldContent = <K extends WorldContentKey>(
 /** Shared contract for the application world and prefab world context. */
 export interface WorldContentContext extends WorldContentEnvironment {
   readonly getWatchWorldContent: GetWatchWorldContent;
+  readonly getTileStateAtPoint: TileStateQuery;
 }
 
 let currentWorld: WorldContentEnvironment | undefined;
@@ -60,6 +73,13 @@ export function bindWorldContent(sources: WorldContentEnvironment): () => void {
 
 /** Standalone contexts without a world binding can skip world-driven behaviour. */
 export function isWorldContentBound(): boolean { return currentWorld !== undefined; }
+
+/** Resolve the current world's query without passing its player position source to prefabs. */
+export function GetTileStateAtPoint(position: Vector3, radius = 10): Memo<boolean> | undefined {
+  const query = currentWorld?.getTileStateAtPoint;
+  if (!query) throw new Error('World tile activity is not bound');
+  return query(position, radius);
+}
 
 /** The bound world's getter for consumers that take world content as a parameter; undefined when standalone. */
 export function getBoundWatchWorldContent(): GetWatchWorldContent | undefined {
