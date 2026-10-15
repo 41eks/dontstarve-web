@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { compareRenderEntries } from '../src/renderOrder';
 
 describe('compareRenderEntries', () => {
+  it('draws background entities before world entities and sorts background billboards by foot depth', () => {
+    const backgroundNear = { object: new THREE.Object3D(), cameraDepth: -5, footPosition: { x: 0, z: 0 }, renderLayer: -1 };
+    const backgroundFar = { object: new THREE.Object3D(), cameraDepth: -25, footPosition: { x: 0, z: 0 }, renderLayer: -1 };
+    const world = { object: new THREE.Object3D(), cameraDepth: -50, footPosition: { x: 0, z: 0 } };
+    expect([world, backgroundNear, backgroundFar].sort(compareRenderEntries)).toEqual([backgroundFar, backgroundNear, world]);
+  });
+
   it('orders far to near by camera depth', () => {
     const far = { object: new THREE.Object3D(), cameraDepth: -30, footPosition: { x: 0, z: 0 } };
     const near = { object: new THREE.Object3D(), cameraDepth: -10, footPosition: { x: 0, z: 0 } };

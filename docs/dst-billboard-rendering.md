@@ -12,6 +12,8 @@
 
 `packages/animation/src/renderOrder.ts` 登记每个动画 sprite 最内层的 `visual` group，`setSpriteEntityRenderOrder()` 将实体顺序写到该 group。每帧按实际脚点的相机空间深度由远到近排序；若改用 sprite 中心或包围盒中心，高个实体会过早或过晚改变遮挡关系。
 
+源 `LAYER_BACKGROUND` 与几何朝向分别处理。温泉 `hotspring.lua` 只设置背景层和 sort order 2，没有 `SetOrientation(OnGround)`；温泉保留动画默认 billboard，活动时随相机四元数旋转，原始脚点、物理体和存档位置不变。实体排序条目的 `renderLayer` 默认为 0，温泉使用背景层 −1，先按层再按脚点深度排序，顺序仍写入登记的 `visual` group。背景层不会把贴图旋转为地面平面。
+
 ## 镜像部件与透明材质
 
 DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` 材质如果分背面与正面两次绘制，索引中保存的源层顺序就会被打散。曾出现的具体症状是猪王镜像左手被躯干遮住而消失。

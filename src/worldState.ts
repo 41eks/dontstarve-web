@@ -58,20 +58,20 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const cycle = createMemo(() => clockstate.get().phase);
   const playerpositions = createSignal<Vector3[]>([]);
   const playerPosition = createMemo<Vector3 | undefined>(() => playerpositions.get()[0]);
-  const getTileStateAtPoint = bindTileStateQuery(playerPosition);
+  const tickingarea = bindTileStateQuery(playerPosition);
   // init: inject the component's existing signal; world content only resolves keys and watches it.
   const worldContent: WorldContentEnvironment = Object.freeze({
     scheduler, temperature, cycle: readonlySignal(cycle), moon: readonlySignal(moon), season: readonlySignal(seasonstate),
     wind: worldwind.windchange, perishTick: perishClock.snapshot, perishClock,
     snowLevel: weather.snowLevel,
     playerpositions: readonlySignal(playerpositions),
-    getTileStateAtPoint,
+    tickingarea,
   });
   const unbindWorldContent = bindWorldContent(worldContent);
   const isNight = createMemo(() => cycle.get() === 'night');
   return { scheduler, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle,
     wind: worldContent.wind, perishTick: worldContent.perishTick, snowLevel: worldContent.snowLevel, worldwind,
-    playerpositions, getTileStateAtPoint,
+    playerpositions, tickingarea,
     getWatchWorldContent: (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, worldContent),
     SetMoonPhase(phase, waxing) {
       const length = MOON_PHASE_CYCLES.length;

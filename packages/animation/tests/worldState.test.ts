@@ -14,7 +14,7 @@ describe('session world temperature', () => {
   it('binds cached tile queries to player snapshots and releases their pending updates with the world', async () => {
     const state = createWorldState({ elapsedSeconds: 0, systems: {} });
     const position = new Vector3();
-    const active = state.getTileStateAtPoint(position, 0)!;
+    const active = state.tickingarea(position, 0)!;
     const reads = vi.spyOn(state.playerpositions, 'get');
     try {
       expect(GetTileStateAtPoint(position, 0)).toBe(active);
