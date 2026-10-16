@@ -854,7 +854,7 @@ export class InventoryStore {
   }
 
   private syncBackpackContainers(): void {
-    const backpacks = this.entities.values().filter(entity => entity.components.container);
+    const backpacks = this.entities.containers();
     const live = new Set(backpacks.map(entity => backpackContainerId(entity.id)));
     for (let index = this.registrations.length - 1; index >= 0; index--) {
       const registration = this.registrations[index];
