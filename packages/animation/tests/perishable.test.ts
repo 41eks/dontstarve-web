@@ -15,7 +15,8 @@ import type { SavedEntity } from '../../../src/save/types';
 import { createPickupInventory } from './pickupFixture';
 import { PERISH_MED, Perishable } from '../../componets/src/perishable';
 import { batch, createSignal } from '../../signals/src';
-import { WorldPerishClock } from '../../componets/src/worldperishclock';
+import type { WorldPerishClock } from '../../componets/src/worldperishclock';
+import { createPerishWorld } from './perishWorldFixture';
 import { PERISHABLE_FOODS, getFoodEffects } from '../../prefab/src/food';
 import { configureIceEntity } from '../../prefab/src/ice';
 import { PERISH_FAST, PERISH_SUPERFAST } from '../../componets/src/perishable';
@@ -28,12 +29,17 @@ const specs = {
     perishTime: PERISHABLE_FOODS.red_cap.perishTime, perishReplacement: PERISHABLE_FOODS.red_cap.replacement },
   spoiled_food: { name: '腐烂物', icon: 'spoiled_food.tex', maxStack: 40 },
 };
-const setup = () => new InventoryStore([
-  { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
-], specs);
+const setup = () => {
+  const store = new InventoryStore([
+    { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
+  ], specs);
+  const perishWorld = createPerishWorld();
+  store.entities.bindPerishWorld(perishWorld);
+  return Object.assign(store, { perishWorld });
+};
 /** Advance game time and settle the final partial period. */
-function settle(store: InventoryStore, seconds: number): void {
-  store.getEntity(a)?.components.perishable.onFrame(seconds);
+function settle(store: ReturnType<typeof setup>, seconds: number): void {
+  store.perishWorld.advance(seconds);
   store.getEntity(a)?.components.perishable.flush();
 }
 
@@ -50,10 +56,10 @@ it('derives fresh, stale and spoiled from the settled red_cap timer and eats sou
   const timerChanges: unknown[] = [];
   const stop = perishable.timer.subscribe(timer => timerChanges.push(timer));
   const scheduled = perishable.updateTimer.peek();
-  for (let frame = 0; frame < 79; frame++) perishable.onFrame(.125);
+  for (let frame = 0; frame < 79; frame++) store.perishWorld.advance(.125);
   expect(timerChanges).toHaveLength(0);
   expect(perishable.updateTimer.peek()).toBe(scheduled);
-  perishable.onFrame(.125);
+  store.perishWorld.advance(.125);
   expect(timerChanges).toEqual([{ status: 'perishing', remainingSeconds: PERISH_MED - 10 }]);
   stop();
 
@@ -79,7 +85,7 @@ it('catches up 10-second deadlines during a long frame, flushes the tail and can
   const changes: unknown[] = [];
   const stop = perish.timer.subscribe(timer => changes.push(timer));
   try {
-    perish.onFrame(25);
+    store.perishWorld.advance(25);
     expect(changes).toEqual([
       { status: 'perishing', remainingSeconds: PERISH_MED - 10 },
       { status: 'perishing', remainingSeconds: PERISH_MED - 20 },
@@ -88,15 +94,65 @@ it('catches up 10-second deadlines during a long frame, flushes the tail and can
     perish.StopPerishing();
     expect(perish.timer.peek()).toEqual({ status: 'paused', remainingSeconds: PERISH_MED - 25 });
     expect(perish.updateTimer.peek()).toEqual({ status: 'stopped' });
-    perish.onFrame(100);
+    store.perishWorld.advance(100);
     expect(perish.timer.peek()).toEqual({ status: 'paused', remainingSeconds: PERISH_MED - 25 });
     perish.StartPerishing();
-    expect(perish.updateTimer.peek()).toEqual({ status: 'scheduled', endTime: 35 });
-    perish.onFrame(9);
+    expect(perish.updateTimer.peek()).toEqual({ status: 'scheduled', endTime: 135 });
+    store.perishWorld.advance(9);
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 25 });
-    perish.onFrame(1);
+    store.perishWorld.advance(1);
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 35 });
   } finally { stop(); store.dispose(); }
+});
+
+it('binds existing items to the world queue, preserves pending deadlines on rebind and cancels only removed items', () => {
+  const store = setup();
+  const schedule = vi.spyOn(store.perishWorld.scheduler, 'schedule');
+  const nextWorld = createPerishWorld(createSignal(20), 200);
+  try {
+    store.add('spoiled_food', 1);
+    expect(schedule).not.toHaveBeenCalled();
+    store.add('red_cap', 1);
+    const item = store.getEntity(b)!, perish = item.components.perishable;
+    store.perishWorld.advance(3);
+    store.entities.bindPerishWorld(nextWorld);
+    expect(perish.GetPercent()).toBeCloseTo(1 - 3 / PERISH_MED);
+    expect(perish.updateTimer.peek()).toEqual({ status: 'scheduled', endTime: 207 });
+    const settled = perish.timer.peek();
+    store.perishWorld.advance(100);
+    expect(perish.timer.peek()).toBe(settled);
+    nextWorld.advance(6);
+    expect(perish.timer.peek()).toBe(settled);
+    nextWorld.advance(1);
+    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 10 });
+    item.remove();
+    expect(perish.updateTimer.peek()).toEqual({ status: 'stopped' });
+    const update = vi.spyOn(perish, 'Update'), peer = vi.fn();
+    nextWorld.scheduler.schedule(10, peer);
+    nextWorld.advance(20);
+    expect(update).not.toHaveBeenCalled();
+    expect(peer).toHaveBeenCalledOnce();
+  } finally { store.dispose(); }
+});
+
+it('settles other items at the current task deadline when a long-frame perish callback saves the inventory', () => {
+  const store = setup();
+  try {
+    store.add('red_cap', 1);
+    store.add('red_cap', 40);
+    const first = store.getEntity(a)!, other = store.getEntity(b)!;
+    first.components.perishable.SetPercent(10 / PERISH_MED);
+    other.components.perishable.StartPerishing();
+    let savedAtPerish: ReturnType<InventoryStore['exportState']> | undefined;
+    first.ListenForEvent('perished', () => { savedAtPerish = store.exportState(); });
+    store.perishWorld.advance(25);
+    expect(savedAtPerish?.slots.find(slot => slot.address.containerId === b.containerId && slot.address.slotKey === b.slotKey)?.item?.freshnessPercent)
+      .toBeCloseTo(1 - 10 / PERISH_MED, 9);
+    expect(store.get(a)).toMatchObject({ itemId: 'spoiled_food', count: 40 });
+    expect(other.components.perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 20 });
+    other.flush();
+    expect(other.components.perishable.GetPercent()).toBeCloseTo(1 - 25 / PERISH_MED, 9);
+  } finally { store.dispose(); }
 });
 
 it('dilutes freshness when stacks merge and preserves it through transfer flush, save and load', () => {
@@ -110,7 +166,7 @@ it('dilutes freshness when stacks merge and preserves it through transfer flush,
   expect(store.get(a)?.count).toBe(2);
   expect(entity.signals.freshnessPercent.peek()).toBeCloseTo(.625, 9);
   // A partial 10-second period stays pending until the transfer settles it.
-  entity.components.perishable.onFrame(3);
+  store.perishWorld.advance(3);
   expect(entity.signals.freshnessPercent.peek()).toBeCloseTo(.625, 9);
   expect(store.transfer(a, b, 2)).toBe(true);
   expect(store.getEntity(b)).toBe(entity);
@@ -132,7 +188,7 @@ it('settles partial batches before resetting freshness or perish time without ch
   const changes: unknown[] = [];
   const stop = perish.timer.subscribe(timer => changes.push(timer));
 
-  perish.onFrame(3);
+  store.perishWorld.advance(3);
   // Reapplying an unchanged item snapshot retains its pending batch.
   entity.apply(entity.snapshot());
   expect(changes).toEqual([]);
@@ -145,13 +201,13 @@ it('settles partial batches before resetting freshness or perish time without ch
   expect(changes).toHaveLength(2);
 
   changes.length = 0;
-  perish.onFrame(2);
+  store.perishWorld.advance(2);
   perish.SetPerishTime(PERISH_MED * 2);
   expect(changes).toEqual([
     { status: 'perishing', remainingSeconds: PERISH_MED * .5 - 2 },
     { status: 'perishing', remainingSeconds: PERISH_MED * 2 },
   ]);
-  for (let frame = 0; frame < 60; frame++) perish.onFrame(.5);
+  for (let frame = 0; frame < 60; frame++) store.perishWorld.advance(.5);
   expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED * 2 - 30 });
   stop(); store.dispose();
 });
@@ -190,7 +246,7 @@ it.each(['SetPercent', 'SetPerishTime'] as const)('keeps the replacement when se
   perish.SetPercent(1 / PERISH_MED);
   const onPerish = vi.fn();
   perish.perishfn = onPerish;
-  perish.onFrame(2);
+  store.perishWorld.advance(2);
   if (method === 'SetPercent') perish.SetPercent(1);
   else perish.SetPerishTime(PERISH_MED * 2);
   expect(onPerish).toHaveBeenCalledTimes(1);
@@ -204,8 +260,8 @@ it.each(['SetPercent', 'SetPerishTime'] as const)('keeps the replacement when se
 it('settles world prefix differences, paused time and changed wetness without replaying historical temperature', async () => {
   const store = setup();
   const temperature = createSignal(-1);
-  const clock = new WorldPerishClock(temperature);
-  store.entities.bindPerishWorld({ perishClock: clock });
+  const world = createPerishWorld(temperature), clock = world.perishClock;
+  store.entities.bindPerishWorld(world);
   store.add('red_cap', 1);
   const entity = store.getEntity(a)!;
   const perish = entity.components.perishable;
@@ -221,15 +277,16 @@ it('settles world prefix differences, paused time and changed wetness without re
   const settled = perish.timer.peek();
   perish.Update(clock.GetTick());
   expect(perish.timer.peek()).toBe(settled);
+  world.scheduler.advanceTo(clock.GetTick().time);
 
   perish.StopPerishing();
-  clock.OnUpdate(100);
+  world.advance(100);
   perish.StartPerishing();
   temperature.set(70);
-  clock.OnUpdate(10);
+  world.advance(10);
   entity.setWet(true);
-  await Promise.resolve();
-  clock.OnUpdate(10);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  world.advance(10);
   perish.flush();
   expect(perish.GetPercent()).toBeCloseTo(1 - (65 + 10 + 13) / PERISH_MED, 9);
 
@@ -239,35 +296,35 @@ it('settles world prefix differences, paused time and changed wetness without re
 
 it('settles watched wetness from apply and setWet, preserving it on reload', async () => {
   const store = setup(), restored = setup();
-  const clock = new WorldPerishClock(createSignal(20));
-  store.entities.bindPerishWorld({ perishClock: clock });
-  restored.entities.bindPerishWorld({ perishClock: clock });
+  const world = createPerishWorld(), clock = world.perishClock;
+  store.entities.bindPerishWorld(world);
+  restored.entities.bindPerishWorld(world);
   store.add('red_cap', 1);
   const entity = store.getEntity(a)!, perish = entity.components.perishable;
   try {
-    clock.OnUpdate(10);
+    world.advance(10);
     entity.apply({ ...entity.snapshot(), wet: true });
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED - 10 });
 
-    clock.OnUpdate(4);
+    world.advance(4);
     entity.apply({ ...entity.snapshot(), wet: false });
-    await Promise.resolve();
-    clock.OnUpdate(6);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    world.advance(6);
     entity.setWet(true);
-    await Promise.resolve();
-    clock.OnUpdate(8);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    world.advance(8);
     const saved = store.exportState();
     const remainingSeconds = PERISH_MED - 10 - 4 * 1.3 - 6 - 8 * 1.3;
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds });
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds });
 
     restored.replaceState(saved, {});
     const loaded = restored.getEntity(a)!;
     expect(loaded.snapshot()).toEqual(entity.snapshot());
     expect(loaded.GetIsWet()).toBe(true);
-    clock.OnUpdate(10);
+    world.advance(10);
     loaded.components.perishable.flush();
     expect(loaded.components.perishable.GetPercent()).toBeCloseTo((remainingSeconds - 13) / PERISH_MED, 9);
   } finally { store.dispose(); restored.dispose(); clock.dispose(); }
@@ -275,25 +332,25 @@ it('settles watched wetness from apply and setWet, preserving it on reload', asy
 
 it('settles wetness on disposal and releases the source bridge and effect', async () => {
   const wet = createSignal(false);
-  const clock = new WorldPerishClock(createSignal(20));
+  const world = createPerishWorld(), clock = world.perishClock;
   const perish = new Perishable({
     isRemoved: false,
     components: { inventoryitem: { owner: null } },
     PushEvent: vi.fn(),
-  }, wet, { perishClock: clock });
+  }, wet, world);
   perish.SetPerishTime(100);
   perish.StartPerishing();
-  clock.OnUpdate(10);
+  world.advance(10);
   wet.set(true);
-  await Promise.resolve();
-  clock.OnUpdate(10);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  world.advance(10);
   wet.set(false);
   perish.dispose();
   expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 100 - 15 - 19.5 });
   const update = vi.spyOn(perish, 'Update');
   const sample = vi.spyOn(clock, 'GetTick');
   wet.set(true);
-  await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(update).not.toHaveBeenCalled();
   expect(sample).not.toHaveBeenCalled();
   clock.dispose();
@@ -302,14 +359,14 @@ it('settles wetness on disposal and releases the source bridge and effect', asyn
 it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground cap and reloads freshness through c_save', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory(), restoredInventory = createPickupInventory();
-  const clock = new WorldPerishClock(createSignal(20));
-  inventory.entities.bindPerishWorld({ perishClock: clock });
+  const world = createPerishWorld(), clock = world.perishClock;
+  inventory.entities.bindPerishWorld(world);
   let restoredClock: WorldPerishClock | undefined;
   const player = new THREE.Group();
   player.position.set(2, 0, -4);
   const createManager = (store: InventoryStore) => new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
-    store, '/dst/data/anim', player);
+    store, '/dst/data/anim', player, undefined, undefined, undefined, store.entities);
   const manager = createManager(inventory);
   const restoreGround = (target: GroundItemManager, record: SavedEntity) => target.spawnFromSave(record.id,
     { ...SAVE_CATALOG.items[record.components.stack!.itemId], ...record.components.stack! }, new THREE.Vector3(...record.transform.position));
@@ -331,11 +388,11 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     // preparedfoods.lua: bananapop perishes in PERISH_SUPERFAST (3 days).
     const pop = manager.entities.get('spawn:bananapop')!;
     expect(pop.components.perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 3 * 480 });
-    clock.OnUpdate(30);
+    world.advance(30);
     pop.components.perishable.SetPercent(.15);
     inventory.getEntity(inventorySlotAddress(2))!.components.perishable.SetPercent(.8);
     const ground = manager.entities.get('spawn:red_cap')!;
-    expect(ground.signals.freshnessPercent.peek()).toBe(1);
+    expect(ground.signals.freshnessPercent.peek()).toBeCloseTo(1 - 45 / PERISH_MED);
     ground.components.perishable.SetPercent(.3);
     inventory.getEntity(inventorySlotAddress(0))!.components.perishable.SetPercent(.6);
 
@@ -348,8 +405,9 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities).toEqual(before);
-    restoredClock = new WorldPerishClock(createSignal(20), saved.world.elapsedSeconds);
-    restoredInventory.entities.bindPerishWorld({ perishClock: restoredClock });
+    const restoredWorld = createPerishWorld(createSignal(20), saved.world.elapsedSeconds);
+    restoredClock = restoredWorld.perishClock;
+    restoredInventory.entities.bindPerishWorld(restoredWorld);
     restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     restored = createManager(restoredInventory);
     for (const record of saved.world.entities.ground_item) await restoreGround(restored, record);
@@ -370,8 +428,7 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     // Ground perishing spends PERISH_GROUND_MULT and replaces the cap at its foot point.
     for (let frame = 0; frame < 60; frame++) {
       const dt = PERISH_MED * .3 / 1.5 / 60;
-      restoredClock.OnUpdate(dt);
-      loadedGround.components.perishable.onFrame(dt);
+      restoredWorld.advance(dt);
     }
     loadedGround.components.perishable.flush();
     await vi.waitFor(() => expect(loadedGround.isRemoved).toBe(true));
@@ -391,16 +448,17 @@ it('gives meat and ice source perish times: meat spoils into spoiled_food, a hel
     ice: { name: '冰', icon: 'ice.tex', maxStack: 40, perishTime: PERISHABLE_FOODS.ice.perishTime, configureEntity: configureIceEntity },
     spoiled_food: specs.spoiled_food,
   });
+  const world = createPerishWorld();
+  store.entities.bindPerishWorld(world);
   store.add('meat', 2); store.add('ice', 3);
   expect(store.getEntity(a)!.components.perishable.perishtime.peek()).toBe(PERISH_FAST);
   const ice = store.getEntity(b)!;
   expect(ice.components.perishable.perishtime.peek()).toBe(PERISH_SUPERFAST);
   expect(ice.hasTag('frozen')).toBe(true);
 
-  for (const slot of [a, b]) {
-    const perishable = store.getEntity(slot)!.components.perishable;
-    perishable.onFrame(PERISH_SUPERFAST + 1); perishable.flush();
-  }
+  world.advance(PERISH_SUPERFAST + 1);
+  for (const slot of [a, b]) store.getEntity(slot)?.components.perishable.flush();
   expect(store.get(a)).toMatchObject({ itemId: 'meat', count: 2 });
   expect(store.get(b)).toBeNull();
+  store.dispose();
 });

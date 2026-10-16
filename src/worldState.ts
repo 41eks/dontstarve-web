@@ -1,9 +1,10 @@
 import { batch, GameTimeScheduler, createMemo, createSignal, readonlySignal, bindWorldContent, getWatchWorldContent, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type Signal, type ClockState, type SeasonState, type WorldMoonPhase, type WorldContentContext, type WorldContentEnvironment } from '@dontstarve-web/signals';
-import type { Vector3 } from 'three';
+import { Quaternion, type Vector3 } from 'three';
 import { WorldTemperature } from '../packages/componets/src/worldtemperature';
 import { Weather } from '../packages/componets/src/weather';
 import { WorldPerishClock } from '../packages/componets/src/worldperishclock';
 import { WorldWind } from '../packages/componets/src/worldwind';
+import { ComponentUpdates } from '../packages/componets/src/componentUpdates';
 import { GetTileStateAtPoint as bindTileStateQuery, DisposeTileStates } from '../packages/componets/src/tileManager';
 import type { SaveDocument } from './save/types';
 import { getDstCycle, getDstClock, MOON_PHASE_CYCLES, TUNING } from './tuning';
@@ -14,6 +15,7 @@ export interface WorldState extends WorldContentContext {
   readonly moonPhase: Signal<WorldMoonPhase>;
   readonly isNight: ReadonlySignal<boolean>;
   readonly playerpositions: Signal<Vector3[]>;
+  readonly camerarotation: Signal<Quaternion>;
   /** clock.lua ms_setmoonphase: the first cycle step with the phase (waxing from the start, else from mid-cycle). */
   SetMoonPhase(phase: WorldMoonPhase, waxing?: boolean): void;
   /** clock.lua OnSave `mooomphasecycle`, one-based. */
@@ -25,11 +27,13 @@ export interface WorldState extends WorldContentContext {
   readonly weather: Weather;
   readonly perishClock: WorldPerishClock;
   readonly worldwind: WorldWind;
+  readonly componentUpdates: ComponentUpdates;
 }
 
 /** Session temperature derived from the shared clock/season singleton signals. */
 export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeconds' | 'systems'>): WorldState {
   const scheduler = new GameTimeScheduler(world.elapsedSeconds);
+  const componentUpdates = new ComponentUpdates();
   const worldtemperature = new WorldTemperature();
   // Until seasons.lua is ported, retain the loaded seasonal term. Legacy saves start
   // at their configured season's midpoint, with noise aligned to saved game time.
@@ -57,6 +61,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const moon = createMemo(() => ({ phase: moonphasestate.get(), waxing: clockstate.get().waxing ?? true }));
   const cycle = createMemo(() => clockstate.get().phase);
   const playerpositions = createSignal<Vector3[]>([]);
+  const camerarotation = createSignal(new Quaternion());
   const playerPosition = createMemo<Vector3 | undefined>(() => playerpositions.get()[0]);
   const tickingarea = bindTileStateQuery(playerPosition);
   // init: inject the component's existing signal; world content only resolves keys and watches it.
@@ -65,13 +70,14 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     wind: worldwind.windchange, perishTick: perishClock.snapshot, perishClock,
     snowLevel: weather.snowLevel,
     playerpositions: readonlySignal(playerpositions),
+    camerarotation: readonlySignal(camerarotation),
     tickingarea,
   });
   const unbindWorldContent = bindWorldContent(worldContent);
   const isNight = createMemo(() => cycle.get() === 'night');
-  return { scheduler, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle,
+  return { scheduler, componentUpdates, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle,
     wind: worldContent.wind, perishTick: worldContent.perishTick, snowLevel: worldContent.snowLevel, worldwind,
-    playerpositions, tickingarea,
+    playerpositions, camerarotation, tickingarea,
     getWatchWorldContent: (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, worldContent, options),
     SetMoonPhase(phase, waxing) {
       const length = MOON_PHASE_CYCLES.length;
@@ -90,7 +96,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     moonPhaseCycle: () => ((clockstate.peek().cycles ?? 0) + moonCycleOffset) % MOON_PHASE_CYCLES.length + 1,
     clockAt,
     season: seasonstate, moonPhase: moonphasestate, moon: worldContent.moon, isNight: readonlySignal(isNight), worldtemperature, weather, perishClock,
-    dispose() { unbindWorldContent(); DisposeTileStates(playerPosition); playerPosition.dispose(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
+    dispose() { unbindWorldContent(); DisposeTileStates(playerPosition); playerPosition.dispose(); componentUpdates.dispose(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */

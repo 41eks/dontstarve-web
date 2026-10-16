@@ -57,8 +57,8 @@ export class CursorLabelUi {
         this.tooltips.set(key, { text, button, pointer });
         this.update();
       },
-      hide: () => { this.tooltips.delete(key); this.update(); },
-      update: () => this.update(),
+      hide: () => { if (this.tooltips.delete(key)) this.update(); },
+      update: () => { if (this.tooltips.has(key)) this.update(); },
     };
   }
 
@@ -75,12 +75,18 @@ export class CursorLabelUi {
   update(): void {
     if (this.disposed) return;
     const tooltip = [...this.tooltips.values()].at(-1);
-    const actions = tooltip ? undefined : this.picker?.getMouseActions();
     const pointer = tooltip?.pointer ?? this.picker?.pointer ?? this.handAction?.pointer;
+    // Hoverer only needs world actions while a mouse is actually over the game.
+    // Hidden placement labels must not repeatedly gather every scene candidate.
+    if (!pointer?.hasPointer
+      || document.elementFromPoint(pointer.pointerClientX, pointer.pointerClientY) !== this.gameCanvas) {
+      this.element.hidden = true;
+      return;
+    }
+    const actions = tooltip ? undefined : this.picker?.getMouseActions();
     const hand = !tooltip && !this.picker && this.handAction?.pointer.isOverGround ? this.handAction : undefined;
     const hasText = tooltip ? tooltip.pointer.isOverGround : !!actions?.left || !!actions?.right || !!hand;
-    const visible = hasText && !!pointer?.hasPointer
-      && document.elementFromPoint(pointer.pointerClientX, pointer.pointerClientY) === this.gameCanvas;
+    const visible = hasText;
     this.element.hidden = !visible;
     if (!visible || !pointer) return;
     if (tooltip) {

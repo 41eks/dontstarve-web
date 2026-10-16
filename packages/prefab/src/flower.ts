@@ -56,6 +56,7 @@ export class FlowerPlanting {
   private readonly random: () => number;
   private readonly onPlant?: () => void;
   private readonly flowers = new Map<string, PlantedFlower>();
+  private flowerList?: readonly { readonly id: string; readonly position: THREE.Vector3 }[];
   private factory?: Promise<AnimatedSpriteFactory>;
   private readyFactory?: AnimatedSpriteFactory;
   private fireFx?: FireFxHost;
@@ -154,6 +155,12 @@ export class FlowerPlanting {
     for (const { model } of this.flowers.values()) model.quaternion.copy(cameraQuaternion);
   }
 
+  /** The planted `flower`-tagged entities (butterflybrain FLOWER_TAGS), rebuilt only when one is planted or removed. */
+  get plantedFlowers(): readonly { readonly id: string; readonly position: THREE.Vector3 }[] {
+    // Planted models are direct scene children, so their position is the world position.
+    return this.flowerList ??= [...this.flowers.values()].map(({ id, model }) => ({ id, position: model.position }));
+  }
+
   get renderEntities() {
     const models = [...this.flowers.values()].map(({ model }) => model);
     if (this.preview?.visible) models.push(this.preview);
@@ -173,6 +180,7 @@ export class FlowerPlanting {
     if (this.disposed) throw new Error('Flower planting has been disposed');
     const flower = this.createFlower(factory, id, animation, position);
     this.flowers.set(id, flower);
+    this.flowerList = undefined;
     this.world.scene.add(flower.model);
     return flower.model;
   }
@@ -220,6 +228,7 @@ export class FlowerPlanting {
   private removeFlower(flower: PlantedFlower): void {
     if (this.flowers.get(flower.id) !== flower) return;
     this.flowers.delete(flower.id);
+    this.flowerList = undefined;
     flower.burn?.dispose();
     flower.model.userData.removed = true;
     flower.model.removeFromParent();
@@ -269,6 +278,7 @@ export class FlowerPlanting {
       return;
     }
     this.flowers.set(flower.id, flower);
+    this.flowerList = undefined;
     this.world.scene.add(flower.model);
     this.cancel();
     this.onPlant?.();

@@ -1,6 +1,6 @@
 # 按 tile 管理场景实体生命周期
 
-本文记录按 tile 管理生命周期的实施方案：每个 tile 持有一个活动状态 signal，玩家跨 tile 时更新变化的 tile，prefab 读取缓存 memo 派生自身的活动状态。活动网格、温泉的显隐及海浪休眠移除已实现；海浪按 Lua 的 `OnEntitySleep = inst.Remove` 释放 FX，不在重新激活时恢复，详见 [海洋渲染](dst-ocean-rendering.md)。当前 [stafflight.ts](../packages/prefab/src/stafflight.ts) 仍逐帧检查距离，[ProximityEntities](../packages/prefab/src/proximityEntities.ts) 仍遍历实体检查距离，统一的场景生命周期调度和资源卸载尚未实现。
+本文记录按 tile 管理生命周期的实施方案：每个 tile 持有一个活动状态 signal，玩家跨 tile 时更新变化的 tile，prefab 读取缓存 memo 派生自身的活动状态。活动网格、萤火虫资源加载／释放、温泉的显隐及海浪休眠移除已实现；海浪按 Lua 的 `OnEntitySleep = inst.Remove` 释放 FX，不在重新激活时恢复，详见 [海洋渲染](dst-ocean-rendering.md)。当前 [stafflight.ts](../packages/prefab/src/stafflight.ts) 仍逐帧检查距离，[ProximityEntities](../packages/prefab/src/proximityEntities.ts) 仍遍历实体检查距离，其他实体的统一资源卸载尚未实现。
 
 [worldContent.ts](../packages/signals/src/worldContent.ts) 已提供 `GetTileStateAtPoint(tile, radius = 10)`，从当前绑定世界解析 tile 查询服务，`tile` 是实体自己的 tile key（`ReadonlySignal<number>`），返回 `Memo<boolean> | undefined`，调用方无需传入玩家位置源。实体用 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `TileTracker` 持有私有 tile key：构造时传入读取当前位置的函数（如 `() => transform.position`），用 `GetTileKeyAtPoint` 计算 key（网格外或非有限坐标为 `INVALID_TILE_KEY = -1`）。只有跨 tile 时 key 才变化，同一 tile 内移动不通知下游 memo，也不分配新向量；位置的权威数据仍在实体上，key 在刷新时通过读取函数取当前向量，所以原地修改和整个替换位置引用都能被读到，但只有刷新（见下）发生时才会更新。实体每次给位置赋值后调用 `tracker.moved()`，累计 60 次（可通过构造参数 `interval` 调整）才刷新一次 key，计数由实体自己的 tracker 持有；休眠实体的 `update` 被跳过，位置不赋值就不计数。掉落、传送等一次性位置跳变用 `sync()` 立即刷新并重新计数。消费者通过 `getWatchWorldContent(key, cleanup, { tile })` 传入 `tracker.tile` 完成门控，清理时释放 memo。世界初始化时通过 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `GetTileStateAtPoint(playerPosition)` 柯里化绑定源，将返回的查询函数注入 `WorldContentEnvironment.tickingarea`；`world.tickingarea(tile, radius)` 始终查询所属世界，全局导出查询当前绑定世界。signals 包只定义服务协议和解析入口，网格计算及缓存仍由 tileManager 管理。
 
@@ -15,6 +15,12 @@
 返回值支持 `awake()`、`get()`、`peek()`、`subscribe()`。memo 由缓存持有；同一个 tile signal 的多个消费者共享 memo，不能由某个消费者提前释放。`getWatchWorldContent` 的 `{ tile }` 门控约定该 signal 为消费者私有，其清理函数会释放世界输入监听和对应 memo；直接查询的私有 tracker 可由拥有者在永久移除时释放 memo，或交给世界统一释放。`WorldState.dispose()` 调用 `DisposeTileStates(playerPosition)` 统一释放全部 memo、排队的管理器 effect 和位置监听，再释放首个玩家位置 memo。显式调用某个 tile memo 的 `dispose()` 会将它从缓存移除，下次查询重新创建；某半径的最后一个 memo 释放时回收对应网格，整个缓存的最后一个 memo 释放时解除位置桥接。重复查询不增加引用计数，重复释放无影响。普通管理器 effect 按现有微任务调度，位置写入后的派生结果在后续宏任务观察；尚未接入帧阶段、缓冲圈和实体生命周期。
 
 [hotspring.ts](../packages/prefab/src/hotspring.ts) 先接入显隐与碰撞切换：场景向管理器注入所属世界的查询函数，每个温泉用私有 `watchSignal` 监听脚点所属 tile，并通过普通 effect 更新活动集合、场景模型和物理体。inactive 时停止该温泉动画更新，保留原模型、逻辑记录、heater、bathbombable 和存档状态；返回范围时恢复同一实例，不重播生成或投入沐浴球动作。此阶段不释放休眠模型资源，不实现 Lua 的蒸汽 FX 分支。单个温泉永久移除时清理自己的监听，不释放共享 memo，也不影响同 tile 其他温泉。没有注入 tile 服务或查询返回 `undefined`（包括超出网格）时回退为 active，保证模型、碰撞体和动画正常工作；返回值为有效 memo 且状态为 `false` 时仍按 inactive 处理。
+
+[fireflies.ts](../packages/prefab/src/fireflies.ts) 从自身私有的活动区域视图纯派生 `active`；表现层另建 `watchSignal`，用普通 effect 创建或销毁独立动画几何。inactive 实体只保留逻辑控制器和轻量原点，原有渐变值、工作状态、逻辑 timer 和实体身份保留；共享图集只缓存一份。再次 active 时重建几何并绑定当前动画，不重新执行掉落、消耗或实体生成。`GroundItemVisual.active` 表示资源已加载，`GroundItemManager` 为每条记录创建私有桥接，通过 effect 更新活动集合和场景归属；动画更新、交互候选、邻居查询和 billboard 排序只遍历活动集合，保存仍导出全部逻辑记录。拾取、永久移除、换肤替换和场景释放时解除桥接并释放资源；没有活动区域服务时照常加载。
+
+[actionEntity.ts](../packages/prefab/src/actionEntity.ts) 的世界绑定统一维护 `tickingarea` 标签和活动实体索引。每个投影持有私有 tracker、区域 memo 和 `watchSignal`，普通 effect 在 active 时添加标签及索引，inactive 时移除；带底层 `ItemEntity` 的投影仍通过该实体的标签 API 写入，不维护第二份权威标签。`FindEntities` 只遍历活动索引，保留场景归属、移除状态、must/cant/oneof 标签和半径过滤，不读取 inactive 候选的位置。标签不控制可见性，白天隐藏但仍在活动区域的萤火虫也可带此标签；鼠标交互仍由可见性和 `NOCLICK` 规则控制。
+
+世界绑定仅建立一个玩家位置 `watchSignal`，沿用现有每 60 活动帧发布的位置快照，批量刷新登记实体的 tracker；玩家停留原 tile 时也刷新移动实体的位置。该采样会检查登记实体，但不会在每次 `FindEntities` 或每个渲染帧扫描全部实体。模型 `added` 时立即同步实际脚点，避免创建模型后才赋位置导致一直查询出生格。查询返回 `undefined` 的原有无门控分支保持 active。拾取、换肤等模型释放和 `ProximityEntities` 卸载释放投影订阅；永久移除及场景销毁清除标签和索引，逻辑实体保存不受影响。effect 仍在后续微任务提交，测试在后续宏任务观察区域切换。
 
 ```ts
 import { GetTileStateAtPoint } from '@dontstarve-web/signals';
@@ -218,7 +224,7 @@ tile 的 inactive 状态暂停逐帧工作，具体组件决定休眠期间如�
 
 世界为每段有效游戏时间累计温度加权秒数：`C(t) = Σ(dt × temperatureMultiplier)`。已移植的普通物品分支中，温度 `< 0` 为 `0.75`，温度 `> 70` 为 `1.25`，其余为 `1`。世界温度仍每 60 个活动帧更新，累计器使用该时间段内实际生效的温度，不推测两次温度更新之间的连续变化。相同倍率的相邻区间合并保存，`GetTick(time?)` 返回不可变的 `{ time, total: C(time) }`，可在已记录范围内查询指定时间。
 
-组件保存上次已结算刻度，消费 `current.total - previous.total`，再乘持有者、湿润和本地倍率。普通活动结算通过游戏时间调度器每 10 个游戏秒执行，尾帧保存与将来的早晨／唤醒补算也走同一入口；同一刻度重复提交不再次扣减，倒退刻度会被拒绝。区块休眠只停止 `onFrame()`，保留组件和世界累计基准；不能调用 `StopPerishing()` 或 `dispose()` 来表示仅卸载模型。创建／恢复时先绑定世界，避免把生成前的时间计入新物品。
+组件保存上次已结算刻度，消费 `current.total - previous.total`，再乘持有者、湿润和本地倍率。普通活动结算通过游戏时间调度器每 10 个游戏秒执行，尾帧保存与将来的早晨／唤醒补算也走同一入口；同一刻度重复提交不再次扣减，倒退刻度会被拒绝。当前周期任务直接登记到世界共享调度器；仅卸载模型时保留逻辑组件、周期任务和世界累计基准，不能调用 `StopPerishing()` 或 `dispose()` 来表示仅卸载模型。创建／恢复时先绑定世界，避免把生成前的时间计入新物品。
 
 未来由管理器通过游戏时间调度器登记早晨边界，读取该边界的累计刻度，然后对 inactive 实体结算：
 

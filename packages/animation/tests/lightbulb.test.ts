@@ -9,27 +9,30 @@ import { ItemUseActionController, type ItemUseSource, type ItemUseTarget } from 
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
 import { createPickupInventory } from './pickupFixture';
+import { createPerishWorld } from './perishWorldFixture';
 
 afterEach(() => vi.unstubAllGlobals());
 
 it('settles lightbulb freshness in batches, applies spoilage to eating, and replaces the whole rotten stack', () => {
   const inventory = createPickupInventory(), slot = inventorySlotAddress(0);
+  const world = createPerishWorld();
+  inventory.entities.bindPerishWorld(world);
   try {
     inventory.add('lightbulb', 3);
     const entity = inventory.getEntity(slot)!, perish = entity.components.perishable;
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST });
     expect(getFoodEffects(entity)).toEqual({ health: 1, hunger: 0, sanity: 0 });
     const changes: unknown[] = [], stop = perish.timer.subscribe(timer => changes.push(timer));
-    for (let frame = 0; frame < 79; frame++) perish.onFrame(.125);
+    for (let frame = 0; frame < 79; frame++) world.advance(.125);
     expect(changes).toEqual([]);
-    perish.onFrame(.125);
+    world.advance(.125);
     expect(changes).toEqual([{ status: 'perishing', remainingSeconds: PERISH_FAST - 10 }]);
     stop();
     perish.SetPercent(.3);
     expect(getFoodEffects(entity)).toEqual({ health: .333, hunger: 0, sanity: 0 });
     perish.SetPercent(.1);
     expect(getFoodEffects(entity)).toEqual({ health: 0, hunger: 0, sanity: -10 });
-    perish.onFrame(PERISH_FAST);
+    world.advance(PERISH_FAST);
     entity.flush();
     expect(entity.isRemoved).toBe(true);
     expect(inventory.get(slot)).toMatchObject({ itemId: 'spoiled_food', count: 3 });

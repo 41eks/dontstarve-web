@@ -9,7 +9,7 @@ import { GroundItemManager } from '../../../src/groundItems';
 
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal, type ReadonlySignal } from '../../signals/src';
-import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
+import { DisposeTileStates, GetTileKeyAtPoint, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { bindTestWorld } from './worldContentFixture';
 
 const cleanups: (() => void)[] = [];
@@ -33,6 +33,24 @@ function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = ()
 }
 
 describe('source fireflies light and proximity', () => {
+  it('skips hidden daytime animation and keeps settled light data unchanged between transitions', async () => {
+    const s = setup(false);
+    s.controller.place(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    s.tick(1);
+    expect(s.animation.update).not.toHaveBeenCalled();
+    s.setNight(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    s.tick(2.1);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    s.tick(3.1);
+    expect(s.animation.update).toHaveBeenCalled();
+    const light = getPrefabLocalLight(s.model);
+    expect(light?.intensity).toBe(.5);
+    s.tick(1);
+    expect(getPrefabLocalLight(s.model)).toBe(light);
+  });
+
   it('uses private world cycle changes for the delayed night check and releases world inputs on disposal', async () => {
     const s = setup(false);
     s.controller.place(false);
@@ -176,6 +194,8 @@ describe('fireflies tickingarea gate', () => {
     expect(animation.update).not.toHaveBeenCalled(); // OnEntitySleep: update is skipped as well
 
     awake.set(true); await settle(); tick(3.1); await settle();
+    expect(model.children[0].visible).toBe(true);
+    controller.update(.1);
     expect(animation.update).toHaveBeenCalled();
     expect(controller.clickable).toBe(true); // wake resyncs cycle and positions and runs the usual night check
   });
@@ -186,6 +206,123 @@ describe('real fireflies archive and ground transfers', () => {
     vi.stubGlobal('fetch', async () => new Response(await readFile(
       new URL('../../../public/dst/data/anim/fireflies.zip', import.meta.url))));
   }
+
+  it('orients active billboards from the world camera rotation signal only when it changes', async () => {
+    assets();
+    const scheduler = new GameTimeScheduler();
+    const { camerarotation, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
+    const scene = new THREE.Scene(), inventory = createPickupInventory();
+    const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
+    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
+      { getWatchWorldContent }, undefined, undefined, scheduler, undefined, undefined, undefined, getWatchWorldContent);
+    cleanups.push(() => { manager.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); });
+    const definition = { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' };
+    const first = await manager.spawnFromSave('fireflies:a', definition, new THREE.Vector3());
+    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+    const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
+    camerarotation.set(turned);
+    await settle();
+    expect(first.quaternion.equals(turned)).toBe(true);
+    // The per-frame argument no longer drives orientation once the world publishes the rotation.
+    manager.update(.1, new THREE.Quaternion());
+    expect(first.quaternion.equals(turned)).toBe(true);
+    // Items created after the turn start from the current rotation.
+    const later = await manager.spawnFromSave('fireflies:b', definition, new THREE.Vector3(1, 0, 0));
+    await settle();
+    expect(later.quaternion.equals(turned)).toBe(true);
+  });
+
+  it('visits a swarm in the frame loop only while it fades or shows its animation', async () => {
+    assets();
+    const scheduler = new GameTimeScheduler();
+    const { cycle, playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
+    cycle.set('day'); playerpositions.set([new THREE.Vector3(100, 0, 0)]);
+    const scene = new THREE.Scene(), inventory = createPickupInventory();
+    const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
+    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
+      { getWatchWorldContent }, undefined, undefined, scheduler, undefined, undefined, undefined, getWatchWorldContent);
+    cleanups.push(() => { manager.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); });
+    const model = await manager.spawnFromSave('fireflies:idle',
+      { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' }, new THREE.Vector3());
+    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+    await settle();
+    const update = vi.spyOn(model.userData.firefliesController as FirefliesController, 'update');
+    for (let i = 0; i < 5; i++) { scheduler.advance(.1); manager.update(.1, new THREE.Quaternion()); }
+    expect(update).not.toHaveBeenCalled();
+    cycle.set('night');
+    await settle();
+    for (let i = 0; i < 40; i++) { scheduler.advance(.1); manager.update(.1, new THREE.Quaternion()); await settle(); }
+    expect(update).toHaveBeenCalled();
+    expect(getPrefabLocalLight(model)?.intensity).toBeGreaterThan(0);
+  });
+
+  it('keeps resources only in active tiles, disposes departing geometry and restores the same logical entities on return', async () => {
+    assets();
+    const scheduler = new GameTimeScheduler();
+    const position = createSignal<THREE.Vector3 | undefined>(new THREE.Vector3());
+    const { cycle, playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler, GetTileStateAtPoint(position));
+    cycle.set('night'); playerpositions.set([new THREE.Vector3()]);
+    const scene = new THREE.Scene(), inventory = createPickupInventory();
+    const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
+    const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
+      { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
+      { getWatchWorldContent });
+    cleanups.push(() => { manager.dispose(); inventory.dispose(); unbind(); DisposeTileStates(position); scheduler.dispose(); });
+    const definition = { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' };
+    const near = await manager.spawnFromSave('fireflies:near', definition, new THREE.Vector3(30, 0, 0));
+    const far = await manager.spawnFromSave('fireflies:far', definition, new THREE.Vector3(300, 0, 0));
+    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+    await settle();
+    const geometry = (model: THREE.Object3D) => {
+      let result: THREE.BufferGeometry | undefined;
+      model.traverse(object => { if (object instanceof THREE.Mesh) result = object.geometry; });
+      return result;
+    };
+    const originalGeometry = geometry(near)!;
+    const dispose = vi.spyOn(originalGeometry, 'dispose');
+    expect(geometry(far)).toBeUndefined();
+    expect(far.parent).toBeNull();
+    expect(manager.renderEntities.map(entry => entry.object)).toEqual([near]);
+    const records = manager.exportRecords();
+    const nearEntity = manager.entities.get('fireflies:near');
+    for (let i = 0; i < 51; i++) { scheduler.advance(.1); manager.update(.1, new THREE.Quaternion()); }
+    expect(getPrefabLocalLight(near)?.intensity).toBe(.5);
+    const target = manager.netCaptureTargets[0];
+    const nearUpdate = vi.spyOn(near.userData.animationController, 'update');
+    position.set(new THREE.Vector3(300, 0, 0));
+    playerpositions.set([new THREE.Vector3(300, 0, 0)]);
+    await settle();
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(geometry(near)).toBeUndefined();
+    expect(near.parent).toBeNull();
+    expect(getPrefabLocalLight(near)).toBeUndefined();
+    expect(geometry(far)).toBeDefined();
+    expect(manager.renderEntities.map(entry => entry.object)).toEqual([far]);
+    expect(target.isValid()).toBe(false);
+    expect(target.capture()).toBe(false);
+    nearUpdate.mockClear();
+    manager.update(.1, new THREE.Quaternion());
+    expect(nearUpdate).not.toHaveBeenCalled();
+    expect(manager.exportRecords()).toEqual(records);
+    expect(manager.entities.get('fireflies:near')).toBe(nearEntity);
+
+    position.set(new THREE.Vector3()); playerpositions.set([new THREE.Vector3()]);
+    await settle();
+    expect(geometry(near)).toBeDefined();
+    expect(geometry(near)).not.toBe(originalGeometry);
+    expect(geometry(far)).toBeUndefined();
+    expect(manager.renderEntities.map(entry => entry.object)).toEqual([near]);
+    expect(manager.exportRecords()).toEqual(records);
+    expect(manager.entities.get('fireflies:near')).toBe(nearEntity);
+    manager.update(.1, new THREE.Quaternion());
+    expect(getPrefabLocalLight(near)?.intensity).toBe(.5);
+    manager.dispose();
+    position.set(new THREE.Vector3(300, 0, 0)); await settle();
+    expect(scene.children).toHaveLength(0);
+    expect(geometry(near)).toBeUndefined(); expect(geometry(far)).toBeUndefined();
+  });
 
   it('splits live drops, prevents bare-hand pickup, captures atomically and restores dark daytime swarms', async () => {
     assets();

@@ -47,6 +47,8 @@ createEffect(() => this.runTest(this.cycle.get()));
 
 包导出的同名函数也可通过 `bindWorldContent(sources)` 解析当前世界，或用第三个参数显式指定包含 `scheduler` 的世界来源。应用注入的函数始终绑定所属世界；旧世界的清理不会解除新世界的绑定。组件释放只停止自身的监听和 timer，不释放 scheduler；世界状态负责创建、恢复游戏时间起点和销毁该实例。`GameTimeScheduler` 的实现位于本包，原 `componets/src/gameTimeScheduler.ts` 路径保留重新导出，类身份及调度行为一致。
 
+`GameTimeScheduler` 使用带任务索引的最小堆：注册、取消及取出到期任务为 `O(log N)`，无到期任务时推进时间为 `O(1)`，不扫描等待中的任务。任务先按截止时间、再按登记顺序排序，同一截止时间保持 FIFO；长帧追赶时，回调读取到自己的实际截止时间，回调新建的到期任务继续在同一次推进中执行。取消立即从堆中移除任务并释放回调，不积累取消标记；执行、取消或销毁后的旧取消句柄重复调用无副作用。组件 timer 的暂停、恢复、到期及保存规则、普通 effect 的微任务调度均保持原有语义。
+
 世界温度 signal 由 `packages/componets/src/worldtemperature.ts` 的 `WorldTemperature` 组件创建、计算和释放，保持 Lua 的职责边界；组件管理季节项、昼夜项、噪声时间、温度修正和存档，对共享昼夜、季节输入分别创建私有 `watchSignal`。世界初始化完成恢复后，把该温度 signal 的只读视图注入 `WorldContentEnvironment.temperature`，与 Cycle、Season 和共享 scheduler 一起绑定。`worldContent.ts` 只定义 Temperature 的类型、解析枚举键并创建私有监听，不计算或复制温度。消费方使用 `getWatchWorldContent(WorldContentKey.Temperature, registerCleanup)`；60 帧结算、部分结算和保存／恢复沿用现有行为。
 
 `WorldWind` 和 `WorldPerishClock` 同样保留组件内的计算、计时和清理。世界 init 创建两者并注入原有来源：`Wind`（`wind`）对应 `worldwind.windchange` 的 `{ angle, velocity }`，重复角度仍因新对象而通知；`PerishClock`（`perishTick`）对应 `perishClock.snapshot` 的已结算 `{ time, total }`。风滚草在游戏场景内通过 `getWatchWorldContent(WorldContentKey.Wind, registerCleanup)` 创建私有监听，保留初始风向与后续变风的区别。

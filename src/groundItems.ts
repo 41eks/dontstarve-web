@@ -22,11 +22,12 @@ import { RECORD_ID, RECORD_SONGS, isPhonographRecord } from '@dontstarve-web/pre
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { SavedEntity } from './save/types';
 import { performToolWork } from '../packages/stategraphs/src/componentactions';
-import { actionEntity } from '../packages/prefab/src/actionEntity';
+import { actionEntity, disposeActionEntity } from '../packages/prefab/src/actionEntity';
 import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
 import type { DeconstructionTarget, DeconstructionLoot, PreparedDeconstruction } from '@dontstarve-web/prefab/greenstaff';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 import type { WorldEventEmitter } from '../packages/prefab/src/worldContext';
+import { createEffect, watchSignal, WorldContentKey, type GetWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 
 export interface PreparedDrop {
   /** Takes the item from the inventory and places it; false (and disposes the art) when the take fails. */
@@ -43,9 +44,11 @@ interface GroundItemRecord extends GroundItemVisual {
   entity: ItemEntity;
   definition: GroundItemDefinition;
   readonly footPosition: THREE.Vector3;
-  isPlayerNearby: boolean;
   fling?: LootFling;
   stopInventoryEvents?: () => void;
+  stopActivity?: () => void;
+  /** Cleanups of the record's private watched signals (updating flag, entity removal). */
+  readonly stops: (() => void)[];
 }
 
 export class GroundItemManager {
@@ -60,6 +63,9 @@ export class GroundItemManager {
   private readonly archiveUrl: string;
   private readonly prefabs: GroundPrefabRegistry;
   private readonly items = new Map<THREE.Group, GroundItemRecord>();
+  private readonly activeItems = new Set<GroundItemRecord>();
+  /** StartUpdatingComponent/StopUpdatingComponent: only these records are visited each frame. */
+  private readonly updatingItems = new Set<GroundItemRecord>();
   private readonly inventory: InventoryStore;
   private readonly stopDrops: () => void;
   private readonly stopSpawnAsh?: () => void;
@@ -70,6 +76,9 @@ export class GroundItemManager {
   private readonly scene: THREE.Scene;
   private readonly player: THREE.Object3D;
   private disposed = false;
+  /** Private view of the world camera rotation; undefined for standalone managers, which orient in update(). */
+  private readonly cameraRotation?: Signal<THREE.Quaternion>;
+  private readonly cleanups: (() => void)[] = [];
   private readonly inserting = new Set<GroundItemRecord>();
   private recordSource?: () => { entity: ItemEntity; take(): boolean } | undefined;
 
@@ -89,6 +98,7 @@ export class GroundItemManager {
     fx?: GroundPrefabOptions['fx'],
     moleWorld?: GroundPrefabOptions['moleWorld'],
     worldEvents?: WorldEventEmitter,
+    getWatchWorldContent?: GetWatchWorldContent,
   ) {
     this.entities = entities;
     this.scene = scene;
@@ -101,9 +111,17 @@ export class GroundItemManager {
       scene, animationBaseUrl, scheduler, fx, moleWorld, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       dropLoot: (items, position) => this.flingLoot(items, position),
       prepareSpawn: definition => this.prepareSpawn(definition),
-      getNeighbours: () => [...this.items.values()]
+      getNeighbours: () => [...this.activeItems]
         .map(({ model, footPosition }) => ({ model, position: footPosition })),
     });
+    if (getWatchWorldContent) {
+      const rotation = this.cameraRotation = getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop));
+      // Billboards face the camera: re-orient them only when the camera turns.
+      createEffect(() => {
+        const quaternion = rotation.get();
+        for (const { model } of this.activeItems) model.quaternion.copy(quaternion);
+      });
+    }
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     this.stopDrops = inventory.subscribeDropped(entity => this.onInventoryDrop(entity));
     // DefaultBurntFn requests one ash at the burnt inst's ground position.
@@ -117,6 +135,7 @@ export class GroundItemManager {
     if (this.disposed) return;
     this.disposed = true;
     this.stopSpawnAsh?.();
+    this.cleanups.splice(0).forEach(stop => stop());
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     this.pointer.dispose();
     this.stopDrops();
@@ -124,6 +143,8 @@ export class GroundItemManager {
     for (const { entity } of this.pendingDrops.values()) this.entities.destroy(entity);
     this.pendingDrops.clear();
     this.items.clear();
+    this.activeItems.clear();
+    this.updatingItems.clear();
     this.atlasRequests.clear();
     this.prefabs.dispose();
   }
@@ -274,9 +295,9 @@ export class GroundItemManager {
   }
 
   get spellTargets(): readonly DeconstructionTarget[] {
-    return [...this.items.values()].map(record => {
+    return [...this.activeItems].map(record => {
       const entity = record.entity;
-      const isValid = () => !this.disposed && this.items.get(record.model) === record && !entity.isRemoved
+      const isValid = () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
         && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.();
       return {
         prefab: entity.prefab, model: record.model, components: entity.components,
@@ -324,30 +345,79 @@ export class GroundItemManager {
     visual.model.userData.entityId = id;
     visual.setDefinition?.(definition);
     visual.bindEntity?.(entity);
-    const record = this.withFootPosition({ id, entity, definition, isPlayerNearby: false, ...visual });
-    this.updateProximity(record);
+    const record = this.withFootPosition({ id, entity, definition, stops: [], ...visual });
     this.items.set(visual.model, record);
     this.bindInventoryEvents(record);
-    this.scene.add(visual.model);
+    this.bindVisualActivity(record);
+    this.bindVisualUpdating(record);
+    this.bindEntityRemoval(record);
     visual.model.dispatchEvent({ type: dropped ? 'ondropped' : 'onload' });
   }
 
   private removeVisual(record: GroundItemRecord): void {
     if (this.items.get(record.model) !== record) return;
     this.items.delete(record.model);
+    this.activeItems.delete(record);
+    this.updatingItems.delete(record);
+    record.stops.splice(0).forEach(stop => stop());
+    record.stopActivity?.();
     record.stopInventoryEvents?.();
     record.dispose();
+    disposeActionEntity(record.model);
+  }
+
+  private bindVisualActivity(record: GroundItemRecord): void {
+    const setActive = (active: boolean) => {
+      if (active) {
+        this.activeItems.add(record);
+        this.refreshUpdating(record);
+        record.model.position.copy(record.entity.transform.position);
+        if (this.cameraRotation) record.model.quaternion.copy(this.cameraRotation.peek());
+        this.scene.add(record.model);
+      } else {
+        this.activeItems.delete(record);
+        this.updatingItems.delete(record);
+        record.model.removeFromParent();
+      }
+    };
+    record.stopActivity = undefined;
+    if (!record.active) { setActive(true); return; }
+    const active = watchSignal(record.active, stop => { record.stopActivity = stop; });
+    createEffect(() => setActive(active.get()));
+  }
+
+  /** A visual joins the frame loop while it can change by itself: it has an update, a removal check or a fling. */
+  private refreshUpdating(record: GroundItemRecord): void {
+    const needed = this.activeItems.has(record) && (record.fling !== undefined
+      || ((record.update !== undefined || record.isRemoved !== undefined) && (record.updating?.peek() ?? true)));
+    if (needed) this.updatingItems.add(record); else this.updatingItems.delete(record);
+  }
+
+  private bindVisualUpdating(record: GroundItemRecord): void {
+    if (!record.updating) return;
+    const updating = watchSignal(record.updating, stop => record.stops.push(stop));
+    createEffect(() => { updating.get(); this.refreshUpdating(record); });
+  }
+
+  /** Entity removal ends the record without waiting for a frame visit. */
+  private bindEntityRemoval(record: GroundItemRecord): void {
+    const removal = watchSignal(record.entity.removal, stop => record.stops.push(stop));
+    createEffect(() => {
+      if (!removal.get() || this.items.get(record.model) !== record) return;
+      this.removeVisual(record);
+      this.entities.destroy(record.entity);
+    });
   }
 
   private bindInventoryEvents(record: GroundItemRecord): void {
     const { model, entity } = record;
     model.userData.components = entity.components;
-    model.userData.getGroundPosition = () => record.footPosition.clone();
+    model.userData.getGroundPosition = () => record.footPosition;
     actionEntity(model, entity.prefab, entity);
     model.userData.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
       hasTag: (tag: string) => entity.hasTag(tag) || (model.userData.tags?.includes(tag) ?? false),
-      isValid: () => !this.disposed && this.items.get(model) === record && !entity.isRemoved
+      isValid: () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
         && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.()
         && !this.inserting.has(record),
     } satisfies PickupTarget;
@@ -360,7 +430,7 @@ export class GroundItemManager {
       entity.ListenForEvent('perished', () => { void this.replacePerished(record).catch((error: unknown) =>
         console.error(`Unable to replace perished ${entity.prefab}`, error)); }),
       // physics.lua LaunchAt: any inst may be thrown from its own position.
-      entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); }),
+      entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); this.refreshUpdating(record); }),
       entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); model.dispatchEvent({ type: 'ondropped' }); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
@@ -414,16 +484,18 @@ export class GroundItemManager {
     entity.transform.position.copy(origin);
     const fling = new LootFling(entity.transform, undefined, undefined, launch);
     this.addVisual(entity.id, { ...definition, entity }, fling.position, visual, true);
-    this.items.get(visual.model)!.fling = fling;
+    const flung = this.items.get(visual.model)!;
+    flung.fling = fling;
+    this.refreshUpdating(flung);
   }
 
   /** Component-driven ground work, including inventory prefabs such as hard stone fruit. */
   get mineTargets(): import('@dontstarve-web/stategraphs/pickaxe').PickaxeTarget[] {
-    return [...this.items.values()].filter(({ entity }) => entity.components.workable?.GetWorkAction() === 'MINE'
+    return [...this.activeItems].filter(({ entity }) => entity.components.workable?.GetWorkAction() === 'MINE'
       && entity.components.workable.CanBeWorked()).map(record => ({
       id: record.entity.id, model: record.model, position: record.footPosition,
       entity: actionEntity(record.model, record.entity.prefab, record.entity),
-      isValid: () => this.items.get(record.model) === record && !record.entity.isRemoved
+      isValid: () => this.activeItems.has(record) && !record.entity.isRemoved
         && record.entity.components.workable?.CanBeWorked() === true,
     }));
   }
@@ -472,7 +544,7 @@ export class GroundItemManager {
 
   /** Shared hover selection uses the same insertion availability as the click path. */
   get phonographTargets(): readonly { model: THREE.Group; canInsert: boolean }[] {
-    return [...this.items.values()].filter(record => record.definition.itemId === PHONOGRAPH_ID
+    return [...this.activeItems].filter(record => record.definition.itemId === PHONOGRAPH_ID
       && !record.entity.isRemoved && !record.isRemoved?.()).map(record => ({
       model: record.model,
       canInsert: !this.inserting.has(record) && isPlayerNearby(this.player.position, record.footPosition, false),
@@ -515,17 +587,17 @@ export class GroundItemManager {
   }
 
   get combatTargets(): import('../packages/stategraphs/src/attack').AttackTarget[] {
-    return [...this.items.values()].filter(({ entity, isClickable }) => entity.components.combat && isClickable?.() !== false)
+    return [...this.activeItems].filter(({ entity, isClickable }) => entity.components.combat && isClickable?.() !== false)
       .map(record => ({ id: record.entity.id, model: record.model,
         inst: record.model.userData.mole as import('../packages/prefab/src/mole').Mole,
-        isValid: () => this.items.get(record.model) === record && !record.entity.isRemoved && !record.entity.hasTag('INLIMBO') }));
+        isValid: () => this.activeItems.has(record) && !record.entity.isRemoved && !record.entity.hasTag('INLIMBO') }));
   }
 
   get hammerTargets(): readonly HammerTarget[] {
-    return [...this.items.values()].filter(record => record.entity.components.workable?.GetWorkAction() === 'HAMMER')
+    return [...this.activeItems].filter(record => record.entity.components.workable?.GetWorkAction() === 'HAMMER')
       .map(record => ({
         id: record.id, entity: record.entity, model: record.model, get position() { return record.footPosition; },
-        isValid: () => !this.disposed && this.items.get(record.model) === record && !this.inserting.has(record)
+        isValid: () => !this.disposed && this.activeItems.has(record) && !this.inserting.has(record)
           && record.entity.hasTag('HAMMER_workable'),
         playHit: () => { performToolWork('HAMMER', record.entity, {}); },
       }));
@@ -536,15 +608,15 @@ export class GroundItemManager {
   }
 
   get netCaptureTargets(): readonly NetCaptureTarget[] {
-    return [...this.items.values()].filter(record => record.entity.components.workable?.GetWorkAction() === 'NET')
+    return [...this.activeItems].filter(record => record.entity.components.workable?.GetWorkAction() === 'NET')
       .map((record) => this.captureTarget(record));
   }
 
     get reskinTargets(): readonly ReskinTarget[] {
-        return [...this.items.values()].flatMap((record) => {
+        return [...this.activeItems].flatMap((record) => {
             const prefabId = record.definition.itemId;
             const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ITEM_DEFINITIONS[prefabId])?.skinArchives ?? {});
-            const isValid = () => this.items.get(record.model) === record && !record.entity.isRemoved && !record.isRemoved?.();
+            const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.();
             return [{
                 id: record.id, prefabId, model: record.model, get position() { return record.footPosition; }, isValid,
                 get isRemoved() { return record.entity.isRemoved; }, hasTag: tag => record.entity.hasTag(tag) || (record.model.userData.tags?.includes(tag) ?? false),
@@ -586,7 +658,7 @@ export class GroundItemManager {
                             const replacement = this.withFootPosition({ ...record, ...visual, definition });
                             this.items.set(visual.model, replacement);
                             this.bindInventoryEvents(replacement);
-                            this.scene.add(visual.model);
+                            this.bindVisualActivity(replacement);
                             visual.model.dispatchEvent({ type: 'onload' });
                             used = true;
                             return true;
@@ -601,7 +673,7 @@ export class GroundItemManager {
     private isNetCreature(itemId: string): boolean { return this.prefabs.get(itemId)?.capture === 'net'; }
 
   private captureTarget(record: GroundItemRecord): NetCaptureTarget {
-    const isValid = () => this.items.get(record.model) === record && !record.entity.isRemoved && !record.isRemoved?.() && record.entity.hasTag('NET_workable');
+    const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.() && record.entity.hasTag('NET_workable');
     return {
       id: record.id, entity: record.entity, model: record.model, get position() { return record.footPosition; }, isValid,
       isClickable: () => record.isClickable?.() !== false,
@@ -613,13 +685,13 @@ export class GroundItemManager {
   }
 
   private readonly handlePointerDown = (event: PointerEvent) => {
-    if ((event.button !== 0 && event.button !== 2) || event.defaultPrevented || this.items.size === 0) return;
+    if ((event.button !== 0 && event.button !== 2) || event.defaultPrevented || this.activeItems.size === 0) return;
 
     // Input can arrive between active frames after an entity was teleported.
-    for (const record of this.items.values()) record.model.position.copy(record.entity.transform.position);
+    for (const record of this.activeItems) record.model.position.copy(record.entity.transform.position);
     this.pointer.trackPointer(event);
 
-    const hit = this.pointer.raycastPointer([...this.items.values()]
+    const hit = this.pointer.raycastPointer([...this.activeItems]
       .filter(record => record.isClickable?.() !== false).map(record => record.model), true);
     if (!hit) return;
     let root: THREE.Object3D | null = hit.object;
@@ -648,33 +720,28 @@ export class GroundItemManager {
   };
 
   get renderEntities(): readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[] {
-    return [...this.items.values()].map(({ model, footPosition }) => ({
+    return [...this.activeItems].map(({ model, footPosition }) => ({
       object: model, footPosition, cameraDepth: 0,
     })).concat(this.prefabs.renderEntities);
   }
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     this.prefabs.update(dt, cameraQuaternion);
-    for (const item of this.items.values()) {
+    if (!this.cameraRotation) for (const { model } of this.activeItems) model.quaternion.copy(cameraQuaternion);
+    for (const item of [...this.updatingItems]) {
       item.model.position.copy(item.entity.transform.position);
-      item.model.quaternion.copy(cameraQuaternion);
       item.update?.(dt);
       if (item.fling) {
         item.fling.update(dt);
         item.model.children[0].position.y = item.fling.height;
-        if (item.fling.settled) item.fling = undefined;
+        if (item.fling.settled) { item.fling = undefined; this.refreshUpdating(item); }
       }
       item.model.position.copy(item.entity.transform.position);
-      this.updateProximity(item);
       if (item.entity.isRemoved || item.isRemoved?.()) {
         this.removeVisual(item);
         this.entities.destroy(item.entity);
       }
     }
-  }
-
-  private updateProximity(record: GroundItemRecord): void {
-    record.isPlayerNearby = isPlayerNearby(this.player.position, record.footPosition, record.isPlayerNearby);
   }
 
   private async createVisual(definition: GroundItemDefinition): Promise<GroundItemVisual> {

@@ -67,7 +67,8 @@ export class BugNetCaptureController {
     this.isManualMovement = isManualMovement;
     this.stopActionEvents = bindActionCancellation(world, this, 'net', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    this.unregisterHover = world.mouseActions?.register(() =>
+    // Without the net equipped no target can be worked, so none is built or ray-tested.
+    this.unregisterHover = world.mouseActions?.register(() => !this.isEquipped() ? [] :
       this.getTargets().filter(target => target.isValid() && target.isClickable?.() !== false).map(target => ({
         action: { action: 'NET', invobject: equippedActionEntity(this.handEquipment.peek()), target: target.entity },
         button: 'left', model: target.model, available: this.canWork(target), source: 'equipped',

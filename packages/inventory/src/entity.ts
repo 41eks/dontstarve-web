@@ -300,6 +300,8 @@ export class ItemEntity {
   }
   snapshot(includeIdentity = true): InventoryStack {
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
+    const freshness = this.components.perishable.perishtime.peek() === undefined
+      ? this.freshnessState.peek() : this.components.perishable.GetPercent();
     const mole = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['mole']> }>('mole')?.OnSave() ?? this.mole;
     return {
       ...(mole === undefined ? {} : { mole }),
@@ -310,7 +312,7 @@ export class ItemEntity {
       ...(this.skinId === undefined ? {} : { skinId: this.skinId }),
       ...(this.components.fueled.remaining === undefined ? {} : { remainingFuel: this.components.fueled.remaining }),
       ...(this.components.finiteuses.remaining === undefined ? {} : { remainingUses: this.components.finiteuses.remaining }),
-      ...(this.freshness.peek() === undefined ? {} : { freshnessPercent: this.freshness.peek() }),
+      ...(freshness === undefined ? {} : { freshnessPercent: freshness }),
       ...(this.wetState.peek() ? { wet: true } : {}),
       ...(this.phonographRecord === undefined ? {} : { phonographRecord: this.phonographRecord }),
       ...(this.components.container === undefined ? {} : { container: {

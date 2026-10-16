@@ -70,7 +70,7 @@ createEffect(() => {
 
 ## 鸟笼：鸟的饥饿、饿死与腐烂
 
-鸟的饥饿就是 [Perishable](../packages/componets/src/perishable.ts) 的剩余时间：私有 `timer` signal 区分 `perishing`／`paused`／`perished`／`stopped`，`percent` 与 `stage` 是纯 memo。`MakeFeedableSmallLivestock` 的“放入物品栏开始、落地停止”由 `localMultiplier` 表达（有 `inventoryitem.owner` 或 `occupier` 的 owner 为 1，否则为 0），读档不必重放 `OnPutInInventory`；`occupierCage` 对应 `perishable.lua` 里无 owner 时取 `occupier:GetOwner()`，笼内用 `PERISH_CAGE_MULT`。所有鸟和货架物品通过游戏时间调度器每 10 个游戏秒结算一次，鸟笼的 `update(dt)` 推进组件调度器；长帧跨越多个周期时依次结算，保存前 `flush()` 结清不足 10 秒的部分，停止或永久移除时取消周期任务。
+鸟的饥饿就是 [Perishable](../packages/componets/src/perishable.ts) 的剩余时间：私有 `timer` signal 区分 `perishing`／`paused`／`perished`／`stopped`，`percent` 与 `stage` 是纯 memo。`MakeFeedableSmallLivestock` 的“放入物品栏开始、落地停止”由 `localMultiplier` 表达（有 `inventoryitem.owner` 或 `occupier` 的 owner 为 1，否则为 0），读档不必重放 `OnPutInInventory`；`occupierCage` 对应 `perishable.lua` 里无 owner 时取 `occupier:GetOwner()`，笼内用 `PERISH_CAGE_MULT`。所有鸟和货架物品的 `ComponentTimer` 直接登记到世界共享游戏时间调度器，每 10 个游戏秒结算一次，鸟笼不再通过 `update(dt)` 推进腐烂；长帧跨越多个周期时依次结算，保存前 `flush()` 结清不足 10 秒的部分，停止或永久移除时取消周期任务。
 
 [Occupiable](../packages/componets/src/occupiable.ts) 的 `occupant` 是私有 signal（对外只读），`occupied`／`bird_occupiable` 标签随它同步。`Occupy` 先写 occupant，再执行 `occupier.onoccupied` 与 `onoccupied`，最后登记 `perished` 和 `onremove` 监听；`perished` 的顺序与 Lua 一致：`onemptied` → `onperishfn(cage, bird)`（此时 occupant 仍可读）→ 清除 occupant → 销毁鸟。`onperishfn` 里货架组件移除 `occupiable`，随后 `setOccupant(nil)` 仍会写回 `bird_occupiable`，与 Lua 属性监听在已移除组件上的行为一致；STORE 的可用性读取组件的 `CanOccupy`，不依赖这个标签。
 
