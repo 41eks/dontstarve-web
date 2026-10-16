@@ -1286,6 +1286,21 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "marblebean": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/marblebean.lua",
+      "name": "大理石豌豆",
+      "icon": "marblebean.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "marblebean.zip",
+      "buildArchives": [
+        "marblebean.zip"
+      ],
+      "bank": "marblebean",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "dreadstone": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/dreadstone.lua",
       "name": "绝望石",
@@ -3561,6 +3576,25 @@
         "bugnet_spider_white": "dynamic/bugnet_spider_white.zip"
       }
     },
+    "fishingrod": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/fishingrod.lua",
+      "name": "淡水钓竿",
+      "icon": "fishingrod.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "fishingrod.zip",
+      "buildArchives": [
+        "fishingrod.zip"
+      ],
+      "bank": "fishingrod",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "fishingrod_block": "dynamic/fishingrod_block.zip",
+        "fishingrod_curl": "dynamic/fishingrod_curl.zip",
+        "fishingrod_sword": "dynamic/fishingrod_sword.zip"
+      }
+    },
     "pitchfork": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
       "name": "干草叉",
@@ -4343,6 +4377,21 @@
       ],
       "bank": "mite_gland",
       "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pondfish": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pondfish.lua",
+      "name": "淡水鱼",
+      "icon": "pondfish.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "fish.zip",
+      "buildArchives": [
+        "fish.zip"
+      ],
+      "bank": "fish",
+      "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {}
@@ -6976,6 +7025,24 @@
       "itemId": "fence_item",
       "name": "古董青铜篱笆",
       "icon": "fence_victorianbronze_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fishingrod_block": {
+      "itemId": "fishingrod",
+      "name": "这根节段钓竿",
+      "icon": "fishingrod_block.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fishingrod_curl": {
+      "itemId": "fishingrod",
+      "name": "缠藤钓竿",
+      "icon": "fishingrod_curl.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "fishingrod_sword": {
+      "itemId": "fishingrod",
+      "name": "剑形钓竿",
+      "icon": "fishingrod_sword.tex",
       "atlas": "images/inventoryimages2.xml"
     },
     "golden_farmhoe_garden": {

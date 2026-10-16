@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createWorldState, createWorldClockUpdater } from '../../../src/worldState';
 import { getDstCycle } from '../../../src/tuning';
-import { clockstate, seasonstate, moonphasestate, WorldContentKey, GetTileStateAtPoint } from '../../signals/src';
+import { clockstate, seasonstate, moonphasestate, WorldContentKey, createSignal, GetTileStateAtPoint } from '../../signals/src';
+import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { Vector3 } from 'three';
 
 function updateClock(state: ReturnType<typeof createWorldState>, elapsedSeconds: number, dt: number) {
@@ -13,7 +14,7 @@ function updateClock(state: ReturnType<typeof createWorldState>, elapsedSeconds:
 describe('session world temperature', () => {
   it('binds cached tile queries to player snapshots and releases their pending updates with the world', async () => {
     const state = createWorldState({ elapsedSeconds: 0, systems: {} });
-    const position = new Vector3();
+    const position = createSignal(GetTileKeyAtPoint(new Vector3()));
     const active = state.tickingarea(position, 0)!;
     const reads = vi.spyOn(state.playerpositions, 'get');
     try {
@@ -25,7 +26,7 @@ describe('session world temperature', () => {
       state.playerpositions.set([new Vector3(12, 0, 0)]);
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(active()).toBe(false);
-      expect(GetTileStateAtPoint(new Vector3(1, 0, 1), 0)).toBe(active);
+      expect(GetTileStateAtPoint(position, 0)).toBe(active);
       state.playerpositions.set([new Vector3()]);
       state.dispose();
       reads.mockClear();

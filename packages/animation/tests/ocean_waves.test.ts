@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { OceanWaves } from '../../prefab/src/ocean_waves';
 import type { WaveMap } from '../../componets/src/wavemanager';
-import type { TileStateQuery } from '../../signals/src';
+import { createSignal, type TileStateQuery } from '../../signals/src';
+import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { createWorldState } from '../../../src/worldState';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -52,16 +53,23 @@ it('plays standalone and undefined-query waves to completion and keeps shared ar
 it('removes sleeping FX permanently, preserves other tile consumers, and cancels queued effects on disposal', async () => {
   const state = createWorldState({ elapsedSeconds: 0, systems: {} });
   state.playerpositions.set([new THREE.Vector3()]);
-  const query = vi.fn(state.tickingarea);
+  const read = vi.fn();
+  const query = vi.fn<TileStateQuery>((position, radius) => {
+    const memo = state.tickingarea(position, radius);
+    if (memo) {
+      const get = memo.get;
+      vi.spyOn(memo, 'get').mockImplementation(() => { read(); return get(); });
+    }
+    return memo;
+  });
   const { scene, waves } = await setup(query);
-  const shared = state.tickingarea(new THREE.Vector3())!;
-  const read = vi.spyOn(shared, 'get');
+  const shared = state.tickingarea(createSignal(GetTileKeyAtPoint(new THREE.Vector3())))!;
   try {
     waves.spawnShimmer('wave_shimmer', 0, 0);
     waves.spawnShore(1, 1, 90);
     const [shimmer, shore] = scene.children;
     expect(scene.children).toHaveLength(2);
-    expect(query.mock.calls.map(([position]) => position)).toEqual([shimmer.position, shore.position]);
+    expect(query.mock.calls.map(([tile]) => tile.peek())).toEqual([shimmer.position, shore.position].map(position => GetTileKeyAtPoint(position)));
     const shimmerDispose = vi.spyOn(meshOf(shimmer).geometry, 'dispose');
     const shoreDispose = vi.spyOn(meshOf(shore).geometry, 'dispose');
 

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal } from '@dontstarve-web/signals';
+import { Fishable, type FishableSave } from '../../componets/src/fishable';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { SlipperyFeetTarget } from '../../componets/src/slipperyfeettarget';
 import { WILSON_RUN_SPEED } from '../../componets/src/slipperyfeet';
 import { actionEntity } from './actionEntity';
@@ -17,7 +19,22 @@ const slipperyRate = (_: unknown, target: unknown) =>
 export interface PondRecord {
   id: string;
   transform: { position: [number, number, number]; rotationY: number };
-  components: Record<string, never>;
+  components: { fishable?: FishableSave };
+}
+
+/** tuning.lua FISH_RESPAWN_TIME = day_time / 3, day_time = 8 * 60 * 0.5 * 2 / 2. */
+export const FISH_RESPAWN_TIME = 480 / 3;
+/** pondfish.lua `inst.build`: the build SGwilson's catchfish swaps into fish01. */
+export const POND_FISH = { prefab: 'pondfish', build: 'fish01' } as const;
+
+/** A pond as the fishing action sees it. */
+export interface FishingPondTarget {
+  readonly entity: ReturnType<typeof actionEntity>;
+  readonly model: THREE.Group;
+  readonly position: THREE.Vector3;
+  /** MakePondPhysics radius in scene units. */
+  readonly radius: number;
+  isValid(): boolean;
 }
 
 /** pond.lua OnSnowLevel: snowlevel above this freezes the pond. */
@@ -31,12 +48,14 @@ export class PondManager {
   private readonly assetBaseUrl: string;
   private readonly snowLevel?: WorldContentSignal<number>;
   private readonly cleanups: (() => void)[] = [];
+  private readonly scheduler: GameTimeScheduler;
   private frozen = false;
   private disposed = false;
 
   /** WatchWorldState("snowlevel", OnSnowLevel), with a private watched weather signal. */
-  constructor(scene: THREE.Scene, assetBaseUrl: string, getWatchWorldContent?: GetWatchWorldContent) {
+  constructor(scene: THREE.Scene, assetBaseUrl: string, scheduler: GameTimeScheduler, getWatchWorldContent?: GetWatchWorldContent) {
     this.scene = scene;
+    this.scheduler = scheduler;
     this.assetBaseUrl = assetBaseUrl;
     if (getWatchWorldContent) {
       this.snowLevel = getWatchWorldContent(WorldContentKey.SnowLevel, stop => this.cleanups.push(stop));
@@ -53,7 +72,8 @@ export class PondManager {
 
   private applyFrozen(model: THREE.Group, animate: boolean): void {
     model.userData.frozen = this.frozen;
-    const entity = actionEntity(model, POND_ID), components = entity.components as { slipperyfeettarget?: SlipperyFeetTarget };
+    const entity = actionEntity(model, POND_ID), components = entity.components as { slipperyfeettarget?: SlipperyFeetTarget; fishable?: Fishable };
+    if (this.frozen) components.fishable?.Freeze(); else components.fishable?.Unfreeze();
     if (this.frozen && !components.slipperyfeettarget) {
       components.slipperyfeettarget = new SlipperyFeetTarget({
         addTag: tag => entity.addTag(tag), removeTag: tag => entity.removeTag(tag),
@@ -91,6 +111,13 @@ export class PondManager {
     Object.assign(model.userData, {
       billboard: false, prefab: POND_ID, entityId: saved?.id ?? newEntityId(),
     });
+    // pond.lua: the fishable component holds pondfish and respawns one every FISH_RESPAWN_TIME.
+    const entity = actionEntity(model, POND_ID);
+    const fishable = new Fishable(entity, this.scheduler);
+    fishable.AddFish(POND_FISH.prefab, POND_FISH.build);
+    fishable.SetRespawnTime(FISH_RESPAWN_TIME);
+    fishable.OnLoad(saved?.components.fishable);
+    (entity.components as { fishable?: Fishable }).fishable = fishable;
     this.ponds.add(model);
     this.applyFrozen(model, false);
     this.scene.add(model);
@@ -104,19 +131,33 @@ export class PondManager {
     }
   }
 
+  /** Frozen ponds drop the `fishable` tag, so the fishing action no longer targets them. */
+  get fishTargets(): readonly FishingPondTarget[] {
+    return [...this.ponds].map(model => {
+      const entity = actionEntity(model, POND_ID);
+      return { entity, model, position: entity.getPosition(), radius: POND_RADIUS, isValid: () => !entity.isRemoved && this.ponds.has(model) };
+    });
+  }
+
   exportRecords(): PondRecord[] {
-    return [...this.ponds].map((model) => ({
-      id: String(model.userData.entityId),
-      transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-      components: {},
-    }));
+    return [...this.ponds].map((model) => {
+      const fishable = (actionEntity(model, POND_ID).components as { fishable?: Fishable }).fishable?.OnSave();
+      return {
+        id: String(model.userData.entityId),
+        transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
+        components: fishable ? { fishable } : {},
+      };
+    });
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.cleanups.splice(0).forEach(stop => stop());
-    for (const model of this.ponds) model.removeFromParent();
+    for (const model of this.ponds) {
+      (actionEntity(model, POND_ID).components as { fishable?: Fishable }).fishable?.OnRemoveFromEntity();
+      model.removeFromParent();
+    }
     this.ponds.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
   }

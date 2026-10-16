@@ -41,6 +41,8 @@ export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
   moon_tree_blossom: { health: 1, hunger: 0, sanity: 0 },
   // prefabs/moonbutterflywings.lua: HEALING_MEDSMALL, CALORIES_TINY, SANITY_MED.
   moonbutterflywings: { health: 8, hunger: 9.375, sanity: 15 },
+  // prefabs/pondfish.lua pondfish_data: HEALING_TINY, CALORIES_SMALL, no sanity, MEAT.
+  pondfish: { health: 1, hunger: 12.5, sanity: 0 },
   red_cap: { health: -20, hunger: 12.5, sanity: 0 },
   red_cap_cooked: { health: 1, hunger: 0, sanity: -10 },
   green_cap: { health: 0, hunger: 12.5, sanity: -50 },
@@ -64,6 +66,8 @@ export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: nu
   meat: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   // prefabs/meats.lua smallmeat: PERISH_FAST, spoiled_food.
   smallmeat: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
+  // prefabs/pondfish.lua pondfish_data: PERISH_SUPERFAST into fishmeat_small.
+  pondfish: { perishTime: PERISH_SUPERFAST, replacement: 'fishmeat_small' },
   // prefabs/egg.lua: bird_egg spoils in PERISH_MED into rottenegg.
   bird_egg: { perishTime: PERISH_MED, replacement: 'rottenegg' },
   // prefabs/birds.lua MakeFeedableSmallLivestock(BIRD_PERISH_TIME): a starved bird is replaced by its loot, not a goop prefab.

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PondManager } from '../../prefab/src/pond';
+import { GameTimeScheduler } from '../../signals/src';
 import { createWorldState } from '../../../src/worldState';
 
 beforeEach(() => {
@@ -14,7 +15,7 @@ it('freezes above snowlevel 0.02, thaws below it, applies to later ponds and sto
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const world = createWorldState({ elapsedSeconds: 0, systems: {} }), scene = new THREE.Scene();
   const snow = { set: (snowlevel: number) => world.weather.OnLoad({ ...world.weather.OnSave(), snowlevel }) };
-  const ponds = new PondManager(scene, '/dst/data/anim', world.getWatchWorldContent);
+  const ponds = new PondManager(scene, '/dst/data/anim', new GameTimeScheduler(), world.getWatchWorldContent);
   try {
     const first = await ponds.spawn(new THREE.Vector3());
     expect(first.userData.frozen).toBe(false);

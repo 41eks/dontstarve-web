@@ -1,4 +1,4 @@
-import { createSignal, readonlySignal, createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal } from '../../signals/src';
+import { createSignal, readonlySignal, createEffect, WorldContentKey, type GetWatchWorldContent, type PlayerPositionsSignal } from '../../signals/src';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { Vector3 } from 'three';
@@ -16,7 +16,7 @@ export class PlayerProx {
   private far = 3;
   private period = 10 / 30;
   private readonly inst: PlayerProxInst;
-  private readonly playerpositions?: WorldContentSignal<Vector3[]>;
+  private readonly playerpositions?: PlayerPositionsSignal;
   private stopPlayers?: () => void;
   private onnear?: () => void;
   private onfar?: () => void;

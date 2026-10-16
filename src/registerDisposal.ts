@@ -3,13 +3,14 @@ import { clockstate, createMemo, readonlySignal, type EventEmitter } from '@dont
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, slotTransferController, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
-  AttackActionController, SpellCastActionController, BugNetCaptureController, HammerActionController,
+  AttackActionController, SpellCastActionController, BugNetCaptureController, FishingActionController, HammerActionController,
   LighterActionController, PickaxeActionController, PitchforkActionController,
   FarmHoeActionController, ShovelActionController, FoodActionController,
   PickActionController, HarvestActionController, OccupiableActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
   ReskinActionController, SleepActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity } from '@dontstarve-web/inventory';
+import { FISHINGROD_ID, getFishingRod } from '@dontstarve-web/prefab/fishingrod';
 import { Reader } from '../packages/componets/src/reader';
 import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatInst } from '../packages/componets/src/combat';
@@ -107,7 +108,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills'>;
+  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -127,7 +128,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, beefalos } = scene;
+      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, marbleShrubs, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, beefalos, ponds } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -341,6 +342,23 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         actionControllers.push(bugNet);
         groundItems.setNetCaptureHandler(target => bugNet.request(target));
 
+        // fishingrod.lua / pond.lua: the equipped rod fishes the pond's fishable component; a landed fish is a ground item.
+        const fishingWorld = {
+          landFish: (fish: { prefab: string }, position: Vector3) => {
+            void groundItems.flingLoot([{ ...inventory.getItemSpec(fish.prefab), itemId: fish.prefab, count: 1 }], position)
+              .catch((error: unknown) => console.error('Unable to land caught fish', error));
+          },
+        };
+        const fishing = new FishingActionController(view, playerAnimation, locomotor, handEquipment,
+          () => ponds.fishTargets,
+          () => {
+            const entity = handEquipment.peek()?.entity;
+            return entity instanceof ItemEntity && entity.prefab === FISHINGROD_ID && !entity.isRemoved
+              ? getFishingRod(entity, scheduler, fishingWorld) : undefined;
+          },
+          isActionInterrupting);
+        actionControllers.push(fishing);
+
         // player_common.lua: combat with UNARMED_DAMAGE, WILSON_ATTACK_PERIOD and DEFAULT_ATTACK_RANGE.
         const unit = TILE_SIZE / 4;
         const attackerInst: CombatInst = {
@@ -373,7 +391,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           () => [...buildingPlacement.hammerTargets, ...farmPlow.hammerTargets, ...groundItems.hammerTargets],
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, () => [...rockManager.mineTargets, ...groundItems.mineTargets], isActionInterrupting);
+          handEquipment, () => [...rockManager.mineTargets, ...marbleShrubs.mineTargets, ...groundItems.mineTargets], isActionInterrupting);
         const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity || !turfTileName(entity.prefab)) return undefined;
@@ -389,7 +407,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
             putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); } };
         }, {
-          plants: { rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings, rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes },
+          plants: { marblebean_sapling: marbleBeanSaplings, rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings, rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes },
           canPlant: point => turfMap.canDeployPlantAtPoint(point),
           getBlockers: () => scene.registry.renderEntities.filter(({ object }) => object.visible && !object.userData.placer)
             .map(({ object, footPosition }) => ({ position: footPosition, tags: object.userData.tags,
@@ -402,7 +420,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           handEquipment, farmPlow, isActionInterrupting,
           (error) => console.error('Unable to till farm soil', error));
         const shovel = new ShovelActionController(view, playerAnimation, locomotor,
-          handEquipment, () => [...farmPlow.digTargets, ...molehills.digTargets, ...rockAvocadoSaplings.digTargets, ...rockAvocadoBushes.digTargets, ...berrybushes.digTargets, ...monkeytails.digTargets, ...grasses.digTargets, ...saplings.digTargets, ...moonTreeForest.digTargets, ...evergreenForest.digTargets, ...deciduousForest.digTargets], isActionInterrupting);
+          handEquipment, () => [...farmPlow.digTargets, ...molehills.digTargets, ...marbleBeanSaplings.digTargets, ...rockAvocadoSaplings.digTargets, ...rockAvocadoBushes.digTargets, ...berrybushes.digTargets, ...monkeytails.digTargets, ...grasses.digTargets, ...saplings.digTargets, ...moonTreeForest.digTargets, ...evergreenForest.digTargets, ...deciduousForest.digTargets], isActionInterrupting);
         const reskin = new ReskinActionController(view, playerAnimation, locomotor,
           handEquipment,
           () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets, ...berrybushes.reskinTargets], reskinEffects,

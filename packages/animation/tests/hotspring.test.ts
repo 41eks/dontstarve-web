@@ -18,6 +18,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { createWorldState } from '../../../src/worldState';
 import type { TileStateQuery } from '../../signals/src';
+import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
@@ -149,13 +150,14 @@ it('faces the camera as a background billboard while keeping the saved foot poin
 });
 
 it('keeps a spring active when the injected tile query returns undefined', async () => {
-  const query = vi.fn(() => undefined);
+  const query = vi.fn<TileStateQuery>(() => undefined);
   const s = setup(query);
   try {
     const position = new THREE.Vector3(5, 0, 6);
     const model = await s.springs.spawn(position);
     const update = vi.spyOn(model.userData.animationController, 'update');
-    expect(query).toHaveBeenCalledExactlyOnceWith(model.position);
+    expect(query).toHaveBeenCalledOnce();
+    expect(query.mock.calls[0][0].peek()).toBe(GetTileKeyAtPoint(model.position));
     expect(model.position).toEqual(position);
     expect(model.parent).toBe(s.scene);
     expect(s.physics.bodies).toEqual([model.userData.physicsBody]);

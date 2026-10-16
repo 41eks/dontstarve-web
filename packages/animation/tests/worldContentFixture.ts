@@ -2,7 +2,7 @@ import { bindWorldContent, createSignal, getWatchWorldContent, type GetWatchWorl
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 /** Bind representative world sources and provide a getter that stays with this world. */
-export function bindTestWorld(scheduler: GameTimeScheduler) {
+export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldContentEnvironment['tickingarea']) {
   const season = createSignal<SeasonState>({ season: 'autumn', progress: 0 });
   const snowLevel = createSignal(0);
   const cycle = createSignal<WorldPhase>('day');
@@ -10,10 +10,10 @@ export function bindTestWorld(scheduler: GameTimeScheduler) {
   const playerpositions = createSignal<import('three').Vector3[]>([]);
   const sources = {
     scheduler, season, snowLevel, cycle, moon, playerpositions, temperature: createSignal(20),
-    wind: createSignal({ angle: 0, velocity: 0 }), perishTick: createSignal({ time: 0, total: 0 }),
+    wind: createSignal({ angle: 0, velocity: 0 }), perishTick: createSignal({ time: 0, total: 0 }), tickingarea,
   } satisfies WorldContentEnvironment;
   const unbind = bindWorldContent(sources);
-  const getContent: GetWatchWorldContent = (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, sources);
+  const getContent: GetWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
   return { season, snowLevel, cycle, moon, playerpositions, getWatchWorldContent: getContent, unbind };
 }
 

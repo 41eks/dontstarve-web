@@ -14,7 +14,7 @@ gears charcoal pigskin silk stinger houndstooth nitre livinglog nightmarefuel
 petals petals_evil ash beefalowool boneshard butterflywings honey honeycomb
 thulecite thulecite_pieces guano tentaclespots spidergland slurtleslime
 slurtle_shellpieces walrus_tusk deerclops_eyeball bearger_fur dragon_scales
-glommerfuel acorn dreadstone wagpunk_bits moonrocknugget dock_kit papyrus featherpencil
+glommerfuel acorn marblebean dreadstone wagpunk_bits moonrocknugget dock_kit papyrus featherpencil
 foliage beardhair cookingrecipecard scrapbook_page blueprint'''.split()
 
 
@@ -277,6 +277,10 @@ def main():
     assets.add('anim/swap_nightmaresword.zip')
     add('bugnet', 'bugnet', 'swap_bugnet', 'idle', 'bugnet', animation_archive='bugnet.zip')
     assets.add('anim/player_actions_bugnet.zip')
+    # fishingrod.lua: ground idle from fishingrod, held swap_fishingrod; SGwilson fishing states use player_actions_fishing.
+    add('fishingrod', 'fishingrod', 'fishingrod', 'idle', 'fishingrod')
+    # catchfish swaps the landed fish's build (pondfish: fish01) into the fish01 symbol.
+    assets.update(['anim/swap_fishingrod.zip', 'anim/player_actions_fishing.zip', 'anim/fish01.zip'])
     # burnable structure FX from fire.lua; LIGHT uses player_actions_item.zip.
     assets.add('anim/fire.zip')
     # pitchfork.lua: idle ground bank/build and separate held swap symbols.
@@ -318,6 +322,9 @@ def main():
     for item, constructor in re.findall(r'Prefab\("([^"]+)",\s*(\w+)', meat_source):
         if constructor in constructors and not item.startswith('quagmire_'):
             add(item, *constructors[constructor], 'meats')
+
+    # pondfish.lua commonfn("fish", "fish", ...) plays the one-frame idle; mermhead's deconstruct loot returns it.
+    add('pondfish', 'fish', 'fish', 'idle', 'pondfish')
 
     # veggies.lua uses each vegetable's bank/build with idle and cooked clips.
     for item in re.findall(r'^\s+(\w+)\s*=\s*MakeVegStats\(', read('veggies'), re.M):

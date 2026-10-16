@@ -14,7 +14,7 @@ import {
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { type ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost } from '@dontstarve-web/stategraphs';
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -24,6 +24,7 @@ import { BookFxController, type BookFxPrefab } from './book_fx';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
 import { equipmentVisualLifecycle, type EquipmentVisualContext, type EquipmentVisualOwner } from './equipmentVisual';
 import { isFarmHoeTool, type FarmHoeTool } from './farm_hoe';
+import { FISHING_SOUNDS } from './fishingrod';
 import { GroundItemAssets } from './groundItems';
 import { getHandEquipmentDefinition } from './handEquipment';
 import { HatEquipmentAssets, prepareHatVisual } from './hats';
@@ -55,7 +56,7 @@ export interface SymbolFollower {
   remove(): void;
 }
 
-export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'trident' | 'bugnet' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
+export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
 type ReadAnimationKey = 'action_uniqueitem_pre' | 'book' | 'flute';
 type WilsonAnimations = Record<Exclude<WilsonAnimationKey, 'emote' | ReadAnimationKey>, ParsedAnim>;
 /** player_common_extensions.lua AddOverrideBuild; its anims are loaded with the first READ. */
@@ -114,6 +115,7 @@ export interface WilsonPlayerPrefabOptions {
 /** Source tags: bugnet tool component and reskin_tool.lua's veryquickcast. */
 const ACTION_TOOL_METADATA: Partial<Record<WilsonCarryItem, { tags: readonly string[]; spelltype?: string }>> = {
   bugnet: { tags: ['NET_tool'] },
+  fishingrod: { tags: ['fishingrod'] },
   reskin_tool: { tags: ['veryquickcast'], spelltype: 'RESKIN' },
 };
 
@@ -181,6 +183,7 @@ class WilsonController implements WilsonAnimationController {
   private readonly symbolBuilds = new Map<string, CarryBuild>();
   private readonly bookFx: BookFxController;
   private sleepHost?: WilsonSleepHost;
+  private fishingHost?: WilsonFishingHost;
   private readonly namedSounds = new Map<string, SoundHandle>();
   private inventory?: Parameters<typeof equipSamePrefab>[0];
   private readonly assetBaseUrl: string;
@@ -211,6 +214,8 @@ class WilsonController implements WilsonAnimationController {
     const controller = this;
     this.stategraph = new WilsonStateGraph({
       get sleep() { return controller.sleepHost; },
+      get fishing() { return controller.fishingHost; },
+      playEvent: event => { PlaySound(event as SoundEventPath); },
       playAnimation: (clip) => this.selectAnimation(clip),
       getCombat: () => this.combat,
       playSound: (cue, castsound) => {
@@ -323,6 +328,8 @@ class WilsonController implements WilsonAnimationController {
 
   /** The application's sleeper services for SGwilson's tent and wakeup states. */
   bindSleep(sleep: WilsonSleepHost | undefined): void { this.sleepHost = sleep; }
+  /** The equipped rod's component for SGwilson's fishing states. */
+  bindFishing(fishing: WilsonFishingHost | undefined): void { this.fishingHost = fishing; }
   get isSleeping(): boolean { return this.stategraph.isSleeping; }
   /** Movement input while asleep: the locomote event wakes the sleeper. */
   wakeFromBed(): void { this.stategraph.pushLocomote(); }
@@ -435,6 +442,7 @@ class WilsonController implements WilsonAnimationController {
 
   get isCasting(): boolean { return this.stategraph.isPerformingAction('CASTSPELL') && !this.isReskinning; }
   get isNetting(): boolean { return this.stategraph.isPerformingAction('NET'); }
+  get isFishing(): boolean { return this.stategraph.isPerformingAction('FISH'); }
   get isMining(): boolean { return this.stategraph.isPerformingAction('MINE'); }
   get isChopping(): boolean { return this.stategraph.isPerformingAction('CHOP'); }
   get isHammering(): boolean { return this.stategraph.isPerformingAction('HAMMER'); }
@@ -496,6 +504,17 @@ class WilsonController implements WilsonAnimationController {
   cancelMine(): void { this.stategraph.cancelAction('MINE'); }
   cancelChop(): void { this.stategraph.cancelAction('CHOP'); }
   cancelHammer(): void { this.stategraph.cancelAction('HAMMER'); }
+
+  /** Load the catchfish state's fish01 swap build and the fishing sounds before FISH is buffered. */
+  async prepareFishing(): Promise<void> {
+    await Promise.all([this.symbolBuilds.has('fish01') ? undefined : this.loadSymbolBuild('fish01.zip'), PreloadSounds(...FISHING_SOUNDS)]);
+  }
+
+  playFish(onFish: () => void): boolean {
+    return this.symbolBuilds.has('fish01')
+      && this.startAction('FISH', onFish, this.carryItem === 'fishingrod' && this.handReady);
+  }
+  cancelFishing(): void { this.stategraph.cancelAction('FISH'); }
 
   playBugNet(onCatch: () => void): boolean {
     return this.startAction('NET', onCatch, this.carryItem === 'bugnet' && this.handReady);
@@ -697,7 +716,7 @@ export async function createWilsonPlayer(
   assetBaseUrl: string,
   options: Pick<WilsonPlayerPrefabOptions, 'sanityPercent'> = {},
 ): Promise<PlayerModel> {
-  const [buildPackage, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip, strum] = await Promise.all([
+  const [buildPackage, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip, strum, fishing] = await Promise.all([
     loadBuild(`${PLAYER_ART_CHARACTER}.zip`, assetBaseUrl),
     loadAnim('player_idles.zip', assetBaseUrl),
     loadAnim('player_basic.zip', assetBaseUrl),
@@ -714,6 +733,7 @@ export async function createWilsonPlayer(
     loadAnim('player_actions.zip', assetBaseUrl),
     loadAnim('player_slip.zip', assetBaseUrl),
     loadAnim('player_strum.zip', assetBaseUrl),
+    loadAnim('player_actions_fishing.zip', assetBaseUrl),
     PreloadSounds('dontstarve/movement/iceslab_slipping', 'dontstarve/movement/slip_fall_whoop',
       'dontstarve/movement/slip_fall_thud', 'dontstarve/characters/wilson/hurt', 'dontstarve/wilson/make_trap', 'dontstarve/wilson/shave_LP', 'dontstarve/wilson/attack_whoosh',
       'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword'),
@@ -785,6 +805,7 @@ export async function createWilsonPlayer(
     hit: actions,
     wakeup: actions,
     strum_pre: strum, strum,
+    fishing,
     slip_pre: slip, slip_loop: slip, slip_pst: slip,
     slip_fall_pre: slip, slip_fall_idle: slip, slip_fall_pst: slip,
   }, createMaterials(buildPackage), assetBaseUrl, options.sanityPercent);

@@ -1,7 +1,7 @@
 import { expect, expectTypeOf, it, vi } from 'vitest';
 import { Vector3 } from 'three';
 import { bindWorldContent, createEffect, createMemo, createSignal, getBoundWatchWorldContent, getWatchWorldContent, GetTileStateAtPoint, WorldContentKey,
-  GameTimeScheduler, type WorldContentSignal, type WorldPhase, type WorldMoonState, type SeasonState, type WorldContentEnvironment, type WorldWindChange, type PerishTick } from '../src';
+  GameTimeScheduler, type WorldContentSignal, type PlayerPositionsSignal, type WorldPhase, type WorldMoonState, type SeasonState, type WorldContentEnvironment, type WorldWindChange, type PerishTick, type ReadonlySignal } from '../src';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const world = (phase: WorldPhase) => ({
@@ -22,7 +22,7 @@ it('resolves typed keys and keeps consumer cleanup independent from other owners
   const snow = getWatchWorldContent(WorldContentKey.SnowLevel, stop => secondStops.push(stop));
   const moon = getWatchWorldContent(WorldContentKey.Moon, stop => secondStops.push(stop));
   const positions = getWatchWorldContent(WorldContentKey.PlayerPositions, stop => secondStops.push(stop));
-  expectTypeOf(positions).toEqualTypeOf<WorldContentSignal<import('three').Vector3[]>>();
+  expectTypeOf(positions).toEqualTypeOf<PlayerPositionsSignal>();
   expectTypeOf(moon).toEqualTypeOf<WorldContentSignal<WorldMoonState>>();
   expectTypeOf(first).toEqualTypeOf<WorldContentSignal<WorldPhase>>();
   expectTypeOf(season).toEqualTypeOf<WorldContentSignal<SeasonState>>();
@@ -96,12 +96,12 @@ it('older world cleanup cannot unbind a replacement and explicit source binding 
 
 it('resolves tile queries through the bound world while captured queries stay with their own world', () => {
   const oldMemo = createMemo(() => true), nextMemo = createMemo(() => false);
-  const oldQuery = vi.fn((_position: Vector3, _radius?: number) => oldMemo);
-  const nextQuery = vi.fn((_position: Vector3, _radius?: number) => nextMemo);
+  const oldQuery = vi.fn((_position: ReadonlySignal<number>, _radius?: number) => oldMemo);
+  const nextQuery = vi.fn((_position: ReadonlySignal<number>, _radius?: number) => nextMemo);
   const old = { ...world('day'), tickingarea: oldQuery };
   const next = { ...world('night'), tickingarea: nextQuery };
   const oldCleanup = bindWorldContent(old);
-  const position = new Vector3(-12, 0, 12);
+  const position = createSignal(7);
   expect(GetTileStateAtPoint(position)).toBe(oldMemo);
   expect(oldQuery).toHaveBeenLastCalledWith(position, 10);
   const capturedQuery = old.tickingarea;
@@ -117,4 +117,36 @@ it('resolves tile queries through the bound world while captured queries stay wi
     oldCleanup(); nextCleanup(); oldMemo.dispose(); nextMemo.dispose();
     old.scheduler.dispose(); next.scheduler.dispose();
   }
+});
+
+it('gates watched world inputs by the tile tickingarea memo and releases the memo with the consumer', async () => {
+  const sources = world('day'), awake = createSignal(true);
+  const area = createMemo(() => awake.get()), dispose = vi.spyOn(area, 'dispose');
+  const query = vi.fn((_position: ReadonlySignal<number>, _radius?: number) => area);
+  const world1: WorldContentEnvironment = { ...sources, tickingarea: query };
+  const tile = createSignal(7), stops: (() => void)[] = [];
+  const gated = getWatchWorldContent(WorldContentKey.Cycle, stop => stops.push(stop), world1, { tile });
+  const open = getWatchWorldContent(WorldContentKey.Cycle, stop => stops.push(stop), world1);
+  expect(query).toHaveBeenCalledOnce(); expect(query).toHaveBeenCalledWith(tile);
+  try {
+    expect(gated.area).toBe(area); expect(open.area).toBeUndefined();
+    awake.set(false);
+    sources.cycle.set('night');
+    expect(open.peek()).toBe('night'); expect(gated.peek()).toBe('day');
+    awake.set(true);
+    expect(gated.peek()).toBe('night');
+    sources.cycle.set('dusk');
+    expect(gated.peek()).toBe('dusk');
+
+    // Positions without a tickingarea memo (outside the grid) keep the ordinary subscription.
+    const ungated = getWatchWorldContent(WorldContentKey.Cycle, stop => stops.push(stop),
+      { ...sources, tickingarea: () => undefined }, { tile });
+    awake.set(false); sources.cycle.set('day');
+    expect(ungated.peek()).toBe('day');
+    expect(dispose).not.toHaveBeenCalled();
+    stops.splice(0).forEach(stop => stop());
+    expect(dispose).toHaveBeenCalled();
+    sources.cycle.set('night');
+    expect(gated.peek()).toBe('dusk'); // released: holds its last value
+  } finally { area.dispose(); sources.scheduler.dispose(); }
 });

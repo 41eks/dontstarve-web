@@ -476,6 +476,24 @@
       },
       "hammerAnimation": "hit"
     },
+    "pighead": {
+      "archive": "pig_head.zip",
+      "buildLabel": "猪头",
+      "idleAnimation": "idle_asleep",
+      "name": "PigHead",
+      "onProximity": false,
+      "scale": 0.02,
+      "hammerAnimation": "hit"
+    },
+    "mermhead": {
+      "archive": "merm_head.zip",
+      "buildLabel": "人鱼头",
+      "idleAnimation": "idle_asleep",
+      "name": "MermHead",
+      "onProximity": false,
+      "scale": 0.02,
+      "hammerAnimation": "hit"
+    },
     "birdcage": {
       "archive": "bird_cage.zip",
       "buildLabel": "鸟笼",

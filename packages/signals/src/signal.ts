@@ -276,11 +276,17 @@ export interface Memo<T> extends ReadonlySignal<T> {
  * Any ordinary effect/memo that reads local.get(), and any local.subscribe() listener, belongs
  * to this local lifetime. The single registered cleanup stops them and the source bridge.
  * Keep this signal private to its owner: disposing it stops entire consumer effects.
+ * While `active` is false the bridge does not read the source, so it holds no subscription to it and the
+ * local value stays at its last synced value; when `active` turns true the bridge resubscribes and syncs.
  */
-export function watchSignal<T>(source: ReadonlySignal<T>, registerCleanup: (stop: () => void) => void): Signal<T> {
+export function watchSignal<T>(source: ReadonlySignal<T>, registerCleanup: (stop: () => void) => void,
+    active?: ReadonlySignal<boolean>): Signal<T> {
     const owner: SignalObserverScope = { stopped: false, effects: new Set(), listeners: new Set() };
     const local = createSignalInternal(source.peek(), owner);
-    const stop = createEffect(() => local.set(source.get()), true);
+    const stop = createEffect(() => {
+        if (active && !active.get()) return;
+        local.set(source.get());
+    }, true);
     const dispose = () => {
         if (owner.stopped) return;
         owner.stopped = true;

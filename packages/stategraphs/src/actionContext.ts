@@ -39,6 +39,11 @@ export interface ActionAnimationController {
   cancelReskin(): void;
   readonly isCasting: boolean;
   readonly isNetting: boolean;
+  readonly isFishing: boolean;
+  prepareFishing(): Promise<void>;
+  playFish(onFish: () => void): boolean;
+  cancelFishing(): void;
+  bindFishing(fishing: import('./SGwilson.ts').WilsonFishingHost | undefined): void;
   readonly isMining: boolean;
   playMine(onHit: () => void | boolean): boolean;
   cancelMine(): void;

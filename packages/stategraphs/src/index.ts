@@ -5,7 +5,7 @@ export type { StateActionHandler, StateDefinition, StateEvent, TimelineEvent } f
 export { WilsonStateGraph, WILSON_ACTION_TIMES } from './SGwilson.ts';
 export type {
   WilsonAction, WilsonAnimationClip, WilsonAnimationKey, WilsonMovementState,
-  WilsonOneShotState, WilsonStateGraphHost, WilsonStateName, WilsonFx, WilsonCombat, WilsonSleepHost,
+  WilsonOneShotState, WilsonStateGraphHost, WilsonStateName, WilsonFx, WilsonCombat, WilsonSleepHost, WilsonFishingHost,
 } from './SGwilson.ts';
 
 export type { ActionWorldContext, ActionAnimationController, ActionLocomotor, CursorLabel } from './actionContext.ts';
@@ -15,6 +15,7 @@ export * from './attack.ts';
 export * from './hammer.ts';
 export * from './pickaxe.ts';
 export * from './bugnet.ts';
+export * from './fishing.ts';
 export * from './shovel.ts';
 export * from './pitchfork.ts';
 export * from './farm_hoe.ts';

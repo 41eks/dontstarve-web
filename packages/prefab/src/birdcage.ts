@@ -176,7 +176,7 @@ export class Birdcage {
                 cycle: context.world?.cycle ?? readonlySignal(createSignal<WorldPhase>('day')),
                 season: context.world?.season ?? readonlySignal(createSignal({ season: 'spring', progress: .5 })),
             };
-            this.getWatchWorldContent = (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, sources);
+            this.getWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
         }
         this.random = random;
         this.resources = context.prepared as BirdcageResources | undefined;

@@ -128,6 +128,12 @@ const sounds = {
   'dontstarve/wilson/plant_tree': { bank: 'wilson', streams: [24], loop: false },
   'dontstarve/forest/treeGrow': { bank: 'forest', streams: [6], loop: false },
   'dontstarve/forest/treeGrowFromWilt': { bank: 'forest', streams: [8], loop: false },
+  // marbleshrub.lua statedata → dontstarve.fev common/together/marble_shrub/grow and wilt_to_grow: Tree_grow / Tree_wilttogrow
+  // (forest file_index 5 / 7), DST_Meat_Effigy_Attune_on (together 1429) and spiderqueen_footstep_1..4 (spider 122–125), each + 1.
+  'dontstarve/common/together/marble_shrub/grow': { bank: 'forest', streams: [6], loop: false, volume: .45185595750808716,
+    layers: [{ bank: 'together', streams: [1430] }, { bank: 'spider', streams: [123, 124, 125, 126] }] },
+  'dontstarve/common/together/marble_shrub/wilt_to_grow': { bank: 'forest', streams: [8], loop: false, volume: .4623810350894928,
+    layers: [{ bank: 'together', streams: [1430] }, { bank: 'spider', streams: [123, 124, 125, 126] }] },
   // evergreens.lua GrowOld → dontstarve.fev sounddef 127 → forest file_index 6.
   'dontstarve/forest/treeWilt': { bank: 'forest', streams: [7], loop: false },
   // fx.lua leaf FX → dontstarve_DLC001.fev sounddef 39 → amb_stream file_index 88–97.
@@ -245,6 +251,14 @@ const sounds = {
   'wickerbottom_rework/book_spells/moon': { bank: 'wickerbottom_rework', streams: [8], loop: false,
     layers: [{ bank: 'wickerbottom_rework', streams: [9] }] },
   'wickerbottom_rework/book_spells/fail': { bank: 'wickerbottom_rework', streams: [3], loop: false },
+  // SGwilson.lua fishing states → dontstarve.fev sounddefs 232 / 235 / 236 / 233 / 234 / 349 (common file_index + 1).
+  // fishingpole_strain is absent from every FEV, so the engine plays nothing for it.
+  'dontstarve/common/fishingpole_cast': { bank: 'common', streams: [303, 304, 305], loop: false, volume: .3548133969306946 },
+  'dontstarve/common/fishingpole_baitsplash': { bank: 'common', streams: [302], loop: false, volume: .3548133969306946 },
+  'dontstarve/common/fishingpole_fishinwater': { bank: 'common', streams: [306, 307, 308], loop: false, volume: .3235936462879181 },
+  'dontstarve/common/fishingpole_fishcaught': { bank: 'common', streams: [309, 310, 311], loop: false, volume: .3548133969306946 },
+  'dontstarve/common/fishingpole_fishland': { bank: 'common', streams: [312, 313, 314], loop: false, volume: .040738027542829514 },
+  'dontstarve/common/fishingpole_lostrod': { bank: 'common', streams: [316], loop: false, volume: .3548133969306946 },
 } as const;
 export type SoundEventPath = keyof typeof sounds;
 export interface SoundHandle {

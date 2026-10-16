@@ -10,15 +10,18 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
   | 'quickeat' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
   | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute' | 'play_strum'
-  | 'slip' | 'slip_pst' | 'slip_fall' | 'slip_fall_loop' | 'slip_fall_pst';
-export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB';
+  | 'slip' | 'slip_pst' | 'slip_fall' | 'slip_fall_loop' | 'slip_fall_pst'
+  | 'fishing_pre' | 'fishing' | 'fishing_pst' | 'fishing_nibble' | 'fishing_strain' | 'catchfish' | 'loserod';
+export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
   | 'quick_eat_pre' | 'quick_eat' | 'quick_drink_pre' | 'quick_drink' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst'
   | 'build_pre' | 'build_loop' | 'build_pst' | 'light_fire' | 'light_fire_pst'
   | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit' | 'wakeup' | 'flute' | 'strum_pre' | 'strum'
-  | 'slip_pre' | 'slip_loop' | 'slip_pst' | 'slip_fall_pre' | 'slip_fall_idle' | 'slip_fall_pst';
+  | 'slip_pre' | 'slip_loop' | 'slip_pst' | 'slip_fall_pre' | 'slip_fall_idle' | 'slip_fall_pst'
+  /** player_actions_fishing.zip: the fishing states' clips are selected by name. */
+  | 'fishing';
 
 export const WILSON_ACTION_TIMES = {
   mine: 7 * FRAMES, net: 10 * FRAMES, terraform: 25 * FRAMES,
@@ -76,8 +79,19 @@ export interface WilsonSlipHost {
   playSound(event: 'iceslab_slipping' | 'slip_fall_whoop' | 'slip_fall_thud' | 'hurt', volume?: number): void;
 }
 
+/** What SGwilson.lua's fishing states reach: the equipped rod's component. */
+export interface WilsonFishingHost {
+  /** equippedTool.components.fishingrod:WaitForFish() */
+  waitForFish(): void;
+  /** equippedTool.components.fishingrod:Collect() */
+  collect(): void;
+  /** fishingrod:Release() then equippedTool:Remove() */
+  loseRod(): void;
+}
+
 export interface WilsonStateGraphHost {
   sleep?: WilsonSleepHost;
+  fishing?: WilsonFishingHost;
   slip?: WilsonSlipHost;
   /** Select the art and return its effective playback duration in seconds. */
   playAnimation(clip: WilsonAnimationClip): number;
@@ -87,9 +101,11 @@ export interface WilsonStateGraphHost {
   getCombat?(): WilsonCombat | undefined;
   stopSound?(cue: 'make' | 'shave'): void;
   /** SoundEmitter's named handle: KillSound then PlaySound, PlayingSound and SetVolume. */
-  playNamedSound?(name: 'book_layer_sound' | 'flute', event: string): void;
+  playNamedSound?(name: 'book_layer_sound' | 'flute' | 'splash', event: string): void;
+  /** SoundEmitter:PlaySound without a handle. */
+  playEvent?(event: string): void;
   /** SoundEmitter:KillSound(name). */
-  stopNamedSound?(name: 'book_layer_sound' | 'flute'): void;
+  stopNamedSound?(name: 'book_layer_sound' | 'flute' | 'splash'): void;
   isPlayingNamedSound?(name: 'book_layer_sound'): boolean;
   setNamedSoundVolume?(name: 'book_layer_sound', volume: number): void;
   /** SpawnPrefab parented to the player, optionally Follower:FollowSymbol on a player symbol. */
@@ -126,6 +142,7 @@ type WilsonInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName>;
 const State = DefineState<WilsonStateGraph, WilsonStateName>;
 const ActionHandler = DefineActionHandler<WilsonStateGraph, WilsonStateName>;
 const clip = (key: WilsonAnimationKey, name: string = key): WilsonAnimationClip => ({ key, name });
+const fishingClip = (name: string): WilsonAnimationClip => clip('fishing', name);
 
 /**
  * Implemented SGwilson.lua states, kept as explicit State tables in source order.
@@ -967,6 +984,100 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.context.host.clearOverrideSymbol?.('pan_flute01');
     },
   }),
+  // SGwilson.lua fishing_pre … loserod; fishing is a prefish/fishing state, not busy, until the fish is landed.
+  State({
+    name: 'fishing_pre',
+    tags: ['prefish', 'fishing'],
+    onenter: (inst) => {
+      inst.context.host.stopMovement?.();
+      inst.context.playClips([fishingClip('fishing_pre'), fishingClip('fishing_cast')]);
+    },
+    timeline: [
+      TimeEvent(13 * FRAMES, (inst) => inst.context.host.playEvent?.('dontstarve/common/fishingpole_cast')),
+      TimeEvent(15 * FRAMES, (inst) => { inst.context.performBufferedAction(); }),
+    ],
+    events: [
+      EventHandler('animqueueover', (inst) => {
+        if (!inst.context.animationDone) return;
+        inst.context.host.playEvent?.('dontstarve/common/fishingpole_baitsplash');
+        inst.goToState('fishing');
+      }),
+    ],
+  }),
+  State({
+    name: 'fishing',
+    tags: ['fishing'],
+    onenter: (inst, pushanim) => {
+      const idle = { ...fishingClip('fishing_idle'), loop: true };
+      inst.context.playClips(typeof pushanim === 'string' ? [fishingClip(pushanim), idle] : [idle]);
+      inst.context.host.fishing?.waitForFish();
+    },
+    events: [EventHandler('fishingnibble', (inst) => inst.goToState('fishing_nibble'))],
+  }),
+  State({
+    name: 'fishing_pst',
+    onenter: (inst) => {
+      inst.context.host.stopMovement?.();
+      inst.context.playClips([fishingClip('fishing_pst')]);
+    },
+    events: [EventHandler('animover', (inst) => { if (inst.context.animationDone) inst.goToState('idle'); })],
+  }),
+  State({
+    name: 'fishing_nibble',
+    tags: ['fishing', 'nibble'],
+    onenter: (inst) => {
+      inst.context.playClips([fishingClip('bite_light_pre'), { ...fishingClip('bite_light_loop'), loop: true }]);
+      inst.setTimeout(1 + Math.random());
+      inst.context.host.playNamedSound?.('splash', 'dontstarve/common/fishingpole_fishinwater');
+    },
+    ontimeout: (inst) => inst.goToState('fishing', 'bite_light_pst'),
+    events: [EventHandler('fishingstrain', (inst) => inst.goToState('fishing_strain'))],
+    onexit: (inst) => inst.context.host.stopNamedSound?.('splash'),
+  }),
+  State({
+    name: 'fishing_strain',
+    tags: ['fishing'],
+    onenter: (inst) => {
+      inst.context.playClips([fishingClip('bite_heavy_pre'), { ...fishingClip('bite_heavy_loop'), loop: true }]);
+      inst.context.host.playNamedSound?.('splash', 'dontstarve/common/fishingpole_fishinwater');
+    },
+    events: [
+      EventHandler('fishingcatch', (inst, data) => inst.goToState('catchfish', (data as { build: string }).build)),
+      EventHandler('fishingloserod', (inst) => inst.goToState('loserod')),
+    ],
+    onexit: (inst) => inst.context.host.stopNamedSound?.('splash'),
+  }),
+  State({
+    name: 'catchfish',
+    tags: ['fishing', 'catchfish', 'busy'],
+    onenter: (inst, build) => {
+      inst.context.playClips([fishingClip('fish_catch')]);
+      inst.context.host.overrideSymbol?.('fish01', build as string, 'fish01');
+    },
+    timeline: [
+      TimeEvent(8 * FRAMES, (inst) => inst.context.host.playEvent?.('dontstarve/common/fishingpole_fishcaught')),
+      TimeEvent(10 * FRAMES, (inst) => inst.removeStateTag('fishing')),
+      TimeEvent(23 * FRAMES, (inst) => inst.context.host.playEvent?.('dontstarve/common/fishingpole_fishland')),
+      TimeEvent(24 * FRAMES, (inst) => {
+        // The state owns the rest of the animation even if the last use removes the rod.
+        inst.context.releaseAction();
+        inst.context.host.fishing?.collect();
+      }),
+    ],
+    events: [EventHandler('animover', (inst) => { if (inst.context.animationDone) inst.goToState('idle'); })],
+    onexit: (inst) => inst.context.host.clearOverrideSymbol?.('fish01'),
+  }),
+  State({
+    name: 'loserod',
+    tags: ['busy', 'nopredict'],
+    onenter: (inst) => {
+      inst.context.releaseAction();
+      inst.context.host.fishing?.loseRod();
+      inst.context.playClips([fishingClip('fish_nocatch')]);
+    },
+    timeline: [TimeEvent(4 * FRAMES, (inst) => inst.context.host.playEvent?.('dontstarve/common/fishingpole_lostrod'))],
+    events: [EventHandler('animover', (inst) => { if (inst.context.animationDone) inst.goToState('idle'); })],
+  }),
 ];
 
 /** Browser movement/visual adapters; Lua's locomotion states are not ported here. */
@@ -1059,6 +1170,7 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   // The bedroll branch (action.invobject) is not ported; tents go to the tent state.
   ActionHandler('SLEEPIN', (_inst, action) => action.invobject ? null : 'tent'),
   ActionHandler('TERRAFORM', 'terraform'),
+  ActionHandler('FISH', 'fishing_pre'),
   ActionHandler('EAT', (inst) => {
     if (inst.hasStateTag('busy')) return null;
     // FoodActionController validates edible food; only quickeat is connected.
@@ -1113,6 +1225,10 @@ export class WilsonStateGraph {
       this.activeInvobject = undefined;
       this.sg.goToState('toolbroke', (data as { tool?: WilsonBrokenTool } | undefined)?.tool);
     });
+    // SGwilson.lua EventHandler("fishingcancel")
+    this.sg.listenForEvent('fishingcancel', () => {
+      if (this.sg.hasStateTag('fishing') && !this.sg.hasStateTag('busy')) this.sg.goToState('fishing_pst');
+    });
     // SGwilson.lua EventHandler("feetslipped")
     this.sg.listenForEvent('feetslipped', () => {
       if (this.sg.hasStateTag('running') && !this.sg.hasStateTag('noslip') && this.host.slip) this.sg.goToState('slip');
@@ -1148,6 +1264,14 @@ export class WilsonStateGraph {
       && (invobjectPrefab === undefined || this.activeInvobject?.prefab === invobjectPrefab);
   }
   isActionActive(action: BufferedAction<WilsonAction>): boolean { return this.activeBufferedAction === action; }
+
+  /** A state that outlives the action's equipment (loserod, catchfish) stops being cancelled by `unequip`. */
+  releaseAction(): void {
+    this.clearBufferedAction();
+    this.activeAction = null;
+    this.activeBufferedAction = undefined;
+    this.activeInvobject = undefined;
+  }
 
   /** Called by idle.onenter after the state has already been entered. */
   onEnterIdle(pushanim: boolean): void {

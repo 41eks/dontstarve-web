@@ -26,6 +26,8 @@ import { playerStats } from './playerStats';
 import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
+import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
+import { MarbleBeanSaplingManager, MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { RockAvocadoSaplingManager, ROCK_AVOCADO_SAPLING_ID } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
 import { RockAvocadoBushManager, ROCK_AVOCADO_BUSH_ID } from '@dontstarve-web/prefab/rock_avocado_bush';
 import { BerrybushManager, BERRYBUSH_ID } from '@dontstarve-web/prefab/berrybush';
@@ -84,6 +86,8 @@ const MANAGER_DEFINITIONS = {
   'ground_item': PREFAB_DEFINITIONS.groundItems,
   'bulb_plant': PREFAB_DEFINITIONS.bulbPlants,
   'rocks': PREFAB_DEFINITIONS.rocks,
+  'marbleshrub': PREFAB_DEFINITIONS.marbleShrubs,
+  'marblebean_sapling': PREFAB_DEFINITIONS.marbleBeanSaplings,
   'rock_avocado_bush': PREFAB_DEFINITIONS.rockAvocadoBushes,
   'rock_avocado_fruit_sprout_sapling': PREFAB_DEFINITIONS.rockAvocadoSaplings,
   'berrybush': PREFAB_DEFINITIONS.berrybushes,
@@ -132,6 +136,8 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.molehills,
   PREFAB_DEFINITIONS.beefalos,
   PREFAB_DEFINITIONS.rocks,
+  PREFAB_DEFINITIONS.marbleBeanSaplings,
+  PREFAB_DEFINITIONS.marbleShrubs,
   PREFAB_DEFINITIONS.rockAvocadoSaplings,
   PREFAB_DEFINITIONS.rockAvocadoBushes,
   PREFAB_DEFINITIONS.berrybushes,
@@ -175,6 +181,8 @@ export async function createSceneEntities(
     'ground_item': ReturnType<typeof registerGroundItems>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
     'rocks': ReturnType<typeof registerRocks>;
+    'marbleshrub': ReturnType<typeof registerMarbleShrubs>;
+    'marblebean_sapling': ReturnType<typeof registerMarbleBeanSaplings>;
     'rock_avocado_bush': ReturnType<typeof registerRockAvocadoBushes>;
     'rock_avocado_fruit_sprout_sapling': ReturnType<typeof registerRockAvocadoSaplings>;
     'berrybush': ReturnType<typeof registerBerrybushes>;
@@ -224,6 +232,8 @@ export async function createSceneEntities(
   Managers['staffcoldlight'] = registerStaffLights(registry, 'staffcoldlight', worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
+  Managers['marbleshrub'] = registerMarbleShrubs(registry, 'marbleshrub', worldState);
+  Managers['marblebean_sapling'] = registerMarbleBeanSaplings(registry, 'marblebean_sapling', worldState);
   Managers['rock_avocado_bush'] = registerRockAvocadoBushes(registry, 'rock_avocado_bush', worldState);
   Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings(registry, 'rock_avocado_fruit_sprout_sapling', worldState);
   Managers['berrybush'] = registerBerrybushes(registry, 'berrybush', worldState);
@@ -280,6 +290,8 @@ export async function createSceneEntities(
     beefalos: Managers['beefalo'],
     molehills: Managers['molehill'],
     rockManager: Managers['rocks'],
+    marbleShrubs: Managers['marbleshrub'],
+    marbleBeanSaplings: Managers['marblebean_sapling'],
     rockAvocadoSaplings: Managers['rock_avocado_fruit_sprout_sapling'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
     berrybushes: Managers['berrybush'],
@@ -509,6 +521,42 @@ export async function createSceneEntities(
       dispose: () => rockManager.dispose(),
     });
     return rockManager;
+  }
+
+  function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', _worldState: SceneWorldState) {
+    const marbleShrubs = new MarbleShrubManager(scene, {
+      scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent,
+      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (_, record) => marbleShrubs.spawn(MARBLESHRUB_ID, new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform,
+        components: { growable: record.components.growable!, marbleShrub: record.components.marbleShrub! },
+      }),
+      debugSpawn: id => marbleShrubs.spawn(id, player.position.clone()),
+      exportRecords: () => marbleShrubs.exportRecords().map(record => ({ prefabId: MARBLESHRUB_ID, record })),
+      update: (dt, quaternion) => marbleShrubs.update(dt, quaternion),
+      renderEntities: () => marbleShrubs.renderEntities,
+      miniMapEntities: () => marbleShrubs.miniMapEntities,
+      dispose: () => marbleShrubs.dispose(),
+    });
+    return marbleShrubs;
+  }
+
+  function registerMarbleBeanSaplings(registry: EntityRegistry, prefabId: 'marblebean_sapling', _worldState: SceneWorldState) {
+    const marbleBeanSaplings = new MarbleBeanSaplingManager(scene, {
+      scheduler, shrubs: Managers['marbleshrub'],
+      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (_, record) => marbleBeanSaplings.spawn(new THREE.Vector3(...record.transform.position), record),
+      debugSpawn: () => marbleBeanSaplings.spawn(player.position.clone()),
+      exportRecords: () => marbleBeanSaplings.exportRecords().map(record => ({ prefabId: MARBLEBEAN_SAPLING_ID, record })),
+      update: (dt, quaternion) => marbleBeanSaplings.update(dt, quaternion),
+      renderEntities: () => marbleBeanSaplings.renderEntities,
+      dispose: () => marbleBeanSaplings.dispose(),
+    });
+    return marbleBeanSaplings;
   }
 
   function registerRockAvocadoBushes(registry: EntityRegistry, prefabId: 'rock_avocado_bush', worldState: SceneWorldState) {
@@ -1066,10 +1114,10 @@ export async function createSceneEntities(
   }
 
   function registerPonds(registry: EntityRegistry, prefabId: 'pond', worldState: SceneWorldState) {
-    const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, worldState.getWatchWorldContent);
+    const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, scheduler ?? worldState.scheduler, worldState.getWatchWorldContent);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => ponds.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: {},
+        id: record.id, transform: record.transform, components: record.components.fishable ? { fishable: record.components.fishable } : {},
       }),
       debugSpawn: () => ponds.spawn(player.position.clone()),
       exportRecords: () => ponds.exportRecords().map((record) => ({ prefabId: POND_ID, record })),

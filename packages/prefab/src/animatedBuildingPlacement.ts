@@ -35,9 +35,13 @@ import { setPrefabLocalLight } from './localLight';
 import type { TradeItem, Trader } from '../../componets/src/trader';
 import { TILE_SIZE } from './tile';
 
-const lootRecipes = new Map<string, LootRecipe>(recipeData.recipes
-    .filter(recipe => recipe.ingredients.every(ingredient => typeof ingredient.type === 'string' && typeof ingredient.amount === 'number'))
-    .map(recipe => [recipe.name, { ingredients: recipe.ingredients as LootRecipe['ingredients'] }]));
+const lootRecipes = new Map<string, LootRecipe>([
+    ...recipeData.recipes
+        .filter(recipe => recipe.ingredients.every(ingredient => typeof ingredient.type === 'string' && typeof ingredient.amount === 'number'))
+        .map((recipe): [string, LootRecipe] => [recipe.name, { ingredients: recipe.ingredients as LootRecipe['ingredients'] }]),
+    // DeconstructRecipe registers its returnIngredients in AllRecipes, which lootdropper reads for structures such as pighead.
+    ...recipeData.deconstructionRecipes.map((recipe): [string, LootRecipe] => [recipe.name, { ingredients: recipe.returnIngredients as LootRecipe['ingredients'] }]),
+]);
 
 /** Recipe.ingredients-based DropLoot of a buildable prefab (lootdropper's default for structures). */
 export const buildingRecipeLoot = (buildId: string) => GetRecipeLoot(lootRecipes.get(buildId), lootRecipes);
@@ -58,6 +62,8 @@ export interface AnimatedBuildingDefinition {
     hammerDropContentsOnHit?: boolean;
     hammerHitOnlyWhileWorking?: boolean;
     hammerExtraLoot?: readonly { itemId: string; count: number }[];
+    /** Loot the finishing callback adds on both the intact and the burnt path, from the world's current state. */
+    hammerBonusLoot?: (context: AnimatedBuildingEventContext) => readonly { itemId: string; count: number }[];
     /** Items the building itself holds, dropped with its recipe loot when hammered. */
     hammerHeldLoot?: (context: AnimatedBuildingEventContext) => readonly { itemId: string; count: number }[];
     /** Existing insts the building holds (occupants, shelved items) leave with their identity and state. */
@@ -377,10 +383,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 if (entity.hasTag('burnt')) {
                     const loot = GetRecipeLoot(lootRecipes.get(buildId), lootRecipes, true);
                     if (Math.random() < .4) loot.push({ itemId: 'charcoal', count: 1 });
+                    loot.push(...definition.hammerBonusLoot?.(this.eventContext(building)) ?? []);
                     context.dropLoot(loot); context.spawnEffect(); context.remove();
                 } else if (definition.onhammered) definition.onhammered(context);
                 else {
                     context.dropLoot([...GetRecipeLoot(lootRecipes.get(buildId), lootRecipes), ...(definition.hammerExtraLoot ?? []),
+                        ...(definition.hammerBonusLoot?.(this.eventContext(building)) ?? []),
                         ...(definition.hammerHeldLoot?.(this.eventContext(building)) ?? [])]);
                     model.userData.components?.container?.DropEverything(context.position);
                     definition.hammerDropEntities?.(this.eventContext(building));

@@ -2,30 +2,61 @@
 
 本文记录按 tile 管理生命周期的实施方案：每个 tile 持有一个活动状态 signal，玩家跨 tile 时更新变化的 tile，prefab 读取缓存 memo 派生自身的活动状态。活动网格、温泉的显隐及海浪休眠移除已实现；海浪按 Lua 的 `OnEntitySleep = inst.Remove` 释放 FX，不在重新激活时恢复，详见 [海洋渲染](dst-ocean-rendering.md)。当前 [stafflight.ts](../packages/prefab/src/stafflight.ts) 仍逐帧检查距离，[ProximityEntities](../packages/prefab/src/proximityEntities.ts) 仍遍历实体检查距离，统一的场景生命周期调度和资源卸载尚未实现。
 
-[worldContent.ts](../packages/signals/src/worldContent.ts) 已提供 `GetTileStateAtPoint(position, radius = 10)`，从当前绑定世界解析 tile 查询服务，返回固定位置的 `Memo<boolean> | undefined`，调用方无需传入玩家位置源。世界初始化时通过 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `GetTileStateAtPoint(playerPosition)` 柯里化绑定源，将返回的查询函数注入 `WorldContentEnvironment.tickingarea`；`world.tickingarea(position, radius)` 始终查询所属世界，全局导出查询当前绑定世界。signals 包只定义服务协议和解析入口，网格计算及缓存仍由 tileManager 管理。
+[worldContent.ts](../packages/signals/src/worldContent.ts) 已提供 `GetTileStateAtPoint(tile, radius = 10)`，从当前绑定世界解析 tile 查询服务，`tile` 是实体自己的 tile key（`ReadonlySignal<number>`），返回 `Memo<boolean> | undefined`，调用方无需传入玩家位置源。实体用 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `TileTracker` 持有私有 tile key：构造时传入读取当前位置的函数（如 `() => transform.position`），用 `GetTileKeyAtPoint` 计算 key（网格外或非有限坐标为 `INVALID_TILE_KEY = -1`）。只有跨 tile 时 key 才变化，同一 tile 内移动不通知下游 memo，也不分配新向量；位置的权威数据仍在实体上，key 在刷新时通过读取函数取当前向量，所以原地修改和整个替换位置引用都能被读到，但只有刷新（见下）发生时才会更新。实体每次给位置赋值后调用 `tracker.moved()`，累计 60 次（可通过构造参数 `interval` 调整）才刷新一次 key，计数由实体自己的 tracker 持有；休眠实体的 `update` 被跳过，位置不赋值就不计数。掉落、传送等一次性位置跳变用 `sync()` 立即刷新并重新计数。消费者通过 `getWatchWorldContent(key, cleanup, { tile })` 传入 `tracker.tile` 完成门控，清理时释放 memo。世界初始化时通过 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `GetTileStateAtPoint(playerPosition)` 柯里化绑定源，将返回的查询函数注入 `WorldContentEnvironment.tickingarea`；`world.tickingarea(tile, radius)` 始终查询所属世界，全局导出查询当前绑定世界。signals 包只定义服务协议和解析入口，网格计算及缓存仍由 tileManager 管理。
 
-当前 `WorldState` 从自己的 `playerpositions` 快照纯派生首个玩家位置；没有玩家时为 `undefined`，所有 tile inactive。位置沿用现有初始化和每 60 活动帧采样，不改变更新频率或增加多人并集。范围采用下述方形规则，半径须为非负整数；目标超出 84×84 网格或 X/Z 无效时返回 `undefined`，玩家 X/Z 无效时发布 inactive。缓存按世界绑定的位置源隔离，同一世界、tile 和半径的查询始终返回同一个 memo；不同世界或半径独立。
+当前 `WorldState` 从自己的 `playerpositions` 快照纯派生首个玩家位置；没有玩家时为 `undefined`，所有 tile inactive。位置沿用现有初始化和每 60 活动帧采样，不改变更新频率或增加多人并集。范围采用下述方形规则，半径须为非负整数；目标初次查询时超出 84×84 网格或 X/Z 无效则返回 `undefined`（该实体之后不会被门控，即使移入网格；会从网格外生成的移动实体需要自行处理）；已有 memo 的实体移出网格时返回 `false`。玩家 X/Z 无效时发布 inactive。缓存按世界绑定的位置源隔离，同一世界、同一个实体 tile signal 对象和半径的查询返回同一个 memo；两个实体即使当前 tile key 数值相同，也有独立 memo，以便以后分别跨格。各实体共享当前格子的活动 signal；不同世界或半径独立。
 
-每个位置源仅创建一个私有 `watchSignal` 桥接和一个普通 `createEffect` 管理器。每个已使用的半径拥有独立的 84×84 `titlestates: Signal<boolean>[][]`。玩家跨 tile 后，先遍历旧活动方形区域，将不属于新区域的格子设为 inactive；重叠区域保持原值。随后从新玩家格开始，按方形螺旋逐圈激活新区域，超过活动半径立即停止，仅写入变化的 signal。整个过程用 `batch()` 一起提交，先关闭旧区域再激活新区域，传送也不会遗留旧 active 格。
+每个玩家位置源仅创建一个私有 `watchSignal` 桥接和一个普通 `createEffect` 管理器。每个已使用的半径拥有独立的 84×84 `titlestates: Signal<boolean>[][]`。玩家跨 tile 后，先遍历旧活动方形区域，将不属于新区域的格子设为 inactive；重叠区域保持原值。随后从新玩家格开始，按方形螺旋逐圈激活新区域，超过活动半径立即停止，仅写入变化的 signal。整个过程用 `batch()` 一起提交，先关闭旧区域再激活新区域，传送也不会遗留旧 active 格。
 
 第 0 圈为玩家格；其余各圈从负 X、负 Z 的角开始，依次沿 +X、+Z、−X、−Z 遍历四边，角点不重复。地图边缘裁剪每条边，玩家在地图外时跳过完全不相交的内圈，不因单个越界格终止遍历。玩家坐标无效时只关闭旧区域，没有全图兜底遍历。
 
-同 tile 内移动直接跳过遍历。每个缓存 memo 仅执行 `createMemo(() => state.get())`，不直接依赖玩家位置，因而只有活动值变化的 tile memo 会重算。查询复用更新好的状态；新半径第一次查询时初始化网格。每次跨 tile 至多检查旧、新两个活动区域，即 `2 × (2R + 1)²` 格，地图边缘进一步裁剪；默认 `R = 10` 至多 882 格，不再扫描全图 7056 格。当前已实现单玩家方形区域差集与半径短路；多人并集和缓冲圈仍待接入。
+玩家同 tile 内移动直接跳过网格遍历。每个实体的缓存 memo 先读取自己的 tile key signal，再读取该 key 对应格子的活动 signal，不直接依赖玩家精确位置。实体发布新 key 时，memo 自动解除旧格子的依赖并订阅新格子；玩家移动则通过当前格子的活动值变化触发 memo。实体在同 tile 内移动不会发布新 key，其他格子的活动变化也不会触发该实体的 memo。查询复用更新好的状态；新半径第一次查询时初始化网格。每次跨 tile 至多检查旧、新两个活动区域，即 `2 × (2R + 1)²` 格，地图边缘进一步裁剪；默认 `R = 10` 至多 882 格，不再扫描全图 7056 格。当前已实现单玩家方形区域差集与半径短路；多人并集和缓冲圈仍待接入。
 
-返回值支持 `awake()`、`get()`、`peek()`、`subscribe()`。memo 由缓存拥有，单个 prefab 移除时只释放自己的 effect／订阅，不调用共享 memo 的 `dispose()`；`WorldState.dispose()` 调用 `DisposeTileStates(playerPosition)` 统一释放全部 memo、排队的管理器 effect 和位置监听，再释放首个玩家位置 memo。显式调用某个 tile memo 的 `dispose()` 会将它从缓存移除，下次查询重新创建；某半径的最后一个 memo 释放时回收对应网格，整个缓存的最后一个 memo 释放时解除位置桥接。重复查询不增加引用计数，重复释放无影响。普通管理器 effect 按现有微任务调度，位置写入后的派生结果在后续宏任务观察；尚未接入帧阶段、缓冲圈和实体生命周期。
+返回值支持 `awake()`、`get()`、`peek()`、`subscribe()`。memo 由缓存持有；同一个 tile signal 的多个消费者共享 memo，不能由某个消费者提前释放。`getWatchWorldContent` 的 `{ tile }` 门控约定该 signal 为消费者私有，其清理函数会释放世界输入监听和对应 memo；直接查询的私有 tracker 可由拥有者在永久移除时释放 memo，或交给世界统一释放。`WorldState.dispose()` 调用 `DisposeTileStates(playerPosition)` 统一释放全部 memo、排队的管理器 effect 和位置监听，再释放首个玩家位置 memo。显式调用某个 tile memo 的 `dispose()` 会将它从缓存移除，下次查询重新创建；某半径的最后一个 memo 释放时回收对应网格，整个缓存的最后一个 memo 释放时解除位置桥接。重复查询不增加引用计数，重复释放无影响。普通管理器 effect 按现有微任务调度，位置写入后的派生结果在后续宏任务观察；尚未接入帧阶段、缓冲圈和实体生命周期。
 
 [hotspring.ts](../packages/prefab/src/hotspring.ts) 先接入显隐与碰撞切换：场景向管理器注入所属世界的查询函数，每个温泉用私有 `watchSignal` 监听脚点所属 tile，并通过普通 effect 更新活动集合、场景模型和物理体。inactive 时停止该温泉动画更新，保留原模型、逻辑记录、heater、bathbombable 和存档状态；返回范围时恢复同一实例，不重播生成或投入沐浴球动作。此阶段不释放休眠模型资源，不实现 Lua 的蒸汽 FX 分支。单个温泉永久移除时清理自己的监听，不释放共享 memo，也不影响同 tile 其他温泉。没有注入 tile 服务或查询返回 `undefined`（包括超出网格）时回退为 active，保证模型、碰撞体和动画正常工作；返回值为有效 memo 且状态为 `false` 时仍按 inactive 处理。
 
 ```ts
 import { GetTileStateAtPoint } from '@dontstarve-web/signals';
+import { TileTracker } from '../packages/componets/src/tileManager';
 
-const active = GetTileStateAtPoint(position); // 默认 10 格，同 tile 共用缓存 memo
+const tracker = new TileTracker(() => entity.position); // 每个实体私有；每次位置赋值后 tracker.moved()
+const active = GetTileStateAtPoint(tracker.tile); // 默认 10 格；同一个 tracker.tile 和半径复用 memo
 const stop = active?.subscribe(isActive => queueTransition(isActive));
-// prefab 永久移除时只取消自己的订阅；共享 memo 随世界释放。
+// prefab 永久移除时释放订阅和这个私有 tracker 对应的 memo。
 stop?.();
+active?.dispose();
 ```
 
 开发约束见 [AGENTS.md](../AGENTS.md)，响应式原语见 [packages/signals](../packages/signals/README.md)，存档与渲染规则见 [存档系统](dst-save-system.md)、[billboard 绘制](dst-billboard-rendering.md)。
+
+## 移动实体不能一直监听出生 tile
+
+问题场景：蜘蛛生成在玩家活动范围内的 tile A，初始化时将活动 memo 固定绑定到 A。之后蜘蛛移动到远处的 tile B，若自身的格子绑定没有更新，它仍读取 A 的活动状态。只要玩家仍使 A 保持 active，蜘蛛即使已经离开活动区域也不会休眠，可以持续向远处移动。仅在玩家跨 tile 时更新活动网格无法解决这个问题：网格状态本身正确，错误在于蜘蛛仍监听出生格子。
+
+当前查询通过实体自己的 tile key signal 解决固定格子绑定的问题。玩家和实体分别提供两条更新路径：
+
+1. 玩家位置采样变化后，管理器更新活动网格；实体当前监听格子的活动状态发生变化时，其 memo 重新计算。
+2. 实体的位置写入完成后调用 `tracker.moved()`；采样刷新时通过读取函数获取实际位置，计算并发布新的数字 key。活动 memo 读取新 key，自动切换到新格子的活动 signal，不再依赖出生格子。
+
+蜘蛛从 A 移到活动区域外的 B 后，下一次实体 tile 采样使 memo 读取 B 的 `false`，由接入方执行该 prefab 的休眠处理；即使 A 始终保持 active，也不会再让蜘蛛继续活动。玩家和生物同时移动时，两条路径都能触发重新计算，最终状态按双方最新已发布的位置判定。
+
+缓存必须按实体的 tile signal 对象和半径区分，不能仅按当前数字 key 复用实体 memo：两只蜘蛛即使同格生成，也可能向不同方向移动。它们共享格子的活动 signal，各自的 memo 保留独立的 tile 依赖。
+
+移动 prefab 接入时必须保留自己的 tracker，在位置赋值后调用 `moved()`；构造时读取一次位置、之后只修改 `Vector3` 不会自动更新 key。当前默认累计 60 次位置写入再刷新，允许持续移动生物在采样之间存在位置误差；这不是每次跨格都立即休眠，也不是世界统一计时的 60 帧任务。掉落、传送和加载后的位置赋值通过 `sync()` 立即刷新。刷新只读取现有向量并计算数字 key，同格时 Signal 过滤相同值，不创建新向量或包装对象，也不触发下游 memo。
+
+这一机制解决的是移动实体的格子依赖更新；具体生物仍需将位置提交和休眠行为接入上述接口，不能仅创建 tracker 就认为完成接入。实体／tile 索引迁移和统一资源卸载仍属于后文的生命周期方案。
+
+### 活动边界的误差容忍
+
+蜘蛛等持续移动生物允许按采样位置判断活动范围，不要求每次跨格都立即切换休眠状态。默认累计 60 次位置写入刷新一次 tile key，是有意保留的性能取舍，具体容忍如下：
+
+- 连续移动时，最多有 59 次位置写入尚未反映到 tile key；刷新前可以继续读取上次采样格子的活动状态。误差按实体的位置写入次数计算，不保证固定的游戏时间、实际时间或空间距离上限。
+- 如果未满 60 次就停止移动，允许 tile key 保留在上次采样的格子，直到继续移动累计到刷新次数或显式调用 `sync()`。停止移动本身不强制补刷，也不为此增加全局扫描或定时刷新。
+- 玩家位置和生物 tile key 分别采样，同时移动时按双方最新已发布的位置判断，允许采样不同步造成的活动边界延迟；不承诺每帧都匹配双方的即时相对位置。
+- 掉落、传送和加载后的一次性位置赋值调用 `sync()` 立即刷新并重置计数，不能等待后续移动来凑满次数。
+
+误差容忍只适用于活动范围的粗粒度判定，精确位置仍由实体的实际 `Vector3` 提供，碰撞、动作距离和存档位置不能用采样 tile key 替代。需要避免的是实体持续移动时永远监听出生格子；允许采样间隔内暂时使用旧格子，不将其视为该问题未解决。
 
 ## tile 与状态来源
 
@@ -115,7 +146,7 @@ flowchart LR
 
 prefab 的 `awake` 是所属 tile 活动状态的派生值，实际模型是否存在是资源状态，两者分别维护。memo 只计算状态；加载、卸载、计时补算和音效播放由生命周期处理函数执行。
 
-以下示意使用现有 signal 读取形式；`activity.queueTransition()` 和 `tileRegistry.get()` 是拟新增的管理器接口：
+当前运行时由 `TileTracker.tile` 驱动查询 memo 切换格子依赖。以下是后续接入实体索引时的等价示意，`activity.queueTransition()` 和 `tileRegistry.get()` 是拟新增的管理器接口：
 
 ```ts
 // 固定实体可以直接闭包读取 tile.active.get()。
@@ -215,7 +246,8 @@ for (const entity of inactiveEntities) {
 
 实施时保持代表性覆盖：
 
-- 同 tile 内移动不发布活动变化；跨 tile、负坐标边界和传送正确更新差集，同一 tile 的多个实体共享 signal，缓冲圈保留已有活动状态。
+- 同 tile 内移动不发布活动变化；跨 tile、负坐标边界和传送正确更新差集，同一 tile 的多个实体共享格子活动 signal，缓冲圈保留已有活动状态。
+- 以蜘蛛为移动实体案例：出生格子始终 active，蜘蛛持续移动到区域外后，tile 采样必须切换格子依赖并发布 inactive；同时覆盖玩家和实体都移动，以及同格生成的两个实体分别迁出后互不影响。允许默认 60 次位置写入的采样误差，传送通过 `sync()` 立即刷新。
 - 螺旋从玩家 tile 开始、逐圈无重复，在保留范围结束后短路；空 tile、单个圆外 tile 或地图边界不提前终止遍历，传送后旧区域仍完整卸载，加载队列按圈优先且取消失效任务。
 - active → inactive 释放独立资源，inactive → active 补算并在原位置重建；已过期实体不加载，实体跨 tile 后解除旧依赖，永久移除后旧 signal 或异步请求不会重建实体。
 - 保存覆盖活动与休眠实体，结算尾帧及休眠时间；恢复保留身份、位置、组件状态，共享纹理不因单个实体卸载而释放。
