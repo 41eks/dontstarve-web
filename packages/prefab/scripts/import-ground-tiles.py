@@ -82,10 +82,20 @@ def main():
             'minimap': {'atlas': mini_atlas_path, 'texture': mini_texture_path, 'noise': mini_noise_path},
         }
         assets.update([texture_path, atlas_path, noise_path, mini_atlas_path, mini_texture_path, mini_noise_path])
+    # falloffdefs.lua FALLOFF_IDS.FALLOFF: the cliff face hanging under land edges that border non-land.
+    falloff_source = (scripts / 'falloffdefs.lua').read_text()
+    falloff_name = re.search(r'FALLOFF_IDS\.FALLOFF,\s*\{\s*name\s*=\s*"(\w+)"', falloff_source)[1]
+    falloff_atlas_path = f'levels/tiles/{falloff_name}.xml'
+    falloff_texture_path = f'levels/tiles/{falloff_name}.tex'
+    falloff_elements = ET.fromstring((args.source / falloff_atlas_path).read_text()).find('Elements')
+    if {element.attrib['name'] for element in falloff_elements} != {f'{n:02}' for n in range(1, 7)}:
+        raise ValueError(f'Unexpected falloff variants: {falloff_atlas_path}')
+    assets.update([falloff_atlas_path, falloff_texture_path])
     paper_path = 'images/minimap_paper.tex'  # prefabs/minimap.lua Asset("IMAGE", ...) used by minimapocean.ksh
     assets.add(paper_path)
     outputs = {
         'src/groundTiles.json': definitions,
+        'src/groundFalloff.json': {'atlas': falloff_atlas_path, 'texture': falloff_texture_path, 'variants': 6},
         'src/minimapOcean.json': {'paper': paper_path, 'tuning': read_ocean_minimap_tuning(scripts)},
     }
     for name, content in outputs.items():

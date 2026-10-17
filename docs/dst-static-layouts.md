@@ -92,7 +92,7 @@ python3 scripts/import-dst-region.py \
 
 本次 `Cluster_58` 快照 `0000000022` 选中 29 个节点，导出 4,173 格陆地和 136 格 `FAKE_GROUND`。拓扑连接是出口绿地 → 蓝蘑菇林 → 月亮蘑菇林 → 远古档案馆；`CaveExitTask1` 包含 `CaveExitRoom` 和 `RabbitArea`，补入蓝蘑菇林周边楼梯所在的 433 格 `SINKHOLE` 绿地及连接处的 6 格蓝蘑菇地皮。新增区域沿用原点 `(281, 392)`，此前导入的地皮位置、地图尺寸与玩家出生点保持一致。楼梯实体本身仍属于后续实体迁移。结果为 `public/saves/Cluster_1/Caves.json`，来源、SHA-256、源地图尺寸、节点名单、坐标平移和地皮数量写入同目录 `Caves.import.json`。
 
-访问 `/?save=Cluster_1/Caves.json`（部署在子路径时保留该子路径）即可加载；不带参数仍加载 `initial-world.json`。`save` 只接受 `public/saves` 下由字母、数字、下划线、连字符组成的相对 JSON 路径。加载器接受 `world.prefab: "cave"`，要求洞穴背景为 `IMPASSABLE`；渲染关闭整片落叶林底面，使用黑色虚空，世界地形与地图界面共用地皮边界。键盘移动、点击寻路及土地分类共用通行判断。`c_save()` 仍下载 `initial-world.json`，保留洞穴类型、虚空背景、稀疏地皮和实体身份／位置／烧毁状态／雕像外形；将下载文件替换到当前所选路径后重载。现有 `c_spawn("pighead")`、`c_spawn("archive_moon_statue")` 的命令支持不变，白名单只控制原存档导入。
+直接访问页面（部署在子路径时保留该子路径）默认加载 `Cluster_1/Caves.json`，无需 URL 参数；可用 `?save=initial-world.json` 加载原地表存档。`save` 只接受 `public/saves` 下由字母、数字、下划线、连字符组成的相对 JSON 路径。加载器接受 `world.prefab: "cave"`，要求洞穴背景为 `IMPASSABLE`；渲染关闭整片落叶林底面，使用黑色虚空，世界地形与地图界面共用地皮边界。键盘移动、点击寻路及土地分类共用通行判断。`c_save()` 仍下载 `initial-world.json`，保留洞穴类型、虚空背景、稀疏地皮和实体身份／位置／烧毁状态／雕像外形；将下载文件替换到当前所选路径后重载。现有 `c_spawn("pighead")`、`c_spawn("archive_moon_statue")` 的命令支持不变，白名单只控制原存档导入。
 
 验证命令：
 

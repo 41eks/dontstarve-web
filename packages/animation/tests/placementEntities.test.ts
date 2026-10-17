@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
-import { placementEntities, syncPlacementEntity } from '../../prefab/src/placementEntities';
+import { placementEntities, syncPlacementEntity, isGroundTargetBlocked } from '../../prefab/src/placementEntities';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { ProximityEntities } from '../../prefab/src/proximityEntities';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
@@ -10,6 +10,23 @@ import { ItemEntity } from '../../inventory/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
 
 afterEach(() => vi.unstubAllGlobals());
+
+it('ground target blocking uses source tags and ring radii, including blockers whose centre is outside the query range', () => {
+  const scene = new THREE.Scene(), model = new THREE.Group();
+  model.position.set(24, 0, 0);
+  Object.assign(model.userData, { ground_target_blocker_radius: 24, _groundhole_innerradius: 3, tags: ['blocker'] });
+  const entity = actionEntity(model, 'test-groundhole'); scene.add(model);
+  const query = placementEntities(scene), point = new THREE.Vector3(0, 0, 0);
+  try {
+    expect(isGroundTargetBlocked(query, point, 1.5)).toBe(false);
+    entity.addTag('groundhole');
+    expect(isGroundTargetBlocked(query, point, 1.5)).toBe(true);
+    expect(isGroundTargetBlocked(query, model.position, 1.5)).toBe(false);
+    expect(isGroundTargetBlocked(query, new THREE.Vector3(-1.5, 0, 0), 1.5)).toBe(false);
+    entity.removeTag('groundhole');
+    expect(isGroundTargetBlocked(query, point, 1.5)).toBe(false);
+  } finally { disposeActionEntity(model); model.removeFromParent(); }
+});
 
 it('visits local cells, stops at the first blocker and includes large smart radii across cell boundaries', () => {
   type Entry = { position: THREE.Vector3; radius: number };

@@ -85,7 +85,7 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   page.on('pageerror', error => errors.push(error.message));
   const paths = Object.fromEntries(['main', 'building', 'autopause'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
-  await page.goto('/tests/dst-lighting.html');
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   await page.evaluate(async paths => {
     await import(paths.main);
     const { turfMap } = await import(paths.building);
@@ -96,7 +96,7 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   const section = map.locator('section.minimap');
   await expect(section).toBeHidden();
   const inspectImage = page.locator('dst-inventory-bar').locator('.inventory-bar__inspect img');
-  await expect(inspectImage).toHaveAttribute('src', /self_inspect_waxwell\.tex\.png$/);
+  await expect(inspectImage).toHaveAttribute('src', /self_inspect_wortox\.tex\.png$/);
   await expect.poll(() => inspectImage.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBe(98);
 
   await page.locator('dst-map-controls').getByRole('button', { name: '打开地图' }).click();
@@ -107,8 +107,8 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
     const icon = player.MiniMapEntity;
     return { icon: icon.icon, priority: icon.priority, canUseCache: icon.canUseCache,
       drawOverFogOfWar: icon.drawOverFogOfWar, ownsPosition: icon.position === player.position };
-  }, PLAYER_PATH)).toEqual({ icon: 'waxwell.png', priority: 10, canUseCache: false, drawOverFogOfWar: true, ownsPosition: true });
-  await expect.poll(() => map.evaluate((element: any) => Boolean(element.icons.get('waxwell.png')))).toBe(true);
+  }, PLAYER_PATH)).toEqual({ icon: 'wortox.png', priority: 10, canUseCache: false, drawOverFogOfWar: true, ownsPosition: true });
+  await expect.poll(() => map.evaluate((element: any) => Boolean(element.icons.get('wortox.png')))).toBe(true);
 
   const canvas = map.locator('canvas');
   // Sample the canvas centre: land colour at the player's start, never transparent.

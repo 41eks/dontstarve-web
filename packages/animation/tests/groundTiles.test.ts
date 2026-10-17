@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { groundTileVariant, loadGroundTileAssets } from '../../prefab/src/groundTiles';
+import { groundTileVariant, loadGroundTileAssets, loadGroundFalloffAssets, groundFalloffGeometry, sortGroundFalloffGeometry } from '../../prefab/src/groundTiles';
+import { GroundDepthPrepass } from '../../prefab/src/groundDepthPrepass';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { createSignal, type ClockState } from '../../signals/src';
 
@@ -10,6 +11,44 @@ beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {
   return new Response(bytes);
 }));
 afterEach(() => vi.unstubAllGlobals());
+
+it('continues the two-tile cliff texture across negative coordinates and sorts merged faces without replacing vertices', async () => {
+  const assets = await loadGroundFalloffAssets('/dst/data');
+  const geometry = groundFalloffGeometry([{ col: 0, row: -2, edge: 0 }, { col: 0, row: -1, edge: 0 }], assets);
+  try {
+    const vertices = geometry.getAttribute('position'), uv = geometry.getAttribute('uv');
+    expect(uv.getX(2)).toBeCloseTo(uv.getX(4));
+    expect(geometry.boundingBox!.min.y).toBe(-48);
+    sortGroundFalloffGeometry(geometry, new THREE.Matrix4().makeRotationY(Math.PI));
+    expect(geometry.index!.getX(0)).toBe(4);
+    const version = geometry.index!.version;
+    sortGroundFalloffGeometry(geometry, new THREE.Matrix4().makeRotationY(Math.PI));
+    expect(geometry.index!.version).toBe(version);
+    sortGroundFalloffGeometry(geometry, new THREE.Matrix4());
+    expect(geometry.index!.getX(0)).toBe(0);
+    expect(geometry.getAttribute('position')).toBe(vertices);
+  } finally { geometry.dispose(); assets.material.dispose(); }
+});
+
+it('borrows ground geometry and atlas shaders for depth, updates replacements, and releases only its own material', async () => {
+  const assets = await loadGroundTileAssets('/dst/data', 'FUNGUS');
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), assets.material), pass = new GroundDepthPrepass();
+  const original = mesh.geometry, originalDispose = vi.spyOn(original, 'dispose');
+  const sourceDispose = vi.spyOn(assets.material, 'dispose');
+  pass.add(mesh);
+  const depth = mesh.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>;
+  const depthDispose = vi.spyOn(depth.material, 'dispose');
+  expect(depth.material.onBeforeCompile).toBe(assets.material.onBeforeCompile);
+  expect(depth.geometry).toBe(original);
+  mesh.geometry = new THREE.PlaneGeometry(2, 2); pass.sync(mesh); original.dispose();
+  expect(depth.geometry).toBe(mesh.geometry);
+  pass.dispose();
+  expect(originalDispose).toHaveBeenCalledOnce();
+  expect(depthDispose).toHaveBeenCalledOnce();
+  expect(sourceDispose).not.toHaveBeenCalled();
+  expect(depth.parent).toBeNull();
+  mesh.geometry.dispose(); assets.material.dispose();
+});
 
 it('selects every source mask for the 256 possible neighbours, with adjacent diagonal bits suppressed', () => {
   const variants = new Set<number>();

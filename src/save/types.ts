@@ -83,6 +83,8 @@ export interface SavedPlayer {
   stats?: { health: number; hunger: number; sanity: number; penalty?: number };
   /** player_common.lua OnSave `is_ghost`: the player resumes as a ghost on load. */
   ghost?: true;
+  /** wortox.lua OnSave counters; the transient finishportalhoptask is not saved. */
+  wortox?: import('../../packages/prefab/src/wortox').WortoxSave;
 }
 
 export interface SaveDocument {

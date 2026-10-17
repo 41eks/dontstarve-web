@@ -17,9 +17,11 @@
 
 ## 总体结论
 
-项目当前从 `public/saves/initial-world.json` 反序列化初始世界，Prefab 定义位于 `packages/prefab/src/definitions.json`。在游戏调试控制台输入 `c_save()`，会将当前内存中的世界和玩家状态导出并下载为 `initial-world.json`，格式与启动文件一致。将下载的文件替换到 `public/saves/initial-world.json` 后刷新页面即可加载；浏览器下载不会直接修改项目文件。
+Wortox 的 `players.local.wortox` 可选保存 `{ freehops, soulhopcost }`，对应 `wortox.lua` 的 OnSave/OnLoad；旧存档省略时从零初始化。首跳后的 5 秒结束任务是临时任务，Lua 不保存它，因此重载只恢复计数、不重建该任务；下一次跳跃仍可结算回声。传送特效不入档，玩家变换保存已发生的实际传送落点，不续播中途动画。
 
-可以通过 `?save=Cluster_1/Caves.json` 选择 `public/saves` 下的其他 JSON。局部洞穴地图使用 `world.prefab: "cave"` 和 `world.map.defaultTileId: 1`（`IMPASSABLE`）；`map.tiles` 未列出的格子均为虚空，旧地表存档省略该字段时仍使用落叶林背景。`c_save()` 保留所加载地图的类型和默认地皮，下载文件名仍是 `initial-world.json`。原版局部洞穴提取步骤与范围见 [局部洞穴地形导入](dst-static-layouts.md#从完整存档导入局部洞穴地形)。
+项目默认从 `public/saves/Cluster_1/Caves.json` 反序列化初始世界，无需 URL 参数，Prefab 定义位于 `packages/prefab/src/definitions.json`。在游戏调试控制台输入 `c_save()`，会将当前内存中的世界和玩家状态导出并下载为 `initial-world.json`，格式与启动文件一致。将下载的文件替换到当前加载的路径（默认 `public/saves/Cluster_1/Caves.json`）后刷新页面即可加载；浏览器下载不会直接修改项目文件。
+
+可以通过 `?save=initial-world.json` 选择 `public/saves` 下的其他 JSON。局部洞穴地图使用 `world.prefab: "cave"` 和 `world.map.defaultTileId: 1`（`IMPASSABLE`）；`map.tiles` 未列出的格子均为虚空，旧地表存档省略该字段时仍使用落叶林背景。`c_save()` 保留所加载地图的类型和默认地皮，下载文件名仍是 `initial-world.json`。原版局部洞穴提取步骤与范围见 [局部洞穴地形导入](dst-static-layouts.md#从完整存档导入局部洞穴地形)。
 
 手动导出保存所有月树逻辑记录（包括距离玩家超过 120 单位、模型已卸载的月树）、已放置建筑和墙、箱子状态及物品、地面掉落物、玩家位置、背包、装备、待放置建造缓存和累计运行时间。摆放预览、相机朝向、动画帧与引擎对象不写入 JSON。打开或关闭箱子的动画按目标状态保存；Snapshot 编号递增，`parentId` 指向上一次成功下载的编号。自动保存与存档列表管理仍属于后续设计。
 

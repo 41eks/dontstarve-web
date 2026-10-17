@@ -52,6 +52,7 @@ import {
   createInventoryStore,
 } from './inventory';
 import { locomotor, startScene } from './scene';
+import { WortoxPlayer } from '../packages/prefab/src/wortoxPlayer';
 import { createDisposalResources } from './registerDisposal';
 import { initialSave } from './save/initialSave';
 import { inventoryStateFromSave } from './save/inventoryState';
@@ -274,7 +275,7 @@ const sceneResources = await startScene(
   inventory,
 );
 const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, skeletons, dwarfStars, polarLights, farmPlow, dockKit, registry, getSaveState, disposalEvents } = sceneResources;
-gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position,
+gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading,
   getMiniMapEntities: () => [player.MiniMapEntity, ...registry.miniMapEntities] });
 const playerSanity = new Sanity({ ...pickupDoer, components: { inventory }, sg: playerAnimation?.stategraph }, playerStats.sanity);
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
@@ -293,6 +294,14 @@ disposalEvents.on('dispose', () => {
   if (player.userData.components.sanity === playerSanity) delete player.userData.components.sanity;
 });
 const disposalActions = disposalResources.register(disposalEvents, sceneResources);
+const wortox = playerAnimation ? await WortoxPlayer.create({
+  world: view, body: playerBody, animation: playerAnimation, locomotor, inventory, scheduler, fx: worldFx,
+  isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
+  isManualMovement: () => input.isManualMovement(), saved: initialSave.players.local.wortox,
+}) : undefined;
+const stopWortoxUpdate = registerFrontTask(() => wortox?.update());
+disposalEvents.on('dispose', () => { stopWortoxUpdate(); wortox?.dispose(); });
+
 
 // health.lua pushes "death" when health reaches 0; SGwilson.lua's death state drops everything and plays the clip.
 playerAnimation?.bindDeath({
@@ -399,7 +408,7 @@ gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => gameUi.savingIndicator.whileSaving(() => {
     handEquipmentBinding.flush();
     const json = serializeSave(initialSave, {
-      ...getSaveState(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
+      ...getSaveState(), playerWortox: wortox?.state.OnSave(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
     }, SAVE_CATALOG, lastSavedSnapshotId);
     downloadSaveJson(json);
     lastSavedSnapshotId = (JSON.parse(json) as typeof initialSave).snapshot.id;

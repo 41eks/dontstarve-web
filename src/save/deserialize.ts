@@ -213,7 +213,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   }));
 
   const players = object(root.players, 'players', ['local']);
-  const player = object(players.local, 'players.local', ['prefab', 'shardId', 'transform', 'stats', 'ghost', 'inventory']);
+  const player = object(players.local, 'players.local', ['prefab', 'shardId', 'transform', 'stats', 'ghost', 'wortox', 'inventory']);
   if (player.shardId !== shardId) fail('players.local.shardId', 'player must belong to this shard');
   const inventory = object(player.inventory, 'players.local.inventory', ['containers', 'bufferedBuilds']);
   const containers = object(inventory.containers, 'players.local.inventory.containers', ['player:inventory', 'player:equipment', 'player:cursor', 'player:backpack']);
@@ -327,6 +327,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
         transform: transform(player.transform, 'players.local.transform', false),
         ...(stats === undefined ? {} : { stats }),
         ...(player.ghost === undefined ? {} : { ghost: ghostFlag(player.ghost) }),
+        ...(player.wortox === undefined ? {} : { wortox: (() => {
+          const saved = object(player.wortox, 'players.local.wortox', ['freehops', 'soulhopcost']);
+          return { freehops: integer(saved.freehops, 'players.local.wortox.freehops', 0, 7),
+            soulhopcost: number(saved.soulhopcost, 'players.local.wortox.soulhopcost', 0) };
+        })() }),
         inventory: {
           containers: {
             'player:inventory': playerInventory,

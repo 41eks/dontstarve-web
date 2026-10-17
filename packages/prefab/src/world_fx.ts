@@ -9,6 +9,9 @@ import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
  * themselves on animover. `opacity` is fx.lua's `tintalpha`.
  */
 const FX_PREFABS = {
+  // wortox_portal_fx.lua: wilson bank, wortox_portal build, animover + 2 FRAMES.
+  wortox_portal_jumpin_fx: { archive: 'wortox_portal.zip', bank: 'wilson', anim: 'wortox_portal_jumpin', finalOffset: 3, lingerFrames: 2 },
+  wortox_portal_jumpout_fx: { archive: 'wortox_portal.zip', bank: 'wilson', anim: 'wortox_portal_jumpout', finalOffset: 3, lingerFrames: 2 },
   fx_book_rain: { archive: 'fx_book_rain.zip', bank: 'fx_book_rain', anim: 'play_fx',
     sound: 'wickerbottom_rework/book_spells/rain' },
   fx_book_moon: { archive: 'fx_book_moon.zip', bank: 'fx_book_moon', anim: 'play_fx',
@@ -29,7 +32,7 @@ const FX_PREFABS = {
   lightning: { archive: 'lightning.zip', bank: 'lightning', anim: 'anim', sound: 'dontstarve/rain/thunder_close', scale: 2 },
   sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
-} as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number; scale?: number; tint?: readonly [number, number, number] }>;
+} as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number; scale?: number; tint?: readonly [number, number, number]; finalOffset?: number; lingerFrames?: number }>;
 export type WorldFxPrefab = keyof typeof FX_PREFABS;
 
 type FxBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
@@ -41,6 +44,7 @@ interface FxInstance {
   assets: FxAssets;
   elapsed: number;
   frame: number;
+  lingerFrames: number;
 }
 
 export function isWorldFx(prefab: string): prefab is WorldFxPrefab { return Object.hasOwn(FX_PREFABS, prefab); }
@@ -98,8 +102,9 @@ export class WorldFx {
     visual.scale.set(0.02 * scale, -0.02 * scale, 0.02 * scale);
     model.add(visual);
     registerSpriteRenderGroup(model, visual);
+    if ('finalOffset' in definition) visual.position.z = definition.finalOffset * .001;
     const effect: FxInstance = { model, footPosition: model.position.clone(), renderer: new SpriteFrameRenderer(visual),
-      assets, elapsed: 0, frame: -1 };
+      assets, elapsed: 0, frame: -1, lingerFrames: 'lingerFrames' in definition ? definition.lingerFrames : 0 };
     this.showFrame(effect, 0);
     this.active.add(effect);
     this.scene.add(model);
@@ -114,12 +119,12 @@ export class WorldFx {
     for (const effect of this.active) {
       effect.elapsed += Math.min(dt, 0.1);
       const frame = Math.floor(effect.elapsed * effect.assets.animation.frameRate + 1e-8);
-      if (frame >= effect.assets.animation.frames.length) {
+      if (frame >= effect.assets.animation.frames.length + effect.lingerFrames) {
         this.remove(effect);
         continue;
       }
       effect.model.quaternion.copy(cameraQuaternion);
-      this.showFrame(effect, frame);
+      this.showFrame(effect, Math.min(frame, effect.assets.animation.frames.length - 1));
     }
   }
 

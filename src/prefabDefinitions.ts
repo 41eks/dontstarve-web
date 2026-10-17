@@ -180,7 +180,7 @@ export const PREFAB_DEFINITIONS = {
   reskinEffects: definePrefabs([], empty),
   rain: definePrefabs([], empty),
   snow: definePrefabs([], empty),
-  worldFx: definePrefabs([], empty),
+  worldFx: definePrefabs([], empty, ['wortox_portal_jumpin_fx', 'wortox_portal_jumpout_fx']),
   staffProjectiles: definePrefabs([], empty),
   oceanWaves: definePrefabs([], empty),
   dockKit: definePrefabs([], empty),

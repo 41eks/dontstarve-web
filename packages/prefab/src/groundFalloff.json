@@ -1,0 +1,5 @@
+{
+  "atlas": "levels/tiles/falloff.xml",
+  "texture": "levels/tiles/falloff.tex",
+  "variants": 6
+}

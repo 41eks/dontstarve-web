@@ -56,6 +56,14 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   });
   expect(boundary.groundVisible).toBe(false);
   expect(boundary.background).toBe(0);
+  // falloffdefs.lua: land cells hang a cliff on every side bordering void, whatever the camera heading.
+  const falloff = await page.evaluate(() => {
+    const { universal: { scene } } = (window as any).caveGame;
+    const mesh = scene.getObjectByName('TurfFalloff');
+    return { vertices: mesh.geometry.getAttribute('position').count, visible: mesh.visible };
+  });
+  expect(falloff.vertices).toBeGreaterThan(0);
+  expect(falloff.visible).toBe(true);
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(500);
   await page.keyboard.up('KeyW');

@@ -18,6 +18,28 @@ it('round-trips world and screen positions, with screen up being +z', () => {
   expect(view.worldToScreen(100, 0).z).toBeLessThan(300);
 });
 
+it('turns with the camera heading so screen up is the camera forward and screen right its right', () => {
+  const view = new MinimapView(1000, 800, 600);
+  view.center(0, 0);
+  // followcamera.lua default heading 45: forward is (-cos, -sin) on the ground, i.e. toward -x/-z.
+  view.heading = 45;
+  const ahead = view.worldToScreen(-1, -1), right = view.worldToScreen(-1, 1);
+  expect(ahead.x).toBeCloseTo(400);
+  expect(ahead.z).toBeLessThan(300);
+  expect(right.z).toBeCloseTo(300);
+  expect(right.x).toBeGreaterThan(400);
+  // Q/E turn the heading by 45 degrees: the same world point swings around the centre and still round-trips.
+  view.heading = 90;
+  expect(view.worldToScreen(0, -1).z).toBeLessThan(300);
+  const screen = view.worldToScreen(30, -70);
+  expect(view.screenToWorld(screen.x, screen.z)).toEqual({ x: expect.closeTo(30), z: expect.closeTo(-70) });
+  // Dragging follows the finger at any heading.
+  view.pan(0, 50);
+  const moved = view.worldToScreen(30, -70);
+  expect(moved.z - screen.z).toBeCloseTo(50);
+  expect(moved.x).toBeCloseTo(screen.x);
+});
+
 it('keeps the point under the cursor fixed while zooming, and clamps zoom and centre', () => {
   const view = new MinimapView(1000, 800, 600);
   view.center(200, 100);

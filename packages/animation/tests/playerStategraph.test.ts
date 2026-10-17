@@ -13,15 +13,16 @@ beforeEach(() => {
 });
 afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-it('loads the Maxwell build with shared player animations and renders every facing with equipment', async () => {
+it('loads the Wortox build with shared player animations and renders every facing with equipment', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
-  expect(player.name).toBe('Maxwell');
-  expect(player.userData.artCharacter).toBe('waxwell');
-  expect(player.MiniMapEntity.icon).toBe('waxwell.png');
+  expect(player.name).toBe('Wortox');
+  expect(player.userData.artCharacter).toBe('wortox');
+  expect(player.MiniMapEntity.icon).toBe('wortox.png');
   expect(player.userData.stategraph).toBe(animation.stategraph);
   const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
-  expect(urls).toContain('/dst/data/anim/waxwell.zip');
+  expect(urls).toContain('/dst/data/anim/dynamic/wortox.zip');
+  expect(urls).toContain('/dst/data/anim/dynamic/wortox.dyn');
   expect(urls).not.toContain('/dst/data/anim/wilson.zip');
   await animation.setHat('strawhat');
   await animation.setCarryItem('torch');
@@ -39,9 +40,28 @@ it('loads the Maxwell build with shared player animations and renders every faci
       expect(visual.children).toHaveLength(1);
     }
   }
+  await animation.setHat(null);
+  await animation.setCarryItem(null);
+  animation.start('idle');
+  const livingTexture = mesh.material[0].map;
+  expect(livingTexture!.image.width).toBeGreaterThan(0);
+  await animation.prepareGhost();
+  expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/ghost_wortox_build.zip');
+  expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/ghost_wortox_build.dyn');
+  animation.makeGhost(true);
+  animation.update(1 / 30);
+  expect(animation.isGhost).toBe(true);
+  expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
+  expect(mesh.material[0].map).not.toBe(livingTexture);
+  expect(mesh.material[0].map!.image.width).toBeGreaterThan(0);
+  animation.makeAlive();
+  for (let frame = 0; frame < 120; frame++) animation.update(1 / 30);
+  expect(animation.isGhost).toBe(false);
+  expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
+  expect(mesh.material[0].map).toBe(livingTexture);
 });
 
-it('keeps the source mining timeline when Maxwell changes facing and emits one action notification', async () => {
+it('keeps the source mining timeline when Wortox changes facing and emits one action notification', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
   await animation.setCarryItem('pickaxe');

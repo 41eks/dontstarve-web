@@ -10,7 +10,7 @@ export interface MouseActionCandidate {
   model?: THREE.Object3D;
   available?: boolean;
   /** Lua tries equipped item actions before gathering scene component actions. */
-  source?: 'equipped' | 'scene' | 'inventory';
+  source?: 'equipped' | 'scene' | 'inventory' | 'special';
 }
 
 /** playeractionpicker.lua actionfilter: the action is kept when this returns true. */
@@ -77,7 +77,10 @@ export class PlayerActionPicker {
           && (!filter || filter(candidate.action)) && (!activeItem || candidate.source === 'inventory'));
         // Equipped/scene actions take precedence over a point action, as in GetLeft/RightClickActions.
         const entityActions = target ? available.filter(candidate => candidate.model === target) : [];
-        const actions = entityActions.length ? entityActions : available.filter(candidate => !candidate.model);
+        const points = available.filter(candidate => !candidate.model);
+        // GetPointSpecialActions is only the fallback after ordinary equipped point actions.
+        const ordinaryPoints = points.filter(candidate => candidate.source !== 'special');
+        const actions = entityActions.length ? entityActions : ordinaryPoints.length ? ordinaryPoints : points;
         actions.sort((a, b) => Number(b.source === 'equipped') - Number(a.source === 'equipped')
           || getActionPriority(b.action) - getActionPriority(a.action));
         result[button] = actions[0]?.action;

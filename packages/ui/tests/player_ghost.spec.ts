@@ -37,7 +37,7 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
   const skeletons = () => page.evaluate(() => (window as any).ghostGame.scene.children
     .filter((model: any) => model.userData.prefab === 'skeleton_player').map((model: any) => ({ id: model.userData.entityId, ...model.userData.skeleton })));
 
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   expect(await player()).toMatchObject({ ghost: false, ghostMode: false, tagged: false });
   await page.evaluate(() => (window as any).ghostGame.stats.playerStats.health.set(0));
   await expect.poll(async () => (await player()).state).toBe('death');
@@ -45,7 +45,7 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
   await expect.poll(async () => (await player()).ghost, { timeout: 30_000 }).toBe(true);
   expect(await player()).toMatchObject({ ghostMode: true, health: 50, tagged: true });
   await expect.poll(async () => (await skeletons()).length).toBe(1);
-  expect((await skeletons())[0]).toMatchObject({ char: 'waxwell', cause: 'unknown' });
+  expect((await skeletons())[0]).toMatchObject({ char: 'wortox', cause: 'unknown' });
   await expect.poll(async () => (await player()).state, { timeout: 15_000 }).toBe('idle');
 
   const saved = await saveGame();
@@ -90,7 +90,7 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
       slippery: !!player.userData.slipperyfeet, tags: player.userData.tags, portalTags: portal.userData.tags, hauntable: !!portal.userData.components.hauntable };
   });
 
-  await page.goto('/tests/dst-lighting.html');
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   await page.evaluate(async urls => {
     const main = await import(urls.main), { scene } = await import(urls.universal);
     const { player } = await import(urls.player), stats = await import(urls.playerStats);
