@@ -25,13 +25,19 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
   const { mushWorld, drops, scheduler } = world(), scene = new THREE.Scene(), inventory = createInventoryStore([]);
   const trees = new MushtreeManager(scene, mushWorld);
   try {
-    await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7));
+    const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7));
+    const mesh = model.children[0].children[0] as THREE.Mesh;
+    expect(mesh.visible).toBe(false); // Idle is drawn by the shared instance batch.
     expect(trees.miniMapEntities.map(({ icon }) => icon)).toEqual(['mushtree_moon.png']);
     const axe = inventory.entities.create({ itemId: 'axe', count: 1 });
     const [chop] = trees.getChopTargets();
     for (let i = 0; i < 14; i++) expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
+    expect(mesh.visible).toBe(true); // Working uses the ordinary shared-frame mesh.
+    for (let i = 0; i < 100 && mesh.visible; i++) trees.update(.1, new THREE.Quaternion());
+    expect(mesh.visible).toBe(false); // Completing work rejoins idle instancing.
     expect(trees.getDigTargets()).toEqual([]);
     expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
+    expect(mesh.visible).toBe(true);
     // moon_cap has no ground item yet, so only the two logs are dropped.
     expect(drops).toEqual([{ itemId: 'log', count: 2 }]);
     const [dig] = trees.getDigTargets();

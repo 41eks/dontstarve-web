@@ -51,6 +51,10 @@ it('selects actions behind transparent atlas pixels while opaque, mirrored and b
     expect(picker.targetModel).toBe(back);
     expect(at(75, 75)).toBeUndefined(); // The second atlas supplies the visible part.
     expect(picker.targetModel).toBe(front); // Lack of a valid action must not enable click-through.
+    renderer.setInstanced(true);
+    expect((visual.children[0] as THREE.Mesh).visible).toBe(false);
+    expect(at(25, 75)).toBe(reskin);
+    expect(at(75, 75)).toBeUndefined();
     front.scale.x = -1; scene.updateMatrixWorld(true);
     expect(at(75, 75)).toBe(reskin);
     expect(at(25, 75)).toBeUndefined();

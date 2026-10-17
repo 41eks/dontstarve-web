@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 
 const textureUv = new THREE.Vector2();
+const instancedProxies = new WeakSet<THREE.Object3D>();
+
+/** A render-hidden source mesh still supplies the instanced entity's exact input shape. */
+export function setInstancedSpriteProxy(object: THREE.Object3D, enabled: boolean): void {
+  if (enabled) instancedProxies.add(object); else instancedProxies.delete(object);
+}
+
+export function isInstancedSpriteProxy(object: THREE.Object3D): boolean { return instancedProxies.has(object); }
 
 function wrapPixel(index: number, size: number, wrapping: THREE.Wrapping): number {
   if (wrapping === THREE.RepeatWrapping) return ((index % size) + size) % size;

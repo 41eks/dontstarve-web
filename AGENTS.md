@@ -5,6 +5,7 @@
 - Align TypeScript implementations with the corresponding DST Lua source under `/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts`: preserve responsibility boundaries, tags and components, action selection and buffering, stategraph timing and lifecycle, validation, state transitions, consumption, and save/load behavior.
 - If Lua alignment depends on missing functionality in `packages/prefab`, `packages/brains`, `packages/componets`, or another package, add the smallest source-faithful implementation in the owning package as part of the same change. Do not bypass missing implementations with application-level prefab special cases, callback chains, or duplicate controllers.
 - Read the relevant prefab, component, brain, action, and stategraph Lua before implementing a behavior. Keep the minimal implementation within the source branches needed by the task; do not invent behavior or leave a required dependency unimplemented.
+- When porting a prefab or child/FX entity, keep every tag the Lua source adds (`inst:AddTag(...)`, such as `FX`, `NOCLICK`, `DECOR`), regardless of whether its semantics seem relevant or are consumed yet. Apply them on the entity (`addTag` / `userData.tags`) exactly as in Lua, including non-networked child entities like mist or particles; never drop or substitute a tag because it looks unused.
 
 ## Spatial queries and distance calculations
 

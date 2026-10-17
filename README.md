@@ -15,7 +15,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 月亮洞穴水池及附属雾气、瀑布、月亮玻璃通过动画包通用函数 `createSharedArchiveSprite()` 接入共享帧几何，prefab 无需维护共享动画清单；正常和开采后的 `*_mined` 动画分别缓存，各实体保留自己的播放进度、位置、开采状态及子物件关系，单池移除不释放其他池仍使用的帧。调用方式与资源所有权见 [动画包说明](packages/animation/README.md#通用共享帧入口)。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 的导出和恢复流程沿用原有实现。
 
-蘑菇树直接调用动画包的 `createSharedArchiveSprite()`：蓝蘑菇树、月亮蘑菇树及同一构造路径的红蘑菇树，其待机、受击、倒下、树桩、生长／开花及燃烧消失动画全部复用帧几何，prefab 按 Lua 通过 `playOnce()` / `start()` 选择动作与后续待机。保留每棵树的随机起始帧、颜色、位置与组件状态；共享几何按动画、build、皮肤和符号配置区分，实体移除不释放其他树仍使用的帧。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存原有树木状态。
+蘑菇树通过 `createSharedArchiveSprite()` 的 `instancedAnimations: ['idle_loop']` 实例化待机：源 atlas 零件按动画变换和层顺序合成完整帧，整段动画共用固定原点与像素网格，保留每棵树的随机起始帧、颜色、位置与交互。受击、倒下、树桩、生长／开花及燃烧消失仍使用共享帧几何，返回待机自动重新合批。深度预绘制与不写深度的颜色 pass 保持地皮、树和动态角色的遮挡顺序；资源由 manager 统一释放。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存原有树木状态。
 
 世界渲染通过 `renderSceneWithPasses()` 共用一次场景矩阵更新：预渲染 pass 与主绘制之间不再重复遍历全场景，也减少空间索引的重复同步；自动更新设置在本次绘制结束或异常后恢复。调试命令的语法、参数、行为及支持的 `c_spawn` / `c_give` ID 不变。
 
@@ -388,7 +388,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 月亮洞穴水池 | `grotto_pool_big`（半径 5.5 障碍物理，发光，小地图 `grotto_pool_big.png`，约 0 帧后在 `prefab_layout` 位置生成 `grotto_waterfall_big` 和 3 种 `grotto_moonglass_*`）、`grotto_pool_small`（半径 2，生成随机 `grotto_waterfall_small1` 或 `grotto_waterfall_small2`）；子物件也可单独 `c_spawn`：`grotto_waterfall_big`（NOCLICK 瀑布）、`grotto_moonglass_1` / `grotto_moonglass_3` / `grotto_moonglass_4`、`grotto_waterfall_small1` / `grotto_waterfall_small2`（镐 `MINE` 6 次，掉落 `moonglass`；挖空后在洞穴满月夜晚每次变化有 10% 概率恢复并生成 `halloween_moonpuff`）；水池无 `c_give`，`c_save()` 保留子物件 ID、位置和剩余工作量 |
 | 月亮碎片 | `moonglass`（`c_give("moonglass", 40)` / `c_spawn("moonglass")`，叠加上限 40，地面固定 `f1` 姿态）；`halloween_moonpuff` 特效可 `c_spawn`，不入档 |
 | 洞穴出口 | `cave_exit`（`cave_stairs` 楼梯静态美术，`open` 循环，半径 2 的障碍物理，小地图 `cave_open2.png`；`worldmigrator` 洞穴世界迁移暂未接入）；无 `c_give`，`c_save()` 保留 ID 与位置 |
-| 蘑菇树 | `mushtree_moon`（月亮蘑菇树，15 次 `CHOP`）、`mushtree_medium`（红蘑菇树，10 次 `CHOP`，夏季开花、三阶段生长）、`mushtree_tall`（蓝蘑菇树，15 次 `CHOP`，冬季开花、三阶段生长）及对应 `mushtree_moon_stump`、`mushtree_medium_stump`、`mushtree_tall_stump`；砍倒后掉落 `log` 并留下 `DIG` 树桩（再掘出 1 个 `log`），可燃烧；`moon_cap` 尚无地面物品，不掉落；孢子、酸雨与再生暂未接入。无 `c_give`，`c_save()` 保留 ID、位置、树桩 / 生长阶段 / 开花状态 |
+| 蘑菇树 | `mushtree_moon`（月亮蘑菇树，15 次 `CHOP`）、`mushtree_medium`（红蘑菇树，10 次 `CHOP`，夏季开花、三阶段生长）、`mushtree_tall`（蓝蘑菇树，15 次 `CHOP`，冬季开花、三阶段生长）及对应 `mushtree_moon_stump`、`mushtree_medium_stump`、`mushtree_tall_stump`；`idle_loop` 使用完整帧实例化，工作／倒下等动画使用共享帧；砍倒后掉落 `log` 并留下 `DIG` 树桩（再掘出 1 个 `log`），可燃烧；`moon_cap` 尚无地面物品，不掉落；孢子、酸雨与再生暂未接入。无 `c_give`，`c_save()` 保留 ID、位置、树桩 / 生长阶段 / 开花状态 |
 | 洞穴蘑菇 | `blue_mushroom`（夜晚破土张开，`PICK` 得 `blue_cap`；采后下雨满 10–20 个 30 秒周期再生；`DIG` 未采得 2 个、已采得 1 个 `blue_cap`；可燃烧）；无 `c_give`，`c_save()` 保留 ID、位置、已采状态与剩余雨量 |
 | 档案馆静态物件 | `archive_moon_statue`、`archive_rune_statue`、`archive_portal`、`archive_switch_base`、`archive_switch_pad`、`archive_ambient_sfx`、`rubble1`、`rubble2`（均无 `c_give`；`archive_switch_pad` 与两种 `rubble` 不入档） |
 | 玩家骷髅 | `skeleton_player`（无 `c_give`；锤子 3 次敲出 2 个 `boneshard`；玩家死亡时自动生成） |

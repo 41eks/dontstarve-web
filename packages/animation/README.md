@@ -67,10 +67,25 @@ sprite.playOnce('change', () => sprite.start('idle_loop'));
 ```
 
 待机、受击、倒下、树桩及生长／开花的帧几何自动共享，各实体保留独立模型节点、播放进度、完成回调和材质颜色。
-换帧命中缓存时不再逐实体解析部件、重写顶点或上传几何；仍按实体脚点排序与绘制，不合并 draw call。
+换帧命中缓存时不再逐实体解析部件、重写顶点或上传几何；普通共享帧仍按实体脚点排序与绘制。
 砍伐次数、掉落、生长阶段、计时和保存仍由 prefab 与组件负责。
 
 底层 `createArchiveSprite()` 的 `options.sharedAnimations` 支持 clip 列表或 `'all'`；默认保留独立几何。
+
+## 循环场景动画实例化
+
+`createSharedArchiveSprite()` 可额外传入 `instancedAnimations: ['idle_loop']`。指定的循环 clip
+由同一个 `ArchiveSpriteAssets` 按外观合批为 `InstancedMesh`；其他 clip（以及 `playOnce()`）继续显示普通共享帧，
+返回指定循环时自动重新入批。蓝／红／月亮蘑菇树已启用此选项；随机起始帧、颜色、透明度和实体位置保持独立。
+
+源 atlas 中分散的部件经 `rgbaSpriteAtlas.ts` 按动画变换及层顺序预合成完整帧。图集使用源纹理密度、
+按设备上限分页（每页不超过 4096），同一 clip 共用固定边界和像素网格，避免逐帧裁切取整导致抖动。
+每个可见图集页绘制一次深度预处理和一次透明颜色 pass；颜色 pass 排在地皮之后、动态角色之前且不写深度。
+
+场景需通过 `renderSceneWithPasses(renderer, scene, camera)` 绘制；启动预热使用
+`await prewarmScenePasses(renderer, scene, camera, signal)`，两者导出自 `@dontstarve-web/animation/sceneRenderPass`。
+单实体保留渲染隐藏的源帧用于精确 alpha 拾取和空间边界，`sprite.dispose()` 释放实体并退出批次，
+所有实体移除后由 `assets.dispose()` 统一释放合成图集、批次和共享源资源。
 
 ## DST 图片 XML 索引
 

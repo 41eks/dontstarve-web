@@ -240,7 +240,11 @@ export class GrottoPoolManager {
     setPrefabLightOverride(model, .25);
     setPrefabLocalLight(model, { radius: definition.light.radius * WORLD_SCALE, falloff: .6, intensity: definition.light.intensity,
       colour: POOL_LIGHT_COLOUR });
-    if (mist) { setPrefabLightOverride(mist.model, .5); model.add(mist.model); }
+    if (mist) {
+      // makebigmist / makesmallmist: FX + NOCLICK, so the steam never intercepts the mouse over the props.
+      mist.model.userData.tags = ['FX', 'NOCLICK'];
+      setPrefabLightOverride(mist.model, .5); model.add(mist.model);
+    }
     grotto.minimap = new MiniMapEntity(model.position);
     grotto.minimap.SetIcon(`${prefab}.png`);
     if (this.world.physics) {

@@ -158,7 +158,8 @@ export class MushtreeManager {
     this.fire ??= FireFxHost.load(`${import.meta.env.BASE_URL}dst/data/anim`);
     const [sprite, fire] = await Promise.all([
       createSharedArchiveSprite(this.assets, { animationArchive: data.animationArchive, buildArchives: data.buildArchives, bank: data.bank,
-        animation: 'idle_loop', loop: true, hiddenSymbols: HIDDEN_SYMBOLS }, { name: prefab, colour: this.tint() }),
+        animation: 'idle_loop', loop: true, hiddenSymbols: HIDDEN_SYMBOLS },
+      { name: prefab, colour: this.tint(), instancedAnimations: ['idle_loop'] }),
       this.fire,
       PreloadSounds('dontstarve/wilson/use_axe_mushroom', 'dontstarve/forest/treefall', 'dontstarve/forest/treeCrumble',
         'dontstarve/cave/mushtree_tall_grow_1', 'dontstarve/cave/mushtree_tall_grow_2', 'dontstarve/cave/mushtree_tall_grow_3',

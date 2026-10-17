@@ -5,6 +5,7 @@ import {
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
 import { selectsFacing } from './facing';
+import { InstancedArchiveSprites } from './instancedArchiveSprites';
 
 /** Animation/build sources supplied by callers; no prefab or inventory metadata. */
 export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
@@ -19,6 +20,8 @@ export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
 }
 
 export interface ArchiveSpriteOptions {
+  /** Looping scenery clips to draw as precomposed instances; other clips use ordinary shared frames. */
+  instancedAnimations?: readonly string[];
   /** Reuse immutable frame geometry for selected clips or all clips; playback/material copies stay independent. */
   sharedAnimations?: readonly string[] | 'all';
   skinArchive?: string;
@@ -41,6 +44,7 @@ export class ArchiveSpriteAssets {
   private readonly builds = new Map<string, Promise<ArchiveSpriteBuild>>();
   private disposed = false;
   readonly frameCache = new FrameGeometryCache();
+  readonly instancedSprites = new InstancedArchiveSprites();
 
   private readonly materialNamePrefix: string;
 
@@ -51,6 +55,7 @@ export class ArchiveSpriteAssets {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.instancedSprites.dispose();
     this.frameCache.dispose();
     for (const build of this.builds.values()) void build.then(({ materials }) => {
       for (const material of materials) { material.map?.dispose(); material.dispose(); }
@@ -187,6 +192,8 @@ export async function createArchiveSprite(
   model.add(visual);
   registerSpriteRenderGroup(model, visual);
   const renderer = new SpriteFrameRenderer(visual);
+  const instances = options.instancedAnimations?.length
+    ? assets.instancedSprites.retain(model, visual, options.colour, options.opacity ?? definition.multColour?.[3] ?? 1) : undefined;
   let elapsed = 0;
   let previousFrame = -1;
   let paused = false;
@@ -233,6 +240,13 @@ export async function createArchiveSprite(
       renderer.showShared(tinted);
     } else renderer.show(resolveSprites(index, false));
     visual.scale.x = flipped ? -scale : scale;
+    const instanced = !!instances && loop && options.instancedAnimations!.includes(animation.name);
+    if (instances) renderer.setInstanced(instanced);
+    if (instanced) {
+      sharedAppearance ||= appearanceKey();
+      instances.show(`${cache.idOf(animation)}:${sharedAppearance}`, animation,
+        () => animation.frames.map((_, index) => resolveSprites(index, true)), index);
+    } else instances?.hide();
     previousFrame = index;
   };
   const selectAnimation = (name: string, shouldLoop: boolean, complete?: () => void) => {
@@ -247,6 +261,7 @@ export async function createArchiveSprite(
     update(0);
   };
   try { update(0); } catch (error) {
+    instances?.dispose();
     renderer.dispose();
     ownedMaterials.forEach(material => material.dispose());
     visual.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
@@ -277,6 +292,7 @@ export async function createArchiveSprite(
     setOpacity(opacity: number) {
       if (options.opacity === undefined) throw new Error(`Sprite ${model.name} does not own its materials`);
       applyOpacity(opacity);
+      instances?.setOpacity(opacity);
     },
     setBuildArchive(archive: string) {
       const index = definition.buildArchives.indexOf(archive);
@@ -307,6 +323,7 @@ export async function createArchiveSprite(
     dispose() {
       if (disposed) return;
       disposed = true;
+      instances?.dispose();
       renderer.dispose();
       ownedMaterials.forEach(material => material.dispose());
       model.removeFromParent();

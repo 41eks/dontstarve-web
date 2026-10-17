@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import type { ActionWorldContext as WorldContext } from './actionContext.ts';
 import { mouseTargetsAlongRay } from './entitySpatialIndex.ts';
 import { prepareSpatialGeometryBounds, spatialAttributeVersion } from '../../animation/src/spatialBounds.ts';
+import { isInstancedSpriteProxy } from '../../animation/src/spriteRaycast.ts';
 
 function mouseVisible(object: THREE.Object3D): boolean {
-    if (!object.visible) return false;
+    if (!object.visible && !isInstancedSpriteProxy(object)) return false;
     const inst = object.userData.actionEntity as { hasTag?(tag: string): boolean } | undefined;
     return !(inst?.hasTag?.('NOCLICK') ?? object.userData.tags?.includes('NOCLICK'));
 }
