@@ -38,6 +38,8 @@ import { savedPrefabArchives } from './prefabDefinitions';
 export const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
 });
+// The Caves hold hundreds of static obstacles; the default naive broadphase tests every pair on each substep.
+world.broadphase = new CANNON.SAPBroadphase(world);
 
 export const worldState = createWorldState(initialSave.world);
 turfMap.bindOceanClock(worldState.clock);
@@ -108,7 +110,8 @@ middleTasks.push((dt: number) => {
 });
 middleTasks.push(updateAnimation);
 
-if (!window.location.hostname.endsWith('github.io')) {
+// The debugger adds a mesh per body shape (thousands in the Caves); opt in with ?physicsDebug.
+if (!window.location.hostname.endsWith('github.io') && new URLSearchParams(window.location.search).has('physicsDebug')) {
   const cannonDebugger = CannonDebugger(scene, world, {
     color: 0x00ff00,
   });

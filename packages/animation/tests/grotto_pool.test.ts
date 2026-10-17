@@ -53,6 +53,49 @@ function setup(playerAt = new THREE.Vector3()) {
 }
 const prefabs = (s: ReturnType<typeof setup>) => s.pools.exportRecords().map(({ prefabId }) => prefabId).sort();
 
+it('shares pool, mist and waterfall frames while mining and removing pools independently', async () => {
+  vi.spyOn(Math, 'random').mockReturnValue(.25);
+  const s = setup(), disposed = vi.fn();
+  const mesh = (model: THREE.Object3D) => model.children[0].children[0] as THREE.Mesh;
+  try {
+    const first = await s.pools.spawn('grotto_pool_small', new THREE.Vector3());
+    const second = await s.pools.spawn('grotto_pool_small', new THREE.Vector3(10, 0, 0));
+    const mist = (pool: THREE.Group) => pool.children.find(model => model.name.endsWith('_mist'))!;
+    expect(mesh(first).geometry).toBe(mesh(second).geometry);
+    expect(mesh(mist(first)).geometry).toBe(mesh(mist(second)).geometry);
+    s.scheduler.advance(.01);
+    await vi.waitFor(() => expect(s.pools.mineTargets).toHaveLength(2));
+    const [firstFall, secondFall] = s.pools.mineTargets;
+    expect(mesh(firstFall.model).geometry).toBe(mesh(secondFall.model).geometry);
+    s.pools.update(.1, new THREE.Quaternion());
+    expect(mesh(first).geometry).toBe(mesh(second).geometry);
+    expect(mesh(mist(first)).geometry).toBe(mesh(mist(second)).geometry);
+    expect(mesh(firstFall.model).geometry).toBe(mesh(secondFall.model).geometry);
+
+    const whole = mesh(secondFall.model).geometry;
+    const positions = [...whole.getAttribute('position').array];
+    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
+    for (let i = 0; i < 6; i++) expect(performToolWork('MINE', firstFall.entity, {}, pickaxe)).toBe(true);
+    expect(mesh(firstFall.model).geometry).not.toBe(whole);
+    expect(mesh(secondFall.model).geometry).toBe(whole);
+    expect([...whole.getAttribute('position').array]).toEqual(positions);
+    for (let i = 0; i < 6; i++) expect(performToolWork('MINE', secondFall.entity, {}, pickaxe)).toBe(true);
+    expect(mesh(firstFall.model).geometry).toBe(mesh(secondFall.model).geometry);
+
+    const shared = [mesh(second).geometry, mesh(mist(second)).geometry, mesh(secondFall.model).geometry];
+    for (const geometry of shared) geometry.addEventListener('dispose', disposed);
+    first.userData.remove();
+    expect(disposed).not.toHaveBeenCalled();
+    expect(s.pools.exportRecords().map(({ prefabId }) => prefabId).sort())
+      .toEqual(['grotto_pool_small', 'grotto_waterfall_small1']);
+    s.pools.update(.1, new THREE.Quaternion());
+    expect(mesh(second).geometry.drawRange.count).toBeGreaterThan(0);
+    expect(mesh(mist(second)).geometry.drawRange.count).toBeGreaterThan(0);
+    expect(disposed).not.toHaveBeenCalled();
+  } finally { s.dispose(); }
+  expect(disposed).toHaveBeenCalledTimes(3);
+}, 30000);
+
 it('spawns the big pool with its five children, mines a glass for moonglass and keeps all of it through save/load', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(.5);
   const s = setup(), restored = setup();

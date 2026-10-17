@@ -3,7 +3,7 @@ import { createSignal, type ClockState } from '@dontstarve-web/signals';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { createTurfGround } from '../../prefab/src/turf';
 import { SnowEffect } from '../../prefab/src/snow';
-import { renderScenePasses } from '@dontstarve-web/animation/sceneRenderPass';
+import { renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
 
 export async function checkOceanRendering() {
   const tiles = [];
@@ -26,9 +26,17 @@ export async function checkOceanRendering() {
   camera.lookAt(6, 0, 6);
   const target = new THREE.WebGLRenderTarget(480, 480);
   renderer.setRenderTarget(target);
+  let matrixUpdates = 0;
+  const updateMatrixWorld = scene.updateMatrixWorld;
+  scene.updateMatrixWorld = function (force) {
+    matrixUpdates++;
+    updateMatrixWorld.call(this, force);
+  };
+  const matrixUpdatesPerRender: number[] = [];
   const pixels = () => {
-    renderScenePasses(renderer, scene, camera);
-    renderer.render(scene, camera);
+    const before = matrixUpdates;
+    renderSceneWithPasses(renderer, scene, camera);
+    matrixUpdatesPerRender.push(matrixUpdates - before);
     const result = new Uint8Array(480 * 480 * 4);
     renderer.readRenderTargetPixels(target, 0, 0, 480, 480, result);
     return result;
@@ -72,8 +80,7 @@ export async function checkOceanRendering() {
   for (const atlas of borrowedAtlases) atlas.addEventListener('dispose', () => borrowedAtlasesReleased++);
   renderer.setRenderTarget(null);
   document.body.append(renderer.domElement);
-  renderScenePasses(renderer, scene, camera);
-  renderer.render(scene, camera);
+  renderSceneWithPasses(renderer, scene, camera);
   snow.dispose();
   const atlasesPreserved = borrowedAtlasesReleased === 0;
   map.dispose();
@@ -82,5 +89,6 @@ export async function checkOceanRendering() {
   (ground.material as THREE.Material).dispose();
   target.dispose();
   renderer.dispose();
-  return { ...result, coastUpdated, previousGeometryReleased, atlasesPreserved, terrainReleasedAtlases };
+  return { ...result, coastUpdated, previousGeometryReleased, atlasesPreserved, terrainReleasedAtlases,
+    matrixUpdatesPerRender };
 }

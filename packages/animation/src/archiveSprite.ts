@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
-  createMaterials, findImage, loadAnim, loadBuild, smallHash, SpriteFrameRenderer,
-  type ParsedAnim, type ParsedBuild, type ResolvedSprite, type SpriteMaterialOptions,
+  createMaterials, findImage, loadAnim, loadBuild, smallHash, SpriteFrameRenderer, FrameGeometryCache,
+  type ParsedAnim, type ParsedBuild, type ResolvedSprite, type SharedFrame, type SpriteMaterialOptions,
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
 import { selectsFacing } from './facing';
@@ -19,6 +19,8 @@ export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
 }
 
 export interface ArchiveSpriteOptions {
+  /** Reuse immutable frame geometry for selected clips or all clips; playback/material copies stay independent. */
+  sharedAnimations?: readonly string[] | 'all';
   skinArchive?: string;
   /** Give this sprite private material copies at this opacity, adjustable later with `setOpacity()`. */
   opacity?: number;
@@ -38,6 +40,7 @@ export class ArchiveSpriteAssets {
   private readonly animations = new Map<string, Promise<ParsedAnim>>();
   private readonly builds = new Map<string, Promise<ArchiveSpriteBuild>>();
   private disposed = false;
+  readonly frameCache = new FrameGeometryCache();
 
   private readonly materialNamePrefix: string;
 
@@ -48,6 +51,7 @@ export class ArchiveSpriteAssets {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.frameCache.dispose();
     for (const build of this.builds.values()) void build.then(({ materials }) => {
       for (const material of materials) { material.map?.dispose(); material.dispose(); }
     }, () => undefined);
@@ -108,7 +112,7 @@ export interface ArchiveSprite {
   setBuildArchive(archive: string): void;
   /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
   setSymbolHidden(symbol: string, hidden: boolean): void;
-  /** Geometry belongs to the entity; shared materials belong to its asset cache. */
+  /** Private geometry/material copies belong to the entity; shared frames and source materials to its assets. */
   dispose(): void;
 }
 
@@ -125,14 +129,18 @@ export async function createArchiveSprite(
   ]);
   // Translucent previews cannot share the asset cache's materials with opaque insts.
   const ownedMaterials: THREE.MeshBasicMaterial[] = [];
+  const sources = new Map<ArchiveSpriteBuild, ArchiveSpriteBuild>();
+  const materialCopies = new Map<THREE.MeshBasicMaterial, THREE.MeshBasicMaterial>();
   const own = <T extends ArchiveSpriteBuild | undefined>(source: T): T => {
     if (!source || (options.opacity === undefined && !options.colour)) return source;
     const materials = source.materials.map(material => {
-      const copy = material.clone(); ownedMaterials.push(copy);
+      const copy = material.clone(); ownedMaterials.push(copy); materialCopies.set(material, copy);
       if (options.colour) copy.color.multiply(new THREE.Color().setRGB(...options.colour));
       return copy;
     });
-    return { build: source.build, materials } as T;
+    const result = { build: source.build, materials };
+    sources.set(result, source);
+    return result as T;
   };
   const builds = sharedBuilds.map(own);
   let activeBuilds = builds;
@@ -159,6 +167,17 @@ export async function createArchiveSprite(
   const overrides = new Map(Object.entries(definition.symbolOverrides ?? {}).map(([symbol, override]) =>
     [smallHash(symbol), { hash: smallHash(override.symbol), source: builds[definition.buildArchives.indexOf(override.archive)] }]));
   const hidden = new Set((definition.hiddenSymbols ?? []).map(smallHash));
+  const sharedAnimations = options.sharedAnimations === 'all' ? 'all' : new Set(options.sharedAnimations);
+  const cache = assets.frameCache;
+  const source = (build: ArchiveSpriteBuild) => sources.get(build) ?? build;
+  const appearanceKey = () => JSON.stringify([
+    activeBuilds.map(build => cache.idOf(source(build))), skin ? cache.idOf(source(skin)) : 0,
+    [...overrides].sort(([a], [b]) => a - b).map(([hash, override]) =>
+      [hash, override.hash, cache.idOf(source(override.source))]),
+    [...hidden].sort((a, b) => a - b),
+  ]);
+  let sharedAppearance = '';
+  const tintedFrames = new WeakMap<SharedFrame, SharedFrame>();
   const model = new THREE.Group();
   model.name = options.name ?? `${definition.bank}:${definition.animation}`;
   model.userData.billboard = true;
@@ -174,6 +193,19 @@ export async function createArchiveSprite(
   let disposed = false;
   let loop = definition.loop;
   let onComplete: (() => void) | undefined;
+  const resolveSprites = (index: number, shared: boolean): ResolvedSprite[] => [...animation.frames[index].elements]
+    // These banks include a bounding-only symbol with no build art.
+    .filter((element) => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash))
+    .sort((a, b) => b.z - a.z).map((element) => {
+      const override = overrides.get(element.imageHash);
+      const hash = override?.hash ?? element.imageHash;
+      const candidates = [...(skin ? [skin] : []), ...(override ? [override.source] : activeBuilds)];
+      for (const build of candidates) {
+        const image = findImage(build.build, hash, element.imageIndex);
+        if (image) return { element, image, materials: (shared ? source(build) : build).materials };
+      }
+      throw new Error(`Missing sprite part ${model.name}:${hash}:${element.imageIndex}`);
+    });
   const update = (dt: number) => {
     if (paused || disposed) return;
     elapsed += Math.max(0, Math.min(dt, 0.1));
@@ -189,21 +221,17 @@ export async function createArchiveSprite(
     const index = loop ? rawFrame % animation.frames.length
       : Math.min(rawFrame, animation.frames.length - 1);
     if (index === previousFrame) return;
-    const sprites: ResolvedSprite[] = [...animation.frames[index].elements]
-      // These banks include a bounding-only symbol with no build art.
-      .filter((element) => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash))
-      .sort((a, b) => b.z - a.z).map((element) => {
-        const override = overrides.get(element.imageHash);
-        const hash = override?.hash ?? element.imageHash;
-        const candidates = [...(skin ? [skin] : []), ...(override ? [override.source] : activeBuilds)];
-        for (const source of candidates) {
-          const image = findImage(source.build, hash, element.imageIndex);
-          if (image) return { element, image, materials: source.materials };
-        }
-        throw new Error(`Missing sprite part ${model.name}:${hash}:${element.imageIndex}`);
-      });
     // Preserve genuinely empty source frames rather than inventing replacement art.
-    renderer.show(sprites);
+    if (sharedAnimations === 'all' || sharedAnimations.has(animation.name)) {
+      sharedAppearance ||= appearanceKey();
+      const frame = cache.get(`${cache.idOf(animation)}:${sharedAppearance}:${index}`, () => resolveSprites(index, true));
+      let tinted = tintedFrames.get(frame);
+      if (!tinted) {
+        tinted = ownedMaterials.length ? { ...frame, materials: frame.materials.map(material => materialCopies.get(material) ?? material) } : frame;
+        tintedFrames.set(frame, tinted);
+      }
+      renderer.showShared(tinted);
+    } else renderer.show(resolveSprites(index, false));
     visual.scale.x = flipped ? -scale : scale;
     previousFrame = index;
   };
@@ -219,6 +247,8 @@ export async function createArchiveSprite(
     update(0);
   };
   try { update(0); } catch (error) {
+    renderer.dispose();
+    ownedMaterials.forEach(material => material.dispose());
     visual.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
     throw error;
   }
@@ -253,6 +283,7 @@ export async function createArchiveSprite(
       if (index < 0) throw new Error(`Sprite ${model.name} has no build archive ${archive}`);
       if (disposed || activeBuilds[0] === builds[index]) return;
       activeBuilds = [builds[index]];
+      sharedAppearance = '';
       previousFrame = -1;
       update(0);
     },
@@ -260,6 +291,7 @@ export async function createArchiveSprite(
       const hash = smallHash(symbol);
       if (disposed || hidden.has(hash) === isHidden) return;
       if (isHidden) hidden.add(hash); else hidden.delete(hash);
+      sharedAppearance = '';
       previousFrame = -1;
       update(0);
     },
@@ -275,6 +307,7 @@ export async function createArchiveSprite(
     dispose() {
       if (disposed) return;
       disposed = true;
+      renderer.dispose();
       ownedMaterials.forEach(material => material.dispose());
       model.removeFromParent();
       visual.traverse((object) => {
@@ -282,4 +315,17 @@ export async function createArchiveSprite(
       });
     },
   };
+}
+
+/**
+ * Prefab entry point for immutable shared frame geometry, including clips selected later.
+ * Reuse the same assets owner across entities; dispose each sprite before disposing that owner.
+ * Models, playback, callbacks and material copies stay local to each sprite.
+ */
+export function createSharedArchiveSprite(
+  assets: ArchiveSpriteAssets,
+  definition: ArchiveSpriteDefinition,
+  options: Omit<ArchiveSpriteOptions, 'sharedAnimations'> = {},
+): Promise<ArchiveSprite> {
+  return createArchiveSprite(assets, definition, { ...options, sharedAnimations: 'all' });
 }

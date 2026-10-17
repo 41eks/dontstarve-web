@@ -10,6 +10,10 @@
 
 一个几何体不一定意味着一次 draw call：Three.js 每个几何体材质组发起一次调用，例如 Wilson 手持物品时可能同时使用角色基础 atlas 与 swap atlas。
 
+蘑菇树直接使用动画包的 `createSharedArchiveSprite()`，prefab 按源 Lua 通过 `playOnce()` / `start()` 选择动作与后续待机。待机、受击、倒下、树桩和生长／开花过渡全部按动画帧、build、皮肤和符号配置复用 `FrameGeometryCache` 中的不可变合并几何，燃烧消失的 `chop_burnt` 特效也使用同一共享入口。颜色仍通过每棵树自己的材质副本应用，动作及其完成回调独立运行。每棵树保留自己的模型、随机起始帧、脚点排序和交互组件，因此共享几何不会把树合并为一次绘制。单树移除只释放私有资源，共享帧在所有使用者移除后由 `ArchiveSpriteAssets.dispose()` 释放。
+
+`GrottoPoolManager` 通过通用入口 `createSharedArchiveSprite(assets, definition, options?)` 将池面、雾气、瀑布和月亮玻璃接入同一缓存机制，prefab 不再维护要共享的 clip 清单，运行时切换的动画也自动按帧缓存。每种 clip 及其 `*_mined` 状态分别缓存；池面的 OnGround 旋转、背景顺序、雾气 billboard 和独立实体的随机播放进度仍由原有节点维持。共享几何不合并 draw call，单池移除及其子物件清理不会销毁其他实体借用的帧。
+
 `packages/animation/src/renderOrder.ts` 登记每个动画 sprite 最内层的 `visual` group，`setSpriteEntityRenderOrder()` 将实体顺序写到该 group。每帧按实际脚点的相机空间深度由远到近排序；若改用 sprite 中心或包围盒中心，高个实体会过早或过晚改变遮挡关系。
 
 `SpriteRenderOrderSorter` 每帧先遍历可见实体，把深度和各项排序键写进复用的连续数值数组，再排序数值索引数组，最后把序号写回登记的 `visual`。比较函数只读取数组，不访问实体对象。深度按原有 `0.001` 单位先量化，再写入 `Float32Array`；超出单精度精确整数范围时升级为 `Float64Array`，避免丢失远处实体的深度差。背景层、同深度时脚点 x/z 的稳定顺序、分组的 sortGroup/sortLayer/id 规则均保留；附属部分继承本帧可见主体的原始深度。索引沿用 `Array.sort`，保留分组与非分组实体在同深度混排时的比较行为。缓冲区按需扩容，隐藏、移除与换肤后的 visual 在下一帧重新采集。

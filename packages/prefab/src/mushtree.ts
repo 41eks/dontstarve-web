@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -157,7 +157,7 @@ export class MushtreeManager {
     const data = TREES[prefab];
     this.fire ??= FireFxHost.load(`${import.meta.env.BASE_URL}dst/data/anim`);
     const [sprite, fire] = await Promise.all([
-      createArchiveSprite(this.assets, { animationArchive: data.animationArchive, buildArchives: data.buildArchives, bank: data.bank,
+      createSharedArchiveSprite(this.assets, { animationArchive: data.animationArchive, buildArchives: data.buildArchives, bank: data.bank,
         animation: 'idle_loop', loop: true, hiddenSymbols: HIDDEN_SYMBOLS }, { name: prefab, colour: this.tint() }),
       this.fire,
       PreloadSounds('dontstarve/wilson/use_axe_mushroom', 'dontstarve/forest/treefall', 'dontstarve/forest/treeCrumble',
@@ -194,8 +194,8 @@ export class MushtreeManager {
     this.trees.set(model, tree);
     this.scene.add(model);
     model.userData.components.workable = tree.workable;
-    // The prefab starts in a random frame of idle_loop; sprite playback is clocked from 0, so advance it.
-    sprite.update(Math.random() * 2);
+    // AnimState:SetFrame chooses a random idle frame without advancing game time.
+    sprite.setFrame(Math.floor(Math.random() * sprite.frameCount));
 
     const components = saved?.components, state = components?.mushtree;
     this.watchSeason(tree);
@@ -258,7 +258,7 @@ export class MushtreeManager {
     const { data } = tree;
     const bloom = tree.treestate === 'bloom' && data.buildArchives.length > 1;
     try {
-      const fx = await createArchiveSprite(this.assets, { animationArchive: data.animationArchive,
+      const fx = await createSharedArchiveSprite(this.assets, { animationArchive: data.animationArchive,
         buildArchives: [data.buildArchives[bloom ? 1 : 0]], bank: data.bank, animation: 'chop_burnt', loop: false,
         hiddenSymbols: HIDDEN_SYMBOLS }, { name: `${tree.prefab}_burntfx` });
       if (this.disposed) { fx.dispose(); return; }
