@@ -12,12 +12,20 @@ export const WORLD_TILES = {
   ...Object.fromEntries(Object.entries(GROUND_TILE_DEFINITIONS).map(([name, tile]) => [name, tile.tileId])) as {
     readonly [K in GroundTileName]: (typeof GROUND_TILE_DEFINITIONS)[K]['tileId'];
   },
-  INVALID: 0, DIRT: 4, GRASS: GROUND_TILE_DEFINITIONS.GRASS.tileId, WOODFLOOR: GROUND_TILE_DEFINITIONS.WOODFLOOR.tileId,
+  INVALID: 0, IMPASSABLE: 1, FAKE_GROUND: 200,
+  DIRT: 4, GRASS: GROUND_TILE_DEFINITIONS.GRASS.tileId, WOODFLOOR: GROUND_TILE_DEFINITIONS.WOODFLOOR.tileId,
   DECIDUOUS: GROUND_TILE_DEFINITIONS.DECIDUOUS.tileId,
   FARMING_SOIL: GROUND_TILE_DEFINITIONS.FARMING_SOIL.tileId,
   OCEAN_COASTAL: GROUND_TILE_DEFINITIONS.OCEAN_COASTAL.tileId,
   MONKEY_DOCK: GROUND_TILE_DEFINITIONS.MONKEY_DOCK.tileId,
 } as const;
+
+/** tiledefs.lua: INVALID and the impassable range have no land surface. */
+export function isLandTile(tileId: number): boolean {
+  return landTiles.has(tileId);
+}
+const landTiles = new Set(Object.values(GROUND_TILE_DEFINITIONS)
+  .map(definition => definition.tileId).filter(id => id !== WORLD_TILES.OCEAN_COASTAL));
 
 export interface TurfTileSave {
   /** Signed grid coordinates: floor(world x/z / TILE_SIZE). */
@@ -31,6 +39,7 @@ export interface TurfTileSave {
 /** Generated terrain plus authoritative saved tile overrides and TERRAFORM changes. */
 export class TurfMap {
   readonly size: number;
+  readonly defaultTileId: number;
   private readonly originalTiles = new Map<string, number>();
   private readonly dugTiles = new Map<string, TurfTileSave>();
   private dirt?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>;
@@ -52,8 +61,9 @@ export class TurfMap {
       || ids.has(WORLD_TILES[name]) || this.layers.has(WORLD_TILES[name]));
   }
 
-  constructor(size: number, savedTiles: readonly TurfTileSave[] = []) {
+  constructor(size: number, savedTiles: readonly TurfTileSave[] = [], defaultTileId: number = WORLD_TILES.DECIDUOUS) {
     this.size = size;
+    this.defaultTileId = defaultTileId;
     for (const tile of savedTiles) this.dugTiles.set(`${tile.col},${tile.row}`, { ...tile });
   }
 
@@ -66,7 +76,7 @@ export class TurfMap {
       || world.x < -this.size / 2 || world.x >= this.size / 2
       || world.z < -this.size / 2 || world.z >= this.size / 2) return WORLD_TILES.INVALID;
     const key = this.key(world);
-    return this.dugTiles.get(key)?.tileId ?? this.originalTiles.get(key) ?? WORLD_TILES.DECIDUOUS;
+    return this.dugTiles.get(key)?.tileId ?? this.originalTiles.get(key) ?? this.defaultTileId;
   }
 
   /** Registers generated terrain without overwriting saved dug tiles. */
@@ -82,6 +92,11 @@ export class TurfMap {
 
   /** Tile id of a signed grid cell; INVALID outside the world. */
   tileIdAtCell(col: number, row: number): number { return this.tileAt(col, row); }
+
+  isVoidAtCell(col: number, row: number): boolean {
+    const tile = this.tileAt(col, row);
+    return !isLandTile(tile) && tile !== WORLD_TILES.OCEAN_COASTAL;
+  }
 
   /** undertile:GetTileUnderneath for a signed grid cell. */
   underTileAtCell(col: number, row: number): number | undefined { return this.dugTiles.get(`${col},${row}`)?.underTileId; }
@@ -121,7 +136,8 @@ export class TurfMap {
       const tileId = WORLD_TILES[name];
       const quads: GroundTileQuad[] = [];
       for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
-        if (this.tileAt(col, row) === WORLD_TILES.INVALID) continue;
+        const current = this.tileAt(col, row);
+        if (!isLandTile(current) && current !== WORLD_TILES.OCEAN_COASTAL) continue;
         const variant = this.variantAt(col, row, tileId);
         if (variant !== 17) quads.push({ col, row, variant });
       }
@@ -139,6 +155,8 @@ export class TurfMap {
   tileCenter(world: Vector2): Vector2 { return snapToTileCenter(world); }
 
   isOceanAtWorld(world: Vector2): boolean { return this.getTileAtWorld(world) === WORLD_TILES.OCEAN_COASTAL; }
+
+  isPassableAtPoint(world: Vector2): boolean { return isLandTile(this.getTileAtWorld(world)); }
 
   bindOceanClock(clock: ReadonlySignal<ClockState>): void { this.ocean?.bindClock(clock); }
   update(dt: number): void { this.ocean?.update(dt); }
@@ -323,7 +341,7 @@ export class TurfMap {
     if ((col + 1) * TILE_SIZE <= -half || col * TILE_SIZE >= half
       || (row + 1) * TILE_SIZE <= -half || row * TILE_SIZE >= half) return WORLD_TILES.INVALID;
     const key = `${col},${row}`;
-    return this.dugTiles.get(key)?.tileId ?? this.originalTiles.get(key) ?? WORLD_TILES.DECIDUOUS;
+    return this.dugTiles.get(key)?.tileId ?? this.originalTiles.get(key) ?? this.defaultTileId;
   }
 
   private variantAt(col: number, row: number, tileId: number): number {
@@ -381,7 +399,8 @@ export class TurfMap {
       const edgeQuads: GroundTileQuad[] = [];
       for (const key of candidates) {
         const [col, row] = key.split(',').map(Number);
-        if (this.tileAt(col, row) === WORLD_TILES.INVALID) continue;
+        const current = this.tileAt(col, row);
+        if (!isLandTile(current) && current !== WORLD_TILES.OCEAN_COASTAL) continue;
         const variant = this.variantAt(col, row, tileId);
         if (variant !== 17) edgeQuads.push({ col, row, variant });
       }

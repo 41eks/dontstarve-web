@@ -62,7 +62,6 @@ import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } from './playerStats';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
-import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { Sanity } from '../packages/componets/src/sanity';
 import { OnMakePlayerGhost, OnRespawnFromGhost, setGhostLight, type PlayerGhostOwner, type RezSource } from '@dontstarve-web/prefab/player_common';
 import { SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
@@ -302,7 +301,7 @@ playerAnimation?.bindDeath({
     inventory.DropEverything();
   },
   // TheWorld.Map:IsPassableAtPoint: neither open ocean nor the void.
-  isPassableAtPoint: () => !turfMap.isOceanAtWorld(player.position) && turfMap.getTileAtWorld(player.position) !== WORLD_TILES.INVALID,
+  isPassableAtPoint: () => turfMap.isPassableAtPoint(player.position),
 });
 // player_common.lua ListenForEvent("makeplayerghost", ex_fns.OnMakePlayerGhost), with the ghost art prepared beforehand.
 let deathCause = 'unknown';

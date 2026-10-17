@@ -14,7 +14,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../packages/prefab/src/worldContext';
 
 import { turfMap, moonTreeForest } from './building';
-import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
 import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
 import { camera, followCamera } from './camera';
 import { GroundItemManager } from './groundItems';
@@ -417,10 +417,9 @@ export async function createSceneEntities(
     const moleScheduler = scheduler ?? worldState.scheduler;
     const moleBaits = new Map<string, MoleBait>();
     const moleWalkable = (point: THREE.Vector3) => {
-      const tile = turfMap.getTileAtWorld(point);
       const radius = .5 * WORLD_SCALE;
       const edge = initialSave.world.map.generator.options.size / 2 - radius;
-      return tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL && Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
+      return turfMap.isPassableAtPoint(point) && Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
         && !world.bodies.some(body => body.type === CANNON.Body.STATIC && body.collisionResponse &&
           body.shapes.some(shape => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere) && (() => {
             body.updateAABB(); const b = body.aabb;
@@ -768,8 +767,7 @@ export async function createSceneEntities(
   function registerTumbleweeds(registry: EntityRegistry, prefabId: 'tumbleweed', worldState: SceneWorldState) {
     const tumbleweeds = new TumbleweedManager(scene, world, {
       scheduler: worldState.scheduler, wind: worldWind, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading,
-      isOnValidGround: position => { const tile = turfMap.getTileAtWorld(position);
-        return tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL; },
+      isOnValidGround: position => turfMap.isPassableAtPoint(position),
       constrainPosition: position => {
         const edge = initialSave.world.map.generator.options.size / 2 - WORLD_SCALE;
         position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
@@ -877,6 +875,7 @@ export async function createSceneEntities(
           .map((body) => { body.updateAABB(); return body.aabb; });
         return findGroundPath(start, target, { cellSize: radius,
           isWalkable: (point) => Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
+            && turfMap.isPassableAtPoint(point)
             && !obstacles.some((box) => point.x >= box.lowerBound.x - radius && point.x <= box.upperBound.x + radius
               && point.z >= box.lowerBound.z - radius && point.z <= box.upperBound.z + radius),
         });
@@ -1145,7 +1144,7 @@ export async function createSceneEntities(
     const waveMap: WaveMap = {
       tileSize: TILE_SIZE,
       tileAt: (x, z) => turfMap.getTileAtWorld({ x, z }),
-      isLandTile: tile => tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL,
+      isLandTile,
       isOceanTile: tile => tile === WORLD_TILES.OCEAN_COASTAL,
     };
     const oceanWaves = new OceanWaves(scene, waveMap, WORLD_SCALE, worldState.tickingarea);

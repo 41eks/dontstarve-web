@@ -52,7 +52,7 @@ groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 groundBody.collisionFilterGroup = GROUND_COLLISION_GROUP;
 world.addBody(groundBody);
 world.addBody(playerBody);
-scene.background = new THREE.Color(0xbfd1e5);
+scene.background = new THREE.Color(initialSave.world.prefab === 'cave' ? 0x000000 : 0xbfd1e5);
 scene.add(ground, turfGround, player);
 
 function disposeTerrain(): void {
@@ -65,7 +65,7 @@ function disposeTerrain(): void {
 const playerRadius = (playerBody.shapes[0] as CANNON.Sphere).radius;
 export const locomotor = new Locomotor(playerBody, {
   footprintRadius: playerRadius,
-  isPassable: (x, z) => !turfMap.isOceanAtWorld({ x, z }),
+  isPassable: (x, z) => turfMap.isPassableAtPoint({ x, z }),
   findPath(start, target) {
     const mapEdge = initialSave.world.map.generator.options.size / 2 - playerRadius;
     const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC
@@ -83,7 +83,7 @@ export const locomotor = new Locomotor(playerBody, {
     return findGroundPath(start, target, {
       cellSize: Math.max(1, playerRadius / 2),
       isWalkable: (point) => Math.abs(point.x) <= mapEdge && Math.abs(point.z) <= mapEdge
-        && !turfMap.isOceanAtWorld(point)
+        && turfMap.isPassableAtPoint(point)
         && !obstacles.some((box) => point.x >= box.minX && point.x <= box.maxX
           && point.z >= box.minZ && point.z <= box.maxZ),
     });

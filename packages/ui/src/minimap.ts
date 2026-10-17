@@ -12,6 +12,7 @@ export type { MinimapPixels, MinimapTileLayer } from './minimap-terrain';
 export interface MinimapTerrain {
   cellRange(): { min: number; max: number };
   tileIdAtCell(col: number, row: number): number;
+  isVoidAtCell?(col: number, row: number): boolean;
   tileLayerImages(): Promise<ReadonlyMap<number, MinimapTileLayer>>;
   tileLayerQuads(): ReadonlyMap<number, readonly MinimapTileQuad[]>;
   minimapOcean(): Promise<MinimapOceanConfig>;
@@ -213,7 +214,7 @@ export class DstMinimapElement extends AssetElement {
     }
     for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
       const tileId = terrain.tileIdAtCell(col, row);
-      if (tileId === 0 || ocean.oceanTileIds.has(tileId)) continue; // outside the world, or drawn by the ocean pass
+      if (tileId === 0 || terrain.isVoidAtCell?.(col, row) || ocean.oceanTileIds.has(tileId)) continue;
       const x = (col - min) * CELL_PX, y = (row - min) * CELL_PX;
       if (!layers.has(tileId)) { context.fillStyle = FALLBACK_COLOUR; context.fillRect(x, y, CELL_PX, CELL_PX); }
     }

@@ -2,12 +2,22 @@
 
 https://41eks.github.io/dontstarve-web/
 
+生产构建通过 Service Worker 和 Cache Storage 按需缓存 `public/dst/data/`、`hamlet-assets/`、`generating-world/`、`creepy-hands/` 和 `audio/` 的资源，沿用现有 URL 和部署子路径。命中后直接从本地返回，未命中时下载并缓存完整成功响应；音频支持从完整缓存返回单段字节范围。缓存不可用或配额不足时继续网络加载。构建根据上述文件的路径、内容及 Worker 源码自动生成缓存版本，无需手动更新版本号；文件变化后旧缓存会在新 Worker 激活时清除，新版本默认等待旧页面关闭，避免运行中的游戏切换资源。
+
+仅 `pnpm build` 的产物启用缓存，开发服务器不注册 Worker。首次安装接管之前的请求仍走网络；后续请求和再次访问会使用缓存。可在开发者工具 Application → Cache Storage 查看 `dontstarve-assets:` 缓存；清理站点数据会删除缓存。HTML、应用 JS/CSS 和存档不在该缓存范围内，因此尚不提供整个应用的离线启动。运行 `pnpm test:asset-cache` 验证构建版本更新、实际浏览器缓存命中、离线资源读取、音频范围请求及更新生命周期。
+
 场景实体的活动区域与资源管理方案见 [按 tile 管理生命周期](docs/tile-lifecycle.md)：每个 tile 持有活动 signal，玩家跨 tile 时更新区域差集，prefab 用 `createMemo` 派生活动状态。活动网格已接入运行时；萤火虫按活动区域加载／释放动画资源，温泉控制显隐，海浪休眠移除。
 
 DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久和保存机制见 [温度系统源码总结](docs/dst-temperature.md)。昼夜和季节使用 signal，`WorldTemperature` 通过 `createMemo` 派生环境温度；主循环每 60 个活动帧按累计实际 `dt` 结算昼夜进度和世界温度。
 
 
 ## 调试命令（debugCommand）
+
+可用 `?save=Cluster_1/Caves.json` 加载从 `Cluster_58` 提取的蓝蘑菇林、周边楼梯所在的出口绿地、月亮蘑菇林和远古档案馆局部地形；未指定参数仍加载 `initial-world.json`。洞穴保留地皮和虚空边界，并按导入器 `ENTITY_WHITELIST` 白名单迁移选区内的 `pighead`（4 个）和 `archive_moon_statue`（31 座）；保存猪头烧毁标记与雕像外形编号，其他实体及地下环境规则尚未迁移。`c_save()` 无参数，继续下载 `initial-world.json`，并保留 `cave` 类型、`defaultTileId: 1` 的虚空背景、稀疏地皮及当前玩家和实体状态；要重载导出结果，替换到 URL 当前选择的文件。现有 `c_spawn("pighead")`、`c_spawn("archive_moon_statue")` 支持不变，没有新增调试命令或 `c_spawn` / `c_give` ID。白名单、导入命令、`--regions` / `--snapshot` / `--origin-cell` 参数和 `--check` 验证见 [局部洞穴地形导入](docs/dst-static-layouts.md#从完整存档导入局部洞穴地形)。
+
+静态资源缓存不改变调试命令的语法、参数、行为或支持的 `c_spawn` / `c_give` ID；`c_save()` 仍按原有流程导出存档。
+
+局部存档导入的实体换算包含原版的半格偏移：`gx = x / 4 + width / 2 + 0.5`，Z 同理，再按选区原点转换为项目坐标。猪头已与木地板布局对齐，月亮雕像也恢复到对应档案馆地皮；`c_save()` 保存修正后的位置，命令语法、参数和支持 ID 不变。
 
 地皮活动查询接收实体的 tile key `ReadonlySignal<number>` 和可选半径（默认 10 格），同一个 tile signal、半径复用 memo；`TileTracker` 发布新 key 后自动切换所监听的格子，避免移动实体一直读取出生格子的活动状态，详见 [移动实体的 tile 归属](docs/tile-lifecycle.md#移动实体不能一直监听出生-tile)。调试命令的语法、参数及支持的 `c_spawn` / `c_give` ID 保持不变。
 
