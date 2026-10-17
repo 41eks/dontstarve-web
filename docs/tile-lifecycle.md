@@ -16,7 +16,7 @@
 
 [hotspring.ts](../packages/prefab/src/hotspring.ts) 先接入显隐与碰撞切换：场景向管理器注入所属世界的查询函数，每个温泉用私有 `watchSignal` 监听脚点所属 tile，并通过普通 effect 更新活动集合、场景模型和物理体。inactive 时停止该温泉动画更新，保留原模型、逻辑记录、heater、bathbombable 和存档状态；返回范围时恢复同一实例，不重播生成或投入沐浴球动作。此阶段不释放休眠模型资源，不实现 Lua 的蒸汽 FX 分支。单个温泉永久移除时清理自己的监听，不释放共享 memo，也不影响同 tile 其他温泉。没有注入 tile 服务或查询返回 `undefined`（包括超出网格）时回退为 active，保证模型、碰撞体和动画正常工作；返回值为有效 memo 且状态为 `false` 时仍按 inactive 处理。
 
-[fireflies.ts](../packages/prefab/src/fireflies.ts) 从自身私有的活动区域视图纯派生 `active`；表现层另建 `watchSignal`，用普通 effect 创建或销毁独立动画几何。inactive 实体只保留逻辑控制器和轻量原点，原有渐变值、工作状态、逻辑 timer 和实体身份保留；共享图集只缓存一份。再次 active 时重建几何并绑定当前动画，不重新执行掉落、消耗或实体生成。`GroundItemVisual.active` 表示资源已加载，`GroundItemManager` 为每条记录创建私有桥接，通过 effect 更新活动集合和场景归属；动画更新、交互候选、邻居查询和 billboard 排序只遍历活动集合，保存仍导出全部逻辑记录。拾取、永久移除、换肤替换和场景释放时解除桥接并释放资源；没有活动区域服务时照常加载。
+[fireflies.ts](../packages/prefab/src/fireflies.ts) 从自身私有的活动区域视图纯派生 `active`；表现层另建 `watchSignal`，用普通 effect 创建或销毁动画网格；无覆盖／皮肤的帧几何由 sprite factory 的 `FrameGeometryCache` 共享。inactive 实体只保留逻辑控制器和轻量原点，原有渐变值、工作状态、逻辑 timer 和实体身份保留；共享图集只缓存一份。再次 active 时重建几何并绑定当前动画，不重新执行掉落、消耗或实体生成。`GroundItemVisual.active` 表示资源已加载，`GroundItemManager` 为每条记录创建私有桥接，通过 effect 更新活动集合和场景归属；动画更新、交互候选、邻居查询和 billboard 排序只遍历活动集合，保存仍导出全部逻辑记录。拾取、永久移除、换肤替换和场景释放时解除桥接并释放资源；没有活动区域服务时照常加载。
 
 [actionEntity.ts](../packages/prefab/src/actionEntity.ts) 的世界绑定统一维护 `tickingarea` 标签和活动实体索引。每个投影持有私有 tracker、区域 memo 和 `watchSignal`，普通 effect 在 active 时添加标签及索引，inactive 时移除；带底层 `ItemEntity` 的投影仍通过该实体的标签 API 写入，不维护第二份权威标签。`FindEntities` 只遍历活动索引，保留场景归属、移除状态、must/cant/oneof 标签和半径过滤，不读取 inactive 候选的位置。标签不控制可见性，白天隐藏但仍在活动区域的萤火虫也可带此标签；鼠标交互仍由可见性和 `NOCLICK` 规则控制。
 
@@ -197,7 +197,7 @@ const stopWatching = createEffect(() => {
 
 重新激活已有实体恢复待机或对应组件状态，不重播首次生成的出现动画／音效。恢复后实体 ID、位置、皮肤及组件身份保持一致。加载失败时保留可重试的逻辑实体，尚未准备好的模型不加入活动更新集合。
 
-动画实体使用现有 sprite factory：卸载通过 `disposeSprite()` 释放该实体的几何体，同类实体共享的纹理和材质由 factory 管理，场景退出时统一释放。声音继续使用 [sound.ts](../packages/prefab/src/sound.ts) 的 `PreloadSounds`、`PlaySound` 和 `DisposeSounds`；每个活动实体有独立音源。活动范围、渲染层级和绘制顺序遵循现有 billboard 规则，重建后仍以逻辑实体的地面脚点排序。
+动画实体使用现有 sprite factory：卸载通过 `disposeSprite()` 摘除该实体的网格并释放其私有几何；同类实体共享的纹理、材质和逐帧几何（`FrameGeometryCache`，有符号覆盖、隐藏层或皮肤的实例不参与共享）由 factory 管理，场景退出时统一释放。声音继续使用 [sound.ts](../packages/prefab/src/sound.ts) 的 `PreloadSounds`、`PlaySound` 和 `DisposeSounds`；每个活动实体有独立音源。活动范围、渲染层级和绘制顺序遵循现有 billboard 规则，重建后仍以逻辑实体的地面脚点排序。
 
 异步准备资源时，为实体保存加载代次或取消标记。完成后重新检查实体仍存在、仍需要 active 资源且请求代次有效，再绑定模型；已卸载或永久移除的实体不能因旧请求完成而复活。准备完成时按当前游戏时间补算，避免加载耗时延长寿命。过期实体直接清除，不短暂创建模型、灯光或音源。
 

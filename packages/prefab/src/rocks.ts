@@ -1,3 +1,4 @@
+import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { newEntityId } from './saveRecord';
@@ -95,6 +96,7 @@ interface Rock {
 /** Shared per-archive sprites, prefab-owned work and loot, and stable foot points. */
 export class RockManager {
   private readonly factories = new Map<string, Promise<AnimatedSpriteFactory>>();
+  private readonly mouseRecords = new ModelRecords<Rock>();
   private readonly rocks = new Set<Rock>();
   private readonly scene: THREE.Scene;
   private readonly assetBaseUrl: string;
@@ -152,7 +154,7 @@ export class RockManager {
     lootdropper.SetChanceLootTable(prefabId);
     const controller = new RockController(model, prefabId, lootdropper, () => this.remove(rock));
     const rock = { prefabId, model, controller, factory, outputs };
-    this.rocks.add(rock);
+    this.rocks.add(rock); this.mouseRecords.set(rock.model, rock);
     this.scene.add(model);
     return model;
   }
@@ -164,8 +166,10 @@ export class RockManager {
     }
   }
 
-  get mineTargets(): PickaxeTarget[] {
-    return [...this.rocks].filter((rock) => rock.controller.canMine).map((rock) => ({
+  get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
+
+  getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
+    return this.mouseRecords.select(model, this.rocks).filter((rock) => rock.controller.canMine).map((rock) => ({
       id: String(rock.model.userData.entityId),
       model: rock.model,
       position: rock.model.position,

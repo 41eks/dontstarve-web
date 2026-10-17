@@ -59,16 +59,16 @@ export function performPickupAction(target: PickupTarget, doer: PickupDoer): boo
   return true;
 }
 
-export function getPickupActions(scene: THREE.Scene, doer: PickupDoer): MouseActionCandidate[] {
+export function getPickupActions(model: THREE.Object3D | undefined, doer: PickupDoer): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
-  scene.traverse(model => {
-    const target = model.userData.pickupTarget as PickupTarget | undefined;
-    if (!target) return;
-    model.position.copy(target.position);
-    for (const button of ['left', 'right'] as const) actions.push({
-      action: { action: 'PICKUP', target }, model, button, available: available(target, doer, button === 'right'),
-    });
+  if (!model) return actions;
+  const target = model.userData.pickupTarget as PickupTarget | undefined;
+  if (!target) return actions;
+  model.position.copy(target.position);
+  for (const button of ['left', 'right'] as const) actions.push({
+    action: { action: 'PICKUP', target }, model, button, available: available(target, doer, button === 'right'),
   });
+
   return actions;
 }
 
@@ -95,7 +95,7 @@ export class PickupActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.doer = doer; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
-    this.unregister = this.picker.register(() => getPickupActions(world.scene, doer));
+    this.unregister = this.picker.register(model => getPickupActions(model, doer));
     this.stopEvents = bindActionCancellation(world, this, 'pickup', () => this.cancel());
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -149,7 +149,7 @@ export class PickupActionController {
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (this.disposed || event.defaultPrevented || (event.button !== 0 && event.button !== 2)) return;
     this.picker.pointer.trackPointer(event);
-    const actions = this.picker.getMouseActions(), action = event.button === 0 ? actions.left : actions.right;
+    const actions = this.picker.getMouseActions(event), action = event.button === 0 ? actions.left : actions.right;
     if (action?.action !== 'PICKUP' || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation(); this.request(action.target as PickupTarget);
   };

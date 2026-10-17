@@ -31,6 +31,7 @@ export interface FireHandle { stop(extinguished: boolean): void }
 /** The fire.lua prefab spawned by Burnable:SpawnFX: sprite, loop sound and local light at a ground point. */
 export class FireFxHost {
   private readonly fires = new Map<THREE.Group, THREE.Vector3>();
+  private readonly owners = new Map<THREE.Group, THREE.Object3D>();
   private readonly factory: AnimatedSpriteFactory;
   private disposed = false;
   private constructor(factory: AnimatedSpriteFactory) { this.factory = factory; }
@@ -43,7 +44,7 @@ export class FireFxHost {
     return new FireFxHost(createSpriteFactory(build, anim));
   }
 
-  start(parent: THREE.Object3D, position: THREE.Vector3, fxLevel: number): FireHandle {
+  start(parent: THREE.Object3D, position: THREE.Vector3, fxLevel: number, owner?: THREE.Object3D): FireHandle {
     if (this.disposed) throw new Error('Fire effects have been disposed');
     const level = FIRE_LEVELS[Math.min(fxLevel, FIRE_LEVELS.length) - 1];
     const fire = this.factory.create({ initialAnimation: level.anim, name: 'fire' });
@@ -52,10 +53,12 @@ export class FireFxHost {
     setPrefabLocalLight(fire, { colour: level.colour, radius: level.radius * (TILE_SIZE / 4), intensity: level.intensity, falloff: level.falloff });
     parent.add(fire);
     this.fires.set(fire, fire.position);
+    if (owner) this.owners.set(fire, owner);
     let sound: SoundHandle | undefined = PlaySound(level.sound, fire.position);
     return {
       stop: extinguished => {
         if (!this.fires.delete(fire)) return;
+        this.owners.delete(fire);
         fire.removeFromParent(); sound?.stop(); sound = undefined;
         setPrefabLocalLight(fire, null);
         this.factory.disposeSprite(fire);
@@ -71,8 +74,10 @@ export class FireFxHost {
     }
   }
 
-  get renderEntities(): { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[] {
-    return [...this.fires].map(([object, footPosition]) => ({ object, footPosition, cameraDepth: 0 }));
+  get renderEntities(): { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number; sortGroup?: number; sortLayer: number }[] {
+    // A fire sharing an owner joins its sort group, so it takes the owner's depth and draws after it.
+    return [...this.fires].map(([object, footPosition]) => ({ object, footPosition, cameraDepth: 0,
+      sortGroup: this.owners.get(object)?.id, sortLayer: 2 }));
   }
 
   dispose(): void {
@@ -130,7 +135,7 @@ export class BurnableBinding {
     inst.components.burnable = this.burnable;
     inst.components.propagator = this.propagator;
     this.stopEffect = createEffect(() => {
-      if (this.burnable.burning.get()) this.fire ??= env.fire.start(env.root, inst.getPosition(), spec.fxLevel);
+      if (this.burnable.burning.get()) this.fire ??= env.fire.start(env.root, inst.getPosition(), spec.fxLevel, (inst as { model?: THREE.Object3D }).model);
       else if (this.fire) { this.fire.stop(true); this.fire = undefined; }
     });
   }

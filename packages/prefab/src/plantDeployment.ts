@@ -1,3 +1,4 @@
+import { placementEntities, ignoresPlacement, type PlacementQuery } from './placementEntities';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { loadBuild, loadAnim, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
@@ -18,7 +19,7 @@ import { setPrefabLightOverride } from './localLight';
 export interface PreparedPlant { spawn(position: THREE.Vector3): boolean; dispose(): void; }
 export interface PlantDeploymentWorld {
   canPlant(position: THREE.Vector3): boolean;
-  getBlockers(): readonly { position: THREE.Vector3; tags?: readonly string[]; smartRadius?: number; inventoryRadius?: number }[];
+  blockers?: PlacementQuery;
   plants: Readonly<Record<string, { prepareTransplant(skinId?: string): Promise<PreparedPlant> }>>;
 }
 
@@ -43,6 +44,7 @@ export class PlantDeployment {
   private readonly locomotor: ActionLocomotor;
   private readonly getSource: () => TurfSource | undefined;
   private readonly planting: PlantDeploymentWorld;
+  private readonly blockers: PlacementQuery;
   private readonly interrupted: () => boolean;
 
   constructor(world: WorldContext, animation: ActionAnimationController,
@@ -50,6 +52,7 @@ export class PlantDeployment {
     planting: PlantDeploymentWorld, interrupted = () => false) {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.getSource = getSource; this.planting = planting; this.interrupted = interrupted;
+    this.blockers = planting.blockers ?? placementEntities(world.scene);
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.cleanups.push(bindActionCancellation(world, this, 'deploy', () => this.cancel()));
     if (world.registerFrameTask) this.cleanups.push(world.registerFrameTask(dt => this.update(dt)));
@@ -69,10 +72,11 @@ export class PlantDeployment {
     const deployable = entity.components.deployable;
     if (entity.isRemoved || deployable?.mode !== 'PLANT' || !this.planting.canPlant(point)) return false;
     const spacing = deployable.spacing;
-    return !this.planting.getBlockers().some(blocker => {
-      if (blocker.tags?.some(tag => ['NOBLOCK', 'player', 'FX', 'INLIMBO', 'DECOR', 'walkableplatform', 'walkableperipheral', 'isdead'].includes(tag))) return false;
+    return !this.blockers.someNear(point, spacing, blocker => {
+      if ((blocker.visible === false && !blocker.logicalTree) || ignoresPlacement(blocker, ['NOBLOCK', 'player', 'FX', 'INLIMBO', 'DECOR', 'walkableplatform', 'walkableperipheral', 'isdead'])) return false;
+      const inventoryRadius = blocker.getInventoryRadius?.(.5 * (TILE_SIZE / 4)) ?? blocker.inventoryRadius;
       const radius = blocker.smartRadius !== undefined ? blocker.smartRadius + spacing / 2
-        : blocker.inventoryRadius !== undefined ? Math.min(spacing, blocker.inventoryRadius + spacing / 2) : spacing;
+        : inventoryRadius !== undefined ? Math.min(spacing, inventoryRadius + spacing / 2) : spacing;
       return blocker.position.distanceToSquared(point) < radius ** 2;
     });
   }

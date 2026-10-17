@@ -7,6 +7,7 @@ import {
   type BuildImage,
   type ResolvedSprite,
 } from '../src/animationAssets';
+import { spriteSpatialRadius } from '../src/spatialBounds';
 
 function image(sampler = 0): BuildImage {
   return {
@@ -72,6 +73,19 @@ describe('SpriteFrameRenderer', () => {
     ]);
     expect(mesh.geometry.drawRange).toEqual({ start: 0, count: 12 });
     expect(mesh.geometry.groups).toEqual([{ start: 0, count: 12, materialIndex: 0 }]);
+  });
+
+  it('culls with a padded sphere while the tight bounds and published radius stay on the drawn quads', () => {
+    const visual = new THREE.Group();
+    const renderer = new SpriteFrameRenderer(visual);
+    const material = new THREE.MeshBasicMaterial();
+    renderer.show([sprite(material, [1, 0, 0, 1, 10, 20])]);
+    const geometry = (visual.children[0] as THREE.Mesh).geometry;
+    const tight = geometry.boundingBox!.getBoundingSphere(new THREE.Sphere());
+    expect(geometry.boundingSphere!.center.distanceTo(tight.center)).toBeCloseTo(0);
+    expect(geometry.boundingSphere!.radius).toBeGreaterThan(tight.radius);
+    expect(spriteSpatialRadius(visual)).toBeCloseTo(tight.center.length() + tight.radius);
+    expect((visual.children[0] as THREE.Mesh).frustumCulled).toBe(true);
   });
 
   it('preserves interleaved atlas order as consecutive material groups', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HandSlot, InventorySlot, InventoryStore, equipmentSlotAddress, inventorySlotAddress } from '../src';
+import { HandSlot, InventorySlot, InventoryStore, ItemEntityRegistry, equipmentSlotAddress, inventorySlotAddress } from '../src';
 
 const a = inventorySlotAddress(0), b = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
 const specs = {
@@ -15,6 +15,33 @@ function setup() {
 }
 
 describe('DST item identity and ownership', () => {
+  it('indexes late-created map icons without scanning iconless items and releases removed icons from every registry', () => {
+    const entities = new ItemEntityRegistry(), adopted = new ItemEntityRegistry();
+    const insect = entities.create({ itemId: 'fireflies', count: 1 });
+    const backpack = entities.create({ itemId: 'backpack', count: 1 });
+    const icon = backpack.AddMiniMapEntity();
+    icon.SetIcon('backpack.png');
+    adopted.adopt(backpack); adopted.adopt(backpack);
+    const readInsectIcon = vi.spyOn(insect, 'MiniMapEntity', 'get');
+    const readItems = vi.spyOn(entities, 'values');
+    try {
+      expect(entities.miniMapEntities).toEqual([icon]);
+      expect(adopted.miniMapEntities).toEqual([icon]);
+      icon.SetEnabled(false);
+      expect(entities.miniMapEntities).toEqual([]);
+      icon.SetEnabled(true);
+      backpack.transform.position.set(24, 0, -36);
+      expect(entities.miniMapEntities[0].position).toBe(backpack.transform.position);
+      expect(readItems).not.toHaveBeenCalled();
+      expect(readInsectIcon).not.toHaveBeenCalled();
+      backpack.destroy();
+      expect(entities.miniMapEntities).toEqual([]);
+      expect(adopted.miniMapEntities).toEqual([]);
+      expect(entities.get(backpack.id)).toBeUndefined();
+      expect(insect.isRemoved).toBe(false);
+    } finally { readItems.mockRestore(); readInsectIcon.mockRestore(); entities.dispose(); adopted.dispose(); }
+  });
+
   it('owns independent item signals and preserves their state through transfers, extraction and load', () => {
     const store = setup();
     store.add('log', 8);

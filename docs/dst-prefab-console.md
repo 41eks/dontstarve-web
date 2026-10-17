@@ -75,11 +75,12 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `papyrus` | 可生成 | 可入栏 | `prefabs/papyrus.lua:46` |
 | `featherpencil` | 可生成 | 可入栏 | `prefabs/featherpencil.lua:34` |
 | `nightmarefuel` | 可生成 | 可入栏 | `prefabs/nightmarefuel.lua:93` |
-| `petals` | 可生成 | 可入栏 | `prefabs/petals.lua:99` |
+| `petals` | 可生成 | 可入栏 | `prefabs/petals.lua:99`：inventoryitem、PERISH_FAST（6 游戏日），腐败为同数量 spoiled_food；当前项目接入库存／地面 perish 与存读档 |
 | `petals_evil` | 可生成 | 可入栏 | `prefabs/petals_evil.lua:56` |
 | `ash` | 可生成 | 可入栏 | `prefabs/ash.lua:75` |
 | `beefalowool` | 可生成 | 可入栏 | `prefabs/beefalowool.lua:32` |
 | `boneshard` | 可生成 | 可入栏 | `prefabs/boneshard.lua:30` |
+| `butter` | 可生成 | 可入栏 | `prefabs/butter.lua`：inventoryitem、edible、PERISH_SUPERSLOW，腐败为 spoiled_food |
 | `butterflywings` | 可生成 | 可入栏 | `prefabs/butterflywings.lua:45` |
 | `honey` | 可生成 | 可入栏 | `prefabs/honey.lua:50` |
 | `honeycomb` | 可生成 | 可入栏 | `prefabs/honeycomb.lua:37` |
@@ -140,6 +141,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `feather_canary` | 可生成 | 可入栏 | `prefabs/feathers.lua:47` |
 | `torch` | 可生成 | 可入栏 | `prefabs/torch.lua:445` |
 | `backpack` | 可生成；项目支持 `c_spawn("backpack")` | 特殊持有，不能进普通格 | `prefabs/backpack.lua:268`；地面地图图标为 `backpack.png`，拾取／装备后隐藏；`c_save()` 与读档保留身份、位置和容器状态 |
+| `armorsnurtleshell` | 可生成；`c_spawn("armorsnurtleshell")` | 可入栏（`c_give("armorsnurtleshell")`），装备于身体槽 | `prefabs/armor_snurtleshell.lua`；地面与穿戴均为 `armor_slurtleshell` build（`swap_body_tall`），缩壳动画在 `player_slurtle_armor.zip`；穿上后右键物品槽触发 `USEITEM`，播放 `shell_enter` → `shell_idle`，`blocked` 事件播放 `shell_hit` |
 | `bernie_inactive` | 可生成 | 可入栏 | `prefabs/bernie_inactive.lua:272` |
 | `farm_plow_item` | 可生成 | 可入栏 | `prefabs/farm_plow.lua:309` |
 | `dock_kit` | 可生成 | 可入栏（`stackable`，上限 `STACK_SIZE_MEDITEM = 20`） | `prefabs/dock_kit.lua`；`deployable` 为 `DEPLOYMODE.CUSTOM`，只能铺在与永久陆地或码头相邻的 `OCEAN_COASTAL` 格上，部署后该格变为 `MONKEY_DOCK` |
@@ -418,6 +420,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 
 | prefab ID | c_spawn | c_give | Lua 来源 |
 | --- | --- | --- | --- |
+| `planted_flower` | 可生成 | 不能入栏 | `prefabs/flower.lua:plantedflowerfn`：将 prefab 设为 flower，planted=true；由 butterfly.lua:OnDeploy 生成 |
 | `firepit` | 可生成 | 不能入栏 | `prefabs/firepit.lua` |
 | `coldfirepit` | 可生成 | 不能入栏 | `prefabs/coldfirepit.lua` |
 | `campfire` | 可生成 | 不能入栏 | `prefabs/campfire.lua` |

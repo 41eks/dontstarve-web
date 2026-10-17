@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { getPrefabLightOverride, getPrefabLocalLight, type PrefabLocalLight } from '@dontstarve-web/prefab/localLight';
+import { getPrefabLightOverride, getPrefabLocalLight, getPrefabLocalLightOwners, type PrefabLocalLight } from '@dontstarve-web/prefab/localLight';
 import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
 import type { ScenePassLighting } from '@dontstarve-web/animation/sceneRenderPass';
 
@@ -47,6 +47,38 @@ const LIGHT_FRAGMENT_SHADER = /* glsl */`
   }
 `;
 
+type MaterialRenderHook = (this: THREE.Material, ...args: unknown[]) => void;
+
+/**
+ * Materials are patched and their light override resolved when they are about
+ * to be drawn, so no per-frame scene walk is needed. Material.onBeforeRender runs
+ * before the program lookup, so a patch applied there compiles in the same frame.
+ */
+const renderingLighting = new Set<DstLocalLighting>();
+let originalMaterialBeforeRender: MaterialRenderHook | undefined;
+
+function installMaterialHook(): void {
+  if (originalMaterialBeforeRender) return;
+  const original = THREE.Material.prototype.onBeforeRender as MaterialRenderHook;
+  originalMaterialBeforeRender = original;
+  THREE.Material.prototype.onBeforeRender = function (this: THREE.Material, ...args: unknown[]) {
+    original.apply(this, args);
+    for (const lighting of renderingLighting) lighting.prepareDrawnMaterial(this, args[4] as THREE.Object3D, args[0] as THREE.WebGLRenderer);
+  } as typeof THREE.Material.prototype.onBeforeRender;
+}
+
+function uninstallMaterialHook(): void {
+  if (!originalMaterialBeforeRender || renderingLighting.size) return;
+  THREE.Material.prototype.onBeforeRender = originalMaterialBeforeRender as typeof THREE.Material.prototype.onBeforeRender;
+  originalMaterialBeforeRender = undefined;
+}
+
+function isInScene(object: THREE.Object3D): boolean {
+  let root = object;
+  while (root.parent) root = root.parent;
+  return (root as THREE.Scene).isScene === true;
+}
+
 /** World XZ lightmap shared by ground, animated sprites and instanced scenery. */
 export class DstLocalLighting {
   private readonly target = new THREE.WebGLRenderTarget(LIGHTMAP_SIZE, LIGHTMAP_SIZE, {
@@ -60,7 +92,6 @@ export class DstLocalLighting {
   private readonly lightOverrides = new WeakMap<THREE.Material, { value: number }>();
   private readonly ownerPosition = new THREE.Vector3();
   private readonly lightPosition = new THREE.Vector3();
-  private readonly prefabLights: { owner: THREE.Object3D; settings: PrefabLocalLight }[] = [];
   private readonly ambient = { value: new THREE.Vector3() };
   private readonly extents = { value: new THREE.Vector4(0, 0, 1 / LIGHTMAP_SPAN, 1 / LIGHTMAP_SPAN) };
   private readonly lightmap = { value: this.target.texture };
@@ -69,8 +100,11 @@ export class DstLocalLighting {
   private readonly lightGeometry = new THREE.InstancedBufferGeometry();
   private readonly lightMesh: THREE.Mesh;
   private lightCapacity = 0;
+  private renderer: THREE.WebGLRenderer | undefined;
 
   constructor() {
+    renderingLighting.add(this);
+    installMaterialHook();
     this.target.texture.name = 'DST world XZ lightmap';
     this.target.texture.colorSpace = THREE.NoColorSpace;
     this.ambientMaterial = new THREE.ShaderMaterial({
@@ -117,6 +151,7 @@ export class DstLocalLighting {
   async prewarm(renderer: THREE.WebGLRenderer, signal?: AbortSignal): Promise<void> {
     await yieldLoadingFrame();
     signal?.throwIfAborted();
+    this.renderer = renderer;
     renderer.initRenderTarget(this.target);
     const previousTarget = renderer.getRenderTarget();
     const previousCount = this.lightGeometry.instanceCount;
@@ -134,7 +169,9 @@ export class DstLocalLighting {
   }
 
   dispose(): void {
-    this.prefabLights.length = 0;
+    renderingLighting.delete(this);
+    this.renderer = undefined;
+    uninstallMaterialHook();
     this.target.dispose();
     this.ambientMaterial.dispose();
     this.lightmapMaterial.dispose();
@@ -154,22 +191,24 @@ export class DstLocalLighting {
         * (1 - edge * edge * (3 - 2 * edge));
       colour.addScaledVector(new THREE.Vector3().fromArray(light.colour), light.intensity * attenuation);
     };
-    for (const { owner } of this.prefabLights) {
+    for (const owner of getPrefabLocalLightOwners()) {
       const settings = getPrefabLocalLight(owner);
-      if (owner.parent && settings) accumulate(owner, settings);
+      if (settings && isInScene(owner)) accumulate(owner, settings);
     }
     return Math.min(1, colour.x) * 0.2126 + Math.min(1, colour.y) * 0.7152 + Math.min(1, colour.z) * 0.0722;
   }
 
   renderLightmap(renderer: THREE.WebGLRenderer): void {
-    this.ensureLightCapacity(this.prefabLights.length);
+    this.renderer = renderer;
+    this.ensureLightCapacity(getPrefabLocalLightOwners().size);
     const origins = this.lightGeometry.getAttribute('lightOriginRadius') as THREE.InstancedBufferAttribute;
     const colours = this.lightGeometry.getAttribute('lightColour') as THREE.InstancedBufferAttribute;
     const falloffs = this.lightGeometry.getAttribute('lightLogFalloff') as THREE.InstancedBufferAttribute;
     let count = 0;
     let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
-    for (const { owner, settings } of this.prefabLights) {
-      if (settings.radius <= 0 || settings.intensity <= 0) continue;
+    for (const owner of getPrefabLocalLightOwners()) {
+      const settings = getPrefabLocalLight(owner);
+      if (!settings || settings.radius <= 0 || settings.intensity <= 0 || !isInScene(owner)) continue;
       const position = owner.getWorldPosition(this.lightPosition);
       if (count === 0) this.ownerPosition.copy(position);
       origins.setXYZ(count, position.x, position.z, settings.radius);
@@ -221,30 +260,33 @@ export class DstLocalLighting {
     }
   }
 
+  /** One-off patch of every material already in the scene, for prewarming; frames patch lazily when drawn. */
   prepareScene(scene: THREE.Scene): void {
-    this.prefabLights.length = 0;
-    // New equipment, ground items and nearby scenery may introduce materials
-    // after startup. Shared atlas materials only receive this patch once.
     scene.traverse((object) => {
-      const light = getPrefabLocalLight(object);
-      if (light) this.prefabLights.push({ owner: object, settings: light });
       const material = (object as THREE.Mesh).material;
       if (!material) return;
-      let lightOverride = 0;
-      for (let owner: THREE.Object3D | null = object; owner; owner = owner.parent) {
-        const value = getPrefabLightOverride(owner);
-        if (value === undefined) continue;
-        lightOverride = value;
-        break;
-      }
-      // Placement sprites own their atlas materials, including skin atlases.
-      // Reset every frame so commits and animation changes restore normal light.
-      for (const entry of Array.isArray(material) ? material : [material]) {
-        this.patchMaterial(entry);
-        const uniform = this.lightOverrides.get(entry);
-        if (uniform) uniform.value = Math.max(lightOverride, getPrefabLightOverride(entry) ?? 0);
-      }
+      for (const entry of Array.isArray(material) ? material : [material]) this.patchMaterial(entry);
     });
+  }
+
+  /** Called from Material.onBeforeRender for each draw: patch new materials and set this object's light override. */
+  prepareDrawnMaterial(material: THREE.Material, object: THREE.Object3D, renderer: THREE.WebGLRenderer): void {
+    // The hook is global to three; other renderers (loading and menu stages) are not ours to light.
+    if (renderer !== this.renderer) return;
+    this.patchMaterial(material);
+    const uniform = this.lightOverrides.get(material);
+    if (!uniform) return;
+    let lightOverride = 0;
+    for (let owner: THREE.Object3D | null = object; owner; owner = owner.parent) {
+      const value = getPrefabLightOverride(owner);
+      if (value === undefined) continue;
+      lightOverride = value;
+      break;
+    }
+    const value = Math.max(lightOverride, getPrefabLightOverride(material) ?? 0);
+    // Sprite materials are per entity; three uploads this uniform when the material changes,
+    // so objects that share one material also share its override.
+    uniform.value = value;
   }
 
   private patchMaterial(material: THREE.Material): void {

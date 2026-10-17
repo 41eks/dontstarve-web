@@ -180,7 +180,7 @@ it('burns a planted flower to ash, leaving it out of the save while it burns', a
   const { worldEvents, ashSpawned } = ashEvents();
   const world = { scene, player: new THREE.Group(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  const flowers = new FlowerPlanting(world, '/dst/data/anim', undefined, Math.random, undefined, { scheduler, worldEvents });
+  const flowers = new FlowerPlanting(world, Math.random, { scheduler, worldEvents });
   try {
     const model = await flowers.spawnFromSave('flower-1', 'f1', new THREE.Vector3(3, 0, 4));
     const target = model.userData.actionEntity as ComponentActionEntity;

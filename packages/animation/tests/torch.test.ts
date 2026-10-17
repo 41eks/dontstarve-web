@@ -210,7 +210,7 @@ describe('torch prefab burning lifecycle', () => {
     const owner = new THREE.Vector3(12, 0, 0);
     const factory = createTorchGroundFactory({ scene: new THREE.Scene(), assets, animationBaseUrl: '/dst/data/anim', inventoryOwnerPosition: owner,
       bernieWorld: { getSanityPercent: () => 1 }, butterflyWorld: { getThreatPositions: () => [], getFlowers: () => [] },
-      firefliesWorld: {}, getNeighbours: () => [] });
+      firefliesWorld: {} });
     const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1, remainingFuel: 20, torchLit: true };
     const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 18 });
     entity.transform.position.set(4, 0, 6);

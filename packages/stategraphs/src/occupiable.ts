@@ -27,23 +27,23 @@ function canAct(action: OccupiableAction, target: OccupiableTarget): boolean {
 }
 
 /** Scene actions are discovered from component tags, never from the prefab ID. */
-export function getOccupiableActions(scene: THREE.Scene): MouseActionCandidate[] {
+export function getOccupiableActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
-  scene.traverse(model => {
-    const entity = model.userData.actionEntity as OccupiableTarget | undefined;
-    if (!entity?.components.occupiable && !entity?.components.shelf) return;
-    const target: OccupiableTarget = {
-      model, isRemoved: entity.isRemoved, components: entity.components, prefab: entity.prefab,
-      hasTag: tag => entity.hasTag(tag), getPosition: () => entity.getPosition(),
-    };
-    for (const action of ['HARVEST', 'TAKEITEM'] as const) {
-      if (!target.hasTag(action === 'HARVEST' ? 'occupied' : 'takeshelfitem')) continue;
-      const modifier = action === 'HARVEST' ? 'FREE' : 'BIRDCAGE';
-      for (const button of ['left', 'right'] as const) actions.push({
-        action: { action, modifier, target }, button, model, available: canAct(action, target),
-      });
-    }
-  });
+  if (!model) return actions;
+  const entity = model.userData.actionEntity as OccupiableTarget | undefined;
+  if (!entity?.components.occupiable && !entity?.components.shelf) return actions;
+  const target: OccupiableTarget = {
+    model, isRemoved: entity.isRemoved, components: entity.components, prefab: entity.prefab,
+    hasTag: tag => entity.hasTag(tag), getPosition: () => entity.getPosition(),
+  };
+  for (const action of ['HARVEST', 'TAKEITEM'] as const) {
+    if (!target.hasTag(action === 'HARVEST' ? 'occupied' : 'takeshelfitem')) continue;
+    const modifier = action === 'HARVEST' ? 'FREE' : 'BIRDCAGE';
+    for (const button of ['left', 'right'] as const) actions.push({
+      action: { action, modifier, target }, button, model, available: canAct(action, target),
+    });
+  }
+
   return actions;
 }
 
@@ -71,7 +71,7 @@ export class OccupiableActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.give = give; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
-    this.unregister = this.picker.register(() => getOccupiableActions(world.scene));
+    this.unregister = this.picker.register(model => getOccupiableActions(model));
     this.stopActionEvents = bindActionCancellation(world, this, 'harvest', () => this.cancel());
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -147,7 +147,7 @@ export class OccupiableActionController {
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (this.disposed || event.defaultPrevented || (event.button !== 0 && event.button !== 2)) return;
     this.picker.pointer.trackPointer(event);
-    const actions = this.picker.getMouseActions();
+    const actions = this.picker.getMouseActions(event);
     const action = event.button === 0 ? actions.left : actions.right;
     const target = action?.target as OccupiableTarget | undefined;
     // Stewer harvests share the HARVEST action id and belong to HarvestActionController.

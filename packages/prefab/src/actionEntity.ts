@@ -3,6 +3,9 @@ import type { ComponentActionEntity } from '../../stategraphs/src/componentactio
 import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorkableInst } from '../../componets/src/workable';
 import { TileTracker } from '../../componets/src/tileManager';
+import { registerMouseTarget } from '../../stategraphs/src/mouseTargets';
+import { retainSpatialEntity, syncEntitySpatial, visitEntitiesNear } from '../../stategraphs/src/entitySpatialIndex';
+import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
 
 /** Existing world removal writes update the sole lifecycle signal, including inside batches. */
 function modelRemoval(model: THREE.Group): ReadonlySignal<boolean> {
@@ -19,6 +22,7 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
   if (model.userData.actionEntity) return model.userData.actionEntity;
   model.userData.components ??= {};
   const removal = inst?.removal ?? modelRemoval(model);
+  let mouseTarget: ReturnType<typeof registerMouseTarget> | undefined;
   const entity: ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3; getPhysicsRadius(): number } = {
     model,
     prefab,
@@ -41,12 +45,16 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
         model.userData.tags ??= [];
         if (!model.userData.tags.includes(tag)) model.userData.tags.push(tag);
       }
-      if (tag === 'tickingarea' && !entity.isRemoved) activeEntities.add(entity);
+      if (tag === 'NOCLICK' || tag === 'tickingarea') mouseTarget?.refresh();
+      syncPlacementEntity(model);
+      syncEntitySpatial(model);
     },
     removeTag(tag) {
       if (inst) inst.removeTag(tag);
       else model.userData.tags = (model.userData.tags ?? []).filter((value: string) => value !== tag);
-      if (tag === 'tickingarea') activeEntities.delete(entity);
+      if (tag === 'NOCLICK' || tag === 'tickingarea') mouseTarget?.refresh();
+      syncPlacementEntity(model);
+      syncEntitySpatial(model);
     },
     PushEvent: (name, data) => {
       if (inst) inst.PushEvent?.(name, data);
@@ -54,10 +62,19 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
     },
   };
   model.userData.actionEntity = entity;
+  const spatial = retainSpatialEntity(model, entity.getPosition);
+  const stopPlacement = registerPlacementEntity(model, entity.getPosition);
+  mouseTarget = registerMouseTarget(model, () => !entity.isRemoved && entity.hasTag('tickingarea') && !entity.hasTag('NOCLICK'));
+  const stopTags = (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
+    ?.ListenForEvent?.('tagchanged', () => { mouseTarget?.refresh(); syncPlacementEntity(model); syncEntitySpatial(model); });
   liveEntities.add(entity);
   const stopRemoval = removal.subscribe(removed => { if (removed) disposeActionEntity(model); });
   disposals.set(entity, () => {
     stopRemoval();
+    stopTags?.();
+    mouseTarget?.dispose();
+    stopPlacement();
+    spatial.dispose();
     entityWorlds.get(entity)?.remove(entity);
     entity.removeTag('tickingarea');
     liveEntities.delete(entity);
@@ -71,11 +88,10 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
 }
 
 /**
- * The engine's entity list: every projected inst, so FindEntities never walks the scene graph (whose nodes are
- * mostly sprite internals). Removed insts leave when their removal signal fires; attachment to a root is checked per query.
+ * The engine's lifecycle list adopts projected insts when a world binds. Radius and mouse queries use the shared
+ * spatial index; removed insts leave both registrations when their removal signal fires.
  */
 const liveEntities = new Set<FoundEntity>();
-const activeEntities = new Set<FoundEntity>();
 const disposals = new Map<FoundEntity, () => void>();
 const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
 let currentEntityWorld: EntityTickingArea | undefined;
@@ -167,14 +183,14 @@ export type FoundEntity = ComponentActionEntity & WorkableInst & { getPosition()
 export function FindEntities(root: THREE.Object3D, position: THREE.Vector3, radius: number,
   mustTags: readonly string[] = [], cantTags: readonly string[] = [], oneOfTags: readonly string[] = []): FoundEntity[] {
   const found: FoundEntity[] = [];
-  const radiusSquared = radius ** 2;
-  for (const inst of activeEntities) {
-    const model = (inst as { model?: THREE.Object3D }).model;
-    if (!model || !isUnder(model, root) || inst.isRemoved || !inst.hasTag('tickingarea')) continue;
+  visitEntitiesNear(position, radius, model => {
+    const inst = model.userData.actionEntity as FoundEntity | undefined;
+    // Radius has already narrowed the grid candidates; test tags before walking the root chain.
+    if (!inst || inst.isRemoved || !inst.hasTag('tickingarea')) return;
     if (mustTags.some(tag => !inst.hasTag(tag)) || cantTags.some(tag => inst.hasTag(tag))
-      || (oneOfTags.length > 0 && !oneOfTags.some(tag => inst.hasTag(tag)))) continue;
-    if (inst.getPosition().distanceToSquared(position) > radiusSquared) continue;
+      || (oneOfTags.length > 0 && !oneOfTags.some(tag => inst.hasTag(tag)))) return;
+    if (!isUnder(model, root)) return;
     found.push(inst);
-  }
+  });
   return found;
 }

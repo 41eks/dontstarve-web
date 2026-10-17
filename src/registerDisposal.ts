@@ -10,11 +10,13 @@ import {
   ReskinActionController, SleepActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import { ItemEntity } from '@dontstarve-web/inventory';
+import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { FISHINGROD_ID, getFishingRod } from '@dontstarve-web/prefab/fishingrod';
 import { Reader } from '../packages/componets/src/reader';
 import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
-import { Combat, type CombatInst } from '../packages/componets/src/combat';
+import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
+import type { PickActor } from '../packages/stategraphs/src/pick';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
@@ -139,11 +141,22 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       }
       const frameControllers: FrameController[] = [];
       const actionControllers: Disposable[] = [];
+      let playerCombat: Combat | undefined;
+      const pickActor: PickActor = {
+        hasTag: tag => tag === 'player' || (player.userData.tags?.includes(tag) ?? false),
+        PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
+        components: {
+          sanity: { DoDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) },
+          inventory,
+          get combat() { return playerCombat; },
+        },
+      };
       const preparePickDoer = async (itemId: string, count: number, original?: ItemEntity) => {
         const entity = original ?? inventory.entities.create({ itemId, count });
         let committed = false;
         return {
           loot: entity,
+          picker: pickActor,
           giveItem: (_itemId: string, _count: number, sourcePosition: Vector3) => {
             if (committed || entity.isRemoved) return false;
             committed = inventory.GiveItem(entity, sourcePosition);
@@ -337,7 +350,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         view.registerFrameTask = registerFrontTask;
         const bugNet = new BugNetCaptureController(view, playerAnimation, locomotor,
           handEquipment,
-          () => groundItems.netCaptureTargets,
+          (model) => groundItems.getNetCaptureTargets(model),
           isActionInterrupting);
         actionControllers.push(bugNet);
         groundItems.setNetCaptureHandler(target => bugNet.request(target));
@@ -350,7 +363,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           },
         };
         const fishing = new FishingActionController(view, playerAnimation, locomotor, handEquipment,
-          () => ponds.fishTargets,
+          (model) => ponds.getFishTargets(model),
           () => {
             const entity = handEquipment.peek()?.entity;
             return entity instanceof ItemEntity && entity.prefab === FISHINGROD_ID && !entity.isRemoved
@@ -361,12 +374,18 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
 
         // player_common.lua: combat with UNARMED_DAMAGE, WILSON_ATTACK_PERIOD and DEFAULT_ATTACK_RANGE.
         const unit = TILE_SIZE / 4;
-        const attackerInst: CombatInst = {
-          getPosition: () => new Vector3(player.position.x, 0, player.position.z),
+        const attackerInst: CombatActor = {
+          getPosition: () => player.position,
           getPhysicsRadius: () => .5 * unit,
           hasTag: tag => tag === 'player' || tags.includes(tag),
           PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
-          components: {},
+          components: { health: {
+            IsDead: () => playerStats.health.peek() <= 0,
+            DoDelta: delta => {
+              playerStats.health.set(playerStats.health.peek() + delta);
+              return delta;
+            },
+          } },
         };
         const combat = new Combat(attackerInst, () => scheduler.now,
           () => equippedActionEntity(handEquipment.peek())?.components.weapon);
@@ -374,6 +393,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         combat.SetAttackPeriod(.4);
         combat.SetRange(2 * unit);
         attackerInst.components.combat = combat;
+        playerCombat = combat;
         playerAnimation.combat = combat;
         actionControllers.push(new AttackActionController(view, playerAnimation, locomotor, handEquipment,
           { inst: attackerInst, combat }, () => [...buildingPlacement.combatTargets, ...groundItems.combatTargets], isActionInterrupting, unit));
@@ -384,14 +404,14 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           hasTag: tag => player.userData.tags?.includes(tag) ?? false,
           components: { sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) } },
         }, isActionInterrupting, (error) => console.error('Unable to cast spell', error),
-        () => [...groundItems.spellTargets, ...buildingPlacement.spellTargets]);
+        (model) => [...groundItems.getSpellTargets(model), ...buildingPlacement.getSpellTargets(model)]);
 
         const hammer = new HammerActionController(view, playerAnimation, locomotor,
           handEquipment,
-          () => [...buildingPlacement.hammerTargets, ...farmPlow.hammerTargets, ...groundItems.hammerTargets],
+          (model) => [...buildingPlacement.getHammerTargets(model), ...farmPlow.getHammerTargets(model), ...groundItems.getHammerTargets(model)],
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, () => [...rockManager.mineTargets, ...marbleShrubs.mineTargets, ...groundItems.mineTargets], isActionInterrupting);
+          handEquipment, (model) => [...rockManager.getMineTargets(model), ...marbleShrubs.getMineTargets(model), ...groundItems.getMineTargets(model)], isActionInterrupting);
         const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity || !turfTileName(entity.prefab)) return undefined;
@@ -407,12 +427,14 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
             putBack: item => { if (!inventory.receiveAt(address, item)) inventory.GiveItem(item); } };
         }, {
-          plants: { marblebean_sapling: marbleBeanSaplings, rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings, rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes },
+          plants: {
+            marblebean_sapling: marbleBeanSaplings, rock_avocado_fruit_sprout_sapling: rockAvocadoSaplings,
+            rock_avocado_bush: rockAvocadoBushes, monkeytail: monkeytails, berrybush: berrybushes,
+            sapling: { prepareTransplant: () => saplings.prepareTransplant('sapling') },
+            sapling_moon: { prepareTransplant: () => saplings.prepareTransplant('sapling_moon') },
+            planted_flower: flowerPlanting, moonbutterfly_sapling: moonTreeForest,
+          },
           canPlant: point => turfMap.canDeployPlantAtPoint(point),
-          getBlockers: () => scene.registry.renderEntities.filter(({ object }) => object.visible && !object.userData.placer)
-            .map(({ object, footPosition }) => ({ position: footPosition, tags: object.userData.tags,
-              smartRadius: object.userData.deploySmartRadius,
-              inventoryRadius: object.userData.itemId ? object.userData.physicsRadius ?? .5 * (TILE_SIZE / 4) : undefined })),
         }, isActionInterrupting);
         const pitchfork = new PitchforkActionController(view, playerAnimation, locomotor,
           handEquipment, turfMap, isActionInterrupting);
@@ -420,14 +442,14 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           handEquipment, farmPlow, isActionInterrupting,
           (error) => console.error('Unable to till farm soil', error));
         const shovel = new ShovelActionController(view, playerAnimation, locomotor,
-          handEquipment, () => [...farmPlow.digTargets, ...molehills.digTargets, ...marbleBeanSaplings.digTargets, ...rockAvocadoSaplings.digTargets, ...rockAvocadoBushes.digTargets, ...berrybushes.digTargets, ...monkeytails.digTargets, ...grasses.digTargets, ...saplings.digTargets, ...moonTreeForest.digTargets, ...evergreenForest.digTargets, ...deciduousForest.digTargets], isActionInterrupting);
+          handEquipment, (model) => [...farmPlow.getDigTargets(model), ...molehills.getDigTargets(model), ...marbleBeanSaplings.getDigTargets(model), ...rockAvocadoSaplings.getDigTargets(model), ...rockAvocadoBushes.getDigTargets(model), ...berrybushes.getDigTargets(model), ...monkeytails.getDigTargets(model), ...grasses.getDigTargets(model), ...saplings.getDigTargets(model), ...moonTreeForest.getDigTargets(model), ...evergreenForest.getDigTargets(model), ...deciduousForest.getDigTargets(model)], isActionInterrupting);
         const reskin = new ReskinActionController(view, playerAnimation, locomotor,
           handEquipment,
-          () => [...buildingPlacement.reskinTargets, ...groundItems.reskinTargets, ...wormholes.reskinTargets, ...berrybushes.reskinTargets], reskinEffects,
+          (model) => [...buildingPlacement.getReskinTargets(model), ...groundItems.getReskinTargets(model), ...wormholes.getReskinTargets(model), ...berrybushes.getReskinTargets(model)], reskinEffects,
           isActionInterrupting, (error) => console.error('Unable to reskin target', error));
         const lighter = new LighterActionController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting);
         const axe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, () => [...moonTreeForest.chopTargets, ...evergreenForest.chopTargets, ...deciduousForest.chopTargets], isActionInterrupting, 'CHOP');
+          handEquipment, (model) => [...moonTreeForest.getChopTargets(model), ...evergreenForest.getChopTargets(model), ...deciduousForest.getChopTargets(model)], isActionInterrupting, 'CHOP');
         actionControllers.push(spellcast, hammer, pickaxe, axe, pitchfork, turfDeployment, plantDeployment, farmHoe, shovel, reskin, lighter);
       }
 
@@ -475,14 +497,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           });
           return;
         }
-        if (stack.itemId === 'butterfly' || stack.itemId === 'moonbutterfly') {
-          const original = inventory.getEntity(slot);
-          void flowerPlanting.begin(() => inventory.getEntity(slot) === original && !original?.isRemoved && inventory.applySlotChanges([{
-            slot, itemId: stack.itemId, delta: -1,
-            ...(stack.skinId === undefined ? {} : { skinId: stack.skinId }),
-          }]), stack.itemId).catch((error: unknown) => {
-            console.error('Unable to start butterfly planting', error);
-          });
+        if (PLANTABLES[stack.itemId]) {
+          if (!inventory.get(cursorSlotAddress())) inventory.transfer(slot, cursorSlotAddress(), stack.count);
           return;
         }
         const entity = inventory.getEntity(slot);
@@ -501,11 +517,16 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           }).catch((error: unknown) => console.error(`Unable to eat ${stack.itemId}`, error));
           return;
         }
-        if (stack.itemId === 'backpack') {
+        if (stack.itemId === 'backpack' || stack.itemId === ARMORSNURTLESHELL_ID) {
           const equipped = slot.containerId === bodySlotAddress.containerId && slot.slotKey === bodySlotAddress.slotKey;
           const target = equipped
             ? Array.from({ length: 15 }, (_, index) => inventorySlotAddress(index)).find((address) => !inventory.get(address))
             : inventory.get(bodySlotAddress) === null ? bodySlotAddress : undefined;
+          // componentactions.lua INVENTORY.useableitem: USEITEM outranks UNEQUIP for a worn item.
+          if (equipped && entity?.components.useableitem?.CanInteract()) {
+            entity.components.useableitem.StartUsingItem();
+            return;
+          }
           if (target) inventory.transfer(slot, target, 1);
         }
       });

@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { TILE_SIZE } from './tile';
 import { PickablePlantManager, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
 
 export const SAPLING_PREFABS = ['sapling', 'sapling_moon'] as const;
@@ -24,6 +25,8 @@ function saplingDefinition(prefab: SaplingPrefabId): PickablePlantDefinition {
     empty: { name: 'empty', frame: 'first' },
     grow: 'grow',
     dugLoot: `dug_${prefab}`,
+    deploySmartRadius: .5 * (TILE_SIZE / 4),
+    onTransplant: pickable => pickable.MakeEmpty(),
   };
 }
 export const SAPLING_DEFINITIONS: Readonly<Record<SaplingPrefabId, PickablePlantDefinition>> = {
@@ -35,6 +38,15 @@ export const SAPLING_DEFINITIONS: Readonly<Record<SaplingPrefabId, PickablePlant
 export class SaplingManager extends PickablePlantManager {
   spawn(prefabId: SaplingPrefabId, position: THREE.Vector3, saved?: SaplingRecord): Promise<THREE.Group> {
     return this.spawnPlant(SAPLING_DEFINITIONS[prefabId], position, saved);
+  }
+
+  async prepareTransplant(prefabId: SaplingPrefabId): Promise<{ spawn(position: THREE.Vector3): boolean; dispose(): void }> {
+    const prepared = await this.preparePlant(SAPLING_DEFINITIONS[prefabId]);
+    return { dispose: () => prepared.dispose(), spawn: position => {
+      const model = prepared.spawn(position);
+      model.userData.components.pickable.OnTransplant();
+      return true;
+    } };
   }
 
   exportRecords(): { prefabId: SaplingPrefabId; record: SaplingRecord }[] {

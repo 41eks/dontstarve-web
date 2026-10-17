@@ -1,3 +1,4 @@
+import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -124,9 +125,10 @@ export class MarbleBeanSaplingManager {
   get renderEntities() {
     return [...this.saplings.values()].map(({ sprite }) => ({ object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 }));
   }
+  get digTargets(): ShovelTarget[] { return this.getDigTargets(); }
 
-  get digTargets(): ShovelTarget[] {
-    return [...this.saplings].map(([model, sapling]) => ({ id: String(model.userData.entityId), model, position: model.position,
+  getDigTargets(model?: THREE.Object3D): ShovelTarget[] {
+    return modelEntries(this.saplings, model).map(([model, sapling]) => ({ id: String(model.userData.entityId), model, position: model.position,
       entity: actionEntity(model, MARBLEBEAN_SAPLING_ID),
       isValid: () => this.saplings.get(model) === sapling && sapling.workable.CanBeWorked(),
       dig: () => performToolWork('DIG', actionEntity(model, MARBLEBEAN_SAPLING_ID), {}),

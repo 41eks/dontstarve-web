@@ -2,7 +2,7 @@ import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/invento
 import * as CANNON from 'cannon-es';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
-import { compareRenderEntries, setSpriteEntityRenderOrder } from '@dontstarve-web/animation';
+import { SpriteRenderOrderSorter } from '@dontstarve-web/animation';
 import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
@@ -10,7 +10,7 @@ import { createAnimationUpdater } from './animation';
 import { ground, turfGround, turfMap } from './building';
 import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
-import type { EntityRegistry, EntityRenderEntry } from './entityRegistry';
+import type { EntityRegistry } from './entityRegistry';
 import { player, playerBody, setPlayerNormal } from './player';
 import {
   type PlaceableBuildingInteractionChange,
@@ -88,28 +88,11 @@ export const locomotor = new Locomotor(playerBody, {
 const updatePlayerMovement = updateMovement(camera, player, playerBody, locomotor);
 const updateAnimation = createAnimationUpdater(player, camera);
 const cameraWorldQuaternion = new THREE.Quaternion();
-const playerFootPosition = new THREE.Vector3();
-const cameraSpaceFootPosition = new THREE.Vector3();
+const renderOrderSorter = new SpriteRenderOrderSorter();
+const playerRenderEntry = { object: player, footPosition: player.position };
 
 function updateCharacterRenderOrder(registry: EntityRegistry) {
-  playerFootPosition.copy(player.position);
-  const renderEntries: EntityRenderEntry[] = [
-    { object: player, footPosition: playerFootPosition, cameraDepth: 0 },
-    ...registry.renderEntities,
-  ];
-  for (const entry of renderEntries) {
-    entry.cameraDepth = cameraSpaceFootPosition
-      .copy(entry.footPosition)
-      .applyMatrix4(camera.matrixWorldInverse)
-      .z;
-  }
-
-  // Visible camera-space z values are negative. Sorting ascending therefore
-  // draws the farther entity first, then the nearer entity over it.
-  renderEntries.sort(compareRenderEntries);
-  renderEntries.forEach((entry, index) => {
-    setSpriteEntityRenderOrder(entry.object, index);
-  });
+  renderOrderSorter.update([playerRenderEntry, ...registry.renderEntities], camera.matrixWorldInverse);
 }
 
 function getVelocity(): number {
@@ -131,7 +114,6 @@ if (!window.location.hostname.endsWith('github.io')) {
 export async function startScene(
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
-  onFlowerPlanted?: () => void,
   itemEntities?: ItemEntityRegistry,
   inventory?: InventoryStore,
 ) {
@@ -147,7 +129,7 @@ export async function startScene(
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
   itemEntities?.bindPerishWorld(perishWorld);
   const entities = await createSceneEntities(world, worldState, consumeBufferedBuild,
-    onBuildingInteraction, onFlowerPlanted, itemEntities, inventory, scheduler);
+    onBuildingInteraction, itemEntities, inventory, scheduler);
   const { registry } = entities;
   try {
     // Scan the save here; the archive worker decodes the needed art while entities restore and share its cache.

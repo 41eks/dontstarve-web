@@ -175,7 +175,7 @@ describe('original bugnet assets and Wilson action', () => {
 
 describe('NET hover candidates', () => {
   it('builds no targets for the mouse picker until the net is equipped', () => {
-    let provider!: () => readonly unknown[];
+    let provider!: (model?: THREE.Object3D) => readonly unknown[];
     const world = { player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() },
       mouseActions: { pointer: {}, register: (source: typeof provider) => { provider = source; return () => {}; } } } as unknown as WorldContext;
@@ -188,7 +188,8 @@ describe('NET hover candidates', () => {
     expect(provider()).toEqual([]);
     expect(getTargets).not.toHaveBeenCalled();
     equipped.set(actionTool('bugnet'));
-    expect(provider()).toHaveLength(1);
+    expect(provider(target.model)).toHaveLength(1);
+    expect(getTargets).toHaveBeenCalledExactlyOnceWith(target.model);
     controller.dispose();
   });
 });

@@ -1,3 +1,4 @@
+import { ModelRecords } from './modelRecords';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -120,6 +121,7 @@ export class FencePlacement {
     private readonly stopActionEvents: () => void;
     private readonly heading: Signal<number>;
     private readonly cleanups: (() => void)[] = [];
+    private readonly mouseRecords = new ModelRecords<FenceInstance>();
     private readonly placed = new Set<FenceInstance>();
     private readonly fires = new Set<ArchiveSprite>();
     private readonly effects = new Set<ArchiveSprite>();
@@ -197,9 +199,11 @@ export class FencePlacement {
                 object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 })));
     }
 
-    get hammerTargets(): readonly HammerTarget[] {
+    get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
+
+    getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
         const targets: HammerTarget[] = [];
-        for (const fence of this.placed) {
+        for (const fence of this.mouseRecords.select(model, this.placed)) {
             const entity = actionEntity(fence.root, FENCE_ID);
             if (!entity.hasTag('HAMMER_workable')) continue;
             targets.push({
@@ -220,9 +224,11 @@ export class FencePlacement {
         }));
     }
 
-    get reskinTargets(): readonly ReskinTarget[] {
+    get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
+
+    getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
         const skins = Object.keys(FENCE_SKIN_ARCHIVES);
-        return Array.from(this.placed, (fence) => {
+        return Array.from(this.mouseRecords.select(model, this.placed), (fence) => {
             const isValid = () => this.isLive(fence);
             return {
                 id: String(fence.root.userData.entityId), prefabId: FENCE_ID, model: fence.root,
@@ -592,7 +598,7 @@ export class FencePlacement {
     }
 
     private place(fence: FenceInstance): void {
-        this.placed.add(fence);
+        this.placed.add(fence); this.mouseRecords.set(fence.root, fence);
         fence.root.visible = true;
         this.initializeEntity(fence);
         this.faceCamera(fence.root);

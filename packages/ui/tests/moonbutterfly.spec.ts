@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
-const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
+const urls = Object.fromEntries(['main', 'universal', 'camera', 'player', 'view'].map(name =>
   [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
 
 test('spawned moonbutterfly glows, flies away on its own and survives save and load', async ({ page }) => {
@@ -61,6 +61,8 @@ test('plants a captured moonbutterfly, saves seedlings and tree commands, and gr
   await page.route('**/saves/initial-world.json', async route => {
     const response = await route.fetch(), save = await response.json();
     save.world.entities = {};
+    save.world.map.generator.options.size = 96;
+    delete save.world.map.tiles;
     save.players.local.transform.position = [0, 0, 0];
     for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
     save.players.local.inventory.bufferedBuilds = [];
@@ -68,8 +70,8 @@ test('plants a captured moonbutterfly, saves seedlings and tree commands, and gr
   });
   const prepare = () => page.evaluate(async paths => {
     const main = await import(paths.main), { scene, renderer } = await import(paths.universal);
-    const { camera } = await import(paths.camera), { player } = await import(paths.player);
-    (window as any).mothGame = { main, scene, renderer, camera, player };
+    const { camera } = await import(paths.camera), { player } = await import(paths.player), { view } = await import(paths.view);
+    (window as any).mothGame = { main, scene, renderer, camera, player, view };
   }, urls);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
@@ -77,7 +79,7 @@ test('plants a captured moonbutterfly, saves seedlings and tree commands, and gr
     const download = page.waitForEvent('download', { timeout: 15_000 }); await submit('c_save()');
     return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
   };
-  const preview = () => page.evaluate(() => (window as any).mothGame.scene.children.some((model: any) => model.name === 'MoonButterflyPlacer'));
+  const preview = () => page.evaluate(() => (window as any).mothGame.scene.children.some((model: any) => model.name === 'PlantPlacer'));
   await page.goto('/tests/dst-lighting.html'); await prepare();
   await submit('c_give("moonbutterfly", 2)');
   const slot = page.locator('dst-inventory-bar .inventory-bar__items [data-item-id="moonbutterfly"]');
@@ -91,10 +93,14 @@ test('plants a captured moonbutterfly, saves seedlings and tree commands, and gr
     const ndc = player.position.clone().set(6, 0, -6).project(camera), bounds = renderer.domElement.getBoundingClientRect();
     return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   });
+  await page.mouse.move(point.x, point.y);
+  await expect.poll(() => page.evaluate(() => (window as any).mothGame.view.mouseActions.getMouseActions().right?.action)).toBe('DEPLOY');
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(preview).toBe(false);
   await expect.poll(() => page.evaluate(() => (window as any).mothGame.scene.children.find((model: any) => model.name === 'MoonTreeForest')
     .children.filter((model: any) => model.userData.prefab === 'moonbutterfly_sapling').length)).toBe(1);
+  await expect(page.locator('.slot-drag-preview')).toHaveAttribute('data-item-id', 'moonbutterfly');
+  await page.keyboard.press('Escape');
+  await expect.poll(preview).toBe(false);
   const planted = await saveGame();
   const seed = planted.world.entities.moonbutterfly_sapling[0];
   expect(seed.transform.position[0]).toBeCloseTo(6);

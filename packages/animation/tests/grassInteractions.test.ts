@@ -121,7 +121,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(state.phase.peek()).toBe('burning');
     expect(state.persistence.peek()).toBe(false);
     expect(s.grass.exportRecords()).toEqual([]);
-    expect(getPickActions(s.scene).find(action => action.model === model)?.available).toBe(false);
+    expect(getPickActions(model).find(action => action.model === model)?.available).toBe(false);
     expect(s.grass.digTargets[0].isValid()).toBe(true);
     tickWorld(s.scheduler, s.grass, 10, new THREE.Quaternion());
     expect(burnable.timer.peek()).toBe(timer);

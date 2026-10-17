@@ -31,7 +31,7 @@ export class BugNetCaptureController {
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
   private readonly stopActionEvents: () => void;
-  private readonly getTargets: () => readonly NetCaptureTarget[];
+  private readonly getTargets: (model?: THREE.Object3D) => readonly NetCaptureTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly pointer: PointerRaycaster;
   private readonly unregisterHover: () => void;
@@ -48,7 +48,7 @@ export class BugNetCaptureController {
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
-    getTargets: () => readonly NetCaptureTarget[],
+    getTargets: (model?: THREE.Object3D) => readonly NetCaptureTarget[],
     isManualMovement = () => false,
   ) {
     this.world = world;
@@ -68,8 +68,8 @@ export class BugNetCaptureController {
     this.stopActionEvents = bindActionCancellation(world, this, 'net', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     // Without the net equipped no target can be worked, so none is built or ray-tested.
-    this.unregisterHover = world.mouseActions?.register(() => !this.isEquipped() ? [] :
-      this.getTargets().filter(target => target.isValid() && target.isClickable?.() !== false).map(target => ({
+    this.unregisterHover = world.mouseActions?.register(model => !model || !this.isEquipped() ? [] :
+      this.getTargets(model).filter(target => target.isValid() && target.isClickable?.() !== false).map(target => ({
         action: { action: 'NET', invobject: equippedActionEntity(this.handEquipment.peek()), target: target.entity },
         button: 'left', model: target.model, available: this.canWork(target), source: 'equipped',
       }))) ?? (() => {});

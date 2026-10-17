@@ -71,7 +71,7 @@ describe('nearby entity lifecycle', () => {
     expect(dispose).toHaveBeenCalledTimes(2);
   });
 
-  it('shares archive textures while disposing only departing entity geometry', async () => {
+  it('shares archive textures and frame geometry between sprites of one factory', async () => {
     const factory = await createAnimatedSpriteFactory('/dst/data/anim', 'moon_tree.zip');
     const options = { initialAnimation: 'sway1_loop_tall' };
     const first = factory.create(options);
@@ -79,16 +79,19 @@ describe('nearby entity lifecycle', () => {
     const firstMesh = spriteMesh(first);
     const secondMesh = spriteMesh(second);
     expect(loadAnimationArchive).toHaveBeenCalledTimes(1);
-    expect(firstMesh.geometry).not.toBe(secondMesh.geometry);
+    // Identical frames are built once per factory, so sprites draw the same buffers.
+    expect(firstMesh.geometry).toBe(secondMesh.geometry);
     expect(first.userData.animationController).not.toBe(second.userData.animationController);
     expect(firstMesh.material[0]).toBe(secondMesh.material[0]);
     expect(firstMesh.material[0].map).toBe(secondMesh.material[0].map);
-    const geometryDispose = vi.spyOn(firstMesh.geometry, 'dispose');
     const textureDispose = vi.spyOn(firstMesh.material[0].map!, 'dispose');
     factory.disposeSprite(first);
-    expect(geometryDispose).toHaveBeenCalledTimes(1);
+    expect(secondMesh.geometry.getAttribute('position')).toBeDefined();
     expect(textureDispose).not.toHaveBeenCalled();
     second.userData.animationController.update(0.1);
+    // A per-instance appearance (hidden layer) leaves the shared frames and draws its own buffers.
+    second.userData.animationController.setSymbolOverrides(new Map(), ['not_a_layer']);
+    expect(secondMesh.geometry).not.toBe(firstMesh.geometry);
     factory.dispose();
     expect(textureDispose).toHaveBeenCalledTimes(1);
     expect(() => factory.create(options)).toThrow('disposed');

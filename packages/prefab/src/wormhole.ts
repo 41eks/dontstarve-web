@@ -1,3 +1,4 @@
+import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { loadAnim, loadBuild, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
 import {
@@ -10,7 +11,7 @@ import { newEntityId } from './saveRecord';
 import { nextReskin } from './reskin_tool';
 import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { TILE_SIZE } from './tile';
-import { actionEntity } from './actionEntity';
+import { actionEntity, disposeActionEntity } from './actionEntity';
 
 export const WORMHOLE_ID = 'wormhole' as const;
 // prefabskins.lua order; wormhole_init_fn swaps the build, retaining the base bank.
@@ -42,6 +43,7 @@ interface WormholeEntity {
 /** SGwormhole artwork/proximity only; no teleporter or paired destination. */
 export class WormholeManager {
   private readonly factories = new Map<string, Promise<AnimatedSpriteFactory>>();
+  private readonly mouseRecords = new ModelRecords<WormholeEntity>();
   private readonly wormholes = new Set<WormholeEntity>();
   private readonly scene: THREE.Scene;
   private readonly assetBaseUrl: string;
@@ -66,7 +68,8 @@ export class WormholeManager {
     if (skinId !== undefined) model.userData.skinId = skinId;
     const entity: WormholeEntity = { model, skinId, state: 'idle', elapsed: 0, nearby: false, groundLayer: false };
     model.userData.wormholeState = entity.state;
-    this.wormholes.add(entity);
+    actionEntity(model, WORMHOLE_ID);
+    this.wormholes.add(entity); this.mouseRecords.set(entity.model, entity);
     this.scene.add(model);
     return model;
   }
@@ -111,14 +114,19 @@ export class WormholeManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const { model } of this.wormholes) model.removeFromParent();
+    for (const { model } of this.wormholes) {
+      disposeActionEntity(model);
+      model.removeFromParent();
+    }
     this.wormholes.clear();
     for (const request of this.factories.values()) void request.then((factory) => factory.dispose(), () => undefined);
     this.factories.clear();
   }
 
-  get reskinTargets(): readonly ReskinTarget[] {
-    return [...this.wormholes].map((entity) => {
+  get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
+
+  getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
+    return this.mouseRecords.select(model, this.wormholes).map((entity) => {
       const { model } = entity;
       const isValid = () => !this.disposed && this.wormholes.has(entity) && model.visible && model.parent !== null;
       return {

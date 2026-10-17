@@ -1057,6 +1057,21 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "butter": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/butter.lua",
+      "name": "黄油",
+      "icon": "butter.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "butter.zip",
+      "buildArchives": [
+        "butter.zip"
+      ],
+      "bank": "butter",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "honey": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/honey.lua",
       "name": "蜂蜜",
@@ -3554,6 +3569,21 @@
         "nightsword_sharp": "dynamic/nightsword_sharp.zip",
         "nightsword_wizard": "dynamic/nightsword_wizard.zip"
       }
+    },
+    "armorsnurtleshell": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/armor_snurtleshell.lua",
+      "name": "蜗壳护甲",
+      "icon": "armorsnurtleshell.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "armor_slurtleshell.zip",
+      "buildArchives": [
+        "armor_slurtleshell.zip"
+      ],
+      "bank": "armor_slurtleshell",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
     },
     "bugnet": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bugnet.lua",

@@ -3,7 +3,7 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable, type Worker } from '../../componets/src/workable';
 import { createGroundItemSprite } from './groundItems';
 import { configureTradableEntity } from './tradable';
-import { createBurnableItemVisual } from './burnableItems';
+import { burnableFireRenderEntry, createBurnableItemVisual } from './burnableItems';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { GroundItemFactory, GroundPrefabContext, PreparedGroundSpawn } from './groundPrefab';
 import type { LootLaunch } from './lootFling';
@@ -120,7 +120,7 @@ export function createRockAvocadoGroundFactory(context: GroundPrefabContext): Gr
       } };
     },
     update(dt, quaternion) { for (const fire of fires) { fire.model.quaternion.copy(quaternion); fire.update(dt); } },
-    renderEntities: () => [...fires].map(fire => ({ object: fire.model, footPosition: fire.model.position, cameraDepth: 0 })),
+    renderEntities: () => [...fires].map(burnableFireRenderEntry),
     dispose() { for (const fire of fires) fire.dispose(); fires.clear(); },
   };
 }

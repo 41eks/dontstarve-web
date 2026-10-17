@@ -19,7 +19,7 @@ import {
   type SlotTransferRequest,
   slotTransferController,
 } from '@dontstarve-web/ui';
-import { type PickupDoer, PointerRaycaster } from '@dontstarve-web/stategraphs';
+import { type PickupDoer, PointerRaycaster, type WilsonStateName } from '@dontstarve-web/stategraphs';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { DOCK_KIT_ID } from '@dontstarve-web/prefab/dock_kit';
 import { FARM_PLOW_ITEM_ID, SEED_ITEM_IDS } from '@dontstarve-web/prefab/farm_plow';
@@ -106,7 +106,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
   });
 }
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
-const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: unknown) => void): () => void } = {
+const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void } = {
   components: { inventory },
   ListenForEvent(name, listener) {
     const handler = (event: { data?: unknown }) => listener(event.data);
@@ -115,6 +115,8 @@ const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: u
   },
   hasTag: tag => tag === 'player' || (player.userData.tags?.includes(tag) ?? false),
   GetPosition: () => player.position,
+  HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
+  GoToState: name => playerAnimation?.stategraph.goToState(name as WilsonStateName),
   PushEvent: (name, data) => {
     // player_common.lua listens for itemranout; SGwilson.lua handles toolbroke.
     if (name === 'toolbroke') playerAnimation?.stategraph.pushEvent(name, data);
@@ -248,7 +250,6 @@ const sceneResources = await startScene(
     const id = buildingContainerId(buildId, entityId);
     inventory.setStorageAccessible(id, isOpen);
   },
-  () => playerAnimation?.playPickup(),
   inventory.entities,
   inventory,
 );

@@ -68,7 +68,6 @@ export interface GroundPrefabOptions {
   bernieWorld: BernieWorld;
   butterflyWorld: ButterflyWorld;
   firefliesWorld: FirefliesWorld;
-  getNeighbours(): readonly { model: THREE.Group; position: THREE.Vector3 }[];
   dropLoot?(items: readonly GroundItemDefinition[], position: THREE.Vector3): Promise<void>;
   /** Prepare a normal ground stack so timed prefab actions can commit without an asset-load gap. */
   prepareSpawn?(definition: GroundItemDefinition): Promise<PreparedGroundSpawn>;

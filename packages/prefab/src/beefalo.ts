@@ -1,3 +1,5 @@
+import { syncPlacementEntity } from './placementEntities';
+import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '@dontstarve-web/animation/beefaloSprite';
@@ -47,8 +49,8 @@ export interface BeefaloWorld extends Pick<WorldContentContext, 'getWatchWorldCo
   getPlayerPositions(): readonly THREE.Vector3[];
   findPath: NonNullable<LocomotorOptions['findPath']>;
   constrainPosition(position: THREE.Vector3): void;
-  /** Visible/pending manure positions for periodicspawner's density and spacing rules. */
-  getPoopPositions(): readonly THREE.Vector3[];
+  /** Logical ground/pending manure positions for periodicspawner's density and spacing rules. */
+  getPoopPositions(): Iterable<THREE.Vector3>;
   spawnPoop(position: THREE.Vector3): void;
 }
 
@@ -78,6 +80,7 @@ export type BeefaloState = BeefaloStateName;
 
 /** beefalo.lua owns components and physics; its brain and stategraph own behavior and states. */
 export class BeefaloController {
+  private readonly groundPosition = new THREE.Vector3();
   readonly locomotor: LocoMotor;
   readonly knownlocations = new KnownLocations();
   readonly periodicspawner: PeriodicSpawner;
@@ -267,7 +270,9 @@ export class BeefaloController {
       this.body.position.z = this.model.position.z;
       this.body.aabbNeedsUpdate = true;
     }
+    syncPlacementEntity(this.model);
     this.model.quaternion.copy(cameraQuaternion);
+    syncEntitySpatial(this.model);
     this.right.set(1, 0, 0).applyQuaternion(cameraQuaternion).setY(0).normalize();
     this.forward.set(0, 0, -1).applyQuaternion(cameraQuaternion).setY(0).normalize();
     const x = this.direction.dot(this.right);
@@ -301,8 +306,8 @@ export class BeefaloController {
 
   // Entity surface read by components and actions.
   isValid(): boolean { return !this.disposed; }
-  getPosition(): { x: number; y: number; z: number } {
-    return { x: this.body.position.x, y: 0, z: this.body.position.z };
+  getPosition(): THREE.Vector3 {
+    return this.groundPosition.set(this.body.position.x, 0, this.body.position.z);
   }
   PushEvent(name: string, data?: unknown): void {
     if (this.disposed) return;

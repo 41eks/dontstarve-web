@@ -9,7 +9,9 @@ import {
 import { loadAnimationArchive, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemDefinition, GroundItemFactory, GroundPrefabContext } from './groundPrefab';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity } from '@dontstarve-web/inventory';
+import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
+import { configurePlantableEntity } from './plantables';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { ButterflyStateGraph, type ButterflyStateInst, type ButterflyStateName } from '../../stategraphs/src/SGbutterfly';
 import { LocoMotor, type LocoMotorInst, type LocoMotorPoint } from '../../componets/src/locomotor';
@@ -24,19 +26,52 @@ import type { BrainComponents, BrainEntity, BrainInst, BrainWorld } from '../../
 import catalog from './groundItems.json' with { type: 'json' };
 import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
 import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
+import { FindEntities, type FoundEntity } from './actionEntity';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
 
 export const BUTTERFLY_ID = 'butterfly';
 export const MOONBUTTERFLY_ID = 'moonbutterfly';
 export type ButterflyPrefabId = typeof BUTTERFLY_ID | typeof MOONBUTTERFLY_ID;
+export const BUTTERFLY_PERISH_TIME = 3 * TOTAL_DAY_TIME;
 
 export { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED };
 
 export function configureButterflyEntity(entity: ItemEntity): void {
   entity.components.inventoryitem.canbepickedup = false;
   entity.components.inventoryitem.canbepickedupalive = true;
+  entity.addTag('butterfly');
   entity.addTag('catchable');
+  configurePlantableEntity(entity);
+  if (entity.prefab === BUTTERFLY_ID) {
+    entity.addTag('small_livestock');
+    entity.addTag('show_spoilage');
+    const perishable = entity.components.perishable;
+    perishable.localMultiplier = () => entity.components.inventoryitem.owner ? 1 : 0;
+    perishable.perishfn = () => {
+      const owner = entity.components.inventoryitem.owner;
+      if (!owner) return;
+      const count = entity.components.stackable.count;
+      const position = owner.getPosition?.().clone();
+      const loot = new Map<string, number>();
+      for (let i = 0; i < count; i++) for (const prefab of BUTTERFLY_DEFINITIONS.butterfly.generateLoot(Math.random)) {
+        loot.set(prefab, (loot.get(prefab) ?? 0) + 1);
+      }
+      owner.PushEvent('murdered', { victim: entity, stackmult: count, negligent: true });
+      if (entity.remove()) for (const [itemId, amount] of loot) {
+        const item = new ItemEntity({ itemId, count: amount });
+        if (position) item.transform.position.copy(position);
+        owner.GiveItem?.(item);
+      }
+    };
+    entity.component('butterflyperishing', () => {
+      const stops = [
+        entity.ListenForEvent('onputininventory', () => perishable.StartPerishing()),
+        entity.ListenForEvent('ondropped', () => perishable.StopPerishing()),
+      ];
+      return { dispose: () => stops.forEach(stop => stop()) };
+    });
+  }
   entity.components.workable = entity.component('workable', () => {
     const workable = new Workable(entity);
     workable.SetWorkAction('NET');
@@ -205,7 +240,7 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
   private readonly butterflyWorld: ButterflyWorld;
   private readonly cycle?: WorldContentSignal<WorldPhase>;
   private readonly cleanups: (() => void)[] = [];
-  private readonly getOthers: () => readonly ButterflyCreature[];
+  private readonly getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[];
   private readonly randomSource: () => number;
   private readonly onAnimationOver: () => void;
   private readonly dropLootItems?: (itemIds: readonly string[], position: THREE.Vector3) => void;
@@ -213,7 +248,7 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
   private readonly scratch = new THREE.Vector3();
 
   constructor(definition: ButterflyDefinition, transform: ItemEntity['transform'], animation: ButterflyAnimation,
-    butterflyWorld: ButterflyWorld, getOthers: () => readonly ButterflyCreature[] = () => [],
+    butterflyWorld: ButterflyWorld, getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[] = () => [],
     random: () => number = Math.random, dropLoot?: ButterflyCreature['dropLootItems']) {
     super(definition.prefab, definition.tags, positionOf(transform));
     this.definition = definition;
@@ -402,16 +437,17 @@ export class ButterflyCreature extends SimpleEntity implements BrainInst, Butter
   private createWorld(): BrainWorld {
     const world = this.butterflyWorld;
     const creature = this;
-    const candidates = (): BrainEntity[] => {
+    const candidates = (origin: LocoMotorPoint, radius: number): BrainEntity[] => {
       const { flowers, threats } = creature.snapshot;
-      return [...threats, ...flowers, ...creature.getOthers().filter(other => other !== creature && other.isValid())];
+      return [...threats, ...flowers,
+        ...creature.getOthers(origin, radius).filter(other => other !== creature && other.isValid())];
     };
     const matches = (entity: BrainEntity, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) =>
       (must ?? []).every(tag => entity.hasTag(tag)) && !(cant ?? []).some(tag => entity.hasTag(tag))
       && (!oneOf?.length || oneOf.some(tag => entity.hasTag(tag)));
     const find = (from: BrainEntity, radius: number, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) => {
       const origin = from.getPosition();
-      return candidates()
+      return candidates(origin, radius)
         .filter(entity => entity !== from && entity.isValid() && matches(entity, must, cant, oneOf)
           && distanceSquared(origin, entity.getPosition()) <= radius * radius)
         .sort((a, b) => distanceSquared(origin, a.getPosition()) - distanceSquared(origin, b.getPosition()));
@@ -467,7 +503,8 @@ export class ButterflyAssets {
   }
 
   async create(prefab: ButterflyPrefabId, world: ButterflyWorld,
-    getOthers: () => readonly ButterflyCreature[], dropLoot?: ButterflyCreature['dropLootItems']) {
+    getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[],
+    dropLoot?: ButterflyCreature['dropLootItems']) {
     if (this.disposed) throw new Error('Insect assets have been disposed');
     const factory = await this.factory(prefab);
     if (this.disposed) throw new Error('Insect assets have been disposed');
@@ -497,15 +534,17 @@ export class ButterflyAssets {
 export async function createButterflyGroundSprite(
   assets: ButterflyAssets,
   world: ButterflyWorld,
-  getNeighbours: () => readonly { model: THREE.Group; position: THREE.Vector3 }[],
+  findEntities: (position: THREE.Vector3, radius: number, mustTags: readonly string[]) => readonly FoundEntity[],
   prefab: ButterflyPrefabId = BUTTERFLY_ID,
   dropLoot?: ButterflyCreature['dropLootItems'],
 ) {
   let model: THREE.Group | undefined;
-  const visual = await assets.create(prefab, world, () => getNeighbours()
-    .filter(neighbour => neighbour.model !== model)
+  const origin = new THREE.Vector3();
+  const visual = await assets.create(prefab, world, (position, radius) => findEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
     .flatMap(neighbour => {
-      const creature = neighbour.model.userData.butterflyController as ButterflyCreature | undefined;
+      const neighbourModel = (neighbour as { model?: THREE.Object3D }).model;
+      const creature = neighbourModel !== model
+        ? neighbourModel?.userData.butterflyController as ButterflyCreature | undefined : undefined;
       return creature ? [creature] : [];
     }), dropLoot);
   model = visual.model;
@@ -527,11 +566,15 @@ export function createButterflyGroundFactory(context: GroundPrefabContext): Grou
   };
   return {
     itemIds: [BUTTERFLY_ID, MOONBUTTERFLY_ID], capture: 'net',
-    configureEntity: entity => (entity.prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(entity),
+    configureEntity: entity => {
+      (entity.prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(entity);
+      if (entity.prefab === BUTTERFLY_ID && !entity.components.inventoryitem.owner) entity.components.perishable.StopPerishing();
+    },
     create: async (definition) => {
       const prefab = definition.itemId === MOONBUTTERFLY_ID ? MOONBUTTERFLY_ID : BUTTERFLY_ID;
       await PreloadSounds('dontstarve/common/butterfly_trap');
-      const visual = await createButterflyGroundSprite(assets, context.butterflyWorld, context.getNeighbours, prefab, dropLoot);
+      const visual = await createButterflyGroundSprite(assets, context.butterflyWorld,
+        (position, radius, mustTags) => FindEntities(context.scene, position, radius, mustTags), prefab, dropLoot);
       if (prefab === MOONBUTTERFLY_ID) bindMoonButterflyVisual(visual);
       return visual;
     },

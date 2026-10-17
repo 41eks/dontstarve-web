@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { isMouseTarget } from './mouseTargets.ts';
 
 export interface MouseActionCandidate {
   action: ActionDescription;
@@ -20,13 +21,16 @@ export interface MouseActions {
 /** Input's shared target -> PlayerActionPicker's priority-sorted LMB/RMB candidates. */
 export class PlayerActionPicker {
   readonly pointer: PointerRaycaster;
-  private readonly providers = new Set<() => readonly MouseActionCandidate[]>();
+  private readonly providers = new Set<(target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]>();
   private readonly isEnabled: () => boolean;
   private readonly activeItemSources = new Set<() => boolean>();
+  private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
+  private selectedModel?: THREE.Object3D;
+  get targetModel(): THREE.Object3D | undefined { return this.selectedModel; }
 
   constructor(pointer: PointerRaycaster, isEnabled = () => true) { this.pointer = pointer; this.isEnabled = isEnabled; }
 
-  register(provider: () => readonly MouseActionCandidate[]): () => void {
+  register(provider: (target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]): () => void {
     this.providers.add(provider);
     return () => { this.providers.delete(provider); };
   }
@@ -36,16 +40,21 @@ export class PlayerActionPicker {
     return () => { this.activeItemSources.delete(source); };
   }
 
-  getMouseActions(): MouseActions {
-    if (!this.isEnabled()) return {};
+  getMouseActions(event?: PointerEvent): MouseActions {
+    if (event) {
+      const cached = this.eventActions.get(event);
+      if (cached) { this.selectedModel = cached.target; return cached.actions; }
+      this.pointer.trackPointer(event);
+    }
+    if (!this.isEnabled()) { this.selectedModel = undefined; return {}; }
     this.pointer.beginFrame();
     try {
-      const candidates = [...this.providers].flatMap(provider => provider());
-      const activeItem = [...this.activeItemSources].some(source => source());
-      const models = new Set(candidates.flatMap(candidate => candidate.model ? [candidate.model] : []));
-      const hit = this.pointer.raycastPointer([...models]);
+      const hit = this.pointer.pickMouseTarget();
       let target = hit?.object ?? null;
-      while (target && !models.has(target)) target = target.parent;
+      while (target && !isMouseTarget(target)) target = target.parent;
+      this.selectedModel = target ?? undefined;
+      const candidates = [...this.providers].flatMap(provider => provider(target ?? undefined));
+      const activeItem = [...this.activeItemSources].some(source => source());
       const result: MouseActions = {};
       for (const button of ['left', 'right'] as const) {
         const available = candidates.filter(candidate => candidate.button === button && candidate.available !== false
@@ -59,6 +68,7 @@ export class PlayerActionPicker {
       }
       if (result.left && result.right && result.left.action === result.right.action
         && result.left.invobject === result.right.invobject) result.right = undefined;
+      if (event) this.eventActions.set(event, { actions: result, target: this.selectedModel });
       return result;
     } finally { this.pointer.endFrame(); }
   }

@@ -1,3 +1,4 @@
+import { ModelRecords } from './modelRecords';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { disposeSprite } from './disposeSprite';
@@ -173,6 +174,7 @@ export class WallPlacement<BuildId extends string> {
     private active?: WallInstance<BuildId>;
     private loading?: Promise<void>;
     private previewVersion = 0;
+    private readonly mouseRecords = new ModelRecords<WallInstance<BuildId>>();
     private readonly placed = new Set<WallInstance<BuildId>>();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
     private readonly facing: Signal<number>;
@@ -267,9 +269,11 @@ export class WallPlacement<BuildId extends string> {
             })).concat([...this.effects].map(effect => ({ object: effect.model, footPosition: effect.model.position, cameraDepth: 0 })));
     }
 
-    get hammerTargets(): readonly HammerTarget[] {
+    get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
+
+    getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
         const targets: HammerTarget[] = [];
-        for (const wall of this.placed) {
+        for (const wall of this.mouseRecords.select(model, this.placed)) {
             const entity = actionEntity(wall.model, wallWorldPrefab(wall.buildId));
             if (!entity.hasTag('HAMMER_workable')) continue;
             targets.push({
@@ -291,8 +295,10 @@ export class WallPlacement<BuildId extends string> {
         }));
     }
 
-    get reskinTargets(): readonly ReskinTarget[] {
-        return Array.from(this.placed, (wall) => {
+    get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
+
+    getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
+        return Array.from(this.mouseRecords.select(model, this.placed), (wall) => {
                 const isValid = () => !this.disposed && this.placed.has(wall)
                     && wall.model.visible && wall.model.parent !== null;
                 return {
@@ -587,7 +593,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     private place(wall: WallInstance<BuildId>): void {
-        this.placed.add(wall);
+        this.placed.add(wall); this.mouseRecords.set(wall.model, wall);
         this.updateFacing(wall, this.facing.peek());
         const ground = wall.model.position.clone().setY(wall.model.position.y - wall.groundOffset);
         wall.body = MakeObstaclePhysics(ground, .5);

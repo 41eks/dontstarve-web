@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PlayerActionPicker, PointerRaycaster, type MouseActionCandidate } from '../../stategraphs/src';
 import { CursorLabelUi } from '../src/cursor-label';
+import { registerMouseTarget } from '../../stategraphs/src/mouseTargets';
 
 export async function setupHoverer() {
   const renderer = new THREE.WebGLRenderer();
@@ -20,6 +21,7 @@ export async function setupHoverer() {
   scene.updateMatrixWorld(true);
   const pointer = new PointerRaycaster({ camera, renderer, ground });
   const picker = new PlayerActionPicker(pointer);
+  const mouseTarget = registerMouseTarget(target, () => true);
   const ui = new CursorLabelUi(renderer.domElement, '/dst/data/fonts/controllers.zip');
   ui.setMouseActions(picker);
   await ui.ready;
@@ -43,6 +45,6 @@ export async function setupHoverer() {
     equip: (value: boolean) => { equipped = value; step(); },
     valid: (value: boolean) => { valid = value; step(); },
     tooltip: (value: boolean) => { if (value) tooltip.show('建造预览'); else tooltip.hide(); },
-    dispose: () => { unregister(); picker.dispose(); ui.dispose(); renderer.dispose(); renderer.domElement.remove(); },
+    dispose: () => { mouseTarget.dispose(); unregister(); picker.dispose(); ui.dispose(); renderer.dispose(); renderer.domElement.remove(); },
   } });
 }

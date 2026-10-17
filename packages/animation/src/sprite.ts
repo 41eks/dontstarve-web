@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal } from '@dontstarve-web/signals';
 import {
   createMaterials,
+  FrameGeometryCache,
   findImage,
   loadAnim,
   loadAnimationArchive,
@@ -16,6 +17,11 @@ import {
   type ResolvedSprite,
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
+import { publishSpriteSpatialBounds, spriteSpatialRadius } from './spatialBounds';
+
+/** Envelope radius of every frame of an animation drawn from the plain build (no skin layers or overrides). */
+const animationEnvelopes = new WeakMap<Animation, number>();
+const envelopeSphere = new THREE.Sphere();
 
 export interface SpriteAnimationController {
   start(name: string): void;
@@ -114,6 +120,9 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   private hiddenLayers = new Set<number>();
   /** AnimState:Hide layers; independent of the skin's hiddenLayers, which setSymbolOverrides replaces. */
   private animStateHiddenLayers = new Set<number>();
+  private frameCache?: FrameGeometryCache;
+  private sharedBuild?: ParsedBuild;
+  private sharedMaterials?: THREE.MeshBasicMaterial[];
   private readonly snow?: LoadedBuildOverride;
   private snowLevel?: WorldContentSignal<number>;
   private stopSnow?: () => void;
@@ -163,6 +172,22 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.stopSnow?.();
     this.stopSnow = undefined;
     this.snowLevel = undefined;
+    this.renderer.dispose();
+  }
+
+  /** Draw frames from the factory's shared cache while this sprite has no per-instance appearance. */
+  useFrameCache(cache: FrameGeometryCache): void {
+    this.frameCache = cache;
+    this.sharedBuild = this.build;
+    this.sharedMaterials = this.materials;
+    this.reshowFrame();
+  }
+
+  private canShareFrame(): boolean {
+    return this.frameCache !== undefined && !this.skin && this.overrides.size === 0 && this.buildOverrides.size === 0
+      && this.hiddenLayers.size === 0 && this.animStateHiddenLayers.size === 0
+      && this.build === this.sharedBuild && this.materials === this.sharedMaterials
+      && this.isLayerVisible === SpriteController.prototype.isLayerVisible;
   }
 
   start(name: string) {
@@ -342,7 +367,25 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.layers = this.skin?.animations?.animations.filter((candidate) =>
       candidate.name === name && this.skin!.animationBanks.has(candidate.bankHash),
     ) ?? [];
+    this.publishAnimationEnvelope();
     this.showFrame(0);
+  }
+
+  /** Publish the largest bounds over all frames up front, so spatial queries never wait for a larger frame to be shown. */
+  private publishAnimationEnvelope(): void {
+    const cacheable = this.layers.length === 0 && this.overrides.size === 0 && this.buildOverrides.size === 0 && !this.skin;
+    let radius = cacheable ? animationEnvelopes.get(this.animation) : undefined;
+    if (radius === undefined) {
+      const visual = new THREE.Group(), scratch = new SpriteFrameRenderer(visual);
+      const count = Math.max(this.animation.frames.length, ...this.layers.map(layer => layer.frames.length));
+      for (let i = 0; i < count; i++) {
+        scratch.show(this.resolveSprites(i % this.animation.frames.length, this.layers.map(layer => i % layer.frames.length)));
+      }
+      radius = spriteSpatialRadius(visual) ?? 0;
+      scratch.dispose();
+      if (cacheable) animationEnvelopes.set(this.animation, radius);
+    }
+    if (radius > 0) publishSpriteSpatialBounds(this.visual, envelopeSphere.set(envelopeSphere.center.set(0, 0, 0), radius));
   }
 
   protected showFrame(index: number) {
@@ -353,6 +396,15 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     const key = `${index}:${layerIndices.join(',')}`;
     if (key === this.frameKey) return;
     this.frameKey = key;
+    if (this.canShareFrame()) {
+      const cache = this.frameCache!;
+      this.renderer.showShared(cache.get(`${cache.idOf(this.animation)}:${key}`, () => this.resolveSprites(index, layerIndices)));
+      return;
+    }
+    this.renderer.show(this.resolveSprites(index, layerIndices));
+  }
+
+  private resolveSprites(index: number, layerIndices: readonly number[]): ResolvedSprite[] {
     const frames = [this.animation.frames[index], ...this.layers.map((layer, i) => layer.frames[layerIndices[i]])];
     const sprites = frames.flatMap((frame) => [...frame.elements]
       .filter((element) => !this.hiddenLayers.has(element.layerHash) && !this.animStateHiddenLayers.has(element.layerHash) && this.isLayerVisible(element.layerHash))
@@ -377,7 +429,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
         return image ? { element, image, materials: this.materials } : undefined;
       })
       .filter((sprite): sprite is ResolvedSprite => Boolean(sprite)));
-    this.renderer.show(sprites);
+    return sprites;
   }
 }
 
@@ -463,6 +515,7 @@ export function createSpriteFactory(
   const materials = createMaterials(buildPackage);
   const skinMaterials = skinArchive ? createMaterials(skinArchive.buildPackage) : [];
   const sprites = new Set<THREE.Group>();
+  const frameCache = new FrameGeometryCache();
   let disposed = false;
   const disposeSprite = (sprite: THREE.Group) => {
     if (!sprites.delete(sprite)) return;
@@ -481,7 +534,7 @@ export function createSpriteFactory(
         baseSymbols: new Set(options.baseSymbols?.map(smallHash)),
         animationBanks: new Set(options.skinAnimationBanks?.map(smallHash)),
       } : undefined;
-      const sprite = createSprite(buildPackage.build, animations, materials, options, skin, controllerClass);
+      const sprite = createSprite(buildPackage.build, animations, materials, options, skin, controllerClass, frameCache);
       sprites.add(sprite);
       return sprite;
     },
@@ -490,6 +543,7 @@ export function createSpriteFactory(
       if (disposed) return;
       disposed = true;
       for (const sprite of sprites) disposeSprite(sprite);
+      frameCache.dispose();
       for (const material of [...materials, ...skinMaterials]) {
         material.map?.dispose();
         material.dispose();
@@ -505,6 +559,7 @@ function createSprite(
   options: AnimatedSpriteOptions,
   skin?: SpriteSkin,
   controllerClass: typeof SpriteController = SpriteController,
+  frameCache?: FrameGeometryCache,
 ): THREE.Group {
   const sprite = new THREE.Group();
   sprite.name = options.name ?? build.name;
@@ -526,6 +581,7 @@ function createSprite(
     options.getWatchWorldContent,
     options.snowCovered,
   );
+  if (frameCache) controller.useFrameCache(frameCache);
   if (options.initialFrame === 'last') controller.holdLastFrame(options.initialAnimation);
   sprite.userData.animationController = controller;
   return sprite;

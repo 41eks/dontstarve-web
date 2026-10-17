@@ -23,20 +23,20 @@ function canHarvest(target: HarvestTarget): boolean {
 }
 
 /** componentactions.lua SCENE.stewer: completed pots offer HARVEST on both buttons. */
-export function getHarvestActions(scene: THREE.Scene): MouseActionCandidate[] {
+export function getHarvestActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
-  scene.traverse(model => {
-    const component = model.userData.components?.stewer as Stewer | undefined;
-    if (!component) return;
-    const target: HarvestTarget = {
-      model, component, prefab: model.userData.prefab,
-      hasTag: tag => model.userData.tags?.includes(tag) ?? false,
-      getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
-    };
-    for (const button of ['left', 'right'] as const) actions.push({
-      action: { action: 'HARVEST', target }, button, model, available: canHarvest(target),
-    });
+  if (!model) return actions;
+  const component = model.userData.components?.stewer as Stewer | undefined;
+  if (!component) return actions;
+  const target: HarvestTarget = {
+    model, component, prefab: model.userData.prefab,
+    hasTag: tag => model.userData.tags?.includes(tag) ?? false,
+    getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+  };
+  for (const button of ['left', 'right'] as const) actions.push({
+    action: { action: 'HARVEST', target }, button, model, available: canHarvest(target),
   });
+
   return actions;
 }
 
@@ -71,7 +71,7 @@ export class HarvestActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.prepareReceiver = prepareReceiver; this.isManualMovement = isManualMovement; this.onError = onError;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
-    this.unregister = this.picker.register(() => getHarvestActions(world.scene));
+    this.unregister = this.picker.register(model => getHarvestActions(model));
     this.stopActionEvents = bindActionCancellation(world, this, 'harvest', () => this.cancel());
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -159,7 +159,7 @@ export class HarvestActionController {
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (this.disposed || event.defaultPrevented || (event.button !== 0 && event.button !== 2)) return;
     this.picker.pointer.trackPointer(event);
-    const actions = this.picker.getMouseActions();
+    const actions = this.picker.getMouseActions(event);
     const action = event.button === 0 ? actions.left : actions.right;
     if (action?.action !== 'HARVEST' || !action.target) { this.cancel(); return; }
     // Occupiable targets share the action id and belong to OccupiableActionController.

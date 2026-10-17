@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { markSpatialGeometryBounds, publishSpriteSpatialBounds } from './spatialBounds';
 import type { DecodedTexture } from './parseKtex';
 import type { AnimElement, BuildImage, ParsedAnim, ParsedBuild, BuildPackage } from './animationArchive';
 import { loadAnimationArchivePart } from './animationArchiveLoader';
@@ -92,7 +93,58 @@ export function createMaterials(buildPackage: BuildPackage, options: SpriteMater
   });
 }
 
+/** One resolved animation frame, built once and drawn by every controller of the same factory. */
+export interface SharedFrame {
+  readonly geometry: THREE.BufferGeometry;
+  readonly materials: THREE.MeshBasicMaterial[];
+  readonly visible: boolean;
+}
+
+/**
+ * Frame geometry shared by identical sprites (same build, materials and animation, no overrides). Sharing replaces
+ * the per-instance resolve + vertex rewrite + GPU upload of every animation step with a geometry swap.
+ * Instances and the generic mesh-disposal helpers cannot free it: the cache owns the buffers until dispose().
+ */
+export class FrameGeometryCache {
+  private readonly frames = new Map<string, SharedFrame>();
+  private readonly ids = new WeakMap<object, number>();
+  private nextId = 1;
+
+  idOf(object: object): number {
+    let id = this.ids.get(object);
+    if (id === undefined) this.ids.set(object, id = this.nextId++);
+    return id;
+  }
+
+  get(key: string, resolve: () => ResolvedSprite[]): SharedFrame {
+    let frame = this.frames.get(key);
+    if (!frame) {
+      const builder = new SpriteFrameRenderer(new THREE.Group());
+      builder.show(resolve());
+      frame = builder.snapshot();
+      // Per-instance disposal paths (traverse + geometry.dispose()) must not free a buffer other sprites draw.
+      frame.geometry.dispose = () => {};
+      this.frames.set(key, frame);
+    }
+    return frame;
+  }
+
+  dispose(): void {
+    for (const { geometry } of this.frames.values()) THREE.BufferGeometry.prototype.dispose.call(geometry);
+    this.frames.clear();
+  }
+}
+
+/**
+ * The frustum-cull sphere is this much larger than the drawn quads, so a swarm whose billboard orientation or position
+ * lags the camera by a frame (for example while turning) is not culled at the screen corners. The tight bounds stay in
+ * geometry.boundingBox and are what spatial queries publish.
+ */
+const CULL_RADIUS_SCALE = 2;
+const tightSphere = new THREE.Sphere();
+
 export class SpriteFrameRenderer {
+  private readonly visual: THREE.Group;
   private readonly geometry = new THREE.BufferGeometry();
   private readonly materials: THREE.MeshBasicMaterial[] = [];
   private readonly materialIndices = new Map<THREE.MeshBasicMaterial, number>();
@@ -102,13 +154,34 @@ export class SpriteFrameRenderer {
   private quadCapacity = 0;
 
   constructor(visual: THREE.Group) {
+    this.visual = visual;
     this.mesh = new THREE.Mesh(this.geometry, this.materials);
     // The frame geometry is rewritten by show(), which keeps its bounding sphere current.
     this.geometry.boundingSphere = new THREE.Sphere();
+    this.geometry.boundingBox = new THREE.Box3();
     visual.add(this.mesh);
   }
 
+  /** Draw a frame owned by a FrameGeometryCache instead of this renderer's own buffers. */
+  showShared(frame: SharedFrame): void {
+    this.mesh.geometry = frame.geometry;
+    this.mesh.material = frame.materials;
+    this.mesh.visible = frame.visible;
+    if (frame.visible && frame.geometry.boundingBox) publishSpriteSpatialBounds(this.visual, frame.geometry.boundingBox.getBoundingSphere(tightSphere));
+  }
+
+  /** The current own frame, detached from this renderer's later rewrites. */
+  snapshot(): SharedFrame {
+    const geometry = this.geometry.clone();
+    return { geometry, materials: [...this.materials], visible: this.mesh.visible };
+  }
+
+  /** The own buffers are only separate from the mesh's geometry while a shared frame is displayed. */
+  dispose(): void { if (this.mesh.geometry !== this.geometry) this.geometry.dispose(); }
+
   show(sprites: ResolvedSprite[]) {
+    this.mesh.geometry = this.geometry;
+    this.mesh.material = this.materials;
     if (sprites.length === 0) {
       this.mesh.visible = false;
       this.geometry.setDrawRange(0, 0);
@@ -185,6 +258,7 @@ export class SpriteFrameRenderer {
     this.updateBoundingSphere(sprites.length * 4);
     this.geometry.getAttribute('position').needsUpdate = true;
     this.geometry.getAttribute('uv').needsUpdate = true;
+    markSpatialGeometryBounds(this.geometry);
   }
 
   /** Bounds only the drawn vertices; stale capacity beyond the draw range is ignored. */
@@ -197,9 +271,12 @@ export class SpriteFrameRenderer {
       if (y < minY) minY = y;
       if (y > maxY) maxY = y;
     }
+    this.geometry.boundingBox!.min.set(minX, minY, 0);
+    this.geometry.boundingBox!.max.set(maxX, maxY, 0);
+    publishSpriteSpatialBounds(this.visual, this.geometry.boundingBox!.getBoundingSphere(tightSphere));
     const sphere = this.geometry.boundingSphere!;
     sphere.center.set((minX + maxX) / 2, (minY + maxY) / 2, 0);
-    sphere.radius = Math.hypot(maxX - minX, maxY - minY) / 2;
+    sphere.radius = Math.hypot(maxX - minX, maxY - minY) / 2 * CULL_RADIUS_SCALE;
   }
 
   private setPosition(

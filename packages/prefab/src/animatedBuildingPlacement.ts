@@ -1,3 +1,4 @@
+import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createSignal, readonlySignal, getBoundWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
@@ -205,6 +206,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private active?: AnimatedBuildingInstance<BuildId>;
     private loading?: Promise<void>;
     private previewVersion = 0;
+    private readonly mouseRecords = new ModelRecords<AnimatedBuildingInstance<BuildId>>();
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
     private readonly effects = new Set<THREE.Group>();
     private readonly effectFactories = new Map<string, Promise<AnimatedSpriteFactory>>();
@@ -264,7 +266,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.model.visible = true;
         this.setOpacity(building.model, 1);
         this.faceCamera(building.model);
-        this.placed.push(building);
+        this.placed.push(building); this.mouseRecords.set(building.model, building);
         this.initializeComponents(building);
     }
 
@@ -287,7 +289,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (record.components.building?.burnt) this.burnBuilding(building);
         this.faceCamera(building.model);
         this.scene.add(building.model);
-        this.placed.push(building);
+        this.placed.push(building); this.mouseRecords.set(building.model, building);
         return building.model;
     }
 
@@ -485,6 +487,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     get renderEntities() {
         const entries = [...this.placed, ...(this.active ? [this.active] : []),
             ...Array.from(this.effects, (model) => ({ model, groundOffset: 0 }))]
+            .filter(({ model }) => !this.placed.some(({ fire }) => fire === model))
             .filter(({ model }) => model.visible)
             .map(({ model, groundOffset }) => ({
                 object: model,
@@ -492,13 +495,19 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 cameraDepth: 0,
                 sortGroup: model.id, sortLayer: 1,
             }));
-        return [...entries, ...this.placed.flatMap(building =>
+        // A burning building's fire shares its foot point and sort group, drawn after the building.
+        const fires = this.placed.filter(({ fire }) => fire?.visible).map(({ model, fire, groundOffset }) => ({
+            object: fire!, footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
+            cameraDepth: 0, sortGroup: model.id, sortLayer: 2 }));
+        return [...entries, ...fires, ...this.placed.flatMap(building =>
             (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? [])
                 .filter(effect => effect.object.visible).map(effect => ({ ...effect, cameraDepth: 0, sortGroup: building.model.id })))];
     }
 
-    get spellTargets(): readonly import('./greenstaff').DeconstructionTarget[] {
-        return this.placed.map(building => {
+    get spellTargets(): readonly import('./greenstaff').DeconstructionTarget[] { return this.getSpellTargets(); }
+
+    getSpellTargets(model?: THREE.Object3D): readonly import('./greenstaff').DeconstructionTarget[] {
+        return this.mouseRecords.select(model, this.placed).map(building => {
             const entity = actionEntity(building.model, building.buildId);
             const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing;
             return {
@@ -513,8 +522,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
     }
 
-    get hammerTargets(): readonly HammerTarget[] {
-        return this.placed.filter(building => actionEntity(building.model, building.buildId).hasTag('HAMMER_workable'))
+    get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
+
+    getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
+        return this.mouseRecords.select(model, this.placed).filter(building => actionEntity(building.model, building.buildId).hasTag('HAMMER_workable'))
             .map((building) => ({
                 id: String(building.model.userData.entityId),
                 entity: actionEntity(building.model, building.buildId),
@@ -528,8 +539,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             }));
     }
 
-    get reskinTargets(): readonly ReskinTarget[] {
-        return this.placed.map(building => {
+    get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
+
+    getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
+        return this.mouseRecords.select(model, this.placed).map(building => {
                 const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing
                     && building.model.visible && building.model.parent !== null;
                 return {
@@ -742,7 +755,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         placedBuilding.isPlacing = onbuilt !== undefined;
         this.setOpacity(placedBuilding.model, 1);
         placedBuilding.model.visible = true;
-        this.placed.push(placedBuilding);
+        this.placed.push(placedBuilding); this.mouseRecords.set(placedBuilding.model, placedBuilding);
         this.initializeComponents(placedBuilding);
         this.active = undefined;
         this.cursor.hide();

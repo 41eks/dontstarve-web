@@ -1,3 +1,4 @@
+import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -23,8 +24,8 @@ function setup() {
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
   const returnItem = vi.fn(async () => {});
-  const blockers: { position: THREE.Vector3; tags?: string[] }[] = [];
-  const plow = new FarmPlowPlacement(world, turf, returnItem, () => blockers, () => 0.5);
+  const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
+  const plow = new FarmPlowPlacement(world, turf, returnItem, blockers, () => 0.5);
   const advance = async (seconds: number) => {
     for (let i = 0; i < Math.ceil(seconds / 0.1); i++) {
       plow.update(0.1, new THREE.Quaternion());
@@ -117,9 +118,10 @@ it('rejects hard terrain, blocking entities and failed/cancelled item transfers 
     turf.setOriginalTile(point, WORLD_TILES.WOODFLOOR);
     expect(await plow.deploy(point, take)).toBe(false);
     turf.setOriginalTile(point, WORLD_TILES.DECIDUOUS);
-    blockers.push({ position: point });
+    const blocker = { position: point, tags: [] as string[] };
+    blockers.add(blocker);
     expect(await plow.deploy(point, take)).toBe(false);
-    blockers[0].tags = ['FX'];
+    blocker.tags = ['FX'];
     expect(plow.canDeploy(point)).toBe(true);
     expect(take).not.toHaveBeenCalled();
     expect(await plow.deploy(point, () => undefined)).toBe(false);

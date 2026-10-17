@@ -104,9 +104,11 @@ class LavaPond {
 function createRock(factory: AnimatedSpriteFactory, prefab: LavaPondRockId, saved?: LavaPondRockRecord): THREE.Group {
   const type = prefab.slice('lava_pond_rock'.length);
   const model = factory.create({ initialAnimation: `idle${type}`, name: prefab });
+  // matrixWorld is read directly: getWorldPosition() calls updateWorldMatrix, which re-enters the spatial index sync.
+  const groundPosition = new THREE.Vector3();
   (model.userData.animationController as SpriteController).playOnce(`idle${type}`);
   Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId(), persists: true,
-    prefabNameOverride: 'lava_pond_rock', getGroundPosition: () => model.getWorldPosition(new THREE.Vector3()) });
+    prefabNameOverride: 'lava_pond_rock', getGroundPosition: () => groundPosition.setFromMatrixPosition(model.matrixWorld) });
   actionEntity(model, prefab);
   return model;
 }

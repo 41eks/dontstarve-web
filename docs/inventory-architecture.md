@@ -97,6 +97,10 @@ GroundItemManager 每帧在 prefab 更新前后从实体刷新模型，拾取命
 
 `Temperature` 在绑定世界时加入世界拥有的 `ComponentUpdates` 集合，切换世界和组件销毁时移除旧注册。场景每帧只更新该集合中的组件，普通物品不参与温度遍历；重复配置暖石不重复注册，转移和换肤保留逻辑组件及注册。
 
+`ItemEntityRegistry` 独立维护小地图图标索引：`AddMiniMapEntity()` 创建图标时发出 `minimapentityadded` 生命周期通知，注册表立即登记；接收已有图标的实体时同步登记，重复接收不重复监听。实体移除时撤销图标和注册表监听，清理不依赖地面美术释放。`GroundItemManager.miniMapEntities` 只读取该索引中的已启用图标，绘图成本随有图标的物品数变化，不扫描萤火虫等无图标物品。拾取、装备和鼠标持有仍由 `InventoryItem.owner` 禁用图标，丢弃恢复启用；位置继续引用逻辑实体的地面坐标。
+
+`GroundItemManager.iteratePrefabPositions(prefab)` 按 prefab 索引迭代逻辑地面实体的现有 `Vector3` 坐标，过滤已移除、已有库存归属及 `INLIMBO` 实体；模型隐藏、卸载或换肤不影响索引，`persists = false` 的有效实体仍参与 Lua 空间规则。丢弃时在加载美术前登记逻辑实体，拾取及移除时同步退出；`spawnFromSave()` 在加载前按 prefab 和实体 ID 登记位置占位，成功生成时交接给逻辑实体，失败／释放时撤销，占位不额外写入存档。皮弗娄牛的 `PeriodicSpawner` 直接消费该迭代器，通过 `distanceToSquared()` 检查间距和密度，拒绝生成后立即停止迭代，不构造存档记录或扫描其他 prefab。
+
 `Container.toDTO()` 返回纯显示快照 `{ slotCount, slots }`，`slots` 是零基数组，空格保留为 `null`，物品仅包含快照字段，不携带实体、owner 或控制器。`toSignal()` 延迟创建并复用该 DTO 的只读 signal，UI 用 `peek()` 初始化并订阅变化；它不提供 `set()`，也不参与存档。`SetNumSlots()`、`OnLoad()` 和释放组件在完整更新后发布 DTO；已注册槽位的转移、数量和燃料等组件变化，由 Store 在事务提交后调用 `publishDTO()`，每个受影响容器只发布一次完整快照。直接操作底层槽位的调用方也需要在提交后发布。
 
 `DstChestPanelElement.bindContainer(signal, toItem)` 接收 DTO signal，应用提供物品快照到 `SlotItem` 的元数据转换。面板仍调用现有 UI 槽位的 `setItem()`，物品身份与元数据沿用共享 renderer，四个字段直接订阅应用注入的实体 signals；槽数改变时重建对应 UI 槽位。关闭、换容器和移除面板时取消旧订阅。`main.ts` 将装备背包的 `container.toSignal()` 交给面板，玩家物品栏和容器共用 `inventorySlotItem()` 的显示转换；背包内容刷新由 DTO signal 驱动，其他玩家槽仍使用原来的 Store 通知路径。

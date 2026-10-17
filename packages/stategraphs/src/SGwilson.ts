@@ -11,7 +11,8 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'quickeat' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
   | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute' | 'play_strum'
   | 'slip' | 'slip_pst' | 'slip_fall' | 'slip_fall_loop' | 'slip_fall_pst'
-  | 'fishing_pre' | 'fishing' | 'fishing_pst' | 'fishing_nibble' | 'fishing_strain' | 'catchfish' | 'loserod';
+  | 'fishing_pre' | 'fishing' | 'fishing_pst' | 'fishing_nibble' | 'fishing_strain' | 'catchfish' | 'loserod'
+  | 'shell_enter' | 'shell_idle' | 'shell_hit';
 export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
@@ -21,7 +22,9 @@ export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'bui
   | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit' | 'wakeup' | 'flute' | 'strum_pre' | 'strum'
   | 'slip_pre' | 'slip_loop' | 'slip_pst' | 'slip_fall_pre' | 'slip_fall_idle' | 'slip_fall_pst'
   /** player_actions_fishing.zip: the fishing states' clips are selected by name. */
-  | 'fishing';
+  | 'fishing'
+  /** player_slurtle_armor.zip: armorsnurtleshell's hiding clips. */
+  | 'hideshell' | 'hideshell_idle' | 'hitshell';
 
 export const WILSON_ACTION_TIMES = {
   mine: 7 * FRAMES, net: 10 * FRAMES, terraform: 25 * FRAMES,
@@ -642,6 +645,48 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     },
   }),
   State({
+    name: 'shell_enter',
+    tags: ['hiding', 'notalking', 'shell', 'nomorph', 'busy', 'nopredict'],
+    onenter: inst => {
+      inst.context.host.stopMovement?.();
+      inst.context.playClips([clip('hideshell')]);
+      inst.setTimeout(23 * FRAMES);
+    },
+    timeline: [TimeEvent(6 * FRAMES, inst => inst.context.host.playEvent?.('dontstarve/movement/foley/hideshell'))],
+    events: [
+      // The default unequip handler is ignored while busy.
+      EventHandler('unequip', inst => inst.goToState('item_out')),
+    ],
+    ontimeout: inst => inst.goToState('shell_idle'),
+  }),
+  State({
+    name: 'shell_idle',
+    tags: ['hiding', 'notalking', 'shell', 'nomorph', 'idle'],
+    onenter: inst => {
+      inst.context.host.stopMovement?.();
+      inst.context.pushClips([clip('hideshell_idle')]);
+    },
+    events: [
+      // The global unequip handler of an idle state.
+      EventHandler('unequip', inst => inst.goToState('item_out')),
+    ],
+  }),
+  State({
+    name: 'shell_hit',
+    tags: ['hiding', 'shell', 'nomorph', 'busy', 'pausepredict'],
+    onenter: inst => {
+      inst.context.host.stopMovement?.();
+      inst.context.clearBufferedAction();
+      inst.context.playClips([clip('hitshell')]);
+      inst.context.host.playEvent?.('dontstarve/wilson/hit');
+      inst.setTimeout(3 * FRAMES);
+    },
+    events: [
+      EventHandler('unequip', inst => { inst.statemem.unequipped = true; }),
+    ],
+    ontimeout: inst => inst.goToState(inst.statemem.unequipped ? 'idle' : 'shell_idle'),
+  }),
+  State({
     name: 'item_in',
     tags: ['idle', 'nodangle', 'keepchannelcasting'],
     onenter: (inst) => inst.context.playClips([clip('item_in')]),
@@ -1225,6 +1270,14 @@ export class WilsonStateGraph {
       this.activeInvobject = undefined;
       this.sg.goToState('toolbroke', (data as { tool?: WilsonBrokenTool } | undefined)?.tool);
     });
+    // SGwilson.lua EventHandler("blocked"): armor soaked the hit.
+    this.sg.listenForEvent('blocked', () => {
+      if (this.sg.hasStateTag('shell')) this.sg.goToState('shell_hit');
+    });
+    // SGwilson.lua EventHandler("locomote"): an idle-tagged shell state yields to movement.
+    this.sg.listenForEvent('locomote', () => {
+      if (this.sg.hasStateTag('shell') && !this.sg.hasStateTag('busy')) this.finish();
+    });
     // SGwilson.lua EventHandler("fishingcancel")
     this.sg.listenForEvent('fishingcancel', () => {
       if (this.sg.hasStateTag('fishing') && !this.sg.hasStateTag('busy')) this.sg.goToState('fishing_pst');
@@ -1244,6 +1297,8 @@ export class WilsonStateGraph {
   get isJumping(): boolean { return this.movementState === 'jump'; }
   get isDrinking(): boolean { return this.foodDrink && this.stateName === 'quickeat'; }
   hasStateTag(tag: string): boolean { return this.sg.hasStateTag(tag); }
+  /** inst.sg:GoToState from an item's use callback (armorsnurtleshell onuse). */
+  goToState(name: WilsonStateName): void { this.sg.goToState(name); }
   hasAnyStateTag(...tags: string[]): boolean { return this.sg.hasAnyStateTag(...tags); }
   /** Browser input is held off while the slip states own the motor. */
   get isSlipping(): boolean { return this.stateName.startsWith('slip'); }
@@ -1291,6 +1346,12 @@ export class WilsonStateGraph {
     } else {
       this.playClips([idle]);
     }
+  }
+
+  /** AnimState:PushAnimation: queue behind the clip in progress, or start at once when it has already finished. */
+  pushClips(clips: readonly WilsonAnimationClip[]): void {
+    if (this.animationCompleted) this.playClips(clips);
+    else this.clips = [...this.clips, ...clips];
   }
 
   playClips(clips: readonly WilsonAnimationClip[]): void {

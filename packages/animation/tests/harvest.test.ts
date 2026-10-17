@@ -32,7 +32,7 @@ it('walks to the foot point, revalidates a buffered harvest and releases pending
   let manual = false;
   const controller = new HarvestActionController(world, animation, locomotor,
     async () => receiver, () => manual);
-  const target = getHarvestActions(scene)[0].action.target as HarvestTarget;
+  const target = getHarvestActions(model)[0].action.target as HarvestTarget;
   expect(controller.request(target)).toBe(true);
   await Promise.resolve();
   controller.update();
@@ -61,6 +61,6 @@ it('walks to the foot point, revalidates a buffered harvest and releases pending
   await Promise.resolve();
   expect(receiver.dispose).toHaveBeenCalledOnce();
   tags.add('burnt');
-  expect(getHarvestActions(scene).every(action => action.available === false)).toBe(true);
+  expect(getHarvestActions(model).every(action => action.available === false)).toBe(true);
   controller.dispose(); stewer.OnRemoveFromEntity();
 });

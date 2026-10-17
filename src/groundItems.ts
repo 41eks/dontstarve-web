@@ -1,8 +1,12 @@
+import { syncPlacementEntity } from '../packages/prefab/src/placementEntities';
+import { syncEntitySpatial } from '../packages/stategraphs/src/entitySpatialIndex';
+import { modelValues } from '../packages/prefab/src/modelRecords';
 import { ItemEntity, ItemEntityRegistry, type InventoryStore } from '@dontstarve-web/inventory';
 import type { PickupTarget } from '@dontstarve-web/stategraphs';
+import type { PlayerActionPicker } from '@dontstarve-web/stategraphs';
 import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/imageAtlas';
 import * as THREE from 'three';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { isSpriteEntityRendered, registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { nextReskin } from '@dontstarve-web/prefab/reskin_tool';
 import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
@@ -56,14 +60,20 @@ export class GroundItemManager {
    * hidden by inventoryitem and leave the ground-item collection.
    */
   get miniMapEntities(): readonly MiniMapEntity[] {
-    return this.entities.values().flatMap(entity => entity.MiniMapEntity?.enabled ? [entity.MiniMapEntity] : []);
+    return this.disposed ? [] : this.entities.miniMapEntities;
   }
   readonly entities: ItemEntityRegistry;
   private readonly atlasRequests = new Map<string, Promise<ImageAtlas>>();
   private readonly archiveUrl: string;
   private readonly prefabs: GroundPrefabRegistry;
   private readonly items = new Map<THREE.Group, GroundItemRecord>();
+  private readonly groundEntitiesByPrefab = new Map<string, Set<ItemEntity>>();
+  private readonly groundEntityStops = new Map<ItemEntity, () => void>();
+  /** Reservations exist only while spawn art loads; committed entities replace them synchronously. */
+  private readonly pendingSpawnPositions = new Map<string, Map<string, { position: THREE.Vector3 }>>();
   private readonly activeItems = new Set<GroundItemRecord>();
+  /** Billboard sort entries reused across frames; the scene rewrites each entry's depth every frame. */
+  private readonly renderEntryByRecord = new WeakMap<GroundItemRecord, { readonly object: THREE.Group; readonly footPosition: THREE.Vector3; cameraDepth: number }>();
   /** StartUpdatingComponent/StopUpdatingComponent: only these records are visited each frame. */
   private readonly updatingItems = new Set<GroundItemRecord>();
   private readonly inventory: InventoryStore;
@@ -72,6 +82,7 @@ export class GroundItemManager {
   private readonly pendingDrops = new Map<string, { entity: ItemEntity; definition: GroundItemDefinition }>();
   private onNetCapture?: (target: NetCaptureTarget) => boolean;
   private readonly pointer: PointerRaycaster;
+  private readonly mouseActions?: PlayerActionPicker;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
   private readonly player: THREE.Object3D;
@@ -99,7 +110,9 @@ export class GroundItemManager {
     moleWorld?: GroundPrefabOptions['moleWorld'],
     worldEvents?: WorldEventEmitter,
     getWatchWorldContent?: GetWatchWorldContent,
+    mouseActions?: PlayerActionPicker,
   ) {
+    this.mouseActions = mouseActions;
     this.entities = entities;
     this.scene = scene;
     this.renderer = renderer;
@@ -111,8 +124,6 @@ export class GroundItemManager {
       scene, animationBaseUrl, scheduler, fx, moleWorld, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       dropLoot: (items, position) => this.flingLoot(items, position),
       prepareSpawn: definition => this.prepareSpawn(definition),
-      getNeighbours: () => [...this.activeItems]
-        .map(({ model, footPosition }) => ({ model, position: footPosition })),
     });
     if (getWatchWorldContent) {
       const rotation = this.cameraRotation = getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop));
@@ -142,6 +153,10 @@ export class GroundItemManager {
     for (const item of [...this.items.values()]) { this.removeVisual(item); this.entities.destroy(item.entity); }
     for (const { entity } of this.pendingDrops.values()) this.entities.destroy(entity);
     this.pendingDrops.clear();
+    for (const stop of this.groundEntityStops.values()) stop();
+    this.groundEntityStops.clear();
+    this.groundEntitiesByPrefab.clear();
+    this.pendingSpawnPositions.clear();
     this.items.clear();
     this.activeItems.clear();
     this.updatingItems.clear();
@@ -221,10 +236,60 @@ export class GroundItemManager {
     definition: GroundItemDefinition,
     position: THREE.Vector3,
   ): Promise<THREE.Group> {
-    const visuals = await this.createDropVisuals(definition);
-    visuals.forEach((visual, index) => this.addVisual(index === 0 ? id : newEntityId(),
-      this.singleDropDefinition(definition), position, visual));
-    return visuals[0].model;
+    if (this.disposed) throw new Error('Ground items have been disposed');
+    if (!Number.isSafeInteger(definition.count) || definition.count < 1) throw new RangeError('Invalid ground item count');
+    const ids = Array.from({ length: this.isNetCreature(definition.itemId) ? definition.count : 1 },
+      (_, index) => index === 0 ? id : newEntityId());
+    const stops = ids.map(id => this.reserveSpawnPosition(definition.itemId, id, position));
+    try {
+      const visuals = await this.createDropVisuals(definition);
+      visuals.forEach((visual, index) => this.addVisual(ids[index],
+        this.singleDropDefinition(definition), position, visual));
+      return visuals[0].model;
+    } finally { stops.forEach(stop => stop()); }
+  }
+
+  private reserveSpawnPosition(prefab: string, id: string, position: THREE.Vector3): () => void {
+    let pending = this.pendingSpawnPositions.get(prefab);
+    if (!pending) this.pendingSpawnPositions.set(prefab, pending = new Map());
+    const reservation = { position };
+    pending.set(id, reservation);
+    return () => {
+      if (pending.get(id) !== reservation) return;
+      pending.delete(id);
+      if (pending.size === 0) this.pendingSpawnPositions.delete(prefab);
+    };
+  }
+
+  private trackGroundEntity(entity: ItemEntity): void {
+    const pending = this.pendingSpawnPositions.get(entity.prefab);
+    pending?.delete(entity.id);
+    if (pending?.size === 0) this.pendingSpawnPositions.delete(entity.prefab);
+    if (this.groundEntityStops.has(entity) || entity.isRemoved || entity.components.inventoryitem.owner) return;
+    let entities = this.groundEntitiesByPrefab.get(entity.prefab);
+    if (!entities) this.groundEntitiesByPrefab.set(entity.prefab, entities = new Set());
+    entities.add(entity);
+    const remove = () => {
+      entities.delete(entity);
+      if (entities.size === 0) this.groundEntitiesByPrefab.delete(entity.prefab);
+      this.pendingDrops.delete(entity.id);
+      this.groundEntityStops.get(entity)?.();
+      this.groundEntityStops.delete(entity);
+    };
+    const stopPickup = entity.ListenForEvent('onputininventory', remove);
+    const stopRemoval = entity.ListenForEvent('onremove', remove);
+    this.groundEntityStops.set(entity, () => { stopPickup(); stopRemoval(); });
+  }
+
+  /** Logical ground positions, including pending drops/spawns; no snapshots, art queries or unrelated prefabs. */
+  *iteratePrefabPositions(prefab: string): IterableIterator<THREE.Vector3> {
+    if (this.disposed) return;
+    for (const entity of this.groundEntitiesByPrefab.get(prefab) ?? []) {
+      if (!entity.isRemoved && !entity.components.inventoryitem.owner && !entity.hasTag('INLIMBO')) {
+        yield entity.transform.position;
+      }
+    }
+    for (const { position } of this.pendingSpawnPositions.get(prefab)?.values() ?? []) yield position;
   }
 
   private singleDropDefinition(definition: GroundItemDefinition): GroundItemDefinition {
@@ -293,9 +358,10 @@ export class GroundItemManager {
       dispose: () => { if (!released) { released = true; visuals.forEach(visual => visual.dispose()); } },
     };
   }
+  get spellTargets(): readonly DeconstructionTarget[] { return this.getSpellTargets(); }
 
-  get spellTargets(): readonly DeconstructionTarget[] {
-    return [...this.activeItems].map(record => {
+  getSpellTargets(model?: THREE.Object3D): readonly DeconstructionTarget[] {
+    return modelValues(this.items, model, this.activeItems).map(record => {
       const entity = record.entity;
       const isValid = () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
         && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.();
@@ -340,6 +406,7 @@ export class GroundItemManager {
     definition = { ...definition, ...entity.snapshot(), entity };
     id = entity.id;
     entity.transform.position.set(position.x, dropped ? 0 : position.y, position.z);
+    this.trackGroundEntity(entity);
     visual.bindTransform?.(entity.transform);
     visual.model.position.copy(entity.transform.position);
     visual.model.userData.entityId = id;
@@ -412,7 +479,8 @@ export class GroundItemManager {
   private bindInventoryEvents(record: GroundItemRecord): void {
     const { model, entity } = record;
     model.userData.components = entity.components;
-    model.userData.getGroundPosition = () => record.footPosition;
+    // Domain queries read the authoritative vector; presentation/pickup snapshots own their scratch vector.
+    model.userData.getGroundPosition = () => entity.transform.position;
     actionEntity(model, entity.prefab, entity);
     model.userData.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
@@ -431,7 +499,7 @@ export class GroundItemManager {
         console.error(`Unable to replace perished ${entity.prefab}`, error)); }),
       // physics.lua LaunchAt: any inst may be thrown from its own position.
       entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); this.refreshUpdating(record); }),
-      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); model.dispatchEvent({ type: 'ondropped' }); }),
+      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); syncPlacementEntity(model); syncEntitySpatial(model); model.dispatchEvent({ type: 'ondropped' }); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
     // An inst that perished between holders is replaced once it reaches the ground.
@@ -456,13 +524,16 @@ export class GroundItemManager {
   }
 
   private onInventoryDrop(entity: ItemEntity): void {
-    if (this.disposed || [...this.items.values()].some(record => record.entity === entity) || this.pendingDrops.has(entity.id)) return;
+    if (this.disposed || this.groundEntityStops.has(entity)) return;
     const definition = { ...this.inventory.getStackSpec(entity.snapshot()), ...entity.snapshot(), entity };
     const pending = { entity, definition };
     this.pendingDrops.set(entity.id, pending);
+    this.trackGroundEntity(entity);
     void this.createVisual(definition).then(visual => {
       if (this.disposed || this.pendingDrops.get(entity.id) !== pending || entity.isRemoved || entity.components.inventoryitem.owner) {
-        visual.dispose(); this.pendingDrops.delete(entity.id); return;
+        visual.dispose();
+        if (this.pendingDrops.get(entity.id) === pending) this.pendingDrops.delete(entity.id);
+        return;
       }
       this.pendingDrops.delete(entity.id);
       this.addVisual(entity.id, definition, entity.transform.position.clone(), visual, true);
@@ -490,8 +561,10 @@ export class GroundItemManager {
   }
 
   /** Component-driven ground work, including inventory prefabs such as hard stone fruit. */
-  get mineTargets(): import('@dontstarve-web/stategraphs/pickaxe').PickaxeTarget[] {
-    return [...this.activeItems].filter(({ entity }) => entity.components.workable?.GetWorkAction() === 'MINE'
+  get mineTargets(): import('@dontstarve-web/stategraphs/pickaxe').PickaxeTarget[] { return this.getMineTargets(); }
+
+  getMineTargets(model?: THREE.Object3D): import('@dontstarve-web/stategraphs/pickaxe').PickaxeTarget[] {
+    return modelValues(this.items, model, this.activeItems).filter(({ entity }) => entity.components.workable?.GetWorkAction() === 'MINE'
       && entity.components.workable.CanBeWorked()).map(record => ({
       id: record.entity.id, model: record.model, position: record.footPosition,
       entity: actionEntity(record.model, record.entity.prefab, record.entity),
@@ -592,9 +665,10 @@ export class GroundItemManager {
         inst: record.model.userData.mole as import('../packages/prefab/src/mole').Mole,
         isValid: () => this.activeItems.has(record) && !record.entity.isRemoved && !record.entity.hasTag('INLIMBO') }));
   }
+  get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
 
-  get hammerTargets(): readonly HammerTarget[] {
-    return [...this.activeItems].filter(record => record.entity.components.workable?.GetWorkAction() === 'HAMMER')
+  getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
+    return modelValues(this.items, model, this.activeItems).filter(record => record.entity.components.workable?.GetWorkAction() === 'HAMMER')
       .map(record => ({
         id: record.id, entity: record.entity, model: record.model, get position() { return record.footPosition; },
         isValid: () => !this.disposed && this.activeItems.has(record) && !this.inserting.has(record)
@@ -606,14 +680,16 @@ export class GroundItemManager {
   setNetCaptureHandler(handler: (target: NetCaptureTarget) => boolean): void {
     this.onNetCapture = handler;
   }
+  get netCaptureTargets(): readonly NetCaptureTarget[] { return this.getNetCaptureTargets(); }
 
-  get netCaptureTargets(): readonly NetCaptureTarget[] {
-    return [...this.activeItems].filter(record => record.entity.components.workable?.GetWorkAction() === 'NET')
+  getNetCaptureTargets(model?: THREE.Object3D): readonly NetCaptureTarget[] {
+    return modelValues(this.items, model, this.activeItems).filter(record => record.entity.components.workable?.GetWorkAction() === 'NET')
       .map((record) => this.captureTarget(record));
   }
+    get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
 
-    get reskinTargets(): readonly ReskinTarget[] {
-        return [...this.activeItems].flatMap((record) => {
+    getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
+        return modelValues(this.items, model, this.activeItems).flatMap((record) => {
             const prefabId = record.definition.itemId;
             const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ITEM_DEFINITIONS[prefabId])?.skinArchives ?? {});
             const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.();
@@ -687,15 +763,18 @@ export class GroundItemManager {
   private readonly handlePointerDown = (event: PointerEvent) => {
     if ((event.button !== 0 && event.button !== 2) || event.defaultPrevented || this.activeItems.size === 0) return;
 
-    // Input can arrive between active frames after an entity was teleported.
-    for (const record of this.activeItems) record.model.position.copy(record.entity.transform.position);
-    this.pointer.trackPointer(event);
-
-    const hit = this.pointer.raycastPointer([...this.activeItems]
-      .filter(record => record.isClickable?.() !== false).map(record => record.model), true);
-    if (!hit) return;
-    let root: THREE.Object3D | null = hit.object;
-    while (root && !this.items.has(root as THREE.Group)) root = root.parent;
+    const actions = this.mouseActions?.getMouseActions(event);
+    let root: THREE.Object3D | null;
+    if (this.mouseActions) root = this.mouseActions.targetModel ?? null;
+    else {
+      // Standalone managers without a shared picker use their own pointer service.
+      for (const record of this.activeItems) record.model.position.copy(record.entity.transform.position);
+      this.pointer.trackPointer(event);
+      const hit = this.pointer.raycastPointer([...this.activeItems]
+        .filter(record => record.isClickable?.() !== false).map(record => record.model), true);
+      root = hit?.object ?? null;
+      while (root && !this.items.has(root as THREE.Group)) root = root.parent;
+    }
     const record = root ? this.items.get(root as THREE.Group) : undefined;
     if (!record) return;
     const machine = record.model.userData.phonograph as PhonographController | undefined;
@@ -713,6 +792,7 @@ export class GroundItemManager {
       return;
     }
     if (record.entity.components.workable?.GetWorkAction() === 'NET') {
+      if (this.mouseActions && actions?.left?.action !== 'NET') return;
       event.preventDefault();
       this.onNetCapture?.(this.captureTarget(record));
       return;
@@ -720,9 +800,19 @@ export class GroundItemManager {
   };
 
   get renderEntities(): readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[] {
-    return [...this.activeItems].map(({ model, footPosition }) => ({
-      object: model, footPosition, cameraDepth: 0,
-    })).concat(this.prefabs.renderEntities);
+    const entries: { readonly object: THREE.Group; readonly footPosition: THREE.Vector3; cameraDepth: number }[] = [];
+    // Hidden visuals (daytime fireflies) take no part in depth sorting; entries are reused across frames.
+    for (const record of this.activeItems) {
+      if (!isSpriteEntityRendered(record.model)) continue;
+      let entry = this.renderEntryByRecord.get(record);
+      if (!entry) {
+        entry = { get object() { return record.model; }, get footPosition() { return record.footPosition; }, cameraDepth: 0 };
+        this.renderEntryByRecord.set(record, entry);
+      }
+      entries.push(entry);
+    }
+    for (const entry of this.prefabs.renderEntities) entries.push(entry);
+    return entries;
   }
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
@@ -740,7 +830,7 @@ export class GroundItemManager {
       if (item.entity.isRemoved || item.isRemoved?.()) {
         this.removeVisual(item);
         this.entities.destroy(item.entity);
-      }
+      } else { syncPlacementEntity(item.model); syncEntitySpatial(item.model); }
     }
   }
 

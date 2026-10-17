@@ -6,6 +6,18 @@ import type { MouseActionCandidate } from './playeractionpicker.ts';
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { Combat } from '../../componets/src/combat';
+
+/** The picker inst supplied to prefab onpickedfn callbacks. */
+export interface PickActor {
+  hasTag(tag: string): boolean;
+  PushEvent?(name: string, data?: unknown): void;
+  readonly components: {
+    sanity?: { DoDelta(delta: number): void };
+    combat?: Pick<Combat, 'GetAttacked'>;
+    inventory?: { EquipHasTag(tag: string): boolean };
+  };
+}
 
 // actions.lua PickRangeCheck: target:GetPhysicsRadius(0) + 4 + extrarange.
 // Ground flowers have radius 0; bushes include their source obstacle radius.
@@ -13,6 +25,7 @@ export const PICK_REACH = 4;
 
 /** The actor supplies inventory reception; products belong to the pickable component. */
 export interface PickDoer {
+  readonly picker?: PickActor;
   readonly loot?: unknown;
   giveItem(itemId: string, count: number, sourcePosition: THREE.Vector3): boolean;
   giveEntity?(entity: ItemEntity, sourcePosition: THREE.Vector3): boolean;
@@ -44,21 +57,21 @@ function canPick(target: PickTarget): boolean {
 }
 
 /** Scene PICK actions are discovered from components and tags, independent of prefab IDs. */
-export function getPickActions(scene: THREE.Scene): MouseActionCandidate[] {
+export function getPickActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
-  scene.traverse(model => {
-    const component: PickableComponent | undefined = model.userData.components?.pickable;
-    if (!component) return;
-    const target: PickTarget = {
-      model, component, prefab: model.userData.prefab,
-      quickpick: component.quickpick,
-      hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? model.userData.tags?.includes(tag) ?? false,
-      getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
-      getPhysicsRadius: () => model.userData.actionEntity?.getPhysicsRadius?.() ?? 0,
-      PushEvent: (name, data) => model.userData.actionEntity?.PushEvent?.(name, data),
-    };
-    actions.push({ action: { action: 'PICK', target }, button: 'left', model, available: canPick(target) });
-  });
+  if (!model) return actions;
+  const component: PickableComponent | undefined = model.userData.components?.pickable;
+  if (!component) return actions;
+  const target: PickTarget = {
+    model, component, prefab: model.userData.prefab,
+    quickpick: component.quickpick,
+    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? model.userData.tags?.includes(tag) ?? false,
+    getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
+    getPhysicsRadius: () => model.userData.actionEntity?.getPhysicsRadius?.() ?? 0,
+    PushEvent: (name, data) => model.userData.actionEntity?.PushEvent?.(name, data),
+  };
+  actions.push({ action: { action: 'PICK', target }, button: 'left', model, available: canPick(target) });
+
   return actions;
 }
 
@@ -86,7 +99,7 @@ export class PickActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.doer = doer; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
-    this.unregister = this.picker.register(() => getPickActions(world.scene));
+    this.unregister = this.picker.register(model => getPickActions(model));
     this.stopActionEvents = bindActionCancellation(world, this, 'pick', () => this.cancel());
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -179,7 +192,7 @@ export class PickActionController {
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (this.disposed || event.button !== 0 || event.defaultPrevented) return;
     this.picker.pointer.trackPointer(event);
-    const action = this.picker.getMouseActions().left;
+    const action = this.picker.getMouseActions(event).left;
     if (action?.action !== 'PICK' || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     this.request(action.target as PickTarget);

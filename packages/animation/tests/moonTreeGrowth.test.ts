@@ -6,8 +6,17 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMoonTreeForest } from '../../prefab/src/moontree';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { FlowerPlanting } from '../../prefab/src/flower';
-import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { PlantDeployment } from '../../prefab/src/plantDeployment';
+import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
+import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
+import { createInventoryStore } from '../../../src/inventory';
+import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { serializeSave } from '../../../src/save/serialize';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
 import { bindTestWorld } from './worldContentFixture';
@@ -33,28 +42,78 @@ async function setup() {
 it('plants one moonbutterfly with original baby-tree art and cycles short/normal/tall work and growth, accelerating new spring tasks', async () => {
   const s = await setup(), canvas = new EventTarget(), scene = new THREE.Scene();
   scene.add(s.forest.group);
+  const inventory = createInventoryStore([]);
+  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, setCasting() {}, onStateChanged() {} });
+  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionAnimationController;
+  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   const world = { scene, player: new THREE.Group(), camera: s.camera, ground: new THREE.Group(), renderer: { domElement: canvas } } as unknown as WorldContext;
   const canPlant = vi.fn(() => true);
-  const planting = new FlowerPlanting(world, '/dst/data/anim', undefined, () => .5,
-    { forest: s.forest, canPlant, getBlockers: () => [] });
-  const point = new THREE.Vector3(3, 0, 4);
-  vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-  const take = vi.fn(() => true), click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2 }));
+  const source = () => {
+    const address = cursorSlotAddress(), entity = inventory.getEntity(address);
+    if (!entity) return undefined;
+    const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity;
+    return { entity, isValid, take: () => isValid() ? inventory.extract(address, 1, entity) ?? undefined : undefined,
+      putBack: (item: typeof entity) => { inventory.receiveAt(address, item); } };
+  };
+  const prepare = vi.fn(() => s.forest.prepareTransplant());
+  const planting = new PlantDeployment(world, animation, locomotor, source,
+    { plants: { moonbutterfly_sapling: { prepareTransplant: prepare } }, canPlant });
+  const point = new THREE.Vector3(6, 0, 0);
+  let restored: Awaited<ReturnType<typeof setup>> | undefined;
+  const restoredInventory = createInventoryStore([]);
   try {
-    await planting.begin(take, 'moonbutterfly');
-    window.dispatchEvent(Object.assign(new Event('keydown'), { key: 'Escape' })); click();
-    expect(take).not.toHaveBeenCalled();
-    await planting.begin(take, 'moonbutterfly'); canPlant.mockReturnValue(false); click();
-    expect(take).not.toHaveBeenCalled(); canPlant.mockReturnValue(true); click();
-    expect(take).toHaveBeenCalledOnce();
+    expect((await executeDebugCommand('c_give("moonbutterfly",2)', inventory)).ok).toBe(true);
+    const original = inventory.getEntity(inventorySlotAddress(0))!;
+    expect(original.components.perishable.localMultiplier?.()).toBe(.25);
+    original.setFreshnessPercent(.6);
+    expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
+    canPlant.mockReturnValue(false);
+    expect(planting.request(point)).toBe(false);
+    canPlant.mockReturnValue(true);
+    expect(planting.request(point)).toBe(true);
+    await prepare.mock.results.at(-1)!.value; await new Promise(resolve => setTimeout(resolve, 0));
+    planting.update();
+    expect(locomotor.goToPoint).toHaveBeenCalled();
+    expect(s.forest.exportSaplings()).toEqual([]);
+    world.player.position.set(4, 0, 0);
+    planting.update(); graph.update(5 / 30); planting.cancel(); graph.update(1);
+    expect(inventory.get(cursorSlotAddress())?.count).toBe(2);
+    expect(s.forest.exportSaplings()).toEqual([]);
+    expect(planting.request(point)).toBe(true);
+    await prepare.mock.results.at(-1)!.value; await new Promise(resolve => setTimeout(resolve, 0));
+    planting.update(); graph.update(5 / 30);
+    expect(inventory.get(cursorSlotAddress())?.count).toBe(2);
+    graph.update(1 / 30);
+    expect(inventory.get(cursorSlotAddress())).toMatchObject({ count: 1, freshnessPercent: .6 });
+    expect(inventory.getEntity(cursorSlotAddress())?.id).toBe(original.id);
     expect(s.forest.exportSaplings()[0].transform.position).toEqual(point.toArray());
     expect(s.forest.exportSaplings()[0].components.saplingTimer.timers.grow.timeleft).toBe(225);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/plant_tree', point);
-    await planting.begin(take, 'moonbutterfly'); click();
-    expect(take).toHaveBeenCalledOnce(); planting.cancel();
+    expect(planting.canDeploy(point.clone().add(new THREE.Vector3(9.5, 0, 0)), source()!.entity)).toBe(false);
+    expect(planting.canDeploy(point.clone().add(new THREE.Vector3(9.7, 0, 0)), source()!.entity)).toBe(true);
+    const unloaded = s.forest.spawnTree('moon_tree_normal', new THREE.Vector3(100, 0, 0));
+    expect(unloaded.model).toBeUndefined();
+    expect(planting.canDeploy(new THREE.Vector3(109.5, 0, 0), source()!.entity)).toBe(false);
+    expect(planting.canDeploy(new THREE.Vector3(109.7, 0, 0), source()!.entity)).toBe(true);
+    let json = '';
+    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
+      json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
+        entities: { moonbutterfly_sapling: s.forest.exportSaplings() }, inventory: inventory.exportState(),
+        elapsedSeconds: s.scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 },
+      }, SAVE_CATALOG);
+    })).ok).toBe(true);
+    const saved = deserializeSave(json, SAVE_CATALOG);
+    restored = await setup();
+    const record = saved.world.entities.moonbutterfly_sapling[0];
+    restored.forest.spawnSapling(new THREE.Vector3(...record.transform.position), {
+      ...record, components: { saplingTimer: record.components.saplingTimer! },
+    });
+    restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    expect(restored.forest.exportSaplings()).toEqual(s.forest.exportSaplings());
+    expect(restoredInventory.exportState()).toEqual(inventory.exportState());
     s.scheduler.advance(225);
     expect(s.forest.exportSaplings()).toEqual([]);
-    const tree = s.forest.entities[0];
+    const tree = s.forest.entities.find(tree => tree.position.equals(point))!;
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 450 } });
     expect(tree.model!.userData.animationController.currentAnimation).toBe('grow_seed_to_short');
     expect(s.forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(8);
@@ -68,7 +127,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     s.scheduler.advance(1125);
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 337 } });
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeGrowFromWilt', tree.position);
-  } finally { planting.dispose(); s.dispose(); }
+  } finally { planting.dispose(); graph.cancelAction(); inventory.dispose(); restoredInventory.dispose(); restored?.dispose(); s.dispose(); }
 });
 
 it('keeps logical growth while unloaded and stops growth when chopping or digging plants', async () => {

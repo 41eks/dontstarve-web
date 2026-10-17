@@ -140,6 +140,7 @@ export class FarmHoeActionController {
     if (event.button === 0) { this.cancel(); return; }
     if (event.button !== 2) return;
     this.pointer.trackPointer(event);
+    if (this.world.mouseActions && this.world.mouseActions.getMouseActions(event).right?.action !== 'TILL') { this.cancel(); return; }
     const point = this.hitTarget();
     if (!point) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation(); this.request(point);

@@ -1,3 +1,4 @@
+import { PlayerActionPicker } from './playeractionpicker.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import * as THREE from 'three';
@@ -22,6 +23,7 @@ export type ToolWorkAction = 'MINE' | 'CHOP';
 /** componentactions: <action>_tool + <action>_workable (MINE for pickaxes, CHOP for axes), on the right mouse button. */
 export class PickaxeActionController {
   private readonly pointer: PointerRaycaster;
+  private readonly picker: PlayerActionPicker;
   private readonly unregisterHover: () => void;
   private target?: PickaxeTarget;
   private actionVersion = 0;
@@ -35,7 +37,7 @@ export class PickaxeActionController {
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
   private readonly stopActionEvents: () => void;
-  private readonly getTargets: () => readonly PickaxeTarget[];
+  private readonly getTargets: (model?: THREE.Object3D) => readonly PickaxeTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly worker: Worker;
   private readonly action: ToolWorkAction;
@@ -45,7 +47,7 @@ export class PickaxeActionController {
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
-    getTargets: () => readonly PickaxeTarget[],
+    getTargets: (model?: THREE.Object3D) => readonly PickaxeTarget[],
     isManualMovement = () => false,
     action: ToolWorkAction = 'MINE',
   ) {
@@ -68,9 +70,10 @@ export class PickaxeActionController {
     this.isManualMovement = isManualMovement;
     this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    // Without the pickaxe equipped no target can be worked, so none is built or ray-tested.
-    this.unregisterHover = world.mouseActions?.register(() => !this.isEquipped() ? [] :
-      this.getTargets().filter(target => target.isValid()).map(target => ({
+    this.picker = world.mouseActions ?? new PlayerActionPicker(this.pointer);
+    // Equipped actions are computed only for the selected entity.
+    this.unregisterHover = this.picker.register(model => !model || !this.isEquipped() ? [] :
+      this.getTargets(model).filter(target => target.isValid()).map(target => ({
         action: { action: this.action, invobject: equippedActionEntity(this.handEquipment.peek()), target: target.entity },
         button: 'right', model: target.model, available: this.canWork(target), source: 'equipped',
       }))) ?? (() => {});
@@ -143,7 +146,7 @@ export class PickaxeActionController {
     this.stopEquipment();
     this.cancel();
     this.unregisterHover();
-    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
+    if (this.picker !== this.world.mouseActions) this.picker.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }
@@ -168,12 +171,10 @@ export class PickaxeActionController {
       Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
-  private hitTarget(): PickaxeTarget | undefined {
-    const targets = this.isEquipped() ? this.getTargets().filter((target) => this.canWork(target)) : [];
-    const hit = this.pointer.raycastPointer(targets.map(({ model }) => model));
-    let root: THREE.Object3D | null = hit?.object ?? null;
-    while (root && !targets.some(({ model }) => model === root)) root = root.parent;
-    return targets.find(({ model }) => model === root);
+  private hitTarget(event?: PointerEvent): PickaxeTarget | undefined {
+    const action = this.picker.getMouseActions(event).right, model = this.picker.targetModel;
+    return model && action?.action === this.action
+      ? this.getTargets(model).find(target => target.model === model && target.isValid()) : undefined;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
@@ -181,7 +182,7 @@ export class PickaxeActionController {
     if (event.button === 0) { this.cancel(); return; }
     if (event.button !== 2 || !this.isEquipped()) return;
     this.pointer.trackPointer(event);
-    const target = this.hitTarget();
+    const target = this.hitTarget(event);
     if (!target) { this.cancel(); return; }
     event.preventDefault();
     event.stopImmediatePropagation();

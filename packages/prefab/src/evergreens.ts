@@ -1,3 +1,4 @@
+import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
@@ -72,7 +73,9 @@ export interface EvergreenForest {
   group: THREE.Group;
   readonly entities: readonly ProximityEntity[];
   readonly chopTargets: readonly PickaxeTarget[];
+  getChopTargets(model?: THREE.Object3D): readonly PickaxeTarget[];
   readonly digTargets: readonly ShovelTarget[];
+  getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[];
   readonly renderEntities: readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
   spawn(prefab: EvergreenSpawnId, position: THREE.Vector3, saved?: EvergreenRecord): ProximityEntity;
   updateNearby(playerPosition: THREE.Vector3): void;
@@ -96,6 +99,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const factory = createSpriteFactory(build, { animations: [...shortNormal.animations, ...tallOld.animations] });
   const scheduler = world.scheduler ?? new GameTimeScheduler();
   const trees = new Map<ProximityEntity, Tree>();
+  const mouseRecords = new ModelRecords<ProximityEntity>();
   const effects = new Map<THREE.Group, THREE.Vector3>();
   const lastPlayerPosition = new THREE.Vector3();
   let disposed = false;
@@ -243,6 +247,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     Object.defineProperty(model.userData, 'tags', { get: () => ['plant', 'tree', 'evergreens', 'evergreen',
       'shelter', 'stump', 'burnt', 'fire', 'CHOP_workable', 'DIG_workable'].filter(tag => tree.inst.hasTag(tag)) });
     actionEntity(model, 'evergreen', tree.inst);
+    mouseRecords.set(model, logical);
     return model;
   }, model => {
     const tree = [...trees.values()].find(tree => tree.logical.model === model);
@@ -254,15 +259,18 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     }
     if (tree) unbindFire(tree);
     factory.disposeSprite(model);
-  });
+  }, undefined, { prefab: 'evergreen', smartRadius: 1 });
   nearby.group.name = 'EvergreenForest';
-  const targets = (action: 'CHOP' | 'DIG'): PickaxeTarget[] => [...nearby.activeEntities].flatMap(logical => {
+  const targets = (action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] => mouseRecords.select(model, nearby.activeEntities).flatMap(logical => {
     const tree = trees.get(logical)!, model = logical.model!;
     const isValid = () => !disposed && !tree.inst.isRemoved && logical.model === model
       && tree.workable.CanBeWorked() && tree.workable.GetWorkAction() === action;
     return isValid() ? [{ id: logical.saveId!, model, position: logical.position,
       entity: actionEntity(model, 'evergreen', tree.inst), isValid }] : [];
   });
+  const digTargets = (model?: THREE.Object3D) => targets('DIG', model).map(target => ({ ...target,
+    dig: () => target.isValid() && performToolWork('DIG', target.entity, {}),
+  }));
   return {
     group: nearby.group,
     get entities() { return nearby.entities; },
@@ -315,9 +323,9 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       return logical;
     },
     get chopTargets() { return targets('CHOP'); },
-    get digTargets() { return targets('DIG').map(target => ({ ...target,
-      dig: () => target.isValid() && performToolWork('DIG', target.entity, {}),
-    })); },
+    getChopTargets(model) { return targets('CHOP', model); },
+    get digTargets() { return digTargets(); },
+    getDigTargets: digTargets,
     updateNearby(position) {
       lastPlayerPosition.copy(position); nearby.update(position);
       for (const logical of nearby.activeEntities) trees.get(logical)!.growable.OnEntityWake();

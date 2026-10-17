@@ -111,6 +111,12 @@ export function configureBurnableItemEntity(entity: ItemEntity): void {
 }
 
 /** Existing ground art, generic fire FX and a prepared ash stack; all resources precede ignition. */
+/** Render entry that keeps a burning item's fire in the owner's sort group, drawn after the item. */
+export function burnableFireRenderEntry(fire: ArchiveSprite) {
+  return { object: fire.model, footPosition: fire.model.position, cameraDepth: 0,
+    sortGroup: fire.model.userData.fireOwnerId as number | undefined, sortLayer: 2 };
+}
+
 export async function createBurnableItemVisual(context: GroundPrefabContext,
   itemId: string, sprite: ArchiveSprite, fires: Set<ArchiveSprite>, fxLevel: 2 | 3 = 2): Promise<GroundItemVisual> {
   if (!context.prepareSpawn) throw new Error('Burnable ground items require prepared ground output');
@@ -144,6 +150,7 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
   const syncBurning = (burning: boolean) => {
     if (burning) {
       fire.model.position.copy(sprite.model.position);
+      fire.model.userData.fireOwnerId = sprite.model.id;
       context.scene.add(fire.model); fires.add(fire);
       sound = PlaySound('dontstarve/common/campfire', sprite.model.position);
       if (loopSound) loop = PlaySound(loopSound, sprite.model.position);

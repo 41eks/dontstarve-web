@@ -7,7 +7,7 @@ import type { GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
-import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
+import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, burnableFireRenderEntry, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
 import { configureHeatRockEntity, HEATROCK_ID, type HeatRock } from './heatrock';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
@@ -15,6 +15,7 @@ import { configureRazorEntity, RAZOR_ID } from './razor';
 import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';
 import { configureBirdEntity, isBirdId } from './birds';
 import { configureBackpackEntity } from './backpack';
+import { ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from './armorsnurtleshell';
 import { configureRockAvocadoFruitEntity } from './rock_avocado_fruit';
 import { configurePlantableEntity } from './plantables';
 import { configureFertilizerEntity, FERTILIZER_CYCLES } from './fertilizers';
@@ -53,6 +54,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       return turfTileName(entity.prefab) ? configureTurfEntity(entity)
       : isBirdId(entity.prefab) ? configureBirdEntity(entity)
       : entity.prefab === 'backpack' ? configureBackpackEntity(entity)
+      : entity.prefab === ARMORSNURTLESHELL_ID ? configureArmorSnurtleshellEntity(entity)
       : entity.prefab === HEATROCK_ID ? configureHeatRockEntity(entity)
       : entity.prefab === RAZOR_ID ? configureRazorEntity(entity)
       : entity.prefab === PANFLUTE_ID ? configurePanfluteEntity(entity)
@@ -80,7 +82,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       catch (error) { sprite.dispose(); throw error; }
     },
     update(dt, quaternion) { for (const fire of fires) { fire.model.quaternion.copy(quaternion); fire.update(dt); } },
-    renderEntities: () => [...fires].map(fire => ({ object: fire.model, footPosition: fire.model.position, cameraDepth: 0 })),
+    renderEntities: () => [...fires].map(burnableFireRenderEntry),
     dispose() { for (const fire of fires) fire.dispose(); fires.clear(); },
   };
 }

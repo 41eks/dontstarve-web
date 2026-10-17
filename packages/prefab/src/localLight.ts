@@ -10,6 +10,8 @@ export interface PrefabLocalLight {
 }
 
 const LOCAL_LIGHT_KEY = 'dstPrefabLocalLight';
+/** Owners that currently emit light; kept in step by setPrefabLocalLight so renderers need no scene walk. */
+const localLightOwners = new Set<THREE.Object3D>();
 
 /** Minimum material light, matching AnimState:SetLightOverride. No emitted light. */
 export const setPrefabLightOverride = setLightOverride;
@@ -17,8 +19,18 @@ export const getPrefabLightOverride = getLightOverride;
 
 /** The entity origin is the light centre, independently of its billboard art. */
 export function setPrefabLocalLight(owner: THREE.Object3D, light: PrefabLocalLight | null): void {
-  if (light === null) delete owner.userData[LOCAL_LIGHT_KEY];
-  else owner.userData[LOCAL_LIGHT_KEY] = light;
+  if (light === null) {
+    delete owner.userData[LOCAL_LIGHT_KEY];
+    localLightOwners.delete(owner);
+  } else {
+    owner.userData[LOCAL_LIGHT_KEY] = light;
+    localLightOwners.add(owner);
+  }
+}
+
+/** Owners with a local light set, whether or not they are currently attached to a scene. */
+export function getPrefabLocalLightOwners(): ReadonlySet<THREE.Object3D> {
+  return localLightOwners;
 }
 
 export function getPrefabLocalLight(owner: THREE.Object3D): PrefabLocalLight | undefined {

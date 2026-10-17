@@ -1,11 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { useInteractionSave } from './interactionSave';
 
 test('game c_give uses real spellcaster equipment, blocks busy world input and exports its spent uses', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
+  await useInteractionSave(page);
   await page.goto('/tests/dst-lighting.html');
   const urls = Object.fromEntries(['main', 'universal', 'view', 'playerStats', 'save/deserialize', 'save/catalog',
     'save/inventoryState'].map(name => [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));

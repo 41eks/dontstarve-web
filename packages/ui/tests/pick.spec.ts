@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { useInteractionSave } from './interactionSave';
 
 for (const harvest of [
   { prefab: 'flower_cave_double', item: 'lightbulb', count: 2, regrow: 2160, component: 'bulbPlant',
@@ -12,6 +13,7 @@ for (const harvest of [
     test.setTimeout(120_000);
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
+    await useInteractionSave(page);
     await page.goto('/tests/dst-lighting.html');
     const urls = Object.fromEntries(['main', 'universal', 'view', 'save/deserialize', 'save/catalog',
       'save/inventoryState'].map(name =>
@@ -68,14 +70,24 @@ for (const harvest of [
         y: bounds.top + (1 - center.y) * bounds.height / 2 };
     });
     await page.mouse.move(point.x, point.y);
-    expect(await page.evaluate(() => (window as any).pickGame.view.mouseActions.getMouseActions().left?.action)).toBe('PICK');
+    const hover = await page.evaluate(() => {
+      const { plant, view } = (window as any).pickGame;
+      const action = view.mouseActions.getMouseActions().left?.action;
+      const target = view.mouseActions.targetModel;
+      return { action, target: target?.userData.prefab ?? target?.name,
+        tags: plant.userData.tags, active: plant.userData.actionEntity?.hasTag('tickingarea'),
+        pickable: plant.userData.actionEntity?.hasTag('pickable'),
+        canPick: plant.userData.components.pickable.canBePicked };
+    });
+    expect(hover.action, JSON.stringify(hover)).toBe('PICK');
+    await expect.poll(() => page.evaluate(() => (window as any).pickGame.view.player.userData.stategraph.stateName)).toBe('idle');
     await page.mouse.click(point.x, point.y);
     // Walk-to + dolongaction: the harvest must not complete on the click frame.
     await page.evaluate(() => new Promise(requestAnimationFrame));
     expect(await page.evaluate(item => (window as any).pickGame.inventory.count(item), harvest.item)).toBe(before.count);
     await expect.poll(() => page.evaluate(item => (window as any).pickGame.inventory.count(item), harvest.item),
       { timeout: 15_000 }).toBe(before.count + harvest.count);
-    expect(await page.evaluate(() => (window as any).pickGame.plant.userData.tags)).toEqual(harvest.tags);
+    expect(new Set(await page.evaluate(() => (window as any).pickGame.plant.userData.tags))).toEqual(new Set([...harvest.tags, 'tickingarea']));
 
     const downloadPromise = page.waitForEvent('download');
     await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', {
@@ -118,7 +130,7 @@ for (const harvest of [
     expect(restored.record.transform.position).toEqual(before.position);
     expect(restored.record.components[harvest.component]).toMatchObject({ picked: true });
     expect(restored.record.components[harvest.component].regrowSeconds).toBeGreaterThan(harvest.regrow - 20);
-    expect(restored.tags).toEqual(harvest.tags);
+    expect(new Set(restored.tags)).toEqual(new Set([...harvest.tags, 'tickingarea']));
     expect(restored.canPick).toBe(false);
     expect(restored.count).toBe(before.count + harvest.count);
     expect(restored.itemIds).toEqual(restored.liveItemIds);
