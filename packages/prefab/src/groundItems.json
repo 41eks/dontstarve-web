@@ -1363,6 +1363,21 @@
       "skinArchives": {},
       "elementalFoodHunger": 1.0
     },
+    "moonglass": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/moonglass.lua",
+      "name": "月亮碎片",
+      "icon": "moonglass.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "moonglass.zip",
+      "buildArchives": [
+        "moonglass.zip"
+      ],
+      "bank": "moonglass",
+      "animation": "f1",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "dock_kit": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/dock_kit.lua",
       "name": "码头套装",

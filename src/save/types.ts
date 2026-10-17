@@ -51,6 +51,10 @@ export interface SavedEntity {
     wall?: WallSaveState;
     fence?: import('@dontstarve-web/prefab/fenceSkins').FenceSaveState;
     moonTree?: MoonTreeSaveState;
+    mushtree?: import('@dontstarve-web/prefab/mushtree').MushtreeSaveState;
+    mushroom?: { rain: number };
+    grottoPool?: import('@dontstarve-web/prefab/grotto_pool').GrottoPoolSaveState;
+    grottoGlass?: import('@dontstarve-web/prefab/grotto_pool').GrottoGlassSaveState;
     evergreen?: { stump?: true; burnt?: true; burntcone?: true };
     deciduoustree?: import('../../packages/prefab/src/deciduousTreeLeaves').DeciduousTreeSave;
     marbleShrub?: import('../../packages/prefab/src/marbleshrub').MarbleShrubSaveState;

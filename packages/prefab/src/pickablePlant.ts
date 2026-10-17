@@ -31,7 +31,9 @@ import type { GrowableSave } from '../../componets/src/growable';
 export interface PickablePlantRecord {
   id: string;
   transform: { position: [number, number, number]; rotationY: number };
-  components: { pickable?: PickableSaveState; witherable?: WitherableSave; plant?: { skinId?: string }; growable?: GrowableSave; burning?: true };
+  components: { pickable?: PickableSaveState; witherable?: WitherableSave; plant?: { skinId?: string }; growable?: GrowableSave; burning?: true;
+    /** mushrooms.lua OnSave: the rain days left before a picked mushroom regrows. */
+    mushroom?: { rain: number } };
 }
 
 export interface PickablePlantWorld {
@@ -73,6 +75,9 @@ export interface PickablePlantBehaviorContext extends PickablePlantAppearanceCon
   readonly scheduler: GameTimeScheduler;
   growthDuration(seconds: number): number;
   spawnLoot(prefab: string): void;
+  /** Local bridges to world content, for behaviors watching phases or weather; each cleanup is the behavior's to run. */
+  readonly getWatchWorldContent?: GetWatchWorldContent;
+  readonly rain?: ReadonlySignal<'none' | 'rain' | 'snow'>;
 }
 
 /** The prefab-specific values of a renewable pickable plant: art, callbacks' clips and sounds, and loot. */
@@ -366,6 +371,7 @@ export class PickablePlantManager {
           scheduler: this.scheduler,
           growthDuration: seconds => this.season?.peek().season === 'spring' ? seconds * .75 : seconds,
           spawnLoot: prefab => { lootdropper.SpawnLootPrefab(prefab); },
+          getWatchWorldContent: this.getWatchWorldContent, rain: this.world.rain,
         });
         if (definition.witherable) {
           plant.witherable = new Witherable(entity, pickable, this.scheduler,

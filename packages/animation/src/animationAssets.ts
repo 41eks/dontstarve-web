@@ -48,10 +48,16 @@ export async function loadSpriteSkinArchive(file: string, assetBaseUrl: string) 
 }
 
 export function findImage(build: ParsedBuild, hash: number, frameIndex: number) {
+  const images = build.symbols.get(hash) ?? [];
   let result: BuildImage | undefined;
-  for (const image of build.symbols.get(hash) ?? []) {
+  for (const image of images) {
     if (image.index <= frameIndex && image.index + image.duration > frameIndex &&
       (!result || image.index > result.index)) result = image;
+  }
+  if (!result && images.length) {
+    // A symbol's frames loop: an animation may run past the build's last frame (moonglasspool_tile cycles 34 frames over 140).
+    const length = Math.max(...images.map(image => image.index + image.duration));
+    if (frameIndex >= length) return findImage(build, hash, frameIndex % length);
   }
   return result?.vertexCount ? result : undefined;
 }

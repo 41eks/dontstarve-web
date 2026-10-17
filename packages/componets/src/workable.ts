@@ -82,7 +82,7 @@ export class Workable {
   HasTag(tag: string): boolean | undefined {
     return WORKABLE_TAGS.has(tag) ? workTag(this.CanBeWorked(), this.actionState.peek()) === tag : undefined;
   }
-  SetOnWorkCallback(fn: (worker: Worker, workleft: number, numworks: number) => void): void { this.onwork = fn; }
+  SetOnWorkCallback(fn: ((worker: Worker, workleft: number, numworks: number) => void) | undefined): void { this.onwork = fn; }
   SetOnFinishCallback(fn: (worker: Worker) => void): void { this.onfinish = fn; }
 
   WorkedBy(worker: Worker, numworks = 1): boolean {

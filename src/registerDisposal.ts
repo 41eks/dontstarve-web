@@ -112,7 +112,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'skeletons' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
+  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'grottoPools' | 'mushtrees' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'skeletons' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -132,7 +132,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, wormholes, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, beefalos, ponds } = scene;
+      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, wormholes, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, beefalos, ponds } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -417,7 +417,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           (model) => [...buildingPlacement.getHammerTargets(model), ...farmPlow.getHammerTargets(model), ...skeletons.getHammerTargets(model), ...groundItems.getHammerTargets(model)],
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, (model) => [...rockManager.getMineTargets(model), ...caveEntrances.getMineTargets(model), ...marbleShrubs.getMineTargets(model), ...archiveProps.getMineTargets(model), ...groundItems.getMineTargets(model)], isActionInterrupting);
+          handEquipment, (model) => [...rockManager.getMineTargets(model), ...caveEntrances.getMineTargets(model), ...grottoPools.getMineTargets(model), ...marbleShrubs.getMineTargets(model), ...archiveProps.getMineTargets(model), ...groundItems.getMineTargets(model)], isActionInterrupting);
         const turfDeployment = new TurfDeployment(view, turfMap, playerAnimation, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity || !turfTileName(entity.prefab)) return undefined;
@@ -448,14 +448,14 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           handEquipment, farmPlow, isActionInterrupting,
           (error) => console.error('Unable to till farm soil', error));
         const shovel = new ShovelActionController(view, playerAnimation, locomotor,
-          handEquipment, (model) => [...farmPlow.getDigTargets(model), ...molehills.getDigTargets(model), ...marbleBeanSaplings.getDigTargets(model), ...rockAvocadoSaplings.getDigTargets(model), ...rockAvocadoBushes.getDigTargets(model), ...berrybushes.getDigTargets(model), ...monkeytails.getDigTargets(model), ...grasses.getDigTargets(model), ...saplings.getDigTargets(model), ...moonTreeForest.getDigTargets(model), ...evergreenForest.getDigTargets(model), ...deciduousForest.getDigTargets(model)], isActionInterrupting);
+          handEquipment, (model) => [...farmPlow.getDigTargets(model), ...molehills.getDigTargets(model), ...marbleBeanSaplings.getDigTargets(model), ...rockAvocadoSaplings.getDigTargets(model), ...rockAvocadoBushes.getDigTargets(model), ...berrybushes.getDigTargets(model), ...monkeytails.getDigTargets(model), ...grasses.getDigTargets(model), ...saplings.getDigTargets(model), ...mushroomPlants.getDigTargets(model), ...moonTreeForest.getDigTargets(model), ...mushtrees.getDigTargets(model), ...evergreenForest.getDigTargets(model), ...deciduousForest.getDigTargets(model)], isActionInterrupting);
         const reskin = new ReskinActionController(view, playerAnimation, locomotor,
           handEquipment,
           (model) => [...buildingPlacement.getReskinTargets(model), ...groundItems.getReskinTargets(model), ...wormholes.getReskinTargets(model), ...berrybushes.getReskinTargets(model)], reskinEffects,
           isActionInterrupting, (error) => console.error('Unable to reskin target', error));
         const lighter = new LighterActionController(view, playerAnimation, locomotor, handEquipment, isActionInterrupting);
         const axe = new PickaxeActionController(view, playerAnimation, locomotor,
-          handEquipment, (model) => [...moonTreeForest.getChopTargets(model), ...evergreenForest.getChopTargets(model), ...deciduousForest.getChopTargets(model)], isActionInterrupting, 'CHOP');
+          handEquipment, (model) => [...moonTreeForest.getChopTargets(model), ...mushtrees.getChopTargets(model), ...evergreenForest.getChopTargets(model), ...deciduousForest.getChopTargets(model)], isActionInterrupting, 'CHOP');
         actionControllers.push(spellcast, hammer, pickaxe, axe, pitchfork, turfDeployment, plantDeployment, farmHoe, shovel, reskin, lighter);
       }
 

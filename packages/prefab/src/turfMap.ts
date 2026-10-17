@@ -231,7 +231,6 @@ export class TurfMap {
           / (Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder)) + 1);
         mesh.receiveShadow = true;
         visual.add(mesh);
-        this.depthPrepass.add(mesh);
         this.layers.set(WORLD_TILES[name], { mesh, assets });
         layers.set(WORLD_TILES[name], mini);
         this.rebuildGeometry();
@@ -297,7 +296,6 @@ export class TurfMap {
     const material = this.dirtAssets.material;
     this.dirt = new THREE.Mesh(new THREE.BufferGeometry(), material);
     this.dirt.name = 'DugTurf:DIRT';
-    this.depthPrepass.add(this.dirt);
     this.dirt.renderOrder = -1.5;
     this.dirt.receiveShadow = true;
     this.rebuildGeometry();
@@ -326,10 +324,9 @@ export class TurfMap {
         / (Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder)) + 1);
       mesh.receiveShadow = true;
       this.visual.add(mesh);
-      this.depthPrepass.add(mesh);
       this.layers.set(WORLD_TILES[name], { mesh, assets });
     }
-    // Opaque depth passes run first; the sorted transparent cliffs blend over terrain only where they are in front.
+    // Only the falloff writes depth (prepass); turf layers stay depth-free and are ordered by renderOrder.
     this.falloffMesh = new THREE.Mesh(new THREE.BufferGeometry(), falloff.material);
     this.falloffMesh.name = 'TurfFalloff';
     this.falloffMesh.renderOrder = -.6;
@@ -385,7 +382,6 @@ export class TurfMap {
     const geometry = groundTileGeometry(quads, this.dirtAssets, this.size);
     this.dirt.geometry.dispose();
     this.dirt.geometry = geometry;
-    this.depthPrepass.sync(this.dirt);
     this.dirt.visible = quads.length > 0;
     for (const [tileId, { mesh, assets }] of this.layers) {
       const candidates = new Set<string>();
@@ -427,7 +423,6 @@ export class TurfMap {
       }
       mesh.geometry.dispose();
       mesh.geometry = groundTileGeometry(edgeQuads, assets, this.size);
-      this.depthPrepass.sync(mesh);
       mesh.visible = edgeQuads.length > 0;
     }
     this.rebuildFalloff();

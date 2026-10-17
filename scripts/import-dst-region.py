@@ -41,11 +41,125 @@ def archive_moon_statue_components(data):
     return {'archiveProp': {'anim': anim}}
 
 
+def cave_exit_components(data):
+    # worldmigrator.lua OnSave (id/auto/linkedWorld/receivedPortal) belongs to the shard link, which is not connected yet.
+    migrator = data.get('worldmigrator')
+    if set(data) != {'worldmigrator'} or not isinstance(migrator, dict) \
+            or set(migrator) - {'id', 'auto', 'linkedWorld', 'receivedPortal'}:
+        raise ValueError('Unsupported cave_exit save state')
+    return {}
+
+
+def mushtree_components(data, medium):
+    # mushtree.lua / mushtree_moon.lua OnSave plus growable/plantregrowth. plantregrowth (offspring regrowth) is not
+    # ported, so its timer is not carried over; a stump's decay timer is rebuilt when the stump is made.
+    allowed = {'plantregrowth', 'stump', 'burnt', 'treestate', 'growable'} if medium else {'plantregrowth', 'stump', 'burnt'}
+    if set(data) - allowed or data.get('timer') is not None:
+        raise ValueError('Unsupported mushtree save state')
+    for flag in ('stump', 'burnt'):
+        if flag in data and data[flag] is not True:
+            raise ValueError(f'Expected a true mushtree {flag} flag')
+    if data.get('stump') and data.get('burnt'):
+        raise ValueError('A burnt mushtree is not a stump')
+    components = {}
+    state = {key: True for key in ('stump', 'burnt') if data.get(key)}
+    if 'treestate' in data:
+        if data['treestate'] not in ('normal', 'bloom'):
+            raise ValueError('Unsupported mushtree treestate')
+        state['treestate'] = data['treestate']
+    if state:
+        components['mushtree'] = state
+    growth = data.get('growable')
+    if growth is not None:
+        if not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'} \
+                or growth.get('usetimemultiplier') not in (None, False) \
+                or type(growth.get('stage')) is not int or not 1 <= growth['stage'] <= 3 \
+                or any(type(growth[key]) not in (int, float) or growth[key] < 0 for key in ('time', 'sleeptime') if key in growth):
+            raise ValueError('Unsupported mushtree growable state')
+        components['growable'] = {key: growth[key] for key in ('stage', 'time', 'sleeptime') if key in growth}
+    return components
+
+
+def grotto_pool_components(data, big):
+    # grotto_pool_big.lua / grotto_pool_small.lua on_save: children_ids + children_indexes, or the small pool's wf_id.
+    # The source GUIDs become project entity IDs once every imported entity is known (see link_grotto_pools).
+    if big:
+        ids, indexes = data.get('children_ids', []), data.get('children_indexes', [])
+        if set(data) - {'children_ids', 'children_indexes'} or not isinstance(ids, list) or not isinstance(indexes, list) \
+                or len(ids) != len(indexes) or len(set(indexes)) != len(indexes) \
+                or any(type(value) is not int or value < 0 for value in ids) \
+                or any(type(value) is not int or not 1 <= value <= 5 for value in indexes):
+            raise ValueError('Unsupported grotto_pool_big save state')
+        children = [{'index': index, 'sourceId': child} for index, child in zip(indexes, ids)]
+    else:
+        if set(data) - {'wf_id'} or ('wf_id' in data and (type(data['wf_id']) is not int or data['wf_id'] < 0)):
+            raise ValueError('Unsupported grotto_pool_small save state')
+        children = [{'index': 1, 'sourceId': data['wf_id']}] if 'wf_id' in data else []
+    return {'grottoPool': {'children': children}}
+
+
+def grotto_glass_components(data):
+    # grotto_pool_moonglass.lua / grotto_waterfall_small.lua: workable.savestate writes workleft (and maxwork -1).
+    if set(data) - {'workable'}:
+        raise ValueError('Unsupported grotto prop save state')
+    work = data.get('workable')
+    if work is None:
+        return {}
+    if not isinstance(work, dict) or set(work) - {'workleft', 'maxwork'} or work.get('maxwork', -1) != -1 \
+            or type(work.get('workleft')) not in (int, float) or not 0 <= work['workleft'] <= 6:
+        raise ValueError('Unsupported grotto prop workable state')
+    return {'grottoGlass': {'workleft': work['workleft']}}
+
+
+def grotto_waterfall_components(data):
+    if data:
+        raise ValueError('Unsupported grotto_waterfall_big save state')
+    return {}
+
+
+def link_grotto_pools(result, imported_ids):
+    # Only children that were imported can be linked; a pool respawns any missing prop (setup_children).
+    for prefab in ('grotto_pool_big', 'grotto_pool_small'):
+        for entity in result.get(prefab, []):
+            children = entity['components']['grottoPool']['children']
+            entity['components']['grottoPool']['children'] = [
+                {'index': child['index'], 'id': imported_ids[child['sourceId']]}
+                for child in children if child['sourceId'] in imported_ids]
+            if not entity['components']['grottoPool']['children']:
+                del entity['components']['grottoPool']
+
+
+def blue_mushroom_components(data):
+    # mushrooms.lua OnSave: rain only while positive. The open/closed pose follows the world phase, and the pickable
+    # component saves nothing for an unpicked mushroom; a saved pickable (picked, caninteractwith...) is not carried over.
+    if set(data) - {'rain'}:
+        raise ValueError('Unsupported blue_mushroom save state')
+    rain = data.get('rain')
+    if rain is None:
+        return {}
+    if type(rain) is not int or not 1 <= rain <= 20:
+        raise ValueError('Expected blue_mushroom rain in 1..20')
+    return {'mushroom': {'rain': rain}}
+
+
 # Each whitelist entry owns the source -> project component-state conversion.
 # Adding a prefab here requires an actual converter, rather than copying arbitrary Lua data.
 ENTITY_WHITELIST = {
     'pighead': pighead_components,
     'archive_moon_statue': archive_moon_statue_components,
+    'cave_exit': cave_exit_components,
+    'mushtree_moon': lambda data: mushtree_components(data, False),
+    'mushtree_medium': lambda data: mushtree_components(data, True),
+    'mushtree_tall': lambda data: mushtree_components(data, True),
+    'blue_mushroom': blue_mushroom_components,
+    'grotto_pool_big': lambda data: grotto_pool_components(data, True),
+    'grotto_pool_small': lambda data: grotto_pool_components(data, False),
+    'grotto_moonglass_1': grotto_glass_components,
+    'grotto_moonglass_3': grotto_glass_components,
+    'grotto_moonglass_4': grotto_glass_components,
+    'grotto_waterfall_big': grotto_waterfall_components,
+    'grotto_waterfall_small1': grotto_glass_components,
+    'grotto_waterfall_small2': grotto_glass_components,
 }
 
 
@@ -55,7 +169,7 @@ def convert_entities(terrain, source_entities, report, session_id):
     names = terrain['topology']['ids']
     selected = set(report['nodes'])
     translation = report['translation']
-    result, counts, sources, identities = {}, {}, [], set()
+    result, counts, sources, identities, imported_ids = {}, {}, [], set(), {}
     for prefab, convert_components in ENTITY_WHITELIST.items():
         records = source_entities.get(prefab, [])
         imported = []
@@ -84,6 +198,8 @@ def convert_entities(terrain, source_entities, report, session_id):
             if entity_id in identities:
                 raise ValueError(f'Duplicate imported entity ID: {entity_id}')
             identities.add(entity_id)
+            if source_id is not None:
+                imported_ids[source_id] = entity_id
             imported.append({'id': entity_id,
                              'transform': {'position': [round(value * TILE_SIZE / 4 + shift, 6)
                                                         for value, shift in zip(coordinates, translation)], 'rotationY': 0},
@@ -94,6 +210,7 @@ def convert_entities(terrain, source_entities, report, session_id):
         if imported:
             result[prefab] = imported
         counts[prefab] = {'source': len(records), 'imported': len(imported), 'outsideRegion': len(records) - len(imported)}
+    link_grotto_pools(result, imported_ids)
     return result, {'entityWhitelist': list(ENTITY_WHITELIST), 'entityCounts': counts, 'entitySources': sources}
 
 

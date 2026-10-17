@@ -122,6 +122,12 @@ done
 
 建筑燃烧声来自 `prefabs/fire.lua` 的 `dontstarve/common/campfire`，不是火把的拿出声。`dontstarve.fev` 对应三个同时播放的 sound definition：1762 使用 common 的零基索引 148–151，1765 使用 152–155，1766 使用 157–160；分别以 `vgmstream -i -s 149..152 / 153..156 / 158..161` 导出。实际提取使用单个数值索引，输出 `sound/common.fsb-<index>.wav`；所有 12 份 WAV 均与资源目录现有解码 WAV 字节一致。三个循环层由 `packages/prefab/src/sound.ts` 统一映射，建筑各自创建音源，熄灭、烧毁及移除时停止。熄火声复用上面的 `fireOut` 映射。
 
+### 月亮洞穴瀑布声和月亮烟雾
+
+`grottowaterfallsoundcontroller.lua` 播放 `grotto/common/waterfall_LP`（`grotto.fev`，事件路径省略工程名即 `common/waterfall_LP`）。`fev-events.py` 显示两个同时循环的层：sounddef 41 的 `waterfall_grotto_DST_LP-004.wav`（`grotto_sfx` file_index 556，`-s 557`）和 sounddef 99 在 `waterfall_condensed_LP_DST-001..012.wav` 中等权选一（file_index 544–555，`-s 545..556`）。13 份样本用 `-m -s` 核对流名后以 `-i` 导出为 `grotto_sfx.fsb-545..557.wav`，与源目录已有的 `grotto_sfx.fsb#<index>.wav` 字节一致；`sound.ts` 映射为循环事件，`GrottoPoolManager` 为最近 3 个池各建一个音源。
+
+`fx.lua` 的 `halloween_moonpuff` 使用 `dontstarve/common/fireAddFuel`：`dontstarve.fev` sounddef 63 → `Fire_addFuelFlare.wav`，bank `common`、file_index 66（`-s 67`），该流此前已导出为 `common.fsb-67.wav`，直接复用。
+
 ### 从 sfx.fsb 提取 `dontstarve/HUD/craft_up`
 
 1. 确认目标流的索引号：

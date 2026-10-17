@@ -43,6 +43,12 @@ const sounds = {
   // fence.lua ondeploywall → dontstarve.fev sounddef 472 (place_structure_wood.wav), common file_index 232.
   'dontstarve/common/place_structure_wood': { bank: 'common', streams: [233], loop: false },
   'dontstarve/common/fireOut': { bank: 'common', streams: [198], loop: false },
+  // fx.lua halloween_moonpuff → dontstarve.fev sounddef 63 (Fire_addFuelFlare.wav), common file_index 66.
+  'dontstarve/common/fireAddFuel': { bank: 'common', streams: [67], loop: false },
+  // grottowaterfallsoundcontroller.lua → grotto.fev common/waterfall_LP: sounddef 41 (waterfall_grotto_DST_LP-004, grotto_sfx file_index 556)
+  // plus sounddef 99 (waterfall_condensed_LP_DST-001..012, file_index 544–555), each + 1.
+  'grotto/common/waterfall_LP': { bank: 'grotto_sfx', streams: [557], loop: true,
+    layers: [{ bank: 'grotto_sfx', streams: [545, 546, 547, 548, 549, 550, 551, 552, 553, 554, 555, 556] }] },
   // fire.lua → dontstarve.fev sounddefs 1762 / 1765 / 1766, three simultaneous layers.
   'dontstarve/common/campfire': { bank: 'common', streams: [149, 150, 151, 152], loop: true,
     layers: [{ bank: 'common', streams: [153, 154, 155, 156] }, { bank: 'common', streams: [158, 159, 160, 161] }] },
@@ -156,6 +162,20 @@ const sounds = {
     layers: [{ bank: 'sfx', streams: [1246, 1247, 1248, 1249, 1237, 1242, 1243, 1244, 1245, 1238, 1239, 1240, 1241] }] },
   // moontree.lua on_chop_tree_down → dontstarve.fev treeFall: tree_fall_1.wav, forest file_index 8.
   'dontstarve/forest/treeFall': { bank: 'forest', streams: [9], loop: false },
+  // mushrooms.lua opentaskfn / closetaskfn → dontstarve.fev common/mushroom_up and mushroom_down: sounddefs 616 / 617,
+  // common file_index 223–225 / 220–222, each + 1.
+  'dontstarve/common/mushroom_up': { bank: 'common', streams: [224, 225, 226], loop: false },
+  'dontstarve/common/mushroom_down': { bank: 'common', streams: [221, 222, 223], loop: false },
+  // mushtree.lua / mushtree_moon.lua → dontstarve.fev wilson/use_axe_mushroom: sounddef 2183, sfx file_index 1252–1254, each + 1.
+  'dontstarve/wilson/use_axe_mushroom': { bank: 'sfx', streams: [1253, 1254, 1255], loop: false },
+  // mushtree.lua workfinishcallback uses the event spelled `forest/treefall`; the FEV event is treeFall (tree_fall_1.wav).
+  'dontstarve/forest/treefall': { bank: 'forest', streams: [9], loop: false },
+  // mushtree.lua DoGrow / startchange → dontstarve.fev cave/mushtree_tall_grow_1..3 and _shrink: sounddefs 1186 / 1189 / 1190 / 1191,
+  // together file_index 290–293 / 294–297 / 298–301 / 302–304, each + 1.
+  'dontstarve/cave/mushtree_tall_grow_1': { bank: 'together', streams: [291, 292, 293, 294], loop: false },
+  'dontstarve/cave/mushtree_tall_grow_2': { bank: 'together', streams: [295, 296, 297, 298], loop: false },
+  'dontstarve/cave/mushtree_tall_grow_3': { bank: 'together', streams: [299, 300, 301, 302], loop: false },
+  'dontstarve/cave/mushtree_tall_shrink': { bank: 'together', streams: [303, 304, 305], loop: false },
   // moonbutterfly.lua / moontree.lua → dontstarve.fev sounddefs 91 / 92 / 130, file_index + 1.
   'dontstarve/wilson/plant_tree': { bank: 'wilson', streams: [24], loop: false },
   'dontstarve/forest/treeGrow': { bank: 'forest', streams: [6], loop: false },

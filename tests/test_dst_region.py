@@ -67,13 +67,44 @@ end
 tablefunctions["ents_archive_moon_statue_fn"] = function()
 return {{id=42,x=0,z=0,data={anim=4}},{id=43,x=-16,z=-12,data={anim=2}}}
 end
+tablefunctions["ents_mushtree_medium_fn"] = function()
+return {{id=5,x=0,z=0,data={growable={usetimemultiplier=false,time=0,stage=3,sleeptime=4836},plantregrowth={regrowthtime=1.5},treestate="bloom"}}}
+end
+tablefunctions["ents_mushtree_moon_fn"] = function()
+return {{id=6,x=0,z=0,data={plantregrowth={regrowthtime=294.1}}},{id=8,x=0,z=0,data={stump=true,plantregrowth={}}}}
+end
+tablefunctions["ents_mushtree_tall_fn"] = function()
+return {{id=11,x=0,z=0,data={growable={usetimemultiplier=false,time=0,stage=2,sleeptime=4836},plantregrowth={regrowthtime=514.0},treestate="normal"}}}
+end
+tablefunctions["ents_blue_mushroom_fn"] = function()
+return {{x=0,z=0},{id=12,x=0,z=0,data={rain=14}}}
+end
+tablefunctions["ents_cave_exit_fn"] = function()
+return {{id=7,x=0,z=0,data={worldmigrator={id=7,auto=true,linkedWorld="1",receivedPortal=7}}}}
+end
+tablefunctions["ents_grotto_pool_big_fn"] = function()
+return {{id=20,x=0,z=0,data={children_ids={21,22,99},children_indexes={1,2,3}}}}
+end
+tablefunctions["ents_grotto_waterfall_big_fn"] = function()
+return {{id=21,x=0,z=0}}
+end
+tablefunctions["ents_grotto_moonglass_1_fn"] = function()
+return {{id=22,x=0,z=0,data={workable={maxwork=-1,workleft=0}}}}
+end
+tablefunctions["ents_grotto_pool_small_fn"] = function()
+return {{id=23,x=0,z=0,data={wf_id=24}}}
+end
+tablefunctions["ents_grotto_waterfall_small2_fn"] = function()
+return {{id=24,x=0,z=0,data={workable={maxwork=-1,workleft=3}}}}
+end
 tablefunctions["ents_mermhead_fn"] = function()
 return os.execute("not-whitelisted")
 end
 '''
         groups = IMPORTER['LITERALS']['snapshot_entities'](source, IMPORTER['ENTITY_WHITELIST'])
         entities, provenance = IMPORTER['convert_entities'](terrain, groups, report, 'SESSION')
-        self.assertEqual(set(entities), {'pighead', 'archive_moon_statue'})
+        self.assertEqual(set(entities), {'pighead', 'archive_moon_statue', 'cave_exit', 'mushtree_medium', 'mushtree_moon', 'mushtree_tall', 'blue_mushroom',
+                                    'grotto_pool_big', 'grotto_pool_small', 'grotto_moonglass_1', 'grotto_waterfall_big', 'grotto_waterfall_small2'})
         self.assertEqual(entities['pighead'], [
             {'id': 'dst_SESSION_pighead_index_000002', 'transform': {'position': [0, 0, -24], 'rotationY': 0},
              'components': {'building': {'state': 'idle'}}},
@@ -84,9 +115,25 @@ end
             {'id': 'dst_SESSION_archive_moon_statue_id_42', 'transform': {'position': [12, 0, -24], 'rotationY': 0},
              'components': {'archiveProp': {'anim': 4}}},
         ])
+        self.assertEqual(entities['cave_exit'], [
+            {'id': 'dst_SESSION_cave_exit_id_7', 'transform': {'position': [12, 0, -24], 'rotationY': 0}, 'components': {}}])
+        # Pools keep only the children that were imported, linked by project entity ID; props keep their work left.
+        self.assertEqual(entities['grotto_pool_big'][0]['components'], {'grottoPool': {'children': [
+            {'index': 1, 'id': 'dst_SESSION_grotto_waterfall_big_id_21'}, {'index': 2, 'id': 'dst_SESSION_grotto_moonglass_1_id_22'}]}})
+        self.assertEqual(entities['grotto_pool_small'][0]['components'], {'grottoPool': {'children': [
+            {'index': 1, 'id': 'dst_SESSION_grotto_waterfall_small2_id_24'}]}})
+        self.assertEqual(entities['grotto_moonglass_1'][0]['components'], {'grottoGlass': {'workleft': 0}})
+        self.assertEqual(entities['grotto_waterfall_small2'][0]['components'], {'grottoGlass': {'workleft': 3}})
+        self.assertEqual(entities['grotto_waterfall_big'][0]['components'], {})
+        self.assertEqual([e['components'] for e in entities['mushtree_medium']], [
+            {'mushtree': {'treestate': 'bloom'}, 'growable': {'stage': 3, 'time': 0, 'sleeptime': 4836}}])
+        self.assertEqual([e['components'] for e in entities['mushtree_tall']], [
+            {'mushtree': {'treestate': 'normal'}, 'growable': {'stage': 2, 'time': 0, 'sleeptime': 4836}}])
+        self.assertEqual([e['components'] for e in entities['blue_mushroom']], [{}, {'mushroom': {'rain': 14}}])
+        self.assertEqual([e['components'] for e in entities['mushtree_moon']], [{}, {'mushtree': {'stump': True}}])
         self.assertEqual(provenance['entityCounts']['pighead'], {'source': 3, 'imported': 2, 'outsideRegion': 1})
         self.assertEqual(provenance['entityCounts']['archive_moon_statue'], {'source': 2, 'imported': 1, 'outsideRegion': 1})
-        self.assertEqual(provenance['entitySources'][-1]['sourceId'], 42)
+        self.assertEqual(next(e for e in provenance['entitySources'] if e['prefab'] == 'archive_moon_statue')['sourceId'], 42)
         self.assertEqual(IMPORTER['convert_entities'](terrain, groups, report, 'SESSION')[0], entities)
         groups['pighead'][2]['data']['unsupported'] = True
         with self.assertRaisesRegex(ValueError, 'Unsupported pighead save state'):
