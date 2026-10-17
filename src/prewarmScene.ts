@@ -5,6 +5,20 @@ export function yieldLoadingFrame(): Promise<void> {
   return new Promise(resolve => requestAnimationFrame(() => resolve()));
 }
 
+const FRAME_BUDGET_MS = 8;
+
+/** Returns a checkpoint that yields a frame only after the work since the last yield used up the budget. */
+function createFrameBudget(signal?: AbortSignal): () => Promise<void> {
+  let frameStart = performance.now();
+  return async () => {
+    signal?.throwIfAborted();
+    if (performance.now() - frameStart < FRAME_BUDGET_MS) return;
+    await yieldLoadingFrame();
+    signal?.throwIfAborted();
+    frameStart = performance.now();
+  };
+}
+
 export async function prewarmScene(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
   const textures = new Set<THREE.Texture>();
@@ -27,9 +41,9 @@ export async function prewarmScene(renderer: THREE.WebGLRenderer, scene: THREE.S
       }
     }
   });
+  const checkpoint = createFrameBudget(signal);
   for (const texture of textures) {
-    await yieldLoadingFrame();
-    signal?.throwIfAborted();
+    await checkpoint();
     renderer.initTexture(texture);
   }
   const target = renderer.getRenderTarget();
@@ -37,8 +51,7 @@ export async function prewarmScene(renderer: THREE.WebGLRenderer, scene: THREE.S
   scene.updateMatrixWorld();
   try {
     for (let index = 0; index < objects.length; index += 4) {
-      await yieldLoadingFrame();
-      signal?.throwIfAborted();
+      await checkpoint();
       // A shallow view preserves mesh types, world transforms and original parents.
       const batch = new THREE.Scene();
       batch.matrixWorldAutoUpdate = false;

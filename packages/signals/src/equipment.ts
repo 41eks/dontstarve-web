@@ -21,6 +21,13 @@ export type HandEquipment = Equipment<'HANDS'>;
 export type HeadEquipment = Equipment<'HEAD'>;
 export type BodyEquipment = Equipment<'BODY'>;
 
+/** A character stat as equipment sees it: the value, its maximum and a capped assignment. */
+export interface EquipmentStat {
+  peek(): number;
+  set(value: number): void;
+  readonly maximum: number;
+}
+
 /** The equipping actor's event sink (inventoryitem.owner:PushEvent); released on unequip. */
 export interface EquipmentOwner {
   ListenForEvent?(name: string, listener: (data: unknown) => void): () => void;
@@ -29,6 +36,10 @@ export interface EquipmentOwner {
   HasStateTag?(tag: string): boolean;
   /** owner.sg:GoToState(name) */
   GoToState?(name: string): void;
+  /** owner.sg.currentstate.name == name */
+  IsCurrentState?(name: string): boolean;
+  /** owner.components.health / hunger: the stats equipment reads and changes. */
+  readonly components?: { readonly health?: EquipmentStat & { GetMaxWithPenalty(): number }; readonly hunger?: EquipmentStat };
 }
 
 /** Unequip releases the injected owner; removal goes through the item entity and its inventory owner. */

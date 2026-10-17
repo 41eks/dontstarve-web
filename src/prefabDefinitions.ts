@@ -10,6 +10,8 @@ import { DWARF_STAR_DURATION, POLAR_LIGHT_DURATION, POLAR_LIGHT_ID } from '@dont
 import { BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS } from '@dontstarve-web/prefab/bulb_plant';
 import { ROCK_PREFABS } from '@dontstarve-web/prefab/rocks';
 import { MARBLESHRUB_ID, MARBLESHRUB_SPAWN_IDS, MARBLESHRUB_MAX_GROW_TIME } from '@dontstarve-web/prefab/marbleshrub';
+import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID } from '@dontstarve-web/prefab/archive_props';
+import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { ROCK_AVOCADO_SAPLING_ID, ROCK_AVOCADO_SPROUT_GROW_TIME } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
 import { ROCK_AVOCADO_BUSH_ID, ROCK_AVOCADO_FRUIT_ID } from '@dontstarve-web/prefab/rock_avocado_bush';
@@ -26,6 +28,7 @@ import { WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { PORTAL_ID } from '@dontstarve-web/prefab/portal';
 import { NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
 import { NIGHTMAREROCK_IDS } from '@dontstarve-web/prefab/nightmarerock';
+import { CAVE_ENTRANCE_IDS } from '@dontstarve-web/prefab/cave_entrance';
 import { TENT_ID, TENT_USES } from '@dontstarve-web/prefab/tent';
 import { PLACEABLE_BUILDING_IDS } from './placeableBuilding';
 import { FENCE_ID, FENCE_ITEM_ID } from '@dontstarve-web/prefab/fenceSkins';
@@ -82,12 +85,15 @@ function groundItemArchives(_prefab: string, records: readonly unknown[]): reado
 }
 
 const empty = componentParser({ keys: [] });
+const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
+const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
 const farmSoil = componentParser({ keys: ['farmSoil'] });
 const farmDebris = componentParser({ keys: ['farmDebris'] });
 const building = componentParser({ keys: ['building'] });
 const storage = componentParser({ keys: ['building', 'container'] });
 const sculptingTable = componentParser({ keys: ['building', 'sculptingtable'] });
 const birdcage = componentParser({ keys: ['building', 'birdcage'] });
+const lightningRod = componentParser({ keys: ['building', 'lightningrod'] });
 const moonbase = componentParser({ keys: ['building', 'workable', 'moonbase'] });
 const tent = componentParser({ keys: ['building', 'finiteuses'], finiteUses: TENT_USES });
 const cookPot = componentParser({ keys: ['building', 'container', 'stewer'] });
@@ -124,14 +130,14 @@ export const PREFAB_DEFINITIONS = {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable
       : context.prefab === 'birdcage' ? birdcage : context.prefab === TENT_ID ? tent
-      : context.prefab === 'moonbase' ? moonbase : spec.container ? storage : building)(value, path, context);
+      : context.prefab === 'moonbase' ? moonbase : context.prefab === 'lightning_rod' ? lightningRod : spec.container ? storage : building)(value, path, context);
     if (context.prefab === FENCE_ID) return fence(value, path, context);
     if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
     return fail(path, `missing building definition for ${context.prefab}`);
   }, // fence_item is an ordinary ground item (c_spawn) and inventory item (c_give); only `fence` is placed by c_spawn.
     PLACEABLE_BUILDING_IDS.filter((id) => id !== FENCE_ITEM_ID), buildingArchives),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    [ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'], groundItemArchives),
+    [ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'], groundItemArchives),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] }), ['planted_flower'], ['flowers.zip']),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),
@@ -141,6 +147,16 @@ export const PREFAB_DEFINITIONS = {
   molehills: definePrefabs(['molehill'], componentParser({ keys: ['molehill'] }), true),
   beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['beefalo'] }), true),
   rocks: definePrefabs(ROCK_PREFABS, empty, true),
+  caveEntrances: definePrefabs(CAVE_ENTRANCE_IDS, empty, true, ['cave_entrance.zip']),
+  archiveProps: definePrefabs(ARCHIVE_PROP_IDS, (value, path, context) =>
+    context.prefab === ARCHIVE_MOON_STATUE_ID ? archiveStatue(value, path, context)
+      : context.prefab === ARCHIVE_RUNE_STATUE_ID ? archiveRune(value, path, context) : empty(value, path, context), ARCHIVE_PROP_SPAWN_IDS,
+    (prefab) => prefab === ARCHIVE_MOON_STATUE_ID ? [{ animation: 'archive_moon_statue.zip', build: 'archive_moon_statue.zip' }, 'structure_collapse_fx.zip']
+      : prefab === ARCHIVE_RUNE_STATUE_ID ? ['archive_runes.zip']
+      : prefab === 'archive_portal' ? ['archive_portal.zip', 'archive_portal_base.zip']
+      : prefab === 'archive_switch_base' ? ['archive_switch_ground.zip'] : []),
+  skeletons: definePrefabs(SKELETON_IDS, (value, path, context) =>
+    componentParser({ keys: ['skeleton'], skeletonAnims: SKELETON_ANIMS[context.prefab as keyof typeof SKELETON_ANIMS], skeletonDescribed: context.prefab === SKELETON_PLAYER_ID })(value, path, context), true, ['skeletons.zip', 'structure_collapse_fx.zip']),
   marbleBeanSaplings: definePrefabs([MARBLEBEAN_SAPLING_ID], componentParser({ keys: ['saplingTimer'] }), true, ['marblebean.zip']),
   marbleShrubs: definePrefabs([MARBLESHRUB_ID], componentParser({ keys: ['growable', 'marbleShrub'], growthTime: MARBLESHRUB_MAX_GROW_TIME }), MARBLESHRUB_SPAWN_IDS,
     ['marbleshrub.zip', 'marbleshrub_build.zip']),
@@ -165,6 +181,7 @@ export const PREFAB_DEFINITIONS = {
   rain: definePrefabs([], empty),
   snow: definePrefabs([], empty),
   worldFx: definePrefabs([], empty),
+  staffProjectiles: definePrefabs([], empty),
   oceanWaves: definePrefabs([], empty),
   dockKit: definePrefabs([], empty),
 } as const;

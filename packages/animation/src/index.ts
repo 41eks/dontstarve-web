@@ -44,6 +44,7 @@ export {
   nightlight_init_fn,
   moondial_init_fn,
   winterometer_init_fn,
+  lightning_rod_init_fn,
   birdcage_init_fn,
   pighouse_init_fn,
   sculptingtable_init_fn,

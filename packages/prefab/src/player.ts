@@ -14,7 +14,7 @@ import {
 import { AnimState } from '@dontstarve-web/animation/animState';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { type ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -56,9 +56,9 @@ export interface SymbolFollower {
   remove(): void;
 }
 
-export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
+export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
 type ReadAnimationKey = 'action_uniqueitem_pre' | 'book' | 'flute';
-type WilsonAnimations = Record<Exclude<WilsonAnimationKey, 'emote' | ReadAnimationKey>, ParsedAnim>;
+type WilsonAnimations = Record<Exclude<WilsonAnimationKey, 'emote' | 'ghost' | 'amulet_rebirth' | ReadAnimationKey>, ParsedAnim>;
 /** player_common_extensions.lua AddOverrideBuild; its anims are loaded with the first READ. */
 const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
 
@@ -88,6 +88,17 @@ export interface WilsonAnimationController extends ActionAnimationController {
   setBackpack(equipped: boolean, skinId?: string): Promise<void>;
   /** The application's sleeper services for SGwilson's tent and wakeup states. */
   bindSleep(sleep: WilsonSleepHost | undefined): void;
+  /** SGwilson's death state: DropAllItemsForDeath through the application's inventory. */
+  bindDeath(death: WilsonDeathHost | undefined): void;
+  /** SGwilson's amulet_rebirth state: the inventory, HUD and sleepers it reaches (its light is the controller's). */
+  bindRebirth(rebirth: Omit<WilsonRebirthHost, 'castLight'> | undefined): void;
+  /** Load the ghost build, the `ghost` bank and the ghost's sounds, so the death animation's end can switch at once. */
+  prepareGhost(): Promise<void>;
+  /** AnimState:SetBank("ghost") + skinner ghost_skin + SetStateGraph("SGwilsonghost"); `loading` is inst.loading_ghost. */
+  makeGhost(loading?: boolean): void;
+  /** player_common_extensions.lua DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state (portal_rez, or amulet_rebirth for an amulet). */
+  makeAlive(state?: 'portal_rez' | 'amulet_rebirth'): void;
+  readonly isGhost: boolean;
   readonly isSleeping: boolean;
   wakeFromBed(): void;
   goToWakeup(): void;
@@ -126,6 +137,11 @@ interface CarryBuild {
   materials: THREE.MeshBasicMaterial[];
 }
 
+/** player_common.lua ghost assets: the character's ghost_skin build and anim/player_ghost_withhat.zip's `ghost` bank. */
+interface GhostAssets extends CarryBuild {
+  animations: ParsedAnim;
+}
+
 interface EmoteAssets {
   animations: ParsedAnim;
   props?: CarryBuild;
@@ -139,7 +155,7 @@ interface ActiveEmote extends EmoteAssets {
 
 class WilsonController implements WilsonAnimationController {
   private readonly renderer: SpriteFrameRenderer;
-  private readonly materials: THREE.MeshBasicMaterial[];
+  private materials: THREE.MeshBasicMaterial[];
   readonly stategraph: WilsonStateGraph;
   private state: WilsonAnimationKey = 'idle';
   private clipName = 'idle_loop';
@@ -165,8 +181,13 @@ class WilsonController implements WilsonAnimationController {
   combat?: WilsonCombat;
   private frameIndex = -1;
   private readonly visual: THREE.Group;
-  private readonly build: ParsedBuild;
+  private build: ParsedBuild;
   private readonly animations: WilsonAnimations;
+  private ghostAssets?: Promise<GhostAssets>;
+  private ghostArt?: GhostAssets;
+  /** The living build and materials set aside while the ghost's are shown. */
+  private livingArt?: { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] };
+  private multColour: readonly [number, number, number] = [1, 1, 1];
   private readonly hatAssets: HatEquipmentAssets;
   private readonly sanityPercent?: ReadonlySignal<number>;
   private readonly symbolFollowers = new Set<{ hash: number; offset: readonly [number, number]; node: THREE.Object3D }>();
@@ -183,6 +204,9 @@ class WilsonController implements WilsonAnimationController {
   private readonly symbolBuilds = new Map<string, CarryBuild>();
   private readonly bookFx: BookFxController;
   private sleepHost?: WilsonSleepHost;
+  private deathHost?: WilsonDeathHost;
+  private rebirthHost?: WilsonRebirthHost;
+  private amuletAnimations: ParsedAnim | null = null;
   private fishingHost?: WilsonFishingHost;
   private readonly namedSounds = new Map<string, SoundHandle>();
   private inventory?: Parameters<typeof equipSamePrefab>[0];
@@ -214,6 +238,14 @@ class WilsonController implements WilsonAnimationController {
     const controller = this;
     this.stategraph = new WilsonStateGraph({
       get sleep() { return controller.sleepHost; },
+      get death() { return controller.deathHost; },
+      get rebirth() { return controller.rebirthHost; },
+      rez: {
+        setHidden: hidden => { this.visual.visible = !hidden; },
+        get isHidden() { return !controller.visual.visible; },
+        setMultColour: (r, g, b) => this.setMultColour(r, g, b),
+        setInvincible: invincible => { visual.parent!.dispatchEvent({ type: 'setinvincible', data: invincible } as never); },
+      },
       get fishing() { return controller.fishingHost; },
       playEvent: event => { PlaySound(event as SoundEventPath); },
       playAnimation: (clip) => this.selectAnimation(clip),
@@ -268,6 +300,7 @@ class WilsonController implements WilsonAnimationController {
       },
       setControllerEnabled: enabled => { visual.parent!.userData.controllerEnabled = enabled; },
       stopMovement: () => visual.parent!.userData.locomotor?.stop(),
+      pushPlayerEvent: (name, data) => { visual.parent!.dispatchEvent({ type: name, data } as never); },
       slip: {
         runSpeed: () => visual.parent!.userData.runSpeed as number,
         setMotorSpeed: speed => { visual.parent!.userData.motorSpeed = speed; },
@@ -330,6 +363,66 @@ class WilsonController implements WilsonAnimationController {
 
   /** The application's sleeper services for SGwilson's tent and wakeup states. */
   bindSleep(sleep: WilsonSleepHost | undefined): void { this.sleepHost = sleep; }
+  bindDeath(death: WilsonDeathHost | undefined): void { this.deathHost = death; }
+  bindRebirth(rebirth: Omit<WilsonRebirthHost, 'castLight'> | undefined): void {
+    this.rebirthHost = rebirth && { ...rebirth, castLight: (colour, duration, delay) => this.castingLight.start(colour, duration, delay) };
+  }
+
+  /** The ghost build is `ghost_<character>_build` (skinner ghost_skin of the default skin). */
+  prepareGhost(): Promise<void> {
+    this.ghostAssets ??= Promise.all([
+      loadBuild(`ghost_${PLAYER_ART_CHARACTER}_build.zip`, this.assetBaseUrl),
+      loadAnim('player_ghost_withhat.zip', this.assetBaseUrl),
+      // amulet_rebirth: the resurrecting amulet's clip, FX build and worn art, ready before a haunt can reach it.
+      loadAnim('player_amulet_resurrect.zip', this.assetBaseUrl),
+      this.loadSymbolBuild('player_amulet_resurrect.zip'),
+      this.loadSymbolBuild('torso_amulets.zip'),
+      PreloadSounds('dontstarve/ghost/ghost_howl', 'dontstarve/common/rebirth_amulet_raise', 'dontstarve/common/rebirth_amulet_poof'),
+    ]).then(([buildPackage, animations, amulet]) => {
+      this.amuletAnimations = amulet;
+      return (this.ghostArt = { build: buildPackage.build, materials: createMaterials(buildPackage), animations });
+    });
+    void this.ghostAssets.catch(() => { this.ghostAssets = undefined; });
+    return this.ghostAssets.then(() => undefined);
+  }
+
+  get isGhost(): boolean { return this.stategraph.isGhost; }
+
+  makeGhost(loading = false): void {
+    const art = this.ghostArt;
+    if (!art) throw new Error('Ghost art has not been prepared');
+    if (this.isGhost) return;
+    this.cancelEmote();
+    this.livingArt = { build: this.build, materials: this.materials };
+    this.build = art.build;
+    this.materials = art.materials;
+    this.applyMultColour();
+    this.stategraph.becomeGhost(loading);
+    this.frameIndex = -1;
+    this.showCurrentFrame();
+  }
+
+  makeAlive(state: 'portal_rez' | 'amulet_rebirth' = 'portal_rez'): void {
+    const living = this.livingArt;
+    if (!this.isGhost || !living) return;
+    this.build = living.build;
+    this.materials = living.materials;
+    this.applyMultColour();
+    this.livingArt = undefined;
+    this.stategraph.becomeAlive(state);
+    this.frameIndex = -1;
+    this.showCurrentFrame();
+  }
+
+  /** AnimState:SetMultColour(r, g, b, 1) on the character's body sprites. */
+  private setMultColour(r: number, g: number, b: number): void {
+    this.multColour = [r, g, b];
+    this.applyMultColour();
+  }
+
+  private applyMultColour(): void {
+    for (const material of this.materials) material.color.setRGB(...this.multColour);
+  }
   /** The equipped rod's component for SGwilson's fishing states. */
   bindFishing(fishing: WilsonFishingHost | undefined): void { this.fishingHost = fishing; }
   get isSleeping(): boolean { return this.stategraph.isSleeping; }
@@ -523,6 +616,7 @@ class WilsonController implements WilsonAnimationController {
   }
 
   playItemTransition(state: 'item_in' | 'item_out', item: WilsonCarryItem = 'torch') {
+    if (this.stategraph.isDead) return;
     this.startOneShot(state);
     if (state === 'item_in') {
       this.carryItem = item;
@@ -666,10 +760,11 @@ class WilsonController implements WilsonAnimationController {
   private selectAnimation(clip: WilsonAnimationClip): number {
     this.state = clip.key;
     this.clipName = clip.name;
-    const parsed = this.state === 'emote' ? this.emote!.animations
+    const parsed = this.state === 'ghost' ? this.ghostArt!.animations : this.state === 'emote' ? this.emote!.animations
+      : this.state === 'amulet_rebirth' ? this.amuletAnimations
       : this.state === 'action_uniqueitem_pre' || this.state === 'book' || this.state === 'flute' ? this.uniqueItemAnimations : this.animations[this.state];
     if (!parsed) throw new Error(`Wilson animation ${clip.name} has not been loaded`);
-    const bankHash = smallHash('wilson');
+    const bankHash = smallHash(this.state === 'ghost' ? 'ghost' : 'wilson');
     const facing = facingValues[this.facing];
     const candidates = parsed.animations.filter((animation) =>
       animation.name === this.clipName && animation.bankHash === bankHash);
@@ -740,7 +835,8 @@ export async function createWilsonPlayer(
     PreloadSounds('dontstarve/movement/iceslab_slipping', 'dontstarve/movement/slip_fall_whoop',
       'dontstarve/movement/slip_fall_thud', 'dontstarve/characters/wilson/hurt', 'dontstarve/wilson/make_trap', 'dontstarve/wilson/shave_LP', 'dontstarve/wilson/attack_whoosh',
       'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword',
-      'dontstarve/movement/foley/hideshell', 'dontstarve/wilson/hit', 'dontstarve/wilson/hit_armour'),
+      'dontstarve/movement/foley/hideshell', 'dontstarve/wilson/hit', 'dontstarve/wilson/hit_armour',
+      'dontstarve/wilson/death', 'dontstarve/characters/maxwell/death_voice'),
   ]);
   if (buildPackage.build.name.toLowerCase() !== PLAYER_ART_CHARACTER) {
     throw new Error(`Expected ${PLAYER_ART_CHARACTER} build, received ${buildPackage.build.name}`);
@@ -809,6 +905,7 @@ export async function createWilsonPlayer(
     till_loop: till,
     till_pst: till,
     hit: actions,
+    death: actions,
     wakeup: actions,
     strum_pre: strum, strum,
     fishing,

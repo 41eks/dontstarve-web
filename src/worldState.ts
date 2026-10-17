@@ -28,6 +28,8 @@ export interface WorldState extends WorldContentContext {
   readonly perishClock: WorldPerishClock;
   readonly worldwind: WorldWind;
   readonly componentUpdates: ComponentUpdates;
+  /** gamemodes.lua GetPortalRez (worldsettings portalresurection → ms_onportalrez). The port enables it by default. */
+  readonly portalRez: Signal<boolean>;
 }
 
 /** Session temperature derived from the shared clock/season singleton signals. */
@@ -60,6 +62,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const worldwind = new WorldWind(scheduler);
   const moon = createMemo(() => ({ phase: moonphasestate.get(), waxing: clockstate.get().waxing ?? true }));
   const cycle = createMemo(() => clockstate.get().phase);
+  const portalRez = createSignal(true);
   const playerpositions = createSignal<Vector3[]>([]);
   const camerarotation = createSignal(new Quaternion());
   const playerPosition = createMemo<Vector3 | undefined>(() => playerpositions.get()[0]);
@@ -77,7 +80,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const isNight = createMemo(() => cycle.get() === 'night');
   return { scheduler, componentUpdates, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle,
     wind: worldContent.wind, perishTick: worldContent.perishTick, snowLevel: worldContent.snowLevel, worldwind,
-    playerpositions, camerarotation, tickingarea,
+    playerpositions, camerarotation, tickingarea, portalRez,
     getWatchWorldContent: (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, worldContent, options),
     SetMoonPhase(phase, waxing) {
       const length = MOON_PHASE_CYCLES.length;

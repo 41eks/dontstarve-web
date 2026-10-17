@@ -9,6 +9,7 @@ import { configureBugNetEntity, prepareBugnetVisual } from './bugnet';
 import { configureFishingRodEntity, FISHINGROD_USES, prepareFishingRodVisual } from './fishingrod';
 import { equipmentVisualLifecycle, type EquipmentVisualOwner, type PrepareEquipmentVisual } from './equipmentVisual';
 import { prepareFarmHoeVisual } from './farm_hoe';
+import { FIRESTAFF_TAGS, FIRESTAFF_USES, getFireStaffController, prepareFireStaffVisual, type FireStaffWorld } from './firestaff';
 import { getGreenStaffController, GREENSTAFF_USES, type GreenStaffWorld } from './greenstaff';
 import type { GroundItemAssets } from './groundItems';
 import { configureHammerEntity, prepareHammerVisual } from './hammer';
@@ -40,6 +41,7 @@ export interface HandEquipmentContext {
   assets?: GroundItemAssets;
   lightStaffWorld?: LightStaffWorld;
   greenStaffWorld?: GreenStaffWorld;
+  fireStaffWorld?: FireStaffWorld;
   tridentWorld?: TridentWorld;
 }
 export interface HandEquipmentDefinition {
@@ -64,6 +66,9 @@ const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
   yellowstaff: { prepareVisual: prepareYellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   opalstaff: { prepareVisual: prepareYellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   greenstaff: { prepareVisual: prepareYellowstaffVisual, tags: ['nopunch'], maxUses: GREENSTAFF_USES, createLifecycle: (entity, context) => context.greenStaffWorld ? getGreenStaffController(entity, context.greenStaffWorld) : undefined },
+  // staff.lua red(): weapon damage 0 (the projectile only lights), FIRESTAFF_USES uses, ranged lighter tags.
+  firestaff: { prepareVisual: prepareFireStaffVisual, maxUses: FIRESTAFF_USES, tags: FIRESTAFF_TAGS, weapon: { damage: 0 },
+    createLifecycle: (entity, context) => context.fireStaffWorld ? getFireStaffController(entity, context.fireStaffWorld) : undefined },
   // trident.lua: TRIDENT.DAMAGE over ground (OCEAN_DAMAGE applies only while the wielder stands on a boat or the sea).
   trident: { prepareVisual: prepareTridentVisual, maxUses: TRIDENT_USES, tags: ['pointy', 'sharp'], weapon: { damage: TRIDENT_DAMAGE },
     createLifecycle: (entity, context) => context.tridentWorld ? getTridentController(entity, context.tridentWorld) : undefined },

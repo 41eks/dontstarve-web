@@ -92,6 +92,26 @@ function setup() {
 const definition = { itemId: 'log', count: 1, name: 'Log', icon: 'log.tex' };
 
 describe('ground item save records', () => {
+  it('restores a thermal stone temperature and unfinished usage cycle with its skin and durability', async () => {
+    const original = setup(), restored = setup();
+    const position = new THREE.Vector3(4, 0, 5);
+    const stone = { itemId: 'heatrock', count: 1, name: 'Thermal Stone', icon: 'heatrock_fantasy5.tex',
+      skinId: 'heatrock_fantasy', remainingFuel: 62.5, temperature: { current: 66 }, highTemp: 66 };
+    try {
+      await original.manager.spawnFromSave('thermal-stone', stone, position);
+      const record = original.manager.exportRecords()[0];
+      expect(record).toMatchObject({ id: 'thermal-stone', transform: { position: [4, 0, 5] },
+        components: { stack: { itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy',
+          remainingFuel: 62.5, temperature: { current: 66 }, highTemp: 66 } } });
+      await restored.manager.spawnFromSave(record.id, { ...stone, ...record.components.stack },
+        new THREE.Vector3(...record.transform.position));
+      expect(restored.manager.exportRecords()).toEqual([record]);
+    } finally {
+      original.manager.dispose(); original.inventory.dispose();
+      restored.manager.dispose(); restored.inventory.dispose();
+    }
+  });
+
   it('queries only the requested prefab using live positions, replacing spawn reservations without duplicate entries', async () => {
     const { manager, inventory } = setup();
     const createSprite = vi.mocked(createGroundItemSprite).getMockImplementation()!;
@@ -356,6 +376,20 @@ describe('ground item save records', () => {
     expect(pickup).toHaveBeenCalledWith(entity, new THREE.Vector3(8, 0, 9));
     expect(manager.exportRecords()).toEqual([]);
     expect(scene.children).toHaveLength(0);
+  });
+
+  it('splits a dropped butterfly stack into one living entity per butterfly', async () => {
+    const { manager, scene, inventory } = setup();
+    try {
+      expect(inventory.add('butterfly', 3)).toBe(true);
+      inventory.DropEverything();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const records = manager.exportRecords();
+      expect(records.map(record => record.components.stack?.count)).toEqual([1, 1, 1]);
+      expect(new Set(records.map(record => record.id)).size).toBe(3);
+      expect(scene.children).toHaveLength(3);
+    } finally { manager.dispose(); inventory.dispose(); }
   });
 
   it('requires NET for living butterflies and keeps a failed capture in the world', async () => {

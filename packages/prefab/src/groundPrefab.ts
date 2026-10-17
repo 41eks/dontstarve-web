@@ -1,4 +1,4 @@
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type * as THREE from 'three';
 import type { GroundItemAssets } from './groundItems';
 import type { BernieWorld } from './bernie';
@@ -21,6 +21,9 @@ export interface GroundItemDefinition {
   count: number;
   remainingUses?: number;
   remainingFuel?: number;
+  temperature?: InventoryStack['temperature'];
+  highTemp?: number;
+  lowTemp?: number;
   freshnessPercent?: number;
   wet?: boolean;
   torchLit?: boolean;

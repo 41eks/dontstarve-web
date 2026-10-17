@@ -3,7 +3,8 @@ import * as CANNON from 'cannon-es';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
 import { SpriteRenderOrderSorter } from '@dontstarve-web/animation';
-import { EventEmitter } from '@dontstarve-web/signals';
+import { createEffect, EventEmitter, watchSignal } from '@dontstarve-web/signals';
+import { playerGhostMode, playerStats } from './playerStats';
 
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
@@ -28,6 +29,7 @@ import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/
 import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
 import { bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { GROUND_COLLISION_GROUP } from '../packages/prefab/src/standardcomponents';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
@@ -47,6 +49,7 @@ const groundBody = new CANNON.Body({
   material: groundMaterial,
 });
 groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+groundBody.collisionFilterGroup = GROUND_COLLISION_GROUP;
 world.addBody(groundBody);
 world.addBody(playerBody);
 scene.background = new THREE.Color(0xbfd1e5);
@@ -68,6 +71,7 @@ export const locomotor = new Locomotor(playerBody, {
     const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC
       && body.collisionResponse
       && (body.collisionFilterMask & playerBody.collisionFilterGroup) !== 0
+      && (playerBody.collisionFilterMask & body.collisionFilterGroup) !== 0
       && body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere))
       .map((body) => {
         body.updateAABB();
@@ -151,18 +155,32 @@ export async function startScene(
   builder.OnUpdate();
   // player_common.lua AddComponent("slipperyfeet"); frozen ponds are its slipperyfeettarget entities.
   const stategraph = (player.userData.animationController as WilsonAnimationController | undefined)?.stategraph;
-  const slipperyfeet = stategraph && new SlipperyFeet({
-    getPosition: () => player.position,
-    getMotorSpeed: () => player.userData.currentMotorSpeed as number ?? 0,
-    PushEvent: (name, data) => stategraph.pushEvent(name, data),
-    sg: stategraph,
-  }, {
-    scheduler,
-    findSlipperyEntities: (position, radius) => FindEntities(scene, position, radius, ['slipperyfeettarget']) as never,
+  const removeSlipperyFeet = () => {
+    (player.userData.slipperyfeet as SlipperyFeet | undefined)?.dispose();
+    delete player.userData.slipperyfeet;
+  };
+  const addSlipperyFeet = () => {
+    if (!stategraph || player.userData.slipperyfeet) return;
+    player.userData.slipperyfeet = new SlipperyFeet({
+      getPosition: () => player.position,
+      getMotorSpeed: () => player.userData.currentMotorSpeed as number ?? 0,
+      PushEvent: (name, data) => stategraph.pushEvent(name, data),
+      sg: stategraph,
+    }, {
+      scheduler,
+      findSlipperyEntities: (position, radius) => FindEntities(scene, position, radius, ['slipperyfeettarget']) as never,
+    });
+  };
+  // CommonPlayerDeath removes the component and CommonActualRez adds it back: it exists while the player is alive.
+  // A ghost has health too (RESURRECT_HEALTH), so ghost mode keeps it off.
+  const stopSlipperyWatch: (() => void)[] = [];
+  const watchedHealth = watchSignal(playerStats.health, stop => stopSlipperyWatch.push(stop));
+  const watchedGhostMode = watchSignal(playerGhostMode, stop => stopSlipperyWatch.push(stop));
+  createEffect(() => {
+    if (watchedHealth.get() > 0 && !watchedGhostMode.get()) addSlipperyFeet(); else removeSlipperyFeet();
   });
-  player.userData.slipperyfeet = slipperyfeet;
-  const updateSlipperyFeet = (dt: number) => slipperyfeet?.update(dt);
-  if (slipperyfeet) backTasks.push(updateSlipperyFeet);
+  const updateSlipperyFeet = (dt: number) => (player.userData.slipperyfeet as SlipperyFeet | undefined)?.update(dt);
+  if (stategraph) backTasks.push(updateSlipperyFeet);
   const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
   const updateEntities = (dt: number) => {
     turfMap.update(dt);
@@ -235,8 +253,8 @@ export async function startScene(
     animation?.stop();
     builder.dispose();
     if (player.userData.components?.builder === builder) delete player.userData.components.builder;
-    slipperyfeet?.dispose();
-    if (player.userData.slipperyfeet === slipperyfeet) delete player.userData.slipperyfeet;
+    stopSlipperyWatch.splice(0).forEach(stop => stop());
+    removeSlipperyFeet();
     const slipTask = backTasks.indexOf(updateSlipperyFeet);
     if (slipTask >= 0) backTasks.splice(slipTask, 1);
     clockUpdater.flush();

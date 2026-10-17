@@ -1,5 +1,6 @@
 import { createBackpackEquipmentLifecycle } from '@dontstarve-web/prefab/backpack';
 import { ARMORSNURTLESHELL_ID, createArmorSnurtleshellLifecycle, prepareArmorSnurtleshellVisual } from '@dontstarve-web/prefab/armorsnurtleshell';
+import { AMULET_ID, createAmuletEquipmentLifecycle, prepareAmuletVisual } from '@dontstarve-web/prefab/amulet';
 import { preparedEquipmentLifecycle } from '@dontstarve-web/prefab/equipmentVisual';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import type { BodyEquipment, EquipmentOwner, Signal } from '@dontstarve-web/signals';
@@ -15,7 +16,7 @@ export interface PlayerBodyEquipmentOptions {
 
 export function bindPlayerBodyEquipment(options: PlayerBodyEquipmentOptions) {
   let visual: { readonly ready: Promise<void> } | undefined;
-  return bindPlayerEquipment({
+  const binding = bindPlayerEquipment({
     existenceState: options.bodyEquipmentExistenceState,
     owner: options.owner,
     createLifecycle(equipment) {
@@ -36,6 +37,13 @@ export function bindPlayerBodyEquipment(options: PlayerBodyEquipmentOptions) {
           },
         };
       }
+      if (equipment.itemId === AMULET_ID && equipment.entity instanceof ItemEntity && !equipment.entity.isRemoved) {
+        const entity = equipment.entity;
+        const art = preparedEquipmentLifecycle(() => prepareAmuletVisual(context.assets,
+          { id: entity.id, prefab: entity.prefab, skinId: equipment.skinId }), context);
+        visual = art;
+        return createAmuletEquipmentLifecycle(entity, art);
+      }
       if (equipment.itemId !== 'backpack') return;
       const backpack = createBackpackEquipmentLifecycle({ id: equipment.entity?.id ?? 'body', prefab: equipment.itemId, skinId: equipment.skinId }, context);
       visual = backpack;
@@ -48,4 +56,5 @@ export function bindPlayerBodyEquipment(options: PlayerBodyEquipmentOptions) {
       options.setBackpackActive(equipped, equipped ? equipment?.entity?.id : undefined);
     },
   });
+  return { ...binding, /** The worn art is applied once this settles. */ get ready() { return visual?.ready ?? Promise.resolve(); } };
 }

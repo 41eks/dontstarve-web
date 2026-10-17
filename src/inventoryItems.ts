@@ -22,6 +22,7 @@ import { configureEquipmentEntity, getHandEquipmentDefinition } from '@dontstarv
 import { configureBirdEntity, isBirdId } from '@dontstarve-web/prefab/birds';
 import { configureBackpackEntity } from '@dontstarve-web/prefab/backpack';
 import { ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from '@dontstarve-web/prefab/armorsnurtleshell';
+import { AMULET_ID, REDAMULET_USES, configureAmuletEntity } from '@dontstarve-web/prefab/amulet';
 import { configureIceEntity, ICE_ID } from '@dontstarve-web/prefab/ice';
 import { PERISHABLE_FOODS } from '@dontstarve-web/prefab/food';
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../packages/ui/src/inventory-items';
@@ -60,6 +61,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
         : itemId === 'mole' ? configureMoleEntity
         : itemId === 'backpack' ? configureBackpackEntity
         : itemId === ARMORSNURTLESHELL_ID ? configureArmorSnurtleshellEntity
+        : itemId === AMULET_ID ? configureAmuletEntity
         : itemId === LIGHTBULB_ID ? configureLightbulbEntity
         : itemId === HEATROCK_ID ? configureHeatRockEntity
         : itemId === RAZOR_ID ? configureRazorEntity
@@ -75,6 +77,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...(itemId === 'backpack' ? { canGoInContainer: false } : {}),
       ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME } : {}),
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
+      ...(itemId === AMULET_ID ? { maxUses: REDAMULET_USES } : {}),
       ...(itemId === PANFLUTE_ID ? { maxUses: PANFLUTE_USES } : {}),
       ...(isLightStaff(itemId) ? { maxUses: LIGHT_STAFF_USES[itemId] } : {}),
       ...(itemId === 'torch' ? { maxFuel: TORCH_FUEL } : {}),

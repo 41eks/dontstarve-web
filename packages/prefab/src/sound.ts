@@ -61,6 +61,22 @@ const sounds = {
   'dontstarve/movement/slip_fall_whoop': { bank: 'sfx', streams: [332, 333, 334, 335], loop: false },
   'dontstarve/movement/slip_fall_thud': { bank: 'sfx', streams: [336, 337, 338, 339, 340], loop: false },
   'dontstarve/characters/wilson/hurt': { bank: 'wilson', streams: [107, 108, 109], loop: false },
+  // SGwilson.lua death → dontstarve.fev wilson/death (sounddef 15, DST_death_body_fall_v2.wav, wilson file_index 35)
+  // and waxwell.lua soundsname "maxwell" → characters/maxwell/death_voice (sounddef 758, maxwell file_index 91); each + 1.
+  'dontstarve/wilson/death': { bank: 'wilson', streams: [36], loop: false },
+  'dontstarve/characters/maxwell/death_voice': { bank: 'maxwell', streams: [92], loop: false },
+  // SGwilson.lua amulet_rebirth → dontstarve.fev common/rebirth_amulet_raise (sounddef 281, ResurectAmulet_raise_1, common file_index 86)
+  // and rebirth_amulet_poof (sounddef 282, ResurectAmulet_poof_1, file_index 85); each + 1.
+  'dontstarve/common/rebirth_amulet_raise': { bank: 'common', streams: [87], loop: false, volume: 0.7079457640647888 },
+  'dontstarve/common/rebirth_amulet_poof': { bank: 'common', streams: [86], loop: false, volume: 0.7943282127380371 },
+  // fx.lua die_fx → dontstarve.fev common/deathpoof (sounddef 476, common file_index 186) + 1.
+  'dontstarve/common/deathpoof': { bank: 'common', streams: [187], loop: false },
+  // SGwilsonghost.lua appear/hit (no "girl" tag) → dontstarve.fev ghost/ghost_howl: two simultaneous layers, sounddef 1889
+  // (Ghost_howl_1..4, ghost file_index 11–14) and 1891 (Ghost_howl_5..8, 15–18), each + 1.
+  'dontstarve/ghost/ghost_howl': { bank: 'ghost', streams: [12, 13, 14, 15], loop: false,
+    layers: [{ bank: 'ghost', streams: [16, 17, 18, 19] }] },
+  // SGwilsonghost.lua haunt_pre → dontstarve.fev ghost/ghost_haunt: sounddef 1094 (Ghost_haunt_1..5, ghost file_index 6–10), each + 1.
+  'dontstarve/ghost/ghost_haunt': { bank: 'ghost', streams: [7, 8, 9, 10, 11], loop: false },
   'dontstarve/wilson/equip_item_gold': { bank: 'wilson', streams: [115], loop: false },
   'dontstarve/wilson/dig': { bank: 'wilson', streams: [64, 65, 66], loop: false },
   'dontstarve_DLC001/creatures/mole/emerge': { bank: 'mole', streams: [2, 3, 4], loop: false, volume: 0.2818382978439331, pitchOctaves: 0.0 },
@@ -146,6 +162,12 @@ const sounds = {
   'dontstarve_DLC001/fall/leaf_rustle': { bank: 'amb_stream', streams: [89, 91, 92, 93, 94, 95, 96, 97, 98, 90], loop: false },
   // winterometer.lua onbuilt → dontstarve.fev sounddef 1331 (Thermal_measurer_craft.wav) → common file_index 175.
   'dontstarve/common/winter_meter_craft': { bank: 'common', streams: [176], loop: false },
+  // lightningrod.lua dozap / onbuilt → dontstarve.fev sounddefs 651 (lightningrod_1..3) and 1328 (lightning_rod_craft),
+  // common file_index 208–210 and 180, each + 1.
+  'dontstarve/common/lightningrod': { bank: 'common', streams: [209, 210, 211], loop: false },
+  'dontstarve/common/lightning_rod_craft': { bank: 'common', streams: [181], loop: false },
+  // lightning.lua → dontstarve.fev sounddef 612 (thunder_close_1..4), forest_stream file_index 93–96 + 1.
+  'dontstarve/rain/thunder_close': { bank: 'forest_stream', streams: [94, 95, 96, 97], loop: false },
   // sculptingtable.lua onbuilt → dontstarve.fev sounddef sfx/together/sculpting_table/sculpting_station_craft-01.wav → sfx stream 910.
   'dontstarve/common/together/sculpting_table/craft': { bank: 'sfx', streams: [910], loop: false },
   // dock_kit.lua on_deploy PlaySoundWithParams(intensity = .8) → turnoftides.fev common/together/boat/damage: four layers,
@@ -226,6 +248,10 @@ const sounds = {
   'dontstarve/wilson/chest_open': { bank: 'wilson', streams: [15], loop: false },
   'dontstarve/wilson/chest_close': { bank: 'wilson', streams: [14], loop: false },
   'dontstarve/wilson/attack_weapon': { bank: 'sfx', streams: [1230, 1231, 1232, 1233], loop: false },
+  // SGwilson.lua attack, firestaff → dontstarve.fev sounddef 624 (firestaff_swing_1..4) → sfx file_index 1260–1263.
+  'dontstarve/wilson/attack_firestaff': { bank: 'sfx', streams: [1261, 1262, 1263, 1264], loop: false },
+  // staff.lua onattack_red → sounddef 625 (fireball_explo.wav) → sfx file_index 1259.
+  'dontstarve/wilson/fireball_explo': { bank: 'sfx', streams: [1260], loop: false },
   // SGwilson.lua attack punch / toolpunch → dontstarve.fev sounddef 441 → sfx file_index 1220–1223.
   'dontstarve/wilson/attack_whoosh': { bank: 'sfx', streams: [1221, 1222, 1223, 1224], loop: false },
   // SGwilson.lua attack, "shadow" weapons → sounddef 513 → sfx file_index 1224–1228.

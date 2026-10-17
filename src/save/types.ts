@@ -54,6 +54,8 @@ export interface SavedEntity {
     evergreen?: { stump?: true; burnt?: true; burntcone?: true };
     deciduoustree?: import('../../packages/prefab/src/deciduousTreeLeaves').DeciduousTreeSave;
     marbleShrub?: import('../../packages/prefab/src/marbleshrub').MarbleShrubSaveState;
+    archiveProp?: import('../../packages/prefab/src/archive_props').ArchivePropSaveState;
+    skeleton?: import('../../packages/prefab/src/skeleton').SkeletonSaveState;
     growable?: import('../../packages/componets/src/growable').GrowableSave;
     saplingTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     sculptingtable?: { itemname: string };
@@ -61,6 +63,7 @@ export interface SavedEntity {
     workable?: { workleft: number; maxwork: number };
     finiteuses?: { uses: number };
     moonbase?: import('@dontstarve-web/prefab/moonbase').MoonbaseSaveState;
+    lightningrod?: import('@dontstarve-web/prefab/lightning_rod').LightningRodSaveState;
     farmPlow?: FarmPlowSaveState;
     farmSoil?: FarmSoilSaveState;
     farmDebris?: FarmDebrisSaveState;
@@ -77,7 +80,9 @@ export interface SavedPlayer {
   shardId: string;
   transform: SavedTransform;
   inventory: SavedInventory;
-  stats?: { health: number; hunger: number; sanity: number };
+  stats?: { health: number; hunger: number; sanity: number; penalty?: number };
+  /** player_common.lua OnSave `is_ghost`: the player resumes as a ghost on load. */
+  ghost?: true;
 }
 
 export interface SaveDocument {

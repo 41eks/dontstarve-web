@@ -16,6 +16,7 @@ import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';
 import { configureBirdEntity, isBirdId } from './birds';
 import { configureBackpackEntity } from './backpack';
 import { ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from './armorsnurtleshell';
+import { AMULET_ID, configureAmuletEntity } from './amulet';
 import { configureRockAvocadoFruitEntity } from './rock_avocado_fruit';
 import { configurePlantableEntity } from './plantables';
 import { configureFertilizerEntity, FERTILIZER_CYCLES } from './fertilizers';
@@ -55,6 +56,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       : isBirdId(entity.prefab) ? configureBirdEntity(entity)
       : entity.prefab === 'backpack' ? configureBackpackEntity(entity)
       : entity.prefab === ARMORSNURTLESHELL_ID ? configureArmorSnurtleshellEntity(entity)
+      : entity.prefab === AMULET_ID ? configureAmuletEntity(entity)
       : entity.prefab === HEATROCK_ID ? configureHeatRockEntity(entity)
       : entity.prefab === RAZOR_ID ? configureRazorEntity(entity)
       : entity.prefab === PANFLUTE_ID ? configurePanfluteEntity(entity)

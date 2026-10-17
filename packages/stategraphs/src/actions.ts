@@ -3,6 +3,7 @@ import type { BufferedActionObject } from './bufferedaction.ts';
 /** Supported action strings from strings.lua + languages/chinese_s.po; priorities from actions.lua. */
 export const ACTIONS = {
   NET: { priority: 3, strings: { GENERIC: '捕捉' } },
+  ATTACK: { priority: 2, strings: { GENERIC: '攻击', RANGEDLIGHT: '点燃' } },
   HAMMER: { priority: 3, strings: { GENERIC: '敲' } },
   MINE: { priority: 0, strings: { GENERIC: '开采' } },
   CHOP: { priority: 0, strings: { GENERIC: '砍' } },
@@ -32,6 +33,7 @@ export const ACTIONS = {
   DEPLOY: { priority: 0, distance: 1.1, strings: { GENERIC: '放置', PLANT: '种植' } },
   SHAVE: { priority: 0, strings: { GENERIC: '刮', SELF: '给自己刮胡子' } },
   SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
+  HAUNT: { priority: 0, ghost_valid: true, strings: { GENERIC: '作祟' } },
 } as const;
 
 export type MouseActionId = keyof typeof ACTIONS;
@@ -40,6 +42,11 @@ export interface ActionDescription {
   modifier?: string;
   invobject?: BufferedActionObject;
   target?: BufferedActionObject;
+}
+
+/** actions.lua `ghost_valid`; only the actions ported here that a ghost may do. */
+export function isGhostValidAction(action: ActionDescription): boolean {
+  return (ACTIONS[action.action as MouseActionId] as { ghost_valid?: boolean } | undefined)?.ghost_valid === true;
 }
 
 export function getActionPriority(action: ActionDescription): number {

@@ -28,6 +28,8 @@ export {
   NightLightPlacement, type NightLightId,
 } from './nightlight';
 export { PIG_HEAD_DEFINITION, PIG_HEAD_ID, MERM_HEAD_DEFINITION, MERM_HEAD_ID, type PigHeadId, type MermHeadId } from './stickheads';
+export { LIGHTNING_ROD_DEFINITION, LIGHTNING_ROD_ID, LIGHTNING_ROD_SKIN_ARCHIVES, type LightningRodId } from './lightning_rod';
+export { SendLightningStrike } from './lightning';
 export { WINTEROMETER_DEFINITION, WINTEROMETER_ID, WINTEROMETER_SKIN_ARCHIVES, type WinterometerId } from './winterometer';
 export { BIRDCAGE_DEFINITION, BIRDCAGE_ID, type BirdcageId } from './birdcage';
 export { BIRD_IDS, BIRD_PERISH_TIME, configureBirdEntity, isBirdId, type BirdId } from './birds';

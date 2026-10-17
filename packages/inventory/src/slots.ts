@@ -76,8 +76,8 @@ export function inventoryItemMaxStack(itemId: string): number {
 }
 
 export function inventoryItemEquipmentKind(itemId: string): EquipmentKind | undefined {
-  if (itemId === 'backpack' || itemId === 'armorsnurtleshell') return 'body';
-  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'trident' || itemId === 'bugnet' || itemId === 'fishingrod'
+  if (itemId === 'backpack' || itemId === 'armorsnurtleshell' || itemId === 'amulet') return 'body';
+  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'trident' || itemId === 'bugnet' || itemId === 'fishingrod'
     || itemId === 'hammer' || itemId === 'nightsword' || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
     || itemId === 'axe' || itemId === 'goldenaxe' || itemId === 'moonglassaxe'
     || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool'

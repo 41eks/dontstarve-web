@@ -5,7 +5,7 @@ export type { StateActionHandler, StateDefinition, StateEvent, TimelineEvent } f
 export { WilsonStateGraph, WILSON_ACTION_TIMES } from './SGwilson.ts';
 export type {
   WilsonAction, WilsonAnimationClip, WilsonAnimationKey, WilsonMovementState,
-  WilsonOneShotState, WilsonStateGraphHost, WilsonStateName, WilsonFx, WilsonCombat, WilsonSleepHost, WilsonFishingHost,
+  WilsonOneShotState, WilsonStateGraphHost, WilsonStateName, WilsonFx, WilsonCombat, WilsonSleepHost, WilsonDeathHost, WilsonRebirthHost, WilsonFishingHost,
 } from './SGwilson.ts';
 
 export type { ActionWorldContext, ActionAnimationController, ActionLocomotor, CursorLabel } from './actionContext.ts';
@@ -26,6 +26,7 @@ export * from './pick.ts';
 export * from './itemuse.ts';
 export * from './harvest.ts';
 export * from './sleep.ts';
+export * from './haunt.ts';
 export * from './occupiable.ts';
 export * from './lighter.ts';
 export * from './pickup.ts';

@@ -83,7 +83,7 @@ it('stops frozen perishables in a fridge and below zero, with nocool/lowcool usi
   } finally { item.destroy(); clock.dispose(); }
 });
 
-it('cools stones to the source floor, resumes ambient changes outside the fridge and consumes a completed cold cycle once', () => {
+it('cools stones to the source floor, resumes ambient changes outside the fridge and consumes a completed cold cycle once', async () => {
   const inventory = createPickupInventory(), ambient = createSignal(35);
   inventory.entities.bindTemperatureWorld({ temperature: ambient, componentUpdates: new ComponentUpdates() });
   inventory.registerContainer(chilled.containerId, createBuildingContainer('icebox', {}));
@@ -95,6 +95,7 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
     temp.OnUpdate(15);
     expect(temp.GetCurrent()).toBe(20);
     expect(rock.range.peek()).toBe(2);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(inventory.getStackSpec(item.snapshot()).icon).toBe('heat_rock2.tex');
     temp.OnUpdate(60);
     expect(temp.GetCurrent()).toBe(0);

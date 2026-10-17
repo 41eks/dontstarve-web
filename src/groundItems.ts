@@ -134,7 +134,7 @@ export class GroundItemManager {
       });
     }
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
-    this.stopDrops = inventory.subscribeDropped(entity => this.onInventoryDrop(entity));
+    this.stopDrops = inventory.subscribeDropped((entity, launch) => this.onInventoryDrop(entity, launch));
     // DefaultBurntFn requests one ash at the burnt inst's ground position.
     this.stopSpawnAsh = worldEvents?.on('spawnAsh', position => {
       void this.spawnFromSave(newEntityId(), { ...inventory.getItemSpec('ash'), itemId: 'ash', count: 1 }, position.clone())
@@ -523,8 +523,17 @@ export class GroundItemManager {
     if (!prepared.spawn(position, count)) prepared.dispose();
   }
 
-  private onInventoryDrop(entity: ItemEntity): void {
+  private onInventoryDrop(entity: ItemEntity, launch?: LootLaunch): void {
     if (this.disposed || this.groundEntityStops.has(entity)) return;
+    // butterfly.lua OnDropped: a dropped stack of live insects splits into one entity per insect.
+    const extra = this.isNetCreature(entity.prefab) ? entity.components.stackable.count - 1 : 0;
+    if (extra > 0) {
+      const rest = { ...this.inventory.getStackSpec(entity.snapshot()), ...entity.snapshot(false), itemId: entity.prefab, count: extra };
+      entity.components.stackable.count = 1;
+      const position = entity.transform.position.clone();
+      void this.spawnFromSave(newEntityId(), rest, position)
+        .catch((error: unknown) => console.error(`Unable to split dropped ${entity.prefab}`, error));
+    }
     const definition = { ...this.inventory.getStackSpec(entity.snapshot()), ...entity.snapshot(), entity };
     const pending = { entity, definition };
     this.pendingDrops.set(entity.id, pending);
@@ -536,7 +545,8 @@ export class GroundItemManager {
         return;
       }
       this.pendingDrops.delete(entity.id);
-      this.addVisual(entity.id, definition, entity.transform.position.clone(), visual, true);
+      if (launch) this.addFlungVisual(definition, entity.transform.position.clone(), visual, launch);
+      else this.addVisual(entity.id, definition, entity.transform.position.clone(), visual, true);
     }).catch((error: unknown) => console.error('Unable to render dropped item', error));
   }
 
@@ -597,6 +607,9 @@ export class GroundItemManager {
             ...(definition.container === undefined ? {} : { container: definition.container }),
             ...(definition.remainingUses === undefined ? {} : { remainingUses: definition.remainingUses }),
             ...(definition.remainingFuel === undefined ? {} : { remainingFuel: definition.remainingFuel }),
+            ...(definition.temperature === undefined ? {} : { temperature: definition.temperature }),
+            ...(definition.highTemp === undefined ? {} : { highTemp: definition.highTemp }),
+            ...(definition.lowTemp === undefined ? {} : { lowTemp: definition.lowTemp }),
             ...(definition.freshnessPercent === undefined ? {} : { freshnessPercent: definition.freshnessPercent }),
             ...(definition.wet === undefined ? {} : { wet: definition.wet }),
             ...(definition.skinId === undefined ? {} : { skinId: definition.skinId }),

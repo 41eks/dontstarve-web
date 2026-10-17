@@ -65,3 +65,29 @@ it('excludes the cursor from automatic allocations and crafting while permitting
   expect(store.returnCursor()).toBe(false);
   store.dispose();
 });
+
+it('DropEverything drops the cursor, slot and equipped whole stacks at the owner position, keeping identity and state', () => {
+  const store = createStore();
+  const dropped: string[] = [], launches: ({ speed: { min: number }; ySpeed: { min: number }; height: number } | undefined)[] = [];
+  store.subscribeDropped((entity, launch) => { dropped.push(entity.id); launches.push(launch); });
+  store.add('torch', 1, 'torch_barber', undefined, undefined, undefined, 23.125);
+  store.add('log', 8);
+  const torch = store.getEntity(first)!, logs = store.getEntity(second)!;
+  expect(store.EquipFromInventory(torch)).toBe(true);
+  expect(store.transfer(second, cursor, 8)).toBe(true);
+  store.add('log', 3);
+  const rest = store.getEntity(first)!;
+  store.DropEverything();
+  expect(dropped).toEqual([logs.id, rest.id, torch.id]);
+  // DropItem(item, true, true): OnDropped(randomdir) throws each item from y = 1 at speed 2..3 with vertical speed 3 × speed.
+  for (const launch of launches) {
+    expect(launch!.height).toBe(1);
+    expect(launch!.speed.min).toBeGreaterThanOrEqual(2); expect(launch!.speed.min).toBeLessThan(3);
+    expect(launch!.ySpeed.min).toBeCloseTo(launch!.speed.min * 3);
+  }
+  expect(store.addresses().every(address => store.get(address) === null)).toBe(true);
+  expect(torch.snapshot()).toMatchObject({ skinId: 'torch_barber', remainingFuel: 23.125, count: 1 });
+  expect(rest.snapshot().count).toBe(3);
+  expect(logs.snapshot().count).toBe(8);
+  store.dispose();
+});

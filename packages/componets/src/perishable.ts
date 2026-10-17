@@ -207,6 +207,9 @@ export class Perishable {
     if (!this.inst.isRemoved && this.onperishreplacement !== undefined && owner) owner.replace(this.onperishreplacement);
   }
 
+  /** The bound world's game-time scheduler, for components that share the item's world. */
+  get scheduler(): GameTimeScheduler | undefined { return this.world?.scheduler; }
+
   dispose(): void {
     if (this.disposed) return;
     this.flush();
