@@ -1,3 +1,5 @@
+import { configureVeggieEntity } from '../packages/prefab/src/veggies';
+import { configureLightFlierEntity, LIGHTFLIER_PERISH_TIME } from '../packages/prefab/src/lightflier';
 import { configureMoleEntity, MOLE_PERISH_TIME } from '../packages/prefab/src/mole';
 import { configureMoleBaitEntity } from '../packages/prefab/src/molebait';
 import { configureRockAvocadoFruitEntity } from '../packages/prefab/src/rock_avocado_fruit';
@@ -42,7 +44,7 @@ export interface InventoryItemDefinition {
 
 function withTradable(itemId: string, configure: ((entity: ItemEntity) => void) | undefined): ((entity: ItemEntity) => void) | undefined {
   return entity => {
-    configure?.(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
+    configure?.(entity); configureVeggieEntity(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
     if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) configureFertilizerEntity(entity);
     if (itemId === BATHBOMB_ID) configureBathbombEntity(entity);
     if (hasTradableGoldValue(itemId)) configureTradableEntity(entity);
@@ -59,6 +61,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
         : itemId === 'butterfly' ? configureButterflyEntity
         : itemId === 'moonbutterfly' ? configureMoonButterflyEntity
         : itemId === 'mole' ? configureMoleEntity
+        : itemId === 'lightflier' ? configureLightFlierEntity
         : itemId === 'backpack' ? configureBackpackEntity
         : itemId === ARMORSNURTLESHELL_ID ? configureArmorSnurtleshellEntity
         : itemId === AMULET_ID ? configureAmuletEntity
@@ -76,6 +79,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
         : { useStep: getHandEquipmentDefinition(itemId)!.definition.useStep }),
       ...(itemId === 'backpack' ? { canGoInContainer: false } : {}),
       ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME } : {}),
+      ...(itemId === 'lightflier' ? { perishTime: LIGHTFLIER_PERISH_TIME } : {}),
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
       ...(itemId === AMULET_ID ? { maxUses: REDAMULET_USES } : {}),
       ...(itemId === PANFLUTE_ID ? { maxUses: PANFLUTE_USES } : {}),

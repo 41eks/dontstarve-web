@@ -8,6 +8,7 @@ import { createGroundItemSprite } from '@dontstarve-web/prefab/groundItems';
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
+import { placementEntities } from '../../prefab/src/placementEntities';
 
 vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
   loadImageAtlas: async () => ({
@@ -25,7 +26,7 @@ vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
     for (const type of ['ondropped', 'onputininventory', 'onload'] as const) {
       model.addEventListener(type, () => model.userData.events.push(type));
     }
-    return { model, update() {}, dispose() { model.userData.events.push('dispose'); model.removeFromParent(); } };
+    return { model, update: vi.fn(), dispose() { model.userData.events.push('dispose'); model.removeFromParent(); } };
   });
   return {
     ...actual, createGroundItemSprite,
@@ -92,6 +93,41 @@ function setup() {
 const definition = { itemId: 'log', count: 1, name: 'Log', icon: 'log.tex' };
 
 describe('ground item save records', () => {
+  it('animates stationary items without resyncing their transforms, but updates movement and tag changes before queries', async () => {
+    const { manager, scene, inventory } = setup();
+    try {
+      const origin = new THREE.Vector3();
+      const model = await manager.spawnFromSave('stationary:log', definition, origin);
+      const entity = manager.entities.get('stationary:log')!;
+      const visual = await vi.mocked(createGroundItemSprite).mock.results.at(-1)!.value;
+      const update = visual.update;
+      const matrices = vi.spyOn(model, 'updateWorldMatrix');
+      const query = placementEntities(scene);
+      for (let frame = 0; frame < 10; frame++) manager.update(.1, new THREE.Quaternion());
+      expect(update).toHaveBeenCalledTimes(10);
+      expect(matrices).not.toHaveBeenCalled();
+      expect(query.someNear(origin, 1, blocker => blocker.prefab === 'log')).toBe(true);
+
+      entity.transform.position.set(24, 0, 0);
+      manager.update(.1, new THREE.Quaternion());
+      expect(matrices).toHaveBeenCalledOnce();
+      expect(FindEntities(scene, origin, 1)).toHaveLength(0);
+      expect(FindEntities(scene, entity.transform.position, 1).map(inst => inst.prefab)).toEqual(['log']);
+      expect(query.someNear(origin, 1, () => true)).toBe(false);
+      expect(query.someNear(entity.transform.position, 1, () => true)).toBe(true);
+      entity.addTag('NOBLOCK');
+      expect(query.someNear(entity.transform.position, 1, () => true)).toBe(false);
+      entity.removeTag('NOBLOCK');
+      expect(query.someNear(entity.transform.position, 1, () => true)).toBe(true);
+      matrices.mockClear();
+      const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
+      manager.update(.1, turned);
+      expect(matrices).toHaveBeenCalledOnce();
+      manager.update(.1, turned);
+      expect(matrices).toHaveBeenCalledOnce();
+    } finally { manager.dispose(); inventory.dispose(); }
+  });
+
   it('restores a thermal stone temperature and unfinished usage cycle with its skin and durability', async () => {
     const original = setup(), restored = setup();
     const position = new THREE.Vector3(4, 0, 5);

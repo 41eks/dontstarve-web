@@ -35094,6 +35094,4239 @@
           "components": {}
         }
       ],
+      "grass": [
+        {
+          "id": "dst_7FD049B25CA83C50_grass_id_107287",
+          "transform": {
+            "position": [
+              -151.71,
+              0.0,
+              -513.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_grass_id_107288",
+          "transform": {
+            "position": [
+              -156.96,
+              0.0,
+              -519.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_grass_id_107289",
+          "transform": {
+            "position": [
+              -147.75,
+              0.0,
+              -520.32
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_grass_id_107290",
+          "transform": {
+            "position": [
+              -165.39,
+              0.0,
+              -566.82
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_grass_id_107291",
+          "transform": {
+            "position": [
+              -123.0,
+              0.0,
+              -569.07
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "sapling": [
+        {
+          "id": "dst_7FD049B25CA83C50_sapling_id_102648",
+          "transform": {
+            "position": [
+              -114.57,
+              0.0,
+              -558.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_sapling_id_102649",
+          "transform": {
+            "position": [
+              -117.96,
+              0.0,
+              -519.21
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_sapling_id_102650",
+          "transform": {
+            "position": [
+              -110.46,
+              0.0,
+              -523.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_sapling_id_102651",
+          "transform": {
+            "position": [
+              -162.0,
+              0.0,
+              -556.14
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "evergreen": [
+        {
+          "id": "dst_7FD049B25CA83C50_evergreen_id_110030",
+          "transform": {
+            "position": [
+              -169.89,
+              0.0,
+              -521.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 2,
+              "time": 0,
+              "sleeptime": 4836
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_evergreen_id_110031",
+          "transform": {
+            "position": [
+              -175.32,
+              0.0,
+              -568.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 2,
+              "time": 0,
+              "sleeptime": 4836
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_evergreen_id_110032",
+          "transform": {
+            "position": [
+              -132.21,
+              0.0,
+              -572.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 2,
+              "time": 0,
+              "sleeptime": 4836
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_evergreen_id_110033",
+          "transform": {
+            "position": [
+              -116.46,
+              0.0,
+              -571.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 4836
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_evergreen_id_110034",
+          "transform": {
+            "position": [
+              -114.21,
+              0.0,
+              -510.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 4836
+            }
+          }
+        }
+      ],
+      "flower_cave": [
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100414",
+          "transform": {
+            "position": [
+              20.91,
+              0.0,
+              -79.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100415",
+          "transform": {
+            "position": [
+              42.06,
+              0.0,
+              -197.1
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100416",
+          "transform": {
+            "position": [
+              39.24,
+              0.0,
+              -101.79
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100417",
+          "transform": {
+            "position": [
+              150.15,
+              0.0,
+              -103.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100520",
+          "transform": {
+            "position": [
+              76.35,
+              0.0,
+              -344.4
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100521",
+          "transform": {
+            "position": [
+              197.73,
+              0.0,
+              -508.35
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100522",
+          "transform": {
+            "position": [
+              125.94,
+              0.0,
+              -318.33
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100523",
+          "transform": {
+            "position": [
+              65.37,
+              0.0,
+              -315.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100647",
+          "transform": {
+            "position": [
+              -329.82,
+              0.0,
+              -567.81
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100648",
+          "transform": {
+            "position": [
+              -243.69,
+              0.0,
+              -688.26
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100649",
+          "transform": {
+            "position": [
+              -303.48,
+              0.0,
+              -476.1
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100650",
+          "transform": {
+            "position": [
+              -186.72,
+              0.0,
+              -596.58
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100651",
+          "transform": {
+            "position": [
+              -307.29,
+              0.0,
+              -464.76
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100652",
+          "transform": {
+            "position": [
+              -173.28,
+              0.0,
+              -643.26
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100653",
+          "transform": {
+            "position": [
+              -305.94,
+              0.0,
+              -534.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100654",
+          "transform": {
+            "position": [
+              -331.11,
+              0.0,
+              -440.73
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100655",
+          "transform": {
+            "position": [
+              -152.01,
+              0.0,
+              -642.87
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100656",
+          "transform": {
+            "position": [
+              -284.52,
+              0.0,
+              -628.11
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100657",
+          "transform": {
+            "position": [
+              -187.29,
+              0.0,
+              -524.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100658",
+          "transform": {
+            "position": [
+              -244.65,
+              0.0,
+              -543.51
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100659",
+          "transform": {
+            "position": [
+              -330.72,
+              0.0,
+              -451.02
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100660",
+          "transform": {
+            "position": [
+              -291.93,
+              0.0,
+              -641.04
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100661",
+          "transform": {
+            "position": [
+              -232.14,
+              0.0,
+              -655.68
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100662",
+          "transform": {
+            "position": [
+              -234.78,
+              0.0,
+              -459.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100663",
+          "transform": {
+            "position": [
+              -195.69,
+              0.0,
+              -655.47
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100664",
+          "transform": {
+            "position": [
+              -283.5,
+              0.0,
+              -509.37
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100665",
+          "transform": {
+            "position": [
+              -331.2,
+              0.0,
+              -629.61
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100666",
+          "transform": {
+            "position": [
+              -283.68,
+              0.0,
+              -447.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100667",
+          "transform": {
+            "position": [
+              -236.13,
+              0.0,
+              -603.72
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "single",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_id_100668",
+          "transform": {
+            "position": [
+              -258.06,
+              0.0,
+              -582.12
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "springy",
+              "lightState": "CHARGED"
+            }
+          }
+        }
+      ],
+      "flower_cave_double": [
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104583",
+          "transform": {
+            "position": [
+              -246.69,
+              0.0,
+              -594.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104584",
+          "transform": {
+            "position": [
+              -256.98,
+              0.0,
+              -484.47
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104585",
+          "transform": {
+            "position": [
+              -243.48,
+              0.0,
+              -642.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104586",
+          "transform": {
+            "position": [
+              -231.96,
+              0.0,
+              -483.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104587",
+          "transform": {
+            "position": [
+              -223.41,
+              0.0,
+              -485.49
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104588",
+          "transform": {
+            "position": [
+              -147.51,
+              0.0,
+              -582.15
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104589",
+          "transform": {
+            "position": [
+              -332.25,
+              0.0,
+              -580.2
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104590",
+          "transform": {
+            "position": [
+              -308.79,
+              0.0,
+              -642.51
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104591",
+          "transform": {
+            "position": [
+              -53.01,
+              0.0,
+              -595.02
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104616",
+          "transform": {
+            "position": [
+              66.54,
+              0.0,
+              -760.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104666",
+          "transform": {
+            "position": [
+              -140.97,
+              0.0,
+              -376.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104667",
+          "transform": {
+            "position": [
+              -19.92,
+              0.0,
+              -508.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104668",
+          "transform": {
+            "position": [
+              -3.24,
+              0.0,
+              -425.97
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104669",
+          "transform": {
+            "position": [
+              -32.88,
+              0.0,
+              -231.99
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "double",
+              "lightState": "CHARGED"
+            }
+          }
+        }
+      ],
+      "flower_cave_triple": [
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106518",
+          "transform": {
+            "position": [
+              -103.23,
+              0.0,
+              -387.24
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "triple",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106519",
+          "transform": {
+            "position": [
+              -150.33,
+              0.0,
+              -364.59
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "triple",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106520",
+          "transform": {
+            "position": [
+              -147.81,
+              0.0,
+              -318.87
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "triple",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106521",
+          "transform": {
+            "position": [
+              150.39,
+              0.0,
+              -220.08
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "triple",
+              "lightState": "CHARGED"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106556",
+          "transform": {
+            "position": [
+              -343.56,
+              0.0,
+              -544.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "bulbPlant": {
+              "variant": "triple",
+              "lightState": "CHARGED"
+            }
+          }
+        }
+      ],
+      "lightflier_flower": [
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109579",
+          "transform": {
+            "position": [
+              -198.9,
+              0.0,
+              -137.1
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109580",
+          "transform": {
+            "position": [
+              188.7,
+              0.0,
+              -54.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109581",
+          "transform": {
+            "position": [
+              56.73,
+              0.0,
+              -30.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109582",
+          "transform": {
+            "position": [
+              234.42,
+              0.0,
+              88.26
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109583",
+          "transform": {
+            "position": [
+              173.52,
+              0.0,
+              -17.22
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109584",
+          "transform": {
+            "position": [
+              211.23,
+              0.0,
+              18.63
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109585",
+          "transform": {
+            "position": [
+              15.69,
+              0.0,
+              -56.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109586",
+          "transform": {
+            "position": [
+              197.7,
+              0.0,
+              -19.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109587",
+          "transform": {
+            "position": [
+              -67.44,
+              0.0,
+              -5.04
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109588",
+          "transform": {
+            "position": [
+              66.87,
+              0.0,
+              66.33
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109589",
+          "transform": {
+            "position": [
+              208.65,
+              0.0,
+              -8.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109590",
+          "transform": {
+            "position": [
+              29.85,
+              0.0,
+              19.65
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109591",
+          "transform": {
+            "position": [
+              183.96,
+              0.0,
+              -16.44
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109592",
+          "transform": {
+            "position": [
+              197.97,
+              0.0,
+              41.79
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109593",
+          "transform": {
+            "position": [
+              236.46,
+              0.0,
+              75.81
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109594",
+          "transform": {
+            "position": [
+              68.37,
+              0.0,
+              15.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109595",
+          "transform": {
+            "position": [
+              127.08,
+              0.0,
+              6.09
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109596",
+          "transform": {
+            "position": [
+              183.21,
+              0.0,
+              -63.81
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109597",
+          "transform": {
+            "position": [
+              103.65,
+              0.0,
+              271.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109598",
+          "transform": {
+            "position": [
+              183.39,
+              0.0,
+              306.93
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109599",
+          "transform": {
+            "position": [
+              183.0,
+              0.0,
+              317.19
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109600",
+          "transform": {
+            "position": [
+              -6.24,
+              0.0,
+              317.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109601",
+          "transform": {
+            "position": [
+              139.68,
+              0.0,
+              320.97
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109602",
+          "transform": {
+            "position": [
+              152.79,
+              0.0,
+              320.16
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109603",
+          "transform": {
+            "position": [
+              -3.18,
+              0.0,
+              232.47
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109604",
+          "transform": {
+            "position": [
+              220.41,
+              0.0,
+              256.08
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109605",
+          "transform": {
+            "position": [
+              128.64,
+              0.0,
+              150.24
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109606",
+          "transform": {
+            "position": [
+              18.12,
+              0.0,
+              185.19
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109607",
+          "transform": {
+            "position": [
+              -20.43,
+              0.0,
+              159.63
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109608",
+          "transform": {
+            "position": [
+              245.91,
+              0.0,
+              185.64
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109609",
+          "transform": {
+            "position": [
+              78.09,
+              0.0,
+              208.02
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109610",
+          "transform": {
+            "position": [
+              -43.92,
+              0.0,
+              188.67
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109611",
+          "transform": {
+            "position": [
+              76.68,
+              0.0,
+              186.42
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109612",
+          "transform": {
+            "position": [
+              -43.02,
+              0.0,
+              211.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109613",
+          "transform": {
+            "position": [
+              115.95,
+              0.0,
+              219.21
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109614",
+          "transform": {
+            "position": [
+              150.9,
+              0.0,
+              102.03
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109615",
+          "transform": {
+            "position": [
+              160.17,
+              0.0,
+              160.08
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109616",
+          "transform": {
+            "position": [
+              185.58,
+              0.0,
+              211.2
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109617",
+          "transform": {
+            "position": [
+              77.22,
+              0.0,
+              116.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109618",
+          "transform": {
+            "position": [
+              128.85,
+              0.0,
+              196.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109619",
+          "transform": {
+            "position": [
+              198.99,
+              0.0,
+              222.33
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109620",
+          "transform": {
+            "position": [
+              43.92,
+              0.0,
+              221.79
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109621",
+          "transform": {
+            "position": [
+              -112.56,
+              0.0,
+              100.56
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109622",
+          "transform": {
+            "position": [
+              -87.3,
+              0.0,
+              76.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109623",
+          "transform": {
+            "position": [
+              -124.23,
+              0.0,
+              79.41
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109624",
+          "transform": {
+            "position": [
+              -40.8,
+              0.0,
+              40.26
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109625",
+          "transform": {
+            "position": [
+              -44.25,
+              0.0,
+              115.05
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109626",
+          "transform": {
+            "position": [
+              -7.68,
+              0.0,
+              76.56
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109627",
+          "transform": {
+            "position": [
+              -79.86,
+              0.0,
+              140.49
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109628",
+          "transform": {
+            "position": [
+              -16.5,
+              0.0,
+              -91.05
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109629",
+          "transform": {
+            "position": [
+              -16.08,
+              0.0,
+              -173.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109630",
+          "transform": {
+            "position": [
+              -317.73,
+              0.0,
+              137.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109631",
+          "transform": {
+            "position": [
+              -328.44,
+              0.0,
+              212.55
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109632",
+          "transform": {
+            "position": [
+              -115.95,
+              0.0,
+              220.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109633",
+          "transform": {
+            "position": [
+              -150.54,
+              0.0,
+              161.97
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109634",
+          "transform": {
+            "position": [
+              -247.71,
+              0.0,
+              42.42
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109635",
+          "transform": {
+            "position": [
+              -281.34,
+              0.0,
+              247.98
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109636",
+          "transform": {
+            "position": [
+              -308.4,
+              0.0,
+              211.35
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109637",
+          "transform": {
+            "position": [
+              -284.58,
+              0.0,
+              68.91
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109638",
+          "transform": {
+            "position": [
+              -187.98,
+              0.0,
+              211.68
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109639",
+          "transform": {
+            "position": [
+              -269.85,
+              0.0,
+              135.42
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109640",
+          "transform": {
+            "position": [
+              -75.15,
+              0.0,
+              211.44
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109641",
+          "transform": {
+            "position": [
+              -160.23,
+              0.0,
+              92.04
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109642",
+          "transform": {
+            "position": [
+              -342.75,
+              0.0,
+              248.37
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109643",
+          "transform": {
+            "position": [
+              -183.06,
+              0.0,
+              135.12
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109644",
+          "transform": {
+            "position": [
+              -175.17,
+              0.0,
+              260.34
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109645",
+          "transform": {
+            "position": [
+              -318.57,
+              0.0,
+              186.12
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109646",
+          "transform": {
+            "position": [
+              -111.63,
+              0.0,
+              256.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109647",
+          "transform": {
+            "position": [
+              -282.99,
+              0.0,
+              52.74
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109648",
+          "transform": {
+            "position": [
+              -244.95,
+              0.0,
+              54.87
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109649",
+          "transform": {
+            "position": [
+              -173.31,
+              0.0,
+              159.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109650",
+          "transform": {
+            "position": [
+              -305.55,
+              0.0,
+              -186.36
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109651",
+          "transform": {
+            "position": [
+              -187.65,
+              0.0,
+              -160.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109652",
+          "transform": {
+            "position": [
+              -89.67,
+              0.0,
+              -7.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109653",
+          "transform": {
+            "position": [
+              -172.62,
+              0.0,
+              -220.59
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109654",
+          "transform": {
+            "position": [
+              -137.13,
+              0.0,
+              -42.03
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109655",
+          "transform": {
+            "position": [
+              -328.5,
+              0.0,
+              -102.54
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109656",
+          "transform": {
+            "position": [
+              -231.63,
+              0.0,
+              -15.96
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109657",
+          "transform": {
+            "position": [
+              -104.76,
+              0.0,
+              -112.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109658",
+          "transform": {
+            "position": [
+              -124.26,
+              0.0,
+              -43.95
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109659",
+          "transform": {
+            "position": [
+              -224.22,
+              0.0,
+              -150.27
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109660",
+          "transform": {
+            "position": [
+              -219.72,
+              0.0,
+              -174.45
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109661",
+          "transform": {
+            "position": [
+              -79.53,
+              0.0,
+              -135.87
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109662",
+          "transform": {
+            "position": [
+              -272.85,
+              0.0,
+              -173.4
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109663",
+          "transform": {
+            "position": [
+              -281.61,
+              0.0,
+              -184.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109664",
+          "transform": {
+            "position": [
+              -63.9,
+              0.0,
+              -185.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109665",
+          "transform": {
+            "position": [
+              -308.22,
+              0.0,
+              -125.94
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "springy",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109666",
+          "transform": {
+            "position": [
+              -212.1,
+              0.0,
+              -114.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "lightflierFlower": {
+              "variant": "single",
+              "lightState": "RECHARGING",
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              },
+              "picked": true
+            }
+          }
+        }
+      ],
+      "houndbone": [
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100984",
+          "transform": {
+            "position": [
+              164.46,
+              0.0,
+              -448.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 2
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100985",
+          "transform": {
+            "position": [
+              136.68,
+              0.0,
+              -404.97
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 3
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100986",
+          "transform": {
+            "position": [
+              114.99,
+              0.0,
+              -427.92
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 2
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100987",
+          "transform": {
+            "position": [
+              135.21,
+              0.0,
+              -462.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 2
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100988",
+          "transform": {
+            "position": [
+              112.05,
+              0.0,
+              -378.66
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 1
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100989",
+          "transform": {
+            "position": [
+              100.02,
+              0.0,
+              -475.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 1
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100990",
+          "transform": {
+            "position": [
+              114.24,
+              0.0,
+              -462.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 3
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100991",
+          "transform": {
+            "position": [
+              64.02,
+              0.0,
+              -389.16
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 1
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100992",
+          "transform": {
+            "position": [
+              63.15,
+              0.0,
+              -210.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 3
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100993",
+          "transform": {
+            "position": [
+              128.1,
+              0.0,
+              -303.09
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 1
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100994",
+          "transform": {
+            "position": [
+              100.26,
+              0.0,
+              -220.29
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 1
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100995",
+          "transform": {
+            "position": [
+              174.36,
+              0.0,
+              -197.85
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 2
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100996",
+          "transform": {
+            "position": [
+              112.86,
+              0.0,
+              -187.08
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 3
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_houndbone_id_100997",
+          "transform": {
+            "position": [
+              123.81,
+              0.0,
+              -291.99
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "houndbone": {
+              "bonetype": 3
+            }
+          }
+        }
+      ],
+      "cave_fern": [
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110767",
+          "transform": {
+            "position": [
+              -257.61,
+              0.0,
+              -520.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f9"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110768",
+          "transform": {
+            "position": [
+              -351.81,
+              0.0,
+              -447.99
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f3"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110769",
+          "transform": {
+            "position": [
+              -270.57,
+              0.0,
+              -617.43
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f7"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110770",
+          "transform": {
+            "position": [
+              -223.02,
+              0.0,
+              -580.98
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f3"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110771",
+          "transform": {
+            "position": [
+              -328.47,
+              0.0,
+              -459.36
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f9"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110772",
+          "transform": {
+            "position": [
+              -271.59,
+              0.0,
+              -700.17
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f9"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110773",
+          "transform": {
+            "position": [
+              -273.0,
+              0.0,
+              -678.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f4"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110774",
+          "transform": {
+            "position": [
+              -231.9,
+              0.0,
+              -591.27
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f5"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110775",
+          "transform": {
+            "position": [
+              -247.32,
+              0.0,
+              -508.23
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f2"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110776",
+          "transform": {
+            "position": [
+              -268.02,
+              0.0,
+              -546.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f6"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110777",
+          "transform": {
+            "position": [
+              -318.36,
+              0.0,
+              -594.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f7"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110778",
+          "transform": {
+            "position": [
+              -283.53,
+              0.0,
+              -440.34
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f4"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110779",
+          "transform": {
+            "position": [
+              -257.34,
+              0.0,
+              -495.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f5"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110780",
+          "transform": {
+            "position": [
+              -280.8,
+              0.0,
+              -605.7
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f6"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110781",
+          "transform": {
+            "position": [
+              -255.54,
+              0.0,
+              -535.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f2"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110782",
+          "transform": {
+            "position": [
+              -233.07,
+              0.0,
+              -690.81
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f4"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110783",
+          "transform": {
+            "position": [
+              -329.37,
+              0.0,
+              -596.01
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f1"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110784",
+          "transform": {
+            "position": [
+              -257.04,
+              0.0,
+              -595.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f3"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110785",
+          "transform": {
+            "position": [
+              -294.69,
+              0.0,
+              -436.92
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f3"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110786",
+          "transform": {
+            "position": [
+              -319.71,
+              0.0,
+              -555.27
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f10"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110787",
+          "transform": {
+            "position": [
+              -292.2,
+              0.0,
+              -615.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f9"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110788",
+          "transform": {
+            "position": [
+              -284.1,
+              0.0,
+              -523.74
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f10"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110789",
+          "transform": {
+            "position": [
+              -318.3,
+              0.0,
+              -536.01
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f1"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110790",
+          "transform": {
+            "position": [
+              -296.01,
+              0.0,
+              -497.01
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f7"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110791",
+          "transform": {
+            "position": [
+              -161.82,
+              0.0,
+              -618.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f4"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110792",
+          "transform": {
+            "position": [
+              -42.06,
+              0.0,
+              -645.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f10"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cave_fern_id_110793",
+          "transform": {
+            "position": [
+              16.68,
+              0.0,
+              -615.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "variant": {
+              "anim": "f3"
+            }
+          }
+        }
+      ],
+      "rock1": [
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000001",
+          "transform": {
+            "position": [
+              150.003,
+              0.0,
+              323.79
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000002",
+          "transform": {
+            "position": [
+              143.289,
+              0.0,
+              317.478
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000003",
+          "transform": {
+            "position": [
+              158.007,
+              0.0,
+              340.578
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000004",
+          "transform": {
+            "position": [
+              170.283,
+              0.0,
+              303.426
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000005",
+          "transform": {
+            "position": [
+              160.983,
+              0.0,
+              326.247
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000006",
+          "transform": {
+            "position": [
+              202.47,
+              0.0,
+              308.451
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000007",
+          "transform": {
+            "position": [
+              213.282,
+              0.0,
+              342.669
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000008",
+          "transform": {
+            "position": [
+              170.553,
+              0.0,
+              332.937
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000009",
+          "transform": {
+            "position": [
+              186.588,
+              0.0,
+              305.259
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000010",
+          "transform": {
+            "position": [
+              134.925,
+              0.0,
+              312.771
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000011",
+          "transform": {
+            "position": [
+              195.297,
+              0.0,
+              291.156
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000012",
+          "transform": {
+            "position": [
+              158.478,
+              0.0,
+              315.987
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000013",
+          "transform": {
+            "position": [
+              169.407,
+              0.0,
+              319.809
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000014",
+          "transform": {
+            "position": [
+              207.882,
+              0.0,
+              333.459
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000015",
+          "transform": {
+            "position": [
+              167.559,
+              0.0,
+              343.701
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000016",
+          "transform": {
+            "position": [
+              178.44,
+              0.0,
+              324.282
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_rock1_index_000017",
+          "transform": {
+            "position": [
+              187.764,
+              0.0,
+              322.296
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "cavein_boulder": [
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106586",
+          "transform": {
+            "position": [
+              146.388,
+              0.0,
+              315.339
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 7
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106588",
+          "transform": {
+            "position": [
+              196.002,
+              0.0,
+              298.374
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 6
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106590",
+          "transform": {
+            "position": [
+              173.805,
+              0.0,
+              300.537
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 6
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106592",
+          "transform": {
+            "position": [
+              194.709,
+              0.0,
+              304.371
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 6
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106594",
+          "transform": {
+            "position": [
+              177.69,
+              0.0,
+              334.914
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 4
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106596",
+          "transform": {
+            "position": [
+              165.228,
+              0.0,
+              345.303
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 5
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106598",
+          "transform": {
+            "position": [
+              211.605,
+              0.0,
+              345.087
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 8
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106600",
+          "transform": {
+            "position": [
+              166.284,
+              0.0,
+              333.093
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 5
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106602",
+          "transform": {
+            "position": [
+              157.155,
+              0.0,
+              330.672
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 8
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106604",
+          "transform": {
+            "position": [
+              168.306,
+              0.0,
+              318.408
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 7
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106606",
+          "transform": {
+            "position": [
+              198.732,
+              0.0,
+              291.633
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 7
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106608",
+          "transform": {
+            "position": [
+              168.213,
+              0.0,
+              305.493
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 8
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106610",
+          "transform": {
+            "position": [
+              156.996,
+              0.0,
+              345.876
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 3
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106612",
+          "transform": {
+            "position": [
+              158.37,
+              0.0,
+              322.092
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 2
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106614",
+          "transform": {
+            "position": [
+              194.649,
+              0.0,
+              330.039
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 2
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106616",
+          "transform": {
+            "position": [
+              164.235,
+              0.0,
+              326.637
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 7
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106618",
+          "transform": {
+            "position": [
+              143.937,
+              0.0,
+              321.255
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 4
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106620",
+          "transform": {
+            "position": [
+              136.212,
+              0.0,
+              323.358
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 4
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106622",
+          "transform": {
+            "position": [
+              177.267,
+              0.0,
+              322.107
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 7
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106624",
+          "transform": {
+            "position": [
+              156.915,
+              0.0,
+              313.542
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 2
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106626",
+          "transform": {
+            "position": [
+              151.905,
+              0.0,
+              322.251
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 4
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106628",
+          "transform": {
+            "position": [
+              207.765,
+              0.0,
+              332.145
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 4
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106630",
+          "transform": {
+            "position": [
+              136.605,
+              0.0,
+              315.453
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 3
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106632",
+          "transform": {
+            "position": [
+              156.27,
+              0.0,
+              338.637
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "caveinBoulder": {
+              "variation": 7
+            }
+          }
+        }
+      ],
       "grotto_pool_big": [
         {
           "id": "dst_7FD049B25CA83C50_grotto_pool_big_id_110716",

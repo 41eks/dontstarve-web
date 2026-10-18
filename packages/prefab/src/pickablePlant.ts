@@ -5,7 +5,7 @@ import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWo
 import { Witherable, type WitherableSave } from '../../componets/src/witherable';
 import { loadAnim, loadBuild, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
 import {
-  createSpriteFactory, SpriteController, loadBuildOverride, type LoadedBuildOverride, type AnimatedSpriteFactory, type TransientSpriteAnimationController,
+  createSpriteFactory, SpriteController, loadBuildOverride, type LoadedBuildOverride, type AnimatedSpriteFactory, type AnimatedSpriteOptions, type TransientSpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
 import { newEntityId } from './saveRecord';
 import { Pickable, type PickableSaveState } from './components/pickable';
@@ -27,13 +27,19 @@ import { nextReskin } from './reskin_tool';
 import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import type { GrowableSave } from '../../componets/src/growable';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
+
+type PlantAnimation = SpriteController | ArchiveSprite;
+type CreatePlantArchiveSprite = Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
 
 export interface PickablePlantRecord {
   id: string;
   transform: { position: [number, number, number]; rotationY: number };
   components: { pickable?: PickableSaveState; witherable?: WitherableSave; plant?: { skinId?: string }; growable?: GrowableSave; burning?: true;
     /** mushrooms.lua OnSave: the rain days left before a picked mushroom regrows. */
-    mushroom?: { rain: number } };
+    mushroom?: { rain: number };
+    /** cave_fern.lua OnSave: data.anim, the chosen pose clip. */
+    variant?: { anim: string } };
 }
 
 export interface PickablePlantWorld {
@@ -45,9 +51,9 @@ export interface PickablePlantWorld {
   isOcean?(position: THREE.Vector3): boolean;
 }
 
-export interface PickablePlantAppearanceContext {
+export interface PickablePlantAppearanceContext<T extends PlantAnimation = SpriteController> {
   readonly model: THREE.Group;
-  readonly animation: SpriteController;
+  readonly animation: T;
   play(clips: readonly string[], loopLast?: boolean, onFirstOver?: () => void): void;
 }
 export interface PickablePlantAppearance {
@@ -70,7 +76,7 @@ export interface PickablePlantBehavior {
   exportState(): PickablePlantRecord['components'];
   dispose(): void;
 }
-export interface PickablePlantBehaviorContext extends PickablePlantAppearanceContext {
+export interface PickablePlantBehaviorContext extends PickablePlantAppearanceContext<PlantAnimation> {
   readonly pickable: Pickable;
   readonly scheduler: GameTimeScheduler;
   growthDuration(seconds: number): number;
@@ -85,6 +91,8 @@ export interface PickablePlantDefinition {
   readonly prefab: string;
   readonly animArchive: string;
   readonly buildArchive: string;
+  /** Opt into shared archive frames and instancing while keeping source playback in the prefab behavior. */
+  readonly archiveSprite?: { readonly bank: string; readonly instancedAnimations: ArchiveSpriteOptions['instancedAnimations'] };
   readonly tags: readonly string[];
   readonly product: string;
   readonly regrowTime?: number;
@@ -95,13 +103,20 @@ export interface PickablePlantDefinition {
   /** Looping ready clip, optionally started on a random frame (AnimState:SetFrame). */
   readonly idle: { readonly name: string; readonly randomFrame?: boolean };
   /** onpickedfn: an optional sound, then one clip or a clip followed by its rest pose. */
-  readonly picked: { readonly sound?: SoundEventPath; readonly clips: readonly [string] | readonly [string, string] };
-  /** makeemptyfn as restored by Pickable:OnLoad. */
-  readonly empty: { readonly name: string; readonly frame: 'first' | 'last' };
+  readonly picked: { readonly sound?: SoundEventPath; readonly clips: readonly [] | readonly [string] | readonly [string, string] };
+  /** makeemptyfn as restored by Pickable:OnLoad; absent when the plant is removed once picked. */
+  readonly empty?: { readonly name: string; readonly frame: 'first' | 'last' };
   /** onregenfn: grow, then the looping idle clip. */
-  readonly grow: string;
+  readonly grow?: string;
   /** workable dig_up loot after the ready product. */
-  readonly dugLoot: string;
+  /** Omitted for plants without a `workable` (cave_fern): they cannot be dug. */
+  readonly dugLoot?: string;
+  /** pickable.remove_when_picked: the plant is removed by a successful pick instead of showing a picked pose. */
+  readonly removeWhenPicked?: boolean;
+  /** pickable.quickpick, read by the SGwilson PICK deststate. */
+  readonly quickpick?: boolean;
+  /** cave_fern.lua: one pose clip is chosen at random per plant and saved as `variant.anim`. */
+  readonly variants?: readonly string[];
   readonly maxCycles?: () => number;
   readonly barren?: string;
   readonly witherable?: boolean;
@@ -124,8 +139,9 @@ interface Plant {
   definition: PickablePlantDefinition;
   model: THREE.Group;
   pickable: Pickable;
-  factory: AnimatedSpriteFactory;
-  readonly animation: TransientSpriteAnimationController;
+  factory?: AnimatedSpriteFactory;
+  sprite?: ArchiveSprite;
+  readonly animation: PlantAnimation;
   version: number;
   transitionAt: number;
   stopEffect: () => void;
@@ -142,6 +158,7 @@ interface Plant {
   phase: ReturnType<typeof createMemo<string>>;
   outputs: Map<string, PreparedGroundSpawn[]>;
   witherable?: Witherable;
+  variant?: string;
   body?: CANNON.Body;
   behavior?: PickablePlantBehavior;
 }
@@ -152,6 +169,8 @@ interface Plant {
  */
 export class PickablePlantManager {
   private readonly factoryRequests = new Map<string, Promise<AnimatedSpriteFactory>>();
+  private readonly archiveSpriteRequests = new Map<PickablePlantDefinition, Promise<CreatePlantArchiveSprite>>();
+  private readonly archiveAssets: ArchiveSpriteAssets;
   private fireFactoryRequest?: Promise<AnimatedSpriteFactory>;
   private snowRequest?: Promise<LoadedBuildOverride>;
   private readonly plants = new Map<THREE.Group, Plant>();
@@ -168,6 +187,7 @@ export class PickablePlantManager {
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: PickablePlantWorld) {
     this.scene = scene; this.assetBaseUrl = assetBaseUrl; this.world = world;
+    this.archiveAssets = new ArchiveSpriteAssets('pickable_plant', assetBaseUrl);
     // MakeNoGrowInWinter belongs to the component/world binding, not the appearance effect.
     this.getWatchWorldContent = getBoundWatchWorldContent();
     if (this.getWatchWorldContent) {
@@ -198,7 +218,7 @@ export class PickablePlantManager {
   }> {
     const { prefab } = definition;
     if (this.disposed) throw new Error(`${prefab} manager has been disposed`);
-    const factoryRequest = this.getFactory(definition, skinId);
+    const factoryRequest = definition.archiveSprite ? this.getArchiveSprite(definition) : this.getFactory(definition, skinId);
     if (definition.snowCovered && !this.snowRequest) this.snowRequest = loadBuildOverride(this.assetBaseUrl, 'snow.zip');
     /* Plant art is shared by skin; each pending deployment owns its prepared loot. */
     if (!this.fireFactoryRequest) {
@@ -207,7 +227,7 @@ export class PickablePlantManager {
       ]).then(([build, anim]) => createSpriteFactory(build, anim));
       void this.fireFactoryRequest.catch(() => { this.fireFactoryRequest = undefined; });
     }
-    const outputIds = ['ash', definition.dugLoot, definition.product, ...(definition.extraLoot ?? [])];
+    const outputIds = ['ash', ...definition.dugLoot ? [definition.dugLoot] : [], definition.product, ...(definition.extraLoot ?? [])];
     const outputDefinitions = outputIds.flatMap(itemId => [undefined, ...(itemId === definition.dugLoot ? definition.dugSkins ?? [] : [])]
       .map(skinId => ({ ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1, ...(skinId ? { skinId } : {}) })));
     let snow: LoadedBuildOverride | undefined;
@@ -217,11 +237,11 @@ export class PickablePlantManager {
     ]);
     const failed = resources.find(result => result.status === 'rejected');
     if (failed || this.disposed) {
-      for (const result of resources.slice(2)) if (result.status === 'fulfilled') result.value.dispose();
+      for (const result of resources.slice(2) as PromiseSettledResult<PreparedGroundSpawn>[]) if (result.status === 'fulfilled') result.value.dispose();
       if (failed?.status === 'rejected') throw failed.reason;
       throw new Error(`${prefab} manager has been disposed`);
     }
-    const factory = (resources[0] as PromiseFulfilledResult<AnimatedSpriteFactory>).value;
+    const source = (resources[0] as PromiseFulfilledResult<AnimatedSpriteFactory | CreatePlantArchiveSprite>).value;
     const fireFactory = (resources[1] as PromiseFulfilledResult<AnimatedSpriteFactory>).value;
     const outputs = new Map<string, PreparedGroundSpawn[]>();
     outputDefinitions.forEach((output, i) => {
@@ -238,20 +258,32 @@ export class PickablePlantManager {
         if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefab} position`);
         consumed = true;
         const state = saved?.components.pickable;
-        const model = factory.create({ ...(state?.cyclesLeft === 0 && definition.barren
+        // cave_fern.lua onload restores data.anim; otherwise names[math.random(#names)].
+        const savedVariant = saved?.components.variant?.anim;
+        if (savedVariant !== undefined && !definition.variants?.includes(savedVariant)) throw new Error(`Unsupported ${prefab} variant: ${savedVariant}`);
+        const variant = definition.variants ? savedVariant ?? definition.variants[Math.floor(Math.random() * definition.variants.length)] : undefined;
+        const idleName = variant ?? definition.idle.name;
+        const emptyName = definition.empty?.name ?? idleName;
+        const initial: Pick<AnimatedSpriteOptions, 'initialAnimation' | 'initialFrame' | 'name'> = state?.cyclesLeft === 0 && definition.barren
           ? { initialAnimation: definition.barren, initialFrame: 'last', name: prefab }
-          : state?.picked
+          : state?.picked && definition.empty
           ? { initialAnimation: definition.empty.name, initialFrame: definition.empty.frame, name: prefab }
-          : { initialAnimation: definition.idle.name, initialFrame: 'first', name: prefab }),
+          : { initialAnimation: idleName, initialFrame: 'first', name: prefab };
+        const sprite = typeof source === 'function' ? source(initial.initialAnimation, false, prefab) : undefined;
+        const factory = typeof source === 'function' ? undefined : source;
+        if (sprite && initial.initialFrame === 'last') sprite.setFrame(sprite.frameCount - 1);
+        const model = sprite?.model ?? factory!.create({ ...initial,
           getWatchWorldContent: this.getWatchWorldContent, snowCovered: snow });
         model.position.set(position.x, 0, position.z);
         Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId(), tags: [...definition.tags] });
         if (skinId) model.userData.skinId = skinId;
         if (definition.physicsRadius !== undefined) model.userData.physicsRadius = definition.physicsRadius * (TILE_SIZE / 4);
         if (definition.deploySmartRadius !== undefined) model.userData.deploySmartRadius = definition.deploySmartRadius;
-        let animation = model.userData.animationController as SpriteController;
+        let animation: PlantAnimation = sprite ?? model.userData.animationController as SpriteController;
+        model.userData.animationController = animation;
         // sapling.lua: AnimState:SetFrame(math.random(GetCurrentAnimationNumFrames()) - 1).
-        if (!state?.picked && definition.idle.randomFrame) animation.setFrame(Math.floor(Math.random() * animation.numFrames));
+        if (!state?.picked && definition.idle.randomFrame) animation.setFrame(Math.floor(Math.random()
+          * (animation instanceof SpriteController ? animation.numFrames : animation.frameCount)));
         const playSequence = (first: string, last?: string, loop = false) => {
           const version = ++plant.version;
           plant.transitionAt = this.scheduler.now;
@@ -261,7 +293,7 @@ export class PickablePlantManager {
             else animation.playOnce(last);
           });
         };
-        const animationContext: PickablePlantAppearanceContext = { model, get animation() { return animation; },
+        const animationContext: PickablePlantAppearanceContext<PlantAnimation> = { model, get animation() { return animation; },
           play: (clips, loopLast = false, onFirstOver) => {
             const version = ++plant.version;
             plant.transitionAt = this.scheduler.now;
@@ -277,13 +309,18 @@ export class PickablePlantManager {
             play(0);
           },
         };
-        const appearance = definition.createAppearance?.(animationContext);
+        const appearance = definition.createAppearance?.({ ...animationContext, get animation() {
+          if (!(animation instanceof SpriteController)) throw new Error('Layered plant appearance requires a SpriteController');
+          return animation;
+        } });
         const pickable: Pickable = new Pickable(model, definition.product, definition.regrowTime, definition.numToHarvest ?? 1, () => {
           plant.sound?.stop();
           if (definition.picked.sound) plant.sound = PlaySound(definition.picked.sound, model.position);
+          if (definition.removeWhenPicked) return;
           if (plant.behavior) { plant.behavior.picked(); return; }
           if (appearance) { appearance.picked(pickable); return; }
           const [first, last] = definition.picked.clips;
+          if (first === undefined) return;
           if (pickable.IsBarren() && definition.barren) {
             const version = ++plant.version;
             plant.transitionAt = this.scheduler.now;
@@ -294,8 +331,9 @@ export class PickablePlantManager {
               });
             });
           } else playSequence(first, last);
-        }, () => plant.behavior ? plant.behavior.regen() : appearance ? appearance.regen(pickable) : playSequence(definition.grow, definition.idle.name, true), state, {
+        }, () => plant.behavior ? plant.behavior.regen() : appearance ? appearance.regen(pickable) : playSequence(definition.grow ?? idleName, idleName, true), state, {
           scheduler: this.scheduler,
+          onRemove: definition.removeWhenPicked ? () => this.remove(model) : undefined,
           growthDuration: seconds => this.season?.peek().season === 'spring' ? seconds * 0.75 : seconds,
           maxCycles: definition.maxCycles?.(),
           getRegenTime: definition.getRegenTime,
@@ -311,10 +349,12 @@ export class PickablePlantManager {
             if (plant.behavior) { plant.behavior.empty(); return; }
             if (appearance) { appearance.empty(pickable); return; }
             if (definition.witherable && (plant.witherable?.IsWithered() || animation.currentAnimation === definition.barren)) {
-              playSequence('dead_to_empty', definition.empty.name);
-            } else playSequence(definition.empty.name);
+              playSequence('dead_to_empty', emptyName);
+            } else playSequence(emptyName);
           },
         });
+        pickable.quickpick = definition.quickpick ?? false;
+        pickable.remove_when_picked = definition.removeWhenPicked ?? false;
         const entity = actionEntity(model, prefab);
         const burnable = new Burnable(entity, this.scheduler);
         entity.components.burnable = burnable;
@@ -335,8 +375,10 @@ export class PickablePlantManager {
         const fire = fireFactory.create({ initialAnimation: `level${definition.burnFxLevel ?? 3}`, name: 'fire' });
         fire.userData.tags = ['FX', 'NOCLICK'];
         const workable = new Workable(entity);
-        entity.components.workable = workable;
-        workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
+        if (definition.dugLoot) {
+          entity.components.workable = workable;
+          workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
+        } else workable.SetWorkable(false);
         const lootdropper = new LootDropper(entity, (lootPrefab, point, lootSkin) => {
           const output = outputs.get(`${lootPrefab}:${lootSkin ?? ''}`)?.shift();
           if (!output?.spawn(new THREE.Vector3(point.x, point.y, point.z))) throw new Error(`${prefab} loot not prepared: ${lootPrefab}`);
@@ -352,7 +394,7 @@ export class PickablePlantManager {
             return;
           }
           if (pickable.canBePicked && pickable.product) lootdropper.SpawnLootPrefab(pickable.product);
-          lootdropper.SpawnLootPrefab(plant.witherable?.IsWithered() ? definition.product : definition.dugLoot);
+          lootdropper.SpawnLootPrefab(plant.witherable?.IsWithered() ? definition.product : definition.dugLoot!);
           this.remove(model);
         });
         burnable.SetOnIgniteFn(() => persistence.set(definition.persistBurning ?? false));
@@ -364,9 +406,9 @@ export class PickablePlantManager {
           }
           this.remove(model);
         });
-        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, version: 0,
+        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, version: 0,
           transitionAt: this.scheduler.now, stopEffect: () => {}, stopBurning: () => {},
-          burnable, propagator, workable, persistence, fire, fireFactory, phase, outputs };
+          burnable, propagator, workable, persistence, fire, fireFactory, phase, outputs, variant };
         plant.behavior = definition.createBehavior?.({ ...animationContext, get animation() { return animation; }, pickable,
           scheduler: this.scheduler,
           growthDuration: seconds => this.season?.peek().season === 'spring' ? seconds * .75 : seconds,
@@ -407,6 +449,7 @@ export class PickablePlantManager {
         appearance?.restore(pickable);
         model.userData.replacePlantAppearance = (replacement: THREE.Group) => {
           const previous = animation;
+          if (!(previous instanceof SpriteController)) throw new Error('Plant reskin requires a SpriteController');
           previous.dispose();
           for (const child of [...model.children]) {
             child.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
@@ -423,12 +466,12 @@ export class PickablePlantManager {
         };
         if (definition.noGrowInWinter !== false && this.season?.peek().season === 'winter') pickable.pause();
         else pickable.resume();
-        const readyClips = [definition.idle.name, definition.grow];
-        const emptyClips: string[] = [...definition.picked.clips, definition.empty.name, 'dead_to_empty'];
+        const readyClips = [idleName, definition.grow ?? idleName];
+        const emptyClips: string[] = [...definition.picked.clips, emptyName, 'dead_to_empty'];
         plant.stopEffect = appearance || plant.behavior ? () => {} : createEffect(() => {
           const current = plant.phase.get();
-          if (current === 'ready' && !readyClips.includes(animation.currentAnimation)) animation.start(definition.idle.name);
-          else if (current === 'picked' && !emptyClips.includes(animation.currentAnimation)) animation.playOnce(definition.empty.name);
+          if (current === 'ready' && !readyClips.includes(animation.currentAnimation)) animation.start(idleName);
+          else if (current === 'picked' && !emptyClips.includes(animation.currentAnimation)) animation.playOnce(emptyName);
           else if (current === 'barren' && definition.barren
             && ![...emptyClips, definition.barren, 'empty_to_dead', 'full_to_dead'].includes(animation.currentAnimation)) animation.playOnce(definition.barren);
         });
@@ -463,7 +506,7 @@ export class PickablePlantManager {
   get digTargets(): readonly ShovelTarget[] { return this.getDigTargets(); }
 
   getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[] {
-    return modelValues(this.plants, model).map(({ definition, model, workable }) => ({
+    return modelValues(this.plants, model).filter(({ definition }) => definition.dugLoot).map(({ definition, model, workable }) => ({
       id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, definition.prefab),
       isValid: () => !this.disposed && this.plants.has(model) && workable.CanBeWorked(),
       dig: () => performToolWork('DIG', actionEntity(model, definition.prefab), {}),
@@ -517,15 +560,31 @@ export class PickablePlantManager {
     return request;
   }
 
+  private getArchiveSprite(definition: PickablePlantDefinition): Promise<CreatePlantArchiveSprite> {
+    let request = this.archiveSpriteRequests.get(definition);
+    if (!request) {
+      request = Promise.all([
+        preloadSharedArchiveSprite(this.archiveAssets, { animationArchive: definition.animArchive,
+          buildArchives: [definition.buildArchive], bank: definition.archiveSprite!.bank },
+        { instancedAnimations: definition.archiveSprite!.instancedAnimations }),
+        PreloadSounds(...definition.picked.sound ? [definition.picked.sound] : [],
+          'dontstarve/common/campfire', 'dontstarve/common/fireOut'),
+      ]).then(([create]) => create);
+      this.archiveSpriteRequests.set(definition, request);
+      void request.catch(() => this.archiveSpriteRequests.delete(definition));
+    }
+    return request;
+  }
+
   protected exportPlants(): { prefab: string; record: PickablePlantRecord }[] {
     this.scheduler.advanceTo(this.scheduler.now);
-    return [...this.plants.values()].filter(plant => plant.persistence.peek()).map(({ definition, model, pickable, witherable, behavior, burnable }) => ({
+    return [...this.plants.values()].filter(plant => plant.persistence.peek()).map(({ definition, model, pickable, witherable, behavior, burnable, variant }) => ({
       prefab: definition.prefab,
       record: {
         id: String(model.userData.entityId),
         transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
         components: { ...(definition.skins ? { plant: model.userData.skinId ? { skinId: model.userData.skinId } : {} } : {}), pickable: pickable.exportState(), ...(witherable ? { witherable: witherable.exportState() } : {}),
-          ...behavior?.exportState(), ...(definition.persistBurning && burnable.IsBurning() ? { burning: true as const } : {}) },
+          ...behavior?.exportState(), ...(variant ? { variant: { anim: variant } } : {}), ...(definition.persistBurning && burnable.IsBurning() ? { burning: true as const } : {}) },
       },
     }));
   }
@@ -550,7 +609,8 @@ export class PickablePlantManager {
     for (const pieces of plant.outputs.values()) for (const output of pieces) output.dispose();
     plant.stopEffect();
     plant.sound?.stop();
-    plant.factory.disposeSprite(model);
+    if (plant.sprite) plant.sprite.dispose();
+    else plant.factory!.disposeSprite(model);
   }
 
   dispose(): void {
@@ -558,6 +618,8 @@ export class PickablePlantManager {
     this.disposed = true;
     this.cleanups.splice(0).forEach(cleanup => cleanup());
     for (const model of this.plants.keys()) this.remove(model);
+    this.archiveAssets.dispose();
+    this.archiveSpriteRequests.clear();
     if (this.ownsScheduler) this.scheduler.dispose();
     for (const request of this.factoryRequests.values()) void request.then(factory => factory.dispose(), () => undefined);
     void this.snowRequest?.then(snow => snow.dispose(), () => undefined);

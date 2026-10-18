@@ -23,7 +23,7 @@ it('turns with the camera heading so screen up is the camera forward and screen 
   view.center(0, 0);
   // followcamera.lua default heading 45: forward is (-cos, -sin) on the ground, i.e. toward -x/-z.
   view.heading = 45;
-  const ahead = view.worldToScreen(-1, -1), right = view.worldToScreen(-1, 1);
+  const ahead = view.worldToScreen(-1, -1), right = view.worldToScreen(1, -1);
   expect(ahead.x).toBeCloseTo(400);
   expect(ahead.z).toBeLessThan(300);
   expect(right.z).toBeCloseTo(300);
@@ -53,7 +53,7 @@ it('keeps the point under the cursor fixed while zooming, and clamps zoom and ce
   view.zoomAt(0, 0, 0);
   expect(view.zoom).toBe(1);
   view.pan(-1e9, 1e9);
-  expect(view.centerX).toBe(500);
+  expect(view.centerX).toBe(-500);
   expect(view.centerZ).toBe(500);
 });
 

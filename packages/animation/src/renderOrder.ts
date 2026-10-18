@@ -22,7 +22,11 @@ export function setSpriteEntityRenderOrder(
 
 /** Hidden entities (or ones whose registered visual is hidden) are not drawn, so their order is irrelevant. */
 export function isSpriteEntityRendered(sprite: THREE.Object3D): boolean {
-  return sprite.visible && (spriteRenderGroups.get(sprite)?.visible ?? true);
+  if (!sprite.visible) return false;
+  for (let node: THREE.Object3D | null = spriteRenderGroups.get(sprite) ?? null; node && node !== sprite; node = node.parent) {
+    if (!node.visible) return false;
+  }
+  return true;
 }
 
 /** Camera depths closer than this are one depth, so float noise cannot reorder overlapping sprites. */

@@ -51,7 +51,7 @@ import { isPlaceableBuildingId } from './placeableBuilding';
 import {
   createInventoryStore,
 } from './inventory';
-import { locomotor, startScene } from './scene';
+import { locomotor, startScene, worldState } from './scene';
 import { WortoxPlayer } from '../packages/prefab/src/wortoxPlayer';
 import { createDisposalResources } from './registerDisposal';
 import { initialSave } from './save/initialSave';
@@ -77,6 +77,7 @@ const lightingReady = DstLightingRenderer.create(
     sanityPercent: playerStats.sanity.percent,
     // player_classified pushes isghostmode into playervision:SetGhostVision.
     ghostVision: playerGhostMode,
+    tickingarea: worldState.tickingarea,
   },
 );
 input.setBlocked(true);

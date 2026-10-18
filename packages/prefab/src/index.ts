@@ -175,8 +175,8 @@ export {
 } from './bulb_plant';
 
 export {
-  ROCK_PREFABS, RockController, RockManager, isRockPrefab,
-  type RockPrefabId, type RockRecord,
+  ROCK_PREFABS, ROCK_ENTITY_IDS, RockController, RockManager, isRockPrefab,
+  type RockPrefabId, type RockEntityId, type RockRecord, type CaveinBoulderSave,
 } from './rocks';
 
 export { isAxeTool, loadAxeEquipment, type AxeEquipment, type AxeTool } from './axe';
@@ -204,3 +204,6 @@ export { PHONOGRAPH_ID, PHONOGRAPH_PLAY_TIME, PhonographController } from './pho
 export { RECORD_ID, RECORD_SONGS, RECORD_ITEM_SPECS, configureRecordEntity, isPhonographRecord } from './records';
 
 export { BANANAJUICE_ID, MUSHROOM_ITEM_IDS, FOOD_EFFECTS, PERISHABLE_FOODS, getFoodEffects, type FoodEffects } from './food';
+
+export { LightFlierFlowerManager, LightFlierFlower, LIGHTFLIER_FLOWER_ID } from './lightflier_flower';
+export { LightFlier, LightFlierHabitat, LIGHTFLIER_ID, configureLightFlierEntity } from './lightflier';

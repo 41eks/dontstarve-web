@@ -44,6 +44,7 @@
 ## Prefab porting requirements
 
 - prefab 动画必须通过 `createSharedArchiveSprite()` 或 `createSpriteFactory` 获取，不得直接调用 `createArchiveSprite()`、自行创建逐实体帧几何，或新增仅包装 prefab 动作名称的动画构造层。动画名称、动作选择及后续播放由 prefab 按源 Lua 通过控制器的 `playOnce()` / `start()` 等接口指定。
+- 植物 prefab 的 sprite 必须通过 `createSharedArchiveSprite()` 创建；需要预载后同步创建时可使用同一路径的 `preloadSharedArchiveSprite()`。其中所有循环动画必须通过 `instancedAnimations` 使用共享的 `InstancedMesh` 合批渲染，并保留各实体独立的播放进度、交互和生命周期；动画是否循环仍按源 Lua 决定，不得为了实例化将非循环动画改为循环。
 - 共享缓存：同一 manager／资源生命周期内的实体，使用 `createSharedArchiveSprite()` 时必须复用同一个 `ArchiveSpriteAssets`，使用 `createSpriteFactory` 时必须按 build（及皮肤）复用同一个 factory；不得逐实体创建资源缓存、材质或帧几何缓存。
 - 独立实体状态：各实体独立维护模型位置、播放进度、完成回调和私有材质状态；不得直接修改或释放共享帧的顶点、UV、索引及几何体。
 - 资源释放：先释放各实体（`sprite.dispose()` 或 `factory.disposeSprite(sprite)`），再由资源所有者统一释放共享资源（`assets.dispose()` 或 `factory.dispose()`）。

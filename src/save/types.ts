@@ -41,6 +41,7 @@ export interface SavedEntity {
     burning?: true;
     plant?: { skinId?: string };
     pickable?: GrassRecord['components']['pickable'];
+    lightflierFlower?: import('../../packages/prefab/src/lightflier_flower').LightFlierFlowerSave;
     molehill?: import('../../packages/prefab/src/molehill').MolehillSave;
     beefalo?: BeefaloSaveState;
     nightmareGrowth?: NightmareGrowthSaveState;
@@ -53,12 +54,16 @@ export interface SavedEntity {
     moonTree?: MoonTreeSaveState;
     mushtree?: import('@dontstarve-web/prefab/mushtree').MushtreeSaveState;
     mushroom?: { rain: number };
+    /** cave_fern.lua OnSave: data.anim. */
+    variant?: { anim: string };
+    caveinBoulder?: import('@dontstarve-web/prefab/rocks').CaveinBoulderSave;
     grottoPool?: import('@dontstarve-web/prefab/grotto_pool').GrottoPoolSaveState;
     grottoGlass?: import('@dontstarve-web/prefab/grotto_pool').GrottoGlassSaveState;
     evergreen?: { stump?: true; burnt?: true; burntcone?: true };
     deciduoustree?: import('../../packages/prefab/src/deciduousTreeLeaves').DeciduousTreeSave;
     marbleShrub?: import('../../packages/prefab/src/marbleshrub').MarbleShrubSaveState;
     archiveProp?: import('../../packages/prefab/src/archive_props').ArchivePropSaveState;
+    houndbone?: import('../../packages/prefab/src/houndbone').HoundboneSaveState;
     skeleton?: import('../../packages/prefab/src/skeleton').SkeletonSaveState;
     growable?: import('../../packages/componets/src/growable').GrowableSave;
     saplingTimer?: import('../../packages/componets/src/timer').NamedTimerSave;

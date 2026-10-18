@@ -16,6 +16,7 @@ export interface WorkableInst extends WorkInst {
 }
 
 export interface Worker {
+  readonly sg?: { HasStateTag(tag: string): boolean };
   PushEvent?(name: string, data: unknown): void;
   /** Ground position of the worker, e.g. for a tree's fall direction. */
   getPosition?(): Vector3;

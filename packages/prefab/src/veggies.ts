@@ -1,3 +1,5 @@
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { Edible } from '../../componets/src/edible';
 import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
 
 // tuning.lua values used by prefabs/veggies.lua.
@@ -75,3 +77,13 @@ export const VEGGIE_ITEM_IDS: readonly string[] = Object.keys(ITEMS);
 export const VEGGIE_FOOD_EFFECTS = Object.fromEntries(Object.entries(ITEMS)
   .map(([id, { health, hunger, sanity }]) => [id, { health, hunger, sanity }]));
 export const VEGGIE_PERISH_TIMES = Object.fromEntries(Object.entries(ITEMS).map(([id, { perish }]) => [id, perish]));
+
+/** veggies.lua's edible component belongs to the food inst, including food offered to livestock. */
+export function configureVeggieEntity(entity: ItemEntity): void {
+  const values = ITEMS[entity.prefab];
+  if (!values || entity.components.edible) return;
+  const edible = new Edible(() => entity.components.perishable.stage.peek());
+  edible.healthvalue = values.health; edible.hungervalue = values.hunger; edible.sanityvalue = values.sanity;
+  entity.components.edible = edible;
+  entity.addTag(VEGGIE_SEED_IDS.includes(entity.prefab) ? 'edible_SEEDS' : 'edible_VEGGIE');
+}

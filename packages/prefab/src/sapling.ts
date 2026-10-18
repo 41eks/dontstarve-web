@@ -16,6 +16,7 @@ function saplingDefinition(prefab: SaplingPrefabId): PickablePlantDefinition {
     prefab,
     animArchive: `${prefab}.zip`,
     buildArchive: `${prefab}.zip`,
+    archiveSprite: { bank: prefab, instancedAnimations: 'all' },
     tags: ['plant', 'renewable', 'silviculture', 'lunarplant_target'],
     product: 'twigs',
     regrowTime: SAPLING_REGROW_TIME,

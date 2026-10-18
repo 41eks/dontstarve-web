@@ -329,7 +329,8 @@ export class TurfMap {
     // Only the falloff writes depth (prepass); turf layers stay depth-free and are ordered by renderOrder.
     this.falloffMesh = new THREE.Mesh(new THREE.BufferGeometry(), falloff.material);
     this.falloffMesh.name = 'TurfFalloff';
-    this.falloffMesh.renderOrder = -.6;
+    // Above dirt (-1.5) but below every turf layer (>= -1): turf is drawn after, so it covers the falloff where they are coplanar.
+    this.falloffMesh.renderOrder = -1.25;
     const modelView = new THREE.Matrix4();
     this.falloffMesh.onBeforeRender = (_renderer, _scene, camera, geometry) => {
       modelView.multiplyMatrices(camera.matrixWorldInverse, this.falloffMesh!.matrixWorld);

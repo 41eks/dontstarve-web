@@ -117,6 +117,18 @@ export class InventoryStore {
   GetEquippedItem(kind: EquipmentKind): ItemEntity | null { return this.getEntity(equipmentSlotAddress(kind)); }
   /** inventory.lua EquipHasTag checks only equipped items. */
   EquipHasTag(tag: string): boolean { return EQUIPMENT_KINDS.some(kind => this.GetEquippedItem(kind)?.hasTag(tag)); }
+  /** inventory.lua Has: main slots, active item and the equipped overflow container. */
+  Has(prefab: string, amount = 1): boolean {
+    let count = 0;
+    const backpack = this.GetEquippedItem('body');
+    const overflowId = backpack?.components.container ? backpackContainerId(backpack.id) : undefined;
+    for (const { address, slot } of this.registrations) {
+      if (address.containerId !== PLAYER_INVENTORY_CONTAINER_ID && address.containerId !== PLAYER_CURSOR_CONTAINER_ID && address.containerId !== overflowId) continue;
+      const entity = slot.getEntity();
+      if (entity?.prefab === prefab) count += entity.components.stackable.count;
+    }
+    return count >= amount;
+  }
   Unequip(kind: EquipmentKind): ItemEntity | null {
     const entity = this.GetEquippedItem(kind);
     return entity ? this.extract(equipmentSlotAddress(kind), entity.components.stackable.count, entity) : null;

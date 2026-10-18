@@ -1,3 +1,4 @@
+import { createLightFlierGroundFactory } from './lightflier';
 import { createMoleGroundFactory } from './mole';
 import { GroundItemAssets, createGroundItemFactory } from './groundItems';
 import { createHatGroundFactory } from './hats';
@@ -20,7 +21,7 @@ import type * as THREE from 'three';
 // Shared catalog factories come first; specialized prefabs override their IDs.
 const PREFAB_MODULES = [
   createGroundItemFactory, createHatGroundFactory, createBernieGroundFactory,
-  createFirefliesGroundFactory, createButterflyGroundFactory, createMoleGroundFactory,
+  createFirefliesGroundFactory, createButterflyGroundFactory, createMoleGroundFactory, createLightFlierGroundFactory,
   createLightbulbGroundFactory, createLanternGroundFactory, createPhonographGroundFactory,
   createTorchGroundFactory, createRecordGroundFactory,
   createPoopGroundFactory, createIceGroundFactory, createRockAvocadoGroundFactory, createGunpowderGroundFactory,

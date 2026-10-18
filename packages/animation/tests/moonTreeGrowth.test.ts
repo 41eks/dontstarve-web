@@ -166,12 +166,14 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     const tree = s.forest.spawnTree('moon_tree_tall', new THREE.Vector3(3, 0, 0));
     const model = tree.model!, bareIndices = drawnIndices(model);
     expect(model.userData.tags).toContain('SnowCovered');
+    const mesh = () => model.children[0].children.find(child => child instanceof THREE.Mesh) as THREE.Mesh;
+    expect(mesh().visible).toBe(false); // Swaying is drawn by the shared instance batch.
     s.snowLevel.set(.014); await settle();
     expect(drawnIndices(model)).toBe(bareIndices);
     s.snowLevel.set(.015); await settle();
     expect(drawnIndices(model)).toBeGreaterThan(bareIndices);
     const oldAnimation = model.userData.animationController;
-    const hide = vi.spyOn(oldAnimation, 'hideLayer');
+    const hide = vi.spyOn(oldAnimation, 'setSymbolHidden');
     s.snowLevel.set(0);
     s.forest.updateNearby(new THREE.Vector3(500, 0, 0));
     await settle();

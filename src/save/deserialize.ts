@@ -103,7 +103,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   };
   const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'mole', 'container', 'temperature', 'highTemp', 'lowTemp']);
+    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'mole', 'lightflier', 'container', 'temperature', 'highTemp', 'lowTemp']);
     const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
     if (entityId !== undefined) {
       if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
@@ -147,6 +147,15 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       || (phonographRecord !== 'record' && catalog.skins[phonographRecord]?.itemId !== 'record'))) {
       fail(`${path}.phonographRecord`, 'invalid loaded record');
     }
+    const lightflier = o.lightflier === undefined ? undefined : (() => {
+      if (itemId !== 'lightflier') fail(`${path}.lightflier`, 'item has no lightflier component');
+      const p = `${path}.lightflier`, data = object(o.lightflier, p, ['health', 'age', 'homeId', 'knownHome']);
+      const known = data.knownHome === undefined ? undefined : array(data.knownHome, `${p}.knownHome`, 3);
+      if (known && known.length !== 3) fail(`${p}.knownHome`, 'expected three coordinates');
+      return { health: number(data.health, `${p}.health`, 0, 25), age: number(data.age, `${p}.age`, 0),
+        ...(data.homeId === undefined ? {} : { homeId: string(data.homeId, `${p}.homeId`) }),
+        ...(known ? { knownHome: known.map((v, i) => number(v, `${p}.knownHome[${i}]`, -Number.MAX_SAFE_INTEGER)) as [number, number, number] } : {}) };
+    })();
     const mole = o.mole === undefined ? undefined : (() => {
       if (itemId !== 'mole') fail(`${path}.mole`, 'item has no mole component');
       const p = `${path}.mole`, data = object(o.mole, p, ['health', 'needsHomeElapsed', 'items']);
@@ -158,7 +167,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       if (itemId !== 'backpack') fail(`${path}.container`, 'item has no container');
       return container(o.container, `${path}.container`, numericKeys(8));
     })();
-    return { ...(mole === undefined ? {} : { mole }), ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
+    return { ...(lightflier === undefined ? {} : { lightflier }), ...(mole === undefined ? {} : { mole }), ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
       ...(phonographRecord === undefined ? {} : { phonographRecord }),
       ...(temperature === undefined ? {} : { temperature }),
       ...(highTemp === undefined ? {} : { highTemp }),

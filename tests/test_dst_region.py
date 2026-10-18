@@ -53,6 +53,19 @@ class RegionImportTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             reader('return {session_id=os.execute("touch /tmp/should-not-execute")}')
 
+    def test_rock_import_preserves_variation_and_rejects_unsupported_source_state(self):
+        self.assertEqual(IMPORTER['ENTITY_WHITELIST']['rock_moon']({}), {})
+        self.assertEqual(IMPORTER['ENTITY_WHITELIST']['rock1']({'workable': {}}), {})
+        convert = IMPORTER['ENTITY_WHITELIST']['cavein_boulder']
+        self.assertEqual(convert({'variation': 7, 'submersible': {'force_no_repositioning': False}}),
+                         {'caveinBoulder': {'variation': 7}})
+        self.assertEqual(convert({'raised': True}), {'caveinBoulder': {'variation': 1, 'raised': True}})
+        for data in ({'variation': 9}, {'variation': True}, {'formed': False}, {'fallx': 1, 'fallz': 2}):
+            with self.assertRaises(ValueError):
+                convert(data)
+        with self.assertRaises(ValueError):
+            IMPORTER['rock_components']({'workable': {'workleft': 2}})
+
     def test_entity_whitelist_filters_regions_and_preserves_source_state_and_identity(self):
         nodes = [0] * 48
         nodes[3 * 8 + 3] = nodes[3 * 8 + 4] = 1

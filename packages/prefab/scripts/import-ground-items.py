@@ -245,6 +245,8 @@ def main():
     add('butterfly', 'butterfly', 'butterfly_basic', 'idle', 'butterfly', loop=True)
     # fireflies.lua switches between swarm_pre/loop/pst rather than an item pose.
     add('fireflies', 'fireflies', 'fireflies', 'swarm_loop', 'fireflies', loop=True)
+    add('lightflier', 'lightflier', 'lightflier', 'walk_loop', 'lightflier', loop=True)
+    assets.update(('anim/bulb_plant_single.zip', 'anim/bulb_plant_springy.zip'))
     # butterfly.lua's OnDeploy spawns planted_flower from flower.lua.
     assets.add('anim/flowers.zip')
     # flower_cave.lua and lightflier_flower.lua share these world plant builds.

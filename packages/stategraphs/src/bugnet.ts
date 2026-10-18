@@ -42,6 +42,7 @@ export class BugNetCaptureController {
   private readonly forward = new THREE.Vector3();
   private readonly right = new THREE.Vector3();
   private readonly worker: Worker;
+  private readonly unitScale: number;
 
   constructor(
     world: WorldContext,
@@ -50,6 +51,7 @@ export class BugNetCaptureController {
     handEquipment: HandEquipmentSignal,
     getTargets: (model?: THREE.Object3D) => readonly NetCaptureTarget[],
     isManualMovement = () => false,
+    unitScale = 1,
   ) {
     this.world = world;
     this.animation = animation;
@@ -65,6 +67,7 @@ export class BugNetCaptureController {
     });
     this.getTargets = getTargets;
     this.isManualMovement = isManualMovement;
+    this.unitScale = unitScale;
     this.stopActionEvents = bindActionCancellation(world, this, 'net', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     // Without the net equipped no target can be worked, so none is built or ray-tested.
@@ -110,13 +113,13 @@ export class BugNetCaptureController {
       return;
     }
     const distanceSquared = this.distanceSquared(target);
-    if (distanceSquared <= APPROACH_DISTANCE ** 2) {
+    if (distanceSquared <= (APPROACH_DISTANCE * this.unitScale) ** 2) {
       this.locomotor.stop();
       this.faceTarget(target);
       const version = this.actionVersion;
       const started = this.animation.playBugNet(() => {
         if (version === this.actionVersion && this.canWork(target)
-          && this.distanceSquared(target) <= BUGNET_CAPTURE_RANGE ** 2) {
+          && this.distanceSquared(target) <= (BUGNET_CAPTURE_RANGE * this.unitScale) ** 2) {
           return performToolWork('NET', target.entity, this.worker, equippedActionEntity(this.handEquipment.peek()));
         }
         return false;
@@ -127,7 +130,7 @@ export class BugNetCaptureController {
     this.repathRemaining -= Math.max(0, dt);
     // Close pursuit needs a fresh point every frame: the butterfly keeps flying
     // while the previous destination becomes stale and the locomotor slows down.
-    if (this.repathRemaining <= 0 || distanceSquared <= BUGNET_CAPTURE_RANGE ** 2) {
+    if (this.repathRemaining <= 0 || distanceSquared <= (BUGNET_CAPTURE_RANGE * this.unitScale) ** 2) {
       this.repathRemaining = 0.2;
       if (!this.locomotor.goToPoint(target.position)) this.cancel();
     }
@@ -144,8 +147,7 @@ export class BugNetCaptureController {
   }
 
   private distanceSquared(target: ButterflyCaptureTarget): number {
-    return (this.world.player.position.x - target.position.x) ** 2
-      + (this.world.player.position.z - target.position.z) ** 2;
+    return this.world.player.position.distanceToSquared(target.position);
   }
 
   private faceTarget(target: ButterflyCaptureTarget): void {

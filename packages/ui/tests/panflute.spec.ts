@@ -45,7 +45,7 @@ test('right-click plays the panflute: play_flute timing and sound, one use spent
     const { scene } = await import(paths.universal);
     (window as any).fluteGame = { main, player, scene };
   }, modules);
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const stateName = () => page.evaluate(() => (window as any).fluteGame.player.userData.stategraph.stateName);

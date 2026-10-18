@@ -58,13 +58,21 @@ it('opens at night, is picked for a blue_cap, regrows after rainy periods and ke
   } finally { s.dispose(); }
 }, 20000);
 
-it('digs an unpicked mushroom into two blue_caps', async () => {
+it('digs an unpicked mushroom into two blue_caps without releasing a neighbouring mushroom’s shared art', async () => {
   const s = setup();
   try {
-    await s.mushrooms.spawn(new THREE.Vector3(1, 0, 1));
+    const model = await s.mushrooms.spawn(new THREE.Vector3(1, 0, 1));
+    const neighbour = await s.mushrooms.spawn(new THREE.Vector3(2, 0, 1));
+    const geometry = (model.children[0].children[0] as THREE.Mesh).geometry;
+    expect((neighbour.children[0].children[0] as THREE.Mesh).geometry).toBe(geometry);
+    const disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
+    const neighbourRecord = s.mushrooms.exportRecords()[1];
     const [dig] = s.mushrooms.getDigTargets();
     expect(performToolWork('DIG', dig.entity, {})).toBe(true);
     await vi.waitFor(() => expect(s.ground.exportRecords().map(r => r.components.stack?.itemId)).toEqual(['blue_cap', 'blue_cap']));
-    expect(s.mushrooms.exportRecords()).toEqual([]);
+    expect(s.mushrooms.exportRecords()).toEqual([neighbourRecord]);
+    expect(disposed).not.toHaveBeenCalled();
+    s.mushrooms.dispose();
+    expect(disposed).toHaveBeenCalledOnce();
   } finally { s.dispose(); }
 }, 20000);

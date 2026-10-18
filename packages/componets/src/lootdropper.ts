@@ -13,16 +13,20 @@ export function SetSharedLootTable(name: string, entries: ChanceLootTable): void
 export class LootDropper {
   private chanceLootTable?: string;
   private loot: readonly string[] = [];
+  private chanceLoot: { prefab: string; chance: number }[] = [];
   private readonly inst: LootInst;
   private readonly spawn: (prefab: string, position: ReturnType<LootInst['getPosition']>, skinId?: string) => LootEntity | undefined;
   constructor(inst: LootInst, spawn: LootDropper['spawn']) { this.inst = inst; this.spawn = spawn; }
   SetChanceLootTable(name: string): void { this.chanceLootTable = name; }
+  AddChanceLoot(prefab: string, chance: number): void { this.chanceLoot.push({ prefab, chance }); }
+  ClearChanceLoot(): void { this.chanceLoot = []; }
   SetLoot(loot: readonly string[]): void { this.loot = [...loot]; }
   GenerateLoot(random = Math.random): string[] {
-    return [...(sharedLootTables.get(this.chanceLootTable ?? '') ?? [])
+    return [...this.chanceLoot.filter(({ chance }) => chance >= 1 || random() <= chance).map(({ prefab }) => prefab),
+      ...(sharedLootTables.get(this.chanceLootTable ?? '') ?? [])
       .filter(([, chance]) => chance >= 1 || random() <= chance).map(([prefab]) => prefab), ...this.loot];
   }
-  DropLoot(): void { for (const prefab of this.GenerateLoot()) this.SpawnLootPrefab(prefab); }
+  DropLoot(position = this.inst.getPosition()): void { for (const prefab of this.GenerateLoot()) this.SpawnLootPrefab(prefab, position); }
   SpawnLootPrefab(prefab: string, position = this.inst.getPosition(), skinId?: string): LootEntity | undefined {
     const loot = this.spawn(prefab, position, skinId);
     if (loot) {

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { Animation, ResolvedSprite } from './animationAssets';
 import { composeResolvedRgbaSpriteAtlases, type RgbaSpriteAtlas, type RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
+import { getLightOverride } from './lightOverride';
+import { getSpriteErosion } from './spriteErosion';
 
 interface Appearance {
   animation: Animation;
@@ -11,6 +13,7 @@ interface Appearance {
 }
 interface Entry {
   model: THREE.Object3D;
+  foot: THREE.Object3D;
   visual: THREE.Group;
   colour: THREE.Color;
   opacity: number;
@@ -18,7 +21,7 @@ interface Entry {
   frame: number;
   stopPass: () => void;
 }
-interface DrawEntry { entry: Entry; frame: RgbaSpriteAtlasFrame; depth: number; x: number; z: number }
+interface DrawEntry { entry: Entry; frame: RgbaSpriteAtlasFrame; depth: number; x: number; z: number; lightOverride: number }
 interface PageBatch {
   atlas: RgbaSpriteAtlas;
   geometry: THREE.BufferGeometry;
@@ -38,20 +41,33 @@ function material(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial): THRE
       attribute vec4 spriteUv;
       attribute float spriteOpacity;
       varying float vSpriteOpacity;
+      attribute float spriteLightOverride;
+      varying float vSpriteLightOverride;
+      attribute float spriteErosion;
+      varying float vSpriteErosion;
     `).replace('#include <uv_vertex>', `
       #include <uv_vertex>
       vMapUv = mix(spriteUv.xy, spriteUv.zw, uv);
       vSpriteOpacity = spriteOpacity;
+      vSpriteLightOverride = spriteLightOverride;
+      vSpriteErosion = spriteErosion;
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
       #include <common>
       varying float vSpriteOpacity;
+      #define DST_INSTANCED_LIGHT_OVERRIDE
+      varying float vSpriteLightOverride;
+      varying float vSpriteErosion;
     `).replace('#include <color_fragment>', `
       #include <color_fragment>
       diffuseColor.a *= vSpriteOpacity;
+      if (vSpriteErosion > 0.0) {
+        float erosionNoise = fract(sin(dot(vMapUv * 1024.0, vec2(12.9898, 78.233))) * 43758.5453);
+        if (erosionNoise < vSpriteErosion) discard;
+      }
     `);
   };
-  result.customProgramCacheKey = () => 'dst-instanced-archive-sprite-v1';
+  result.customProgramCacheKey = () => 'dst-instanced-archive-sprite-v3';
   return result;
 }
 
@@ -62,9 +78,13 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   private readonly scenes = new Map<THREE.Scene, SceneBatches>();
   private readonly matrix = new THREE.Matrix4();
   private readonly frameMatrix = new THREE.Matrix4();
+  private readonly frustumMatrix = new THREE.Matrix4();
+  private readonly frustum = new THREE.Frustum();
+  private readonly bounds = new THREE.Sphere();
 
-  retain(model: THREE.Object3D, visual: THREE.Group, colour: readonly [number, number, number] = [1, 1, 1], opacity = 1) {
-    const entry: Entry = { model, visual, colour: new THREE.Color().setRGB(...colour), opacity, frame: 0,
+  retain(model: THREE.Object3D, visual: THREE.Group, colour: readonly [number, number, number] = [1, 1, 1], opacity = 1,
+    foot: THREE.Object3D = model) {
+    const entry: Entry = { model, foot, visual, colour: new THREE.Color().setRGB(...colour), opacity, frame: 0,
       stopPass: registerSceneRenderPass(model, this) };
     this.entries.add(entry);
     return {
@@ -89,6 +109,8 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
     geometry.setAttribute('spriteUv', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4).setUsage(THREE.DynamicDrawUsage));
     geometry.setAttribute('spriteOpacity', new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1).setUsage(THREE.DynamicDrawUsage));
+    geometry.setAttribute('spriteLightOverride', new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1).setUsage(THREE.DynamicDrawUsage));
+    geometry.setAttribute('spriteErosion', new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1).setUsage(THREE.DynamicDrawUsage));
     const colourMaterial = material(atlas, source), depthMaterial = colourMaterial.clone();
     depthMaterial.name = 'Instanced archive sprite depth';
     // Material.clone() deliberately omits callbacks.
@@ -122,14 +144,18 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   }
 
   render(renderer: THREE.WebGLRenderer, camera: THREE.Camera): void {
+    this.frustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(this.frustumMatrix, camera.coordinateSystem);
     const draws = new Map<THREE.Scene, Map<RgbaSpriteAtlas, { source: THREE.MeshBasicMaterial; entries: DrawEntry[] }>>();
     for (const entry of this.entries) {
       const appearance = entry.appearance;
       if (!appearance) continue;
       let scene: THREE.Scene | undefined;
       let visible = true;
+      let lightOverride: number | undefined;
       for (let node: THREE.Object3D | null = entry.model; node; node = node.parent) {
         if (!node.visible) visible = false;
+        lightOverride ??= getLightOverride(node);
         if (node instanceof THREE.Scene) scene = node;
       }
       if (!visible || !entry.visual.visible || !scene) continue;
@@ -142,6 +168,13 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         }
       }
       const { atlas, frame } = appearance.locations![entry.frame];
+      // A single InstancedMesh has no per-entity frustum culling. Cull the whole
+      // assembled frame before sorting or uploading instances, retaining logical
+      // playback and the cached atlas while the entity is outside the camera.
+      this.bounds.center.set((frame.minX + frame.maxX) / 2, (frame.minY + frame.maxY) / 2, 0);
+      this.bounds.radius = Math.hypot(frame.width, frame.height) / 2;
+      this.bounds.applyMatrix4(entry.visual.matrixWorld);
+      if (!this.frustum.intersectsSphere(this.bounds)) continue;
       let pages = draws.get(scene);
       if (!pages) draws.set(scene, pages = new Map());
       let page = pages.get(atlas);
@@ -149,9 +182,9 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         const first = appearance.frames[0][0];
         pages.set(atlas, page = { source: first.materials[first.image.sampler ?? 0], entries: [] });
       }
-      const world = entry.model.matrixWorld.elements, view = camera.matrixWorldInverse.elements;
+      const world = entry.foot.matrixWorld.elements, view = camera.matrixWorldInverse.elements;
       const x = world[12], y = world[13], z = world[14];
-      page.entries.push({ entry, frame, x, z,
+      page.entries.push({ entry, frame, x, z, lightOverride: Math.max(lightOverride ?? 0, getLightOverride(page.source) ?? 0),
         depth: Math.round((view[2] * x + view[6] * y + view[10] * z + view[14]) / .001) });
     }
     // Retain the pass on the batch group so removing/hiding the last entity clears stale instances too.
@@ -172,20 +205,24 @@ export class InstancedArchiveSprites implements SceneRenderPass {
           batch = this.createBatch(batches, atlas, page.source, THREE.MathUtils.ceilPowerOfTwo(Math.max(1, page.entries.length)));
           batches.pages.set(atlas, batch);
         }
-        page.entries.sort((a, b) => a.depth - b.depth || a.x - b.x || a.z - b.z || a.entry.model.id - b.entry.model.id);
+        page.entries.sort((a, b) => a.depth - b.depth || a.x - b.x || a.z - b.z || a.entry.foot.id - b.entry.foot.id);
         const uv = batch.geometry.getAttribute('spriteUv') as THREE.InstancedBufferAttribute;
         const opacity = batch.geometry.getAttribute('spriteOpacity') as THREE.InstancedBufferAttribute;
+        const lightOverride = batch.geometry.getAttribute('spriteLightOverride') as THREE.InstancedBufferAttribute;
+        const erosion = batch.geometry.getAttribute('spriteErosion') as THREE.InstancedBufferAttribute;
         for (let index = 0; index < page.entries.length; index++) {
-          const { entry, frame } = page.entries[index];
+          const { entry, frame, lightOverride: light } = page.entries[index];
           this.frameMatrix.makeScale(frame.width, frame.height, 1).setPosition(frame.minX, frame.minY, 0);
           this.matrix.multiplyMatrices(entry.visual.matrixWorld, this.frameMatrix);
           batch.colour.setMatrixAt(index, this.matrix);
           batch.colour.setColorAt(index, entry.colour);
           uv.setXYZW(index, frame.u0, frame.v0, frame.u1, frame.v1);
           opacity.setX(index, entry.opacity);
+          lightOverride.setX(index, light);
+          erosion.setX(index, getSpriteErosion(entry.model));
         }
         batch.colour.count = batch.depth.count = page.entries.length;
-        for (const attribute of [uv, opacity, batch.colour.instanceMatrix, batch.colour.instanceColor!]) {
+        for (const attribute of [uv, opacity, lightOverride, erosion, batch.colour.instanceMatrix, batch.colour.instanceColor!]) {
           attribute.clearUpdateRanges(); attribute.addUpdateRange(0, page.entries.length * attribute.itemSize); attribute.needsUpdate = true;
         }
       }

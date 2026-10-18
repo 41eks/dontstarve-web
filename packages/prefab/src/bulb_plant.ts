@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from './components/gameTimeScheduler';
 import { ComponentTimer } from './components/timer';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
@@ -40,11 +41,18 @@ export function bulbPlantRegrowTime(variant: BulbPlantVariant): number {
   return 3 * 480 * (variant === 'double' ? 1.5 : variant === 'triple' ? 2 : 1);
 }
 
+const BASE_LIGHTS = Object.freeze({
+  small: Object.freeze({ ...BULB_PLANT_LIGHT, radius: 3 * (TILE_SIZE / 4) }),
+  large: Object.freeze({ ...BULB_PLANT_LIGHT, radius: 4.5 * (TILE_SIZE / 4) }),
+});
+
 /** Shared OnUpdateLight curve from flower_cave.lua and lightflier_flower.lua. */
 export function bulbPlantLight(on: boolean, progress: number, variant: BulbPlantVariant = 'single'): PrefabLocalLight | null {
   const k = THREE.MathUtils.clamp(progress, 0, 1);
-  const base = { ...BULB_PLANT_LIGHT, radius: (variant === 'double' || variant === 'triple' ? 4.5 : 3) * (TILE_SIZE / 4) };
+  const base = BASE_LIGHTS[variant === 'double' || variant === 'triple' ? 'large' : 'small'];
   if (!on && k >= 1 || on && k <= 0) return null;
+  // The tween has settled: reuse the shared steady-state light rather than allocating one per frame.
+  if (on && k >= 1) return base;
   if (!on) return { ...base,
     radius: base.radius * (1 - k), intensity: base.intensity * (1 - k),
     falloff: k + base.falloff * (1 - k) };
@@ -57,6 +65,9 @@ export function bulbPlantLight(on: boolean, progress: number, variant: BulbPlant
   return { ...base, radius: base.radius * (t + 1.33 * (1 - t)),
     falloff: base.falloff * (t + 0.8 * (1 - t)) };
 }
+
+/** LightWatcher sampling period in game seconds; samples are timer-driven rather than per frame. */
+export const BULB_PLANT_LIGHT_SAMPLE_INTERVAL = 0.5;
 
 export interface BulbPlantWorld {
   /** LightWatcher level at the plant; the host samples ambient and other lights. */
@@ -72,6 +83,7 @@ export class BulbPlantController {
   private readonly rechargeTimer: ComponentTimer;
   private readonly turnoffTimer: ComponentTimer;
   private readonly wakeTimer: ComponentTimer;
+  private readonly sampleTimer: ComponentTimer;
   private readonly appearanceMemo;
   readonly state;
   private tweenStartedAt: number;
@@ -112,6 +124,12 @@ export class BulbPlantController {
       this.sampleLight();
       if (this.inLight) this.turnOn();
     });
+    this.sampleTimer = new ComponentTimer(this.scheduler, () => {
+      const wasInLight = this.inLight;
+      this.sampleLight();
+      if (this.awake && !wasInLight && this.inLight) this.turnOn();
+      this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
+    });
     Object.assign(model.userData, { tags: [...(model.userData.tags ?? []), 'plant'], bulbPlantController: this });
     this.pickable = new Pickable(model, 'lightbulb', bulbPlantRegrowTime(variant),
       variant === 'double' ? 2 : variant === 'triple' ? 3 : 1,
@@ -128,6 +146,7 @@ export class BulbPlantController {
       else if (this.lightState === 'RECHARGING') this.rechargeTimer.start(saved.remainingSeconds);
     }
     this.wakeTimer.start(1);
+    this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + this.random() * 0.5));
     this.refreshLight();
   }
 
@@ -152,9 +171,6 @@ export class BulbPlantController {
   update(dt: number): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
     this.animation.update(dt);
-    const wasInLight = this.inLight;
-    this.sampleLight();
-    if (this.awake && !wasInLight && this.inLight) this.turnOn();
     if (this.ownsScheduler) this.scheduler.advance(dt);
     this.refreshLight();
   }
@@ -193,7 +209,7 @@ export class BulbPlantController {
     if (this.disposed) return;
     this.disposed = true;
     this.animationVersion++;
-    this.wakeTimer.stop(); this.rechargeTimer.stop(); this.turnoffTimer.stop();
+    this.wakeTimer.stop(); this.sampleTimer.stop(); this.rechargeTimer.stop(); this.turnoffTimer.stop();
     this.appearanceMemo.dispose();
     this.pickable.dispose();
     this.pickSound?.stop(); this.pickSound = undefined;
@@ -230,24 +246,24 @@ interface Plant {
   model: THREE.Group;
   controller: BulbPlantController;
   variant: BulbPlantVariant;
-  factory: AnimatedSpriteFactory;
+  sprite: ArchiveSprite;
 }
 
 /** Shared original single/springy assets, independent world lights and timers. */
 export class BulbPlantManager {
-  private readonly factories = new Map<BulbPlantVariant, Promise<AnimatedSpriteFactory>>();
+  private readonly assets: ArchiveSpriteAssets;
+  private readonly factories = new Map<BulbPlantVariant, Promise<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>>();
   private readonly plants = new Set<Plant>();
   private readonly scene: THREE.Scene;
-  private readonly assetBaseUrl: string;
   private readonly world: BulbPlantWorld;
   private readonly random: () => number;
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: BulbPlantWorld, random = Math.random) {
     this.scene = scene;
-    this.assetBaseUrl = assetBaseUrl;
     this.world = world;
     this.random = random;
+    this.assets = new ArchiveSpriteAssets(BULB_PLANT_ID, assetBaseUrl);
   }
 
   async spawn(prefabId: BulbPlantPrefabId, position: THREE.Vector3, saved?: BulbPlantRecord): Promise<THREE.Group> {
@@ -258,23 +274,26 @@ export class BulbPlantManager {
     let request = this.factories.get(variant);
     if (!request) {
       request = Promise.all([
-        createAnimatedSpriteFactory(this.assetBaseUrl, `bulb_plant_${variant}.zip`),
+        preloadSharedArchiveSprite(this.assets, { animationArchive: `bulb_plant_${variant}.zip`,
+          buildArchives: [`bulb_plant_${variant}.zip`], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'] }),
         PreloadSounds('dontstarve/wilson/pickup_lightbulb'),
       ]).then(([factory]) => factory);
       this.factories.set(variant, request);
       void request.catch(() => this.factories.delete(variant));
     }
-    const factory = await request;
+    const create = await request;
     if (this.disposed) throw new Error('Bulb plant manager has been disposed');
     const initialAnimation = state?.picked ? 'picked' : state?.lightState === 'ON' ? 'idle' : state?.lightState === 'RECHARGING' ? 'withered' : 'off';
-    const model = factory.create({ initialAnimation, initialFrame: initialAnimation === 'idle' ? 'first' : 'last', name: prefabId });
+    const sprite = create(initialAnimation, initialAnimation === 'idle', prefabId);
+    if (initialAnimation !== 'idle') sprite.setFrame(sprite.frameCount - 1);
+    const model = sprite.model;
     model.position.set(position.x, 0, position.z);
     model.userData.entityId = saved?.id ?? newEntityId();
     model.userData.bulbPlantVariant = variant;
     model.userData.prefab = prefabId;
-    const controller = new BulbPlantController(model, model.userData.animationController, this.world, variant, state, this.random);
+    const controller = new BulbPlantController(model, sprite, this.world, variant, state, this.random);
     actionEntity(model, prefabId);
-    this.plants.add({ prefabId, model, controller, variant, factory });
+    this.plants.add({ prefabId, model, controller, variant, sprite });
     this.scene.add(model);
     return model;
   }
@@ -300,12 +319,12 @@ export class BulbPlantManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const { model, controller, factory } of this.plants) {
+    for (const { model, controller, sprite } of this.plants) {
       controller.dispose();
       disposeActionEntity(model);
-      factory.disposeSprite(model);
+      sprite.dispose();
     }
     this.plants.clear();
-    for (const factory of this.factories.values()) void factory.then(value => value.dispose(), () => undefined);
+    this.assets.dispose();
   }
 }

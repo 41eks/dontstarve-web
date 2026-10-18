@@ -186,6 +186,7 @@ export class ItemEntity {
     combat?: import('../../componets/src/combat').Combat;
     bait?: import('../../componets/src/bait').Bait;
     sleeper?: import('../../componets/src/sleeper').Sleeper;
+    freezable?: import('../../componets/src/freezable').Freezable;
     stackable: StackableComponent;
     fueled: FueledComponent;
     finiteuses: FiniteUsesComponent;
@@ -237,6 +238,7 @@ export class ItemEntity {
     return this.miniMapEntity;
   }
   mole?: InventoryStack['mole'];
+  lightflier?: InventoryStack['lightflier'];
   skinId?: string;
   highTemp?: number;
   lowTemp?: number;
@@ -316,7 +318,9 @@ export class ItemEntity {
     const freshness = this.components.perishable.perishtime.peek() === undefined
       ? this.freshnessState.peek() : this.components.perishable.GetPercent();
     const mole = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['mole']> }>('mole')?.OnSave() ?? this.mole;
+    const lightflier = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['lightflier']> }>('lightflier')?.OnSave() ?? this.lightflier;
     return {
+      ...(lightflier === undefined ? {} : { lightflier }),
       ...(mole === undefined ? {} : { mole }),
       ...(temperature === undefined ? {} : { temperature }),
       ...(this.highTemp === undefined ? {} : { highTemp: Math.ceil(this.highTemp) }),
@@ -340,6 +344,7 @@ export class ItemEntity {
   apply(state: InventoryStack): void {
     if (state.itemId !== this.prefab || this.isRemoved) throw new Error('Cannot change a removed entity or its prefab');
     this.mole = state.mole;
+    this.lightflier = state.lightflier;
     this.skinId = state.skinId;
     this.highTemp = state.highTemp;
     this.lowTemp = state.lowTemp;
