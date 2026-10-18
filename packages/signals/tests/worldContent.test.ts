@@ -1,11 +1,11 @@
 import { expect, expectTypeOf, it, vi } from 'vitest';
 import { Vector3 } from 'three';
 import { bindWorldContent, createEffect, createMemo, createSignal, getBoundWatchWorldContent, getWatchWorldContent, GetTileStateAtPoint, WorldContentKey,
-  GameTimeScheduler, type WorldContentSignal, type PlayerPositionsSignal, type WorldPhase, type WorldMoonState, type SeasonState, type WorldContentEnvironment, type WorldWindChange, type PerishTick, type ReadonlySignal } from '../src';
+  GameTimeScheduler, createIdleWeatherSources, type WorldContentSignal, type PlayerPositionsSignal, type WorldPhase, type WorldMoonState, type SeasonState, type WorldContentEnvironment, type WorldWindChange, type PerishTick, type ReadonlySignal } from '../src';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const world = (phase: WorldPhase) => ({
-  playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }),
+  ...createIdleWeatherSources(), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }),
   moon: createSignal<WorldMoonState>({ phase: 'new', waxing: true }),
   scheduler: new GameTimeScheduler(), temperature: createSignal(30), cycle: createSignal(phase), season: createSignal<SeasonState>({ season: 'spring', progress: .5 }),
 } satisfies WorldContentEnvironment);
@@ -149,4 +149,15 @@ it('gates watched world inputs by the tile tickingarea memo and releases the mem
     sources.cycle.set('night');
     expect(gated.peek()).toBe('dusk'); // released: holds its last value
   } finally { area.dispose(); sources.scheduler.dispose(); }
+});
+
+it('resolves weather keys to private signals that follow the injected sources', () => {
+  const sources = { ...world('day'), ...{ preciptype: createSignal<'none' | 'rain' | 'snow'>('none'), moisture: createSignal(0) } }, unbind = bindWorldContent(sources);
+  const stops: (() => void)[] = [];
+  const rain = getWatchWorldContent(WorldContentKey.PrecipType, stop => stops.push(stop));
+  const moisture = getWatchWorldContent(WorldContentKey.Moisture, stop => stops.push(stop));
+  sources.preciptype.set('rain'); sources.moisture.set(400);
+  expect(rain.peek()).toBe('rain');
+  expect(moisture.peek()).toBe(400);
+  stops.forEach(stop => stop()); unbind();
 });

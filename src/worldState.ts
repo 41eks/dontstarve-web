@@ -72,6 +72,9 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     scheduler, temperature, cycle: readonlySignal(cycle), moon: readonlySignal(moon), season: readonlySignal(seasonstate),
     wind: worldwind.windchange, perishTick: perishClock.snapshot, perishClock,
     snowLevel: weather.snowLevel,
+    moisture: weather.moisture, moistureceil: weather.moistureceil, moisturefloor: weather.moisturefloor, preciptype: weather.preciptype,
+    peakprecipitationrate: weather.peakprecipitationrate, precipitationRate: readonlySignal(weather.precipitationRate),
+    rainRate: weather.rainRate, snowRate: weather.snowRate, snowCover: weather.snowCover,
     playerpositions: readonlySignal(playerpositions),
     camerarotation: readonlySignal(camerarotation),
     tickingarea,
@@ -80,6 +83,9 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const isNight = createMemo(() => cycle.get() === 'night');
   return { scheduler, componentUpdates, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle,
     wind: worldContent.wind, perishTick: worldContent.perishTick, snowLevel: worldContent.snowLevel, worldwind,
+    moisture: worldContent.moisture, moistureceil: worldContent.moistureceil, moisturefloor: worldContent.moisturefloor,
+    preciptype: worldContent.preciptype, peakprecipitationrate: worldContent.peakprecipitationrate, precipitationRate: worldContent.precipitationRate,
+    rainRate: worldContent.rainRate, snowRate: worldContent.snowRate, snowCover: worldContent.snowCover,
     playerpositions, camerarotation, tickingarea, portalRez,
     getWatchWorldContent: (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, worldContent, options),
     SetMoonPhase(phase, waxing) {

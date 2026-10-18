@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
-import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery, type ReadonlySignal } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -50,6 +50,7 @@ export interface LightFlierPlayer {
 export interface LightFlierServices {
   scheduler: GameTimeScheduler;
   getWatchWorldContent?: GetWatchWorldContent;
+  tickingarea?: TileStateQuery;
   cameraHeading?: ReadonlySignal<number>;
   /** Match the host physics substep budget for direct flight integration. */
   maxMovementStep?: number;

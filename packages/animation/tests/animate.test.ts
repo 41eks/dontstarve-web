@@ -4,9 +4,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 const view = vi.hoisted(() => ({ render: vi.fn(), update: vi.fn(), cursor: vi.fn() }));
 vi.mock('../../../src/universal', () => ({
-  scene: {}, cursorUi: { update: view.cursor }, dstLighting: { render: view.render, update: view.update },
+  scene: {}, renderer: {}, cursorUi: { update: view.cursor }, dstLighting: { render: view.render, update: view.update },
   resizeRendererToDisplaySize: () => ({ width: 800, height: 600, needsResize: false }),
 }));
+vi.mock('../../../src/debugStats', () => ({ createDebugStats: () => undefined }));
 vi.mock('../../../src/debugFps', () => ({ createDebugFpsDisplay: () => ({ update: vi.fn(), dispose: vi.fn() }) }));
 import { animate, frontTasks, middleTasks, backTasks } from '../../../src/animate';
 

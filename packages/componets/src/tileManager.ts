@@ -2,6 +2,7 @@ import type { Vector3 } from 'three';
 import { batch, createEffect, createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal, type Signal } from '../../signals/src/signal';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import type { TileStateQuery } from '../../signals/src/worldContent';
+import { tilePerfMeasure } from './tilePerf';
 
 const TILE_COUNT = 84;
 const TILE_OFFSET = TILE_COUNT / 2;
@@ -129,9 +130,9 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>): Tile
     initialized = true;
     const previous = playerTile;
     playerTile = next;
-    batch(() => {
+    tilePerfMeasure('player tile change', () => `${previous ?? '-'} -> ${playerTile ?? '-'} radii=${grids.size} targets=${targets.size}`, () => batch(() => {
       for (const [radius, grid] of grids) updateTileStates(grid.titlestates, previous, playerTile, radius);
-    });
+    }));
   });
   let disposed = false;
   const cache: TileStateCache = {

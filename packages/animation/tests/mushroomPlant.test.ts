@@ -76,3 +76,21 @@ it('digs an unpicked mushroom into two blue_caps without releasing a neighbourin
     expect(disposed).toHaveBeenCalledOnce();
   } finally { s.dispose(); }
 }, 20000);
+
+it('opens red mushrooms by day and green mushrooms at dusk, each yielding its own cap and keeping its prefab id in saves', async () => {
+  const s = setup();
+  try {
+    const red = await s.mushrooms.spawn(new THREE.Vector3(1, 0, 1), undefined, 'red_mushroom');
+    const green = await s.mushrooms.spawn(new THREE.Vector3(2, 0, 1), undefined, 'green_mushroom');
+    // Day: red is already open at construction; green waits in the ground.
+    expect(green.userData.components.pickable.pick(picker(s.inventory))).toBe(false);
+    expect(red.userData.components.pickable.pick(picker(s.inventory))).toBe(true);
+    expect(s.inventory.count('red_cap')).toBe(1);
+    s.world.cycle.set('dusk');
+    await settle();
+    s.advance(10);
+    expect(green.userData.components.pickable.pick(picker(s.inventory))).toBe(true);
+    expect(s.inventory.count('green_cap')).toBe(1);
+    expect(s.mushrooms.exportRecords().map(({ prefabId }) => prefabId).sort()).toEqual(['green_mushroom', 'red_mushroom']);
+  } finally { s.dispose(); }
+});

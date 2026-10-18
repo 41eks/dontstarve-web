@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BulbPlantController, BulbPlantManager, bulbPlantRegrowTime, BULB_PLANT_LIGHT, type BulbPlantVariant, type BulbPlantSaveState } from '../../prefab/src/bulb_plant';
+import { createSignal, createMemo } from '@dontstarve-web/signals';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -162,5 +163,29 @@ describe('real plant archives, spawning and saving', () => {
     expect(getPrefabLocalLight(single)).toBeUndefined();
     expect(single.userData.tags).toEqual(['plant']);
     expect(single.userData.components.pickable).toBeUndefined();
+  });
+});
+
+describe('flower_cave tickingarea gate', () => {
+  it('stops light watching and animation outside the area and resamples on return', async () => {
+    const awake = createSignal(false);
+    const model = new THREE.Group();
+    const animation = { update: vi.fn(), playOnce: vi.fn(), start: vi.fn() };
+    const getLightLevel = vi.fn(() => 1);
+    const controller = new BulbPlantController(model, animation, { getLightLevel, tickingarea: () => createMemo(() => awake.get()) },
+      'single', undefined, () => 0);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    controller.update(5);
+    expect(animation.update).not.toHaveBeenCalled();
+    const sampledAsleep = getLightLevel.mock.calls.length;
+    controller.update(5);
+    expect(getLightLevel.mock.calls.length).toBe(sampledAsleep);
+    awake.set(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(controller.isActive).toBe(true);
+    controller.update(0.1);
+    expect(animation.update).toHaveBeenCalled();
+    expect(getLightLevel.mock.calls.length).toBeGreaterThan(sampledAsleep);
+    controller.dispose();
   });
 });

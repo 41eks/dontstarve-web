@@ -6,13 +6,20 @@ import { PickablePlantManager, type PickablePlantBehavior, type PickablePlantBeh
   type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
 
 export const BLUE_MUSHROOM_ID = 'blue_mushroom' as const;
-export const MUSHROOM_PLANT_IDS = [BLUE_MUSHROOM_ID] as const;
+export const RED_MUSHROOM_ID = 'red_mushroom' as const;
+export const GREEN_MUSHROOM_ID = 'green_mushroom' as const;
+export const MUSHROOM_PLANT_IDS = [RED_MUSHROOM_ID, GREEN_MUSHROOM_ID, BLUE_MUSHROOM_ID] as const;
+export type MushroomPlantId = typeof MUSHROOM_PLANT_IDS[number];
 /** tuning.lua SEG_TIME. */
 const SEG_TIME = 30;
 
 /** mushrooms.lua data entries: the colour, picked cap and the cave phase in which the mushroom is open. */
 interface MushroomData { readonly animname: string; readonly pickloot: string; readonly openTime: WorldPhase }
-const BLUE: MushroomData = { animname: 'blue', pickloot: 'blue_cap', openTime: 'night' };
+const MUSHROOM_DATA: Record<MushroomPlantId, MushroomData> = {
+  red_mushroom: { animname: 'red', pickloot: 'red_cap', openTime: 'day' },
+  green_mushroom: { animname: 'green', pickloot: 'green_cap', openTime: 'dusk' },
+  blue_mushroom: { animname: 'blue', pickloot: 'blue_cap', openTime: 'night' },
+};
 
 /**
  * mushrooms.lua mushcommonfn: opens in its cave phase (3–9 seconds after the change) and closes otherwise, and a picked
@@ -129,7 +136,8 @@ class MushroomPlant implements PickablePlantBehavior {
   }
 }
 
-function mushroomDefinition(prefab: typeof BLUE_MUSHROOM_ID, data: MushroomData): PickablePlantDefinition {
+function mushroomDefinition(prefab: MushroomPlantId): PickablePlantDefinition {
+  const data = MUSHROOM_DATA[prefab];
   return {
     prefab, animArchive: 'mushrooms.zip', buildArchive: 'mushrooms.zip', tags: [], product: data.pickloot,
     archiveSprite: { bank: 'mushrooms', instancedAnimations: 'all' },
@@ -140,15 +148,19 @@ function mushroomDefinition(prefab: typeof BLUE_MUSHROOM_ID, data: MushroomData)
     createBehavior: context => new MushroomPlant(context, data),
   };
 }
-export const BLUE_MUSHROOM_DEFINITION = mushroomDefinition(BLUE_MUSHROOM_ID, BLUE);
+const MUSHROOM_DEFINITIONS = Object.fromEntries(MUSHROOM_PLANT_IDS.map(id => [id, mushroomDefinition(id)])) as Record<MushroomPlantId, PickablePlantDefinition>;
+export const BLUE_MUSHROOM_DEFINITION = MUSHROOM_DEFINITIONS[BLUE_MUSHROOM_ID];
+export function isMushroomPlantPrefab(value: string): value is MushroomPlantId {
+  return (MUSHROOM_PLANT_IDS as readonly string[]).includes(value);
+}
 
-/** mushrooms.lua blue_mushroom: PICK a blue_cap while open, DIG, burning, and regrowth in the rain. */
+/** mushrooms.lua: red (day), green (dusk) and blue (night) mushrooms share one prefab function. */
 export class MushroomPlantManager extends PickablePlantManager {
-  spawn(position: THREE.Vector3, saved?: PickablePlantRecord): Promise<THREE.Group> {
-    return this.spawnPlant(BLUE_MUSHROOM_DEFINITION, position, saved);
+  spawn(position: THREE.Vector3, saved?: PickablePlantRecord, prefab: MushroomPlantId = BLUE_MUSHROOM_ID): Promise<THREE.Group> {
+    return this.spawnPlant(MUSHROOM_DEFINITIONS[prefab], position, saved);
   }
 
-  exportRecords(): { prefabId: typeof BLUE_MUSHROOM_ID; record: PickablePlantRecord }[] {
-    return this.exportPlants().map(({ record }) => ({ prefabId: BLUE_MUSHROOM_ID, record }));
+  exportRecords(): { prefabId: MushroomPlantId; record: PickablePlantRecord }[] {
+    return this.exportPlants().map(({ prefab, record }) => ({ prefabId: prefab as MushroomPlantId, record }));
   }
 }

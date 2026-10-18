@@ -57,6 +57,8 @@ createEffect(() => this.runTest(this.cycle.get()));
 
 蝴蝶与萤火虫各自通过 `WorldContentKey.Cycle` 读取世界昼夜，不再从光照渲染器的 phase 反推。满月仍是 `night`；蝴蝶在行为树检查 `isday` 时读取私有信号，萤火虫在普通 effect 中统一处理光照显隐：读取私有昼夜／位置输入、放置状态及检查 timer 的只读状态；昼夜切换和丢弃后的 2～3 秒检查由游戏时间调度器推进，淡出后的 NET 禁用也由调度器完成，入栏／移除取消任务。逐帧更新只推进动画与光照插值。
 
+天气信号 `Moisture`、`MoistureCeil`、`MoistureFloor`、`PrecipType`、`PeakPrecipitationRate`、`PrecipitationRate`、`RainRate`、`SnowRate`、`SnowCover` 同样在世界 init 时注入 `Weather` 的原有只读信号，经 `getWatchWorldContent` 取得私有本地信号，传入 `{ tile }` 时受 tickingarea 门控；没有 `Weather` 的独立世界用 `createIdleWeatherSources()` 提供干燥默认值。
+
 `SnowLevel`（`snowLevel`）在世界 init 时注入 `Weather.snowLevel` 的原有只读信号，计算、保存和恢复由天气组件负责。Pond 接收 `getWatchWorldContent` 并自行创建私有 SnowLevel signal，用普通 effect 的 `get()` 调用冻结／解冻方法；清理统一登记到池塘管理器。天气和世界时间仍按 60 活动帧结算。
 
 `PlayerPositions`（`playerpositions`）对应 `Vector3[]` 玩家位置快照。场景初始化时发布当前玩家位置，之后每 60 个活动游戏帧发布新的数组与位置副本；暂停帧不计数，时钟的保存／停止部分结算不会提前刷新位置或重置位置采样计数。当前场景记录本地玩家，协议支持多名玩家，不写入存档。萤火虫在 controller 中通过 getter 创建私有位置监听，用普通 effect 的 `get()` 响应位置快照变化，先按 Cycle 短路，白天不读取位置输入；便便苍蝇则由 `playerprox` 组件创建自己的私有监听，并调用组件方法刷新靠近／离开状态。位置查询使用 `Vector3.distanceToSquared()`，范围按 `TILE_SIZE / 4` 缩放；监听随拥有者的显式释放清理。
