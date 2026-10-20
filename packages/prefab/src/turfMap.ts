@@ -60,6 +60,10 @@ export class TurfMap {
   private minimapOceanData?: Promise<MinimapOceanData>;
   private readonly layerRequests = new Map<GroundTileName, Promise<void>>();
   private terrainNamesCache?: GroundTileName[];
+  /** Effective tile id (dug override, else generated, else default) per cell; the maps stay authoritative. */
+  private readonly cells: Uint16Array;
+  private readonly cellMin: number;
+  private readonly cellWidth: number;
 
   private terrainNames(): GroundTileName[] {
     if (this.terrainNamesCache) return this.terrainNamesCache;
@@ -72,7 +76,20 @@ export class TurfMap {
   constructor(size: number, savedTiles: readonly TurfTileSave[] = [], defaultTileId: number = WORLD_TILES.DECIDUOUS) {
     this.size = size;
     this.defaultTileId = defaultTileId;
-    for (const tile of savedTiles) this.dugTiles.set(`${tile.col},${tile.row}`, { ...tile });
+    const { min, max } = this.cellRange();
+    this.cellMin = min; this.cellWidth = max - min;
+    this.cells = new Uint16Array(this.cellWidth * this.cellWidth).fill(defaultTileId);
+    for (const tile of savedTiles) this.setDug(tile.col, tile.row, { ...tile });
+  }
+
+  private setDug(col: number, row: number, tile: TurfTileSave): void {
+    this.dugTiles.set(`${col},${row}`, tile);
+    this.writeCell(col, row, tile.tileId);
+  }
+
+  private writeCell(col: number, row: number, tileId: number): void {
+    const c = col - this.cellMin, r = row - this.cellMin;
+    if (c >= 0 && c < this.cellWidth && r >= 0 && r < this.cellWidth) this.cells[r * this.cellWidth + c] = tileId;
   }
 
   private key(world: Vector2): string {
@@ -91,6 +108,7 @@ export class TurfMap {
   setOriginalTile(world: Vector2, tileId: number): void {
     this.originalTiles.set(this.key(world), tileId);
     const col = Math.floor(world.x / TILE_SIZE), row = Math.floor(world.z / TILE_SIZE);
+    this.writeCell(col, row, this.dugTiles.get(`${col},${row}`)?.tileId ?? tileId);
     this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
   }
 
@@ -118,7 +136,7 @@ export class TurfMap {
   /** Map:SetTile plus the undertile component's record (dock tiles keep the ocean tile they cover). */
   setTile(col: number, row: number, tileId: TurfTileSave['tileId'], underTileId?: TurfTileSave['underTileId']): void {
     if (this.tileAt(col, row) === WORLD_TILES.INVALID) throw new RangeError('Tile is outside the world');
-    this.dugTiles.set(`${col},${row}`, { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }) });
+    this.setDug(col, row, { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }) });
     this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
   }
 
@@ -227,7 +245,10 @@ export class TurfMap {
         visual.add(mesh);
         this.layers.set(WORLD_TILES[name], { mesh, assets });
         if (minimap) minimap[1].set(WORLD_TILES[name], minimap[0]);
-        this.rebuildGeometry();
+        // Only the new layer changes; rebuilding every layer here repeats a full-map pass per turf type.
+        this.terrainNamesCache = undefined;
+        this.rebuildLayer(WORLD_TILES[name], mesh, assets);
+        for (const listener of this.terrainListeners) listener();
       });
     this.layerRequests.set(name, request);
     void request.catch(() => this.layerRequests.delete(name));
@@ -252,7 +273,7 @@ export class TurfMap {
   plow(world: Vector2): boolean {
     if (!this.canPlow(world)) return false;
     const col = Math.floor(world.x / TILE_SIZE), row = Math.floor(world.z / TILE_SIZE);
-    this.dugTiles.set(`${col},${row}`, { col, row, tileId: WORLD_TILES.FARMING_SOIL,
+    this.setDug(col, row, { col, row, tileId: WORLD_TILES.FARMING_SOIL,
       underTileId: this.getTileAtWorld(world) });
     this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
     return true;
@@ -272,9 +293,9 @@ export class TurfMap {
     const key = `${col},${row}`;
     const previous = this.dugTiles.get(key);
     if (previous?.tileId === WORLD_TILES.FARMING_SOIL && previous.underTileId !== undefined) {
-      this.dugTiles.set(key, { col, row, tileId: previous.underTileId });
+      this.setDug(col, row, { col, row, tileId: previous.underTileId });
     }
-    else this.dugTiles.set(key, { col, row, tileId: WORLD_TILES.DIRT });
+    else this.setDug(col, row, { col, row, tileId: WORLD_TILES.DIRT });
     this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
     for (const listener of this.listeners) listener(world, originalTileId);
     return true;
@@ -353,8 +374,7 @@ export class TurfMap {
     const half = this.size / 2;
     if ((col + 1) * TILE_SIZE <= -half || col * TILE_SIZE >= half
       || (row + 1) * TILE_SIZE <= -half || row * TILE_SIZE >= half) return WORLD_TILES.INVALID;
-    const key = `${col},${row}`;
-    return this.dugTiles.get(key)?.tileId ?? this.originalTiles.get(key) ?? this.defaultTileId;
+    return this.cells[(row - this.cellMin) * this.cellWidth + col - this.cellMin];
   }
 
   private variantAt(col: number, row: number, tileId: number): number {
@@ -364,6 +384,55 @@ export class TurfMap {
     const diagonal = Number(is(-1, -1)) | Number(is(1, -1)) << 1
       | Number(is(1, 1)) << 2 | Number(is(-1, 1)) << 3;
     return groundTileVariant(is(0, 0), cardinal, diagonal);
+  }
+
+  /** Rebuild one turf layer's edge quads from the current original and dug tiles. */
+  private rebuildLayer(tileId: number, mesh: THREE.Mesh, assets: GroundTileAssets): void {
+    // Numeric cell keys: a full forest has over 168,000 tiles, so string keys per neighbour dominate load time.
+    const { min, max } = this.cellRange();
+    const width = max - min + 2;
+    const cellKey = (col: number, row: number) => (row - min + 1) * width + (col - min + 1);
+    const candidates = new Set<number>();
+    const addAround = (col: number, row: number) => {
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) candidates.add(cellKey(col + dx, row + dz));
+    };
+    if (tileId === WORLD_TILES.DECIDUOUS) {
+      // The base plane fills distant unchanged cells. Around edited/generated
+      // terrain, render its full cells as well as skirts at the source layer
+      // order, so lower layers' skirts cannot leak over the original ground.
+      for (const key of new Set([...this.originalTiles.keys(), ...this.dugTiles.keys()])) {
+        const [col, row] = key.split(',').map(Number);
+        addAround(col, row);
+      }
+    } else if (tileId === WORLD_TILES.FARMING_SOIL || tileId === WORLD_TILES.MONKEY_DOCK || tileId === WORLD_TILES.OCEAN_COASTAL) {
+      for (const [key, tile] of this.dugTiles) {
+        if (tileId === WORLD_TILES.OCEAN_COASTAL ? !isOceanTile(tile.tileId) : tile.tileId !== tileId) continue;
+        const [col, row] = key.split(',').map(Number);
+        if (tileId === WORLD_TILES.OCEAN_COASTAL) candidates.add(cellKey(col, row));
+        else addAround(col, row);
+      }
+    } else {
+      for (const [key, original] of this.originalTiles) {
+        if ((this.dugTiles.get(key)?.tileId ?? original) !== tileId) continue;
+        const [col, row] = key.split(',').map(Number);
+        addAround(col, row);
+      }
+      for (const [key, tile] of this.dugTiles) {
+        if (tile.tileId !== tileId || this.originalTiles.has(key)) continue;
+        addAround(tile.col, tile.row);
+      }
+    }
+    const edgeQuads: GroundTileQuad[] = [];
+    for (const key of candidates) {
+      const col = key % width + min - 1, row = Math.floor(key / width) + min - 1;
+      // Skirts also fall off into impassable (void) cells; only cells outside the world have no surface.
+      if (this.tileAt(col, row) === WORLD_TILES.INVALID) continue;
+      const variant = tileId === WORLD_TILES.OCEAN_COASTAL ? 1 : this.variantAt(col, row, tileId);
+      if (variant !== 17) edgeQuads.push({ col, row, variant });
+    }
+    mesh.geometry.dispose();
+    mesh.geometry = groundTileGeometry(edgeQuads, assets, this.size);
+    mesh.visible = edgeQuads.length > 0;
   }
 
   private rebuildGeometry(bounds?: TerrainCellBounds): void {
@@ -381,48 +450,7 @@ export class TurfMap {
     this.dirt.geometry.dispose();
     this.dirt.geometry = geometry;
     this.dirt.visible = quads.length > 0;
-    for (const [tileId, { mesh, assets }] of this.layers) {
-      const candidates = new Set<string>();
-      if (tileId === WORLD_TILES.DECIDUOUS) {
-        // The base plane fills distant unchanged cells. Around edited/generated
-        // terrain, render its full cells as well as skirts at the source layer
-        // order, so lower layers' skirts cannot leak over the original ground.
-        for (const key of new Set([...this.originalTiles.keys(), ...this.dugTiles.keys()])) {
-          const [col, row] = key.split(',').map(Number);
-          for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
-            candidates.add(`${col + dx},${row + dz}`);
-          }
-        }
-      } else if (tileId === WORLD_TILES.FARMING_SOIL || tileId === WORLD_TILES.MONKEY_DOCK || tileId === WORLD_TILES.OCEAN_COASTAL) {
-        for (const [key, tile] of this.dugTiles) {
-          if (tileId === WORLD_TILES.OCEAN_COASTAL ? !isOceanTile(tile.tileId) : tile.tileId !== tileId) continue;
-          const [col, row] = key.split(',').map(Number);
-          if (tileId === WORLD_TILES.OCEAN_COASTAL) candidates.add(key);
-          else for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) candidates.add(`${col + dx},${row + dz}`);
-        }
-      } else {
-        const tiles = new Map(this.originalTiles);
-        for (const [key, tile] of this.dugTiles) tiles.set(key, tile.tileId);
-        for (const [key, original] of tiles) {
-          if (original !== tileId) continue;
-          const [col, row] = key.split(',').map(Number);
-          for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
-            candidates.add(`${col + dx},${row + dz}`);
-          }
-        }
-      }
-      const edgeQuads: GroundTileQuad[] = [];
-      for (const key of candidates) {
-        const [col, row] = key.split(',').map(Number);
-        // Skirts also fall off into impassable (void) cells; only cells outside the world have no surface.
-        if (this.tileAt(col, row) === WORLD_TILES.INVALID) continue;
-        const variant = tileId === WORLD_TILES.OCEAN_COASTAL ? 1 : this.variantAt(col, row, tileId);
-        if (variant !== 17) edgeQuads.push({ col, row, variant });
-      }
-      mesh.geometry.dispose();
-      mesh.geometry = groundTileGeometry(edgeQuads, assets, this.size);
-      mesh.visible = edgeQuads.length > 0;
-    }
+    for (const [tileId, { mesh, assets }] of this.layers) this.rebuildLayer(tileId, mesh, assets);
     this.rebuildFalloff();
     this.ocean?.rebuildColours();
   }

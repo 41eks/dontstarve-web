@@ -47,12 +47,15 @@ export class MinimapTerrainLayer {
   private readonly terrain: MinimapTerrain;
   private readonly cellSize: number;
   private readonly overviewEnabled: boolean;
+  private readonly oceanEnabled: boolean;
 
   /** `overview: false` skips the cached overview chunks: terrain edits only invalidate, and
-   * the owner pulls rasters with `prepareInputs()` and `paintCells()`.
+   * the owner pulls rasters with `prepareInputs()` and `paintCells()`. `ocean: false` leaves
+   * ocean cells transparent for an owner that supplies a pre-rendered ocean plate.
    */
-  constructor(terrain: MinimapTerrain, cellSize: number, overviewEnabled = true) {
-    this.overviewEnabled = overviewEnabled;
+  constructor(terrain: MinimapTerrain, cellSize: number, { overview = true, ocean = true } = {}) {
+    this.overviewEnabled = overview;
+    this.oceanEnabled = ocean;
     this.terrain = terrain;
     this.cellSize = cellSize;
     const { min, max } = terrain.cellRange();
@@ -99,6 +102,7 @@ export class MinimapTerrainLayer {
         }
       }
     } else this.oceanDirty = true;
+    if (!this.oceanEnabled) this.oceanDirty = false;
     // A changed ocean mask can affect globally normalized shader UVs and blur.
     // Land-only edits invalidate the eight-neighbour mask halo, including across chunks.
     const changed = bounds && !this.oceanDirty ? {

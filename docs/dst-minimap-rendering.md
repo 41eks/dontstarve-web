@@ -1,8 +1,8 @@
 # 世界地皮整图与 DOM 地图
 
-游戏地图由 `packages/ui` 在主线程中维护：一张地面 PNG 与独立实体图标共用世界坐标容器。DOM 中没有地图 Canvas；底图由临时 `OffscreenCanvas` 直接合成像素，不使用 WebGL 渲染器，地图没有持续渲染循环或地图 Worker（海洋遮罩的模糊与着色在一次性 Worker 中完成）。
+游戏地图由 `packages/ui` 在主线程中维护：一张地面 PNG 与独立实体图标共用世界坐标容器。DOM 中没有地图 Canvas；底图由临时 `OffscreenCanvas` 直接合成像素，不使用 WebGL 渲染器，地图没有持续渲染循环或地图 Worker（地图没有海洋计算）。
 
-`src/main.ts` 只注入 `TurfMap` 和格子尺寸。`TurfMap` 拥有地皮、八邻格变体、海洋及变更通知。`MinimapGroundImage` 负责图片生成、分辨率、解码、替换和生命周期，并通过不缓存总览的 `MinimapTerrainLayer`（`prepareInputs()` / `paintCells()`）按 32×32 格分块合成：海洋整图栅格先铺底，再按源图层顺序绘制 `mini_*` 遮罩乘以世界坐标噪声的每格像素。每个输出像素对应一个源纹素，不做相机重采样，因此保持原版地图的清晰边缘。图片左上为最小世界 X/Z；不将角色、建筑、昼夜光照或后处理烘焙到底图。
+`src/main.ts` 只注入 `TurfMap` 和格子尺寸。`TurfMap` 拥有地皮、八邻格变体、海洋及变更通知。`MinimapGroundImage` 负责图片生成、分辨率、解码、替换和生命周期，并通过不缓存总览的 `MinimapTerrainLayer`（`prepareInputs()` / `paintCells()`）按 32×32 格分块合成：再按源图层顺序绘制 `mini_*` 遮罩乘以世界坐标噪声的每格像素。海洋是底图：`packages/ui/scripts/render-minimap-ocean.mjs`（`--check` 校验）把 `minimap_paper.tex` 乘以 `EDGE_COLOR0` 渲染成无缝不透明的 `public/minimap/ocean.png`，`MinimapDomRenderer` 以 CSS 背景平铺（每张 32 格）铺满地皮范围及 10% margin，位于地面图下方；地面图的海洋格保持透明，运行时不再计算海岸线、阴影和海洋 Worker，海岸只有陆地遮罩自带的柔边。每个输出像素对应一个源纹素，不做相机重采样，因此保持原版地图的清晰边缘。图片左上为最小世界 X/Z；不将角色、建筑、昼夜光照或后处理烘焙到底图。
 
 
 `DstMinimapElement.prepareTerrain()` 等待整图合成、PNG 编码和图片解码。`src/main.ts` 的 `gameReady` 先等待这一步，再启动场景循环和首次渲染，因此加载页关闭前已有可用底图。图标只在打开地图后加载和采样。
