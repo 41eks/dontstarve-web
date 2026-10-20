@@ -10,6 +10,7 @@ import { performToolWork, type ComponentActionEntity } from '../../stategraphs/s
 import { Workable, type WorkableInst, type Worker } from '../../componets/src/workable';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
+import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ProximityEntities, type ProximityEntity } from './proximityEntities';
 import { actionEntity } from './actionEntity';
@@ -33,7 +34,7 @@ SetSharedLootTable('deciduoustree_burnt', [['acorn', .1]]);
 export interface DeciduousRecord {
   id: string;
   transform: { position: [number, number, number]; rotationY: number };
-  components: { deciduoustree: DeciduousTreeSave; growable: GrowableSave };
+  components: { deciduoustree: DeciduousTreeSave; growable?: GrowableSave; deciduousTimer?: NamedTimerSave };
 }
 export interface DeciduousWorld {
   camera: THREE.Camera;
@@ -55,6 +56,7 @@ interface Tree {
   removeInst(): void;
   stump: Signal<boolean>;
   growable: Growable;
+  timer: Timer;
   workable: Workable;
   lootdropper: LootDropper;
   body?: CANNON.Body;
@@ -222,7 +224,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   const remove = (tree: Tree) => {
     tree.changesTask?.(); tree.acornTask?.(); tree.removeTask?.();
     unbindFire(tree);
-    tree.removeInst(); tree.workable.dispose(); tree.growable.dispose(); tree.leaves.dispose();
+    tree.removeInst(); tree.workable.dispose(); tree.growable.dispose(); tree.leaves.dispose(); tree.timer.dispose();
     if (tree.body) world.physics?.removeBody(tree.body);
     for (const sound of tree.sounds) sound.stop(); tree.sounds.clear();
     nearby.remove(tree.logical); trees.delete(tree.logical);
@@ -316,7 +318,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       if (disposed) throw new Error('Deciduous forest has been disposed');
       const logical = nearby.add(position, saved?.id ?? newEntityId());
       const removed = createSignal(false), tags = new Set(['plant', 'tree', 'birchnut', 'deciduoustree', 'cattoyairborne']);
-      const components: ComponentActionEntity['components'] & { growable?: Growable; lootdropper?: LootDropper } = {};
+      const components: ComponentActionEntity['components'] & { growable?: Growable; lootdropper?: LootDropper; timer?: Timer } = {};
       const inst: Tree['inst'] = {
         prefab: 'deciduoustree', removal: readonlySignal(removed), get isRemoved() { return removed.peek(); }, components,
         hasTag: tag => components.workable?.HasTag(tag) ?? tags.has(tag),
@@ -336,7 +338,9 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       })), seconds => world.growthDuration?.(seconds) ?? seconds);
       components.growable = growable;
       const tree: Tree = { logical, inst, removeInst: () => removed.set(true), stump: createSignal(false),
-        growable, workable, lootdropper, sounds: new Set(), color: .5 + random() * .5, leaves: undefined!, burntcone: false };
+        growable, workable, lootdropper, sounds: new Set(), color: .5 + random() * .5, leaves: undefined!, burntcone: false,
+        timer: new Timer(scheduler, name => { if (name === 'decay') remove(tree); }, ['decay']) };
+      components.timer = tree.timer;
       trees.set(logical, tree);
       tree.leaves = new DeciduousTreeLeaves(scheduler, world, {
         lastWorkTime: () => tree.workable.lastworktime.peek(), applyBuild: () => applyBuild(tree), updateLoot: () => updateLoot(tree),
@@ -349,7 +353,8 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       const stage = prefab === 'deciduoustree' ? Math.min(3, Math.floor(random() * 3) + 1) : DECIDUOUS_SPAWN_IDS.indexOf(prefab);
       growable.SetStage(stage); growable.StartGrowing();
       tree.leaves.Initialize(saved?.components.deciduoustree);
-      if (saved) growable.OnLoad(saved.components.growable);
+      if (saved?.components.growable) growable.OnLoad(saved.components.growable);
+      tree.timer.OnLoad(saved?.components.deciduousTimer);
       if (world.physics) { tree.body = MakeObstaclePhysics(logical.position, .25); world.physics.addBody(tree.body); }
       workable.SetOnWorkCallback(() => {
         if (!logical.model) return;
@@ -394,12 +399,13 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     exportRecords: () => [...trees.values()].map(tree => {
       // onsave: a burning tree is saved as burnt; a burning stump is still a stump.
       const burnt = !tree.stump.peek() && (tree.inst.hasTag('burnt') || tree.fire?.burnable.IsBurning() === true);
+      const timer = tree.timer.OnSave();
       const { stump: _stump, leaveschangetime: _change, ...leaves } = tree.leaves.OnSave();
       return { id: tree.logical.saveId!,
-        transform: { position: tree.logical.position.toArray(), rotationY: 0 }, components: burnt ? {
+        transform: { position: tree.logical.position.toArray(), rotationY: 0 }, components: { ...(timer ? { deciduousTimer: timer } : {}), ...(burnt ? {
           deciduoustree: { ...leaves, burnt: true as const, ...(tree.burntcone ? { burntcone: true as const } : {}) },
           growable: { stage: tree.growable.GetStage() },
-        } : { deciduoustree: tree.leaves.OnSave(), growable: tree.growable.OnSave() } };
+        } : { deciduoustree: tree.leaves.OnSave(), growable: tree.growable.OnSave() }) } };
     }),
     dispose() {
       if (disposed) return;

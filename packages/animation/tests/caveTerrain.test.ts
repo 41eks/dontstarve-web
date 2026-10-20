@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { Vector3, Mesh } from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
+import forest from '../../../public/saves/Cluster_1/Master.json' with { type: 'json' };
 import cave from '../../../public/saves/Cluster_1/Caves.json' with { type: 'json' };
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { Locomotor, findGroundPath } from '../../prefab/src/locomotor';
@@ -81,5 +82,37 @@ it('draws cave land only and blocks keyboard velocity and paths across void or f
     expect(body.velocity.x).toBe(0);
     expect(locomotor.goToPoint(new Vector3(30, 0, 6))).toBe(false);
     expect(locomotor.goToPoint(new Vector3(6, 0, 6))).toBe(true);
+  } finally { map.dispose(); }
+});
+
+it('loads the imported forest with distinct ocean types, ice, underlying dock tiles and retained entity state', async () => {
+  const save = deserializeSave(JSON.stringify(forest), SAVE_CATALOG);
+  const map = new TurfMap(save.world.map.generator.options.size, save.world.map.tiles, save.world.map.defaultTileId);
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  try {
+    expect(save.world.prefab).toBe('forest');
+    expect(save.players.local.shardId).toBe('master');
+    expect(map.isPassableAtPoint(new Vector3(...save.players.local.transform.position))).toBe(true);
+    expect(map.cellsOfTile(WORLD_TILES.OCEAN_SWELL)).toHaveLength(40945);
+    expect(map.cellsOfTile(WORLD_TILES.OCEAN_ICE)).toHaveLength(37);
+    const [col, row] = map.cellsOfTile(WORLD_TILES.OCEAN_ROUGH)[0];
+    expect(map.isOceanAtWorld(new Vector3((col + .5) * TILE_SIZE, 0, (row + .5) * TILE_SIZE))).toBe(true);
+    expect(map.isPassableAtPoint(new Vector3((col + .5) * TILE_SIZE, 0, (row + .5) * TILE_SIZE))).toBe(false);
+    const [iceCol, iceRow] = map.cellsOfTile(WORLD_TILES.OCEAN_ICE)[0];
+    expect(map.isPassableAtPoint(new Vector3((iceCol + .5) * TILE_SIZE, 0, (iceRow + .5) * TILE_SIZE))).toBe(true);
+    expect(save.world.map.tiles!.filter(tile => tile.tileId === WORLD_TILES.MONKEY_DOCK).every(tile => tile.underTileId !== undefined)).toBe(true);
+    expect(save.world.entities.evergreen.filter(entity => entity.components.evergreenTimer)).toHaveLength(8);
+    expect(save.world.entities.pigking).toHaveLength(1);
+    expect(save.world.entities.deciduoustree).toHaveLength(695);
+    expect(save.world.entities.deciduoustree.filter(entity => entity.components.deciduousTimer)).toHaveLength(2);
+    expect(save.world.entities.flower).toHaveLength(441);
+    expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
+    expect(save.world.entities.ground_item.filter(entity => entity.components.stack?.itemId === 'fireflies')).toHaveLength(316);
+    const restored = deserializeSave(serializeSave(save, {
+      entities: save.world.entities, tiles: map.exportTiles(), playerTransform: save.players.local.transform,
+      inventory: inventoryStateFromSave(save), elapsedSeconds: 10,
+    }, SAVE_CATALOG), SAVE_CATALOG);
+    expect(restored.world.map).toEqual(save.world.map);
+    expect(restored.world.entities).toEqual(save.world.entities);
   } finally { map.dispose(); }
 });

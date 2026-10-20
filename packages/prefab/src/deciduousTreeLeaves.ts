@@ -11,7 +11,7 @@ export interface DeciduousTreeSave {
   burntcone?: true;
   build?: LeafBuild;
   leaf_state: LeafState;
-  target_leaf_state: LeafState;
+  target_leaf_state?: LeafState;
   leaveschangetime?: number;
 }
 export interface LeafWorld {
@@ -36,7 +36,7 @@ const leafStateFor = (season: WorldSeason): LeafState => season === 'autumn' ? '
 export class DeciduousTreeLeaves {
   private readonly buildSignal = createSignal<LeafBuild>('normal');
   private readonly leafSignal = createSignal<LeafState>('normal');
-  private readonly targetSignal = createSignal<LeafState>('normal');
+  private readonly targetSignal = createSignal<LeafState | undefined>('normal');
   private readonly changeTimer: ComponentTimer;
   private readonly completionTimer: ComponentTimer;
   private readonly idleFxTimer: ComponentTimer;
@@ -104,6 +104,7 @@ export class DeciduousTreeLeaves {
     if (lastWork !== undefined && lastWork < this.scheduler.now - 10) { this.changeTimer.start(11); return; }
     this.changeTimer.stop(); this.completionTimer.stop();
     const target = this.targetSignal.peek();
+    if (target === undefined) return;
     if (target !== 'barren') {
       this.buildSignal.set(target === 'colorful' ? (['red', 'orange', 'yellow'] as const)[Math.min(2, Math.floor(this.random() * 3))] : 'normal');
       this.owner.applyBuild();
@@ -116,8 +117,10 @@ export class DeciduousTreeLeaves {
   }
   private GrowLeaves(): void {
     if (this.stopped) return;
-    if (this.targetSignal.peek() === 'barren') this.buildSignal.set('barren');
-    this.leafSignal.set(this.targetSignal.peek()); this.owner.applyBuild(); this.owner.updateLoot();
+    const target = this.targetSignal.peek();
+    if (target === undefined) return;
+    if (target === 'barren') this.buildSignal.set('barren');
+    this.leafSignal.set(target); this.owner.applyBuild(); this.owner.updateLoot();
     this.owner.sway(); this.UpdateIdleLeafFx();
   }
   /** The source's animover listener survives interrupted leaf clips and finishes on the next one-shot. */
@@ -138,7 +141,8 @@ export class DeciduousTreeLeaves {
   OnSave(): DeciduousTreeSave {
     const build = this.buildSignal.peek(), remaining = this.changeTimer.remainingSeconds;
     return { ...(this.stopped ? { stump: true as const } : {}), ...(build !== 'normal' ? { build } : {}),
-      leaf_state: this.leafSignal.peek(), target_leaf_state: this.targetSignal.peek(),
+      leaf_state: this.leafSignal.peek(),
+      ...(this.targetSignal.peek() === undefined ? {} : { target_leaf_state: this.targetSignal.peek()! }),
       ...(remaining !== undefined ? { leaveschangetime: remaining } : {}) };
   }
   Stop(): void {

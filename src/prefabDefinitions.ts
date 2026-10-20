@@ -121,13 +121,13 @@ export const PREFAB_DEFINITIONS = {
     [definitions.moonTree.archive, 'tree_petal_fx.zip', 'baby_moon_tree.zip', 'snow.zip']),
   moonTreeSaplings: definePrefabs(['moonbutterfly_sapling'], componentParser({ keys: ['saplingTimer'] }), true,
     ['baby_moon_tree.zip']),
-  deciduousTrees: definePrefabs(['deciduoustree'], componentParser({ keys: ['deciduoustree', 'growable'] }),
+  deciduousTrees: definePrefabs(['deciduoustree'], componentParser({ keys: ['deciduoustree', 'growable', 'deciduousTimer'] }),
     ['deciduoustree', 'deciduoustree_short', 'deciduoustree_normal', 'deciduoustree_tall'], [
       { animation: 'tree_leaf_trunk_build.zip', build: 'tree_leaf_trunk_build.zip' },
       ...['short', 'normal', 'tall'].map(stage => ({ animation: `tree_leaf_${stage}.zip`, build: 'tree_leaf_trunk_build.zip' })),
       ...['green', 'red', 'orange', 'yellow'].flatMap(color => [`tree_leaf_${color}_build.zip`, `tree_leaf_fx_${color}.zip`]),
     ]),
-  evergreens: definePrefabs(['evergreen'], componentParser({ keys: ['evergreen', 'growable'], growthStages: 4 }),
+  evergreens: definePrefabs(['evergreen'], componentParser({ keys: ['evergreen', 'growable', 'evergreenTimer'], growthStages: 4 }),
     ['evergreen', 'evergreen_short', 'evergreen_normal', 'evergreen_tall'], [
       { animation: 'evergreen_short_normal.zip', build: 'evergreen_new.zip' },
       { animation: 'evergreen_tall_old.zip', build: 'evergreen_new.zip' }, 'pine_needles.zip',

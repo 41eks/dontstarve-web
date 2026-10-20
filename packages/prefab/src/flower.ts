@@ -29,7 +29,7 @@ export const ROSE_DAMAGE = 1;
 export interface FlowerSaveRecord {
   id: string;
   transform: { position: [number, number, number]; rotationY: number };
-  components: { flower: { animation: FlowerAnimation; planted: true } };
+  components: { flower: { animation: FlowerAnimation; planted?: true } };
 }
 
 interface PlantedFlower {
@@ -95,14 +95,14 @@ export class FlowerPlanting {
   exportRecords(): FlowerSaveRecord[] {
     return [...this.flowers.values()].filter(({ persists }) => persists).map(({ id, model, animation }) => ({
       id, transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-      components: { flower: { animation, planted: true } },
+      components: { flower: { animation, ...(model.userData.planted ? { planted: true as const } : {}) } },
     }));
   }
 
-  async spawnFromSave(id: string, animation: FlowerAnimation, position: THREE.Vector3): Promise<THREE.Group> {
+  async spawnFromSave(id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = true): Promise<THREE.Group> {
     const factory = await this.loadFactory();
     if (this.disposed) throw new Error('Flower planting has been disposed');
-    const flower = this.createFlower(factory, id, animation, position);
+    const flower = this.createFlower(factory, id, animation, position, planted);
     this.flowers.set(id, flower);
     this.flowerList = undefined;
     this.world.scene.add(flower.model);
@@ -145,12 +145,12 @@ export class FlowerPlanting {
     return this.factory;
   }
 
-  private createFlower(factory: AnimatedSpriteFactory, id: string, animation: FlowerAnimation, position: THREE.Vector3): PlantedFlower {
+  private createFlower(factory: AnimatedSpriteFactory, id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = true): PlantedFlower {
     const model = factory.create({ initialAnimation: animation, name: 'Flower' });
     model.position.set(position.x, 0, position.z);
     model.quaternion.copy(this.world.camera.getWorldQuaternion(new THREE.Quaternion()));
     Object.assign(model.userData, {
-      entityId: id, prefab: 'flower', planted: true, flowerAnimation: animation,
+      entityId: id, prefab: 'flower', planted, flowerAnimation: animation,
       deploySmartRadius: .375 * (TILE_SIZE / 4),
       tags: ['flower', 'cattoy', ...(animation === 'rose' ? ['thorny'] : [])],
     });

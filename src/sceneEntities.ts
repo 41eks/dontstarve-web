@@ -419,7 +419,7 @@ export async function createSceneEntities(
     const flowerPlanting = new FlowerPlanting(view, Math.random, scheduler ? { scheduler, worldEvents } : undefined);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => flowerPlanting.spawnFromSave(record.id,
-        record.components.flower!.animation, new THREE.Vector3(...record.transform.position)),
+        record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true),
       debugSpawn: async () => {
         const prepared = await flowerPlanting.prepareTransplant();
         try { prepared.spawn(view.player.position); } finally { prepared.dispose(); }
@@ -929,6 +929,7 @@ export async function createSceneEntities(
       exportRecords: () => lavaPonds.exportRecords().filter(record => record.prefabId === LAVA_POND_ID),
       update: (dt, quaternion) => lavaPonds.update(dt, quaternion),
       renderEntities: () => lavaPonds.renderEntities,
+      miniMapEntities: () => lavaPonds.miniMapEntities,
       dispose: () => lavaPonds.dispose(),
     });
     registry.register(PREFAB_DEFINITIONS.lavaPondRocks, {
@@ -1367,6 +1368,7 @@ export async function createSceneEntities(
       exportRecords: () => ponds.exportRecords().map((record) => ({ prefabId: POND_ID, record })),
       update: (dt) => ponds.update(dt),
       // Ponds are ground layers, below the foot-sorted billboards.
+      miniMapEntities: () => ponds.miniMapEntities,
       dispose: () => ponds.dispose(),
     });
     return ponds;

@@ -311,8 +311,8 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         components.evergreen = { ...(tree.stump === true ? { stump: true as const } : {}),
           ...(tree.burnt === true ? { burnt: true as const } : {}), ...(tree.burntcone === true ? { burntcone: true as const } : {}) };
       }
-      if (!components.growable) fail(`${path}.growable`, 'evergreen stage is required');
-      if ((components.evergreen?.stump || components.evergreen?.burnt) && components.growable.time !== undefined) fail(`${path}.growable.time`, 'stumps and burnt trees cannot grow');
+      if (!components.growable && !components.evergreen?.burnt && !components.evergreen?.stump) fail(`${path}.growable`, 'evergreen stage is required');
+      if ((components.evergreen?.stump || components.evergreen?.burnt) && components.growable?.time !== undefined) fail(`${path}.growable.time`, 'stumps and burnt trees cannot grow');
     }
     if (keys.includes('deciduoustree')) {
       const p = `${path}.deciduoustree`, tree = object(c.deciduoustree, p, ['stump', 'burnt', 'burntcone', 'build', 'leaf_state', 'target_leaf_state', 'leaveschangetime']);
@@ -326,11 +326,27 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         ...(tree.burnt === true ? { burnt: true as const } : {}), ...(tree.burntcone === true ? { burntcone: true as const } : {}),
         ...(tree.build === undefined ? {} : { build: choice(tree.build, `${p}.build`, ['normal', 'red', 'orange', 'yellow', 'barren'] as const) }),
         leaf_state: choice(tree.leaf_state, `${p}.leaf_state`, ['normal', 'colorful', 'barren'] as const),
-        target_leaf_state: choice(tree.target_leaf_state, `${p}.target_leaf_state`, ['normal', 'colorful', 'barren'] as const),
+        ...(tree.target_leaf_state === undefined && (tree.stump || tree.burnt) ? {} : {
+          target_leaf_state: choice(tree.target_leaf_state, `${p}.target_leaf_state`, ['normal', 'colorful', 'barren'] as const),
+        }),
         ...(tree.leaveschangetime === undefined ? {} : { leaveschangetime: number(tree.leaveschangetime, `${p}.leaveschangetime`, 0, 900) }),
       };
-      if (!components.growable) fail(`${path}.growable`, 'deciduoustree stage is required');
-      if ((tree.stump || tree.burnt) && (components.growable.time !== undefined || tree.leaveschangetime !== undefined)) fail(p, 'stumps and burnt trees cannot grow or change leaves');
+      if (!components.growable && !tree.stump && !tree.burnt) fail(`${path}.growable`, 'deciduoustree stage is required');
+      if ((tree.stump || tree.burnt) && (components.growable?.time !== undefined || tree.leaveschangetime !== undefined)) fail(p, 'stumps and burnt trees cannot grow or change leaves');
+    }
+    for (const timerKey of ['evergreenTimer', 'deciduousTimer'] as const) {
+      if (!keys.includes(timerKey) || c[timerKey] === undefined) continue;
+      const p = `${path}.${timerKey}`, timer = object(c[timerKey], p, ['timers']);
+      const timers = object(timer.timers, `${p}.timers`, ['decay']);
+      components[timerKey] = { timers: {} };
+      if (timers.decay !== undefined) {
+        const decay = object(timers.decay, `${p}.timers.decay`, ['timeleft', 'paused', 'initial_time']);
+        if (typeof decay.paused !== 'boolean') fail(`${p}.timers.decay.paused`, 'expected a boolean');
+        const initial_time = number(decay.initial_time, `${p}.timers.decay.initial_time`, 0, 21600);
+        components[timerKey].timers.decay = {
+          timeleft: number(decay.timeleft, `${p}.timers.decay.timeleft`, 0, initial_time), paused: decay.paused, initial_time,
+        };
+      }
     }
     if (keys.includes('saplingTimer')) {
       const p = `${path}.saplingTimer`, timer = object(c.saplingTimer ?? (schema.timerDuration ? { timers: {} } : undefined), p, ['timers']);
@@ -529,8 +545,9 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     if (keys.includes('flower')) {
       const componentPath = `${path}.flower`;
       const flower = object(c.flower, componentPath, ['animation', 'planted']);
-      if (flower.planted !== true) fail(`${componentPath}.planted`, 'expected true');
-      components.flower = { animation: choice(flower.animation, `${componentPath}.animation`, FLOWER_ANIMATIONS), planted: true };
+      if (flower.planted !== undefined && flower.planted !== true) fail(`${componentPath}.planted`, 'expected true');
+      components.flower = { animation: choice(flower.animation, `${componentPath}.animation`, FLOWER_ANIMATIONS),
+        ...(flower.planted === true ? { planted: true as const } : {}) };
     }
     if (keys.includes('timer')) {
       const t = object(c.timer, `${path}.timer`, ['remainingSeconds']);

@@ -39,7 +39,7 @@ function setup(random = () => .5) {
   const flowers = new FlowerPlanting(world, random);
   const inventory = createInventoryStore([]), registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.flowers, {
-    restore: (_, record) => flowers.spawnFromSave(record.id, record.components.flower!.animation, new THREE.Vector3(...record.transform.position)),
+    restore: (_, record) => flowers.spawnFromSave(record.id, record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true),
     debugSpawn: async () => { const prepared = await flowers.prepareTransplant(); prepared.spawn(player.position); prepared.dispose(); },
     exportRecords: () => flowers.exportRecords().map(record => ({ prefabId: 'flower', record })),
     dispose: () => flowers.dispose(),
@@ -254,8 +254,25 @@ it('spawns the source planted_flower command as a persistent flower, including i
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.flower[0];
-    await restored.flowers.spawnFromSave(record.id, record.components.flower!.animation, new THREE.Vector3(...record.transform.position));
+    await restored.flowers.spawnFromSave(record.id, record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true);
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
     expect(record.transform.position).toEqual([9, 0, 6]);
+  } finally { s.dispose(); restored.dispose(); }
+});
+
+it('restores natural flowers without changing their planted flag and preserves both origins through save/load', async () => {
+  const s = setup(), restored = setup();
+  try {
+    await s.flowers.spawnFromSave('flower:natural', 'rose', new THREE.Vector3(12, 0, 24), false);
+    await s.flowers.spawnFromSave('flower:planted', 'f4', new THREE.Vector3(24, 0, 24));
+    const save = deserializeSave(s.save(), SAVE_CATALOG);
+    const [natural, planted] = save.world.entities.flower;
+    expect(natural.components.flower).toEqual({ animation: 'rose' });
+    expect(planted.components.flower).toEqual({ animation: 'f4', planted: true });
+    for (const record of save.world.entities.flower) await restored.flowers.spawnFromSave(record.id,
+      record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true);
+    expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
+    expect(restored.world.scene.children[0].userData.planted).toBe(false);
+    expect(restored.world.scene.children[0].userData.tags).toContain('thorny');
   } finally { s.dispose(); restored.dispose(); }
 });

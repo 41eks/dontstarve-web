@@ -3,7 +3,8 @@ import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
 test('c_save downloads a cluster ZIP before and after a portal spawn, plays the saving clips and restores its active shard', async ({ page }) => {
-  test.setTimeout(120_000);
+  // The full imported forest is loaded twice, with ZIP generation between the two starts.
+  test.setTimeout(240_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
@@ -28,7 +29,7 @@ test('c_save downloads a cluster ZIP before and after a portal spawn, plays the 
   await page.locator('dst-debug-console input').press('Enter');
   const firstDownload = await download;
   expect(firstDownload.suggestedFilename()).toBe('Cluster_1.zip');
-  const firstSave = JSON.parse(await readSaveDownload(await firstDownload.path()));
+  const firstSave = JSON.parse(await readSaveDownload(await firstDownload.path(), 'Master'));
   await expect.poll(() => page.evaluate(() => (window as any).savingClips), { timeout: 10_000 })
     .toEqual(['save_pre', 'save_loop', 'save_post']);
   await expect(indicator.locator('.saving-indicator')).toBeHidden({ timeout: 10_000 });
@@ -45,12 +46,14 @@ test('c_save downloads a cluster ZIP before and after a portal spawn, plays the 
   }, sceneUrl)).toBe(1);
   const portalDownload = page.waitForEvent('download');
   await command('c_save()');
-  const json = await readSaveDownload((await (await portalDownload).path())!);
+  const json = await readSaveDownload((await (await portalDownload).path())!, 'Master');
   const saved = JSON.parse(json);
   expect(saved.snapshot.parentId).toBe(firstSave.snapshot.id);
   const portal = saved.world.entities.multiplayer_portal_moonrock[0];
+  const naturalFlower = saved.world.entities.flower[0];
+  expect(naturalFlower.components.flower.planted).toBeUndefined();
   // Serve the actual downloaded document through the game's normal startup loader.
-  await page.route('**/saves/Cluster_1/Caves.json', (route) => route.fulfill({ contentType: 'application/json', body: json }));
+  await page.route('**/saves/Cluster_1/Master.json', (route) => route.fulfill({ contentType: 'application/json', body: json }));
   await page.reload();
   await page.evaluate(async (url) => { await import(url); },
     `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`);
@@ -59,5 +62,12 @@ test('c_save downloads a cluster ZIP before and after a portal spawn, plays the 
     const model = scene.children.find((model: any) => model.userData.entityId === id);
     return { prefab: model?.userData.prefab, position: model?.position.toArray() };
   }, { url: sceneUrl, id: portal.id })).toEqual({ prefab: 'multiplayer_portal_moonrock', position: portal.transform.position });
+  expect(await page.evaluate(async ({ url, id }) => {
+    const { scene } = await import(url);
+    const flower = scene.children.find((model: any) => model.userData.entityId === id);
+    return { planted: flower?.userData.planted, animation: flower?.userData.flowerAnimation,
+      position: flower?.position.toArray() };
+  }, { url: sceneUrl, id: naturalFlower.id })).toEqual({ planted: false,
+    animation: naturalFlower.components.flower.animation, position: naturalFlower.transform.position });
   expect(errors).toEqual([]);
 });

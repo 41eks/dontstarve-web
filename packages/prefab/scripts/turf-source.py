@@ -13,10 +13,13 @@ def read_tiles(scripts):
     legacy = {name: int(value) for name, value in re.findall(r'(\w+)\s*=\s*(\d+)', ground)}
     next_land_id = int(re.search(r'\bWORLD_TILES_LAND_START\s*=\s*(\d+)', constants)[1])
     # `local NAME = { ... minimap_color = {r, g, b, a} }` colour presets referenced as `colors = NAME`.
-    presets = {}
+    presets, ocean_colours = {}, {}
     for m in re.finditer(r'local\s+(\w+)\s*=\s*\{(.*?)\n\}', source, re.S):
         colour = re.search(r'minimap_color\s*=\s*\{([^{}]*)\}', m[2])
         if colour:
+            if all(key in m[2] for key in ('primary_color', 'secondary_color', 'secondary_color_dusk')):
+                ocean_colours[m[1]] = {target: [int(v) for v in re.search(key + r'\s*=\s*\{([^{}]*)\}', m[2])[1].split(',')]
+                                      for target, key in [('primary', 'primary_color'), ('day', 'secondary_color'), ('dusk', 'secondary_color_dusk')]}
             presets[m[1]] = [int(v) for v in colour[1].split(',')]
     default_colour = [int(v) for v in re.search(
         r'DEFAULT_COLOUR\s*=.*?minimap_color\s*=\s*\{([^{}]*)\}',
@@ -58,8 +61,10 @@ def read_tiles(scripts):
         name = args[0].strip('"')
         terrain = fields(3)
         colours = re.search(r'\bcolors\s*=\s*(\w+)', args[3]) if len(args) > 3 else None
-        tile = {'name': name, 'land': args[1] == 'TileRanges.LAND', 'hard': terrain.get('hard') == 'true', 'ground': terrain, 'minimap': fields(4), 'turf': fields(5), 'renderOrder': render_order,
+        tile = {'name': name, 'land': args[1] == 'TileRanges.LAND', 'ocean': args[1] == 'TileRanges.OCEAN', 'hard': terrain.get('hard') == 'true', 'ground': terrain, 'minimap': fields(4), 'turf': fields(5), 'renderOrder': render_order,
                 'minimapColour': presets[colours[1]] if colours else default_colour}
+        if tile['ocean']:
+            tile['oceanColours'] = ocean_colours[colours[1]]
         if terrain:
             render_order += 1
         if args[1] == 'TileRanges.OCEAN':

@@ -10,6 +10,7 @@ import { performToolWork, type ComponentActionEntity } from '../../stategraphs/s
 import { Workable, type WorkableInst, type Worker } from '../../componets/src/workable';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
+import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ProximityEntities, type ProximityEntity } from './proximityEntities';
 import { actionEntity } from './actionEntity';
@@ -39,7 +40,7 @@ SetSharedLootTable('evergreen_burnt', [['pinecone', .1]]);
 export interface EvergreenRecord {
   id: string;
   transform: { position: [number, number, number]; rotationY: number };
-  components: { evergreen?: { stump?: true; burnt?: true; burntcone?: true }; growable: GrowableSave };
+  components: { evergreen?: { stump?: true; burnt?: true; burntcone?: true }; growable?: GrowableSave; evergreenTimer?: NamedTimerSave };
 }
 export interface EvergreenWorld {
   camera: THREE.Camera;
@@ -58,6 +59,7 @@ interface Tree {
   removeInst(): void;
   stump: Signal<boolean>;
   growable: Growable;
+  timer: Timer;
   workable: Workable;
   lootdropper: LootDropper;
   body?: CANNON.Body;
@@ -196,7 +198,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const remove = (tree: Tree) => {
     tree.changesTask?.(); tree.pineconeTask?.(); tree.removeTask?.();
     unbindFire(tree);
-    tree.removeInst(); tree.workable.dispose(); tree.growable.dispose();
+    tree.removeInst(); tree.workable.dispose(); tree.growable.dispose(); tree.timer.dispose();
     if (tree.body) world.physics?.removeBody(tree.body);
     for (const sound of tree.sounds) sound.stop(); tree.sounds.clear();
     nearby.remove(tree.logical); trees.delete(tree.logical);
@@ -282,7 +284,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       if (disposed) throw new Error('Evergreen forest has been disposed');
       const logical = nearby.add(position, saved?.id ?? newEntityId());
       const removed = createSignal(false), tags = new Set(['plant', 'tree', 'evergreens', 'evergreen']);
-      const components: ComponentActionEntity['components'] & { growable?: Growable; lootdropper?: LootDropper } = {};
+      const components: ComponentActionEntity['components'] & { growable?: Growable; lootdropper?: LootDropper; timer?: Timer } = {};
       const inst: Tree['inst'] = {
         prefab: 'evergreen', removal: readonlySignal(removed), get isRemoved() { return removed.peek(); }, components,
         hasTag: tag => components.workable?.HasTag(tag) ?? tags.has(tag),
@@ -302,12 +304,15 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       })), seconds => world.growthDuration?.(seconds) ?? seconds);
       components.growable = growable;
       const tree: Tree = { logical, inst, removeInst: () => removed.set(true), stump: createSignal(false),
-        growable, workable, lootdropper, sounds: new Set(), burntcone: false };
+        growable, workable, lootdropper, sounds: new Set(), burntcone: false,
+        timer: new Timer(scheduler, name => { if (name === 'decay') remove(tree); }, ['decay']) };
+      components.timer = tree.timer;
       trees.set(logical, tree);
       growable.loopstages = true; growable.springgrowth = true;
       const stage = prefab === 'evergreen' ? Math.min(3, Math.floor(random() * 3) + 1) : EVERGREEN_SPAWN_IDS.indexOf(prefab);
       growable.SetStage(stage); growable.StartGrowing();
-      if (saved) growable.OnLoad(saved.components.growable);
+      if (saved?.components.growable) growable.OnLoad(saved.components.growable);
+      tree.timer.OnLoad(saved?.components.evergreenTimer);
       if (world.physics) { tree.body = MakeObstaclePhysics(logical.position, .25); world.physics.addBody(tree.body); }
       workable.SetOnWorkCallback(() => {
         if (!logical.model) return;
@@ -352,11 +357,13 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     },
     exportRecords: () => [...trees.values()].map(tree => {
       // onsave: a burning tree is saved as burnt; a burning stump is still a stump.
+      const timer = tree.timer.OnSave();
       const burnt = !tree.stump.peek() && (tree.inst.hasTag('burnt') || tree.fire?.burnable.IsBurning() === true);
       return { id: tree.logical.saveId!,
         transform: { position: tree.logical.position.toArray(), rotationY: 0 }, components: {
           ...(tree.stump.peek() ? { evergreen: { stump: true as const } }
             : burnt ? { evergreen: { burnt: true as const, ...(tree.burntcone ? { burntcone: true as const } : {}) } } : {}),
+          ...(timer ? { evergreenTimer: timer } : {}),
           growable: burnt ? { stage: tree.growable.GetStage() } : tree.growable.OnSave(),
         } };
     }),

@@ -411,6 +411,11 @@
   "savedCells": 46522,
   "note": "Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.",
   "entityWhitelist": [
+    "pigking",
+    "deciduoustree",
+    "fireflies",
+    "flower",
+    "butterfly",
     "pighead",
     "archive_moon_statue",
     "cave_exit",
@@ -443,9 +448,31 @@
     "grotto_moonglass_4",
     "grotto_waterfall_big",
     "grotto_waterfall_small1",
-    "grotto_waterfall_small2"
+    "grotto_waterfall_small2",
+    "pond",
+    "lava_pond"
   ],
   "entityCounts": {
+    "pigking": {
+      "source": 0,
+      "imported": 0
+    },
+    "deciduoustree": {
+      "source": 0,
+      "imported": 0
+    },
+    "fireflies": {
+      "source": 34,
+      "imported": 34
+    },
+    "flower": {
+      "source": 0,
+      "imported": 0
+    },
+    "butterfly": {
+      "source": 0,
+      "imported": 0
+    },
     "pighead": {
       "source": 7,
       "imported": 7
@@ -577,9 +604,391 @@
     "grotto_waterfall_small2": {
       "source": 5,
       "imported": 5
+    },
+    "pond": {
+      "source": 5,
+      "imported": 5
+    },
+    "lava_pond": {
+      "source": 0,
+      "imported": 0
     }
   },
   "entitySources": [
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000001",
+      "prefab": "fireflies",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        609.51,
+        0,
+        662.26
+      ],
+      "sourceNode": "CaveExitTask7:BG_62:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000002",
+      "prefab": "fireflies",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        649.87,
+        0,
+        653.87
+      ],
+      "sourceNode": "CaveExitTask7:BG_62:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000003",
+      "prefab": "fireflies",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        610.17,
+        0,
+        701.98
+      ],
+      "sourceNode": "CaveExitTask7:BG_62:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000004",
+      "prefab": "fireflies",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        657.67,
+        0,
+        690.34
+      ],
+      "sourceNode": "CaveExitTask7:BG_62:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000005",
+      "prefab": "fireflies",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        638.01,
+        0,
+        678.82
+      ],
+      "sourceNode": "CaveExitTask7:BG_62:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000006",
+      "prefab": "fireflies",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        637.41,
+        0,
+        721.26
+      ],
+      "sourceNode": "CaveExitTask7:BG_62:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000007",
+      "prefab": "fireflies",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        621.7,
+        0,
+        714.8
+      ],
+      "sourceNode": "CaveExitTask7:BG_62:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000008",
+      "prefab": "fireflies",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        658.2,
+        0,
+        -258.13
+      ],
+      "sourceNode": "CaveExitTask3:BG_88:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000009",
+      "prefab": "fireflies",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        686.31,
+        0,
+        -277.61
+      ],
+      "sourceNode": "CaveExitTask3:BG_88:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000010",
+      "prefab": "fireflies",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        658.39,
+        0,
+        -237.61
+      ],
+      "sourceNode": "CaveExitTask3:BG_88:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000011",
+      "prefab": "fireflies",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        94.32,
+        0,
+        402.31
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000012",
+      "prefab": "fireflies",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        342.28,
+        0,
+        182.22
+      ],
+      "sourceNode": "CaveExitTask6:1:SinkholeCopses"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000013",
+      "prefab": "fireflies",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        377.5,
+        0,
+        113.17
+      ],
+      "sourceNode": "CaveExitTask6:1:SinkholeCopses"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000014",
+      "prefab": "fireflies",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        634.52,
+        0,
+        425.94
+      ],
+      "sourceNode": "CaveExitTask10:BG_11:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000015",
+      "prefab": "fireflies",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        665.28,
+        0,
+        470.43
+      ],
+      "sourceNode": "CaveExitTask10:BG_11:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000016",
+      "prefab": "fireflies",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        657.42,
+        0,
+        473.44
+      ],
+      "sourceNode": "CaveExitTask10:BG_11:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000017",
+      "prefab": "fireflies",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        725.04,
+        0,
+        449.54
+      ],
+      "sourceNode": "CaveExitTask10:BG_11:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000018",
+      "prefab": "fireflies",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        -474.42,
+        0,
+        558.81
+      ],
+      "sourceNode": "CaveExitTask4:BG_12:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000019",
+      "prefab": "fireflies",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        -469.14,
+        0,
+        541.56
+      ],
+      "sourceNode": "CaveExitTask4:BG_12:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000020",
+      "prefab": "fireflies",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        401.22,
+        0,
+        150.44
+      ],
+      "sourceNode": "UndergroundForest:3:SparseSinkholes"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000021",
+      "prefab": "fireflies",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        390.67,
+        0,
+        194.82
+      ],
+      "sourceNode": "UndergroundForest:3:SparseSinkholes"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000022",
+      "prefab": "fireflies",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        361.73,
+        0,
+        230.5
+      ],
+      "sourceNode": "UndergroundForest:4:SinkholeForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000023",
+      "prefab": "fireflies",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        622.91,
+        0,
+        -126.04
+      ],
+      "sourceNode": "CaveExitTask2:BG_26:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000024",
+      "prefab": "fireflies",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        542.93,
+        0,
+        634.2
+      ],
+      "sourceNode": "CaveExitTask8:BG_27:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000025",
+      "prefab": "fireflies",
+      "sourceIndex": 25,
+      "sourcePosition": [
+        454.98,
+        0,
+        674.94
+      ],
+      "sourceNode": "CaveExitTask8:BG_27:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000026",
+      "prefab": "fireflies",
+      "sourceIndex": 26,
+      "sourcePosition": [
+        526.74,
+        0,
+        637.1
+      ],
+      "sourceNode": "CaveExitTask8:BG_27:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000027",
+      "prefab": "fireflies",
+      "sourceIndex": 27,
+      "sourcePosition": [
+        566.98,
+        0,
+        562.75
+      ],
+      "sourceNode": "RabbitCity:BG_34:BGSinkhole"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000028",
+      "prefab": "fireflies",
+      "sourceIndex": 28,
+      "sourcePosition": [
+        430.17,
+        0,
+        -294.7
+      ],
+      "sourceNode": "RabbitSpiderWar:BG_41:SparseSinkholes"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000029",
+      "prefab": "fireflies",
+      "sourceIndex": 29,
+      "sourcePosition": [
+        434.47,
+        0,
+        -278.16
+      ],
+      "sourceNode": "RabbitSpiderWar:BG_41:SparseSinkholes"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000030",
+      "prefab": "fireflies",
+      "sourceIndex": 30,
+      "sourcePosition": [
+        461.21,
+        0,
+        -273.33
+      ],
+      "sourceNode": "RabbitSpiderWar:BG_41:SparseSinkholes"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000031",
+      "prefab": "fireflies",
+      "sourceIndex": 31,
+      "sourcePosition": [
+        481.79,
+        0,
+        -321.01
+      ],
+      "sourceNode": "RabbitSpiderWar:BG_41:SparseSinkholes"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000032",
+      "prefab": "fireflies",
+      "sourceIndex": 32,
+      "sourcePosition": [
+        389.9,
+        0,
+        -334.75
+      ],
+      "sourceNode": "RabbitSpiderWar:BG_41:SparseSinkholes"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000033",
+      "prefab": "fireflies",
+      "sourceIndex": 33,
+      "sourcePosition": [
+        446.43,
+        0,
+        -334.83
+      ],
+      "sourceNode": "RabbitSpiderWar:BG_41:SparseSinkholes"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_fireflies_index_000034",
+      "prefab": "fireflies",
+      "sourceIndex": 34,
+      "sourcePosition": [
+        693.9,
+        0,
+        673.06
+      ],
+      "sourceNode": "CaveExitTask7:BG_62:BGSinkhole"
+    },
     {
       "id": "dst_7FD049B25CA83C50_pighead_index_000001",
       "prefab": "pighead",
@@ -55544,6 +55953,66 @@
         608
       ],
       "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_pond_id_100392",
+      "prefab": "pond",
+      "sourceIndex": 1,
+      "sourceId": 100392,
+      "sourcePosition": [
+        608.02,
+        0,
+        559.59
+      ],
+      "sourceNode": "CaveExitTask7:0:SinkholeOasis"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_pond_id_100393",
+      "prefab": "pond",
+      "sourceIndex": 2,
+      "sourceId": 100393,
+      "sourcePosition": [
+        433.03,
+        0,
+        -54.06
+      ],
+      "sourceNode": "GreenForest:5:GreenMushPonds"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_pond_id_100394",
+      "prefab": "pond",
+      "sourceIndex": 3,
+      "sourceId": 100394,
+      "sourcePosition": [
+        433.67,
+        0,
+        -73.16
+      ],
+      "sourceNode": "GreenForest:5:GreenMushPonds"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_pond_id_100395",
+      "prefab": "pond",
+      "sourceIndex": 4,
+      "sourceId": 100395,
+      "sourcePosition": [
+        402.81,
+        0,
+        -82.26
+      ],
+      "sourceNode": "GreenForest:5:GreenMushPonds"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_pond_id_100396",
+      "prefab": "pond",
+      "sourceIndex": 5,
+      "sourceId": 100396,
+      "sourcePosition": [
+        406.74,
+        0,
+        -65.58
+      ],
+      "sourceNode": "GreenForest:5:GreenMushPonds"
     }
   ],
   "source": "public/saves/Cluster_58/Caves/save/session/7FD049B25CA83C50/0000000022",

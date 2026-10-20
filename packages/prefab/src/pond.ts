@@ -8,6 +8,7 @@ import { WILSON_RUN_SPEED } from '../../componets/src/slipperyfeet';
 import { actionEntity } from './actionEntity';
 import { WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
+import { MiniMapEntity } from './minimapEntity';
 
 export const POND_ID = 'pond' as const;
 /** pond.lua MakePondPhysics(inst, 1.95), in scene units. */
@@ -44,6 +45,7 @@ export const POND_FREEZE_SNOWLEVEL = .02;
 export class PondManager {
   private factoryRequest?: Promise<AnimatedSpriteFactory>;
   private readonly ponds = new Set<THREE.Group>();
+  private readonly minimaps = new Map<THREE.Group, MiniMapEntity>();
   private readonly scene: THREE.Scene;
   private readonly assetBaseUrl: string;
   private readonly snowLevel?: WorldContentSignal<number>;
@@ -118,6 +120,10 @@ export class PondManager {
     fishable.SetRespawnTime(FISH_RESPAWN_TIME);
     fishable.OnLoad(saved?.components.fishable);
     (entity.components as { fishable?: Fishable }).fishable = fishable;
+    // pond.lua commonfn: MiniMapEntity:SetIcon("pond"..pondtype..".png"), pondtype "" for the forest pond.
+    const minimap = new MiniMapEntity(model.position);
+    minimap.SetIcon('pond.png');
+    this.minimaps.set(model, minimap);
     this.ponds.add(model);
     this.applyFrozen(model, false);
     this.scene.add(model);
@@ -130,6 +136,8 @@ export class PondManager {
       (model.userData.animationController as SpriteAnimationController).update(dt);
     }
   }
+
+  get miniMapEntities(): MiniMapEntity[] { return [...this.minimaps.values()]; }
 
   /** Frozen ponds drop the `fishable` tag, so the fishing action no longer targets them. */
   get fishTargets(): readonly FishingPondTarget[] { return this.getFishTargets(); }
@@ -160,6 +168,8 @@ export class PondManager {
       (actionEntity(model, POND_ID).components as { fishable?: Fishable }).fishable?.OnRemoveFromEntity();
       model.removeFromParent();
     }
+    for (const minimap of this.minimaps.values()) minimap.dispose();
+    this.minimaps.clear();
     this.ponds.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
   }

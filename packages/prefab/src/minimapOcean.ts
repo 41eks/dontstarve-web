@@ -15,7 +15,7 @@ export interface MinimapOceanData {
 export async function loadMinimapOcean(root: string): Promise<MinimapOceanData> {
   const paper = await loadKtexTexture(`${root.replace(/\/$/, '')}/${oceanMinimap.paper}`);
   return {
-    oceanTileIds: new Set(Object.entries(definitions).filter(([name]) => name.startsWith('OCEAN_')).map(([, tile]) => tile.tileId)),
+    oceanTileIds: new Set(Object.entries(definitions).filter(([, tile]) => 'oceanColours' in tile).map(([, tile]) => tile.tileId)),
     colour: definitions.OCEAN_COASTAL.minimapColour,
     paper: { data: Uint8ClampedArray.from(paper.pixels), width: paper.width, height: paper.height },
     tuning: oceanMinimap.tuning,
