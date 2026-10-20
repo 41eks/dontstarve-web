@@ -44,7 +44,7 @@ it('loads the Wortox build with shared player animations and renders every facin
   await animation.setCarryItem(null);
   animation.start('idle');
   const livingTexture = mesh.material[0].map;
-  expect(livingTexture!.image.width).toBeGreaterThan(0);
+  expect((livingTexture as THREE.DataTexture).image.width).toBeGreaterThan(0);
   await animation.prepareGhost();
   expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/ghost_wortox_build.zip');
   expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/ghost_wortox_build.dyn');
@@ -53,7 +53,7 @@ it('loads the Wortox build with shared player animations and renders every facin
   expect(animation.isGhost).toBe(true);
   expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
   expect(mesh.material[0].map).not.toBe(livingTexture);
-  expect(mesh.material[0].map!.image.width).toBeGreaterThan(0);
+  expect((mesh.material[0].map as THREE.DataTexture).image.width).toBeGreaterThan(0);
   animation.makeAlive();
   for (let frame = 0; frame < 120; frame++) animation.update(1 / 30);
   expect(animation.isGhost).toBe(false);

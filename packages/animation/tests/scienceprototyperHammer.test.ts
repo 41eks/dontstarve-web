@@ -154,7 +154,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     restored.dispose();
     restored = new ResearchLabPlacement(world, () => true);
     const burnt = await restored.spawnFromSave('researchlab3', { ...record,
-      components: { ...record.components, building: { ...record.components.building, burnt: true } } });
+      components: { ...record.components, building: { ...record.components.building!, burnt: true } } });
     builder.OnUpdate();
     expect(burnt.userData.components.prototyper).toBeUndefined();
     expect(actionEntity(burnt, 'researchlab3').hasTag('prototyper')).toBe(false);

@@ -6,7 +6,7 @@ import { PlantDeployment } from '../../prefab/src/plantDeployment';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
-import { createSignal, type SeasonState } from '../../signals/src';
+import { createSignal } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
@@ -62,7 +62,7 @@ function setup() {
   const advance = (seconds: number) => { scheduler.advance(seconds); monkeytails.update(seconds, new THREE.Quaternion()); };
   return { inventory, scene, player, ground, monkeytails, registry, season, rain, scheduler, save, advance,
     setTemperature: (value: number) => { temperature = value; },
-    world: { scene, player, camera, renderer, ground: new THREE.Group() },
+    world: { scene, player, camera, renderer, ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45) },
     dispose: () => { registry.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 

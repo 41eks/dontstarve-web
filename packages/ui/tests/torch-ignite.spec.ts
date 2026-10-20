@@ -114,6 +114,6 @@ test('equipped torch right-click ignites structures and ground materials, closin
   const downloadPromise = page.waitForEvent('download');
   await submit('c_save()');
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('initial-world.json');
+  expect(download.suggestedFilename()).toBe('Cluster_1.zip');
   expect(errors).toEqual([]);
 });

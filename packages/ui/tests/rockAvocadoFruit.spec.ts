@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and grows a natural bush', async ({ page }) => {
@@ -80,7 +80,7 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
   await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => m.userData.prefab === 'rock_avocado_fruit_sprout_sapling'))).toBe(true);
   expect(await count('rock_avocado_fruit_sprout')).toBe(0);
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
   const record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
   expect(record.components.saplingTimer.timers.grow.timeleft).toBeGreaterThan(1400);
   expect(JSON.stringify(saved.players.local.inventory)).toContain('pickaxe');

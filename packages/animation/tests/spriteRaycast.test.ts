@@ -111,7 +111,7 @@ it('uses current frame and shared-frame atlases, preserves earlier hits and rele
     expect(hits[1].object).toBe(mesh);
     expect(textureDisposals).toBe(0);
     // The decoded rows are used in their uploaded orientation; no additional atlas Y reversal.
-    const pixels = opaque.map!.image.data;
+    const pixels = (opaque.map as THREE.DataTexture).image.data!;
     pixels[5 * 4 + 3] = 0;
     ray.ray.origin.x = -.5;
     expect(ray.intersectObject(visual)).toEqual([]);

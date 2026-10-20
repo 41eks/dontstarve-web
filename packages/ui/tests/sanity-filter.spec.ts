@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 test('source vig animation draws red screen edges, follows sanity state and releases its overlay', async ({ page }) => {
@@ -112,7 +112,7 @@ test('game restores saved sanity and synchronizes debug commands, HUD and manual
   const downloadPromise = page.waitForEvent('download');
   await submit('c_save()');
   const download = await downloadPromise;
-  const saved = JSON.parse(await readFile((await download.path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await download.path())!));
   expect(saved.players.local.stats).toEqual({ health: 140, hunger: 90, sanity: 20 });
   await submit('c_setsanity(1)');
   await expect(meter.locator('output')).toHaveText('200');

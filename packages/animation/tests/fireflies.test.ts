@@ -1,3 +1,4 @@
+import { useTestTileMap } from './tileMapFixture';
 import { createPickupInventory } from './pickupFixture';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -11,6 +12,8 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal, type HandEquipment, type ReadonlySignal } from '../../signals/src';
 import { DisposeTileStates, GetTileKeyAtPoint, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { bindTestWorld } from './worldContentFixture';
+
+useTestTileMap();
 
 const cleanups: (() => void)[] = [];
 afterEach(() => { cleanups.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });

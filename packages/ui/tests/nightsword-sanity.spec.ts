@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const modules = Object.fromEntries(['main', 'playerStats'].map(name =>
@@ -34,7 +34,7 @@ test('equipping a nightsword updates the sanity HUD, persists through reload and
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
   expect(saved.players.local.inventory.containers['player:equipment'].slots.find((slot: any) => slot.slotKey === 'hand')
     .item.itemId).toBe('nightsword');
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));

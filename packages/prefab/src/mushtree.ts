@@ -159,7 +159,7 @@ export class MushtreeManager {
     const [sprite, fire] = await Promise.all([
       createSharedArchiveSprite(this.assets, { animationArchive: data.animationArchive, buildArchives: data.buildArchives, bank: data.bank,
         animation: 'idle_loop', loop: true, hiddenSymbols: HIDDEN_SYMBOLS },
-      { name: prefab, colour: this.tint(), instancedAnimations: ['idle_loop'] }),
+      { name: prefab, colour: this.tint(), instancedAnimations: ['idle_loop'], staticBillboard: true }),
       this.fire,
       PreloadSounds('dontstarve/wilson/use_axe_mushroom', 'dontstarve/forest/treefall', 'dontstarve/forest/treeCrumble',
         'dontstarve/cave/mushtree_tall_grow_1', 'dontstarve/cave/mushtree_tall_grow_2', 'dontstarve/cave/mushtree_tall_grow_3',
@@ -407,7 +407,7 @@ export class MushtreeManager {
       const model = sprite.model;
       model.visible = !focus || model.position.distanceToSquared(focus) <= ACTIVE_RADIUS_SQUARED;
       if (!model.visible) continue;
-      model.quaternion.copy(quaternion); sprite.update(dt);
+      sprite.faceCamera(quaternion); sprite.update(dt);
     }
     for (const fx of this.effects) { fx.model.quaternion.copy(quaternion); fx.update(dt); }
     this.fireHost?.update(dt, quaternion);

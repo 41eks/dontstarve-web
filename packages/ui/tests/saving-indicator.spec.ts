@@ -1,8 +1,8 @@
+import { readSaveDownload } from './save-download';
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 
-test('c_save downloads before and after a portal spawn, plays the saving clips and restores the downloaded world', async ({ page }) => {
+test('c_save downloads a cluster ZIP before and after a portal spawn, plays the saving clips and restores its active shard', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -26,7 +26,9 @@ test('c_save downloads before and after a portal spawn, plays the saving clips a
   await page.locator('dst-debug-console input').fill('c_save()');
   const download = page.waitForEvent('download');
   await page.locator('dst-debug-console input').press('Enter');
-  expect((await download).suggestedFilename()).toBe('initial-world.json');
+  const firstDownload = await download;
+  expect(firstDownload.suggestedFilename()).toBe('Cluster_1.zip');
+  const firstSave = JSON.parse(await readSaveDownload(await firstDownload.path()));
   await expect.poll(() => page.evaluate(() => (window as any).savingClips), { timeout: 10_000 })
     .toEqual(['save_pre', 'save_loop', 'save_post']);
   await expect(indicator.locator('.saving-indicator')).toBeHidden({ timeout: 10_000 });
@@ -43,18 +45,19 @@ test('c_save downloads before and after a portal spawn, plays the saving clips a
   }, sceneUrl)).toBe(1);
   const portalDownload = page.waitForEvent('download');
   await command('c_save()');
-  const json = await readFile((await (await portalDownload).path())!, 'utf8');
+  const json = await readSaveDownload((await (await portalDownload).path())!);
   const saved = JSON.parse(json);
+  expect(saved.snapshot.parentId).toBe(firstSave.snapshot.id);
   const portal = saved.world.entities.multiplayer_portal_moonrock[0];
   // Serve the actual downloaded document through the game's normal startup loader.
-  await page.route('**/saves/initial-world.json', (route) => route.fulfill({ contentType: 'application/json', body: json }));
+  await page.route('**/saves/Cluster_1/Caves.json', (route) => route.fulfill({ contentType: 'application/json', body: json }));
   await page.reload();
   await page.evaluate(async (url) => { await import(url); },
     `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`);
   expect(await page.evaluate(async ({ url, id }) => {
     const { scene } = await import(url);
     const model = scene.children.find((model: any) => model.userData.entityId === id);
-    return model?.userData.prefab;
-  }, { url: sceneUrl, id: portal.id })).toBe('multiplayer_portal_moonrock');
+    return { prefab: model?.userData.prefab, position: model?.position.toArray() };
+  }, { url: sceneUrl, id: portal.id })).toEqual({ prefab: 'multiplayer_portal_moonrock', position: portal.transform.position });
   expect(errors).toEqual([]);
 });

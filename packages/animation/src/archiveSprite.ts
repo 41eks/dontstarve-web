@@ -6,6 +6,7 @@ import {
 import { registerSpriteRenderGroup } from './renderOrder';
 import { selectsFacing } from './facing';
 import { InstancedArchiveSprites } from './instancedArchiveSprites';
+import { installMatrixGate } from './matrixGate';
 
 /** Animation/build sources supplied by callers; no prefab or inventory metadata. */
 export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
@@ -35,6 +36,11 @@ export interface ArchiveSpriteOptions {
   colour?: readonly [number, number, number];
   name?: string;
   scale?: number;
+  /**
+   * The model is a stationary camera-facing billboard directly below the scene: its matrices are only recomputed after
+   * `faceCamera()` turns it, a new frame is shown, or `refreshTransform()` is called after it was moved.
+   */
+  staticBillboard?: boolean;
 }
 
 export interface ArchiveSpriteBuild {
@@ -123,6 +129,10 @@ export interface ArchiveSprite {
   setBuildArchive(archive: string): void;
   /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
   setSymbolHidden(symbol: string, hidden: boolean): void;
+  /** Turn towards the camera; with `staticBillboard` the matrices are refreshed only when the rotation differs. */
+  faceCamera(rotation: THREE.Quaternion): void;
+  /** Call after moving a `staticBillboard` sprite's model; the position assigned right after creation needs no call. */
+  refreshTransform(): void;
   /** Private geometry/material copies belong to the entity; shared frames and source materials to its assets. */
   dispose(): void;
 }
@@ -222,6 +232,7 @@ function constructArchiveSprite(
   visual.scale.set(scale, -scale, scale);
   model.add(visual);
   registerSpriteRenderGroup(model, visual);
+  const matrixGate = options.staticBillboard ? installMatrixGate(model, visual) : undefined;
   const renderer = new SpriteFrameRenderer(visual);
   const instances = options.instancedAnimations?.length
     ? assets.instancedSprites.retain(model, visual, options.colour, options.opacity ?? definition.multColour?.[3] ?? 1, options.foot) : undefined;
@@ -259,6 +270,7 @@ function constructArchiveSprite(
     const index = loop ? rawFrame % animation.frames.length
       : Math.min(rawFrame, animation.frames.length - 1);
     if (index === previousFrame) return;
+    matrixGate?.markDirty();
     // Preserve genuinely empty source frames rather than inventing replacement art.
     if (sharedAnimations === 'all' || sharedAnimations.has(animation.name)) {
       sharedAppearance ||= appearanceKey();
@@ -293,6 +305,7 @@ function constructArchiveSprite(
     update(0);
   };
   try { update(0); } catch (error) {
+    matrixGate?.dispose();
     instances?.dispose();
     renderer.dispose();
     ownedMaterials.forEach(material => material.dispose());
@@ -313,6 +326,12 @@ function constructArchiveSprite(
       if (animation.name !== name || !loop) selectAnimation(name, true);
     },
     playOnce(name: string, complete?: () => void) { selectAnimation(name, false, complete); },
+    faceCamera(rotation: THREE.Quaternion) {
+      if (model.quaternion.equals(rotation)) return;
+      model.quaternion.copy(rotation);
+      matrixGate?.markDirty();
+    },
+    refreshTransform() { matrixGate?.markDirty(); },
     setPaused(value: boolean) {
       if (disposed) return;
       paused = value;
@@ -356,6 +375,7 @@ function constructArchiveSprite(
       if (disposed) return;
       disposed = true;
       instances?.dispose();
+      matrixGate?.dispose();
       renderer.dispose();
       ownedMaterials.forEach(material => material.dispose());
       model.removeFromParent();

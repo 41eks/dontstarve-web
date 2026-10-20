@@ -4,9 +4,11 @@
 
 [worldContent.ts](../packages/signals/src/worldContent.ts) 已提供 `GetTileStateAtPoint(tile, radius = 10)`，从当前绑定世界解析 tile 查询服务，`tile` 是实体自己的 tile key（`ReadonlySignal<number>`），返回 `Memo<boolean> | undefined`，调用方无需传入玩家位置源。实体用 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `TileTracker` 持有私有 tile key：构造时传入读取当前位置的函数（如 `() => transform.position`），用 `GetTileKeyAtPoint` 计算 key（网格外或非有限坐标为 `INVALID_TILE_KEY = -1`）。只有跨 tile 时 key 才变化，同一 tile 内移动不通知下游 memo，也不分配新向量；位置的权威数据仍在实体上，key 在刷新时通过读取函数取当前向量，所以原地修改和整个替换位置引用都能被读到，但只有刷新（见下）发生时才会更新。实体每次给位置赋值后调用 `tracker.moved()`，累计 60 次（可通过构造参数 `interval` 调整）才刷新一次 key，计数由实体自己的 tracker 持有；休眠实体的 `update` 被跳过，位置不赋值就不计数。掉落、传送等一次性位置跳变用 `sync()` 立即刷新并重新计数。消费者通过 `getWatchWorldContent(key, cleanup, { tile })` 传入 `tracker.tile` 完成门控，清理时释放 memo。世界初始化时通过 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `GetTileStateAtPoint(playerPosition)` 柯里化绑定源，将返回的查询函数注入 `WorldContentEnvironment.tickingarea`；`world.tickingarea(tile, radius)` 始终查询所属世界，全局导出查询当前绑定世界。signals 包只定义服务协议和解析入口，网格计算及缓存仍由 tileManager 管理。
 
-当前 `WorldState` 从自己的 `playerpositions` 快照纯派生首个玩家位置；没有玩家时为 `undefined`，所有 tile inactive。位置沿用现有初始化和每 60 活动帧采样，不改变更新频率或增加多人并集。范围采用下述方形规则，半径须为非负整数；目标初次查询时超出 84×84 网格或 X/Z 无效则返回 `undefined`（该实体之后不会被门控，即使移入网格；会从网格外生成的移动实体需要自行处理）；已有 memo 的实体移出网格时返回 `false`。玩家 X/Z 无效时发布 inactive。缓存按世界绑定的位置源隔离，同一世界、同一个实体 tile signal 对象和半径的查询返回同一个 memo；两个实体即使当前 tile key 数值相同，也有独立 memo，以便以后分别跨格。各实体共享当前格子的活动 signal；不同世界或半径独立。
+世界创建时先调用 `BindTileMapSize(world.map.generator.options.size)` 注入世界坐标尺寸。每格 12 单位，有符号地皮范围为 `floor(-size / 24)` 到 `ceil(size / 24) - 1`，key 偏移和网格边长从该范围推导，包含边缘不足整格的地皮；坐标有效范围仍严格为 `[-size / 2, size / 2)`。`TileTracker` 和绑定的查询保留各自世界的配置；世界释放时解除尺寸绑定，旧世界释放不会解除新世界绑定。独立组件场景若需要活动查询，也须先注入尺寸；未绑定时坐标 key 无效。
 
-每个玩家位置源仅创建一个私有 `watchSignal` 桥接和一个普通 `createEffect` 管理器。每个已使用的半径拥有独立的 84×84 `titlestates: Signal<boolean>[][]`。玩家跨 tile 后，先遍历旧活动方形区域，将不属于新区域的格子设为 inactive；重叠区域保持原值。随后从新玩家格开始，按方形螺旋逐圈激活新区域，超过活动半径立即停止，仅写入变化的 signal。整个过程用 `batch()` 一起提交，先关闭旧区域再激活新区域，传送也不会遗留旧 active 格。
+当前 `WorldState` 从自己的 `playerpositions` 快照纯派生首个玩家位置；没有玩家时为 `undefined`，所有 tile inactive。位置沿用现有初始化和每 60 活动帧采样，不改变更新频率或增加多人并集。范围采用下述方形规则，半径须为非负整数；目标初次查询时超出存档地图范围或 X/Z 无效则返回 `undefined`（该实体之后不会被门控，即使移入网格；会从网格外生成的移动实体需要自行处理）；已有 memo 的实体移出网格时返回 `false`。玩家 X/Z 无效时发布 inactive。缓存按世界绑定的位置源隔离，同一世界、同一个实体 tile signal 对象和半径的查询返回同一个 memo；两个实体即使当前 tile key 数值相同，也有独立 memo，以便以后分别跨格。各实体共享当前格子的活动 signal；不同世界或半径独立。
+
+每个玩家位置源仅创建一个私有 `watchSignal` 桥接和一个普通 `createEffect` 管理器。每个已使用的半径拥有按注入地图尺寸创建的独立 `titlestates: Signal<boolean>[][]`。玩家跨 tile 后，先遍历旧活动方形区域，将不属于新区域的格子设为 inactive；重叠区域保持原值。随后从新玩家格开始，按方形螺旋逐圈激活新区域，超过活动半径立即停止，仅写入变化的 signal。整个过程用 `batch()` 一起提交，先关闭旧区域再激活新区域，传送也不会遗留旧 active 格。
 
 第 0 圈为玩家格；其余各圈从负 X、负 Z 的角开始，依次沿 +X、+Z、−X、−Z 遍历四边，角点不重复。地图边缘裁剪每条边，玩家在地图外时跳过完全不相交的内圈，不因单个越界格终止遍历。玩家坐标无效时只关闭旧区域，没有全图兜底遍历。
 
@@ -16,7 +18,7 @@
 
 [hotspring.ts](../packages/prefab/src/hotspring.ts) 先接入显隐与碰撞切换：场景向管理器注入所属世界的查询函数，每个温泉用私有 `watchSignal` 监听脚点所属 tile，并通过普通 effect 更新活动集合、场景模型和物理体。inactive 时停止该温泉动画更新，保留原模型、逻辑记录、heater、bathbombable 和存档状态；返回范围时恢复同一实例，不重播生成或投入沐浴球动作。此阶段不释放休眠模型资源，不实现 Lua 的蒸汽 FX 分支。单个温泉永久移除时清理自己的监听，不释放共享 memo，也不影响同 tile 其他温泉。没有注入 tile 服务或查询返回 `undefined`（包括超出网格）时回退为 active，保证模型、碰撞体和动画正常工作；返回值为有效 memo 且状态为 `false` 时仍按 inactive 处理。
 
-[dstLocalLighting.ts](../src/dstLocalLighting.ts) 由场景注入所属世界的 `tickingarea`，GPU 光照贴图与 CPU `sampleLightLevel()` 共用活动过滤。按光源的世界坐标查找 tile，同格所有光源共用一个私有 `watchSignal` 活动视图；移动或带父节点的子光源按当前世界位置查新格子。区域外或 84×84 网格外的光源跳过叠加、衰减计算及光照贴图范围扩张，但不删除光源设置；玩家返回后恢复贡献。按 tile 的查询缓存保留到光照系统显式释放，同时清理私有监听和对应 memo；没有注入查询的独立场景保持不门控。
+[dstLocalLighting.ts](../src/dstLocalLighting.ts) 由场景注入所属世界的 `tickingarea`，GPU 光照贴图与 CPU `sampleLightLevel()` 共用活动过滤。按光源的世界坐标查找 tile，同格所有光源共用一个私有 `watchSignal` 活动视图；移动或带父节点的子光源按当前世界位置查新格子。区域外或存档地图范围外的光源跳过叠加、衰减计算及光照贴图范围扩张，但不删除光源设置；玩家返回后恢复贡献。按 tile 的查询缓存保留到光照系统显式释放，同时清理私有监听和对应 memo；没有注入查询的独立场景保持不门控。
 
 [fireflies.ts](../packages/prefab/src/fireflies.ts) 从自身私有的活动区域视图纯派生 `active`；表现层另建 `watchSignal`，用普通 effect 创建或销毁 `createSharedArchiveSprite()` 实体。`swarm_loop` 共享预合成图集和 `InstancedMesh` 批次，`swarm_pre` / `swarm_pst` 使用同一 `ArchiveSpriteAssets` 的共享帧缓存。inactive 时退出批次、释放实体 visual，只保留逻辑控制器和轻量原点，原有渐变值、工作状态、逻辑 timer 和实体身份保留；共享图集保留到资产所有者释放。再次 active 时异步重建 visual 并绑定当前动画，不重新执行掉落、消耗或实体生成；若加载期间再次休眠或移除，释放过期结果。昼夜和玩家位置继续由区域门控，休眠期间不跟随世界更新；活动状态变为 true 时，显隐 effect 重新读取同步后的昼夜，白天直接清除旧亮度、淡变及延迟检查，隐藏 visual 并禁用 NET，不等待下一帧动画或 timer。白天丢弃和活动区内进入白天也直接隐藏。首次创建会预备好 visual，确保成功落地后可立即参与捕获；绑定时已 inactive 的实体立即释放预备 visual。`GroundItemVisual.active` 表示资源已加载，`GroundItemManager` 为每条记录创建私有桥接，通过 effect 更新活动集合和场景归属；动画更新、交互候选、邻居查询和 billboard 排序只遍历活动集合，保存仍导出全部逻辑记录。拾取、永久移除、换肤替换和场景释放时解除桥接并释放资源；没有活动区域服务时照常加载。
 
@@ -264,3 +266,38 @@ for (const entity of inactiveEntities) {
 - 腐烂跨冷热区间使用累计量之差；重复早晨／唤醒结算不重复消耗，暂停时间被排除，改变持有者和湿润状态前按旧条件结清；读档不重放存档前的累计量。
 
 tile 差集、计时与订阅规则用单元测试验证；浏览器保留少量实际 WebGL／音频、输入及完整保存流程。性能验证分别观察每帧活动实体数、跨 tile 的生命周期转换数量及模型创建／释放次数，不以是否使用 memo 作为性能结论。
+
+## 首次遍历地图的卡顿：新外观的一次性准备
+
+现象：玩家（含灵魂跳跃传送）第一次走到某片区域时卡顿，再次经过已走过的区域不卡。**这是依据代码和该现象做出的推断，尚未用 Performance 面板确认**；确认前不要把它当作已证实的结论，也不要据此调整 tickingarea 的信号结构。
+
+### 推断的原因
+
+实体进入活动范围时，模型和逻辑的创建本身很轻，重的是实例化渲染对每个"动画 × 外观"组合只做一次、但在渲染帧内同步完成的准备工作，见 [instancedArchiveSprites.ts](../packages/animation/src/instancedArchiveSprites.ts)：
+
+1. **解析整段动画。** `show` 在某个外观第一次被使用时，对该动画的**所有帧**调用 `resolve()`，为每帧每个零件匹配贴图和材质。
+2. **CPU 上合成图集。** `render` 在该外观第一次出现在画面里时同步调用 `composeResolvedRgbaSpriteAtlases`，把整段动画所有帧合成为图集。这是像素级合成，是其中最重的一步。
+3. **首次上传和编译。** 新图集第一次绘制时上传显存，同时创建新的 `InstancedMesh` 批次和材质，可能触发着色器程序编译。
+4. **按需下载资源。** `preloadSharedArchiveSprite` 对每种 prefab 的 zip 惰性加载，首次 `spawn` 才下载和解析。
+
+现有的 `prewarm`（`InstancedArchiveSprites.prewarm`、[prewarmScene.ts](../src/prewarmScene.ts)）只在加载界面里处理当时已经存在的实体，之后第一次遇到的新外观没有人提前处理，所以这些工作落在玩家第一次到达新区域的那一帧。同一外观再次出现时命中 `appearances` 缓存，不再重复。
+
+外观缓存键由 build、皮肤、符号覆盖和隐藏符号决定（`appearanceKey`），不包含单实体的颜色；因此重复出现的外观开销只发生一次，但每个新的树阶段、动画片段或皮肤组合都各算一次。
+
+### 与 tickingarea 响应的关系
+
+跨 tile 时的网格写入和 memo 重算（见"玩家跨 tile 时发布变化"）与上述准备工作发生在同一时刻，但两者规模不同：网格每次最多写入 `2 × (2R + 1)²` 个格子，而一个外观的合成按整段动画的帧数计。在拿到 Performance 数据之前，不能断定哪一部分占主导。
+
+### 如何确认
+
+1. 在 Performance 面板录制首次走过新区域的一段，在 Bottom-Up 里查看自身耗时：`composeResolvedRgbaSpriteAtlases`、canvas 的 `drawImage`／`putImageData`、`texImage2D`、`compileShader`／`linkProgram`、`resolveSprites`。
+2. 查看 Network 面板，卡顿时是否有新的 `.zip` 请求。
+3. 用 `?tileperf`（见 README 调试说明）对照：`write` 与订阅者耗时都小而长任务很大，则指向上述准备工作；再次经过同一区域应当不再出现。
+4. 再走一次已走过的区域，确认不卡。
+
+### 候选缓解方向（未实施）
+
+- 创建 sprite creator 之后，按其 `instancedAnimations` 预先解析并合成对应外观，随后初始化纹理；分帧执行，沿用 `prewarmScene.ts` 的每帧预算（8 ms）。
+- 玩家接近尚未见过的 prefab 种类时，在它进入视野之前触发上述预合成，而不是等到第一次渲染。
+- 世界加载时预热存档中出现过的 prefab 种类，代价是加载时间变长。
+- 激活回调里的重活（创建 sprite、加物理体）可用游戏时间调度器做按实体确定性的随机延迟摊薄；轻量的标签与状态更新保持同步，active → inactive 不延迟。

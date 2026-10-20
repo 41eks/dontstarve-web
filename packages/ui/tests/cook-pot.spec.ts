@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
@@ -33,7 +33,7 @@ test('cooks, reloads and harvests food with player input, preserving the empty p
   });
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   await page.goto('/tests/dst-lighting.html'); await prepare();
   await submit('c_spawn("cookpot")');

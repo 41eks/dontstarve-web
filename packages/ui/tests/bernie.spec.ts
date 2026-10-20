@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const moduleUrl = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url))}`;
@@ -41,7 +41,7 @@ test('giving, dropping and spawning Bernie follows player sanity and saves canon
   await page.screenshot({ path: '/tmp/dontstarve-bernie-big.png' });
   const downloadPromise = page.waitForEvent('download');
   await submit('c_save()');
-  const saved = JSON.parse(await readFile((await (await downloadPromise).path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await (await downloadPromise).path())!));
   const bernies = saved.world.entities.ground_item.filter((record: any) => record.components.stack.itemId === 'bernie_inactive');
   expect(bernies).toHaveLength(2);
   expect(bernies.map((record: any) => record.components.stack.count)).toEqual([1, 1]);

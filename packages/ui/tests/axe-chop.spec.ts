@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
@@ -28,7 +28,7 @@ test('chops a moon tree, reloads its stump, and digs it with a shovel, preservin
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const treeAnimation = () => page.evaluate(() => {
     const forest = (window as any).chopGame.scene.children.find((model: any) => model.name === 'MoonTreeForest');

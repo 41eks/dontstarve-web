@@ -177,7 +177,7 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
 it('charges through three source stages, restores the remaining timers and morphs a skinned staff at full durability', async () => {
   const scheduler = new GameTimeScheduler();
   const { moon, getWatchWorldContent } = moonWorld(scheduler, false);
-  const { placement, world, model } = await createMoonbase({ getWatchWorldContent, scheduler });
+  const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
   model.userData.components.repairable.Repair(rock, () => true);
   scheduler.advance(0);

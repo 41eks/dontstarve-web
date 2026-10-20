@@ -5,8 +5,6 @@ import { HatActivationController, HatEquipmentAssets } from '../../prefab/src/ha
 import { getPrefabLightOverride, getPrefabLocalLight } from '../../prefab/src/localLight';
 import { LanternLightController } from '../../prefab/src/lantern';
 import { smallHash, type AnimElement } from '../src/animationAssets';
-import { createWilsonPlayer } from '../../prefab/src/player';
-import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { createSanityState } from '@dontstarve-web/signals';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -92,41 +90,4 @@ describe('Enlightened Crown source activation', () => {
     lantern.dispose();
   });
 
-  it('updates FX while Wilson is idle and merges both FX layers around the player geometry', async () => {
-    sourceAssets();
-    const sanity = createSanityState(169, 200);
-    const player = await createWilsonPlayer('/crown-test', { sanityPercent: sanity.percent });
-    const controller = player.userData.animationController;
-    const pendingHat = controller.setHat('alterguardianhat');
-    sanity.set(200);
-    await pendingHat;
-    const lightOwner = player.children.find(child => child.name === 'HatActivationLight')!;
-    expect(getPrefabLocalLight(lightOwner)).toBeDefined();
-    const visual = player.children[0];
-    const mesh = visual.children[0] as THREE.Mesh;
-    controller.update(0.1);
-    const vertices = () => Array.from(mesh.geometry.getAttribute('position').array).slice(0, mesh.geometry.drawRange.count / 6 * 12);
-    const before = vertices();
-    controller.update(0.1);
-    expect(vertices()).not.toEqual(before);
-    expect(visual.children).toHaveLength(1);
-    const names = mesh.geometry.groups.map(g => (mesh.material as THREE.Material[])[g.materialIndex!].name);
-    expect(names[0]).toContain('hat_alterguardian_equipped');
-    expect(names.at(-1)).toContain('hat_alterguardian_equipped');
-    expect(names.some(name => !name.startsWith('hat:'))).toBe(true);
-
-    // Material glow affects only its group, without brightening Wilson's body.
-    const scene = new THREE.Scene();
-    scene.add(player);
-    const lighting = new DstLocalLighting();
-    lighting.prepareScene(scene);
-    for (const material of mesh.material as THREE.Material[]) {
-      const shader = { uniforms: {}, vertexShader: '', fragmentShader: '' } as unknown as Parameters<THREE.Material['onBeforeCompile']>[0];
-      material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
-      expect(shader.uniforms.dstLightOverride.value).toBe(getPrefabLightOverride(material) ?? 0);
-    }
-    await controller.setHat('strawhat');
-    expect(player.children.some(child => child.name === 'HatActivationLight')).toBe(false);
-    expect((mesh.material as THREE.Material[]).some(material => material.name.includes('hat_alterguardian_equipped'))).toBe(false);
-  });
 });

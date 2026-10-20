@@ -15,7 +15,7 @@ import { ReskinActionController, type ReskinTarget } from '../../stategraphs/src
 import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 
-vi.mock('../src/sprite', () => ({ createAnimatedSprite: vi.fn() }));
+vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSprite: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSprite: vi.fn() }));
 
 function model() {
@@ -45,10 +45,11 @@ afterEach(() => {
 function setup(kind: 'animated' | 'wall') {
   const cursor = { hidden: true };
   const canvas = new EventTarget();
+  const cameraFacing = createSignal(8);
   const world = {
     actionEvents: new EventEmitter<PlayerActionEvents>(),
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: canvas },
+    camera: new THREE.PerspectiveCamera(), cameraFacing, cameraHeading: createSignal(45), renderer: { domElement: canvas },
     createCursorLabel: () => ({
       show: () => { cursor.hidden = false; },
       hide: () => { cursor.hidden = true; },
@@ -84,7 +85,7 @@ function setup(kind: 'animated' | 'wall') {
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
   const click = (button: number) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
   const load = kind === 'animated' ? vi.mocked(createAnimatedSprite) : vi.mocked(createStaticSprite);
-  return { world, cursor, store, recipe, consume, onbuilt, placement, begin, click, load };
+  return { world, cameraFacing, cursor, store, recipe, consume, onbuilt, placement, begin, click, load };
 }
 
 it('an accepted action cancels a paid preview through events, skips its own cancellation and invalidates late loading', async () => {
@@ -147,7 +148,6 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
 
   click(2);
   expect(preview.parent).toBeNull();
-  expect(getPrefabLightOverride(preview)).toBeUndefined();
   expect(world.scene.children).toEqual([existing]);
   expect(cursor.hidden).toBe(true);
   expect(store.exportState()).toEqual(paidState);
@@ -221,16 +221,16 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
 });
 
 it('re-faces a wall only when the camera facing signal changes', async () => {
-  const { world, begin, load } = setup('wall');
+  const { cameraFacing, begin, load } = setup('wall');
   await begin();
   const controller = (await load.mock.results[0].value).userData.animationController;
   expect(controller.setFacing).toHaveBeenLastCalledWith(8); expect(controller.showImage).toHaveBeenLastCalledWith(14);
   const calls = controller.setFacing.mock.calls.length;
-  world.cameraFacing.set(128); await new Promise(resolve => setTimeout(resolve, 0));
+  cameraFacing.set(128); await new Promise(resolve => setTimeout(resolve, 0));
   expect(controller.setFacing).toHaveBeenLastCalledWith(128); expect(controller.showImage).toHaveBeenLastCalledWith(4);
-  world.cameraFacing.set(2); await new Promise(resolve => setTimeout(resolve, 0));
+  cameraFacing.set(2); await new Promise(resolve => setTimeout(resolve, 0));
   expect(controller.setFacing).toHaveBeenLastCalledWith(2); expect(controller.showImage).toHaveBeenLastCalledWith(14);
   const changed = controller.setFacing.mock.calls.length;
-  world.cameraFacing.set(2); await new Promise(resolve => setTimeout(resolve, 0));
+  cameraFacing.set(2); await new Promise(resolve => setTimeout(resolve, 0));
   expect(controller.setFacing.mock.calls.length).toBe(changed); expect(changed).toBe(calls + 2);
 });

@@ -50,7 +50,7 @@ it('loads the direct-path white road noise and the vault terrain independently o
     const assets = await loadGroundTileAssets('/dst/data', name);
     try {
       expect(assets.material.map!.name).toBe(path);
-      expect(assets.material.map!.image.width).toBeGreaterThan(0);
+      expect((assets.material.map as THREE.DataTexture).image.width).toBeGreaterThan(0);
       expect(assets.elements.size).toBe(48);
       expect(assets.material.depthWrite).toBe(false);
     } finally { assets.material.dispose(); }

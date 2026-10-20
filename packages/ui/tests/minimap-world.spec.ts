@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -87,7 +87,7 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
   await expect.poll(() => page.evaluate(() => (window as any).worldIcons.entities().some((icon: any) => icon.icon === 'backpack.png'))).toBe(true);
   const download = page.waitForEvent('download');
   await command('c_save()');
-  saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  saved = JSON.parse(await readSaveDownload((await (await download).path())!));
   const bag = saved.world.entities.ground_item.find((record: any) => record.id === identities.backpackId);
   expect(bag.transform.position).toEqual([36, 0, -24]);
   expect(bag.components.stack).toMatchObject({ itemId: 'backpack', count: 1 });

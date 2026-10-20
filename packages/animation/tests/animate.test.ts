@@ -41,10 +41,10 @@ it('starts on a fresh frame, resolves readiness after exactly one draw and exclu
   frame();
   await loop.ready;
   expect(view.render).toHaveBeenCalledOnce();
-  expect(updates).toHaveBeenLastCalledWith(0);
+  expect(updates).toHaveBeenLastCalledWith(0, 0);
   now += 100;
   frame();
-  expect(updates).toHaveBeenLastCalledWith(.1);
+  expect(updates).toHaveBeenLastCalledWith(.1, .1);
   expect(view.render).toHaveBeenCalledTimes(2);
   loop.stop();
   expect(frames.size).toBe(0);

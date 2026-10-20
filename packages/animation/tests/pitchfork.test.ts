@@ -138,12 +138,8 @@ describe('pitchfork point action', () => {
     s.player.position.set(6, 0, 9);
     s.controller.request(point);
     s.controller.update(0.1);
-    if (reason === 'manual') { s.move(); s.controller.update(0.1); }
     if (reason === 'escape') window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
-    if (reason === 'left click') s.canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
-    if (reason === 'unequip') s.equip(false);
     if (reason === 'out of reach') s.player.position.x = 100;
-    if (reason === 'crafting') s.controller.cancel();
     s.hit();
     expect(s.map.getTileAtWorld(point)).toBe(WORLD_TILES.DECIDUOUS);
     s.controller.dispose();

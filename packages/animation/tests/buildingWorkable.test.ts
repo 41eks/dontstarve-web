@@ -1,3 +1,4 @@
+import { createSignal } from '../../signals/src';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -14,8 +15,8 @@ it('restores container contents, drops their live entities at the building foot 
   const inventory = createPickupInventory();
   const scene = new THREE.Scene(), dropLoot = vi.fn(), dropped: unknown[] = [];
   const stop = inventory.subscribeDropped(entity => dropped.push(entity));
-  const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-    renderer: { domElement: new EventTarget() }, dropLoot,
+  const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
+    renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container, saved) => inventory.registerContainer(id, container, saved),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
   } as WorldContext;

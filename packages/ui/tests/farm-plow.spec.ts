@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const url = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url))}`;
@@ -69,7 +69,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await page.screenshot({ path: '/tmp/dontstarve-farm-plow-drilling.png' });
   const duringDownload = page.waitForEvent('download');
   await submit('c_save()');
-  const drillingSave = JSON.parse(await readFile((await (await duringDownload).path())!, 'utf8'));
+  const drillingSave = JSON.parse(await readSaveDownload((await (await duringDownload).path())!));
   expect(drillingSave.world.entities.farm_plow[0].components.farmPlow).toMatchObject({ phase: 'drill_loop', deployItem: { ...originalItem, remainingUses: 3 } });
   expect(drillingSave.world.entities.farm_plow[0].components.farmPlow.remainingSeconds).toBeLessThan(15);
   await page.route('**/saves/initial-world.json', (route) => route.fulfill({ json: drillingSave }));
@@ -110,7 +110,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     .find((slot: any) => slot.item?.itemId === 'farm_plow_item').item)).toEqual({ ...originalItem, remainingUses: 3 });
   const afterDownload = page.waitForEvent('download');
   await submit('c_save()');
-  const finishedSave = JSON.parse(await readFile((await (await afterDownload).path())!, 'utf8'));
+  const finishedSave = JSON.parse(await readSaveDownload((await (await afterDownload).path())!));
   expect(finishedSave.world.entities.farm_plow).toEqual([]);
   expect(finishedSave.world.entities.farm_soil_debris.length).toBeGreaterThan(0);
   expect(finishedSave.world.map.tiles.some((tile: any) => tile.tileId === 47)).toBe(true);
@@ -153,7 +153,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await expect(cursorSeed.locator('.slot-drag-preview__count')).toHaveText('');
   const plantedDownload = page.waitForEvent('download');
   await submit('c_save()');
-  const plantedSave = JSON.parse(await readFile((await (await plantedDownload).path())!, 'utf8'));
+  const plantedSave = JSON.parse(await readSaveDownload((await (await plantedDownload).path())!));
   expect(plantedSave.world.entities.farm_soil.some((record: any) => record.id === hole.id)).toBe(false);
   expect(plantedSave.world.entities.farm_plant_randomseed[0].transform.position).toEqual(hole.position);
   expect(plantedSave.players.local.inventory.containers['player:inventory'].slots
@@ -250,7 +250,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     .filter((model: any) => ['GroundItem:farm_hoe', 'GroundItem:golden_farm_hoe'].includes(model.name)).length)).toBe(2);
   const hoeDownload = page.waitForEvent('download');
   await submit('c_save()');
-  const hoeSave = JSON.parse(await readFile((await (await hoeDownload).path())!, 'utf8'));
+  const hoeSave = JSON.parse(await readSaveDownload((await (await hoeDownload).path())!));
   expect(hoeSave.world.entities.farm_plant_randomseed).toEqual(plantedSave.world.entities.farm_plant_randomseed);
   expect(hoeSave.players.local.inventory.containers['player:equipment'].slots
     .find((slot: any) => slot.slotKey === 'hand').item.skinId).toBe('golden_farmhoe_garden');

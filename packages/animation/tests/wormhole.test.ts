@@ -112,7 +112,7 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
         expect(skin.buildPackage.build.name).toBe(skinId);
         const mesh = model.children[0].children[0] as THREE.Mesh;
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        expect(materials.some((material) => (material as THREE.MeshBasicMaterial).map?.image.data
+        expect(materials.some((material) => ((material as THREE.MeshBasicMaterial).map as THREE.DataTexture | null)?.image.data
           === skin.buildPackage.atlases[0].pixels)).toBe(true);
         const restored = await manager.spawn(new THREE.Vector3(...saved.transform.position), saved);
         expect(restored.userData.skinId).toBe(skinId);

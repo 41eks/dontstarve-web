@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player', 'scene'].map(name =>
@@ -30,7 +30,7 @@ test('spawns native lava and independent scorched rocks, restores their layout a
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const movePlayer = (x: number, z: number) => page.evaluate(({ x, z }) => {
     const { player, playerBody } = (window as any).lavaGame;

@@ -1,3 +1,4 @@
+import { testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -13,7 +14,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('freezes above snowlevel 0.02, thaws below it, applies to later ponds and stops listening on dispose', async () => {
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-  const world = createWorldState({ elapsedSeconds: 0, systems: {} }), scene = new THREE.Scene();
+  const world = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} }), scene = new THREE.Scene();
   const snow = { set: (snowlevel: number) => world.weather.OnLoad({ ...world.weather.OnSave(), snowlevel }) };
   const ponds = new PondManager(scene, '/dst/data/anim', new GameTimeScheduler(), world.getWatchWorldContent);
   try {

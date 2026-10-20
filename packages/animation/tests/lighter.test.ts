@@ -75,7 +75,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
   const animation = { stategraph: graph, cancelEmote() {}, setFacing: vi.fn() } as unknown as ActionAnimationController;
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
+  const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const controller = new LighterActionController(world, animation, locomotor, hand);
   const started = vi.fn(); player.addEventListener('onstartedfire' as never, started);
@@ -105,7 +105,7 @@ function structureFixture() {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory(), scene = new THREE.Scene(), dropLoot = vi.fn();
-  const world: WorldContext = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
+  const world: WorldContext = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container, saved) => inventory.registerContainer(id, container, saved),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
@@ -118,7 +118,7 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
   const { inventory, scene, placement } = structureFixture();
   const restoredInventory = createPickupInventory();
   const restoredPlacement = new AnimatedBuildingPlacement({ scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
+    ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
     registerContainer: (id, container, saved) => restoredInventory.registerContainer(id, container, saved),
     unregisterContainer: (id, container) => restoredInventory.unregisterContainer(id, container),
   } as WorldContext, { treasurechest: TREASURE_CHEST_DEFINITION }, () => false);

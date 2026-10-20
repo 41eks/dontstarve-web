@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { useInteractionSave } from './interactionSave';
@@ -94,7 +94,7 @@ for (const harvest of [
       detail: { command: 'c_save()' },
     })));
     const download = await downloadPromise;
-    const json = await readFile((await download.path())!, 'utf8');
+    const json = await readSaveDownload((await download.path())!);
     const restored = await page.evaluate(async ({ json, urls, id, harvest }) => {
       const { deserializeSave } = await import(urls['save/deserialize']);
       const { SAVE_CATALOG } = await import(urls['save/catalog']);

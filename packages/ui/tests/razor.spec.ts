@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
@@ -27,7 +27,7 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const beefalo = () => page.evaluate(() => {
     const model = (window as any).razorGame.scene.children.find((model: any) => model.userData.prefab === 'beefalo');

@@ -8,7 +8,6 @@ import { RockAvocadoBushManager } from '../../prefab/src/rock_avocado_bush';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
-import { createSignal, type SeasonState } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -35,7 +34,7 @@ function setup() {
   const { season, snowLevel } = bindTestWorld(scheduler);
   const bushes = new RockAvocadoBushManager(scene, '/dst/data/anim', { physics,
     prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
-  const sprouts = new RockAvocadoSaplingManager(scene, { scheduler, season, bushes,
+  const sprouts = new RockAvocadoSaplingManager(scene, { scheduler, bushes,
     prepareSpawn: definition => ground.prepareSpawn(definition) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {

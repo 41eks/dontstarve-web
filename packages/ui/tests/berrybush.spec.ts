@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 test('reskins and digs berrybush, replants the skinned root and restores its fertilized state from a save', async ({ page }) => {
@@ -107,7 +107,7 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
   }, root.id)).toBe('stopped'); // Initial world is winter: fertilizer cannot bypass the winter pause.
 
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
   const plant = saved.world.entities.berrybush.find((record: any) => record.id === root.id);
   expect(plant.transform.position).toEqual(root.position);
   expect(plant.components.pickable).toMatchObject({ picked: true, transplanted: true, paused: true });

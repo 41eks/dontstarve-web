@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { useInteractionSave } from './interactionSave';
@@ -61,7 +61,7 @@ test('game c_give uses real spellcaster equipment, blocks busy world input and e
     detail: { command: 'c_save()' },
   })));
   const download = await downloadPromise;
-  const json = await readFile((await download.path())!, 'utf8');
+  const json = await readSaveDownload((await download.path())!);
   const result = await page.evaluate(async ({ json, urls }) => {
     const { deserializeSave } = await import(urls['save/deserialize']);
     const { SAVE_CATALOG } = await import(urls['save/catalog']);

@@ -582,7 +582,7 @@ export async function createSceneEntities(
 
   function registerBulbPlants(registry: EntityRegistry, prefabId: 'bulb_plant', worldState: SceneWorldState) {
     const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      scheduler, tickingarea: worldState.tickingarea,
+      scheduler, tickingarea: worldState.tickingarea, getWatchWorldContent: worldState.getWatchWorldContent,
       getLightLevel: (model) => dstLighting.sampleLightLevel(model.position, model),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {

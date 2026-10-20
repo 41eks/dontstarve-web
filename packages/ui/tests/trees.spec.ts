@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
@@ -29,7 +29,7 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download', { timeout: 15_000 }); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const treeAnimation = () => page.evaluate(() => (window as any).deciduoustreeGame.scene.children
     .find((model: any) => model.name === 'DeciduousForest')?.children.find((model: any) => model.userData.prefab === 'deciduoustree')

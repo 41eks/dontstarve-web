@@ -1,3 +1,4 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
@@ -91,7 +92,7 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', {
     detail: { command: 'c_save()' },
   })));
-  const saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
   expect(saved.world.prefab).toBe('cave');
   expect(saved.world.map.defaultTileId).toBe(1);
   expect(saved.world.map.tiles).toHaveLength(4309);
@@ -116,7 +117,7 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', {
     detail: { command: 'c_save()' },
   })));
-  const reexported = JSON.parse(await readFile((await (await secondDownload).path())!, 'utf8'));
+  const reexported = JSON.parse(await readSaveDownload((await (await secondDownload).path())!));
   for (const prefab of ['pighead', 'archive_moon_statue', 'rock1', ...staticIds]) {
     expect(reexported.world.entities[prefab]).toEqual(saved.world.entities[prefab]);
   }

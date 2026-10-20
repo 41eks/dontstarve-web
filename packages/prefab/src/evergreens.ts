@@ -92,7 +92,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     // evergreens.lua builds.normal: one bank for every stage; clips are split across two anim archives.
     preloadSharedArchiveSprite(assets, { animationArchive: 'evergreen_short_normal.zip', extraAnimationArchives: ['evergreen_tall_old.zip'],
       buildArchives: ['evergreen_new.zip'], bank: 'evergreen_short' },
-    { scale: .02, instancedAnimations: EVERGREEN_STAGES.flatMap(stage =>
+    { scale: .02, staticBillboard: true, instancedAnimations: EVERGREEN_STAGES.flatMap(stage =>
       [`sway1_loop_${stage}`, `stump_${stage}`, `burnt_${stage}`, 'idle_old']) }),
     createAnimatedSpriteFactory(assetBaseUrl, 'pine_needles.zip'),
     FireFxHost.load(assetBaseUrl),
@@ -338,8 +338,9 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       if (!world.scheduler) scheduler.advance(dt);
       fireFx.update(dt, quaternion);
       for (const logical of nearby.activeEntities) {
-        logical.model!.quaternion.copy(quaternion);
-        (logical.model!.userData.animationController as ArchiveSprite).update(dt);
+        const sprite = logical.model!.userData.animationController as ArchiveSprite;
+        sprite.faceCamera(quaternion);
+        sprite.update(dt);
       }
       for (const model of [...effects.keys()]) {
         model.quaternion.copy(quaternion); (model.userData.animationController as SpriteAnimationController).update(dt);

@@ -1,3 +1,4 @@
+import { useTestTileMap, testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -21,6 +22,8 @@ import type { TileStateQuery } from '../../signals/src';
 import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+
+useTestTileMap();
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -170,7 +173,7 @@ it('keeps a spring active when the injected tile query returns undefined', async
 });
 
 it('toggles tile visibility, physics and animation while preserving inactive saves and cleaning up each spring independently', async () => {
-  const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+  const state = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
   state.playerpositions.set([new THREE.Vector3()]);
   const s = setup(state.tickingarea), restored = setup(state.tickingarea);
   try {
@@ -235,7 +238,7 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
 });
 
 it('emits slow steam, switches to crater steam once bombed, stops while asleep and restarts on wake', async () => {
-  const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+  const state = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
   state.playerpositions.set([new THREE.Vector3()]);
   // random() = .5: first delay 2s (then every 3s), steam3 for both families.
   const s = setup(state.tickingarea, () => .5);

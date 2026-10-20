@@ -178,6 +178,7 @@ export class PickablePlantManager {
   private readonly ownsScheduler: boolean;
   private readonly cleanups: (() => void)[] = [];
   private readonly season?: WorldContentSignal<SeasonState>;
+  private readonly cameraRotation?: WorldContentSignal<THREE.Quaternion>;
   private readonly getWatchWorldContent?: GetWatchWorldContent;
   private disposed = false;
 
@@ -192,6 +193,12 @@ export class PickablePlantManager {
     this.getWatchWorldContent = getBoundWatchWorldContent();
     if (this.getWatchWorldContent) {
       this.season = this.getWatchWorldContent(WorldContentKey.Season, cleanup => this.cleanups.push(cleanup));
+      // Billboards face the camera: re-orient them only when it turns.
+      const rotation = this.cameraRotation = this.getWatchWorldContent(WorldContentKey.CameraRotation, cleanup => this.cleanups.push(cleanup));
+      createEffect(() => {
+        const quaternion = rotation.get();
+        for (const plant of this.plants.values()) this.face(plant, quaternion);
+      });
     }
     this.scheduler = this.season?.scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !this.season;
@@ -204,6 +211,10 @@ export class PickablePlantManager {
         else pickable.resume();
       }
     });
+  }
+
+  private face({ sprite, model }: Pick<Plant, 'sprite' | 'model'>, quaternion: THREE.Quaternion): void {
+    if (sprite) sprite.faceCamera(quaternion); else model.quaternion.copy(quaternion);
   }
 
   protected async spawnPlant(definition: PickablePlantDefinition, position: THREE.Vector3,
@@ -275,6 +286,7 @@ export class PickablePlantManager {
         const model = sprite?.model ?? factory!.create({ ...initial,
           getWatchWorldContent: this.getWatchWorldContent, snowCovered: snow });
         model.position.set(position.x, 0, position.z);
+        this.face({ sprite, model }, this.cameraRotation?.peek() ?? model.quaternion);
         Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId(), tags: [...definition.tags] });
         if (skinId) model.userData.skinId = skinId;
         if (definition.physicsRadius !== undefined) model.userData.physicsRadius = definition.physicsRadius * (TILE_SIZE / 4);
@@ -489,8 +501,9 @@ export class PickablePlantManager {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const { model, animation, transitionAt, fire } of this.plants.values()) {
-      model.quaternion.copy(cameraQuaternion);
+    for (const plant of this.plants.values()) {
+      const { animation, transitionAt, fire, model } = plant;
+      if (!this.cameraRotation) this.face(plant, cameraQuaternion);
       animation.update(Math.min(dt, this.scheduler.now - transitionAt));
       if (fire.parent) {
         fire.position.copy(model.position); fire.quaternion.copy(cameraQuaternion);
@@ -566,7 +579,7 @@ export class PickablePlantManager {
       request = Promise.all([
         preloadSharedArchiveSprite(this.archiveAssets, { animationArchive: definition.animArchive,
           buildArchives: [definition.buildArchive], bank: definition.archiveSprite!.bank },
-        { instancedAnimations: definition.archiveSprite!.instancedAnimations }),
+        { instancedAnimations: definition.archiveSprite!.instancedAnimations, staticBillboard: true }),
         PreloadSounds(...definition.picked.sound ? [definition.picked.sound] : [],
           'dontstarve/common/campfire', 'dontstarve/common/fireOut'),
       ]).then(([create]) => create);

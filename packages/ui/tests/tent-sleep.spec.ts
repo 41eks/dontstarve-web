@@ -1,3 +1,4 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
@@ -80,7 +81,7 @@ test('click a tent at night: the player walks over, sleeps hidden, recovers per 
   // A save while asleep keeps the tent and its unspent uses.
   const download = page.waitForEvent('download');
   await submit('c_save()');
-  const saved = JSON.parse(await readFile(await (await download).path(), 'utf8'));
+  const saved = JSON.parse(await readSaveDownload(await (await download).path()));
   expect(saved.world.entities.tent?.[0]?.components.finiteuses).toEqual({ uses: 15 });
 
   await page.keyboard.down('KeyD');
@@ -94,7 +95,7 @@ test('click a tent at night: the player walks over, sleeps hidden, recovers per 
   // The spent use is saved and restored.
   const spent = page.waitForEvent('download');
   await submit('c_save()');
-  const savedSpent = JSON.parse(await readFile(await (await spent).path(), 'utf8'));
+  const savedSpent = JSON.parse(await readSaveDownload(await (await spent).path()));
   expect(savedSpent.world.entities.tent?.[0]?.components.finiteuses).toEqual({ uses: 14 });
   const reloaded = await browser.newPage();
   reloaded.on('pageerror', error => errors.push(error.message));

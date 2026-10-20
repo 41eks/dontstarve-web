@@ -1,3 +1,4 @@
+import { createTestWorldSources } from './worldContentFixture';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -64,7 +65,7 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
   const heading = createSignal(45), drops: { items: readonly string[]; position: THREE.Vector3 }[] = [];
   let ground = true;
   const wind = new WorldWind(scheduler, () => 0);
-  const sources: WorldContentEnvironment = {
+  const sources: WorldContentEnvironment = { ...createTestWorldSources(scheduler),
     playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), scheduler, wind: wind.windchange, perishTick: createSignal({ time: 0, total: 0 }),
     temperature: createSignal(30), cycle: createSignal('day'), season: createSignal({ season: 'spring', progress: .5 }),
   };

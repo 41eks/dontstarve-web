@@ -35,6 +35,9 @@ importers:
       cannon-es-debugger:
         specifier: ^1.0.0
         version: 1.0.0(cannon-es@0.20.0)(three@0.184.0)(typescript@6.0.3)
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       react:
         specifier: ^18.3.1
         version: 18.3.1

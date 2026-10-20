@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const url = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url))}`;
@@ -114,7 +114,7 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
   await expect.poll(() => page.evaluate(() => (window as any).shovelGame.scene.children
     .filter((model: any) => ['GroundItem:shovel', 'GroundItem:goldenshovel'].includes(model.name)).length)).toBe(2);
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const save = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
   expect(save.world.entities.farm_soil_debris.every((record: any) => !removedIds.includes(record.id))).toBe(true);
   expect(save.world.map.tiles.some((tile: any) => tile.tileId === 47)).toBe(true);
   await page.screenshot({ path: '/tmp/dontstarve-shovel-farm-debris.png' });

@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
@@ -27,7 +27,7 @@ test('right-click mining breaks a moon shell and preserves the orb and mineral d
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const workLeft = () => page.evaluate(() => {
     const shell = (window as any).miningGame.scene.children.find((model: any) => model.userData.entityId === 'mine-shell');

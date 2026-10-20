@@ -5,7 +5,7 @@ import { bindTestWorld } from './worldContentFixture';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { MOONDIAL_DEFINITION, MOONDIAL_ID } from '../../prefab/src/moondial';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { getPrefabLightOverride, getPrefabLocalLight } from '../../prefab/src/localLight';
+import { getPrefabLightOverride } from '../../prefab/src/localLight';
 import type { SpriteController } from '../src/sprite';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
@@ -26,8 +26,6 @@ async function createPlacement() {
   return { placement, scheduler, moon, play, stop, dispose: () => { placement.dispose(); unbind(); scheduler.dispose(); } };
 }
 
-const finish = (sprite: SpriteController, seconds = 4) => { for (let i = 0; i < seconds * 30; i++) sprite.update(1 / 30); };
-const soundsPlayed = (play: ReturnType<typeof vi.spyOn>) => play.mock.calls.map(call => String(call[0]).split('/').pop());
 
 /** The world's own 20-day clock: TheWorld.state.moonphase / iswaxingmoon on a given day. */
 const dayMoon = (day: number) => {

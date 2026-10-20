@@ -10,7 +10,7 @@ import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
-import type { TileStateQuery } from '@dontstarve-web/signals';
+import { createEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery, type WorldContentSignal } from '@dontstarve-web/signals';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
@@ -77,6 +77,8 @@ export interface BulbPlantWorld {
   scheduler?: GameTimeScheduler;
   /** The world's tickingarea query; plants outside it neither watch light nor animate. */
   tickingarea?: TileStateQuery;
+  /** Source of the camera rotation; without it the host passes the rotation to every `update`. */
+  getWatchWorldContent?: GetWatchWorldContent;
 }
 
 /** flower_cave's light cycle and animation callbacks for its pickable component. */
@@ -279,6 +281,8 @@ export class BulbPlantManager {
   private readonly scene: THREE.Scene;
   private readonly world: BulbPlantWorld;
   private readonly random: () => number;
+  private readonly cameraRotation?: WorldContentSignal<THREE.Quaternion>;
+  private readonly stops: (() => void)[] = [];
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: BulbPlantWorld, random = Math.random) {
@@ -286,6 +290,11 @@ export class BulbPlantManager {
     this.world = world;
     this.random = random;
     this.assets = new ArchiveSpriteAssets(BULB_PLANT_ID, assetBaseUrl);
+    if (world.getWatchWorldContent) {
+      // Billboards face the camera: re-orient them only when it turns.
+      const rotation = this.cameraRotation = world.getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.stops.push(stop));
+      createEffect(() => { const quaternion = rotation.get(); for (const { sprite } of this.plants) sprite.faceCamera(quaternion); });
+    }
   }
 
   async spawn(prefabId: BulbPlantPrefabId, position: THREE.Vector3, saved?: BulbPlantRecord): Promise<THREE.Group> {
@@ -297,7 +306,7 @@ export class BulbPlantManager {
     if (!request) {
       request = Promise.all([
         preloadSharedArchiveSprite(this.assets, { animationArchive: `bulb_plant_${variant}.zip`,
-          buildArchives: [`bulb_plant_${variant}.zip`], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'] }),
+          buildArchives: [`bulb_plant_${variant}.zip`], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'], staticBillboard: true }),
         PreloadSounds('dontstarve/wilson/pickup_lightbulb'),
       ]).then(([factory]) => factory);
       this.factories.set(variant, request);
@@ -310,6 +319,7 @@ export class BulbPlantManager {
     if (initialAnimation !== 'idle') sprite.setFrame(sprite.frameCount - 1);
     const model = sprite.model;
     model.position.set(position.x, 0, position.z);
+    if (this.cameraRotation) sprite.faceCamera(this.cameraRotation.peek());
     model.userData.entityId = saved?.id ?? newEntityId();
     model.userData.bulbPlantVariant = variant;
     model.userData.prefab = prefabId;
@@ -322,8 +332,7 @@ export class BulbPlantManager {
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     for (const plant of this.plants) {
-      if (!plant.controller.isActive) { plant.controller.update(dt); continue; }
-      plant.model.quaternion.copy(cameraQuaternion);
+      if (!this.cameraRotation) plant.sprite.faceCamera(cameraQuaternion);
       plant.controller.update(dt);
     }
   }
@@ -348,6 +357,7 @@ export class BulbPlantManager {
       sprite.dispose();
     }
     this.plants.clear();
+    this.stops.splice(0).forEach(stop => stop());
     this.assets.dispose();
   }
 }

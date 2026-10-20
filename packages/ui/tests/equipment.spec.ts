@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const modules = Object.fromEntries(['main', 'player'].map(name =>
@@ -39,7 +39,7 @@ test('head/body signals restore equipped art and keep the backpack active when a
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const save = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
   const savedEquipment = save.players.local.inventory.containers['player:equipment'].slots;
   expect(savedEquipment.find((slot: any) => slot.slotKey === 'head').item.itemId).toBe('strawhat');
   expect(savedEquipment.find((slot: any) => slot.slotKey === 'body').item.itemId).toBe('backpack');

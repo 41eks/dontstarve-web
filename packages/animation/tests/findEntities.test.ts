@@ -1,3 +1,4 @@
+import { useTestTileMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ItemEntity } from '../../inventory/src';
@@ -5,6 +6,8 @@ import { actionEntity, bindActionEntityWorld, disposeActionEntity, FindEntities 
 import { createMemo, createSignal } from '../../signals/src';
 import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
+
+useTestTileMap();
 
 const cleanups: (() => void)[] = [];
 afterEach(() => cleanups.splice(0).reverse().forEach(stop => stop()));

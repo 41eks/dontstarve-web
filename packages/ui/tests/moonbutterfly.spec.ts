@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player', 'view'].map(name =>
@@ -33,7 +33,7 @@ test('spawned moonbutterfly glows, flies away on its own and survives save and l
   });
   const saveGame = async () => {
     const download = page.waitForEvent('download', { timeout: 15_000 }); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
 
   await page.goto('/tests/dst-lighting.html'); await prepare();
@@ -77,7 +77,7 @@ test('plants a captured moonbutterfly, saves seedlings and tree commands, and gr
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download', { timeout: 15_000 }); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const preview = () => page.evaluate(() => (window as any).mothGame.scene.children.some((model: any) => model.name === 'PlantPlacer'));
   await page.goto('/tests/dst-lighting.html'); await prepare();

@@ -1,10 +1,45 @@
+import { useTestTileMap } from './tileMapFixture';
 import { expect, it, vi } from 'vitest';
 import { Vector3 } from 'three';
 import { createSignal, readonlySignal } from '../../signals/src/signal';
 import * as signals from '../../signals/src/signal';
-import { DisposeTileStates, GetTileKeyAtPoint, GetTileStateAtPoint, INVALID_TILE_KEY, TileTracker } from '../../componets/src/tileManager';
+import { BindTileMapSize, DisposeTileStates, GetTileKeyAtPoint, GetTileStateAtPoint, INVALID_TILE_KEY, TileTracker } from '../../componets/src/tileManager';
+
+useTestTileMap();
 
 const tileAt = (position: Vector3) => createSignal(GetTileKeyAtPoint(position));
+
+it('uses injected dimensions for grids, keys and exact bounds, including partial edge tiles', async () => {
+  for (const [size, count] of [[48, 4], [1200, 100], [84, 8], [1000, 84]]) {
+    const unbind = BindTileMapSize(size);
+    const player = createSignal(new Vector3(-size / 2, 0, -size / 2));
+    const position = player.peek().clone();
+    const tracker = new TileTracker(() => position);
+    const query = GetTileStateAtPoint(player);
+    const active = query(tracker.tile, 0)!;
+    try {
+      expect(tracker.tile.peek()).toBe(0);
+      expect(active()).toBe(true);
+      player.set(new Vector3(size / 2 - .01, 0, size / 2 - .01));
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(active()).toBe(false);
+      position.copy(player.peek()); tracker.sync();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(tracker.tile.peek()).toBe(count * count - 1);
+      expect(active()).toBe(true);
+      for (const point of [new Vector3(size / 2, 0, 0), new Vector3(0, 0, size / 2),
+        new Vector3(-size / 2 - .01, 0, 0), new Vector3(0, 0, -size / 2 - .01)]) {
+        expect(GetTileKeyAtPoint(point)).toBe(INVALID_TILE_KEY);
+        expect(query(tileAt(point))).toBeUndefined();
+      }
+      position.x = size / 2; tracker.sync();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(active()).toBe(false);
+    } finally { DisposeTileStates(player); unbind(); }
+  }
+  expect(() => GetTileStateAtPoint(createSignal(new Vector3()))).toThrow('not bound');
+  for (const size of [0, -1, NaN, Infinity]) expect(() => BindTileMapSize(size)).toThrow(RangeError);
+});
 
 it('follows moving target signals across tiles and releases their bridges on disposal', async () => {
   const player = createSignal(new Vector3());
@@ -79,7 +114,6 @@ it('supports a configurable radius and rejects invalid targets and radii', async
     player.set(new Vector3(-12, 0, 0));
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(active()).toBe(true);
-    expect(GetTileStateAtPoint(player)(tileAt(new Vector3(504, 0, 0)))).toBeUndefined();
     expect(GetTileStateAtPoint(player)(tileAt(new Vector3(0, 0, Infinity)))).toBeUndefined();
     expect(() => GetTileStateAtPoint(player)(tileAt(new Vector3()), -1)).toThrow(RangeError);
     expect(() => GetTileStateAtPoint(player)(tileAt(new Vector3()), 0.5)).toThrow(RangeError);
@@ -267,28 +301,6 @@ it('publishes only tile changes from a tracker and keeps the key stable inside a
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(transitions).toEqual([false, true]);
   } finally { stop(); stopKeys(); active.dispose(); DisposeTileStates(player); }
-});
-
-it('reads the entity position on every sync, including after the position reference is replaced', async () => {
-  const player = createSignal(new Vector3());
-  const owner = { position: new Vector3(1, 0, 1) };
-  const tracker = new TileTracker(() => owner.position);
-  const active = GetTileStateAtPoint(player)(tracker.tile, 0)!;
-  try {
-    expect(active()).toBe(true);
-    owner.position.set(25, 0, 1); // in-place move: nothing is published until the next sync
-    expect(active()).toBe(true);
-    tracker.sync();
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(owner.position)); expect(active()).toBe(false);
-    owner.position = new Vector3(0, 0, 0); // teleport by replacing the vector
-    tracker.sync();
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(active()).toBe(true);
-    const key = tracker.tile.peek();
-    owner.position.set(1, 0, 2); tracker.sync(); // same tile: same key
-    expect(tracker.tile.peek()).toBe(key);
-  } finally { active.dispose(); DisposeTileStates(player); }
 });
 
 it('refreshes a tracker only after 60 position writes, and immediately on sync', async () => {

@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const modules = Object.fromEntries(['main', 'universal', 'player', 'camera'].map(name =>
@@ -74,7 +74,7 @@ test('ground manure has animated flies and positional looping audio, survives sa
   }, x);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   await page.goto('/tests/dst-lighting.html'); await prepare();
   await submit('c_give("poop", 3); c_spawn("poop")');
