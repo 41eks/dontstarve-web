@@ -119,12 +119,13 @@ function createAnimationObject(asset: KleiAnimationAsset, renderOrderBase: numbe
 }
 
 export function createGeneratingWorldThreeStage(
-  canvas: HTMLCanvasElement,
+  canvas: HTMLCanvasElement | OffscreenCanvas,
   worldAsset: KleiAnimationAsset,
   handsAsset: KleiAnimationAsset,
+  pixelRatio = 1,
 ): GeneratingWorldThreeStage {
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas as HTMLCanvasElement, alpha: true, antialias: true })
+  renderer.setPixelRatio(Math.min(pixelRatio, 2))
   renderer.setClearColor(0xffffff, 0)
   renderer.outputColorSpace = THREE.SRGBColorSpace
 

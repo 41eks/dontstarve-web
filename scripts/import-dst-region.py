@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import selected DST cave regions and whitelisted entities into a local save."""
+"""Import an entire DST cave map and whitelisted entities into a local save."""
 import argparse
 import base64
 from collections import Counter
@@ -187,10 +187,24 @@ def pickable_state(data, prefab):
 def pickable_plant_components(prefab):
     # grass.lua / sapling.lua add no OnSave fields of their own.
     def convert(data):
-        if set(data) - {'pickable'}:
+        if set(data) - {'pickable', 'witherable'}:
             raise ValueError(f'Unsupported {prefab} save state')
         state = pickable_state(data.get('pickable') or {}, prefab)
-        return {'pickable': state} if state else {}
+        components = {'pickable': state} if state else {}
+        # witherable.lua OnSave -> the existing Witherable component. Protection tasks are not ported.
+        if 'witherable' in data:
+            wither = data['witherable']
+            if not isinstance(wither, dict) or set(wither) - {'withered', 'restore_cycles', 'delay_time_remaining', 'task_time_remaining'} \
+                    or ('withered' in wither and wither['withered'] is not True) \
+                    or ('restore_cycles' in wither and (not wither.get('withered') or type(wither['restore_cycles']) is not int or wither['restore_cycles'] < 0)) \
+                    or ('delay_time_remaining' in wither and 'task_time_remaining' in wither) \
+                    or any(type(wither[key]) not in (int, float) or not math.isfinite(wither[key]) or not 0 <= wither[key] <= limit
+                           for key, limit in [('delay_time_remaining', 480), ('task_time_remaining', 60)] if key in wither):
+                raise ValueError(f'Unsupported {prefab} witherable state')
+            fields = {'withered': 'withered', 'restore_cycles': 'restoreCycles',
+                      'delay_time_remaining': 'delaySeconds', 'task_time_remaining': 'taskSeconds'}
+            components['witherable'] = {fields[key]: value for key, value in wither.items()}
+        return components
     return convert
 
 
@@ -301,7 +315,7 @@ def lightflier_flower_components(data):
 
 
 def link_lightflier_flowers(result, imported_ids):
-    # Only imported lightfliers can be linked; the others are not part of the selection.
+    # Only imported lightfliers can be linked; the others are not in the whitelist.
     for entity in result.get('lightflier_flower', []):
         spawner = entity['components']['lightflierFlower']['childspawner']
         spawner['childrenoutside'] = [imported_ids[child] for child in spawner['childrenoutside'] if child in imported_ids]
@@ -370,7 +384,6 @@ def convert_entities(terrain, source_entities, report, session_id):
     width, height = terrain['width'], terrain['height']
     nodes = decode_grid(terrain['nodeidtilemap'], width, height)
     names = terrain['topology']['ids']
-    selected = set(report['nodes'])
     translation = report['translation']
     result, counts, sources, identities, imported_ids = {}, {}, [], set(), {}
     for prefab, convert_components in ENTITY_WHITELIST.items():
@@ -382,12 +395,10 @@ def convert_entities(terrain, source_entities, report, session_id):
                 raise ValueError(f'Invalid {prefab} position at source index {index}')
             x, y, z = coordinates
             col, row = math.floor(source_grid_position(x, width)), math.floor(source_grid_position(z, height))
-            if not (0 <= col < width and 0 <= row < height):
-                continue
-            node = nodes[row * width + col]
-            # Keep source props on overhang/void cells too: region membership is independent of land.
-            if node == 0 or names[node - 1] not in selected:
-                continue
+            # Import every whitelisted record, including props on void, unassigned nodes or map edges.
+            node = nodes[row * width + col] if 0 <= col < width and 0 <= row < height else 0
+            if node > len(names):
+                raise ValueError('Grid references an unknown topology node')
             if y != 0 or record.get('skinname') or record.get('skin_id') or record.get('puid'):
                 raise ValueError(f'Unsupported {prefab} height, skin or platform at source index {index}')
             data = record.get('data') or {}
@@ -409,10 +420,10 @@ def convert_entities(terrain, source_entities, report, session_id):
                              'components': convert_components(data)})
             sources.append({'id': entity_id, 'prefab': prefab, 'sourceIndex': index,
                             **({'sourceId': source_id} if source_id is not None else {}),
-                            'sourcePosition': coordinates, 'sourceNode': names[node - 1]})
+                            'sourcePosition': coordinates, 'sourceNode': names[node - 1] if node else None})
         if imported:
             result[prefab] = imported
-        counts[prefab] = {'source': len(records), 'imported': len(imported), 'outsideRegion': len(records) - len(imported)}
+        counts[prefab] = {'source': len(records), 'imported': len(imported)}
     link_grotto_pools(result, imported_ids)
     link_lightflier_flowers(result, imported_ids)
     return result, {'entityWhitelist': list(ENTITY_WHITELIST), 'entityCounts': counts, 'entitySources': sources}
@@ -425,7 +436,7 @@ def decode_grid(encoded, width, height):
     return struct.unpack(f'<{width * height}H', data[9:])
 
 
-def convert(terrain, template, regions, supported, origin_cell=None):
+def convert(terrain, template, supported, origin_cell=None):
     if terrain['prefab'] != 'cave':
         raise ValueError('Only cave terrain imports are supported')
     width, height = terrain['width'], terrain['height']
@@ -434,40 +445,33 @@ def convert(terrain, template, regions, supported, origin_cell=None):
     names = terrain['topology']['ids']
     if max(nodes) > len(names):
         raise ValueError('Grid references an unknown topology node')
-    available = {name.split(':')[0] for name in names}
-    if set(regions) - available:
-        raise ValueError(f'Unknown regions: {sorted(set(regions) - available)}')
-    selected = {i for i, name in enumerate(names, 1) if name.split(':')[0] in regions}
     # IDs are versioned: resolve source ID -> source name -> current runtime ID.
     source_names = {tile_id: name for name, tile_id in terrain['world_tile_map'].items()}
-    selected_cells = []
+    map_cells = []
     for index, (tile_id, node_id) in enumerate(zip(tiles, nodes)):
-        if node_id not in selected:
-            continue
         name = source_names.get(tile_id)
         if name == 'IMPASSABLE':
             continue
         if name not in supported:
-            raise ValueError(f'Unsupported terrain {name or tile_id} in {names[node_id - 1]}')
-        selected_cells.append((index % width, index // width, name, supported[name], node_id))
-    land = [cell for cell in selected_cells if cell[2] != 'FAKE_GROUND']
+            raise ValueError(f'Unsupported terrain {name or tile_id} at source cell ({index % width}, {index // width})')
+        map_cells.append((index % width, index // width, name, supported[name], node_id))
+    land = [cell for cell in map_cells if cell[2] != 'FAKE_GROUND']
     if not land:
-        raise ValueError('Selected regions contain no land')
+        raise ValueError('Source map contains no land')
     min_x, max_x = min(c[0] for c in land), max(c[0] for c in land)
     min_z, max_z = min(c[1] for c in land), max(c[1] for c in land)
     origin_x, origin_z = origin_cell if origin_cell is not None else ((min_x + max_x) // 2, (min_z + max_z) // 2)
-    half = max(max(abs(c[0] - origin_x), abs(c[1] - origin_z)) + 1 for c in selected_cells) + 2
+    # Include the complete source grid, including its impassable outer border.
+    half = max(abs(origin_x), abs(width - 1 - origin_x), abs(origin_z), abs(height - 1 - origin_z)) + 3
     saved_tiles = [{'col': x - origin_x, 'row': z - origin_z, 'tileId': tile_id}
-                   for x, z, _, tile_id, _ in selected_cells]
-    # Prefer the blue forest, keeping the player away from the void edge.
-    spawn_cells = [c for c in land if names[c[4] - 1].startswith(regions[0] + ':')]
-    if not spawn_cells:
-        raise ValueError('First selected region contains no land for player spawn')
+                   for x, z, _, tile_id, _ in map_cells]
+    # Choose a safe land tile near the map's land centre, without selecting a region.
+    spawn_cells = land
     occupied = {(c[0], c[1]) for c in land}
     interior = [c for c in spawn_cells if all((c[0] + dx, c[1] + dz) in occupied
                 for dx in (-1, 0, 1) for dz in (-1, 0, 1))]
     if not interior:
-        raise ValueError('No safe interior spawn tile in the first region')
+        raise ValueError('No safe interior spawn tile in the source map')
     cx = sum(c[0] for c in spawn_cells) / len(spawn_cells)
     cz = sum(c[1] for c in spawn_cells) / len(spawn_cells)
     spawn = min(interior, key=lambda c: (c[0] - cx) ** 2 + (c[1] - cz) ** 2)
@@ -475,7 +479,7 @@ def convert(terrain, template, regions, supported, origin_cell=None):
     result['world'] = {
         'shardId': 'caves', 'prefab': 'cave', 'elapsedSeconds': 0, 'systems': {},
         'map': {'kind': 'generated', 'defaultTileId': 1, 'tiles': saved_tiles,
-                'generator': {'id': 'dst-region-v1', 'options': {
+                'generator': {'id': 'dst-map-v1', 'options': {
                     'size': half * 2 * TILE_SIZE, 'moonTreeCount': 0, 'moonTreeExclusionRadiusSquared': 0}}},
         'entities': {},
     }
@@ -492,12 +496,12 @@ def convert(terrain, template, regions, supported, origin_cell=None):
         'player:cursor': {'slotCount': 1, 'slots': []},
     }, 'bufferedBuilds': []}
     report = {
-        'regions': regions, 'nodes': [names[i - 1] for i in sorted(selected)],
+        'scope': 'full-map', 'nodes': names,
         'sourceDimensions': [width, height], 'sourceBounds': [min_x, min_z, max_x, max_z],
         'sourceOriginCell': [origin_x, origin_z], 'worldScale': TILE_SIZE / 4,
         'translation': [(source_grid_position(0, width) - origin_x) * TILE_SIZE, 0,
                         (source_grid_position(0, height) - origin_z) * TILE_SIZE],
-        'tileCounts': dict(sorted(Counter(c[2] for c in selected_cells).items())),
+        'tileCounts': dict(sorted(Counter(c[2] for c in map_cells).items())),
         'landCells': len(land), 'savedCells': len(saved_tiles),
         'note': 'Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.',
     }
@@ -519,9 +523,8 @@ def main():
     parser.add_argument('--shard', required=True, type=Path, help='DST Caves shard directory')
     parser.add_argument('--output', required=True, type=Path, help='Project save JSON path')
     parser.add_argument('--template', type=Path, default=ROOT / 'public/saves/initial-world.json')
-    parser.add_argument('--regions', nargs='+', default=['BlueForest', 'MoonCaveForest', 'ArchiveMaze', 'CaveExitTask1'])
     parser.add_argument('--origin-cell', nargs=2, type=int, metavar=('COL', 'ROW'),
-                        help='Keep an existing source origin when extending an imported region')
+                        help='Keep an existing source origin when importing the full map')
     parser.add_argument('--snapshot', help='Ten-digit snapshot; defaults to latest in active session')
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
@@ -543,11 +546,11 @@ def main():
     supported = {name: spec['tileId'] for name, spec in json.loads(
         (ROOT / 'packages/prefab/src/groundTiles.json').read_text()).items()}
     supported['FAKE_GROUND'] = 200
-    result, report = convert(terrain, json.loads(args.template.read_text()), args.regions, supported, args.origin_cell)
+    result, report = convert(terrain, json.loads(args.template.read_text()), supported, args.origin_cell)
     source_entities = LITERALS['snapshot_entities'](source_text, ENTITY_WHITELIST)
     result['world']['entities'], entity_report = convert_entities(terrain, source_entities, report, session_id)
     report.update(entity_report)
-    result['session']['id'] = f'cave-{session_id}-region-v1'
+    result['session']['id'] = f'cave-{session_id}-map-v1'
     result['snapshot'] = {**result['snapshot'], 'id': snapshot, 'parentId': None, 'reason': 'initial'}
     report['source'] = f'{args.shard.as_posix()}/save/session/{session_id}/{snapshot}'
     report['sourceSha256'] = hashlib.sha256(source.read_bytes()).hexdigest()

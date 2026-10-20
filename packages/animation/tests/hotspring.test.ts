@@ -1,6 +1,6 @@
 import { useTestTileMap, testMap } from './tileMapFixture';
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
+import { PhysicsWorld } from '../../componets/src/physicsWorld';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { HotspringManager, HOTSPRING_LIGHT } from '../../prefab/src/hotspring.ts';
@@ -33,7 +33,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
   const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as THREE.WebGLRenderer;
   const ground = new GroundItemManager(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const physics = new CANNON.World();
+  const physics = new PhysicsWorld({}, tickingarea);
   const springs = new HotspringManager(scene, physics, '/dst/data/anim', tickingarea, { random });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.hotsprings, {
@@ -59,7 +59,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
   }, SAVE_CATALOG);
   return { inventory, scene, player, springs, physics, registry, save,
     world: { scene, player, camera, renderer, ground: new THREE.Group() },
-    dispose: () => { registry.dispose(); inventory.dispose(); } };
+    dispose: () => { registry.dispose(); physics.dispose(); inventory.dispose(); } };
 }
 
 it('lights and heats a spring only after a cursor-held bath bomb is tossed in, then saves and reloads the state', async () => {
@@ -159,8 +159,8 @@ it('keeps a spring active when the injected tile query returns undefined', async
     const position = new THREE.Vector3(5, 0, 6);
     const model = await s.springs.spawn(position);
     const update = vi.spyOn(model.userData.animationController, 'update');
-    expect(query).toHaveBeenCalledOnce();
-    expect(query.mock.calls[0][0].peek()).toBe(GetTileKeyAtPoint(model.position));
+    expect(query).toHaveBeenCalledTimes(2); // Presentation and physics each own their tile view.
+    expect(query.mock.calls.every(([tile]) => tile.peek() === GetTileKeyAtPoint(model.position))).toBe(true);
     expect(model.position).toEqual(position);
     expect(model.parent).toBe(s.scene);
     expect(s.physics.bodies).toEqual([model.userData.physicsBody]);
@@ -184,7 +184,6 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     const firstBody = first.userData.physicsBody, secondBody = second.userData.physicsBody;
     const firstAnimation = vi.spyOn(first.userData.animationController, 'update');
     const secondAnimation = vi.spyOn(second.userData.animationController, 'update');
-    const addBody = vi.spyOn(s.physics, 'addBody');
     const records = s.springs.exportRecords();
     expect(first.parent).toBe(s.scene); expect(second.parent).toBe(s.scene);
     expect(s.registry.renderEntities.map(entry => entry.object)).toEqual([first, second]);
@@ -197,6 +196,7 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     expect(first.parent).toBeNull(); expect(second.parent).toBeNull();
     expect(s.registry.renderEntities).toEqual([]);
     expect(s.physics.bodies).toEqual([]);
+    expect([...s.physics.registeredBodies]).toEqual([firstBody, secondBody]);
     s.springs.update(5, s.world.camera.quaternion);
     expect(firstAnimation).toHaveBeenCalledOnce(); expect(secondAnimation).toHaveBeenCalledOnce();
     expect(s.springs.exportRecords()).toEqual(records);
@@ -218,14 +218,14 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     expect(second.parent).toBe(s.scene); expect(loaded.parent).toBe(restored.scene);
     expect(s.registry.renderEntities.map(entry => entry.object)).toEqual([second]);
     expect(s.physics.bodies).toEqual([secondBody]);
-    expect(addBody).toHaveBeenCalledExactlyOnceWith(secondBody);
+    expect([...s.physics.registeredBodies]).toEqual([secondBody]);
     expect(restored.physics.bodies).toEqual([loaded.userData.physicsBody]);
     expect(getPrefabLocalLight(loaded)).toEqual(HOTSPRING_LIGHT);
     s.springs.update(.1, s.world.camera.quaternion);
     expect(secondAnimation).toHaveBeenCalledTimes(2);
     state.playerpositions.set([new THREE.Vector3(1, 0, 1)]);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(addBody).toHaveBeenCalledOnce();
+    expect([...s.physics.registeredBodies]).toEqual([secondBody]);
 
     state.playerpositions.set([new THREE.Vector3(300, 0, 0)]);
     s.springs.dispose(); restored.springs.dispose();

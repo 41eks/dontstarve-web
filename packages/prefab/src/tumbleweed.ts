@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import * as CANNON from 'cannon-es';
+import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
 import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { WorldContentKey, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -244,7 +245,7 @@ export class TumbleweedManager {
     this.scene = scene; this.physics = physics; this.world = world;
     this.assets = new ArchiveSpriteAssets('tumbleweed');
     // MakeCharacterPhysics sets friction to zero, so ground contacts must not cancel the wind-driven motor.
-    const materials = new Set([physics.defaultMaterial, ...physics.bodies.map(body => body.material)
+    const materials = new Set([physics.defaultMaterial, ...getRegisteredPhysicsBodies(physics).map(body => body.material)
       .filter((material): material is CANNON.Material => material !== null)]);
     for (const material of materials) {
       physics.addContactMaterial(new CANNON.ContactMaterial(this.material, material, { friction: 0, restitution: 0 }));

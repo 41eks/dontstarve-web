@@ -503,6 +503,27 @@
       "noise": "levels/textures/Ground_noise_archive_mini.tex"
     }
   },
+  "VAULT": {
+    "tileId": 261,
+    "plantable": false,
+    "name": "blocky",
+    "atlas": "levels/tiles/blocky.xml",
+    "texture": "levels/tiles/blocky.tex",
+    "noise": "levels/textures/Ground_noise_vault.tex",
+    "renderOrder": 38,
+    "cannotBeDug": true,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/Ground_noise_vault_clean_mini.tex"
+    }
+  },
   "VAULT_CLEAN": {
     "tileId": 262,
     "plantable": false,

@@ -1,4 +1,4 @@
-import type { MinimapPixels } from './minimap';
+import type { MinimapPixels } from './minimap-terrain';
 
 /** TUNING.OCEAN_MINIMAP_SHADER */
 export interface MinimapOceanTuning {
@@ -97,7 +97,7 @@ export function renderMinimapOcean(side: number, cellSize: number, isOcean: (col
   const alphaTexture = boxBlur(land, texels, tuning.TEXTURE_ALPHA_BLUR_SIZE, tuning.TEXTURE_ALPHA_BLUR_PASS_COUNT);
   const maskTexture = boxBlur(mask, texels, tuning.MASK_BLUR_SIZE, tuning.MASK_BLUR_PASS_COUNT);
 
-  const size = side * pixelsPerCell;
+  const size = Math.max(1, Math.round(side * pixelsPerCell));
   const data = new Uint8ClampedArray(size * size * 4);
   const base = config.colour.slice(0, 3).map(value => value / 255);
   const edge0 = tuning.EDGE_COLOR0.map(value => value / 255), edge1 = tuning.EDGE_COLOR1.map(value => value / 255);

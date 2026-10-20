@@ -605,8 +605,8 @@ export class WallPlacement<BuildId extends string> {
         const { body } = wall;
         const physics = this.world.physics;
         if (!body || !physics) return;
-        if (active && body.world !== physics) physics.addBody(body);
-        else if (!active && body.world === physics) physics.removeBody(body);
+        if (active) physics.addBody(body);
+        else physics.removeBody(body);
     }
 
     private disposeWallComponents(wall: WallInstance<BuildId>): void {

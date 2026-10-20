@@ -468,7 +468,6 @@ export class DstLightingRenderer {
   render(scene: THREE.Scene, camera: THREE.Camera): void {
     this.resizeRenderTarget();
 
-    this.localLighting.renderLightmap(this.renderer);
     const originalBackground = scene.background;
     if (originalBackground instanceof THREE.Color) {
       this.litBackground.copy(originalBackground).convertLinearToSRGB();
@@ -479,7 +478,10 @@ export class DstLightingRenderer {
     }
     this.renderer.setRenderTarget(this.renderTarget);
     try {
-      renderSceneWithPasses(this.renderer, scene, camera, this.localLighting.getRenderPassLighting());
+      renderSceneWithPasses(this.renderer, scene, camera, () => {
+        this.localLighting.renderLightmap(this.renderer, scene);
+        return this.localLighting.getRenderPassLighting();
+      });
     } finally {
       scene.background = originalBackground;
     }

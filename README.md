@@ -13,13 +13,17 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 ## 调试命令（debugCommand）
 
+按 `M` 打开的地图使用世界地皮材质：加载页通过俯视正交相机离屏绘制整张地面，等待 PNG 图片解码后启动游戏，主线程 DOM 用单张 `<img>` 显示底图。地皮、海洋和悬崖复用世界的材质、几何及绘制通道；图标进入地图后独立加载，按实体身份复用节点。拖动、缩放和转向只更新世界容器及一条共享图标样式，静态图标不逐帧写位置。地图初始 `zoom=3`，`zoom=1` 最近、`zoom=20` 最远；地图每侧留出地图边长 10% 的 margin，最远档地图加 margin 构成的正方形边长为窗口长边 1.5 倍；平移按视口大小、缩放和转向限制，视口不能越过该边界，不绘制边缘线。滚轮围绕光标以 0.1 秒插值缩放，向上放大、向下缩小。底图按默认缩放、窗口尺寸和 DPR 提高采样密度，最大 8192×8192；每次离屏只绘制最多 2048×2048 像素，合成后仍显示单张图片，极近距离放大时清晰度受整图上限限制。挖地、铺地和耕地会更新整张底图，窗口扩大时按需提升分辨率，关闭地图保留图片，场景释放时清理对象 URL、节点和订阅。实现见 [世界地皮整图与 DOM 地图](docs/dst-minimap-rendering.md)。调试命令语法、参数、支持的 `c_spawn` / `c_give` ID 和 `c_save()` 存档格式不变。
+
 开发模式（`pnpm dev`）下的性能诊断开关，不是控制台命令，命令语法与支持的 ID 不变：URL 加 `?stats` 显示 stats-gl 面板（FPS／CPU），`?stats=gpu` 另外统计 GPU 时间，库按需加载，不进生产构建；加 `?tileperf` 在控制台输出玩家跨 tile 时的活动网格写入耗时、订阅者耗时和长任务（`[tileperf]`），传送（灵魂跳跃）时附带标记。
 
 月亮洞穴水池及附属雾气、瀑布、月亮玻璃通过动画包通用函数 `createSharedArchiveSprite()` 接入共享帧几何，prefab 无需维护共享动画清单；正常和开采后的 `*_mined` 动画分别缓存，各实体保留自己的播放进度、位置、开采状态及子物件关系，单池移除不释放其他池仍使用的帧。调用方式与资源所有权见 [动画包说明](packages/animation/README.md#通用共享帧入口)。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 的导出和恢复流程沿用原有实现。
 
 蘑菇树通过 `createSharedArchiveSprite()` 的 `instancedAnimations: ['idle_loop']` 实例化待机：源 atlas 零件按动画变换和层顺序合成完整帧，整段动画共用固定原点与像素网格，保留每棵树的随机起始帧、颜色、位置与交互。受击、倒下、树桩、生长／开花及燃烧消失仍使用共享帧几何，返回待机自动重新合批。深度预绘制与不写深度的颜色 pass 保持地皮、树和动态角色的遮挡顺序；资源由 manager 统一释放。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存原有树木状态。
 
-世界渲染通过 `renderSceneWithPasses()` 共用一次场景矩阵更新：预渲染 pass 与主绘制之间不再重复遍历全场景，也减少空间索引的重复同步；自动更新设置在本次绘制结束或异常后恢复。调试命令的语法、参数、行为及支持的 `c_spawn` / `c_give` ID 不变。
+世界渲染通过 `renderSceneWithPasses()` 共用一次场景矩阵更新，光照贴图在矩阵准备完成后读取世界位置。矩阵缓存和空间索引共用唯一更新入口，变换未变化时不再同步索引，两者可独立释放；静态 billboard 保留显式失效的快速路径，其他共享动画检测模型、visual 与父节点变化。渲染 pass 按注册锚点与祖先可见性选择，不再扫描整棵场景树；实例化代理和空帧退出普通精灵排序，切回工作动画时自动恢复。实例批次缓存各槽位的变换，只上传实际变化的 Float32 属性区间。自动更新设置在本次绘制结束或异常后恢复。调试命令的语法、参数、行为及支持的 `c_spawn` / `c_give` ID 不变。
+
+静态碰撞体由 `PhysicsWorld` 统一按 `tickingarea`（默认玩家周围 10 格）管理：`registeredBodies` 保留完整登记，`bodies` 只包含参与模拟的碰撞体。离开活动区保留原刚体和 prefab 状态，返回时恢复同一实例；寻路、出生占位和碰撞材质查询使用完整登记。动态刚体与无限地面继续参与模拟。碰撞历史采用 Cannon 的稀疏表并按稳定刚体 ID 记录，避免 tile 切换重排索引产生错误的重复接触事件；永久移除和场景销毁清理监听。静态 billboard 换帧仅更新烘焙几何，位置、朝向或镜像变化才使矩阵失效。`c_spawn`、`c_give` 的语法、参数、支持 ID 和 `c_save()` 存档格式不变。
 
 局部光照系统统一使用所属世界的 `tickingarea`（默认玩家周围 10 格方形区域）过滤光源：GPU 光照贴图叠加与 CPU 光照采样共用同一按 tile 缓存的私有活动监听，区域外及地图网格外的光源不贡献光照、不扩展贴图范围；子光源按世界坐标归属 tile，移动后查询新格子。光源数据保留，返回活动区自动恢复；场景释放时清理活动监听与 memo。未注入活动查询的独立渲染场景保持原有行为。调试命令语法、参数、支持的 `c_spawn` / `c_give` ID 和存档字段不变。
 
@@ -29,7 +33,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 玩家美术改用 Wortox 默认外观（`wortox_none`）：本体 `anim/dynamic/wortox.zip` / `.dyn`，幽灵 `anim/dynamic/ghost_wortox_build.zip` / `.dyn`；地图图标和物品栏自检头像同步使用 Wortox。共用 `wilson` 动画 bank、装备符号覆盖、死亡／复活及存档流程沿用现有实现，角色数值和存档角色字段沿用现有实现。资源按原路径和字节镜像，运行 `python3 packages/prefab/scripts/import-player-art.py --check` 校验，去掉 `--check` 可重新导入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变。
 
-默认加载 `public/saves/Cluster_1/Caves.json`，无需 URL 参数，包含从 `Cluster_58` 提取的蓝蘑菇林、周边楼梯所在的出口绿地、月亮蘑菇林和远古档案馆局部地形；可用 `?save=initial-world.json` 加载原地表存档。洞穴保留地皮和虚空边界，并按导入器 `ENTITY_WHITELIST` 白名单迁移选区内的 `pighead`（4 个）、`cave_exit`（1 个）、`mushtree_moon`（407 棵）、`mushtree_tall`（321 棵）、`blue_mushroom`（109 个）、`archive_moon_statue`（31 座）、`rock1`（17 个）、`cavein_boulder`（24 个）和月亮洞穴水池（`grotto_pool_big` 5 个、`grotto_pool_small` 21 个，及其子物件 `grotto_moonglass_*` 20 个、`grotto_waterfall_big` 5 个、`grotto_waterfall_small1/2` 共 21 个）；保存猪头烧毁标记、雕像外形编号以及水池子物件的 ID 与剩余开采量，其他实体及地下环境规则尚未迁移。`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，并保留 `cave` 类型、`defaultTileId: 1` 的虚空背景、稀疏地皮及当前玩家和实体状态；要重载导出结果，将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重新加载页面。新增 `c_spawn("cavein_boulder")`、`c_spawn("rock_moon_shell")`、`c_spawn("rock_moon")` 和 `c_spawn("moonrockseed")` 地面实体；八种矿石均可开采，宝球保持静态美术；现有 `c_spawn("pighead")`、`c_spawn("archive_moon_statue")` 支持不变，未新增 `c_give` ID。白名单、导入命令、`--regions` / `--snapshot` / `--origin-cell` 参数和 `--check` 验证见 [局部洞穴地形导入](docs/dst-static-layouts.md#从完整存档导入局部洞穴地形)。
+默认加载 `public/saves/Cluster_1/Caves.json`，无需 URL 参数，现由 `scripts/import-dst-region.py` 转换 `Cluster_58` 的整张洞穴地图：471 × 471 源栅格、360 个拓扑节点，保留 46,224 格陆地、298 格 `FAKE_GROUND` 及原有虚空边界，并导入全部 4,601 个白名单实体（含无节点、悬边位置的记录）。导入不再接受 `--regions`；`--origin-cell 281 392` 保持已有地皮和实体位置，出生点改为全图陆地中心附近的安全格。补入原版 `VAULT` 地皮，草和树苗的枯萎检查剩余时间接入现有 `witherable` 组件并保存／恢复。其他实体及地下环境规则尚未迁移。可用 `?save=initial-world.json` 加载原地表存档。`c_spawn` / `c_give` 的语法、参数和支持 ID 不变；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，保留洞穴类型、稀疏地皮及当前玩家和实体状态。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整导入命令、`--snapshot` / `--origin-cell` 和 `--check` 见 [完整洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入整张洞穴地图)。
 
 静态资源缓存不改变调试命令的语法、参数、行为或支持的 `c_spawn` / `c_give` ID；`c_save()` 仍按原有流程导出存档。
 

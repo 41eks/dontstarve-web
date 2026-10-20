@@ -15,7 +15,7 @@ function pixelHash(pixels: Uint8Array): number {
 }
 
 async function openGame(page: Page): Promise<void> {
-  await page.goto('/tests/dst-lighting.html');
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   await page.evaluate(url => {
     const app = document.createElement('div');
     app.id = 'app';
@@ -85,7 +85,21 @@ test('keeps world generation visible until the complete game renders and preserv
   await expect(generatingPage).toHaveCSS('pointer-events', 'auto');
   expect(await page.evaluate(() => ({ steps: (window as any).loadingSteps, draws: (window as any).loadingDraws,
     clock: (window as any).loadingWorld.clock.peek() }))).toEqual({ steps: 0, draws: 0, clock });
+  await page.evaluate(() => {
+    const map = document.querySelector('dst-minimap') as any;
+    const prepare = map.prepareTerrain.bind(map);
+    map.prepareTerrain = async () => {
+      await prepare();
+      (window as any).loadingTerrainPrepared = (await map.inspect()).ready;
+      await new Promise<void>(resolve => { (window as any).releaseTerrain = resolve; });
+    };
+  });
   release();
+  await expect.poll(() => page.evaluate(() => (window as any).loadingTerrainPrepared), { timeout: 30_000 }).toBe(true);
+  await expect(generatingPage).toBeVisible();
+  await expect(canvas).toHaveAttribute('data-loaded', 'false');
+  expect(await page.evaluate(() => (window as any).loadingSteps)).toBe(0);
+  await page.evaluate(() => (window as any).releaseTerrain());
   await expect(canvas).toHaveAttribute('data-loaded', 'true', { timeout: 30_000 });
   await expect(generatingPage).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).drawsAtReady)).toBe(1);

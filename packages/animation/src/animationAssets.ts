@@ -4,6 +4,7 @@ import type { DecodedTexture } from './parseKtex';
 import type { AnimElement, BuildImage, ParsedAnim, ParsedBuild, BuildPackage } from './animationArchive';
 import { loadAnimationArchivePart } from './animationArchiveLoader';
 import { raycastSprite, setInstancedSpriteProxy } from './spriteRaycast';
+import { setSpriteRenderGroupDrawn } from './renderOrder';
 
 export { smallHash } from './animationArchive';
 export type { Matrix2D, AnimElement, Animation, ParsedAnim, BuildImage, ParsedBuild, BuildPackage } from './animationArchive';
@@ -165,6 +166,8 @@ export class SpriteFrameRenderer {
   constructor(visual: THREE.Group) {
     this.visual = visual;
     this.mesh = new THREE.Mesh(this.geometry, this.materials);
+    // Frame parts are baked into geometry; this private mesh stays at identity.
+    this.mesh.matrixAutoUpdate = false;
     this.mesh.raycast = raycastSprite;
     // The frame geometry is rewritten by show(), which keeps its bounding sphere current.
     this.geometry.boundingSphere = new THREE.Sphere();
@@ -176,6 +179,7 @@ export class SpriteFrameRenderer {
   setInstanced(enabled: boolean): void {
     this.instanced = enabled;
     this.mesh.visible = this.frameVisible && !enabled;
+    setSpriteRenderGroupDrawn(this.visual, this.mesh.visible);
     setInstancedSpriteProxy(this.mesh, enabled && this.frameVisible);
   }
 
@@ -185,6 +189,7 @@ export class SpriteFrameRenderer {
     this.mesh.material = frame.materials;
     this.frameVisible = frame.visible;
     this.mesh.visible = frame.visible && !this.instanced;
+    setSpriteRenderGroupDrawn(this.visual, this.mesh.visible);
     if (frame.visible && frame.geometry.boundingBox) publishSpriteSpatialBounds(this.visual, frame.geometry.boundingBox.getBoundingSphere(tightSphere));
   }
 
@@ -206,6 +211,7 @@ export class SpriteFrameRenderer {
     if (sprites.length === 0) {
       this.frameVisible = false;
       this.mesh.visible = false;
+      setSpriteRenderGroupDrawn(this.visual, false);
       this.geometry.setDrawRange(0, 0);
       return;
     }
@@ -216,6 +222,7 @@ export class SpriteFrameRenderer {
     this.ensureCapacity(sprites.length);
     this.frameVisible = true;
     this.mesh.visible = !this.instanced;
+    setSpriteRenderGroupDrawn(this.visual, this.mesh.visible);
     this.materials.length = 0;
     this.materialIndices.clear();
     this.geometry.clearGroups();

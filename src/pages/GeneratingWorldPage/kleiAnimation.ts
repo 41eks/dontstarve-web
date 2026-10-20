@@ -250,6 +250,3 @@ export async function loadKleiAnimationAsset(root: string): Promise<KleiAnimatio
   return { animation, animations, build, atlas }
 }
 
-export function loadGeneratingWorldAsset() {
-  return loadKleiAnimationAsset(`${import.meta.env.BASE_URL}generating-world`)
-}

@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createSharedArchiveSprite, type ArchiveSprite } from '../src/archiveSprite';
+import { retainSpatialEntity } from '../../stategraphs/src/entitySpatialIndex';
+import { isSpriteEntityRendered, SpriteRenderOrderSorter } from '../src/renderOrder';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
   new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
@@ -19,6 +21,39 @@ function finish(sprite: ArchiveSprite, next: string) {
   for (let i = 0; i < 300 && sprite.currentAnimation !== next; i++) sprite.update(.1);
   expect(sprite.currentAnimation).toBe(next);
 }
+
+it('changes baked animation geometry without invalidating static transforms, and updates them on movement or camera turns', async () => {
+  const assets = new ArchiveSpriteAssets();
+  const sprite = await createSharedArchiveSprite(assets, definition, { instancedAnimations: ['idle_loop'] });
+  const scene = new THREE.Scene();
+  const spatial = retainSpatialEntity(sprite.model);
+  scene.add(sprite.model);
+  const update = vi.spyOn(sprite.model.children[0], 'updateMatrixWorld');
+  try {
+    scene.updateMatrixWorld();
+    expect(isSpriteEntityRendered(sprite.model)).toBe(false); // The idle batch owns sorting.
+    const initialVisits = update.mock.calls.length;
+    const firstFrame = mesh(sprite).geometry;
+    sprite.setFrame(5); scene.updateMatrixWorld();
+    expect(mesh(sprite).geometry).not.toBe(firstFrame);
+    expect(update).toHaveBeenCalledTimes(initialVisits);
+    sprite.playOnce('chop'); scene.updateMatrixWorld();
+    expect(isSpriteEntityRendered(sprite.model)).toBe(true);
+    const sorter = new SpriteRenderOrderSorter();
+    sorter.update([{ object: sprite.model, footPosition: sprite.model.position }], new THREE.Matrix4());
+    expect(sprite.model.children[0].renderOrder).toBe(0);
+    expect(update).toHaveBeenCalledTimes(initialVisits);
+    sprite.model.position.set(30, 0, 60); sprite.refreshTransform();
+    scene.updateMatrixWorld();
+    expect(mesh(sprite).matrixWorld.elements[12]).toBe(30);
+    expect(update).toHaveBeenCalledTimes(initialVisits + 1);
+    const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .5);
+    sprite.faceCamera(rotation); scene.updateMatrixWorld();
+    expect(update).toHaveBeenCalledTimes(initialVisits + 2);
+    sprite.start('idle_loop');
+    expect(isSpriteEntityRendered(sprite.model)).toBe(false);
+  } finally { spatial.dispose(); sprite.dispose(); assets.dispose(); }
+});
 
 it('shares idle, work and fall frames across tinted trees while playback and resource lifetimes stay independent', async () => {
   const assets = new ArchiveSpriteAssets();

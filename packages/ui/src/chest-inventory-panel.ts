@@ -1,19 +1,22 @@
 import * as THREE from 'three';
 import type { DstChestPanelElement } from './chest-panel';
 import { buildingContainerId, buildingContainerDefinition, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
+import { PLAYER_COLLIDER_RADIUS } from '@dontstarve-web/prefab/player';
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 import type { InventoryStack } from '@dontstarve-web/inventory';
 import type { SlotItem } from './slot/slot-model';
 import type { CookRequestDetail } from './cook-pot-panel';
-import type { ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal } from '@dontstarve-web/signals';
 
 export const CHEST_SLOT_COUNT = 9;
 export const COOK_POT_SLOT_COUNT = 4;
 const ANCHOR_MARGIN = 1;
+/** The player's animated bounds change every frame, so its anchor box is a fixed multiple of the collider radius. */
+const PLAYER_HEIGHT_RADII = 3.6;
+const PLAYER_HALF_WIDTH_RADII = 2.5;
 
 export interface ChestInventoryPanelController {
   setOpen(model: THREE.Object3D, isOpen: boolean, prefab?: StorageBuildingId): void;
-  update(): void;
   bindActions(dispatcher: { performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean }): void;
   dispose(): void;
 }
@@ -22,15 +25,20 @@ export interface ChestInventoryPanelOptions {
   camera: THREE.Camera;
   canvas: Pick<HTMLCanvasElement, 'getBoundingClientRect'>;
   player: THREE.Object3D;
+  /** The anchor follows the world's player positions, which are published once per 60 active frames. */
+  getWatchWorldContent: GetWatchWorldContent;
   toItem?: (record: Readonly<InventoryStack>) => SlotItem;
 }
 
 export function createChestInventoryPanel(
   element: DstChestPanelElement,
-  { camera, canvas, player, toItem }: ChestInventoryPanelOptions,
+  { camera, canvas, player, getWatchWorldContent, toItem }: ChestInventoryPanelOptions,
   prefab: StorageBuildingId = 'treasurechest',
 ): ChestInventoryPanelController {
   const bounds = new THREE.Box3();
+  // Animated frames change the model's bounds every frame, so measure once per opening and follow the model's position.
+  const bounds0 = new THREE.Box3();
+  const origin = new THREE.Vector3();
   const anchor = new THREE.Vector3();
   let openModel: THREE.Object3D | undefined;
   let openPrefab = prefab;
@@ -49,9 +57,23 @@ export function createChestInventoryPanel(
       return;
     }
 
-    const anchorModel = openPrefab.startsWith('mushroom_light') ? openModel : player;
-    anchorModel.updateWorldMatrix(true, true);
-    bounds.setFromObject(anchorModel);
+    if (openPrefab.startsWith('mushroom_light')) {
+      // Static model: measure its animated bounds once per opening and follow its position.
+      openModel.updateWorldMatrix(true, true);
+      openModel.getWorldPosition(origin);
+      if (bounds0.isEmpty()) {
+        bounds0.setFromObject(openModel);
+        bounds0.min.sub(origin);
+        bounds0.max.sub(origin);
+      }
+      bounds.min.copy(bounds0.min).add(origin);
+      bounds.max.copy(bounds0.max).add(origin);
+    } else {
+      const { position } = player;
+      const half = PLAYER_COLLIDER_RADIUS * PLAYER_HALF_WIDTH_RADII;
+      bounds.min.set(position.x - half, position.y, position.z - half);
+      bounds.max.set(position.x + half, position.y + PLAYER_COLLIDER_RADIUS * PLAYER_HEIGHT_RADII, position.z + half);
+    }
     if (bounds.isEmpty()) {
       element.hidden = true;
       return;
@@ -90,6 +112,9 @@ export function createChestInventoryPanel(
       canvasBounds.top + (1 - anchor.y) * canvasBounds.height / 2,
     );
   };
+  const cleanups: (() => void)[] = [];
+  const playerpositions = getWatchWorldContent(WorldContentKey.PlayerPositions, stop => cleanups.push(stop));
+  createEffect(() => { playerpositions.get(); update(); });
   const close = () => {
     stopBurnt?.(); stopBurnt = undefined;
     openModel?.userData.components?.container?.Close(player);
@@ -101,9 +126,9 @@ export function createChestInventoryPanel(
   element.addEventListener('game:chest-close', close);
 
   return {
-    update,
     bindActions(dispatcher) { actions = dispatcher; },
     dispose() {
+      cleanups.forEach(stop => stop());
       stopBurnt?.(); stopBurnt = undefined;
       element.removeEventListener('game:cook-request', cook);
       element.removeEventListener('game:chest-close', close);
@@ -116,6 +141,7 @@ export function createChestInventoryPanel(
         if (openModel !== model && element.slotContainer) element.close();
         stopBurnt?.(); stopBurnt = undefined;
         openModel = model;
+        bounds0.makeEmpty();
         openPrefab = buildingPrefab;
         const container = buildingContainerDefinition(buildingPrefab);
         element.open({

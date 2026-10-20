@@ -110,6 +110,10 @@
   transform: translate(-50%, -50%);
 }
 
+.animated-chest-panel.is-loading {
+  visibility: hidden;
+}
+
 .animated-chest-panel.is-opening .chest-panel__slots,
 .animated-chest-panel.is-opening header,
 .animated-chest-panel.is-closing header {

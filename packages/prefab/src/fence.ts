@@ -608,7 +608,7 @@ export class FencePlacement {
     }
 
     private disposeFence(fence: FenceInstance): void {
-        if (fence.body && this.world.physics && fence.body.world === this.world.physics) this.world.physics.removeBody(fence.body);
+        if (fence.body) this.world.physics?.removeBody(fence.body);
         fence.body = undefined;
         fence.root.userData.removed = true;
         fence.stopSkin();

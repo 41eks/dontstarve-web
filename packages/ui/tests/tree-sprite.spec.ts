@@ -32,5 +32,6 @@ test('instanced idle frames are assembled from source parts and switch to ordina
   expect(result.occlusion[2]).toEqual(result.occlusion[1]);
   expect(result.occlusion[3]).toEqual([255, 0, 0]);
   expect(result.stabilityDifferences).toEqual([0, 0, 0, 0]);
+  expect(result.reusedInstanceBuffers).toBe(true);
   expect(errors).toEqual([]);
 });

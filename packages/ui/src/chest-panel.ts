@@ -33,6 +33,7 @@ export class DstChestPanelElement extends AssetElement {
   private readonly renderers: SlotRenderer[] = [];
   private readonly selectedSlot = createSignal<SlotAddress | null>(null);
   private background?: AnimatedBackground;
+  private panel?: HTMLElement;
   private closing = false;
   private stopContainerSignal?: () => void;
 
@@ -52,16 +53,22 @@ export class DstChestPanelElement extends AssetElement {
   protected get defaultColumns(): number { return 3; }
   protected get backgroundAsset(): string { return 'ingredient_slot.tex.png'; }
   protected get backgroundAtlas(): string | undefined { return undefined; }
+  /** `above` centres the panel over the anchor; `beside` places it to the anchor's right. */
+  protected get anchorPlacement(): 'above' | 'beside' { return 'above'; }
+  protected get panelModifierClass(): string { return ''; }
+  protected get showCloseButton(): boolean { return false; }
+
+  private get slotsElement(): HTMLElement {
+    return this.panel!.querySelector<HTMLElement>('.chest-panel__slots')!;
+  }
 
   setAnchor(clientX: number, clientY: number): void {
-    const panelBounds = this.shadowRoot
-      ?.querySelector<HTMLElement>('.chest-panel')
-      ?.getBoundingClientRect();
+    const panelBounds = this.panel?.getBoundingClientRect();
     const panelWidth = panelBounds?.width || 160;
     const panelHeight = panelBounds?.height || 210;
     const viewportMargin = 8;
     const panelGap = 10;
-    if (this.containerKind === 'cookpot') {
+    if (this.anchorPlacement === 'beside') {
       this.style.setProperty('--chest-panel-anchor-x',
         `${Math.max(viewportMargin, Math.min(window.innerWidth - panelWidth - viewportMargin, clientX + panelGap))}px`);
       this.style.setProperty('--chest-panel-anchor-y',
@@ -113,10 +120,9 @@ export class DstChestPanelElement extends AssetElement {
     this.selectedSlot.set(null);
     if (this.background && this.isConnected) {
       this.closing = true;
-      const panel = this.shadowRoot!.querySelector<HTMLElement>('.chest-panel')!;
-      panel.classList.remove('is-opening');
-      panel.classList.add('is-closing');
-      this.shadowRoot!.querySelector('.chest-panel__slots')!.replaceChildren();
+      this.panel!.classList.remove('is-opening');
+      this.panel!.classList.add('is-closing');
+      this.slotsElement.replaceChildren();
       this.background.playOnce('close', () => {
         this.closing = false;
         this.render();
@@ -176,36 +182,61 @@ export class DstChestPanelElement extends AssetElement {
     this.closing = false;
   }
 
-  protected render(): void {
-    this.disposeRenderers();
-    this.background?.dispose();
-    this.background = undefined;
+  /** Builds the static shadow DOM once; `render()` only updates it. */
+  private ensurePanel(): HTMLElement {
+    if (this.panel) return this.panel;
     const root = this.shadowRoot!;
     root.innerHTML = `
       <style>${slotStyles}\n${styles}</style>
-      <section class="chest-panel animated-chest-panel ${this.containerKind === 'cookpot' ? 'cook-pot-panel' : ''}" ${this.container || this.closing ? '' : 'hidden'}>
+      <section class="chest-panel animated-chest-panel ${this.panelModifierClass}" hidden>
         <canvas class="chest-panel__background" aria-hidden="true"></canvas>
         <header>
           <h2></h2>
-          ${this.containerKind === 'cookpot' ? '<button class="chest-panel__close" type="button" aria-label="关闭烹饪锅">×</button>' : ''}
+          ${this.showCloseButton ? '<button class="chest-panel__close" type="button">×</button>' : ''}
         </header>
         <div class="chest-panel__slots" role="group"></div>
       </section>
     `;
     const panel = root.querySelector<HTMLElement>('.chest-panel')!;
+    panel.querySelector('.chest-panel__close')?.addEventListener('click', () => this.close());
+    this.panel = panel;
+    this.buildPanel(panel);
+    return panel;
+  }
+
+  /** Subclass hook: add persistent children once, after the base skeleton exists. */
+  protected buildPanel(_panel: HTMLElement): void {}
+
+  protected render(): void {
+    this.disposeRenderers();
+    this.background?.dispose();
+    this.background = undefined;
+    const panel = this.ensurePanel();
+    const active = Boolean(this.container) || this.closing;
+    panel.hidden = !active;
+    panel.classList.remove('is-opening', 'is-closing', 'is-loading');
     panel.style.setProperty('--storage-columns', String(this.columns));
-    if (this.container || this.closing) {
+    // The canvas carries per-clip dataset state, so each opening starts from a fresh one.
+    const canvas = document.createElement('canvas');
+    canvas.className = 'chest-panel__background';
+    canvas.setAttribute('aria-hidden', 'true');
+    panel.querySelector('.chest-panel__background')!.replaceWith(canvas);
+    const grid = this.slotsElement;
+    grid.replaceChildren();
+    if (active) {
       this.background = new AnimatedBackground(
-        root.querySelector<HTMLCanvasElement>('.chest-panel__background')!,
+        canvas,
         this.dataAsset(`anim/${this.panelArchive}`),
         ({ width, height, originX, originY }) => {
+          panel.classList.remove('is-loading');
           panel.style.setProperty('--chest-art-width', String(width / 64));
           panel.style.setProperty('--chest-art-height', String(height / 64));
           panel.style.setProperty('--chest-art-origin-x', `${originX / width * 100}%`);
           panel.style.setProperty('--chest-art-origin-y', `${originY / height * 100}%`);
         },
       );
-      panel.classList.add(this.closing ? 'is-closing' : 'is-opening');
+      // Until the art reports its real size the placeholder size would reflow the panel mid-animation.
+      panel.classList.add('is-loading', this.closing ? 'is-closing' : 'is-opening');
       this.background.playOnce(this.closing ? 'close' : 'open', () => {
         if (this.closing) {
           this.closing = false;
@@ -215,7 +246,6 @@ export class DstChestPanelElement extends AssetElement {
     }
     if (!this.container) return;
 
-    const grid = root.querySelector<HTMLElement>('.chest-panel__slots')!;
     if (this.slotGrid) {
       const { x, y, columnSpacing, rowSpacing } = this.slotGrid;
       const rows = Math.ceil(this.container.slots.length / this.columns);
@@ -224,6 +254,10 @@ export class DstChestPanelElement extends AssetElement {
       panel.style.setProperty('--storage-offset-y', String((-y + (rows - 1) * rowSpacing / 2) / 64));
       panel.style.setProperty('--storage-column-gap', `calc((${columnSpacing} / 64 - 1 / 0.9) * var(--inventory-slot-layout-size))`);
       panel.style.setProperty('--storage-row-gap', `calc((${rowSpacing} / 64 - 1 / 0.9) * var(--inventory-slot-layout-size))`);
+    } else {
+      for (const name of ['--storage-offset-x', '--storage-offset-y', '--storage-column-gap', '--storage-row-gap']) {
+        panel.style.removeProperty(name);
+      }
     }
     panel.setAttribute('aria-label', this.panelTitle);
     panel.querySelector('.chest-panel__close')?.setAttribute('aria-label', `关闭${this.panelTitle}`);
@@ -245,8 +279,6 @@ export class DstChestPanelElement extends AssetElement {
       renderer.refresh();
       renderer.connect();
     });
-    root.querySelector<HTMLButtonElement>('.chest-panel__close')
-      ?.addEventListener('click', () => this.close());
   }
 
   /**

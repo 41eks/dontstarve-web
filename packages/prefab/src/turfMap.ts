@@ -7,6 +7,7 @@ import { OceanSurface } from './ocean';
 import { loadMinimapOcean, type MinimapOceanData } from './minimapOcean';
 import type { ClockState, ReadonlySignal } from '@dontstarve-web/signals';
 import { GroundDepthPrepass } from './groundDepthPrepass';
+import { groundTileLayerQuads, isLandTile } from './groundTileQuads';
 
 // tiledefs.lua preserves these vanilla GROUND IDs in WORLD_TILES.
 export const WORLD_TILES = {
@@ -21,12 +22,7 @@ export const WORLD_TILES = {
   MONKEY_DOCK: GROUND_TILE_DEFINITIONS.MONKEY_DOCK.tileId,
 } as const;
 
-/** tiledefs.lua: INVALID and the impassable range have no land surface. */
-export function isLandTile(tileId: number): boolean {
-  return landTiles.has(tileId);
-}
-const landTiles = new Set(Object.values(GROUND_TILE_DEFINITIONS)
-  .map(definition => definition.tileId).filter(id => id !== WORLD_TILES.OCEAN_COASTAL));
+export { isLandTile };
 
 export interface TurfTileSave {
   /** Signed grid coordinates: floor(world x/z / TILE_SIZE). */
@@ -36,6 +32,9 @@ export interface TurfTileSave {
   /** undertile component: the tile restored when a farm soil is dug or a dock is destroyed. */
   underTileId?: number;
 }
+
+/** Inclusive-exclusive signed cells; omitted on a full terrain/resource change. */
+export interface TerrainCellBounds { minCol: number; minRow: number; maxCol: number; maxRow: number }
 
 /** Generated terrain plus authoritative saved tile overrides and TERRAFORM changes. */
 export class TurfMap {
@@ -48,7 +47,7 @@ export class TurfMap {
   private visual?: THREE.Group;
   private readonly layers = new Map<number, { mesh: THREE.Mesh; assets: GroundTileAssets }>();
   private readonly listeners = new Set<(world: Vector2, originalTileId: number) => void>();
-  private readonly terrainListeners = new Set<() => void>();
+  private readonly terrainListeners = new Set<(bounds?: TerrainCellBounds) => void>();
   private ocean?: OceanSurface;
   private falloffAssets?: GroundFalloffAssets;
   private falloffMesh?: THREE.Mesh;
@@ -57,10 +56,12 @@ export class TurfMap {
   private minimapLayers?: Promise<Map<number, GroundTileLayerImage>>;
   private minimapOceanData?: Promise<MinimapOceanData>;
   private readonly layerRequests = new Map<GroundTileName, Promise<void>>();
+  private terrainNamesCache?: GroundTileName[];
 
   private terrainNames(): GroundTileName[] {
+    if (this.terrainNamesCache) return this.terrainNamesCache;
     const ids = new Set([...this.dugTiles.values()].map(tile => tile.tileId));
-    return (Object.keys(GROUND_TILE_DEFINITIONS) as GroundTileName[]).filter(name =>
+    return this.terrainNamesCache = (Object.keys(GROUND_TILE_DEFINITIONS) as GroundTileName[]).filter(name =>
       ['DIRT', 'DECIDUOUS', 'GRASS', 'WOODFLOOR', 'FARMING_SOIL', 'MONKEY_DOCK', 'OCEAN_COASTAL'].includes(name)
       || ids.has(WORLD_TILES[name]) || this.layers.has(WORLD_TILES[name]));
   }
@@ -86,7 +87,8 @@ export class TurfMap {
   /** Registers generated terrain without overwriting saved dug tiles. */
   setOriginalTile(world: Vector2, tileId: number): void {
     this.originalTiles.set(this.key(world), tileId);
-    this.rebuildGeometry();
+    const col = Math.floor(world.x / TILE_SIZE), row = Math.floor(world.z / TILE_SIZE);
+    this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
   }
 
   /** Inclusive-exclusive signed cell range [min, max) covering the generated world on both axes. */
@@ -114,7 +116,7 @@ export class TurfMap {
   setTile(col: number, row: number, tileId: TurfTileSave['tileId'], underTileId?: TurfTileSave['underTileId']): void {
     if (this.tileAt(col, row) === WORLD_TILES.INVALID) throw new RangeError('Tile is outside the world');
     this.dugTiles.set(`${col},${row}`, { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }) });
-    this.rebuildGeometry();
+    this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
   }
 
   /** Minimap render layer images (map_edge masks + mini noise) per tile id. Loaded once from the assets root of createVisual(). */
@@ -132,22 +134,9 @@ export class TurfMap {
   /** Land render masks, including skirts in neighbouring cells. UI consumes the
    * same eight-neighbour variant selection as the world terrain renderer.
    */
-  tileLayerQuads(): ReadonlyMap<number, readonly GroundTileQuad[]> {
-    const names = this.terrainNames().filter(name => name !== 'OCEAN_COASTAL');
-    const layers = new Map<number, GroundTileQuad[]>();
-    const { min, max } = this.cellRange();
-    for (const name of names) {
-      const tileId = WORLD_TILES[name];
-      const quads: GroundTileQuad[] = [];
-      for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
-        const current = this.tileAt(col, row);
-        if (!isLandTile(current) && current !== WORLD_TILES.OCEAN_COASTAL) continue;
-        const variant = this.variantAt(col, row, tileId);
-        if (variant !== 17) quads.push({ col, row, variant });
-      }
-      layers.set(tileId, quads);
-    }
-    return layers;
+  tileLayerQuads(bounds?: TerrainCellBounds): ReadonlyMap<number, readonly GroundTileQuad[]> {
+    const ids = this.terrainNames().filter(name => name !== 'OCEAN_COASTAL').map(name => WORLD_TILES[name]);
+    return groundTileLayerQuads((col, row) => this.tileAt(col, row), ids, this.cellRange(), bounds);
   }
 
   /** Data of the separate minimapocean.ksh pass that draws every ocean tile. */
@@ -201,7 +190,7 @@ export class TurfMap {
     return { geometry, atlases };
   }
 
-  onTerrainChanged(listener: () => void): () => void {
+  onTerrainChanged(listener: (bounds?: TerrainCellBounds) => void): () => void {
     this.terrainListeners.add(listener);
     return () => this.terrainListeners.delete(listener);
   }
@@ -215,15 +204,17 @@ export class TurfMap {
   /** map.lua CanPlaceTurfAtPoint: only bare dirt accepts turf. */
   canPlaceTurf(point: THREE.Vector3): boolean { return this.getTileAtWorld(point) === WORLD_TILES.DIRT; }
 
-  /** Prepare the terrain and minimap art before buffering DEPLOY. */
+  /** Prepare world art before buffering DEPLOY; update legacy minimap art only if requested. */
   prepareTurf(name: GroundTileName): Promise<void> {
     if (this.layers.has(WORLD_TILES[name]) || name === 'DIRT') return Promise.resolve();
     const pending = this.layerRequests.get(name);
     if (pending) return pending;
     const root = this.assetBaseUrl, visual = this.visual;
     if (root === undefined || !visual) return Promise.reject(new Error('Create terrain visuals before deploying turf'));
-    const request = Promise.all([loadGroundTileAssets(root, name), loadGroundTileMinimapLayer(root, name), this.tileLayerImages()])
-      .then(([assets, mini, layers]) => {
+    const mini = this.minimapLayers
+      ? Promise.all([loadGroundTileMinimapLayer(root, name), this.minimapLayers]) : undefined;
+    const request = Promise.all([loadGroundTileAssets(root, name), mini])
+      .then(([assets, minimap]) => {
         if (this.visual !== visual) { assets.material.dispose(); return; }
         const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
         mesh.name = `TurfBlend:${name}`;
@@ -232,7 +223,7 @@ export class TurfMap {
         mesh.receiveShadow = true;
         visual.add(mesh);
         this.layers.set(WORLD_TILES[name], { mesh, assets });
-        layers.set(WORLD_TILES[name], mini);
+        if (minimap) minimap[1].set(WORLD_TILES[name], minimap[0]);
         this.rebuildGeometry();
       });
     this.layerRequests.set(name, request);
@@ -260,7 +251,7 @@ export class TurfMap {
     const col = Math.floor(world.x / TILE_SIZE), row = Math.floor(world.z / TILE_SIZE);
     this.dugTiles.set(`${col},${row}`, { col, row, tileId: WORLD_TILES.FARMING_SOIL,
       underTileId: this.getTileAtWorld(world) });
-    this.rebuildGeometry();
+    this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
     return true;
   }
 
@@ -281,7 +272,7 @@ export class TurfMap {
       this.dugTiles.set(key, { col, row, tileId: previous.underTileId });
     }
     else this.dugTiles.set(key, { col, row, tileId: WORLD_TILES.DIRT });
-    this.rebuildGeometry();
+    this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
     for (const listener of this.listeners) listener(world, originalTileId);
     return true;
   }
@@ -371,7 +362,9 @@ export class TurfMap {
     return groundTileVariant(is(0, 0), cardinal, diagonal);
   }
 
-  private rebuildGeometry(): void {
+  private rebuildGeometry(bounds?: TerrainCellBounds): void {
+    this.terrainNamesCache = undefined;
+    for (const listener of this.terrainListeners) listener(bounds);
     if (!this.dirt || !this.dirtAssets) return;
     const quads = [...this.dugTiles.values()].filter(({ tileId }) => tileId === WORLD_TILES.DIRT)
       .map((tile) => ({ ...tile, variant: 1 }));
@@ -428,7 +421,6 @@ export class TurfMap {
     }
     this.rebuildFalloff();
     this.ocean?.rebuildColours();
-    for (const listener of this.terrainListeners) listener();
   }
 
   /** falloffdefs.lua FALLOFF: a land cell (docks excepted) gets a cliff on each side whose neighbour is void. */

@@ -108,6 +108,18 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(@types/node@26.6.3)(vite@8.0.14(@types/node@26.6.3))
 
+  packages/map:
+    dependencies:
+      '@dontstarve-web/prefab':
+        specifier: workspace:*
+        version: link:../prefab
+      '@dontstarve-web/ui':
+        specifier: workspace:*
+        version: link:../ui
+      three:
+        specifier: ^0.184.0
+        version: 0.184.0
+
   packages/prefab:
     dependencies:
       '@dontstarve-web/animation':

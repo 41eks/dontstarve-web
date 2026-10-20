@@ -1,6 +1,7 @@
 import { syncPlacementEntity } from './placementEntities';
 import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import * as CANNON from 'cannon-es';
+import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
 import * as THREE from 'three';
 import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '@dontstarve-web/animation/beefaloSprite';
 import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
@@ -367,7 +368,7 @@ export class BeefaloManager {
     this.stopSeason = world.season.subscribe(({ season }) => { this.world.season = season; });
     // MakeCharacterPhysics sets friction to zero. Cannon otherwise cancels the
     // low walking speed on this heavy, fixed-rotation body's ground contacts.
-    const materials = new Set([physics.defaultMaterial, ...physics.bodies.map((body) => body.material)
+    const materials = new Set([physics.defaultMaterial, ...getRegisteredPhysicsBodies(physics).map((body) => body.material)
       .filter((material): material is CANNON.Material => material !== null)]);
     this.contactMaterials = Array.from(materials, (material) => {
       const contact = new CANNON.ContactMaterial(this.material, material, { friction: 0, restitution: 0 });
@@ -387,7 +388,7 @@ export class BeefaloManager {
         const target = new THREE.Vector3(position.x + Math.cos(angle) * ring * 10, 0,
           position.z + Math.sin(angle) * ring * 10);
         this.world.constrainPosition(target);
-        const occupied = this.physics.bodies.some((body) => body.collisionResponse && body.shapes.some((shape) =>
+        const occupied = getRegisteredPhysicsBodies(this.physics).some((body) => body.collisionResponse && body.shapes.some((shape) =>
           shape instanceof CANNON.Sphere && Math.hypot(target.x - body.position.x, target.z - body.position.z)
             < shape.radius + BEEFALO_BEHAVIOR.radius + 1));
         if (!occupied && !Array.from(this.pendingSpawns).some((point) =>

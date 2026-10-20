@@ -75,10 +75,10 @@ function uninstallMaterialHook(): void {
   originalMaterialBeforeRender = undefined;
 }
 
-function isInScene(object: THREE.Object3D): boolean {
+function sceneOf(object: THREE.Object3D): THREE.Scene | undefined {
   let root = object;
   while (root.parent) root = root.parent;
-  return (root as THREE.Scene).isScene === true;
+  return (root as THREE.Scene).isScene === true ? root as THREE.Scene : undefined;
 }
 
 /** World XZ lightmap shared by ground, animated sprites and instanced scenery. */
@@ -210,7 +210,7 @@ export class DstLocalLighting {
     return Math.min(1, r) * 0.2126 + Math.min(1, g) * 0.7152 + Math.min(1, b) * 0.0722;
   }
 
-  renderLightmap(renderer: THREE.WebGLRenderer): void {
+  renderLightmap(renderer: THREE.WebGLRenderer, preparedScene?: THREE.Scene): void {
     this.renderer = renderer;
     this.ensureLightCapacity(getPrefabLocalLightOwners().size);
     const origins = this.lightGeometry.getAttribute('lightOriginRadius') as THREE.InstancedBufferAttribute;
@@ -221,7 +221,7 @@ export class DstLocalLighting {
     for (const owner of getPrefabLocalLightOwners()) {
       const settings = getPrefabLocalLight(owner);
       if (!settings || settings.radius <= 0 || settings.intensity <= 0) continue;
-      const position = this.getActiveLightPosition(owner);
+      const position = this.getActiveLightPosition(owner, preparedScene);
       if (!position) continue;
       if (count === 0) this.ownerPosition.copy(position);
       origins.setXYZ(count, position.x, position.z, settings.radius);
@@ -263,9 +263,11 @@ export class DstLocalLighting {
   }
 
   /** GPU accumulation and CPU LightWatchers use the same world-space tile gate. */
-  private getActiveLightPosition(owner: THREE.Object3D): THREE.Vector3 | undefined {
-    if (!isInScene(owner)) return;
-    const position = owner.getWorldPosition(this.lightPosition);
+  private getActiveLightPosition(owner: THREE.Object3D, preparedScene?: THREE.Scene): THREE.Vector3 | undefined {
+    const scene = sceneOf(owner);
+    if (!scene) return;
+    const position = scene === preparedScene
+      ? this.lightPosition.setFromMatrixPosition(owner.matrixWorld) : owner.getWorldPosition(this.lightPosition);
     if (!this.tickingarea) return position;
     const key = GetTileKeyAtPoint(position);
     if (key === INVALID_TILE_KEY) return;

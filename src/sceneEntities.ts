@@ -11,6 +11,7 @@ import { PlaySound } from '@dontstarve-web/prefab/sound';
 import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
 import { createInventoryStore } from './inventory';
 import * as CANNON from 'cannon-es';
+import { getRegisteredPhysicsBodies } from '../packages/componets/src/physicsWorld';
 import * as THREE from 'three';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../packages/prefab/src/worldContext';
@@ -461,7 +462,7 @@ export async function createSceneEntities(
       const radius = .5 * WORLD_SCALE;
       const edge = initialSave.world.map.generator.options.size / 2 - radius;
       return turfMap.isPassableAtPoint(point) && Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
-        && !world.bodies.some(body => body.type === CANNON.Body.STATIC && body.collisionResponse &&
+        && !getRegisteredPhysicsBodies(world).some(body => body.type === CANNON.Body.STATIC && body.collisionResponse &&
           body.shapes.some(shape => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere) && (() => {
             body.updateAABB(); const b = body.aabb;
             return point.x >= b.lowerBound.x - radius && point.x <= b.upperBound.x + radius && point.z >= b.lowerBound.z - radius && point.z <= b.upperBound.z + radius;
@@ -1048,7 +1049,7 @@ export async function createSceneEntities(
       findPath(start, target) {
         const radius = BEEFALO_BEHAVIOR.radius;
         const edge = initialSave.world.map.generator.options.size / 2 - radius;
-        const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC && body.collisionResponse
+        const obstacles = getRegisteredPhysicsBodies(world).filter((body) => body.type === CANNON.Body.STATIC && body.collisionResponse
           && body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere))
           .map((body) => { body.updateAABB(); return body.aabb; });
         return findGroundPath(start, target, { cellSize: radius,

@@ -1,5 +1,6 @@
 import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
+import { PhysicsWorld } from '../packages/componets/src/physicsWorld';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
 import { SpriteRenderOrderSorter } from '@dontstarve-web/animation';
@@ -35,13 +36,11 @@ import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
 import { savedPrefabArchives } from './prefabDefinitions';
 
-export const world = new CANNON.World({
-  gravity: new CANNON.Vec3(0, -9.82, 0),
-});
-// The Caves hold hundreds of static obstacles; the default naive broadphase tests every pair on each substep.
-world.broadphase = new CANNON.SAPBroadphase(world);
-
 export const worldState = createWorldState(initialSave.world);
+export const world = new PhysicsWorld({
+  gravity: new CANNON.Vec3(0, -9.82, 0),
+}, worldState.tickingarea);
+
 turfMap.bindOceanClock(worldState.clock);
 
 const groundMaterial = new CANNON.Material('ground');
@@ -70,7 +69,7 @@ export const locomotor = new Locomotor(playerBody, {
   isPassable: (x, z) => turfMap.isPassableAtPoint({ x, z }),
   findPath(start, target) {
     const mapEdge = initialSave.world.map.generator.options.size / 2 - playerRadius;
-    const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC
+    const obstacles = [...world.registeredBodies].filter((body) => body.type === CANNON.Body.STATIC
       && body.collisionResponse
       && (body.collisionFilterMask & playerBody.collisionFilterGroup) !== 0
       && (playerBody.collisionFilterMask & body.collisionFilterGroup) !== 0
@@ -147,6 +146,7 @@ export async function startScene(
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     entities.dispose();
     stopEntityWorld();
+    world.dispose();
     disposeTerrain();
     worldState.dispose();
     dstLighting.dispose();
@@ -273,6 +273,7 @@ export async function startScene(
     const releaseResources = () => {
       entities.dispose();
       stopEntityWorld();
+      world.dispose();
       disposeTerrain();
       worldState.dispose();
       dstLighting.dispose();

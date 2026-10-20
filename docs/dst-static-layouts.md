@@ -61,48 +61,48 @@ python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/d
 - 原版布局中心恰好是地皮角点，猪王也在角点上；初始存档的猪王在 `z = 25`，因此猪王不动，地皮和岩石对齐最近的角点 `z = 24`。
 - 原版的 `start_mask` / `fill_mask` / `ReserveSpace`（避开不可通行或已占用区域）没有对应实现：布局直接覆盖存档地图。
 
-## 从完整存档导入局部洞穴地形
+## 从完整存档导入整张洞穴地图
 
-完整存档已经保存了布局放置后的地皮，因此局部导入直接读取最终 `map.tiles`，不重新运行静态布局；实体另从白名单内的 `savedata.ents` 分组读取。工具只接受可读的开发版 Lua 世界快照；用字面量解析器读取 table，不执行存档 Lua。压缩的正式版快照暂不支持。
+`scripts/import-dst-region.py` 读取完整快照中的最终 `map.tiles`，不重新运行静态布局；实体从 `savedata.ents` 的白名单分组读取。只接受可读的开发版 Lua 世界快照，使用字面量解析器读取 table，不执行存档 Lua；压缩的正式版快照暂不支持。
 
 ```bash
 python3 scripts/import-dst-region.py \
   --shard public/saves/Cluster_58/Caves \
   --output public/saves/Cluster_1/Caves.json --origin-cell 281 392
 
-# 逐格转换结果及来源报告与现有文件必须一致；不写文件
+# 校验地图、实体和来源报告与源快照一致，不写文件
 python3 scripts/import-dst-region.py \
   --shard public/saves/Cluster_58/Caves \
   --output public/saves/Cluster_1/Caves.json --origin-cell 281 392 --check
 ```
 
-参数：`--shard` 指向原版 Caves 目录；先从 `save/shardindex` 找到活动 Session，再选择最新的十位编号世界快照，也可以用 `--snapshot 0000000022` 固定编号。`--template` 默认是项目 `initial-world.json`，只沿用格式、版本及时间戳等外壳信息；角色恢复为满状态的空背包威尔逊，不复制模板世界实体或原版玩家。`--regions` 接受一个或多个拓扑任务名，默认 `BlueForest MoonCaveForest ArchiveMaze CaveExitTask1`，第一项决定玩家出生区域。`--origin-cell COL ROW` 固定源地图中的新原点格，扩展选区时沿用报告中的 `sourceOriginCell`，避免已有地形发生平移；省略时按本次选区包围盒计算原点。
+参数：`--shard` 指向原版 Caves 目录；先从 `save/shardindex` 找到活动 Session，再选择最新的十位编号世界快照，也可用 `--snapshot 0000000022` 固定编号。`--template` 默认使用项目 `initial-world.json`，只沿用格式、版本及时间戳等外壳信息；角色恢复为满状态的空背包威尔逊，不复制模板世界实体或原版玩家。`--origin-cell COL ROW` 固定源地图的新原点，省略时按全图陆地包围盒中心计算；沿用 `(281, 392)` 可保持此前局部导入的地皮和实体位置。玩家在全图陆地重心附近、周围 3 × 3 格均为陆地的位置出生。
 
-转换按 `topology.ids` 的任务前缀选节点，再用 `nodeidtilemap` 选择对应格子，避免仅按地皮 ID 筛选而漏掉区域内的泥地、岩地和玩家铺设地皮。两张栅格都校验 `VRSN` 版本及 `9 + width × height × 2` 字节长度，按小端 uint16 解码；源地皮 ID 先通过快照的 `world_tile_map` 还原名称，再映射到项目当前 ID。遇到缺失资源的地皮直接报错。
+导入器不再接受 `--regions`，也不通过拓扑节点筛选地皮或实体。遍历完整地皮栅格，保留无节点（`nodeidtilemap = 0`）的有效地皮；完整源栅格和外围虚空均包含在项目地图范围内。两张栅格都校验 `VRSN` 版本及 `9 + width × height × 2` 字节长度，按小端 uint16 解码。地皮 ID 经快照的 `world_tile_map` 还原名称，再映射到当前项目 ID；缺失资源直接报错。`VAULT` 按 `tiledefs.lua` 补入地皮目录及原版资源：不可挖掘，使用 `blocky` atlas、`Ground_noise_vault.tex` 和 `Ground_noise_vault_clean_mini.tex`，不新增地皮物品。
 
-保留源格子的相对位置和朝向，以整个选区包围盒中心附近的整数格作为新原点，一个原版 4 单位地皮对应项目 12 单位。稀疏 `world.map.tiles` 保存选区地皮；`defaultTileId: 1` 表示所有缺失格为 `IMPASSABLE`。原有虚空和 `FAKE_GROUND` 不绘制、不通行，不生成连接桥或填补原版缺口。白名单之外的实体、桥梁、墙、生物、光源及地下环境规则尚未迁移。
+一个原版 4 单位地皮对应项目 12 单位。稀疏 `world.map.tiles` 保存所有非 `IMPASSABLE` 格，`defaultTileId: 1` 表示其余位置为虚空；`FAKE_GROUND` 保留但不绘制、不通行，不生成桥或填补缺口。实体连续栅格坐标使用 `gx = x / 4 + width / 2 + 0.5`、`gz = z / 4 + height / 2 + 0.5`，与 `map/bunch_spawner.lua`、`map/waterlog_worldgen.lua` 的 `checkIfValidGround` 一致。项目位置为 `((gx - origin_col) × 12, y × 3, (gz - origin_row) × 12)`；当前 `(471, 471)` 地图和 `(281, 392)` 原点对应平移 `(-540, 0, -1872)`。不能省略半格偏移。
 
-实体白名单位于 `scripts/import-dst-region.py` 的 `ENTITY_WHITELIST`，当前包含 `pighead`、`archive_moon_statue`、`cave_exit`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`、`blue_mushroom`、`grass`、`sapling`、`evergreen`、`cave_fern`、`cave_fern_withered`、`houndbone`、`flower_cave`、`flower_cave_double`、`flower_cave_triple`、`lightflier_flower`、下述 8 种岩石以及 8 个月亮洞穴水池 prefab（`grotto_pool_big`、`grotto_pool_small`、`grotto_moonglass_1/3/4`、`grotto_waterfall_big`、`grotto_waterfall_small1/2`），每项绑定专用的源状态转换函数。只解析名单内的实体分组，再按源坐标对应的 `nodeidtilemap` 节点筛选区域；位于选区外的同名实体不会导入。筛选不额外要求脚点地皮可通行，以免删除原版悬边位置上的实体。两个 prefab 的原版记录不保存旋转，项目记录使用 `rotationY: 0`。
+`ENTITY_WHITELIST` 中每项绑定专用的源状态转换函数，只解析这些实体分组；白名单外的实体、桥梁、墙、生物及地下环境规则尚未迁移。白名单内的全部记录均导入，包括无节点、虚空、悬边和地图边缘位置，不再因区域归属丢弃。未知状态、无对应支持的皮肤或平台数据仍报错。
 
-实体的连续栅格坐标必须使用 `gx = x / 4 + width / 2 + 0.5`、`gz = z / 4 + height / 2 + 0.5`，与 `map/bunch_spawner.lua`、`map/waterlog_worldgen.lua` 的 `checkIfValidGround` 一致；向下取整后查询节点，项目位置为 `((gx - origin_col) × 12, y × 3, (gz - origin_row) × 12)`。这里的半格偏移不能省略，否则所有实体在 X/Z 方向各偏移 6 个项目单位。当前 `(471, 471)` 地图和 `(281, 392)` 原点对应平移 `(-540, 0, -1872)`。猪头布局按 `resurrectionstone.lua` 位于 2×2 木地板外围四边的中点；修正后 31 座月亮雕像的脚点均位于 `ARCHIVE` 地皮，原先部分落在虚空是错误换算造成的。
+当前白名单及状态转换：
 
-`pighead` 的 `data.burnt` 转为 `components.building.burnt`，正常状态为 `state: "idle"`；`archive_moon_statue` 的 `data.anim`（1～4）转为 `components.archiveProp.anim`。按 `stickheads.lua`、`archive_props.lua` 和 `workable.lua`，两者不持久化敲击／开采进度；猪头的醒睡状态由世界状态重建。未知状态、无对应支持的皮肤或平台数据报错，避免静默丢失。新增白名单项时必须提供状态转换函数，不能把任意 Lua `data` 直接写入项目组件。
+- `pighead`：`burnt` → `building.burnt`，正常状态 `idle`；`archive_moon_statue`：`anim`（1～4）→ `archiveProp.anim`。两者的 workable 不保存工作量；醒睡状态由世界重建。`cave_exit` 不迁移尚未接入的分片连接 `worldmigrator` 数据。
+- `mushtree_moon`、`mushtree_medium`、`mushtree_tall`：保留 `growable`、`treestate`、`stump`、`burnt`；`evergreen` 保留生长阶段及树桩、烧毁状态，`plantregrowth` 未迁移。`blue_mushroom` 保留 `rain`，开合由世界时钟重建。
+- `grass`、`sapling`、`cave_fern`、`cave_fern_withered`：迁移 `pickable` 状态；蕨类保留 `anim`（`f1`～`f10`）。草和树苗将 `witherable.withered/restore_cycles/delay_time_remaining/task_time_remaining` 转为现有组件字段；不支持的保护计时器仍报错。枯萎检查通过游戏时间调度器执行，保存和重载保留剩余时间。`houndbone` 保留 `bonetype`（1～3）。
+- `flower_cave`、`flower_cave_double`、`flower_cave_triple`：`light_state`、`plantname`、采摘及再生状态、亮灯／充能计时器 → `bulbPlant`。`lightflier_flower` → `lightflierFlower`，保留 `childspawner.childreninside`；外飞子实体 GUID 只在子实体同样导入时链接。`lightflier` 不在白名单中。
+- `rock1`、`rock2`、`rock_moon_shell`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low`、`rock_moon`：按 `rocks.lua` 不保存开采量，只接受空状态或空 workable。`cavein_boulder` 保留 `variation`（默认 1）、`raised`／`formed`，接受静止落石的 `submersible.force_no_repositioning: false`，拒绝尚未移植的下落目标和关联状态。
+- `grotto_pool_big`、`grotto_pool_small`：子物件源 GUID 转为项目实体 ID，写入 `grottoPool.children`，仅链接已导入的子物件。`grotto_moonglass_1/3/4`、`grotto_waterfall_small1/2` 保留 `workable.workleft`（`maxwork = -1`）；`grotto_waterfall_big` 不接受状态。
 
-月亮洞穴水池：`grotto_pool_big` 的 `children_ids` / `children_indexes`（1～5）和 `grotto_pool_small` 的 `wf_id`（索引 1）先作为源 GUID 暂存，全部实体转换后由 `link_grotto_pools` 换成项目实体 ID，只保留已导入的子物件，写入 `components.grottoPool.children`；可开采的 `grotto_moonglass_*` / `grotto_waterfall_small*` 把 `workable.workleft`（`maxwork` 必须是 -1）转为 `components.grottoGlass.workleft`，`grotto_waterfall_big` 不接受任何状态。当前 `Cluster_58` 选区含 5 个大池、21 个小池及全部子物件，没有选区外的同名实体。
+实体 ID 包含源 Session、prefab 和源 `id`；无 `id` 时使用原分组序号，同一快照重复导入保持稳定。`Caves.import.json` 的 `scope: "full-map"` 标记完整转换，记录全部节点、地皮数量、各白名单 prefab 的源数量和导入数量，以及每个实体的源序号、源 ID、源位置和所属节点。无节点或源坐标越界时 `sourceNode` 为 `null`。源文件路径、SHA-256、尺寸、原点和平移同样保留。
 
-岩石白名单新增 `rock1`、`rock2`、`cavein_boulder`、`rock_moon_shell`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low` 和 `rock_moon`。`rocks.lua` 的七种矿石没有对应 OnSave 字段，workable 默认不保存进度，因此 `rock_components` 仅接受空状态（或空 `workable`）。`cavein_boulder_components` 将 `variation`（省略时为原始符号 1）及 `raised`／`formed` 转为 `components.caveinBoulder`；接受静止落石的 `submersible.force_no_repositioning: false`，拒绝尚未移植的下落目标与组合关联状态。八种矿石均可开采，工作量按 Lua 不写入存档；落石抬高时不可开采，月岩壳破碎后自身不入档，生成的宝球与矿物保存；`moonrockseed` 静态美术可单独 `c_spawn`，不在本次导入名单中。快照 `0000000022` 选区新增 17 个 `rock1` 和 24 个 `cavein_boulder`，三个 `rock_flintless*` 分组共 89 个实体全在选区外，其余矿石源分组为空；现有地皮、玩家出生点和其他实体不变，共导入 986 个实体。
-
-实体 ID 包含源 Session、prefab 和源 `id`；源记录未保存 `id` 时使用筛选前的原分组序号，因此同一快照重复导入保持 ID 稳定。`Caves.import.json` 记录 `entityWhitelist`、各 prefab 的源数量／导入数量／选区外数量，以及每个实体的源序号、源 ID、源位置和所属节点。当前导入 4 个猪头、31 座月亮雕像和 1 个 `cave_exit`（另 9 个在选区外；其 `worldmigrator` 状态属于尚未接入的分片连接，不导入）；另外 3 个猪头和 3 座雕像位于选区外。
-
-本次 `Cluster_58` 快照 `0000000022` 选中 29 个节点，导出 4,173 格陆地和 136 格 `FAKE_GROUND`。拓扑连接是出口绿地 → 蓝蘑菇林 → 月亮蘑菇林 → 远古档案馆；`CaveExitTask1` 包含 `CaveExitRoom` 和 `RabbitArea`，补入蓝蘑菇林周边楼梯所在的 433 格 `SINKHOLE` 绿地及连接处的 6 格蓝蘑菇地皮。新增区域沿用原点 `(281, 392)`，此前导入的地皮位置、地图尺寸与玩家出生点保持一致。楼梯实体本身仍属于后续实体迁移。结果为 `public/saves/Cluster_1/Caves.json`，来源、SHA-256、源地图尺寸、节点名单、坐标平移和地皮数量写入同目录 `Caves.import.json`。
-
-直接访问页面（部署在子路径时保留该子路径）默认加载 `Cluster_1/Caves.json`，无需 URL 参数；可用 `?save=initial-world.json` 加载原地表存档。`save` 只接受 `public/saves` 下由字母、数字、下划线、连字符组成的相对 JSON 路径。加载器接受 `world.prefab: "cave"`，要求洞穴背景为 `IMPASSABLE`；渲染关闭整片落叶林底面，使用黑色虚空，世界地形与地图界面共用地皮边界。键盘移动、点击寻路及土地分类共用通行判断。`c_save()` 将最新洞穴状态写入 `Cluster_1/Caves.json`，连同目录内其余文件打包下载为 `Cluster_1.zip`，保留洞穴类型、虚空背景、稀疏地皮和实体身份／位置／烧毁状态／雕像外形；将 ZIP 解压到 `public/saves/` 覆盖 `Cluster_1/` 后重载。现有 `c_spawn("pighead")`、`c_spawn("archive_moon_statue")` 的命令支持不变，白名单只控制原存档导入。
+`Cluster_58` 的 `0000000022` 快照包含 471 × 471 格和 360 个节点，转换得到 46,224 格陆地、298 格 `FAKE_GROUND`（合计 46,522 条稀疏地皮记录）及 4,601 个白名单实体。所有白名单分组的源数量与导入数量一致。结果为默认加载的 `public/saves/Cluster_1/Caves.json`。`c_spawn` / `c_give` 命令与支持 ID 不变；`c_save()` 无参数，下载 `Cluster_1.zip`，解压到 `public/saves/` 覆盖目录后重载，保留完整地图及实体身份、位置和组件状态。
 
 验证命令：
 
 ```bash
 python3 -m unittest discover -s tests -p test_dst_region.py
-pnpm --filter @dontstarve-web/animation exec vitest run tests/caveTerrain.test.ts tests/stickheads.test.ts tests/archive_props.test.ts
+python3 packages/prefab/scripts/import-ground-tiles.py --check
+pnpm --filter @dontstarve-web/animation exec vitest run tests/caveTerrain.test.ts tests/grass.test.ts tests/grassInteractions.test.ts tests/sapling.test.ts
 pnpm --filter @dontstarve-web/ui exec playwright test tests/cave-terrain.spec.ts
 ```
 
@@ -115,7 +115,3 @@ cd packages/ui && npx playwright test tests/pigking.spec.ts
 ```
 
 `pigKing.test.ts` 检查 40 / 12 块地皮、角点对齐和岩石坐标；`pigking.spec.ts` 在真实场景中检查 8 块岩石、草地图层、`c_spawn("insanityrock")` 以及 `c_save()` 后的实体数量和 ID 唯一性。
-
-蘑菇类白名单项：`mushtree_moon`（407 棵）、`mushtree_tall`（321 棵）、`blue_mushroom`（109 个）已导入，选区内没有 `mushtree_medium`（460 棵均在选区外）。蘑菇树的 `growable` / `treestate` / `stump` / `burnt` 转为 `components.growable` / `components.mushtree`，`plantregrowth` 不导入；`blue_mushroom` 的开合姿态由世界时钟重建，仅保存 `rain`。
-
-洞穴灯泡花白名单项：`flower_cave`（含 `_single` / `_springy` 外观）、`flower_cave_double`、`flower_cave_triple` 转为 `bulbPlant`：`light_state`、已采摘状态与剩余再生时间、`ON` 的 `turnoff` 或 `RECHARGING` 的 `recharge` 剩余秒数分别对应 `lightState`、`picked`、`regrowSeconds`、`remainingSeconds`；暂停或与状态不符的计时器直接报错。`lightflier_flower` 转为 `lightflierFlower`，同样保留 `rechargeSeconds` / `turnoffSeconds` 和 `childspawner.childreninside`；`childrenoutside` 的源 GUID 只在对应 `lightflier` 同样被导入时才保留（与 `grotto_pool` 的子实体相同）。`lightflier` 世界实体不在白名单内，所以原版在外飞行的萤火虫不会导入。

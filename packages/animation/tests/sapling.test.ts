@@ -125,7 +125,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     const [model] = s.scene.children.filter(child => child.userData.prefab === 'sapling') as THREE.Group[];
     const animation = model.userData.animationController;
     expect(animation.currentAnimation).toBe('sway');
-    expect(model.userData.tags).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'tickingarea', 'canlight']);
+    expect(model.userData.tags).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'tickingarea', 'canlight', 'witherable']);
     expect(model.userData.actionEntity.hasTag('DIG_workable')).toBe(true);
     expect(getPickActions(model).find(action => action.model === model)?.available).toBe(true);
 
@@ -178,4 +178,31 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     expect(model.parent).toBeNull();
     expect(s.ground.exportRecords().at(-1)?.components.stack).toMatchObject({ itemId: 'ash', count: 1 });
   } finally { s.dispose(); }
+});
+
+it('restores an imported wither check through save/load, reschedules on expiry and cancels on removal', async () => {
+  const s = setup(), restored = setup();
+  try {
+    const model = await s.saplings.spawn('sapling', new THREE.Vector3(30, 0, 6), {
+      id: 'imported-sapling', transform: { position: [30, 0, 6], rotationY: 0 },
+      components: { witherable: { taskSeconds: 2.5 } },
+    });
+    expect(model.userData.tags).toContain('witherable');
+    tickWorld(s.scheduler, s.saplings, 1, new THREE.Quaternion());
+    const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.sapling[0];
+    expect(record.components.witherable).toEqual({ taskSeconds: 1.5 });
+    const copy = await restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record);
+    const witherable = copy.userData.components.witherable;
+    const timer = witherable.state.timer.peek();
+    tickWorld(restored.scheduler, restored.saplings, 1, new THREE.Quaternion());
+    expect(witherable.state.timer.peek()).toBe(timer);
+    tickWorld(restored.scheduler, restored.saplings, .5, new THREE.Quaternion());
+    expect(witherable.state.timer.peek()).not.toBe(timer);
+    expect(witherable.state.timer.peek().status).toBe('scheduled');
+    expect(copy.userData.components.pickable.canBePicked).toBe(true);
+    restored.saplings.remove(copy);
+    expect(witherable.state.timer.peek()).toEqual({ status: 'stopped' });
+    tickWorld(restored.scheduler, restored.saplings, 60, new THREE.Quaternion());
+    expect(restored.saplings.exportRecords()).toEqual([]);
+  } finally { s.dispose(); restored.dispose(); }
 });

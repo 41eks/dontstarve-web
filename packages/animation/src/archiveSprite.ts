@@ -36,9 +36,9 @@ export interface ArchiveSpriteOptions {
   colour?: readonly [number, number, number];
   name?: string;
   scale?: number;
-  /**
-   * The model is a stationary camera-facing billboard directly below the scene: its matrices are only recomputed after
-   * `faceCamera()` turns it, a new frame is shown, or `refreshTransform()` is called after it was moved.
+  /** Stationary billboard: its owner uses faceCamera()/refreshTransform() for
+   * transform changes, avoiding per-frame local-transform comparisons.
+   * Parent movement and reparenting are still detected automatically.
    */
   staticBillboard?: boolean;
 }
@@ -129,9 +129,10 @@ export interface ArchiveSprite {
   setBuildArchive(archive: string): void;
   /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
   setSymbolHidden(symbol: string, hidden: boolean): void;
-  /** Turn towards the camera; with `staticBillboard` the matrices are refreshed only when the rotation differs. */
+  /** Turn towards the camera; unchanged transforms reuse their matrices. */
   faceCamera(rotation: THREE.Quaternion): void;
-  /** Call after moving a `staticBillboard` sprite's model; the position assigned right after creation needs no call. */
+  /** Explicitly invalidate transforms. Required after moving a staticBillboard;
+   * other sprites also detect direct model/visual movement automatically. */
   refreshTransform(): void;
   /** Private geometry/material copies belong to the entity; shared frames and source materials to its assets. */
   dispose(): void;
@@ -232,7 +233,7 @@ function constructArchiveSprite(
   visual.scale.set(scale, -scale, scale);
   model.add(visual);
   registerSpriteRenderGroup(model, visual);
-  const matrixGate = options.staticBillboard ? installMatrixGate(model, visual) : undefined;
+  const matrixGate = installMatrixGate(model, visual, options.staticBillboard);
   const renderer = new SpriteFrameRenderer(visual);
   const instances = options.instancedAnimations?.length
     ? assets.instancedSprites.retain(model, visual, options.colour, options.opacity ?? definition.multColour?.[3] ?? 1, options.foot) : undefined;
@@ -270,7 +271,6 @@ function constructArchiveSprite(
     const index = loop ? rawFrame % animation.frames.length
       : Math.min(rawFrame, animation.frames.length - 1);
     if (index === previousFrame) return;
-    matrixGate?.markDirty();
     // Preserve genuinely empty source frames rather than inventing replacement art.
     if (sharedAnimations === 'all' || sharedAnimations.has(animation.name)) {
       sharedAppearance ||= appearanceKey();
@@ -282,7 +282,13 @@ function constructArchiveSprite(
       }
       renderer.showShared(tinted);
     } else renderer.show(resolveSprites(index, false));
-    visual.scale.x = flipped ? -scale : scale;
+    // Frames replace baked vertex geometry, not Object3D transforms. Only a facing flip
+    // invalidates the transform; animation and spatial-envelope changes have their own owners.
+    const scaleX = flipped ? -scale : scale;
+    if (visual.scale.x !== scaleX) {
+      visual.scale.x = scaleX;
+      matrixGate?.markDirty();
+    }
     const instanced = !!instances && (options.instancedAnimations === 'all'
       || loop && options.instancedAnimations!.includes(animation.name));
     if (instances) renderer.setInstanced(instanced);

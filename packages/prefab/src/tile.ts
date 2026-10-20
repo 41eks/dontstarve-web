@@ -21,6 +21,9 @@ export const WALL_WIDTH = WALL_TEXTURE_WIDTH * WALL_SCALE;
 /** 一块地皮的边长 */
 export const TILE_SIZE = 12;
 
+/** Project world units per DST unit (the source terrain cell is 4 units wide). */
+export const WORLD_SCALE = TILE_SIZE / 4;
+
 /** 一块地皮划成 4x4 小格，16 个落点把地皮占满 */
 export const WALL_SLOT_SIZE = TILE_SIZE / 4;
 

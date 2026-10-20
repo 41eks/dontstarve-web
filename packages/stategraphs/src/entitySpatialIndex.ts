@@ -1,5 +1,6 @@
 import { Box3, Matrix4, Mesh, Vector3, type Object3D, type Ray } from 'three';
 import { prepareSpatialGeometryBounds, spriteSpatialRadius, watchSpatialBounds } from '../../animation/src/spatialBounds.ts';
+import { watchMatrixUpdates } from '../../animation/src/matrixUpdates.ts';
 
 // Ground cells also hold tall visual envelopes. Rays traverse cells, never a foot-point radius.
 const CELL_SIZE = 4;
@@ -53,7 +54,6 @@ function removeCells(entry: Entry): void {
 export function retainSpatialEntity(model: Object3D, positionOf?: () => Vector3) {
   let entry = entries.get(model);
   if (!entry) {
-    const updateMatrixWorld = model.updateMatrixWorld, updateWorldMatrix = model.updateWorldMatrix;
     const owned: Entry = {
       model, owners: 0, mouse: false, positionOf: positionOf ?? (() => model.position),
       position: new Vector3(), bounds: new Box3(), keys: [],
@@ -92,22 +92,16 @@ export function retainSpatialEntity(model: Object3D, positionOf?: () => Vector3)
       },
       dispose() {
         stopBounds(); dirty.delete(owned); removeCells(owned);
+        stopMatrices();
         model.removeEventListener('added', sync);
         model.removeEventListener('removed', sync);
-        model.updateMatrixWorld = updateMatrixWorld;
-        model.updateWorldMatrix = updateWorldMatrix;
         entries.delete(model);
         if (!entries.size) worldBounds.makeEmpty();
       },
     };
     // Rendering already updates these matrices. Maintain the index there without an input-time sweep.
-    model.updateMatrixWorld = function (force) {
-      updateMatrixWorld.call(this, force); owned.sync(); dirty.delete(owned);
-    };
-    model.updateWorldMatrix = function (parents, children) {
-      updateWorldMatrix.call(this, parents, children); owned.sync(); dirty.delete(owned);
-    };
-    const sync = () => model.updateWorldMatrix(true, true);
+    const stopMatrices = watchMatrixUpdates(model, () => { owned.sync(); dirty.delete(owned); });
+    const sync = () => syncEntitySpatial(model);
     const stopBounds = watchSpatialBounds(model, () => { owned.stale = true; dirty.add(owned); });
     model.addEventListener('added', sync);
     model.addEventListener('removed', sync);
@@ -129,7 +123,12 @@ export function retainSpatialEntity(model: Object3D, positionOf?: () => Vector3)
 
 /** Movement owners call this before a same-frame domain query; rendering also keeps it current. */
 export function syncEntitySpatial(model: Object3D): void {
-  if (entries.has(model)) model.updateWorldMatrix(true, true);
+  const entry = entries.get(model);
+  if (!entry) return;
+  model.updateWorldMatrix(true, true);
+  // Geometry, mouse eligibility and authoritative foot positions can change
+  // without a transform; explicit query synchronization must settle them too.
+  entry.sync(); dirty.delete(entry);
 }
 
 function flushBounds(): void {

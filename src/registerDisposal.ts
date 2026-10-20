@@ -1,5 +1,5 @@
 import { Vector3, type Object3D } from 'three';
-import { clockstate, createMemo, readonlySignal, type EventEmitter } from '@dontstarve-web/signals';
+import { clockstate, createMemo, readonlySignal, type EventEmitter, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type InventoryStack } from '@dontstarve-web/inventory';
 import { createChestInventoryPanel, slotTransferController, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
@@ -29,7 +29,7 @@ import { FOOD_EFFECTS, getFoodEffects, type FoodEffects } from '@dontstarve-web/
 import { bookActionObject, type BookReader, type BookWorld } from '@dontstarve-web/prefab/books';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { PreloadSounds } from '@dontstarve-web/prefab/sound';
-import { backTasks, registerFrontTask } from './animate';
+import { registerFrontTask } from './animate';
 import { PlantDeployment } from '../packages/prefab/src/plantDeployment';
 import { PLANTABLES } from '@dontstarve-web/prefab/plantables';
 import { TurfDeployment } from '@dontstarve-web/prefab/turfDeployment';
@@ -60,7 +60,7 @@ export interface FrameController extends Disposable {
 }
 
 interface DisposalResources {
-  panels: readonly (Disposable & { update?: () => void })[];
+  panels: readonly Disposable[];
   statusHud: Disposable & { advanceClockAnimation(dt: number): void };
   frameControllers: readonly FrameController[];
   actionControllers: readonly Disposable[];
@@ -76,10 +76,6 @@ export function registerDisposal(events: EventEmitter<DisposalEvents>, resources
   const unsubscribe = events.on('dispose', () => {
     unsubscribe();
     for (const panel of resources.panels) {
-      if (panel.update) {
-        const index = backTasks.indexOf(panel.update);
-        if (index >= 0) backTasks.splice(index, 1);
-      }
       panel.dispose();
     }
     stopClockAnimation();
@@ -108,6 +104,7 @@ interface ApplicationResourcesOptions {
   actionEvents: EventEmitter<PlayerActionEvents>;
   isActionInterrupting: () => boolean;
   updateCursor: () => void;
+  getWatchWorldContent: GetWatchWorldContent;
   turfMap: typeof turfMap;
 }
 
@@ -116,16 +113,15 @@ type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
-  handEquipmentBinding, inventorySlotItem, actionEvents, isActionInterrupting, updateCursor, turfMap }: ApplicationResourcesOptions) {
+  handEquipmentBinding, inventorySlotItem, actionEvents, isActionInterrupting, updateCursor, getWatchWorldContent: watchWorldContent, turfMap }: ApplicationResourcesOptions) {
   const player = view.player;
   const camera = view.camera;
   const renderer = view.renderer;
   const statusHud = gameUi.statusHud;
-  const inventoryPanelOptions = { camera, canvas: renderer.domElement, player, toItem: inventorySlotItem };
+  const inventoryPanelOptions = { camera, canvas: renderer.domElement, player, getWatchWorldContent: watchWorldContent, toItem: inventorySlotItem };
   const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel, inventoryPanelOptions);
   const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, inventoryPanelOptions, 'cookpot');
   const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, inventoryPanelOptions, 'icebox');
-  backTasks.push(chestInventoryPanel.update, cookPotInventoryPanel.update, iceBoxInventoryPanel.update);
   return {
     setContainerOpen(buildId: StorageBuildingId, model: Object3D, isOpen: boolean): void {
       (buildId === 'cookpot' ? cookPotInventoryPanel : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel)
