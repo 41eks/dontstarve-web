@@ -55,11 +55,8 @@ export function findImage(build: ParsedBuild, hash: number, frameIndex: number) 
     if (image.index <= frameIndex && image.index + image.duration > frameIndex &&
       (!result || image.index > result.index)) result = image;
   }
-  if (!result && images.length) {
-    // A symbol's frames loop: an animation may run past the build's last frame (moonglasspool_tile cycles 34 frames over 140).
-    const length = Math.max(...images.map(image => image.index + image.duration));
-    if (frameIndex >= length) return findImage(build, hash, frameIndex % length);
-  }
+  // The animation loops its timeline; an absent build image stays invisible.
+  // Wrapping symbol indices draws unrelated art (e.g. birch leaf slots 17..19).
   return result?.vertexCount ? result : undefined;
 }
 

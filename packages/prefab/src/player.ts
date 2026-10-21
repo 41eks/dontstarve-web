@@ -378,6 +378,7 @@ class WilsonController implements WilsonAnimationController {
   bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint' | 'playSound'> | undefined): void {
     if (!host) {
       this.stategraph.cancelAction('BLINK');
+      this.stategraph.cancelAction('BLINK_MAP');
       for (const sound of this.portalSounds) sound.stop();
       this.portalSounds.clear();
       this.portalTint.value = 0;

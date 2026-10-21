@@ -9,9 +9,15 @@ export interface MinimapTileLayer {
 }
 
 export interface MinimapTileQuad { readonly col: number; readonly row: number; readonly variant: number }
+export interface MinimapTileRegion {
+  readonly canvas: OffscreenCanvas;
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
+}
 export interface MinimapTilePainter {
-  /** Returns the painter's own canvas, valid until the next call. */
-  (quad: MinimapTileQuad): OffscreenCanvas;
+  /** Borrowed atlas region; draw synchronously before its cache slot can be evicted or disposed. */
+  (quad: MinimapTileQuad): MinimapTileRegion;
   dispose(): void;
 }
 
@@ -60,6 +66,9 @@ function scaledPixels(pixels: MinimapPixels, size: number): Uint8ClampedArray {
   return target.getImageData(0, 0, size, size).data;
 }
 
+const TILE_CACHE_CAPACITY = 128;
+const TILE_ATLAS_COLUMNS = 16;
+
 /** minimap.ksh: atlas RGB *= world-space noise RGB; atlas alpha stays intact.
  * Compose before drawing to the map so multiply cannot affect the layers below.
  * Reuse masks at the 8x8 world-space noise offsets across chunk rebuilds.
@@ -69,15 +78,19 @@ export function createMinimapTilePainter(layer: MinimapTileLayer, cellSize: numb
   const period = periodCells * cellSize;
   let noise = scaledPixels(layer.noise, period);
   const masks = new Map<number, Uint8ClampedArray>();
-  const tiles = new Map<string, ImageData>();
-  const canvas = new OffscreenCanvas(cellSize, cellSize);
+  const tiles = new Map<string, MinimapTileRegion>();
+  const canvas = new OffscreenCanvas(TILE_ATLAS_COLUMNS * cellSize, Math.ceil(TILE_CACHE_CAPACITY / TILE_ATLAS_COLUMNS) * cellSize);
+  // These putImageData-backed tiles are also drawn into CPU capture chunks.
   const context = canvas.getContext('2d', { willReadFrequently: true })!;
   const wrap = (value: number) => ((value % periodCells) + periodCells) % periodCells;
   const paint: MinimapTilePainter = ({ col, row, variant }) => {
     const cx = wrap(col), cy = wrap(row);
     const key = `${variant},${cx},${cy}`;
     const cached = tiles.get(key);
-    if (cached) { context.putImageData(cached, 0, 0); return canvas; }
+    if (cached) {
+      tiles.delete(key); tiles.set(key, cached);
+      return cached;
+    }
     let mask = masks.get(variant);
     if (!mask) {
       const cell = layer.cells.get(variant);
@@ -92,13 +105,21 @@ export function createMinimapTilePainter(layer: MinimapTileLayer, cellSize: numb
       for (let channel = 0; channel < 3; channel++) data[at + channel] = mask[at + channel] * noise[sample + channel] / 255;
       data[at + 3] = mask[at + 3];
     }
-    const tile = new ImageData(data, cellSize, cellSize);
+    // One drawable atlas per layer/resolution; reuse the least recently used slot at capacity.
+    let tile: MinimapTileRegion;
+    if (tiles.size === TILE_CACHE_CAPACITY) {
+      const oldest = tiles.keys().next().value!;
+      tile = tiles.get(oldest)!;
+      tiles.delete(oldest);
+    } else {
+      const slot = tiles.size;
+      tile = { canvas, x: slot % TILE_ATLAS_COLUMNS * cellSize,
+        y: Math.floor(slot / TILE_ATLAS_COLUMNS) * cellSize, size: cellSize };
+    }
+    // putImageData replaces transparent pixels too, clearing the slot's previous silhouette.
+    context.putImageData(new ImageData(data, cellSize, cellSize), tile.x, tile.y);
     tiles.set(key, tile);
-    context.putImageData(tile, 0, 0);
-    // A shared painter survives chunk rebuilds. Bound its mask/noise variants
-    // rather than retaining every world-space combination for the whole map.
-    if (tiles.size > 128) tiles.delete(tiles.keys().next().value!);
-    return canvas;
+    return tile;
   };
   paint.dispose = () => {
     canvas.width = canvas.height = 0;

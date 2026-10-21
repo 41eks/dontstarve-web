@@ -8,6 +8,7 @@ import { createSignal, type SeasonState } from '../../signals/src';
 import { createDeciduousForest } from '../../prefab/src/deciduoustrees';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { DeciduousTreeLeaves } from '../../prefab/src/deciduousTreeLeaves';
+import { bindTestWorld } from './worldContentFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -23,41 +24,68 @@ async function setup(seasonName: SeasonState['season'] = 'summer') {
   return { forest, scheduler, season, physics, dropLoot };
 }
 it('cycles three source size banks, swaps seasonal leaves without sharing tint, and completes winter leaf removal through the scheduler while unloaded', async () => {
-  const s = await setup();
+  const snowScheduler = new GameTimeScheduler(), world = bindTestWorld(snowScheduler);
+  const s = await setup(), sharedDisposed = vi.fn();
   try {
     const tree = s.forest.spawn('deciduoustree_short', new THREE.Vector3(2, 0, 0));
     const work = s.forest.chopTargets[0].entity.components.workable!, model = tree.model!;
+    const icon = s.forest.miniMapEntities[0];
+    expect(icon).toMatchObject({ icon: 'tree_leaf.png', priority: -1, position: tree.position });
     const growth = model.userData.components.growable, leaves = model.userData.deciduoustreeState.leaves;
     expect(work.GetWorkLeft()).toBe(5);
+    expect((model.children[0].children[0] as THREE.Mesh).visible).toBe(false);
     expect((model.children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     const timer = growth.state.timer.peek(); s.scheduler.advance(100); expect(growth.state.timer.peek()).toBe(timer);
     s.scheduler.advance(350); expect(work.GetWorkLeft()).toBe(10);
     expect(model.userData.animationController.currentAnimation).toBe('grow_short_to_normal');
     s.scheduler.advance(1500); expect(work.GetWorkLeft()).toBe(15);
-    s.season.set({ season: 'autumn', progress: .5 }); await Promise.resolve();
+    s.season.set({ season: 'autumn', progress: .5 }); await new Promise(resolve => setTimeout(resolve, 0));
     expect(leaves.build.peek()).toBe('orange'); expect(leaves.leaf.peek()).toBe('colorful');
     expect(s.forest.chopTargets[0].entity.hasTag('shelter')).toBe(true);
     const geometry = (model.children[0].children[0] as THREE.Mesh).geometry;
     const materials = (model.children[0].children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial[];
     expect(materials.length).toBeGreaterThan(1);
     expect(materials.every(material => material.forceSinglePass && !material.depthWrite)).toBe(true);
-    const cleanup = vi.spyOn(geometry, 'dispose');
-    s.season.set({ season: 'winter', progress: .5 }); await Promise.resolve();
+    geometry.addEventListener('dispose', sharedDisposed);
+    s.season.set({ season: 'winter', progress: .5 }); await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.userData.animationController.currentAnimation).toBe('drop_leaves_tall');
+    expect((model.children[0].children[0] as THREE.Mesh).visible).toBe(true);
     const completion = leaves.completionTimer.peek(); expect(completion.status).toBe('scheduled');
-    s.forest.updateNearby(new THREE.Vector3(500, 0, 0)); expect(cleanup).toHaveBeenCalledOnce();
+    s.forest.updateNearby(new THREE.Vector3(500, 0, 0)); expect(sharedDisposed).not.toHaveBeenCalled();
+    expect(s.forest.miniMapEntities).toEqual([icon]);
+    const hidden = vi.spyOn(model.userData.animationController, 'setSymbolHidden');
+    world.snowLevel.set(.02); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(hidden).not.toHaveBeenCalled();
     s.scheduler.advance(20);
     expect(leaves.build.peek()).toBe('barren'); expect(leaves.leaf.peek()).toBe('barren');
     s.forest.updateNearby(new THREE.Vector3());
     expect(s.forest.chopTargets[0].entity.components.workable).toBe(work);
+    const covered = (tree.model!.children[0].children[0] as THREE.Mesh).geometry.drawRange.count;
+    expect(tree.model!.userData.tags).toContain('SnowCovered');
+    world.snowLevel.set(0); await new Promise(resolve => setTimeout(resolve, 0));
+    expect((tree.model!.children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeLessThan(covered);
     expect(s.forest.exportRecords()[0].components.deciduoustree).toMatchObject({ build: 'barren', leaf_state: 'barren' });
     expect(tree.model!.userData.components.lootdropper.GenerateLoot()).toEqual(['log', 'log', 'log']);
-    s.season.set({ season: 'spring', progress: .5 }); await Promise.resolve(); s.scheduler.advance(20);
+    s.season.set({ season: 'spring', progress: .5 }); await new Promise(resolve => setTimeout(resolve, 0)); s.scheduler.advance(20);
     expect(leaves.leaf.peek()).toBe('normal');
     expect(tree.model!.userData.deciduoustreeState.leaves).toBe(leaves);
     growth.DoGrowth(); expect(work.GetWorkLeft()).toBe(5);
     expect(growth.OnSave()).toEqual({ stage: 1, time: 337 });
     expect(tree.model!.userData.animationController.currentAnimation).toBe('grow_tall_to_short');
+  } finally { s.forest.dispose(); world.unbind(); snowScheduler.dispose(); }
+  expect(sharedDisposed).toHaveBeenCalledOnce();
+});
+it('shows growth settled while unloaded as its final stage without the transition animation', async () => {
+  const s = await setup();
+  try {
+    const tree = s.forest.spawn('deciduoustree_short', new THREE.Vector3(2, 0, 0));
+    s.forest.updateNearby(new THREE.Vector3(1000, 0, 1000));
+    expect(tree.model).toBeUndefined();
+    s.scheduler.advance(5000);
+    s.forest.updateNearby(new THREE.Vector3(2, 0, 0));
+    const model = tree.model!;
+    expect(model.userData.components.growable.GetStage()).toBe(3);
+    expect(model.userData.animationController.currentAnimation).not.toMatch(/^grow_/);
   } finally { s.forest.dispose(); }
 });
 it('drops two autumn acorns, preserves a saved stump and its seasonal build, and cancels tasks when the stump is dug', async () => {
@@ -77,7 +105,11 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
       const loaded = restored.forest.spawn('deciduoustree', new THREE.Vector3(...record.transform.position), record);
       expect(restored.forest.exportRecords()[0]).toEqual(record);
       expect(loaded.model!.userData.animationController.currentAnimation).toBe('stump_tall');
+      const icon = restored.forest.miniMapEntities[0];
+      expect(icon.icon).toBe('tree_leaf_stump.png');
       expect(restored.forest.digTargets[0].dig()).toBe(true);
+      expect(icon.enabled).toBe(false);
+      expect(restored.forest.miniMapEntities).toEqual([]);
       expect(restored.dropLoot).toHaveBeenLastCalledWith([{ itemId: 'log', count: 1 }], loaded.position);
       restored.scheduler.advance(5000); restored.forest.updateNearby(new THREE.Vector3());
       expect(restored.forest.exportRecords()).toEqual([]); expect(restored.forest.entities).toEqual([]);

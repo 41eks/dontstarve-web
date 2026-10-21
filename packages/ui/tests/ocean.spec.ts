@@ -56,6 +56,8 @@ test('ocean GPU passes preserve source blur, RGBA phase blend, light encoding an
   expect(result.initialSize).toEqual([240, 160]);
   expect(result.resized).toEqual([96, 64]);
   expect(result.statePreserved).toBe(true);
+  expect(result.floorTriangles).toBe(2);
+  expect(result.floorBounds).toEqual([[-96, 0, -192], [96, 0, 192]]);
   expect(result.targetsDisposed).toBe(7);
   expect(result.borrowedNoiseDisposed).toBe(false);
   expect(result.removedPass).toBe(true);

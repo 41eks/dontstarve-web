@@ -146,3 +146,42 @@ it('keeps bloom builds and hidden-symbol variants separate without changing neig
     expect(mesh(first).geometry).toBe(normalAgain);
   } finally { first.dispose(); second.dispose(); assets.dispose(); }
 });
+
+it('shares birch appearances across private tints and changes leaf overrides without restarting work or changing neighbours', async () => {
+  const assets = new ArchiveSpriteAssets();
+  const definition = {
+    animationArchive: 'tree_leaf_tall.zip', buildArchives: ['tree_leaf_trunk_build.zip',
+      'tree_leaf_green_build.zip', 'tree_leaf_red_build.zip'], bank: 'tree_leaf', animation: 'sway1_loop_tall', loop: true,
+    symbolOverrides: { swap_leaves: { archive: 'tree_leaf_green_build.zip', symbol: 'swap_leaves' } },
+    hiddenSymbols: ['mouseover', 'snow'],
+  };
+  const first = await createSharedArchiveSprite(assets, definition, { colour: [.6, .6, .6], instancedAnimations: ['sway1_loop_tall'] });
+  const second = await createSharedArchiveSprite(assets, definition, { colour: [.9, .9, .9], instancedAnimations: ['sway1_loop_tall'] });
+  try {
+    for (const sprite of [first, second]) sprite.setBuildArchive('tree_leaf_trunk_build.zip');
+    const green = mesh(second).geometry;
+    expect(mesh(first).geometry).toBe(green);
+    expect(mesh(first).visible).toBe(false);
+    first.setColour([1, 1, 1]);
+    expect(mesh(first).geometry).toBe(green);
+    expect(mesh(first).material[0].color.r).toBe(1);
+    expect(mesh(second).material[0].color.r).toBeCloseTo(.9);
+    const finished = vi.fn(() => first.start('sway1_loop_tall'));
+    first.playOnce('chop_tall', finished); first.update(.1);
+    first.setSymbolOverride('swap_leaves', 'tree_leaf_red_build.zip');
+    expect(first.currentAnimation).toBe('chop_tall');
+    expect(mesh(first).visible).toBe(true);
+    expect(mesh(second).geometry).toBe(green);
+    finish(first, 'sway1_loop_tall');
+    expect(finished).toHaveBeenCalledOnce();
+    const red = mesh(first).geometry;
+    expect(red).not.toBe(green);
+    first.setSymbolOverride('swap_leaves');
+    expect(mesh(first).geometry).not.toBe(red);
+    expect(mesh(first).material).toHaveLength(1);
+    expect(mesh(second).geometry).toBe(green);
+    first.setSymbolOverride('swap_leaves', 'tree_leaf_red_build.zip');
+    expect(mesh(first).geometry).toBe(red);
+    expect(mesh(first).visible).toBe(false);
+  } finally { first.dispose(); second.dispose(); assets.dispose(); }
+});

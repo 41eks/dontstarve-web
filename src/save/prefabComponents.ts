@@ -334,7 +334,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (!components.growable && !tree.stump && !tree.burnt) fail(`${path}.growable`, 'deciduoustree stage is required');
       if ((tree.stump || tree.burnt) && (components.growable?.time !== undefined || tree.leaveschangetime !== undefined)) fail(p, 'stumps and burnt trees cannot grow or change leaves');
     }
-    for (const timerKey of ['evergreenTimer', 'deciduousTimer'] as const) {
+    for (const timerKey of ['evergreenTimer', 'deciduousTimer', 'moonTreeTimer'] as const) {
       if (!keys.includes(timerKey) || c[timerKey] === undefined) continue;
       const p = `${path}.${timerKey}`, timer = object(c[timerKey], p, ['timers']);
       const timers = object(timer.timers, `${p}.timers`, ['decay']);

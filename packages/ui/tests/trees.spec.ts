@@ -29,7 +29,7 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download', { timeout: 15_000 }); await submit('c_save()');
-    return JSON.parse(await readSaveDownload((await (await download).path())!));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const treeAnimation = () => page.evaluate(() => (window as any).deciduoustreeGame.scene.children
     .find((model: any) => model.name === 'DeciduousForest')?.children.find((model: any) => model.userData.prefab === 'deciduoustree')
@@ -40,18 +40,32 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
       const { scene, camera, renderer } = (window as any).deciduoustreeGame;
       const tree = scene.children.find((model: any) => model.name === 'DeciduousForest').children.find((model: any) => model.userData.prefab === 'deciduoustree');
       const mesh = tree.children[0].children[0]; mesh.updateWorldMatrix(true, false);
-      const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.index;
-      const point = tree.position.clone().multiplyScalar(0), vertex = point.clone();
-      for (let i = 0; i < 3; i++) { vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex); }
-      const ndc = point.multiplyScalar(1 / 3).project(camera), bounds = renderer.domElement.getBoundingClientRect();
-      return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
+      const { Raycaster, Vector2, Vector3 } = await import('/node_modules/.vite/deps/three.js');
+      const positions = mesh.geometry.getAttribute('position'), bounds = renderer.domElement.getBoundingClientRect();
+      const raycaster = new Raycaster(), pointer = new Vector2();
+      const point = new Vector3(), origin = new Vector3(), across = new Vector3(), down = new Vector3();
+      // Shared quads retain transparent margins. Choose an opaque canopy point through the real sprite raycast.
+      for (let quad = mesh.geometry.drawRange.count / 6 - 1; quad >= 0; quad--) {
+        origin.fromBufferAttribute(positions, quad * 4);
+        across.fromBufferAttribute(positions, quad * 4 + 1).sub(origin);
+        down.fromBufferAttribute(positions, quad * 4 + 3).sub(origin);
+        for (const u of [.5, .3, .7]) for (const v of [.5, .3, .7]) {
+          point.copy(origin).addScaledVector(across, u).addScaledVector(down, v);
+          mesh.localToWorld(point); point.project(camera);
+          if (Math.abs(point.x) >= .95 || Math.abs(point.y) >= .9) continue;
+          pointer.set(point.x, point.y); raycaster.setFromCamera(pointer, camera);
+          if (!raycaster.intersectObject(mesh).length) continue;
+          return { x: bounds.left + (point.x + 1) * bounds.width / 2, y: bounds.top + (1 - point.y) * bounds.height / 2 };
+        }
+      }
+      throw new Error('No opaque tree pixel is visible');
     });
     await page.mouse.click(point.x, point.y, { button: 'right' });
   };
   const lootCount = (save: any, itemId: string) => save.world.entities.ground_item
     .filter((record: any) => record.components.stack.itemId === itemId)
     .reduce((sum: number, record: any) => sum + record.components.stack.count, 0);
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_spawn("deciduoustree_tall"); c_give("axe"); c_give("shovel"); c_give("acorn", 3); c_spawn("acorn")');
   await expect.poll(treeAnimation).toBe('sway1_loop_tall');
   const standing = await saveGame();

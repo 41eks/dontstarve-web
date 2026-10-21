@@ -173,10 +173,10 @@ export class MinimapTerrainLayer {
     return !this.disposed;
   }
 
-  /** Pixel-exact composition of the cells in `bounds`; call after `prepareInputs()`. */
+  /** Pixel-exact composition for image capture and alpha readback; call after `prepareInputs()`. */
   paintCells(bounds: MinimapCellBounds, pixelsPerCell: number): OffscreenCanvas {
     if (!this.layers || !this.ocean) throw new Error('Minimap terrain inputs are not prepared');
-    return this.paint(bounds, pixelsPerCell);
+    return this.paint(bounds, pixelsPerCell, true);
   }
 
   private async buildOcean(): Promise<void> {
@@ -207,9 +207,11 @@ export class MinimapTerrainLayer {
     this.oceanCanvas = pixels ? pixelsCanvas(pixels) : undefined;
   }
 
-  private paint(bounds: MinimapCellBounds, pixelsPerCell: number): OffscreenCanvas {
+  private paint(bounds: MinimapCellBounds, pixelsPerCell: number, readback = false): OffscreenCanvas {
     const canvas = new OffscreenCanvas((bounds.maxCol - bounds.minCol) * pixelsPerCell, (bounds.maxRow - bounds.minRow) * pixelsPerCell);
-    const context = canvas.getContext('2d')!;
+    // Capture reads alpha immediately after drawing. Keep these chunks on the CPU
+    // so getImageData does not flush GPU work and download the raster per chunk.
+    const context = canvas.getContext('2d', { willReadFrequently: readback })!;
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
     if (this.oceanCanvas) {
@@ -231,8 +233,11 @@ export class MinimapTerrainLayer {
       if (ocean.oceanTileIds.has(id) || !quads.get(id)?.length) continue;
       let paint = painters.get(id);
       if (!paint) { paint = createMinimapTilePainter(layer, pixelsPerCell); painters.set(id, paint); }
-      for (const quad of quads.get(id)!) context.drawImage(paint(quad),
-        (quad.col - bounds.minCol) * pixelsPerCell, (quad.row - bounds.minRow) * pixelsPerCell);
+      for (const quad of quads.get(id)!) {
+        const tile = paint(quad);
+        context.drawImage(tile.canvas, tile.x, tile.y, tile.size, tile.size,
+          (quad.col - bounds.minCol) * pixelsPerCell, (quad.row - bounds.minRow) * pixelsPerCell, pixelsPerCell, pixelsPerCell);
+      }
     }
     if (context.isContextLost()) throw new Error(`Minimap terrain canvas lost its context (${canvas.width} × ${canvas.height})`);
     return canvas;

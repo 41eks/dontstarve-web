@@ -4,6 +4,7 @@ import { TILE_SIZE, snapToTileCenter, type Vector2 } from './tile';
 import { GROUND_TILE_DEFINITIONS, FALLOFF_EDGES, groundTileGeometry, groundFalloffGeometry, sortGroundFalloffGeometry, loadGroundFalloffAssets, loadGroundTileMinimapLayer, groundTileVariant, loadGroundTileAssets,
   type GroundTileAssets, type GroundFalloffAssets, type FalloffEdge, type GroundTileLayerImage, type GroundTileQuad, type GroundOverlayGeometry, type GroundTileName } from './groundTiles';
 import { OceanSurface } from './ocean';
+import { mergeCellRectangles, cellRectangleGeometry } from './oceanRenderPipeline';
 import { loadMinimapOcean, type MinimapOceanData } from './minimapOcean';
 import type { ClockState, ReadonlySignal } from '@dontstarve-web/signals';
 import { GroundDepthPrepass } from './groundDepthPrepass';
@@ -106,10 +107,25 @@ export class TurfMap {
 
   /** Registers generated terrain without overwriting saved dug tiles. */
   setOriginalTile(world: Vector2, tileId: number): void {
-    this.originalTiles.set(this.key(world), tileId);
-    const col = Math.floor(world.x / TILE_SIZE), row = Math.floor(world.z / TILE_SIZE);
-    this.writeCell(col, row, this.dugTiles.get(`${col},${row}`)?.tileId ?? tileId);
-    this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
+    this.setOriginalTiles([{ position: world, tileId }]);
+  }
+
+  /** Apply a generated layout before rebuilding. Saved overrides and unchanged cells need no visual update. */
+  setOriginalTiles(tiles: Iterable<{ position: Vector2; tileId: number }>): void {
+    let bounds: TerrainCellBounds | undefined;
+    for (const { position, tileId } of tiles) {
+      const col = Math.floor(position.x / TILE_SIZE), row = Math.floor(position.z / TILE_SIZE), key = `${col},${row}`;
+      this.originalTiles.set(key, tileId);
+      const effective = this.dugTiles.get(key)?.tileId ?? tileId;
+      if (this.tileAt(col, row) === effective) continue;
+      this.writeCell(col, row, effective);
+      if (!bounds) bounds = { minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 };
+      else {
+        bounds.minCol = Math.min(bounds.minCol, col); bounds.minRow = Math.min(bounds.minRow, row);
+        bounds.maxCol = Math.max(bounds.maxCol, col + 1); bounds.maxRow = Math.max(bounds.maxRow, row + 1);
+      }
+    }
+    if (bounds) this.rebuildGeometry(bounds);
   }
 
   /** Inclusive-exclusive signed cell range [min, max) covering the generated world on both axes. */
@@ -421,6 +437,18 @@ export class TurfMap {
         if (tile.tileId !== tileId || this.originalTiles.has(key)) continue;
         addAround(tile.col, tile.row);
       }
+    }
+    if (tileId === WORLD_TILES.OCEAN_COASTAL) {
+      // The ocean pass shades by world position, so the surface only needs its footprint: merged rectangles, not a quad per cell.
+      const surface = new Set<number>();
+      for (const key of candidates) {
+        if (this.tileAt(key % width + min - 1, Math.floor(key / width) + min - 1) !== WORLD_TILES.INVALID) surface.add(key);
+      }
+      const rects = mergeCellRectangles(max - min, (col, row) => surface.has(cellKey(col + min, row + min)));
+      mesh.geometry.dispose();
+      mesh.geometry = cellRectangleGeometry(rects, min, TILE_SIZE, this.size / 2, new THREE.Matrix4());
+      mesh.visible = rects.length > 0;
+      return;
     }
     const edgeQuads: GroundTileQuad[] = [];
     for (const key of candidates) {

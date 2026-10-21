@@ -69,6 +69,18 @@ it('cycles all four source stages and split archives, resets chop work, removes 
   } finally { s.forest.dispose(); }
 });
 
+it('shows growth settled while unloaded as its final stage without the transition animation', async () => {
+  const s = await setup();
+  try {
+    const tree = s.forest.spawn('evergreen_short', new THREE.Vector3(3, 0, 0));
+    s.forest.updateNearby(new THREE.Vector3(1000, 0, 1000));
+    expect(tree.model).toBeUndefined();
+    s.scheduler.advance(5000);
+    s.forest.updateNearby(new THREE.Vector3(3, 0, 0));
+    expect(tree.model!.userData.components.growable.GetStage()).toBeGreaterThan(1);
+    expect(tree.model!.userData.animationController.currentAnimation).not.toMatch(/^grow_/);
+  } finally { s.forest.dispose(); }
+});
 it('commits source axe work, cancels before impact, preserves logical components while unloaded, and fells and digs a tall tree permanently', async () => {
   const s = await setup(), inventory = createPickupInventory();
   const player = await createWilsonPlayer('/dst/data/anim');

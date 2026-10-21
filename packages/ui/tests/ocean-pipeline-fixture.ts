@@ -79,13 +79,18 @@ export async function checkOceanPipeline() {
   noise.addEventListener('dispose', () => { borrowedNoiseDisposed = true; });
   let targetsDisposed = 0;
   for (const target of targets.values()) target.addEventListener('dispose', () => targetsDisposed++);
+  // The flat clear colour's 16×32 ocean cells merge into a single rectangle in the surface's local space.
+  const floorGeometry = (mesh.getObjectByName('OceanClearColour') as THREE.Mesh).geometry;
+  const floorTriangles = floorGeometry.index!.count / 3;
+  const box = new THREE.Box3().setFromBufferAttribute(floorGeometry.attributes.position as THREE.BufferAttribute);
+  const floorBounds = [box.min.toArray(), box.max.toArray()];
   pipeline.dispose();
   const beforeRemovedPass = renderer.info.render.frame;
   renderScenePasses(renderer, scene, camera, lighting);
   const removedPass = renderer.info.render.frame === beforeRemovedPass;
   const result = { dayFar, duskFar, primaryFar, blendFar, landBoundary, seaBoundary, encoded,
     resolved: [...resolved].map(value => value / 255), expectedResolved, initialSize, resized,
-    statePreserved, targetsDisposed, borrowedNoiseDisposed, removedPass };
+    statePreserved, floorTriangles, floorBounds, targetsDisposed, borrowedNoiseDisposed, removedPass };
   mesh.geometry.dispose();
   noise.dispose(); lightmap.dispose(); output.dispose(); renderer.dispose();
   return result;

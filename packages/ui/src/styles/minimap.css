@@ -8,7 +8,7 @@
   inset: 0;
   overflow: hidden;
   background: #1d1a14;
-  cursor: grab;
+  cursor: none;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -19,6 +19,16 @@
 }
 
 .minimap--dragging {
+  cursor: grabbing;
+}
+
+/* Only the alpha-derived land silhouette receives native pointer hits. */
+.minimap__land-hit {
+  pointer-events: fill;
+  cursor: crosshair;
+}
+
+.minimap--dragging .minimap__land-hit {
   cursor: grabbing;
 }
 

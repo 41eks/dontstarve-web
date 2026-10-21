@@ -140,32 +140,41 @@ export interface GroundTileQuad { col: number; row: number; variant: number }
 
 /** One mesh per terrain layer. UVs come from the real XML, noise from world XZ. */
 export function groundTileGeometry(quads: readonly GroundTileQuad[], assets: GroundTileAssets, size: number): THREE.BufferGeometry {
-  const positions: number[] = [], noiseUvs: number[] = [], tileUvs: number[] = [], indices: number[] = [];
+  const positions = new Float32Array(quads.length * 12), normals = new Float32Array(quads.length * 12);
+  const noiseUvs = new Float32Array(quads.length * 8), tileUvs = new Float32Array(quads.length * 8);
+  const indices = quads.length * 4 > 65536 ? new Uint32Array(quads.length * 6) : new Uint16Array(quads.length * 6);
+  const cells = Array.from({ length: 49 }, (_, variant) => assets.elements.get(String(variant).padStart(2, '0')));
+  let vertices = 0, indexCount = 0;
   const half = size / 2;
   for (const { col, row, variant } of quads) {
-    const cell = assets.elements.get(String(variant).padStart(2, '0'));
+    const cell = cells[variant];
     if (!cell) throw new Error(`Ground tile variant ${variant} is unavailable`);
     const originX = col * TILE_SIZE, originZ = row * TILE_SIZE;
     const x0 = Math.max(-half, originX), x1 = Math.min(half, originX + TILE_SIZE);
     const z0 = Math.max(-half, originZ), z1 = Math.min(half, originZ + TILE_SIZE);
     if (x1 <= x0 || z1 <= z0) continue;
-    const offset = positions.length / 3;
-    for (const [x, z] of [[x0, z0], [x0, z1], [x1, z0], [x1, z1]]) {
-      positions.push(x, 0, z);
-      noiseUvs.push(x / (TILE_SIZE * 8), -z / (TILE_SIZE * 8));
+    const offset = vertices;
+    for (let corner = 0; corner < 4; corner++, vertices++) {
+      const x = corner < 2 ? x0 : x1, z = corner % 2 === 0 ? z0 : z1;
+      const p = vertices * 3, uv = vertices * 2;
+      positions[p] = x; positions[p + 2] = z;
+      // Every ground quad is horizontal with the same upward winding.
+      normals[p + 1] = 1;
+      noiseUvs[uv] = x / (TILE_SIZE * 8); noiseUvs[uv + 1] = -z / (TILE_SIZE * 8);
       // parseKtex's rows are top-down; invert XML's bottom-up V coordinates.
-      tileUvs.push(THREE.MathUtils.lerp(cell.u1, cell.u2, (x - originX) / TILE_SIZE),
-        THREE.MathUtils.lerp(1 - cell.v2, 1 - cell.v1, (z - originZ) / TILE_SIZE));
+      tileUvs[uv] = THREE.MathUtils.lerp(cell.u1, cell.u2, (x - originX) / TILE_SIZE);
+      tileUvs[uv + 1] = THREE.MathUtils.lerp(1 - cell.v2, 1 - cell.v1, (z - originZ) / TILE_SIZE);
     }
-    indices.push(offset, offset + 1, offset + 2, offset + 2, offset + 1, offset + 3);
+    indices[indexCount++] = offset; indices[indexCount++] = offset + 1; indices[indexCount++] = offset + 2;
+    indices[indexCount++] = offset + 2; indices[indexCount++] = offset + 1; indices[indexCount++] = offset + 3;
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(noiseUvs, 2));
-  geometry.setAttribute('groundTileUv', new THREE.Float32BufferAttribute(tileUvs, 2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  if (positions.length) { geometry.computeBoundingBox(); geometry.computeBoundingSphere(); }
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions.subarray(0, vertices * 3), 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(normals.subarray(0, vertices * 3), 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(noiseUvs.subarray(0, vertices * 2), 2));
+  geometry.setAttribute('groundTileUv', new THREE.BufferAttribute(tileUvs.subarray(0, vertices * 2), 2));
+  geometry.setIndex(new THREE.BufferAttribute(indices.subarray(0, indexCount), 1));
+  if (vertices) { geometry.computeBoundingBox(); geometry.computeBoundingSphere(); }
   return geometry;
 }
 

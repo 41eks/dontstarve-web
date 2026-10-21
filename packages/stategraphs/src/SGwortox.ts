@@ -1,8 +1,8 @@
 import type { Vector3 } from 'three';
-import type { WilsonStateGraph, WilsonStateName } from './SGwilson.ts';
+import type { WilsonStateGraph, WilsonStateName, PortalJumpData } from './SGwilson.ts';
 import { State, TimeEvent, EventHandler, FRAMES } from './stategraph.ts';
 
-/** SGwilson.lua's unmounted, non-map Wortox portal states. */
+/** SGwilson.lua's unmounted Wortox portal states, shared by ground and map jumps. */
 const state = State<WilsonStateGraph, WilsonStateName>;
 const time = (frame: number, fn: Parameters<typeof TimeEvent<WilsonStateGraph, WilsonStateName>>[1]) =>
   TimeEvent<WilsonStateGraph, WilsonStateName>(frame * FRAMES, fn);
@@ -58,7 +58,10 @@ export const wortoxStates = [
       const host = inst.context.host;
       host.soulHop?.setPhysicsEnabled(false);
       host.stopMovement?.();
-      host.soulHop?.teleport(data as Vector3);
+      const jump = data as PortalJumpData;
+      host.soulHop?.teleport(jump.dest);
+      host.soulHop?.resetMinimapOffset?.();
+      if (jump.from_map) host.soulHop?.snapCamera?.();
       inst.context.playClips(play('jumpout'));
       host.soulHop?.spawnFx('wortox_portal_jumpout_fx');
       host.soulHop?.setTint(1);

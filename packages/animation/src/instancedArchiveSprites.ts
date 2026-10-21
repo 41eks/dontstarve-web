@@ -135,6 +135,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       },
       hide: () => { entry.appearance = undefined; },
       setOpacity: (value: number) => { entry.opacity = value; },
+      setColour: (value: readonly [number, number, number]) => { entry.colour.setRGB(...value); },
       dispose: () => { entry.stopPass(); this.entries.delete(entry); },
     };
   }

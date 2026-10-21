@@ -97,3 +97,94 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
   })).toBe(identities.backpackId);
   expect(errors).toEqual([]);
 });
+
+test('tree icons use native art, survive model unloading and retain identities and positions after saving', async ({ page }) => {
+  test.setTimeout(240_000);
+  let saved: any;
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.route('**/saves/initial-world.json', async route => {
+    if (saved) { await route.fulfill({ json: saved }); return; }
+    const response = await route.fetch(), initial = await response.json();
+    initial.world.entities = {};
+    initial.players.local.transform.position = [0, 0, 0];
+    await route.fulfill({ response, json: initial });
+  });
+  const command = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
+    new CustomEvent('game:debug-command', { detail: { command } })), command);
+  const prepare = async () => {
+    await page.evaluate(async urls => {
+      await import(urls.main);
+      const { scene } = await import(urls.universal);
+      const map = document.querySelector('dst-minimap') as any;
+      (window as any).treeMap = { scene, map, icons: () => map.options.getMiniMapEntities() };
+    }, urls);
+    await page.keyboard.press('m');
+  };
+  const treeIcons = ['evergreen.png', 'tree_leaf.png', 'moon_tree.png', 'mushroom_tree_med.png'];
+  const checkIcons = async () => {
+    for (const icon of treeIcons) {
+      const image = page.locator(`dst-minimap img[data-icon="${icon}"]`);
+      await expect(image).toBeVisible({ timeout: 30_000 });
+      await expect.poll(() => image.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    }
+  };
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
+  await prepare();
+  await command('c_spawn("evergreen_normal"); c_spawn("deciduoustree_normal"); c_spawn("moon_tree_normal"); c_spawn("mushtree_medium")');
+  await checkIcons();
+  expect(await page.evaluate(() => {
+    const g = (window as any).treeMap;
+    return g.icons().filter((icon: any) => ['evergreen.png', 'tree_leaf.png', 'moon_tree.png'].includes(icon.icon))
+      .every((icon: any) => icon.priority === -1);
+  })).toBe(true);
+  const download = page.waitForEvent('download');
+  await command('c_save()');
+  saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
+  const before = ['evergreen', 'deciduoustree', 'moon_tree', 'mushtree_medium'].map(prefab => ({
+    prefab, id: saved.world.entities[prefab][0].id, transform: saved.world.entities[prefab][0].transform,
+  }));
+  // Restore trees outside the world's model load radius while keeping their positions in map view.
+  for (const { prefab } of before) saved.world.entities[prefab][0].transform.position = [144, 0, 0];
+  await page.reload(); await prepare();
+  await page.evaluate(() => (window as any).treeMap.map.setView({ x: 144, z: 0, zoom: 1 }));
+  await checkIcons();
+  expect(await page.evaluate(() => {
+    const { scene } = (window as any).treeMap;
+    let count = 0;
+    scene.traverse((object: any) => { if (['evergreen', 'deciduoustree', 'moon_tree'].includes(object.userData.prefab)) count++; });
+    return count;
+  })).toBe(0);
+  const restoredDownload = page.waitForEvent('download');
+  await command('c_save()');
+  const restored = JSON.parse(await readSaveDownload((await (await restoredDownload).path())!, 'Master'));
+  for (const { prefab, id } of before) {
+    expect(restored.world.entities[prefab][0]).toMatchObject({ id, transform: { position: [144, 0, 0] } });
+  }
+  expect(errors).toEqual([]);
+});
+
+test('ground map image retries at a lower density when the browser cannot encode a very large image', async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors: string[] = [], warnings: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error') errors.push(message.text());
+    if (message.type() === 'warning' && message.text().startsWith('Unable to build the ground map image')) warnings.push(message.text());
+  });
+  await page.addInitScript(() => {
+    const convert = OffscreenCanvas.prototype.convertToBlob;
+    OffscreenCanvas.prototype.convertToBlob = function (this: OffscreenCanvas, ...args) {
+      return this.width > 4096 ? Promise.resolve(new Blob([])) : convert.apply(this, args);
+    };
+  });
+  await page.goto('/tests/dst-lighting.html?save=Cluster_1/Master.json');
+  const ready = await page.evaluate(async url => {
+    await (await import(url)).gameReady;
+    return (await (document.querySelector('dst-minimap') as any).inspect()).ready;
+  }, urls.main);
+  expect(ready).toBe(true);
+  expect(warnings.length).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});

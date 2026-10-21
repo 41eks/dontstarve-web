@@ -63,7 +63,7 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 `createPigKing` 对应 `pigking.lua`：模型、障碍物碰撞体、`trader` 组件和 `SGpigking` 状态机（昼夜睡觉、金块交易、拒绝），不创建任何地皮。
 猪王周围的地皮和岩石属于地图生成层（原版 `default_pigking.lua` 静态布局），由
 `scripts/import-static-layouts.py` 生成的 `staticLayouts.json` 驱动：`placeStaticLayout('default_pigking', feet, 'pigking')`
-返回 40 块 `GRASS`、12 块 `WOODFLOOR` 的格子中心和 8 块岩石的位置，主场景把格子登记到 `TurfMap.setOriginalTile`。
+返回 40 块 `GRASS`、12 块 `WOODFLOOR` 的格子中心和 8 块岩石的位置，主场景把所有格子一次登记到 `TurfMap.setOriginalTiles`；存档覆盖的有效地皮未变时不重建。
 `TurfMap`（`@dontstarve-web/prefab/turfMap`）提供按格查询、挖地、稀疏存档和
 `createVisual(assetBaseUrl)`。主场景将猪王木地板格登记到该地图，由统一地皮层绘制。`groundTiles.json` 从 `tiledefs.lua` 提取 ID、atlas/noise 路径和
 绘制顺序；`pnpm --filter @dontstarve-web/prefab ground-tiles:import` 导入原版资产，

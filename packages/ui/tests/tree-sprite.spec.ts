@@ -35,3 +35,29 @@ test('instanced idle frames are assembled from source parts and switch to ordina
   expect(result.reusedInstanceBuffers).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test('birch leaves match source layers without repeating absent symbol frames', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async url => (await import(url)).checkBirchLeafRendering(),
+    `/@fs${fileURLToPath(new URL('./tree-sprite-fixture.ts', import.meta.url))}`);
+  expect(result.expectedParts).toBe(13);
+  expect(result.drawnParts).toBe(result.expectedParts);
+  expect(result.meanError).toBeLessThan(1);
+  expect(errors).toEqual([]);
+});
+
+test('instanced birch frames match source art, batch more trees, keep tint private and resume after chopping', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async url => (await import(url)).checkBirchLeafRendering(true),
+    `/@fs${fileURLToPath(new URL('./tree-sprite-fixture.ts', import.meta.url))}`);
+  expect(result.meanError).toBeLessThan(2);
+  expect(result.drawCalls).toEqual([2, 2, 2, 4, 2, 0]);
+  expect(result.privateTint).toBe(true);
+  expect(result.independentFrames).toBe(true);
+  expect(result.workDrawn).toBe(true);
+  expect(errors).toEqual([]);
+});

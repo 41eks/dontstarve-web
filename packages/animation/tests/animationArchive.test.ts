@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { unzipSync, zipSync } from 'fflate';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createMaterials, loadAnim, loadBuild, loadAnimationArchive, loadSpriteSkinArchive } from '../src/animationAssets';
+import { createMaterials, loadAnim, loadBuild, loadAnimationArchive, loadSpriteSkinArchive, findImage, smallHash } from '../src/animationAssets';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -52,4 +52,20 @@ it('accepts build-only skins without weakening required animation validation', a
   expect(skin.animations).toBeUndefined();
   expect(skin.buildPackage.build.symbols.size).toBeGreaterThan(0);
   await expect(loadAnim('build-only.zip', '/dst/data/anim')).rejects.toThrow('does not contain anim.bin');
+});
+
+it('keeps absent birch leaf slots invisible instead of repeating the first three images', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const [{ build }, bank] = await Promise.all([
+    loadBuild('tree_leaf_green_build.zip', '/dst/data/anim'),
+    loadAnim('tree_leaf_tall.zip', '/dst/data/anim'),
+  ]);
+  const hash = smallHash('swap_leaves');
+  const slots = bank.animations.find(clip => clip.name === 'sway1_loop_tall')!.frames[0].elements
+    .filter(element => element.imageHash === hash).sort((a, b) => b.z - a.z).map(element => element.imageIndex);
+  expect(slots).toEqual([2, 1, 0, 18, 17, 19]);
+  expect(slots.filter(slot => findImage(build, hash, slot))).toEqual([2, 1, 0]);
+  const [first] = build.symbols.get(hash)!;
+  expect(findImage(build, hash, first.index)).toBe(first);
+  expect(findImage(build, hash, first.index + first.duration - 1)).toBe(first);
 });

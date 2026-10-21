@@ -60,6 +60,8 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
   const s = await evergreens();
   try {
     const tree = s.forest.spawn('evergreen_normal', new THREE.Vector3(3, 0, 0));
+    const icon = s.forest.miniMapEntities[0];
+    expect(icon).toMatchObject({ icon: 'evergreen.png', priority: -1 });
     const model = tree.model!, target = model.userData.actionEntity as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
     expect(fires(s.scene)).toBe(1); expect(target.hasTag('fire')).toBe(true); expect(target.hasTag('canlight')).toBe(false);
@@ -70,6 +72,7 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
     s.scheduler.advance(1); await flush();
     expect(fires(s.scene)).toBe(0); expect(target.hasTag('burnt')).toBe(true);
     expect(model.userData.animationController.currentAnimation).toBe('burnt_normal');
+    expect(icon.icon).toBe('evergreen_burnt.png');
     // burnt_changes follow .5 seconds later: no burnable, shelter or growth, and a single chop.
     expect(target.components.burnable).toBeDefined();
     s.scheduler.advance(.5);
@@ -165,7 +168,9 @@ it('burns a moon tree for its size-scaled time and keeps burnt state through unl
     expect(tree.model!.userData.animationController.currentAnimation).toBe('burnt_tall');
     scheduler.advance(.5);
     expect(target.components.burnable).toBeUndefined(); expect(target.components.workable!.GetWorkLeft()).toBe(1);
-    expect(forest.exportState(tree)).toEqual({ moonTree: { size: 'tall', burnt: true }, growable: { stage: 3 } });
+    expect(forest.exportState(tree)).toEqual({ moonTree: { size: 'tall', burnt: true }, growable: { stage: 3 },
+      moonTreeTimer: { timers: { decay: { timeleft: 14399, initial_time: 14400, paused: false } } } });
+    expect(forest.miniMapEntities[0].icon).toBe('moon_tree_burnt.png');
     forest.updateNearby(new THREE.Vector3(500, 0, 0)); forest.updateNearby(new THREE.Vector3());
     expect(tree.model!.userData.animationController.currentAnimation).toBe('burnt_tall');
     expect(performToolWork('CHOP', tree.model!.userData.actionEntity, {})).toBe(true);

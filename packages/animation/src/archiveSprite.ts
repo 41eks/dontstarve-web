@@ -120,6 +120,8 @@ export interface ArchiveSprite {
   setPaused(paused: boolean): void;
   /** Only for sprites created with `options.opacity`, whose materials are private. */
   setOpacity(opacity: number): void;
+  /** Per-entity tint, for sprites created with options.colour; shared atlas pixels stay unchanged. */
+  setColour(colour: readonly [number, number, number]): void;
   /**
    * Eight-faced insts select, among clips of the same name, the one whose `facing` mask contains this FACING bit,
    * mirrored horizontally when the clip lists both a facing and its left-hand mirror.
@@ -127,6 +129,8 @@ export interface ArchiveSprite {
   setFacing(facing: number): void;
   /** AnimState:SetBuild among the definition's `buildArchives`; the clip and frame are kept. */
   setBuildArchive(archive: string): void;
+  /** AnimState:OverrideSymbol / ClearOverrideSymbol among the preloaded build archives. */
+  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void;
   /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
   setSymbolHidden(symbol: string, hidden: boolean): void;
   /** Turn towards the camera; unchanged transforms reuse their matrices. */
@@ -246,15 +250,17 @@ function constructArchiveSprite(
   const resolveSprites = (index: number, shared: boolean): ResolvedSprite[] => [...animation.frames[index].elements]
     // These banks include a bounding-only symbol with no build art.
     .filter((element) => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash))
-    .sort((a, b) => b.z - a.z).map((element) => {
+    .sort((a, b) => b.z - a.z).flatMap((element): ResolvedSprite[] => {
       const override = overrides.get(element.imageHash);
       const hash = override?.hash ?? element.imageHash;
       const candidates = [...(skin ? [skin] : []), ...(override ? [override.source] : activeBuilds)];
       for (const build of candidates) {
         const image = findImage(build.build, hash, element.imageIndex);
-        if (image) return { element, image, materials: (shared ? source(build) : build).materials };
+        if (image) return [{ element, image, materials: (shared ? source(build) : build).materials }];
       }
-      throw new Error(`Missing sprite part ${model.name}:${hash}:${element.imageIndex}`);
+      // AnimState draws nothing for a symbol its builds lack or omit from this frame (e.g. the leaf-fx symbols
+      // in drop_leaves, which come from the separate tree_leaf_fx build).
+      return [];
     });
   const update = (dt: number) => {
     if (paused || disposed) return;
@@ -351,10 +357,34 @@ function constructArchiveSprite(
       applyOpacity(opacity);
       instances?.setOpacity(opacity);
     },
+    setColour(colour) {
+      if (!options.colour) throw new Error(`Sprite ${model.name} does not own its colour`);
+      if (disposed) return;
+      const tint = new THREE.Color().setRGB(...colour);
+      for (const [material, copy] of materialCopies) copy.color.copy(material.color).multiply(tint);
+      instances?.setColour(colour);
+    },
+    setSymbolOverride(symbol, archive, sourceSymbol = symbol) {
+      if (disposed) return;
+      const hash = smallHash(symbol), previous = overrides.get(hash);
+      if (archive === undefined) {
+        if (!previous) return;
+        overrides.delete(hash);
+      } else {
+        const index = definition.buildArchives.indexOf(archive);
+        if (index < 0) throw new Error(`Sprite ${model.name} has no build archive ${archive}`);
+        const replacement = { hash: smallHash(sourceSymbol), source: builds[index] };
+        if (previous?.hash === replacement.hash && previous.source === replacement.source) return;
+        overrides.set(hash, replacement);
+      }
+      sharedAppearance = '';
+      previousFrame = -1;
+      update(0);
+    },
     setBuildArchive(archive: string) {
       const index = definition.buildArchives.indexOf(archive);
       if (index < 0) throw new Error(`Sprite ${model.name} has no build archive ${archive}`);
-      if (disposed || activeBuilds[0] === builds[index]) return;
+      if (disposed || activeBuilds.length === 1 && activeBuilds[0] === builds[index]) return;
       activeBuilds = [builds[index]];
       sharedAppearance = '';
       previousFrame = -1;

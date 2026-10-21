@@ -67,6 +67,7 @@ export interface SavedEntity {
     skeleton?: import('../../packages/prefab/src/skeleton').SkeletonSaveState;
     growable?: import('../../packages/componets/src/growable').GrowableSave;
     deciduousTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
+    moonTreeTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     evergreenTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     saplingTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     sculptingtable?: { itemname: string };

@@ -3,7 +3,135 @@ import { expect, test } from '@playwright/test';
 
 const PLAYER_PATH = `/@fs${fileURLToPath(new URL('../../../src/player.ts', import.meta.url))}`;
 
+test('precomposed tile regions reuse uploads and bounded atlas slots while preserving colour and alpha', async ({ page }) => {
+  await page.goto('/tests/minimap-edges.html');
+  await page.waitForFunction(() => Boolean((window as any).minimapEdges));
+  const result = await page.evaluate(async () => {
+    const { createMinimapTilePainter } = await import('../src/minimap-terrain.ts');
+    const mask = { width: 2, height: 2, data: new Uint8ClampedArray([
+      128, 128, 128, 255, 255, 255, 255, 128, 0, 0, 0, 0, 128, 128, 128, 255,
+    ]) };
+    const transparent = { width: 2, height: 2, data: new Uint8ClampedArray(16) };
+    const layer = { cells: new Map([[1, mask], [2, mask], [3, transparent]]), renderOrder: 0,
+      noise: { width: 1, height: 1, data: new Uint8ClampedArray([128, 64, 32, 255]) } };
+    const prototype = OffscreenCanvasRenderingContext2D.prototype, putImageData = prototype.putImageData;
+    let uploads = 0;
+    prototype.putImageData = function (...args: Parameters<typeof putImageData>) {
+      uploads++;
+      return putImageData.apply(this, args);
+    };
+    const paint = createMinimapTilePainter(layer, 2);
+    const output = new OffscreenCanvas(2, 2), context = output.getContext('2d', { willReadFrequently: true })!;
+    const draw = (tile: ReturnType<typeof paint>) => {
+      context.clearRect(0, 0, 2, 2);
+      context.drawImage(tile.canvas, tile.x, tile.y, tile.size, tile.size, 0, 0, 2, 2);
+      return Array.from(context.getImageData(0, 0, 2, 2).data);
+    };
+    try {
+      const hot = paint({ col: -1, row: -1, variant: 1 }), before = draw(hot), initialUploads = uploads;
+      const repeated = paint({ col: 7, row: 7, variant: 1 });
+      const hit = { sameRegion: hot === repeated, uploads: uploads - initialUploads };
+      const cold = paint({ col: 0, row: 0, variant: 1 });
+      const distinctPhase = cold !== hot && cold.canvas === hot.canvas;
+      for (const variant of [1, 2]) for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++)
+        paint({ col, row, variant });
+      paint({ col: 7, row: 7, variant: 1 }); // Keep this region hot before exceeding 128 cached combinations.
+      const transparentRegion = paint({ col: 0, row: 0, variant: 3 });
+      const cleared = draw(transparentRegion), retainedPixels = draw(hot), afterEviction = uploads;
+      const reused = paint({ col: -1, row: -1, variant: 1 });
+      const retained = hot === reused && uploads === afterEviction;
+      const regenerated = draw(paint({ col: 0, row: 0, variant: 1 }));
+      const atlasSize = [hot.canvas.width, hot.canvas.height];
+      paint.dispose();
+      const disposed = [hot.canvas.width, hot.canvas.height];
+      // Disposing the source atlas cannot change pixels already copied to a map chunk.
+      const preserved = Array.from(context.getImageData(0, 0, 2, 2).data);
+      return { before, hit, distinctPhase, reusedSlot: transparentRegion === cold, cleared, retainedPixels,
+        retained, regenerated, atlasSize, disposed, preserved };
+    } finally {
+      prototype.putImageData = putImageData;
+      paint.dispose(); output.width = output.height = 0;
+    }
+  });
+  const pixels = [64, 32, 16, 255, 128, 64, 32, 128, 0, 0, 0, 0, 64, 32, 16, 255];
+  expect(result.before).toEqual(pixels);
+  expect(result.hit).toEqual({ sameRegion: true, uploads: 0 });
+  expect(result).toMatchObject({ distinctPhase: true, reusedSlot: true, retained: true, atlasSize: [32, 16], disposed: [0, 0] });
+  expect(result.cleared).toEqual(Array(16).fill(0));
+  expect(result.retainedPixels).toEqual(pixels);
+  expect(result.regenerated).toEqual(pixels);
+  expect(result.preserved).toEqual(pixels);
+});
+
+test('native land silhouettes control the cursor through holes, map transforms and terrain replacement', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 1000 });
+  await page.goto('/tests/minimap-edges.html');
+  await page.waitForFunction(() => Boolean((window as any).minimapEdges));
+  const map = page.locator('dst-minimap');
+  const hit = map.locator('.minimap__land-hit');
+  await expect(hit).toHaveAttribute('d', /^M/);
+  // Make an ocean hole inside a surrounding island, plus a separate small island.
+  await page.evaluate(async () => {
+    const { terrain, map, WORLD_TILES } = (window as any).minimapEdges;
+    for (let row = -2; row <= 2; row++) for (let col = -2; col <= 2; col++)
+      terrain.setTile(col, row, WORLD_TILES.GRASS);
+    terrain.setTile(0, 0, WORLD_TILES.OCEAN_COASTAL);
+    terrain.setTile(3, 0, WORLD_TILES.GRASS);
+    await map.prepareTerrain();
+    (window as any).landHoverQueries = 0;
+    for (const method of ['getTileAtWorld', 'tileIdAtCell', 'isPassableAtPoint']) {
+      const original = terrain[method];
+      terrain[method] = function (...args: unknown[]) { (window as any).landHoverQueries++; return original.apply(this, args); };
+    }
+  });
+  const moveTo = async (x: number, z: number) => {
+    const point = await page.evaluate(({ x, z }) => (window as any).minimapEdges.map.view.worldToScreen(x, z), { x, z });
+    await page.mouse.move(point.x, point.z);
+    return page.evaluate(({ x, z }) => {
+      const map = (window as any).minimapEdges.map;
+      const target = map.shadowRoot.elementFromPoint(x, z);
+      return { land: target?.classList.contains('minimap__land-hit'), cursor: getComputedStyle(target).cursor };
+    }, point);
+  };
+  for (const [angle, zoom] of [[-90, 19], [45, 20]]) {
+    await page.evaluate(async ({ angle, zoom }) => {
+      const { map, heading } = (window as any).minimapEdges;
+      heading.set(angle);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      map.setView({ x: 6, z: 6, zoom });
+    }, { angle, zoom });
+    expect(await moveTo(-6, 6)).toEqual({ land: true, cursor: 'crosshair' });
+    expect(await moveTo(6, 6)).toEqual({ land: false, cursor: 'none' });
+    expect(await moveTo(42, 6)).toEqual({ land: true, cursor: 'crosshair' });
+    expect(await moveTo(6, -30)).toEqual({ land: false, cursor: 'none' });
+  }
+  expect(await page.evaluate(() => (window as any).landHoverQueries)).toBe(0);
+  // Actual pointer capture still pans the map across both land and sea.
+  await moveTo(-6, 6);
+  const beforePan = await page.evaluate(() => (window as any).minimapEdges.map.view.centerX);
+  const mouse = await page.evaluate(() => (window as any).minimapEdges.map.view.worldToScreen(-6, 6));
+  await page.mouse.down();
+  await page.mouse.move(mouse.x + 60, mouse.z + 20, { steps: 3 });
+  await expect(map.locator('section')).toHaveClass(/minimap--dragging/);
+  await page.mouse.up();
+  expect(await page.evaluate(() => (window as any).minimapEdges.map.view.centerX)).not.toBe(beforePan);
+  expect(await moveTo(6, 6)).toEqual({ land: false, cursor: 'none' });
+  // The image and native hit area change together when the hole is filled.
+  const beforePath = await hit.getAttribute('d');
+  await page.evaluate(async () => {
+    const { terrain, map, WORLD_TILES } = (window as any).minimapEdges;
+    terrain.setTile(0, 0, WORLD_TILES.GRASS);
+    await map.prepareTerrain();
+  });
+  expect(await hit.getAttribute('d')).not.toBe(beforePath);
+  expect(await moveTo(6, 6)).toEqual({ land: true, cursor: 'crosshair' });
+  await page.keyboard.press('Escape');
+  // Chromium can retain :hover on a hidden SVG until the next pointer movement.
+  await expect(map.locator('section')).toBeHidden();
+});
+
 test('captures a large sparse world into one bounded image and replaces it after terrain changes', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 600 });
   await page.goto('/tests/minimap-edges.html');
   await page.waitForFunction(() => Boolean((window as any).minimapEdges));
   const prepared = await page.evaluate(async () => {
@@ -26,7 +154,7 @@ test('captures a large sparse world into one bounded image and replaces it after
   });
   expect(prepared.ready).toBe(true);
   expect(prepared.images).toBe(1);
-  expect(prepared.width).toBeLessThanOrEqual(8192); expect(prepared.width).toBeGreaterThan(4096); expect(prepared.height).toBe(prepared.width);
+  expect(prepared.width).toBe(5530); expect(prepared.height).toBe(prepared.width);
   expect(prepared.width * prepared.height * 4).toBeLessThanOrEqual(256 * 1024 * 1024);
   expect(prepared.before[0][3]).toBeGreaterThan(0); expect(prepared.before[1][3]).toBeGreaterThan(0);
   expect(prepared.before[2][3]).toBe(0); expect(prepared.parentPreserved).toBe(true);

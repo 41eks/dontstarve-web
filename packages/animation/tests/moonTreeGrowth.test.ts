@@ -139,9 +139,12 @@ it('keeps logical growth while unloaded and stops growth when chopping or diggin
     expect(s.forest.exportState(tree).growable).toEqual({ stage: 2, time: 0, sleeptime: 1600 });
     s.forest.updateNearby(new THREE.Vector3());
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 250 } });
+    expect(tree.model!.userData.animationController.currentAnimation).not.toMatch(/^grow_/);
     const target = s.forest.chopTargets[0];
     expect(target.entity.components.workable!.WorkedBy({}, 8)).toBe(true);
-    expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short', stump: true }, growable: { stage: 1 } });
+    expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short', stump: true }, growable: { stage: 1 },
+      moonTreeTimer: { timers: { decay: { timeleft: 14400, initial_time: 14400, paused: false } } } });
+    expect(s.forest.miniMapEntities[0].icon).toBe('moon_tree_stump.png');
     s.scheduler.advance(5000);
     expect(s.forest.digTargets[0].dig()).toBe(true);
     const sapling = s.forest.spawnSapling(new THREE.Vector3(5, 0, 0));
@@ -185,5 +188,32 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     s.snowLevel.set(0); await settle();
     expect(drawnIndices(tree.model!)).toBe(bareIndices);
     expect(hide).not.toHaveBeenCalled();
+  } finally { s.dispose(); }
+});
+
+it('restores a paused moon-tree decay timer while unloaded, then removes its logical map icon at expiration', async () => {
+  const s = await setup();
+  try {
+    const tree = s.forest.spawnTree('moon_tree_short', new THREE.Vector3(100, 0, 0), 'moon-stump');
+    const timer = { timers: { decay: { timeleft: 10, initial_time: 200, paused: true } } };
+    s.forest.restoreState('moon-stump', { size: 'short', stump: true }, { stage: 1 }, timer);
+    const icon = s.forest.miniMapEntities[0];
+    expect(tree.model).toBeUndefined();
+    expect(icon).toMatchObject({ icon: 'moon_tree_stump.png', priority: -1, position: tree.position });
+    s.scheduler.advance(20);
+    const state = s.forest.exportState(tree);
+    expect(state.moonTreeTimer).toEqual(timer);
+    const save = deserializeSave(serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
+      inventory: { slots: [], bufferedBuilds: [] },
+      entities: { moon_tree: [{ id: 'moon-stump', transform: { position: tree.position.toArray(), rotationY: 0 }, components: state }] },
+      elapsedSeconds: s.scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 },
+    }, SAVE_CATALOG), SAVE_CATALOG);
+    expect(save.world.entities.moon_tree[0].components).toEqual(state);
+    s.forest.restoreState('moon-stump', state.moonTree, state.growable,
+      { timers: { decay: { ...timer.timers.decay, paused: false } } });
+    s.scheduler.advance(10);
+    expect(s.forest.entities).toEqual([]);
+    expect(s.forest.miniMapEntities).toEqual([]);
+    expect(icon.enabled).toBe(false);
   } finally { s.dispose(); }
 });

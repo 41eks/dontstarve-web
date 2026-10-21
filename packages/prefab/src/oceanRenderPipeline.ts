@@ -135,6 +135,52 @@ function palette(name: string, width: number, height: number): THREE.DataTexture
   return texture;
 }
 
+/**
+ * Merge cells into the fewest rectangles: runs along a row, then equal runs stacked over consecutive rows.
+ * Coordinates are grid offsets in `[0, width)`; each rectangle is `start, end, rowStart, rowEnd` (end exclusive).
+ */
+export function mergeCellRectangles(width: number, has: (col: number, row: number) => boolean): number[] {
+  const rects: number[] = [];
+  let open = new Map<number, { start: number; end: number; row: number }>();
+  for (let row = 0; row <= width; row++) {
+    const next = new Map<number, { start: number; end: number; row: number }>();
+    for (let col = 0; row < width && col < width;) {
+      if (!has(col, row)) { col++; continue; }
+      const start = col;
+      while (col < width && has(col, row)) col++;
+      const key = start * (width + 1) + col, previous = open.get(key);
+      if (previous) { open.delete(key); next.set(key, previous); } else next.set(key, { start, end: col, row });
+    }
+    for (const run of open.values()) rects.push(run.start, run.end, run.row, row);
+    open = next;
+  }
+  return rects;
+}
+
+/** Position-only quads for merged rectangles, clipped to the world and placed through `inverse` (a surface's local space). */
+export function cellRectangleGeometry(rects: readonly number[], min: number, tile: number, half: number,
+  inverse: THREE.Matrix4): THREE.BufferGeometry {
+  const positions = new Float32Array(rects.length * 3), indices = new Uint32Array(rects.length * 1.5);
+  const point = new THREE.Vector3();
+  let vertices = 0, indexCount = 0;
+  for (let i = 0; i < rects.length; i += 4) {
+    const x0 = Math.max(-half, (rects[i] + min) * tile), x1 = Math.min(half, (rects[i + 1] + min) * tile);
+    const z0 = Math.max(-half, (rects[i + 2] + min) * tile), z1 = Math.min(half, (rects[i + 3] + min) * tile);
+    if (x1 <= x0 || z1 <= z0) continue;
+    const offset = vertices;
+    for (let corner = 0; corner < 4; corner++, vertices++) {
+      point.set(corner < 2 ? x0 : x1, 0, corner % 2 === 0 ? z0 : z1).applyMatrix4(inverse).toArray(positions, vertices * 3);
+    }
+    indices.set([offset, offset + 1, offset + 2, offset + 2, offset + 1, offset + 3], indexCount);
+    indexCount += 6;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions.subarray(0, vertices * 3), 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices.subarray(0, indexCount), 1));
+  if (vertices) { geometry.computeBoundingBox(); geometry.computeBoundingSphere(); }
+  return geometry;
+}
+
 /** Owns the ocean's offscreen passes; map data, clock and borrowed noise remain with their owners. */
 export class OceanRenderPipeline implements SceneRenderPass {
   private readonly min: number;
@@ -221,6 +267,7 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.combinedScene.add(this.combinedMesh);
     this.floorMesh = new THREE.Mesh(new THREE.BufferGeometry(), this.floorMaterial);
     this.floorMesh.name = 'OceanClearColour';
+    this.floorMesh.frustumCulled = false;
     this.rebuildColours();
   }
 
@@ -239,12 +286,12 @@ export class OceanRenderPipeline implements SceneRenderPass {
     surface.material = this.resolveMaterial;
     if (this.ownsPlaceholderGeometry) {
       this.combinedMesh.geometry.dispose();
-      this.floorMesh.geometry.dispose();
       this.ownsPlaceholderGeometry = false;
     }
-    this.combinedMesh.geometry = this.floorMesh.geometry = surface.geometry;
+    this.combinedMesh.geometry = surface.geometry;
     this.floorMesh.renderOrder = surface.renderOrder - 0.01;
     surface.add(this.floorMesh);
+    this.rebuildFloor();
     this.unregister = registerSceneRenderPass(surface, this);
   }
 
@@ -258,6 +305,7 @@ export class OceanRenderPipeline implements SceneRenderPass {
       (this.primary.image.data as Uint8Array).set(colour.primary, offset);
     }
     this.day.needsUpdate = this.dusk.needsUpdate = this.primary.needsUpdate = true;
+    this.rebuildFloor();
     this.coloursDirty = true;
   }
 
@@ -271,7 +319,7 @@ export class OceanRenderPipeline implements SceneRenderPass {
 
   private syncGeometry(): void {
     if (!this.surface) return;
-    this.combinedMesh.geometry = this.floorMesh.geometry = this.surface.geometry;
+    this.combinedMesh.geometry = this.surface.geometry;
     this.combinedMesh.matrix.copy(this.surface.matrixWorld);
   }
 
@@ -354,6 +402,24 @@ export class OceanRenderPipeline implements SceneRenderPass {
     });
   }
 
+  /**
+   * The clear colour is flat, so its footprint is the ocean cells merged into the fewest rectangles
+   * (runs along a row, then equal runs stacked over consecutive rows) instead of the surface's quad per tile.
+   * Vertices are placed in the surface's local space, like the surface geometry itself.
+   */
+  private rebuildFloor(): void {
+    const { width, min, map } = this;
+    const inverse = new THREE.Matrix4();
+    if (this.surface) {
+      this.surface.updateWorldMatrix(true, false);
+      inverse.copy(this.surface.matrixWorld).invert();
+    }
+    const rects = mergeCellRectangles(width, (col, row) => map.isOceanTileAt(col + min, row + min));
+    const geometry = cellRectangleGeometry(rects, min, map.tileSize, map.size / 2, inverse);
+    this.floorMesh.geometry.dispose();
+    this.floorMesh.geometry = geometry;
+  }
+
   async prewarm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
     if (this.disposed) return;
     this.syncGeometry();
@@ -383,10 +449,8 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.disposed = true;
     this.unregister?.();
     this.floorMesh.removeFromParent();
-    if (this.ownsPlaceholderGeometry) {
-      this.combinedMesh.geometry.dispose();
-      this.floorMesh.geometry.dispose();
-    }
+    if (this.ownsPlaceholderGeometry) this.combinedMesh.geometry.dispose();
+    this.floorMesh.geometry.dispose();
     for (const output of this.targets()) output.dispose();
     for (const texture of [this.day, this.dusk, this.primary, this.white]) texture.dispose();
     for (const material of [this.blurMaterial, this.blendMaterial, this.combinedMaterial, this.resolveMaterial, this.floorMaterial]) material.dispose();
