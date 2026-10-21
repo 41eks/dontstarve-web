@@ -1,6 +1,7 @@
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
+import { createTestArea, useTestTileMap } from './tileMapFixture';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -14,6 +15,11 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 
+useTestTileMap();
+let area: ReturnType<typeof createTestArea>;
+beforeEach(async () => { area = createTestArea(); await area.ready; });
+afterEach(() => area.dispose());
+
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -24,9 +30,9 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function setup() {
   const scheduler = new GameTimeScheduler(), camera = new THREE.PerspectiveCamera(), physics = new CANNON.World();
   const dropLoot = vi.fn(); let spring = false;
-  const forest = await createEvergreenForest('/dst/data/anim', { camera, scene: new THREE.Scene(), physics, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>(),
-    growthDuration: seconds => seconds * (spring ? .75 : 1) }, () => .5, 20);
-  forest.updateNearby(new THREE.Vector3());
+  const forest = await createEvergreenForest('/dst/data/anim', { camera, scene: new THREE.Scene(), physics, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query,
+    growthDuration: seconds => seconds * (spring ? .75 : 1) }, () => .5);
+  await area.visit(new THREE.Vector3(), forest);
   return { forest, scheduler, camera, physics, dropLoot, spring: () => { spring = true; } };
 }
 
@@ -73,10 +79,10 @@ it('shows growth settled while unloaded as its final stage without the transitio
   const s = await setup();
   try {
     const tree = s.forest.spawn('evergreen_short', new THREE.Vector3(3, 0, 0));
-    s.forest.updateNearby(new THREE.Vector3(1000, 0, 1000));
+    await area.visit(new THREE.Vector3(1000, 0, 1000), s.forest);
     expect(tree.model).toBeUndefined();
     s.scheduler.advance(5000);
-    s.forest.updateNearby(new THREE.Vector3(3, 0, 0));
+    await area.visit(new THREE.Vector3(3, 0, 0), s.forest);
     expect(tree.model!.userData.components.growable.GetStage()).toBeGreaterThan(1);
     expect(tree.model!.userData.animationController.currentAnimation).not.toMatch(/^grow_/);
   } finally { s.forest.dispose(); }
@@ -105,10 +111,10 @@ it('commits source axe work, cancels before impact, preserves logical components
     expect(s.forest.renderEntities.some(entry => entry.object.name === 'pine_needles_chop')).toBe(true);
     const geometry = (tree.model!.children[0].children[0] as THREE.Mesh).geometry;
     const geometryDispose = vi.spyOn(geometry, 'dispose');
-    s.forest.updateNearby(new THREE.Vector3(500, 0, 0));
+    await area.visit(new THREE.Vector3(500, 0, 0), s.forest);
     expect(target.isValid()).toBe(false); expect(geometryDispose).toHaveBeenCalledOnce();
     expect(s.physics.bodies).toHaveLength(1);
-    s.scheduler.advance(10); s.forest.updateNearby(player.position);
+    s.scheduler.advance(10); await area.visit(player.position, s.forest);
     expect(s.forest.chopTargets[0].entity.components.workable).toBe(work);
     expect(work.GetWorkLeft()).toBe(14);
     const current = s.forest.chopTargets[0];
@@ -125,7 +131,7 @@ it('commits source axe work, cancels before impact, preserves logical components
       expect(reloaded.model!.userData.animationController.currentAnimation).toBe('stump_tall');
       const stump = restored.forest.digTargets[0];
       expect(stump.dig()).toBe(true); expect(stump.dig()).toBe(false);
-      restored.scheduler.advance(5000); restored.forest.updateNearby(player.position);
+      restored.scheduler.advance(5000); await area.visit(player.position, restored.forest);
       expect(restored.forest.entities).toEqual([]); expect(stump.entity!.isRemoved).toBe(true);
       expect(restored.forest.exportRecords()).toEqual([]);
     } finally { restored.forest.dispose(); }
@@ -139,7 +145,7 @@ it('preserves an imported decay timer across visual unloading and save/load, the
       transform: { position: [0, 0, 0], rotationY: 0 }, components: { evergreen: { burnt: true },
         evergreenTimer: { timers: { decay: { timeleft: 100, initial_time: 200, paused: false } } } } });
     s.scheduler.advance(25);
-    s.forest.updateNearby(new THREE.Vector3(1000, 0, 1000));
+    await area.visit(new THREE.Vector3(1000, 0, 1000), s.forest);
     const [saved] = s.forest.exportRecords();
     expect(saved.components.evergreenTimer?.timers.decay.timeleft).toBe(75);
     expect(saved.components.growable).toEqual({ stage: 2 });

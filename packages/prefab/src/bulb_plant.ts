@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from './components/gameTimeScheduler';
 import { ComponentTimer } from './components/timer';
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ResidentSprite } from './residentSprite';
 import type { SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
@@ -104,12 +105,12 @@ export class BulbPlantController {
   private pickSound?: SoundHandle;
   readonly pickable: Pickable;
   private readonly model: THREE.Group;
-  private readonly animation: SpriteAnimationController;
+  private readonly animation: SpriteAnimationController & { setActive?(active: boolean): void };
   private readonly world: BulbPlantWorld;
   private readonly random: () => number;
   private readonly variant: BulbPlantVariant;
 
-  constructor(model: THREE.Group, animation: SpriteAnimationController, world: BulbPlantWorld, variant: BulbPlantVariant,
+  constructor(model: THREE.Group, animation: SpriteAnimationController & { setActive?(active: boolean): void }, world: BulbPlantWorld, variant: BulbPlantVariant,
     saved?: BulbPlantSaveState, random = Math.random) {
     this.model = model;
     this.animation = animation;
@@ -174,6 +175,8 @@ export class BulbPlantController {
   private setActive(active: boolean): void {
     if (this.disposed || this.active === active) return;
     this.active = active;
+    // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
+    this.animation.setActive?.(active);
     if (!active) { this.sampleTimer.stop(); return; }
     this.checkLight();
     this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + this.random() * 0.5));
@@ -270,7 +273,7 @@ interface Plant {
   model: THREE.Group;
   controller: BulbPlantController;
   variant: BulbPlantVariant;
-  sprite: ArchiveSprite;
+  sprite: ResidentSprite;
 }
 
 /** Shared original single/springy assets, independent world lights and timers. */
@@ -315,8 +318,9 @@ export class BulbPlantManager {
     const create = await request;
     if (this.disposed) throw new Error('Bulb plant manager has been disposed');
     const initialAnimation = state?.picked ? 'picked' : state?.lightState === 'ON' ? 'idle' : state?.lightState === 'RECHARGING' ? 'withered' : 'off';
-    const sprite = create(initialAnimation, initialAnimation === 'idle', prefabId);
-    if (initialAnimation !== 'idle') sprite.setFrame(sprite.frameCount - 1);
+    const loop = initialAnimation === 'idle', created = create(initialAnimation, loop, prefabId);
+    const sprite = new ResidentSprite(clip => create(clip.name, clip.loop, prefabId), { name: initialAnimation, loop }, created, prefabId);
+    if (!loop) sprite.setFrame(created.frameCount - 1);
     const model = sprite.model;
     model.position.set(position.x, 0, position.z);
     if (this.cameraRotation) sprite.faceCamera(this.cameraRotation.peek());

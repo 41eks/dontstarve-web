@@ -1,6 +1,7 @@
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
+import { createTestArea, useTestTileMap } from './tileMapFixture';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createPickupInventory } from './pickupFixture';
@@ -14,6 +15,11 @@ import { PlaySound } from '../../prefab/src/sound';
 import { ShovelActionController } from '../../stategraphs/src/shovel';
 import { collectEquippedActions } from '../../stategraphs/src/componentactions';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
+
+useTestTileMap();
+let area: ReturnType<typeof createTestArea>;
+beforeEach(async () => { area = createTestArea(); await area.ready; });
+afterEach(() => area.dispose());
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -54,17 +60,17 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
   const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene();
   const dropLoot = vi.fn();
   const forest = await createMoonTreeForest('/dst/data/anim', {
-    positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'], loadRadius: 20,
+    positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'],
   });
   scene.add(forest.group);
-  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), dropLoot });
+  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
   const controller = new PickaxeActionController(world, animation, locomotor, inventory.handEquipment, () => forest.chopTargets, undefined, 'CHOP');
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
   try {
     player.position.set(1, 0, 3);
-    forest.updateNearby(player.position);
+    await area.visit(player.position, forest);
     const [target] = forest.chopTargets;
     expect(target.entity.hasTag('CHOP_workable')).toBe(true);
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(16);
@@ -87,9 +93,9 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     expect(axe.components.finiteuses.remaining).toBe(99);
 
     // Work survives unloading the model.
-    player.position.set(500, 0, 0); forest.updateNearby(player.position);
+    player.position.set(500, 0, 0); await area.visit(player.position, forest);
     expect(forest.chopTargets).toEqual([]);
-    player.position.set(1, 0, 3); forest.updateNearby(player.position);
+    player.position.set(1, 0, 3); await area.visit(player.position, forest);
     expect(forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(15);
 
     // The last strike fells the tree away from the chopper and leaves a stump.
@@ -114,18 +120,18 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     expect(axe.components.finiteuses.remaining).toBe(84);
 
     // The stump persists through unloading and a restored forest.
-    player.position.set(500, 0, 0); forest.updateNearby(player.position);
-    player.position.set(1, 0, 3); forest.updateNearby(player.position);
+    player.position.set(500, 0, 0); await area.visit(player.position, forest);
+    player.position.set(1, 0, 3); await area.visit(player.position, forest);
     const model = forest.entities[0].model!;
     expect(model.userData.animationController.currentAnimation).toBe('stump_tall');
     expect(forest.chopTargets).toEqual([]);
     const restored = await createMoonTreeForest('/dst/data/anim', {
-      positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'], loadRadius: 20,
+      positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'],
     });
     try {
-      restored.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), dropLoot });
+      restored.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
       restored.restoreState('tree', { stump: true });
-      restored.updateNearby(player.position);
+      await area.visit(player.position, restored);
       expect(restored.entities[0].model!.userData.animationController.currentAnimation).toBe('stump_tall');
       expect(restored.chopTargets).toEqual([]);
       expect(restored.exportState(restored.entities[0])).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
@@ -144,12 +150,12 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
   const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene(), dropLoot = vi.fn();
   const forest = await createMoonTreeForest('/dst/data/anim', {
     positions: [new THREE.Vector3(1, 0, 0), new THREE.Vector3(8, 0, 0)],
-    entityIds: ['stump', 'standing'], loadRadius: 20,
+    entityIds: ['stump', 'standing'],
   });
-  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), dropLoot });
+  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
   forest.restoreState('stump', { stump: true });
   player.position.set(1, 0, 3);
-  forest.updateNearby(player.position);
+  await area.visit(player.position, forest);
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
   const controller = new ShovelActionController(world, animation, locomotor, inventory.handEquipment, () => forest.digTargets);
@@ -168,10 +174,10 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     expect(dropLoot).not.toHaveBeenCalled();
 
     // Unloading a model invalidates its target, retaining logical stump work.
-    player.position.set(500, 0, 0); forest.updateNearby(player.position);
+    player.position.set(500, 0, 0); await area.visit(player.position, forest);
     expect(target.isValid()).toBe(false);
     expect(target.dig()).toBe(false);
-    player.position.set(1, 0, 3); forest.updateNearby(player.position);
+    player.position.set(1, 0, 3); await area.visit(player.position, forest);
     const reloaded = forest.digTargets[0], standing = forest.chopTargets[0];
     const geometryDispose = vi.spyOn((reloaded.model.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
     expect(controller.request(reloaded)).toBe(true); controller.update(0);
@@ -192,8 +198,8 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     expect(forest.renderEntities.map(entity => entity.object)).toEqual([standing.model]);
     expect(forest.digTargets).toEqual([]);
     expect(forest.exportState(forest.entities[0])).toMatchObject({ moonTree: { size: 'tall' }, growable: { stage: 3 } });
-    player.position.set(500, 0, 0); forest.updateNearby(player.position);
-    player.position.set(1, 0, 3); forest.updateNearby(player.position);
+    player.position.set(500, 0, 0); await area.visit(player.position, forest);
+    player.position.set(1, 0, 3); await area.visit(player.position, forest);
     expect(forest.digTargets).toEqual([]);
     expect(forest.activeEntities.size).toBe(1);
     expect(forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(16);

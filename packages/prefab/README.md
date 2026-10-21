@@ -7,8 +7,8 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `placeStaticLayout`（`staticLayout`）：`default_pigking` 静态布局的地皮与岩石坐标，由地图生成层登记；`NightmareRockManager`（`nightmarerock`）对应 `sanityrock` / `insanityrock`。
 - `createMoonTreeForest`
 - `TorchController`：`torch.lua` 的装备点燃、卸下熄灭、燃料消耗及耗尽移除；燃料通过调用方的权威状态读写接口保存，独立的只读 `burning` signal 发布燃烧状态，照明通过同步订阅更新。signal 原语来自公共包 `@dontstarve-web/signals`。
-- `ProximityEntities`：保留实体位置，仅创建玩家 XZ 距离加载半径内的模型，离开后移除并释放模型。
-- `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement`
+- `ProximityEntities`：保留实体位置，仅为活动实体创建模型，离开后移除并释放模型。`bindTickingarea(query)` 后按实体所在 tile 的 tickingarea 活动状态判定（常青树、落叶树、月树使用世界的 `tickingarea`）；未绑定时所有实体 inactive，没有距离半径回退；`update()` / `updateNearby()` 不再接收玩家位置。
+- `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement`（sprite 通过 `ResidentSpriteController` 驻留，离开 tickingarea 时交还共享 source，见 [tile 生命周期](../../docs/tile-lifecycle.md)）
 - `WallsPlacement`：`prefabs/walls.lua` 的 9 种墙（石、档案馆石、木、草、铥、档案馆铥、月岩、绝望石、废料），
   含各自的 `wall_*_item` 部署物 ID。
 
@@ -77,9 +77,9 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 
 调用方负责传入 `${import.meta.env.BASE_URL}dst/data/anim` 形式的动画资源根路径；prefab 包不依赖应用的 Vite base 配置。
 
-月树默认有 500 个实体记录，加载半径为 10 格（`10 * TILE_SIZE = 120` 个世界单位）；地图分布沿用原有的
+月树默认有 500 个实体记录，模型按所在 tile 的 tickingarea 加载；地图分布沿用原有的
 1000 × 1000 区域和出生点空地。月树通过 `createSharedArchiveSprite()` 的预加载入口（`preloadSharedArchiveSprite()`，先加载一次再同步创建）使用共享帧缓存；`sway1_loop_*` 待机交给 `InstancedArchiveSprites`，同积雪状态的月树共享合成图集，砍伐、倒下、树桩和燃烧后的 `burnt_*` 继续用共享帧。积雪层由 `snow.zip` 的 `snow` 符号按 `SnowLevel ≥ 0.015` 通过 `setSymbolHidden()` 切换。仅附近实体持有独立模型和播放进度。每帧在玩家位置更新后调用
-`updateNearby(player.position)`、`update(dt)` 和 `setNormals(cameraQuaternion)`；
+`updateNearby()`、`update(dt)` 和 `setNormals(cameraQuaternion)`；
 将 `activeEntities` 的模型及其 `position` 脚点加入动态精灵的深度排序。
 `dispose()` 会释放全部模型及共享资源。
 

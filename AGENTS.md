@@ -35,7 +35,7 @@
 
 ## Representative tests
 
-- Tests may copy `public/saves/initial-world copy.json` into the relevant `tests` directory and modify the copied save to construct any required test scene.
+- Tests may copy `public/saves/Cluster_1` into the relevant `tests` directory and modify the copied save to construct any required test scene.
 - Keep tests focused on representative behavior: a normal flow, a meaningful boundary or cancellation, and state/resource preservation where relevant. Avoid adding a separate test for every prefab, cosmetic skin, equivalent command spelling, or combination of inputs handled by the same implementation.
 - Sample distinct asset/rendering paths, such as split bank/build archives, symbol overrides, layered sprites and invisible equipment. Use the asset import scripts' `--check` modes for exhaustive catalog/path/byte validation instead of rendering every cosmetic variant in tests.
 - Keep browser tests for actual input, layout, WebGL/audio behavior and a few complete gameplay flows. Cover pure domain rules in unit tests and avoid repeating the same assertion in both suites. Remove obsolete tests and unused fixtures rather than leaving them skipped or excluding them through runner configuration.

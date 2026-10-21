@@ -4,7 +4,7 @@ import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } fr
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type SeasonState } from '@dontstarve-web/signals';
+import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
 import { TileTracker } from '../../componets/src/tileManager';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
@@ -13,6 +13,8 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { modelEntries } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
+import { ResidentSprite } from './residentSprite';
+import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { setPrefabLocalLight } from './localLight';
@@ -103,6 +105,8 @@ export interface MushtreeWorld {
   scene: THREE.Object3D;
   /** Season is watched per tree through its own tile key, so trees outside the tickingarea stop following it. */
   getWatchWorldContent?: GetWatchWorldContent;
+  /** Trees outside it release their sprite; without it they stay loaded. */
+  tickingarea?: TileStateQuery;
   worldEvents: WorldEventEmitter;
   dropLoot(items: readonly { itemId: string; count: number }[], position: THREE.Vector3): void;
 }
@@ -110,7 +114,7 @@ export interface MushtreeWorld {
 interface Tree {
   prefab: MushtreeId;
   data: TreeData;
-  sprite: ArchiveSprite;
+  sprite: ResidentSprite;
   inst: ReturnType<typeof actionEntity>;
   minimap: MiniMapEntity;
   body?: CANNON.Body;
@@ -156,16 +160,20 @@ export class MushtreeManager {
     const prefab = id.replace(/_stump$/, '') as MushtreeId;
     const data = TREES[prefab];
     this.fire ??= FireFxHost.load(`${import.meta.env.BASE_URL}dst/data/anim`);
-    const [sprite, fire] = await Promise.all([
-      createSharedArchiveSprite(this.assets, { animationArchive: data.animationArchive, buildArchives: data.buildArchives, bank: data.bank,
-        animation: 'idle_loop', loop: true, hiddenSymbols: HIDDEN_SYMBOLS },
-      { name: prefab, colour: this.tint(), instancedAnimations: ['idle_loop'], staticBillboard: true }),
+    const tint = this.tint();
+    const createSprite = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets,
+      { animationArchive: data.animationArchive, buildArchives: data.buildArchives, bank: data.bank,
+        animation: clip.name, loop: clip.loop, hiddenSymbols: HIDDEN_SYMBOLS },
+      { name: prefab, colour: tint, instancedAnimations: ['idle_loop'], staticBillboard: true });
+    const [created, fire] = await Promise.all([
+      createSprite({ name: 'idle_loop', loop: true }),
       this.fire,
       PreloadSounds('dontstarve/wilson/use_axe_mushroom', 'dontstarve/forest/treefall', 'dontstarve/forest/treeCrumble',
         'dontstarve/cave/mushtree_tall_grow_1', 'dontstarve/cave/mushtree_tall_grow_2', 'dontstarve/cave/mushtree_tall_grow_3',
         'dontstarve/cave/mushtree_tall_shrink'),
     ]);
-    if (this.disposed) { sprite.dispose(); throw new Error('Mushtrees have been disposed'); }
+    if (this.disposed) { created.dispose(); throw new Error('Mushtrees have been disposed'); }
+    const sprite = new ResidentSprite(createSprite, { name: 'idle_loop', loop: true }, created, prefab);
     this.fireHost = fire;
     return this.create(prefab, data, sprite, position, saved, id.endsWith('_stump'));
   }
@@ -176,7 +184,7 @@ export class MushtreeManager {
     return [colour, colour, colour];
   }
 
-  private create(prefab: MushtreeId, data: TreeData, sprite: ArchiveSprite, position: THREE.Vector3,
+  private create(prefab: MushtreeId, data: TreeData, sprite: ResidentSprite, position: THREE.Vector3,
     saved: MushtreeRecord | undefined, spawnAsStump: boolean): THREE.Group {
     const model = sprite.model;
     model.position.set(position.x, 0, position.z);
@@ -199,6 +207,8 @@ export class MushtreeManager {
     sprite.setFrame(Math.floor(Math.random() * sprite.frameCount));
 
     const components = saved?.components, state = components?.mushtree;
+    // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
+    tree.cleanups.push(watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active)));
     this.watchSeason(tree);
     this.bindBurn(tree);
     if (data.growable) this.createGrowable(tree, components?.growable);

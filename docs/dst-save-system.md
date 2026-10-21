@@ -812,7 +812,7 @@ three-roaming-save-v1.json
 
 当前地面是固定平面，没有 DST 式可修改地皮，因此 `map` 保存生成器或初始数据集的身份和参数。当前应用从 `public/saves/initial-world.json` 的 `world.entities.moon_tree` 读取 500 个预先随机生成的固定坐标，通过 `createMoonTreeForest()` 的 `positions` 选项创建通用实体记录；坐标位于 1000 × 1000 的区域内，并保留出生点空地。每次进入页面直接恢复存档中的实体记录，不在运行时重新随机生成。
 
-`ProximityEntities` 保留全部实体的 `id` 和地面接触点 `position`，按玩家与月树在 XZ 平面上的距离管理模型：距离小于或等于 `10 * TILE_SIZE` 时创建模型，超出时移除模型并释放其几何体。项目的 `TILE_SIZE = 12`，因此加载半径为 120 个世界单位。只有范围内的月树更新动画和 Billboard 朝向，并与玩家、猪王一起按脚点的相机空间深度排序。
+`ProximityEntities` 保留全部实体的 `id` 和地面接触点 `position`，管理月树模型：场景通过 `bindWorld` 注入世界的 `tickingarea` 后，月树所在 tile 活动时创建模型，inactive 时移除模型并释放其几何体（见 [tile 生命周期](tile-lifecycle.md)）。未注入时月树保持 inactive，不再按玩家距离加载。只有范围内的月树更新动画和 Billboard 朝向，并与玩家、猪王一起按脚点的相机空间深度排序。
 
 月树使用通用动画精灵，通过 `createAnimatedSpriteFactory()` 共享一次加载的动画资源、材质和贴图；每个已加载实体拥有独立模型、几何体和动画控制器。存档应遍历 `MoonTreeForest.entities` 中的全部逻辑记录，而不能只保存 `activeEntities` 或场景中当前存在的模型。距离卸载只释放渲染对象，不删除世界实体。
 
@@ -1043,7 +1043,7 @@ interface SaveParticipant<T> {
 - 世界实体按 Prefab 分组，组件只保存权威逻辑状态。
 - 玩家不作为普通世界实体；背包和装备使用已有稳定槽地址。
 - 容器物品嵌套保存，避免同一物品同时存在于地面和容器。
-- 月树作为通用实体写入 `world.entities.moon_tree`；全部逻辑记录持久化，模型仅在玩家 10 格（120 个世界单位）半径内加载。
+- 月树作为通用实体写入 `world.entities.moon_tree`；全部逻辑记录持久化，模型仅在所在 tile 处于 tickingarea 内时加载。
 - 渲染、物理和动画的派生状态在加载后重建。
 - 每个 Snapshot 自包含、不可变，并通过事务更新活动指针。
 - 所有旧存档先迁移再校验，所有实体引用用两遍加载恢复。

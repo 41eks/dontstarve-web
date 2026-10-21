@@ -18,6 +18,7 @@ import { SALT_BOX_DEFINITION } from '../../prefab/src/saltbox';
 import { NIGHT_LIGHT_DEFINITION } from '../../prefab/src/nightlight';
 import { PIG_HOUSE_DEFINITION } from '../../prefab/src/pighouse';
 import { MUSHROOM_LIGHT_DEFINITIONS } from '../../prefab/src/mushroom_light';
+import { createMemo, createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -236,5 +237,41 @@ describe('DST building skins', () => {
     expect(disposeCurrent).toHaveBeenCalledOnce();
     expect(changes).toHaveLength(1);
     stop();
+  });
+
+  it('releases a building sprite outside the tickingarea and reloads its logical animation and skin', async () => {
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
+    const awake = createSignal(true);
+    const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
+      camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
+      tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
+    const placement = new AnimatedBuildingPlacement(world, { researchlab4: RESEARCH_LAB_DEFINITIONS.researchlab4 }, () => true);
+    const model = await placement.spawnFromSave('researchlab4', { id: 'lab:resident', transform: { position: [3, 0, 4], rotationY: 0 },
+      components: { building: { state: 'idle' } } });
+    const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
+    const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+    await tick();
+    expect(meshes()).toBe(1);
+
+    awake.set(false);
+    await tick();
+    expect(meshes()).toBe(0);
+    const animation = model.userData.animationController as SpriteAnimationController;
+    animation.start('proximity_loop');
+    expect(animation.currentAnimation).toBe('proximity_loop');
+    const prepared = await placement.reskinTargets[0].prepareNextSkin();
+    expect(prepared.apply()).toBe(true);
+    const skinId = model.userData.skinIdSignal.peek();
+    expect(meshes()).toBe(0);
+
+    awake.set(true);
+    await tick();
+    expect(meshes()).toBe(1);
+    expect(model.userData.animationController).toBe(animation);
+    expect(animation.currentAnimation).toBe('proximity_loop');
+    expect(placement.exportRecords()[0].record).toMatchObject({ components: { building: { skinId } } });
+    placement.dispose();
+    expect(meshes()).toBe(0);
   });
 });

@@ -2,7 +2,7 @@ import { ModelRecords } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSignal, readonlySignal, createEffect, getBoundWatchWorldContent, WorldContentKey, type Signal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, createEffect, getBoundWatchWorldContent, WorldContentKey, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createAnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
@@ -44,6 +44,8 @@ export interface DeciduousWorld {
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   worldEvents: WorldEventEmitter;
   scheduler?: GameTimeScheduler;
+  /** Models are loaded only for entities whose tile is active. */
+  tickingarea: TileStateQuery;
   physics?: CANNON.World;
   season: LeafWorld['season'];
   secondsUntilNextDay: LeafWorld['secondsUntilNextDay'];
@@ -83,7 +85,7 @@ export interface DeciduousForest {
   getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[];
   readonly renderEntities: readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
   spawn(prefab: DeciduousSpawnId, position: THREE.Vector3, saved?: DeciduousRecord): ProximityEntity;
-  updateNearby(playerPosition: THREE.Vector3): void;
+  updateNearby(): void;
   update(dt: number, quaternion: THREE.Quaternion): void;
   exportRecords(): DeciduousRecord[];
   dispose(): void;
@@ -91,7 +93,7 @@ export interface DeciduousForest {
 
 /** deciduoustrees.lua's normal build. Growth/work belong to logical trees, independently of loaded art. */
 export async function createDeciduousForest(assetBaseUrl: string, world: DeciduousWorld,
-  random = Math.random, loadRadius = 120): Promise<DeciduousForest> {
+  random = Math.random): Promise<DeciduousForest> {
   const colors = ['green', 'red', 'orange', 'yellow'] as const;
   const assets = new ArchiveSpriteAssets('deciduoustree', assetBaseUrl);
   const [createTree, banks, leafFx, fireFx] = await Promise.all([
@@ -115,7 +117,6 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   const trees = new Map<ProximityEntity, Tree>();
   const mouseRecords = new ModelRecords<ProximityEntity>();
   const effects = new Map<THREE.Group, { position: THREE.Vector3; factory: typeof leafFx[number] }>();
-  const lastPlayerPosition = new THREE.Vector3();
   let disposed = false;
   const stageOf = (tree: Tree) => tree.growable.GetStage() - 1;
   const rest = (tree: Tree) => tree.stump.peek() ? `stump_${DECIDUOUS_STAGES[stageOf(tree)]}`
@@ -288,7 +289,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     makeStump(tree);
     playOnce(tree, clip);
   };
-  const nearby = new ProximityEntities([], loadRadius, logical => {
+  const nearby = new ProximityEntities([], logical => {
     const tree = trees.get(logical)!;
     const tint = tree.leaves.state.build.peek() === 'normal' ? tree.color : 1;
     const sprite = createTree(rest(tree), !tree.stump.peek(), `Deciduous-${logical.saveId}`, { colour: [tint, tint, tint] });
@@ -321,6 +322,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     (model.userData.animationController as ArchiveSprite).dispose();
   }, undefined, { prefab: 'deciduoustree', smartRadius: 1 });
   nearby.group.name = 'DeciduousForest';
+  nearby.bindTickingarea(world.tickingarea);
   const targets = (action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] => mouseRecords.select(model, nearby.activeEntities).flatMap(logical => {
     const tree = trees.get(logical)!, model = logical.model!;
     const isValid = () => !disposed && !tree.inst.isRemoved && logical.model === model
@@ -391,7 +393,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
         tree.burntcone = saved.components.deciduoustree.burntcone === true;
         burn(tree, true);
       }
-      nearby.update(lastPlayerPosition);
+      nearby.update();
       if (logical.model) wakeGrowable(tree); else growable.OnEntitySleep();
       tree.leaves.SetAwake(logical.model !== undefined);
       return logical;
@@ -400,8 +402,8 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     getChopTargets(model) { return targets('CHOP', model); },
     get digTargets() { return digTargets(); },
     getDigTargets: digTargets,
-    updateNearby(position) {
-      lastPlayerPosition.copy(position); nearby.update(position);
+    updateNearby() {
+      nearby.update();
       for (const logical of nearby.activeEntities) { const tree = trees.get(logical)!; wakeGrowable(tree); tree.leaves.SetAwake(true); }
     },
     update(dt, quaternion) {

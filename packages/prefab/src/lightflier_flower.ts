@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type WorldContentSignal } from '@dontstarve-web/signals';
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ResidentSprite } from './residentSprite';
 import { AnimState } from '../../componets/src/animstate';
 import { ComponentTimer } from '../../componets/src/timer';
 import { ChildSpawner, type ChildSpawnerSave } from '../../componets/src/childspawner';
@@ -64,10 +65,12 @@ export class LightFlierFlower implements BrainEntity {
   private sound?: SoundHandle;
   private awake = false;
   private active = false;
+  private readonly onActive?: (active: boolean) => void;
   readonly variant: LightFlierFlowerSave['variant'];
   constructor(id: string, model: THREE.Group, habitat: LightFlierHabitat, lengths: ReadonlyMap<string, number>,
-    getLightLevel: (model: THREE.Group) => number, variant: LightFlierFlowerSave['variant'], saved?: LightFlierFlowerSave, random = Math.random) {
-    this.id = id; this.model = model; this.habitat = habitat; this.variant = variant; this.getLightLevel = getLightLevel; this.random = random;
+    getLightLevel: (model: THREE.Group) => number, variant: LightFlierFlowerSave['variant'], saved?: LightFlierFlowerSave, random = Math.random,
+    onActive?: (active: boolean) => void) {
+    this.onActive = onActive; this.id = id; this.model = model; this.habitat = habitat; this.variant = variant; this.getLightLevel = getLightLevel; this.random = random;
     const scheduler = habitat.services.scheduler;
     this.MiniMapEntity = new MiniMapEntity(model.position); this.MiniMapEntity.SetIcon('bulb_plant.png');
     this.tweenStart = scheduler.now - this.tweenTime;
@@ -161,6 +164,8 @@ export class LightFlierFlower implements BrainEntity {
   private setActive(active: boolean): void {
     if (this.removed || this.active === active) return;
     this.active = active;
+    // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
+    this.onActive?.(active);
     if (!active) { this.sampleTimer.stop(); return; }
     this.checkLight(); this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (.5 + this.random() * .5)); this.refreshLight();
   }
@@ -192,7 +197,7 @@ export class LightFlierFlower implements BrainEntity {
 
 export class LightFlierFlowerManager {
   readonly habitat: LightFlierHabitat;
-  private readonly plants = new Map<LightFlierFlower, ArchiveSprite>();
+  private readonly plants = new Map<LightFlierFlower, ResidentSprite>();
   private readonly assets: ArchiveSpriteAssets;
   private readonly factories = new Map<string, Promise<{ create: Awaited<ReturnType<typeof preloadSharedArchiveSprite>>; lengths: Map<string, number> }>>();
   private readonly cleanups = new Map<LightFlierFlower, () => void>();
@@ -224,9 +229,13 @@ export class LightFlierFlowerManager {
     const { create, lengths } = await prepared;
     if (this.disposed) throw new Error('Lightflier flower manager disposed');
     const tint = .75 + Math.random() * .25;
-    const sprite = create('off', false, LIGHTFLIER_FLOWER_ID, { colour: [tint, tint, tint] }); sprite.model.position.copy(position); sprite.model.position.y = 0;
+    const appearance = { colour: [tint, tint, tint] as const };
+    const sprite = new ResidentSprite(clip => create(clip.name, clip.loop, LIGHTFLIER_FLOWER_ID, appearance), { name: 'off', loop: false },
+      create('off', false, LIGHTFLIER_FLOWER_ID, appearance), LIGHTFLIER_FLOWER_ID);
+    sprite.model.position.copy(position); sprite.model.position.y = 0;
     if (this.cameraRotation) sprite.faceCamera(this.cameraRotation.peek());
-    const plant = new LightFlierFlower(saved?.id ?? newEntityId(), sprite.model, this.habitat, lengths, this.getLightLevel, variant, state);
+    const plant = new LightFlierFlower(saved?.id ?? newEntityId(), sprite.model, this.habitat, lengths, this.getLightLevel, variant, state,
+      undefined, active => sprite.setActive(active));
     const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, stop));
     createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
     this.plants.set(plant, sprite); this.scene.add(sprite.model); return sprite.model;
@@ -240,7 +249,7 @@ export class LightFlierFlowerManager {
       sprite.update(dt);
     }
   }
-  private release(plant: LightFlierFlower, sprite: ArchiveSprite): void {
+  private release(plant: LightFlierFlower, sprite: ResidentSprite): void {
     this.cleanups.get(plant)?.(); this.cleanups.delete(plant); disposeActionEntity(sprite.model); sprite.dispose(); this.plants.delete(plant);
   }
   get renderEntities() { return [...this.plants.values()].map(sprite => ({ object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 })); }

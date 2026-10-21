@@ -21,7 +21,7 @@ import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import { Hauntable } from '../../componets/src/hauntable';
 import { ErodeAway } from '../../componets/src/erodeaway';
-import { setSpriteErosion } from '@dontstarve-web/animation/spriteErosion';
+import { ResidentSprite } from './residentSprite';
 import { Workable } from '../../componets/src/workable';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import { LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
@@ -85,7 +85,7 @@ export class LightFlierHabitat {
       this.lengths = new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate]));
     });
   }
-  createSprite(): ArchiveSprite { if (!this.spriteFactory) throw new Error('Lightflier art was not prepared'); return this.spriteFactory('walk_loop', true, LIGHTFLIER_ID); }
+  createSprite(animation = 'walk_loop', loop = true): ArchiveSprite { if (!this.spriteFactory) throw new Error('Lightflier art was not prepared'); return this.spriteFactory(animation, loop, LIGHTFLIER_ID); }
   bind(fly: LightFlier): void { fly.bindWorld(this, this.lengths); }
   spawn(position: Vector3): LightFlier {
     if (!this.spriteFactory || this.disposed) throw new Error('Lightflier habitat unavailable');
@@ -421,7 +421,7 @@ export function createLightFlierGroundFactory(context: GroundPrefabContext): Gro
     },
   });
   const createPrepared = (): GroundItemVisual => {
-      const sprite = habitat.createSprite();
+      const sprite = new ResidentSprite(clip => habitat.createSprite(clip.name, clip.loop), { name: 'walk_loop', loop: true }, habitat.createSprite(), LIGHTFLIER_ID);
       const active = createSignal(true);
       const cleanups: (() => void)[] = []; let fly: LightFlier | undefined;
       const heading = habitat.services.cameraHeading ? watchSignal(habitat.services.cameraHeading, stop => cleanups.push(stop)) : undefined;
@@ -430,14 +430,15 @@ export function createLightFlierGroundFactory(context: GroundPrefabContext): Gro
           configureLightFlierEntity(entity); fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!; habitat.bind(fly);
           const animation = watchSignal(fly.animstate.animation, stop => cleanups.push(stop));
           const awake = watchSignal(fly.active, stop => cleanups.push(stop));
-          createEffect(() => { active.set(awake.get()); if (!awake.get()) setPrefabLocalLight(sprite.model, null); });
+          // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
+          createEffect(() => { active.set(awake.get()); sprite.setActive(awake.get()); if (!awake.get()) setPrefabLocalLight(sprite.model, null); });
           createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
           Object.assign(sprite.model.userData, { lightflier: fly, tags: [...LIGHTFLIER_TAGS], physicsRadius: .5 * WORLD_SCALE });
           setPrefabLightOverride(sprite.model, 1);
         },
         update: dt => {
           fly?.update(dt); sprite.setFacing(fourFacingFromRotation(fly?.facing ?? 0, heading?.peek() ?? 0)); sprite.update(dt);
-          setSpriteErosion(sprite.model, fly?.erosionValue ?? 0);
+          sprite.setErosion(fly?.erosionValue ?? 0);
           setPrefabLocalLight(sprite.model, fly?.isValid() ? { radius: 1.8 * WORLD_SCALE, intensity: .5, falloff: .7, colour: [237 / 255, 237 / 255, 209 / 255] } : null);
         },
         isClickable: () => fly?.isValid() ?? true,

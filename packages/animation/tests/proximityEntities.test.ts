@@ -3,6 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadAnimationArchive } from '../src/animationAssets';
 import { createAnimatedSpriteFactory } from '../src/sprite';
 import { ProximityEntities } from '../../prefab/src/proximityEntities';
+import { createSignal } from '../../signals/src/signal';
+import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
+import { useTestTileMap } from './tileMapFixture';
+
+useTestTileMap();
 
 vi.mock('../src/animationAssets', async (importOriginal) => {
   const original = await importOriginal<typeof import('../src/animationAssets')>();
@@ -39,36 +44,40 @@ function spriteMesh(model: THREE.Group): THREE.Mesh<THREE.BufferGeometry, THREE.
 }
 
 describe('nearby entity lifecycle', () => {
-  it('loads the inclusive ground-distance boundary and releases models when leaving', () => {
+  it('loads entities whose tile is in the tickingarea and releases models when it moves away or unbinds', async () => {
+    const player = createSignal(new THREE.Vector3());
     const create = vi.fn(() => new THREE.Group());
     const dispose = vi.fn();
-    const positions = [
-      new THREE.Vector3(6, 0, 8),
-      new THREE.Vector3(10.001, 0, 0),
-      new THREE.Vector3(8, 0, 8),
-    ];
-    const nearby = new ProximityEntities(positions, 10, create, dispose);
-    expect(create).not.toHaveBeenCalled();
-    nearby.update(new THREE.Vector3());
-    expect(nearby.group.children).toHaveLength(1);
-    expect(nearby.entities[0].model!.position).toEqual(positions[0]);
-    const original = nearby.entities[0].model!;
-    nearby.update(new THREE.Vector3());
-    expect(create).toHaveBeenCalledTimes(1);
+    const positions = [new THREE.Vector3(100, 0, 0), new THREE.Vector3(300, 0, 0)];
+    const nearby = new ProximityEntities(positions, create, dispose);
+    const query = GetTileStateAtPoint(player);
+    const wait = () => new Promise(resolve => setTimeout(resolve, 0));
+    const loaded = () => nearby.entities.map(entity => !!entity.model);
+    try {
+      nearby.update();
+      expect(create).not.toHaveBeenCalled(); // Nothing is active before an area is bound.
+      const unbind = nearby.bindTickingarea(query);
+      await wait();
+      nearby.update();
+      expect(loaded()).toEqual([true, false]);
+      const original = nearby.entities[0].model!;
+      expect(original.position).toEqual(positions[0]);
+      nearby.update();
+      expect(create).toHaveBeenCalledTimes(1);
 
-    nearby.update(new THREE.Vector3(100, 0, 100));
-    expect(dispose).toHaveBeenCalledWith(original);
-    expect(original.parent).toBeNull();
-    expect(nearby.entities[0].model).toBeUndefined();
-    expect(nearby.activeEntities.size).toBe(0);
+      player.set(new THREE.Vector3(300, 0, 0)); await wait();
+      nearby.update();
+      expect(dispose).toHaveBeenCalledWith(original);
+      expect(original.parent).toBeNull();
+      expect(loaded()).toEqual([false, true]);
+      expect(nearby.activeEntities.size).toBe(1);
+      expect(nearby.entities[1].id).toBe(1);
 
-    nearby.update(new THREE.Vector3());
-    expect(nearby.entities[0].model).not.toBe(original);
-    expect(nearby.entities[0].id).toBe(0);
-    expect(nearby.entities[0].position).toBe(positions[0]);
-    nearby.dispose();
+      unbind();
+      nearby.update();
+      expect(loaded()).toEqual([false, false]);
+    } finally { nearby.dispose(); DisposeTileStates(player); }
     expect(nearby.group.children).toHaveLength(0);
-    expect(dispose).toHaveBeenCalledTimes(2);
   });
 
   it('shares archive textures and frame geometry between sprites of one factory', async () => {
