@@ -10,16 +10,20 @@
 
 ## 参考：Spine three.js 运行时
 
-参考 [spine-runtimes](https://github.com/EsotericSoftware/spine-runtimes) 的 `spine-ts/spine-threejs` 与 `spine-ts/spine-core`。
+源码核对基于 [spine-runtimes 的 `4.3` 分支，提交 `9f7d44b725df`](https://github.com/EsotericSoftware/spine-runtimes/tree/9f7d44b725df0766b3995093cea8e7342faf9367)，范围为 `spine-ts/spine-threejs`、`spine-ts/spine-core` 与 `spine-ts/spine-webgl`。已借鉴缓冲复用、连续材质组和资源恢复的职责划分；GPU 图集合成本身是本项目为 DST 预录帧设计的路径。
 
 | Spine 的做法 | 位置 | 对本项目的意义 |
 | --- | --- | --- |
 | 图集页离线打包，运行时直接把页面图片包成 `THREE.Texture`／`CanvasTexture` 上传，没有任何运行时 CPU 合成 | `ThreeJsTexture.ts` | 方向：不要让像素经过 CPU 的 2D canvas。我们的外观是运行时才确定的，所以不能照搬离线打包，只能把合成搬到 GPU |
 | 预乘 alpha 贯穿：`texture.premultiplyAlpha = !pma`，材质用 `premultipliedAlpha: true` 和预乘混合 | `ThreeJsTexture.ts`、`SkeletonMesh.ts` | **采纳**：合成时各零件用预乘混合累积，避免半透明边缘出现暗边 |
 | 去掉 `premultiplied_alpha_fragment` 与 `colorspace_fragment`，贴图不设颜色空间，整条链路在原始值上混合 | `MeshBatcher.ts` | **未采纳**，见下文"没有采纳的部分" |
-| 一个动态网格，按"贴图 × 混合模式"的连续材质组绘制，保持插槽顺序 | `MeshBatcher.ts`（`findMaterialGroup`、`addMaterialGroup`） | **采纳**：合成时连续使用同一源贴图的零件合并为一次绘制，不同贴图交错时仍保持 z 顺序 |
-| 用 `createImageBitmap(..., { premultiplyAlpha: 'none', colorSpaceConversion: 'none' })` 解码，不占主线程 | `AssetManagerBase.ts` | 本项目的源贴图是 KTEX，已经在 Worker 里解码成 `Uint8Array`（`texture.worker.ts`），不适用 |
-| 同路径加载共用一个 Promise，释放时仅在无人使用时才真正释放 | `AssetManagerBase.ts` | `textureLoader.ts` 已按 URL 缓存在途请求，无需改动 |
+| 每个 skeleton 复用一组有容量上限的动态网格，按"贴图 × 混合模式"的连续材质组绘制，保持插槽顺序 | `MeshBatcher.ts`（`findMaterialGroup`、`addMaterialGroup`）、`SkeletonMesh.ts`（`nextBatch`） | **采纳**：合成保留源图层顺序，临时网格跨帧／页复用；实例批次按容量从场景的空闲池复用 |
+| 预分配顶点／索引数组，`begin()` 重置有效长度，`end()` 用 `addUpdateRange()` 和 `drawRange` 提交有效区间；容量不足时换下一批 | `MeshBatcher.ts`、`PolygonBatcher.ts` | **采纳**：合成任务按容量复用 geometry、数组和材质，预建索引、只上传有效区间；不替换普通精灵已有的不可变共享帧缓存 |
+| Worker 分支用 `createImageBitmap(..., { premultiplyAlpha: 'none', colorSpaceConversion: 'none' })`，浏览器主线程分支使用 `Image` | `AssetManagerBase.ts`（`loadTexture`） | 本项目的源贴图是 KTEX，已在 Worker 里解码成 `Uint8Array`（`texture.worker.ts`），继续使用现有解码路径 |
+| 同路径加载共用 Promise，纹理／atlas 的释放包装使用共享缓存的引用计数 | `AssetManagerBase.ts`（`reuseAssets`、`disposeAssetInternal`、`createTexture`） | 本项目已按 URL 共享解码请求，由 `ArchiveSpriteAssets` 统一拥有 GPU 资源；保留当前所有权，跨 owner 共享 GPU 纹理时才需要另行设计引用计数 |
+| GPU 资源登记为 `Restorable`，上下文恢复后重新上传纹理和重建 buffer，释放时注销 | `spine-webgl/WebGL.ts`、`GLTexture.ts`、`Mesh.ts` | **采纳职责划分**：由现有资源所有者监听上下文丢失／恢复、取消旧任务并重排当前外观；render target 图集由源数据重新合成 |
+
+关键源码：[MeshBatcher.ts](https://github.com/EsotericSoftware/spine-runtimes/blob/9f7d44b725df0766b3995093cea8e7342faf9367/spine-ts/spine-threejs/src/MeshBatcher.ts)、[SkeletonMesh.ts](https://github.com/EsotericSoftware/spine-runtimes/blob/9f7d44b725df0766b3995093cea8e7342faf9367/spine-ts/spine-threejs/src/SkeletonMesh.ts)、[AssetManagerBase.ts](https://github.com/EsotericSoftware/spine-runtimes/blob/9f7d44b725df0766b3995093cea8e7342faf9367/spine-ts/spine-core/src/AssetManagerBase.ts)、[WebGL.ts](https://github.com/EsotericSoftware/spine-runtimes/blob/9f7d44b725df0766b3995093cea8e7342faf9367/spine-ts/spine-webgl/src/WebGL.ts)。
 
 ## 实现
 
@@ -33,9 +37,9 @@
 
 每个图集页分以下步骤，每步之间 `yield`，由合成器按预算推进：
 
-1. **上传源贴图。** 对页内用到的每张源贴图调用 `renderer.initTexture`，每张一步；它是不可再切的主线程调用。
+1. **上传源贴图。** 对页内用到、当前任务尚未上传的每张源贴图调用 `renderer.initTexture`，每张一步；它是不可再切的主线程调用，同一任务的其他页复用上传结果。
 2. **清除累积目标。** 累积目标为 `HalfFloatType` 的 `WebGLRenderTarget`，不带深度，最近邻采样。
-3. **逐帧绘制。** 每帧把各零件按源 z 顺序画成带 UV 的四边形：
+3. **逐帧绘制。** `GpuAtlasScratch` 在同一任务内跨帧和跨页复用 geometry、顶点／UV 数组、预建索引、源材质及全屏通道。容量不足时按二次幂扩展（不超过现有 16 位索引限制），扩展前释放旧 GPU 缓冲；每帧重建连续 groups，更新 `drawRange`，只提交有效写入区间并合并未消费更新。每帧把各零件按源 z 顺序画成带 UV 的四边形：
    - 顶点位置为零件变换后的页内像素坐标，公式与原 canvas 的 `setTransform` 一致：`(a·x + c·y + tx − minX)·scale + atlasX`，`y` 同理。
    - UV 取 `bbx／canvasWidth`、`bby／canvasHeight` 一类的归一化矩形，与普通精灵网格采样的范围一致；源贴图 `flipY = false`，行从上到下存放，所以 `v` 直接取行号除以高度。
    - 同一帧内连续使用同一源贴图的零件合成一个几何组，不同贴图交错时分成多组，保持图层顺序。
@@ -46,17 +50,19 @@
 
 ### 渲染器状态与统计
 
-`withRendererState` 在每次合成绘制前后保存并恢复渲染目标、活动立方体面与 mipmap 级、`autoClear`、清除色与透明度，以及 `info.render` 的计数和 `info.autoReset`。合成发生在场景绘制前的 pass 里，不能改变外部状态，也不能计入测试用的 draw call 统计。
+`withRendererState` 在每次合成绘制前后保存并恢复渲染目标、活动立方体面与 mipmap 级、`autoClear`、清除色与透明度，以及 `info.render` 的 calls／triangles／lines／points 和 `info.autoReset`。合成不计入外部 draw call 统计。**不能回退 `info.render.frame`**：Three.js 的 `WebGLObjects` 用这个内部帧编号判断 geometry 本次渲染是否已上传；回退编号会使复用缓冲的后续帧跳过上传，表现为荧光花等动画只有首帧有内容、随后闪烁。
 
 ### 生命周期
 
-累积目标、临时材质、几何体与全屏通道在完成后（含异常路径）释放。最终目标的 `texture` 上监听 `dispose` 事件并释放目标，因此 `InstancedArchiveSprites` 释放图集时调用 `atlas.texture.dispose()` 即可。
+合成任务的 `cancel()` 显式关闭生成器，释放当前页的累积目标、未交付的最终目标及之前已完成但尚未交付的页；异常走相同的 `finally` 清理。任务结束时统一释放 `GpuAtlasScratch` 的临时材质、几何体与全屏通道。正常完成后，页的所有权交给调用方，后续 `cancel()` 不再释放这些页；最终纹理监听 `dispose` 并释放 render target，因此 `InstancedArchiveSprites` 统一调用 `atlas.texture.dispose()` 即可。已取消的任务不可继续推进。
 
 ### 回退
 
 `canComposeAtlasOnGpu` 要求 `EXT_color_buffer_float` 或 `EXT_color_buffer_half_float`。缺少时回退到 CPU 路径：源贴图按行块（约 52 万像素）分步解码，解码结果缓存在模块级 `WeakMap` 中，按源贴图复用，不再每次合成重复解码。
 
 ### 分帧推进
+
+外观首次请求只快照 animation／build／skin／符号覆盖／隐藏配置，不同步解析整个动画，也不让缓存闭包保留首个请求实体的私有材质或控制器。合成器按源帧懒解析、计算边界及密度，每帧后 `yield`，全部帧布局完成后仍统一使用全 clip 的边界和像素网格。解析结果缓存供上下文恢复复用。
 
 合成器的 `step(budgetMs)` 每次至少推进一步，超过预算后停止，剩余留到下一帧。`InstancedArchiveSprites` 在外观第一次 `show` 时入队，每帧用 `COMPOSE_BUDGET_MS` 推进；尚未完成的外观沿用上一个已完成的外观绘制；加载界面的 `prewarm` 不受预算限制。详见 tile lifecycle 一节。
 
@@ -70,17 +76,28 @@ Spine 去掉 `premultiplied_alpha_fragment` 与 `colorspace_fragment`，让预�
 
 ## 已知限制
 
-- 渲染目标在 WebGL 上下文丢失后内容不会自动恢复；原 `CanvasTexture` 会自动重新上传。尚未实现丢失后重新合成。
 - 源贴图首次 `initTexture` 仍是一次主线程调用，最大约 10ms。
 - 图集页的半浮点累积目标在合成期间占用显存，页尺寸最大 `min(4096, maxTextureSize)`，合成完成立即释放。
 - 重采样质量与 canvas 的 `imageSmoothingQuality = 'high'` 不同：GPU 使用源贴图自身的线性过滤，没有 mipmap。当前对比测试的平均误差仍小于 2，但缩放比例明显小于 1 的动画需要重新核对。
 
+## 实例批次复用与上下文恢复
+
+每个场景保留活动页批次和空闲批次池。外观切换或离屏使某页不再绘制时，将其批次计数归零、从场景摘除并放回池中，避免 Three.js 继续遍历／准备零实例网格；没有活动页时隐藏批次组锚点，后续可见实体的注册会重新驱动 pass。新页选择容量足够的最小空闲批次，替换图集与源颜色，复用 geometry、实例属性及深度／颜色材质。只有没有足够容量的空闲批次时才创建新批次，增长前的旧批次也归池；单实体移除不释放共享批次，资源所有者销毁时统一释放活动及空闲批次。
+
+`InstancedArchiveSprites` 首次使用时绑定 renderer 的上下文事件。丢失时取消未完成任务、释放旧页和批次，清除完成外观引用并只为当前实体请求的外观重新排队；丢失期间停止合成和实例更新。Three.js 完成恢复后，后续渲染按原预算重新合成，`flush()`／预热可显式完成。源帧数据、实体身份、脚点、当前动画和帧、私有颜色及组件状态保持原所有者，不创建新的领域实体。绑定到另一个 renderer 时也先使旧 GPU 图集失效；显式资源销毁时解除上下文监听。
+
+结构性验证已确认跨页缓冲复用及外观间批次复用；尚未重新测量真机首次遍历地图的整体耗时，不能从分配次数减少推算帧率提升。单次贴图上传、shader 编译和 resolve 仍可能超出软预算，继续通过 `step:next` 的最大单步时间定位。
+
+普通动态 sprite 的 `SpriteFrameRenderer` 已按容量复用缓冲，普通共享帧已通过 `FrameGeometryCache` 换帧复用，不能将 Spine 每次更新重写骨骼网格的方式整体套用到这些路径。其 `addUpdateRange()` 思路可用于仍需重写的私有缓冲；多个未消费更新区间必须保留，不能因后一次写入丢弃前一次更新。
+
 ## 测试
 
-- 单元测试 `packages/animation/tests/rgbaSpriteAtlas.test.ts`：分步合成器逐帧推进，结果与同步合成一致（CPU 路径）。
+- 单元测试 `packages/animation/tests/rgbaSpriteAtlas.test.ts`：分步合成器逐帧推进，结果与同步合成一致（CPU 路径）。`rgbaSpriteAtlasLifecycle.test.ts` 验证懒解析、跨页几何／索引复用、交错材质组、有效区间、渲染器统计与状态保持，以及多页中途取消／绘制失败时的资源释放。
 - 浏览器测试 `packages/ui/tests/tree-sprite.spec.ts` 与 `trees.spec.ts`：实例化的杂木与桦树帧与普通渲染逐像素对比（平均误差小于 2），覆盖层顺序、符号覆盖、隐藏符号、着色保持私有、砍伐后恢复以及 draw call 数。测试夹具在对比前调用 `flush(renderer)`，保证新外观已合成完。
-- 这些测试环境支持浮点渲染，走的是 GPU 路径；不支持的环境走回退路径，两者的合成结果应一致。
+- 这些测试环境支持浮点渲染，实例化对比走 GPU 路径；CPU 单测使用模拟 canvas 验证布局与分步调用。当前尚无同一像素夹具强制走 GPU／CPU 两路的直接对比，不能将已有测试视为两路逐像素一致的证明。
+- 浏览器测试 `packages/ui/tests/atlas-lifecycle.spec.ts` 使用真实荧光花：多个动画帧均有绘制内容、脚点位置保留、前景误差受控，`idle → off → idle` 复用同一实例批次；真实 `WEBGL_lose_context` 丢失／恢复后图集重建，图像与恢复前一致。恢复调用放在丢失事件完成派发后的宏任务中。隐藏所有实体后空闲网格退出场景，重新显示时仍复用原批次且图像一致。
+- 后续可补强制 CPU／GPU 的同夹具像素对照与缩小采样质量验证；保留原有普通 sprite 对照，不以全画面平均值代替前景与边缘检查。
 
 ## 性能埋点
 
-[spritePerf.ts](../packages/animation/src/spritePerf.ts) 默认关闭，URL 加 `?perf` 启用，控制台读取 `__spritePerf.summary()`。GPU 路径的阶段为 `step:gpu-upload`、`step:gpu-frame`、`step:gpu-resolve`；合成器每次推进的单步为 `step:next`；游戏中的分步合成为 `compose`，加载界面为 `compose:prewarm`，`flush` 为 `compose:flush`。同一场景的前后对比见 tile lifecycle 文档。
+[spritePerf.ts](../packages/animation/src/spritePerf.ts) 默认关闭，URL 加 `?perf` 启用，控制台读取 `__spritePerf.summary()`。普通模式增量累计 count／total／max，不调用 `performance.measure()` 或逐次输出慢帧警告，避免诊断本身占用渲染热路径；`?perf=trace` 才为每次调用生成 User Timing 标记。明细最多保留 4096 条、按时间返回；准备阶段与慢渲染保留明细，普通快速 `render` 每 60 次采样一条，汇总仍覆盖全部调用。开始同一采样区间前调用 `__spritePerf.clear()`；异步 `preload` 是包含等待的墙钟时间，嵌套阶段不能相加，`render.count` 是 manager pass 调用数而非游戏帧数。GPU 路径的阶段为 `step:gpu-upload`、`step:gpu-frame`、`step:gpu-resolve`；合成器每次推进的单步为 `step:next`；游戏中的分步合成为 `compose`，加载界面为 `compose:prewarm`，`flush` 为 `compose:flush`。同一场景的前后对比见 tile lifecycle 文档。

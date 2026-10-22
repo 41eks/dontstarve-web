@@ -78,6 +78,9 @@
 - Apply entity order to the innermost registered `visual` group; do not rely on `scene.add()` order or globally colliding per-part `renderOrder` values.
 - Set `forceSinglePass = true` on transparent `DoubleSide` materials used by merged billboards to preserve layer order for mirrored parts.
 - Precompose layered frames for instanced scenery through `packages/animation/src/rgbaSpriteAtlas.ts`; instances must share the resulting texture and single-quad geometry, not unresolved overlapping part geometry.
+- 图集合成统一走现有 GPU 合成与 CPU 回退入口；运行中的首次外观准备须按帧预算推进，不得在 prefab 或逐实体绘制中增加同步整段合成。预算需包含帧解析与布局，单次不可拆的上传等操作应单独测量；加载预热和测试 `flush()` 可显式完成全部任务。实现与待优化项见 [GPU atlas composition](docs/dst-gpu-atlas-composition.md)。
+- 借鉴 Spine 的 sprite 合批时，保留源图层顺序，只合并连续且贴图／混合状态兼容的部件；临时动态缓冲按容量复用，仅提交有效绘制及更新区间，保留尚未消费的更新。不得为缓冲复用改写不可变共享帧，或直接套用 Spine 的颜色空间、预乘 alpha 与深度配置；合成输出必须兼容本项目的 `dstLighting` 和深度预通道。
+- 排除离屏合成的绘制统计时，只恢复 calls／triangles／lines／points，不得回退 Three.js 的 `renderer.info.render.frame`；该内部帧编号参与可复用 geometry 的上传判定，回退会使动画后续帧跳过上传。
 - For instanced billboard forests, use an alpha-tested, color-disabled depth prepass (`colorWrite = false`, `depthWrite = true`) followed by a transparent color pass (`depthWrite = false`) before dynamic characters. Do not write depth in the forest color pass.
 - Walls remain at world rotation `0` and switch eight-faced art using the source facing masks and camera heading. Pair equivalent frames from the same animation across facings.
 - List all static sprite facings in `imageIndices` and switch with `showImage()` rather than rebuilding the sprite. Preserve layered wall art through `overlay` with positionally paired `imageIndices`.

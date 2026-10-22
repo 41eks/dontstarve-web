@@ -310,7 +310,7 @@ GPU 合成的做法参考了 Spine 的 three.js 运行时（不在运行时用 C
 
 ### 测量方式与结果
 
-`packages/animation/src/spritePerf.ts` 提供默认关闭的埋点，URL 加 `?perf` 启用，控制台读 `__spritePerf.summary()`，`__spritePerf.records` 保留每条记录的 `key`。阶段：`resolve`、`construct`、`preload`、`createBatch`、`render`、`compose`（游戏中每帧的分步合成）、`compose:prewarm`（加载界面）、`compose:flush`，以及子阶段 `step:layout`、`step:decode-chunk`、`step:canvas`、`step:draw-frame`、`step:texture`（CPU 路径）和 `step:gpu-upload`、`step:gpu-frame`、`step:gpu-resolve`（GPU 路径）、`step:next`（合成器每次推进的单步）。结合 `?tileperf` 的长任务日志，可把长任务对应到具体阶段。
+`packages/animation/src/spritePerf.ts` 提供默认关闭的埋点，URL 加 `?perf` 启用增量汇总，控制台读 `__spritePerf.summary()`；采样前调用 `__spritePerf.clear()` 对齐区间。`__spritePerf.records` 返回最多 4096 条按时间排序的近期明细并保留 `key`，普通快速 `render` 每 60 次采样一条，但汇总统计全部调用。只有 `?perf=trace` 才为全部调用写入 User Timing；普通模式不生成这些标记或逐次打印慢帧警告，避免测量干扰。异步 `preload` 包括资源等待，嵌套阶段不能相加，`render.count` 是 manager pass 调用数。阶段：`resolve`、`construct`、`preload`、`createBatch`、`render`、`compose`（游戏中每帧的分步合成）、`compose:prewarm`（加载界面）、`compose:flush`，以及子阶段 `step:layout`、`step:decode-chunk`、`step:canvas`、`step:draw-frame`、`step:texture`（CPU 路径）和 `step:gpu-upload`、`step:gpu-frame`、`step:gpu-resolve`（GPU 路径）、`step:next`（合成器每次推进的单步）。结合 `?tileperf` 的长任务日志，可把长任务对应到具体阶段。
 
 同一场景、同一台机器的单次运行最大值：
 
