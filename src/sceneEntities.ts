@@ -30,8 +30,9 @@ import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
 import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
-import { CaveEntranceManager } from '@dontstarve-web/prefab/cave_entrance';
-import { CaveExitManager } from '@dontstarve-web/prefab/cave_exit';
+import { CaveEntranceManager, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
+import { CaveExitManager, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
+import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator';
 import { GrottoPoolManager } from '@dontstarve-web/prefab/grotto_pool';
 import { MushroomPlantManager } from '@dontstarve-web/prefab/mushroom_plant';
 import { MushtreeManager } from '@dontstarve-web/prefab/mushtree';
@@ -68,7 +69,7 @@ import {
 import { dstLighting, renderer, scene } from './universal';
 import { FlowerPlanting } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
-import { initialSave } from './save/initialSave';
+import { initialSave, shardSaveSearch } from './save/initialSave';
 import { ReskinEffects } from '@dontstarve-web/prefab/reskin_tool';
 import { RainEffect } from '@dontstarve-web/prefab/rain';
 import { SnowEffect } from '@dontstarve-web/prefab/snow';
@@ -279,8 +280,15 @@ export async function createSceneEntities(
   Managers['staffcoldlight'] = registerStaffLights(registry, 'staffcoldlight', worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
+  /** ms_playerdespawnandmigrate: the destination shard is the cluster's other save, loaded by reloading the page. */
+  const shardLink: WorldMigratorShard = {
+    isWorldAvailable: shard => shard === CAVES_SHARD || shard === MASTER_SHARD,
+    isWorldFull: () => false,
+    migratePlayer: (_player, _portal, shard) => { window.location.search = shardSaveSearch(window.location.search, shard); },
+  };
+
   Managers['cave_entrance'] = registerCaveEntrances(registry, 'cave_entrance', worldState);
-  Managers['cave_exit'] = registerCaveExits(registry, 'cave_exit');
+  Managers['cave_exit'] = registerCaveExits(registry, 'cave_exit', worldState);
   Managers['grotto_pool'] = registerGrottoPools(registry, 'grotto_pool', worldState);
   Managers['mushtree'] = registerMushtrees(registry, 'mushtree', worldState);
   Managers['mushroom_plant'] = registerMushroomPlants(registry, 'mushroom_plant', worldState);
@@ -617,9 +625,10 @@ export async function createSceneEntities(
     return rockManager;
   }
 
-  function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance', _worldState: SceneWorldState) {
+  function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance', worldState: SceneWorldState) {
     const caveEntrances = new CaveEntranceManager(scene, {
-      physics: world, prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      physics: world, tickingarea: worldState.tickingarea, prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      shard: shardLink,
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => caveEntrances.spawn(id, new THREE.Vector3(...record.transform.position), {
@@ -696,8 +705,8 @@ export async function createSceneEntities(
     return grottoPools;
   }
 
-  function registerCaveExits(registry: EntityRegistry, prefabId: 'cave_exit') {
-    const caveExits = new CaveExitManager(scene, { physics: world });
+  function registerCaveExits(registry: EntityRegistry, prefabId: 'cave_exit', worldState: SceneWorldState) {
+    const caveExits = new CaveExitManager(scene, { physics: world, tickingarea: worldState.tickingarea, shard: shardLink });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_id, record) => caveExits.spawn(new THREE.Vector3(...record.transform.position), {
         id: record.id, transform: record.transform, components: {},

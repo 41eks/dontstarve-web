@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { invalidateEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import { setSpriteErosion } from '@dontstarve-web/animation/spriteErosion';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from '@dontstarve-web/animation/sprite';
 
@@ -84,6 +85,7 @@ export class ResidentSprite implements ArchiveSprite {
     this.model.add(this.placeholder);
     registerSpriteRenderGroup(this.model, this.placeholder);
     sprite.dispose();
+    invalidateEntitySpatial(this.model);
   }
 
   setActive(active: boolean): void { if (active) this.load(); else this.unload(); }
@@ -105,6 +107,7 @@ export class ResidentSprite implements ArchiveSprite {
     if (this.erosion) setSpriteErosion(sprite.model, this.erosion);
     this.attachHook?.(sprite);
     this.play();
+    invalidateEntitySpatial(this.model);
     sprite.setPaused(this.paused);
   }
 

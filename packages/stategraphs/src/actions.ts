@@ -35,6 +35,7 @@ export const ACTIONS = {
   DEPLOY: { priority: 0, distance: 1.1, strings: { GENERIC: '放置', PLANT: '种植' } },
   SHAVE: { priority: 0, strings: { GENERIC: '刮', SELF: '给自己刮胡子' } },
   SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
+  MIGRATE: { priority: 0, strings: { GENERIC: '进入' } },
   HAUNT: { priority: 0, ghost_valid: true, strings: { GENERIC: '作祟' } },
 } as const;
 

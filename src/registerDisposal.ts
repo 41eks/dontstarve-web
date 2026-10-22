@@ -7,7 +7,7 @@ import {
   LighterActionController, PickaxeActionController, PitchforkActionController,
   FarmHoeActionController, ShovelActionController, FoodActionController,
   PickActionController, HarvestActionController, OccupiableActionController, PickupActionController, ReadActionController, PlayActionController, ItemUseActionController,
-  ReskinActionController, SleepActionController, HauntActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
+  ReskinActionController, SleepActionController, MigrateActionController, HauntActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
@@ -251,6 +251,8 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         });
         const sleeping = new SleepActionController(view, playerAnimation, locomotor, sleeper, isActionInterrupting);
         frameControllers.push(sleeping);
+        frameControllers.push(new MigrateActionController(view, playerAnimation, locomotor,
+          { hasTag: tag => tag === 'player' || ((view.player.userData.tags as string[] | undefined)?.includes(tag) ?? false) }, isActionInterrupting));
         // SGwilsonghost's HAUNT: the ghost doer is the player inst, so `playerghost` and `respawnfromghost` reach it.
         const ghostInst = actionEntity(view.player as never, view.player.userData.artCharacter as string);
         frameControllers.push(new HauntActionController(view, playerAnimation, locomotor,

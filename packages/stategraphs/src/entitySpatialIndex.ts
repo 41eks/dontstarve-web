@@ -131,6 +131,13 @@ export function syncEntitySpatial(model: Object3D): void {
   entry.sync(); dirty.delete(entry);
 }
 
+/** The model's drawn children were replaced (a resident sprite loaded or unloaded): recompute its bounds at the next query. */
+export function invalidateEntitySpatial(model: Object3D): void {
+  const entry = entries.get(model);
+  if (!entry) return;
+  entry.stale = true; dirty.add(entry);
+}
+
 function flushBounds(): void {
   for (const entry of dirty) syncEntitySpatial(entry.model);
   dirty.clear();

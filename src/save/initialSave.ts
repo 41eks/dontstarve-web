@@ -16,4 +16,12 @@ export function saveUrl(search: string, base: string): string {
   return `${base}saves/${selected}`;
 }
 
+/** The query selecting another shard of the loaded save's cluster, e.g. `Cluster_1/Master.json` + `Caves` -> `Cluster_1/Caves.json`. */
+export function shardSaveSearch(search: string, shard: string): string {
+  const params = new URLSearchParams(search);
+  const directory = (params.get('save') ?? 'Cluster_1/Master.json').split('/').slice(0, -1);
+  params.set('save', [...directory, `${shard}.json`].join('/'));
+  return `?${params}`;
+}
+
 export const initialSave = await loadSaveJson(saveUrl(window.location.search, import.meta.env.BASE_URL));

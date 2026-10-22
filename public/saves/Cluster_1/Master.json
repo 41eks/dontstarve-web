@@ -873977,6 +873977,130 @@
           }
         }
       ],
+      "cave_entrance": [
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106080",
+          "transform": {
+            "position": [
+              -1006.5,
+              0.0,
+              1643.04
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106082",
+          "transform": {
+            "position": [
+              -551.07,
+              0.0,
+              -658.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106083",
+          "transform": {
+            "position": [
+              -240.96,
+              0.0,
+              277.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106084",
+          "transform": {
+            "position": [
+              -1583.07,
+              0.0,
+              106.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106085",
+          "transform": {
+            "position": [
+              -1486.5,
+              0.0,
+              828.93
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106086",
+          "transform": {
+            "position": [
+              -767.07,
+              0.0,
+              -1114.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106087",
+          "transform": {
+            "position": [
+              -490.5,
+              0.0,
+              1799.04
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106088",
+          "transform": {
+            "position": [
+              -1992.96,
+              0.0,
+              481.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106089",
+          "transform": {
+            "position": [
+              323.04,
+              0.0,
+              349.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "cave_entrance_open": [
+        {
+          "id": "dst_0D8F4BB2B5051283_cave_entrance_open_id_122749",
+          "transform": {
+            "position": [
+              -815.07,
+              0.0,
+              682.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "blue_mushroom": [
         {
           "id": "dst_0D8F4BB2B5051283_blue_mushroom_index_000001",
