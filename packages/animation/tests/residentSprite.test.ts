@@ -118,3 +118,36 @@ it('skips empty visuals during rendering, updates explicit queries and refreshes
     updates.mockRestore(); resident.dispose();
   }
 });
+
+it('leaves its parent while inactive, returns on activation and stays out when added late or disposed asleep', async () => {
+  const scene = new THREE.Scene();
+  const make = (clip: { name: string; loop: boolean }) => fake(clip).sprite;
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  const resident = new ResidentSprite(make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  scene.add(resident.model);
+  resident.model.position.set(3, 0, 5);
+
+  resident.setActive(false);
+  expect(resident.model.parent).toBeNull();
+  expect(scene.children).toHaveLength(0);
+  expect(resident.model.position.toArray()).toEqual([3, 0, 5]);
+  resident.setActive(false);
+  resident.setActive(true);
+  await tick();
+  expect(resident.model.parent).toBe(scene);
+  expect(resident.loaded).toBe(true);
+  resident.setActive(true);
+  expect(scene.children).toEqual([resident.model]);
+
+  // An owner that finds the tile inactive before it adds the root must not put it back in the scene.
+  resident.setActive(false);
+  scene.add(resident.model);
+  expect(resident.model.parent).toBeNull();
+  resident.setActive(true);
+  expect(resident.model.parent).toBe(scene);
+
+  resident.setActive(false);
+  resident.dispose();
+  resident.setActive(true);
+  expect(scene.children).toHaveLength(0);
+});

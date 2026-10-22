@@ -98,6 +98,7 @@ let mapAutopaused = false;
 gameUi.minimap.addEventListener('game:map-state', (event) => {
   const { isOpen, autopaused } = (event as CustomEvent<MinimapStateDetail>).detail;
   gameUi.mapControls.setMapOpen(isOpen);
+  cursorUi.setWorldCovered(isOpen);
   input.setBlocked(isOpen);
   if (autopaused !== mapAutopaused) {
     SetAutopaused(autopaused);

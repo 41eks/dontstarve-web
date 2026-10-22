@@ -453,6 +453,16 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   }, PLAYER_PATH)).toEqual({ icon: 'wortox.png', priority: 10, canUseCache: false, drawOverFogOfWar: true, ownsPosition: true });
   await expect.poll(() => map.evaluate(async (element: any) => (await element.inspect()).icons.includes('wortox.png'))).toBe(true);
 
+  await page.evaluate(() => {
+    const original = document.elementFromPoint;
+    (window as any).mapGame.hitTests = 0;
+    document.elementFromPoint = function (x, y) {
+      (window as any).mapGame.hitTests++;
+      return original.call(this, x, y);
+    };
+    (window as any).mapGame.restoreHitTest = () => { document.elementFromPoint = original; };
+  });
+
   const viewport = map.locator('.minimap__viewport');
   // Read the mounted terrain image at the player's position, independently of icons.
   await expect.poll(() => map.evaluate(async (element: any) => {
@@ -495,8 +505,13 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   await expect.poll(async () => (await sample()).filter((colour, i) =>
     colour.reduce((sum, v, c) => sum + Math.abs(v - before[i][c]), 0) > 12).length).toBeGreaterThanOrEqual(2);
 
+  await expect(page.locator('.cursor-label-ui')).toBeHidden();
+  expect(await page.evaluate(() => (window as any).mapGame.hitTests)).toBe(0);
   await page.keyboard.press('Escape');
   await expect(section).toBeHidden();
+  await page.mouse.move(cx, cy);
+  await expect.poll(() => page.evaluate(() => (window as any).mapGame.hitTests)).toBeGreaterThan(0);
+  await page.evaluate(() => (window as any).mapGame.restoreHitTest());
   expect(await page.evaluate(() => (window as any).mapGame.IsAutopaused())).toBe(false);
   expect(await page.locator('dst-map-controls').getByRole('button', { name: '打开地图' }).getAttribute('aria-pressed')).toBe('false');
   expect(errors).toEqual([]);

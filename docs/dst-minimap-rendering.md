@@ -27,7 +27,7 @@
 
 右键原生命中的陆地轮廓时，地图才调用 `screenToWorld()` 转为 `Vector3`，发送可取消的 `game:map-action-request`；`src/main.ts` 将位置交给 `WortoxPlayer`，由现有 `BlinkActionController` 校验角色和真实陆地并缓冲 `BLINK_MAP`。动作没有普通跳跃的距离／寻路要求；预备动画结束通过缓冲动作再次验证落点，随后复用入场与出场状态。按项目要求，地图跳跃跳过距离计费、库存灵魂检查及消耗，不调用普通跳跃的回声结算，不增加或结束其计数与计时器。实际传送后调用地图中心重置和镜头 `snap()`；地图动作不使用普通地面跳跃的地面目标 blocker 校验，当前裸海面和虚空仍不可落地。
 
-动作被接受后，处理方通过请求事件的 `preventDefault()` 确认；地图保持打开，将自己的 `autopaused` 改为 `false`，通过 `game:map-state` 发布 `{ isOpen, autopaused }`。应用只在地图暂停原因发生变化时增减 `SetAutopaused` 的计数，不释放其他原因的暂停。地图打开期间继续屏蔽键盘移动。连续地图动作和关闭地图不重复解除暂停，重新打开会重新登记地图暂停；请求未被接受时保留暂停。该行为对应 `MapScreen:OnControl()` 的 `SetAutopaused(false)` 及 `BLINK_MAP` 未设置 `closes_map`。
+动作被接受后，处理方通过请求事件的 `preventDefault()` 确认；地图保持打开，将自己的 `autopaused` 改为 `false`，通过 `game:map-state` 发布 `{ isOpen, autopaused }`。应用只在地图暂停原因发生变化时增减 `SetAutopaused` 的计数，不释放其他原因的暂停。地图打开期间继续屏蔽键盘移动。应用同时把 `isOpen` 传给世界光标的 `setWorldCovered()`：覆盖期间立即隐藏提示，逐帧刷新和显式提示更新都跳过 DOM 命中测试及世界动作查询；保留已有提示状态，关闭后立即重新命中并刷新。该状态独立于 `autopaused`，地图动作解除暂停后仍保持覆盖。连续地图动作和关闭地图不重复解除暂停，重新打开会重新登记地图暂停；请求未被接受时保留暂停。该行为对应 `MapScreen:OnControl()` 的 `SetAutopaused(false)` 及 `BLINK_MAP` 未设置 `closes_map`。
 
 `packages/map` 是旧地图素材和绘制方式的独立对比页，使用同一个 `MinimapTerrainLayer` 的总览／细节分块路径。
 

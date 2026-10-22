@@ -79,13 +79,17 @@ it('releases the flies swarm sprite outside the tickingarea and rebuilds it with
   const awake = createSignal(true);
   const s = await setup(PIG_HEAD_ID, (() => createMemo(() => awake.get())) as TileStateQuery);
   try {
-    const flies = () => s.model.children.find(child => child.name === 'flies')!;
+    const swarm = s.model.children.find(child => child.name === 'flies')!;
+    const flies = () => swarm;
     const meshes = () => { let count = 0; flies().traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
     await s.settle();
     expect(meshes()).toBeGreaterThan(0);
     awake.set(false); await s.settle();
     expect(meshes()).toBe(0);
+    // The inactive swarm leaves the scene graph and returns to the same parent on wake.
+    expect(swarm.parent).toBeNull();
     awake.set(true); await s.settle();
+    expect(swarm.parent).toBe(s.model);
     expect(meshes()).toBeGreaterThan(0);
     flies().traverse(object => { if ((object as THREE.Mesh).isMesh) expect(object.raycast).not.toBe(THREE.Mesh.prototype.raycast); });
   } finally { s.placement.dispose(); }

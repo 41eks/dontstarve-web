@@ -81,11 +81,13 @@ it('shows growth settled while unloaded as its final stage without the transitio
     const tree = s.forest.spawn('evergreen_short', new THREE.Vector3(3, 0, 0));
     const root = tree.model, controller = root.userData.animationController, components = root.userData.components;
     await area.visit(new THREE.Vector3(1000, 0, 1000));
-    expect(tree.model).toBe(root); expect(root.parent).toBe(s.forest.group);
+    // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
+    expect(tree.model).toBe(root); expect(root.parent).toBeNull();
     expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(false);
     expect(root.userData.removed).not.toBe(true);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(3, 0, 0));
+    expect(root.parent).toBe(s.forest.group);
     expect(tree.model).toBe(root); expect(root.userData.animationController).toBe(controller);
     expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(true);
     expect(tree.model!.userData.components.growable.GetStage()).toBeGreaterThan(1);

@@ -25,6 +25,8 @@
 
 visual 由驻留对象的私有 signal 持有，普通 `createEffect` 在加载、卸载和换肤后切换矩阵更新入口，沿用现有异步调度。空 visual 的根节点不参与每帧渲染矩阵计算或缓存比较，世界坐标需要通过显式 `updateWorldMatrix()` 查询刷新；唤醒后强制刷新矩阵。实体脚点、组件和逻辑计时器独立保留，附加 FX 子节点仍按常规更新。永久移除清理 effect 和矩阵入口。
 
+`ResidentSprite.setActive(false)` 还会把稳定根节点从父节点摘下，`setActive(true)` 时挂回同一个父节点，使投影、矩阵更新等场景遍历跳过 inactive 实体；根节点、位置、组件和逻辑 timer 仍由所有者持有。所有者在 inactive 之后才把根节点加入场景时，加入事件会立即再摘下，不会落入场景。因此 inactive 的 `ResidentSprite` 根节点不在 `scene.children` 中，通过场景遍历查找实体的代码看不到它们（`FindEntities` 本来就只返回带 `tickingarea` 标签的实体）。`ResidentSpriteController` 尚未采用这一做法。
+
 [actionEntity.ts](../packages/prefab/src/actionEntity.ts) 的世界绑定统一维护 `tickingarea` 标签和活动实体索引。每个投影持有私有 tracker、区域 memo 和 `watchSignal`，普通 effect 在 active 时添加标签及索引，inactive 时移除；带底层 `ItemEntity` 的投影仍通过该实体的标签 API 写入，不维护第二份权威标签。`FindEntities` 只遍历活动索引，保留场景归属、移除状态、must/cant/oneof 标签和半径过滤，不读取 inactive 候选的位置。标签不控制可见性，白天隐藏但仍在活动区域的萤火虫也可带此标签；鼠标交互仍由可见性和 `NOCLICK` 规则控制。
 
 世界绑定仅建立一个玩家位置 `watchSignal`，沿用现有每 60 活动帧发布的位置快照，批量刷新登记实体的 tracker；玩家停留原 tile 时也刷新移动实体的位置。该采样会检查登记实体，但不会在每次 `FindEntities` 或每个渲染帧扫描全部实体。模型 `added` 时立即同步实际脚点，避免创建模型后才赋位置导致一直查询出生格。查询返回 `undefined` 的原有无门控分支保持 active。拾取、换肤等模型替换释放旧投影订阅；树木的 visual 休眠保留根节点上的同一投影，永久移除及场景销毁才释放投影、标签和索引，逻辑实体保存不受影响。effect 仍在后续微任务提交，测试在后续宏任务观察区域切换。
