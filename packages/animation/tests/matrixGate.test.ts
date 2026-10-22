@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { installMatrixGate } from '../src/matrixGate';
-import { watchMatrixUpdates } from '../src/matrixUpdates';
+import { updateSceneMatrices, watchMatrixUpdates } from '../src/matrixUpdates';
 
 it.each(['cache', 'observer'] as const)('shares updates and restores original methods when the %s ends first', first => {
   const scene = new THREE.Scene(), model = new THREE.Group(), visual = new THREE.Group();
@@ -63,7 +63,7 @@ it('shares cached matrices with queries and detects direct model, visual and par
   mesh.matrixAutoUpdate = false;
   scene.add(parent); parent.add(model); model.add(visual); visual.add(mesh);
   const original = model.updateMatrixWorld, originalWorld = model.updateWorldMatrix;
-  const gate = installMatrixGate(model, visual);
+  const gate = installMatrixGate(model, visual, false, false, true);
   scene.updateMatrixWorld();
   const renderUpdates = vi.spyOn(visual, 'updateMatrixWorld'), queryUpdates = vi.spyOn(visual, 'updateWorldMatrix');
   try {
@@ -98,4 +98,59 @@ it('shares cached matrices with queries and detects direct model, visual and par
   }
   expect(model.updateMatrixWorld).toBe(original);
   expect(model.updateWorldMatrix).toBe(originalWorld);
+});
+
+it('assumes static ancestors by default and still refreshes on reattachment', () => {
+  const scene = new THREE.Scene(), parent = new THREE.Group(), other = new THREE.Group(), model = new THREE.Group(), visual = new THREE.Group();
+  const mesh = new THREE.Object3D();
+  mesh.matrixAutoUpdate = false;
+  scene.add(parent, other); parent.add(model); model.add(visual); visual.add(mesh);
+  const gate = installMatrixGate(model, visual);
+  try {
+    scene.updateMatrixWorld();
+    parent.position.x = 7;
+    scene.updateMatrixWorld();
+    expect(mesh.matrixWorld.elements[12]).toBe(0);
+    other.position.x = 5;
+    other.add(model);
+    scene.updateMatrixWorld();
+    expect(mesh.matrixWorld.elements[12]).toBe(5);
+  } finally { gate.dispose(); }
+});
+
+it('shares ancestor comparisons across siblings and detects a second ancestor update in the same traversal', () => {
+  const scene = new THREE.Scene(), parent = new THREE.Group();
+  scene.add(parent);
+  const original = parent.updateMatrixWorld, originalWorld = parent.updateWorldMatrix;
+  const siblings = Array.from({ length: 40 }, () => {
+    const model = new THREE.Group(), visual = new THREE.Group();
+    parent.add(model); model.add(visual);
+    return { model, visual, gate: installMatrixGate(model, visual, false, false, true) };
+  });
+  try {
+    updateSceneMatrices(scene);
+    const comparisons = vi.spyOn(THREE.Matrix4.prototype, 'equals');
+    try {
+      updateSceneMatrices(scene);
+      expect(comparisons.mock.calls.length).toBeLessThan(5);
+    } finally { comparisons.mockRestore(); }
+
+    // A query can settle another parent movement inside the same render preparation.
+    const update = scene.updateMatrixWorld;
+    scene.updateMatrixWorld = function(force) {
+      update.call(this, force);
+      parent.position.x = 7;
+      parent.updateWorldMatrix(true, true);
+    };
+    try { updateSceneMatrices(scene); }
+    finally { scene.updateMatrixWorld = update; }
+    for (const { visual } of siblings) expect(visual.matrixWorld.elements[12]).toBe(7);
+
+    // Moving a model to a different ancestor must release its previous snapshot.
+    scene.add(siblings[0].model);
+    updateSceneMatrices(scene);
+    expect(siblings[0].visual.matrixWorld.elements[12]).toBe(0);
+  } finally { for (const { gate } of siblings) gate.dispose(); }
+  expect(parent.updateMatrixWorld).toBe(original);
+  expect(parent.updateWorldMatrix).toBe(originalWorld);
 });

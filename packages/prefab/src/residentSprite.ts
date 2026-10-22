@@ -1,11 +1,21 @@
 import * as THREE from 'three';
+import { createEffect, createSignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { invalidateEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import { setSpriteErosion } from '@dontstarve-web/animation/spriteErosion';
+import { installMatrixGate } from '../../animation/src/matrixGate';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from '@dontstarve-web/animation/sprite';
 
 interface Clip { name: string; loop: boolean; complete?: () => void; finished: boolean; frame?: number }
+
+/** Persistent entity origin; only the sprite under its model may be unloaded. */
+export interface ResidentEntity {
+  readonly id: number;
+  readonly saveId?: string;
+  readonly position: THREE.Vector3;
+  readonly model: THREE.Group;
+}
 
 /**
  * An `ArchiveSprite` whose frames, materials and instance entries exist only while the entity is active.
@@ -16,7 +26,12 @@ interface Clip { name: string; loop: boolean; complete?: () => void; finished: b
 export class ResidentSprite implements ArchiveSprite {
   readonly model = new THREE.Group();
   private readonly placeholder = new THREE.Group();
-  private sprite?: ArchiveSprite;
+  // Only this owner changes the private placeholder; entity transforms stay automatic.
+  private readonly matrixGate = installMatrixGate(this.model, this.placeholder, false, true);
+  private readonly visual = createSignal<ArchiveSprite | undefined>(undefined);
+  private readonly stopVisualEffect: () => void;
+  private get sprite(): ArchiveSprite | undefined { return this.visual.peek(); }
+  private set sprite(sprite: ArchiveSprite | undefined) { this.visual.set(sprite); }
   private clip: Clip;
   private generation = 0;
   private disposed = false;
@@ -40,6 +55,7 @@ export class ResidentSprite implements ArchiveSprite {
     this.model.add(this.placeholder);
     registerSpriteRenderGroup(this.model, this.placeholder);
     if (initial) this.attach(initial);
+    this.stopVisualEffect = createEffect(() => this.matrixGate.setRenderEnabled(this.visual.get() !== undefined));
   }
 
   private attachHook?: (sprite: ArchiveSprite) => void;
@@ -82,6 +98,7 @@ export class ResidentSprite implements ArchiveSprite {
     this.settle();
     this.placeholder.visible = sprite.model.visible;
     this.placeholder.position.copy(sprite.model.position);
+    this.matrixGate.markDirty();
     this.model.add(this.placeholder);
     registerSpriteRenderGroup(this.model, this.placeholder);
     sprite.dispose();
@@ -91,6 +108,7 @@ export class ResidentSprite implements ArchiveSprite {
   setActive(active: boolean): void { if (active) this.load(); else this.unload(); }
 
   private attach(sprite: ArchiveSprite): void {
+    this.matrixGate.markDirty();
     this.sprite = sprite;
     sprite.model.visible = this.placeholder.visible;
     sprite.model.position.copy(this.placeholder.position);
@@ -170,7 +188,9 @@ export class ResidentSprite implements ArchiveSprite {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopVisualEffect();
     this.unload();
+    this.matrixGate.dispose();
     this.model.removeFromParent();
   }
 }
@@ -196,9 +216,13 @@ interface BuildingClip {
 export class ResidentSpriteController implements TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
   readonly model: THREE.Group;
   private readonly placeholder = new THREE.Group();
+  private readonly matrixGate: ReturnType<typeof installMatrixGate>;
   private create: (initialAnimation: string) => THREE.Group;
   private release: (sprite: THREE.Group) => void;
-  private sprite?: THREE.Group;
+  private readonly visual = createSignal<THREE.Group | undefined>(undefined);
+  private readonly stopVisualEffect: () => void;
+  private get sprite(): THREE.Group | undefined { return this.visual.peek(); }
+  private set sprite(sprite: THREE.Group | undefined) { this.visual.set(sprite); }
   private clip: BuildingClip;
   private queue: { name: string; loop: boolean }[] = [];
   private frame?: number;
@@ -213,12 +237,14 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group, release: (sprite: THREE.Group) => void,
     initial: THREE.Group, clip: { name: string; held?: boolean }) {
     this.model = model;
+    this.matrixGate = installMatrixGate(model, this.placeholder, false, true);
     this.create = create;
     this.release = release;
     this.clip = { name: clip.name, loop: !clip.held, finished: clip.held === true };
     model.userData.billboard = true;
     registerSpriteRenderGroup(model, this.placeholder);
     this.attach(initial, false);
+    this.stopVisualEffect = createEffect(() => this.matrixGate.setRenderEnabled(this.visual.get() !== undefined));
   }
 
   get loaded(): boolean { return this.sprite !== undefined; }
@@ -241,6 +267,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.settle();
     this.placeholder.visible = sprite.visible;
     this.placeholder.position.copy(sprite.position);
+    this.matrixGate.markDirty();
     this.sprite = undefined;
     this.release(sprite);
     this.model.add(this.placeholder);
@@ -263,6 +290,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   }
 
   private attach(sprite: THREE.Group, replay: boolean): void {
+    this.matrixGate.markDirty();
     this.sprite = sprite;
     if (replay) { sprite.visible = this.placeholder.visible; sprite.position.copy(this.placeholder.position); }
     this.placeholder.removeFromParent();
@@ -362,6 +390,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   /** Take over another controller's source and loaded sprite (a reskin), keeping this root and logical state. */
   adopt(other: ResidentSpriteController): void {
     if (this.disposed) return;
+    this.matrixGate.markDirty();
     const old = this.sprite, oldRelease = this.release, taken = other.takeSprite();
     this.create = other.create; this.release = other.release;
     this.sprite = undefined;
@@ -391,9 +420,11 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopVisualEffect();
     const sprite = this.sprite;
     this.sprite = undefined;
     if (sprite) this.release(sprite);
+    this.matrixGate.dispose();
     this.placeholder.removeFromParent();
   }
 }

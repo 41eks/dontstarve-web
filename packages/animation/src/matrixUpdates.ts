@@ -1,4 +1,22 @@
-import type { Object3D } from 'three';
+import { Matrix4, type Object3D } from 'three';
+
+let nextTraversal = 0, traversal = 0;
+
+/** One traversal shares ancestor comparisons; explicit queries outside it always
+ * sample the current matrix. Nested traversals keep their own comparison scope.
+ */
+export function updateSceneMatrices(scene: Object3D): void {
+  const previous = traversal;
+  traversal = ++nextTraversal;
+  try { scene.updateMatrixWorld(); }
+  finally { traversal = previous; }
+}
+
+interface WorldMatrixVersion {
+  owners: number;
+  traversal: number;
+  read(): number;
+}
 
 interface MatrixMethods {
   updateMatrixWorld: Object3D['updateMatrixWorld'];
@@ -14,17 +32,41 @@ export interface MatrixUpdater {
 interface Updates {
   original: MatrixMethods;
   updater?: MatrixUpdater;
+  worldVersion?: WorldMatrixVersion;
   observers: Set<() => void>;
   notify(): void;
   release(): void;
 }
-const updates = new WeakMap<Object3D, Updates>();
+const updateState = Symbol('matrixUpdates');
+type ManagedObject = Object3D & { [updateState]?: Updates };
+
+/** Empty resident visuals do not enter the cache or notify spatial observers. */
+function skipRenderMatrixUpdate(): void {}
+
+// Shared call targets keep Three's child traversal monomorphic. Entity state
+// is read through a private symbol, without allocating per-model call targets.
+function updateMatrixWorld(this: Object3D, force?: boolean): void {
+  const state = (this as ManagedObject)[updateState]!;
+  if (state.worldVersion) state.worldVersion.traversal = 0;
+  if (state.updater) {
+    if (state.updater.updateMatrixWorld(force)) state.notify();
+  } else { state.original.updateMatrixWorld.call(this, force); state.notify(); }
+}
+
+function updateWorldMatrix(this: Object3D, parents: boolean, children: boolean): void {
+  const state = (this as ManagedObject)[updateState]!;
+  if (state.worldVersion) state.worldVersion.traversal = 0;
+  if (state.updater) {
+    if (state.updater.updateWorldMatrix(parents, children)) state.notify();
+  } else { state.original.updateWorldMatrix.call(this, parents, children); state.notify(); }
+}
 
 /** A single wrapper owns both Three.js entry points. Cache and index lifetimes
  * can end in either order without restoring another owner's stale wrapper.
  */
 function retain(model: Object3D): Updates {
-  let state = updates.get(model);
+  const object = model as ManagedObject;
+  let state = object[updateState];
   if (state) return state;
   const original = { updateMatrixWorld: model.updateMatrixWorld, updateWorldMatrix: model.updateWorldMatrix };
   let notifying = false;
@@ -37,24 +79,47 @@ function retain(model: Object3D): Updates {
       finally { notifying = false; }
     },
     release() {
-      if (owned.updater || owned.observers.size || updates.get(model) !== owned) return;
+      if (owned.updater || owned.worldVersion || owned.observers.size || object[updateState] !== owned) return;
       model.updateMatrixWorld = original.updateMatrixWorld;
       model.updateWorldMatrix = original.updateWorldMatrix;
-      updates.delete(model);
+      delete object[updateState];
     },
   };
-  model.updateMatrixWorld = function (force) {
-    if (owned.updater) {
-      if (owned.updater.updateMatrixWorld(force)) owned.notify();
-    } else { original.updateMatrixWorld.call(this, force); owned.notify(); }
-  };
-  model.updateWorldMatrix = function (parents, children) {
-    if (owned.updater) {
-      if (owned.updater.updateWorldMatrix(parents, children)) owned.notify();
-    } else { original.updateWorldMatrix.call(this, parents, children); owned.notify(); }
-  };
-  updates.set(model, state = owned);
+  model.updateMatrixWorld = updateMatrixWorld;
+  model.updateWorldMatrix = updateWorldMatrix;
+  object[updateState] = state = owned;
   return state;
+}
+
+/** Descendants share one ancestor snapshot, rather than each retaining and
+ * comparing its sixteen matrix elements. Invalidation happens before descent.
+ */
+export function retainWorldMatrixVersion(model: Object3D): { read(): number; dispose(): void } {
+  const state = retain(model);
+  let version = state.worldVersion;
+  if (!version) {
+    const matrix = new Matrix4().copy(model.matrixWorld);
+    let revision = 0;
+    const owned: WorldMatrixVersion = {
+      owners: 0, traversal: 0,
+      read() {
+        if (!traversal || owned.traversal !== traversal) {
+          if (!matrix.equals(model.matrixWorld)) { matrix.copy(model.matrixWorld); revision++; }
+          owned.traversal = traversal;
+        }
+        return revision;
+      },
+    };
+    state.worldVersion = version = owned;
+  }
+  version.owners++;
+  const owned = version;
+  let disposed = false;
+  return { read: owned.read, dispose() {
+    if (disposed) return;
+    disposed = true;
+    if (--owned.owners === 0) { state.worldVersion = undefined; state.release(); }
+  } };
 }
 
 export function watchMatrixUpdates(model: Object3D, observer: () => void): () => void {
@@ -64,13 +129,20 @@ export function watchMatrixUpdates(model: Object3D, observer: () => void): () =>
   return () => { state.observers.delete(listener); state.release(); };
 }
 
-export function cacheMatrixUpdates(model: Object3D, create: (original: MatrixMethods) => MatrixUpdater): () => void {
+export function cacheMatrixUpdates(model: Object3D, create: (original: MatrixMethods) => MatrixUpdater) {
   const state = retain(model);
   if (state.updater) throw new Error('Object already has a matrix cache');
   const updater = state.updater = create(state.original);
-  return () => {
-    if (state.updater !== updater) return;
-    state.updater = undefined;
-    state.release();
+  return {
+    setRenderEnabled(enabled: boolean) {
+      if (state.updater !== updater) return;
+      model.updateMatrixWorld = enabled ? updateMatrixWorld : skipRenderMatrixUpdate;
+    },
+    dispose() {
+      if (state.updater !== updater) return;
+      state.updater = undefined;
+      model.updateMatrixWorld = updateMatrixWorld;
+      state.release();
+    },
   };
 }

@@ -1117,7 +1117,7 @@ export async function createSceneEntities(
         { ...record, components: { ...record.components, growable: record.components.growable! } }),
       debugSpawn: async prefab => { evergreenForest.spawn(prefab as EvergreenSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => evergreenForest.exportRecords().map(record => ({ prefabId: 'evergreen', record })),
-      update: (dt, quaternion) => { evergreenForest.updateNearby(); evergreenForest.update(dt, quaternion); },
+      update: (dt, quaternion) => { evergreenForest.update(dt, quaternion); },
       miniMapEntities: () => evergreenForest.miniMapEntities,
       renderEntities: () => evergreenForest.renderEntities,
       dispose: () => evergreenForest.dispose(),
@@ -1141,7 +1141,7 @@ export async function createSceneEntities(
         { ...record, components: { ...record.components, deciduoustree: record.components.deciduoustree! } }),
       debugSpawn: async prefab => { deciduousForest.spawn(prefab as DeciduousSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => deciduousForest.exportRecords().map(record => ({ prefabId: 'deciduoustree', record })),
-      update: (dt, quaternion) => { deciduousForest.updateNearby(); deciduousForest.update(dt, quaternion); },
+      update: (dt, quaternion) => { deciduousForest.update(dt, quaternion); },
       miniMapEntities: () => deciduousForest.miniMapEntities,
       renderEntities: () => deciduousForest.renderEntities,
       dispose: () => deciduousForest.dispose(),
@@ -1226,7 +1226,6 @@ export async function createSceneEntities(
         components: moonTreeForest.exportState(entity),
       } })),
       update: (dt, quaternion) => {
-        moonTreeForest.updateNearby();
         moonTreeForest.update(dt);
         moonTreeForest.setNormals(quaternion);
       },

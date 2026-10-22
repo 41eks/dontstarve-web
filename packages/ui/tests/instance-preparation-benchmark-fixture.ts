@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 
-export async function benchmarkInstancePreparation() {
+export async function benchmarkInstancePreparation(variant: string) {
   const assets = new ArchiveSpriteAssets();
+  if (variant === 'before') {
+    const { InstancedArchiveSprites } = await import('../../animation/src/instancedArchiveSprites.benchmark');
+    Object.defineProperty(assets, 'instancedSprites', { value: new InstancedArchiveSprites() });
+  }
   const create = await preloadSharedArchiveSprite(assets, {
     animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'], bank: 'mushroom_tree',
     hiddenSymbols: [1, 2, 3].flatMap(index => [`swap_acidglob${index}`, `swap_acidglob_bloom${index}`]),
@@ -30,7 +34,7 @@ export async function benchmarkInstancePreparation() {
       renderer.render(scene, camera); scene.matrixWorldAutoUpdate = automatic;
     }
     samples.sort((a, b) => a - b);
-    return { count: sprites.length, frames: samples.length, mean: samples.reduce((sum, value) => sum + value, 0) / samples.length,
+    return { variant, count: sprites.length, frames: samples.length, mean: samples.reduce((sum, value) => sum + value, 0) / samples.length,
       median: samples[Math.floor(samples.length / 2)], p90: samples[Math.floor(samples.length * .9)], max: samples.at(-1) };
   } finally { sprites.forEach(sprite => sprite.dispose()); assets.dispose(); renderer.dispose(); }
 }

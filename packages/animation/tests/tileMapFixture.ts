@@ -16,7 +16,7 @@ export function useTestTileMap(size = 1008): void {
   afterEach(() => unbind());
 }
 
-/** A player-position tickingarea for tests; `visit` moves the player, lets the area settle, then reconciles a forest. */
+/** A player-position tickingarea for tests; `visit` moves the player, lets the area settle, then lets the resident visuals settle. */
 export function createTestArea() {
   const player = createSignal(new Vector3());
   const query = GetTileStateAtPoint(player);
@@ -24,10 +24,9 @@ export function createTestArea() {
   return {
     query,
     ready: new Promise<void>(resolve => setTimeout(resolve, 0)),
-    async visit(position: Vector3, forest: { updateNearby(): void }) {
+    async visit(position: Vector3) {
       player.set(position.clone());
       await new Promise(resolve => setTimeout(resolve, 0));
-      forest.updateNearby();
     },
     dispose: () => DisposeTileStates(player),
   };

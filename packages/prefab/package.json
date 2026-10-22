@@ -114,7 +114,6 @@
     "./birdcage": "./src/birdcage.ts",
     "./birds": "./src/birds.ts",
     "./wardrobe": "./src/wardrobe.ts",
-    "./proximityEntities": "./src/proximityEntities.ts",
     "./playerProximity": "./src/playerProximity.ts",
     "./pigking": "./src/pigking.ts",
     "./player": "./src/player.ts",

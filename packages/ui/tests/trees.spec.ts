@@ -22,6 +22,7 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
   });
   const prepare = () => page.evaluate(async urls => {
     const main = await import(urls.main), { scene, renderer } = await import(urls.universal);
+    await main.gameReady;
     const { camera } = await import(urls.camera), { player } = await import(urls.player);
     (window as any).deciduoustreeGame = { main, scene, renderer, camera, player };
   }, urls);
@@ -39,7 +40,7 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
       await new Promise(requestAnimationFrame);
       const { scene, camera, renderer } = (window as any).deciduoustreeGame;
       const tree = scene.children.find((model: any) => model.name === 'DeciduousForest').children.find((model: any) => model.userData.prefab === 'deciduoustree');
-      const mesh = tree.children[0].children[0]; mesh.updateWorldMatrix(true, false);
+      const mesh = tree.children[0].children[0].children[0]; mesh.updateWorldMatrix(true, false);
       const { Raycaster, Vector2, Vector3 } = await import('/node_modules/.vite/deps/three.js');
       const positions = mesh.geometry.getAttribute('position'), bounds = renderer.domElement.getBoundingClientRect();
       const raycaster = new Raycaster(), pointer = new Vector2();

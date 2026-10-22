@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { ProximityEntity } from '@dontstarve-web/prefab/proximityEntities';
+import type { ResidentEntity } from '@dontstarve-web/prefab';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
@@ -24,7 +24,7 @@ export interface EntityRecord {
 }
 
 export interface EntityRegistration<PrefabId extends string> {
-  restore?: (prefabId: PrefabId, record: SavedEntity) => Promise<THREE.Object3D | ProximityEntity> | THREE.Object3D | ProximityEntity;
+  restore?: (prefabId: PrefabId, record: SavedEntity) => Promise<THREE.Object3D | ResidentEntity> | THREE.Object3D | ResidentEntity;
   /** Only these IDs are exposed through c_spawn, including any aliases. */
   debugSpawn?: (prefabId: PrefabId) => Promise<unknown>;
   exportRecords: () => readonly EntityRecord[];
@@ -37,7 +37,7 @@ export interface EntityRegistration<PrefabId extends string> {
 
 /** Routes scene lifecycles through the same declarations used by debug spawning. */
 export class EntityRegistry {
-  readonly byEntityId = new Map<string, THREE.Object3D | ProximityEntity>();
+  readonly byEntityId = new Map<string, THREE.Object3D | ResidentEntity>();
   private readonly restorers = new Map<string, (record: SavedEntity) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
   private readonly creators = new Map<string, () => Promise<unknown>>();
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];

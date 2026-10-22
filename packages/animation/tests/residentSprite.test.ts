@@ -55,3 +55,61 @@ it('keeps the last pose of a finished one-shot clip when reloaded', () => {
   resident.unload(); resident.load();
   expect(created[1].calls).toEqual(expect.arrayContaining(['once:picked', 'frame:9']));
 });
+
+it('skips empty visuals during rendering, updates explicit queries and refreshes a rebuilt visual', async () => {
+  const scene = new THREE.Scene();
+  const created: ReturnType<typeof fake>[] = [];
+  const resident = new ResidentSprite(clip => {
+    const entry = fake(clip); created.push(entry); return entry.sprite;
+  }, { name: 'idle', loop: true });
+  scene.add(resident.model);
+  const placeholder = resident.model.children[0];
+  const updates = vi.spyOn(resident.model, 'updateMatrix');
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  try {
+    scene.updateMatrixWorld(); scene.updateMatrixWorld();
+    expect(updates).not.toHaveBeenCalled();
+    resident.model.position.x = 4;
+    scene.updateMatrixWorld();
+    expect(updates).not.toHaveBeenCalled();
+    resident.model.updateWorldMatrix(true, true);
+    expect(placeholder.matrixWorld.elements[12]).toBe(4);
+
+    resident.load();
+    await tick();
+    const child = created[0].sprite.model.children[0];
+    scene.updateMatrixWorld();
+    child.position.x = 2;
+    scene.updateMatrixWorld();
+    expect(child.matrixWorld.elements[12]).toBe(6);
+    resident.model.position.x = 8;
+    created[0].sprite.model.position.y = 3;
+    scene.updateMatrixWorld();
+    expect(child.matrixWorld.elements[12]).toBe(10);
+
+    resident.unload();
+    await tick();
+    updates.mockClear();
+    scene.updateMatrixWorld(); scene.updateMatrixWorld();
+    expect(updates).not.toHaveBeenCalled();
+    resident.model.updateWorldMatrix(true, true);
+    expect(placeholder.matrixWorld.elements[12]).toBe(8);
+    expect(placeholder.matrixWorld.elements[13]).toBe(3);
+
+    // FX attached to an otherwise empty resident still receive their transforms.
+    const fx = new THREE.Group(); resident.model.add(fx);
+    fx.position.x = 2;
+    scene.updateMatrixWorld();
+    expect(fx.matrixWorld.elements[12]).toBe(10);
+    fx.removeFromParent();
+    updates.mockClear(); scene.updateMatrixWorld();
+    expect(updates).not.toHaveBeenCalled();
+
+    resident.model.position.x = 11;
+    resident.load();
+    await tick(); scene.updateMatrixWorld();
+    expect(created[1].sprite.model.matrixWorld.elements[12]).toBe(11);
+  } finally {
+    updates.mockRestore(); resident.dispose();
+  }
+});

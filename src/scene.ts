@@ -229,8 +229,7 @@ export async function startScene(
       camera.updateProjectionMatrix();
       camera.getWorldQuaternion(cameraWorldQuaternion);
       setPlayerNormal(cameraWorldQuaternion);
-      // Prepare lazy nearby art without advancing brains, physics or game time.
-      entities.moonTreeForest.updateNearby();
+      // Orient resident visuals without advancing brains, physics or game time.
       entities.moonTreeForest.setNormals(cameraWorldQuaternion);
       updateCharacterRenderOrder(registry);
       preparing = true;

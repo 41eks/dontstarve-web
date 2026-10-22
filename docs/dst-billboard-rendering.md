@@ -12,7 +12,7 @@
 
 蘑菇树直接使用动画包的 `createSharedArchiveSprite()`，prefab 按源 Lua 通过 `playOnce()` / `start()` 选择动作与后续待机。`instancedAnimations: ['idle_loop']` 将待机树交给 `InstancedArchiveSprites`，同外观的树共享合成图集和四边形，在实例属性中独立存储帧 UV、颜色、透明度和变换。受击、倒下、树桩和生长／开花过渡继续按动画帧、build、皮肤和符号配置复用 `FrameGeometryCache` 中的不可变合并几何；返回待机自动重新加入实例批次。燃烧消失的 `chop_burnt` 特效也使用共享入口。每棵树保留模型、随机播放进度、完成回调和交互组件；渲染隐藏的源帧仍用于精确 alpha 拾取和空间边界。单树移除退出批次并释放私有资源，共享帧、合成图集与批次由 `ArchiveSpriteAssets.dispose()` 统一释放。
 
-桦树通过同一 `ArchiveSpriteAssets` 和 `preloadSharedArchiveSprite()` 复用三个大小的动画 bank、树干 build、四种叶色及雪层。`sway1_loop_*`、`sway2_loop_*` 和 `burnt_*` 参与实例化，砍树、生长、落叶、倒下及非循环树桩姿态使用共享的普通帧几何，循环状态恢复时自动回到批次。`ArchiveSprite.setSymbolOverride()` 在预载 build 之间切换／清除 `swap_leaves`，`setColour()` 同步实体私有材质和实例颜色，均保留当前动画进度与完成回调。外观与帧决定合成图集，树的颜色不参与缓存键；同外观 1 棵与 21 棵的浏览器验证均为深度、颜色各一次绘制，跨叶色或图集页会增加批次。积雪按原版 0.015 阈值切换，卸载模型时清理私有世界监听并保留逻辑树，整个森林销毁时再释放共享资源。调试命令、参数、支持 ID 和树木存档字段不变。
+桦树通过同一 `ArchiveSpriteAssets` 和 `preloadSharedArchiveSprite()` 复用三个大小的动画 bank、树干 build、四种叶色及雪层。`sway1_loop_*`、`sway2_loop_*` 和 `burnt_*` 参与实例化，砍树、生长、落叶、倒下及非循环树桩姿态使用共享的普通帧几何，循环状态恢复时自动回到批次。`ArchiveSprite.setSymbolOverride()` 在预载 build 之间切换／清除 `swap_leaves`，`setColour()` 同步实体私有材质和实例颜色，均保留当前动画进度与完成回调。外观与帧决定合成图集，树的颜色不参与缓存键；同外观 1 棵与 21 棵的浏览器验证均为深度、颜色各一次绘制，跨叶色或图集页会增加批次。积雪按原版 0.015 阈值切换，休眠时清理私有世界监听并通过 `ResidentSprite` 只卸载 visual，保留同一根节点、组件和逻辑树，整个森林销毁时再释放共享资源。调试命令、参数、支持 ID 和树木存档字段不变。
 
 `GrottoPoolManager` 通过通用入口 `createSharedArchiveSprite(assets, definition, options?)` 将池面、雾气、瀑布和月亮玻璃接入同一缓存机制，prefab 不再维护要共享的 clip 清单，运行时切换的动画也自动按帧缓存。每种 clip 及其 `*_mined` 状态分别缓存；池面的 OnGround 旋转、背景顺序、雾气 billboard 和独立实体的随机播放进度仍由原有节点维持。共享几何不合并 draw call，单池移除及其子物件清理不会销毁其他实体借用的帧。
 
@@ -28,6 +28,8 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 合并动画 billboard 的透明双面材质设置 `forceSinglePass = true`，让两种朝向在同一 pass 中绘制。
 
+共享 archive 和 factory sprite 的烘焙帧复用 `matrixGate`：换帧更新几何，根节点、visual 与父节点矩阵未变化时跳过子树矩阵计算。`ResidentSprite` / `ResidentSpriteController` 用私有 signal 持有实际 visual，普通 `createEffect` 根据有无 visual 切换渲染矩阵入口。空 visual 的 `updateMatrixWorld()` 使用共享空函数，直接跳过缓存检查、子树更新和空间索引通知；`updateWorldMatrix()` 显式查询仍即时更新，唤醒时使缓存失效。附加动态子节点通过 Three 的 child 事件恢复普通更新，最后一个附加子节点移除后重新跳过；永久移除释放 effect 和矩阵入口。直接移动、旋转、缩放、手动局部矩阵与祖先变换仍使缓存失效，附加动态子节点时使用常规遍历。缓存与空间索引观察共用矩阵入口，更新函数和缓存方法由实体共享，局部变换使用标量快照。`updateSceneMatrices()` 为一次场景遍历划定比较范围，同一父节点的世界矩阵只比较一次；祖先再次进入矩阵更新时先使该结果失效，再更新其子树，范围外的显式查询始终检查当前矩阵。重新挂载切换祖先快照引用，最后一个使用者释放后恢复原矩阵方法；嵌套遍历和异常退出恢复原比较范围。
+
 ## 实例化场景
 
 实例化的分层 DST 图像先通过 `packages/animation/src/rgbaSpriteAtlas.ts` 预合成为 RGBA sprite atlas，实例共享纹理和单四边形几何体。直接实例化未合成的重叠部件仍会遇到层顺序问题。
@@ -42,6 +44,8 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 4. 动态角色按各自脚点的深度排序绘制。
 
 批次父 Group 保持默认 `renderOrder = 0`，颜色 mesh 使用 `renderOrder = -0.4`，排在地皮 mesh（−2～−0.5）之后。Three 先比较 Group 的顺序，再比较 mesh 的顺序；把批次 Group 设为负值会让颜色 pass 早于不写深度的地皮，树便会被地皮覆盖。批次内部实例仍按脚点深度从远到近排列。
+
+`InstancedArchiveSprites` 保留每个实体的世界包围球与视锥测试结果。visual 的世界矩阵或帧边界变化时重算包围球；相机投影、视图矩阵或坐标系变化时重新测试视锥。绘制条目、页成员数组与排序结果跨帧复用，只在脚点排序键或成员变化时重排，脚点可独立于 visual 移动。祖先的场景归属、显隐与光照覆盖每次 pass 按节点采样一次，兼容直接赋值与重新挂载。各槽位通过变换和外观版本跳过未变属性，固定边界的动画换帧只写 UV；增删成员、跨页、隐藏后复用批次时仍核对槽位身份。属性上传合并实际变化的 Float32 区间，并保留 WebGL 尚未消费的更新。
 
 森林颜色 pass 写深度会让共面的 DST 层发生 z-fighting，表现为相机移动时闪烁。此方案用于蘑菇树、月树和桦树的循环动画实例；普通动画实体仍按实体脚点排序。
 
