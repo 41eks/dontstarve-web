@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { spritePerf, spritePerfAsync } from './spritePerf';
 import {
   createMaterials, findImage, loadAnim, loadBuild, smallHash, SpriteFrameRenderer, FrameGeometryCache,
   type ParsedAnim, type ParsedBuild, type ResolvedSprite, type SharedFrame, type SpriteMaterialOptions,
@@ -445,7 +446,7 @@ export async function preloadSharedArchiveSprite(
   options: Omit<ArchiveSpriteOptions, 'sharedAnimations'> = {},
 ): Promise<(animation: string, loop: boolean, name?: string, appearance?: Pick<ArchiveSpriteOptions, 'colour'>) => ArchiveSprite> {
   const shared = { ...options, sharedAnimations: 'all' } as const;
-  const loaded = await loadArchiveSprite(assets, definition as ArchiveSpriteDefinition, shared);
-  return (animation, loop, name, appearance) =>
-    constructArchiveSprite(assets, { ...definition, animation, loop }, { ...shared, ...appearance, ...(name ? { name } : {}) }, loaded);
+  const loaded = await spritePerfAsync('preload', `${definition.bank ?? ''} ${definition.animationArchive ?? ''}`, () => loadArchiveSprite(assets, definition as ArchiveSpriteDefinition, shared));
+  return (animation, loop, name, appearance) => spritePerf('construct', animation, () =>
+    constructArchiveSprite(assets, { ...definition, animation, loop }, { ...shared, ...appearance, ...(name ? { name } : {}) }, loaded));
 }

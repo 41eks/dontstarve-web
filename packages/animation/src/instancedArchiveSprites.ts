@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Animation, ResolvedSprite } from './animationAssets';
-import { composeResolvedRgbaSpriteAtlases, type RgbaSpriteAtlas, type RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
+import { spritePerf } from './spritePerf';
+import { createResolvedRgbaSpriteAtlasComposer, type RgbaSpriteAtlasComposer, type RgbaSpriteAtlas, type RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
 import { getLightOverride } from './lightOverride';
 import { getSpriteErosion } from './spriteErosion';
@@ -8,6 +9,7 @@ import { getSpriteErosion } from './spriteErosion';
 interface Appearance {
   animation: Animation;
   frames: ResolvedSprite[][];
+  composer?: RgbaSpriteAtlasComposer;
   pages?: RgbaSpriteAtlas[];
   locations?: { atlas: RgbaSpriteAtlas; frame: RgbaSpriteAtlasFrame }[];
 }
@@ -18,6 +20,8 @@ interface Entry {
   colour: THREE.Color;
   opacity: number;
   appearance?: Appearance;
+  /** The last appearance with a composed atlas, drawn while a newly shown one is still being composed. */
+  ready?: Appearance;
   frame: number;
   stopPass: () => void;
 }
@@ -108,7 +112,12 @@ function material(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial): THRE
 }
 
 /** Render-only batching. Entity nodes, source geometry and alpha picking remain independently owned. */
+/** Main-thread time per rendered frame spent composing atlases for appearances shown for the first time. */
+const COMPOSE_BUDGET_MS = 4;
+
 export class InstancedArchiveSprites implements SceneRenderPass {
+  /** Appearances whose atlas is not composed yet, in first-use order. */
+  private readonly composing = new Set<Appearance>();
   private readonly appearances = new Map<string, Appearance>();
   private readonly entries = new Set<Entry>();
   private readonly scenes = new Map<THREE.Scene, SceneBatches>();
@@ -128,12 +137,13 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       show: (key: string, animation: Animation, resolve: () => ResolvedSprite[][], frame: number) => {
         let appearance = this.appearances.get(key);
         if (!appearance) {
-          appearance = { animation, frames: resolve() };
+          appearance = { animation, frames: spritePerf('resolve', key, resolve) };
           this.appearances.set(key, appearance);
+          this.composing.add(appearance);
         }
         entry.appearance = appearance; entry.frame = frame;
       },
-      hide: () => { entry.appearance = undefined; },
+      hide: () => { entry.appearance = entry.ready = undefined; },
       setOpacity: (value: number) => { entry.opacity = value; },
       setColour: (value: readonly [number, number, number]) => { entry.colour.setRGB(...value); },
       dispose: () => { entry.stopPass(); this.entries.delete(entry); },
@@ -182,11 +192,40 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   }
 
   render(renderer: THREE.WebGLRenderer, camera: THREE.Camera): void {
+    spritePerf('render', `${this.entries.size} entries`, () => this.renderPass(renderer, camera, COMPOSE_BUDGET_MS));
+  }
+
+  /** Spread atlas composition over frames: an appearance is drawn once its pages exist, never composed inside the draw loop. */
+  private composeAtlases(renderer: THREE.WebGLRenderer, budgetMs: number, phase = 'compose'): void {
+    if (this.composing.size === 0) return;
+    const deadline = performance.now() + budgetMs;
+    for (const appearance of this.composing) {
+      const { animation, frames } = appearance;
+      const pages = spritePerf(phase, `${frames.length} frames`, () => {
+        appearance.composer ??= createResolvedRgbaSpriteAtlasComposer(animation, frames,
+          Math.min(4096, renderer.capabilities.maxTextureSize), renderer);
+        return appearance.composer.step(Math.max(0, deadline - performance.now()));
+      });
+      if (pages) {
+        appearance.pages = pages; appearance.composer = undefined; appearance.locations = [];
+        for (const atlas of pages) for (const frame of atlas.frames) appearance.locations[frame.frameIndex] = { atlas, frame };
+        this.composing.delete(appearance);
+      }
+      if (performance.now() >= deadline) break;
+    }
+  }
+
+  /** Composes every pending appearance now, for callers that need the next draw to be complete. */
+  flush(renderer: THREE.WebGLRenderer): void { this.composeAtlases(renderer, Infinity, 'compose:flush'); }
+
+  private renderPass(renderer: THREE.WebGLRenderer, camera: THREE.Camera, composeBudgetMs: number, composePhase?: string): void {
+    this.composeAtlases(renderer, composeBudgetMs, composePhase);
     this.frustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(this.frustumMatrix, camera.coordinateSystem);
     const draws = new Map<THREE.Scene, Map<RgbaSpriteAtlas, { source: THREE.MeshBasicMaterial; entries: DrawEntry[] }>>();
     for (const entry of this.entries) {
-      const appearance = entry.appearance;
+      if (entry.appearance?.pages) entry.ready = entry.appearance;
+      const appearance = entry.ready;
       if (!appearance) continue;
       let scene: THREE.Scene | undefined;
       let visible = true;
@@ -197,15 +236,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         if (node instanceof THREE.Scene) scene = node;
       }
       if (!visible || !entry.visual.visible || !scene) continue;
-      if (!appearance.pages) {
-        appearance.pages = composeResolvedRgbaSpriteAtlases(appearance.animation, appearance.frames,
-          Math.min(4096, renderer.capabilities.maxTextureSize));
-        appearance.locations = [];
-        for (const atlas of appearance.pages) for (const frame of atlas.frames) {
-          appearance.locations[frame.frameIndex] = { atlas, frame };
-        }
-      }
-      const { atlas, frame } = appearance.locations![entry.frame];
+      const { atlas, frame } = appearance.locations![Math.min(entry.frame, appearance.locations!.length - 1)];
       // A single InstancedMesh has no per-entity frustum culling. Cull the whole
       // assembled frame before sorting or uploading instances, retaining logical
       // playback and the cached atlas while the entity is outside the camera.
@@ -240,7 +271,8 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         let batch = batches.pages.get(atlas);
         if (!batch || batch.capacity < page.entries.length) {
           if (batch) this.disposeBatch(batch);
-          batch = this.createBatch(batches, atlas, page.source, THREE.MathUtils.ceilPowerOfTwo(Math.max(1, page.entries.length)));
+          const source = page.source, count = page.entries.length;
+          batch = spritePerf('createBatch', `${count}`, () => this.createBatch(batches, atlas, source, THREE.MathUtils.ceilPowerOfTwo(Math.max(1, count))));
           batches.pages.set(atlas, batch);
         }
         page.entries.sort((a, b) => a.depth - b.depth || a.x - b.x || a.z - b.z || a.entry.foot.id - b.entry.foot.id);
@@ -278,7 +310,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
 
   async prewarm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
-    this.render(renderer, camera);
+    this.renderPass(renderer, camera, Infinity, 'compose:prewarm');
     for (const { group, pages } of this.scenes.values()) {
       for (const batch of pages.values()) renderer.initTexture(batch.atlas.texture);
       await renderer.compileAsync(group, camera);
@@ -306,5 +338,6 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     this.scenes.clear();
     for (const appearance of this.appearances.values()) for (const atlas of appearance.pages ?? []) atlas.texture.dispose();
     this.appearances.clear();
+    this.composing.clear();
   }
 }

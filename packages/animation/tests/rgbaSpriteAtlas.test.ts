@@ -5,6 +5,7 @@ import type { Animation, BuildPackage, ResolvedSprite } from '../src/animationAs
 import {
   composeRgbaSpriteAtlas,
   composeResolvedRgbaSpriteAtlases,
+  createResolvedRgbaSpriteAtlasComposer,
   createRgbaSpriteFrameGeometry,
 } from '../src/rgbaSpriteAtlas';
 
@@ -73,6 +74,31 @@ describe('RGBA sprite atlas', () => {
         .map(canvas => canvas.context.transforms[0])).toEqual(Array(3).fill([.5, 0, 0, .5, 7.5, 7]));
       expect(() => composeResolvedRgbaSpriteAtlases(animation, frames, 8)).toThrow('maximum atlas size');
     } finally { pages.forEach(page => page.texture.dispose()); texture.dispose(); material.dispose(); }
+  });
+
+  it('steps a resolved composition one frame at a time and matches the synchronous pages', () => {
+    vi.stubGlobal('document', { createElement: () => new FakeCanvas() });
+    const texture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4);
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const part: ResolvedSprite = {
+      element: { imageHash: 1, imageIndex: 0, layerHash: 1, matrix: [1, 0, 0, 1, 3, 4], z: 0 },
+      image: { index: 0, duration: 1, x: 0, y: 0, width: 20, height: 20, vertexIndex: 0, vertexCount: 6,
+        bbx: 0, bby: 0, canvasWidth: 8, canvasHeight: 8 }, materials: [material],
+    };
+    const frames = [4, 5, 6].map(tx => [{ ...part, element: { ...part.element,
+      matrix: [1, 0, 0, 1, tx, 4] as [number, number, number, number, number, number] } }]);
+    const animation: Animation = { name: 'idle', facing: 0, bankHash: 0, frameRate: 30,
+      frames: frames.map(sprites => ({ elements: sprites.map(sprite => sprite.element) })) };
+    const expected = composeResolvedRgbaSpriteAtlases(animation, frames, 16);
+    const composer = createResolvedRgbaSpriteAtlasComposer(animation, frames, 16);
+    // A zero budget still draws one frame, so an exhausted budget always makes progress without finishing the clip.
+    let steps = 0, pages;
+    while (!(pages = composer.step(0))) steps++;
+    try {
+      expect(steps).toBeGreaterThan(1);
+      expect(pages.map(page => page.frames)).toEqual(expected.map(page => page.frames));
+      expect(composer.step(0)).toBe(pages);
+    } finally { [...pages, ...expected].forEach(page => page.texture.dispose()); texture.dispose(); material.dispose(); }
   });
 
   it('composites a transformed frame and exposes matching quad geometry', () => {
