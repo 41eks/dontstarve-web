@@ -209,6 +209,11 @@ export class MushtreeManager {
     const components = saved?.components, state = components?.mushtree;
     // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
     tree.cleanups.push(watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active)));
+    // A rebuilt sprite starts in the first build; the bloom build is dressed on again from the tree's state.
+    tree.cleanups.push(createEffect(() => {
+      sprite.art.get();
+      if (tree.treestate === 'bloom' && data.buildArchives.length > 1) sprite.setBuildArchive(data.buildArchives[1]);
+    }));
     this.watchSeason(tree);
     this.bindBurn(tree);
     if (data.growable) this.createGrowable(tree, components?.growable);

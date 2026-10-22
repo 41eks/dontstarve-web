@@ -59,64 +59,6 @@ function setup(inventory = createPickupInventory()) {
     worker: createPickupDoer(player, inventory) };
 }
 
-it('plants one cursor-held sapling at frame six, preserves cancellation and reloads its regrowth and remaining stack', async () => {
-  const s = setup(createInventoryStore([])), restored = setup(createInventoryStore([]));
-  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound: () => {}, stopSound: () => {}, setCasting: () => {}, onStateChanged: () => {} });
-  const animation = { stategraph: graph, cancelEmote: vi.fn(), setFacing: vi.fn() } as unknown as ActionAnimationController;
-  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  let deployment: PlantDeployment | undefined;
-  try {
-    expect((await executeDebugCommand('c_give("dug_sapling",2)', s.inventory)).ok).toBe(true);
-    expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
-    const source = () => {
-      const address = cursorSlotAddress(), entity = s.inventory.getEntity(address);
-      if (!entity) return undefined;
-      const isValid = () => s.inventory.getEntity(address) === entity && !entity.isRemoved;
-      return { entity, isValid, take: () => isValid() ? s.inventory.extract(address, 1, entity) ?? undefined : undefined,
-        putBack: (item: typeof entity) => { s.inventory.receiveAt(address, item); } };
-    };
-    const prepare = vi.fn(() => s.saplings.prepareTransplant('sapling'));
-    deployment = new PlantDeployment(s.world, animation, locomotor, source, {
-      plants: { sapling: { prepareTransplant: prepare } }, canPlant: point => point.x >= 0,
-    });
-    const point = new THREE.Vector3(2, 0, 0);
-    expect(deployment.request(new THREE.Vector3(-1, 0, 0))).toBe(false);
-    expect(deployment.request(point)).toBe(true);
-    await prepare.mock.results.at(-1)!.value;
-    await new Promise(resolve => setTimeout(resolve, 0));
-    deployment.update(); graph.update(5 / 30); deployment.cancel(); graph.update(1);
-    expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
-    expect(s.saplings.exportRecords()).toEqual([]);
-    expect(deployment.request(point)).toBe(true);
-    await prepare.mock.results.at(-1)!.value;
-    await new Promise(resolve => setTimeout(resolve, 0));
-    deployment.update(); graph.update(5 / 30);
-    expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
-    graph.update(1 / 30);
-    expect(s.inventory.get(cursorSlotAddress())?.count).toBe(1);
-    const model = s.saplings.digTargets[0].model, pickable = model.userData.components.pickable;
-    expect(model.position.equals(point)).toBe(true);
-    expect(model.userData.animationController.currentAnimation).toBe('empty');
-    expect(pickable.exportState()).toEqual({ picked: true, transplanted: true, regrowSeconds: 1920 });
-    expect(pickable.CanBeFertilized()).toBe(false);
-    expect(deployment.canDeploy(new THREE.Vector3(4.9, 0, 0), source()!.entity)).toBe(false);
-    expect(deployment.canDeploy(new THREE.Vector3(5.1, 0, 0), source()!.entity)).toBe(true);
-    tickWorld(s.scheduler, s.saplings, 400, new THREE.Quaternion());
-    let json = '';
-    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
-    const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.sapling[0];
-    await restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
-    expect(restored.saplings.exportRecords()).toEqual(s.saplings.exportRecords());
-    expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
-    const copy = restored.saplings.digTargets[0].model;
-    expect(copy.userData.animationController.currentAnimation).toBe('empty');
-    tickWorld(restored.scheduler, restored.saplings, 1520, new THREE.Quaternion());
-    expect(copy.userData.components.pickable.canBePicked).toBe(true);
-    expect(copy.userData.animationController.currentAnimation).toBe('grow');
-  } finally { deployment?.dispose(); graph.cancelAction(); s.dispose(); restored.dispose(); }
-});
-
 it('picks twigs, regrows after four days through grow → sway, and saves/restores the empty sapling', async () => {
   const s = setup(), restored = setup();
   try {

@@ -6,11 +6,13 @@ import type { InventoryItemSpec, InventorySkinSpec } from '@dontstarve-web/inven
 import type { GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
 import { listenInventoryEvents } from './inventoryEvents';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import type { GroundItemDefinition, GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, burnableFireRenderEntry, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
 import { configureHeatRockEntity, HEATROCK_ID, type HeatRock } from './heatrock';
-import { createEffect, watchSignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
+import { ResidentSprite } from './residentSprite';
+import { watchTileActivity } from './tileActivity';
 import { configureRazorEntity, RAZOR_ID } from './razor';
 import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';
 import { configureBirdEntity, isBirdId } from './birds';
@@ -63,6 +65,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity);
     },
     async create(item) {
+      if (item.itemId !== HEATROCK_ID && !Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return createResidentGroundItem(context, item);
       const sprite = await createGroundItemSprite(context.assets, item.itemId, item.skinId);
       if (item.itemId === HEATROCK_ID) {
         let stopWatching: (() => void) | undefined;
@@ -116,5 +119,40 @@ export async function createGroundItemSprite(
     ...sprite,
     get currentAnimation() { return sprite.currentAnimation; },
     dispose() { removeInventoryEvents(); sprite.dispose(); },
+  };
+}
+
+/**
+ * A plain ground item whose sprite exists only while the tile under it is active. The tile is bound once the item's
+ * position is settled (loaded or dropped, including the end of a fling), not while it is still moving.
+ */
+async function createResidentGroundItem(context: GroundPrefabContext, item: GroundItemDefinition): Promise<GroundItemVisual> {
+  const { itemId, skinId } = item;
+  const definition = GROUND_ITEM_DEFINITIONS[itemId];
+  if (!definition) throw new Error(`Unknown ground item: ${itemId}`);
+  const skinArchive = skinId === undefined ? undefined : definition.skinArchives[skinId];
+  if (skinId !== undefined && !skinArchive) throw new Error(`Unknown ground skin ${skinId} for ${itemId}`);
+  const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets,
+    { ...definition, animation: clip.name, loop: clip.loop }, { skinArchive, name: `GroundItem:${itemId}` });
+  const clip = { name: definition.animation, loop: definition.loop };
+  const resident = new ResidentSprite(create, clip, await create(clip), `GroundItem:${itemId}`);
+  const model = resident.model;
+  Object.assign(model.userData, { itemId, skinId });
+  const active = createSignal(true);
+  let stopTile = () => {};
+  const bindTile = () => {
+    stopTile();
+    stopTile = watchTileActivity(model, context.tickingarea, awake => { active.set(awake); resident.setActive(awake); });
+  };
+  const removeInventoryEvents = listenInventoryEvents(model, {
+    ondropped: () => { resident.setPaused(false); bindTile(); },
+    onload: () => { resident.setPaused(false); bindTile(); },
+    onputininventory: () => { resident.setPaused(true); stopTile(); stopTile = () => {}; },
+  });
+  return {
+    model,
+    active: readonlySignal(active),
+    update: dt => resident.update(dt),
+    dispose() { removeInventoryEvents(); stopTile(); resident.dispose(); },
   };
 }

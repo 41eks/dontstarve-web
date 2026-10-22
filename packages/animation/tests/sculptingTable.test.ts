@@ -62,6 +62,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(trader.AcceptGift(marble.entity, marble.take)).toBe(true);
     expect(marble.take).toHaveBeenCalledOnce();
     expect(play).toHaveBeenCalledExactlyOnceWith(itemSound, model.position);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(override).toHaveBeenLastCalledWith('cutstone01', expect.objectContaining({ symbolHash: expect.any(Number) }));
     expect(model.userData.tags).toContain('pickable');
     expect(canGive(offer('cutstone').entity)).toBe(false);
@@ -102,6 +103,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(play).toHaveBeenCalledTimes(3);
     expect(play).toHaveBeenLastCalledWith(itemSound, model.position);
     expect(doer.giveItem).toHaveBeenCalledWith('marble', 1, expect.anything());
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(override).toHaveBeenLastCalledWith('cutstone01', undefined);
     expect(model.userData.tags).not.toContain('pickable');
     expect(pickable.pick(doer)).toBe(false);

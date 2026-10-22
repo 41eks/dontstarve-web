@@ -211,8 +211,7 @@ export class LightFlierFlowerManager {
     this.habitat = new LightFlierHabitat(base, services); this.assets = new ArchiveSpriteAssets(LIGHTFLIER_FLOWER_ID, base);
     if (services.getWatchWorldContent) {
       // Billboards face the camera: re-orient them only when it turns.
-      const rotation = this.cameraRotation = services.getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.stops.push(stop));
-      createEffect(() => { const quaternion = rotation.get(); for (const sprite of this.plants.values()) sprite.faceCamera(quaternion); });
+      this.cameraRotation = services.getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.stops.push(stop));
     }
   }
   async spawn(position: THREE.Vector3, saved?: LightFlierFlowerRecord): Promise<THREE.Group> {
@@ -233,10 +232,12 @@ export class LightFlierFlowerManager {
     const sprite = new ResidentSprite(clip => create(clip.name, clip.loop, LIGHTFLIER_FLOWER_ID, appearance), { name: 'off', loop: false },
       create('off', false, LIGHTFLIER_FLOWER_ID, appearance), LIGHTFLIER_FLOWER_ID);
     sprite.model.position.copy(position); sprite.model.position.y = 0;
-    if (this.cameraRotation) sprite.faceCamera(this.cameraRotation.peek());
+    // The sprite does not keep its orientation: dress each drawn sprite again when the camera turns or it is rebuilt.
+    const rotation = this.cameraRotation;
+    const stopFacing = rotation ? createEffect(() => { sprite.art.get(); sprite.faceCamera(rotation.get()); }) : undefined;
     const plant = new LightFlierFlower(saved?.id ?? newEntityId(), sprite.model, this.habitat, lengths, this.getLightLevel, variant, state,
       undefined, active => sprite.setActive(active));
-    const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, stop));
+    const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, () => { stopFacing?.(); stop(); }));
     createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
     this.plants.set(plant, sprite); this.scene.add(sprite.model); return sprite.model;
   }

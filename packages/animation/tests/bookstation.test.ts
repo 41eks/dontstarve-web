@@ -39,7 +39,7 @@ function createStation(tags: string[] = [], playerAt = new THREE.Vector3(0, 0, 0
   return { inventory, scheduler, container, station, hidden, burnt, uses: (slot: number) => container.GetItemInSlot(slot + 1)!.components.finiteuses };
 }
 
-it('accepts only bookcabinet items, shows the shelf layers by fill level and restores book uses over time', () => {
+it('accepts only bookcabinet items, shows the shelf layers by fill level and restores book uses over time', async () => {
   const { inventory, scheduler, container, station, hidden, uses } = createStation();
   try {
     expect([...hidden].sort()).toEqual(["empty", "full", "mid"]); // an empty cabinet hides every layer
@@ -51,6 +51,7 @@ it('accepts only bookcabinet items, shows the shelf layers by fill level and res
     const second = inventorySlotAddress(1);
     inventory.getEntity(second)!.components.finiteuses.use(2);
     expect(inventory.transfer(second, shelf(0), 1)).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(hidden.has('empty')).toBe(false);
     expect(hidden.has('mid')).toBe(true);
     expect(station.restore.peek().status).toBe('scheduled');
@@ -65,6 +66,7 @@ it('accepts only bookcabinet items, shows the shelf layers by fill level and res
     expect(container.OnSave().items['1'].remainingUses).toBe(5);
 
     expect(inventory.transfer(shelf(0), second, 1)).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(station.restore.peek().status).toBe('stopped');
     scheduler.advance(300);
     expect(inventory.getEntity(second)!.components.finiteuses.remaining).toBe(5);

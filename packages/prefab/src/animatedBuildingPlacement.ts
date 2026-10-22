@@ -1,6 +1,6 @@
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { createSignal, readonlySignal, getBoundWatchWorldContent, type Signal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, getBoundWatchWorldContent, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
 import {
     createAnimatedSpriteSource,
@@ -123,6 +123,8 @@ export interface AnimatedBuildingPreparedResources {
 export interface AnimatedBuildingEventContext {
     model: THREE.Group;
     animation: SpriteAnimationController;
+    /** Changes whenever the building's drawn sprite is rebuilt; effects that dress the sprite read it. */
+    art?: ReadonlySignal<number>;
     skinId?: string;
     /** Result of the definition's prepare() for the art currently displayed. */
     prepared?: AnimatedBuildingPreparedResources;
@@ -592,7 +594,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
-        return { model: building.model, animation: building.animation, skinId: building.skinId.peek(), prepared: building.prepared,
+        return { model: building.model, animation: building.animation, art: building.animation.art, skinId: building.skinId.peek(), prepared: building.prepared,
             itemEntities: this.worldContext.itemEntities, world: this.worldContext,
             remove: () => this.hammerContext(building).remove() };
     }

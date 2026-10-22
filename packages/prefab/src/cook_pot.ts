@@ -7,6 +7,7 @@ import {
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
 import type { AnimatedBuildingEventContext } from './animatedBuildingPlacement';
+import { createEffect } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
@@ -73,7 +74,7 @@ function continueCooking(model: THREE.Group): void {
     model.userData.stewerSound = PlaySound('dontstarve/common/cookingpot_rattle', model.position);
 }
 
-function initializePot({ model }: AnimatedBuildingEventContext): void {
+function initializePot({ model, art }: AnimatedBuildingEventContext): void {
     initializeFoodArt(model);
     model.userData.tags ??= [];
     const components = model.userData.components;
@@ -86,14 +87,18 @@ function initializePot({ model }: AnimatedBuildingEventContext): void {
     components.stewer = stewer;
     stewer.onstartcooking = () => continueCooking(model);
     stewer.oncontinuecooking = () => continueCooking(model);
+    // cookpot.lua showproduct on donecooking / continuedone, redone for every rebuilt sprite.
+    model.userData.stopProduct = createEffect(() => {
+        art?.get();
+        if (stewer.state.done.get() && stewer.state.product.get() !== undefined) showProduct(model);
+    });
     stewer.ondonecooking = () => {
-        showProduct(model);
         (model.userData.stewerSound as SoundHandle | undefined)?.stop();
         delete model.userData.stewerSound;
         PlaySound('dontstarve/common/cookingpot_finish', model.position);
         model.userData.animationController.playOnce('cooking_pst', () => model.userData.animationController.start('idle_full'));
     };
-    stewer.oncontinuedone = () => { showProduct(model); model.userData.animationController.start('idle_full'); };
+    stewer.oncontinuedone = () => { model.userData.animationController.start('idle_full'); };
     stewer.onharvest = () => {
         model.userData.animationController.start('idle_empty');
         PlaySound('dontstarve/common/cookingpot_close', model.position);
@@ -175,6 +180,7 @@ export const COOK_POT_DEFINITION: AnimatedBuildingDefinition = {
     onupdate: ({ model }, dt) => (model.userData.components.stewer as Stewer | undefined)?.LongUpdate(dt),
     ondispose: ({ model }) => {
         (model.userData.stewerSound as SoundHandle | undefined)?.stop();
+        model.userData.stopProduct?.();
         (model.userData.components.stewer as Stewer | undefined)?.OnRemoveFromEntity();
     },
 };

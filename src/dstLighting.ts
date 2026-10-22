@@ -172,15 +172,34 @@ const VERTEX_SHADER = /* glsl */`
   }
 `;
 
-const FRAGMENT_SHADER = /* glsl */`
-  uniform sampler2D sceneTexture;
+// combine_colour_cubes.ksh: blends the source/destination cubes of every layer
+// into one cube only when a blend input changes, so the full-screen pass below
+// (postprocess_colourcube.ksh) samples a single cube regardless of transitions.
+const BAKE_FRAGMENT_SHADER = /* glsl */`
   uniform sampler2D sourceLut;
   uniform sampler2D destinationLut;
-  uniform float lutSize;
-  uniform float lutBlend;
   uniform sampler2D sourceInsanityLut;
   uniform sampler2D destinationInsanityLut;
+  uniform float lutBlend;
   uniform float insanityIntensity;
+
+  varying vec2 vUv;
+
+  void main() {
+    vec3 graded = mix(texture2D(sourceLut, vUv).rgb, texture2D(destinationLut, vUv).rgb, lutBlend);
+    if (insanityIntensity > 0.0) {
+      vec3 insane = mix(texture2D(sourceInsanityLut, vUv).rgb, texture2D(destinationInsanityLut, vUv).rgb, lutBlend);
+      graded = mix(graded, insane, insanityIntensity);
+    }
+    // Raw cube values: the target is NoColorSpace and nothing converts them.
+    gl_FragColor = vec4(graded, 1.0);
+  }
+`;
+
+const FRAGMENT_SHADER = /* glsl */`
+  uniform sampler2D sceneTexture;
+  uniform sampler2D colourCube;
+  uniform float lutSize;
   uniform float distortionIntensity;
   uniform vec2 sceneTexelSize;
 
@@ -205,9 +224,9 @@ const FRAGMENT_SHADER = /* glsl */`
     vec3 displayColour = sRGBTransferOETF(vec4(max(sceneColour.rgb, 0.0), 1.0)).rgb;
     // postprocess_distort.ksh precedes colour grading. Its 0.00625 UV orbit
     // affects the edges while the centre stays steady (radii 0.5 / 0.685).
-    float mask = clamp((1.0 - distance(vUv, vec2(0.5)) - 0.5) / (0.685 - 0.5), 0.0, 1.0);
-    float distortionWeight = distortionIntensity * (1.0 - mask);
-    if (distortionWeight > 0.0) {
+    if (distortionIntensity > 0.0) {
+      float mask = clamp((1.0 - distance(vUv, vec2(0.5)) - 0.5) / (0.685 - 0.5), 0.0, 1.0);
+      float distortionWeight = distortionIntensity * (1.0 - mask);
       // Keep both linear-filter taps inside the resolved scene texture even
       // when interpolation/driver rounding reaches the screen boundary.
       vec2 halfTexel = sceneTexelSize * 0.5;
@@ -219,16 +238,9 @@ const FRAGMENT_SHADER = /* glsl */`
     }
     // World materials already apply ambient + local lighting before composition.
     vec3 litColour = clamp(displayColour, 0.0, 1.0);
-    vec3 gradedSource = sampleColourCube(sourceLut, litColour);
-    vec3 gradedDestination = sampleColourCube(destinationLut, litColour);
-    vec3 graded = mix(gradedSource, gradedDestination, lutBlend);
-    if (insanityIntensity > 0.0) {
-      vec3 insaneSource = sampleColourCube(sourceInsanityLut, litColour);
-      vec3 insaneDestination = sampleColourCube(destinationInsanityLut, litColour);
-      graded = mix(graded, mix(insaneSource, insaneDestination, lutBlend), insanityIntensity);
-    }
-    gl_FragColor = sRGBTransferEOTF(vec4(graded, sceneColour.a));
-    #include <colorspace_fragment>
+    // The graded value is already in the drawing buffer's sRGB encoding, so it
+    // is written directly instead of a decode/re-encode round trip.
+    gl_FragColor = vec4(sampleColourCube(colourCube, litColour), sceneColour.a);
   }
 `;
 
@@ -254,6 +266,10 @@ export class DstLightingRenderer {
   private readonly postScene = new THREE.Scene();
   private readonly postCamera = new THREE.Camera();
   private readonly material: THREE.ShaderMaterial;
+  private readonly bakeTarget: THREE.WebGLRenderTarget;
+  private readonly bakeMaterial: THREE.ShaderMaterial;
+  private readonly bakeScene = new THREE.Scene();
+  private bakeDirty = true;
   private readonly drawingBufferSize = new THREE.Vector2();
   private readonly localLighting: DstLocalLighting;
   private readonly litAmbient = new THREE.Vector3();
@@ -292,6 +308,35 @@ export class DstLightingRenderer {
     this.ambientStart.copy(this.ambientCurrent);
     this.ambientTarget.copy(this.ambientCurrent);
 
+    const cubeSize = initialLut.image.height;
+    this.bakeTarget = new THREE.WebGLRenderTarget(cubeSize * cubeSize, cubeSize, {
+      depthBuffer: false,
+      magFilter: THREE.LinearFilter,
+      minFilter: THREE.LinearFilter,
+    });
+    this.bakeTarget.texture.name = 'DST baked colour cube';
+    this.bakeTarget.texture.colorSpace = THREE.NoColorSpace;
+    this.bakeTarget.texture.generateMipmaps = false;
+    this.bakeTarget.texture.wrapS = THREE.ClampToEdgeWrapping;
+    this.bakeTarget.texture.wrapT = THREE.ClampToEdgeWrapping;
+    this.bakeMaterial = new THREE.ShaderMaterial({
+      name: 'DST combined colour cube',
+      uniforms: {
+        sourceLut: { value: initialLut },
+        destinationLut: { value: initialLut },
+        sourceInsanityLut: { value: initialInsanityLut },
+        destinationInsanityLut: { value: initialInsanityLut },
+        lutBlend: { value: 1 },
+        insanityIntensity: { value: 0 },
+      },
+      vertexShader: VERTEX_SHADER,
+      fragmentShader: BAKE_FRAGMENT_SHADER,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
+      precision: 'highp',
+    });
+
     this.renderTarget = new THREE.WebGLRenderTarget(1, 1, {
       depthBuffer: true,
       magFilter: THREE.LinearFilter,
@@ -307,13 +352,8 @@ export class DstLightingRenderer {
       name: 'DST ambient and colour cube',
       uniforms: {
         sceneTexture: { value: this.renderTarget.texture },
-        sourceLut: { value: initialLut },
-        destinationLut: { value: initialLut },
+        colourCube: { value: this.bakeTarget.texture },
         lutSize: { value: initialLut.image.height },
-        lutBlend: { value: 1 },
-        sourceInsanityLut: { value: initialInsanityLut },
-        destinationInsanityLut: { value: initialInsanityLut },
-        insanityIntensity: { value: 0 },
         distortionIntensity: { value: 0 },
         distortionTime: { value: 0 },
         sceneTexelSize: { value: new THREE.Vector2(1, 1) },
@@ -339,6 +379,9 @@ export class DstLightingRenderer {
     const quad = new THREE.Mesh(geometry, this.material);
     quad.frustumCulled = false;
     this.postScene.add(quad);
+    const bakeQuad = new THREE.Mesh(geometry, this.bakeMaterial);
+    bakeQuad.frustumCulled = false;
+    this.bakeScene.add(bakeQuad);
     if (initialState.sanityPercent) {
       this.stopSanitySubscription = initialState.sanityPercent.subscribe(percent => this.applySanityPercent(percent));
     }
@@ -370,6 +413,9 @@ export class DstLightingRenderer {
     this.stopSanitySubscription = undefined;
     this.localLighting.dispose();
     this.renderTarget.dispose();
+    this.bakeTarget.dispose();
+    this.bakeMaterial.dispose();
+    this.bakeScene.clear();
     for (const texture of this.textures.values()) texture.dispose();
     for (const quad of this.postScene.children) if (quad instanceof THREE.Mesh) quad.geometry.dispose();
     this.postScene.clear();
@@ -394,7 +440,8 @@ export class DstLightingRenderer {
     if (!Number.isFinite(percent)) throw new Error('Sanity percent must be finite');
     this.sanityPercent = THREE.MathUtils.clamp(percent, 0, 1);
     const gradingPercent = Math.round(this.sanityPercent * SANITY_GRADING_STEPS) / SANITY_GRADING_STEPS;
-    this.material.uniforms.insanityIntensity.value = (1 - gradingPercent) ** 2;
+    this.bakeMaterial.uniforms.insanityIntensity.value = (1 - gradingPercent) ** 2;
+    this.bakeDirty = true;
     this.material.uniforms.distortionIntensity.value = (1 - this.sanityPercent) ** 2;
     // outQuad(1 - percent, 0, 0.2, 1), with DST's default distortion modifier 1.
     // Slow the orbit to half speed without changing its amplitude or grading.
@@ -430,7 +477,8 @@ export class DstLightingRenderer {
     }
     if (this.lutBlendRemaining > 0) {
       this.lutBlendRemaining = Math.max(0, this.lutBlendRemaining - elapsed);
-      this.material.uniforms.lutBlend.value = 1 - this.lutBlendRemaining / this.lutBlendTotal;
+      this.bakeMaterial.uniforms.lutBlend.value = 1 - this.lutBlendRemaining / this.lutBlendTotal;
+      this.bakeDirty = true;
     }
   }
 
@@ -448,6 +496,7 @@ export class DstLightingRenderer {
   async prewarm(scene: THREE.Scene, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
     this.resizeRenderTarget();
+    this.bakeColourCube();
     this.localLighting.prepareScene(scene);
     await this.localLighting.prewarm(this.renderer, signal);
     await yieldLoadingFrame();
@@ -465,8 +514,22 @@ export class DstLightingRenderer {
     }
   }
 
+  /** combine_colour_cubes: re-blend the cube only after a blend input changed. */
+  private bakeColourCube(): void {
+    if (!this.bakeDirty) return;
+    this.bakeDirty = false;
+    const previousTarget = this.renderer.getRenderTarget();
+    this.renderer.setRenderTarget(this.bakeTarget);
+    try {
+      this.renderer.render(this.bakeScene, this.postCamera);
+    } finally {
+      this.renderer.setRenderTarget(previousTarget);
+    }
+  }
+
   render(scene: THREE.Scene, camera: THREE.Camera): void {
     this.resizeRenderTarget();
+    this.bakeColourCube();
 
     const originalBackground = scene.background;
     if (originalBackground instanceof THREE.Color) {
@@ -498,14 +561,19 @@ export class DstLightingRenderer {
   }
 
   private transitionLut(destination: THREE.DataTexture, insanityDestination: THREE.DataTexture, duration: number): void {
-    if (destination === this.material.uniforms.destinationLut.value
-      && insanityDestination === this.material.uniforms.destinationInsanityLut.value) return;
-    this.material.uniforms.sourceInsanityLut.value = this.material.uniforms.destinationInsanityLut.value;
-    this.material.uniforms.destinationInsanityLut.value = insanityDestination;
-    this.material.uniforms.sourceLut.value = this.material.uniforms.destinationLut.value;
-    this.material.uniforms.destinationLut.value = destination;
-    this.material.uniforms.lutSize.value = destination.image.height;
-    this.material.uniforms.lutBlend.value = 0;
+    const uniforms = this.bakeMaterial.uniforms;
+    if (destination === uniforms.destinationLut.value
+      && insanityDestination === uniforms.destinationInsanityLut.value) return;
+    if (destination.image.height !== this.material.uniforms.lutSize.value
+      || insanityDestination.image.height !== this.material.uniforms.lutSize.value) {
+      throw new Error('DST colour cubes must share one dimension');
+    }
+    uniforms.sourceInsanityLut.value = uniforms.destinationInsanityLut.value;
+    uniforms.destinationInsanityLut.value = insanityDestination;
+    uniforms.sourceLut.value = uniforms.destinationLut.value;
+    uniforms.destinationLut.value = destination;
+    uniforms.lutBlend.value = 0;
+    this.bakeDirty = true;
     this.lutBlendRemaining = duration;
     this.lutBlendTotal = duration;
   }

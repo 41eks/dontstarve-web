@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createSignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { invalidateEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
@@ -29,21 +29,16 @@ export class ResidentSprite implements ArchiveSprite {
   // Only this owner changes the private placeholder; entity transforms stay automatic.
   private readonly matrixGate = installMatrixGate(this.model, this.placeholder, false, true);
   private readonly visual = createSignal<ArchiveSprite | undefined>(undefined);
+  private readonly artVersion = createSignal(0);
+  /** Changes whenever the drawn sprite is attached or released; effects that dress the sprite (build, symbols, colour) read it. */
+  readonly art = readonlySignal(this.artVersion);
   private readonly stopVisualEffect: () => void;
   private get sprite(): ArchiveSprite | undefined { return this.visual.peek(); }
-  private set sprite(sprite: ArchiveSprite | undefined) { this.visual.set(sprite); }
+  private set sprite(sprite: ArchiveSprite | undefined) { this.visual.set(sprite); this.artVersion.set(this.artVersion.peek() + 1); }
   private clip: Clip;
   private generation = 0;
   private disposed = false;
   private paused = false;
-  private facing?: number;
-  private buildArchive?: string;
-  private opacity?: number;
-  private colour?: readonly [number, number, number];
-  private rotation?: THREE.Quaternion;
-  private erosion = 0;
-  private readonly overrides = new Map<string, { archive: string; sourceSymbol?: string }>();
-  private readonly hidden = new Map<string, boolean>();
   private readonly create: (clip: { name: string; loop: boolean }) => ArchiveSprite | Promise<ArchiveSprite>;
 
   /** `initial` is an already created sprite in `clip`; without it the sprite stays unloaded until `load()`. */
@@ -115,14 +110,6 @@ export class ResidentSprite implements ArchiveSprite {
     this.model.remove(this.placeholder);
     this.model.add(sprite.model);
     registerSpriteRenderGroup(this.model, sprite.model.children[0] as THREE.Group);
-    if (this.facing !== undefined) sprite.setFacing(this.facing);
-    if (this.buildArchive !== undefined) sprite.setBuildArchive(this.buildArchive);
-    for (const [symbol, { archive, sourceSymbol }] of this.overrides) sprite.setSymbolOverride(symbol, archive, sourceSymbol);
-    for (const [symbol, hidden] of this.hidden) sprite.setSymbolHidden(symbol, hidden);
-    if (this.opacity !== undefined) sprite.setOpacity(this.opacity);
-    if (this.colour) sprite.setColour(this.colour);
-    if (this.rotation) sprite.faceCamera(this.rotation);
-    if (this.erosion) setSpriteErosion(sprite.model, this.erosion);
     this.attachHook?.(sprite);
     this.play();
     invalidateEntitySpatial(this.model);
@@ -168,21 +155,17 @@ export class ResidentSprite implements ArchiveSprite {
     this.sprite?.setFrame(frame);
   }
   setPaused(paused: boolean): void { this.paused = paused; this.sprite?.setPaused(paused); }
-  setOpacity(opacity: number): void { this.opacity = opacity; this.sprite?.setOpacity(opacity); }
-  setColour(colour: readonly [number, number, number]): void { this.colour = colour; this.sprite?.setColour(colour); }
-  setFacing(facing: number): void { this.facing = facing; this.sprite?.setFacing(facing); }
-  setBuildArchive(archive: string): void { this.buildArchive = archive; this.sprite?.setBuildArchive(archive); }
-  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
-    if (archive === undefined) this.overrides.delete(symbol); else this.overrides.set(symbol, { archive, sourceSymbol });
-    this.sprite?.setSymbolOverride(symbol, archive, sourceSymbol);
-  }
-  setSymbolHidden(symbol: string, hidden: boolean): void { this.hidden.set(symbol, hidden); this.sprite?.setSymbolHidden(symbol, hidden); }
-  faceCamera(rotation: THREE.Quaternion): void {
-    (this.rotation ??= new THREE.Quaternion()).copy(rotation);
-    this.sprite?.faceCamera(rotation);
-  }
-  /** Erosion is keyed by the drawn sprite model, so it is kept here and applied to each loaded sprite. */
-  setErosion(amount: number): void { this.erosion = amount; if (this.sprite) setSpriteErosion(this.sprite.model, amount); }
+  setFacing(facing: number): void { this.sprite?.setFacing(facing); }
+  // Appearance is not kept here: the owning prefab dresses each drawn sprite from its own state through an
+  // effect on `art`. These calls reach only the sprite that is currently drawn.
+  setOpacity(opacity: number): void { this.sprite?.setOpacity(opacity); }
+  setColour(colour: readonly [number, number, number]): void { this.sprite?.setColour(colour); }
+  setBuildArchive(archive: string): void { this.sprite?.setBuildArchive(archive); }
+  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.sprite?.setSymbolOverride(symbol, archive, sourceSymbol); }
+  setSymbolHidden(symbol: string, hidden: boolean): void { this.sprite?.setSymbolHidden(symbol, hidden); }
+  faceCamera(rotation: THREE.Quaternion): void { this.sprite?.faceCamera(rotation); }
+  /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
+  setErosion(amount: number): void { if (this.sprite) setSpriteErosion(this.sprite.model, amount); }
   refreshTransform(): void { this.sprite?.refreshTransform(); }
 
   dispose(): void {
@@ -220,17 +203,15 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private create: (initialAnimation: string) => THREE.Group;
   private release: (sprite: THREE.Group) => void;
   private readonly visual = createSignal<THREE.Group | undefined>(undefined);
+  private readonly artVersion = createSignal(0);
+  /** Changes whenever the drawn sprite is attached, released or replaced; effects that dress the sprite read it. */
+  readonly art = readonlySignal(this.artVersion);
   private readonly stopVisualEffect: () => void;
   private get sprite(): THREE.Group | undefined { return this.visual.peek(); }
-  private set sprite(sprite: THREE.Group | undefined) { this.visual.set(sprite); }
+  private set sprite(sprite: THREE.Group | undefined) { this.visual.set(sprite); this.artVersion.set(this.artVersion.peek() + 1); }
   private clip: BuildingClip;
   private queue: { name: string; loop: boolean }[] = [];
   private frame?: number;
-  private readonly hiddenLayers = new Set<string>();
-  private overrideTable?: { overrides: SymbolOverrideMap; hidden: readonly string[] };
-  private readonly symbolOverrides = new Map<string, SymbolOverrideValue>();
-  private readonly buildOverrides = new Map<string, LoadedBuildOverride>();
-  private build?: { build: Parameters<SpriteController['setBuild']>[0]; materials: Parameters<SpriteController['setBuild']>[1] };
   private disposed = false;
 
   /** `initial` is the first sprite, already built in `clip`; `held` marks a clip shown on its last frame. */
@@ -296,18 +277,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.placeholder.removeFromParent();
     this.model.add(sprite);
     registerSpriteRenderGroup(this.model, sprite.children[0] as THREE.Group);
-    this.applyAppearance();
     if (replay) this.play();
-  }
-
-  private applyAppearance(): void {
-    const controller = this.controller;
-    if (!controller) return;
-    if (this.build) controller.setBuild(this.build.build, this.build.materials);
-    if (this.overrideTable) controller.setSymbolOverrides(new Map(this.overrideTable.overrides), this.overrideTable.hidden);
-    for (const [symbol, override] of this.symbolOverrides) controller.overrideSymbol(symbol, override);
-    for (const [name, override] of this.buildOverrides) controller.addOverrideBuild(name, override);
-    for (const layer of this.hiddenLayers) controller.hideLayer(layer);
   }
 
   private play(): void {
@@ -355,25 +325,16 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.controller?.setPercent(name, percent);
   }
   setFrame(frame: number): void { this.frame = frame; this.controller?.setFrame(frame); }
-  hideLayer(layer: string): void { this.hiddenLayers.add(layer); this.controller?.hideLayer(layer); }
-  showLayer(layer: string): void { this.hiddenLayers.delete(layer); this.controller?.showLayer(layer); }
-  setBuild(build: Parameters<SpriteController['setBuild']>[0], materials: Parameters<SpriteController['setBuild']>[1]): void {
-    this.build = { build, materials }; this.controller?.setBuild(build, materials);
-  }
+  // Appearance is not kept here: the owning prefab dresses each drawn sprite from its own state through an
+  // effect on `art`, and the sprite factory options carry the skin when a sprite is built.
+  hideLayer(layer: string): void { this.controller?.hideLayer(layer); }
+  showLayer(layer: string): void { this.controller?.showLayer(layer); }
   setSymbolOverrides(overrides: SymbolOverrideMap, hiddenLayers: readonly string[] = []): void {
-    this.overrideTable = { overrides: new Map(overrides), hidden: hiddenLayers };
-    this.symbolOverrides.clear();
     this.controller?.setSymbolOverrides(overrides, hiddenLayers);
   }
-  overrideSymbol(symbol: string, override: SymbolOverrideValue): void {
-    if (override) this.symbolOverrides.set(symbol, override); else this.symbolOverrides.delete(symbol);
-    this.controller?.overrideSymbol(symbol, override);
-  }
-  addOverrideBuild(name: string, override: LoadedBuildOverride): void {
-    this.buildOverrides.delete(name); this.buildOverrides.set(name, override);
-    this.controller?.addOverrideBuild(name, override);
-  }
-  clearOverrideBuild(name: string): void { this.buildOverrides.delete(name); this.controller?.clearOverrideBuild(name); }
+  overrideSymbol(symbol: string, override: SymbolOverrideValue): void { this.controller?.overrideSymbol(symbol, override); }
+  addOverrideBuild(name: string, override: LoadedBuildOverride): void { this.controller?.addOverrideBuild(name, override); }
+  clearOverrideBuild(name: string): void { this.controller?.clearOverrideBuild(name); }
   update(dt: number): void { this.controller?.update(dt); }
 
   /** Keep a live entity's clip, progress and layers across a reskin that replaces the sprite source. */
@@ -381,8 +342,6 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.clip = { ...source.clip };
     this.queue = source.queue.map(entry => ({ ...entry }));
     this.frame = source.frame;
-    this.hiddenLayers.clear();
-    for (const layer of source.hiddenLayers) this.hiddenLayers.add(layer);
     const from = source.controller, to = this.controller;
     if (from && to) to.copyPlaybackFrom(from); else if (to) this.play();
   }

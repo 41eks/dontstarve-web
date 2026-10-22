@@ -66,6 +66,8 @@ export interface GroundPrefabOptions {
   moleWorld?: import('./molehill').MoleHabitat;
   lightflierWorld?: import('./lightflier').LightFlierHabitat;
   fx?: GroundFx;
+  /** Tile activity query; ground items unload their sprite while the tile under them is inactive. */
+  tickingarea?: import('@dontstarve-web/signals').TileStateQuery;
   scheduler?: GameTimeScheduler;
   scene: THREE.Scene;
   animationBaseUrl: string;

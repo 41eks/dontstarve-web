@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createEffect } from '@dontstarve-web/signals';
 import { ResidentSprite } from '../../prefab/src/residentSprite';
 
 function fake(clip: { name: string; loop: boolean }) {
@@ -19,17 +20,21 @@ function fake(clip: { name: string; loop: boolean }) {
   return { sprite, calls, finish: () => complete?.() };
 }
 
-it('releases the drawn sprite while unloaded and rebuilds it with the logical clip and appearance', () => {
+it('releases the drawn sprite while unloaded and rebuilds it with the logical clip; owners dress it again from `art`', async () => {
   const created: ReturnType<typeof fake>[] = [];
   const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
   const resident = new ResidentSprite(make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
-  resident.setFacing(2); resident.setBuildArchive('bloom'); resident.start('sway');
+  resident.start('sway');
+  const stop = createEffect(() => { resident.art.get(); resident.setBuildArchive('bloom'); });
+  await new Promise(resolve => setTimeout(resolve, 0));
   resident.unload();
   expect(created[0].sprite.dispose).toHaveBeenCalledOnce();
   expect(resident.model.children).toHaveLength(1);
   resident.load();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  stop();
   expect(created).toHaveLength(2);
-  expect(created[1].calls).toEqual(expect.arrayContaining(['facing:2', 'build:bloom', 'start:sway']));
+  expect(created[1].calls).toEqual(expect.arrayContaining(['build:bloom', 'start:sway']));
   expect(resident.model.children[0]).toBe(created[1].sprite.model);
 });
 

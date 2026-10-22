@@ -140,6 +140,7 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(take).toHaveBeenCalledWith(false);
     expect(getMoonbaseState(model).staff.peek()).toBe(staff);
     expect(staff.isRemoved).toBe(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
     const art = override.mock.calls.at(-1)![1] as { build: Parameters<typeof findImage>[0]; symbolHash: number };
     expect(override).toHaveBeenLastCalledWith('swap_staffs', expect.anything());
     expect(art.symbolHash).toBe(smallHash('yellowstaff'));

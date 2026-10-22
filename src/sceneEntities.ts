@@ -539,6 +539,7 @@ export async function createSceneEntities(
       worldState.getWatchWorldContent,
       view.mouseActions,
       Managers['lightflier_flower'].habitat,
+      worldState.tickingarea,
     );
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => {
