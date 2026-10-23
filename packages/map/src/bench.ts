@@ -77,7 +77,7 @@ export async function runThreeBench(canvas: HTMLCanvasElement | OffscreenCanvas,
 export async function runDomBench(host: HTMLElement, element: ChunkElement, heading = -90, iconCount = 200): Promise<Record<string, unknown>> {
   const log: Record<string, unknown> = {};
   const { layer, view } = await prepareLayer(log, heading);
-  const map = new DomMap(host, 12, 1280, 720);
+  const map = new DomMap(host, 12, 1280, 720, view.worldSize);
   log.mountMs = await map.setChunks((layer as any).overview.values(), element);
   log.element = element;
   map.setIcons(Array.from({ length: iconCount }, (_, i) => ({ x: ((i * 37) % 800 - 400) * 12, z: ((i * 91) % 800 - 400) * 12 })));

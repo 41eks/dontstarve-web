@@ -12,16 +12,20 @@ export interface DomChunk {
 export type ChunkElement = 'canvas' | 'img';
 
 /** Terrain and icon anchors share world coordinates and one view transform.
- * Icons counter the view's linear transform to keep their screen size and facing.
+ * Layout dimensions provide zoom; icons counter only the view's rotation.
  * Panning never changes individual icons; entity samples update their world positions.
  */
 export class DomMap {
-  private readonly dom = new MinimapDomView();
-  readonly root = this.dom.root;
+  private readonly dom: MinimapDomView;
+  readonly root: HTMLElement;
   private readonly icons: { element: HTMLElement; x: number; z: number }[] = [];
   private readonly cellSize: number;
+  private readonly worldSize: number;
 
-  constructor(host: HTMLElement, cellSize: number, width: number, height: number) {
+  constructor(host: HTMLElement, cellSize: number, width: number, height: number, worldSize: number) {
+    this.worldSize = worldSize;
+    this.dom = new MinimapDomView(worldSize);
+    this.root = this.dom.root;
     this.cellSize = cellSize;
     Object.assign(this.root.style, { position: 'relative', width: `${width}px`, height: `${height}px`, overflow: 'hidden', background: '#1d1a14' });
     host.append(this.root);
@@ -34,8 +38,8 @@ export class DomMap {
     const pending: Promise<void>[] = [];
     for (const chunk of chunks) {
       const style = {
-        position: 'absolute', left: `${chunk.minCol * this.cellSize}px`, top: `${chunk.minRow * this.cellSize}px`,
-        width: `${(chunk.maxCol - chunk.minCol) * this.cellSize}px`, height: `${(chunk.maxRow - chunk.minRow) * this.cellSize}px`,
+        position: 'absolute', left: `${chunk.minCol * this.cellSize / this.worldSize * 100}%`, top: `${chunk.minRow * this.cellSize / this.worldSize * 100}%`,
+        width: `${(chunk.maxCol - chunk.minCol) * this.cellSize / this.worldSize * 100}%`, height: `${(chunk.maxRow - chunk.minRow) * this.cellSize / this.worldSize * 100}%`,
       };
       if (element === 'canvas') {
         const canvas = document.createElement('canvas');
@@ -71,8 +75,8 @@ export class DomMap {
         this.dom.icons.append(element);
         this.icons.push(icon = { element, x: NaN, z: NaN });
       }
-      if (icon.x !== position.x) { icon.element.style.left = `${position.x}px`; icon.x = position.x; }
-      if (icon.z !== position.z) { icon.element.style.top = `${position.z}px`; icon.z = position.z; }
+      if (icon.x !== position.x) { icon.element.style.left = `${position.x / this.worldSize * 100}%`; icon.x = position.x; }
+      if (icon.z !== position.z) { icon.element.style.top = `${position.z / this.worldSize * 100}%`; icon.z = position.z; }
     }
   }
 

@@ -4,7 +4,7 @@ import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { invalidateEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import { setSpriteErosion } from '@dontstarve-web/animation/spriteErosion';
-import { installMatrixGate } from '../../animation/src/matrixGate';
+import { installRootMatrixGate } from '../../animation/src/matrixGate';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from '@dontstarve-web/animation/sprite';
 
 interface Clip { name: string; loop: boolean; complete?: () => void; finished: boolean; frame?: number }
@@ -28,8 +28,8 @@ export interface ResidentEntity {
 export class ResidentSprite implements ArchiveSprite {
   readonly model = new THREE.Group();
   private readonly placeholder = new THREE.Group();
-  // Only this owner changes the private placeholder; entity transforms stay automatic.
-  private readonly matrixGate = installMatrixGate(this.model, this.placeholder, false, true);
+  // The current sprite owns its subtree cache; the stable root caches only itself.
+  private readonly matrixGate = installRootMatrixGate(this.model, this.placeholder);
   private readonly visual = createSignal<ArchiveSprite | undefined>(undefined);
   private readonly artVersion = createSignal(0);
   /** Changes whenever the drawn sprite is attached or released; effects that dress the sprite (build, symbols, colour) read it. */
@@ -226,7 +226,7 @@ interface BuildingClip {
 export class ResidentSpriteController implements TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
   readonly model: THREE.Group;
   private readonly placeholder = new THREE.Group();
-  private readonly matrixGate: ReturnType<typeof installMatrixGate>;
+  private readonly matrixGate: ReturnType<typeof installRootMatrixGate>;
   private create: (initialAnimation: string) => THREE.Group;
   private release: (sprite: THREE.Group) => void;
   private readonly visual = createSignal<THREE.Group | undefined>(undefined);
@@ -245,7 +245,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group, release: (sprite: THREE.Group) => void,
     initial: THREE.Group, clip: { name: string; held?: boolean }) {
     this.model = model;
-    this.matrixGate = installMatrixGate(model, this.placeholder, false, true);
+    this.matrixGate = installRootMatrixGate(model, this.placeholder);
     this.create = create;
     this.release = release;
     this.clip = { name: clip.name, loop: !clip.held, finished: clip.held === true };

@@ -69,7 +69,8 @@ export const locomotor = new Locomotor(playerBody, {
   isPassable: (x, z) => turfMap.isPassableAtPoint({ x, z }),
   findPath(start, target) {
     const mapEdge = initialSave.world.map.generator.options.size / 2 - playerRadius;
-    const obstacles = [...world.registeredBodies].filter((body) => body.type === CANNON.Body.STATIC
+    // Colliders outside the ticking area have left the simulation, so the player cannot collide with them either.
+    const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC
       && body.collisionResponse
       && (body.collisionFilterMask & playerBody.collisionFilterGroup) !== 0
       && (playerBody.collisionFilterMask & body.collisionFilterGroup) !== 0

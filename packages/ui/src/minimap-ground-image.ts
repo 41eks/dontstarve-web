@@ -38,12 +38,12 @@ export class MinimapGroundImage {
   constructor(options: GroundImageOptions) {
     this.options = options;
     this.layer = new MinimapTerrainLayer(options.terrain, options.cellSize, { overview: false, ocean: false });
-    const { min, max } = options.terrain.cellRange(), unit = options.cellSize;
+    const { min, max } = options.terrain.cellRange();
     this.image.className = 'minimap__ground';
     this.image.alt = ''; this.image.draggable = false;
     for (const element of [this.image, this.hitRegion]) Object.assign(element.style, {
       position: 'absolute', display: 'block', maxWidth: 'none', pointerEvents: 'none',
-      left: `${min * unit}px`, top: `${min * unit}px`, width: `${(max - min) * unit}px`, height: `${(max - min) * unit}px`,
+      left: `${min / (max - min) * 100}%`, top: `${min / (max - min) * 100}%`, width: '100%', height: '100%',
     });
     this.hitRegion.classList.add('minimap__land-hit-region');
     this.hitRegion.setAttribute('aria-hidden', 'true');

@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createEffect } from '@dontstarve-web/signals';
-import { ResidentSprite } from '../../prefab/src/residentSprite';
+import { ResidentSprite, ResidentSpriteController } from '../../prefab/src/residentSprite';
+import { installMatrixGate } from '../src/matrixGate';
+import { updateSceneMatrices, watchMatrixUpdates } from '../src/matrixUpdates';
 
 function fake(clip: { name: string; loop: boolean }) {
   const model = new THREE.Group();
@@ -150,4 +152,72 @@ it('leaves its parent while inactive, returns on activation and stays out when a
   resident.dispose();
   resident.setActive(true);
   expect(scene.children).toHaveLength(0);
+});
+
+it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while preserving child updates, queries and visual replacement', async kind => {
+  const scene = new THREE.Scene(), parent = new THREE.Group();
+  scene.add(parent);
+  const created: { sprite: ArchiveSprite; leaf: THREE.Object3D; gate: ReturnType<typeof installMatrixGate> }[] = [];
+  const make = (clip: { name: string; loop: boolean }) => {
+    const { sprite } = fake(clip), visual = sprite.model.children[0], leaf = new THREE.Object3D();
+    leaf.matrixAutoUpdate = false;
+    visual.add(leaf);
+    // The archive's stationary cache assumes static ancestors. Its resident
+    // owner must invalidate it when the outer entity root actually moves.
+    const gate = installMatrixGate(sprite.model, visual, true);
+    sprite.dispose = () => { gate.dispose(); sprite.model.removeFromParent(); };
+    sprite.model.userData.animationController = sprite;
+    created.push({ sprite, leaf, gate });
+    return sprite;
+  };
+  const first = make({ name: 'idle', loop: true });
+  const resident = kind === 'archive'
+    ? new ResidentSprite(make, { name: 'idle', loop: true }, first)
+    : new ResidentSpriteController(new THREE.Group(), name => make({ name, loop: true }).model,
+      model => { (model.userData.animationController as ArchiveSprite).dispose(); }, first.model, { name: 'idle' });
+  parent.add(resident.model);
+  const observer = vi.fn(), stop = watchMatrixUpdates(resident.model, observer);
+  const updates = vi.spyOn(resident.model, 'updateMatrix');
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  try {
+    await tick(); updateSceneMatrices(scene);
+    observer.mockClear(); updates.mockClear();
+    for (let i = 0; i < 3; i++) updateSceneMatrices(scene);
+    expect(updates).not.toHaveBeenCalled();
+    expect(observer).not.toHaveBeenCalled();
+
+    resident.model.position.x = 4;
+    updateSceneMatrices(scene);
+    expect(created[0].leaf.matrixWorld.elements[12]).toBe(4);
+    expect(observer).toHaveBeenCalledOnce();
+    observer.mockClear();
+    parent.position.x = 3;
+    resident.model.updateWorldMatrix(true, true);
+    expect(created[0].leaf.matrixWorld.elements[12]).toBe(7);
+    expect(observer).toHaveBeenCalledOnce();
+
+    // A dirty inner visual and an attached FX still run while the root is cached.
+    const fx = new THREE.Group(); resident.model.add(fx);
+    fx.position.x = 2;
+    first.model.children[0].position.y = 5; created[0].gate.markDirty();
+    updateSceneMatrices(scene);
+    expect(created[0].leaf.matrixWorld.elements[13]).toBe(5);
+    expect(fx.matrixWorld.elements[12]).toBe(9);
+    fx.position.x = 6; updateSceneMatrices(scene);
+    expect(fx.matrixWorld.elements[12]).toBe(13);
+    fx.removeFromParent();
+
+    // Shallow queries settle the root now and leave the child invalidation for render.
+    resident.model.position.x = 8;
+    resident.model.updateWorldMatrix(true, false);
+    updateSceneMatrices(scene);
+    expect(created[0].leaf.matrixWorld.elements[12]).toBe(11);
+    resident.setActive(false); await tick();
+    resident.setActive(true); await tick(); updateSceneMatrices(scene);
+    expect(created[1].leaf.matrixWorld.elements[12]).toBe(11);
+    observer.mockClear(); updates.mockClear();
+    updateSceneMatrices(scene);
+    expect(updates).not.toHaveBeenCalled();
+    expect(observer).not.toHaveBeenCalled();
+  } finally { updates.mockRestore(); stop(); resident.dispose(); }
 });

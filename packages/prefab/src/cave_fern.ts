@@ -19,7 +19,7 @@ function caveFernDefinition(prefab: CaveFernId, buildArchive: string, product: s
     prefab,
     animArchive: 'cave_ferns.zip',
     buildArchive,
-    archiveSprite: { bank: 'ferns', instancedAnimations: 'all' },
+    archiveSprite: { bank: 'ferns', instancedAnimations: 'all', resident: true },
     tags: [],
     product,
     regrowTime: CAVE_FERN_REGROW_TIME,
