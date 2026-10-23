@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from './residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';

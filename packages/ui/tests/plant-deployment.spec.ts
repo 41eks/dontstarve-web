@@ -30,9 +30,9 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readSaveDownload((await (await download).path())!));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_give("butterfly",2);c_give("dug_sapling",2)');
   for (const [itemId, prefab, x] of [['butterfly', 'flower', 3], ['dug_sapling', 'sapling', -3]] as const) {
     const slot = page.locator(`dst-inventory-bar .inventory-bar__items [data-item-id="${itemId}"]`).first();
@@ -65,7 +65,9 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
   const pickPoint = await page.evaluate(() => {
     const { scene, view, playerStats } = (window as any).plantGame;
     const flower = scene.children.find((model: any) => model.userData.prefab === 'flower');
-    const mesh = flower.children[0].children[0]; mesh.updateWorldMatrix(true, false);
+    let mesh: any;
+    flower.traverse((object: any) => { if (object.isMesh && !mesh) mesh = object; });
+    mesh.updateWorldMatrix(true, false);
     const vertices = mesh.geometry.getAttribute('position'), center = flower.position.clone().set(0, 0, 0);
     const count = mesh.geometry.drawRange.count / 6 * 4;
     for (let i = 0; i < count; i++) center.add(mesh.localToWorld(flower.position.clone().fromBufferAttribute(vertices, i)));

@@ -17,6 +17,7 @@
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",
     "./archiveSprite": "./src/archiveSprite.ts",
+    "./residentSprite": "./src/residentSprite.ts",
     "./spriteErosion": "./src/spriteErosion.ts",
     "./beefaloSprite": "./src/beefaloSprite.ts",
     "./wallSprite": "./src/wallSprite.ts",

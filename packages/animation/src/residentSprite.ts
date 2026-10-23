@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
-import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import type { StaticSpriteController } from './wallSprite';
+import type { ArchiveSprite } from './archiveSprite';
+import { registerSpriteRenderGroup } from './renderOrder';
 import { invalidateEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
-import { setSpriteErosion } from '@dontstarve-web/animation/spriteErosion';
-import { installRootMatrixGate } from '../../animation/src/matrixGate';
-import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { setSpriteErosion } from './spriteErosion';
+import { installRootMatrixGate } from './matrixGate';
+import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
 
 interface Clip { name: string; loop: boolean; complete?: () => void; finished: boolean; frame?: number }
 
@@ -20,7 +21,7 @@ export interface ResidentEntity {
 /**
  * An `ArchiveSprite` whose frames, materials and instance entries exist only while the entity is active.
  * The stable root keeps the entity origin, identity and render-order slot; inactive entities hold an empty
- * placeholder group. The logical clip, callback and appearance requests are kept and replayed on `load()`.
+ * placeholder group. The logical clip and callback survive unloading; the owner reapplies appearance through `art`.
  * `create` receives the logical clip so a factory sprite is built directly in it.
  * `setActive(false)` also takes the stable root out of its parent and `setActive(true)` puts it back, so scene
  * traversals (projection, matrix updates) skip inactive entities; the owner keeps the root and its state.
@@ -44,7 +45,7 @@ export class ResidentSprite implements ArchiveSprite {
   /** Inactive: the root is held out of the scene and returns to `home` on activation. */
   private asleep = false;
   private home: THREE.Object3D | undefined;
-  private readonly create: (clip: { name: string; loop: boolean }) => ArchiveSprite | Promise<ArchiveSprite>;
+  private create: (clip: { name: string; loop: boolean }) => ArchiveSprite | Promise<ArchiveSprite>;
   // The owner may add the root to its parent after the tile was already found inactive.
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
 
@@ -90,7 +91,7 @@ export class ResidentSprite implements ArchiveSprite {
   }
   private loading = false;
 
-  /** Release frames, materials and instances; the logical clip and appearance requests stay. */
+  /** Release frames, private materials and instances; the logical clip stays. */
   unload(): void {
     this.generation++;
     this.loading = false;
@@ -105,6 +106,28 @@ export class ResidentSprite implements ArchiveSprite {
     this.model.add(this.placeholder);
     registerSpriteRenderGroup(this.model, this.placeholder);
     sprite.dispose();
+    invalidateEntitySpatial(this.model);
+  }
+
+  /** Replace a prepared source for reskinning without replacing the root, logical clip or callbacks. */
+  adopt(other: ResidentSprite): void {
+    if (this.disposed || other === this) return;
+    this.generation++; this.loading = false;
+    other.generation++; other.loading = false;
+    const taken = other.sprite;
+    other.sprite = undefined;
+    taken?.model.removeFromParent();
+    this.create = other.create;
+    const old = this.sprite;
+    this.sprite = undefined;
+    if (old) { this.placeholder.visible = old.model.visible; this.placeholder.position.copy(old.model.position); }
+    old?.dispose();
+    if (taken && !this.asleep) this.attach(taken);
+    else {
+      taken?.dispose();
+      this.model.add(this.placeholder);
+      registerSpriteRenderGroup(this.model, this.placeholder);
+    }
     invalidateEntitySpatial(this.model);
   }
 
@@ -214,12 +237,14 @@ interface BuildingClip {
   finished: boolean;
   /** AnimState:SetPercent pose, kept as a held frame. */
   percent?: number;
+  /** Static build-image rest pose; undefined name selects the source image. */
+  pose?: { name: string | undefined };
 }
 
 /**
- * A `SpriteController` for an entity whose factory-made sprite is built only while its tile is active.
- * The stable root keeps the entity identity, position and render-order slot; the controller keeps the logical clip,
- * queue, layers and symbol/build overrides and replays them onto every rebuilt sprite. `create` builds a sprite from
+ * A resident factory sprite, including static build-image controllers.
+ * The stable root keeps the entity identity, position and render-order slot; the controller keeps the logical clip
+ * and queue. Appearance calls only reach the current sprite; the owner reapplies them through `art`. `create` builds a sprite from
  * the entity's shared source and `release` returns it to that owner; no atlas belongs to the entity.
  * Transitions that were running or requested while unloaded settle into their completion state.
  */
@@ -237,6 +262,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private get sprite(): THREE.Group | undefined { return this.visual.peek(); }
   private set sprite(sprite: THREE.Group | undefined) { this.visual.set(sprite); this.artVersion.set(this.artVersion.peek() + 1); }
   private clip: BuildingClip;
+  private readonly initialAnimation: string;
   private queue: { name: string; loop: boolean }[] = [];
   private frame?: number;
   private disposed = false;
@@ -245,6 +271,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group, release: (sprite: THREE.Group) => void,
     initial: THREE.Group, clip: { name: string; held?: boolean }) {
     this.model = model;
+    this.initialAnimation = clip.name;
     this.matrixGate = installRootMatrixGate(model, this.placeholder);
     this.create = create;
     this.release = release;
@@ -310,7 +337,8 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private play(): void {
     const controller = this.controller, clip = this.clip;
     if (!controller) return;
-    if (clip.percent !== undefined) controller.setPercent(clip.name, clip.percent);
+    if (clip.pose) this.staticController?.setPose(clip.pose.name);
+    else if (clip.percent !== undefined) controller.setPercent(clip.name, clip.percent);
     else if (clip.loop) controller.start(clip.name);
     else if (clip.finished) controller.holdLastFrame(clip.name);
     else controller.playOnce(clip.name, this.completion(clip));
@@ -325,6 +353,20 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
       clip.complete?.();
     };
   }
+
+  private get staticController(): StaticSpriteController | undefined {
+    return this.sprite?.userData.animationController as StaticSpriteController | undefined;
+  }
+  get pose(): string | undefined { return this.clip.pose?.name; }
+  setPose(name: string | undefined): void {
+    this.clip = { name: name ?? this.initialAnimation, loop: false, finished: true, pose: { name } };
+    this.queue = []; this.frame = undefined;
+    this.staticController?.setPose(name);
+  }
+  showImage(image: number): void { this.staticController?.showImage(image); }
+  setFacing(facing: number): void { this.staticController?.setFacing(facing); }
+  setColour(colour: readonly number[]): void { this.staticController?.setColour(colour); }
+  setOpacity(opacity: number): void { this.staticController?.setOpacity(opacity); }
 
   start(name: string): void {
     this.clip = { name, loop: true, finished: false };

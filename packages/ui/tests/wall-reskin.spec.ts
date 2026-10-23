@@ -1,3 +1,4 @@
+import { readSaveDownload } from './save-download';
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -16,7 +17,7 @@ test('a c_spawn wall accepts sweeper right-click, retains identity and saves its
   for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
   let currentSave = save;
   await page.route('**/saves/initial-world.json', (route) => route.fulfill({ json: currentSave }));
-  await page.goto('/tests/dst-lighting.html');
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   const urls = Object.fromEntries(['main', 'player', 'universal', 'view'].map((name) =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
   await page.evaluate(async (urls) => {
@@ -47,7 +48,8 @@ test('a c_spawn wall accepts sweeper right-click, retains identity and saves its
     game.entityId = game.target.userData.entityId;
     game.position = game.target.position.toArray();
     await new Promise(requestAnimationFrame);
-    const mesh = game.target.children[0].children[0];
+    let mesh: any;
+    game.target.traverse((object: any) => { if (object.isMesh && !mesh) mesh = object; });
     mesh.geometry.computeBoundingBox();
     const ndc = mesh.geometry.boundingBox.getCenter(game.target.position.clone()).applyMatrix4(mesh.matrixWorld).project(game.view.camera);
     const bounds = game.view.renderer.domElement.getBoundingClientRect();
@@ -64,10 +66,7 @@ test('a c_spawn wall accepts sweeper right-click, retains identity and saves its
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const stream = await (await download).createReadStream();
-  const chunks = [];
-  for await (const chunk of stream!) chunks.push(chunk);
-  const saved = JSON.parse(Buffer.concat(chunks).toString());
+  const saved = JSON.parse(await readSaveDownload(await (await download).path(), 'Master'));
   const { id, x, z } = await page.evaluate(() => {
     const game = (window as any).wallGame;
     return { id: game.entityId, x: game.target.position.x, z: game.target.position.z };

@@ -7,7 +7,7 @@ import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
-import { ResidentSprite } from './residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 
 export const CAVE_EXIT_ID = 'cave_exit' as const;

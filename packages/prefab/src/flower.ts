@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import {
-  createAnimatedSpriteFactory,
-  type AnimatedSpriteFactory,
-} from '@dontstarve-web/animation/sprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import type { WorldContext, WorldEventEmitter } from './worldContext';
 import { actionEntity } from './actionEntity';
@@ -10,7 +9,7 @@ import { BurnableBinding, FireFxHost } from './treeFire';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Pickable } from './components/pickable';
 import { TILE_SIZE } from './tile';
-import type { ReadonlySignal, SeasonState } from '@dontstarve-web/signals';
+import { createEffect, type ReadonlySignal, type SeasonState } from '@dontstarve-web/signals';
 
 /** flower.lua MakeSmallBurnable + MakeSmallPropagator; the scene's game-time scheduler drives them. */
 export interface FlowerBurningWorld {
@@ -35,6 +34,9 @@ export interface FlowerSaveRecord {
 interface PlantedFlower {
   id: string;
   model: THREE.Group;
+  sprite: ResidentSprite;
+  stopActivity?: () => void;
+  stopAppearance: () => void;
   animation: FlowerAnimation;
   pickable: Pickable;
   burn?: BurnableBinding;
@@ -48,8 +50,9 @@ export class FlowerPlanting {
   private readonly random: () => number;
   private readonly flowers = new Map<string, PlantedFlower>();
   private flowerList?: readonly { readonly id: string; readonly position: THREE.Vector3 }[];
-  private factory?: Promise<AnimatedSpriteFactory>;
-  private readyFactory?: AnimatedSpriteFactory;
+  private readonly assets = new ArchiveSpriteAssets();
+  private factory?: ReturnType<typeof preloadSharedArchiveSprite>;
+  private readonly cameraQuaternion = new THREE.Quaternion();
   private fireFx?: FireFxHost;
   private readonly burning?: FlowerBurningWorld;
   private readonly scheduler: GameTimeScheduler;
@@ -63,6 +66,7 @@ export class FlowerPlanting {
     this.scheduler = burning?.scheduler ?? world.scheduler ?? new GameTimeScheduler();
     this.world = world;
     this.random = random;
+    world.camera.getWorldQuaternion(this.cameraQuaternion);
   }
 
   dispose(): void {
@@ -71,13 +75,14 @@ export class FlowerPlanting {
     for (const flower of [...this.flowers.values()]) this.removeFlower(flower);
     if (this.ownsScheduler) this.scheduler.dispose();
     this.fireFx?.dispose();
-    if (this.readyFactory) this.readyFactory.dispose();
-    else if (this.factory) void this.factory.then((factory) => factory.dispose(), () => undefined);
+    this.assets.dispose();
   }
 
   update(cameraQuaternion: THREE.Quaternion, dt = 0): void {
+    this.cameraQuaternion.copy(cameraQuaternion);
+    if (this.ownsScheduler) this.scheduler.advance(dt);
     this.fireFx?.update(dt, cameraQuaternion);
-    for (const { model } of this.flowers.values()) model.quaternion.copy(cameraQuaternion);
+    for (const { sprite } of this.flowers.values()) if (sprite.loaded) { sprite.faceCamera(cameraQuaternion); sprite.update(dt); }
   }
 
   /** The planted `flower`-tagged entities (butterflybrain FLOWER_TAGS), rebuilt only when one is planted or removed. */
@@ -87,7 +92,7 @@ export class FlowerPlanting {
   }
 
   get renderEntities() {
-    const models = [...this.flowers.values()].map(({ model }) => model);
+    const models = [...this.flowers.values()].filter(({ sprite }) => sprite.loaded).map(({ model }) => model);
     return [...models.map((object) => ({ object, footPosition: object.position, cameraDepth: 0 })),
       ...(this.fireFx?.renderEntities ?? [])];
   }
@@ -106,6 +111,7 @@ export class FlowerPlanting {
     this.flowers.set(id, flower);
     this.flowerList = undefined;
     this.world.scene.add(flower.model);
+    this.bindActivity(flower);
     return flower.model;
   }
 
@@ -122,35 +128,46 @@ export class FlowerPlanting {
         this.flowers.set(flower.id, flower);
         this.flowerList = undefined;
         this.world.scene.add(flower.model);
+        this.bindActivity(flower);
         flower.model.userData.actionEntity.PushEvent('growfrombutterfly', undefined);
         return true;
       },
     };
   }
 
-  private loadFactory(): Promise<AnimatedSpriteFactory> {
+  private loadFactory(): ReturnType<typeof preloadSharedArchiveSprite> {
     if (this.disposed) return Promise.reject(new Error('Flower planting has been disposed'));
     if (!this.factory) {
       const baseUrl = `${import.meta.env.BASE_URL}dst/data/anim`;
-      this.factory = Promise.all([
-        createAnimatedSpriteFactory(baseUrl, 'flowers.zip'),
+      this.factory = Promise.allSettled([
+        preloadSharedArchiveSprite(this.assets, { animationArchive: 'flowers.zip', buildArchives: ['flowers.zip'], bank: 'flowers' },
+          { instancedAnimations: 'all', staticBillboard: true }),
         this.burning ? FireFxHost.load(baseUrl) : undefined,
-      ]).then(([factory, fireFx]) => {
-        this.readyFactory = factory;
-        this.fireFx = fireFx;
-        return factory;
+      ]).then(([source, fire]) => {
+        if (source.status === 'rejected') {
+          if (fire.status === 'fulfilled') fire.value?.dispose();
+          throw source.reason;
+        }
+        if (fire.status === 'rejected') throw fire.reason;
+        this.fireFx = fire.value;
+        if (this.disposed) this.fireFx?.dispose();
+        return source.value;
       });
       void this.factory.catch(() => { this.factory = undefined; });
     }
     return this.factory;
   }
 
-  private createFlower(factory: AnimatedSpriteFactory, id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = true): PlantedFlower {
-    const model = factory.create({ initialAnimation: animation, name: 'Flower' });
+  private createFlower(factory: Awaited<ReturnType<typeof preloadSharedArchiveSprite>>, id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = true): PlantedFlower {
+    const create = (clip: { name: string; loop: boolean }) => factory(clip.name, clip.loop, 'Flower');
+    const clip = { name: animation, loop: false };
+    const sprite = new ResidentSprite(create, clip, create(clip), 'Flower');
+    const model = sprite.model;
+    model.userData.animationController = sprite;
+    const stopAppearance = createEffect(() => { sprite.art.get(); sprite.faceCamera(this.cameraQuaternion); });
     model.position.set(position.x, 0, position.z);
-    model.quaternion.copy(this.world.camera.getWorldQuaternion(new THREE.Quaternion()));
     Object.assign(model.userData, {
-      entityId: id, prefab: 'flower', planted, flowerAnimation: animation,
+      rayTestOnBB: true, entityId: id, prefab: 'flower', planted, flowerAnimation: animation,
       deploySmartRadius: .375 * (TILE_SIZE / 4),
       tags: ['flower', 'cattoy', ...(animation === 'rose' ? ['thorny'] : [])],
     });
@@ -168,7 +185,7 @@ export class FlowerPlanting {
     pickable.picksound = 'dontstarve/wilson/pickup_plants';
     pickable.wildfirestarter = true;
     pickable.remove_when_picked = true;
-    const flower: PlantedFlower = { id, model, animation, pickable, persists: true };
+    const flower: PlantedFlower = { id, model, sprite, stopAppearance, animation, pickable, persists: true };
     const entity = actionEntity(model, 'flower');
     if (this.burning && this.fireFx) {
       flower.burn = new BurnableBinding(actionEntity(model, 'flower'), {
@@ -184,15 +201,23 @@ export class FlowerPlanting {
     return flower;
   }
 
+  private bindActivity(flower: PlantedFlower): void {
+    flower.stopActivity = watchTileActivity(flower.model, this.world.tickingarea, active => {
+      flower.sprite.setActive(active);
+      flower.burn?.setActive(active);
+    });
+  }
+
   private removeFlower(flower: PlantedFlower): void {
     if (this.flowers.get(flower.id) !== flower) return;
     this.flowers.delete(flower.id);
     this.flowerList = undefined;
+    flower.stopActivity?.();
+    flower.stopAppearance();
     flower.pickable.dispose();
     flower.burn?.dispose();
     flower.model.userData.removed = true;
-    flower.model.removeFromParent();
-    this.readyFactory?.disposeSprite(flower.model);
+    flower.sprite.dispose();
   }
 
 }

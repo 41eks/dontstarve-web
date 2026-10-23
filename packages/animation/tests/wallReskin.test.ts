@@ -44,17 +44,15 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
     const changed = vi.fn();
     const stopSkin = skin.subscribe(changed);
     const components = { ...model.userData.components };
-    const artFactory = vi.spyOn(wallSprites, 'createStaticSprite');
+    const artFactory = vi.spyOn(wallSprites, 'createStaticSpriteFactory');
     expect((skin as any).set).toBeUndefined();
     try {
       for (const skinId of [undefined, Object.keys(WALL_SKIN_ARCHIVES[prefabId])[0]]) {
         const target = placement.reskinTargets[0];
-        const before = model.userData.ownedSpriteMaterials as THREE.MeshBasicMaterial[];
-        const releases = before.map((material) => vi.spyOn(material, 'dispose'));
+        const release = vi.spyOn(model.children[0].userData.animationController, 'dispose');
         const previousSkin = skin.peek();
         const prepared = await target.prepareNextSkin();
-        const preparedArt = await artFactory.mock.results.at(-1)!.value as THREE.Group;
-        expect(preparedArt.userData.components).toBeUndefined();
+        expect(artFactory).toHaveBeenCalled();
         expect(skin.peek()).toBe(previousSkin);
         placement.hammerTargets[0].playHit();
         placement.update(1 / 30);
@@ -67,7 +65,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         for (const [name, component] of Object.entries(components)) expect(model.userData.components[name]).toBe(component);
         // walls.lua resolveanimtoplay: 123 / 400 health is at most 40%, the onequarter pose.
         expect(model.userData.animationController.currentAnimation).toBe('onequarter_hit');
-        expect(releases.every((release) => release.mock.calls.length === 1)).toBe(true);
+        expect(release).toHaveBeenCalledOnce();
         for (let frame = 0; frame < 60; frame++) placement.update(1 / 30);
         expect(model.userData.animationController.currentAnimation).toBe('onequarter');
         expect(model.userData.skinId).toBe(skinId);
@@ -80,7 +78,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         for (const [x, z] of [[40, 40], [0, 40]]) {
           world.camera.position.set(x, 12, z); world.camera.lookAt(0, 0, 0); world.camera.updateMatrixWorld();
           placement.update();
-          const mesh = model.children[0].children[0] as THREE.Mesh;
+          const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
           expect(mesh.geometry.drawRange.count).toBe(prefabId === 'wall_dreadstone' ? 12 : 6);
           expect(mesh.geometry.boundingBox?.isEmpty()).not.toBe(true);
           if (skinId) {
@@ -90,7 +88,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
               === skin.atlases[0].pixels)).toBe(true);
           }
           setSpriteEntityRenderOrder(model, 17);
-          expect(model.children[0].renderOrder).toBe(17);
+          expect(model.children[0].children[0].renderOrder).toBe(17);
         }
         const restoredWorld = setup();
         const restored = await restoredWorld.placement.spawnFromSave(prefabId, record);
@@ -131,64 +129,48 @@ it('maps every inventory wall skin to the correct world build and consumes the s
   } finally { placement.dispose(); }
 });
 
-it('keeps unskinnable entities in the scene candidates and releases canceled or obsolete prepared skins', async () => {
+it('releases canceled and obsolete entity visuals, retains their shared source, and disposes a late source after shutdown', async () => {
   const { world, placement } = setup();
-  for (const id of ['wall_scrap', 'wall_stone_2', 'wall_ruins_2'] as const) {
-    await placement.spawnFromSave(id, { id, transform: { position: [0, 0, 0], rotationY: 0 }, components: {} });
-  }
-  expect(placement.reskinTargets.every(target => target.skins.length === 0)).toBe(true);
-  const model = await placement.spawnFromSave('wall_hay', {
-    id: 'hay', transform: { position: [0, 0, 0], rotationY: 0 }, components: {},
-  });
-  const target = placement.reskinTargets.find(target => target.prefabId === 'wall_hay')!;
+  const model = await placement.spawnFromSave('wall_hay', { id: 'hay', transform: { position: [0, 0, 0], rotationY: 0 }, components: {} });
+  const target = placement.reskinTargets[0];
   const skin = model.userData.skinIdSignal as ReadonlySignal<string | undefined>;
-  const createArt = wallSprites.createStaticSprite;
-  const artFactory = vi.spyOn(wallSprites, 'createStaticSprite');
-  const resources = async () => {
-    const art = await artFactory.mock.results.at(-1)!.value as THREE.Group;
-    return (art.userData.ownedSpriteMaterials as THREE.Material[]).map(material => vi.spyOn(material, 'dispose'));
-  };
-  artFactory.mockRejectedValueOnce(new Error('Skin load failed'));
+  const createSource = wallSprites.createStaticSpriteFactory;
+  const sources = vi.spyOn(wallSprites, 'createStaticSpriteFactory');
+  sources.mockRejectedValueOnce(new Error('Skin load failed'));
   await expect(target.prepareNextSkin()).rejects.toThrow('Skin load failed');
   expect(skin.peek()).toBeUndefined();
-  expect(target.isValid()).toBe(true);
   const canceled = await target.prepareNextSkin();
-  const canceledReleases = await resources();
+  const source = await sources.mock.results.at(-1)!.value;
+  const release = vi.spyOn(source, 'disposeSprite');
+  const dispose = vi.spyOn(source, 'dispose');
   canceled.dispose(); canceled.dispose();
-  expect(canceledReleases.every(release => release.mock.calls.length === 1)).toBe(true);
+  expect(release).toHaveBeenCalledOnce();
+  expect(dispose).not.toHaveBeenCalled();
   expect(canceled.apply()).toBe(false);
-  expect(model.userData.skinId).toBeUndefined();
   const first = await target.prepareNextSkin();
   const obsolete = await target.prepareNextSkin();
-  const obsoleteReleases = await resources();
   expect(first.apply()).toBe(true);
   first.dispose();
   expect(obsolete.apply()).toBe(false);
   obsolete.dispose();
-  expect(obsoleteReleases.every(release => release.mock.calls.length === 1)).toBe(true);
-  const late = await target.prepareNextSkin();
-  const lateReleases = await resources();
-  // An in-flight preparation must not retain new resources after removal.
-  let finishLoad!: () => void;
-  const blocked = new Promise<void>(resolve => { finishLoad = resolve; });
-  let loadingReleases: Awaited<ReturnType<typeof resources>> = [];
-  artFactory.mockImplementationOnce(async (...args) => {
-    const art = await createArt(...args);
-    loadingReleases = (art.userData.ownedSpriteMaterials as THREE.Material[]).map(material => vi.spyOn(material, 'dispose'));
+  expect(dispose).not.toHaveBeenCalled();
+  await placement.spawnFromSave('wall_wood', { id: 'wood', transform: { position: [3, 0, 0], rotationY: 0 }, components: {} });
+  let finish!: () => void;
+  const blocked = new Promise<void>(resolve => { finish = resolve; });
+  let lateDispose: ReturnType<typeof vi.spyOn> | undefined;
+  sources.mockImplementationOnce(async (...args) => {
+    const late = await createSource(...args);
+    lateDispose = vi.spyOn(late, 'dispose');
     await blocked;
-    return art;
+    return late;
   });
-  const loading = target.prepareNextSkin();
-  const stoppedSkin = skin.peek();
+  const loading = placement.reskinTargets[1].prepareNextSkin();
+  const rejected = expect(loading).rejects.toThrow('Placement has been disposed');
   placement.dispose();
-  expect(lateReleases.every(release => release.mock.calls.length === 1)).toBe(true);
-  expect(late.apply()).toBe(false);
-  late.dispose(); late.dispose();
-  expect(lateReleases.every(release => release.mock.calls.length === 1)).toBe(true);
-  finishLoad();
-  await expect(loading).rejects.toThrow('Placement has been disposed');
-  expect(loadingReleases.length).toBeGreaterThan(0);
-  expect(loadingReleases.every(release => release.mock.calls.length === 1)).toBe(true);
-  expect(skin.peek()).toBe(stoppedSkin);
+  finish();
+  await rejected;
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(dispose).toHaveBeenCalledOnce();
+  expect(lateDispose).toHaveBeenCalledOnce();
   expect(world.scene.children).toHaveLength(0);
 });

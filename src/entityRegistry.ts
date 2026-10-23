@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { ResidentEntity } from '@dontstarve-web/prefab';
+import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';

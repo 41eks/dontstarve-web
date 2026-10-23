@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createEffect } from '@dontstarve-web/signals';
-import { ResidentSprite, ResidentSpriteController } from '../../prefab/src/residentSprite';
+import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { installMatrixGate } from '../src/matrixGate';
 import { updateSceneMatrices, watchMatrixUpdates } from '../src/matrixUpdates';
 

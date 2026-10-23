@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type WorldContentSignal } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from './residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import { AnimState } from '../../componets/src/animstate';
 import { ComponentTimer } from '../../componets/src/timer';
 import { ChildSpawner, type ChildSpawnerSave } from '../../componets/src/childspawner';

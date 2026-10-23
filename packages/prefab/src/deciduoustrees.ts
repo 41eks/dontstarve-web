@@ -13,7 +13,7 @@ import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { ResidentSprite, type ResidentEntity } from './residentSprite';
+import { ResidentSprite, type ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import { registerPlacementTree } from './placementEntities';
 import { actionEntity } from './actionEntity';

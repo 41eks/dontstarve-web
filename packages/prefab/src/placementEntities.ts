@@ -1,5 +1,5 @@
 import type { Object3D, Vector3 } from 'three';
-import { isSpriteEntityRendered } from '@dontstarve-web/animation/renderOrder';
+import { isSpriteEntityVisible } from '@dontstarve-web/animation/renderOrder';
 import { SpatialIndex, type SpatialQuery } from './spatialIndex';
 
 export interface PlacementBlocker {
@@ -45,7 +45,7 @@ export function registerPlacementEntity(model: Object3D, position: () => Vector3
     get groundHoleRangeOverride() { return model.userData._groundhole_rangeoverride; },
     get inventoryRadius() { return model.userData.itemId ? model.userData.physicsRadius ?? .5 : undefined; },
     getInventoryRadius: fallback => model.userData.itemId ? model.userData.physicsRadius ?? fallback : undefined,
-    get visible() { return isSpriteEntityRendered(model); },
+    get visible() { return isSpriteEntityVisible(model); },
     hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? model.userData.tags?.includes(tag) ?? false,
     valid: () => !!model.parent && !model.userData.placementLogical && !model.userData.actionEntity?.isRemoved
       && !model.userData.removed && !model.userData.placer
@@ -81,7 +81,7 @@ export function registerPlacementTree(root: Object3D, tree: { position: Vector3;
   prefab: string, smartRadius: number): () => void {
   const entry: WorldBlocker = {
     root, position: tree.position, prefab, smartRadius, logicalTree: true,
-    get visible() { return !!tree.model?.parent && isSpriteEntityRendered(tree.model); },
+    get visible() { return !!tree.model?.parent && isSpriteEntityVisible(tree.model); },
     hasTag: tag => tree.model?.userData.actionEntity?.hasTag(tag) ?? tree.model?.userData.tags?.includes(tag) ?? false,
     valid: () => true,
   };

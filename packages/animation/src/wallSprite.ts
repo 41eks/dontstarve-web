@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
   createMaterials,
+  FrameGeometryCache,
   findImage,
   loadAnim,
   loadBuild,
@@ -52,6 +53,9 @@ export interface StaticSpriteController extends TransientSpriteAnimationControll
    */
   setPose(name: string | undefined): void;
   readonly pose: string | undefined;
+  setColour(colour: readonly number[]): void;
+  setOpacity(opacity: number): void;
+  dispose(): void;
   copyPlaybackFrom(source: StaticSpriteController): void;
 }
 
@@ -70,6 +74,8 @@ class StaticSprite implements StaticSpriteController {
   private readonly builds: readonly { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] }[];
   private readonly animations?: ParsedAnim;
   private readonly restAnimation?: string;
+  private readonly frameCache?: FrameGeometryCache;
+  private readonly privateMaterials = new Map<THREE.MeshBasicMaterial, THREE.MeshBasicMaterial>();
 
   constructor(
     visual: THREE.Group,
@@ -78,7 +84,9 @@ class StaticSprite implements StaticSpriteController {
     builds: readonly { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] }[],
     animations?: ParsedAnim,
     restAnimation?: string,
+    frameCache?: FrameGeometryCache,
   ) {
+    this.frameCache = frameCache;
     this.builds = builds;
     this.animations = animations;
     this.restAnimation = restAnimation;
@@ -154,7 +162,7 @@ class StaticSprite implements StaticSpriteController {
   }
 
   private showRest() {
-    if (this.poseName === undefined || !this.animations) { this.renderer.show(this.frames.get(this.imageIndex!)!); return; }
+    if (this.poseName === undefined || !this.animations) { this.show(`image:${this.imageIndex}`, () => this.frames.get(this.imageIndex!)!); return; }
     const pose = this.findAnimation(this.poseName);
     this.showFrame(pose, pose.frames.length - 1);
   }
@@ -168,9 +176,46 @@ class StaticSprite implements StaticSpriteController {
 
   private showAnimationFrame(frame: number) { this.showFrame(this.clip!, frame); }
 
+  private show(key: string, resolve: () => ResolvedSprite[]): void {
+    if (!this.frameCache) { this.renderer.show(resolve()); return; }
+    const frame = this.frameCache.get(key, resolve);
+    this.renderer.showShared(this.privateMaterials.size === 0 ? frame : {
+      ...frame, materials: frame.materials.map(material => this.privateMaterials.get(material) ?? material),
+    });
+  }
+
+  private dress(apply: (material: THREE.MeshBasicMaterial) => void): void {
+    for (const { materials } of this.builds) for (const source of materials) {
+      let material = this.privateMaterials.get(source);
+      if (!material) { material = source.clone(); this.privateMaterials.set(source, material); }
+      apply(material);
+    }
+    if (this.clip) this.showAnimationFrame(Math.min(this.clip.frames.length - 1, Math.floor(this.elapsed * this.clip.frameRate)));
+    else this.showRest();
+  }
+
+  setColour(colour: readonly number[]): void {
+    const r = colour[0] ?? 1, g = colour[1] ?? 1, b = colour[2] ?? 1;
+    if (this.builds.every(({ materials }) => materials.every(source => {
+      const value = (this.privateMaterials.get(source) ?? source).color;
+      return value.r === r && value.g === g && value.b === b;
+    }))) return;
+    this.dress(material => material.color.setRGB(r, g, b));
+  }
+  setOpacity(opacity: number): void {
+    if (this.builds.every(({ materials }) => materials.every(source => (this.privateMaterials.get(source) ?? source).opacity === opacity))) return;
+    this.dress(material => { material.transparent = true; material.opacity = opacity; });
+  }
+  dispose(): void {
+    this.onComplete = undefined;
+    this.renderer.dispose();
+    for (const material of this.privateMaterials.values()) material.dispose();
+    this.privateMaterials.clear();
+  }
+
   private showFrame(clip: Animation, frame: number) {
     const rest = this.restAnimation ? this.findAnimation(this.restAnimation).frames[0] : undefined;
-    this.renderer.show([...clip.frames[frame].elements].sort((a, b) => b.z - a.z).flatMap((element): ResolvedSprite[] => {
+    this.show(`anim:${this.frameCache?.idOf(clip)}:${frame}`, () => [...clip.frames[frame].elements].sort((a, b) => b.z - a.z).flatMap((element): ResolvedSprite[] => {
       const source = this.builds.find(({ build }) => findImage(build, element.imageHash, element.imageIndex));
       if (!source) return [];
       const image = findImage(source.build, element.imageHash, element.imageIndex)!;
@@ -215,6 +260,24 @@ export async function createStaticSprite(
   file: string,
   options: StaticSpriteOptions,
 ): Promise<THREE.Group> {
+  const factory = await createStaticSpriteFactory(assetBaseUrl, file, options);
+  const sprite = factory.create();
+  sprite.userData.disposeSharedSprite = () => factory.dispose();
+  return sprite;
+}
+
+/** One immutable frame/atlas source; each entity owns only its controller, meshes and private appearance. */
+export interface StaticSpriteFactory {
+  create(): THREE.Group;
+  disposeSprite(sprite: THREE.Group): void;
+  dispose(): void;
+}
+
+export async function createStaticSpriteFactory(
+  assetBaseUrl: string,
+  file: string,
+  options: StaticSpriteOptions,
+): Promise<StaticSpriteFactory> {
   const [buildPackage, animations, skinPackage] = await Promise.all([
     loadBuild(file, assetBaseUrl),
     options.animationArchive ? loadAnim(options.animationArchive, assetBaseUrl) : undefined,
@@ -222,43 +285,52 @@ export async function createStaticSprite(
   ]);
   const build = buildPackage.build;
   const symbolHash = options.symbol ? smallHash(options.symbol) : build.symbols.keys().next().value;
-  if (symbolHash === undefined) {
-    throw new Error(`Build ${build.name} does not contain any symbol`);
-  }
-  if (!options.imageIndices.length) {
-    throw new Error(`Static sprite ${file} must offer at least one build image`);
-  }
-
-  const sprite = new THREE.Group();
-  sprite.name = options.name ?? build.name;
-  sprite.userData.billboard = true;
-
-  const visual = new THREE.Group();
-  const scale = options.scale ?? 0.02;
-  visual.scale.set(scale, -scale, scale);
-  sprite.add(visual);
-  registerSpriteRenderGroup(sprite, visual);
-
+  if (symbolHash === undefined) throw new Error(`Build ${build.name} does not contain any symbol`);
+  if (!options.imageIndices.length) throw new Error(`Static sprite ${file} must offer at least one build image`);
   const overlay = options.overlay;
   if (overlay && overlay.imageIndices.length !== options.imageIndices.length) {
     throw new Error(`Static sprite ${file} overlay must pair with every image index`);
   }
   const overlayHash = overlay ? smallHash(overlay.symbol) : undefined;
-  const builds = [skinPackage, buildPackage].filter((entry) => entry !== undefined)
-    .map((entry) => ({ build: entry.build, materials: createMaterials(entry) }));
-  sprite.userData.ownedSpriteMaterials = builds.flatMap(({ materials }) => materials);
+  const builds = [skinPackage, buildPackage].filter(entry => entry !== undefined)
+    .map(entry => ({ build: entry.build, materials: createMaterials(entry) }));
   const frames = new Map<number, ResolvedSprite[]>(options.imageIndices.map((imageIndex, position) => {
     const sprites = [staticSpriteFrame(builds, symbolHash, imageIndex)];
-    if (overlay && overlayHash !== undefined) {
-      sprites.push(staticSpriteFrame(builds, overlayHash, overlay.imageIndices[position]));
-    }
+    if (overlay && overlayHash !== undefined) sprites.push(staticSpriteFrame(builds, overlayHash, overlay.imageIndices[position]));
     return [imageIndex, sprites];
   }));
-  sprite.userData.animationController = new StaticSprite(
-    visual,
-    frames,
-    options.imageIndex ?? options.imageIndices[0],
-    builds, animations, options.restAnimation,
-  );
-  return sprite;
+  const cache = new FrameGeometryCache();
+  const sprites = new Set<THREE.Group>();
+  let disposed = false;
+  const disposeSprite = (sprite: THREE.Group) => {
+    if (!sprites.delete(sprite)) return;
+    (sprite.userData.animationController as StaticSpriteController).dispose();
+    sprite.removeFromParent();
+    sprite.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
+  };
+  return {
+    create() {
+      if (disposed) throw new Error('Static sprite factory has been disposed');
+      const sprite = new THREE.Group();
+      sprite.name = options.name ?? build.name;
+      sprite.userData.billboard = true;
+      const visual = new THREE.Group();
+      const scale = options.scale ?? 0.02;
+      visual.scale.set(scale, -scale, scale);
+      sprite.add(visual);
+      registerSpriteRenderGroup(sprite, visual);
+      sprite.userData.animationController = new StaticSprite(visual, frames, options.imageIndex ?? options.imageIndices[0],
+        builds, animations, options.restAnimation, cache);
+      sprites.add(sprite);
+      return sprite;
+    },
+    disposeSprite,
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      for (const sprite of sprites) disposeSprite(sprite);
+      cache.dispose();
+      for (const { materials } of builds) for (const material of materials) { material.map?.dispose(); material.dispose(); }
+    },
+  };
 }

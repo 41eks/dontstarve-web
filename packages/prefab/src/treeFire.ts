@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, getBoundWatchWorldContent } from '@dontstarve-web/signals';
+import { createEffect, createSignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { loadAnim, loadBuild } from '@dontstarve-web/animation/animationAssets';
 import {
   createSpriteFactory, type AnimatedSpriteFactory, type TransientSpriteAnimationController,
@@ -49,7 +49,7 @@ export class FireFxHost {
     const level = FIRE_LEVELS[Math.min(fxLevel, FIRE_LEVELS.length) - 1];
     const fire = this.factory.create({ initialAnimation: level.anim, name: 'fire' });
     fire.position.set(position.x, 0, position.z);
-    fire.userData.tags = ['FX', 'NOCLICK'];
+    fire.userData.tags = ['FX', 'NOCLICK', 'HASHEATER'];
     setPrefabLocalLight(fire, { colour: level.colour, radius: level.radius * (TILE_SIZE / 4), intensity: level.intensity, falloff: level.falloff });
     parent.add(fire);
     this.fires.set(fire, fire.position);
@@ -115,6 +115,7 @@ export class BurnableBinding {
   private readonly stopEffect: () => void;
   private readonly inst: BurnableInst;
   private disposed = false;
+  private readonly active = createSignal(true);
 
   constructor(inst: BurnableInst, spec: BurnSpec, env: BurnEnvironment) {
     this.inst = inst;
@@ -135,10 +136,14 @@ export class BurnableBinding {
     inst.components.burnable = this.burnable;
     inst.components.propagator = this.propagator;
     this.stopEffect = createEffect(() => {
-      if (this.burnable.burning.get()) this.fire ??= env.fire.start(env.root, inst.getPosition(), spec.fxLevel, (inst as { model?: THREE.Object3D }).model);
-      else if (this.fire) { this.fire.stop(true); this.fire = undefined; }
+      const burning = this.burnable.burning.get();
+      if (burning && this.active.get()) this.fire ??= env.fire.start(env.root, inst.getPosition(), spec.fxLevel, (inst as { model?: THREE.Object3D }).model);
+      else if (this.fire) { this.fire.stop(!burning); this.fire = undefined; }
     });
   }
+
+  /** Gate only fire presentation; the owning components keep their game-time tasks. */
+  setActive(active: boolean): void { this.active.set(active); }
 
   /** RemoveComponent("burnable") / RemoveComponent("propagator"): extinguishes, without extinguish effects. */
   dispose(): void {

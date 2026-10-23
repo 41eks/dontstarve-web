@@ -71,13 +71,13 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 `anim/fence.zip` 与 `anim/fence_thin.zip` 的 `idle` / `hit` 为多 facing clip：DOWN=`8`、UP=`2`（数据内已含 `-1` 水平翻转）、左右共用=`5`、两个上斜向共用=`48`、两个下斜向共用=`192`。`ArchiveSprite.setFacing()` 在同名 clip 中选掩码包含该 facing 的一个；若 clip 同时列出某个 facing 与其左右镜像（如 `5`），按右向创作，面向左侧时对 `visual` 水平镜像（`selectsFacing()`）。这一镜像约定来自对引擎行为的推断，原版引擎代码不可见，数据中只有 UP 的 clip 自带翻转矩阵。
 
-`CalcRotationEnum` 的奇偶决定使用哪个 bank：偶数用窄的 `fence_thin`（动画在 `fence_thin.zip`，build 仍为 `fence.zip`），奇数用宽的 `fence`。预览同时持有两个 bank 的 sprite，随相机旋转切换，放置时只保留当前 bank。预览使用 `ArchiveSprite` 的私有材质副本（`options.opacity`）呈现 65% 不透明，放置时 `setOpacity(1)`，不修改资源缓存里共享的材质；实体根节点由 `FencePlacement` 持有，只把 sprite 的 `visual` 绘制组放进去，换肤或换 bank 时替换该组而保留实体身份。
+`CalcRotationEnum` 的奇偶决定使用哪个 bank：偶数用窄的 `fence_thin`（动画在 `fence_thin.zip`，build 仍为 `fence.zip`），奇数用宽的 `fence`。预览同时持有两个 bank 的 sprite，随相机旋转切换，放置时只保留当前 bank。预览使用 `ArchiveSprite` 的私有材质副本（`options.opacity`）呈现 65% 不透明，放置时 `setOpacity(1)`，不修改资源缓存里共享的材质；实体根节点由 `FencePlacement` 持有，子节点通过 `ResidentSprite` 驻留；换肤调用 `adopt()`，换 bank 时替换驻留子节点，保留实体身份。prefab 的 `art` effect 在每次 visual 加载后恢复朝向、透明度与最内层绘制组注册。
 
 ## 静态墙实现
 
 `src/camera.ts` 的 `FollowCameraController.facing` signal 把相机 heading（`packages/animation/src/facing.ts` 的 `facingFromHeading()`）按 45° 分成 8 档，取对应 `FACING_*`（`constants.lua`：RIGHT=0、UP=1、LEFT=2、DOWN=3、UPRIGHT=4、UPLEFT=5、DOWNRIGHT=6、DOWNLEFT=7；墙的 rotation 为 0，故 `a = heading`，偶数档为四个正向，奇数档为四个斜向）的位掩码，该 signal 只在 heading 跨过扇区边界时写入，经 `WorldContext.cameraFacing` 传给 `WallPlacement`，后者用 `watchSignal` 建立私有本地 signal，并在 `createEffect` 中对预览和已建墙调用 `setFacing()`，由动画按 `facing` 掩码匹配 clip；`wall.zip` 与 `wall_dreadstone.zip` 的每个状态只创作了 `15`（四个正向共用）和 `240`（四个斜向共用）两组美术，同组内选哪个方向不改变画面。再调用 `packages/animation/src/wallSprite.ts` 的 `StaticSpriteController.showImage()` 切换图片。
 
-`createStaticSprite()` 每次显示一个 build 图片，`imageIndices` 提前列出所有需要的 facing，不必随相机转动重建 sprite。`wall_dreadstone` 另将 `wall_segment_red` 叠在 `wall_segment_base` 上：通过 `overlay` 传入覆盖符号，其 `imageIndices` 与基础列表按位置配对，让朝向切换后仍保留发光层。
+`createStaticSpriteFactory()` 按 build／skin 共享 atlas 与不可变帧几何，每个实例每次显示一个 build 图片；`ResidentSpriteController` 负责 visual 驻留，`imageIndices` 提前列出所有需要的 facing，不必随相机转动重建 sprite。`wall_dreadstone` 另将 `wall_segment_red` 叠在 `wall_segment_base` 上：通过 `overlay` 传入覆盖符号，其 `imageIndices` 与基础列表按位置配对，让朝向切换后仍保留发光层。
 
 
 ## 地皮与洞穴崖壁 falloff
@@ -89,3 +89,5 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 一个合并的透明 Mesh 不会自动排序内部崖壁面。`sortGroundFalloffGeometry` 根据 model-view 矩阵对等高边面的中心深度由远到近排序，仅更新索引，不重建顶点、不拆成逐面 Mesh；相机矩阵未变化时复用结果。实心深度与软边排序分别处理，不能用一个固定 renderOrder 替代空间遮挡。代表性浏览器验证会反转整组输入边面并旋转相机，比较实际 WebGL 像素；单位测试覆盖跨负坐标纹理连续性、索引更新与几何体／材质的所有权。
 
 动画循环只循环时间轴，不对 build 的子图编号取模。子图只在 `index <= frame < index + duration` 的范围内有效，空白子图或缺失编号保持不可见；共享 archive sprite 同样跳过已知符号的缺失编号，缺失整个符号仍报告资源错误。桦树 `tree_leaf_green_build` 的 `swap_leaves` 只有 0～16 号子图，`sway1_loop_tall` 中 17～19 号插槽必须隐藏，不能回绕到 0～2 号，否则多画三层树叶并出现切半拼接。洞穴池塘也沿用同一空白插槽规则。调试命令、参数及支持的 prefab/item ID 不变。
+
+植物实例批次只退出普通 billboard 排序，不表示实体被隐藏。通用放置查询通过 `isSpriteEntityVisible()` 判断根节点及 visual 的可见性，保留实例化花朵等实体的种植间距；普通绘制排序继续使用 `isSpriteEntityRendered()` 排除 instance proxy。

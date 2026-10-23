@@ -13,7 +13,7 @@ import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
 import { PlaySound, PreloadSounds } from './sound';
-import { ResidentSprite } from './residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import catalog from './groundItems.json' with { type: 'json' };
 

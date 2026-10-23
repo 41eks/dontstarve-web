@@ -23,12 +23,13 @@ export {
 } from './sprite';
 export { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from './beefaloSprite';
 export {
-  createStaticSprite,
+  createStaticSprite, createStaticSpriteFactory,
+  type StaticSpriteFactory,
   type StaticSpriteController,
   type StaticSpriteOptions,
   type StaticSpriteOverlay,
 } from './wallSprite';
-export { SpriteRenderOrderSorter, compareRenderEntries, isSpriteEntityRendered, setSpriteEntityRenderOrder } from './renderOrder';
+export { SpriteRenderOrderSorter, compareRenderEntries, isSpriteEntityRendered, isSpriteEntityVisible, setSpriteEntityRenderOrder } from './renderOrder';
 export {
   ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite, preloadSharedArchiveSprite,
   type ArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions, type ArchiveSpriteBuild,
@@ -74,3 +75,4 @@ export {
   createAtlasImage, getAtlasImage, registerImageAtlases, disposeAtlasImages,
   type AtlasImageElement, type AtlasImageRegion,
 } from './atlasImage';
+export { ResidentSprite, ResidentSpriteController, type ResidentEntity } from './residentSprite';

@@ -424,7 +424,7 @@ export async function createSceneEntities(
   }
 
   function registerFlowers(registry: EntityRegistry, prefabId: 'flower', _worldState: SceneWorldState) {
-    const flowerPlanting = new FlowerPlanting(view, Math.random, scheduler ? { scheduler, worldEvents } : undefined);
+    const flowerPlanting = new FlowerPlanting({ ...view, tickingarea: worldState.tickingarea }, Math.random, scheduler ? { scheduler, worldEvents } : undefined);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => flowerPlanting.spawnFromSave(record.id,
         record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true),
@@ -724,7 +724,7 @@ export async function createSceneEntities(
 
   function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', _worldState: SceneWorldState) {
     const marbleShrubs = new MarbleShrubManager(scene, {
-      scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent,
+      scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -798,7 +798,7 @@ export async function createSceneEntities(
 
   function registerMarbleBeanSaplings(registry: EntityRegistry, prefabId: 'marblebean_sapling', _worldState: SceneWorldState) {
     const marbleBeanSaplings = new MarbleBeanSaplingManager(scene, {
-      scheduler, shrubs: Managers['marbleshrub'],
+      scheduler, shrubs: Managers['marbleshrub'], tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -831,7 +831,7 @@ export async function createSceneEntities(
 
   function registerRockAvocadoSaplings(registry: EntityRegistry, prefabId: 'rock_avocado_fruit_sprout_sapling', _worldState: SceneWorldState) {
     const rockAvocadoSaplings = new RockAvocadoSaplingManager(scene, {
-      scheduler, bushes: Managers['rock_avocado_bush'],
+      scheduler, bushes: Managers['rock_avocado_bush'], tickingarea: worldState.tickingarea,
       prepareSpawn: definition => Managers['ground_item'].prepareSpawn(definition),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {

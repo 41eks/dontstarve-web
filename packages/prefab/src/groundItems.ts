@@ -11,7 +11,7 @@ import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, burnableFireRen
 import { configureBookEntity, isBook } from './books';
 import { configureHeatRockEntity, HEATROCK_ID, type HeatRock } from './heatrock';
 import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
-import { ResidentSprite } from './residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import { configureRazorEntity, RAZOR_ID } from './razor';
 import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';

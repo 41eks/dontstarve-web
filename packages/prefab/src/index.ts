@@ -45,7 +45,6 @@ export {
   STORAGE_BUILDING_IDS, isStorageBuildingId, buildingContainerId, buildingContainerDefinition,
   type StorageBuildingId, type BuildingContainerDefinition,
 } from './containers';
-export { ResidentSprite, ResidentSpriteController, type ResidentEntity } from './residentSprite';
 export { isPlayerNearby, PLAYER_PROXIMITY_ENTER_DISTANCE, PLAYER_PROXIMITY_EXIT_DISTANCE } from './playerProximity';
 export { Locomotor, findGroundPath, setupLocomotorInput, type LocomotorOptions, type GroundPathOptions } from './locomotor';
 export {

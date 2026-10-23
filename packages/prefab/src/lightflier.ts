@@ -21,7 +21,7 @@ import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import { Hauntable } from '../../componets/src/hauntable';
 import { ErodeAway } from '../../componets/src/erodeaway';
-import { ResidentSprite } from './residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import { Workable } from '../../componets/src/workable';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import { LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
