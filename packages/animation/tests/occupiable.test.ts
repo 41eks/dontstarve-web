@@ -9,7 +9,7 @@ import { Birdcage, birdcageAcceptsItem, digestedFoodProduct } from '../../prefab
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';
-import { createSignal } from '../../signals/src';
+import { createSignal, type WorldPhase } from '../../signals/src';
 
 function createBird(prefab = 'canary') {
   const bird = new ItemEntity({ itemId: prefab, count: 1 });
@@ -28,7 +28,7 @@ const settle = (bird: ItemEntity, seconds: number) => {
 describe('caged birds', () => {
   it('subscribes to sleeper state for status and animation, stops idle tasks and detaches removed sleepers', async () => {
     const scheduler = new GameTimeScheduler();
-    const isNight = createSignal(false);
+    const cycle = createSignal<WorldPhase>('day');
     let finish = () => {};
     const controller = {
       start: vi.fn(),
@@ -38,13 +38,13 @@ describe('caged birds', () => {
     const model = new THREE.Group();
     model.userData.animationController = controller;
     const cage = new Birdcage({ model, animation: controller as unknown as SpriteAnimationController,
-      world: { scheduler, isNight } as unknown as WorldContext }, () => .9);
+      world: { scheduler, cycle } as unknown as WorldContext }, () => .9);
     const bird = createBird();
     cage.occupiable!.Occupy(bird);
     expect(cage.status.peek()).toBe('OCCUPIED');
     const sleeper = cage.sleeper!;
-    isNight.set(true);
-    await Promise.resolve();
+    cycle.set('night');
+    await new Promise(resolve => setTimeout(resolve, 0));
     sleeper.StopTesting();
     expect(cage.status.peek()).toBe('SLEEPING');
     expect(controller.playOnce).toHaveBeenLastCalledWith('sleep_pre', expect.any(Function));
@@ -55,8 +55,8 @@ describe('caged birds', () => {
     expect(controller.playOnce).toHaveBeenCalledTimes(calls);
 
     sleeper.StartTesting();
-    isNight.set(false);
-    await Promise.resolve();
+    cycle.set('day');
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(cage.status.peek()).toBe('OCCUPIED');
     expect(controller.playOnce).toHaveBeenLastCalledWith('sleep_pst', expect.any(Function));
     finish();
@@ -65,8 +65,8 @@ describe('caged birds', () => {
     expect(controller.playOnce).toHaveBeenLastCalledWith('hop', expect.any(Function));
 
     bird.components.perishable.SetPercent(.2);
-    isNight.set(true);
-    await Promise.resolve();
+    cycle.set('night');
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(sleeper.IsAsleep()).toBe(false);
     expect(cage.status.peek()).toBe('STARVING');
     bird.components.perishable.SetPercent(1);
@@ -78,8 +78,8 @@ describe('caged birds', () => {
     expect(cage.status.peek()).toBe('GENERIC');
     expect(cage.sleeper).toBeUndefined();
     controller.playOnce.mockClear();
-    isNight.set(false);
-    await Promise.resolve();
+    cycle.set('day');
+    await new Promise(resolve => setTimeout(resolve, 0));
     sleeper.WakeUp();
     scheduler.advance(12);
     expect(controller.playOnce).not.toHaveBeenCalled();
@@ -89,8 +89,8 @@ describe('caged birds', () => {
     const removedSleeper = cage.sleeper!;
     cage.dispose();
     controller.playOnce.mockClear();
-    isNight.set(true);
-    await Promise.resolve();
+    cycle.set('night');
+    await new Promise(resolve => setTimeout(resolve, 0));
     removedSleeper.WakeUp();
     scheduler.advance(12);
     expect(controller.playOnce).not.toHaveBeenCalled();

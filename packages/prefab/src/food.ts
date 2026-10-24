@@ -1,6 +1,6 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Edible } from '../../componets/src/edible';
-import { PERISH_FAST, PERISH_MED } from '../../componets/src/perishable';
+import { PERISH_FAST, PERISH_MED, PERISH_SUPERFAST } from '../../componets/src/perishable';
 import { foods } from '../../componets/src/preparedfoods';
 import { SEEDS_HUNGER } from './seeds';
 import { MOONBUTTERFLY_PERISH_TIME } from './moonbutterflyTuning';
@@ -22,6 +22,8 @@ export interface FoodEffects {
 /** Source edible values; food effects are applied only after inventory consumption succeeds. */
 export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
   // lightbulb.lua: HEALING_TINY, zero hunger, default zero sanity, VEGGIE.
+  rock_avocado_fruit_ripe: { health: 1, hunger: 12.5, sanity: 0 },
+  rock_avocado_fruit_ripe_cooked: { health: 3, hunger: 12.5, sanity: 0 },
   lightbulb: { health: 1, hunger: 0, sanity: 0 },
   // prefabs/seeds.lua: raw seeds → health 0, hunger CALORIES_TINY / 2, default sanity 0.
   seeds: { health: 0, hunger: SEEDS_HUNGER, sanity: 0 },
@@ -49,6 +51,8 @@ export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
 
 /** SetPerishTime, StartPerishing and spoiled_food replacement from the owning prefab file. */
 export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: number; readonly replacement?: string }>> = {
+  rock_avocado_fruit_ripe: { perishTime: PERISH_SUPERFAST, replacement: 'spoiled_food' },
+  rock_avocado_fruit_ripe_cooked: { perishTime: 2 * 480, replacement: 'spoiled_food' },
   lightbulb: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   // prefabs/mushrooms.lua capcommonfn.
   red_cap: { perishTime: PERISH_MED, replacement: 'spoiled_food' },
@@ -56,6 +60,8 @@ export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: nu
   moon_tree_blossom: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   // prefabs/moonbutterflywings.lua: PERISH_FAST, spoiled_food.
   moonbutterflywings: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
+  // prefabs/meats.lua raw: PERISH_FAST, spoiled_food (common() sets the replacement).
+  meat: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   // prefabs/meats.lua smallmeat: PERISH_FAST, spoiled_food.
   smallmeat: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   // prefabs/egg.lua: bird_egg spoils in PERISH_MED into rottenegg.
@@ -64,6 +70,8 @@ export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: nu
   ...Object.fromEntries(BIRD_IDS.map(id => [id, { perishTime: BIRD_PERISH_TIME }])),
   // prefabs/moonbutterfly.lua: MOONBUTTERFLY_PERISH_TIME; no replacement (removed in an inventory, dies on the ground).
   moonbutterfly: { perishTime: MOONBUTTERFLY_PERISH_TIME },
+  // prefabs/inv_rocks_ice.lua: PERISH_SUPERFAST with SetOnPerishFn (no replacement prefab).
+  ice: { perishTime: PERISH_SUPERFAST },
   // prefabs/preparedfoods.lua uses the recipe's perishtime.
   bananapop: { perishTime: foods.bananapop.perishtime!, replacement: 'spoiled_food' },
   // prefabs/veggies.lua sets perishable with spoiled_food on every raw, cooked, dried and seed item.

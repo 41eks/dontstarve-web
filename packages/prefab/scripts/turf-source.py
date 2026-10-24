@@ -58,7 +58,7 @@ def read_tiles(scripts):
         name = args[0].strip('"')
         terrain = fields(3)
         colours = re.search(r'\bcolors\s*=\s*(\w+)', args[3]) if len(args) > 3 else None
-        tile = {'name': name, 'ground': terrain, 'minimap': fields(4), 'turf': fields(5), 'renderOrder': render_order,
+        tile = {'name': name, 'land': args[1] == 'TileRanges.LAND', 'hard': terrain.get('hard') == 'true', 'ground': terrain, 'minimap': fields(4), 'turf': fields(5), 'renderOrder': render_order,
                 'minimapColour': presets[colours[1]] if colours else default_colour}
         if terrain:
             render_order += 1

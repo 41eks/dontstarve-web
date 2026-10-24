@@ -9,6 +9,7 @@ import { BULB_PLANT_LIGHT_STATES, BULB_PLANT_MAX_ON_TIME, BULB_PLANT_MAX_RECHARG
   bulbPlantRegrowTime } from '@dontstarve-web/prefab/bulb_plant';
 import { WORMHOLE_SKINS } from '@dontstarve-web/prefab/wormhole';
 import { WALL_SKIN_ARCHIVES } from '@dontstarve-web/prefab/wallSkins';
+import { FENCE_SKIN_ARCHIVES } from '@dontstarve-web/prefab/fenceSkins';
 import { FARM_PLOW_DRILLING_DURATION, FARM_PLOW_USES, FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { PHONOGRAPH_PLAY_TIME } from '@dontstarve-web/prefab/phonograph';
 import { SCULPTABLE_MATERIALS } from '@dontstarve-web/prefab/sculptingtable';
@@ -32,6 +33,9 @@ export interface PrefabComponentSchema {
   readonly timerDuration?: number;
   readonly bulbVariants?: readonly BulbPlantVariant[];
   /** pickable.lua regentime bounding a saved regrow task. */
+  readonly pickCycles?: number;
+  readonly minimumPickCycles?: number;
+  readonly plantSkins?: readonly string[];
   readonly regrowTime?: number;
   /** finiteuses.lua maximum bounding the saved uses. */
   readonly finiteUses?: number;
@@ -46,6 +50,16 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     const { keys } = schema;
     const c = object(value, path, keys);
     const components: SavedEntity['components'] = {};
+    if (keys.includes('molehill')) {
+      const p = `${path}.molehill`, hill = object(c.molehill, p, ['items', 'child', 'childid', 'startdelay']);
+      const child = hill.child === undefined ? undefined : stack(hill.child, `${p}.child`);
+      if (child && child.itemId !== 'mole') fail(`${p}.child`, 'expected mole');
+      if (hill.child !== undefined && hill.childid !== undefined) fail(p, 'occupied child and childid are exclusive');
+      components.molehill = { items: array(hill.items, `${p}.items`, 50).map((item, i) => stack(item, `${p}.items[${i}]`)),
+        ...(child === undefined ? {} : { child }),
+        ...(hill.childid === undefined ? {} : { childid: string(hill.childid, `${p}.childid`) }),
+        ...(hill.startdelay === undefined ? {} : { startdelay: number(hill.startdelay, `${p}.startdelay`, 0, 1200) }) };
+    }
     if (keys.includes('lavaPond') && c.lavaPond !== undefined) {
       const p = `${path}.lavaPond`, pond = object(c.lavaPond, p, ['rocks']);
       components.lavaPond = {};
@@ -59,19 +73,56 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
           offset: offset.map((value, axis) => number(value, `${r}.offset[${axis}]`, -Number.MAX_SAFE_INTEGER)) as [number, number, number] };
       });
     }
+    if (keys.includes('hotspring') && c.hotspring !== undefined) {
+      const spring = object(c.hotspring, `${path}.hotspring`, ['isbathbombed']);
+      components.hotspring = {};
+      if (spring.isbathbombed !== undefined) {
+        if (spring.isbathbombed !== true) fail(`${path}.hotspring.isbathbombed`, 'expected true');
+        components.hotspring.isbathbombed = true;
+      }
+    }
+    if (keys.includes('burning') && c.burning !== undefined) {
+      if (c.burning !== true) fail(`${path}.burning`, 'expected true');
+      components.burning = true;
+    }
+    if (keys.includes('plant') && c.plant !== undefined) {
+      const p = `${path}.plant`, plant = object(c.plant, p, ['skinId']);
+      components.plant = plant.skinId === undefined ? {} : { skinId: choice(plant.skinId, `${p}.skinId`, schema.plantSkins ?? []) };
+    }
     if (keys.includes('pickable') && c.pickable !== undefined) {
       const p = `${path}.pickable`;
-      const pickable = object(c.pickable, p, ['picked', 'regrowSeconds', 'paused']);
-      for (const key of ['picked', 'paused'] as const) {
+      const pickable = object(c.pickable, p, ['picked', 'regrowSeconds', 'paused', ...(schema.pickCycles ? ['transplanted', 'cyclesLeft', 'maxCycles', 'protectedCycles'] : [])]);
+      for (const key of ['picked', 'paused', 'transplanted'] as const) {
         if (pickable[key] !== undefined && typeof pickable[key] !== 'boolean') fail(`${p}.${key}`, 'expected a boolean');
       }
       if (pickable.regrowSeconds !== undefined && pickable.picked !== true) fail(p, 'regrowth requires a picked plant');
+      if (schema.pickCycles) {
+        if ((pickable.cyclesLeft === undefined) !== (pickable.maxCycles === undefined)) fail(p, 'cyclesLeft and maxCycles must be saved together');
+        if (pickable.maxCycles !== undefined) integer(pickable.maxCycles, `${p}.maxCycles`, schema.minimumPickCycles ?? 5, schema.pickCycles);
+        if (pickable.cyclesLeft !== undefined) integer(pickable.cyclesLeft, `${p}.cyclesLeft`, 0, pickable.maxCycles as number);
+        if (pickable.cyclesLeft === 0 && (pickable.picked !== true || pickable.regrowSeconds !== undefined)) fail(p, 'barren plants must be picked with no regrowth timer');
+      }
       components.pickable = {
+        ...(pickable.transplanted === true ? { transplanted: true } : {}),
+        ...(pickable.maxCycles === undefined ? {} : { maxCycles: pickable.maxCycles as number, cyclesLeft: pickable.cyclesLeft as number }),
+        ...(pickable.protectedCycles === undefined ? {} : { protectedCycles: number(pickable.protectedCycles, `${p}.protectedCycles`, Number.MIN_VALUE) }),
         ...(pickable.picked === true ? { picked: true } : {}),
         ...(pickable.paused === true ? { paused: true } : {}),
         ...(pickable.regrowSeconds !== undefined ? {
           regrowSeconds: number(pickable.regrowSeconds, `${p}.regrowSeconds`, 0, schema.regrowTime ?? Infinity),
         } : {}),
+      };
+    }
+    if (keys.includes('witherable') && c.witherable !== undefined) {
+      const p = `${path}.witherable`, wither = object(c.witherable, p, ['withered', 'restoreCycles', 'delaySeconds', 'taskSeconds']);
+      if (wither.withered !== undefined && wither.withered !== true) fail(`${p}.withered`, 'expected true');
+      if (wither.restoreCycles !== undefined && wither.withered !== true) fail(p, 'restored cycles require withering');
+      if (wither.delaySeconds !== undefined && wither.taskSeconds !== undefined) fail(p, 'a delayed check cannot also be scheduled');
+      components.witherable = {
+        ...(wither.withered === true ? { withered: true } : {}),
+        ...(wither.restoreCycles === undefined ? {} : { restoreCycles: integer(wither.restoreCycles, `${p}.restoreCycles`, 0, schema.pickCycles ?? Infinity) }),
+        ...(wither.delaySeconds === undefined ? {} : { delaySeconds: number(wither.delaySeconds, `${p}.delaySeconds`, 0, 480) }),
+        ...(wither.taskSeconds === undefined ? {} : { taskSeconds: number(wither.taskSeconds, `${p}.taskSeconds`, 0, 60) }),
       };
     }
     const building = keys.includes('building') ? catalog.buildings[prefab] : undefined;
@@ -118,6 +169,15 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         fail(`${componentPath}.skinId`, 'unsupported wall skin');
       }
       components.wall = skinId === undefined ? {} : { skinId };
+    }
+    if (keys.includes('fence') && c.fence !== undefined) {
+      const componentPath = `${path}.fence`;
+      const fence = object(c.fence, componentPath, ['rot', 'skinId']);
+      const rot = fence.rot === undefined ? undefined : number(fence.rot, `${componentPath}.rot`, 1, 7);
+      if (rot !== undefined && !Number.isInteger(rot)) fail(`${componentPath}.rot`, 'expected an integer rotation enum');
+      const skinId = fence.skinId === undefined ? undefined : string(fence.skinId, `${componentPath}.skinId`);
+      if (skinId !== undefined && !Object.hasOwn(FENCE_SKIN_ARCHIVES, skinId)) fail(`${componentPath}.skinId`, 'unsupported fence skin');
+      components.fence = { ...(rot === undefined ? {} : { rot }), ...(skinId === undefined ? {} : { skinId }) };
     }
     if (keys.includes('moonTree') && c.moonTree !== undefined) {
       const componentPath = `${path}.moonTree`;
@@ -170,14 +230,17 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if ((tree.stump || tree.burnt) && (components.growable.time !== undefined || tree.leaveschangetime !== undefined)) fail(p, 'stumps and burnt trees cannot grow or change leaves');
     }
     if (keys.includes('saplingTimer')) {
-      const p = `${path}.saplingTimer`, timer = object(c.saplingTimer, p, ['timers']);
+      const p = `${path}.saplingTimer`, timer = object(c.saplingTimer ?? (schema.timerDuration ? { timers: {} } : undefined), p, ['timers']);
       const timers = object(timer.timers, `${p}.timers`, ['grow']);
-      const grow = object(timers.grow, `${p}.timers.grow`, ['timeleft', 'paused', 'initial_time']);
-      if (typeof grow.paused !== 'boolean') fail(`${p}.timers.grow.paused`, 'expected a boolean');
-      const initial_time = number(grow.initial_time, `${p}.timers.grow.initial_time`, 150, 300);
-      components.saplingTimer = { timers: { grow: {
-        timeleft: number(grow.timeleft, `${p}.timers.grow.timeleft`, 0, initial_time), paused: grow.paused, initial_time,
-      } } };
+      if (timers.grow === undefined && schema.timerDuration !== undefined) components.saplingTimer = { timers: {} };
+      else {
+        const grow = object(timers.grow, `${p}.timers.grow`, ['timeleft', 'paused', 'initial_time']);
+        if (typeof grow.paused !== 'boolean') fail(`${p}.timers.grow.paused`, 'expected a boolean');
+        const initial_time = number(grow.initial_time, `${p}.timers.grow.initial_time`, schema.timerDuration ?? 150, schema.timerDuration ?? 300);
+        components.saplingTimer = { timers: { grow: {
+          timeleft: number(grow.timeleft, `${p}.timers.grow.timeleft`, 0, initial_time), paused: grow.paused, initial_time,
+        } } };
+      }
     }
     if (keys.includes('wormhole') && c.wormhole !== undefined) {
       const componentPath = `${path}.wormhole`;

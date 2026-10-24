@@ -14,7 +14,7 @@ export class LootDropper {
   private chanceLootTable?: string;
   private loot: readonly string[] = [];
   private readonly inst: LootInst;
-  private readonly spawn: (prefab: string, position: ReturnType<LootInst['getPosition']>) => LootEntity | undefined;
+  private readonly spawn: (prefab: string, position: ReturnType<LootInst['getPosition']>, skinId?: string) => LootEntity | undefined;
   constructor(inst: LootInst, spawn: LootDropper['spawn']) { this.inst = inst; this.spawn = spawn; }
   SetChanceLootTable(name: string): void { this.chanceLootTable = name; }
   SetLoot(loot: readonly string[]): void { this.loot = [...loot]; }
@@ -23,8 +23,8 @@ export class LootDropper {
       .filter(([, chance]) => chance >= 1 || random() <= chance).map(([prefab]) => prefab), ...this.loot];
   }
   DropLoot(): void { for (const prefab of this.GenerateLoot()) this.SpawnLootPrefab(prefab); }
-  SpawnLootPrefab(prefab: string): LootEntity | undefined {
-    const loot = this.spawn(prefab, this.inst.getPosition());
+  SpawnLootPrefab(prefab: string, position = this.inst.getPosition(), skinId?: string): LootEntity | undefined {
+    const loot = this.spawn(prefab, position, skinId);
     if (loot) {
       loot.PushEvent('on_loot_dropped', { dropper: this.inst });
       this.inst.PushEvent?.('loot_prefab_spawned', { loot });

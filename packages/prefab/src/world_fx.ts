@@ -13,6 +13,11 @@ const FX_PREFABS = {
     sound: 'wickerbottom_rework/book_spells/rain' },
   fx_book_moon: { archive: 'fx_book_moon.zip', bank: 'fx_book_moon', anim: 'play_fx',
     sound: 'wickerbottom_rework/book_spells/moon' },
+  // explode_small.lua MakeExplosion(): bank/build `explode`, clip `small`, blackpowder_explo sound.
+  explode_small: { archive: 'explode.zip', bank: 'explode', anim: 'small', sound: 'dontstarve/common/blackpowder_explo' },
+  // fx.lua crab_king_waterspout: bank Bubble_fx, build crab_king_bubble_fx, FinalOffset1.
+  crab_king_waterspout: { archive: 'crab_king_bubble_fx.zip', bank: 'Bubble_fx', anim: 'waterspout',
+    sound: 'hookline_2/creatures/boss/crabking/waterspout' },
   sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
 } as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number }>;

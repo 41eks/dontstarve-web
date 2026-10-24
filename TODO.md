@@ -9,3 +9,4 @@ wall sanity debuff
 
 
 移动中人物item in item out
+createMemo 惰性

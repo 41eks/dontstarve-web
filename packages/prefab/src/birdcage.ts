@@ -3,7 +3,7 @@ import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { birdcage_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { loadBuildOverride, type LoadedBuildOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
-import { batch, createMemo, createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { batch, createMemo, createSignal, readonlySignal, getWatchWorldContent, type ReadonlySignal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
 import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf, type ShelfHolder, type ShelfTaker } from '../../componets/src/shelf';
@@ -155,19 +155,27 @@ export class Birdcage {
     private readonly cancels = new Set<() => void>();
     private disposed = false;
     private readonly context: AnimatedBuildingEventContext;
-    private readonly sleepWorld: SleeperInst['world'];
+    private readonly getWatchWorldContent: GetWatchWorldContent | undefined;
     private readonly entity: CageEntity;
     private readonly random: () => number;
     resources: BirdcageResources | undefined;
 
     constructor(context: AnimatedBuildingEventContext, random: () => number = Math.random) {
         this.context = context;
-        this.sleepWorld = { isNight: context.world?.isNight ?? readonlySignal(createSignal(false)) };
+        this.getWatchWorldContent = context.world?.getWatchWorldContent;
+        const scheduler = context.world?.scheduler;
+        if (!this.getWatchWorldContent && scheduler) {
+            const sources: WorldContentEnvironment = {
+                scheduler,
+                cycle: context.world?.cycle ?? readonlySignal(createSignal<WorldPhase>('day')),
+                season: context.world?.season ?? readonlySignal(createSignal({ season: 'spring', progress: .5 })),
+            };
+            this.getWatchWorldContent = (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, sources);
+        }
         this.random = random;
         this.resources = context.prepared as BirdcageResources | undefined;
         const entity = this.entity = actionEntity(context.model, BIRDCAGE_ID);
         this.animation = new CageAnimation(() => context.model.userData.animationController as SpriteController);
-        const scheduler = context.world?.scheduler;
         this.animationTask = scheduler ? new ComponentTimer(scheduler, () => { this.doAnimationTask(); this.animationTask!.start(ANIMATION_PERIOD); }) : undefined;
         for (const tag of ['structure', 'cage']) entity.addTag(tag);
         this.shelf = new Shelf<ItemEntity, CageEntity>(entity, this.holder);
@@ -280,11 +288,10 @@ export class Birdcage {
         if (this.context.world?.perishClock) bird.components.perishable.BindWorld({ perishClock: this.context.world.perishClock });
         this.setCageState(CAGE_STATES.FULL);
         // Only if the bird can actually sleep: every ported bird has a sleeper in birds.lua.
-        const scheduler = this.context.world?.scheduler;
-        if (scheduler && !this.sleeper) {
-            const sleeper = new Sleeper(this.sleeperInst(), scheduler, this.random);
-            sleeper.sleeptestfn = () => this.shouldSleep();
-            sleeper.waketestfn = () => this.shouldWake();
+        if (this.getWatchWorldContent && !this.sleeper) {
+            const sleeper = new Sleeper(this.sleeperInst(), this.getWatchWorldContent, this.random);
+            sleeper.sleeptestfn = (inst, cycle) => this.shouldSleep(inst, cycle);
+            sleeper.waketestfn = (inst, cycle) => this.shouldWake(inst, cycle);
             this.sleeperSignal.set(sleeper);
             (this.entity.components as Record<string, unknown>).sleeper = sleeper;
             this.stopSleepAnimation = sleeper.isasleep.subscribe(asleep => {
@@ -350,30 +357,18 @@ export class Birdcage {
         return {
             isValid: () => !cage.disposed,
             PushEvent: (name, data) => cage.entity.PushEvent?.(name, data),
-            world: this.sleepWorld,
             components: {},
         };
     }
 
-    /** The bird as the sleep tests see it: no combat target, not burning, same world. */
-    private birdInst(): SleeperInst {
-        const cage = this;
-        return {
-            isValid: () => cage.getBird() !== undefined,
-            PushEvent() {},
-            world: this.sleepWorld,
-            components: {},
-        };
+    private shouldSleep(inst: SleeperInst, cycle: WorldPhase): boolean {
+        const bird = this.getBird();
+        return bird !== undefined && DefaultSleepTest(inst, cycle) && this.hungerOf(bird) >= .33;
     }
 
-    private shouldSleep(): boolean {
+    private shouldWake(inst: SleeperInst, cycle: WorldPhase): boolean {
         const bird = this.getBird();
-        return bird !== undefined && DefaultSleepTest(this.birdInst()) && this.hungerOf(bird) >= .33;
-    }
-
-    private shouldWake(): boolean {
-        const bird = this.getBird();
-        return bird !== undefined && DefaultWakeTest(this.birdInst()) || this.hungerOf(bird) < .33;
+        return bird !== undefined && DefaultWakeTest(inst, cycle) || this.hungerOf(bird) < .33;
     }
 
     // --- periodic idle animation ---------------------------------------------------------------

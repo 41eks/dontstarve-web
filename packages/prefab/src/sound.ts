@@ -3,6 +3,8 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // rock_avocado_bush.lua picksound → dontstarve.fev sounddef 86 → wilson file_index 19–21.
+  'dontstarve/wilson/harvest_berries': { bank: 'wilson', streams: [20, 21, 22], loop: false },
   // flies.lua → dontstarve.fev sounddef 56 → common file_index 74–80 (Flies_soothed_DST_-001..007).
   'dontstarve/common/flies': { bank: 'common', streams: [75, 76, 77, 78, 79, 80, 81], loop: true },
   // grass.lua → dontstarve.fev sounddef 19 → wilson file_index 115–118.
@@ -19,6 +21,12 @@ const sounds = {
   'dontstarve/common/cookingpot_finish': { bank: 'common', streams: [301], loop: false },
   // torch.lua → dontstarve.fev sound definitions 42/44 → file_index + 1.
   'dontstarve/wilson/torch_swing': { bank: 'wilson', streams: [95, 96], loop: false },
+  // gunpowder.lua / explode_small.lua → dontstarve.fev sounddefs 614 (fuse loop, common file_index 146) and 615
+  // (blackpowder_explo_1..3, file_index 143–145), each + 1 for vgmstream.
+  'dontstarve/common/blackpowder_fuse_LP': { bank: 'common', streams: [147], loop: true },
+  'dontstarve/common/blackpowder_explo': { bank: 'common', streams: [144, 145, 146], loop: false },
+  // fence.lua ondeploywall → dontstarve.fev sounddef 472 (place_structure_wood.wav), common file_index 232.
+  'dontstarve/common/place_structure_wood': { bank: 'common', streams: [233], loop: false },
   'dontstarve/common/fireOut': { bank: 'common', streams: [198], loop: false },
   // fire.lua → dontstarve.fev sounddefs 1762 / 1765 / 1766, three simultaneous layers.
   'dontstarve/common/campfire': { bank: 'common', streams: [149, 150, 151, 152], loop: true,
@@ -50,8 +58,21 @@ const sounds = {
   'dontstarve/characters/wilson/hurt': { bank: 'wilson', streams: [107, 108, 109], loop: false },
   'dontstarve/wilson/equip_item_gold': { bank: 'wilson', streams: [115], loop: false },
   'dontstarve/wilson/dig': { bank: 'wilson', streams: [64, 65, 66], loop: false },
-  'dontstarve_DLC001/creatures/mole/emerge': { bank: 'mole', streams: [2, 3, 4], loop: false },
+  'dontstarve_DLC001/creatures/mole/emerge': { bank: 'mole', streams: [2, 3, 4], loop: false, volume: 0.2818382978439331, pitchOctaves: 0.0 },
+  // SGmole.lua → dontstarve_DLC001.fev sounddefs 12–18 / 68–70; file_index + 1.
+  'dontstarve_DLC001/creatures/mole/death': { bank: 'mole', streams: [1], loop: false, volume: 0.17782793939113617, pitchOctaves: -0.125 },
+  'dontstarve_DLC001/creatures/mole/emerge_voice': { bank: 'mole', streams: [5, 6, 7], loop: false, volume: 0.2818382978439331, pitchOctaves: -0.125 },
+  'dontstarve_DLC001/creatures/mole/hurt': { bank: 'mole', streams: [8, 9, 10], loop: false, volume: 0.17782793939113617, pitchOctaves: -0.125 },
+  'dontstarve_DLC001/creatures/mole/move': { bank: 'mole', streams: [26], loop: true, volume: 0.1412537544965744, pitchOctaves: -0.25 },
+  'dontstarve_DLC001/creatures/mole/retract': { bank: 'mole', streams: [2, 3, 4], loop: false, volume: 0.25118863582611084, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/mole/jump': { bank: 'mole', streams: [11], loop: false, volume: 0.1412537544965744, pitchOctaves: 0.25 },
+  'dontstarve_DLC001/creatures/mole/pickup': { bank: 'mole', streams: [12, 13], loop: false, volume: 0.1412537544965744, pitchOctaves: -0.1666666716337204 },
+  'dontstarve_DLC001/creatures/mole/sniff': { bank: 'mole', streams: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], loop: false, volume: 0.07079457491636276, pitchOctaves: 0.0 },
+  // FEV simple-event pitch is -0.25 octaves (sniff: 0); the short sample plays once per SG sleep timeline.
+  'dontstarve_DLC001/creatures/mole/sleep': { bank: 'mole', streams: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], loop: false, volume: 0.07079457491636276, pitchOctaves: -0.25 },
   // farmplantable.lua / SGwilson.lua → dontstarve.fev (file_index + 1).
+  // fertilizer.lua → dontstarve.fev common/fertilize, sounddef 1300, sfx file_index 122–125.
+  'dontstarve/common/fertilize': { bank: 'sfx', streams: [123, 124, 125, 126], loop: false },
   'dontstarve/common/plant': { bank: 'common', streams: [170, 171, 172, 173, 174], loop: false },
   'dontstarve/wilson/eat': { bank: 'wilson', streams: [112, 113, 114], loop: false },
   // SGwilson.lua DoEatSound → dontstarve.fev sounddef 1712 → sfx file_index 1286.
@@ -74,6 +95,11 @@ const sounds = {
   'dontstarve/common/staff_star_LP': { bank: 'common', streams: [274], loop: true },
   'dontstarve/wilson/use_gemstaff': { bank: 'common', streams: [284], loop: false },
   'dontstarve/common/staffteleport': { bank: 'common', streams: [284], loop: false },
+  // trident.lua / SGwilson.lua play_strum and fx.lua crab_king_waterspout → hookline_2.fev sounddefs 43 / 32
+  // (trident_gnarwail_DST-001..003 at file_index 302–304; waterspike_V2_crabking_DST-001..015 at 286–300), each + 1.
+  'hookline_2/characters/trident_attack': { bank: 'hookline_2', streams: [303, 304, 305], loop: false },
+  'hookline_2/creatures/boss/crabking/waterspout': { bank: 'hookline_2',
+    streams: [287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301], loop: false },
   // staff.lua → dontstarve.fev sounddefs 926 / 980 / 981 / 982, file_index + 1.
   'dontstarve/common/staff_dissassemble': { bank: 'common', streams: [272], loop: false },
   'dontstarve/common/destroy_magic': { bank: 'common', streams: [189], loop: false },
@@ -327,13 +353,15 @@ export function PlaySound(path: SoundEventPath, position?: Vector3, offsetSecond
   let remaining = filenames.length;
   let stopped = false;
   const gain = audio?.createGain();
-  const sound = gain ? { position, gain, volume: 1 } : undefined;
+  const definition = sounds[path];
+  const eventVolume = 'volume' in definition ? definition.volume : 1;
+  const sound = gain ? { position, gain, volume: eventVolume } : undefined;
   const handle: SoundHandle = {
     isPlaying: () => !stopped && audio !== undefined,
     setVolume(volume) {
       if (!Number.isFinite(volume) || volume < 0) throw new RangeError('Invalid sound volume');
       if (!sound) return;
-      sound.volume = volume;
+      sound.volume = volume * eventVolume;
       updateGain(sound);
     },
     setParameter(name, value) {
@@ -365,6 +393,8 @@ export function PlaySound(path: SoundEventPath, position?: Vector3, offsetSecond
     const source = audio.createBufferSource();
     source.buffer = buffer;
     source.loop = sounds[path].loop;
+    const event = sounds[path];
+    if ('pitchOctaves' in event && event.pitchOctaves !== 0) source.playbackRate.value = 2 ** event.pitchOctaves;
     source.connect(layerGains[layerIndex] ?? gain!);
     sources.add(source);
     source.onended = () => {

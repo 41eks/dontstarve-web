@@ -15,6 +15,7 @@ import { configureShovelEntity, SHOVEL_USES } from './shovel';
 import { configurePickaxeEntity, getPickaxeLifecycle, PICKAXE_USES } from './pickaxe';
 import { AXE_USES, configureAxeEntity, getAxeLifecycle } from './axe';
 import { configureNightswordEntity } from './nightsword';
+import { getTridentController, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
 import { Weapon } from '../../componets/src/weapon';
 
 // tuning.lua: wilson_attack = 34; GOLDENTOOLFACTOR = 4 lowers golden tools' attackwear.
@@ -33,6 +34,7 @@ export interface HandEquipmentContext {
   setLanternLight?(ison: boolean, fuelPercent: number): void;
   lightStaffWorld?: LightStaffWorld;
   greenStaffWorld?: GreenStaffWorld;
+  tridentWorld?: TridentWorld;
 }
 export interface HandEquipmentDefinition {
   readonly maxUses?: number;
@@ -55,6 +57,9 @@ const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
   yellowstaff: { tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   opalstaff: { tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   greenstaff: { tags: ['nopunch'], maxUses: GREENSTAFF_USES, createLifecycle: (entity, context) => context.greenStaffWorld ? getGreenStaffController(entity, context.greenStaffWorld) : undefined },
+  // trident.lua: TRIDENT.DAMAGE over ground (OCEAN_DAMAGE applies only while the wielder stands on a boat or the sea).
+  trident: { maxUses: TRIDENT_USES, tags: ['pointy', 'sharp'], weapon: { damage: TRIDENT_DAMAGE },
+    createLifecycle: (entity, context) => context.tridentWorld ? getTridentController(entity, context.tridentWorld) : undefined },
   bugnet: { maxUses: 10, weapon: { damage: WILSON_ATTACK * .125, attackwear: 3 }, configureEntity: configureBugNetEntity },
   hammer: { maxUses: 75, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureHammerEntity },
   // nightsword.lua: NIGHTSWORD_DAMAGE = wilson_attack * 2, NIGHTSWORD_USES = 100.

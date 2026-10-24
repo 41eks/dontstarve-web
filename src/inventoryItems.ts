@@ -1,3 +1,9 @@
+import { configureMoleEntity, MOLE_PERISH_TIME } from '../packages/prefab/src/mole';
+import { configureMoleBaitEntity } from '../packages/prefab/src/molebait';
+import { configureRockAvocadoFruitEntity } from '../packages/prefab/src/rock_avocado_fruit';
+import { configurePlantableEntity } from '@dontstarve-web/prefab/plantables';
+import { BATHBOMB_ID, configureBathbombEntity } from '../packages/prefab/src/bathbomb';
+import { configureFertilizerEntity, FERTILIZER_CYCLES } from '../packages/prefab/src/fertilizers';
 import { HAT_ITEM_SPECS } from '@dontstarve-web/prefab/hats';
 import { TURF_ITEM_SPECS } from '@dontstarve-web/prefab/groundItems';
 import { configureLightbulbEntity, LIGHTBULB_ID } from '@dontstarve-web/prefab/lightbulb';
@@ -14,6 +20,7 @@ import { configurePanfluteEntity, PANFLUTE_ID, PANFLUTE_USES } from '@dontstarve
 import { configureEquipmentEntity, getHandEquipmentDefinition } from '@dontstarve-web/prefab/handEquipment';
 import { configureBirdEntity, isBirdId } from '@dontstarve-web/prefab/birds';
 import { configureBackpackEntity } from '@dontstarve-web/prefab/backpack';
+import { configureIceEntity, ICE_ID } from '@dontstarve-web/prefab/ice';
 import { PERISHABLE_FOODS } from '@dontstarve-web/prefab/food';
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../packages/ui/src/inventory-items';
 import { INVENTORY_SKIN_SPECS } from '../packages/ui/src/categories/shared';
@@ -31,8 +38,12 @@ export interface InventoryItemDefinition {
 }
 
 function withTradable(itemId: string, configure: ((entity: ItemEntity) => void) | undefined): ((entity: ItemEntity) => void) | undefined {
-  if (!hasTradableGoldValue(itemId)) return configure;
-  return entity => { configure?.(entity); configureTradableEntity(entity); };
+  return entity => {
+    configure?.(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
+    if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) configureFertilizerEntity(entity);
+    if (itemId === BATHBOMB_ID) configureBathbombEntity(entity);
+    if (hasTradableGoldValue(itemId)) configureTradableEntity(entity);
+  };
 }
 
 export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
@@ -42,12 +53,14 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...display,
       maxStack: inventoryItemMaxStack(itemId),
       configureEntity: withTradable(itemId, isBirdId(itemId) ? configureBirdEntity
+        : itemId === 'mole' ? configureMoleEntity
         : itemId === 'backpack' ? configureBackpackEntity
         : itemId === LIGHTBULB_ID ? configureLightbulbEntity
         : itemId === HEATROCK_ID ? configureHeatRockEntity
         : itemId === RAZOR_ID ? configureRazorEntity
         : itemId === PANFLUTE_ID ? configurePanfluteEntity
         : itemId === 'moonrocknugget' ? configureMoonrockNugget
+        : itemId === ICE_ID ? configureIceEntity
         : Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, itemId) ? configureBurnableItemEntity
         : getHandEquipmentDefinition(itemId) ? configureEquipmentEntity : undefined),
       ...(getHandEquipmentDefinition(itemId)?.definition.maxUses === undefined ? {}
@@ -55,6 +68,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...(getHandEquipmentDefinition(itemId)?.definition.useStep === undefined ? {}
         : { useStep: getHandEquipmentDefinition(itemId)!.definition.useStep }),
       ...(itemId === 'backpack' ? { canGoInContainer: false } : {}),
+      ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME } : {}),
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
       ...(itemId === PANFLUTE_ID ? { maxUses: PANFLUTE_USES } : {}),
       ...(isLightStaff(itemId) ? { maxUses: LIGHT_STAFF_USES[itemId] } : {}),

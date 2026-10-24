@@ -3,6 +3,7 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import type * as THREE from 'three';
 import { createGroundItemSprite } from './groundItems';
 import { configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
+import { configureFertilizerEntity } from './fertilizers';
 import { FliesController, FLIES_SOUND } from './flies';
 import { listenInventoryEvents } from './inventoryEvents';
 import { PreloadSounds } from './sound';
@@ -16,7 +17,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
   const visuals = new Set<GroundItemVisual>();
   return {
     itemIds: ['poop'],
-    configureEntity: configureBurnableItemEntity,
+    configureEntity: entity => { configureBurnableItemEntity(entity); configureFertilizerEntity(entity); },
     async create(item) {
       if (!context.scheduler) throw new Error('Poop requires the ground registry game-time scheduler');
       const prepared = await Promise.allSettled([

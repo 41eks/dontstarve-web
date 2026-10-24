@@ -68,7 +68,7 @@ createEffect(() => {
 
 [Occupiable](../packages/componets/src/occupiable.ts) 的 `occupant` 是私有 signal（对外只读），`occupied`／`bird_occupiable` 标签随它同步。`Occupy` 先写 occupant，再执行 `occupier.onoccupied` 与 `onoccupied`，最后登记 `perished` 和 `onremove` 监听；`perished` 的顺序与 Lua 一致：`onemptied` → `onperishfn(cage, bird)`（此时 occupant 仍可读）→ 清除 occupant → 销毁鸟。`onperishfn` 里货架组件移除 `occupiable`，随后 `setOccupant(nil)` 仍会写回 `bird_occupiable`，与 Lua 属性监听在已移除组件上的行为一致；STORE 的可用性读取组件的 `CanOccupy`，不依赖这个标签。
 
-[Birdcage](../packages/prefab/src/birdcage.ts) 把 `CAGE_STATE`、`bird_type` 保存在私有 signal，`status`（`GENERIC／OCCUPIED／HUNGRY／STARVING／SLEEPING／DEAD／SKELETON`）由 `cageState`、占用鸟的 `percent` 和睡眠 signal 派生。动画、声音、货架转换只在 `Occupy`、`perished`、`TakeItem` 等领域方法里执行，不放在 memo 或表现 effect 中。每 6 秒的待机动画是调度器上的一个 `ComponentTimer`（占用时启动，睡眠、空笼和腐烂时停止，到期后重新登记）；`sleeper` 的 4 ± 0.5 秒测试也是调度器任务，睡眠测试读取注入的 `isNight`，不订阅全局时钟；60 帧后的消化、各帧的啼叫等一次性任务由调度器登记，销毁时统一取消。
+[Birdcage](../packages/prefab/src/birdcage.ts) 把 `CAGE_STATE`、`bird_type` 保存在私有 signal，`status`（`GENERIC／OCCUPIED／HUNGRY／STARVING／SLEEPING／DEAD／SKELETON`）由 `cageState`、占用鸟的 `percent` 和睡眠 signal 派生。动画、声音、货架转换只在 `Occupy`、`perished`、`TakeItem` 等领域方法里执行，不放在 memo 或表现 effect 中。每 6 秒的待机动画是调度器上的一个 `ComponentTimer`（占用时启动，睡眠、空笼和腐烂时停止，到期后重新登记）；`sleeper` 的 4 ± 0.5 秒测试也是调度器任务，睡眠组件接收世界的 `getWatchWorldContent` 函数，自行监听私有 `Cycle` signal，并从返回值的 `scheduler` 取得共享游戏时间调度器；effect 用 `cycle.get()` 响应阶段转换，周期回调用本地 `peek()`，不订阅全局时钟；60 帧后的消化、各帧的啼叫等一次性任务由调度器登记，销毁时统一取消。
 
 ```text
 鸟的 perishable 到期 → perished 事件 → occupiable.onemptied（空笼）→ onBirdStarve
@@ -439,3 +439,9 @@ function bindDwarfStarAppearance(
 - 保存不依赖微任务刷新，恢复保留身份、脚点、数量和组件状态；释放一叠灰烬不影响其他实体的共享资源。
 
 矮星运行时已接入上述生命周期，草丛与洞穴花已接入上述 timer／memo 计时，灰烬消散的映射仍待实施。调试命令语法保持不变；本次补齐 `c_spawn("stafflight")`／`c_spawn("staffcoldlight")` 的注册，新增 `dug_grass` 的生成／给予入口。 `c_spawn("flower_cave")`、`c_spawn("ash")`、`c_spawn("stafflight")`、`c_give("ash", count)`、`c_give("yellowstaff")` 和 `c_save()` 以 [README 调试命令](../README.md#调试命令debugcommand) 为准。
+
+## worldwind：世界风向
+
+`worldwind.lua` 的 `angle` 是 [WorldWind](../packages/componets/src/worldwind.ts) 的私有可写 signal，对外只读（`angle`）；Lua 的 `windchange` 事件对应只读 signal `windchange`，每次变风都写入一个新的冻结 `{angle, velocity}`，因此角度重复时订阅者仍会收到通知。`velocity` 恒为 1。下一次变风是 `ComponentTimer` 上的离散任务：首次 1 秒（Lua 初值 `timeToWindChange = 1`），之后 `math.random(15, 30)` 秒（`0.5 × SEG_TIME` 到 `SEG_TIME`）；到期时 `angle` 与 `windchange` 在同一 `batch()` 中提交，再登记下一次，长帧会逐次补发。等待期间不逐帧递减，`Stop()` 写入 `stopped` 并撤销任务。组件没有 `OnSave`，不入档，读档重新随机。
+
+风滚草对每个实例用 `watchSignal(world.windchange, registerCleanup)` 建立私有本地 signal，用 `subscribe()` 监听后续变风（不读取源的 `peek()`，也不把初始值当作事件）；摄像机航向同样用本地 watched signal。移除风滚草时只调用注册的清理函数，同时停止 `startlongaction` 监听、ground-check／重启计时和 `blowinwind`。`blowinwind` 的速度积分是每帧连续运动，保持逐帧更新；世界风向本身不进入逐帧路径。

@@ -8,7 +8,7 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 
 // actions.lua PickRangeCheck: target:GetPhysicsRadius(0) + 4 + extrarange.
-// flower_cave* has no physics obstacle (radius 0) and no jostle* tag, so extrarange = 0.
+// Ground flowers have radius 0; bushes include their source obstacle radius.
 export const PICK_REACH = 4;
 
 /** The actor supplies inventory reception; products belong to the pickable component. */
@@ -34,6 +34,7 @@ interface PickTarget extends BufferedActionObject {
   readonly model: THREE.Object3D;
   readonly component: PickableComponent;
   getPosition(): THREE.Vector3;
+  getPhysicsRadius?(): number;
 }
 
 function canPick(target: PickTarget): boolean {
@@ -52,7 +53,9 @@ export function getPickActions(scene: THREE.Scene): MouseActionCandidate[] {
       model, component, prefab: model.userData.prefab,
       quickpick: component.quickpick,
       hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? model.userData.tags?.includes(tag) ?? false,
-      getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+      getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
+      getPhysicsRadius: () => model.userData.actionEntity?.getPhysicsRadius?.() ?? 0,
+      PushEvent: (name, data) => model.userData.actionEntity?.PushEvent?.(name, data),
     };
     actions.push({ action: { action: 'PICK', target }, button: 'left', model, available: canPick(target) });
   });
@@ -97,7 +100,8 @@ export class PickActionController {
     this.target = target;
     const version = this.version;
     if (typeof this.doer === 'function') {
-      if (!target.component.product) { this.cancel(); return false; }
+      // pickable.lua permits a nil product (for example clearing an overripe bush).
+      if (!target.component.product) { this.receiver = { giveItem: () => false }; return true; }
       const product = target.component.productEntity;
       const preparing = product
         ? this.doer(target.component.product, target.component.numToHarvest ?? 1, product)
@@ -131,8 +135,8 @@ export class PickActionController {
     if (!canPick(target)) { this.cancel(); return; }
     const position = target.getPosition();
     if (!this.inReach(target)) {
-      this.direction.subVectors(this.world.player.position, position).setY(0).normalize();
-      const destination = position.addScaledVector(this.direction, PICK_REACH * .8);
+      this.direction.subVectors(this.world.player.position, position).normalize();
+      const destination = position.clone().addScaledVector(this.direction, (PICK_REACH + (target.getPhysicsRadius?.() ?? 0)) * .8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       }
@@ -159,11 +163,11 @@ export class PickActionController {
 
   private inReach(target: PickTarget): boolean {
     const position = target.getPosition(), player = this.world.player.position;
-    return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= PICK_REACH ** 2;
+    return position.distanceToSquared(player) <= (PICK_REACH + (target.getPhysicsRadius?.() ?? 0)) ** 2;
   }
 
   private faceTarget(position: THREE.Vector3): void {
-    this.direction.subVectors(position, this.world.player.position).setY(0);
+    this.direction.subVectors(position, this.world.player.position);
     if (this.direction.lengthSq() < 1e-8) return;
     this.world.camera.getWorldDirection(this.forward); this.forward.setY(0).normalize();
     this.right.crossVectors(this.forward, new THREE.Vector3(0, 1, 0)).normalize();

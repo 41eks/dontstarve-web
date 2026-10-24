@@ -6,7 +6,7 @@ import type { Propagator } from './propagator';
 import { batch, createMemo, createSignal, readonlySignal } from '../../signals/src';
 
 export interface BurnableInst extends WorkInst {
-  components: { burnable?: Burnable; propagator?: Propagator };
+  components: { burnable?: Burnable; propagator?: Propagator; explosive?: { OnBurnt(): void } };
   getPosition(): Vector3;
 }
 
@@ -38,6 +38,7 @@ export class Burnable {
       if (this.removed || this.inst.isRemoved) return;
       this.inst.PushEvent?.('onburnt', undefined);
       this.onburnt?.(this.inst);
+      if (!this.removed && !this.inst.isRemoved) this.inst.components.explosive?.OnBurnt(); // burnable.lua DoneBurning
       this.Extinguish();
     });
     this.smolderTask = new ComponentTimer(this.scheduler, () => this.updateSmolder());

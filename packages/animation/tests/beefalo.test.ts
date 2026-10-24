@@ -3,7 +3,7 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BEEFALO_BEHAVIOR, BeefaloController, BeefaloManager, type BeefaloWorld, type BeefaloManagerWorld } from '../../prefab/src/beefalo';
-import { createMemo, createSignal } from '@dontstarve-web/signals';
+import { createMemo, createSignal, getWatchWorldContent, type WorldPhase, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '../src/beefaloSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
@@ -41,8 +41,9 @@ function setup(random = () => 0) {
   let players: THREE.Vector3[] = [];
   let poop: THREE.Vector3[] = [];
   const scheduler = new GameTimeScheduler();
-  const isNight = createSignal(false);
-  const world: BeefaloWorld = { phase: 'day', isNight, season: 'spring', scheduler,
+  const cycle = createSignal<WorldPhase>('day');
+  const sources: WorldContentEnvironment = { scheduler, cycle, season: createSignal({ season: 'spring', progress: .5 }) };
+  const world: BeefaloWorld = { phase: 'day', getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: 'spring', scheduler,
     secondsUntilNextDay: now => DAY - now % DAY,
     spawnPrize: vi.fn(),
     getPlayerPositions: () => players, findPath: vi.fn((_start, target) => [target]),
@@ -51,7 +52,7 @@ function setup(random = () => 0) {
   return { controller, model, body, animation, world,
     setPlayers: (value: THREE.Vector3[]) => { players = value; },
     setPoop: (value: THREE.Vector3[]) => { poop = value; },
-    setNight: (value: boolean) => { world.phase = value ? 'night' : 'day'; isNight.set(value); },
+    setNight: (value: boolean) => { world.phase = value ? 'night' : 'day'; cycle.set(world.phase); },
     /** Advance game time to the next day boundary, running every task due on the way. */
     endDay: () => { scheduler.advance(world.secondsUntilNextDay(scheduler.now)); },
     scheduler,
@@ -159,14 +160,14 @@ describe('wild beefalo behavior', () => {
     s.tick(2.1);
     const stale = s.animation.playOnce.mock.calls.at(-1)?.[1];
     // The day/night effect reacts in a microtask without advancing game time.
-    s.setNight(true); await Promise.resolve(); stale?.();
+    s.setNight(true); await new Promise(resolve => setTimeout(resolve, 0)); stale?.();
     expect(s.controller.state).toBe('sleep');
     expect(s.controller.sleeper.IsAsleep()).toBe(true);
     expect(s.body.velocity.x).toBe(0);
     s.complete();
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('sleep_loop', expect.any(Function));
     s.setNight(false);
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.controller.sleeper.IsAsleep()).toBe(false);
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('sleep_pst', expect.any(Function));
     s.complete();
@@ -217,7 +218,7 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.beard.Shave(undefined)).toEqual({ ok: true });
     expect(s.world.spawnPrize).toHaveBeenCalledExactlyOnceWith('beefalowool', 3, expect.objectContaining({ x: s.model.position.x, z: s.model.position.z }));
     expect(s.controller.state).toBe('shaved');
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.animation.setShaved).toHaveBeenLastCalledWith(true);
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('shave', expect.any(Function));
     expect(s.model.userData.actionEntity.hasTag('has_beard')).toBe(false);
@@ -233,7 +234,7 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.beard.Shave(undefined)).toEqual({ ok: false, reason: 'AWAKEBEEFALO' });
     expect(s.controller.beard.bits.peek()).toBe(3);
     expect(s.world.spawnPrize).not.toHaveBeenCalled();
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.animation.setShaved).not.toHaveBeenLastCalledWith(true);
   });
 
@@ -245,7 +246,7 @@ describe('wild beefalo behavior', () => {
     expect(shavedState.beard).toMatchObject({ growth: 0, bits: 0 });
     const restoredScene = setup(); restoredScene.controller.dispose();
     const restored = new BeefaloController(restoredScene.model, restoredScene.body, restoredScene.animation, s.world, shavedState, () => 0);
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(restoredScene.animation.setShaved).toHaveBeenLastCalledWith(true);
     expect(restored.model.userData.actionEntity.hasTag('has_beard')).toBe(false);
     restored.dispose();
@@ -258,7 +259,7 @@ describe('wild beefalo behavior', () => {
     s.complete();
     expect(s.controller.state).toBe('hair_growth_pop');
     expect(s.controller.beard.bits.peek()).toBe(3);
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.animation.setShaved).toHaveBeenLastCalledWith(false);
     expect(s.model.userData.actionEntity.hasTag('has_beard')).toBe(true);
     s.complete();
@@ -279,20 +280,20 @@ describe('wild beefalo behavior', () => {
     expect(beard.daysgrowth.peek()).toBe(3);
     expect(s.controller.hairGrowthPending.peek()).toBe(true);
     expect(beard.dayTimerState.peek()).toEqual({ status: 'scheduled', endTime: 4 * DAY });
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
   });
 
   it('stops its day timer, hairy memo and appearance effect on dispose', async () => {
     const s = setup();
     s.setNight(true); s.tick(7.1); s.complete();
     s.controller.beard.Shave(undefined); s.complete();
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     s.controller.dispose();
     const calls = s.animation.setShaved.mock.calls.length;
     s.endDay(); s.endDay(); s.endDay();
     expect(s.controller.beard.dayTimerState.peek()).toEqual({ status: 'stopped' });
     s.controller.beard.SetBits(3);
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.controller.beard.daysgrowth.peek()).toBe(0);
     expect(s.animation.setShaved.mock.calls).toHaveLength(calls);
     expect(s.controller.hairGrowthPending.peek()).toBe(false);
@@ -322,7 +323,8 @@ describe('original beefalo assets', () => {
     serveAssets();
     const clock = createSignal<{ phase: BeefaloWorld['phase']; cycles?: number }>({ phase: 'night' });
     const season = createSignal<{ season: BeefaloWorld['season'] }>({ season: 'winter' });
-    const isNight = createMemo(() => clock.get().phase === 'night');
+    const cycle = createMemo(() => clock.get().phase);
+    const sources: WorldContentEnvironment = { scheduler: new GameTimeScheduler(), cycle, season: createSignal({ season: 'winter', progress: .5 }) };
     const clockPeek = vi.spyOn(clock, 'peek'), seasonPeek = vi.spyOn(season, 'peek');
     const stopClock = vi.fn(), stopSeason = vi.fn();
     const subscribeClock = clock.subscribe, subscribeSeason = season.subscribe;
@@ -336,7 +338,7 @@ describe('original beefalo assets', () => {
     });
     const physics = new CANNON.World();
     const manager = new BeefaloManager(new THREE.Scene(), physics, '/dst/data/anim', {
-      clock, isNight, season, getPlayerPositions: () => [], findPath: (_start, target) => [target],
+      scheduler: sources.scheduler, clock, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season, getPlayerPositions: () => [], findPath: (_start, target) => [target],
       constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {}, secondsUntilNextDay: now => DAY - now % DAY,
     });
     try {
@@ -344,16 +346,20 @@ describe('original beefalo assets', () => {
       const controller = model.userData.beefaloController as BeefaloController;
       const world = (controller as any).world as BeefaloWorld;
       expect(world).toMatchObject({ phase: 'night', season: 'winter' });
-      for (let i = 0; i < 60 && controller.state !== 'sleep'; i++) manager.update(0.1);
+      for (let i = 0; i < 60 && controller.state !== 'sleep'; i++) {
+        sources.scheduler.advance(.1); manager.update(.1);
+      }
       expect(controller.state).toBe('sleep');
       const records = manager.exportRecords();
       clock.set({ phase: 'dusk' });
       season.set({ season: 'spring' });
-      await Promise.resolve();
+      await new Promise(resolve => setTimeout(resolve, 0));
       expect(controller.sleeper.IsAsleep()).toBe(false);
       expect(world).toMatchObject({ phase: 'dusk', season: 'spring' });
       expect(manager.exportRecords()).toEqual(records);
-      for (let i = 0; i < 60 && controller.state !== 'wake'; i++) manager.update(0.1);
+      for (let i = 0; i < 60 && controller.state !== 'wake'; i++) {
+        sources.scheduler.advance(.1); manager.update(.1);
+      }
       expect(controller.state).toBe('wake');
       const later = await manager.spawn(new THREE.Vector3(30, 0, 40));
       expect((later.userData.beefaloController as any).world).toBe(world);
@@ -367,7 +373,7 @@ describe('original beefalo assets', () => {
       expect(stopSeason).toHaveBeenCalledOnce();
       expect(physics.bodies).toHaveLength(0);
       expect(manager.exportRecords()).toEqual([]);
-    } finally { manager.dispose(); isNight.dispose(); }
+    } finally { manager.dispose(); cycle.dispose(); sources.scheduler.dispose(); }
   });
 
   it('shares the two build atlases, merges frames, hides HEAT, and preserves one-shot completion across facing changes', async () => {
@@ -419,8 +425,9 @@ describe('original beefalo assets', () => {
     const floor = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: new CANNON.Material('ground') });
     floor.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     physics.addBody(floor);
+    const sources: WorldContentEnvironment = { scheduler: new GameTimeScheduler(), cycle: createSignal<WorldPhase>('day'), season: createSignal({ season: 'spring', progress: .5 }) };
     const world: BeefaloManagerWorld = {
-      clock: createSignal({ phase: 'day' }), isNight: createSignal(false), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
+      scheduler: sources.scheduler, clock: createSignal({ phase: 'day' }), getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
       findPath: (_start, target) => [target], constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {},
       secondsUntilNextDay: now => DAY - now % DAY };
     const manager = new BeefaloManager(scene, physics, '/dst/data/anim', world);
@@ -432,19 +439,22 @@ describe('original beefalo assets', () => {
     controller.brain.Start();
     controller.sg.goToState('idle');
     for (let i = 0; i < 240; i++) {
+      sources.scheduler.advance(1 / 60);
       manager.update(1 / 60);
       physics.step(1 / 60);
       manager.sync(new THREE.Quaternion());
     }
     expect(model.position.x).toBeGreaterThan(4);
     manager.dispose();
+    sources.scheduler.dispose();
   });
 
   it('absorbs a running player collision with the Lua character damping instead of flying far', async () => {
     serveAssets();
     const physics = new CANNON.World();
+    const sources: WorldContentEnvironment = { scheduler: new GameTimeScheduler(), cycle: createSignal<WorldPhase>('day'), season: createSignal({ season: 'spring', progress: .5 }) };
     const world: BeefaloManagerWorld = {
-      clock: createSignal({ phase: 'day' }), isNight: createSignal(false), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
+      scheduler: sources.scheduler, clock: createSignal({ phase: 'day' }), getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
       findPath: (_start, target) => [target], constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {},
       secondsUntilNextDay: now => DAY - now % DAY };
     const manager = new BeefaloManager(new THREE.Scene(), physics, '/dst/data/anim', world);
@@ -457,6 +467,7 @@ describe('original beefalo assets', () => {
     physics.addBody(player);
     let stoppedAt = 0;
     for (let i = 0; i < 120; i++) {
+      sources.scheduler.advance(1 / 60);
       player.velocity.x = i < 10 ? 16 : 0; // player_common MakeCharacterPhysics(75, .5) at run speed
       manager.update(1 / 60);
       physics.step(1 / 60);
@@ -466,5 +477,6 @@ describe('original beefalo assets', () => {
     // After the player stops, the beefalo only slides a short way.
     expect(controller.body.position.x - stoppedAt).toBeLessThan(1);
     manager.dispose();
+    sources.scheduler.dispose();
   });
 });

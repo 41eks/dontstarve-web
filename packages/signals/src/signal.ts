@@ -80,7 +80,7 @@ export function onCleanUp(fn: () => void) {
 
 }
 
-function createEffectInternal(fn: () => void, synchronous = false) {
+export function createEffect(fn: () => void, synchronous = false) {
     // 构造出一个标准的 Effect 对象
     const effect: Effect = {
         deps: [], // 初始化空账本
@@ -123,10 +123,6 @@ function disposeEffect(effect: Effect): void {
     cleanup(effect);
 }
 
-
-export function createEffect(fn: () => void) {
-    return createEffectInternal(fn);
-}
 
 // 优化 1：直接接收初始值，简化 API
 export function createSignal<T>(initialValue: T): Signal<T> {
@@ -284,7 +280,7 @@ export interface Memo<T> extends ReadonlySignal<T> {
 export function watchSignal<T>(source: ReadonlySignal<T>, registerCleanup: (stop: () => void) => void): Signal<T> {
     const owner: SignalObserverScope = { stopped: false, effects: new Set(), listeners: new Set() };
     const local = createSignalInternal(source.peek(), owner);
-    const stop = createEffectInternal(() => local.set(source.get()), true);
+    const stop = createEffect(() => local.set(source.get()), true);
     const dispose = () => {
         if (owner.stopped) return;
         owner.stopped = true;
@@ -308,7 +304,7 @@ export function createMemo<T>(fn: () => T): Memo<T> {
 
     // Derived values stay current within a game frame; presentation effects
     // still use the normal microtask queue to batch their work.
-    const stop = createEffectInternal(() => {
+    const stop = createEffect(() => {
         const newValue = fn();
 
         memoState.set(newValue);

@@ -1,3 +1,4 @@
+import type { SoundHandle } from '../../prefab/src/sound.ts';
 import * as THREE from 'three';
 import { BufferedAction } from './bufferedaction.ts';
 import { bindActionCancellation } from './actionEvents.ts';
@@ -24,11 +25,15 @@ export interface ItemUseTarget extends ComponentActionEntity {
   /** Obstacle radius: the doer stops outside it, so reach is measured from its edge. */
   getPhysicsRadius?(): number;
 }
-type ItemUseAction = 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'ADDFUEL' | 'ADDWETFUEL';
+type ItemUseAction = 'FEED' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'ADDFUEL' | 'ADDWETFUEL' | 'FERTILIZE' | 'BATHBOMB';
 export const ITEM_USE_REACH = 4;
 
 function available(action: ItemUseAction, target: ItemUseTarget, source: ItemUseSource): boolean {
   if (target.isRemoved || target.hasTag('burnt') || target.hasTag('INLIMBO') || !source.isValid()) return false;
+  // componentactions.lua USEITEM.bathbomb: the bathbomb tag on the item, bathbombable on the target.
+  if (action === 'FEED') return target.hasTag('small_livestock') && !!target.components.eater?.CanEat(source.entity);
+  if (action === 'BATHBOMB') return source.entity.hasTag('bathbomb') && target.hasTag('bathbombable');
+  if (action === 'FERTILIZE') return !!source.entity.components?.fertilizer && !!target.components.pickable?.CanBeFertilized();
   if (action === 'REPAIR') return !!target.components.repairable?.CanRepair(source.entity);
   if (action === 'ADDFUEL' || action === 'ADDWETFUEL') return !!source.extractFuel && !!source.returnFuel
     && !!target.components.fueled?.CanAcceptFuelItem({ components: source.entity.components ?? {} });
@@ -46,6 +51,12 @@ export function getItemUseActions(scene: THREE.Scene, source: ItemUseSource | un
   scene.traverse(model => {
     const target = model.userData.actionEntity as ItemUseTarget | undefined;
     if (!target) return;
+    if (source.entity.components?.fertilizer && target.hasTag('barren')) actions.push({
+      action: { action: 'FERTILIZE', target, invobject: source.entity }, button: 'left',
+      model, source: 'inventory', available: available('FERTILIZE', target, source) });
+    if (source.entity.hasTag('bathbomb') && target.hasTag('bathbombable')) actions.push({
+      action: { action: 'BATHBOMB', target, invobject: source.entity }, button: 'left',
+      model, source: 'inventory', available: available('BATHBOMB', target, source) });
     const fueltype = source.entity.components?.fuel?.fueltype;
     if (fueltype && source.entity.hasTag(`${fueltype}_fuel`) && target.hasTag(`${fueltype}_fueled`)) {
       const action = source.entity.GetIsWet?.() ? 'ADDWETFUEL' : 'ADDFUEL';
@@ -81,6 +92,9 @@ export class ItemUseActionController {
   private buffered?: BufferedAction<ItemUseAction>;
   private disposed = false;
   private version = 0;
+  private ready = true;
+  private sound?: SoundHandle;
+  private fertilizerSounds?: Pick<typeof import('../../prefab/src/sound.ts'), 'PlaySound'>;
   private readonly world: ActionWorldContext;
   private readonly animation: ActionAnimationController;
   private readonly locomotor: ActionLocomotor;
@@ -104,6 +118,14 @@ export class ItemUseActionController {
     this.world.actionEvents?.emit('action:begin', { owner: this, action });
     this.animation.cancelEmote();
     this.pending = { action, target, source };
+    this.ready = action !== 'FERTILIZE';
+    if (!this.ready) {
+      const version = this.version;
+      void import('../../prefab/src/sound.ts').then(async sounds => {
+        await sounds.PreloadSounds('dontstarve/common/fertilize');
+        if (!this.disposed && version === this.version) { this.fertilizerSounds = sounds; this.ready = true; }
+      }).catch(error => { if (version === this.version) this.cancel(); console.error('Unable to prepare fertilizer sound', error); });
+    }
     return true;
   }
   update(): void {
@@ -116,7 +138,7 @@ export class ItemUseActionController {
     if (!available(action, target, source)) { this.cancel(); return; }
     const position = target.getPosition();
     if (!this.inReach(target)) {
-      const direction = this.world.player.position.clone().sub(position).setY(0).normalize();
+      const direction = this.world.player.position.clone().sub(position).normalize();
       const destination = position.clone().addScaledVector(direction, (ITEM_USE_REACH + (target.getPhysicsRadius?.() ?? 0)) * .8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
@@ -124,7 +146,8 @@ export class ItemUseActionController {
       return;
     }
     this.locomotor.stop();
-    const direction = position.clone().sub(this.world.player.position).setY(0);
+    if (!this.ready) return;
+    const direction = position.clone().sub(this.world.player.position);
     const forward = new THREE.Vector3(); this.world.camera.getWorldDirection(forward); forward.setY(0).normalize();
     const side = direction.dot(new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)));
     const depth = direction.dot(forward);
@@ -133,6 +156,9 @@ export class ItemUseActionController {
     const version = this.version;
     const buffered = new BufferedAction(action, () => action === 'ADDFUEL' || action === 'ADDWETFUEL'
       ? this.addFuel(target, source)
+      : action === 'FERTILIZE' ? this.fertilize(target, source)
+      : action === 'FEED' ? target.components.eater!.Eat(source.entity, () => source.take(true), this.world.player)
+      : action === 'BATHBOMB' ? this.bathbomb(target, source)
       : action === 'STORE'
       // actions.lua STORE: Occupy(inventoryitem:RemoveFromOwner()) — the same inst leaves the cursor.
       ? source.take(false) && target.components.occupiable!.Occupy(source.entity)
@@ -149,7 +175,22 @@ export class ItemUseActionController {
   }
   private inReach(target: ItemUseTarget): boolean {
     const position = target.getPosition(), player = this.world.player.position;
-    return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= (ITEM_USE_REACH + (target.getPhysicsRadius?.() ?? 0)) ** 2;
+    return position.distanceToSquared(player) <= (ITEM_USE_REACH + (target.getPhysicsRadius?.() ?? 0)) ** 2;
+  }
+  private fertilize(target: ItemUseTarget, source: ItemUseSource): boolean {
+    if (!target.components.pickable?.Fertilize(source.entity)) return false;
+    const fertilizer = source.entity.components!.fertilizer!;
+    if (!fertilizer.OnApplied(() => source.take(true))) return false;
+    this.sound?.stop(); this.sound = this.fertilizerSounds!.PlaySound(fertilizer.fertilize_sound, this.world.player.position);
+    return true;
+  }
+  /** actions.lua BATHBOMB: the target reacts first, then the doer's inventory loses the item. */
+  private bathbomb(target: ItemUseTarget, source: ItemUseSource): boolean {
+    const bathbombable = target.components.bathbombable;
+    if (!bathbombable?.can_be_bathbombed || !source.entity.components?.bathbomb) return false;
+    bathbombable.OnBathBombed(source.entity, this.world.player);
+    source.take(true);
+    return true;
   }
   private addFuel(target: ItemUseTarget, source: ItemUseSource): boolean {
     const item = source.extractFuel?.();
@@ -170,7 +211,7 @@ export class ItemUseActionController {
     this.picker.pointer.trackPointer(event);
     const actions = this.picker.getMouseActions(), action = event.button === 0 ? actions.left : actions.right;
     if ((action?.action !== 'GIVE' && action?.action !== 'REPAIR' && action?.action !== 'SHAVE' && action?.action !== 'STORE'
-      && action?.action !== 'ADDFUEL' && action?.action !== 'ADDWETFUEL') || !action.target) { this.cancel(); return; }
+      && action?.action !== 'FERTILIZE' && action?.action !== 'BATHBOMB' && action?.action !== 'ADDFUEL' && action?.action !== 'ADDWETFUEL') || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     this.request(action.action, action.target as ItemUseTarget);
   };
@@ -178,6 +219,7 @@ export class ItemUseActionController {
   dispose(): void {
     if (this.disposed) return;
     this.cancel(); this.disposed = true;
+    this.sound?.stop();
     this.unregister(); this.stopEvents(); this.stopActiveItem();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.pointerDown, true);
     window.removeEventListener('keydown', this.keyDown);

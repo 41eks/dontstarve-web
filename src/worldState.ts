@@ -1,11 +1,11 @@
-import { batch, createMemo, readonlySignal, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type Signal, type ClockState, type SeasonState, type WorldMoonPhase } from '@dontstarve-web/signals';
+import { batch, GameTimeScheduler, createMemo, readonlySignal, bindWorldContent, getWatchWorldContent, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type Signal, type ClockState, type SeasonState, type WorldMoonPhase, type WorldContentContext, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { WorldTemperature } from '../packages/componets/src/worldtemperature';
 import { Weather } from '../packages/componets/src/weather';
 import { WorldPerishClock } from '../packages/componets/src/worldperishclock';
 import type { SaveDocument } from './save/types';
 import { getDstCycle, getDstClock, MOON_PHASE_CYCLES, TUNING } from './tuning';
 
-export interface WorldState {
+export interface WorldState extends WorldContentContext {
   readonly temperature: ReadonlySignal<number>;
   readonly clock: Signal<ClockState>;
   readonly season: Signal<SeasonState>;
@@ -28,6 +28,7 @@ export interface WorldState {
 
 /** Session temperature derived from the shared clock/season singleton signals. */
 export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeconds' | 'systems'>): WorldState {
+  const scheduler = new GameTimeScheduler(world.elapsedSeconds);
   const worldtemperature = new WorldTemperature();
   // Until seasons.lua is ported, retain the loaded seasonal term. Legacy saves start
   // at their configured season's midpoint, with noise aligned to saved game time.
@@ -37,23 +38,27 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   });
   const weather = new Weather({ totalDayTime: TUNING.TOTAL_DAY_TIME, temperature: () => worldtemperature.temperature.get() });
   weather.OnLoad(world.systems.weather ?? {});
-  const cycle = getDstCycle(world.elapsedSeconds);
+  const initialCycle = getDstCycle(world.elapsedSeconds);
   // clock.lua OnLoad: a saved mooomphasecycle replaces the cycle-derived default.
   let moonCycleOffset = world.systems.moon === undefined ? 0
-    : world.systems.moon.mooomphasecycle - 1 - cycle.cycles % MOON_PHASE_CYCLES.length;
+    : world.systems.moon.mooomphasecycle - 1 - initialCycle.cycles % MOON_PHASE_CYCLES.length;
   moonCycleOffset = (moonCycleOffset % MOON_PHASE_CYCLES.length + MOON_PHASE_CYCLES.length) % MOON_PHASE_CYCLES.length;
   const clockAt = (elapsedSeconds: number) => getDstClock(elapsedSeconds, moonCycleOffset);
   const { moonPhase, ...clock } = clockAt(world.elapsedSeconds);
   batch(() => {
-    clockstate.set({ ...clock, timeinphase: cycle.phaseProgress });
+    clockstate.set({ ...clock, timeinphase: initialCycle.phaseProgress });
     moonphasestate.set(moonPhase);
   });
   worldtemperature.OnUpdate(0);
   const perishClock = new WorldPerishClock(worldtemperature.temperature, world.elapsedSeconds);
   const fullMoon = createMemo(() => clockstate.get().phase === 'night' && moonphasestate.get() === 'full');
   const moon = createMemo(() => ({ phase: moonphasestate.get(), waxing: clockstate.get().waxing ?? true }));
-  const isNight = createMemo(() => clockstate.get().phase === 'night');
-  return { temperature: worldtemperature.temperature, clock: clockstate,
+  const cycle = createMemo(() => clockstate.get().phase);
+  const worldContent: WorldContentEnvironment = Object.freeze({ scheduler, cycle: readonlySignal(cycle), season: readonlySignal(seasonstate) });
+  const unbindWorldContent = bindWorldContent(worldContent);
+  const isNight = createMemo(() => cycle.get() === 'night');
+  return { scheduler, temperature: worldtemperature.temperature, clock: clockstate, cycle: worldContent.cycle,
+    getWatchWorldContent: (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, worldContent),
     SetMoonPhase(phase, waxing) {
       const length = MOON_PHASE_CYCLES.length;
       for (let i = waxing ? 1 : length / 2; i <= length; i++) {
@@ -71,7 +76,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     moonPhaseCycle: () => ((clockstate.peek().cycles ?? 0) + moonCycleOffset) % MOON_PHASE_CYCLES.length + 1,
     clockAt,
     season: seasonstate, moonPhase: moonphasestate, moon: readonlySignal(moon), fullMoon: readonlySignal(fullMoon), isNight: readonlySignal(isNight), worldtemperature, weather, perishClock,
-    dispose() { moon.dispose(); isNight.dispose(); fullMoon.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
+    dispose() { unbindWorldContent(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); fullMoon.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */

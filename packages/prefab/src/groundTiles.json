@@ -1,6 +1,7 @@
 {
   "OCEAN_COASTAL": {
     "tileId": 201,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -21,6 +22,7 @@
   },
   "ROAD": {
     "tileId": 2,
+    "plantable": false,
     "name": "cobblestone",
     "atlas": "levels/tiles/cobblestone.xml",
     "texture": "levels/tiles/cobblestone.tex",
@@ -41,6 +43,7 @@
   },
   "COTL_BRICK": {
     "tileId": 256,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -61,6 +64,7 @@
   },
   "PEBBLEBEACH": {
     "tileId": 42,
+    "plantable": true,
     "name": "rocky",
     "atlas": "levels/tiles/rocky.xml",
     "texture": "levels/tiles/rocky.tex",
@@ -81,6 +85,7 @@
   },
   "MONKEY_GROUND": {
     "tileId": 257,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -101,6 +106,7 @@
   },
   "SHELLBEACH": {
     "tileId": 44,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -121,6 +127,7 @@
   },
   "MARSH": {
     "tileId": 8,
+    "plantable": true,
     "name": "marsh",
     "atlas": "levels/tiles/marsh.xml",
     "texture": "levels/tiles/marsh.tex",
@@ -141,6 +148,7 @@
   },
   "ROCKY": {
     "tileId": 3,
+    "plantable": false,
     "name": "rocky",
     "atlas": "levels/tiles/rocky.xml",
     "texture": "levels/tiles/rocky.tex",
@@ -161,6 +169,7 @@
   },
   "SAVANNA": {
     "tileId": 5,
+    "plantable": true,
     "name": "yellowgrass",
     "atlas": "levels/tiles/yellowgrass.xml",
     "texture": "levels/tiles/yellowgrass.tex",
@@ -181,6 +190,7 @@
   },
   "FOREST": {
     "tileId": 7,
+    "plantable": true,
     "name": "forest",
     "atlas": "levels/tiles/forest.xml",
     "texture": "levels/tiles/forest.tex",
@@ -201,6 +211,7 @@
   },
   "GRASS": {
     "tileId": 6,
+    "plantable": true,
     "name": "grass",
     "atlas": "levels/tiles/grass.xml",
     "texture": "levels/tiles/grass.tex",
@@ -221,6 +232,7 @@
   },
   "DIRT": {
     "tileId": 4,
+    "plantable": true,
     "name": "dirt",
     "atlas": "levels/tiles/dirt.xml",
     "texture": "levels/tiles/dirt.tex",
@@ -241,6 +253,7 @@
   },
   "DECIDUOUS": {
     "tileId": 30,
+    "plantable": true,
     "name": "deciduous",
     "atlas": "levels/tiles/deciduous.xml",
     "texture": "levels/tiles/deciduous.tex",
@@ -261,6 +274,7 @@
   },
   "DESERT_DIRT": {
     "tileId": 31,
+    "plantable": true,
     "name": "desert_dirt",
     "atlas": "levels/tiles/desert_dirt.xml",
     "texture": "levels/tiles/desert_dirt.tex",
@@ -281,6 +295,7 @@
   },
   "CAVE": {
     "tileId": 13,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -301,6 +316,7 @@
   },
   "FUNGUS": {
     "tileId": 14,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -321,6 +337,7 @@
   },
   "FUNGUSRED": {
     "tileId": 24,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -341,6 +358,7 @@
   },
   "FUNGUSGREEN": {
     "tileId": 25,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -361,6 +379,7 @@
   },
   "FUNGUSMOON": {
     "tileId": 46,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -381,6 +400,7 @@
   },
   "SINKHOLE": {
     "tileId": 15,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -401,6 +421,7 @@
   },
   "UNDERROCK": {
     "tileId": 16,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -421,6 +442,7 @@
   },
   "VENT": {
     "tileId": 260,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -441,6 +463,7 @@
   },
   "MUD": {
     "tileId": 17,
+    "plantable": true,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -461,6 +484,7 @@
   },
   "ARCHIVE": {
     "tileId": 45,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -481,6 +505,7 @@
   },
   "VAULT_CLEAN": {
     "tileId": 262,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -501,6 +526,7 @@
   },
   "BRICK_GLOW": {
     "tileId": 19,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -521,6 +547,7 @@
   },
   "BRICK": {
     "tileId": 18,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -541,6 +568,7 @@
   },
   "TILES_GLOW": {
     "tileId": 21,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -561,6 +589,7 @@
   },
   "TILES": {
     "tileId": 20,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -581,6 +610,7 @@
   },
   "TRIM_GLOW": {
     "tileId": 23,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -601,6 +631,7 @@
   },
   "TRIM": {
     "tileId": 22,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -621,6 +652,7 @@
   },
   "METEOR": {
     "tileId": 43,
+    "plantable": true,
     "name": "meteor",
     "atlas": "levels/tiles/meteor.xml",
     "texture": "levels/tiles/meteor.tex",
@@ -641,6 +673,7 @@
   },
   "MONKEY_DOCK": {
     "tileId": 263,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -661,6 +694,7 @@
   },
   "SCALE": {
     "tileId": 32,
+    "plantable": false,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
@@ -681,6 +715,7 @@
   },
   "WOODFLOOR": {
     "tileId": 10,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -701,6 +736,7 @@
   },
   "COTL_GOLD": {
     "tileId": 268,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -721,6 +757,7 @@
   },
   "CHECKER": {
     "tileId": 12,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -741,6 +778,7 @@
   },
   "MOSAIC_GREY": {
     "tileId": 269,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -761,6 +799,7 @@
   },
   "MOSAIC_RED": {
     "tileId": 270,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -781,6 +820,7 @@
   },
   "MOSAIC_BLUE": {
     "tileId": 271,
+    "plantable": false,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
@@ -801,6 +841,7 @@
   },
   "CARPET2": {
     "tileId": 272,
+    "plantable": false,
     "name": "carpet",
     "atlas": "levels/tiles/carpet.xml",
     "texture": "levels/tiles/carpet.tex",
@@ -821,6 +862,7 @@
   },
   "CARPET": {
     "tileId": 11,
+    "plantable": false,
     "name": "carpet",
     "atlas": "levels/tiles/carpet.xml",
     "texture": "levels/tiles/carpet.tex",
@@ -841,6 +883,7 @@
   },
   "BEARD_RUG": {
     "tileId": 273,
+    "plantable": false,
     "name": "carpet",
     "atlas": "levels/tiles/carpet.xml",
     "texture": "levels/tiles/carpet.tex",
@@ -861,6 +904,7 @@
   },
   "FARMING_SOIL": {
     "tileId": 47,
+    "plantable": true,
     "name": "farmsoil",
     "atlas": "levels/tiles/farmsoil.xml",
     "texture": "levels/tiles/farmsoil.tex",

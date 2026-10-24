@@ -32,6 +32,20 @@ class SeasonObserver {
 
 本地 signal 应保持为所属 class 的私有输入；消费者一旦读取它，就归这个 class 生命周期管理，停止时整个 effect 会被清理。不要把同一个本地 signal 交给生命周期独立的其他 class；其他 class 应分别从世界 signal 创建自己的本地 signal。普通 JavaScript class 没有自动析构回调，仍由实体移除／场景销毁调用 class 的 `dispose()`。`DeciduousTreeLeaves` 只保存本地 signal 的统一清理函数，季节回调继续用普通 `createEffect`，季节转换、初始化／读档和调试命令行为不变。
 
+`WorldContentKey` 统一定义 `Cycle` 与 `Season`；`Cycle` 是世界从 `clock.phase` 纯派生的 `'day' | 'dusk' | 'night'`，不另存可写阶段。`WorldContentContext` 定义世界来源、共享调度器和 `getWatchWorldContent` 契约，应用的 `WorldState` 与 prefab 的 `WorldContext` 共用它，prefab 不再重复定义昼夜、季节信号的类型。`WorldContext` 另补充场景、相机和物理接口。
+
+世界提供绑定自身原始来源的 `getWatchWorldContent(key, registerCleanup)` 函数，内部调用 `watchSignal`，返回保留 `get()`／`set()`／`peek()`／`subscribe()` 的本地 signal，并附带只读的 `scheduler` 引用。同一世界的 Cycle、Season 以及不同消费者取得的 scheduler 都是同一实例。Mole 将同一个函数直接传给 Sleeper；函数没有绑定 Mole 的清理列表，Sleeper 用自己的清理注册创建私有 `cycle`，移除时独立释放。Sleeper 的测试回调接收阶段值 `(inst, cycle)`，无需暴露或转交组件的本地 signal。
+
+```ts
+// Sleeper 内部；getWatchWorldContent 是世界注入的函数。
+this.cycle = getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
+const { scheduler } = this.cycle; // 和世界、Mole、Molehill 共用同一个实例
+this.test = new ComponentTimer(scheduler, () => this.runTest());
+createEffect(() => this.runTest(this.cycle.get()));
+```
+
+包导出的同名函数也可通过 `bindWorldContent(sources)` 解析当前世界，或用第三个参数显式指定包含 `scheduler` 的世界来源。应用注入的函数始终绑定所属世界；旧世界的清理不会解除新世界的绑定。组件释放只停止自身的监听和 timer，不释放 scheduler；世界状态负责创建、恢复游戏时间起点和销毁该实例。`GameTimeScheduler` 的实现位于本包，原 `componets/src/gameTimeScheduler.ts` 路径保留重新导出，类身份及调度行为一致。
+
 世界昼夜与季节由 `clockstate`、`seasonstate` 两个全局唯一单例持有，从本包统一导出。初始值分别为 `{ phase: 'day', timeinphase: 0 }` 和 `{ season: 'autumn', progress: 0.5 }`。`set()` 校验阶段／季节、有限数值及 `[0, 1]` 进度，保存不可变快照；无效写入保留原值且不通知订阅者。读档可写入 `{ phase, temperature }` 或 `{ season, temperature }`，保留源保存的温度项。创建 `WorldTemperature` 不重置这两个状态；场景加载恢复它们，温度、光照和牛的行为共享同一份输入。场景销毁只释放消费者的订阅，单例保留。
 
 月相由同一模块导出的全局唯一单例 `moonphasestate` 持有，初始为 `'new'`，支持 `'new'`、`'quarter'`、`'half'`、`'threequarter'`、`'full'`。世界时钟按现有 20 天周期每 60 个活动帧结算更新，从存档累计游戏时间恢复；同值不通知，无效月相保留原值并抛出 `RangeError`。光照用 `createEffect` 读取三个世界 signal，夜晚且月相为 `'full'` 时派生满月外观，不复制昼夜、季节或月相状态。

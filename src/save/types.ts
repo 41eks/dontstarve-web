@@ -37,12 +37,18 @@ export interface SavedEntity {
     timer?: { remainingSeconds: number };
     flower?: { animation: FlowerAnimation; planted: true };
     bulbPlant?: BulbPlantSaveState;
+    witherable?: import('../../packages/componets/src/witherable').WitherableSave;
+    burning?: true;
+    plant?: { skinId?: string };
     pickable?: GrassRecord['components']['pickable'];
+    molehill?: import('../../packages/prefab/src/molehill').MolehillSave;
     beefalo?: BeefaloSaveState;
     nightmareGrowth?: NightmareGrowthSaveState;
     lavaPond?: import('@dontstarve-web/prefab/lava_pond').LavaPondSaveState;
+    hotspring?: import('@dontstarve-web/prefab/hotspring').HotspringSaveState;
     wormhole?: WormholeSaveState;
     wall?: WallSaveState;
+    fence?: import('@dontstarve-web/prefab/fenceSkins').FenceSaveState;
     moonTree?: MoonTreeSaveState;
     evergreen?: { stump?: true; burnt?: true; burntcone?: true };
     deciduoustree?: import('../../packages/prefab/src/deciduousTreeLeaves').DeciduousTreeSave;

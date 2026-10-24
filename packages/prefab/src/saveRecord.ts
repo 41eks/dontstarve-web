@@ -8,6 +8,7 @@ export interface PlacementSaveRecord {
     container?: { slotCount: number; slots: { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] };
     health?: { current: number; maximum: number };
     wall?: import('./wallSkins').WallSaveState;
+    fence?: import('./fenceSkins').FenceSaveState;
     sculptingtable?: { itemname: string };
     birdcage?: import('./birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };

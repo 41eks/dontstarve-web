@@ -4,10 +4,10 @@ import { turfMap } from './building';
 import { scene } from './universal';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 
-/** The current surface map has no ocean tiles; point casting still preserves Lua's water capability. */
+/** Map:IsOceanAtPoint: the dug OCEAN_COASTAL tiles are the only water, and none of them is a visual ground. */
 export const spellCastMap: SpellCastMap = {
   isAboveGroundAtPoint: point => turfMap.getTileAtWorld(point) !== WORLD_TILES.INVALID,
-  isOceanAtPoint: () => false,
+  isOceanAtPoint: point => turfMap.isOceanAtWorld(point),
   isGroundTargetBlocked: point => {
     let blocked = false;
     // Map:IsGroundTargetBlocked checks these tags, rather than every collision body.

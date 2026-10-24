@@ -218,6 +218,12 @@ export class TurfMap {
     return request;
   }
 
+  /** map.lua CanPlantAtPoint: a land tile outside GROUND_HARD. */
+  canDeployPlantAtPoint(world: THREE.Vector3): boolean {
+    const tile = this.getTileAtWorld(world);
+    return Object.values(GROUND_TILE_DEFINITIONS).some(definition => definition.tileId === tile && definition.plantable);
+  }
+
   canPlant(world: Vector2): boolean {
     const tile = this.getTileAtWorld(world);
     return tile === WORLD_TILES.DECIDUOUS || tile === WORLD_TILES.DIRT || tile === WORLD_TILES.FARMING_SOIL;

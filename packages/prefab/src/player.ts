@@ -26,6 +26,7 @@ import { isStaff, loadLightStaffEquipment, resolveYellowStaffPlayerSprite, Staff
 import { loadBugNetEquipment, resolveBugNetPlayerSprite, type BugNetEquipment } from './bugnet';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
 import { loadHammerEquipment, resolveHammerPlayerSprite, type HammerEquipment } from './hammer';
+import { loadTridentEquipment, resolveTridentPlayerSprite, TRIDENT_STRUM_SOUND, type TridentEquipment } from './trident';
 import { loadNightswordEquipment, resolveNightswordPlayerSprite, type NightswordEquipment } from './nightsword';
 import { isPickaxeTool, loadPickaxeEquipment, resolvePickaxePlayerSprite, type PickaxeEquipment, type PickaxeTool } from './pickaxe';
 import { isAxeTool, loadAxeEquipment, type AxeEquipment, type AxeTool } from './axe';
@@ -48,7 +49,7 @@ export interface SymbolFollower {
   remove(): void;
 }
 
-export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'bugnet' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
+export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'trident' | 'bugnet' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
 type ReadAnimationKey = 'action_uniqueitem_pre' | 'book' | 'flute';
 type WilsonAnimations = Record<Exclude<WilsonAnimationKey, 'emote' | ReadAnimationKey>, ParsedAnim>;
 /** player_common_extensions.lua AddOverrideBuild; its anims are loaded with the first READ. */
@@ -150,6 +151,7 @@ class WilsonController implements WilsonAnimationController {
   private netEquipment: BugNetEquipment | null = null;
   private hammerEquipment: HammerEquipment | null = null;
   private nightswordEquipment: NightswordEquipment | null = null;
+  private tridentEquipment: TridentEquipment | null = null;
   private pickaxeEquipment: PickaxeEquipment | null = null;
   private axeEquipment: AxeEquipment | null = null;
   private pitchforkEquipment: PitchforkEquipment | null = null;
@@ -598,6 +600,21 @@ class WilsonController implements WilsonAnimationController {
         throw error;
       }
     }
+    if (item === 'trident') {
+      try {
+        const [equipment] = await Promise.all([
+          loadTridentEquipment(this.lanternAssets, skinId),
+          // SGwilson play_strum overrides its swap_trident symbol from the plain build.
+          this.loadSymbolBuild('swap_trident.zip'), PreloadSounds(TRIDENT_STRUM_SOUND),
+        ]);
+        if (request !== this.carryRequest) return;
+        this.tridentEquipment = equipment;
+      } catch (error) {
+        if (request !== this.carryRequest) return;
+        this.carryKey = '';
+        throw error;
+      }
+    }
     if (item === 'nightsword') {
       try {
         const equipment = await loadNightswordEquipment(this.lanternAssets, skinId);
@@ -879,6 +896,8 @@ class WilsonController implements WilsonAnimationController {
           && element.imageHash === swapObjectHash) return resolveBugNetPlayerSprite(this.netEquipment, element);
         if (this.carryItem === 'hammer' && this.hammerEquipment && this.state !== 'build'
           && element.imageHash === swapObjectHash) return resolveHammerPlayerSprite(this.hammerEquipment, element);
+        if (this.carryItem === 'trident' && this.tridentEquipment && this.state !== 'build'
+          && element.imageHash === swapObjectHash) return resolveTridentPlayerSprite(this.tridentEquipment, element);
         if (this.carryItem === 'nightsword' && this.nightswordEquipment && this.state !== 'build'
           && element.imageHash === swapObjectHash) return resolveNightswordPlayerSprite(this.nightswordEquipment, element);
         if (isPickaxeTool(this.carryItem ?? '') && this.pickaxeEquipment && this.state !== 'build'
@@ -921,7 +940,7 @@ export async function createWilsonPlayer(
   assetBaseUrl: string,
   options: Pick<WilsonPlayerPrefabOptions, 'sanityPercent'> = {},
 ): Promise<PlayerModel> {
-  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip] = await Promise.all([
+  const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip, strum] = await Promise.all([
     loadBuild(`${PLAYER_ART_CHARACTER}.zip`, assetBaseUrl),
     loadBuild('swap_torch.zip', assetBaseUrl),
     loadAnim('torch.zip', assetBaseUrl),
@@ -939,6 +958,7 @@ export async function createWilsonPlayer(
     loadAnim('player_actions_axe.zip', assetBaseUrl),
     loadAnim('player_actions.zip', assetBaseUrl),
     loadAnim('player_slip.zip', assetBaseUrl),
+    loadAnim('player_strum.zip', assetBaseUrl),
     PreloadSounds('dontstarve/movement/iceslab_slipping', 'dontstarve/movement/slip_fall_whoop',
       'dontstarve/movement/slip_fall_thud', 'dontstarve/characters/wilson/hurt', 'dontstarve/wilson/make_trap', 'dontstarve/wilson/shave_LP', 'dontstarve/wilson/attack_whoosh',
       'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword'),
@@ -1013,6 +1033,7 @@ export async function createWilsonPlayer(
     till_pst: till,
     hit: actions,
     wakeup: actions,
+    strum_pre: strum, strum,
     slip_pre: slip, slip_loop: slip, slip_pst: slip,
     slip_fall_pre: slip, slip_fall_idle: slip, slip_fall_pst: slip,
   }, createMaterials(buildPackage), {

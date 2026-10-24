@@ -19,6 +19,7 @@ export class Growable {
   readonly state;
   loopstages = false;
   springgrowth = false;
+  magicgrowable = false;
   private disposed = false;
   private readonly pauseReasons = new Set<string>();
   private readonly scheduler: GameTimeScheduler;

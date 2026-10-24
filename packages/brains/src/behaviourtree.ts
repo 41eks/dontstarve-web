@@ -326,6 +326,28 @@ export class PriorityNode extends BehaviourNode {
 }
 
 /** Once the condition passes the sequence keeps running its node until that node succeeds or fails. */
+export class EventNode extends BehaviourNode {
+  private triggered = false;
+  readonly priority: number;
+  constructor(inst: { ListenForEvent(name: string, fn: () => void): void; RemoveEventCallback(name: string, fn: () => void): void; brain?: { ForceUpdate(): void } }, event: string, child: BehaviourNode, priority = 0) {
+    super(`Event(${event})`, [child]); this.priority = priority;
+    const listener = () => {
+      if (this.status === RUNNING) child.Reset();
+      this.triggered = true; inst.brain?.ForceUpdate();
+      this.DoToParents(node => { if (node instanceof PriorityNode) node.lasttime = undefined; });
+    };
+    inst.ListenForEvent(event, listener);
+    this.OnStop = () => inst.RemoveEventCallback(event, listener);
+  }
+  override Step(): void { super.Step(); this.triggered = false; }
+  override Reset(): void { this.triggered = false; super.Reset(); }
+  override Visit(): void {
+    if (this.status === READY && this.triggered) this.status = RUNNING;
+    if (this.status === RUNNING) { this.children![0].Visit(); this.status = this.children![0].status; }
+  }
+}
+
+/** Once the condition passes the sequence keeps running its node until that node succeeds or fails. */
 export function IfNode(cond: () => boolean, name: string, node: BehaviourNode): BehaviourNode {
   return new SequenceNode([new ConditionNode(cond, name), node]);
 }

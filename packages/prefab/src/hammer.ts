@@ -4,6 +4,7 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Tool } from '../../componets/src/tool';
 
 export function configureHammerEntity(entity: ItemEntity): void {
+  entity.addTag('hammer'); // hammer.lua: SGmole distinguishes the weapon by this source tag.
   entity.components.finiteuses.setMaxUses(75); // TUNING.HAMMER_USES
   entity.components.tool = entity.component('tool', () => {
     const tool = new Tool(entity);

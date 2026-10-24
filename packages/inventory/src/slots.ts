@@ -24,10 +24,12 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   record: 1,
   torch: 1,
   lantern: 1,
+  mole: 1, // mole.lua: a live animal has no stackable component.
   heatrock: 1, // heatrock.lua has inventoryitem but no stackable or equippable.
   yellowstaff: 1,
   opalstaff: 1,
   greenstaff: 1,
+  trident: 1, // trident.lua has no stackable component.
   reskin_tool: 1,
   bugnet: 1,
   razor: 1, // razor.lua has no stackable component.
@@ -49,7 +51,14 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   book_moon: 1,
   featherpencil: 20, // featherpencil.lua: TUNING.STACK_SIZE_MEDITEM.
   log: 20,
+  cookingrecipecard: 1, // cookingrecipecard.lua has no stackable component.
+  blueprint: 1, // blueprint.lua has no stackable component.
+  bathbomb: 20, // bathbomb.lua: TUNING.STACK_SIZE_MEDITEM.
   dock_kit: 20, // dock_kit.lua: TUNING.STACK_SIZE_MEDITEM.
+  fence_item: 20, // fence.lua MakeInvItem: TUNING.STACK_SIZE_MEDITEM.
+  dug_rock_avocado_bush: 10,
+  dug_berrybush: 10,
+  dug_monkeytail: 10,
   dug_grass: 10, // plantables.lua: TUNING.STACK_SIZE_LARGEITEM.
   dug_sapling: 10,
   dug_sapling_moon: 10,
@@ -66,7 +75,7 @@ export function inventoryItemMaxStack(itemId: string): number {
 
 export function inventoryItemEquipmentKind(itemId: string): EquipmentKind | undefined {
   if (itemId === 'backpack') return 'body';
-  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'bugnet'
+  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'trident' || itemId === 'bugnet'
     || itemId === 'hammer' || itemId === 'nightsword' || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
     || itemId === 'axe' || itemId === 'goldenaxe' || itemId === 'moonglassaxe'
     || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool'

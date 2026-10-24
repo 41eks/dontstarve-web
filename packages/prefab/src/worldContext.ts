@@ -1,18 +1,21 @@
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionContext';
+import type { WorldContentContext } from '@dontstarve-web/signals';
 
 /**
  * Everything a prefab needs from the host application to place itself in the
  * running game. The application owns the scene graph, the camera, the renderer
  * and the ground, so prefabs receive them instead of creating their own.
  */
-export interface WorldContext extends ActionWorldContext {
+export interface WorldContext extends ActionWorldContext, Partial<WorldContentContext> {
+    /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
+    cameraFacing: import('@dontstarve-web/signals').ReadonlySignal<number>;
+    /** TheCamera:GetHeading() in degrees. */
+    cameraHeading: import('@dontstarve-web/signals').ReadonlySignal<number>;
     /** The host's physics world, for prefabs that own static obstacle bodies. */
     physics?: CANNON.World;
     itemEntities?: import('@dontstarve-web/inventory').ItemEntityRegistry;
-    scheduler?: import('../../componets/src/gameTimeScheduler').GameTimeScheduler;
-    season?: import('@dontstarve-web/signals').ReadonlySignal<import('@dontstarve-web/signals').SeasonState>;
     /** Temperature-weighted game-time prefixes shared by inventory, ground and caged items. */
     perishClock?: import('../../componets/src/worldperishclock').PerishClock;
     /** GetLocalTemperature at a DST ground position, in scene units. */

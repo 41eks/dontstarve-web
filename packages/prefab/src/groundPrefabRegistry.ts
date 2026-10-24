@@ -1,3 +1,4 @@
+import { createMoleGroundFactory } from './mole';
 import { GroundItemAssets, createGroundItemFactory } from './groundItems';
 import { createHatGroundFactory } from './hats';
 import { createBernieGroundFactory } from './bernie';
@@ -9,6 +10,9 @@ import { createPhonographGroundFactory } from './phonograph';
 import { createRecordGroundFactory } from './records';
 import { createTorchGroundFactory } from './torch';
 import { createPoopGroundFactory } from './poop';
+import { createRockAvocadoGroundFactory } from './rock_avocado_fruit';
+import { createIceGroundFactory } from './ice';
+import { createGunpowderGroundFactory } from './gunpowder';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { GroundItemFactory, GroundPrefabOptions } from './groundPrefab';
 import type * as THREE from 'three';
@@ -16,10 +20,10 @@ import type * as THREE from 'three';
 // Shared catalog factories come first; specialized prefabs override their IDs.
 const PREFAB_MODULES = [
   createGroundItemFactory, createHatGroundFactory, createBernieGroundFactory,
-  createFirefliesGroundFactory, createButterflyGroundFactory,
+  createFirefliesGroundFactory, createButterflyGroundFactory, createMoleGroundFactory,
   createLightbulbGroundFactory, createLanternGroundFactory, createPhonographGroundFactory,
   createTorchGroundFactory, createRecordGroundFactory,
-  createPoopGroundFactory,
+  createPoopGroundFactory, createIceGroundFactory, createRockAvocadoGroundFactory, createGunpowderGroundFactory,
 ];
 
 /** One registry and resource lifetime per ground-item manager. */

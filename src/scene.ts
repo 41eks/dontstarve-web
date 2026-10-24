@@ -23,7 +23,6 @@ import { bindActionCancellation } from '@dontstarve-web/stategraphs';
 import { initialSave } from './save/initialSave';
 import type { RuntimeSaveState } from './save/serialize';
 import { createWorldState, createWorldClockUpdater } from './worldState';
-import { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
@@ -141,7 +140,7 @@ export async function startScene(
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
   player.userData.locomotor = locomotor;
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds);
-  const scheduler = new GameTimeScheduler(clockUpdater.elapsedSeconds);
+  const scheduler = worldState.scheduler;
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock };
   itemEntities?.bindPerishWorld(perishWorld);
   const entities = await createSceneEntities(world, worldState, consumeBufferedBuild,
@@ -153,7 +152,6 @@ export async function startScene(
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     entities.dispose();
     disposeTerrain();
-    scheduler.dispose();
     worldState.dispose();
     dstLighting.dispose();
     throw error;
@@ -259,7 +257,6 @@ export async function startScene(
     const releaseResources = () => {
       entities.dispose();
       disposeTerrain();
-      scheduler.dispose();
       worldState.dispose();
       dstLighting.dispose();
       disposeTextureAssets();

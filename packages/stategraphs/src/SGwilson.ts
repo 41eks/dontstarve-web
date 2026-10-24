@@ -9,15 +9,15 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'mine_start' | 'mine' | 'chop_start' | 'chop' | 'hammer_start' | 'hammer'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
   | 'quickeat' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
-  | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute'
+  | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute' | 'play_strum'
   | 'slip' | 'slip_pst' | 'slip_fall' | 'slip_fall_loop' | 'slip_fall_pst';
-export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY';
+export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
   | 'quick_eat_pre' | 'quick_eat' | 'quick_drink_pre' | 'quick_drink' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst'
   | 'build_pre' | 'build_loop' | 'build_pst' | 'light_fire' | 'light_fire_pst'
-  | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit' | 'wakeup' | 'flute'
+  | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit' | 'wakeup' | 'flute' | 'strum_pre' | 'strum'
   | 'slip_pre' | 'slip_loop' | 'slip_pst' | 'slip_fall_pre' | 'slip_fall_idle' | 'slip_fall_pst';
 
 export const WILSON_ACTION_TIMES = {
@@ -806,6 +806,8 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.context.host.playSound('make');
       inst.context.playClips([clip('build_pre'), { ...clip('build_loop'), loop: true }]);
       inst.statemem.action = inst.context.getBufferedAction();
+      // SGwilson.lua dolongaction: the target learns that a long action started on it.
+      inst.context.getBufferedAction()?.target?.PushEvent?.('startlongaction', inst);
     },
     timeline: [TimeEvent(4 * FRAMES, (inst) => inst.removeStateTag('busy'))],
     ontimeout: (inst) => {
@@ -914,6 +916,27 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     },
   }),
   State({
+    // SGwilson.lua play_strum: the trident's cast, with its swap symbol taken from the plain build.
+    name: 'play_strum',
+    tags: ['doing', 'busy', 'playing', 'canrotate'],
+    onenter: (inst) => {
+      const { host } = inst.context;
+      host.stopMovement?.();
+      inst.context.playClips([clip('strum_pre'), clip('strum')]);
+      host.overrideSymbol?.('swap_trident', 'swap_trident', 'swap_trident');
+    },
+    timeline: [
+      TimeEvent(23 * FRAMES, (inst) => inst.context.host.playSound('cast', 'hookline_2/characters/trident_attack')),
+      TimeEvent(28 * FRAMES, (inst) => {
+        if (!inst.context.performBufferedAction()) inst.statemem.action_failed = true;
+      }),
+      TimeEvent(32 * FRAMES, (inst) => { if (inst.statemem.action_failed) inst.removeStateTag('busy'); }),
+      TimeEvent(41 * FRAMES, (inst) => { if (!inst.statemem.action_failed) inst.removeStateTag('busy'); }),
+    ],
+    events: [EventHandler('animqueueover', (inst) => { if (inst.context.animationDone) inst.goToState('idle'); })],
+    onexit: (inst) => inst.context.host.clearOverrideSymbol?.('swap_trident'),
+  }),
+  State({
     // Unmounted branch with the stock pan flute build; instrument asset/sound overrides belong to unported instruments.
     name: 'play_flute',
     tags: ['doing', 'busy', 'playing'],
@@ -1005,6 +1028,8 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
     return inst.hasStateTag('netting') ? 'bugnet' : 'bugnet_start';
   }),
   ActionHandler('PLANT', 'doshortaction'),
+  ActionHandler('FERTILIZE', 'doshortaction'),
+  ActionHandler('BATHBOMB', 'doshortaction'),
   ActionHandler('DEPLOY', 'doshortaction'),
   ActionHandler('PICKUP', 'doshortaction'),
   ActionHandler('HARVEST', 'dolongaction'),
@@ -1016,6 +1041,8 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   // SGwilson.lua TAKEITEM: the inventoryitemholder_take and target.takeitem branches belong to unported holders.
   ActionHandler('TAKEITEM', 'dolongaction'),
   ActionHandler('REPAIR', (_inst, action) => action.target?.hasTag('repairshortaction') ? 'doshortaction' : 'dolongaction'),
+  ActionHandler('FEED', (_inst, action) => action.invobject?.hasTag('quickfeed')
+    ? action.target?.hasTag('INLIMBO') ? 'doshortaction' : 'give' : 'dolongaction'),
   ActionHandler('GIVE', (_inst, action) => action.target?.hasTag('give_dolongaction') ? 'dolongaction' : 'give'),
   ActionHandler('PICK', (_inst, action) => {
     // SGwilson.lua:1043-1077 — jostle/skill/riding branches remain unported.
@@ -1037,9 +1064,10 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   ActionHandler('CASTSPELL', (_inst, action) => {
     const tool = action.invobject;
     // These source destinations need states/assets not yet implemented.
-    if (tool?.hasTag('gnarwail_horn') || tool?.hasTag('guitar')
+    if (tool?.hasTag('gnarwail_horn')
       || tool?.hasTag('cointosscast') || tool?.hasTag('crushitemcast')
       || tool?.hasTag('quickcast')) return null;
+    if (tool?.hasTag('guitar')) return 'play_strum';
     if (tool?.hasTag('veryquickcast')) return 'veryquickcastspell';
     if (tool?.hasTag('mermbuffcast')) return null;
     return 'castspell';

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createWorldState, createWorldClockUpdater } from '../../../src/worldState';
 import { getDstCycle } from '../../../src/tuning';
-import { clockstate, seasonstate, moonphasestate } from '../../signals/src';
+import { clockstate, seasonstate, moonphasestate, WorldContentKey } from '../../signals/src';
 
 function updateClock(state: ReturnType<typeof createWorldState>, elapsedSeconds: number, dt: number) {
   const cycle = getDstCycle(elapsedSeconds);
@@ -13,7 +13,14 @@ describe('session world temperature', () => {
   it('settles clock, moon phase and temperature every 60 active frames using actual dt and flushes partial batches', () => {
     const initialElapsedSeconds = 10 * 480 - 0.5;
     const state = createWorldState({ elapsedSeconds: initialElapsedSeconds, systems: {} });
+    const cleanups: (() => void)[] = [];
+    const localCycle = state.getWatchWorldContent(WorldContentKey.Cycle, stop => cleanups.push(stop));
+    expect(localCycle.scheduler).toBe(state.scheduler);
+    expect(localCycle.scheduler.now).toBe(initialElapsedSeconds);
     const observed = vi.fn();
+    const cycleChanges = vi.fn(), stopCycle = state.cycle.subscribe(cycleChanges);
+    expect(state.cycle.peek()).toBe('night');
+    expect('set' in state.cycle).toBe(false);
     const nightChanges = vi.fn(), stopNight = state.isNight.subscribe(nightChanges);
     expect(state.isNight.peek()).toBe(true);
     expect('set' in state.isNight).toBe(false);
@@ -37,10 +44,12 @@ describe('session world temperature', () => {
     expect(state.moonPhase.peek()).toBe('threequarter');
     expect(observed).not.toHaveBeenCalled();
     expect(nightChanges).not.toHaveBeenCalled();
+    expect(cycleChanges).not.toHaveBeenCalled();
     elapsed += 0.1;
     updater.update(0.1);
     expect(observed).toHaveBeenCalledOnce();
     expect(state.clock.peek().phase).toBe('day');
+    expect(cycleChanges).toHaveBeenCalledExactlyOnceWith('day', 'night');
     expect(state.isNight.peek()).toBe(false);
     expect(nightChanges).toHaveBeenCalledExactlyOnceWith(false, true);
     expect(state.moonPhase.peek()).toBe('full');
@@ -55,13 +64,18 @@ describe('session world temperature', () => {
     updater.flush();
     expect(state.clock.peek()).toBe(flushedClock);
     expect(nightChanges).toHaveBeenCalledOnce();
+    expect(cycleChanges).toHaveBeenCalledOnce();
     const before = updater.elapsedSeconds;
     expect(() => updater.update(-1)).toThrow(RangeError);
     expect(updater.elapsedSeconds).toBe(before);
-    stop(); state.dispose();
+    stop(); cleanups.forEach(stop => stop()); state.dispose();
+    expect(() => localCycle.scheduler.schedule(1, () => {})).toThrow('disposed');
     state.clock.set({ phase: 'night', timeinphase: 0 });
     expect(state.isNight.peek()).toBe(false);
     expect(nightChanges).toHaveBeenCalledOnce();
+    expect(state.cycle.peek()).toBe('day');
+    expect(cycleChanges).toHaveBeenCalledOnce();
+    stopCycle();
     stopNight();
   });
 

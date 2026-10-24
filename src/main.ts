@@ -149,6 +149,11 @@ const handEquipmentBinding = await bindPlayerHandEquipment({
     spawnPrefab: (prefab, position) => (prefab === 'staffcoldlight' ? polarLights : dwarfStars).spawnPrepared(position),
   },
   greenStaffWorld: { prepareLoot: items => groundItems.prepareLoot(items) },
+  tridentWorld: {
+    map: spellCastMap,
+    prepareWaterspout: () => worldFx.prepare('crab_king_waterspout'),
+    spawnWaterspout: position => worldFx.spawn('crab_king_waterspout', position),
+  },
 });
 
 const headEquipmentBinding = bindPlayerHeadEquipment({
@@ -241,7 +246,7 @@ const sceneResources = await startScene(
   inventory.entities,
   inventory,
 );
-const { buildingPlacement, groundItems, dwarfStars, polarLights, farmPlow, dockKit, registry, getSaveState, disposalEvents } = sceneResources;
+const { buildingPlacement, groundItems, worldFx, dwarfStars, polarLights, farmPlow, dockKit, registry, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position,
   getMiniMapEntities: () => [player.MiniMapEntity, ...registry.miniMapEntities] });
 const playerSanity = new Sanity({ ...pickupDoer, sg: playerAnimation?.stategraph }, playerStats.sanity);

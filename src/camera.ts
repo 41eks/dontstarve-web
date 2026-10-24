@@ -3,6 +3,8 @@ import { backTasks } from './animate';
 import { player } from './player';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { renderer } from './universal';
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { facingFromHeading } from '@dontstarve-web/animation/facing';
 
 const DEFAULT_HEADING = 45;
 // followcamera.lua distances (default 30, 15..50) in DST units, scaled by TILE_SIZE / TILE_SCALE.
@@ -41,6 +43,12 @@ export class FollowCameraController {
   private readonly cameraUp = new THREE.Vector3();
 
   private heading = DEFAULT_HEADING;
+  /** Eight-faced FACING_* bit of the current heading; written only when the heading crosses a 45-degree sector. */
+  private readonly facingState = createSignal(facingFromHeading(DEFAULT_HEADING));
+  readonly facing = readonlySignal(this.facingState);
+  /** TheCamera:GetHeading(), in degrees; placers rotate against it. */
+  private readonly headingState = createSignal(DEFAULT_HEADING);
+  readonly headingAngle = readonlySignal(this.headingState);
   private headingTarget = DEFAULT_HEADING;
   private distance = DEFAULT_DISTANCE;
   private distanceTarget = DEFAULT_DISTANCE;
@@ -175,6 +183,8 @@ export class FollowCameraController {
       (this.distance - this.minDistance) / (this.maxDistance - this.minDistance),
     );
     const pitchRadians = THREE.MathUtils.degToRad(pitch);
+    this.headingState.set(this.heading);
+    this.facingState.set(facingFromHeading(this.heading));
     const headingRadians = THREE.MathUtils.degToRad(this.heading);
     const cosPitch = Math.cos(pitchRadians);
 

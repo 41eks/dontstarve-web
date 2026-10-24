@@ -5,7 +5,7 @@ Port of AssetArchive's src-tauri/src/fmodparse.rs (FmodFev::parse). Event paths 
 project name: use `wilson/hit`, not `dontstarve/wilson/hit`. file_index is zero-based;
 vgmstream-cli -s is file_index + 1.
 
-Usage: fev-events.py <file.fev> <event-path|substring>... [--substring]
+Usage: fev-events.py <file.fev> <event-path|substring>... [--substring] [--properties]
 """
 import struct, sys
 class R:
@@ -25,7 +25,7 @@ class R:
     def lbuf(s):
         n=s.u32(); b=s.d[s.p:s.p+n]; s.p+=n
         return b[:-1] if b.endswith(b'\0') else b
-def parse(path):
+def parse(path, event_properties=False):
     f=R(open(path,'rb').read())
     for t in ('RIFF','LIST','PROJ','OBCT'): f.seek(t)
     f.skip(20); nb=f.u32(); f.skip(4); nc=f.u32(); f.skip(4); f.u32(); f.skip(36); f.u32(); f.skip(28); f.u32(); f.skip(4); f.u32(); f.skip(28); f.u32(); f.skip(128); f.lbuf()
@@ -33,14 +33,14 @@ def parse(path):
     banks=[]
     for _ in range(nb): f.skip(20); banks.append(f.lbuf().decode())
     for _ in range(nc): f.lbuf(); f.skip(20)
-    events=[]; stack_idx=[]
+    events=[]; stack_idx=[]; properties={}
     def ev():
         t=f.u32()
         if t==16:
-            ni=f.u32(); f.skip(160); num=f.u32(); di=f.u32(); f.skip(58); f.lbuf()
+            ni=f.u32(); properties[tuple(stack_idx+[ni])] = dict(zip(('volume', 'pitch_octaves'), struct.unpack_from('<2f', f.d, f.p + 16))); f.skip(160); num=f.u32(); di=f.u32(); f.skip(58); f.lbuf()
             events.append((stack_idx+[ni],[di]))
         elif t==8:
-            ni=f.u32(); f.skip(160); nl=f.u32(); refs=[]
+            ni=f.u32(); properties[tuple(stack_idx+[ni])] = dict(zip(('volume', 'pitch_octaves'), struct.unpack_from('<2f', f.d, f.p + 16))); f.skip(160); nl=f.u32(); refs=[]
             for _ in range(nl):
                 f.skip(6); w=f.u32(); ns=w&0xffff; ne=w>>16
                 for _ in range(ns): refs.append(f.u16()); f.skip(56)
@@ -79,16 +79,22 @@ def parse(path):
     for i,o in enumerate(offs):
         e=offs[i+1] if i+1<len(offs) else len(content)
         strs.append(content[o:e].rstrip(b'\0').decode(errors='replace'))
+    if event_properties:
+        return {'/'.join(strs[i] for i in p): properties[tuple(p)] for p,r in events}
     return {'/'.join(strs[i] for i in p):[(d,defs[d]) for d in r if d<len(defs)] for p,r in events}
 if __name__ == '__main__':
-    args = [a for a in sys.argv[1:] if a != '--substring']
+    args = [a for a in sys.argv[1:] if a not in ('--substring', '--properties')]
     substring = '--substring' in sys.argv
     if len(args) < 2: sys.exit(__doc__)
-    events = parse(args[0])
+    show_properties = '--properties' in sys.argv
+    events = parse(args[0], event_properties=show_properties)
     for query in args[1:]:
         keys = [k for k in events if query in k] if substring else [query]
         for key in keys:
             print(key)
+            if show_properties:
+                print(' ', events[key])
+                continue
             for definition, files in events.get(key, []):
                 for path, bank, file_index, length_ms in files:
                     print(f'  sounddef {definition}: {path} bank={bank} file_index={file_index} '

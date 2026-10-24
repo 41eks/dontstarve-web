@@ -85,6 +85,8 @@ export class GroundItemManager {
     entities = new ItemEntityRegistry(),
     scheduler?: GameTimeScheduler,
     season?: GroundPrefabOptions['season'],
+    fx?: GroundPrefabOptions['fx'],
+    moleWorld?: GroundPrefabOptions['moleWorld'],
   ) {
     this.entities = entities;
     this.scene = scene;
@@ -94,7 +96,7 @@ export class GroundItemManager {
     this.inventory = inventory;
     this.player = player;
     this.prefabs = new GroundPrefabRegistry({
-      scene, animationBaseUrl, scheduler, season, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
+      scene, animationBaseUrl, scheduler, season, fx, moleWorld, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       dropLoot: (items, position) => this.flingLoot(items, position),
       prepareSpawn: definition => this.prepareSpawn(definition),
       getNeighbours: () => [...this.items.values()]
@@ -208,13 +210,13 @@ export class GroundItemManager {
     let spawnedEntity: ItemEntity | undefined;
     return {
       get spawnedEntity() { return spawnedEntity; },
-      spawn: (position, count = definition.count) => {
+      spawn: (position, count = definition.count, launch) => {
         if (released || this.disposed || !Number.isSafeInteger(count) || count <= 0 || count > definition.count) return false;
         released = true;
         const used = this.isNetCreature(definition.itemId) ? count : 1;
         visuals.slice(0, used).forEach(visual => {
           const item = this.singleDropDefinition({ ...definition, count });
-          if (fling) this.addFlungVisual(item, position, visual);
+          if (fling || launch) this.addFlungVisual(item, position, visual, launch);
           else this.addVisual(newEntityId(), item, position, visual, true);
           spawnedEntity ??= this.items.get(visual.model)?.entity;
         });
@@ -349,6 +351,8 @@ export class GroundItemManager {
       entity.ListenForEvent('onremove', () => this.removeVisual(record)),
       entity.ListenForEvent('perished', () => { void this.replacePerished(record).catch((error: unknown) =>
         console.error(`Unable to replace perished ${entity.prefab}`, error)); }),
+      // physics.lua LaunchAt: any inst may be thrown from its own position.
+      entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); }),
       entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); model.dispatchEvent({ type: 'ondropped' }); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
@@ -405,6 +409,17 @@ export class GroundItemManager {
     this.items.get(visual.model)!.fling = fling;
   }
 
+  /** Component-driven ground work, including inventory prefabs such as hard stone fruit. */
+  get mineTargets(): import('@dontstarve-web/stategraphs/pickaxe').PickaxeTarget[] {
+    return [...this.items.values()].filter(({ entity }) => entity.components.workable?.GetWorkAction() === 'MINE'
+      && entity.components.workable.CanBeWorked()).map(record => ({
+      id: record.entity.id, model: record.model, position: record.footPosition,
+      entity: actionEntity(record.model, record.entity.prefab, record.entity),
+      isValid: () => this.items.get(record.model) === record && !record.entity.isRemoved
+        && record.entity.components.workable?.CanBeWorked() === true,
+    }));
+  }
+
   exportRecords(): SavedEntity[] {
     const pending = [...this.pendingDrops.values()].filter(({ entity }) => !entity.isRemoved && entity.persists && !entity.components.inventoryitem.owner)
       .map(({ entity }) => {
@@ -415,7 +430,7 @@ export class GroundItemManager {
     return [...pending, ...[...this.items.values()].flatMap<SavedEntity>((record) => {
       const { id } = record;
       const definition = this.currentDefinition(record);
-      if (record.entity.isRemoved || !record.entity.persists || record.isRemoved?.()) return [];
+      if (record.entity.isRemoved || !record.entity.persists || record.isRemoved?.() || record.entity.hasTag('INLIMBO')) return [];
       return [{
         id,
         transform: {
@@ -425,6 +440,7 @@ export class GroundItemManager {
         components: {
           stack: {
             itemId: definition.itemId, count: definition.count,
+            ...(definition.mole === undefined ? {} : { mole: definition.mole }),
             ...(definition.container === undefined ? {} : { container: definition.container }),
             ...(definition.remainingUses === undefined ? {} : { remainingUses: definition.remainingUses }),
             ...(definition.remainingFuel === undefined ? {} : { remainingFuel: definition.remainingFuel }),
@@ -488,6 +504,13 @@ export class GroundItemManager {
       }
       return true;
     } finally { ejected?.dispose(); this.inserting.delete(record); }
+  }
+
+  get combatTargets(): import('../packages/stategraphs/src/attack').AttackTarget[] {
+    return [...this.items.values()].filter(({ entity, isClickable }) => entity.components.combat && isClickable?.() !== false)
+      .map(record => ({ id: record.entity.id, model: record.model,
+        inst: record.model.userData.mole as import('../packages/prefab/src/mole').Mole,
+        isValid: () => this.items.get(record.model) === record && !record.entity.isRemoved && !record.entity.hasTag('INLIMBO') }));
   }
 
   get hammerTargets(): readonly HammerTarget[] {

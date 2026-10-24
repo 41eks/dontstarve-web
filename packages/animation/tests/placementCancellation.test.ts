@@ -9,7 +9,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { getPrefabLightOverride } from '../../prefab/src/localLight';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
-import { EventEmitter, createEquipmentExistenceState } from '../../signals/src';
+import { EventEmitter, createEquipmentExistenceState, createSignal } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { ReskinActionController, type ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
@@ -22,7 +22,7 @@ function model() {
   const result = new THREE.Group();
   result.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()));
   result.userData.animationController = {
-    update: vi.fn(), start: vi.fn(), showImage: vi.fn(),
+    update: vi.fn(), start: vi.fn(), showImage: vi.fn(), setFacing: vi.fn(),
     playOnce: vi.fn((_name: string, complete: () => void) => complete()),
   };
   return result;
@@ -48,7 +48,7 @@ function setup(kind: 'animated' | 'wall') {
   const world = {
     actionEvents: new EventEmitter<PlayerActionEvents>(),
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas },
+    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: canvas },
     createCursorLabel: () => ({
       show: () => { cursor.hidden = false; },
       hide: () => { cursor.hidden = true; },
@@ -218,4 +218,19 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   click(0);
   expect(consume).not.toHaveBeenCalled();
   await expect(begin()).rejects.toThrow('disposed');
+});
+
+it('re-faces a wall only when the camera facing signal changes', async () => {
+  const { world, begin, load } = setup('wall');
+  await begin();
+  const controller = (await load.mock.results[0].value).userData.animationController;
+  expect(controller.setFacing).toHaveBeenLastCalledWith(8); expect(controller.showImage).toHaveBeenLastCalledWith(14);
+  const calls = controller.setFacing.mock.calls.length;
+  world.cameraFacing.set(128); await new Promise(resolve => setTimeout(resolve, 0));
+  expect(controller.setFacing).toHaveBeenLastCalledWith(128); expect(controller.showImage).toHaveBeenLastCalledWith(4);
+  world.cameraFacing.set(2); await new Promise(resolve => setTimeout(resolve, 0));
+  expect(controller.setFacing).toHaveBeenLastCalledWith(2); expect(controller.showImage).toHaveBeenLastCalledWith(14);
+  const changed = controller.setFacing.mock.calls.length;
+  world.cameraFacing.set(2); await new Promise(resolve => setTimeout(resolve, 0));
+  expect(controller.setFacing.mock.calls.length).toBe(changed); expect(changed).toBe(calls + 2);
 });

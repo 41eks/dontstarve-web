@@ -2,7 +2,7 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '@dontstarve-web/animation/beefaloSprite';
 import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import { createEffect, createSignal, readonlySignal, type ReadonlySignal, type WorldPhase, type WorldSeason } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, type ReadonlySignal, type WorldPhase, type WorldSeason, type WorldContentContext } from '@dontstarve-web/signals';
 import { Beard, type BeardSave } from '../../componets/src/beard';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sleeper } from '../../componets/src/sleeper';
@@ -36,9 +36,8 @@ export const BEEFALO_BEARD_BITS = 3;
 export const BEEFALO_HAIR_GROWTH_DAYS = 3;
 export const BEEFALO_PRIZE = 'beefalowool';
 
-export interface BeefaloWorld {
+export interface BeefaloWorld extends Pick<WorldContentContext, 'getWatchWorldContent'> {
   phase: WorldPhase;
-  readonly isNight: ReadonlySignal<boolean>;
   season: WorldSeason;
   scheduler: GameTimeScheduler;
   /** Seconds from scheduler time `now` to the world's next day boundary; the world owns the day length. */
@@ -152,10 +151,9 @@ export class BeefaloController {
     });
     this.sleeper = new Sleeper({
       isValid: () => this.isValid(), PushEvent: (name, data) => this.PushEvent(name, data),
-      world: { isNight: world.isNight },
       get sg() { return controller.sg; },
       get components() { return controller.components; },
-    }, world.scheduler, () => this.random());
+    }, world.getWatchWorldContent, () => this.random());
     this.sleeper.SetResistance(3);
     this.periodicspawner = new PeriodicSpawner(world.scheduler, () => {
       const position = this.model.position.clone().addScaledVector(this.direction, -WORLD_SCALE).setY(0);
