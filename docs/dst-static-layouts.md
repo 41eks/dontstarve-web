@@ -82,13 +82,15 @@ python3 scripts/import-dst-region.py \
 
 保留源格子的相对位置和朝向，以整个选区包围盒中心附近的整数格作为新原点，一个原版 4 单位地皮对应项目 12 单位。稀疏 `world.map.tiles` 保存选区地皮；`defaultTileId: 1` 表示所有缺失格为 `IMPASSABLE`。原有虚空和 `FAKE_GROUND` 不绘制、不通行，不生成连接桥或填补原版缺口。白名单之外的实体、桥梁、墙、生物、光源及地下环境规则尚未迁移。
 
-实体白名单位于 `scripts/import-dst-region.py` 的 `ENTITY_WHITELIST`，当前包含 `pighead`、`archive_moon_statue`、`cave_exit`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`、`blue_mushroom` 以及 8 个月亮洞穴水池 prefab（`grotto_pool_big`、`grotto_pool_small`、`grotto_moonglass_1/3/4`、`grotto_waterfall_big`、`grotto_waterfall_small1/2`），每项绑定专用的源状态转换函数。只解析名单内的实体分组，再按源坐标对应的 `nodeidtilemap` 节点筛选区域；位于选区外的同名实体不会导入。筛选不额外要求脚点地皮可通行，以免删除原版悬边位置上的实体。两个 prefab 的原版记录不保存旋转，项目记录使用 `rotationY: 0`。
+实体白名单位于 `scripts/import-dst-region.py` 的 `ENTITY_WHITELIST`，当前包含 `pighead`、`archive_moon_statue`、`cave_exit`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`、`blue_mushroom`、`grass`、`sapling`、`evergreen`、`cave_fern`、`cave_fern_withered`、`houndbone`、`flower_cave`、`flower_cave_double`、`flower_cave_triple`、`lightflier_flower`、下述 8 种岩石以及 8 个月亮洞穴水池 prefab（`grotto_pool_big`、`grotto_pool_small`、`grotto_moonglass_1/3/4`、`grotto_waterfall_big`、`grotto_waterfall_small1/2`），每项绑定专用的源状态转换函数。只解析名单内的实体分组，再按源坐标对应的 `nodeidtilemap` 节点筛选区域；位于选区外的同名实体不会导入。筛选不额外要求脚点地皮可通行，以免删除原版悬边位置上的实体。两个 prefab 的原版记录不保存旋转，项目记录使用 `rotationY: 0`。
 
 实体的连续栅格坐标必须使用 `gx = x / 4 + width / 2 + 0.5`、`gz = z / 4 + height / 2 + 0.5`，与 `map/bunch_spawner.lua`、`map/waterlog_worldgen.lua` 的 `checkIfValidGround` 一致；向下取整后查询节点，项目位置为 `((gx - origin_col) × 12, y × 3, (gz - origin_row) × 12)`。这里的半格偏移不能省略，否则所有实体在 X/Z 方向各偏移 6 个项目单位。当前 `(471, 471)` 地图和 `(281, 392)` 原点对应平移 `(-540, 0, -1872)`。猪头布局按 `resurrectionstone.lua` 位于 2×2 木地板外围四边的中点；修正后 31 座月亮雕像的脚点均位于 `ARCHIVE` 地皮，原先部分落在虚空是错误换算造成的。
 
 `pighead` 的 `data.burnt` 转为 `components.building.burnt`，正常状态为 `state: "idle"`；`archive_moon_statue` 的 `data.anim`（1～4）转为 `components.archiveProp.anim`。按 `stickheads.lua`、`archive_props.lua` 和 `workable.lua`，两者不持久化敲击／开采进度；猪头的醒睡状态由世界状态重建。未知状态、无对应支持的皮肤或平台数据报错，避免静默丢失。新增白名单项时必须提供状态转换函数，不能把任意 Lua `data` 直接写入项目组件。
 
 月亮洞穴水池：`grotto_pool_big` 的 `children_ids` / `children_indexes`（1～5）和 `grotto_pool_small` 的 `wf_id`（索引 1）先作为源 GUID 暂存，全部实体转换后由 `link_grotto_pools` 换成项目实体 ID，只保留已导入的子物件，写入 `components.grottoPool.children`；可开采的 `grotto_moonglass_*` / `grotto_waterfall_small*` 把 `workable.workleft`（`maxwork` 必须是 -1）转为 `components.grottoGlass.workleft`，`grotto_waterfall_big` 不接受任何状态。当前 `Cluster_58` 选区含 5 个大池、21 个小池及全部子物件，没有选区外的同名实体。
+
+岩石白名单新增 `rock1`、`rock2`、`cavein_boulder`、`rock_moon_shell`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low` 和 `rock_moon`。`rocks.lua` 的七种矿石没有对应 OnSave 字段，workable 默认不保存进度，因此 `rock_components` 仅接受空状态（或空 `workable`）。`cavein_boulder_components` 将 `variation`（省略时为原始符号 1）及 `raised`／`formed` 转为 `components.caveinBoulder`；接受静止落石的 `submersible.force_no_repositioning: false`，拒绝尚未移植的下落目标与组合关联状态。八种矿石均可开采，工作量按 Lua 不写入存档；落石抬高时不可开采，月岩壳破碎后自身不入档，生成的宝球与矿物保存；`moonrockseed` 静态美术可单独 `c_spawn`，不在本次导入名单中。快照 `0000000022` 选区新增 17 个 `rock1` 和 24 个 `cavein_boulder`，三个 `rock_flintless*` 分组共 89 个实体全在选区外，其余矿石源分组为空；现有地皮、玩家出生点和其他实体不变，共导入 986 个实体。
 
 实体 ID 包含源 Session、prefab 和源 `id`；源记录未保存 `id` 时使用筛选前的原分组序号，因此同一快照重复导入保持 ID 稳定。`Caves.import.json` 记录 `entityWhitelist`、各 prefab 的源数量／导入数量／选区外数量，以及每个实体的源序号、源 ID、源位置和所属节点。当前导入 4 个猪头、31 座月亮雕像和 1 个 `cave_exit`（另 9 个在选区外；其 `worldmigrator` 状态属于尚未接入的分片连接，不导入）；另外 3 个猪头和 3 座雕像位于选区外。
 
@@ -115,3 +117,5 @@ cd packages/ui && npx playwright test tests/pigking.spec.ts
 `pigKing.test.ts` 检查 40 / 12 块地皮、角点对齐和岩石坐标；`pigking.spec.ts` 在真实场景中检查 8 块岩石、草地图层、`c_spawn("insanityrock")` 以及 `c_save()` 后的实体数量和 ID 唯一性。
 
 蘑菇类白名单项：`mushtree_moon`（407 棵）、`mushtree_tall`（321 棵）、`blue_mushroom`（109 个）已导入，选区内没有 `mushtree_medium`（460 棵均在选区外）。蘑菇树的 `growable` / `treestate` / `stump` / `burnt` 转为 `components.growable` / `components.mushtree`，`plantregrowth` 不导入；`blue_mushroom` 的开合姿态由世界时钟重建，仅保存 `rain`。
+
+洞穴灯泡花白名单项：`flower_cave`（含 `_single` / `_springy` 外观）、`flower_cave_double`、`flower_cave_triple` 转为 `bulbPlant`：`light_state`、已采摘状态与剩余再生时间、`ON` 的 `turnoff` 或 `RECHARGING` 的 `recharge` 剩余秒数分别对应 `lightState`、`picked`、`regrowSeconds`、`remainingSeconds`；暂停或与状态不符的计时器直接报错。`lightflier_flower` 转为 `lightflierFlower`，同样保留 `rechargeSeconds` / `turnoffSeconds` 和 `childspawner.childreninside`；`childrenoutside` 的源 GUID 只在对应 `lightflier` 同样被导入时才保留（与 `grotto_pool` 的子实体相同）。`lightflier` 世界实体不在白名单内，所以原版在外飞行的萤火虫不会导入。

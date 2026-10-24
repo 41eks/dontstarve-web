@@ -16,11 +16,15 @@
 
 [hotspring.ts](../packages/prefab/src/hotspring.ts) 先接入显隐与碰撞切换：场景向管理器注入所属世界的查询函数，每个温泉用私有 `watchSignal` 监听脚点所属 tile，并通过普通 effect 更新活动集合、场景模型和物理体。inactive 时停止该温泉动画更新，保留原模型、逻辑记录、heater、bathbombable 和存档状态；返回范围时恢复同一实例，不重播生成或投入沐浴球动作。此阶段不释放休眠模型资源，不实现 Lua 的蒸汽 FX 分支。单个温泉永久移除时清理自己的监听，不释放共享 memo，也不影响同 tile 其他温泉。没有注入 tile 服务或查询返回 `undefined`（包括超出网格）时回退为 active，保证模型、碰撞体和动画正常工作；返回值为有效 memo 且状态为 `false` 时仍按 inactive 处理。
 
-[fireflies.ts](../packages/prefab/src/fireflies.ts) 从自身私有的活动区域视图纯派生 `active`；表现层另建 `watchSignal`，用普通 effect 创建或销毁动画网格；无覆盖／皮肤的帧几何由 sprite factory 的 `FrameGeometryCache` 共享。inactive 实体只保留逻辑控制器和轻量原点，原有渐变值、工作状态、逻辑 timer 和实体身份保留；共享图集只缓存一份。再次 active 时重建几何并绑定当前动画，不重新执行掉落、消耗或实体生成。`GroundItemVisual.active` 表示资源已加载，`GroundItemManager` 为每条记录创建私有桥接，通过 effect 更新活动集合和场景归属；动画更新、交互候选、邻居查询和 billboard 排序只遍历活动集合，保存仍导出全部逻辑记录。拾取、永久移除、换肤替换和场景释放时解除桥接并释放资源；没有活动区域服务时照常加载。
+[dstLocalLighting.ts](../src/dstLocalLighting.ts) 由场景注入所属世界的 `tickingarea`，GPU 光照贴图与 CPU `sampleLightLevel()` 共用活动过滤。按光源的世界坐标查找 tile，同格所有光源共用一个私有 `watchSignal` 活动视图；移动或带父节点的子光源按当前世界位置查新格子。区域外或 84×84 网格外的光源跳过叠加、衰减计算及光照贴图范围扩张，但不删除光源设置；玩家返回后恢复贡献。按 tile 的查询缓存保留到光照系统显式释放，同时清理私有监听和对应 memo；没有注入查询的独立场景保持不门控。
+
+[fireflies.ts](../packages/prefab/src/fireflies.ts) 从自身私有的活动区域视图纯派生 `active`；表现层另建 `watchSignal`，用普通 effect 创建或销毁 `createSharedArchiveSprite()` 实体。`swarm_loop` 共享预合成图集和 `InstancedMesh` 批次，`swarm_pre` / `swarm_pst` 使用同一 `ArchiveSpriteAssets` 的共享帧缓存。inactive 时退出批次、释放实体 visual，只保留逻辑控制器和轻量原点，原有渐变值、工作状态、逻辑 timer 和实体身份保留；共享图集保留到资产所有者释放。再次 active 时异步重建 visual 并绑定当前动画，不重新执行掉落、消耗或实体生成；若加载期间再次休眠或移除，释放过期结果。昼夜和玩家位置继续由区域门控，休眠期间不跟随世界更新；活动状态变为 true 时，显隐 effect 重新读取同步后的昼夜，白天直接清除旧亮度、淡变及延迟检查，隐藏 visual 并禁用 NET，不等待下一帧动画或 timer。白天丢弃和活动区内进入白天也直接隐藏。首次创建会预备好 visual，确保成功落地后可立即参与捕获；绑定时已 inactive 的实体立即释放预备 visual。`GroundItemVisual.active` 表示资源已加载，`GroundItemManager` 为每条记录创建私有桥接，通过 effect 更新活动集合和场景归属；动画更新、交互候选、邻居查询和 billboard 排序只遍历活动集合，保存仍导出全部逻辑记录。拾取、永久移除、换肤替换和场景释放时解除桥接并释放资源；没有活动区域服务时照常加载。
 
 [actionEntity.ts](../packages/prefab/src/actionEntity.ts) 的世界绑定统一维护 `tickingarea` 标签和活动实体索引。每个投影持有私有 tracker、区域 memo 和 `watchSignal`，普通 effect 在 active 时添加标签及索引，inactive 时移除；带底层 `ItemEntity` 的投影仍通过该实体的标签 API 写入，不维护第二份权威标签。`FindEntities` 只遍历活动索引，保留场景归属、移除状态、must/cant/oneof 标签和半径过滤，不读取 inactive 候选的位置。标签不控制可见性，白天隐藏但仍在活动区域的萤火虫也可带此标签；鼠标交互仍由可见性和 `NOCLICK` 规则控制。
 
 世界绑定仅建立一个玩家位置 `watchSignal`，沿用现有每 60 活动帧发布的位置快照，批量刷新登记实体的 tracker；玩家停留原 tile 时也刷新移动实体的位置。该采样会检查登记实体，但不会在每次 `FindEntities` 或每个渲染帧扫描全部实体。模型 `added` 时立即同步实际脚点，避免创建模型后才赋位置导致一直查询出生格。查询返回 `undefined` 的原有无门控分支保持 active。拾取、换肤等模型释放和 `ProximityEntities` 卸载释放投影订阅；永久移除及场景销毁清除标签和索引，逻辑实体保存不受影响。effect 仍在后续微任务提交，测试在后续宏任务观察区域切换。
+
+地面实体的每帧动画更新不再无条件同步空间／放置索引：脚点移动时同步两者，抛物过程同时同步视觉高度；标签变化仍由事件立即同步，动画包围范围扩大仍由 renderer 发布并在查询前刷新。相机视锥裁剪与 tickingarea 分开：离屏的完整帧不提交实例数据，但其逻辑动画、光源和共享资源保持原生命周期。
 
 ```ts
 import { GetTileStateAtPoint } from '@dontstarve-web/signals';

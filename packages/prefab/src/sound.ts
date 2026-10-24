@@ -3,6 +3,11 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // lightflier.lua / SGlightflier.lua -> grotto.fev sounddefs 87+88 / 83 / 81; file_index + 1.
+  'grotto/creatures/light_bug/fly_LP': { bank: 'grotto_sfx', streams: [356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366], loop: true, volume: .117489755153656,
+    layers: [{ bank: 'grotto_sfx', streams: [351, 352, 353, 354, 355] }] },
+  'grotto/creatures/light_bug/hit': { bank: 'grotto_sfx', streams: [347, 348, 349, 350], loop: false, volume: .2540972828865051 },
+  'grotto/creatures/light_bug/death': { bank: 'grotto_sfx', streams: [341, 342, 343, 344, 345, 346], loop: false, volume: .2540972828865051 },
   // SGwilson portal_jumpout, sounddef 516, wilson file_index 1.
   'dontstarve/movement/bodyfall_dirt': { bank: 'wilson', streams: [2], loop: false },
   // SGwilson portal jump: dontstarve.fev sounddef 2210; together file_index 1487–1491.
@@ -24,6 +29,8 @@ const sounds = {
   'dontstarve/common/flies': { bank: 'common', streams: [75, 76, 77, 78, 79, 80, 81], loop: true },
   // grass.lua → dontstarve.fev sounddef 19 → wilson file_index 115–118.
   'dontstarve/wilson/pickup_reeds': { bank: 'wilson', streams: [116, 117, 118, 119], loop: false },
+  // cave_fern.lua picksound → dontstarve.fev sounddef 83 (Harvest_Plant.wav) → wilson file_index 66, + 1.
+  'dontstarve/wilson/pickup_plants': { bank: 'wilson', streams: [67], loop: false },
   // SGwilson.lua dolongaction → dontstarve.fev sounddefs 1758/1759, two layers.
   // Short whooshes are triggered by build_loop cycles; raw sample looping repeats too quickly.
   'dontstarve/wilson/make_trap': { bank: 'wilson', streams: [71, 72, 73, 74, 75], loop: false,

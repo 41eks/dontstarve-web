@@ -84,6 +84,10 @@ export async function loadGroundTileAssets(root: string, name: GroundTileName): 
     depthWrite: false, transparent: true, alphaTest: 0.105,
   });
   material.forceSinglePass = true;
+  // Wins depth ties against the coplanar falloff top edge; the falloff prepass still occludes ground behind a cliff.
+  material.polygonOffset = true;
+  material.polygonOffsetFactor = -1;
+  material.polygonOffsetUnits = -1;
   // This atlas is injected by onBeforeCompile rather than a built-in material map.
   material.userData.prewarmTextures = [atlas];
   material.onBeforeCompile = (shader) => {

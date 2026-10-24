@@ -59,6 +59,7 @@ export class PickaxeActionController {
     this.worker = {
       PushEvent: (name, data) => world.player.dispatchEvent({ type: name, data } as never),
       getPosition: () => world.player.position,
+      sg: { HasStateTag: tag => animation.stategraph.hasStateTag(tag) },
     };
     this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
       isEquipped: equipment => this.isEquipped(equipment),

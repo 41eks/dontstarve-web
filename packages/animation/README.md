@@ -25,6 +25,8 @@ assets.dispose(); // 所有使用此缓存的实体移除后释放共享资源
 `definition.symbolOverrides` 指定源符号对应的 build archive 和替换符号；
 `options.skinArchive` 指定皮肤 build，缺少的符号回退到基础 build。
 `options.scale` 默认为 `0.02`，Y 轴翻转用于 DST 的二维坐标。
+`new ArchiveSpriteAssets(materialNamePrefix?, assetBaseUrl?)` 可注入动画根路径；省略时为
+`${import.meta.env.BASE_URL}dst/data/anim`，同一个资源所有者的所有实体共用此路径和缓存。
 每帧部件合并为一个几何体，保留源图层顺序和连续材质组；内部 visual 已注册到
 实体绘制排序系统。`setAnimation(name)` 切换同一 bank 的动画，`setPaused(boolean)`
 控制更新，具体掉落和库存行为由 prefab 层监听事件后调用。
@@ -72,15 +74,30 @@ sprite.playOnce('change', () => sprite.start('idle_loop'));
 
 底层 `createArchiveSprite()` 的 `options.sharedAnimations` 支持 clip 列表或 `'all'`；默认保留独立几何。
 
-## 循环场景动画实例化
+## 场景动画实例化
 
 `createSharedArchiveSprite()` 可额外传入 `instancedAnimations: ['idle_loop']`。指定的循环 clip
 由同一个 `ArchiveSpriteAssets` 按外观合批为 `InstancedMesh`；其他 clip（以及 `playOnce()`）继续显示普通共享帧，
 返回指定循环时自动重新入批。蓝／红／月亮蘑菇树已启用此选项；随机起始帧、颜色、透明度和实体位置保持独立。
 
+`instancedAnimations: 'all'` 同时实例化非循环动画，保持 `playOnce()` 的完成回调和末帧停留语义。
+蓝蘑菇使用此模式绘制 `blue`、`inground`、`picked` 及张开／缩回动画；所有植株复用 manager
+持有的 `ArchiveSpriteAssets`，每株独立切换动画。`preloadSharedArchiveSprite()` 提供同样的共享与实例化路径，
+预载一次后同步创建各植株，保留原有植物组件、交互和存档生命周期。
+
+`RockManager` 同样使用 `instancedAnimations: 'all'`：`full/med/low`、落石的 `idle/idle_raised`
+按 Lua 保持非循环播放，开采切换姿态后重新选择对应共享图集批次。动画与 build 分离的落石及其
+`swap_boulder2..8` 符号覆盖也按外观合批，实体明暗和拾取代理保持独立。
+月岩壳破碎后通过 `spriteErosion.ts` 的 `setSpriteErosion()` 写入独立的实例侵蚀量，
+深度与颜色 pass 使用同一侵蚀属性；完成移除仍由游戏时间调度器执行，不依赖绘制帧。
+
 源 atlas 中分散的部件经 `rgbaSpriteAtlas.ts` 按动画变换及层顺序预合成完整帧。图集使用源纹理密度、
 按设备上限分页（每页不超过 4096），同一 clip 共用固定边界和像素网格，避免逐帧裁切取整导致抖动。
 每个可见图集页绘制一次深度预处理和一次透明颜色 pass；颜色 pass 排在地皮之后、动态角色之前且不写深度。
+实例也继承实体祖先上的 `lightOverride`，按实例属性交给既有共享 lightmap 着色；萤火虫的
+`swarm_loop` 使用此路径保留夜间自亮，开始和结束动画仍使用普通共享帧。
+嵌套在逻辑实体下的 sprite 可通过 `options.foot` 指定实际脚点节点，排序与抛出时视觉高度分开。
+实例按完整帧的世界包围球做视锥裁剪；离屏实体继续推进动画并保留共享资源，但不参与本帧的实例排序和上传。
 
 场景需通过 `renderSceneWithPasses(renderer, scene, camera)` 绘制；启动预热使用
 `await prewarmScenePasses(renderer, scene, camera, signal)`，两者导出自 `@dontstarve-web/animation/sceneRenderPass`。

@@ -132,6 +132,7 @@ class MushroomPlant implements PickablePlantBehavior {
 function mushroomDefinition(prefab: typeof BLUE_MUSHROOM_ID, data: MushroomData): PickablePlantDefinition {
   return {
     prefab, animArchive: 'mushrooms.zip', buildArchive: 'mushrooms.zip', tags: [], product: data.pickloot,
+    archiveSprite: { bank: 'mushrooms', instancedAnimations: 'all' },
     noGrowInWinter: false, idle: { name: data.animname }, picked: { clips: ['picked'] }, empty: { name: 'picked', frame: 'last' },
     grow: data.animname, dugLoot: data.pickloot, burnTime: 10, burnFxLevel: 2, propagatorSize: 'small',
     // workable finish: the unpicked mushroom drops its cap, then always one more.

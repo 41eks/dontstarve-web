@@ -54,6 +54,8 @@ export interface LocoMotorOptions {
  * intent across StopMoving. Hosts may inject ground paths; flying creatures approach directly.
  */
 export class LocoMotor {
+  /** locomotor.lua: formation followers drive the motor directly instead of finding paths. */
+  directdrive = false;
   walkspeed = DEFAULT_WALK_SPEED;
   runspeed = DEFAULT_RUN_SPEED;
   dest?: Dest;
@@ -161,6 +163,7 @@ export class LocoMotor {
     } else this.arrive_dist = ARRIVE_STEP + target.getPhysicsRadius(0) + this.inst.getPhysicsRadius(0);
     this.wantstorun = run;
     this.updating = true;
+    if (this.directdrive) { if (run) this.RunForward(); else this.WalkForward(); }
     // Try an instant arrive check if we're not moving.
     if (!this.inst.sg?.hasStateTag('moving')) this.update(0, true);
   }
@@ -168,8 +171,8 @@ export class LocoMotor {
   GoToPoint(point?: LocoMotorPoint, action?: BufferedAction, run = false): void {
     const destination = point ?? action?.pos;
     if (!destination) throw new Error('GoToPoint requires a point or an action position');
-    const path = this.options.findPath?.(this.inst.getPosition(), destination);
-    if (this.options.findPath && !path?.length) { this.Stop(); return; }
+    const path = this.directdrive ? undefined : this.options.findPath?.(this.inst.getPosition(), destination);
+    if (!this.directdrive && this.options.findPath && !path?.length) { this.Stop(); return; }
     this.path = path ?? [];
     this.pathIndex = 0;
     this.dest = new Dest(undefined, { ...destination });
@@ -179,6 +182,7 @@ export class LocoMotor {
     this.wantstomoveforward = true;
     this.SetBufferedAction(action);
     this.updating = true;
+    if (this.directdrive) { if (run) this.RunForward(); else this.WalkForward(); }
     if (!this.inst.sg?.hasStateTag('moving')) this.update(0, true);
   }
 
@@ -202,6 +206,7 @@ export class LocoMotor {
     if (!this.inst.sg || this.inst.sg.hasStateTag('canrotate')) this.SetMoveDir(direction);
     this.wantstomoveforward = true;
     this.wantstorun = shouldRun;
+    if (this.directdrive) { if (shouldRun) this.RunForward(); else this.WalkForward(); }
     this.inst.PushEvent('locomote');
     this.updating = true;
   }

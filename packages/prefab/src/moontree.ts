@@ -2,10 +2,9 @@ import { ModelRecords, modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import {
   createAnimatedSpriteFactory,
-  loadBuildOverride,
-  type SpriteController,
   type SpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -23,7 +22,7 @@ import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { newEntityId } from './saveRecord';
 import { PreloadSounds, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment, type BurnSpec } from './treeFire';
-import { getBoundWatchWorldContent, type GetWatchWorldContent, type ReadonlySignal, type SeasonState } from '@dontstarve-web/signals';
+import { getBoundWatchWorldContent, WorldContentKey, createEffect, type GetWatchWorldContent, type ReadonlySignal, type SeasonState } from '@dontstarve-web/signals';
 import type { WorldEventEmitter } from './worldContext';
 
 /** tuning.lua MOON_TREE_CHOPS_TALL: the forest's trees are the tall stage. */
@@ -80,6 +79,8 @@ interface TreeController {
   workable?: Workable;
   /** MakeXBurnable + MakeXPropagator while the tree is awake. */
   burn?: BurnableBinding;
+  /** Private snow-level bridge; its cleanup owns the source subscription and the layer effect. */
+  stopSnow?: () => void;
 }
 
 export interface MoonTreeForestOptions {
@@ -132,12 +133,17 @@ export async function createMoonTreeForest(
   const exclusionRadiusSquared = options.exclusionRadiusSquared ?? 600;
   const random = options.random ?? Math.random;
   const scale = options.scale ?? definitions.moonTree.scale;
-  const [factory, fxFactory, saplingFactory, fireFx, snow] = await Promise.all([
-    createAnimatedSpriteFactory(assetBaseUrl, definitions.moonTree.archive),
+  const treeAssets = new ArchiveSpriteAssets('moon_tree', assetBaseUrl);
+  const standingAnimation = options.animationName ?? definitions.moonTree.animationName;
+  const [createTree, fxFactory, saplingFactory, fireFx] = await Promise.all([
+    // MakeSnowCoveredPristine: the `snow` placeholder is drawn from snow.zip while the snow level is covered.
+    preloadSharedArchiveSprite(treeAssets, { animationArchive: definitions.moonTree.archive,
+      buildArchives: [definitions.moonTree.archive, 'snow.zip'], bank: 'moon_tree', hiddenSymbols: ['snow'],
+      symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } } },
+    { scale, instancedAnimations: [...new Set([standingAnimation, ...MOON_TREE_SIZES.map(size => `sway1_loop_${size}`)])] }),
     createAnimatedSpriteFactory(assetBaseUrl, 'tree_petal_fx.zip'),
     createAnimatedSpriteFactory(assetBaseUrl, 'baby_moon_tree.zip'),
     FireFxHost.load(assetBaseUrl),
-    loadBuildOverride(assetBaseUrl, 'snow.zip'),
     PreloadSounds('dontstarve/wilson/plant_tree', 'dontstarve/forest/treeCrumble', 'dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeGrow', 'dontstarve/forest/treeGrowFromWilt'),
   ]);
   const positions = options.positions?.map((position) => position.clone())
@@ -167,7 +173,6 @@ export async function createMoonTreeForest(
   let getWatchWorldContent: GetWatchWorldContent | undefined;
   const lastQuaternion = new THREE.Quaternion();
   const env = (): BurnEnvironment => ({ scheduler, root: world!.scene, fire: fireFx });
-  const standingAnimation = options.animationName ?? definitions.moonTree.animationName;
   const sizeOf = (state: TreeState): MoonTreeSize => MOON_TREE_SIZES[state.growable.GetStage() - 1];
   const playGrowth = (entity: ProximityEntity, clip: string, wilt = false) => {
     if (!entity.model) return;
@@ -220,6 +225,14 @@ export async function createMoonTreeForest(
     const state = stateOf(controller.entity);
     if (!world || controller.burn || state.burnt) return;
     controller.burn = new BurnableBinding(controller.inst, burnSpec(controller.entity, state), env());
+  };
+  /** weather.lua SNOW_COVERED_THRESHOLD; without a bound world the snow layer stays hidden. */
+  const bindSnow = (controller: TreeController) => {
+    controller.stopSnow?.(); controller.stopSnow = undefined;
+    const sprite = controller.model.userData.animationController as ArchiveSprite;
+    const level = getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { controller.stopSnow = stop; });
+    if (level) createEffect(() => sprite.setSymbolHidden('snow', level.get() < .015));
+    else sprite.setSymbolHidden('snow', true);
   };
   const unbindFire = (controller: TreeController) => { controller.burn?.dispose(); controller.burn = undefined; };
   /** A stage change reconfigures the burnable in place, unless it is already burning. */
@@ -386,13 +399,12 @@ export async function createMoonTreeForest(
     positions,
     options.loadRadius ?? definitions.moonTree.loadRadiusTiles * TILE_SIZE,
     (entity) => {
-      const model = factory.create({
-        initialAnimation: stateOf(entity).stump ? `stump_${sizeOf(stateOf(entity))}`
-          : stateOf(entity).burnt ? `burnt_${sizeOf(stateOf(entity))}`
-          : sizeOf(stateOf(entity)) === 'tall' ? standingAnimation : `sway1_loop_${sizeOf(stateOf(entity))}`,
-        name: `MoonTree-${entity.id}`,
-        scale, getWatchWorldContent, snowCovered: snow,
-      });
+      const sprite = createTree(stateOf(entity).stump ? `stump_${sizeOf(stateOf(entity))}`
+        : stateOf(entity).burnt ? `burnt_${sizeOf(stateOf(entity))}`
+        : sizeOf(stateOf(entity)) === 'tall' ? standingAnimation : `sway1_loop_${sizeOf(stateOf(entity))}`,
+      true, `MoonTree-${entity.id}`);
+      const model = sprite.model;
+      model.userData.animationController = sprite;
       // Anchor the billboard at its foot, so both loading and depth sorting use
       // the persistent ground position rather than the centre of the tall art.
       model.updateWorldMatrix(true, true);
@@ -400,6 +412,7 @@ export async function createMoonTreeForest(
       model.children[0].position.y -= bounds.min.y;
       if (entity.saveId) model.userData.entityId = entity.saveId;
       attach(entity, model);
+      bindSnow(controllers.get(model)!);
       return model;
     },
     (model) => {
@@ -412,10 +425,11 @@ export async function createMoonTreeForest(
         else burn(controller.entity, true);
       }
       if (controller) unbindFire(controller);
+      controller?.stopSnow?.();
       controllers.delete(model);
       model.userData.removed = true;
       controller?.workable?.dispose();
-      factory.disposeSprite(model);
+      (model.userData.animationController as ArchiveSprite).dispose();
     },
     options.entityIds,
     { prefab: 'moon_tree', smartRadius: 1.6 * unit },
@@ -520,7 +534,7 @@ export async function createMoonTreeForest(
     bindWorld(next) {
       world = next;
       getWatchWorldContent = getBoundWatchWorldContent();
-      for (const { model } of controllers.values()) (model.userData.animationController as SpriteController).setWorldContent(getWatchWorldContent);
+      for (const controller of controllers.values()) bindSnow(controller);
       if (next.scheduler && ownsScheduler && !states.size && !saplings.size) {
         scheduler.dispose(); scheduler = next.scheduler; ownsScheduler = false;
       }
@@ -528,7 +542,7 @@ export async function createMoonTreeForest(
       return () => {
         if (world !== next) return;
         world = undefined; getWatchWorldContent = undefined;
-        for (const { model } of controllers.values()) (model.userData.animationController as SpriteController).setWorldContent(undefined);
+        for (const controller of controllers.values()) bindSnow(controller);
       };
     },
     get chopTargets() { return workTargets('CHOP'); },
@@ -600,8 +614,7 @@ export async function createMoonTreeForest(
       for (const handle of sounds) handle.stop(); sounds.clear();
       for (const fx of effects) fxFactory.disposeSprite(fx);
       effects.clear();
-      factory.dispose();
-      snow.dispose();
+      treeAssets.dispose();
       fxFactory.dispose();
       fireFx.dispose();
       saplingFactory.dispose();

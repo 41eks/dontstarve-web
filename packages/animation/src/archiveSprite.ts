@@ -10,6 +10,8 @@ import { InstancedArchiveSprites } from './instancedArchiveSprites';
 /** Animation/build sources supplied by callers; no prefab or inventory metadata. */
 export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
   readonly animationArchive: string;
+  /** Further archives of the same bank when a prefab's clips are split across files (evergreen short/normal and tall/old). */
+  readonly extraAnimationArchives?: readonly string[];
   readonly buildArchives: readonly string[];
   readonly bank: string;
   readonly animation: string;
@@ -20,8 +22,10 @@ export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
 }
 
 export interface ArchiveSpriteOptions {
-  /** Looping scenery clips to draw as precomposed instances; other clips use ordinary shared frames. */
-  instancedAnimations?: readonly string[];
+  /** Listed looping clips, or all clips (including one-shots), drawn as precomposed instances. */
+  instancedAnimations?: readonly string[] | 'all';
+  /** Ground-contact origin when this sprite is nested below a logical entity or a lifted visual. */
+  foot?: THREE.Object3D;
   /** Reuse immutable frame geometry for selected clips or all clips; playback/material copies stay independent. */
   sharedAnimations?: readonly string[] | 'all';
   skinArchive?: string;
@@ -47,9 +51,11 @@ export class ArchiveSpriteAssets {
   readonly instancedSprites = new InstancedArchiveSprites();
 
   private readonly materialNamePrefix: string;
+  private readonly assetBaseUrl: string;
 
-  constructor(materialNamePrefix = 'sprite') {
+  constructor(materialNamePrefix = 'sprite', assetBaseUrl = `${import.meta.env.BASE_URL}dst/data/anim`) {
     this.materialNamePrefix = materialNamePrefix;
+    this.assetBaseUrl = assetBaseUrl;
   }
 
   dispose(): void {
@@ -68,7 +74,7 @@ export class ArchiveSpriteAssets {
     if (this.disposed) return Promise.reject(new Error('Sprite assets have been disposed'));
     let request = this.animations.get(archive);
     if (!request) {
-      request = loadAnim(archive, `${import.meta.env.BASE_URL}dst/data/anim`);
+      request = loadAnim(archive, this.assetBaseUrl);
       this.animations.set(archive, request);
       void request.catch(() => this.animations.delete(archive));
     }
@@ -82,7 +88,7 @@ export class ArchiveSpriteAssets {
     const key = JSON.stringify([archive, options.multColour ?? [1, 1, 1, 1], options.pointFiltering ?? false]);
     let request = this.builds.get(key);
     if (!request) {
-      request = loadBuild(archive, `${import.meta.env.BASE_URL}dst/data/anim`).then((asset) => {
+      request = loadBuild(archive, this.assetBaseUrl).then((asset) => {
         const materials = createMaterials(asset, options);
         for (const material of materials) material.name = `${this.materialNamePrefix}:${asset.build.name}`;
         return { build: asset.build, materials };
@@ -121,17 +127,42 @@ export interface ArchiveSprite {
   dispose(): void;
 }
 
+interface LoadedArchiveSprite {
+  readonly parsed: ParsedAnim;
+  readonly sharedBuilds: ArchiveSpriteBuild[];
+  readonly sharedSkin?: ArchiveSpriteBuild;
+}
+
+async function loadArchiveSprite(
+  assets: ArchiveSpriteAssets,
+  definition: ArchiveSpriteDefinition,
+  options: ArchiveSpriteOptions,
+): Promise<LoadedArchiveSprite> {
+  const archives = [definition.animationArchive, ...definition.extraAnimationArchives ?? []];
+  const [parts, sharedBuilds, sharedSkin] = await Promise.all([
+    Promise.all(archives.map(archive => assets.loadAnimation(archive))),
+    Promise.all(definition.buildArchives.map((archive) => assets.loadBuild(archive, definition))),
+    options.skinArchive ? assets.loadBuild(options.skinArchive, definition) : undefined,
+  ]);
+  const parsed = parts.length === 1 ? parts[0] : { animations: parts.flatMap(part => part.animations) };
+  return { parsed, sharedBuilds, sharedSkin };
+}
+
 /** Load split archives and compose each DST frame in its original layer order. */
 export async function createArchiveSprite(
   assets: ArchiveSpriteAssets,
   definition: ArchiveSpriteDefinition,
   options: ArchiveSpriteOptions = {},
 ): Promise<ArchiveSprite> {
-  const [parsed, sharedBuilds, sharedSkin] = await Promise.all([
-    assets.loadAnimation(definition.animationArchive),
-    Promise.all(definition.buildArchives.map((archive) => assets.loadBuild(archive, definition))),
-    options.skinArchive ? assets.loadBuild(options.skinArchive, definition) : undefined,
-  ]);
+  return constructArchiveSprite(assets, definition, options, await loadArchiveSprite(assets, definition, options));
+}
+
+function constructArchiveSprite(
+  assets: ArchiveSpriteAssets,
+  definition: ArchiveSpriteDefinition,
+  options: ArchiveSpriteOptions,
+  { parsed, sharedBuilds, sharedSkin }: LoadedArchiveSprite,
+): ArchiveSprite {
   // Translucent previews cannot share the asset cache's materials with opaque insts.
   const ownedMaterials: THREE.MeshBasicMaterial[] = [];
   const sources = new Map<ArchiveSpriteBuild, ArchiveSpriteBuild>();
@@ -193,7 +224,7 @@ export async function createArchiveSprite(
   registerSpriteRenderGroup(model, visual);
   const renderer = new SpriteFrameRenderer(visual);
   const instances = options.instancedAnimations?.length
-    ? assets.instancedSprites.retain(model, visual, options.colour, options.opacity ?? definition.multColour?.[3] ?? 1) : undefined;
+    ? assets.instancedSprites.retain(model, visual, options.colour, options.opacity ?? definition.multColour?.[3] ?? 1, options.foot) : undefined;
   let elapsed = 0;
   let previousFrame = -1;
   let paused = false;
@@ -240,7 +271,8 @@ export async function createArchiveSprite(
       renderer.showShared(tinted);
     } else renderer.show(resolveSprites(index, false));
     visual.scale.x = flipped ? -scale : scale;
-    const instanced = !!instances && loop && options.instancedAnimations!.includes(animation.name);
+    const instanced = !!instances && (options.instancedAnimations === 'all'
+      || loop && options.instancedAnimations!.includes(animation.name));
     if (instances) renderer.setInstanced(instanced);
     if (instanced) {
       sharedAppearance ||= appearanceKey();
@@ -345,4 +377,19 @@ export function createSharedArchiveSprite(
   options: Omit<ArchiveSpriteOptions, 'sharedAnimations'> = {},
 ): Promise<ArchiveSprite> {
   return createArchiveSprite(assets, definition, { ...options, sharedAnimations: 'all' });
+}
+
+/**
+ * `createSharedArchiveSprite()` for proximity-loaded entities: await the archives once, then create each entity
+ * synchronously with its own initial clip. Sprites share the same assets owner, frame cache and instance batches.
+ */
+export async function preloadSharedArchiveSprite(
+  assets: ArchiveSpriteAssets,
+  definition: Omit<ArchiveSpriteDefinition, 'animation' | 'loop'>,
+  options: Omit<ArchiveSpriteOptions, 'sharedAnimations'> = {},
+): Promise<(animation: string, loop: boolean, name?: string, appearance?: Pick<ArchiveSpriteOptions, 'colour'>) => ArchiveSprite> {
+  const shared = { ...options, sharedAnimations: 'all' } as const;
+  const loaded = await loadArchiveSprite(assets, definition as ArchiveSpriteDefinition, shared);
+  return (animation, loop, name, appearance) =>
+    constructArchiveSprite(assets, { ...definition, animation, loop }, { ...shared, ...appearance, ...(name ? { name } : {}) }, loaded);
 }

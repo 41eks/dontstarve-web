@@ -19,8 +19,8 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   await page.goto('/tests/dst-lighting.html?save=Cluster_1/Caves.json');
   await prepare();
   await expect(page.locator('canvas[data-game-canvas]')).toHaveAttribute('data-loaded', 'true');
-  // Sample the two native rendering paths: animated buildings and archive props.
-  const samples = ['pighead', 'archive_moon_statue'].map(prefab => imported.world.entities[prefab][0]);
+  // Sample buildings, archive props and instanced rocks (including split animation/build archives).
+  const samples = ['pighead', 'archive_moon_statue', 'rock1', 'cavein_boulder'].map(prefab => imported.world.entities[prefab][0]);
   const rendered = await page.evaluate(samples => {
     const { universal: { scene } } = (window as any).caveGame;
     return samples.map((record: any) => {
@@ -77,6 +77,16 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   await page.keyboard.press('KeyM');
   await expect(page.locator('dst-minimap canvas')).toBeVisible();
   await page.keyboard.press('KeyM');
+  const staticIds = ['cavein_boulder', 'rock_moon', 'rock_moon_shell', 'moonrockseed'];
+  for (const prefab of staticIds) {
+    await page.evaluate(prefab => document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', {
+      detail: { command: `c_spawn("${prefab}")` },
+    })), prefab);
+    await expect.poll(() => page.evaluate(prefab => {
+      const { universal: { scene } } = (window as any).caveGame;
+      return scene.children.filter((child: any) => child.userData.prefab === prefab).length;
+    }, prefab)).toBe((imported.world.entities[prefab]?.length ?? 0) + 1);
+  }
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', {
     detail: { command: 'c_save()' },
@@ -85,9 +95,11 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   expect(saved.world.prefab).toBe('cave');
   expect(saved.world.map.defaultTileId).toBe(1);
   expect(saved.world.map.tiles).toHaveLength(4309);
-  for (const prefab of ['pighead', 'archive_moon_statue']) {
+  for (const prefab of ['pighead', 'archive_moon_statue', 'rock1']) {
     expect(saved.world.entities[prefab]).toEqual(imported.world.entities[prefab]);
   }
+  expect(saved.world.entities.cavein_boulder.slice(0, imported.world.entities.cavein_boulder.length)).toEqual(imported.world.entities.cavein_boulder);
+  for (const prefab of staticIds) expect(saved.world.entities[prefab]).toHaveLength((imported.world.entities[prefab]?.length ?? 0) + 1);
   await page.route('**/saves/Cluster_1/Caves.json', route => route.fulfill({ json: saved }));
   await page.reload();
   await prepare();
@@ -105,7 +117,7 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
     detail: { command: 'c_save()' },
   })));
   const reexported = JSON.parse(await readFile((await (await secondDownload).path())!, 'utf8'));
-  for (const prefab of ['pighead', 'archive_moon_statue']) {
+  for (const prefab of ['pighead', 'archive_moon_statue', 'rock1', ...staticIds]) {
     expect(reexported.world.entities[prefab]).toEqual(saved.world.entities[prefab]);
   }
   expect(errors).toEqual([]);

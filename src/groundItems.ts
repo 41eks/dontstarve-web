@@ -111,6 +111,7 @@ export class GroundItemManager {
     worldEvents?: WorldEventEmitter,
     getWatchWorldContent?: GetWatchWorldContent,
     mouseActions?: PlayerActionPicker,
+    lightflierWorld?: GroundPrefabOptions['lightflierWorld'],
   ) {
     this.mouseActions = mouseActions;
     this.entities = entities;
@@ -121,7 +122,8 @@ export class GroundItemManager {
     this.inventory = inventory;
     this.player = player;
     this.prefabs = new GroundPrefabRegistry({
-      scene, animationBaseUrl, scheduler, fx, moleWorld, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
+      scene, animationBaseUrl, scheduler, fx, moleWorld, lightflierWorld, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
+      handEquipment: inventory.handEquipment,
       dropLoot: (items, position) => this.flingLoot(items, position),
       prepareSpawn: definition => this.prepareSpawn(definition),
     });
@@ -297,6 +299,16 @@ export class GroundItemManager {
   }
 
   /** Prepare art before a timed action; committing a spawned stack is synchronous. */
+  spawnPreparedEntity(entity: ItemEntity, position: THREE.Vector3): void {
+    if (this.disposed || entity.isRemoved) throw new Error('Cannot place removed ground entity');
+    const definition = { ...this.inventory.getItemSpec(entity.prefab), ...entity.snapshot(), entity };
+    const factory = this.prefabs.get(entity.prefab);
+    if (!factory?.createPrepared) throw new Error(`Ground art was not prepared for ${entity.prefab}`);
+    const visual = factory.createPrepared(definition);
+    try { this.addVisual(entity.id, definition, position, visual); }
+    catch (error) { visual.dispose(); throw error; }
+  }
+
   // fling=true uses lootdropper.lua's FlingItem scatter; false places a normal dropped stack.
   async prepareSpawn(definition: GroundItemDefinition, fling = false): Promise<import('@dontstarve-web/prefab/groundPrefab').PreparedGroundSpawn> {
     const visuals = await this.createDropVisuals(definition);
@@ -404,6 +416,7 @@ export class GroundItemManager {
     this.inventory.configureItem(entity);
     this.prefabs.get(entity.prefab)?.configureEntity?.(entity);
     definition = { ...definition, ...entity.snapshot(), entity };
+    Object.assign(visual.model.userData, { itemId: entity.prefab, skinId: entity.skinId, count: entity.components.stackable.count });
     id = entity.id;
     entity.transform.position.set(position.x, dropped ? 0 : position.y, position.z);
     this.trackGroundEntity(entity);
@@ -604,6 +617,7 @@ export class GroundItemManager {
           stack: {
             itemId: definition.itemId, count: definition.count,
             ...(definition.mole === undefined ? {} : { mole: definition.mole }),
+            ...(definition.lightflier === undefined ? {} : { lightflier: definition.lightflier }),
             ...(definition.container === undefined ? {} : { container: definition.container }),
             ...(definition.remainingUses === undefined ? {} : { remainingUses: definition.remainingUses }),
             ...(definition.remainingFuel === undefined ? {} : { remainingFuel: definition.remainingFuel }),
@@ -675,7 +689,10 @@ export class GroundItemManager {
   get combatTargets(): import('../packages/stategraphs/src/attack').AttackTarget[] {
     return [...this.activeItems].filter(({ entity, isClickable }) => entity.components.combat && isClickable?.() !== false)
       .map(record => ({ id: record.entity.id, model: record.model,
-        inst: record.model.userData.mole as import('../packages/prefab/src/mole').Mole,
+        inst: { prefab: record.entity.prefab, components: record.entity.components,
+          get isRemoved() { return record.entity.isRemoved; },
+          getPosition: () => record.entity.getPosition(), getPhysicsRadius: () => record.model.userData.physicsRadius ?? 0,
+          hasTag: (tag: string) => record.entity.hasTag(tag), PushEvent: (name: string, data: unknown) => record.entity.PushEvent(name, data) },
         isValid: () => this.activeItems.has(record) && !record.entity.isRemoved && !record.entity.hasTag('INLIMBO') }));
   }
   get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
@@ -830,8 +847,14 @@ export class GroundItemManager {
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     this.prefabs.update(dt, cameraQuaternion);
-    if (!this.cameraRotation) for (const { model } of this.activeItems) model.quaternion.copy(cameraQuaternion);
+    if (!this.cameraRotation) for (const { model } of this.activeItems) {
+      if (model.quaternion.equals(cameraQuaternion)) continue;
+      model.quaternion.copy(cameraQuaternion);
+      syncEntitySpatial(model);
+    }
     for (const item of [...this.updatingItems]) {
+      const previousX = item.model.position.x, previousY = item.model.position.y, previousZ = item.model.position.z;
+      const wasFlung = item.fling !== undefined;
       item.model.position.copy(item.entity.transform.position);
       item.update?.(dt);
       if (item.fling) {
@@ -843,7 +866,13 @@ export class GroundItemManager {
       if (item.entity.isRemoved || item.isRemoved?.()) {
         this.removeVisual(item);
         this.entities.destroy(item.entity);
-      } else { syncPlacementEntity(item.model); syncEntitySpatial(item.model); }
+      } else {
+        const moved = item.model.position.x !== previousX || item.model.position.y !== previousY || item.model.position.z !== previousZ;
+        // Animation-only updates do not move the ground origin. Bounds expansion
+        // is already published by the sprite renderer, and tags sync on change.
+        if (moved) syncPlacementEntity(item.model);
+        if (moved || wasFlung) syncEntitySpatial(item.model);
+      }
     }
   }
 

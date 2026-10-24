@@ -78,6 +78,24 @@
     "mushtree_medium",
     "mushtree_tall",
     "blue_mushroom",
+    "grass",
+    "sapling",
+    "evergreen",
+    "flower_cave",
+    "flower_cave_double",
+    "flower_cave_triple",
+    "lightflier_flower",
+    "houndbone",
+    "cave_fern",
+    "cave_fern_withered",
+    "rock1",
+    "rock2",
+    "cavein_boulder",
+    "rock_moon_shell",
+    "rock_flintless",
+    "rock_flintless_med",
+    "rock_flintless_low",
+    "rock_moon",
     "grotto_pool_big",
     "grotto_pool_small",
     "grotto_moonglass_1",
@@ -122,6 +140,96 @@
       "source": 134,
       "imported": 109,
       "outsideRegion": 25
+    },
+    "grass": {
+      "source": 523,
+      "imported": 5,
+      "outsideRegion": 518
+    },
+    "sapling": {
+      "source": 328,
+      "imported": 4,
+      "outsideRegion": 324
+    },
+    "evergreen": {
+      "source": 358,
+      "imported": 5,
+      "outsideRegion": 353
+    },
+    "flower_cave": {
+      "source": 346,
+      "imported": 30,
+      "outsideRegion": 316
+    },
+    "flower_cave_double": {
+      "source": 135,
+      "imported": 14,
+      "outsideRegion": 121
+    },
+    "flower_cave_triple": {
+      "source": 93,
+      "imported": 5,
+      "outsideRegion": 88
+    },
+    "lightflier_flower": {
+      "source": 88,
+      "imported": 88,
+      "outsideRegion": 0
+    },
+    "houndbone": {
+      "source": 21,
+      "imported": 14,
+      "outsideRegion": 7
+    },
+    "cave_fern": {
+      "source": 986,
+      "imported": 27,
+      "outsideRegion": 959
+    },
+    "cave_fern_withered": {
+      "source": 148,
+      "imported": 0,
+      "outsideRegion": 148
+    },
+    "rock1": {
+      "source": 17,
+      "imported": 17,
+      "outsideRegion": 0
+    },
+    "rock2": {
+      "source": 0,
+      "imported": 0,
+      "outsideRegion": 0
+    },
+    "cavein_boulder": {
+      "source": 24,
+      "imported": 24,
+      "outsideRegion": 0
+    },
+    "rock_moon_shell": {
+      "source": 0,
+      "imported": 0,
+      "outsideRegion": 0
+    },
+    "rock_flintless": {
+      "source": 33,
+      "imported": 0,
+      "outsideRegion": 33
+    },
+    "rock_flintless_med": {
+      "source": 27,
+      "imported": 0,
+      "outsideRegion": 27
+    },
+    "rock_flintless_low": {
+      "source": 29,
+      "imported": 0,
+      "outsideRegion": 29
+    },
+    "rock_moon": {
+      "source": 0,
+      "imported": 0,
+      "outsideRegion": 0
     },
     "grotto_pool_big": {
       "source": 5,
@@ -10527,6 +10635,2785 @@
         406.85
       ],
       "sourceNode": "BlueForest:4:BlueMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_grass_id_107287",
+      "prefab": "grass",
+      "sourceIndex": 353,
+      "sourceId": 107287,
+      "sourcePosition": [
+        129.43,
+        0,
+        453
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_grass_id_107288",
+      "prefab": "grass",
+      "sourceIndex": 354,
+      "sourceId": 107288,
+      "sourcePosition": [
+        127.68,
+        0,
+        451
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_grass_id_107289",
+      "prefab": "grass",
+      "sourceIndex": 355,
+      "sourceId": 107289,
+      "sourcePosition": [
+        130.75,
+        0,
+        450.56
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_grass_id_107290",
+      "prefab": "grass",
+      "sourceIndex": 356,
+      "sourceId": 107290,
+      "sourcePosition": [
+        124.87,
+        0,
+        435.06
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_grass_id_107291",
+      "prefab": "grass",
+      "sourceIndex": 357,
+      "sourceId": 107291,
+      "sourcePosition": [
+        139,
+        0,
+        434.31
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_sapling_id_102648",
+      "prefab": "sapling",
+      "sourceIndex": 284,
+      "sourceId": 102648,
+      "sourcePosition": [
+        141.81,
+        0,
+        438
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_sapling_id_102649",
+      "prefab": "sapling",
+      "sourceIndex": 285,
+      "sourceId": 102649,
+      "sourcePosition": [
+        140.68,
+        0,
+        450.93
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_sapling_id_102650",
+      "prefab": "sapling",
+      "sourceIndex": 286,
+      "sourceId": 102650,
+      "sourcePosition": [
+        143.18,
+        0,
+        449.5
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_sapling_id_102651",
+      "prefab": "sapling",
+      "sourceIndex": 287,
+      "sourceId": 102651,
+      "sourcePosition": [
+        126,
+        0,
+        438.62
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_evergreen_id_110030",
+      "prefab": "evergreen",
+      "sourceIndex": 106,
+      "sourceId": 110030,
+      "sourcePosition": [
+        123.37,
+        0,
+        450.12
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_evergreen_id_110031",
+      "prefab": "evergreen",
+      "sourceIndex": 107,
+      "sourceId": 110031,
+      "sourcePosition": [
+        121.56,
+        0,
+        434.5
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_evergreen_id_110032",
+      "prefab": "evergreen",
+      "sourceIndex": 108,
+      "sourceId": 110032,
+      "sourcePosition": [
+        135.93,
+        0,
+        433.12
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_evergreen_id_110033",
+      "prefab": "evergreen",
+      "sourceIndex": 109,
+      "sourceId": 110033,
+      "sourcePosition": [
+        141.18,
+        0,
+        433.37
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_evergreen_id_110034",
+      "prefab": "evergreen",
+      "sourceIndex": 110,
+      "sourceId": 110034,
+      "sourcePosition": [
+        141.93,
+        0,
+        453.68
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100414",
+      "prefab": "flower_cave",
+      "sourceIndex": 16,
+      "sourceId": 100414,
+      "sourcePosition": [
+        186.97,
+        0,
+        597.39
+      ],
+      "sourceNode": "MoonCaveForest:0:MoonMushForest_entrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100415",
+      "prefab": "flower_cave",
+      "sourceIndex": 17,
+      "sourceId": 100415,
+      "sourcePosition": [
+        194.02,
+        0,
+        558.3
+      ],
+      "sourceNode": "MoonCaveForest:0:MoonMushForest_entrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100416",
+      "prefab": "flower_cave",
+      "sourceIndex": 18,
+      "sourceId": 100416,
+      "sourcePosition": [
+        193.08,
+        0,
+        590.07
+      ],
+      "sourceNode": "MoonCaveForest:0:MoonMushForest_entrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100417",
+      "prefab": "flower_cave",
+      "sourceIndex": 19,
+      "sourceId": 100417,
+      "sourcePosition": [
+        230.05,
+        0,
+        589.43
+      ],
+      "sourceNode": "MoonCaveForest:0:MoonMushForest_entrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100520",
+      "prefab": "flower_cave",
+      "sourceIndex": 122,
+      "sourceId": 100520,
+      "sourcePosition": [
+        205.45,
+        0,
+        509.2
+      ],
+      "sourceNode": "BlueForest:2:BlueMushMeadow"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100521",
+      "prefab": "flower_cave",
+      "sourceIndex": 123,
+      "sourceId": 100521,
+      "sourcePosition": [
+        245.91,
+        0,
+        454.55
+      ],
+      "sourceNode": "BlueForest:BG_25:BGBlueMush"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100522",
+      "prefab": "flower_cave",
+      "sourceIndex": 124,
+      "sourceId": 100522,
+      "sourcePosition": [
+        221.98,
+        0,
+        517.89
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100523",
+      "prefab": "flower_cave",
+      "sourceIndex": 125,
+      "sourceId": 100523,
+      "sourcePosition": [
+        201.79,
+        0,
+        518.93
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100647",
+      "prefab": "flower_cave",
+      "sourceIndex": 249,
+      "sourceId": 100647,
+      "sourcePosition": [
+        70.06,
+        0,
+        434.73
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100648",
+      "prefab": "flower_cave",
+      "sourceIndex": 250,
+      "sourceId": 100648,
+      "sourcePosition": [
+        98.77,
+        0,
+        394.58
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100649",
+      "prefab": "flower_cave",
+      "sourceIndex": 251,
+      "sourceId": 100649,
+      "sourcePosition": [
+        78.84,
+        0,
+        465.3
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100650",
+      "prefab": "flower_cave",
+      "sourceIndex": 252,
+      "sourceId": 100650,
+      "sourcePosition": [
+        117.76,
+        0,
+        425.14
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100651",
+      "prefab": "flower_cave",
+      "sourceIndex": 253,
+      "sourceId": 100651,
+      "sourcePosition": [
+        77.57,
+        0,
+        469.08
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100652",
+      "prefab": "flower_cave",
+      "sourceIndex": 254,
+      "sourceId": 100652,
+      "sourcePosition": [
+        122.24,
+        0,
+        409.58
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100653",
+      "prefab": "flower_cave",
+      "sourceIndex": 255,
+      "sourceId": 100653,
+      "sourcePosition": [
+        78.02,
+        0,
+        445.94
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100654",
+      "prefab": "flower_cave",
+      "sourceIndex": 256,
+      "sourceId": 100654,
+      "sourcePosition": [
+        69.63,
+        0,
+        477.09
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100655",
+      "prefab": "flower_cave",
+      "sourceIndex": 257,
+      "sourceId": 100655,
+      "sourcePosition": [
+        129.33,
+        0,
+        409.71
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100656",
+      "prefab": "flower_cave",
+      "sourceIndex": 258,
+      "sourceId": 100656,
+      "sourcePosition": [
+        85.16,
+        0,
+        414.63
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100657",
+      "prefab": "flower_cave",
+      "sourceIndex": 259,
+      "sourceId": 100657,
+      "sourcePosition": [
+        117.57,
+        0,
+        449.31
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100658",
+      "prefab": "flower_cave",
+      "sourceIndex": 260,
+      "sourceId": 100658,
+      "sourcePosition": [
+        98.45,
+        0,
+        442.83
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100659",
+      "prefab": "flower_cave",
+      "sourceIndex": 261,
+      "sourceId": 100659,
+      "sourcePosition": [
+        69.76,
+        0,
+        473.66
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100660",
+      "prefab": "flower_cave",
+      "sourceIndex": 262,
+      "sourceId": 100660,
+      "sourcePosition": [
+        82.69,
+        0,
+        410.32
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100661",
+      "prefab": "flower_cave",
+      "sourceIndex": 263,
+      "sourceId": 100661,
+      "sourcePosition": [
+        102.62,
+        0,
+        405.44
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100662",
+      "prefab": "flower_cave",
+      "sourceIndex": 264,
+      "sourceId": 100662,
+      "sourcePosition": [
+        101.74,
+        0,
+        470.94
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100663",
+      "prefab": "flower_cave",
+      "sourceIndex": 265,
+      "sourceId": 100663,
+      "sourcePosition": [
+        114.77,
+        0,
+        405.51
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100664",
+      "prefab": "flower_cave",
+      "sourceIndex": 266,
+      "sourceId": 100664,
+      "sourcePosition": [
+        85.5,
+        0,
+        454.21
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100665",
+      "prefab": "flower_cave",
+      "sourceIndex": 267,
+      "sourceId": 100665,
+      "sourcePosition": [
+        69.6,
+        0,
+        414.13
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100666",
+      "prefab": "flower_cave",
+      "sourceIndex": 268,
+      "sourceId": 100666,
+      "sourcePosition": [
+        85.44,
+        0,
+        474.98
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100667",
+      "prefab": "flower_cave",
+      "sourceIndex": 269,
+      "sourceId": 100667,
+      "sourcePosition": [
+        101.29,
+        0,
+        422.76
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_id_100668",
+      "prefab": "flower_cave",
+      "sourceIndex": 270,
+      "sourceId": 100668,
+      "sourcePosition": [
+        93.98,
+        0,
+        429.96
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104583",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 9,
+      "sourceId": 104583,
+      "sourcePosition": [
+        97.77,
+        0,
+        425.98
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104584",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 10,
+      "sourceId": 104584,
+      "sourcePosition": [
+        94.34,
+        0,
+        462.51
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104585",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 11,
+      "sourceId": 104585,
+      "sourcePosition": [
+        98.84,
+        0,
+        409.94
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104586",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 12,
+      "sourceId": 104586,
+      "sourcePosition": [
+        102.68,
+        0,
+        462.68
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104587",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 13,
+      "sourceId": 104587,
+      "sourcePosition": [
+        105.53,
+        0,
+        462.17
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104588",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 14,
+      "sourceId": 104588,
+      "sourcePosition": [
+        130.83,
+        0,
+        429.95
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104589",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 15,
+      "sourceId": 104589,
+      "sourcePosition": [
+        69.25,
+        0,
+        430.6
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104590",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 16,
+      "sourceId": 104590,
+      "sourcePosition": [
+        77.07,
+        0,
+        409.83
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104591",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 17,
+      "sourceId": 104591,
+      "sourcePosition": [
+        162.33,
+        0,
+        425.66
+      ],
+      "sourceNode": "CaveExitTask1:0:RabbitArea"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104616",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 42,
+      "sourceId": 104616,
+      "sourcePosition": [
+        202.18,
+        0,
+        370.37
+      ],
+      "sourceNode": "BlueForest:5:PitRoom:BLOCKER_BLANK_1"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104666",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 92,
+      "sourceId": 104666,
+      "sourcePosition": [
+        133.01,
+        0,
+        498.43
+      ],
+      "sourceNode": "BlueForest:BG_24:BGBlueMush"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104667",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 93,
+      "sourceId": 104667,
+      "sourcePosition": [
+        173.36,
+        0,
+        454.39
+      ],
+      "sourceNode": "BlueForest:3:BlueMushMeadow"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104668",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 94,
+      "sourceId": 104668,
+      "sourcePosition": [
+        178.92,
+        0,
+        482.01
+      ],
+      "sourceNode": "BlueForest:BG_23:BGBlueMush"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_double_id_104669",
+      "prefab": "flower_cave_double",
+      "sourceIndex": 95,
+      "sourceId": 104669,
+      "sourcePosition": [
+        169.04,
+        0,
+        546.67
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106518",
+      "prefab": "flower_cave_triple",
+      "sourceIndex": 26,
+      "sourceId": 106518,
+      "sourcePosition": [
+        145.59,
+        0,
+        494.92
+      ],
+      "sourceNode": "BlueForest:BG_24:BGBlueMush"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106519",
+      "prefab": "flower_cave_triple",
+      "sourceIndex": 27,
+      "sourceId": 106519,
+      "sourcePosition": [
+        129.89,
+        0,
+        502.47
+      ],
+      "sourceNode": "BlueForest:BG_24:BGBlueMush"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106520",
+      "prefab": "flower_cave_triple",
+      "sourceIndex": 28,
+      "sourceId": 106520,
+      "sourcePosition": [
+        130.73,
+        0,
+        517.71
+      ],
+      "sourceNode": "BlueForest:BG_23:BGBlueMush"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106521",
+      "prefab": "flower_cave_triple",
+      "sourceIndex": 29,
+      "sourceId": 106521,
+      "sourcePosition": [
+        230.13,
+        0,
+        550.64
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_flower_cave_triple_id_106556",
+      "prefab": "flower_cave_triple",
+      "sourceIndex": 64,
+      "sourceId": 106556,
+      "sourcePosition": [
+        65.48,
+        0,
+        442.57
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109579",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 1,
+      "sourceId": 109579,
+      "sourcePosition": [
+        113.7,
+        0,
+        578.3
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109580",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 2,
+      "sourceId": 109580,
+      "sourcePosition": [
+        242.9,
+        0,
+        605.72
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109581",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 3,
+      "sourceId": 109581,
+      "sourcePosition": [
+        198.91,
+        0,
+        613.93
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109582",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 4,
+      "sourceId": 109582,
+      "sourcePosition": [
+        258.14,
+        0,
+        653.42
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109583",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 5,
+      "sourceId": 109583,
+      "sourcePosition": [
+        237.84,
+        0,
+        618.26
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109584",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 6,
+      "sourceId": 109584,
+      "sourcePosition": [
+        250.41,
+        0,
+        630.21
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109585",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 7,
+      "sourceId": 109585,
+      "sourcePosition": [
+        185.23,
+        0,
+        605.12
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109586",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 8,
+      "sourceId": 109586,
+      "sourcePosition": [
+        245.9,
+        0,
+        617.38
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109587",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 9,
+      "sourceId": 109587,
+      "sourcePosition": [
+        157.52,
+        0,
+        622.32
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109588",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 10,
+      "sourceId": 109588,
+      "sourcePosition": [
+        202.29,
+        0,
+        646.11
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109589",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 11,
+      "sourceId": 109589,
+      "sourcePosition": [
+        249.55,
+        0,
+        621.06
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109590",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 12,
+      "sourceId": 109590,
+      "sourcePosition": [
+        189.95,
+        0,
+        630.55
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109591",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 13,
+      "sourceId": 109591,
+      "sourcePosition": [
+        241.32,
+        0,
+        618.52
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109592",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 14,
+      "sourceId": 109592,
+      "sourcePosition": [
+        245.99,
+        0,
+        637.93
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109593",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 15,
+      "sourceId": 109593,
+      "sourcePosition": [
+        258.82,
+        0,
+        649.27
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109594",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 16,
+      "sourceId": 109594,
+      "sourcePosition": [
+        202.79,
+        0,
+        629.28
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109595",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 17,
+      "sourceId": 109595,
+      "sourcePosition": [
+        222.36,
+        0,
+        626.03
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109596",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 18,
+      "sourceId": 109596,
+      "sourcePosition": [
+        241.07,
+        0,
+        602.73
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109597",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 19,
+      "sourceId": 109597,
+      "sourcePosition": [
+        214.55,
+        0,
+        714.61
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109598",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 20,
+      "sourceId": 109598,
+      "sourcePosition": [
+        241.13,
+        0,
+        726.31
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109599",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 21,
+      "sourceId": 109599,
+      "sourcePosition": [
+        241,
+        0,
+        729.73
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109600",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 22,
+      "sourceId": 109600,
+      "sourcePosition": [
+        177.92,
+        0,
+        729.94
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109601",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 23,
+      "sourceId": 109601,
+      "sourcePosition": [
+        226.56,
+        0,
+        730.99
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109602",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 24,
+      "sourceId": 109602,
+      "sourcePosition": [
+        230.93,
+        0,
+        730.72
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109603",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 25,
+      "sourceId": 109603,
+      "sourcePosition": [
+        178.94,
+        0,
+        701.49
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109604",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 26,
+      "sourceId": 109604,
+      "sourcePosition": [
+        253.47,
+        0,
+        709.36
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109605",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 27,
+      "sourceId": 109605,
+      "sourcePosition": [
+        222.88,
+        0,
+        674.08
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109606",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 28,
+      "sourceId": 109606,
+      "sourcePosition": [
+        186.04,
+        0,
+        685.73
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109607",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 29,
+      "sourceId": 109607,
+      "sourcePosition": [
+        173.19,
+        0,
+        677.21
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109608",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 30,
+      "sourceId": 109608,
+      "sourcePosition": [
+        261.97,
+        0,
+        685.88
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109609",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 31,
+      "sourceId": 109609,
+      "sourcePosition": [
+        206.03,
+        0,
+        693.34
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109610",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 32,
+      "sourceId": 109610,
+      "sourcePosition": [
+        165.36,
+        0,
+        686.89
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109611",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 33,
+      "sourceId": 109611,
+      "sourcePosition": [
+        205.56,
+        0,
+        686.14
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109612",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 34,
+      "sourceId": 109612,
+      "sourcePosition": [
+        165.66,
+        0,
+        694.43
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109613",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 35,
+      "sourceId": 109613,
+      "sourcePosition": [
+        218.65,
+        0,
+        697.07
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109614",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 36,
+      "sourceId": 109614,
+      "sourcePosition": [
+        230.3,
+        0,
+        658.01
+      ],
+      "sourceNode": "MoonCaveForest:1:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109615",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 37,
+      "sourceId": 109615,
+      "sourcePosition": [
+        233.39,
+        0,
+        677.36
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109616",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 38,
+      "sourceId": 109616,
+      "sourcePosition": [
+        241.86,
+        0,
+        694.4
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109617",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 39,
+      "sourceId": 109617,
+      "sourcePosition": [
+        205.74,
+        0,
+        662.75
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109618",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 40,
+      "sourceId": 109618,
+      "sourcePosition": [
+        222.95,
+        0,
+        689.54
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109619",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 41,
+      "sourceId": 109619,
+      "sourcePosition": [
+        246.33,
+        0,
+        698.11
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109620",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 42,
+      "sourceId": 109620,
+      "sourcePosition": [
+        194.64,
+        0,
+        697.93
+      ],
+      "sourceNode": "MoonCaveForest:2:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109621",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 43,
+      "sourceId": 109621,
+      "sourcePosition": [
+        142.48,
+        0,
+        657.52
+      ],
+      "sourceNode": "MoonCaveForest:3:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109622",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 44,
+      "sourceId": 109622,
+      "sourcePosition": [
+        150.9,
+        0,
+        649.54
+      ],
+      "sourceNode": "MoonCaveForest:3:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109623",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 45,
+      "sourceId": 109623,
+      "sourcePosition": [
+        138.59,
+        0,
+        650.47
+      ],
+      "sourceNode": "MoonCaveForest:3:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109624",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 46,
+      "sourceId": 109624,
+      "sourcePosition": [
+        166.4,
+        0,
+        637.42
+      ],
+      "sourceNode": "MoonCaveForest:3:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109625",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 47,
+      "sourceId": 109625,
+      "sourcePosition": [
+        165.25,
+        0,
+        662.35
+      ],
+      "sourceNode": "MoonCaveForest:3:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109626",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 48,
+      "sourceId": 109626,
+      "sourcePosition": [
+        177.44,
+        0,
+        649.52
+      ],
+      "sourceNode": "MoonCaveForest:3:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109627",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 49,
+      "sourceId": 109627,
+      "sourcePosition": [
+        153.38,
+        0,
+        670.83
+      ],
+      "sourceNode": "MoonCaveForest:3:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109628",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 50,
+      "sourceId": 109628,
+      "sourcePosition": [
+        174.5,
+        0,
+        593.65
+      ],
+      "sourceNode": "MoonCaveForest:0:MoonMushForest_entrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109629",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 51,
+      "sourceId": 109629,
+      "sourcePosition": [
+        174.64,
+        0,
+        566.31
+      ],
+      "sourceNode": "MoonCaveForest:0:MoonMushForest_entrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109630",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 52,
+      "sourceId": 109630,
+      "sourcePosition": [
+        74.09,
+        0,
+        669.94
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109631",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 53,
+      "sourceId": 109631,
+      "sourcePosition": [
+        70.52,
+        0,
+        694.85
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109632",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 54,
+      "sourceId": 109632,
+      "sourcePosition": [
+        141.35,
+        0,
+        697.38
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109633",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 55,
+      "sourceId": 109633,
+      "sourcePosition": [
+        129.82,
+        0,
+        677.99
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109634",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 56,
+      "sourceId": 109634,
+      "sourcePosition": [
+        97.43,
+        0,
+        638.14
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109635",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 57,
+      "sourceId": 109635,
+      "sourcePosition": [
+        86.22,
+        0,
+        706.66
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109636",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 58,
+      "sourceId": 109636,
+      "sourcePosition": [
+        77.2,
+        0,
+        694.45
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109637",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 59,
+      "sourceId": 109637,
+      "sourcePosition": [
+        85.14,
+        0,
+        646.97
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109638",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 60,
+      "sourceId": 109638,
+      "sourcePosition": [
+        117.34,
+        0,
+        694.56
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109639",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 61,
+      "sourceId": 109639,
+      "sourcePosition": [
+        90.05,
+        0,
+        669.14
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109640",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 62,
+      "sourceId": 109640,
+      "sourcePosition": [
+        154.95,
+        0,
+        694.48
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109641",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 63,
+      "sourceId": 109641,
+      "sourcePosition": [
+        126.59,
+        0,
+        654.68
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109642",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 64,
+      "sourceId": 109642,
+      "sourcePosition": [
+        65.75,
+        0,
+        706.79
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109643",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 65,
+      "sourceId": 109643,
+      "sourcePosition": [
+        118.98,
+        0,
+        669.04
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109644",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 66,
+      "sourceId": 109644,
+      "sourcePosition": [
+        121.61,
+        0,
+        710.78
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109645",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 67,
+      "sourceId": 109645,
+      "sourcePosition": [
+        73.81,
+        0,
+        686.04
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109646",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 68,
+      "sourceId": 109646,
+      "sourcePosition": [
+        142.79,
+        0,
+        709.57
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109647",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 69,
+      "sourceId": 109647,
+      "sourcePosition": [
+        85.67,
+        0,
+        641.58
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109648",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 70,
+      "sourceId": 109648,
+      "sourcePosition": [
+        98.35,
+        0,
+        642.29
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109649",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 71,
+      "sourceId": 109649,
+      "sourcePosition": [
+        122.23,
+        0,
+        677.1
+      ],
+      "sourceNode": "MoonCaveForest:BG_103:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109650",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 72,
+      "sourceId": 109650,
+      "sourcePosition": [
+        78.15,
+        0,
+        561.88
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109651",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 73,
+      "sourceId": 109651,
+      "sourcePosition": [
+        117.45,
+        0,
+        570.46
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109652",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 74,
+      "sourceId": 109652,
+      "sourcePosition": [
+        150.11,
+        0,
+        621.57
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109653",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 75,
+      "sourceId": 109653,
+      "sourcePosition": [
+        122.46,
+        0,
+        550.47
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109654",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 76,
+      "sourceId": 109654,
+      "sourcePosition": [
+        134.29,
+        0,
+        609.99
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109655",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 77,
+      "sourceId": 109655,
+      "sourcePosition": [
+        70.5,
+        0,
+        589.82
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109656",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 78,
+      "sourceId": 109656,
+      "sourcePosition": [
+        102.79,
+        0,
+        618.68
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109657",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 79,
+      "sourceId": 109657,
+      "sourcePosition": [
+        145.08,
+        0,
+        586.37
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109658",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 80,
+      "sourceId": 109658,
+      "sourcePosition": [
+        138.58,
+        0,
+        609.35
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109659",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 81,
+      "sourceId": 109659,
+      "sourcePosition": [
+        105.26,
+        0,
+        573.91
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109660",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 82,
+      "sourceId": 109660,
+      "sourcePosition": [
+        106.76,
+        0,
+        565.85
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109661",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 83,
+      "sourceId": 109661,
+      "sourcePosition": [
+        153.49,
+        0,
+        578.71
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109662",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 84,
+      "sourceId": 109662,
+      "sourcePosition": [
+        89.05,
+        0,
+        566.2
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109663",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 85,
+      "sourceId": 109663,
+      "sourcePosition": [
+        86.13,
+        0,
+        562.38
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109664",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 86,
+      "sourceId": 109664,
+      "sourcePosition": [
+        158.7,
+        0,
+        562.29
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109665",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 87,
+      "sourceId": 109665,
+      "sourcePosition": [
+        77.26,
+        0,
+        582.02
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_lightflier_flower_id_109666",
+      "prefab": "lightflier_flower",
+      "sourceIndex": 88,
+      "sourceId": 109666,
+      "sourcePosition": [
+        109.3,
+        0,
+        585.81
+      ],
+      "sourceNode": "MoonCaveForest:BG_104:MoonMushForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100984",
+      "prefab": "houndbone",
+      "sourceIndex": 1,
+      "sourceId": 100984,
+      "sourcePosition": [
+        234.82,
+        0,
+        474.46
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100985",
+      "prefab": "houndbone",
+      "sourceIndex": 2,
+      "sourceId": 100985,
+      "sourcePosition": [
+        225.56,
+        0,
+        489.01
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100986",
+      "prefab": "houndbone",
+      "sourceIndex": 3,
+      "sourceId": 100986,
+      "sourcePosition": [
+        218.33,
+        0,
+        481.36
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100987",
+      "prefab": "houndbone",
+      "sourceIndex": 4,
+      "sourceId": 100987,
+      "sourcePosition": [
+        225.07,
+        0,
+        469.7
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100988",
+      "prefab": "houndbone",
+      "sourceIndex": 5,
+      "sourceId": 100988,
+      "sourcePosition": [
+        217.35,
+        0,
+        497.78
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100989",
+      "prefab": "houndbone",
+      "sourceIndex": 6,
+      "sourceId": 100989,
+      "sourcePosition": [
+        213.34,
+        0,
+        465.37
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100990",
+      "prefab": "houndbone",
+      "sourceIndex": 7,
+      "sourceId": 100990,
+      "sourcePosition": [
+        218.08,
+        0,
+        469.94
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100991",
+      "prefab": "houndbone",
+      "sourceIndex": 8,
+      "sourceId": 100991,
+      "sourcePosition": [
+        201.34,
+        0,
+        494.28
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100992",
+      "prefab": "houndbone",
+      "sourceIndex": 9,
+      "sourceId": 100992,
+      "sourcePosition": [
+        201.05,
+        0,
+        553.7
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100993",
+      "prefab": "houndbone",
+      "sourceIndex": 10,
+      "sourceId": 100993,
+      "sourcePosition": [
+        222.7,
+        0,
+        522.97
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100994",
+      "prefab": "houndbone",
+      "sourceIndex": 11,
+      "sourceId": 100994,
+      "sourcePosition": [
+        213.42,
+        0,
+        550.57
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100995",
+      "prefab": "houndbone",
+      "sourceIndex": 12,
+      "sourceId": 100995,
+      "sourcePosition": [
+        238.12,
+        0,
+        558.05
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100996",
+      "prefab": "houndbone",
+      "sourceIndex": 13,
+      "sourceId": 100996,
+      "sourcePosition": [
+        217.62,
+        0,
+        561.64
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_houndbone_id_100997",
+      "prefab": "houndbone",
+      "sourceIndex": 14,
+      "sourceId": 100997,
+      "sourcePosition": [
+        221.27,
+        0,
+        526.67
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110767",
+      "prefab": "cave_fern",
+      "sourceIndex": 201,
+      "sourceId": 110767,
+      "sourcePosition": [
+        94.13,
+        0,
+        450.62
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110768",
+      "prefab": "cave_fern",
+      "sourceIndex": 202,
+      "sourceId": 110768,
+      "sourcePosition": [
+        62.73,
+        0,
+        474.67
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110769",
+      "prefab": "cave_fern",
+      "sourceIndex": 203,
+      "sourceId": 110769,
+      "sourcePosition": [
+        89.81,
+        0,
+        418.19
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110770",
+      "prefab": "cave_fern",
+      "sourceIndex": 204,
+      "sourceId": 110770,
+      "sourcePosition": [
+        105.66,
+        0,
+        430.34
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110771",
+      "prefab": "cave_fern",
+      "sourceIndex": 205,
+      "sourceId": 110771,
+      "sourcePosition": [
+        70.51,
+        0,
+        470.88
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110772",
+      "prefab": "cave_fern",
+      "sourceIndex": 206,
+      "sourceId": 110772,
+      "sourcePosition": [
+        89.47,
+        0,
+        390.61
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110773",
+      "prefab": "cave_fern",
+      "sourceIndex": 207,
+      "sourceId": 110773,
+      "sourcePosition": [
+        89,
+        0,
+        397.72
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110774",
+      "prefab": "cave_fern",
+      "sourceIndex": 208,
+      "sourceId": 110774,
+      "sourcePosition": [
+        102.7,
+        0,
+        426.91
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110775",
+      "prefab": "cave_fern",
+      "sourceIndex": 209,
+      "sourceId": 110775,
+      "sourcePosition": [
+        97.56,
+        0,
+        454.59
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110776",
+      "prefab": "cave_fern",
+      "sourceIndex": 210,
+      "sourceId": 110776,
+      "sourcePosition": [
+        90.66,
+        0,
+        441.72
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110777",
+      "prefab": "cave_fern",
+      "sourceIndex": 211,
+      "sourceId": 110777,
+      "sourcePosition": [
+        73.88,
+        0,
+        425.81
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110778",
+      "prefab": "cave_fern",
+      "sourceIndex": 212,
+      "sourceId": 110778,
+      "sourcePosition": [
+        85.49,
+        0,
+        477.22
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110779",
+      "prefab": "cave_fern",
+      "sourceIndex": 213,
+      "sourceId": 110779,
+      "sourcePosition": [
+        94.22,
+        0,
+        458.94
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110780",
+      "prefab": "cave_fern",
+      "sourceIndex": 214,
+      "sourceId": 110780,
+      "sourcePosition": [
+        86.4,
+        0,
+        422.1
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110781",
+      "prefab": "cave_fern",
+      "sourceIndex": 215,
+      "sourceId": 110781,
+      "sourcePosition": [
+        94.82,
+        0,
+        445.38
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110782",
+      "prefab": "cave_fern",
+      "sourceIndex": 216,
+      "sourceId": 110782,
+      "sourcePosition": [
+        102.31,
+        0,
+        393.73
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110783",
+      "prefab": "cave_fern",
+      "sourceIndex": 217,
+      "sourceId": 110783,
+      "sourcePosition": [
+        70.21,
+        0,
+        425.33
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110784",
+      "prefab": "cave_fern",
+      "sourceIndex": 218,
+      "sourceId": 110784,
+      "sourcePosition": [
+        94.32,
+        0,
+        425.5
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110785",
+      "prefab": "cave_fern",
+      "sourceIndex": 219,
+      "sourceId": 110785,
+      "sourcePosition": [
+        81.77,
+        0,
+        478.36
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110786",
+      "prefab": "cave_fern",
+      "sourceIndex": 220,
+      "sourceId": 110786,
+      "sourcePosition": [
+        73.43,
+        0,
+        438.91
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110787",
+      "prefab": "cave_fern",
+      "sourceIndex": 221,
+      "sourceId": 110787,
+      "sourcePosition": [
+        82.6,
+        0,
+        418.72
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110788",
+      "prefab": "cave_fern",
+      "sourceIndex": 222,
+      "sourceId": 110788,
+      "sourcePosition": [
+        85.3,
+        0,
+        449.42
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110789",
+      "prefab": "cave_fern",
+      "sourceIndex": 223,
+      "sourceId": 110789,
+      "sourcePosition": [
+        73.9,
+        0,
+        445.33
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110790",
+      "prefab": "cave_fern",
+      "sourceIndex": 224,
+      "sourceId": 110790,
+      "sourcePosition": [
+        81.33,
+        0,
+        458.33
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110791",
+      "prefab": "cave_fern",
+      "sourceIndex": 225,
+      "sourceId": 110791,
+      "sourcePosition": [
+        126.06,
+        0,
+        417.7
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110792",
+      "prefab": "cave_fern",
+      "sourceIndex": 226,
+      "sourceId": 110792,
+      "sourcePosition": [
+        165.98,
+        0,
+        409
+      ],
+      "sourceNode": "CaveExitTask1:0:RabbitArea"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cave_fern_id_110793",
+      "prefab": "cave_fern",
+      "sourceIndex": 227,
+      "sourceId": 110793,
+      "sourcePosition": [
+        185.56,
+        0,
+        418.9
+      ],
+      "sourceNode": "CaveExitTask1:0:RabbitArea"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000001",
+      "prefab": "rock1",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        230.001,
+        0,
+        731.93
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000002",
+      "prefab": "rock1",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        227.763,
+        0,
+        729.826
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000003",
+      "prefab": "rock1",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        232.669,
+        0,
+        737.526
+      ],
+      "sourceNode": "ArchiveMaze:3:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000004",
+      "prefab": "rock1",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        236.761,
+        0,
+        725.142
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000005",
+      "prefab": "rock1",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        233.661,
+        0,
+        732.749
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000006",
+      "prefab": "rock1",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        247.49,
+        0,
+        726.817
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000007",
+      "prefab": "rock1",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        251.094,
+        0,
+        738.223
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000008",
+      "prefab": "rock1",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        236.851,
+        0,
+        734.979
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000009",
+      "prefab": "rock1",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        242.196,
+        0,
+        725.753
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000010",
+      "prefab": "rock1",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        224.975,
+        0,
+        728.257
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000011",
+      "prefab": "rock1",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        245.099,
+        0,
+        721.052
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000012",
+      "prefab": "rock1",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        232.826,
+        0,
+        729.329
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000013",
+      "prefab": "rock1",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        236.469,
+        0,
+        730.603
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000014",
+      "prefab": "rock1",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        249.294,
+        0,
+        735.153
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000015",
+      "prefab": "rock1",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        235.853,
+        0,
+        738.567
+      ],
+      "sourceNode": "ArchiveMaze:3:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000016",
+      "prefab": "rock1",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        239.48,
+        0,
+        732.094
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_rock1_index_000017",
+      "prefab": "rock1",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        242.588,
+        0,
+        731.432
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106586",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 1,
+      "sourceId": 106586,
+      "sourcePosition": [
+        228.796,
+        0,
+        729.113
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106588",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 2,
+      "sourceId": 106588,
+      "sourcePosition": [
+        245.334,
+        0,
+        723.458
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106590",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 3,
+      "sourceId": 106590,
+      "sourcePosition": [
+        237.935,
+        0,
+        724.179
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106592",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 4,
+      "sourceId": 106592,
+      "sourcePosition": [
+        244.903,
+        0,
+        725.457
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106594",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 5,
+      "sourceId": 106594,
+      "sourcePosition": [
+        239.23,
+        0,
+        735.638
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106596",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 6,
+      "sourceId": 106596,
+      "sourcePosition": [
+        235.076,
+        0,
+        739.101
+      ],
+      "sourceNode": "ArchiveMaze:3:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106598",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 7,
+      "sourceId": 106598,
+      "sourcePosition": [
+        250.535,
+        0,
+        739.029
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106600",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 8,
+      "sourceId": 106600,
+      "sourcePosition": [
+        235.428,
+        0,
+        735.031
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106602",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 9,
+      "sourceId": 106602,
+      "sourcePosition": [
+        232.385,
+        0,
+        734.224
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106604",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 10,
+      "sourceId": 106604,
+      "sourcePosition": [
+        236.102,
+        0,
+        730.136
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106606",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 11,
+      "sourceId": 106606,
+      "sourcePosition": [
+        246.244,
+        0,
+        721.211
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106608",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 12,
+      "sourceId": 106608,
+      "sourcePosition": [
+        236.071,
+        0,
+        725.831
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106610",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 13,
+      "sourceId": 106610,
+      "sourcePosition": [
+        232.332,
+        0,
+        739.292
+      ],
+      "sourceNode": "ArchiveMaze:3:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106612",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 14,
+      "sourceId": 106612,
+      "sourcePosition": [
+        232.79,
+        0,
+        731.364
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106614",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 15,
+      "sourceId": 106614,
+      "sourcePosition": [
+        244.883,
+        0,
+        734.013
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106616",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 16,
+      "sourceId": 106616,
+      "sourcePosition": [
+        234.745,
+        0,
+        732.879
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106618",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 17,
+      "sourceId": 106618,
+      "sourcePosition": [
+        227.979,
+        0,
+        731.085
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106620",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 18,
+      "sourceId": 106620,
+      "sourcePosition": [
+        225.404,
+        0,
+        731.786
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106622",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 19,
+      "sourceId": 106622,
+      "sourcePosition": [
+        239.089,
+        0,
+        731.369
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106624",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 20,
+      "sourceId": 106624,
+      "sourcePosition": [
+        232.305,
+        0,
+        728.514
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106626",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 21,
+      "sourceId": 106626,
+      "sourcePosition": [
+        230.635,
+        0,
+        731.417
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106628",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 22,
+      "sourceId": 106628,
+      "sourcePosition": [
+        249.255,
+        0,
+        734.715
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106630",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 23,
+      "sourceId": 106630,
+      "sourcePosition": [
+        225.535,
+        0,
+        729.151
+      ],
+      "sourceNode": "ArchiveMaze:4:ArchiveMazeEntrance"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_cavein_boulder_id_106632",
+      "prefab": "cavein_boulder",
+      "sourceIndex": 24,
+      "sourceId": 106632,
+      "sourcePosition": [
+        232.09,
+        0,
+        736.879
+      ],
+      "sourceNode": "ArchiveMaze:3:ArchiveMazeRooms"
     },
     {
       "id": "dst_7FD049B25CA83C50_grotto_pool_big_id_110716",

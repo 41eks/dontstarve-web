@@ -155,7 +155,7 @@ export class FlowerPlanting {
       tags: ['flower', 'cattoy', ...(animation === 'rose' ? ['thorny'] : [])],
     });
     const pickable: Pickable = new Pickable(model, 'petals', 10, 1, doer => {
-      const picker = doer.picker;
+      const picker = doer?.picker;
       if (picker && !picker.hasTag('plantkin')) picker.components.sanity?.DoDelta(FLOWER_PICK_SANITY);
       if (animation === 'rose' && picker?.components.combat
         && !picker.components.inventory?.EquipHasTag('bramble_resistant') && !picker.hasTag('shadowminion')) {

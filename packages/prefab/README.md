@@ -78,8 +78,7 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 调用方负责传入 `${import.meta.env.BASE_URL}dst/data/anim` 形式的动画资源根路径；prefab 包不依赖应用的 Vite base 配置。
 
 月树默认有 500 个实体记录，加载半径为 10 格（`10 * TILE_SIZE = 120` 个世界单位）；地图分布沿用原有的
-1000 × 1000 区域和出生点空地。月树使用通用动画精灵，共享一次加载的动画资源和
-贴图，仅附近实体持有独立模型、几何体和动画控制器。每帧在玩家位置更新后调用
+1000 × 1000 区域和出生点空地。月树通过 `createSharedArchiveSprite()` 的预加载入口（`preloadSharedArchiveSprite()`，先加载一次再同步创建）使用共享帧缓存；`sway1_loop_*` 待机交给 `InstancedArchiveSprites`，同积雪状态的月树共享合成图集，砍伐、倒下、树桩和燃烧后的 `burnt_*` 继续用共享帧。积雪层由 `snow.zip` 的 `snow` 符号按 `SnowLevel ≥ 0.015` 通过 `setSymbolHidden()` 切换。仅附近实体持有独立模型和播放进度。每帧在玩家位置更新后调用
 `updateNearby(player.position)`、`update(dt)` 和 `setNormals(cameraQuaternion)`；
 将 `activeEntities` 的模型及其 `position` 脚点加入动态精灵的深度排序。
 `dispose()` 会释放全部模型及共享资源。
@@ -202,6 +201,18 @@ prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移
 分发库存事件前调用。蝴蝶和萤火虫在绑定时建立控制器，移动和距离判断直接
 使用实体坐标；准备资源期间不建立另一份实体状态。独立使用这些 visual 时也
 需要先绑定 Transform，再调用 update 或分发 onload/ondropped。
+
+萤火虫通过 `createSharedArchiveSprite()` 创建：同一个 `FirefliesAssets` 持有一个
+`ArchiveSpriteAssets`，`swarm_loop` 预合成完整帧后实例化，`swarm_pre` / `swarm_pst`
+仍使用共享帧几何。虫群的播放和完成回调独立；休眠释放实体视觉并退出实例批次，唤醒时
+重新绑定当前逻辑动画，异步创建的过期结果立即释放。源 bloom 效果沿用共享 lightmap 中的
+`lightOverride`，实例属性传递各实体的覆盖值，发光半径和淡入淡出仍由原控制器负责。
+昼夜与位置监听在休眠时保持门控；`tickingarea` 恢复为 true 后，显隐 effect 先检查同步后的昼夜，
+白天立即清除旧光照、淡变与延迟任务并隐藏虫群、禁用 NET。活动区进入白天或白天丢弃也立即隐藏。
+萤火虫的鼠标交互还要求玩家装备 `bugnet`：prefab 私有监听注入的手部装备 signal，空手或其他工具时
+给逻辑实体和模型加上 `NOCLICK`；装备虫网后仅在原本可点击时移除。换装备不改变光源、动画或 `NET`
+工作状态，休眠暂停装备监听，唤醒重新读取，永久移除时释放监听。源 `firefly`、`cattoyairborne`、`flying`、
+`NOBLOCK` 标签也应用在逻辑实体上。
 
 `LootFling` 接收实体的 `transform`，直接推进其中的地面坐标；`position` getter
 返回 Vector3 显示投影，`height` 是视觉弹跳高度。模型仅从实体同步位置。

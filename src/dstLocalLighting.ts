@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { getPrefabLightOverride, getPrefabLocalLight, getPrefabLocalLightOwners, type PrefabLocalLight } from '@dontstarve-web/prefab/localLight';
+import { getPrefabLightOverride, getPrefabLocalLight, getPrefabLocalLightOwners } from '@dontstarve-web/prefab/localLight';
 import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
 import type { ScenePassLighting } from '@dontstarve-web/animation/sceneRenderPass';
+import { createSignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { GetTileKeyAtPoint, INVALID_TILE_KEY } from '../packages/componets/src/tileManager';
 
 // DST tiles are 4 units wide; this scene uses TILE_SIZE (12).
 const LIGHTMAP_SIZE = 256;
@@ -99,10 +101,13 @@ export class DstLocalLighting {
   private readonly lightmapMaterial: THREE.ShaderMaterial;
   private readonly lightGeometry = new THREE.InstancedBufferGeometry();
   private readonly lightMesh: THREE.Mesh;
+  private readonly tickingarea?: TileStateQuery;
+  private readonly tileActivity = new Map<number, { active?: ReadonlySignal<boolean>; dispose(): void }>();
   private lightCapacity = 0;
   private renderer: THREE.WebGLRenderer | undefined;
 
-  constructor() {
+  constructor(tickingarea?: TileStateQuery) {
+    this.tickingarea = tickingarea;
     renderingLighting.add(this);
     installMaterialHook();
     this.target.texture.name = 'DST world XZ lightmap';
@@ -170,6 +175,8 @@ export class DstLocalLighting {
 
   dispose(): void {
     renderingLighting.delete(this);
+    for (const tile of this.tileActivity.values()) tile.dispose();
+    this.tileActivity.clear();
     this.renderer = undefined;
     uninstallMaterialHook();
     this.target.dispose();
@@ -181,21 +188,26 @@ export class DstLocalLighting {
 
   /** CPU counterpart of the estimated lightmap, for prefab LightWatchers. */
   sampleLightLevel(position: THREE.Vector3, exclude?: THREE.Object3D): number {
-    const colour = this.ambient.value.clone();
-    const accumulate = (owner: THREE.Object3D, light: PrefabLocalLight) => {
-      if (owner === exclude || light.radius <= 0 || light.intensity <= 0) return;
-      const origin = owner.getWorldPosition(new THREE.Vector3());
+    let r = this.ambient.value.x, g = this.ambient.value.y, b = this.ambient.value.z;
+    for (const owner of getPrefabLocalLightOwners()) {
+      const light = getPrefabLocalLight(owner);
+      if (!light || owner === exclude || light.radius <= 0 || light.intensity <= 0) continue;
+      // Attenuation reaches zero at 3 radii (see the edge fade below), so farther lights cannot contribute.
+      // Owners are parented to the scene root or an unrotated group, so the local position is checked before the full lookup.
+      const reach = light.radius * 3;
+      const local = owner.position;
+      if ((owner.parent as THREE.Scene | null)?.isScene === true && (Math.abs(position.x - local.x) >= reach || Math.abs(position.z - local.z) >= reach)) continue;
+      const origin = this.getActiveLightPosition(owner);
+      if (!origin) continue;
       const distance = Math.max(Math.hypot(position.x - origin.x, position.z - origin.z) / light.radius, 0.0001);
+      if (distance >= 3) continue;
       const edge = THREE.MathUtils.clamp((distance - 2.5) / 0.5, 0, 1);
       const attenuation = THREE.MathUtils.clamp(Math.exp(Math.log(light.falloff) * distance ** 2), 0, 1)
         * (1 - edge * edge * (3 - 2 * edge));
-      colour.addScaledVector(new THREE.Vector3().fromArray(light.colour), light.intensity * attenuation);
-    };
-    for (const owner of getPrefabLocalLightOwners()) {
-      const settings = getPrefabLocalLight(owner);
-      if (settings && isInScene(owner)) accumulate(owner, settings);
+      const scale = light.intensity * attenuation;
+      r += light.colour[0] * scale; g += light.colour[1] * scale; b += light.colour[2] * scale;
     }
-    return Math.min(1, colour.x) * 0.2126 + Math.min(1, colour.y) * 0.7152 + Math.min(1, colour.z) * 0.0722;
+    return Math.min(1, r) * 0.2126 + Math.min(1, g) * 0.7152 + Math.min(1, b) * 0.0722;
   }
 
   renderLightmap(renderer: THREE.WebGLRenderer): void {
@@ -208,8 +220,9 @@ export class DstLocalLighting {
     let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
     for (const owner of getPrefabLocalLightOwners()) {
       const settings = getPrefabLocalLight(owner);
-      if (!settings || settings.radius <= 0 || settings.intensity <= 0 || !isInScene(owner)) continue;
-      const position = owner.getWorldPosition(this.lightPosition);
+      if (!settings || settings.radius <= 0 || settings.intensity <= 0) continue;
+      const position = this.getActiveLightPosition(owner);
+      if (!position) continue;
       if (count === 0) this.ownerPosition.copy(position);
       origins.setXYZ(count, position.x, position.z, settings.radius);
       colours.setXYZ(count, settings.colour[0] * settings.intensity,
@@ -247,6 +260,26 @@ export class DstLocalLighting {
       renderer.autoClear = previousAutoClear;
       renderer.setRenderTarget(previousTarget);
     }
+  }
+
+  /** GPU accumulation and CPU LightWatchers use the same world-space tile gate. */
+  private getActiveLightPosition(owner: THREE.Object3D): THREE.Vector3 | undefined {
+    if (!isInScene(owner)) return;
+    const position = owner.getWorldPosition(this.lightPosition);
+    if (!this.tickingarea) return position;
+    const key = GetTileKeyAtPoint(position);
+    if (key === INVALID_TILE_KEY) return;
+    let tile = this.tileActivity.get(key);
+    if (!tile) {
+      // The signal represents this fixed tile, so moving lights just look up a
+      // different entry. Every light in this tile shares one private area view.
+      const area = this.tickingarea(createSignal(key));
+      let stop = () => {};
+      const active = area && watchSignal(area, cleanup => { stop = cleanup; });
+      tile = { active, dispose: () => { stop(); area?.dispose(); } };
+      this.tileActivity.set(key, tile);
+    }
+    return tile.active?.peek() === false ? undefined : position;
   }
 
   private ensureLightCapacity(count: number): void {
@@ -337,6 +370,9 @@ export class DstLocalLighting {
         }
         // The original ambient colours and LUTs operate in display space.
         dstLight = max(dstLight, vec3(dstLightOverride));
+        #ifdef DST_INSTANCED_LIGHT_OVERRIDE
+          dstLight = max(dstLight, vec3(vSpriteLightOverride));
+        #endif
         vec3 dstDisplay = sRGBTransferOETF(vec4(max(gl_FragColor.rgb, 0.0), 1.0)).rgb;
         gl_FragColor.rgb = sRGBTransferEOTF(vec4(dstDisplay * dstLight, 1.0)).rgb;
         #include <colorspace_fragment>

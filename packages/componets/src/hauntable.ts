@@ -1,5 +1,6 @@
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
+import { createMemo } from '../../signals/src';
 
 /** tuning.lua HAUNT_INSTANT_REZ / HAUNT_COOLDOWN_SMALL / HAUNT_COOLDOWN_MEDIUM. */
 export const HAUNT_INSTANT_REZ = 9999;
@@ -21,11 +22,15 @@ export interface Haunter {
 /**
  * components/hauntable.lua, for a fixed haunt value: DoHaunt runs onhaunt, sends `respawnfromghost` for an
  * instant-rez value, then holds the `haunted` tag for the cooldown. The cooldown is a game-time timer
- * whose expiry is StopHaunt. Flicker, panic and shader fx are not ported.
+ * whose expiry is StopHaunt. Panic has its own deadline; flicker and shader fx are not ported.
  */
 export class Hauntable {
   private readonly inst: HauntableInst;
   private readonly cooldown: ComponentTimer;
+  private readonly panicTask: ComponentTimer;
+  private readonly panicking;
+  panicable = false;
+  get panic(): boolean { return this.panicking.peek(); }
   private onhaunt: (inst: HauntableInst, haunter: Haunter) => boolean = () => true;
   private hauntvalue: number | undefined;
   private hauntedValue = false;
@@ -34,9 +39,13 @@ export class Hauntable {
   constructor(inst: HauntableInst, scheduler: GameTimeScheduler) {
     this.inst = inst;
     this.cooldown = new ComponentTimer(scheduler, () => this.StopHaunt());
+    this.panicTask = new ComponentTimer(scheduler, () => {});
+    this.panicking = createMemo(() => this.panicTask.snapshot.get().status === 'scheduled');
   }
 
   get cooldownState() { return this.cooldown.snapshot; }
+  get panicTimer() { return this.panicTask.snapshot; }
+  Panic(seconds: number): void { this.panicTask.start(seconds); }
   IsHaunted(): boolean { return this.hauntedValue; }
   SetOnHauntFn(fn: Hauntable['onhaunt']): void { this.onhaunt = fn; }
   SetHauntValue(value: number | undefined): void { if (value) this.hauntvalue = value; }
@@ -61,6 +70,7 @@ export class Hauntable {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.panicTask.stop(); this.panicking.dispose();
     this.StopHaunt();
   }
 

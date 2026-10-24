@@ -5,10 +5,11 @@ import type { BernieWorld } from './bernie';
 import type { ButterflyWorld } from './butterfly';
 import type { FirefliesWorld } from './fireflies';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { ReadonlySignal } from '@dontstarve-web/signals';
+import type { HandEquipment, ReadonlySignal } from '@dontstarve-web/signals';
 
 export interface GroundItemDefinition {
   mole?: import('@dontstarve-web/inventory').InventoryStack['mole'];
+  lightflier?: InventoryStack['lightflier'];
   container?: import('@dontstarve-web/inventory').ItemContainerState;
   /** Live inst; the remaining fields are asset metadata or detached save/UI projections. */
   entity?: ItemEntity;
@@ -63,11 +64,13 @@ export interface GroundFx {
 
 export interface GroundPrefabOptions {
   moleWorld?: import('./molehill').MoleHabitat;
+  lightflierWorld?: import('./lightflier').LightFlierHabitat;
   fx?: GroundFx;
   scheduler?: GameTimeScheduler;
   scene: THREE.Scene;
   animationBaseUrl: string;
   inventoryOwnerPosition?: THREE.Vector3;
+  handEquipment?: ReadonlySignal<HandEquipment | null>;
   bernieWorld: BernieWorld;
   butterflyWorld: ButterflyWorld;
   firefliesWorld: FirefliesWorld;
@@ -91,6 +94,8 @@ export interface GroundPrefabContext extends GroundPrefabOptions {
 export interface GroundItemFactory {
   itemIds: readonly string[];
   create(definition: GroundItemDefinition): Promise<GroundItemVisual>;
+  /** Available after the owning prefab has preloaded its shared resources. */
+  createPrepared?(definition: GroundItemDefinition): GroundItemVisual;
   capture?: 'net';
   configureEntity?(entity: ItemEntity): void;
   update?(dt: number, cameraQuaternion: THREE.Quaternion): void;

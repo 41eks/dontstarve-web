@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./lightflier": "./src/lightflier.ts",
+    "./lightflier_flower": "./src/lightflier_flower.ts",
     "./backpack": "./src/backpack.ts",
     "./minimapEntity": "./src/minimapEntity.ts",
     "./minimapIcons": "./src/minimapIcons.ts",
@@ -37,7 +39,9 @@
     "./amulet": "./src/amulet.ts",
     "./equipmentVisual": "./src/equipmentVisual.ts",
     "./rocks": "./src/rocks.ts",
+    "./cave_fern": "./src/cave_fern.ts",
     "./grass": "./src/grass.ts",
+    "./houndbone": "./src/houndbone.ts",
     "./rock_avocado_fruit": "./src/rock_avocado_fruit.ts",
     "./marbleshrub": "./src/marbleshrub.ts",
     "./archive_props": "./src/archive_props.ts",

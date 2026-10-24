@@ -17,7 +17,7 @@ import { Reader } from '../packages/componets/src/reader';
 import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
-import { actionEntity } from '../packages/prefab/src/actionEntity';
+import { actionEntity, FindEntities } from '../packages/prefab/src/actionEntity';
 import type { PickActor } from '../packages/stategraphs/src/pick';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
@@ -112,7 +112,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'grottoPools' | 'mushtrees' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'skeletons' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
+  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'caveEntrances' | 'grottoPools' | 'mushtrees' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'marbleShrubs' | 'archiveProps' | 'skeletons' | 'houndbones' | 'marbleBeanSaplings' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -132,7 +132,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, wormholes, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, beefalos, ponds } = scene;
+      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, caveEntrances, grottoPools, mushtrees, mushroomPlants, wormholes, reskinEffects, worldFx, flowerPlanting, marbleShrubs, archiveProps, skeletons, houndbones, marbleBeanSaplings, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, ponds } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -336,7 +336,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           play: () => {
             if (!isValid()) return false;
             const played = entity.components.instrument!.Play(readerInst,
-              range => [...beefalos.entitiesNear(player.position, range), ...molehills.habitat.getMoles().filter(mole => mole.isValid() && mole.getPosition().distanceToSquared(player.position) <= (range * TILE_SIZE / 4) ** 2)] as never[]);
+              range => FindEntities(view.scene!, player.position, range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']) as never[]);
             if (played) entity.components.finiteuses.useForAction('PLAY');
             return played;
           },
@@ -357,7 +357,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const bugNet = new BugNetCaptureController(view, playerAnimation, locomotor,
           handEquipment,
           (model) => groundItems.getNetCaptureTargets(model),
-          isActionInterrupting);
+          isActionInterrupting, TILE_SIZE / 4);
         actionControllers.push(bugNet);
         groundItems.setNetCaptureHandler(target => bugNet.request(target));
 
@@ -414,7 +414,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
 
         const hammer = new HammerActionController(view, playerAnimation, locomotor,
           handEquipment,
-          (model) => [...buildingPlacement.getHammerTargets(model), ...farmPlow.getHammerTargets(model), ...skeletons.getHammerTargets(model), ...groundItems.getHammerTargets(model)],
+          (model) => [...buildingPlacement.getHammerTargets(model), ...farmPlow.getHammerTargets(model), ...skeletons.getHammerTargets(model), ...houndbones.getHammerTargets(model), ...groundItems.getHammerTargets(model)],
           isActionInterrupting);
         const pickaxe = new PickaxeActionController(view, playerAnimation, locomotor,
           handEquipment, (model) => [...rockManager.getMineTargets(model), ...caveEntrances.getMineTargets(model), ...grottoPools.getMineTargets(model), ...marbleShrubs.getMineTargets(model), ...archiveProps.getMineTargets(model), ...groundItems.getMineTargets(model)], isActionInterrupting);

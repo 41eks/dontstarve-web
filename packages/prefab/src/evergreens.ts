@@ -2,8 +2,8 @@ import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
-import { loadBuild, loadAnim } from '@dontstarve-web/animation/animationAssets';
-import { createAnimatedSpriteFactory, createSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createAnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import { performToolWork, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
@@ -87,16 +87,18 @@ export interface EvergreenForest {
 /** evergreens.lua's normal build. Growth/work belong to logical trees, independently of loaded art. */
 export async function createEvergreenForest(assetBaseUrl: string, world: EvergreenWorld,
   random = Math.random, loadRadius = 120): Promise<EvergreenForest> {
-  const [build, shortNormal, tallOld, needles, fireFx] = await Promise.all([
-    loadBuild('evergreen_new.zip', assetBaseUrl),
-    loadAnim('evergreen_short_normal.zip', assetBaseUrl),
-    loadAnim('evergreen_tall_old.zip', assetBaseUrl),
+  const assets = new ArchiveSpriteAssets('evergreen', assetBaseUrl);
+  const [createTree, needles, fireFx] = await Promise.all([
+    // evergreens.lua builds.normal: one bank for every stage; clips are split across two anim archives.
+    preloadSharedArchiveSprite(assets, { animationArchive: 'evergreen_short_normal.zip', extraAnimationArchives: ['evergreen_tall_old.zip'],
+      buildArchives: ['evergreen_new.zip'], bank: 'evergreen_short' },
+    { scale: .02, instancedAnimations: EVERGREEN_STAGES.flatMap(stage =>
+      [`sway1_loop_${stage}`, `stump_${stage}`, `burnt_${stage}`, 'idle_old']) }),
     createAnimatedSpriteFactory(assetBaseUrl, 'pine_needles.zip'),
     FireFxHost.load(assetBaseUrl),
     PreloadSounds('dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeFall', 'dontstarve/forest/treeCrumble',
       'dontstarve/forest/treeGrow', 'dontstarve/forest/treeGrowFromWilt', 'dontstarve/forest/treeWilt'),
   ]);
-  const factory = createSpriteFactory(build, { animations: [...shortNormal.animations, ...tallOld.animations] });
   const scheduler = world.scheduler ?? new GameTimeScheduler();
   const trees = new Map<ProximityEntity, Tree>();
   const mouseRecords = new ModelRecords<ProximityEntity>();
@@ -110,7 +112,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     : tree.inst.hasTag('burnt') ? `burnt_${burntStage(tree)}`
     : stageOf(tree) === 3 ? 'idle_old' : `sway1_loop_${EVERGREEN_STAGES[stageOf(tree)]}`;
   const env: BurnEnvironment = { scheduler, root: world.scene, fire: fireFx };
-  const animationOf = (tree: Tree) => tree.logical.model?.userData.animationController as SpriteAnimationController | undefined;
+  const animationOf = (tree: Tree) => tree.logical.model?.userData.animationController as ArchiveSprite | undefined;
   const playSound = (tree: Tree, path: SoundEventPath) => {
     for (const sound of tree.sounds) if (sound.isPlaying?.() === false) tree.sounds.delete(sound);
     tree.sounds.add(PlaySound(path, tree.logical.position));
@@ -238,7 +240,9 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   };
   const nearby = new ProximityEntities([], loadRadius, logical => {
     const tree = trees.get(logical)!;
-    const model = factory.create({ initialAnimation: rest(tree), name: `Evergreen-${logical.saveId}`, scale: .02 });
+    const sprite = createTree(rest(tree), true, `Evergreen-${logical.saveId}`);
+    const model = sprite.model;
+    model.userData.animationController = sprite;
     bindFire(tree);
     if (tree.inst.hasTag('burnt')) startPineconeTask(tree);
     Object.assign(model.userData, { entityId: logical.saveId, prefab: 'evergreen', deploySmartRadius: 1,
@@ -258,7 +262,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       else burn(tree, true);
     }
     if (tree) unbindFire(tree);
-    factory.disposeSprite(model);
+    (model.userData.animationController as ArchiveSprite).dispose();
   }, undefined, { prefab: 'evergreen', smartRadius: 1 });
   nearby.group.name = 'EvergreenForest';
   const targets = (action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] => mouseRecords.select(model, nearby.activeEntities).flatMap(logical => {
@@ -335,7 +339,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       fireFx.update(dt, quaternion);
       for (const logical of nearby.activeEntities) {
         logical.model!.quaternion.copy(quaternion);
-        (logical.model!.userData.animationController as SpriteAnimationController).update(dt);
+        (logical.model!.userData.animationController as ArchiveSprite).update(dt);
       }
       for (const model of [...effects.keys()]) {
         model.quaternion.copy(quaternion); (model.userData.animationController as SpriteAnimationController).update(dt);
@@ -360,7 +364,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       disposed = true;
       for (const tree of [...trees.values()]) remove(tree);
       for (const model of effects.keys()) needles.disposeSprite(model);
-      effects.clear(); nearby.dispose(); factory.dispose(); needles.dispose(); fireFx.dispose();
+      effects.clear(); nearby.dispose(); assets.dispose(); needles.dispose(); fireFx.dispose();
       if (!world.scheduler) scheduler.dispose();
     },
   };

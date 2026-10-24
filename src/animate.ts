@@ -6,7 +6,8 @@ import { IsAutopaused } from './autopause';
 import { FIXED_TIMESTEP, MAX_SUBSTEPS } from './physicsTiming';
 import { createDebugFpsDisplay } from './debugFps';
 
-type Updatable = (dt: number) => void;
+/** `dt` is zero while autopaused; `unpausedDt` is the real frame time for the camera, which DST keeps updating. */
+type Updatable = (dt: number, unpausedDt?: number) => void;
 
 export const frontTasks: Updatable[] = [];
 export const middleTasks: Updatable[] = [];
@@ -15,7 +16,7 @@ export const backTasks: Updatable[] = [];
 /** Removed tasks also stay inactive if the current frame already captured them. */
 export function registerFrontTask(update: Updatable): () => void {
     let active = true;
-    const task: Updatable = dt => { if (active) update(dt); };
+    const task: Updatable = (dt, unpausedDt) => { if (active) update(dt, unpausedDt); };
     frontTasks.push(task);
     return () => {
         if (!active) return;
@@ -54,7 +55,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
             middleTasks.forEach((listener) => listener(dt));
             // 当这一帧所有的输入和推力都准备好了，物理世界往前走一步
             world.step(FIXED_TIMESTEP, dt, MAX_SUBSTEPS);
-            backTasks.forEach((listener) => listener(dt));
+            backTasks.forEach((listener) => listener(dt, elapsed));
             dstLighting.update(dt);
 
             const { width, height, needsResize } = resizeRendererToDisplaySize();

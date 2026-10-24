@@ -59,11 +59,11 @@ export class Pickable implements PickableComponent {
   private productName: string | undefined;
   private regrowTime: number | undefined;
   private harvestCount: number;
-  private readonly onPicked: (doer: PickDoer) => void;
+  private readonly onPicked: (doer?: PickDoer) => void;
   private readonly onRegen: () => void;
 
   constructor(model: THREE.Object3D, product: string | undefined, regenTime: number | undefined,
-    numToHarvest = 1, onPicked: (doer: PickDoer) => void = () => {},
+    numToHarvest = 1, onPicked: (doer?: PickDoer) => void = () => {},
     onRegen: () => void = () => {}, saved?: PickableSaveState, timing?: PickableTiming) {
     this.model = model; this.productName = product; this.regrowTime = regenTime;
     this.harvestCount = numToHarvest; this.onPicked = onPicked; this.onRegen = onRegen;
@@ -159,10 +159,15 @@ export class Pickable implements PickableComponent {
   }
 
   pick(doer: PickDoer): boolean {
+    return this.Pick(doer);
+  }
+
+  /** pickable.lua permits Pick() without a picker (e.g. a lightflier flower releasing its child). */
+  Pick(doer?: PickDoer): boolean {
     if (!this.canBePicked || !this.canInteractWith) return false;
     const position = this.model.getWorldPosition(new THREE.Vector3()), entity = this.productEntity;
-    if (entity ? !doer.giveEntity?.(entity, position)
-      : this.product !== undefined && !doer.giveItem(this.product, this.numToHarvest, position)) return false;
+    if (entity ? !doer?.giveEntity?.(entity, position)
+      : this.product !== undefined && !doer?.giveItem(this.product, this.numToHarvest, position)) return false;
     // Lua invokes the prefab callback while canbepicked is still true, then clears it.
     batch(() => {
       if (this.transplanted.peek() && this.cycles.peek() !== undefined) this.cycles.set(Math.max(0, this.cycles.peek()! - 1));
@@ -177,7 +182,7 @@ export class Pickable implements PickableComponent {
       else this.timer.stop();
       this.refreshTag();
     });
-    this.model.dispatchEvent({ type: 'picked', data: { picker: doer.picker ?? doer, loot: doer.loot, plant: this.model } } as never);
+    this.model.dispatchEvent({ type: 'picked', data: { picker: doer?.picker ?? doer, loot: doer?.loot, plant: this.model } } as never);
     if (this.remove_when_picked) {
       this.callbacks?.onRemove?.();
       this.dispose();

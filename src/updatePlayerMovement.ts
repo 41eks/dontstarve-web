@@ -45,6 +45,7 @@ export function updateMovement(
         player.userData.wantsToMoveForward = manual || locomotor.destination !== undefined;
         if (!slipping && Math.hypot(playerBody.velocity.x, playerBody.velocity.z) > 0.01) {
             heading.set(playerBody.velocity.x, 0, playerBody.velocity.z).normalize();
+            player.userData.worldHeading = Math.atan2(-heading.z, heading.x) * 180 / Math.PI;
         }
         if (animation?.isEmoting && interrupting) animation.cancelEmote();
         if (animation?.isMining && interrupting) animation.cancelMine();

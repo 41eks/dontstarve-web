@@ -210,7 +210,8 @@ export class FollowCameraController {
 export const followCamera = new FollowCameraController(player);
 export const camera = followCamera.camera;
 
-backTasks.push((dt) => followCamera.update(dt));
+// followcamera.lua keeps updating under SetAutopaused (e.g. the open map), so use the unpaused frame time.
+backTasks.push((dt, unpausedDt = dt) => followCamera.update(unpausedDt));
 
 window.addEventListener('game:camera-turn', (event) => {
   const direction = (event as CustomEvent<{ direction?: unknown }>).detail?.direction;

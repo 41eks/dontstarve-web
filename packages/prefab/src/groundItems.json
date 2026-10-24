@@ -3400,6 +3400,21 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "lightflier": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/lightflier.lua",
+      "name": "球状光虫",
+      "icon": "lightflier.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "lightflier.zip",
+      "buildArchives": [
+        "lightflier.zip"
+      ],
+      "bank": "lightflier",
+      "animation": "walk_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "yellowstaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
       "name": "唤星者魔杖",

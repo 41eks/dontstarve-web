@@ -27,6 +27,8 @@ export async function createReceiveFixture() {
   const scene = new THREE.Scene();
   inventory.subscribeReceived((received, source) => { if (source) inventoryReceiveEffect(inventoryBar, camera, canvas, new THREE.Vector3(source.x, source.y, source.z))(received); });
   const worldState = createWorldState({ elapsedSeconds: 450, systems: {} });
+  // Keep the capture scene in tickingarea, with the player outside the swarm's hide radius.
+  worldState.playerpositions.set([new THREE.Vector3(20, 0, 3)]);
   const ground = new GroundItemManager(scene, camera, { domElement: canvas } as unknown as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group(), undefined,
     { getWatchWorldContent: worldState.getWatchWorldContent });

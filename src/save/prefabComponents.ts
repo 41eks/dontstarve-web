@@ -36,6 +36,8 @@ export interface PrefabComponentSchema {
   readonly pickCycles?: number;
   readonly minimumPickCycles?: number;
   readonly plantSkins?: readonly string[];
+  /** cave_fern.lua `names`: the pose clips a plant may save as `variant.anim`. */
+  readonly plantVariants?: readonly string[];
   readonly regrowTime?: number;
   /** finiteuses.lua maximum bounding the saved uses. */
   readonly finiteUses?: number;
@@ -60,6 +62,33 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     const { keys } = schema;
     const c = object(value, path, keys);
     const components: SavedEntity['components'] = {};
+    if (keys.includes('caveinBoulder') && c.caveinBoulder !== undefined) {
+      const p = `${path}.caveinBoulder`, boulder = object(c.caveinBoulder, p, ['variation', 'raised', 'formed']);
+      const state: NonNullable<SavedEntity['components']['caveinBoulder']> = {
+        variation: integer(boulder.variation, `${p}.variation`, 1, 8),
+      };
+      for (const flag of ['raised', 'formed'] as const) if (boulder[flag] !== undefined) {
+        if (boulder[flag] !== true) fail(`${p}.${flag}`, 'expected true');
+        state[flag] = true;
+      }
+      if (state.raised && state.formed) fail(p, 'raised boulders do not save formed');
+      components.caveinBoulder = state;
+    }
+    if (keys.includes('lightflierFlower')) {
+      const p = `${path}.lightflierFlower`, data = object(c.lightflierFlower, p,
+        ['variant', 'lightState', 'rechargeSeconds', 'turnoffSeconds', 'picked', 'paused', 'regrowSeconds', 'childspawner']);
+      for (const key of ['picked', 'paused'] as const) if (data[key] !== undefined && typeof data[key] !== 'boolean') fail(`${p}.${key}`, 'expected boolean');
+      const child = object(data.childspawner, `${p}.childspawner`, ['childreninside', 'childrenoutside']);
+      const ids = array(child.childrenoutside, `${p}.childspawner.childrenoutside`, 100).map((v, i) => string(v, `${p}.childspawner.childrenoutside[${i}]`));
+      if (new Set(ids).size !== ids.length) fail(`${p}.childspawner.childrenoutside`, 'duplicate child');
+      components.lightflierFlower = { variant: choice(data.variant, `${p}.variant`, ['single', 'springy'] as const),
+        lightState: choice(data.lightState, `${p}.lightState`, BULB_PLANT_LIGHT_STATES),
+        ...(data.picked === undefined ? {} : { picked: data.picked as boolean }), ...(data.paused === undefined ? {} : { paused: data.paused as boolean }),
+        ...(data.regrowSeconds === undefined ? {} : { regrowSeconds: number(data.regrowSeconds, `${p}.regrowSeconds`, 0, 5760) }),
+        ...(data.rechargeSeconds === undefined ? {} : { rechargeSeconds: number(data.rechargeSeconds, `${p}.rechargeSeconds`, 0, 118) }),
+        ...(data.turnoffSeconds === undefined ? {} : { turnoffSeconds: number(data.turnoffSeconds, `${p}.turnoffSeconds`, 0, 198) }),
+        childspawner: { childreninside: integer(child.childreninside, `${p}.childspawner.childreninside`, 0, 1), childrenoutside: ids } };
+    }
     if (keys.includes('molehill')) {
       const p = `${path}.molehill`, hill = object(c.molehill, p, ['items', 'child', 'childid', 'startdelay']);
       const child = hill.child === undefined ? undefined : stack(hill.child, `${p}.child`);
@@ -98,6 +127,10 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     if (keys.includes('plant') && c.plant !== undefined) {
       const p = `${path}.plant`, plant = object(c.plant, p, ['skinId']);
       components.plant = plant.skinId === undefined ? {} : { skinId: choice(plant.skinId, `${p}.skinId`, schema.plantSkins ?? []) };
+    }
+    if (keys.includes('variant') && c.variant !== undefined) {
+      const p = `${path}.variant`, variant = object(c.variant, p, ['anim']);
+      components.variant = { anim: choice(variant.anim, `${p}.anim`, schema.plantVariants ?? []) };
     }
     if (keys.includes('pickable') && c.pickable !== undefined) {
       const p = `${path}.pickable`;
@@ -253,6 +286,11 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (prop.storyprogress !== undefined && schema.archiveStoryLines === undefined) fail(`${p}.storyprogress`, 'only rune statues have a story line');
       components.archiveProp = { anim: integer(prop.anim, `${p}.anim`, 1, schema.archivePropVariants ?? 1),
         ...(prop.storyprogress === undefined ? {} : { storyprogress: integer(prop.storyprogress, `${p}.storyprogress`, 1, schema.archiveStoryLines) }) };
+    }
+    if (keys.includes('houndbone')) {
+      // houndbone.lua OnSave: bonetype 1..#names.
+      const p = `${path}.houndbone`, bone = object(c.houndbone, p, ['bonetype']);
+      components.houndbone = { bonetype: integer(bone.bonetype, `${p}.bonetype`, 1, 3) };
     }
     if (keys.includes('skeleton')) {
       // skeleton.lua OnSave / Player_OnSave: anim (idle1..6) plus char, playername, userid, pkname and cause.

@@ -142,6 +142,191 @@ def blue_mushroom_components(data):
     return {'mushroom': {'rain': rain}}
 
 
+def rock_components(data):
+    # rocks.lua: these prefabs have no OnSave fields; workable.savestate defaults to false.
+    if set(data) - {'workable'} or data.get('workable'):
+        raise ValueError('Unsupported rock save state')
+    return {}
+
+
+def cavein_boulder_components(data):
+    # cavein_boulder.lua OnSave: the default swap_boulder symbol omits variation (1).
+    # Only ground art is ported; reject falling/linked formations rather than lose their state.
+    if set(data) - {'variation', 'raised', 'formed', 'submersible', 'workable'} or data.get('workable'):
+        raise ValueError('Unsupported cavein_boulder save state')
+    variation = data.get('variation', 1)
+    if type(variation) is not int or not 1 <= variation <= 8:
+        raise ValueError('Expected cavein_boulder variation in 1..8')
+    for flag in ('raised', 'formed'):
+        if flag in data and data[flag] is not True:
+            raise ValueError(f'Expected a true cavein_boulder {flag} flag')
+    if data.get('raised') and data.get('formed'):
+        raise ValueError('A raised cavein_boulder does not save formed')
+    submersible = data.get('submersible')
+    if submersible is not None and submersible != {'force_no_repositioning': False}:
+        raise ValueError('Unsupported cavein_boulder submersible state')
+    return {'caveinBoulder': {'variation': variation, **{flag: True for flag in ('raised', 'formed') if data.get(flag)}}}
+
+
+def pickable_state(data, prefab):
+    # pickable.lua OnSave -> PickableSaveState. caninteractwith is its default true; stuck and pause_time have no
+    # project equivalent, so reject them rather than lose the state.
+    if set(data) - {'protected_cycles', 'picked', 'transplanted', 'paused', 'caninteractwith', 'cycles_left', 'max_cycles', 'time'}:
+        raise ValueError(f'Unsupported {prefab} pickable state')
+    for flag in ('picked', 'transplanted', 'paused', 'caninteractwith'):
+        if flag in data and data[flag] is not True:
+            raise ValueError(f'Expected a true {prefab} pickable {flag} flag')
+    for key in ('protected_cycles', 'cycles_left', 'max_cycles', 'time'):
+        if key in data and (type(data[key]) not in (int, float) or data[key] < 0):
+            raise ValueError(f'Invalid {prefab} pickable {key}')
+    names = {'picked': 'picked', 'time': 'regrowSeconds', 'paused': 'paused', 'transplanted': 'transplanted',
+             'cycles_left': 'cyclesLeft', 'max_cycles': 'maxCycles', 'protected_cycles': 'protectedCycles'}
+    return {names[key]: data[key] for key in names if key in data}
+
+
+def pickable_plant_components(prefab):
+    # grass.lua / sapling.lua add no OnSave fields of their own.
+    def convert(data):
+        if set(data) - {'pickable'}:
+            raise ValueError(f'Unsupported {prefab} save state')
+        state = pickable_state(data.get('pickable') or {}, prefab)
+        return {'pickable': state} if state else {}
+    return convert
+
+
+def cave_fern_components(prefab):
+    # cave_fern.lua / cave_fern_withered.lua OnSave: data.anim is one of f1..f10.
+    def convert(data):
+        if set(data) - {'pickable', 'anim'}:
+            raise ValueError(f'Unsupported {prefab} save state')
+        if data.get('anim') not in [f'f{number}' for number in range(1, 11)]:
+            raise ValueError(f'Expected {prefab} anim in f1..f10')
+        state = pickable_state(data.get('pickable') or {}, prefab)
+        return {**({'pickable': state} if state else {}), 'variant': {'anim': data['anim']}}
+    return convert
+
+
+def houndbone_components(data):
+    # houndbone.lua OnSave: data.bonetype (1..3). The legacy `anim` field is no longer written, and workable saves nothing.
+    if set(data) != {'bonetype'} or type(data['bonetype']) is not int or not 1 <= data['bonetype'] <= 3:
+        raise ValueError('Unsupported houndbone save state')
+    return {'houndbone': {'bonetype': data['bonetype']}}
+
+
+def bulb_timers(data, light_state):
+    # timer.lua OnSave: only the running turnoff (ON) or recharge (RECHARGING) task is meaningful, and never a paused one.
+    timers = (data.get('timer') or {}).get('timers', {})
+    if set(data.get('timer') or {}) - {'timers'} or set(timers) - {'turnoff', 'recharge'}:
+        raise ValueError('Unsupported bulb plant timer state')
+    for name, timer in timers.items():
+        if not isinstance(timer, dict) or timer.get('paused') is not False or type(timer.get('timeleft')) not in (int, float) \
+                or timer['timeleft'] <= 0:
+            raise ValueError(f'Unsupported bulb plant {name} timer')
+    expected = {'ON': 'turnoff', 'RECHARGING': 'recharge'}.get(light_state)
+    if set(timers) - {expected}:
+        raise ValueError(f'Unexpected bulb plant timer in {light_state}')
+    return timers
+
+
+def bulb_light_state(data, picked):
+    light_state = data.get('light_state')
+    if light_state not in ('ON', 'CHARGED', 'RECHARGING') or (picked and light_state == 'ON'):
+        raise ValueError('Unsupported bulb plant light_state')
+    return light_state
+
+
+def bulb_pickable(data, prefab):
+    # pickable.lua OnSave: picked and the remaining regrow `time`; caninteractwith is the default.
+    pickable = data.get('pickable') or {}
+    if set(pickable) - {'picked', 'caninteractwith', 'time'} or pickable.get('picked', True) is not True:
+        raise ValueError(f'Unsupported {prefab} pickable state')
+    if 'time' in pickable and (not pickable.get('picked') or type(pickable['time']) not in (int, float) or pickable['time'] <= 0):
+        raise ValueError(f'Unsupported {prefab} pickable time')
+    return bool(pickable.get('picked'))
+
+
+def flower_cave_components(prefab):
+    # flower_cave.lua OnSave: light_state (+ plantname for the single flower); double/triple have fixed art.
+    fixed = {'flower_cave_double': 'double', 'flower_cave_triple': 'triple'}.get(prefab)
+
+    def convert(data):
+        if set(data) - {'light_state', 'pickable', 'plantname', 'timer'} or (fixed is not None and 'plantname' in data):
+            raise ValueError(f'Unsupported {prefab} save state')
+        variant = fixed or {'_single': 'single', '_springy': 'springy'}.get(data.get('plantname'))
+        if variant is None:
+            raise ValueError(f'Unsupported {prefab} plantname')
+        picked = bulb_pickable(data, prefab)
+        light_state = bulb_light_state(data, picked)
+        timers = bulb_timers(data, light_state)
+        if picked and timers:
+            raise ValueError(f'A picked {prefab} has no light timer')
+        state = {'variant': variant, 'lightState': light_state}
+        if not picked and light_state != 'CHARGED':
+            if not timers:
+                raise ValueError(f'Missing {prefab} light timer')
+            state['remainingSeconds'] = next(iter(timers.values()))['timeleft']
+        if picked:
+            state['picked'] = True
+            if 'time' in data['pickable']:
+                state['regrowSeconds'] = data['pickable']['time']
+        return {'bulbPlant': state}
+    return convert
+
+
+def lightflier_flower_components(data):
+    # lightflier_flower.lua OnSave: light_state + plantname, plus the pickable, timer and childspawner components.
+    # Children are source GUIDs, linked to imported entities by link_lightflier_flowers.
+    if set(data) - {'light_state', 'pickable', 'plantname', 'timer', 'childspawner'}:
+        raise ValueError('Unsupported lightflier_flower save state')
+    variant = {'_single': 'single', '_springy': 'springy'}.get(data.get('plantname'))
+    spawner = data.get('childspawner')
+    if variant is None or not isinstance(spawner, dict) or type(spawner.get('childreninside')) is not int \
+            or not 0 <= spawner['childreninside'] <= 1 or not isinstance(spawner.get('childrenoutside'), list) \
+            or any(type(child) is not int or child < 0 for child in spawner['childrenoutside']):
+        raise ValueError('Unsupported lightflier_flower save state')
+    picked = bulb_pickable(data, 'lightflier_flower')
+    light_state = bulb_light_state(data, picked)
+    timers = bulb_timers(data, light_state)
+    state = {'variant': variant, 'lightState': light_state,
+             'childspawner': {'childreninside': spawner['childreninside'], 'childrenoutside': spawner['childrenoutside']}}
+    if 'recharge' in timers:
+        state['rechargeSeconds'] = timers['recharge']['timeleft']
+    if 'turnoff' in timers:
+        state['turnoffSeconds'] = timers['turnoff']['timeleft']
+    if picked:
+        state['picked'] = True
+        if 'time' in data['pickable']:
+            state['regrowSeconds'] = data['pickable']['time']
+    return {'lightflierFlower': state}
+
+
+def link_lightflier_flowers(result, imported_ids):
+    # Only imported lightfliers can be linked; the others are not part of the selection.
+    for entity in result.get('lightflier_flower', []):
+        spawner = entity['components']['lightflierFlower']['childspawner']
+        spawner['childrenoutside'] = [imported_ids[child] for child in spawner['childrenoutside'] if child in imported_ids]
+
+
+def evergreen_components(data):
+    # evergreens.lua OnSave plus growable/plantregrowth; plantregrowth (offspring regrowth) is not ported.
+    if set(data) - {'growable', 'plantregrowth', 'stump', 'burnt', 'burntcone'}:
+        raise ValueError('Unsupported evergreen save state')
+    for flag in ('stump', 'burnt', 'burntcone'):
+        if flag in data and data[flag] is not True:
+            raise ValueError(f'Expected a true evergreen {flag} flag')
+    if data.get('stump') and data.get('burnt'):
+        raise ValueError('A burnt evergreen is not a stump')
+    growth = data.get('growable')
+    if not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'} \
+            or growth.get('usetimemultiplier') not in (None, False) \
+            or type(growth.get('stage')) is not int or not 1 <= growth['stage'] <= 4 \
+            or any(type(growth[key]) not in (int, float) or growth[key] < 0 for key in ('time', 'sleeptime') if key in growth):
+        raise ValueError('Unsupported evergreen growable state')
+    state = {key: True for key in ('stump', 'burnt', 'burntcone') if data.get(key)}
+    return {**({'evergreen': state} if state else {}),
+            'growable': {key: growth[key] for key in ('stage', 'time', 'sleeptime') if key in growth}}
+
+
 # Each whitelist entry owns the source -> project component-state conversion.
 # Adding a prefab here requires an actual converter, rather than copying arbitrary Lua data.
 ENTITY_WHITELIST = {
@@ -152,6 +337,24 @@ ENTITY_WHITELIST = {
     'mushtree_medium': lambda data: mushtree_components(data, True),
     'mushtree_tall': lambda data: mushtree_components(data, True),
     'blue_mushroom': blue_mushroom_components,
+    'grass': pickable_plant_components('grass'),
+    'sapling': pickable_plant_components('sapling'),
+    'evergreen': evergreen_components,
+    'flower_cave': flower_cave_components('flower_cave'),
+    'flower_cave_double': flower_cave_components('flower_cave_double'),
+    'flower_cave_triple': flower_cave_components('flower_cave_triple'),
+    'lightflier_flower': lightflier_flower_components,
+    'houndbone': houndbone_components,
+    'cave_fern': cave_fern_components('cave_fern'),
+    'cave_fern_withered': cave_fern_components('cave_fern_withered'),
+    'rock1': rock_components,
+    'rock2': rock_components,
+    'cavein_boulder': cavein_boulder_components,
+    'rock_moon_shell': rock_components,
+    'rock_flintless': rock_components,
+    'rock_flintless_med': rock_components,
+    'rock_flintless_low': rock_components,
+    'rock_moon': rock_components,
     'grotto_pool_big': lambda data: grotto_pool_components(data, True),
     'grotto_pool_small': lambda data: grotto_pool_components(data, False),
     'grotto_moonglass_1': grotto_glass_components,
@@ -211,6 +414,7 @@ def convert_entities(terrain, source_entities, report, session_id):
             result[prefab] = imported
         counts[prefab] = {'source': len(records), 'imported': len(imported), 'outsideRegion': len(records) - len(imported)}
     link_grotto_pools(result, imported_ids)
+    link_lightflier_flowers(result, imported_ids)
     return result, {'entityWhitelist': list(ENTITY_WHITELIST), 'entityCounts': counts, 'entitySources': sources}
 
 
