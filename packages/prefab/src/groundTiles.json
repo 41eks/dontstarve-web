@@ -1,5 +1,107 @@
 {
+  "OCEAN_COASTAL_SHORE": {
+    "oceanColours": {
+      "primary": [
+        220,
+        240,
+        255,
+        60
+      ],
+      "day": [
+        21,
+        96,
+        110,
+        140
+      ],
+      "dusk": [
+        0,
+        0,
+        0,
+        50
+      ]
+    },
+    "tileId": 202,
+    "plantable": false,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ocean_noise.tex",
+    "renderOrder": 0,
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_water_shallow.tex"
+    }
+  },
+  "OCEAN_BRINEPOOL_SHORE": {
+    "oceanColours": {
+      "primary": [
+        255,
+        255,
+        255,
+        25
+      ],
+      "day": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "dusk": [
+        255,
+        0,
+        0,
+        255
+      ]
+    },
+    "tileId": 206,
+    "plantable": false,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ocean_noise.tex",
+    "renderOrder": 1,
+    "cannotBeDug": false,
+    "minimapColour": [
+      255,
+      0,
+      0,
+      255
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_water_coral.tex"
+    }
+  },
   "OCEAN_COASTAL": {
+    "oceanColours": {
+      "primary": [
+        220,
+        255,
+        255,
+        28
+      ],
+      "day": [
+        25,
+        123,
+        167,
+        100
+      ],
+      "dusk": [
+        10,
+        120,
+        125,
+        120
+      ]
+    },
     "tileId": 201,
     "plantable": false,
     "name": "cave",
@@ -13,6 +115,211 @@
       51,
       62,
       102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ocean_noise.tex"
+    }
+  },
+  "OCEAN_WATERLOG": {
+    "oceanColours": {
+      "primary": [
+        220,
+        255,
+        255,
+        28
+      ],
+      "day": [
+        25,
+        123,
+        167,
+        100
+      ],
+      "dusk": [
+        10,
+        120,
+        125,
+        120
+      ]
+    },
+    "tileId": 208,
+    "plantable": false,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ocean_noise.tex",
+    "renderOrder": 3,
+    "cannotBeDug": false,
+    "minimapColour": [
+      40,
+      87,
+      93,
+      51
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ocean_noise.tex"
+    }
+  },
+  "OCEAN_BRINEPOOL": {
+    "oceanColours": {
+      "primary": [
+        5,
+        185,
+        220,
+        60
+      ],
+      "day": [
+        5,
+        20,
+        45,
+        200
+      ],
+      "dusk": [
+        5,
+        15,
+        20,
+        200
+      ]
+    },
+    "tileId": 205,
+    "plantable": false,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ocean_noise.tex",
+    "renderOrder": 4,
+    "cannotBeDug": false,
+    "minimapColour": [
+      40,
+      87,
+      93,
+      51
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ocean_noise.tex"
+    }
+  },
+  "OCEAN_SWELL": {
+    "oceanColours": {
+      "primary": [
+        150,
+        255,
+        255,
+        18
+      ],
+      "day": [
+        0,
+        45,
+        80,
+        220
+      ],
+      "dusk": [
+        9,
+        52,
+        57,
+        150
+      ]
+    },
+    "tileId": 203,
+    "plantable": false,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ocean_noise.tex",
+    "renderOrder": 5,
+    "cannotBeDug": false,
+    "minimapColour": [
+      14,
+      34,
+      61,
+      204
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ocean_noise.tex"
+    }
+  },
+  "OCEAN_ROUGH": {
+    "oceanColours": {
+      "primary": [
+        10,
+        200,
+        220,
+        30
+      ],
+      "day": [
+        1,
+        20,
+        45,
+        230
+      ],
+      "dusk": [
+        5,
+        20,
+        25,
+        230
+      ]
+    },
+    "tileId": 204,
+    "plantable": false,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ocean_noise.tex",
+    "renderOrder": 6,
+    "cannotBeDug": false,
+    "minimapColour": [
+      19,
+      20,
+      40,
+      230
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ocean_noise.tex"
+    }
+  },
+  "OCEAN_HAZARDOUS": {
+    "oceanColours": {
+      "primary": [
+        255,
+        255,
+        255,
+        25
+      ],
+      "day": [
+        0,
+        8,
+        18,
+        51
+      ],
+      "dusk": [
+        0,
+        0,
+        0,
+        150
+      ]
+    },
+    "tileId": 207,
+    "plantable": false,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ocean_noise.tex",
+    "renderOrder": 7,
+    "cannotBeDug": false,
+    "minimapColour": [
+      8,
+      8,
+      14,
+      51
     ],
     "minimap": {
       "atlas": "levels/tiles/map_edge.xml",
@@ -711,6 +1018,27 @@
       "atlas": "levels/tiles/map_edge.xml",
       "texture": "levels/tiles/map_edge.tex",
       "noise": "levels/textures/mini_dock_noise.tex"
+    }
+  },
+  "OCEAN_ICE": {
+    "tileId": 264,
+    "plantable": false,
+    "name": "ocean_ice",
+    "atlas": "levels/tiles/ocean_ice.xml",
+    "texture": "levels/tiles/ocean_ice.tex",
+    "noise": "levels/textures/noise_oceanice.tex",
+    "renderOrder": 48,
+    "cannotBeDug": true,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_oceanice_noise.tex"
     }
   },
   "SCALE": {

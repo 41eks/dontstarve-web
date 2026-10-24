@@ -52,7 +52,7 @@ def main():
     assets = set()
     read_tiles = runpy.run_path(str(Path(__file__).with_name('turf-source.py')))['read_tiles']
     for tile in read_tiles(scripts):
-        if not tile['turf'] and tile['name'] not in {'DIRT', 'FARMING_SOIL', 'OCEAN_COASTAL', 'MONKEY_DOCK', 'VAULT'}:
+        if not tile['turf'] and not tile['ocean'] and tile['name'] not in {'DIRT', 'FARMING_SOIL', 'OCEAN_ICE', 'MONKEY_DOCK', 'VAULT'}:
             continue
         ground = tile['ground']
         name = ground['name']
@@ -75,6 +75,7 @@ def main():
         if {element.attrib['name'] for element in mini_elements} != {f'{n:02}' for n in range(1, 49)}:
             raise ValueError(f'Unexpected minimap tile variants: {mini_atlas_path}')
         definitions[tile['name']] = {
+            **({'oceanColours': tile['oceanColours']} if tile['ocean'] else {}),
             'tileId': tile['tileId'], 'plantable': tile['land'] and not tile['hard'],
             'name': name, 'atlas': atlas_path, 'texture': texture_path, 'noise': noise_path,
             'renderOrder': tile['renderOrder'], 'cannotBeDug': ground.get('cannotbedug') == 'true',

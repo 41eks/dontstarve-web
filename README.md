@@ -33,7 +33,9 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 玩家美术改用 Wortox 默认外观（`wortox_none`）：本体 `anim/dynamic/wortox.zip` / `.dyn`，幽灵 `anim/dynamic/ghost_wortox_build.zip` / `.dyn`；地图图标和物品栏自检头像同步使用 Wortox。共用 `wilson` 动画 bank、装备符号覆盖、死亡／复活及存档流程沿用现有实现，角色数值和存档角色字段沿用现有实现。资源按原路径和字节镜像，运行 `python3 packages/prefab/scripts/import-player-art.py --check` 校验，去掉 `--check` 可重新导入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变。
 
-默认加载 `public/saves/Cluster_1/Caves.json`，无需 URL 参数，现由 `scripts/import-dst-region.py` 转换 `Cluster_58` 的整张洞穴地图：471 × 471 源栅格、360 个拓扑节点，保留 46,224 格陆地、298 格 `FAKE_GROUND` 及原有虚空边界，并导入全部 4,601 个白名单实体（含无节点、悬边位置的记录）。导入不再接受 `--regions`；`--origin-cell 281 392` 保持已有地皮和实体位置，出生点改为全图陆地中心附近的安全格。补入原版 `VAULT` 地皮，草和树苗的枯萎检查剩余时间接入现有 `witherable` 组件并保存／恢复。其他实体及地下环境规则尚未迁移。可用 `?save=initial-world.json` 加载原地表存档。`c_spawn` / `c_give` 的语法、参数和支持 ID 不变；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，保留洞穴类型、稀疏地皮及当前玩家和实体状态。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整导入命令、`--snapshot` / `--origin-cell` 和 `--check` 见 [完整洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入整张洞穴地图)。
+默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_58 --output public/saves/Cluster_1 --origin-cell 281 392` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。地表保留 48,007 格陆地、120,242 格海洋及 6,687 个白名单实体；洞穴保留 46,224 格陆地、298 格 `FAKE_GROUND` 及 4,640 个白名单实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 281 392` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。`c_spawn` / `c_give` 的语法、参数和支持 ID 不变；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
+
+地图导入白名单新增 `pigking`、`deciduoustree`、`fireflies`、`flower`、`butterfly`。`Cluster_58` 当前快照新增猪王 1 个、桦树 695 棵、自然花 441 朵，以及地表／洞穴萤火虫 316／34 群；没有蝴蝶源记录，但导入器支持其存档。桦树保留阶段、树叶、树桩和腐朽计时器；花保留动画与原版 `planted` 标记；萤火虫和蝴蝶进入现有 `ground_item` 存档分组，保留实体 ID、位置、数量和可支持的蝴蝶新鲜度。岩石白名单保持现有内容；调试命令及支持 ID 不变。
 
 静态资源缓存不改变调试命令的语法、参数、行为或支持的 `c_spawn` / `c_give` ID；`c_save()` 仍按原有流程导出存档。
 

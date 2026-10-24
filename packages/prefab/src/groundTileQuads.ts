@@ -5,7 +5,11 @@ export interface GroundTileCellBounds { minCol: number; minRow: number; maxCol: 
 
 const OCEAN_COASTAL = definitions.OCEAN_COASTAL.tileId;
 export const OCEAN_COASTAL_TILE: number = OCEAN_COASTAL;
-const landTiles = new Set(Object.values(definitions).map(definition => definition.tileId).filter(id => id !== OCEAN_COASTAL));
+const oceanTiles = new Set(Object.values(definitions).filter(tile => 'oceanColours' in tile).map(tile => tile.tileId));
+const landTiles = new Set(Object.values(definitions).filter(tile => !('oceanColours' in tile)).map(tile => tile.tileId));
+
+/** tiledefs.lua TileRanges.OCEAN; ice floes are land. */
+export function isOceanTile(tileId: number): boolean { return oceanTiles.has(tileId); }
 
 /** tiledefs.lua: INVALID and the impassable range have no land surface. */
 export function isLandTile(tileId: number): boolean {
@@ -58,7 +62,7 @@ export function groundTileLayerQuads(
   const candidates = new Set<number>();
   for (let row = top; row < bottom; row++) for (let col = left; col < right; col++) {
     const at = (row - top + 1) * width + col - left + 1, current = ids[at];
-    if (!isLandTile(current) && current !== OCEAN_COASTAL) continue;
+    if (!isLandTile(current) && !isOceanTile(current)) continue;
     const neighbours = [ids[at - 1], ids[at - width], ids[at + 1], ids[at + width],
       ids[at - width - 1], ids[at - width + 1], ids[at + width + 1], ids[at + width - 1]];
     candidates.clear();

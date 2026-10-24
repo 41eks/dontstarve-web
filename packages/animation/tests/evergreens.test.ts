@@ -119,3 +119,29 @@ it('commits source axe work, cancels before impact, preserves logical components
     } finally { restored.forest.dispose(); }
   } finally { controller.dispose(); s.forest.dispose(); inventory.dispose(); }
 });
+
+it('preserves an imported decay timer across visual unloading and save/load, then removes the tree at its deadline', async () => {
+  const s = await setup();
+  try {
+    s.forest.spawn('evergreen', new THREE.Vector3(), { id: 'imported-burnt',
+      transform: { position: [0, 0, 0], rotationY: 0 }, components: { evergreen: { burnt: true },
+        evergreenTimer: { timers: { decay: { timeleft: 100, initial_time: 200, paused: false } } } } });
+    s.scheduler.advance(25);
+    s.forest.updateNearby(new THREE.Vector3(1000, 0, 1000));
+    const [saved] = s.forest.exportRecords();
+    expect(saved.components.evergreenTimer?.timers.decay.timeleft).toBe(75);
+    expect(saved.components.growable).toEqual({ stage: 2 });
+    const restored = await setup();
+    try {
+      restored.forest.spawn('evergreen', new THREE.Vector3(), saved);
+      restored.scheduler.advance(74);
+      expect(restored.forest.entities).toHaveLength(1);
+      restored.scheduler.advance(1);
+      expect(restored.forest.entities).toHaveLength(0);
+      expect(restored.forest.exportRecords()).toEqual([]);
+    } finally { restored.forest.dispose(); restored.scheduler.dispose(); }
+    s.forest.dispose();
+    s.scheduler.advance(100);
+    expect(s.forest.entities).toHaveLength(0);
+  } finally { s.forest.dispose(); s.scheduler.dispose(); }
+});

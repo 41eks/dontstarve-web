@@ -7,7 +7,7 @@ import { OceanSurface } from './ocean';
 import { loadMinimapOcean, type MinimapOceanData } from './minimapOcean';
 import type { ClockState, ReadonlySignal } from '@dontstarve-web/signals';
 import { GroundDepthPrepass } from './groundDepthPrepass';
-import { groundTileLayerQuads, isLandTile } from './groundTileQuads';
+import { groundTileLayerQuads, isLandTile, isOceanTile } from './groundTileQuads';
 
 // tiledefs.lua preserves these vanilla GROUND IDs in WORLD_TILES.
 export const WORLD_TILES = {
@@ -22,7 +22,10 @@ export const WORLD_TILES = {
   MONKEY_DOCK: GROUND_TILE_DEFINITIONS.MONKEY_DOCK.tileId,
 } as const;
 
-export { isLandTile };
+export { isLandTile, isOceanTile };
+
+const OCEAN_COLOURS = new Map(Object.values(GROUND_TILE_DEFINITIONS).flatMap(tile =>
+  'oceanColours' in tile ? [[tile.tileId, tile.oceanColours] as const] : []));
 
 export interface TurfTileSave {
   /** Signed grid coordinates: floor(world x/z / TILE_SIZE). */
@@ -101,7 +104,7 @@ export class TurfMap {
 
   isVoidAtCell(col: number, row: number): boolean {
     const tile = this.tileAt(col, row);
-    return !isLandTile(tile) && tile !== WORLD_TILES.OCEAN_COASTAL;
+    return !isLandTile(tile) && !isOceanTile(tile);
   }
 
   /** undertile:GetTileUnderneath for a signed grid cell. */
@@ -135,7 +138,7 @@ export class TurfMap {
    * same eight-neighbour variant selection as the world terrain renderer.
    */
   tileLayerQuads(bounds?: TerrainCellBounds): ReadonlyMap<number, readonly GroundTileQuad[]> {
-    const ids = this.terrainNames().filter(name => name !== 'OCEAN_COASTAL').map(name => WORLD_TILES[name]);
+    const ids = this.terrainNames().filter(name => !isOceanTile(WORLD_TILES[name])).map(name => WORLD_TILES[name]);
     return groundTileLayerQuads((col, row) => this.tileAt(col, row), ids, this.cellRange(), bounds);
   }
 
@@ -147,7 +150,7 @@ export class TurfMap {
 
   tileCenter(world: Vector2): Vector2 { return snapToTileCenter(world); }
 
-  isOceanAtWorld(world: Vector2): boolean { return this.getTileAtWorld(world) === WORLD_TILES.OCEAN_COASTAL; }
+  isOceanAtWorld(world: Vector2): boolean { return isOceanTile(this.getTileAtWorld(world)); }
 
   isPassableAtPoint(world: Vector2): boolean { return isLandTile(this.getTileAtWorld(world)); }
 
@@ -163,12 +166,12 @@ export class TurfMap {
       [WORLD_TILES.DIRT, { assets: this.dirtAssets, quads: [] }],
     ]);
     for (const [tileId, { assets }] of [...this.layers].sort((a, b) => a[1].mesh.renderOrder - b[1].mesh.renderOrder)) {
-      if (tileId !== WORLD_TILES.OCEAN_COASTAL) terrain.set(tileId, { assets, quads: [] });
+      if (!isOceanTile(tileId)) terrain.set(tileId, { assets, quads: [] });
     }
     const min = Math.floor(-this.size / 2 / TILE_SIZE), max = Math.ceil(this.size / 2 / TILE_SIZE);
     for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
       const tileId = this.tileAt(col, row);
-      if (tileId !== WORLD_TILES.OCEAN_COASTAL) {
+      if (!isOceanTile(tileId)) {
         terrain.get(tileId)?.quads.push({ col, row, variant: 1 });
       } else {
         for (const [landId, { quads }] of terrain) {
@@ -197,7 +200,7 @@ export class TurfMap {
 
   canTerraform(world: Vector2): boolean {
     const tile = this.getTileAtWorld(world);
-    return tile !== WORLD_TILES.DIRT && tile !== WORLD_TILES.OCEAN_COASTAL
+    return tile !== WORLD_TILES.DIRT && !isOceanTile(tile)
       && Object.values(GROUND_TILE_DEFINITIONS).some(definition => definition.tileId === tile && !definition.cannotBeDug);
   }
 
@@ -329,10 +332,11 @@ export class TurfMap {
     };
     this.depthPrepass.add(this.falloffMesh);
     this.visual.add(this.falloffMesh);
-    if ([...this.dugTiles.values()].some(tile => tile.tileId === WORLD_TILES.OCEAN_COASTAL)) {
+    if ([...this.dugTiles.values()].some(tile => isOceanTile(tile.tileId))) {
       const assets = await loadGroundTileAssets(assetBaseUrl, 'OCEAN_COASTAL');
       this.ocean = new OceanSurface(assets.material, { size: this.size, tileSize: TILE_SIZE,
-        isOceanTileAt: (col, row) => this.tileAt(col, row) === WORLD_TILES.OCEAN_COASTAL });
+        isOceanTileAt: (col, row) => isOceanTile(this.tileAt(col, row)),
+        oceanColoursAt: (col, row) => OCEAN_COLOURS.get(this.tileAt(col, row)) });
       const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
       mesh.name = 'TurfOcean:OCEAN_COASTAL';
       mesh.renderOrder = -1.75;
@@ -341,7 +345,7 @@ export class TurfMap {
       this.layers.set(WORLD_TILES.OCEAN_COASTAL, { mesh, assets });
     }
     this.rebuildGeometry();
-    await Promise.all(this.terrainNames().filter(name => name !== 'DIRT' && name !== 'OCEAN_COASTAL').map(name => this.prepareTurf(name)));
+    await Promise.all(this.terrainNames().filter(name => name !== 'DIRT' && !isOceanTile(WORLD_TILES[name])).map(name => this.prepareTurf(name)));
     return this.visual;
   }
 
@@ -369,7 +373,7 @@ export class TurfMap {
     const quads = [...this.dugTiles.values()].filter(({ tileId }) => tileId === WORLD_TILES.DIRT)
       .map((tile) => ({ ...tile, variant: 1 }));
     for (const tile of this.dugTiles.values()) {
-      if (tile.tileId !== WORLD_TILES.OCEAN_COASTAL) continue;
+      if (!isOceanTile(tile.tileId)) continue;
       const variant = this.variantAt(tile.col, tile.row, WORLD_TILES.DIRT);
       if (variant !== 17) quads.push({ ...tile, variant });
     }
@@ -391,7 +395,7 @@ export class TurfMap {
         }
       } else if (tileId === WORLD_TILES.FARMING_SOIL || tileId === WORLD_TILES.MONKEY_DOCK || tileId === WORLD_TILES.OCEAN_COASTAL) {
         for (const [key, tile] of this.dugTiles) {
-          if (tile.tileId !== tileId) continue;
+          if (tileId === WORLD_TILES.OCEAN_COASTAL ? !isOceanTile(tile.tileId) : tile.tileId !== tileId) continue;
           const [col, row] = key.split(',').map(Number);
           if (tileId === WORLD_TILES.OCEAN_COASTAL) candidates.add(key);
           else for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) candidates.add(`${col + dx},${row + dz}`);
@@ -412,7 +416,7 @@ export class TurfMap {
         const [col, row] = key.split(',').map(Number);
         // Skirts also fall off into impassable (void) cells; only cells outside the world have no surface.
         if (this.tileAt(col, row) === WORLD_TILES.INVALID) continue;
-        const variant = this.variantAt(col, row, tileId);
+        const variant = tileId === WORLD_TILES.OCEAN_COASTAL ? 1 : this.variantAt(col, row, tileId);
         if (variant !== 17) edgeQuads.push({ col, row, variant });
       }
       mesh.geometry.dispose();

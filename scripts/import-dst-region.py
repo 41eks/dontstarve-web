@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import an entire DST cave map and whitelisted entities into a local save."""
+"""Import DST forest/cave maps and whitelisted entities into project shard saves."""
 import argparse
 import base64
 from collections import Counter
@@ -9,10 +9,15 @@ import math
 from pathlib import Path
 import runpy
 import struct
+import zlib
 
 LITERALS = runpy.run_path(str(Path(__file__).with_name('dst-save-literal.py')))
 ROOT = Path(__file__).resolve().parent.parent
 TILE_SIZE = 12
+SHARDS = {'forest': ('Master', 'master'), 'cave': ('Caves', 'caves')}
+# tiledefs.lua TileRanges.OCEAN; OCEAN_ICE belongs to LAND.
+OCEAN_TILES = {'OCEAN_COASTAL_SHORE', 'OCEAN_COASTAL', 'OCEAN_WATERLOG', 'OCEAN_BRINEPOOL',
+               'OCEAN_SWELL', 'OCEAN_ROUGH', 'OCEAN_HAZARDOUS', 'OCEAN_BRINEPOOL_SHORE'}
 
 
 def source_grid_position(coordinate, extent):
@@ -321,9 +326,101 @@ def link_lightflier_flowers(result, imported_ids):
         spawner['childrenoutside'] = [imported_ids[child] for child in spawner['childrenoutside'] if child in imported_ids]
 
 
+def pigking_components(data):
+    # pigking.lua has no OnSave; trader and sleep/stategraph state are rebuilt on load.
+    if data:
+        raise ValueError('Unsupported pigking save state')
+    return {}
+
+
+def flower_components(data):
+    # flower.lua OnSave: anim + planted. Picking removes the entity, so only an unpicked flower persists.
+    if set(data) - {'anim', 'planted', 'pickable'} or data.get('anim') not in [*[f'f{i}' for i in range(1, 11)], 'rose']:
+        raise ValueError('Unsupported flower save state')
+    if 'planted' in data and data['planted'] is not True:
+        raise ValueError('Expected a true flower planted flag')
+    pickable = data.get('pickable') or {}
+    if not isinstance(pickable, dict) or set(pickable) - {'caninteractwith'} or pickable.get('caninteractwith', True) is not True:
+        raise ValueError('Unsupported flower pickable state')
+    return {'flower': {'animation': data['anim'], **({'planted': True} if data.get('planted') else {})}}
+
+
+def insect_components(prefab):
+    # fireflies.lua / butterfly.lua: these inventoryitem prefabs use the existing ground_item owner.
+    # Stackable:OnSave only writes non-singleton stacks; live butterflies have maximum health 1.
+    def convert(data):
+        allowed = {'stackable', 'workable'} | ({'health', 'perishable', 'knownlocations'} if prefab == 'butterfly' else set())
+        if set(data) - allowed or data.get('workable'):
+            raise ValueError(f'Unsupported {prefab} save state')
+        stackable = data.get('stackable') or {}
+        if not isinstance(stackable, dict) or set(stackable) - {'stack'} \
+                or type(stackable.get('stack', 1)) is not int or not 1 <= stackable.get('stack', 1) <= 40:
+            raise ValueError(f'Unsupported {prefab} stackable state')
+        stack = {'itemId': prefab, 'count': stackable.get('stack', 1)}
+        if prefab == 'butterfly':
+            health = data.get('health') or {}
+            if not isinstance(health, dict) or set(health) - {'health'} or type(health.get('health', 1)) not in (int, float) or health.get('health', 1) != 1:
+                raise ValueError('Unsupported butterfly health state')
+            locations = data.get('knownlocations') or {}
+            if not isinstance(locations, dict) or set(locations) - {'locations'} or locations.get('locations') not in (None, []):
+                raise ValueError('Unsupported butterfly knownlocations state')
+            perish = data.get('perishable')
+            if perish is not None:
+                if not isinstance(perish, dict) or set(perish) - {'time', 'paused'} \
+                        or perish.get('paused') is not True \
+                        or type(perish.get('time')) not in (int, float) or not math.isfinite(perish['time']) \
+                        or not 0 < perish['time'] <= 1440:
+                    raise ValueError('Unsupported ground butterfly perishable state')
+                stack['freshnessPercent'] = perish['time'] / 1440
+        return {'stack': stack}
+    return convert
+
+
+def decay_timer_state(timer, prefab):
+    # timer.lua: preserve the deadline, initial duration and paused state of the saved decay task.
+    if not isinstance(timer, dict) or set(timer) != {'timers'} or not isinstance(timer['timers'], dict) \
+            or set(timer['timers']) - {'decay'}:
+        raise ValueError(f'Unsupported {prefab} timer state')
+    for saved in timer['timers'].values():
+        if not isinstance(saved, dict) or set(saved) != {'timeleft', 'initial_time', 'paused'} \
+                or type(saved['paused']) is not bool \
+                or any(type(saved[key]) not in (int, float) or not math.isfinite(saved[key]) for key in ('timeleft', 'initial_time')) \
+                or not 0 <= saved['timeleft'] <= saved['initial_time'] <= 21600:
+            raise ValueError(f'Unsupported {prefab} decay timer')
+    return timer
+
+
+def deciduoustree_components(data):
+    # deciduoustrees.lua OnSave/OnLoad; hostile monster trees are a separate, unported behaviour branch.
+    if set(data) - {'growable', 'plantregrowth', 'stump', 'burnt', 'burntcone', 'timer', 'monster',
+                    'build', 'leaf_state', 'target_leaf_state', 'leaveschangetime'} or ('monster' in data and data['monster'] is not False):
+        raise ValueError('Unsupported deciduoustree save state')
+    # The normal growth table and dead-tree flags share the evergreen converter's validation.
+    base = evergreen_components({key: value for key, value in data.items()
+                                 if key in ('growable', 'plantregrowth', 'stump', 'burnt', 'burntcone', 'timer')})
+    if base.get('growable', {}).get('stage', 1) > 3:
+        raise ValueError('Expected deciduoustree growable stage in 1..3')
+    state = base.pop('evergreen', {})
+    if 'evergreenTimer' in base:
+        base['deciduousTimer'] = base.pop('evergreenTimer')
+    states = ('normal', 'colorful', 'barren')
+    if data.get('leaf_state') not in states or (data.get('target_leaf_state') not in states
+            and not (data.get('target_leaf_state') is None and (data.get('stump') or data.get('burnt')))):
+        raise ValueError('Unsupported deciduoustree leaf state')
+    if 'build' in data and data['build'] not in ('normal', 'red', 'orange', 'yellow', 'barren'):
+        raise ValueError('Unsupported deciduoustree build')
+    state.update({key: data[key] for key in ('build', 'leaf_state', 'target_leaf_state') if key in data})
+    if 'leaveschangetime' in data:
+        time = data['leaveschangetime']
+        if data.get('stump') or data.get('burnt') or type(time) not in (int, float) or not math.isfinite(time) or not 0 <= time <= 900:
+            raise ValueError('Unsupported deciduoustree leaf change timer')
+        state['leaveschangetime'] = time
+    return {**base, 'deciduoustree': state}
+
+
 def evergreen_components(data):
     # evergreens.lua OnSave plus growable/plantregrowth; plantregrowth (offspring regrowth) is not ported.
-    if set(data) - {'growable', 'plantregrowth', 'stump', 'burnt', 'burntcone'}:
+    if set(data) - {'growable', 'plantregrowth', 'stump', 'burnt', 'burntcone', 'timer'}:
         raise ValueError('Unsupported evergreen save state')
     for flag in ('stump', 'burnt', 'burntcone'):
         if flag in data and data[flag] is not True:
@@ -331,19 +428,59 @@ def evergreen_components(data):
     if data.get('stump') and data.get('burnt'):
         raise ValueError('A burnt evergreen is not a stump')
     growth = data.get('growable')
-    if not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'} \
+    if growth is None and (data.get('stump') or data.get('burnt')):
+        growth = {}
+    elif not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'} \
             or growth.get('usetimemultiplier') not in (None, False) \
             or type(growth.get('stage')) is not int or not 1 <= growth['stage'] <= 4 \
             or any(type(growth[key]) not in (int, float) or growth[key] < 0 for key in ('time', 'sleeptime') if key in growth):
         raise ValueError('Unsupported evergreen growable state')
     state = {key: True for key in ('stump', 'burnt', 'burntcone') if data.get(key)}
-    return {**({'evergreen': state} if state else {}),
-            'growable': {key: growth[key] for key in ('stage', 'time', 'sleeptime') if key in growth}}
+    components = {**({'evergreen': state} if state else {}),
+                  **({'growable': {key: growth[key] for key in ('stage', 'time', 'sleeptime') if key in growth}} if growth else {})}
+    if 'timer' in data:
+        components['evergreenTimer'] = decay_timer_state(data['timer'], 'evergreen')
+    return components
+
+
+def pond_components(data):
+    # pond.lua OnSave: plants + childspawner/worldsettingstimer (frog spawner, not ported).
+    # Only fishable is ported, and a full pond saves nothing, so the frog and plant state is validated and dropped.
+    if set(data) - {'plants', 'childspawner', 'worldsettingstimer'}:
+        raise ValueError('Unsupported pond save state')
+    plants = data.get('plants', [])
+    if not isinstance(plants, list) or any(not isinstance(plant, dict) or set(plant) != {'offset'}
+                                           or not isinstance(plant['offset'], list) or len(plant['offset']) != 3
+                                           or any(type(v) not in (int, float) or not math.isfinite(v) for v in plant['offset'])
+                                           for plant in plants):
+        raise ValueError('Unsupported pond plants')
+    return {}
+
+
+def lava_pond_components(data):
+    # lava_pond.lua OnSave/OnLoad: the rock layout spawned around the pool.
+    if set(data) - {'rocks'}:
+        raise ValueError('Unsupported lava_pond save state')
+    if 'rocks' not in data:
+        return {}
+    rocks = data['rocks']
+    if not isinstance(rocks, list) or any(
+            not isinstance(rock, dict) or set(rock) != {'rocktype', 'offset'}
+            or rock['rocktype'] not in ('', '2', '3', '4', '5', '6', '7')
+            or not isinstance(rock['offset'], list) or len(rock['offset']) != 3
+            or any(type(v) not in (int, float) or not math.isfinite(v) for v in rock['offset']) for rock in rocks):
+        raise ValueError('Unsupported lava_pond rocks')
+    return {'lavaPond': {'rocks': [{'rocktype': rock['rocktype'], 'offset': rock['offset']} for rock in rocks]}}
 
 
 # Each whitelist entry owns the source -> project component-state conversion.
 # Adding a prefab here requires an actual converter, rather than copying arbitrary Lua data.
 ENTITY_WHITELIST = {
+    'pigking': pigking_components,
+    'deciduoustree': deciduoustree_components,
+    'fireflies': insect_components('fireflies'),
+    'flower': flower_components,
+    'butterfly': insect_components('butterfly'),
     'pighead': pighead_components,
     'archive_moon_statue': archive_moon_statue_components,
     'cave_exit': cave_exit_components,
@@ -377,6 +514,8 @@ ENTITY_WHITELIST = {
     'grotto_waterfall_big': grotto_waterfall_components,
     'grotto_waterfall_small1': grotto_glass_components,
     'grotto_waterfall_small2': grotto_glass_components,
+    'pond': pond_components,
+    'lava_pond': lava_pond_components,
 }
 
 
@@ -397,7 +536,7 @@ def convert_entities(terrain, source_entities, report, session_id):
             col, row = math.floor(source_grid_position(x, width)), math.floor(source_grid_position(z, height))
             # Import every whitelisted record, including props on void, unassigned nodes or map edges.
             node = nodes[row * width + col] if 0 <= col < width and 0 <= row < height else 0
-            if node > len(names):
+            if node > len(names) and node not in report.get('unassignedNodeIds', []):
                 raise ValueError('Grid references an unknown topology node')
             if y != 0 or record.get('skinname') or record.get('skin_id') or record.get('puid'):
                 raise ValueError(f'Unsupported {prefab} height, skin or platform at source index {index}')
@@ -414,15 +553,19 @@ def convert_entities(terrain, source_entities, report, session_id):
             identities.add(entity_id)
             if source_id is not None:
                 imported_ids[source_id] = entity_id
+            components = convert_components(data)
+            if 'stack' in components:
+                components['stack']['entityId'] = entity_id
             imported.append({'id': entity_id,
                              'transform': {'position': [round(value * TILE_SIZE / 4 + shift, 6)
                                                         for value, shift in zip(coordinates, translation)], 'rotationY': 0},
-                             'components': convert_components(data)})
+                             'components': components})
             sources.append({'id': entity_id, 'prefab': prefab, 'sourceIndex': index,
                             **({'sourceId': source_id} if source_id is not None else {}),
-                            'sourcePosition': coordinates, 'sourceNode': names[node - 1] if node else None})
+                            'sourcePosition': coordinates, 'sourceNode': names[node - 1] if 0 < node <= len(names) else None})
         if imported:
-            result[prefab] = imported
+            target_prefab = 'ground_item' if prefab in ('fireflies', 'butterfly') else prefab
+            result.setdefault(target_prefab, []).extend(imported)
         counts[prefab] = {'source': len(records), 'imported': len(imported)}
     link_grotto_pools(result, imported_ids)
     link_lightflier_flowers(result, imported_ids)
@@ -436,26 +579,59 @@ def decode_grid(encoded, width, height):
     return struct.unpack(f'<{width * height}H', data[9:])
 
 
+def decode_underneath(terrain):
+    # components/undertile.lua -> DataGrid:Save -> ZipAndEncodeSaveData.
+    saved = terrain.get('persistdata', {}).get('undertile')
+    if saved is None:
+        return {}
+    if not isinstance(saved, dict) or set(saved) != {'str'}:
+        raise ValueError('Unsupported undertile save state')
+    encoded = base64.b64decode(saved['str'], validate=True)
+    if len(encoded) < 16:
+        raise ValueError('Invalid zipped undertile header')
+    version, offset, raw_size, compressed_size = struct.unpack('<4I', encoded[:16])
+    if version != 1 or offset != 16 or compressed_size != len(encoded) - offset or raw_size > 16 * 1024 * 1024:
+        raise ValueError('Unsupported zipped undertile header')
+    decoder = zlib.decompressobj()
+    raw = decoder.decompress(encoded[offset:], raw_size + 1)
+    if len(raw) != raw_size or not decoder.eof or decoder.unused_data:
+        raise ValueError('Invalid zipped undertile data')
+    data = LITERALS['returned_table'](raw.decode())
+    grid = data.get('underneath_tiles')
+    if grid == []:
+        return {}
+    if not isinstance(grid, dict) or any(type(key) is not int or not 0 <= key < terrain['width'] * terrain['height']
+                                         or type(value) is not int for key, value in grid.items()):
+        raise ValueError('Invalid underlying tile grid')
+    return grid
+
+
 def convert(terrain, template, supported, origin_cell=None):
-    if terrain['prefab'] != 'cave':
-        raise ValueError('Only cave terrain imports are supported')
+    prefab = terrain['prefab']
+    if prefab not in SHARDS:
+        raise ValueError('Only forest and cave terrain imports are supported')
+    _, shard_id = SHARDS[prefab]
     width, height = terrain['width'], terrain['height']
     tiles = decode_grid(terrain['tiles'], width, height)
     nodes = decode_grid(terrain['nodeidtilemap'], width, height)
     names = terrain['topology']['ids']
-    if max(nodes) > len(names):
-        raise ValueError('Grid references an unknown topology node')
     # IDs are versioned: resolve source ID -> source name -> current runtime ID.
     source_names = {tile_id: name for name, tile_id in terrain['world_tile_map'].items()}
+    unassigned_nodes = set()
     map_cells = []
     for index, (tile_id, node_id) in enumerate(zip(tiles, nodes)):
         name = source_names.get(tile_id)
+        if node_id > len(names):
+            # Forest ocean cells can retain IDs after their topology nodes have been removed.
+            if prefab != 'forest' or name not in OCEAN_TILES:
+                raise ValueError('Grid references an unknown topology node')
+            unassigned_nodes.add(node_id)
         if name == 'IMPASSABLE':
             continue
         if name not in supported:
             raise ValueError(f'Unsupported terrain {name or tile_id} at source cell ({index % width}, {index // width})')
         map_cells.append((index % width, index // width, name, supported[name], node_id))
-    land = [cell for cell in map_cells if cell[2] != 'FAKE_GROUND']
+    land = [cell for cell in map_cells if cell[2] != 'FAKE_GROUND' and cell[2] not in OCEAN_TILES]
     if not land:
         raise ValueError('Source map contains no land')
     min_x, max_x = min(c[0] for c in land), max(c[0] for c in land)
@@ -463,8 +639,18 @@ def convert(terrain, template, supported, origin_cell=None):
     origin_x, origin_z = origin_cell if origin_cell is not None else ((min_x + max_x) // 2, (min_z + max_z) // 2)
     # Include the complete source grid, including its impassable outer border.
     half = max(abs(origin_x), abs(width - 1 - origin_x), abs(origin_z), abs(height - 1 - origin_z)) + 3
-    saved_tiles = [{'col': x - origin_x, 'row': z - origin_z, 'tileId': tile_id}
-                   for x, z, _, tile_id, _ in map_cells]
+    underneath = decode_underneath(terrain)
+    saved_tiles = []
+    for x, z, name, tile_id, _ in map_cells:
+        tile = {'col': x - origin_x, 'row': z - origin_z, 'tileId': tile_id}
+        if name in ('FARMING_SOIL', 'MONKEY_DOCK', 'OCEAN_ICE') and z * width + x in underneath:
+            under_name = source_names.get(underneath[z * width + x])
+            if under_name not in supported:
+                raise ValueError(f'Unsupported underlying terrain {under_name}')
+            tile['underTileId'] = supported[under_name]
+        if name == 'MONKEY_DOCK' and 'underTileId' not in tile:
+            raise ValueError(f'Missing underlying ocean at dock ({x}, {z})')
+        saved_tiles.append(tile)
     # Choose a safe land tile near the map's land centre, without selecting a region.
     spawn_cells = land
     occupied = {(c[0], c[1]) for c in land}
@@ -477,7 +663,7 @@ def convert(terrain, template, supported, origin_cell=None):
     spawn = min(interior, key=lambda c: (c[0] - cx) ** 2 + (c[1] - cz) ** 2)
     result = json.loads(json.dumps(template))
     result['world'] = {
-        'shardId': 'caves', 'prefab': 'cave', 'elapsedSeconds': 0, 'systems': {},
+        'shardId': shard_id, 'prefab': prefab, 'elapsedSeconds': 0, 'systems': {},
         'map': {'kind': 'generated', 'defaultTileId': 1, 'tiles': saved_tiles,
                 'generator': {'id': 'dst-map-v1', 'options': {
                     'size': half * 2 * TILE_SIZE, 'moonTreeCount': 0, 'moonTreeExclusionRadiusSquared': 0}}},
@@ -485,7 +671,7 @@ def convert(terrain, template, supported, origin_cell=None):
     }
     player = result['players']['local']
     player['prefab'] = 'wilson'
-    player['shardId'] = 'caves'
+    player['shardId'] = shard_id
     player['transform'] = {'position': [(spawn[0] - origin_x + .5) * TILE_SIZE, 0,
                                          (spawn[1] - origin_z + .5) * TILE_SIZE], 'rotationY': 0}
     player.pop('ghost', None)
@@ -497,6 +683,7 @@ def convert(terrain, template, supported, origin_cell=None):
     }, 'bufferedBuilds': []}
     report = {
         'scope': 'full-map', 'nodes': names,
+        **({'unassignedNodeIds': sorted(unassigned_nodes)} if unassigned_nodes else {}),
         'sourceDimensions': [width, height], 'sourceBounds': [min_x, min_z, max_x, max_z],
         'sourceOriginCell': [origin_x, origin_z], 'worldScale': TILE_SIZE / 4,
         'translation': [(source_grid_position(0, width) - origin_x) * TILE_SIZE, 0,
@@ -518,17 +705,9 @@ def write_or_check(path, data, check):
         path.write_text(serialized)
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--shard', required=True, type=Path, help='DST Caves shard directory')
-    parser.add_argument('--output', required=True, type=Path, help='Project save JSON path')
-    parser.add_argument('--template', type=Path, default=ROOT / 'public/saves/initial-world.json')
-    parser.add_argument('--origin-cell', nargs=2, type=int, metavar=('COL', 'ROW'),
-                        help='Keep an existing source origin when importing the full map')
-    parser.add_argument('--snapshot', help='Ten-digit snapshot; defaults to latest in active session')
-    parser.add_argument('--check', action='store_true')
-    args = parser.parse_args()
-    shard = args.shard.resolve()
+def import_shard(shard, template, supported, origin_cell=None, snapshot=None, expected_prefab=None):
+    source_shard = shard
+    shard = shard.resolve()
     index = LITERALS['returned_table']((shard / 'save/shardindex').read_text())
     session_id = index['session_id']
     if not isinstance(session_id, str) or not session_id.isalnum():
@@ -537,28 +716,61 @@ def main():
     candidates = sorted(p for p in session.iterdir() if p.is_file() and len(p.name) == 10 and p.name.isdigit())
     if not candidates:
         raise ValueError('No world snapshots found')
-    snapshot = args.snapshot or candidates[-1].name
+    snapshot = snapshot or candidates[-1].name
     if len(snapshot) != 10 or not snapshot.isdigit():
         raise ValueError('Snapshot must contain ten digits')
     source = session / snapshot
     source_text = source.read_text()
     terrain = LITERALS['snapshot_map'](source_text)
-    supported = {name: spec['tileId'] for name, spec in json.loads(
-        (ROOT / 'packages/prefab/src/groundTiles.json').read_text()).items()}
-    supported['FAKE_GROUND'] = 200
-    result, report = convert(terrain, json.loads(args.template.read_text()), supported, args.origin_cell)
+    result, report = convert(terrain, template, supported, origin_cell)
     source_entities = LITERALS['snapshot_entities'](source_text, ENTITY_WHITELIST)
     result['world']['entities'], entity_report = convert_entities(terrain, source_entities, report, session_id)
     report.update(entity_report)
-    result['session']['id'] = f'cave-{session_id}-map-v1'
+    result['session']['id'] = f'{terrain["prefab"]}-{session_id}-map-v1'
     result['snapshot'] = {**result['snapshot'], 'id': snapshot, 'parentId': None, 'reason': 'initial'}
-    report['source'] = f'{args.shard.as_posix()}/save/session/{session_id}/{snapshot}'
+    report['source'] = f'{source_shard.as_posix()}/save/session/{session_id}/{snapshot}'
     report['sourceSha256'] = hashlib.sha256(source.read_bytes()).hexdigest()
-    write_or_check(args.output, result, args.check)
-    write_or_check(args.output.with_suffix('.import.json'), report, args.check)
-    print(f'{"Checked" if args.check else "Imported"} {report["landCells"]} land cells '
-          f'from {len(report["nodes"])} nodes and {sum(len(records) for records in result["world"]["entities"].values())} '
-          f'whitelisted entities into {args.output}')
+    if expected_prefab is not None and terrain['prefab'] != expected_prefab:
+        raise ValueError(f'{shard} must contain {expected_prefab} terrain')
+    return result, report
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sources = parser.add_mutually_exclusive_group(required=True)
+    sources.add_argument('--shard', type=Path, help='DST Master or Caves shard directory')
+    sources.add_argument('--cluster', type=Path, help='DST cluster directory; import both Master and Caves')
+    parser.add_argument('--output', required=True, type=Path,
+                        help='Save JSON path with --shard; output directory with --cluster')
+    parser.add_argument('--template', type=Path, default=ROOT / 'public/saves/initial-world.json')
+    parser.add_argument('--origin-cell', nargs=2, type=int, metavar=('COL', 'ROW'),
+                        help='Source origin for --shard; caves origin for --cluster (forest is centred independently)')
+    parser.add_argument('--forest-origin-cell', nargs=2, type=int, metavar=('COL', 'ROW'),
+                        help='Forest source origin with --cluster')
+    parser.add_argument('--snapshot', help='Ten-digit snapshot; defaults to latest in each active session')
+    parser.add_argument('--check', action='store_true', help='Verify both save and provenance without writing')
+    args = parser.parse_args()
+    if args.forest_origin_cell is not None and args.cluster is None:
+        parser.error('--forest-origin-cell requires --cluster')
+    if args.cluster is not None and (args.output.suffix.lower() == '.json' or args.output.is_file()):
+        parser.error('--output must be a directory with --cluster')
+    template = json.loads(args.template.read_text())
+    supported = {name: spec['tileId'] for name, spec in json.loads(
+        (ROOT / 'packages/prefab/src/groundTiles.json').read_text()).items()}
+    supported['FAKE_GROUND'] = 200
+    jobs = [(args.shard, args.output, args.origin_cell, None)] if args.shard else [
+        (args.cluster / name, args.output / f'{name}.json',
+         args.forest_origin_cell if prefab == 'forest' else args.origin_cell, prefab)
+        for prefab, (name, _) in SHARDS.items()]
+    # Convert/validate every shard before replacing any output file.
+    imports = [(output, *import_shard(shard, template, supported, origin, args.snapshot, prefab))
+               for shard, output, origin, prefab in jobs]
+    for output, result, report in imports:
+        write_or_check(output, result, args.check)
+        write_or_check(output.with_suffix('.import.json'), report, args.check)
+        print(f'{"Checked" if args.check else "Imported"} {result["world"]["prefab"]}: {report["landCells"]} land cells '
+              f'from {len(report["nodes"])} nodes and {sum(len(records) for records in result["world"]["entities"].values())} '
+              f'whitelisted entities into {output}')
 
 
 if __name__ == '__main__':

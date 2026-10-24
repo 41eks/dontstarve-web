@@ -374,7 +374,9 @@ describe('real fireflies archive and ground transfers', () => {
     await settle();
     expect(geometry(near)).toBeDefined();
     expect(geometry(far)).toBeUndefined();
-    expect(manager.renderEntities.map(entry => entry.object)).toEqual([near]);
+    // The retained looping clip uses the shared instance batch after wake, so it has no ordinary draw entry.
+    expect(near.children[0].visible).toBe(true);
+    expect(manager.renderEntities).toEqual([]);
     expect(manager.exportRecords()).toEqual(records);
     expect(manager.entities.get('fireflies:near')).toBe(nearEntity);
     manager.update(.1, new THREE.Quaternion());

@@ -61,24 +61,30 @@ python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/d
 - 原版布局中心恰好是地皮角点，猪王也在角点上；初始存档的猪王在 `z = 25`，因此猪王不动，地皮和岩石对齐最近的角点 `z = 24`。
 - 原版的 `start_mask` / `fill_mask` / `ReserveSpace`（避开不可通行或已占用区域）没有对应实现：布局直接覆盖存档地图。
 
-## 从完整存档导入整张洞穴地图
+## 从完整存档导入地表与洞穴地图
 
 `scripts/import-dst-region.py` 读取完整快照中的最终 `map.tiles`，不重新运行静态布局；实体从 `savedata.ents` 的白名单分组读取。只接受可读的开发版 Lua 世界快照，使用字面量解析器读取 table，不执行存档 Lua；压缩的正式版快照暂不支持。
 
 ```bash
+# 同时转换 forest 与 cave，输出两个独立的分片 JSON 和来源报告
 python3 scripts/import-dst-region.py \
-  --shard public/saves/Cluster_58/Caves \
-  --output public/saves/Cluster_1/Caves.json --origin-cell 281 392
+  --cluster public/saves/Cluster_58 \
+  --output public/saves/Cluster_1 --origin-cell 281 392
 
-# 校验地图、实体和来源报告与源快照一致，不写文件
+# 校验两份存档及来源报告，不写文件
 python3 scripts/import-dst-region.py \
-  --shard public/saves/Cluster_58/Caves \
-  --output public/saves/Cluster_1/Caves.json --origin-cell 281 392 --check
+  --cluster public/saves/Cluster_58 \
+  --output public/saves/Cluster_1 --origin-cell 281 392 --check
+
+# 仍支持只转换一张地图，自动按源 map.prefab 判断 forest / cave
+python3 scripts/import-dst-region.py \
+  --shard public/saves/Cluster_58/Master \
+  --output /tmp/Master.json
 ```
 
-参数：`--shard` 指向原版 Caves 目录；先从 `save/shardindex` 找到活动 Session，再选择最新的十位编号世界快照，也可用 `--snapshot 0000000022` 固定编号。`--template` 默认使用项目 `initial-world.json`，只沿用格式、版本及时间戳等外壳信息；角色恢复为满状态的空背包威尔逊，不复制模板世界实体或原版玩家。`--origin-cell COL ROW` 固定源地图的新原点，省略时按全图陆地包围盒中心计算；沿用 `(281, 392)` 可保持此前局部导入的地皮和实体位置。玩家在全图陆地重心附近、周围 3 × 3 格均为陆地的位置出生。
+参数：`--cluster` 指向同时包含 `Master` 和 `Caves` 的原版 Cluster 目录，`--output` 为目标目录，分别输出 `Master.json` / `Caves.json` 及对应 `.import.json`。`--shard` 与 `--cluster` 互斥，可指向原版 Master 或 Caves 目录，此时 `--output` 为 JSON 文件路径。每个分片独立从 `save/shardindex` 找到活动 Session，再选择最新的十位编号世界快照，也可用 `--snapshot 0000000022` 固定编号（整簇导入时两份源快照都使用该编号）。所有分片转换成功后才写入目标文件，第二份源存档损坏时不会先覆盖第一份。`--template` 默认使用项目 `initial-world.json`，只沿用格式、版本及时间戳等外壳信息；角色恢复为满状态的空背包威尔逊，不复制模板世界实体或原版玩家。`--origin-cell COL ROW` 固定源地图的新原点，省略时按全图陆地包围盒中心计算；沿用 `(281, 392)` 可保持此前局部导入的地皮和实体位置。整簇导入时 `--origin-cell` 只作用于洞穴；地表使用独立原点，可用 `--forest-origin-cell COL ROW` 固定。玩家在各自地图陆地重心附近、周围 3 × 3 格均为陆地的位置出生；海洋和 `FAKE_GROUND` 不参与陆地边界、重心和出生点计算，`OCEAN_ICE` 按 Lua 属于陆地。
 
-导入器不再接受 `--regions`，也不通过拓扑节点筛选地皮或实体。遍历完整地皮栅格，保留无节点（`nodeidtilemap = 0`）的有效地皮；完整源栅格和外围虚空均包含在项目地图范围内。两张栅格都校验 `VRSN` 版本及 `9 + width × height × 2` 字节长度，按小端 uint16 解码。地皮 ID 经快照的 `world_tile_map` 还原名称，再映射到当前项目 ID；缺失资源直接报错。`VAULT` 按 `tiledefs.lua` 补入地皮目录及原版资源：不可挖掘，使用 `blocky` atlas、`Ground_noise_vault.tex` 和 `Ground_noise_vault_clean_mini.tex`，不新增地皮物品。
+导入器不再接受 `--regions`，也不通过拓扑节点筛选地皮或实体。遍历完整地皮栅格，保留无节点（`nodeidtilemap = 0`）的有效地皮；完整源栅格和外围虚空均包含在项目地图范围内。地表海洋格允许保留已移除拓扑节点的编号，来源报告记录为 `unassignedNodeIds`，这些实体的 `sourceNode` 为 `null`；其他未知节点仍报错。两张栅格都校验 `VRSN` 版本及 `9 + width × height × 2` 字节长度，按小端 uint16 解码。地皮 ID 经快照的 `world_tile_map` 还原名称，再映射到当前项目 ID；缺失资源直接报错。海洋各类型使用原 ID 和 `tiledefs.lua` 调色板，统一由现有海洋渲染通道绘制；海冰使用原版 `ocean_ice` 图集和噪声，保持可站立。`undertile` 的原版压缩字面量会安全解码，保留码头、农田和海冰的底层地皮。`VAULT` 按 `tiledefs.lua` 补入地皮目录及原版资源：不可挖掘，使用 `blocky` atlas、`Ground_noise_vault.tex` 和 `Ground_noise_vault_clean_mini.tex`，不新增地皮物品。
 
 一个原版 4 单位地皮对应项目 12 单位。稀疏 `world.map.tiles` 保存所有非 `IMPASSABLE` 格，`defaultTileId: 1` 表示其余位置为虚空；`FAKE_GROUND` 保留但不绘制、不通行，不生成桥或填补缺口。实体连续栅格坐标使用 `gx = x / 4 + width / 2 + 0.5`、`gz = z / 4 + height / 2 + 0.5`，与 `map/bunch_spawner.lua`、`map/waterlog_worldgen.lua` 的 `checkIfValidGround` 一致。项目位置为 `((gx - origin_col) × 12, y × 3, (gz - origin_row) × 12)`；当前 `(471, 471)` 地图和 `(281, 392)` 原点对应平移 `(-540, 0, -1872)`。不能省略半格偏移。
 
@@ -86,16 +92,22 @@ python3 scripts/import-dst-region.py \
 
 当前白名单及状态转换：
 
+- `pigking`：只接受空状态；交易与日夜／状态图状态由现有猪王 prefab 重建。
+- `deciduoustree`：迁移正常桦树的 `growable`、`build`、`leaf_state`、`target_leaf_state`、`leaveschangetime`、树桩／烧毁标记及 `timer.decay` → `deciduousTimer`。树桩可没有 `target_leaf_state`；腐朽任务由逻辑树持有，模型卸载时保留，保存／读档恢复剩余时间，移除时取消。拒绝尚未移植的 `monster` 敌对分支；自然繁殖 `plantregrowth` 沿用其他树木的现有限制，不迁移。
+- `flower`：`anim` → `flower.animation`，支持 `f1`～`f10` 和 `rose`；只在源 `planted = true` 时写入该标记，自然花不改为种植花。只接受未采摘、可交互的持久花。
+- `fireflies`、`butterfly`：源 ID／源序号形成稳定实体 ID，输出为现有 `ground_item.components.stack`，同一记录的 `stack.entityId` 与实体 ID 相同；保留 `stackable.stack`，默认数量 1。蝴蝶只接受存活默认血量、空已知位置和已暂停的地面腐败状态，`perishable.time / 1440` → `freshnessPercent`；未知组件状态继续报错。当前快照导入 350 群萤火虫，蝴蝶源分组为空。
+
 - `pighead`：`burnt` → `building.burnt`，正常状态 `idle`；`archive_moon_statue`：`anim`（1～4）→ `archiveProp.anim`。两者的 workable 不保存工作量；醒睡状态由世界重建。`cave_exit` 不迁移尚未接入的分片连接 `worldmigrator` 数据。
-- `mushtree_moon`、`mushtree_medium`、`mushtree_tall`：保留 `growable`、`treestate`、`stump`、`burnt`；`evergreen` 保留生长阶段及树桩、烧毁状态，`plantregrowth` 未迁移。`blue_mushroom` 保留 `rain`，开合由世界时钟重建。
+- `mushtree_moon`、`mushtree_medium`、`mushtree_tall`：保留 `growable`、`treestate`、`stump`、`burnt`；`evergreen` 保留生长阶段及树桩、烧毁状态，以及 `timer.decay` 的剩余时间／暂停状态；已烧毁树没有源 `growable` 时不伪造阶段，由 prefab 按 Lua 在构造时随机选择 1～3 阶段。已导入腐朽计时器由逻辑树持有，卸载模型时继续计时，保存后重建剩余截止时间，永久移除时取消；`plantregrowth` 未迁移。`blue_mushroom` 保留 `rain`，开合由世界时钟重建。
 - `grass`、`sapling`、`cave_fern`、`cave_fern_withered`：迁移 `pickable` 状态；蕨类保留 `anim`（`f1`～`f10`）。草和树苗将 `witherable.withered/restore_cycles/delay_time_remaining/task_time_remaining` 转为现有组件字段；不支持的保护计时器仍报错。枯萎检查通过游戏时间调度器执行，保存和重载保留剩余时间。`houndbone` 保留 `bonetype`（1～3）。
 - `flower_cave`、`flower_cave_double`、`flower_cave_triple`：`light_state`、`plantname`、采摘及再生状态、亮灯／充能计时器 → `bulbPlant`。`lightflier_flower` → `lightflierFlower`，保留 `childspawner.childreninside`；外飞子实体 GUID 只在子实体同样导入时链接。`lightflier` 不在白名单中。
 - `rock1`、`rock2`、`rock_moon_shell`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low`、`rock_moon`：按 `rocks.lua` 不保存开采量，只接受空状态或空 workable。`cavein_boulder` 保留 `variation`（默认 1）、`raised`／`formed`，接受静止落石的 `submersible.force_no_repositioning: false`，拒绝尚未移植的下落目标和关联状态。
 - `grotto_pool_big`、`grotto_pool_small`：子物件源 GUID 转为项目实体 ID，写入 `grottoPool.children`，仅链接已导入的子物件。`grotto_moonglass_1/3/4`、`grotto_waterfall_small1/2` 保留 `workable.workleft`（`maxwork = -1`）；`grotto_waterfall_big` 不接受状态。
+- `pond`：`plants`、`childspawner`、`worldsettingstimer`（青蛙生成器，未移植）校验后丢弃，鱼数量取默认；小地图图标 `pond.png`。`lava_pond`：`rocks`（`rocktype`、`offset`）→ `lavaPond.rocks`；小地图图标 `lava_pond.png`。`pond_mos`、`pond_cave` 不在白名单内。
 
-实体 ID 包含源 Session、prefab 和源 `id`；无 `id` 时使用原分组序号，同一快照重复导入保持稳定。`Caves.import.json` 的 `scope: "full-map"` 标记完整转换，记录全部节点、地皮数量、各白名单 prefab 的源数量和导入数量，以及每个实体的源序号、源 ID、源位置和所属节点。无节点或源坐标越界时 `sourceNode` 为 `null`。源文件路径、SHA-256、尺寸、原点和平移同样保留。
+实体 ID 包含源 Session、prefab 和源 `id`；无 `id` 时使用原分组序号，同一快照重复导入保持稳定。`Master.import.json` / `Caves.import.json` 的 `scope: "full-map"` 标记完整转换，记录全部节点、地皮数量、各白名单 prefab 的源数量和导入数量，以及每个实体的源序号、源 ID、源位置和所属节点。无节点或源坐标越界时 `sourceNode` 为 `null`。源文件路径、SHA-256、尺寸、原点和平移同样保留。
 
-`Cluster_58` 的 `0000000022` 快照包含 471 × 471 格和 360 个节点，转换得到 46,224 格陆地、298 格 `FAKE_GROUND`（合计 46,522 条稀疏地皮记录）及 4,601 个白名单实体。所有白名单分组的源数量与导入数量一致。结果为默认加载的 `public/saves/Cluster_1/Caves.json`。`c_spawn` / `c_give` 命令与支持 ID 不变；`c_save()` 无参数，下载 `Cluster_1.zip`，解压到 `public/saves/` 覆盖目录后重载，保留完整地图及实体身份、位置和组件状态。
+`Cluster_58` 的 `0000000022` 快照包含 471 × 471 格和 360 个节点，转换得到 46,224 格陆地、298 格 `FAKE_GROUND`（合计 46,522 条稀疏地皮记录）及 4,640 个白名单实体。所有白名单分组的源数量与导入数量一致。洞穴结果为 `public/saves/Cluster_1/Caves.json`。同簇地表快照为 425 × 425 格、280 个节点，转换得到 48,007 格陆地、120,242 格海洋及 6,687 个白名单实体，保存为默认加载的 `public/saves/Cluster_1/Master.json`。可用 `?save=Cluster_1/Caves.json` 切换洞穴。读档仍校验字节、节点和嵌套深度，上限调整为 32 MiB、2,000,000 个值，以容纳完整地表。`c_spawn` / `c_give` 命令与支持 ID 不变；`c_save()` 无参数，下载 `Cluster_1.zip`，解压到 `public/saves/` 覆盖目录后重载，保留完整地图及实体身份、位置和组件状态。
 
 验证命令：
 

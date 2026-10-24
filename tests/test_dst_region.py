@@ -1,4 +1,8 @@
 import base64
+import json
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 import runpy
 import struct
@@ -44,6 +48,68 @@ class RegionImportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unsupported terrain'):
             IMPORTER['convert'](terrain, template, {})
 
+    def test_cluster_imports_both_active_sessions_and_checks_without_writing(self):
+        script = Path(__file__).resolve().parents[1] / 'scripts/import-dst-region.py'
+        encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
+
+        def literal(value):
+            if isinstance(value, dict):
+                return '{' + ','.join(f'[{json.dumps(k)}]={literal(v)}' for k, v in value.items()) + '}'
+            if isinstance(value, list):
+                return '{' + ','.join(map(literal, value)) + '}'
+            return json.dumps(value)
+
+        with tempfile.TemporaryDirectory() as directory:
+            cluster = Path(directory) / 'source'
+            template = Path(directory) / 'template.json'
+            template.write_text(json.dumps({'session': {}, 'snapshot': {}, 'players': {'local': {}}}))
+            for name, prefab, session_id, snapshot in [('Master', 'forest', 'FOREST', '0000000003'),
+                                                       ('Caves', 'cave', 'CAVE', '0000000005')]:
+                shard = cluster / name
+                session = shard / 'save/session' / session_id
+                session.mkdir(parents=True)
+                (shard / 'save/shardindex').write_text(f'return {{session_id="{session_id}"}}')
+                tiles = [201 if prefab == 'forest' else 1] * 49
+                for row in range(1, 4):
+                    for col in range(1, 4):
+                        tiles[row * 7 + col] = 8
+                if prefab == 'forest':
+                    tiles[5 * 7 + 5] = 300  # OCEAN_ICE is land despite its name.
+                terrain = {'prefab': prefab, 'width': 7, 'height': 7, 'tiles': encode(tiles),
+                           'nodeidtilemap': encode([1] * 49), 'topology': {'ids': ['Room']},
+                           'world_tile_map': {'IMPASSABLE': 1, 'GRASS': 8, 'OCEAN_SWELL': 201, 'OCEAN_ICE': 300}}
+                source = 'tablefunctions["map_fn"] = function() return ' + literal(terrain) + '\nend\n'
+                (session / '0000000001').write_text('older snapshot must not be read')
+                (session / snapshot).write_text(source + 'tablefunctions["ents_grass_fn"] = function() return {{id=7,x=0,z=0}} end')
+            output = Path(directory) / 'converted'
+            command = [sys.executable, str(script), '--cluster', str(cluster), '--output', str(output), '--template', str(template)]
+            subprocess.run(command, check=True, capture_output=True)
+            forest = json.loads((output / 'Master.json').read_text())
+            caves = json.loads((output / 'Caves.json').read_text())
+            self.assertEqual((forest['world']['prefab'], forest['world']['shardId'], forest['snapshot']['id']),
+                             ('forest', 'master', '0000000003'))
+            self.assertEqual((caves['world']['prefab'], caves['players']['local']['shardId'], caves['snapshot']['id']),
+                             ('cave', 'caves', '0000000005'))
+            self.assertNotEqual(forest['session']['id'], caves['session']['id'])
+            report = json.loads((output / 'Master.import.json').read_text())
+            self.assertEqual(report['landCells'], 10)
+            self.assertEqual(report['savedCells'], 49)
+            position = forest['players']['local']['transform']['position']
+            spawn = next(tile for tile in forest['world']['map']['tiles']
+                         if (tile['col'], tile['row']) == (position[0] // 12, position[2] // 12))
+            self.assertEqual(spawn['tileId'], json.loads((script.parents[1] / 'packages/prefab/src/groundTiles.json').read_text())['GRASS']['tileId'])
+            self.assertIn('dst_FOREST_grass_id_7', forest['world']['entities']['grass'][0]['id'])
+            before = {path.name: path.read_bytes() for path in output.iterdir()}
+            subprocess.run([*command, '--check'], check=True, capture_output=True)
+            self.assertEqual(before, {path.name: path.read_bytes() for path in output.iterdir()})
+            (output / 'Master.json').write_text('{}')
+            self.assertNotEqual(subprocess.run([*command, '--check'], capture_output=True).returncode, 0)
+            self.assertEqual((output / 'Master.json').read_text(), '{}')
+            # Failure in the second shard must not replace the first shard's existing save.
+            (cluster / 'Caves/save/session/CAVE/0000000005').write_text('invalid snapshot')
+            self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
+            self.assertEqual((output / 'Master.json').read_text(), '{}')
+
     def test_rejects_bad_grid_and_lua_code_without_execution(self):
         for raw in [b'garbage', b'VRSN\0\x02\0\0\0\x01\0', b'VRSN\0\x01\0\0\0']:
             with self.assertRaises(ValueError):
@@ -53,6 +119,52 @@ class RegionImportTest(unittest.TestCase):
                          {'session_id': 'ABC', 'nested': [True, False, 2.5]})
         with self.assertRaises(ValueError):
             reader('return {session_id=os.execute("touch /tmp/should-not-execute")}')
+
+    def test_surface_entities_preserve_flower_origin_tree_timers_and_insect_stack_identity(self):
+        encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
+        terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}
+        report = {'translation': [12, 0, 24]}
+        tree = {'monster': False, 'growable': {'stage': 2, 'time': 512, 'sleeptime': 68},
+                'plantregrowth': {'regrowthtime': 100}, 'leaf_state': 'colorful',
+                'target_leaf_state': 'barren', 'build': 'red', 'leaveschangetime': 30}
+        stump = {'monster': False, 'stump': True, 'growable': {'stage': 1, 'sleeptime': 4805}, 'leaf_state': 'normal',
+                 'timer': {'timers': {'decay': {'timeleft': 100, 'initial_time': 200, 'paused': True}}}}
+        source = {
+            'pigking': [{'x': 0, 'z': 0}],
+            'deciduoustree': [{'id': 1, 'data': tree}, {'id': 2, 'data': stump}],
+            'flower': [{'id': 3, 'data': {'anim': 'rose', 'pickable': {'caninteractwith': True}}},
+                       {'id': 4, 'data': {'anim': 'f9', 'planted': True}}],
+            'fireflies': [{'data': {'stackable': {'stack': 8}}}],
+            'butterfly': [{'id': 5, 'data': {'health': {'health': 1}, 'stackable': {'stack': 2},
+                                             'perishable': {'time': 720, 'paused': True}}}],
+        }
+        entities, provenance = IMPORTER['convert_entities'](terrain, source, report, 'SURFACE')
+        self.assertEqual(entities['pigking'][0]['components'], {})
+        self.assertEqual(entities['pigking'][0]['transform']['position'], [12, 0, 24])
+        self.assertEqual(entities['deciduoustree'][0]['components'], {
+            'growable': tree['growable'], 'deciduoustree': {'build': 'red', 'leaf_state': 'colorful',
+                'target_leaf_state': 'barren', 'leaveschangetime': 30}})
+        self.assertEqual(entities['deciduoustree'][1]['components'], {
+            'growable': stump['growable'], 'deciduoustree': {'stump': True, 'leaf_state': 'normal'},
+            'deciduousTimer': stump['timer']})
+        self.assertEqual([record['components']['flower'] for record in entities['flower']],
+                         [{'animation': 'rose'}, {'animation': 'f9', 'planted': True}])
+        insects = entities['ground_item']
+        self.assertEqual([record['components']['stack']['itemId'] for record in insects], ['fireflies', 'butterfly'])
+        self.assertEqual([record['components']['stack']['count'] for record in insects], [8, 2])
+        self.assertEqual(insects[1]['components']['stack']['freshnessPercent'], .5)
+        self.assertTrue(all(record['components']['stack']['entityId'] == record['id'] for record in insects))
+        self.assertEqual(provenance['entityCounts']['fireflies'], {'source': 1, 'imported': 1})
+        self.assertEqual(provenance['entityCounts']['butterfly'], {'source': 1, 'imported': 1})
+        self.assertEqual(IMPORTER['convert_entities'](terrain, source, report, 'SURFACE')[0], entities)
+        self.assertNotIn('growable', IMPORTER['deciduoustree_components']({'burnt': True, 'leaf_state': 'normal'}))
+        for prefab, data in [('deciduoustree', {**tree, 'monster': True}),
+                             ('deciduoustree', {**tree, 'growable': {'stage': 4}}),
+                             ('flower', {'anim': 'f1', 'pickable': {'picked': True}}),
+                             ('fireflies', {'stackable': {'stack': 41}}),
+                             ('butterfly', {'health': {'health': 0}})]:
+            with self.subTest(prefab=prefab, data=data), self.assertRaises(ValueError):
+                IMPORTER['ENTITY_WHITELIST'][prefab](data)
 
     def test_plant_import_preserves_wither_check_and_rejects_unported_protection(self):
         convert = IMPORTER['ENTITY_WHITELIST']['grass']

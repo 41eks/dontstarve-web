@@ -3,7 +3,7 @@ import type {
 } from '@dontstarve-web/inventory';
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
 import type { BuildingContainerDefinition } from '@dontstarve-web/prefab/containers';
-import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import { WORLD_TILES, isOceanTile } from '@dontstarve-web/prefab/turfMap';
 import { GROUND_TILE_DEFINITIONS } from '@dontstarve-web/prefab/groundTiles';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { PREFAB_DEFINITIONS, prefabSaveParsers, type PrefabDefinition } from '../prefabDefinitions';
@@ -24,7 +24,7 @@ export interface SaveCatalog {
   walls: readonly string[];
 }
 
-export const MAX_SAVE_BYTES = 8 * 1024 * 1024;
+export const MAX_SAVE_BYTES = 32 * 1024 * 1024;
 
 function ghostFlag(value: unknown): true {
   if (value !== true) fail('players.local.ghost', 'expected true');
@@ -40,8 +40,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   try { data = JSON.parse(text); } catch { fail('$', 'invalid JSON'); }
   let nodes = 0;
   const visit = (value: unknown, depth: number) => {
-    // A full DST cave has over 46,000 tile records plus its entities and component state.
-    if (++nodes > 500_000 || depth > 32) fail('$', 'data exceeds nesting or size limits');
+    // Full forest snapshots include over 168,000 land/ocean tiles plus their entities.
+    if (++nodes > 2_000_000 || depth > 32) fail('$', 'data exceeds nesting or size limits');
     if (typeof value === 'number' && !Number.isFinite(value)) fail('$', 'nonfinite number');
     if (typeof value === 'string' && value.length > 256) fail('$', 'string is too long');
     if (value && typeof value === 'object') Object.values(value).forEach((child) => visit(child, depth + 1));
@@ -79,11 +79,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     const tileId = choice(tile.tileId, `${path}.tileId`, supportedTiles);
     const underTileId = tile.underTileId === undefined ? undefined
       : choice(tile.underTileId, `${path}.underTileId`, groundTiles.filter(id => id !== WORLD_TILES.FARMING_SOIL && id !== WORLD_TILES.MONKEY_DOCK));
-    if (underTileId !== undefined && tileId !== WORLD_TILES.FARMING_SOIL && tileId !== WORLD_TILES.MONKEY_DOCK) {
-      fail(`${path}.underTileId`, 'only farming soil and docks have an underlying tile');
+    if (underTileId !== undefined && tileId !== WORLD_TILES.FARMING_SOIL && tileId !== WORLD_TILES.MONKEY_DOCK && tileId !== WORLD_TILES.OCEAN_ICE) {
+      fail(`${path}.underTileId`, 'only farming soil, docks and ice floes have an underlying tile');
     }
-    if (tileId === WORLD_TILES.MONKEY_DOCK && underTileId !== WORLD_TILES.OCEAN_COASTAL) fail(`${path}.underTileId`, 'a dock covers an ocean tile');
-    if (tileId === WORLD_TILES.FARMING_SOIL && underTileId === WORLD_TILES.OCEAN_COASTAL) fail(`${path}.underTileId`, 'farming soil cannot cover ocean');
+    if (tileId === WORLD_TILES.MONKEY_DOCK && (underTileId === undefined || !isOceanTile(underTileId))) fail(`${path}.underTileId`, 'a dock covers an ocean tile');
+    if (tileId === WORLD_TILES.FARMING_SOIL && (underTileId !== undefined && isOceanTile(underTileId))) fail(`${path}.underTileId`, 'farming soil cannot cover ocean');
     const key = `${col},${row}`;
     if (tileKeys.has(key)) fail(path, 'duplicate terrain tile');
     tileKeys.add(key);

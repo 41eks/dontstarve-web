@@ -35,7 +35,7 @@ export interface SavedEntity {
     lantern?: { ison: boolean };
     health?: { current: number; maximum: number };
     timer?: { remainingSeconds: number };
-    flower?: { animation: FlowerAnimation; planted: true };
+    flower?: { animation: FlowerAnimation; planted?: true };
     bulbPlant?: BulbPlantSaveState;
     witherable?: import('../../packages/componets/src/witherable').WitherableSave;
     burning?: true;
@@ -66,6 +66,8 @@ export interface SavedEntity {
     houndbone?: import('../../packages/prefab/src/houndbone').HoundboneSaveState;
     skeleton?: import('../../packages/prefab/src/skeleton').SkeletonSaveState;
     growable?: import('../../packages/componets/src/growable').GrowableSave;
+    deciduousTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
+    evergreenTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     saplingTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     sculptingtable?: { itemname: string };
     birdcage?: import('@dontstarve-web/prefab/birdcage').BirdcageSaveStateData;

@@ -104,3 +104,25 @@ it('arms daily boundary tasks, preserves pending leaf-change time on load, and r
   loaded.Stop(); scheduler.advance(5000); expect(loaded.state.dayTimer.peek()).toEqual({ status: 'stopped' });
   expect(loaded.state.changeTimer.peek()).toEqual({ status: 'stopped' }); loaded.dispose();
 });
+
+it('retains an imported stump with no leaf target and its decay task while visuals unload and the save reloads', async () => {
+  const s = await setup(), restored = await setup();
+  try {
+    s.forest.spawn('deciduoustree', new THREE.Vector3(), { id: 'dst-stump',
+      transform: { position: [0, 0, 0], rotationY: 0 }, components: {
+        deciduoustree: { stump: true, leaf_state: 'normal' }, growable: { stage: 1, sleeptime: 4805 },
+        deciduousTimer: { timers: { decay: { timeleft: 10, initial_time: 200, paused: false } } },
+      } });
+    s.forest.updateNearby(new THREE.Vector3(1000, 0, 1000));
+    s.scheduler.advance(9);
+    const [record] = s.forest.exportRecords();
+    expect(record.components.deciduoustree).toEqual({ stump: true, leaf_state: 'normal' });
+    expect(record.components.deciduousTimer?.timers.decay.timeleft).toBe(1);
+    restored.forest.spawn('deciduoustree', new THREE.Vector3(), record);
+    restored.scheduler.advance(1);
+    expect(restored.forest.exportRecords()).toEqual([]);
+    s.forest.dispose();
+    s.scheduler.advance(1);
+    expect(s.forest.entities).toHaveLength(0);
+  } finally { s.forest.dispose(); restored.forest.dispose(); s.scheduler.dispose(); restored.scheduler.dispose(); }
+});

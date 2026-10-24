@@ -53,7 +53,7 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
     return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
 
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=Cluster_1/Caves.json'); await prepare();
   const initial = await snapshot();
   await moveTo(30, 6);
   await expect.poll(() => page.evaluate(() => (window as any).soulHop.view.mouseActions.getMouseActions().right?.modifier)).toBe('SOUL');

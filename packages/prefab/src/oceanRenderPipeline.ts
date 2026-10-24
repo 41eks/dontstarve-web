@@ -4,6 +4,7 @@ import { registerSceneRenderPass, type ScenePassLighting, type SceneRenderPass }
 export interface OceanColourMap {
   readonly size: number;
   readonly tileSize: number;
+  oceanColoursAt?(col: number, row: number): { primary: readonly number[]; day: readonly number[]; dusk: readonly number[] } | undefined;
   isOceanTileAt(col: number, row: number): boolean;
 }
 
@@ -249,7 +250,8 @@ export class OceanRenderPipeline implements SceneRenderPass {
 
   rebuildColours(): void {
     for (let row = 0; row < this.width; row++) for (let col = 0; col < this.width; col++) {
-      const colour = this.map.isOceanTileAt(col + this.min, row + this.min) ? OCEAN : LAND;
+      const colour = this.map.oceanColoursAt?.(col + this.min, row + this.min)
+        ?? (this.map.isOceanTileAt(col + this.min, row + this.min) ? OCEAN : LAND);
       const offset = (row * this.width + col) * 4;
       (this.day.image.data as Uint8Array).set(colour.day, offset);
       (this.dusk.image.data as Uint8Array).set(colour.dusk, offset);

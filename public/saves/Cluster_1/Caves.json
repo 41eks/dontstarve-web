@@ -232642,6 +232642,620 @@
       }
     },
     "entities": {
+      "ground_item": [
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000001",
+          "transform": {
+            "position": [
+              1288.53,
+              0.0,
+              114.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000001"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000002",
+          "transform": {
+            "position": [
+              1409.61,
+              0.0,
+              89.61
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000002"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000003",
+          "transform": {
+            "position": [
+              1290.51,
+              0.0,
+              233.94
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000003"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000004",
+          "transform": {
+            "position": [
+              1433.01,
+              0.0,
+              199.02
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000004"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000005",
+          "transform": {
+            "position": [
+              1374.03,
+              0.0,
+              164.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000005"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000006",
+          "transform": {
+            "position": [
+              1372.23,
+              0.0,
+              291.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000006"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000007",
+          "transform": {
+            "position": [
+              1325.1,
+              0.0,
+              272.4
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000007"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000008",
+          "transform": {
+            "position": [
+              1434.6,
+              0.0,
+              -2646.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000008"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000009",
+          "transform": {
+            "position": [
+              1518.93,
+              0.0,
+              -2704.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000009"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000010",
+          "transform": {
+            "position": [
+              1435.17,
+              0.0,
+              -2584.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000010"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000011",
+          "transform": {
+            "position": [
+              -257.04,
+              0.0,
+              -665.07
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000011"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000012",
+          "transform": {
+            "position": [
+              486.84,
+              0.0,
+              -1325.34
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000012"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000013",
+          "transform": {
+            "position": [
+              592.5,
+              0.0,
+              -1532.49
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000013"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000014",
+          "transform": {
+            "position": [
+              1363.56,
+              0.0,
+              -594.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000014"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000015",
+          "transform": {
+            "position": [
+              1455.84,
+              0.0,
+              -460.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000015"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000016",
+          "transform": {
+            "position": [
+              1432.26,
+              0.0,
+              -451.68
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000016"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000017",
+          "transform": {
+            "position": [
+              1635.12,
+              0.0,
+              -523.38
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000017"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000018",
+          "transform": {
+            "position": [
+              -1963.26,
+              0.0,
+              -195.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000018"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000019",
+          "transform": {
+            "position": [
+              -1947.42,
+              0.0,
+              -247.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000019"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000020",
+          "transform": {
+            "position": [
+              663.66,
+              0.0,
+              -1420.68
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000020"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000021",
+          "transform": {
+            "position": [
+              632.01,
+              0.0,
+              -1287.54
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000021"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000022",
+          "transform": {
+            "position": [
+              545.19,
+              0.0,
+              -1180.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000022"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000023",
+          "transform": {
+            "position": [
+              1328.73,
+              0.0,
+              -2250.12
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000023"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000024",
+          "transform": {
+            "position": [
+              1088.79,
+              0.0,
+              30.6
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000024"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000025",
+          "transform": {
+            "position": [
+              824.94,
+              0.0,
+              152.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000025"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000026",
+          "transform": {
+            "position": [
+              1040.22,
+              0.0,
+              39.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000026"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000027",
+          "transform": {
+            "position": [
+              1160.94,
+              0.0,
+              -183.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000027"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000028",
+          "transform": {
+            "position": [
+              750.51,
+              0.0,
+              -2756.1
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000028"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000029",
+          "transform": {
+            "position": [
+              763.41,
+              0.0,
+              -2706.48
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000029"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000030",
+          "transform": {
+            "position": [
+              843.63,
+              0.0,
+              -2691.99
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000030"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000031",
+          "transform": {
+            "position": [
+              905.37,
+              0.0,
+              -2835.03
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000031"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000032",
+          "transform": {
+            "position": [
+              629.7,
+              0.0,
+              -2876.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000032"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000033",
+          "transform": {
+            "position": [
+              799.29,
+              0.0,
+              -2876.49
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000033"
+            }
+          }
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_fireflies_index_000034",
+          "transform": {
+            "position": [
+              1541.7,
+              0.0,
+              147.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "fireflies",
+              "count": 1,
+              "entityId": "dst_7FD049B25CA83C50_fireflies_index_000034"
+            }
+          }
+        }
+      ],
       "pighead": [
         {
           "id": "dst_7FD049B25CA83C50_pighead_index_000001",
@@ -306412,6 +307026,68 @@
               "workleft": 6
             }
           }
+        }
+      ],
+      "pond": [
+        {
+          "id": "dst_7FD049B25CA83C50_pond_id_100392",
+          "transform": {
+            "position": [
+              1284.06,
+              0.0,
+              -193.23
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_pond_id_100393",
+          "transform": {
+            "position": [
+              759.09,
+              0.0,
+              -2034.18
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_pond_id_100394",
+          "transform": {
+            "position": [
+              761.01,
+              0.0,
+              -2091.48
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_pond_id_100395",
+          "transform": {
+            "position": [
+              668.43,
+              0.0,
+              -2118.78
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_7FD049B25CA83C50_pond_id_100396",
+          "transform": {
+            "position": [
+              680.22,
+              0.0,
+              -2068.74
+            ],
+            "rotationY": 0
+          },
+          "components": {}
         }
       ]
     }
