@@ -13,7 +13,7 @@ export interface GroundImageOptions {
 }
 
 /** A single decoded terrain image, regenerated only for terrain edits or a larger viewport.
- * Cells are composed directly from the tile masks, noise and ocean raster; no GPU rendering is involved.
+ * Land cells are composed directly from the tile masks and noise; ocean stays transparent over the ocean plate.
  */
 export class MinimapGroundImage {
   readonly image = document.createElement('img');
@@ -31,7 +31,7 @@ export class MinimapGroundImage {
 
   constructor(options: GroundImageOptions) {
     this.options = options;
-    this.layer = new MinimapTerrainLayer(options.terrain, options.cellSize, false);
+    this.layer = new MinimapTerrainLayer(options.terrain, options.cellSize, { overview: false, ocean: false });
     const { min, max } = options.terrain.cellRange(), unit = options.cellSize;
     this.image.className = 'minimap__ground';
     this.image.alt = ''; this.image.draggable = false;

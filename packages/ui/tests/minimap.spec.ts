@@ -269,9 +269,11 @@ test('uses world ground artwork, keeps ocean composition, and preserves shared w
   });
   expect(before.parentsPreserved).toBe(true);
   expect(before.materials).toContain('DST ground:WOODFLOOR');
-  expect(before.samples.every(pixel => pixel[3] === 255)).toBe(true);
+  // Land is opaque; open ocean is left to the pre-rendered plate beneath the ground image.
+  expect(before.samples[0][3]).toBe(255); expect(before.samples[1][3]).toBe(255);
   expect(before.samples[0]).not.toEqual(before.samples[1]);
-  expect(before.samples[2][2]).toBeGreaterThan(before.samples[2][0]);
+  expect(before.samples[2][3]).toBe(0);
+  expect(await page.evaluate(() => getComputedStyle((window as any).minimapEdges.map.shadowRoot.querySelector('.minimap__ocean')).backgroundImage)).toContain('minimap/ocean.png');
   await page.screenshot({ path: testInfo.outputPath('world-ground-map.png') });
   const after = await page.evaluate(async () => {
     const { map, terrain, renderer, scene, visual, ground } = (window as any).minimapEdges;

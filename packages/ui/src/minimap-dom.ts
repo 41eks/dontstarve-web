@@ -3,7 +3,10 @@ import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 import { MinimapDomView } from './minimap-dom-view';
 import { MinimapGroundImage, type GroundImageOptions } from './minimap-ground-image';
 import { pixelsCanvas } from './minimap-terrain';
-import type { MinimapView } from './minimap-view';
+import { MINIMAP_MARGIN_RATIO, type MinimapView } from './minimap-view';
+
+/** World cells covered by one repeat of the ocean plate. */
+const OCEAN_PLATE_CELLS = 32;
 
 export interface MinimapInspection { ready: boolean; icons: string[] }
 interface Marker { element: HTMLImageElement; icon: string; x: number; z: number; order: number }
@@ -24,7 +27,14 @@ export class MinimapDomRenderer {
   constructor(options: GroundImageOptions, dataRoot: string) {
     this.dataRoot = dataRoot;
     this.terrain = new MinimapGroundImage(options);
-    this.dom.overview.append(this.terrain.image);
+    const { min, max } = options.terrain.cellRange(), unit = options.cellSize;
+    const margin = (max - min) * unit * MINIMAP_MARGIN_RATIO, plate = document.createElement('div');
+    // Open ocean is one seamless pre-rendered plate (scripts/render-minimap-ocean.mjs), not computed per world.
+    plate.className = 'minimap__ocean';
+    Object.assign(plate.style, { position: 'absolute', left: `${min * unit - margin}px`, top: `${min * unit - margin}px`,
+      width: `${(max - min) * unit + 2 * margin}px`, height: `${(max - min) * unit + 2 * margin}px`,
+      backgroundImage: `url(${import.meta.env.BASE_URL}minimap/ocean.png)`, backgroundSize: `${OCEAN_PLATE_CELLS * unit}px` });
+    this.dom.overview.append(plate, this.terrain.image);
   }
 
   get root(): HTMLElement { return this.dom.root; }
