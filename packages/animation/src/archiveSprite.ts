@@ -88,7 +88,11 @@ export class ArchiveSpriteAssets {
 export interface ArchiveSprite {
   readonly model: THREE.Group;
   readonly currentAnimation: string;
+  /** AnimState:GetCurrentAnimationNumFrames. */
+  readonly frameCount: number;
   update(dt: number): void;
+  /** AnimState:SetFrame within the current clip. */
+  setFrame(frame: number): void;
   start(name: string): void;
   playOnce(name: string, onComplete?: () => void): void;
   setAnimation(name: string): void;
@@ -100,6 +104,8 @@ export interface ArchiveSprite {
    * mirrored horizontally when the clip lists both a facing and its left-hand mirror.
    */
   setFacing(facing: number): void;
+  /** AnimState:SetBuild among the definition's `buildArchives`; the clip and frame are kept. */
+  setBuildArchive(archive: string): void;
   /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
   setSymbolHidden(symbol: string, hidden: boolean): void;
   /** Geometry belongs to the entity; shared materials belong to its asset cache. */
@@ -129,6 +135,7 @@ export async function createArchiveSprite(
     return { build: source.build, materials } as T;
   };
   const builds = sharedBuilds.map(own);
+  let activeBuilds = builds;
   const skin = own(sharedSkin);
   const applyOpacity = (opacity: number) => {
     for (const material of ownedMaterials) {
@@ -188,7 +195,7 @@ export async function createArchiveSprite(
       .sort((a, b) => b.z - a.z).map((element) => {
         const override = overrides.get(element.imageHash);
         const hash = override?.hash ?? element.imageHash;
-        const candidates = [...(skin ? [skin] : []), ...(override ? [override.source] : builds)];
+        const candidates = [...(skin ? [skin] : []), ...(override ? [override.source] : activeBuilds)];
         for (const source of candidates) {
           const image = findImage(source.build, hash, element.imageIndex);
           if (image) return { element, image, materials: source.materials };
@@ -218,6 +225,13 @@ export async function createArchiveSprite(
   return {
     model, update,
     get currentAnimation() { return animation.name; },
+    get frameCount() { return animation.frames.length; },
+    setFrame(frame: number) {
+      if (disposed) return;
+      elapsed = Math.max(0, Math.floor(frame)) / animation.frameRate;
+      previousFrame = -1;
+      update(0);
+    },
     start(name: string) {
       if (animation.name !== name || !loop) selectAnimation(name, true);
     },
@@ -233,6 +247,14 @@ export async function createArchiveSprite(
     setOpacity(opacity: number) {
       if (options.opacity === undefined) throw new Error(`Sprite ${model.name} does not own its materials`);
       applyOpacity(opacity);
+    },
+    setBuildArchive(archive: string) {
+      const index = definition.buildArchives.indexOf(archive);
+      if (index < 0) throw new Error(`Sprite ${model.name} has no build archive ${archive}`);
+      if (disposed || activeBuilds[0] === builds[index]) return;
+      activeBuilds = [builds[index]];
+      previousFrame = -1;
+      update(0);
     },
     setSymbolHidden(symbol: string, isHidden: boolean) {
       const hash = smallHash(symbol);

@@ -29,6 +29,10 @@ import { PORTAL_ID } from '@dontstarve-web/prefab/portal';
 import { NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
 import { NIGHTMAREROCK_IDS } from '@dontstarve-web/prefab/nightmarerock';
 import { CAVE_ENTRANCE_IDS } from '@dontstarve-web/prefab/cave_entrance';
+import { CAVE_EXIT_IDS } from '@dontstarve-web/prefab/cave_exit';
+import { GROTTO_IDS } from '@dontstarve-web/prefab/grotto_pool';
+import { MUSHROOM_PLANT_IDS } from '@dontstarve-web/prefab/mushroom_plant';
+import { MUSHTREE_IDS, MUSHTREE_SPAWN_IDS, MUSHTREE_GROWTH_STAGES, MUSHTREE_GROWTH_TIME } from '@dontstarve-web/prefab/mushtree';
 import { TENT_ID, TENT_USES } from '@dontstarve-web/prefab/tent';
 import { PLACEABLE_BUILDING_IDS } from './placeableBuilding';
 import { FENCE_ID, FENCE_ITEM_ID } from '@dontstarve-web/prefab/fenceSkins';
@@ -137,7 +141,7 @@ export const PREFAB_DEFINITIONS = {
   }, // fence_item is an ordinary ground item (c_spawn) and inventory item (c_give); only `fence` is placed by c_spawn.
     PLACEABLE_BUILDING_IDS.filter((id) => id !== FENCE_ITEM_ID), buildingArchives),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    [ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'], groundItemArchives),
+    [ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'], groundItemArchives),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] }), ['planted_flower'], ['flowers.zip']),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),
@@ -148,6 +152,13 @@ export const PREFAB_DEFINITIONS = {
   beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['beefalo'] }), true),
   rocks: definePrefabs(ROCK_PREFABS, empty, true),
   caveEntrances: definePrefabs(CAVE_ENTRANCE_IDS, empty, true, ['cave_entrance.zip']),
+  mushroomPlants: definePrefabs(MUSHROOM_PLANT_IDS, componentParser({ keys: ['pickable', 'mushroom'] }), true, ['mushrooms.zip', 'fire.zip']),
+  mushtrees: definePrefabs(MUSHTREE_IDS, componentParser({ keys: ['mushtree', 'growable'], growthStages: MUSHTREE_GROWTH_STAGES,
+    growthTime: Math.max(...MUSHTREE_GROWTH_TIME.map(({ base, random }) => base + random)) }), MUSHTREE_SPAWN_IDS,
+    ['mushroom_tree_tall.zip', 'mushroom_tree_tall_bloom.zip', 'mutatedmushroom_tree_build.zip', 'mushroom_tree_med.zip', 'mushroom_tree_med_bloom.zip', 'fire.zip']),
+  caveExits: definePrefabs(CAVE_EXIT_IDS, empty, true, ['cave_exit.zip']),
+  grottoPools: definePrefabs(GROTTO_IDS, componentParser({ keys: ['grottoPool', 'grottoGlass'], grottoChildren: 5 }), true,
+    ['moonglasspool_tile.zip', 'moonglass_bigwaterfall.zip', 'moonglass_bigwaterfall_steam.zip', 'moon_tea_fx.zip']),
   archiveProps: definePrefabs(ARCHIVE_PROP_IDS, (value, path, context) =>
     context.prefab === ARCHIVE_MOON_STATUE_ID ? archiveStatue(value, path, context)
       : context.prefab === ARCHIVE_RUNE_STATUE_ID ? archiveRune(value, path, context) : empty(value, path, context), ARCHIVE_PROP_SPAWN_IDS,
@@ -180,7 +191,7 @@ export const PREFAB_DEFINITIONS = {
   reskinEffects: definePrefabs([], empty),
   rain: definePrefabs([], empty),
   snow: definePrefabs([], empty),
-  worldFx: definePrefabs([], empty, ['wortox_portal_jumpin_fx', 'wortox_portal_jumpout_fx']),
+  worldFx: definePrefabs([], empty, ['wortox_portal_jumpin_fx', 'wortox_portal_jumpout_fx', 'halloween_moonpuff']),
   staffProjectiles: definePrefabs([], empty),
   oceanWaves: definePrefabs([], empty),
   dockKit: definePrefabs([], empty),

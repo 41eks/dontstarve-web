@@ -2,6 +2,7 @@ import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createEffect, createMemo, WorldContentKey, type Memo } from '@dontstarve-web/signals';
+import { TileTracker } from '../../componets/src/tileManager';
 import { FliesController, FLIES_SOUND } from './flies';
 import { actionEntity } from './actionEntity';
 import { PreloadSounds } from './sound';
@@ -50,8 +51,10 @@ class StickHead {
         this.flies = (context.prepared as StickHeadResources).flies;
         model.add(this.flies.model);
         if (world?.scheduler) this.fliesController = new FliesController(this.flies, model.position, world.scheduler, world.getWatchWorldContent);
-        const moon = world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
-        const cycle = world?.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
+        // The head never moves, so its private tile key gates the moon and phase inputs by tickingarea: outside it they hold their last value.
+        const options = { tile: new TileTracker(() => model.position).tile };
+        const moon = world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop), options);
+        const cycle = world?.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop), options);
         if (moon && cycle) {
             // worldstate.lua: isfullmoon = isnight and moonphase == "full". The first run is the constructor's OnFullMoon call.
             const fullMoon = createMemo(() => moon.get().phase === 'full' && cycle.get() === 'night');

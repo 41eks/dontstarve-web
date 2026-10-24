@@ -20,6 +20,8 @@ export class Growable {
   loopstages = false;
   springgrowth = false;
   magicgrowable = false;
+  /** growable.lua DoGrowth: growfn runs but the stage is left for the prefab to advance (mushtree DoGrowNextStage). */
+  growonly = false;
   private disposed = false;
   private readonly pauseReasons = new Set<string>();
   private readonly scheduler: GameTimeScheduler;
@@ -58,8 +60,9 @@ export class Growable {
   }
   private grow(skipgrownfn: boolean): boolean {
     if (this.disposed) return false;
-    this.SetStage(this.GetNextStage());
-    if (!skipgrownfn) this.stages[this.GetStage() - 1]?.growfn?.();
+    const stage = this.GetNextStage();
+    if (!this.growonly) this.SetStage(stage);
+    if (!skipgrownfn) this.stages[stage - 1]?.growfn?.();
     if (!this.disposed) {
       if (this.GetStage() < this.stages.length || this.loopstages) this.StartGrowing();
       else this.StopGrowing();

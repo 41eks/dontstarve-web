@@ -30,6 +30,8 @@ const FX_PREFABS = {
   lightning_rod_fx: { archive: 'lightning_rod_fx.zip', bank: 'lightning_rod_fx', anim: 'idle' },
   // lightning.lua: bank/build lightning, clip anim, Transform:SetScale(2, 2, 2), thunder_close.
   lightning: { archive: 'lightning.zip', bank: 'lightning', anim: 'anim', sound: 'dontstarve/rain/thunder_close', scale: 2 },
+  // fx.lua halloween_moonpuff: bank fx_moon_tea, build moon_tea_fx, clip puff, FinalOffset3, fireAddFuel (bloom is not rendered).
+  halloween_moonpuff: { archive: 'moon_tea_fx.zip', bank: 'fx_moon_tea', anim: 'puff', sound: 'dontstarve/common/fireAddFuel', finalOffset: 3 },
   sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
 } as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number; scale?: number; tint?: readonly [number, number, number]; finalOffset?: number; lingerFrames?: number }>;

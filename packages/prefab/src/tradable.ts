@@ -23,7 +23,7 @@ export const TRADABLE_GOLD_VALUES: Readonly<Record<string, number>> = {
   rottenegg: 0, acorn: 0, acorn_cooked: 0, heatrock: 0, moon_tree_blossom: 0, petals: 0, petals_evil: 0,
   butterfly: 0, ash: 0, beefalowool: 0, butterflywings: 0, charcoal: 0, cutgrass: 0, cutstone: 0,
   deerclops_eyeball: 0, dreadstone: 0, fireflies: 0, flint: 0, honey: 0, honeycomb: 0, rocks: 0, lightbulb: 0,
-  log: 0, moonbutterflywings: 0, moonrocknugget: 0, nitre: 0, record: 0, rope: 0, silk: 0, spidergland: 0,
+  log: 0, moonbutterflywings: 0, moonrocknugget: 0, moonglass: 0, nitre: 0, record: 0, rope: 0, silk: 0, spidergland: 0,
   thulecite: 0, thulecite_pieces: 0, twigs: 0,
 };
 

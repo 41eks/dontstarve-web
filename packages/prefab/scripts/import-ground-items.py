@@ -14,7 +14,7 @@ gears charcoal pigskin silk stinger houndstooth nitre livinglog nightmarefuel
 petals petals_evil ash beefalowool boneshard butterflywings butter honey honeycomb
 thulecite thulecite_pieces guano tentaclespots spidergland slurtleslime
 slurtle_shellpieces walrus_tusk deerclops_eyeball bearger_fur dragon_scales
-glommerfuel acorn marblebean dreadstone wagpunk_bits moonrocknugget dock_kit papyrus featherpencil
+glommerfuel acorn marblebean dreadstone wagpunk_bits moonrocknugget moonglass dock_kit papyrus featherpencil
 foliage beardhair cookingrecipecard scrapbook_page blueprint'''.split()
 
 

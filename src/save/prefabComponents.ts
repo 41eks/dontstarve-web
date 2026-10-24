@@ -48,6 +48,8 @@ export interface PrefabComponentSchema {
   readonly skeletonAnims?: { min: number; max: number };
   readonly skeletonDescribed?: boolean;
   readonly archiveStoryLines?: number;
+  /** grotto_pool_big.lua prefab_layout size. */
+  readonly grottoChildren?: number;
 }
 
 export type PrefabComponentParser = (value: unknown, path: string, context: EntitySaveContext) => SavedEntity['components'];
@@ -195,6 +197,36 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (tree.burnt && tree.stump) fail(componentPath, 'a burnt tree is not a stump');
       components.moonTree = { ...(tree.stump === true ? { stump: true } : {}), ...(tree.burnt === true ? { burnt: true } : {}),
         ...(tree.size === undefined ? {} : { size: choice(tree.size, `${componentPath}.size`, ['short', 'normal', 'tall']) }) };
+    }
+    if (keys.includes('mushtree') && c.mushtree !== undefined) {
+      // mushtree.lua OnSave: stump, treestate and burning; the stump's decay timer remaining is the only timer saved.
+      const componentPath = `${path}.mushtree`;
+      const tree = object(c.mushtree, componentPath, ['stump', 'burnt', 'treestate', 'decay']);
+      if (tree.stump !== undefined && tree.stump !== true) fail(`${componentPath}.stump`, 'expected true');
+      if (tree.burnt !== undefined && tree.burnt !== true) fail(`${componentPath}.burnt`, 'expected true');
+      if (tree.burnt && tree.stump) fail(componentPath, 'a burnt tree is not a stump');
+      if (tree.decay !== undefined && tree.stump !== true) fail(`${componentPath}.decay`, 'only a stump decays');
+      components.mushtree = { ...(tree.stump === true ? { stump: true } : {}), ...(tree.burnt === true ? { burnt: true } : {}),
+        ...(tree.treestate === undefined ? {} : { treestate: choice(tree.treestate, `${componentPath}.treestate`, ['normal', 'bloom']) }),
+        ...(tree.decay === undefined ? {} : { decay: number(tree.decay, `${componentPath}.decay`, 0, 21600) }) };
+    }
+    if (keys.includes('grottoPool') && c.grottoPool !== undefined) {
+      // grotto_pool_big.lua / grotto_pool_small.lua on_save: the child entity IDs with their prefab_layout indexes.
+      const p = `${path}.grottoPool`, pool = object(c.grottoPool, p, ['children']);
+      components.grottoPool = { children: array(pool.children, `${p}.children`, schema.grottoChildren).map((value, i) => {
+        const q = `${p}.children[${i}]`, child = object(value, q, ['index', 'id']);
+        return { index: integer(child.index, `${q}.index`, 1, schema.grottoChildren), id: string(child.id, `${q}.id`) };
+      }) };
+    }
+    if (keys.includes('grottoGlass') && c.grottoGlass !== undefined) {
+      // grotto_pool_moonglass.lua workable.savestate: only workleft, up to TUNING.ROCKS_MINE.
+      const p = `${path}.grottoGlass`, glass = object(c.grottoGlass, p, ['workleft']);
+      components.grottoGlass = { workleft: number(glass.workleft, `${p}.workleft`, 0, 6) };
+    }
+    if (keys.includes('mushroom') && c.mushroom !== undefined) {
+      // mushrooms.lua OnSave: rain is saved only while positive (10 + math.random(10) at most).
+      const p = `${path}.mushroom`, mushroom = object(c.mushroom, p, ['rain']);
+      components.mushroom = { rain: integer(mushroom.rain, `${p}.rain`, 1, 20) };
     }
     if (keys.includes('fishable') && c.fishable !== undefined) {
       // fishable.lua OnSave: only a pond with fish taken out saves its remaining count.

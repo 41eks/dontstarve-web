@@ -28,6 +28,10 @@ import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
 import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
 import { CaveEntranceManager } from '@dontstarve-web/prefab/cave_entrance';
+import { CaveExitManager } from '@dontstarve-web/prefab/cave_exit';
+import { GrottoPoolManager } from '@dontstarve-web/prefab/grotto_pool';
+import { MushroomPlantManager } from '@dontstarve-web/prefab/mushroom_plant';
+import { MushtreeManager } from '@dontstarve-web/prefab/mushtree';
 import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
 import { ArchivePropsManager, type ArchivePropId } from '@dontstarve-web/prefab/archive_props';
 import { SkeletonManager, type SkeletonId } from '@dontstarve-web/prefab/skeleton';
@@ -91,6 +95,10 @@ const MANAGER_DEFINITIONS = {
   'bulb_plant': PREFAB_DEFINITIONS.bulbPlants,
   'rocks': PREFAB_DEFINITIONS.rocks,
   'cave_entrance': PREFAB_DEFINITIONS.caveEntrances,
+  'cave_exit': PREFAB_DEFINITIONS.caveExits,
+  'grotto_pool': PREFAB_DEFINITIONS.grottoPools,
+  'mushtree': PREFAB_DEFINITIONS.mushtrees,
+  'blue_mushroom': PREFAB_DEFINITIONS.mushroomPlants,
   'marbleshrub': PREFAB_DEFINITIONS.marbleShrubs,
   'archive_props': PREFAB_DEFINITIONS.archiveProps,
   'skeleton': PREFAB_DEFINITIONS.skeletons,
@@ -144,6 +152,10 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.beefalos,
   PREFAB_DEFINITIONS.rocks,
   PREFAB_DEFINITIONS.caveEntrances,
+  PREFAB_DEFINITIONS.caveExits,
+  PREFAB_DEFINITIONS.grottoPools,
+  PREFAB_DEFINITIONS.mushtrees,
+  PREFAB_DEFINITIONS.mushroomPlants,
   PREFAB_DEFINITIONS.marbleBeanSaplings,
   PREFAB_DEFINITIONS.marbleShrubs,
   PREFAB_DEFINITIONS.archiveProps,
@@ -193,6 +205,10 @@ export async function createSceneEntities(
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
     'rocks': ReturnType<typeof registerRocks>;
     'cave_entrance': ReturnType<typeof registerCaveEntrances>;
+    'cave_exit': ReturnType<typeof registerCaveExits>;
+    'grotto_pool': ReturnType<typeof registerGrottoPools>;
+    'mushtree': ReturnType<typeof registerMushtrees>;
+    'blue_mushroom': ReturnType<typeof registerMushroomPlants>;
     'marbleshrub': ReturnType<typeof registerMarbleShrubs>;
     'archive_props': ReturnType<typeof registerArchiveProps>;
     'skeleton': ReturnType<typeof registerSkeletons>;
@@ -249,6 +265,10 @@ export async function createSceneEntities(
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
   Managers['cave_entrance'] = registerCaveEntrances(registry, 'cave_entrance', worldState);
+  Managers['cave_exit'] = registerCaveExits(registry, 'cave_exit');
+  Managers['grotto_pool'] = registerGrottoPools(registry, 'grotto_pool', worldState);
+  Managers['mushtree'] = registerMushtrees(registry, 'mushtree', worldState);
+  Managers['blue_mushroom'] = registerMushroomPlants(registry, 'blue_mushroom', worldState);
   Managers['marbleshrub'] = registerMarbleShrubs(registry, 'marbleshrub', worldState);
   Managers['archive_props'] = registerArchiveProps(registry, 'archive_props', worldState);
   Managers['skeleton'] = registerSkeletons(registry, 'skeleton', worldState);
@@ -310,6 +330,9 @@ export async function createSceneEntities(
     molehills: Managers['molehill'],
     rockManager: Managers['rocks'],
     caveEntrances: Managers['cave_entrance'],
+    mushtrees: Managers['mushtree'],
+    mushroomPlants: Managers['blue_mushroom'],
+    grottoPools: Managers['grotto_pool'],
     marbleShrubs: Managers['marbleshrub'],
     archiveProps: Managers['archive_props'],
     skeletons: Managers['skeleton'],
@@ -565,6 +588,82 @@ export async function createSceneEntities(
       dispose: () => caveEntrances.dispose(),
     });
     return caveEntrances;
+  }
+
+  function registerMushroomPlants(registry: EntityRegistry, prefabId: 'blue_mushroom', worldState: SceneWorldState) {
+    const mushrooms = new MushroomPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      rain: worldState.weather.preciptype,
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (_, record) => mushrooms.spawn(new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: { pickable: record.components.pickable, mushroom: record.components.mushroom },
+      }),
+      debugSpawn: () => mushrooms.spawn(player.position.clone()),
+      exportRecords: () => mushrooms.exportRecords(),
+      update: (dt, quaternion) => mushrooms.update(dt, quaternion),
+      renderEntities: () => mushrooms.renderEntities,
+      dispose: () => mushrooms.dispose(),
+    });
+    return mushrooms;
+  }
+
+  function registerMushtrees(registry: EntityRegistry, prefabId: 'mushtree', worldState: SceneWorldState) {
+    const mushtrees = new MushtreeManager(scene, {
+      physics: world, scheduler, scene, getWatchWorldContent: worldState.getWatchWorldContent, worldEvents,
+      dropLoot: (items, position) => {
+        void Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
+          .catch((error: unknown) => console.error('Unable to drop mushtree loot', error));
+      },
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (id, record) => mushtrees.spawn(id, new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: record.components,
+      }),
+      debugSpawn: id => mushtrees.spawn(id, player.position.clone()),
+      exportRecords: () => mushtrees.exportRecords(),
+      update: (dt, quaternion) => mushtrees.update(dt, quaternion, player.position),
+      renderEntities: () => mushtrees.renderEntities,
+      miniMapEntities: () => mushtrees.miniMapEntities,
+      dispose: () => mushtrees.dispose(),
+    });
+    return mushtrees;
+  }
+
+  function registerGrottoPools(registry: EntityRegistry, prefabId: 'grotto_pool', worldState: SceneWorldState) {
+    const grottoPools = new GrottoPoolManager(scene, {
+      physics: world, scheduler: scheduler ?? worldState.scheduler, playerPosition: () => player.position,
+      getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, fx: Managers['world_fx'],
+      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (id, record) => grottoPools.spawn(id, new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: record.components,
+      }),
+      debugSpawn: id => grottoPools.spawn(id, player.position.clone()),
+      exportRecords: () => grottoPools.exportRecords(),
+      update: (dt, quaternion) => grottoPools.update(dt, quaternion),
+      renderEntities: () => grottoPools.renderEntities,
+      miniMapEntities: () => grottoPools.miniMapEntities,
+      dispose: () => grottoPools.dispose(),
+    });
+    return grottoPools;
+  }
+
+  function registerCaveExits(registry: EntityRegistry, prefabId: 'cave_exit') {
+    const caveExits = new CaveExitManager(scene, { physics: world });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (_id, record) => caveExits.spawn(new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: {},
+      }),
+      debugSpawn: () => caveExits.spawn(player.position.clone()),
+      exportRecords: () => caveExits.exportRecords(),
+      update: (dt, quaternion) => caveExits.update(dt, quaternion),
+      renderEntities: () => caveExits.renderEntities,
+      miniMapEntities: () => caveExits.miniMapEntities,
+      dispose: () => caveExits.dispose(),
+    });
+    return caveExits;
   }
 
   function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', _worldState: SceneWorldState) {
