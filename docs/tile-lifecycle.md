@@ -1,6 +1,6 @@
 # 按 tile 管理场景实体生命周期
 
-本文记录按 tile 管理生命周期的实施方案：每个 tile 持有一个活动状态 signal，玩家跨 tile 时更新变化的 tile，prefab 读取缓存 memo 派生自身的活动状态。活动网格和温泉的显隐接入已实现；当前 [stafflight.ts](../packages/prefab/src/stafflight.ts) 仍逐帧检查距离，[ProximityEntities](../packages/prefab/src/proximityEntities.ts) 仍遍历实体检查距离，统一的场景生命周期调度和资源卸载尚未实现。
+本文记录按 tile 管理生命周期的实施方案：每个 tile 持有一个活动状态 signal，玩家跨 tile 时更新变化的 tile，prefab 读取缓存 memo 派生自身的活动状态。活动网格、温泉的显隐及海浪休眠移除已实现；海浪按 Lua 的 `OnEntitySleep = inst.Remove` 释放 FX，不在重新激活时恢复，详见 [海洋渲染](dst-ocean-rendering.md)。当前 [stafflight.ts](../packages/prefab/src/stafflight.ts) 仍逐帧检查距离，[ProximityEntities](../packages/prefab/src/proximityEntities.ts) 仍遍历实体检查距离，统一的场景生命周期调度和资源卸载尚未实现。
 
 [worldContent.ts](../packages/signals/src/worldContent.ts) 已提供 `GetTileStateAtPoint(position, radius = 10)`，从当前绑定世界解析 tile 查询服务，返回固定位置的 `Memo<boolean> | undefined`，调用方无需传入玩家位置源。世界初始化时通过 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `GetTileStateAtPoint(playerPosition)` 柯里化绑定源，将返回的查询函数注入 `WorldContentEnvironment.tickingarea`；`world.tickingarea(position, radius)` 始终查询所属世界，全局导出查询当前绑定世界。signals 包只定义服务协议和解析入口，网格计算及缓存仍由 tileManager 管理。
 

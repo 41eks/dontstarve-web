@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import { createEffect, watchSignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { ShimmerKind, WaveMap, WaveSpawner } from '../../componets/src/wavemanager';
 import { GroundItemAssets } from './groundItems';
 
@@ -27,6 +28,7 @@ interface Wave {
   flat: boolean;
   elapsed: number;
   frame: number;
+  stopTileActivity?: () => void;
 }
 
 /** Spawns and animates wave fx near the player; they are never saved. */
@@ -35,15 +37,17 @@ export class OceanWaves implements WaveSpawner {
   private readonly map: WaveMap;
   private readonly scale: number;
   private readonly assets: GroundItemAssets;
+  private readonly tickingarea?: TileStateQuery;
   private readonly ready = new Map<string, WaveAssets>();
   private readonly active = new Set<Wave>();
   private prepared?: Promise<void>;
   private disposed = false;
 
-  constructor(scene: THREE.Scene, map: WaveMap, scale: number) {
+  constructor(scene: THREE.Scene, map: WaveMap, scale: number, tickingarea?: TileStateQuery) {
     this.scene = scene;
     this.map = map;
     this.scale = scale;
+    this.tickingarea = tickingarea;
     this.assets = new GroundItemAssets();
   }
 
@@ -111,6 +115,12 @@ export class OceanWaves implements WaveSpawner {
     this.showFrame(wave, 0);
     this.active.add(wave);
     this.scene.add(model);
+    const source = this.tickingarea?.(model.position);
+    if (source) {
+      const tileActivity = watchSignal(source, stop => { wave.stopTileActivity = stop; });
+      // wave_shimmer.lua / wave_shore.lua: OnEntitySleep = inst.Remove; sleeping FX never resume.
+      createEffect(() => { if (!tileActivity.get()) this.remove(wave); });
+    }
   }
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
@@ -132,9 +142,10 @@ export class OceanWaves implements WaveSpawner {
   }
 
   private remove(wave: Wave): void {
+    if (!this.active.delete(wave)) return;
+    wave.stopTileActivity?.();
     wave.model.removeFromParent();
     wave.model.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
-    this.active.delete(wave);
   }
 
   private showFrame(wave: Wave, index: number): void {

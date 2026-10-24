@@ -1026,7 +1026,7 @@ export async function createSceneEntities(
     return snow;
   }
 
-  async function registerOceanWaves(registry: EntityRegistry, prefabId: 'ocean_waves', _worldState: SceneWorldState) {
+  async function registerOceanWaves(registry: EntityRegistry, prefabId: 'ocean_waves', worldState: SceneWorldState) {
     // The only ocean tile is OCEAN_COASTAL; INVALID (outside the map) is neither land nor water.
     const waveMap: WaveMap = {
       tileSize: TILE_SIZE,
@@ -1034,7 +1034,7 @@ export async function createSceneEntities(
       isLandTile: tile => tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL,
       isOceanTile: tile => tile === WORLD_TILES.OCEAN_COASTAL,
     };
-    const oceanWaves = new OceanWaves(scene, waveMap, WORLD_SCALE);
+    const oceanWaves = new OceanWaves(scene, waveMap, WORLD_SCALE, worldState.tickingarea);
     await oceanWaves.prepare();
     const waveManager = new WaveManager({
       map: waveMap, spawner: oceanWaves, scale: WORLD_SCALE,

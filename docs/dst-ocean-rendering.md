@@ -4,6 +4,8 @@
 
 `packages/prefab/src/oceanRenderPipeline.ts` 负责渲染目标、材质和离屏步骤。对应的 shader 来自 `/data/copy/AssetArchive-Dev/data/DST/data/databundles/shaders.zip`；Lua 参数来自 `tiledefs.lua`、`tilemanager.lua`、`tuning.lua` 和 `gamelogic.lua`。
 
+海浪生成由 `packages/componets/src/wavemanager.ts` 按 Lua `components/wavemanager.lua` 的相机距离、生成频率和岸线规则选择位置；`packages/prefab/src/ocean_waves.ts` 加载并播放岸浪和波光动画。场景向 `OceanWaves` 注入所属世界的 `tickingarea`，每个 FX 在最终地面位置查询默认 10 格方形活动区域，通过私有 `watchSignal` 和普通 `createEffect` 监听。按 `wave_shimmer.lua` / `wave_shore.lua` 的 `OnEntitySleep = inst.Remove`，tile inactive 时立即移除 FX、释放独立几何及监听，回到范围不恢复旧波浪；动画结束和显式 dispose 走同一清理入口，共享材质留给资源缓存释放。未注入查询或查询返回 `undefined` 时维持原有动画生命周期。海浪不进入存档，不新增调试命令或 prefab ID。
+
 1. 按地图格子生成近海与默认陆地的主色、白天次色、黄昏次色 RGBA 纹理。保留原始显示空间数值，不在颜色数据上传或模糊时进行 sRGB 解码。
 2. 按 `blurh.ksh` / `blurv.ksh` 对三个颜色纹理分别执行 3 轮横向／纵向模糊，步长为 1 个 texel。九点权重为 `0.05, 0.09, 0.12, 0.15, 0.16, 0.15, 0.12, 0.09, 0.05`；总和是原版的 `0.98`，不重新归一化。中间目标为半浮点 RGBA，避免每一轮发生八位整数舍入。
 3. 按 `blendoceantexture.ksh` 混合已模糊的白天和黄昏次色纹理，RGB 和 alpha 一起插值。主色纹理单独保留，作为动态噪声的颜色与透明度输入。
