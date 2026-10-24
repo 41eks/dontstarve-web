@@ -55,6 +55,18 @@ def cave_exit_components(data):
     return {}
 
 
+def cave_entrance_components(allowed):
+    # worldmigrator.lua OnSave belongs to the shard link; childspawner/worldsettingstimer (bats) are not ported either,
+    # so the open entrance keeps only identity and position. Closed workable.savestate is false.
+    def convert(data):
+        migrator = data.get('worldmigrator')
+        if not isinstance(migrator, dict) or set(migrator) - {'id', 'auto', 'linkedWorld', 'receivedPortal'} \
+                or set(data) - allowed:
+            raise ValueError('Unsupported cave_entrance save state')
+        return {}
+    return convert
+
+
 def mushtree_components(data, medium):
     # mushtree.lua / mushtree_moon.lua OnSave plus growable/plantregrowth. plantregrowth (offspring regrowth) is not
     # ported, so its timer is not carried over; a stump's decay timer is rebuilt when the stump is made.
@@ -519,6 +531,8 @@ ENTITY_WHITELIST = {
     'pighead': pighead_components,
     'archive_moon_statue': archive_moon_statue_components,
     'cave_exit': cave_exit_components,
+    'cave_entrance': cave_entrance_components({'worldmigrator'}),
+    'cave_entrance_open': cave_entrance_components({'worldmigrator', 'worldsettingstimer', 'childspawner'}),
     'mushtree_moon': lambda data: mushtree_components(data, False),
     'mushtree_medium': lambda data: mushtree_components(data, True),
     'mushtree_tall': lambda data: mushtree_components(data, True),

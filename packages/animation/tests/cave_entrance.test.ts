@@ -6,6 +6,9 @@ import { CaveEntranceManager } from '../../prefab/src/cave_entrance';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
+import { getMigrateActions } from '../../stategraphs/src/migrate';
+import { mouseTargetsAlongRay } from '../../stategraphs/src/entitySpatialIndex';
+import { createSignal, readonlySignal } from '../../signals/src';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -40,4 +43,50 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     expect(restored.exportRecords()).toEqual(caves.exportRecords());
     restored.dispose();
   } finally { caves.dispose(); ground.dispose(); inventory.dispose(); }
+}, 20000);
+
+it('offers MIGRATE on an open entrance whose Caves destination is available and hands the player to that shard', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal('window', new EventTarget());
+  const scene = new THREE.Scene(), migrated: unknown[][] = [];
+  const shard = { isWorldAvailable: (id: string) => id === 'Caves', isWorldFull: () => false, migratePlayer: (...args: unknown[]) => { migrated.push(args); } };
+  const caves = new CaveEntranceManager(scene, { shard, prepareSpawn: () => { throw new Error('unused'); } });
+  const unavailable = new CaveEntranceManager(scene, { prepareSpawn: () => { throw new Error('unused'); } });
+  try {
+    const open = await caves.spawn('cave_entrance_open', new THREE.Vector3(1, 0, 2));
+    const [action] = getMigrateActions(open);
+    expect(action).toMatchObject({ button: 'left', available: true, action: { action: 'MIGRATE' } });
+    expect(open.userData.tags).toContain('migrator');
+    expect(open.userData.components.worldmigrator.Activate({ hasTag: () => false })).toBe(false);
+    const player = { hasTag: (tag: string) => tag === 'player' };
+    expect(open.userData.components.worldmigrator.Activate(player)).toBe(true);
+    expect(migrated).toEqual([[player, undefined, 'Caves']]);
+
+    const closed = await unavailable.spawn('cave_entrance_open', new THREE.Vector3(5, 0, 2));
+    expect(getMigrateActions(closed)).toEqual([]);
+    expect(closed.userData.tags).not.toContain('migrator');
+  } finally { caves.dispose(); unavailable.dispose(); }
+}, 20000);
+
+it('stays clickable after its tile leaves and re-enters the tickingarea', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal('window', new EventTarget());
+  const scene = new THREE.Scene(), active = createSignal(true);
+  const tickingarea = (() => Object.assign(readonlySignal(active), { dispose: () => {} })) as never;
+  const caves = new CaveEntranceManager(scene, { tickingarea, prepareSpawn: () => { throw new Error('unused'); } });
+  try {
+    const model = await caves.spawn('cave_entrance_open', new THREE.Vector3(5, 0, 7));
+    scene.updateMatrixWorld(true);
+    const ray = new THREE.Ray(new THREE.Vector3(5, 13, 27), new THREE.Vector3(0, -.6, -1).normalize());
+    const hit = () => mouseTargetsAlongRay(ray, 0, 200).includes(model);
+    expect(hit()).toBe(true);
+    active.set(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    scene.updateMatrixWorld(true);
+    expect(hit()).toBe(false);
+    active.set(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    scene.updateMatrixWorld(true);
+    expect(hit()).toBe(true);
+  } finally { caves.dispose(); }
 }, 20000);

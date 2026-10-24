@@ -119,11 +119,13 @@ export class PickaxeActionController {
     const target = this.target;
     if (!this.canWork(target)) { this.cancel(); return; }
     const distance = this.distanceSquared(target);
-    if (distance > PICKAXE_REACH ** 2) {
+    // Obstacle targets (cave_entrance) cannot be approached closer than their physics radius.
+    const reach = PICKAXE_REACH + (target.model.userData.physicsRadius ?? 0);
+    if (distance > reach ** 2) {
       // Stop short of the foot point; do not walk into the billboard's centre.
       const destination = target.position.clone();
       this.direction.subVectors(this.world.player.position, target.position).normalize();
-      destination.addScaledVector(this.direction, PICKAXE_REACH * 0.8);
+      destination.addScaledVector(this.direction, reach * 0.8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > 0.01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       }
@@ -135,7 +137,7 @@ export class PickaxeActionController {
     const play = this.action === 'CHOP' ? this.animation.playChop.bind(this.animation) : this.animation.playMine.bind(this.animation);
     if (play(() => {
       if (version === this.actionVersion && this.canWork(target)
-        && this.distanceSquared(target) <= PICKAXE_REACH ** 2) {
+        && this.distanceSquared(target) <= reach ** 2) {
         return performToolWork(this.action, target.entity, this.worker, equippedActionEntity(this.handEquipment.peek()));
       }
       return false;

@@ -99,6 +99,7 @@ python3 scripts/import-dst-region.py \
 - `fireflies`、`butterfly`：源 ID／源序号形成稳定实体 ID，输出为现有 `ground_item.components.stack`，同一记录的 `stack.entityId` 与实体 ID 相同；保留 `stackable.stack`，默认数量 1。蝴蝶只接受存活默认血量、空已知位置和已暂停的地面腐败状态，`perishable.time / 1440` → `freshnessPercent`；未知组件状态继续报错。当前快照导入 350 群萤火虫，蝴蝶源分组为空。
 
 - `pighead`：`burnt` → `building.burnt`，正常状态 `idle`；`archive_moon_statue`：`anim`（1～4）→ `archiveProp.anim`。两者的 workable 不保存工作量；醒睡状态由世界重建。`cave_exit` 不迁移尚未接入的分片连接 `worldmigrator` 数据。
+- `cave_entrance`、`cave_entrance_open`：只接受 `worldmigrator`（开放入口另可有 `worldsettingstimer`、`childspawner`），这些分片连接与蝙蝠状态均未接入，故只保留 ID 与位置（组件为空）；封闭入口重载后恢复满工作量。地表共 9 个封闭、1 个开放入口。
 - `mushtree_moon`、`mushtree_medium`、`mushtree_tall`：保留 `growable`、`treestate`、`stump`、`burnt`；`evergreen` 保留生长阶段及树桩、烧毁状态，以及 `timer.decay` 的剩余时间／暂停状态；已烧毁树没有源 `growable` 时不伪造阶段，由 prefab 按 Lua 在构造时随机选择 1～3 阶段。已导入腐朽计时器由逻辑树持有，卸载模型时继续计时，保存后重建剩余截止时间，永久移除时取消；`plantregrowth` 未迁移。`blue_mushroom` 保留 `rain`，开合由世界时钟重建。
 - `grass`、`sapling`、`cave_fern`、`cave_fern_withered`：迁移 `pickable` 状态；蕨类保留 `anim`（`f1`～`f10`）。草和树苗将 `witherable.withered/restore_cycles/delay_time_remaining/task_time_remaining` 转为现有组件字段；不支持的保护计时器仍报错。枯萎检查通过游戏时间调度器执行，保存和重载保留剩余时间。`houndbone` 保留 `bonetype`（1～3）。
 - `flower_cave`、`flower_cave_double`、`flower_cave_triple`：`light_state`、`plantname`、采摘及再生状态、亮灯／充能计时器 → `bulbPlant`。`lightflier_flower` → `lightflierFlower`，保留 `childspawner.childreninside`；外飞子实体 GUID 只在子实体同样导入时链接。`lightflier` 不在白名单中。
@@ -108,7 +109,7 @@ python3 scripts/import-dst-region.py \
 
 实体 ID 包含源 Session、prefab 和源 `id`；无 `id` 时使用原分组序号，同一快照重复导入保持稳定。`Master.import.json` / `Caves.import.json` 的 `scope: "full-map"` 标记完整转换，记录全部节点、地皮数量、各白名单 prefab 的源数量和导入数量，以及每个实体的源序号、源 ID、源位置和所属节点。无节点或源坐标越界时 `sourceNode` 为 `null`。源文件路径、SHA-256、尺寸、原点和平移同样保留。
 
-`Cluster_58` 的 `0000000022` 快照包含 471 × 471 格和 360 个节点，转换得到 46,224 格陆地、298 格 `FAKE_GROUND`（合计 46,522 条稀疏地皮记录）及 4,640 个白名单实体。所有白名单分组的源数量与导入数量一致。洞穴结果为 `public/saves/Cluster_1/Caves.json`。同簇地表快照为 425 × 425 格、280 个节点，转换得到 48,007 格陆地、120,242 格海洋及 6,885 个白名单实体，保存为默认加载的 `public/saves/Cluster_1/Master.json`。可用 `?save=Cluster_1/Caves.json` 切换洞穴。读档仍校验字节、节点和嵌套深度，上限调整为 32 MiB、2,000,000 个值，以容纳完整地表。`c_spawn` / `c_give` 命令与支持 ID 不变；`c_save()` 无参数，下载 `Cluster_1.zip`，解压到 `public/saves/` 覆盖目录后重载，保留完整地图及实体身份、位置和组件状态。
+`Cluster_58` 的 `0000000022` 快照包含 471 × 471 格和 360 个节点，转换得到 46,224 格陆地、298 格 `FAKE_GROUND`（合计 46,522 条稀疏地皮记录）及 4,640 个白名单实体。所有白名单分组的源数量与导入数量一致。洞穴结果为 `public/saves/Cluster_1/Caves.json`。同簇地表快照为 425 × 425 格、280 个节点，转换得到 48,007 格陆地、120,242 格海洋及 6,895 个白名单实体，保存为默认加载的 `public/saves/Cluster_1/Master.json`。可用 `?save=Cluster_1/Caves.json` 切换洞穴。读档仍校验字节、节点和嵌套深度，上限调整为 32 MiB、2,000,000 个值，以容纳完整地表。`c_spawn` / `c_give` 命令与支持 ID 不变；`c_save()` 无参数，下载 `Cluster_1.zip`，解压到 `public/saves/` 覆盖目录后重载，保留完整地图及实体身份、位置和组件状态。
 
 验证命令：
 

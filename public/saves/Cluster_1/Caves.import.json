@@ -421,6 +421,8 @@
     "pighead",
     "archive_moon_statue",
     "cave_exit",
+    "cave_entrance",
+    "cave_entrance_open",
     "mushtree_moon",
     "mushtree_medium",
     "mushtree_tall",
@@ -494,6 +496,14 @@
     "cave_exit": {
       "source": 10,
       "imported": 10
+    },
+    "cave_entrance": {
+      "source": 0,
+      "imported": 0
+    },
+    "cave_entrance_open": {
+      "source": 0,
+      "imported": 0
     },
     "mushtree_moon": {
       "source": 407,

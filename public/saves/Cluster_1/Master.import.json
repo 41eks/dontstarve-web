@@ -349,6 +349,8 @@
     "pighead",
     "archive_moon_statue",
     "cave_exit",
+    "cave_entrance",
+    "cave_entrance_open",
     "mushtree_moon",
     "mushtree_medium",
     "mushtree_tall",
@@ -422,6 +424,14 @@
     "cave_exit": {
       "source": 0,
       "imported": 0
+    },
+    "cave_entrance": {
+      "source": 9,
+      "imported": 9
+    },
+    "cave_entrance_open": {
+      "source": 1,
+      "imported": 1
     },
     "mushtree_moon": {
       "source": 0,
@@ -20202,6 +20212,126 @@
         -339.797
       ],
       "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106080",
+      "prefab": "cave_entrance",
+      "sourceIndex": 1,
+      "sourceId": 106080,
+      "sourcePosition": [
+        -339.5,
+        0,
+        543.68
+      ],
+      "sourceNode": "Kill the spiders:BG_80:BGRocky"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106082",
+      "prefab": "cave_entrance",
+      "sourceIndex": 2,
+      "sourceId": 106082,
+      "sourcePosition": [
+        -187.69,
+        0,
+        -223.5
+      ],
+      "sourceNode": "For a nice walk:7:DeepForest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106083",
+      "prefab": "cave_entrance",
+      "sourceIndex": 3,
+      "sourceId": 106083,
+      "sourcePosition": [
+        -84.32,
+        0,
+        88.5
+      ],
+      "sourceNode": "Befriend the pigs:4:DeepForest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106084",
+      "prefab": "cave_entrance",
+      "sourceIndex": 4,
+      "sourceId": 106084,
+      "sourcePosition": [
+        -531.69,
+        0,
+        31.5
+      ],
+      "sourceNode": "Speak to the king:2:DeepDeciduous"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106085",
+      "prefab": "cave_entrance",
+      "sourceIndex": 5,
+      "sourceId": 106085,
+      "sourcePosition": [
+        -499.5,
+        0,
+        272.31
+      ],
+      "sourceNode": "Dig that rock:8:Rocky"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106086",
+      "prefab": "cave_entrance",
+      "sourceIndex": 6,
+      "sourceId": 106086,
+      "sourcePosition": [
+        -259.69,
+        0,
+        -375.5
+      ],
+      "sourceNode": "Squeltch:BG_95:BGMarsh"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106087",
+      "prefab": "cave_entrance",
+      "sourceIndex": 7,
+      "sourceId": 106087,
+      "sourcePosition": [
+        -167.5,
+        0,
+        595.68
+      ],
+      "sourceNode": "Make a Beehat:3:Rocky"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106088",
+      "prefab": "cave_entrance",
+      "sourceIndex": 8,
+      "sourceId": 106088,
+      "sourcePosition": [
+        -668.32,
+        0,
+        156.5
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_id_106089",
+      "prefab": "cave_entrance",
+      "sourceIndex": 9,
+      "sourceId": 106089,
+      "sourcePosition": [
+        103.68,
+        0,
+        112.5
+      ],
+      "sourceNode": "Beeeees!:1:FlowerPatch"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_cave_entrance_open_id_122749",
+      "prefab": "cave_entrance_open",
+      "sourceIndex": 1,
+      "sourceId": 122749,
+      "sourcePosition": [
+        -275.69,
+        0,
+        223.5
+      ],
+      "sourceNode": "Make a pick:BG_31:BGGrass"
     },
     {
       "id": "dst_0D8F4BB2B5051283_blue_mushroom_index_000001",

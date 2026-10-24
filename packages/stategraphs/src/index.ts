@@ -26,6 +26,7 @@ export * from './pick.ts';
 export * from './itemuse.ts';
 export * from './harvest.ts';
 export * from './sleep.ts';
+export * from './migrate.ts';
 export * from './haunt.ts';
 export * from './blink.ts';
 export * from './occupiable.ts';

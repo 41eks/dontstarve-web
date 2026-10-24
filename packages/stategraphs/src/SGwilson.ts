@@ -11,7 +11,7 @@ export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'pickup';
 export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'mine_start' | 'mine' | 'chop_start' | 'chop' | 'hammer_start' | 'hammer'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
-  | 'quickeat' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
+  | 'quickeat' | 'migrate' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
   | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute' | 'play_strum'
   | 'slip' | 'slip_pst' | 'slip_fall' | 'slip_fall_loop' | 'slip_fall_pst'
   | 'fishing_pre' | 'fishing' | 'fishing_pst' | 'fishing_nibble' | 'fishing_strain' | 'catchfish' | 'loserod'
@@ -22,7 +22,7 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'portal_rez' | 'portal_jumpin_pre' | 'portal_jumpin' | 'portal_jumpout'
   /** SGwilson.lua amulet_rebirth: the player rising from a red amulet after a haunt resurrection. */
   | 'amulet_rebirth';
-export type WilsonAction = 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT';
+export type WilsonAction = 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT' | 'MIGRATE';
 export type WilsonAnimationKey = 'wortox_portal' | WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
@@ -715,6 +715,27 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       if (inst.context.getBufferedAction() === inst.statemem.action) inst.context.clearBufferedAction();
     },
   }),
+  // SGwilson.lua migrate: the heavy_item_hat branch belongs to unported heavy lifting.
+  State({
+    name: 'migrate',
+    tags: ['doing', 'busy'],
+    onenter: (inst) => {
+      inst.context.host.stopMovement?.();
+      inst.context.playClips([clip('pickup')]);
+      inst.statemem.action = inst.context.getBufferedAction();
+    },
+    events: [
+      EventHandler('animqueueover', (inst) => {
+        if (inst.context.animationDone && !inst.context.performBufferedAction()) {
+          inst.context.playClips([clip('pickup_pst')]);
+          inst.goToState('idle', true);
+        }
+      }),
+    ],
+    onexit: (inst) => {
+      if (inst.context.getBufferedAction() === inst.statemem.action) inst.context.clearBufferedAction();
+    },
+  }),
   State({
     name: 'shell_enter',
     tags: ['hiding', 'notalking', 'shell', 'nomorph', 'busy', 'nopredict'],
@@ -1388,6 +1409,7 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   ActionHandler('BATHBOMB', 'doshortaction'),
   ActionHandler('DEPLOY', 'doshortaction'),
   ActionHandler('PICKUP', 'doshortaction'),
+  ActionHandler('MIGRATE', 'migrate'),
   ActionHandler('HARVEST', 'dolongaction'),
   ActionHandler('STORE', 'doshortaction'),
   ActionHandler('ADDFUEL', 'doshortaction'),
