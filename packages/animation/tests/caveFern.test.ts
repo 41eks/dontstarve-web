@@ -5,13 +5,15 @@ import { CaveFernManager } from '../../prefab/src/cave_fern';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { bindTestWorld, tickWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { createMemo, createSignal } from '../../signals/src';
+import { ResidentSprite } from '../../prefab/src/residentSprite';
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
-it('picks cave ferns for foliage and cutgrass, removes them, and restores the saved pose', async () => {
+it('preserves cave fern poses and components across residency, then picks foliage and cutgrass and removes them', async () => {
   const archives = new Map<string, Uint8Array>();
   for (const file of ['cave_ferns.zip', 'cave_ferns_withered_build.zip', 'fire.zip']) {
     archives.set(file, await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
@@ -21,8 +23,14 @@ it('picks cave ferns for foliage and cutgrass, removes them, and restores the sa
 
   const scene = new THREE.Scene();
   const scheduler = new GameTimeScheduler();
-  bindTestWorld(scheduler);
-  const ferns = new CaveFernManager(scene, '/dst/data/anim', { prepareSpawn: async () => ({ spawn: () => true, dispose() {} }) });
+  const awake = createSignal(true);
+  const { camerarotation } = bindTestWorld(scheduler);
+  const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .8);
+  camerarotation.set(rotation);
+  const ferns = new CaveFernManager(scene, '/dst/data/anim', {
+    tickingarea: () => createMemo(() => awake.get()),
+    prepareSpawn: async () => ({ spawn: () => true, dispose() {} }),
+  });
 
   const fern = await ferns.spawn('cave_fern', new THREE.Vector3(2, 0, 3));
   const withered = await ferns.spawn('cave_fern_withered', new THREE.Vector3(-2, 0, 3));
@@ -40,6 +48,37 @@ it('picks cave ferns for foliage and cutgrass, removes them, and restores the sa
   const restored = await ferns.spawn('cave_fern', new THREE.Vector3(5, 0, 5), { ...records[0].record, id: 'restored' });
   expect(pose(restored)).toBe(pose(fern));
 
+  const plants = [fern, withered];
+  const components = plants.map(plant => plant.userData.components);
+  const meshCount = (plant: THREE.Group) => {
+    let count = 0;
+    plant.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; });
+    return count;
+  };
+  await new Promise(resolve => setTimeout(resolve, 0));
+  for (const plant of plants) {
+    expect(plant.userData.animationController).toBeInstanceOf(ResidentSprite);
+    expect(meshCount(plant)).toBeGreaterThan(0);
+  }
+  awake.set(false);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(ferns.renderEntities).toEqual([]);
+  expect(ferns.exportRecords().slice(0, 2)).toEqual(records);
+  for (const [index, plant] of plants.entries()) {
+    expect(meshCount(plant)).toBe(0);
+    expect(plant.parent).toBeNull();
+    expect(plant.userData.components).toBe(components[index]);
+  }
+  awake.set(true);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  for (const [index, plant] of plants.entries()) {
+    expect(meshCount(plant)).toBeGreaterThan(0);
+    expect(plant.parent).toBe(scene);
+    expect(pose(plant)).toBe(records[index].record.components.variant!.anim);
+    expect(plant.children[0].quaternion.angleTo(rotation)).toBeLessThan(1e-7);
+  }
+  expect(ferns.exportRecords().slice(0, 2)).toEqual(records);
+
   const given: string[] = [];
   expect(fern.userData.components.pickable.quickpick).toBe(true);
   expect(fern.userData.components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
@@ -49,5 +88,11 @@ it('picks cave ferns for foliage and cutgrass, removes them, and restores the sa
   // remove_when_picked: nothing remains to save or render but the restored fern.
   expect(ferns.exportRecords().map(({ record }) => record.id)).toEqual(['restored']);
   expect(scene.children).not.toContain(fern);
+  awake.set(false);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  awake.set(true);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(scene.children).not.toContain(fern);
+  expect(scene.children).not.toContain(withered);
   ferns.dispose();
 });

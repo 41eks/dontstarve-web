@@ -198,11 +198,11 @@ test('the native DOM player icon follows its live transform above cached terrain
   await expect(icon).toHaveCount(0);
   await page.evaluate(() => (window as any).minimapEdges.playerIcon.SetEnabled(true));
   await expect(icon).toBeVisible();
-  await expect(icon).toHaveCSS('left', '6px');
+  await expect.poll(() => icon.evaluate(image => (image as HTMLElement).style.left)).toBe('6.25%');
   await page.screenshot({ path: testInfo.outputPath('player-minimap-icon.png') });
   await page.evaluate(() => (window as any).minimapEdges.playerIcon.position.set(-18, 0, 18));
-  await expect(icon).toHaveCSS('left', '-18px');
-  await expect(icon).toHaveCSS('top', '18px');
+  await expect.poll(() => icon.evaluate(image => (image as HTMLElement).style.left)).toBe('-18.75%');
+  await expect.poll(() => icon.evaluate(image => (image as HTMLElement).style.top)).toBe('18.75%');
   const alignment = await icon.evaluate(image => {
     const { map, playerIcon } = (window as any).minimapEdges;
     const expected = map.view.worldToScreen(playerIcon.position.x, playerIcon.position.z);
@@ -239,11 +239,15 @@ test('DOM views preserve fixed-size icons at high DPI and release resources on r
       let writes = 0;
       const observer = new MutationObserver(records => { writes += records.length; });
       observer.observe(marker, { attributes: true });
-      let positionError = 0, sizeError = 0;
+      let positionError = 0, sizeError = 0, scaleError = 0, zoomRuleChanges = 0;
       for (const [angle, zoom] of [[-90, 1], [45, 8], [135, 20]]) {
         heading.set(angle);
         await new Promise(resolve => setTimeout(resolve, 0));
+        const rule = map.renderer.dom.icons.adoptedStyleSheets[0].cssRules[0].cssText;
         map.setView({ x: 6, z: 6, zoom });
+        if (rule !== map.renderer.dom.icons.adoptedStyleSheets[0].cssRules[0].cssText) zoomRuleChanges++;
+        const matrix = new DOMMatrix(map.shadowRoot.querySelector('.minimap__world').style.transform);
+        scaleError = Math.max(scaleError, Math.abs(Math.hypot(matrix.a, matrix.b) - 1));
         const bounds = marker.getBoundingClientRect(), expected = map.view.worldToScreen(playerIcon.position.x, playerIcon.position.z);
         positionError = Math.max(positionError, Math.abs((bounds.left + bounds.right) / 2 - expected.x), Math.abs((bounds.top + bounds.bottom) / 2 - expected.z));
         sizeError = Math.max(sizeError, Math.abs(bounds.width - 32));
@@ -254,9 +258,11 @@ test('DOM views preserve fixed-size icons at high DPI and release resources on r
       map.setOpen(false);
       const stopped = map.sampleTimer === undefined && map.zoomFrame === undefined;
       map.setOpen(true);
-      return { writes, positionError, sizeError, stopped, reused: marker === renderer.dom.icons.querySelector('img'), width: map.view.width };
+      return { writes, positionError, sizeError, scaleError, zoomRuleChanges, stopped, reused: marker === renderer.dom.icons.querySelector('img'), width: map.view.width };
     });
-    expect(view).toMatchObject({ writes: 0, stopped: true, reused: true, width: 1280 });
+    expect(view).toMatchObject({ writes: 0, zoomRuleChanges: 0, stopped: true, reused: true, width: 1280 });
+    // CSSOM serializes matrix coefficients with limited precision.
+    expect(view.scaleError).toBeLessThan(1e-6);
     expect(view.positionError).toBeLessThan(.02);
     expect(view.sizeError).toBeLessThan(.02);
     await expect(page.locator('dst-minimap .minimap__boundary')).toHaveCount(0);
@@ -264,8 +270,8 @@ test('DOM views preserve fixed-size icons at high DPI and release resources on r
     await page.setViewportSize({ width: 900, height: 1400 });
     await expect.poll(() => page.evaluate(() => {
       const { map } = (window as any).minimapEdges;
-      const matrix = new DOMMatrix(map.shadowRoot.querySelector('.minimap__world').style.transform);
-      return Math.round(Math.hypot(matrix.a, matrix.b) * map.view.boundsSize);
+      const world = map.shadowRoot.querySelector('.minimap__world');
+      return Math.round(parseFloat(world.style.width) / map.view.worldSize * map.view.boundsSize);
     })).toBe(2100);
     await page.evaluate(async () => {
       const { map, heading } = (window as any).minimapEdges;
@@ -281,7 +287,9 @@ test('DOM views preserve fixed-size icons at high DPI and release resources on r
     await expect.poll(() => page.evaluate(() => (window as any).minimapEdges.map.zoomFrame === undefined)).toBe(true);
     const bounds = await page.evaluate(() => {
       const { map } = (window as any).minimapEdges;
-      const inverse = new DOMMatrix(map.shadowRoot.querySelector('.minimap__world').style.transform).inverse();
+      const world = map.shadowRoot.querySelector('.minimap__world');
+      const scale = parseFloat(world.style.width) / map.view.worldSize;
+      const inverse = new DOMMatrix(world.style.transform).scale(scale).inverse();
       const corners = [[0, 0], [900, 0], [900, 1400], [0, 1400]].map(([x, y]) => new DOMPoint(x, y).matrixTransform(inverse));
       const half = map.view.boundsSize / 2;
       return { zoom: map.view.zoom, overflow: Math.max(...corners.flatMap(point => [Math.abs(point.x) - half, Math.abs(point.y) - half])) };
@@ -324,7 +332,8 @@ test('wheel zoom stays monotonic around the cursor during repeated input and slo
       update.call(this, view);
       const probe = (window as any).wheelProbe;
       if (!probe.anchor) return;
-      const matrix = new DOMMatrix(this.root.querySelector('.minimap__world').style.transform);
+      const world = this.root.querySelector('.minimap__world');
+      const matrix = new DOMMatrix(world.style.transform).scale(parseFloat(world.style.width) / view.worldSize);
       const point = new DOMPoint(probe.anchor.x, probe.anchor.z).matrixTransform(matrix);
       probe.samples.push({ zoom: view.zoom, error: Math.max(Math.abs(point.x - cursor.x), Math.abs(point.y - cursor.y)) });
     };

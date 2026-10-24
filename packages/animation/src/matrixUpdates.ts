@@ -25,6 +25,7 @@ interface MatrixMethods {
 
 /** Return true only when observers may need to sample a new world transform. */
 export interface MatrixUpdater {
+  markDirty?(): void;
   updateMatrixWorld(force?: boolean): boolean;
   updateWorldMatrix(parents: boolean, children: boolean): boolean;
 }
@@ -127,6 +128,11 @@ export function watchMatrixUpdates(model: Object3D, observer: () => void): () =>
   const listener = () => observer();
   state.observers.add(listener);
   return () => { state.observers.delete(listener); state.release(); };
+}
+
+/** A cached parent changed: the child's static-ancestor shortcut must settle again. */
+export function invalidateMatrixUpdates(model: Object3D): void {
+  (model as ManagedObject)[updateState]?.updater?.markDirty?.();
 }
 
 export function cacheMatrixUpdates(model: Object3D, create: (original: MatrixMethods) => MatrixUpdater) {

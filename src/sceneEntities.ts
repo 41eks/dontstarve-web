@@ -913,8 +913,9 @@ export async function createSceneEntities(
     return saplings;
   }
 
-  function registerCaveFerns(registry: EntityRegistry, prefabId: 'cave_fern', _worldState: SceneWorldState) {
+  function registerCaveFerns(registry: EntityRegistry, prefabId: 'cave_fern', worldState: SceneWorldState) {
     const caveFerns = new CaveFernManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {

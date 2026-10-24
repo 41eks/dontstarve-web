@@ -153,6 +153,7 @@ interface Plant {
   /** Its tile is in the tickingarea (always true without residency): the visual may exist and must be advanced and ordered. */
   awake: boolean;
   stopEffect: () => void;
+  stopArt?: () => void;
   stopActivity?: () => void;
   sound?: SoundHandle;
   burnable: Burnable;
@@ -436,6 +437,12 @@ export class PickablePlantManager {
         const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, version: 0,
           transitionAt: this.scheduler.now, awake: !resident, stopEffect: () => {}, stopBurning: () => {},
           burnable, propagator, workable, persistence, fire, fireFactory, phase, outputs, variant };
+        if (resident && this.cameraRotation) plant.stopArt = createEffect(() => {
+          resident.art.get();
+          // Camera changes have their own manager effect; restore its current
+          // orientation when residency replaces this plant's drawn sprite.
+          resident.faceCamera(this.cameraRotation!.peek());
+        });
         plant.behavior = definition.createBehavior?.({ ...animationContext, get animation() { return animation; }, pickable,
           scheduler: this.scheduler,
           growthDuration: seconds => this.season?.peek().season === 'spring' ? seconds * .75 : seconds,
@@ -655,6 +662,7 @@ export class PickablePlantManager {
     plant.fireFactory.disposeSprite(plant.fire);
     for (const pieces of plant.outputs.values()) for (const output of pieces) output.dispose();
     plant.stopActivity?.();
+    plant.stopArt?.();
     plant.stopEffect();
     plant.sound?.stop();
     if (plant.sprite) plant.sprite.dispose();

@@ -15,7 +15,7 @@ interface Marker { element: HTMLImageElement; icon: string; x: number; z: number
  * image URLs/nodes; MiniMapEntity remains authoritative for live icon state.
  */
 export class MinimapDomRenderer {
-  readonly dom = new MinimapDomView();
+  readonly dom: MinimapDomView;
   readonly terrain: MinimapGroundImage;
   private readonly markers = new Map<MiniMapEntity, Marker>();
   private readonly icons = new Map<string, Promise<string | undefined>>();
@@ -23,17 +23,22 @@ export class MinimapDomRenderer {
   private readonly urls = new Set<string>();
   private disposed = false;
   private readonly dataRoot: string;
+  private readonly worldSize: number;
 
   constructor(options: GroundImageOptions, dataRoot: string) {
     this.dataRoot = dataRoot;
     this.terrain = new MinimapGroundImage(options);
     const { min, max } = options.terrain.cellRange(), unit = options.cellSize;
-    const margin = (max - min) * unit * MINIMAP_MARGIN_RATIO, plate = document.createElement('div');
+    this.worldSize = (max - min) * unit;
+    this.dom = new MinimapDomView(this.worldSize);
+    const plate = document.createElement('div');
+    const margin = MINIMAP_MARGIN_RATIO * 100, side = 100 + 2 * margin;
+    const repeat = OCEAN_PLATE_CELLS * unit / (this.worldSize * (1 + 2 * MINIMAP_MARGIN_RATIO)) * 100;
     // Open ocean is one seamless pre-rendered plate (scripts/render-minimap-ocean.mjs), not computed per world.
     plate.className = 'minimap__ocean';
-    Object.assign(plate.style, { position: 'absolute', left: `${min * unit - margin}px`, top: `${min * unit - margin}px`,
-      width: `${(max - min) * unit + 2 * margin}px`, height: `${(max - min) * unit + 2 * margin}px`,
-      backgroundImage: `url(${import.meta.env.BASE_URL}minimap/ocean.png)`, backgroundSize: `${OCEAN_PLATE_CELLS * unit}px` });
+    Object.assign(plate.style, { position: 'absolute', left: `${min / (max - min) * 100 - margin}%`, top: `${min / (max - min) * 100 - margin}%`,
+      width: `${side}%`, height: `${side}%`,
+      backgroundImage: `url(${import.meta.env.BASE_URL}minimap/ocean.png)`, backgroundSize: `${repeat}%` });
     this.dom.overview.append(plate, this.terrain.image, this.terrain.hitRegion);
   }
 
@@ -76,8 +81,8 @@ export class MinimapDomRenderer {
         this.markers.set(entity, marker);
       }
       const { x, z } = entity.position;
-      if (marker.x !== x) { marker.element.style.left = `${x}px`; marker.x = x; }
-      if (marker.z !== z) { marker.element.style.top = `${z}px`; marker.z = z; }
+      if (marker.x !== x) { marker.element.style.left = `${x / this.worldSize * 100}%`; marker.x = x; }
+      if (marker.z !== z) { marker.element.style.top = `${z / this.worldSize * 100}%`; marker.z = z; }
       if (marker.order !== order) { marker.element.style.zIndex = String(order); marker.order = order; }
       if (marker.icon !== entity.icon) {
         const icon = marker.icon = entity.icon, current = marker;

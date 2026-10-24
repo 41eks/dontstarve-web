@@ -28,7 +28,7 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 合并动画 billboard 的透明双面材质设置 `forceSinglePass = true`，让两种朝向在同一 pass 中绘制。
 
-共享 archive 和 factory sprite 的烘焙帧复用 `matrixGate`：换帧更新几何，根节点、visual 与父节点矩阵未变化时跳过子树矩阵计算。`ResidentSprite` / `ResidentSpriteController` 用私有 signal 持有实际 visual，普通 `createEffect` 根据有无 visual 切换渲染矩阵入口。空 visual 的 `updateMatrixWorld()` 使用共享空函数，直接跳过缓存检查、子树更新和空间索引通知；`updateWorldMatrix()` 显式查询仍即时更新，唤醒时使缓存失效。附加动态子节点通过 Three 的 child 事件恢复普通更新，最后一个附加子节点移除后重新跳过；永久移除释放 effect 和矩阵入口。直接移动、旋转、缩放、手动局部矩阵与重新挂载仍使缓存失效，附加动态子节点时使用常规遍历；祖先变换默认视为静止，只有声明 `dynamicParent` 的 sprite（地面物品上的苍蝇、工厂 `SpriteController`）才比较父节点世界矩阵版本。缓存与空间索引观察共用矩阵入口，更新函数和缓存方法由实体共享，局部变换使用标量快照。`updateSceneMatrices()` 为一次场景遍历划定比较范围，同一父节点的世界矩阵只比较一次；祖先再次进入矩阵更新时先使该结果失效，再更新其子树，范围外的显式查询始终检查当前矩阵。重新挂载切换祖先快照引用，最后一个使用者释放后恢复原矩阵方法；嵌套遍历和异常退出恢复原比较范围。
+共享 archive 和 factory sprite 的烘焙帧复用 `matrixGate`：换帧更新几何，根节点、visual 与父节点矩阵未变化时跳过子树矩阵计算。`ResidentSprite` / `ResidentSpriteController` 的稳定根节点使用 `installRootMatrixGate()`，只缓存根节点自身变换并比较父节点世界矩阵版本；缓存不绑定会被替换的 placeholder 子树，加载后仍可命中。根节点命中时继续调用当前 sprite 和附加 FX 的更新入口，由 sprite 的缓存判断其子树是否需要更新；根节点或祖先变化时先使直接子缓存失效，避免静态 billboard 忽略新的父变换。显式浅查询只结算根节点，并把子缓存失效保留到后续渲染；静止根节点不重复通知空间索引。两种驻留容器用私有 signal 持有实际 visual，普通 `createEffect` 根据有无 visual 切换渲染矩阵入口。空 visual 的 `updateMatrixWorld()` 使用共享空函数，直接跳过缓存检查、子树更新和空间索引通知；`updateWorldMatrix()` 显式查询仍即时更新，唤醒时使缓存失效。附加动态子节点通过 Three 的 child 事件恢复普通更新，最后一个附加子节点移除后重新跳过；永久移除释放 effect 和矩阵入口。直接移动、旋转、缩放、手动局部矩阵与重新挂载仍使缓存失效，附加动态子节点时使用常规遍历；祖先变换默认视为静止，只有声明 `dynamicParent` 的 sprite（地面物品上的苍蝇、工厂 `SpriteController`）才比较父节点世界矩阵版本。缓存与空间索引观察共用矩阵入口，更新函数和缓存方法由实体共享，局部变换使用标量快照。`updateSceneMatrices()` 为一次场景遍历划定比较范围，同一父节点的世界矩阵只比较一次；祖先再次进入矩阵更新时先使该结果失效，再更新其子树，范围外的显式查询始终检查当前矩阵。重新挂载切换祖先快照引用，最后一个使用者释放后恢复原矩阵方法；嵌套遍历和异常退出恢复原比较范围。
 
 ## 实例化场景
 
