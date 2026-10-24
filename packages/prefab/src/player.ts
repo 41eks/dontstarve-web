@@ -16,7 +16,7 @@ import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder
 import { type ReadonlySignal } from '@dontstarve-web/signals';
 import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
-import * as CANNON from 'cannon-es';
+import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { isAxeTool, type AxeTool } from './axe';
 import { prepareBackpackVisual } from './backpack';
@@ -35,6 +35,8 @@ import { equipSamePrefab } from './player_common';
 import { isShovelTool, type ShovelTool } from './shovel';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
+import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
+import { PhysicsState } from '../../componets/src/physicsState';
 import { actionEntity } from './actionEntity';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
@@ -110,7 +112,12 @@ export interface WilsonAnimationController extends ActionAnimationController {
 export type PlayerBody = CANNON.Body & { canJump: boolean };
 
 export interface WilsonPlayerPrefab {
+  /** inst.Physics: player_common.lua MakeCharacterPhysics(inst, 75, .5), swapped for ghost physics on death. */
+  physics: PhysicsState;
+  /** The bound body the movement and stategraphs drive. */
   body: PlayerBody;
+  /** Disposed before the world it registers in. */
+  physicsBinding: PhysicsBinding;
   model: PlayerModel;
   readonly MiniMapEntity: MiniMapEntity;
   setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
@@ -119,8 +126,6 @@ export interface WilsonPlayerPrefab {
 export type PlayerModel = THREE.Group & { readonly MiniMapEntity: MiniMapEntity };
 
 export interface WilsonPlayerPrefabOptions {
-  mass?: number;
-  shapeRadius?: number;
   /** The owner's authoritative sanity ratio; standalone previews default to full sanity. */
   sanityPercent?: ReadonlySignal<number>;
 }
@@ -969,28 +974,26 @@ export const PLAYER_PHYSICS_RADIUS = 0.5;
 /** The player's collider radius in world units; UI anchored to the player scales from this. */
 export const PLAYER_COLLIDER_RADIUS = PLAYER_PHYSICS_RADIUS * WORLD_SCALE;
 
+/** `world` receives the player's body; Physics:Teleport after moving the model places it there. */
 export async function createWilsonPlayerPrefab(
   assetBaseUrl: string,
+  world: CANNON.World,
   options: WilsonPlayerPrefabOptions = {},
 ): Promise<WilsonPlayerPrefab> {
   const model = await createWilsonPlayer(assetBaseUrl, options);
-  const physics = MakeCharacterPhysics(options.mass ?? 75, PLAYER_PHYSICS_RADIUS);
-  const shapeRadius = options.shapeRadius ?? (physics.shape as CANNON.Sphere).radius;
-  const material = new CANNON.Material('player');
-  const body = new CANNON.Body({
-    ...physics,
-    shape: new CANNON.Sphere(shapeRadius),
-    position: new CANNON.Vec3(model.position.x, model.position.y, model.position.z)
-      .vadd(new CANNON.Vec3(0, shapeRadius, 0)),
-    material,
-  }) as PlayerBody;
+  const entity = { physics: new PhysicsState() };
+  MakeCharacterPhysics(entity, 75, PLAYER_PHYSICS_RADIUS);
+  const physicsBinding = bindPhysics(world, entity.physics, () => model.position);
+  const body = physicsBinding.body as PlayerBody;
   body.canJump = false;
   body.addEventListener('collide', () => {
     body.canJump = true;
   });
 
   return {
+    physics: entity.physics,
     body,
+    physicsBinding,
     model,
     MiniMapEntity: model.MiniMapEntity,
     setNormal(cameraWorldQuaternion) {

@@ -16,7 +16,8 @@ import * as THREE from 'three';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../packages/prefab/src/worldContext';
 
-import { turfMap, moonTreeForest } from './building';
+import { turfMap } from './building';
+import { createMoonTreeManager } from '@dontstarve-web/prefab/moontree';
 import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
 import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
 import { camera, followCamera } from './camera';
@@ -57,9 +58,9 @@ import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { PortalManager, PORTAL_ID } from '@dontstarve-web/prefab/portal';
 import { NightmareGrowthManager, NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
 import { NightmareRockManager } from '@dontstarve-web/prefab/nightmarerock';
+import { PigKingManager } from '@dontstarve-web/prefab/pigking';
 import { BeefaloManager, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/beefalo';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
-import { pigKings } from './pigking';
 import { player } from './player';
 import {
   PlaceableBuildingPlacement,
@@ -85,7 +86,6 @@ import { createEvergreenForest, type EvergreenSpawnId } from '@dontstarve-web/pr
 
 import { EntityRegistry } from './entityRegistry';
 import { PREFAB_DEFINITIONS } from './prefabDefinitions';
-import { disposeSprite } from '@dontstarve-web/prefab/disposeSprite';
 import type { WorldState } from './worldState';
 
 type SceneWorldState = Pick<WorldState, 'clock' | 'season' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'tickingarea' | 'worldwind' | 'scheduler' | 'portalRez' | 'componentUpdates' | 'temperature' | 'weather' | 'perishClock'>;
@@ -245,7 +245,7 @@ export async function createSceneEntities(
     'deciduoustree': Awaited<ReturnType<typeof registerDeciduousTrees>>;
     'farm_plow': ReturnType<typeof registerFarmPlow>;
     'dock_kit': ReturnType<typeof registerDockKit>;
-    'moon_tree': ReturnType<typeof registerMoonTrees>;
+    'moon_tree': Awaited<ReturnType<typeof registerMoonTrees>>;
     'pigking': ReturnType<typeof registerPigKings>;
     'sanityrock': ReturnType<typeof registerNightmareRocks>;
     'rain': ReturnType<typeof registerRain>;
@@ -317,7 +317,7 @@ export async function createSceneEntities(
   Managers['deciduoustree'] = await registerDeciduousTrees(registry, 'deciduoustree', worldState);
   Managers['farm_plow'] = registerFarmPlow(registry, 'farm_plow', worldState);
   Managers['dock_kit'] = registerDockKit(registry, 'dock_kit', worldState);
-  Managers['moon_tree'] = registerMoonTrees(registry, 'moon_tree', worldState);
+  Managers['moon_tree'] = await registerMoonTrees(registry, 'moon_tree', worldState);
   Managers['pigking'] = registerPigKings(registry, 'pigking', worldState);
   Managers['pond'] = registerPonds(registry, 'pond', worldState);
   Managers['sanityrock'] = registerNightmareRocks(registry, 'sanityrock', worldState);
@@ -342,7 +342,7 @@ export async function createSceneEntities(
   };
 
   return {
-    Managers, registry, worldEvents, dispose, moonTreeForest, worldWind,
+    Managers, registry, worldEvents, dispose, moonTrees: Managers['moon_tree'], worldWind,
     evergreenForest: Managers['evergreen'],
     deciduousForest: Managers['deciduoustree'],
     buildingPlacement: Managers['buildings'],
@@ -477,7 +477,7 @@ export async function createSceneEntities(
           })());
     };
     const molehills: MolehillManager = new MolehillManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading,
+      itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading, tickingarea: worldState.tickingarea,
       isWalkable: moleWalkable,
       findPath: (start, target) => findGroundPath(new THREE.Vector3(start.x, start.y, start.z),
         new THREE.Vector3(target.x, target.y, target.z), { cellSize: 1.5, isWalkable: moleWalkable }),
@@ -743,9 +743,9 @@ export async function createSceneEntities(
     return marbleShrubs;
   }
 
-  function registerArchiveProps(registry: EntityRegistry, prefabId: 'archive_props', _worldState: SceneWorldState) {
+  function registerArchiveProps(registry: EntityRegistry, prefabId: 'archive_props', worldState: SceneWorldState) {
     const archiveProps = new ArchivePropsManager(scene, {
-      physics: world, cameraFacing: view.cameraFacing,
+      physics: world, cameraFacing: view.cameraFacing, tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -1051,7 +1051,6 @@ export async function createSceneEntities(
       }),
       debugSpawn: () => nightmareGrowths.spawn(player.position.clone()),
       exportRecords: () => nightmareGrowths.exportRecords().map((record) => ({ prefabId: NIGHTMAREGROWTH_ID, record })),
-      update: (_, quaternion) => nightmareGrowths.update(quaternion),
       renderEntities: () => nightmareGrowths.renderEntities,
       dispose: () => nightmareGrowths.dispose(),
     });
@@ -1204,15 +1203,13 @@ export async function createSceneEntities(
     return dockKit;
   }
 
-  function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {
-    scene.add(moonTreeForest.group);
-    const treesById = new Map(moonTreeForest.entities.map((entity) => [entity.saveId!, entity]));
-    const unbindTrees = moonTreeForest.bindWorld({
+  async function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {
+    const moonTrees = await createMoonTreeManager(`${import.meta.env.BASE_URL}dst/data/anim`, {
       camera,
       scene,
       scheduler,
       tickingarea: worldState.tickingarea,
-      season: worldState.season,
+      getWatchWorldContent: worldState.getWatchWorldContent,
       worldEvents,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
@@ -1221,81 +1218,56 @@ export async function createSceneEntities(
       },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => {
-        const tree = treesById.get(record.id);
-        if (!tree) throw new Error(`Missing logical tree: ${record.id}`);
-        moonTreeForest.restoreState(record.id, record.components.moonTree, record.components.growable, record.components.moonTreeTimer);
-        return tree;
-      },
-      debugSpawn: async id => {
-        moonTreeForest.spawnTree(id as 'moon_tree' | 'moon_tree_short' | 'moon_tree_normal' | 'moon_tree_tall',
-          new THREE.Vector3(player.position.x, 0, player.position.z));
-      },
-      exportRecords: () => moonTreeForest.entities.map((entity) => ({ prefabId: 'moon_tree', record: {
-        id: entity.saveId!, transform: { position: entity.position.toArray(), rotationY: 0 },
-        components: moonTreeForest.exportState(entity),
-      } })),
-      update: (dt, quaternion) => {
-        moonTreeForest.update(dt);
-        moonTreeForest.setNormals(quaternion);
-      },
-      miniMapEntities: () => moonTreeForest.miniMapEntities,
-      renderEntities: () => moonTreeForest.renderEntities,
-      dispose: () => { unbindTrees(); moonTreeForest.dispose(); },
+      restore: (_, record) => moonTrees.spawn('moon_tree', new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform,
+        components: { moonTree: record.components.moonTree, growable: record.components.growable, moonTreeTimer: record.components.moonTreeTimer },
+      }),
+      debugSpawn: async id => { moonTrees.spawn(id, new THREE.Vector3(player.position.x, 0, player.position.z)); },
+      exportRecords: () => moonTrees.exportRecords().map(record => ({ prefabId: 'moon_tree', record })),
+      update: dt => moonTrees.update(dt),
+      miniMapEntities: () => moonTrees.miniMapEntities,
+      renderEntities: () => moonTrees.renderEntities,
+      dispose: () => moonTrees.dispose(),
     });
     registry.register(PREFAB_DEFINITIONS.moonTreeSaplings, {
-      restore: (_, record) => moonTreeForest.spawnSapling(new THREE.Vector3(...record.transform.position),
+      restore: (_, record) => moonTrees.spawnSapling(new THREE.Vector3(...record.transform.position),
         { ...record, components: { saplingTimer: record.components.saplingTimer! } }),
-      debugSpawn: async () => { moonTreeForest.spawnSapling(new THREE.Vector3(player.position.x, 0, player.position.z)); },
-      exportRecords: () => moonTreeForest.exportSaplings().map(record => ({ prefabId: 'moonbutterfly_sapling', record })),
+      debugSpawn: async () => { moonTrees.spawnSapling(new THREE.Vector3(player.position.x, 0, player.position.z)); },
+      exportRecords: () => moonTrees.exportSaplings().map(record => ({ prefabId: 'moonbutterfly_sapling', record })),
       dispose() {},
     });
-    return moonTreeForest;
+    return moonTrees;
   }
 
   function registerPigKings(registry: EntityRegistry, prefabId: 'pigking', worldState: SceneWorldState) {
-    const kingsById = new Map(pigKings.map((king) => [king.record.id, king]));
-    // default_pigking.lua BG_TILES: commit every layout before rebuilding the terrain once.
-    turfMap.setOriginalTiles(pigKings.flatMap(king =>
-      placeStaticLayout('default_pigking', king.feet, 'pigking').tiles.map(({ tile, position }) =>
+    // default_pigking.lua BG_TILES are world generation: commit the saved kings' layouts before rebuilding the terrain once.
+    turfMap.setOriginalTiles((initialSave.world.entities.pigking ?? []).flatMap(record =>
+      placeStaticLayout('default_pigking', new THREE.Vector3(...record.transform.position), 'pigking').tiles.map(({ tile, position }) =>
         ({ position, tileId: WORLD_TILES[tile] }))));
-    pigKings.forEach((king) => {
-      world.addBody(king.body);
-      scene.add(king.standee);
-      king.bind({
-        camera, scheduler, isNight: worldState.isNight,
-        dropLoot: (items, position, launch) => {
-          void Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch)
-            .catch((error: unknown) => console.error('Unable to drop pig king gold', error));
-        },
-      });
+    const pigKings = new PigKingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      camera, scheduler: worldState.scheduler, physics: world, tickingarea: worldState.tickingarea,
+      dropLoot: (items, position, launch) => {
+        void Managers['ground_item'].flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch)
+          .catch((error: unknown) => console.error('Unable to drop pig king gold', error));
+      },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => {
-        const king = kingsById.get(record.id);
-        if (!king) throw new Error(`Missing pig king: ${record.id}`);
-        return king.standee;
-      },
-      exportRecords: () => pigKings.map((king) => ({ prefabId: 'pigking', record: {
-        id: king.record.id,
-        transform: { position: [king.standee.position.x, 0, king.standee.position.z] as const, rotationY: 0 }, components: {},
-      } })),
-      beforePhysics: (dt) => pigKings.forEach((king) => king.update(dt)),
-      update: (_, quaternion) => pigKings.forEach((king) => king.setNormal(quaternion)),
-      renderEntities: () => pigKings.map((king) => ({
-        object: king.standee, footPosition: king.feet, cameraDepth: 0,
-      })),
-      miniMapEntities: () => pigKings.map(king => king.MiniMapEntity),
-      dispose: () => {
-        for (const king of pigKings) { king.dispose(); world.removeBody(king.body); disposeSprite(king.standee); }
-      },
+      restore: (_, record) => pigKings.spawn(new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: {},
+      }),
+      debugSpawn: () => pigKings.spawn(new THREE.Vector3(player.position.x, 0, player.position.z)),
+      exportRecords: () => pigKings.exportRecords(),
+      beforePhysics: (dt) => pigKings.update(dt),
+      renderEntities: () => pigKings.renderEntities,
+      miniMapEntities: () => pigKings.miniMapEntities,
+      dispose: () => pigKings.dispose(),
     });
     return pigKings;
   }
 
-  function registerNightmareRocks(registry: EntityRegistry, prefabId: 'sanityrock', _worldState: SceneWorldState) {
+  function registerNightmareRocks(registry: EntityRegistry, prefabId: 'sanityrock', worldState: SceneWorldState) {
     const nightmareRocks = new NightmareRockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-      scheduler, physics: world, fx: Managers['world_fx'],
+      scheduler, physics: world, fx: Managers['world_fx'], tickingarea: worldState.tickingarea,
       // AllPlayers: the local player, once its sanity component is attached.
       getPlayers: () => player.userData.components?.sanity
         ? [{ position: player.position, sanity: player.userData.components.sanity }] : [],

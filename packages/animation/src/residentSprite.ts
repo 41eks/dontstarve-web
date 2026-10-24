@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { StaticSpriteController } from './wallSprite';
 import type { ArchiveSprite } from './archiveSprite';
-import { registerSpriteRenderGroup } from './renderOrder';
+import { registerSpriteRenderGroup, setSpriteEntityRenderOrder } from './renderOrder';
 import { setSpriteErosion } from './spriteErosion';
 import { installRootMatrixGate } from './matrixGate';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
@@ -209,6 +209,20 @@ export class ResidentSprite implements ArchiveSprite {
   faceCamera(rotation: THREE.Quaternion): void { this.sprite?.faceCamera(rotation); }
   /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
   setErosion(amount: number): void { if (this.sprite) setSpriteErosion(this.sprite.model, amount); }
+  /** LAYER_BACKGROUND art drawn by its mesh order within the ground layers; the group keeps its own order. */
+  setMeshOrder(order: number): void {
+    if (!this.sprite) return;
+    (this.sprite.model.children[0].children[0] as THREE.Object3D).renderOrder = order;
+  }
+  /** Display-only orientation and background order, reapplied by the entity's sprite json after loading. */
+  setGround(renderOrder: number, flat: boolean): void {
+    if (!this.sprite) return;
+    const visual = this.sprite.model.children[0];
+    visual.rotation.x = flat ? -Math.PI / 2 : 0;
+    visual.position.y = flat ? .01 : 0;
+    setSpriteEntityRenderOrder(this.model, renderOrder);
+    this.matrixGate.markDirty();
+  }
   refreshTransform(): void { this.sprite?.refreshTransform(); }
 
   dispose(): void {
@@ -360,9 +374,29 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.staticController?.setPose(name);
   }
   showImage(image: number): void { this.staticController?.showImage(image); }
-  setFacing(facing: number): void { this.staticController?.setFacing(facing); }
+  setFacing(facing: number, mirrored?: boolean): void {
+    (this.sprite?.userData.animationController as { setFacing(facing: number, mirrored?: boolean): void } | undefined)?.setFacing(facing, mirrored);
+  }
+  /** AnimState:SetBuild, for factory sprites that carry the entity's alternative builds. */
+  setBuildArchive(archive: string): void {
+    const controller = this.sprite?.userData.animationController as { setBuildArchive?(archive: string): void } | undefined;
+    if (controller && !controller.setBuildArchive) throw new Error('This sprite has no alternative builds');
+    controller?.setBuildArchive?.(archive);
+  }
   setColour(colour: readonly number[]): void { this.staticController?.setColour(colour); }
   setOpacity(opacity: number): void { this.staticController?.setOpacity(opacity); }
+  setMeshOrder(order: number): void {
+    if (!this.sprite) return;
+    (this.sprite.children[0].children[0] as THREE.Object3D).renderOrder = order;
+  }
+  setGround(renderOrder: number, flat: boolean): void {
+    if (!this.sprite) return;
+    const visual = this.sprite.children[0];
+    visual.rotation.x = flat ? -Math.PI / 2 : 0;
+    visual.position.y = flat ? .01 : 0;
+    setSpriteEntityRenderOrder(this.model, renderOrder);
+    this.matrixGate.markDirty();
+  }
 
   start(name: string): void {
     this.clip = { name, loop: true, finished: false };

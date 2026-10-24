@@ -77,10 +77,13 @@ it('shares pool, mist and waterfall frames while mining and removing pools indep
     const positions = [...whole.getAttribute('position').array];
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
     for (let i = 0; i < 6; i++) expect(performToolWork('MINE', firstFall.entity, {}, pickaxe)).toBe(true);
+    // The mined clip reaches the drawn sprite through the display's effect.
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(mesh(firstFall.model).geometry).not.toBe(whole);
     expect(mesh(secondFall.model).geometry).toBe(whole);
     expect([...whole.getAttribute('position').array]).toEqual(positions);
     for (let i = 0; i < 6; i++) expect(performToolWork('MINE', secondFall.entity, {}, pickaxe)).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(mesh(firstFall.model).geometry).toBe(mesh(secondFall.model).geometry);
 
     const shared = [mesh(second).geometry, mesh(mist(second)).geometry, mesh(secondFall.model).geometry];

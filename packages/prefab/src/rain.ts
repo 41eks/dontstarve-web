@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { createEmptyEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 
@@ -54,9 +56,12 @@ export interface RainEffectOptions {
 }
 
 /** One-shot `raindrop` splash from rain.lua's pool: it hides itself when its animation ends. */
+/** A pooled raindrop fx entity. */
 interface Splash {
+  readonly instance: PrefabInstance;
+  readonly display: PrefabDisplay;
   readonly model: THREE.Group;
-  readonly animation: SpriteAnimationController;
+  readonly animation: SpriteState;
   active: boolean;
 }
 
@@ -73,6 +78,8 @@ export class RainEffect {
   private readonly splashes: Splash[] = [];
   private readonly pool: Splash[] = [];
   private mesh?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  /** rain.lua: the FX emitter entity; its particles are drawn under the display's model. */
+  private emitter?: ReturnType<typeof createEmptyEntity>;
   private factory?: AnimatedSpriteFactory;
   private sound?: SoundHandle;
   private disposed = false;
@@ -146,7 +153,11 @@ export class RainEffect {
     mesh.name = 'rain';
     mesh.frustumCulled = false;
     mesh.renderOrder = RENDER_ORDER;
-    this.options.scene.add(mesh);
+    const emitter = this.emitter = createEmptyEntity('rain');
+    emitter.instance.persists = false;
+    emitter.instance.addTag('FX');
+    emitter.display.model.add(mesh);
+    this.options.scene.add(emitter.display.model);
     if (this.options.rate.peek() > 0) this.fastForward();
   }
 
@@ -179,11 +190,15 @@ export class RainEffect {
     if (!this.factory) return;
     let splash = this.pool.pop();
     if (!splash) {
-      const model = this.factory.create({ initialAnimation: 'anim', name: 'raindrop' });
-      Object.assign(model.userData, { prefab: 'raindrop', persists: false, tags: ['FX'] });
-      splash = { model, animation: model.userData.animationController as SpriteAnimationController, active: false };
+      const factory = this.factory;
+      const { instance, display } = createPrefabEntity('raindrop', { create: initialAnimation => factory.create({ initialAnimation, name: 'raindrop' }),
+        release: sprite => factory.disposeSprite(sprite) }, { name: 'anim', held: true }, 'raindrop');
+      display.model.userData.prefab = 'raindrop';
+      instance.persists = false;
+      instance.addTag('FX');
+      splash = { instance, display, model: display.model, animation: instance.sprite, active: false };
     }
-    splash.model.position.set(x, 0, z);
+    splash.instance.position.set(x, 0, z);
     if (!splash.model.parent) this.options.scene.add(splash.model);
     splash.active = true;
     this.splashes.push(splash);
@@ -198,12 +213,14 @@ export class RainEffect {
     this.splashes.splice(index, 1);
     splash.active = false;
     splash.model.removeFromParent();
-    if (this.disposed) this.factory?.disposeSprite(splash.model);
+    if (this.disposed) this.release(splash);
     else this.pool.push(splash);
   }
 
+  private release({ instance, display }: Splash): void { instance.remove(); display.dispose(); }
+
   private clearPool(): void {
-    for (const splash of this.pool.splice(0)) this.factory?.disposeSprite(splash.model);
+    for (const splash of this.pool.splice(0)) this.release(splash);
   }
 
   /** rain.lua's 30 Hz `updateFunc`. */
@@ -336,7 +353,8 @@ export class RainEffect {
       this.mesh.geometry.dispose();
       this.mesh = undefined;
     }
-    for (const splash of [...this.splashes, ...this.pool]) this.factory?.disposeSprite(splash.model);
+    if (this.emitter) { this.emitter.instance.remove(); this.emitter.display.dispose(); this.emitter = undefined; }
+    for (const splash of [...this.splashes, ...this.pool]) this.release(splash);
     this.splashes.length = 0;
     this.pool.length = 0;
     this.factory?.dispose();

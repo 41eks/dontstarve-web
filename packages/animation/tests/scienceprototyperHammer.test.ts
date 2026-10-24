@@ -97,7 +97,8 @@ it('preserves work through reskinning and restores proximity after hits', async 
     expect(model.parent).toBeNull();
     expect(dropLoot).toHaveBeenCalledOnce();
     const effect = world.scene.children[0];
-    const effectMesh = effect.children[0].children[0] as THREE.Mesh;
+    let effectMesh!: THREE.Mesh;
+    effect.traverse(object => { if (object instanceof THREE.Mesh) effectMesh ??= object; });
     const disposeMaterial = vi.spyOn((effectMesh.material as THREE.Material[])[0], 'dispose');
     placement.dispose();
     await Promise.resolve();

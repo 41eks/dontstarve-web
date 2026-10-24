@@ -14,7 +14,11 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const map: WaveMap = { tileSize: 12, tileAt: () => 201, isLandTile: () => false, isOceanTile: tile => tile === 201 };
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const meshOf = (model: THREE.Object3D) => model.children[0].children[0] as THREE.Mesh;
+const meshOf = (model: THREE.Object3D) => {
+  let mesh: THREE.Mesh | undefined;
+  model.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object; });
+  return mesh!;
+};
 
 async function setup(tickingarea?: TileStateQuery) {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));

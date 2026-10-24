@@ -32,7 +32,7 @@ async function setup() {
   };
   const rock = async (id: 'sanityrock' | 'insanityrock') =>
     (await manager.spawn(id, new THREE.Vector3(0, 0, 0))).userData.nightmareRock as {
-      sg: { stateName: string }; active: boolean; body: CANNON.Body };
+      sg: { stateName: string }; active: boolean; instance: { readonly physicsBody?: CANNON.Body } };
   return { manager, current, player, fx, run, rock, physics };
 }
 
@@ -40,16 +40,19 @@ describe('nightmare rocks', () => {
   it('a sanityrock rises for a sane player within 30 units, blocks them, and lowers once they leave', async () => {
     const { manager, player, fx, run, rock, physics } = await setup();
     const obelisk = await rock('sanityrock');
-    expect(physics.bodies).toContain(obelisk.body);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const body = obelisk.instance.physicsBody!;
+    expect(physics.bodies).toContain(body);
     run(2);
     expect(obelisk.sg.stateName).toBe('idle');
-    expect(obelisk.body.collisionResponse).toBe(false);
+    expect(body.collisionResponse).toBe(false);
 
     player.position.set(20, 0, 0);
     run(2);
     expect(fx.spawn).toHaveBeenCalledWith('sanity_raise', expect.anything());
     expect(obelisk.active).toBe(true);
-    expect(obelisk.body.collisionResponse).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(body.collisionResponse).toBe(true);
     run(3);
     expect(obelisk.sg.stateName).toBe('idle');
 
@@ -61,9 +64,10 @@ describe('nightmare rocks', () => {
     run(3);
     expect(fx.spawn).toHaveBeenCalledWith('sanity_lower', expect.anything());
     expect(obelisk.active).toBe(false);
-    expect(obelisk.body.collisionResponse).toBe(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(body.collisionResponse).toBe(false);
     manager.dispose();
-    expect(physics.bodies).not.toContain(obelisk.body);
+    expect(physics.bodies).not.toContain(body);
   });
 
   it('an insanityrock only rises once the nearby player becomes insane, with sane/insane hysteresis', async () => {

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { WINTEROMETER_DEFINITION, WINTEROMETER_ID } from '../../prefab/src/winterometer';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { GetTemperatureAtXZ } from '../../componets/src/temperatureoverrider';
 import type { SpriteController } from '../src/sprite';
@@ -50,7 +51,7 @@ it('reads the local temperature once per second, clamped to 0..OVERHEAT_TEMP, an
     expect(GetTemperatureAtXZ(() => 12, 0, 0)).toBe(12);
 
     // burntup cancels the task and later starts are refused.
-    model.userData.tags = [...(model.userData.tags ?? []), 'burnt'];
+    prefabInstance(model)!.addTag('burnt');
     model.dispatchEvent({ type: 'burntup' } as never);
     const calls = percent.mock.calls.length;
     scheduler.advance(5);

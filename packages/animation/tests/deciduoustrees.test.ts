@@ -39,6 +39,7 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     expect(icon).toMatchObject({ icon: 'tree_leaf.png', priority: -1, position: tree.position });
     const growth = model.userData.components.growable, leaves = model.userData.deciduoustreeState.leaves;
     expect(work.GetWorkLeft()).toBe(5);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect((model.children[0].children[0].children[0] as THREE.Mesh).visible).toBe(false);
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     const timer = growth.state.timer.peek(); s.scheduler.advance(100); expect(growth.state.timer.peek()).toBe(timer);
@@ -109,7 +110,8 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
     const leaves = tree.model!.userData.deciduoustreeState.leaves;
     expect(work.WorkedBy({ getPosition: () => new THREE.Vector3(3, 0, 0) }, 15)).toBe(true);
     expect(s.dropLoot.mock.calls[0][0]).toEqual([{ itemId: 'log', count: 3 }, { itemId: 'acorn', count: 2 }]);
-    expect(target.isValid()).toBe(false); expect(s.physics.bodies).toEqual([]);
+    expect(target.isValid()).toBe(false);
+    await new Promise(resolve => setTimeout(resolve, 0)); expect(s.physics.bodies).toEqual([]);
     expect(leaves.dayTimer.peek()).toEqual({ status: 'stopped' });
     const record = s.forest.exportRecords()[0];
     expect(record.components.growable).toEqual({ stage: 3 });

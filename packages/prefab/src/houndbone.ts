@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
-import { createEffect, type TileStateQuery } from '@dontstarve-web/signals';
+import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -37,9 +38,10 @@ export interface HoundboneWorld {
 
 interface Houndbone {
   model: THREE.Group;
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
+  sprite: ArchiveSpriteCommands;
   stopActivity?: () => void;
-  stopArt?: () => void;
   workable: Workable;
   loot: { itemId: string; output: PreparedGroundSpawn }[];
   bonetype: number;
@@ -51,9 +53,8 @@ export class HoundboneManager {
   private readonly world: HoundboneWorld;
   private readonly assets = new ArchiveSpriteAssets('houndbone');
   private readonly bones = new Map<THREE.Group, Houndbone>();
-  private readonly effects = new Set<ArchiveSprite>();
+  private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
   private creator?: Promise<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>;
-  private readonly cameraQuaternion = new THREE.Quaternion();
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: HoundboneWorld) {
@@ -75,7 +76,9 @@ export class HoundboneManager {
     if (this.disposed) { loot.forEach(({ output }) => output.dispose()); throw new Error('Hound bones have been disposed'); }
     const build = (clip: { name: string; loop: boolean }) => create(clip.name, clip.loop, HOUNDBONE_ID);
     const clip = { name: HOUNDBONE_PIECES[bonetype - 1], loop: false };
-    return this.create(new ResidentSprite(build, clip, build(clip), HOUNDBONE_ID), loot, position, bonetype, saved);
+    const entity = createArchiveEntity(HOUNDBONE_ID, { create: build, initial: build(clip) }, { name: clip.name, billboard: true }, HOUNDBONE_ID);
+    entity.instance.sprite.playOnce(clip.name);
+    return this.create(entity, loot, position, bonetype, saved);
   }
 
   /** The collapse effect, rock_break sound and every item the bone's loot can roll, ready before the hit. */
@@ -96,17 +99,18 @@ export class HoundboneManager {
     return loot;
   }
 
-  private create(sprite: ResidentSprite, loot: Houndbone['loot'], position: THREE.Vector3, bonetype: number, saved?: HoundboneRecord): THREE.Group {
-    const model = sprite.model;
+  private create({ instance, display }: ReturnType<typeof createArchiveEntity>, loot: Houndbone['loot'], position: THREE.Vector3, bonetype: number, saved?: HoundboneRecord): THREE.Group {
+    const model = display.model;
+    const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: HOUNDBONE_ID, tags: ['bone'], animationController: sprite });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: HOUNDBONE_ID, animationController: sprite });
     const inst = actionEntity(model, HOUNDBONE_ID);
     inst.addTag('bone');
     // workable: HAMMER, 1 work; onhammered drops the loot, plays collapse_small with the rock material and removes it.
     const workable = new Workable(inst);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(1);
-    const bone: Houndbone = { model, sprite, workable, loot, bonetype };
+    const bone: Houndbone = { model, instance, display, sprite, workable, loot, bonetype };
     const lootdropper = new LootDropper(inst, (itemId, point) => {
       const index = bone.loot.findIndex(entry => entry.itemId === itemId);
       const [prepared] = index < 0 ? [] : bone.loot.splice(index, 1).map(entry => entry.output);
@@ -125,10 +129,9 @@ export class HoundboneManager {
       this.remove(model);
     });
     Object.assign(model.userData.components, { workable, lootdropper });
-    bone.stopArt = createEffect(() => { sprite.art.get(); sprite.faceCamera(this.cameraQuaternion); });
     this.bones.set(model, bone);
     this.scene.add(model);
-    bone.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
+    bone.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
 
@@ -140,21 +143,24 @@ export class HoundboneManager {
     void createSharedArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
       bank: 'collapse', animation: 'collapse_small', loop: false }).then(effect => {
       if (this.disposed) { effect.dispose(); return; }
-      effect.model.position.copy(at); effect.model.userData.tags = ['FX', 'NOCLICK']; effect.model.userData.persists = false;
-      this.scene.add(effect.model); this.effects.add(effect);
-      effect.playOnce('collapse_small', () => { effect.dispose(); this.effects.delete(effect); });
+      const entity = createArchiveEntity('collapse_small', { initial: effect, create: clip => createSharedArchiveSprite(this.assets, {
+        animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse', animation: clip.name, loop: clip.loop,
+      }) }, { name: 'collapse_small', billboard: true });
+      entity.instance.position.copy(at); entity.instance.persists = false;
+      for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
+      this.scene.add(entity.display.model); this.effects.add(entity);
+      entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
     }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
   }
 
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    this.cameraQuaternion.copy(quaternion);
-    for (const { sprite } of this.bones.values()) if (sprite.loaded) { sprite.faceCamera(quaternion); sprite.update(dt); }
-    for (const effect of [...this.effects]) { effect.model.quaternion.copy(quaternion); effect.update(dt); }
+    for (const { sprite } of this.bones.values()) if (sprite.loaded) sprite.update(dt);
+    for (const { instance } of [...this.effects]) instance.sprite.update(dt);
   }
 
   get renderEntities() {
-    return [...[...this.bones].filter(([, { sprite }]) => sprite.loaded).map(([model]) => model), ...[...this.effects].map(({ model }) => model)]
+    return [...[...this.bones].filter(([, { sprite }]) => sprite.loaded).map(([model]) => model), ...[...this.effects].map(({ display }) => display.model)]
       .map(object => ({ object, footPosition: object.position, cameraDepth: 0 }));
   }
 
@@ -183,17 +189,17 @@ export class HoundboneManager {
   private remove(model: THREE.Group): void {
     const bone = this.bones.get(model); if (!bone) return;
     this.bones.delete(model); model.userData.removed = true;
-    bone.stopActivity?.(); bone.stopArt?.();
+    bone.stopActivity?.();
     bone.workable.dispose();
     bone.loot.forEach(({ output }) => output.dispose()); bone.loot.length = 0;
-    bone.sprite.dispose();
+    bone.instance.remove();
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.bones.keys()]) this.remove(model);
-    for (const effect of this.effects) effect.dispose();
+    for (const { instance } of this.effects) instance.remove();
     this.effects.clear();
     this.assets.dispose();
   }

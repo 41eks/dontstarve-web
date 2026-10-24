@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
+import { watchTileActivity } from './tileActivity';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
-import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { modelEntries } from './modelRecords';
@@ -47,6 +50,7 @@ export interface ArchivePropRecord {
 }
 
 export interface ArchivePropsWorld {
+  tickingarea?: TileStateQuery;
   physics?: CANNON.World;
   /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
   cameraFacing?: ReadonlySignal<number>;
@@ -90,10 +94,12 @@ export function isArchivePropId(value: string): value is ArchivePropId {
 interface ArchiveProp {
   prefab: ArchivePropId | typeof ARCHIVE_SWITCH_PAD_ID;
   model: THREE.Group;
-  sprite?: ArchiveSprite;
-  shadow?: ArchiveSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
+  sprite?: ArchiveSpriteCommands;
+  shadow?: ReturnType<typeof createArchiveEntity>;
+  stopActivity?: () => void;
   minimap?: MiniMapEntity;
-  body?: CANNON.Body;
   workable?: Workable;
   loot?: Map<string, PreparedGroundSpawn[]>;
   anim?: number;
@@ -109,7 +115,8 @@ export class ArchivePropsManager {
   private readonly world: ArchivePropsWorld;
   private readonly assets = new ArchiveSpriteAssets();
   private readonly props = new Map<THREE.Group, ArchiveProp>();
-  private readonly effects = new Set<ArchiveSprite>();
+  private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
+  private readonly sources = new Map<string, ReturnType<typeof preloadSharedArchiveSprite>>();
   /** Module-level `_storyprogress`: the last story line handed to a rune statue. */
   private storyprogress = 0;
   private disposed = false;
@@ -133,10 +140,8 @@ export class ArchivePropsManager {
     const initial = prefab === ARCHIVE_MOON_STATUE_ID ? `idle_full_${anim}` : prefab === ARCHIVE_RUNE_STATUE_ID
       ? (anim === 1 ? 'idle' : `idle${anim}`) : 'idle';
     const resources = await Promise.allSettled([
-      createSharedArchiveSprite(this.assets, { animationArchive: definition.animationArchive, buildArchives: [definition.buildArchive],
-        bank: definition.bank, animation: initial, loop: false, hiddenSymbols: definition.hiddenSymbols }, { name: prefab }),
-      definition.ground && prefab === ARCHIVE_PORTAL_ID ? createSharedArchiveSprite(this.assets, { animationArchive: PORTAL_SHADOW.animationArchive,
-        buildArchives: [PORTAL_SHADOW.buildArchive], bank: PORTAL_SHADOW.bank, animation: 'idle', loop: false }, { name: `${prefab}_shadow` }) : undefined,
+      this.getSource(definition),
+      prefab === ARCHIVE_PORTAL_ID ? this.getSource(PORTAL_SHADOW) : undefined,
       prefab === ARCHIVE_MOON_STATUE_ID ? this.prepareStatue() : undefined,
     ] as const);
     const failed = resources.find(result => result.status === 'rejected');
@@ -144,11 +149,27 @@ export class ArchivePropsManager {
     const shadow = resources[1].status === 'fulfilled' ? resources[1].value : undefined;
     const loot = resources[2].status === 'fulfilled' ? resources[2].value : undefined;
     if (failed || this.disposed || !sprite) {
-      sprite?.dispose(); shadow?.dispose();
       loot?.forEach(outputs => outputs.forEach(output => output.dispose()));
       throw failed?.status === 'rejected' ? failed.reason : new Error('Archive props have been disposed');
     }
-    return this.create(prefab, definition, sprite, shadow, loot, position, anim, state?.storyprogress, saved);
+    const create = (clip: { name: string; loop: boolean }) => sprite(clip.name, clip.loop, prefab);
+    const entity = createArchiveEntity(prefab, { create, initial: create({ name: initial, loop: false }) }, { name: initial, billboard: !definition.ground }, prefab);
+    entity.instance.sprite.playOnce(initial);
+    const childCreate = shadow && ((clip: { name: string; loop: boolean }) => shadow(clip.name, clip.loop, `${prefab}_shadow`));
+    const child = childCreate && createArchiveEntity(`${prefab}_shadow`, { create: childCreate, initial: childCreate({ name: 'idle', loop: false }) }, { name: 'idle' });
+    child?.instance.sprite.playOnce('idle');
+    return this.create(prefab, definition, entity, child, loot, position, anim, state?.storyprogress, saved);
+  }
+
+  private getSource(definition: Pick<PropDefinition, 'animationArchive' | 'buildArchive' | 'bank' | 'hiddenSymbols'>) {
+    const key = definition.animationArchive;
+    let request = this.sources.get(key);
+    if (!request) {
+      request = preloadSharedArchiveSprite(this.assets, { animationArchive: key, buildArchives: [definition.buildArchive],
+        bank: definition.bank, hiddenSymbols: definition.hiddenSymbols }).catch(error => { this.sources.delete(key); throw error; });
+      this.sources.set(key, request);
+    }
+    return request;
   }
 
   /** The statue's collapse effect, rock_break sound and the three prepared pieces of the `archive_statues` table. */
@@ -171,28 +192,30 @@ export class ArchivePropsManager {
     return loot;
   }
 
-  private create(prefab: ArchivePropId | typeof ARCHIVE_SWITCH_PAD_ID, definition: PropDefinition, sprite: ArchiveSprite, shadow: ArchiveSprite | undefined,
+  private create(prefab: ArchivePropId | typeof ARCHIVE_SWITCH_PAD_ID, definition: PropDefinition, { instance, display }: ReturnType<typeof createArchiveEntity>, shadow: ReturnType<typeof createArchiveEntity> | undefined,
     loot: Map<string, PreparedGroundSpawn[]> | undefined, position: THREE.Vector3, anim: number | undefined, storyprogress: number | undefined,
     saved: ArchivePropRecord | undefined): THREE.Group {
-    const model = sprite.model;
+    const model = display.model;
+    const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab, tags: [...definition.tags] });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab });
+    for (const tag of definition.tags) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
-    const prop: ArchiveProp = { prefab, model, sprite, shadow, loot, anim, storyprogress, removed: false };
+    const prop: ArchiveProp = { prefab, model, instance, display, sprite, shadow, loot, anim, storyprogress, removed: false };
     if (definition.ground) this.layOnGround(prop, definition.ground);
     if (shadow) {
       // The shadow is a DECOR | NOCLICK child that sorts just under the portal art (SortOrder 1, no FinalOffset).
-      shadow.model.userData.billboard = false;
-      shadow.model.userData.tags = ['DECOR', 'NOCLICK'];
-      const visual = shadow.model.children[0];
-      visual.rotation.x = -Math.PI / 2; visual.position.y = .01;
-      (visual.children[0] as THREE.Object3D).renderOrder = this.groundRenderOrder(1);
-      model.add(shadow.model);
+      shadow.display.model.userData.billboard = false;
+      for (const tag of ['DECOR', 'NOCLICK']) shadow.instance.addTag(tag);
+      shadow.instance.persists = false;
+      shadow.instance.sprite.setGround(this.groundRenderOrder(1));
+      sprite.attachFx('shadow', { sprite: shadow.instance.sprite, display: shadow.display, active: createSignal(true),
+        sortLayer: 0, background: true });
     }
     if (definition.eightFaced && this.world.cameraFacing) {
       // Transform:SetEightFaced: a rotation-0 inst shows the facing the camera heading selects.
       const facing = watchSignal(this.world.cameraFacing, stop => { prop.stopFacing = stop; });
-      createEffect(() => { const value = facing.get(); sprite.setFacing(value); shadow?.setFacing(value); });
+      createEffect(() => { const value = facing.get(); sprite.setFacing(value); shadow?.instance.sprite.setFacing(value); });
     }
     if (prefab === ARCHIVE_MOON_STATUE_ID) this.createStatue(prop, inst, anim!, saved !== undefined);
     else if (prefab === ARCHIVE_RUNE_STATUE_ID) this.createRune(prop, storyprogress);
@@ -201,25 +224,22 @@ export class ArchivePropsManager {
       prop.minimap.SetIcon(definition.minimap ?? `archive_moon_statue${anim}.png`);
     }
     if (prefab === ARCHIVE_MOON_STATUE_ID || prefab === ARCHIVE_RUNE_STATUE_ID) {
-      // MakeObstaclePhysics(inst, .66)
-      if (this.world.physics) {
-        prop.body = MakeObstaclePhysics(model.position, PHYSICS_RADIUS);
-        model.userData.physicsBody = prop.body; model.userData.physicsRadius = PHYSICS_RADIUS;
-        this.world.physics.addBody(prop.body);
-      }
+      MakeObstaclePhysics(prop.instance, PHYSICS_RADIUS);
+      if (this.world.physics) prop.instance.bindPhysics(this.world.physics);
     }
-    for (const tag of definition.tags) inst.addTag(tag);
     this.props.set(model, prop);
     this.scene.add(model);
+    instance.persists = prefab !== ARCHIVE_SWITCH_PAD_ID;
+    prop.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
+      instance.setActive(active); shadow?.instance.setActive(active);
+    });
     return model;
   }
 
   /** AnimState:SetOrientation(ANIM_ORIENTATION.OnGround) and SetLayer(LAYER_BACKGROUND): flat art drawn under the world. */
   private layOnGround(prop: ArchiveProp, { sortOrder, finalOffset = 0 }: NonNullable<PropDefinition['ground']>): void {
-    const visual = prop.model.children[0];
     prop.model.userData.billboard = false;
-    visual.rotation.x = -Math.PI / 2; visual.position.y = .01;
-    (visual.children[0] as THREE.Object3D).renderOrder = this.groundRenderOrder(sortOrder, finalOffset);
+    prop.sprite!.setGround(this.groundRenderOrder(sortOrder, finalOffset));
   }
 
   /** Background decals share one layer: the source sort order (and FinalOffset) breaks ties within it. */
@@ -265,9 +285,13 @@ export class ArchivePropsManager {
     void createSharedArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
       bank: 'collapse', animation: 'collapse_small', loop: false }).then(effect => {
       if (this.disposed) { effect.dispose(); return; }
-      effect.model.position.copy(at); effect.model.userData.tags = ['FX', 'NOCLICK']; effect.model.userData.persists = false;
-      this.scene.add(effect.model); this.effects.add(effect);
-      effect.playOnce('collapse_small', () => { effect.dispose(); this.effects.delete(effect); });
+      const entity = createArchiveEntity('collapse_small', { initial: effect, create: clip => createSharedArchiveSprite(this.assets, {
+        animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse', animation: clip.name, loop: clip.loop,
+      }) }, { name: 'collapse_small', billboard: true });
+      entity.instance.position.copy(at); entity.instance.persists = false;
+      for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
+      this.scene.add(entity.display.model); this.effects.add(entity);
+      entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
     }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
   }
 
@@ -295,30 +319,32 @@ export class ArchivePropsManager {
 
   /** ambientfn: NOBLOCK | NOCLICK sound source; the arhivepoweron/off listeners need the archive manager. */
   private createAmbient(position: THREE.Vector3, saved?: ArchivePropRecord): THREE.Group {
-    const model = new THREE.Group();
-    model.name = ARCHIVE_AMBIENT_SFX_ID;
+    const { instance, display } = createEmptyEntity(ARCHIVE_AMBIENT_SFX_ID);
+    const model = display.model;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: ARCHIVE_AMBIENT_SFX_ID, tags: ['NOBLOCK', 'NOCLICK'] });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: ARCHIVE_AMBIENT_SFX_ID });
+    for (const tag of ['NOBLOCK', 'NOCLICK']) instance.addTag(tag);
     actionEntity(model, ARCHIVE_AMBIENT_SFX_ID);
-    this.props.set(model, { prefab: ARCHIVE_AMBIENT_SFX_ID, model, removed: false });
+    const prop: ArchiveProp = { prefab: ARCHIVE_AMBIENT_SFX_ID, model, instance, display, removed: false };
+    this.props.set(model, prop);
+    prop.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     this.scene.add(model);
     return model;
   }
 
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    for (const { model, sprite, shadow } of this.props.values()) {
-      if (model.userData.billboard !== false) model.quaternion.copy(quaternion);
-      sprite?.update(dt); shadow?.update(dt);
+    for (const { sprite } of this.props.values()) {
+      if (sprite?.loaded) sprite.update(dt);
     }
-    for (const effect of [...this.effects]) { effect.model.quaternion.copy(quaternion); effect.update(dt); }
+    for (const { instance } of [...this.effects]) instance.sprite.update(dt);
   }
 
   /** Only upright art needs depth sorting; background decals draw first. */
   get renderEntities() {
-    return [...this.props.values()].filter(({ model, sprite }) => sprite && model.userData.billboard !== false)
+    return [...this.props.values()].filter(({ model, sprite }) => sprite?.loaded && model.userData.billboard !== false)
       .map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }))
-      .concat([...this.effects].map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })));
+      .concat([...this.effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })));
   }
 
   get miniMapEntities(): MiniMapEntity[] {
@@ -350,18 +376,16 @@ export class ArchivePropsManager {
   private remove(model: THREE.Group): void {
     const prop = this.props.get(model); if (!prop) return;
     this.props.delete(model); model.userData.removed = true; prop.removed = true;
-    if (prop.body) this.world.physics?.removeBody(prop.body);
-    prop.stopFacing?.(); prop.minimap?.dispose(); prop.workable?.dispose();
+    prop.stopActivity?.(); prop.stopFacing?.(); prop.minimap?.dispose(); prop.workable?.dispose();
     for (const outputs of prop.loot?.values() ?? []) outputs.forEach(output => output.dispose());
-    prop.loot?.clear(); prop.shadow?.dispose(); prop.sprite?.dispose();
-    if (!prop.sprite) model.removeFromParent();
+    prop.loot?.clear(); prop.shadow?.instance.remove(); prop.instance.remove();
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.props.keys()]) this.remove(model);
-    for (const effect of this.effects) effect.dispose();
+    for (const { instance } of this.effects) instance.remove();
     this.effects.clear();
     this.assets.dispose();
   }

@@ -810,11 +810,11 @@ three-roaming-save-v1.json
 
 #### 地图与月树实体
 
-当前地面是固定平面，没有 DST 式可修改地皮，因此 `map` 保存生成器或初始数据集的身份和参数。当前应用从 `public/saves/initial-world.json` 的 `world.entities.moon_tree` 读取 500 个预先随机生成的固定坐标，通过 `createMoonTreeForest()` 的 `positions` 选项创建通用实体记录；坐标位于 1000 × 1000 的区域内，并保留出生点空地。每次进入页面直接恢复存档中的实体记录，不在运行时重新随机生成。
+地图保存地皮与初始数据集信息；月树从当前选定存档的 `world.entities.moon_tree` 逐条恢复。`createMoonTreeManager()` 与其他 prefab manager 一样在实体注册阶段创建，直接持有所属世界服务；不再预建森林、接收随机生成参数或以坐标数组创建集合后再绑定世界。历史生成器的元数据继续兼容读取，实际树木的位置与数量以实体记录为准。
 
 `ResidentEntity` 保留每棵月树的运行时 `id`、持久化 `saveId`、脚点 `position` 和稳定的 `model` 根节点。`bindWorld()` 注入世界的 `tickingarea`，`watchTileActivity()` 更新活动集合并调用 `ResidentSprite.setActive()`；inactive 只释放 visual，保留交互投影、Workable、生长／腐烂计时器和小地图实体。返回时重建共享 archive sprite 并恢复当前 clip、积雪和外观，不重建整棵树（见 [tile 生命周期](tile-lifecycle.md)）。未绑定世界时 visual 保持未加载；绑定后未提供活动查询或查询返回 `undefined` 时保持 active。
 
-月树通过 `preloadSharedArchiveSprite()` 复用共享资源，循环待机进入实例批次，其他动画复用共享帧。存档遍历 `MoonTreeForest.entities` 的全部记录，保存身份、脚点和源组件状态，包括树桩／烧焦状态、尺寸、生长和腐烂计时器；不只保存活动集合。运行时 `id` 不写入存档，持久化 ID 通过 `saveId` 恢复和导出。visual 是否驻留、动画帧与相机朝向属于派生状态；`map.generator.options.moonTreeCount` 仅描述初次生成参数，不能代替实际实体记录。
+月树通过 `preloadSharedArchiveSprite()` 复用共享资源，循环待机进入实例批次，其他动画复用共享帧。存档通过月树 manager 的 `exportRecords()` 导出全部逻辑实体，保存身份、脚点和源组件状态，包括树桩／烧焦状态、尺寸、生长和腐烂计时器；不只保存活动集合。运行时 `id` 不写入存档，持久化 ID 通过 `saveId` 恢复和导出。visual 是否驻留、动画帧与相机朝向属于派生状态；`map.generator.options.moonTreeCount` 仅描述初次生成参数，不能代替实际实体记录。
 
 若以后加入可修改地皮，可采用与 DST 类似的编码对象：
 

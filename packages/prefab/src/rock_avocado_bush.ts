@@ -84,7 +84,6 @@ export const ROCK_AVOCADO_BUSH_DEFINITION: PickablePlantDefinition = {
     : [...model.userData.components.growable.GetStage() === 3
       ? Array.from({ length: 3 }, () => ({ prefab: ROCK_AVOCADO_FRUIT_ID })) : [], { prefab: 'dug_rock_avocado_bush' }],
   createBehavior: context => new RockAvocadoBush(context),
-  resident: true,
 };
 
 export class RockAvocadoBushManager extends PickablePlantManager {

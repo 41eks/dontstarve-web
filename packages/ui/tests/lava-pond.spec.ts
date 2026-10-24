@@ -40,21 +40,22 @@ test('spawns native lava and independent scorched rocks, restores their layout a
     const { scene, camera, dstLighting, world, FindEntities } = (window as any).lavaGame;
     const model = scene.children.find((model: any) => model.userData.prefab === 'lava_pond');
     if (!model) return null;
-    const controller = model.userData.lavaPond, mesh = model.children[0].children[0];
+    // A display root holds the drawn sprite (art group, then mesh) beside the child rocks.
+    const controller = model.userData.lavaPond, drawn = model.children[0], mesh = drawn.children[0].children[0];
     const childRocks = controller.children.map((rock: any) => ({
       prefab: rock.userData.prefab, foot: rock.getWorldPosition(model.position.clone()).toArray(),
-      order: rock.children[0].renderOrder,
+      order: rock.children[0].children[0].renderOrder,
       cameraDepth: rock.getWorldPosition(model.position.clone()).applyMatrix4(camera.matrixWorldInverse).z,
-      vertices: rock.children[0].children[0].geometry.drawRange.count,
-      build: rock.userData.animationController.build.name,
+      vertices: rock.children[0].children[0].children[0].geometry.drawRange.count,
+      build: rock.children[0].userData.animationController.build.name,
     }));
     const heaters = FindEntities(model.position, 30, ['HASHEATER'], ['INLIMBO']);
     const withoutPool = dstLighting.sampleLightLevel(model.position, model);
     return { id: model.userData.entityId, position: model.position.toArray(), clip: model.userData.animationController.currentAnimation,
-      vertices: mesh.geometry.drawRange.count, frameVersion: mesh.geometry.getAttribute('uv').version, build: model.userData.animationController.build.name,
-      flat: model.children[0].rotation.x, poolOrder: mesh.renderOrder, childRocks,
+      vertices: mesh.geometry.drawRange.count, frameVersion: mesh.geometry.getAttribute('uv').version, build: drawn.userData.animationController.build.name,
+      flat: drawn.children[0].rotation.x, poolOrder: mesh.renderOrder, childRocks,
       heat: heaters.find((inst: any) => inst.model === model)?.components.heater?.GetHeat(),
-      bodyRegistered: world.bodies.includes(controller.body),
+      bodyRegistered: world.bodies.includes(model.userData.instance.physicsBody),
       light: dstLighting.sampleLightLevel(model.position), withoutPool };
   });
 
@@ -105,12 +106,13 @@ test('spawns native lava and independent scorched rocks, restores their layout a
   expect(await page.evaluate(() => {
     const { scene, world, FindEntities, dstLighting } = (window as any).lavaGame;
     const model = scene.children.find((model: any) => model.userData.prefab === 'lava_pond');
-    const body = model.userData.physicsBody, position = model.position.clone();
+    const body = model.userData.instance.physicsBody, position = model.position.clone();
+    const blocked = world.bodies.includes(body);
     model.userData.remove();
-    return { heaters: FindEntities(position, 30, ['HASHEATER']).length,
+    return { blocked, heaters: FindEntities(position, 30, ['HASHEATER']).length,
       body: world.bodies.includes(body), children: model.userData.lavaPond.children.length,
       localLight: dstLighting.sampleLightLevel(position) };
-  })).toMatchObject({ heaters: 0, body: false, children: 0 });
+  })).toMatchObject({ blocked: true, heaters: 0, body: false, children: 0 });
   const removed = await saveGame();
   expect(removed.world.entities.lava_pond).toEqual([]);
   expect(removed.world.entities.lava_pond_rock).toEqual([baseRock]);

@@ -133,7 +133,7 @@ export const PREFAB_DEFINITIONS = {
       { animation: 'evergreen_short_normal.zip', build: 'evergreen_new.zip' },
       { animation: 'evergreen_tall_old.zip', build: 'evergreen_new.zip' }, 'pine_needles.zip',
     ]),
-  pigKings: definePrefabs(['pigking'], empty, [], [definitions.pigKing.archive]),
+  pigKings: definePrefabs(['pigking'], empty, true, [definitions.pigKing.archive]),
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable

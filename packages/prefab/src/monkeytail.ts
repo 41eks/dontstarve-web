@@ -11,7 +11,6 @@ export const MONKEYTAIL_DEFINITION: PickablePlantDefinition = {
   empty: { name: 'picked', frame: 'last' }, grow: 'grow', barren: 'idle_dead',
   dugLoot: 'dug_monkeytail', maxCycles: () => 5 + Math.floor(Math.random() * 3),
   witherable: true, burnTime: 15, burnFxLevel: 2, deploySmartRadius: 1.5,
-  resident: true,
 };
 
 /** monkeytail.lua: wild reeds regrow indefinitely; transplanted plants require fertilizer. */

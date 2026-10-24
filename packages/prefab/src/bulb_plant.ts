@@ -3,7 +3,8 @@ import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signal
 import { GameTimeScheduler } from './components/gameTimeScheduler';
 import { ComponentTimer } from './components/timer';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import type { SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
@@ -11,7 +12,7 @@ import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
-import { createEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery, type WorldContentSignal } from '@dontstarve-web/signals';
+import type { GetWatchWorldContent, TileStateQuery } from '@dontstarve-web/signals';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
@@ -105,15 +106,18 @@ export class BulbPlantController {
   private pickSound?: SoundHandle;
   readonly pickable: Pickable;
   private readonly model: THREE.Group;
-  private readonly animation: SpriteAnimationController & { setActive?(active: boolean): void };
+  private readonly animation: SpriteAnimationController;
+  /** The entity whose visual follows OnEntitySleep/OnEntityWake. */
+  private readonly entity?: { setActive(active: boolean): void; addTag(tag: string): void };
   private readonly world: BulbPlantWorld;
   private readonly random: () => number;
   private readonly variant: BulbPlantVariant;
 
-  constructor(model: THREE.Group, animation: SpriteAnimationController & { setActive?(active: boolean): void }, world: BulbPlantWorld, variant: BulbPlantVariant,
-    saved?: BulbPlantSaveState, random = Math.random) {
+  constructor(model: THREE.Group, animation: SpriteAnimationController, world: BulbPlantWorld, variant: BulbPlantVariant,
+    saved?: BulbPlantSaveState, random = Math.random, entity?: { setActive(active: boolean): void; addTag(tag: string): void }) {
     this.model = model;
     this.animation = animation;
+    this.entity = entity;
     this.world = world;
     this.random = random;
     this.variant = variant;
@@ -137,7 +141,9 @@ export class BulbPlantController {
       this.checkLight();
       this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
     });
-    Object.assign(model.userData, { tags: [...(model.userData.tags ?? []), 'plant'], bulbPlantController: this });
+    if (entity) entity.addTag('plant');
+    else model.userData.tags = [...(model.userData.tags ?? []), 'plant'];
+    model.userData.bulbPlantController = this;
     this.pickable = new Pickable(model, 'lightbulb', bulbPlantRegrowTime(variant),
       variant === 'double' ? 2 : variant === 'triple' ? 3 : 1,
       () => this.onPicked(), () => {
@@ -176,7 +182,7 @@ export class BulbPlantController {
     if (this.disposed || this.active === active) return;
     this.active = active;
     // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
-    this.animation.setActive?.(active);
+    this.entity?.setActive(active);
     if (!active) { this.sampleTimer.stop(); return; }
     this.checkLight();
     this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + this.random() * 0.5));
@@ -273,7 +279,8 @@ interface Plant {
   model: THREE.Group;
   controller: BulbPlantController;
   variant: BulbPlantVariant;
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: ReturnType<typeof createArchiveEntity>['display'];
 }
 
 /** Shared original single/springy assets, independent world lights and timers. */
@@ -284,8 +291,6 @@ export class BulbPlantManager {
   private readonly scene: THREE.Scene;
   private readonly world: BulbPlantWorld;
   private readonly random: () => number;
-  private readonly cameraRotation?: WorldContentSignal<THREE.Quaternion>;
-  private readonly stops: (() => void)[] = [];
   private disposed = false;
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: BulbPlantWorld, random = Math.random) {
@@ -293,10 +298,6 @@ export class BulbPlantManager {
     this.world = world;
     this.random = random;
     this.assets = new ArchiveSpriteAssets(BULB_PLANT_ID, assetBaseUrl);
-    if (world.getWatchWorldContent) {
-      // Billboards face the camera: re-orient them only when it turns.
-      this.cameraRotation = world.getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.stops.push(stop));
-    }
   }
 
   async spawn(prefabId: BulbPlantPrefabId, position: THREE.Vector3, saved?: BulbPlantRecord): Promise<THREE.Group> {
@@ -318,28 +319,23 @@ export class BulbPlantManager {
     if (this.disposed) throw new Error('Bulb plant manager has been disposed');
     const initialAnimation = state?.picked ? 'picked' : state?.lightState === 'ON' ? 'idle' : state?.lightState === 'RECHARGING' ? 'withered' : 'off';
     const loop = initialAnimation === 'idle', created = create(initialAnimation, loop, prefabId);
-    const sprite = new ResidentSprite(clip => create(clip.name, clip.loop, prefabId), { name: initialAnimation, loop }, created, prefabId);
-    if (!loop) sprite.setFrame(created.frameCount - 1);
-    const model = sprite.model;
-    model.position.set(position.x, 0, position.z);
-    // The sprite does not keep its orientation: dress each drawn sprite again when the camera turns or it is rebuilt.
-    const rotation = this.cameraRotation;
-    if (rotation) createEffect(() => { sprite.art.get(); sprite.faceCamera(rotation.get()); });
+    const { instance, display } = createArchiveEntity(prefabId, { create: clip => create(clip.name, clip.loop, prefabId), initial: created },
+      { name: initialAnimation, held: !loop, billboard: true }, prefabId);
+    if (!loop) instance.sprite.setFrame(created.frameCount - 1);
+    const model = display.model;
+    instance.position.set(position.x, 0, position.z);
     model.userData.entityId = saved?.id ?? newEntityId();
     model.userData.bulbPlantVariant = variant;
     model.userData.prefab = prefabId;
-    const controller = new BulbPlantController(model, sprite, this.world, variant, state, this.random);
+    const controller = new BulbPlantController(model, instance.sprite, this.world, variant, state, this.random, instance);
     actionEntity(model, prefabId);
-    this.plants.add({ prefabId, model, controller, variant, sprite });
+    this.plants.add({ prefabId, model, controller, variant, instance, display });
     this.scene.add(model);
     return model;
   }
 
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    for (const plant of this.plants) {
-      if (!this.cameraRotation) plant.sprite.faceCamera(cameraQuaternion);
-      plant.controller.update(dt);
-    }
+  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
+    for (const plant of this.plants) plant.controller.update(dt);
   }
 
   get renderEntities() {
@@ -356,13 +352,12 @@ export class BulbPlantManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const { model, controller, sprite } of this.plants) {
+    for (const { model, controller, instance, display } of this.plants) {
       controller.dispose();
       disposeActionEntity(model);
-      sprite.dispose();
+      instance.remove(); display.dispose();
     }
     this.plants.clear();
-    this.stops.splice(0).forEach(stop => stop());
     this.assets.dispose();
   }
 }

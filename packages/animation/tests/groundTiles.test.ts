@@ -155,6 +155,7 @@ it('renders woodfloor above deciduous and dirt, with a concave mask around an ex
   expect(wood.geometry.getIndex()!.count).toBe(25 * 6);
   expect(wood.renderOrder).toBeGreaterThan(deciduous.renderOrder);
   expect(deciduous.renderOrder).toBeGreaterThan(dirt.renderOrder);
+  expect(dirt.renderOrder).toBeGreaterThan((visual.getObjectByName('TurfFalloff') as THREE.Mesh).renderOrder);
   expect(map.dig({ x: 18, z: 18 })).toBe(true);
   // The surrounding forest is drawn at its source layer order; the enclosed
   // dirt hole has no adjacent forest and must not receive a forest quad.

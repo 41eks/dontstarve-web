@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteController } from '@dontstarve-web/animation/sprite';
+import type * as CANNON from 'cannon-es';
+import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
 import { BathBombable } from '../../componets/src/bathbombable';
 import { Heater } from '../../componets/src/heater';
@@ -10,7 +11,8 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
 import { setPrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
-import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
+import { MakePondPhysics, WORLD_SCALE } from './standardcomponents';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 
 export const HOTSPRING_ID = 'hotspring' as const;
 /** tuning.lua HOTSPRING_HEAT. */
@@ -38,7 +40,6 @@ export interface HotspringRecord {
 class Hotspring {
   readonly heater: Heater;
   readonly bathbombable: BathBombable;
-  readonly body: CANNON.Body;
   private readonly model: THREE.Group;
   private tileActivity?: Signal<boolean>;
   private stopTileActivity?: () => void;
@@ -59,7 +60,6 @@ class Hotspring {
     this.bathbombable = new BathBombable(inst);
     this.bathbombable.SetOnBathBombedFn(() => this.onBathBombed(false));
     inst.components.heater = this.heater; inst.components.bathbombable = this.bathbombable;
-    this.body = MakeObstaclePhysics(model.position, 1);
     setPrefabLocalLight(model, null); // Light:Enable(false)
     // OnLoad: `bathbombable:OnBathBombed()` with POPULATING set.
     if (saved?.isbathbombed) { this.bathbombable.OnBathBombed(); this.onBathBombed(true); }
@@ -92,7 +92,7 @@ class Hotspring {
   }
   private onBathBombed(populating: boolean): void {
     setPrefabLocalLight(this.model, HOTSPRING_LIGHT);
-    const controller = this.model.userData.animationController as SpriteController;
+    const controller = this.model.userData.animationController as SpriteState;
     if (populating) { controller.start('glow_loop'); return; }
     controller.playOnce('bath_bomb', () => controller.playOnce('glow_pre', () => controller.start('glow_loop')));
   }
@@ -106,7 +106,7 @@ class Hotspring {
   }
 }
 
-interface SteamFx { object: THREE.Group; footPosition: THREE.Vector3; factory: AnimatedSpriteFactory; }
+interface SteamFx { object: THREE.Group; footPosition: THREE.Vector3; instance: PrefabInstance; display: PrefabDisplay; }
 
 /** Source heat, light, bath bomb and steam interaction: the glass and bathing pool branches are not ported. */
 export class HotspringManager {
@@ -117,6 +117,7 @@ export class HotspringManager {
   private readonly ownsScheduler: boolean;
   private readonly random: () => number;
   private readonly springs = new Map<THREE.Group, Hotspring>();
+  private readonly entities = new Map<THREE.Group, ReturnType<typeof createPrefabEntity>>();
   private readonly activeSprings = new Set<THREE.Group>();
   private readonly scene: THREE.Scene;
   private readonly physics: CANNON.World;
@@ -139,25 +140,26 @@ export class HotspringManager {
     return request;
   }
   /** fx.lua nonpersistent FX with SetFinalOffset(1): played once at the spring, removed on animover. */
-  private spawnSteam(prefab: HotspringSteamPrefab, foot: THREE.Vector3, quaternion: THREE.Quaternion): void {
+  private spawnSteam(prefab: HotspringSteamPrefab, foot: THREE.Vector3): void {
     const kind = prefab.startsWith('crater') ? 'crater' : 'slow';
     const request = this.steamRequests[kind];
     if (this.disposed || !request) return;
     void request.then(factory => {
       if (this.disposed) return;
       const anim = `steam${prefab.slice(-1)}`;
-      const object = factory.create({ initialAnimation: anim, name: prefab });
-      object.position.copy(foot); object.quaternion.copy(quaternion);
-      Object.assign(object.userData, { prefab, persists: false });
-      const fx: SteamFx = { object, footPosition: object.position, factory };
-      const controller = object.userData.animationController as SpriteController;
-      controller.playOnce(anim, () => this.removeSteam(fx));
+      const { instance, display } = createPrefabEntity(prefab, { create: animation => factory.create({ initialAnimation: animation, name: prefab }),
+        release: sprite => factory.disposeSprite(sprite) }, { name: anim, billboard: true }, prefab);
+      const object = display.model;
+      object.position.copy(foot);
+      object.userData.prefab = prefab; instance.persists = false;
+      const fx: SteamFx = { object, footPosition: object.position, instance, display };
+      instance.sprite.playOnce(anim, () => this.removeSteam(fx));
       this.steam.add(fx); this.scene.add(object);
     });
   }
   private removeSteam(fx: SteamFx): void {
     if (!this.steam.delete(fx)) return;
-    fx.object.removeFromParent(); fx.factory.disposeSprite(fx.object);
+    fx.instance.remove(); fx.display.dispose();
   }
   private factory(): Promise<AnimatedSpriteFactory> {
     if (this.disposed) return Promise.reject(new Error('Hotspring manager has been disposed'));
@@ -170,45 +172,44 @@ export class HotspringManager {
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid hotspring position');
     const [factory] = await Promise.all([this.factory(), this.steamFactory('crater'), this.steamFactory('slow')]);
     if (this.disposed) throw new Error('Hotspring manager has been disposed');
-    const model = factory.create({ initialAnimation: 'idle', name: HOTSPRING_ID });
+    const entity = createPrefabEntity(HOTSPRING_ID, { create: animation => factory.create({ initialAnimation: animation, name: HOTSPRING_ID }),
+      release: sprite => factory.disposeSprite(sprite) }, { name: 'idle', billboard: true }, HOTSPRING_ID);
+    const model = entity.display.model;
     model.position.copy(position);
     // LAYER_BACKGROUND controls drawing order, not OnGround orientation; keep the source art origin.
     Object.assign(model.userData, { prefab: HOTSPRING_ID, entityId: saved?.id ?? newEntityId(),
-      noWetPrefix: true, deploySmartRadius: 1.5 * WORLD_SCALE, physicsRadius: HOTSPRING_RADIUS });
+      noWetPrefix: true, deploySmartRadius: 1.5 * WORLD_SCALE });
+    MakePondPhysics(entity.instance, HOTSPRING_RADIUS / WORLD_SCALE);
     const spring = new Hotspring(model, this.scheduler, this.random,
-      prefab => this.spawnSteam(prefab, model.position, model.quaternion), saved?.components.hotspring);
-    model.userData.hotspring = spring; model.userData.physicsBody = spring.body;
+      prefab => this.spawnSteam(prefab, model.position), saved?.components.hotspring);
+    model.userData.hotspring = spring;
     model.userData.remove = () => this.remove(model);
-    this.springs.set(model, spring);
-    this.physics.addBody(spring.body);
+    this.springs.set(model, spring); this.entities.set(model, entity);
+    entity.instance.bindPhysics(this.physics);
+    this.scene.add(model);
     const tileActivity = this.tickingarea?.(new TileTracker(() => model.position).tile);
     if (tileActivity) spring.bindTileActivity(tileActivity, active => this.setActive(model, spring, active));
     else this.setActive(model, spring, true);
     return model;
   }
   private setActive(model: THREE.Group, spring: Hotspring, active: boolean): void {
-    if (this.disposed || !this.springs.has(model) || this.activeSprings.has(model) === active) return;
+    if (this.disposed || !this.springs.has(model)) return;
+    // A spring first found asleep still leaves the scene: its display was added at spawn.
+    this.entities.get(model)!.instance.setActive(active);
+    if (this.activeSprings.has(model) === active) return;
     if (active) {
       this.activeSprings.add(model);
-      this.scene.add(model);
       spring.wake();
     } else {
       this.activeSprings.delete(model);
       spring.sleep();
-      model.removeFromParent();
     }
   }
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const model of this.activeSprings) {
-      model.quaternion.copy(cameraQuaternion);
-      (model.userData.animationController as SpriteController).update(dt);
-    }
-    for (const fx of [...this.steam]) {
-      fx.object.quaternion.copy(cameraQuaternion);
-      (fx.object.userData.animationController as SpriteController).update(dt);
-    }
+    for (const model of this.activeSprings) (model.userData.animationController as SpriteState).update(dt);
+    for (const fx of [...this.steam]) fx.instance.sprite.update(dt);
   }
   get renderEntities() {
     return [
@@ -227,8 +228,9 @@ export class HotspringManager {
     const spring = this.springs.get(model);
     if (!spring) return;
     this.springs.delete(model); this.activeSprings.delete(model); model.userData.removed = true;
-    spring.dispose(); this.physics.removeBody(spring.body); model.removeFromParent();
-    void this.factoryRequest?.then(factory => factory.disposeSprite(model));
+    spring.dispose();
+    const { instance, display } = this.entities.get(model)!;
+    this.entities.delete(model); instance.remove(); display.dispose();
   }
   dispose(): void {
     if (this.disposed) return;

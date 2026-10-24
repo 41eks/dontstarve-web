@@ -22,6 +22,12 @@ import type { TileStateQuery } from '../../signals/src';
 import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { bindTestWorld } from './worldContentFixture';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The body the spring's physics binding keeps. */
+const bodyOf = (model: THREE.Object3D) => prefabInstance(model)!.physicsBody;
 
 useTestTileMap();
 
@@ -123,33 +129,38 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
 });
 
 it('faces the camera as a background billboard while keeping the saved foot point and physics fixed', async () => {
+  // The spring's display turns itself to the world's camera rotation.
+  const content = bindTestWorld(new GameTimeScheduler());
   const s = setup();
   try {
     const position = new THREE.Vector3(12, 0, -24);
     const model = await s.springs.spawn(position);
+    await new Promise(resolve => setTimeout(resolve, 0));
     const visual = model.children[0];
     const records = s.springs.exportRecords();
-    const physicsPosition = model.userData.physicsBody.position.toArray();
+    const physicsPosition = bodyOf(model)!.position.toArray();
     expect(model.userData.billboard).toBe(true);
     expect(visual.rotation.toArray().slice(0, 3)).toEqual([0, 0, 0]);
     expect(visual.position.toArray()).toEqual([0, 0, 0]);
     for (const heading of [0, Math.PI / 2]) {
       s.world.camera.rotation.set(-.65, heading, 0, 'YXZ');
       const quaternion = s.world.camera.quaternion;
+      content.camerarotation.set(quaternion.clone());
+      await new Promise(resolve => setTimeout(resolve, 0));
       s.registry.update(0, quaternion);
       model.updateMatrixWorld(true);
       const normal = new THREE.Vector3(0, 0, 1).transformDirection(visual.matrixWorld);
       const cameraNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
       expect(normal.dot(cameraNormal)).toBeCloseTo(1);
       expect(model.position).toEqual(position);
-      expect(model.userData.physicsBody.position.toArray()).toEqual(physicsPosition);
+      expect(bodyOf(model)!.position.toArray()).toEqual(physicsPosition);
       expect(s.springs.exportRecords()).toEqual(records);
     }
     const [entry] = s.registry.renderEntities;
     expect(entry.object).toBe(model);
     expect(entry.footPosition).toBe(model.position);
     expect(entry.renderLayer).toBe(-1);
-  } finally { s.dispose(); }
+  } finally { s.dispose(); content.unbind(); }
 });
 
 it('keeps a spring active when the injected tile query returns undefined', async () => {
@@ -158,12 +169,13 @@ it('keeps a spring active when the injected tile query returns undefined', async
   try {
     const position = new THREE.Vector3(5, 0, 6);
     const model = await s.springs.spawn(position);
+    await new Promise(resolve => setTimeout(resolve, 0));
     const update = vi.spyOn(model.userData.animationController, 'update');
     expect(query).toHaveBeenCalledTimes(2); // Presentation and physics each own their tile view.
     expect(query.mock.calls.every(([tile]) => tile.peek() === GetTileKeyAtPoint(model.position))).toBe(true);
     expect(model.position).toEqual(position);
     expect(model.parent).toBe(s.scene);
-    expect(s.physics.bodies).toEqual([model.userData.physicsBody]);
+    expect(s.physics.bodies).toEqual([bodyOf(model)]);
     s.springs.update(.1, s.world.camera.quaternion);
     expect(update).toHaveBeenCalledExactlyOnceWith(.1);
     s.springs.remove(model);
@@ -181,7 +193,8 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
       id: 'tile-spring', transform: { position: [0, 0, 0], rotationY: 0 }, components: { hotspring: { isbathbombed: true } },
     });
     const second = await s.springs.spawn(new THREE.Vector3(1, 0, 1));
-    const firstBody = first.userData.physicsBody, secondBody = second.userData.physicsBody;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const firstBody = bodyOf(first), secondBody = bodyOf(second);
     const firstAnimation = vi.spyOn(first.userData.animationController, 'update');
     const secondAnimation = vi.spyOn(second.userData.animationController, 'update');
     const records = s.springs.exportRecords();
@@ -206,6 +219,7 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities.hotspring).toEqual(records.map(entry => entry.record));
     const loaded = await restored.springs.spawn(new THREE.Vector3(...saved.world.entities.hotspring[0].transform.position), saved.world.entities.hotspring[0]);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(loaded.parent).toBeNull(); expect(restored.physics.bodies).toEqual([]);
     expect(restored.springs.exportRecords()[0]).toEqual(records[0]);
     expect(loaded.userData.animationController.currentAnimation).toBe('glow_loop');
@@ -219,7 +233,7 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     expect(s.registry.renderEntities.map(entry => entry.object)).toEqual([second]);
     expect(s.physics.bodies).toEqual([secondBody]);
     expect([...s.physics.registeredBodies]).toEqual([secondBody]);
-    expect(restored.physics.bodies).toEqual([loaded.userData.physicsBody]);
+    expect(restored.physics.bodies).toEqual([bodyOf(loaded)]);
     expect(getPrefabLocalLight(loaded)).toEqual(HOTSPRING_LIGHT);
     s.springs.update(.1, s.world.camera.quaternion);
     expect(secondAnimation).toHaveBeenCalledTimes(2);

@@ -41,6 +41,7 @@ it('blocks with a static obstacle at the foot point only while the wall has heal
   try {
     await placement.spawnFromSave('wall_stone', { id: 'wall', transform: { position: [3, 0, -6], rotationY: 0 },
       components: { health: { current: 100, maximum: 400 } } });
+    await new Promise(resolve => setTimeout(resolve, 0));
     const [body] = wallBodies(physics);
     // walls.lua MakeObstaclePhysics(inst, .5) on the ground origin
     expect(body.position.x).toBe(3);
@@ -48,10 +49,13 @@ it('blocks with a static obstacle at the foot point only while the wall has heal
     expect(body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === WALL_PHYSICS_RADIUS)).toBe(true);
 
     healthOf(placement, 0).DoDelta(-100); // to zero: clearobstacle
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics)).toHaveLength(0);
     healthOf(placement, 0).DoDelta(-1); // already broken stays clear
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics)).toHaveLength(0);
     healthOf(placement, 0).DoDelta(50); // repaired: makeobstacle again
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics)).toEqual([body]);
   } finally { placement.dispose(); }
   expect(wallBodies(physics)).toHaveLength(0);
@@ -64,6 +68,7 @@ it('restores a saved broken wall without an obstacle and releases the obstacle w
       components: { health: { current: 0, maximum: 400 } } });
     await placement.spawnFromSave('wall_stone', { id: 'live', transform: { position: [7, 0, -6], rotationY: 0 },
       components: { health: { current: 200, maximum: 400 } } });
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics).map(body => body.position.x)).toEqual([7]);
     placement.hammerTargets.find(target => target.id === 'live')!.playHit();
     placement.hammerTargets.find(target => target.id === 'live')!.playHit();
@@ -72,25 +77,27 @@ it('restores a saved broken wall without an obstacle and releases the obstacle w
   } finally { placement.dispose(); }
 });
 
-it('keeps a broken or permanently removed dormant wall from regaining collision when its tile wakes', async () => {
+it('keeps a wall colliding outside the ticking area (SetDontRemoveOnSleep) while health decides SetActive', async () => {
   const position = createSignal<THREE.Vector3 | undefined>(new THREE.Vector3());
   const physics = new PhysicsWorld({}, GetTileStateAtPoint(position));
   const { placement } = setup(physics);
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
+    // A pen far from the player still holds what it encloses.
     await placement.spawnFromSave('wall_stone', { id: 'dormant-wall', transform: { position: [240, 0, 0], rotationY: 0 },
       components: { health: { current: 100, maximum: 400 } } });
+    await settle();
     const [body] = [...physics.registeredBodies];
-    expect(body).toBeDefined();
-    expect(physics.bodies).toEqual([]);
+    expect(physics.bodies).toEqual([body]);
     healthOf(placement, 0).DoDelta(-100);
-    position.set(new THREE.Vector3(240, 0, 0)); await new Promise(resolve => setTimeout(resolve, 0));
+    position.set(new THREE.Vector3(240, 0, 0)); await settle();
     expect(physics.bodies).toEqual([]);
     expect([...physics.registeredBodies]).toEqual([]);
     healthOf(placement, 0).DoDelta(50);
+    position.set(new THREE.Vector3()); await settle();
     expect(physics.bodies).toEqual([body]);
-    position.set(new THREE.Vector3()); await new Promise(resolve => setTimeout(resolve, 0));
     placement.dispose();
-    position.set(new THREE.Vector3(240, 0, 0)); await new Promise(resolve => setTimeout(resolve, 0));
+    position.set(new THREE.Vector3(240, 0, 0)); await settle();
     expect(physics.bodies).toEqual([]);
     expect([...physics.registeredBodies]).toEqual([]);
   } finally { placement.dispose(); physics.dispose(); DisposeTileStates(position); }

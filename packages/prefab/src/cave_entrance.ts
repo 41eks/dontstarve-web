@@ -10,10 +10,11 @@ import { modelEntries } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
+import { MakeObstaclePhysics } from './standardcomponents';
 import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
 import { PlaySound, PreloadSounds } from './sound';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -60,9 +61,10 @@ type SpriteSource = Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
 
 interface Entrance {
   prefab: CaveEntranceId;
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
+  sprite: ArchiveSpriteCommands;
   minimap: MiniMapEntity;
-  body?: CANNON.Body;
   workable?: Workable;
   loot: Map<string, PreparedGroundSpawn[]>;
   stopActivity: () => void;
@@ -114,40 +116,40 @@ export class CaveEntranceManager {
   }
 
   /** closed: idle_closed; open: `no_access` until its worldmigrator reports an available destination. */
-  private createSprite(source: SpriteSource, prefab: CaveEntranceId): ResidentSprite {
+  private createSprite(source: SpriteSource, prefab: CaveEntranceId): ReturnType<typeof createArchiveEntity> {
     const open = prefab === CAVE_ENTRANCE_OPEN_ID;
     const clip = { name: open ? 'no_access' : 'idle_closed', loop: open };
     const create = (current: { name: string; loop: boolean }) => source(current.name, current.loop, prefab);
-    return new ResidentSprite(create, clip, create(clip), prefab);
+    const entity = createArchiveEntity(prefab, { create, initial: create(clip) }, { name: clip.name, held: !open, billboard: true }, prefab);
+    // PlayAnimation("idle_closed") plays once rather than resting on its last frame.
+    if (!open) entity.instance.sprite.playOnce(clip.name);
+    return entity;
   }
 
   private create(prefab: CaveEntranceId, loot: Map<string, PreparedGroundSpawn[]>, position: THREE.Vector3,
     saved: CaveEntranceRecord | undefined): THREE.Group {
-    const sprite = this.createSprite(this.factory!, prefab);
-    const model = sprite.model;
+    const { instance, display } = this.createSprite(this.factory!, prefab);
+    const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab, tags: ['antlion_sinkhole_blocker'],
-      physicsRadius: PHYSICS_RADIUS * WORLD_SCALE });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab });
+    instance.addTag('antlion_sinkhole_blocker');
     const inst = actionEntity(model, prefab);
-    const entrance: Entrance = { prefab, sprite, loot, removed: false, stopActivity: () => {},
+    const entrance: Entrance = { prefab, instance, display, sprite, loot, removed: false, stopActivity: () => {},
       minimap: new MiniMapEntity(model.position) };
     entrance.minimap.SetIcon(prefab === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png');
-    if (this.world.physics) {
-      entrance.body = MakeObstaclePhysics(model.position, PHYSICS_RADIUS);
-      model.userData.physicsBody = entrance.body;
-      this.world.physics.addBody(entrance.body);
-    }
+    MakeObstaclePhysics(instance, PHYSICS_RADIUS);
+    if (this.world.physics) instance.bindPhysics(this.world.physics);
     if (prefab === CAVE_ENTRANCE_ID) this.createWorkable(entrance, inst);
     else this.createMigrator(entrance, inst);
     this.entrances.set(model, entrance);
     this.scene.add(model);
-    entrance.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
+    entrance.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
 
   /** open_fn: the migration events pick the loop (`open`, `no_access`, `over_capacity`); the destination is the Caves shard. */
   private createMigrator(entrance: Entrance, inst: ReturnType<typeof actionEntity>): void {
-    const { sprite } = entrance, model = sprite.model;
+    const { sprite } = entrance, model = entrance.display.model;
     const migrator = new WorldMigrator(inst, this.world.shard ?? NO_SHARD);
     const listeners = { migration_available: 'open', migration_unavailable: 'no_access', migration_full: 'over_capacity' } as const;
     const handlers = Object.entries(listeners).map(([event, animation]) => {
@@ -162,7 +164,7 @@ export class CaveEntranceManager {
 
   /** closed_fn: MINE for ROCKS_MINE work, OnWork shows low/med/idle_closed and finally drops the loot and opens. */
   private createWorkable(entrance: Entrance, inst: ReturnType<typeof actionEntity>): void {
-    const { sprite } = entrance, model = sprite.model;
+    const { sprite } = entrance, model = entrance.display.model;
     const workable = new Workable(inst);
     entrance.workable = workable;
     workable.SetWorkAction('MINE');
@@ -190,14 +192,14 @@ export class CaveEntranceManager {
     Object.assign(model.userData.components, { workable, lootdropper });
   }
 
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    for (const { sprite } of this.entrances.values()) { sprite.faceCamera(quaternion); sprite.update(dt); }
+    for (const { sprite } of this.entrances.values()) sprite.update(dt);
   }
 
   get renderEntities() {
-    return [...this.entrances.values()].map(({ prefab, sprite }) => ({
-      object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0,
+    return [...this.entrances.values()].map(({ prefab, display }) => ({
+      object: display.model, footPosition: display.model.position, cameraDepth: 0,
       ...prefab === CAVE_ENTRANCE_OPEN_ID ? { renderLayer: CAVE_ENTRANCE_OPEN_RENDER_LAYER } : {},
     }));
   }
@@ -224,10 +226,9 @@ export class CaveEntranceManager {
   private remove(model: THREE.Group): void {
     const entrance = this.entrances.get(model); if (!entrance) return;
     this.entrances.delete(model); model.userData.removed = true; entrance.removed = true;
-    if (entrance.body) this.world.physics?.removeBody(entrance.body);
     entrance.minimap.dispose(); entrance.workable?.dispose();
     for (const outputs of entrance.loot.values()) outputs.forEach(output => output.dispose());
-    entrance.loot.clear(); entrance.stopActivity(); entrance.stopMigration?.(); entrance.sprite.dispose();
+    entrance.loot.clear(); entrance.stopActivity(); entrance.stopMigration?.(); entrance.instance.remove(); entrance.display.dispose();
   }
 
   dispose(): void {

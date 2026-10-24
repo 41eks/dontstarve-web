@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
 import type { InventoryStore } from '@dontstarve-web/inventory';
 import { BlinkActionController } from '../../stategraphs/src/blink';
 import type { ActionLocomotor } from '../../stategraphs/src/actionContext';
@@ -8,13 +7,16 @@ import type { WilsonAnimationController, PlayerBody } from './player';
 import type { WorldContext } from './worldContext';
 import type { WorldFx } from './world_fx';
 import { PreloadSounds } from './sound';
-import { GROUND_COLLISION_GROUP, WORLD_SCALE } from './standardcomponents';
+import { CHARACTER_COLLISION_MASK, WORLD_SCALE } from './standardcomponents';
+import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { Wortox, type WortoxSave } from './wortox';
 import { isGroundTargetBlocked, placementEntities, type PlacementQuery } from './placementEntities';
 
 export interface WortoxPlayerOptions {
   world: WorldContext;
   body: PlayerBody;
+  /** The player's inst.Physics, for SGwilson's ToggleOffPhysics / ToggleOnPhysics. */
+  physics: PhysicsState;
   animation: WilsonAnimationController;
   locomotor: ActionLocomotor;
   inventory: InventoryStore;
@@ -33,7 +35,8 @@ export class WortoxPlayer {
   private readonly options: WortoxPlayerOptions;
   private readonly input: BlinkActionController;
   private readonly blockers: PlacementQuery;
-  private collisionMask?: number;
+  /** statemem.isphysicstoggle */
+  private physicsToggled = false;
   private disposed = false;
   private readonly direction = new THREE.Vector3();
   private readonly forward = new THREE.Vector3();
@@ -61,11 +64,9 @@ export class WortoxPlayer {
       tryToPortalHop: () => this.state.TryToPortalHop(inventory.EquipHasTag('heavy')),
       facePoint: position => this.facePoint(position),
       teleport: position => {
-        const radius = (body.shapes[0] as CANNON.Sphere).radius;
-        body.position.set(position.x, position.y + radius, position.z);
-        body.previousPosition.copy(body.position); body.interpolatedPosition.copy(body.position);
-        body.velocity.set(0, 0, 0); body.aabbNeedsUpdate = true;
         world.player.position.copy(position);
+        options.physics.Teleport();
+        body.velocity.set(0, 0, 0);
       },
       setPhysicsEnabled: enabled => this.setPhysicsEnabled(enabled),
       spawnFx: prefab => fx.spawn(prefab, world.player.position),
@@ -107,13 +108,11 @@ export class WortoxPlayer {
   }
 
   private setPhysicsEnabled(enabled: boolean): void {
-    if (!enabled && this.collisionMask === undefined) {
-      this.collisionMask = this.options.body.collisionFilterMask;
-      this.options.body.collisionFilterMask = GROUND_COLLISION_GROUP;
-    } else if (enabled && this.collisionMask !== undefined) {
-      this.options.body.collisionFilterMask = this.collisionMask;
-      this.collisionMask = undefined;
-    }
+    if (enabled !== this.physicsToggled) return;
+    this.physicsToggled = !enabled;
+    // SGwilson ToggleOnPhysics / ToggleOffPhysics.
+    if (enabled) this.options.physics.SetCollisionMask(...CHARACTER_COLLISION_MASK);
+    else this.options.physics.SetCollisionMask(COLLISION.GROUND);
   }
 
   update(): void { this.input.update(); }

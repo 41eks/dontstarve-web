@@ -3,7 +3,12 @@ import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import { ArchiveSpriteAssets, createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createArchiveEntity } from './prefabInstance';
+
+// The placer tints: valid and blocked cells.
+const VALID_TINT = new THREE.Color(0x66ff66).toArray() as [number, number, number];
+const BLOCKED_TINT = new THREE.Color(0xff5555).toArray() as [number, number, number];
 import { BuildCursor } from './buildCursor';
 import { setPrefabLightOverride } from './localLight';
 import { PlaySound, PreloadSounds } from './sound';
@@ -43,9 +48,9 @@ export class DockKitPlacement {
   private readonly world: WorldContext;
   private readonly turf: TurfMap;
   private readonly blockers: PlacementQuery;
-  private outline?: ArchiveSprite;
+  /** The gridplacer entity; `visible` and `valid` are what its sprite json was last told. */
+  private outline?: ReturnType<typeof createArchiveEntity> & { visible: boolean; valid?: boolean };
   private anchor?: THREE.Object3D;
-  private outlineMaterials: THREE.Material[] = [];
   private takeItem?: () => ItemEntity | undefined;
   private version = 0;
   private prepareRequest?: Promise<void>;
@@ -80,23 +85,24 @@ export class DockKitPlacement {
     this.cursor.show('鼠标右键：布署', 'right');
     try {
       await this.prepare();
-      const outline = await createArchiveSprite(this.assets, { animationArchive: 'gridplacer.zip', buildArchives: ['gridplacer.zip'],
-        bank: 'gridplacer', animation: 'anim', loop: false }, { name: 'DockKitGridPlacer' });
-      if (version !== this.version || this.disposed) { outline.dispose(); return; }
-      outline.model.userData.animationController = outline;
-      outline.model.userData.tags = ['FX', 'NOCLICK'];
-      outline.model.userData.billboard = false;
-      outline.model.rotation.x = -Math.PI / 2;
-      outline.model.traverse(object => {
-        if (!(object instanceof THREE.Mesh)) return;
-        const clone = (material: THREE.Material) => { const copy = material.clone(); copy.opacity = .65; this.outlineMaterials.push(copy); return copy; };
-        object.material = Array.isArray(object.material) ? object.material.map(clone) : clone(object.material);
-      });
-      this.outline = outline;
-      this.world.scene.add(outline.model);
+      // Private colour and opacity copies: the placer tints only itself.
+      const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, { animationArchive: 'gridplacer.zip',
+        buildArchives: ['gridplacer.zip'], bank: 'gridplacer', animation: clip.name, loop: clip.loop },
+        { name: 'DockKitGridPlacer', opacity: .65, colour: [1, 1, 1] });
+      const initial = await create({ name: 'anim', loop: false });
+      if (version !== this.version || this.disposed) { initial.dispose(); return; }
+      const entity = createArchiveEntity('gridplacer', { create, initial }, { name: 'anim' }, 'DockKitGridPlacer');
+      entity.instance.sprite.playOnce('anim');
+      const model = entity.display.model;
+      for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
+      entity.instance.persists = false;
+      model.userData.billboard = false;
+      model.rotation.x = -Math.PI / 2;
+      this.outline = { ...entity, visible: true };
+      this.world.scene.add(model);
       // BuildCursor copies the camera quaternion onto its preview, which would stand the flat outline up; it drives an anchor instead.
       this.anchor = new THREE.Object3D();
-      setPrefabLightOverride(outline.model, 1);
+      setPrefabLightOverride(model, 1);
       this.cursor.setPreview(this.anchor, 0, point => this.center(point));
       this.cursor.update();
     } catch (error) { if (version === this.version) this.cancel(); throw error; }
@@ -106,9 +112,8 @@ export class DockKitPlacement {
     this.version++;
     this.takeItem = undefined;
     this.cursor.hide();
-    this.outline?.dispose(); this.outline = undefined; this.anchor = undefined;
-    for (const material of this.outlineMaterials) material.dispose();
-    this.outlineMaterials = [];
+    if (this.outline) { this.outline.instance.remove(); this.outline.display.dispose(); }
+    this.outline = undefined; this.anchor = undefined;
   }
 
   private center(point: Pick<THREE.Vector3, 'x' | 'z'>): THREE.Vector3 {
@@ -165,16 +170,16 @@ export class DockKitPlacement {
     if (this.disposed) return;
     this.cursor.update();
     if (!this.outline || !this.anchor) return;
-    this.outline.model.visible = this.anchor.visible;
-    this.outline.model.position.copy(this.anchor.position).setY(.05);
-    const valid = this.outline.model.visible && this.canDeploy(this.outline.model.position);
-    for (const material of this.outlineMaterials) {
-      if (material instanceof THREE.MeshBasicMaterial) material.color.set(valid ? 0x66ff66 : 0xff5555);
-    }
+    const outline = this.outline, { sprite } = outline.instance;
+    if (outline.visible !== this.anchor.visible) sprite.setVisible(outline.visible = this.anchor.visible);
+    outline.instance.position.copy(this.anchor.position).setY(.05);
+    const valid = outline.visible && this.canDeploy(outline.instance.position);
+    if (valid !== outline.valid) sprite.setColour((outline.valid = valid) ? VALID_TINT : BLOCKED_TINT);
   }
 
   get renderEntities() {
-    return this.outline?.model.visible ? [{ object: this.outline.model, footPosition: this.outline.model.position.clone().setY(0), cameraDepth: 0 }] : [];
+    const outline = this.outline;
+    return outline?.visible ? [{ object: outline.display.model, footPosition: outline.instance.position.clone().setY(0), cameraDepth: 0 }] : [];
   }
 
   dispose(): void {

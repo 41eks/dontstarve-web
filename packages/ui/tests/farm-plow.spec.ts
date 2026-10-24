@@ -15,11 +15,10 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     const { player, playerBody } = await import(paths.player);
     const { scene } = await import(paths.universal);
     const { view } = await import(paths.view);
-    const { turfMap, moonTreeForest } = await import(paths.building);
+    const { turfMap } = await import(paths.building);
     const { initialSave } = await import(paths.initialSave);
     const occupied = new Set<string>();
     const key = (position: number[]) => `${Math.floor(position[0] / 12)},${Math.floor(position[2] / 12)}`;
-    for (const tree of moonTreeForest.entities) occupied.add(key(tree.position.toArray()));
     for (const records of Object.values(initialSave.world.entities) as any[]) {
       for (const record of records) occupied.add(key(record.transform.position));
     }

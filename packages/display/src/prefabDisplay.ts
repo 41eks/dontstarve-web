@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
@@ -22,6 +22,8 @@ export interface PrefabDisplayOptions {
   readonly source?: SpriteSource;
   /** Draw with a shared archive sprite. */
   readonly archive?: ArchiveSpriteSource;
+  /** Transform-only entities have no art to load. The display still owns their model and lifecycle. */
+  readonly empty?: boolean;
   /** The entity's lifecycle, written by the logical side. */
   readonly status: ReadonlySignal<PrefabStatus>;
   /** The entity's sprite json, written by the prefab. The first sprite is drawn in its clip; the rest is dressed at once. */
@@ -43,22 +45,37 @@ export class PrefabDisplay {
     this.engine.setAnimation(name);
   });
   private disposed = false;
+  // The camera rotation the drawn sprite was turned to; a sprite drawn later is turned to it too.
+  private facing: THREE.Quaternion | undefined;
   private asleep = false;
   private home: THREE.Object3D | undefined;
   // The owner may add the model to the scene after its tile was already found inactive.
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: number; transient?: SpriteJson['transient'];
-    image?: number; facing?: number; colour?: readonly number[]; opacity?: number; paused?: boolean; appearance: ReadonlyMap<string, AppearanceJson> };
+    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
-    const { source, archive, sprite: state } = options;
+    const { archive, sprite: state } = options;
+    const source = options.source ?? (options.empty ? { create: () => new THREE.Group(), release: (model: THREE.Group) => model.removeFromParent() } : undefined);
     this.state = state;
     const first = state.sprite.peek();
     const held = first.clip.finished && !first.clip.loop;
     if (archive) {
       const clip = { name: first.clip.name, loop: !held };
-      this.engine = new ArchiveEngine(new ResidentSprite(archive.create, clip, archive.initial, options.name));
+      const prepare = (drawn: import('@dontstarve-web/animation/archiveSprite').ArchiveSprite) => {
+        if (archive.alignBottom) {
+          drawn.model.updateWorldMatrix(true, true);
+          const bounds = new THREE.Box3().setFromObject(drawn.model);
+          drawn.model.children[0].position.y -= bounds.min.y;
+        }
+        return drawn;
+      };
+      const create: ArchiveSpriteSource['create'] = clip => {
+        const drawn = archive.create(clip);
+        return drawn instanceof Promise ? drawn.then(prepare) : prepare(drawn);
+      };
+      this.engine = new ArchiveEngine(new ResidentSprite(create, clip, archive.initial && prepare(archive.initial), options.name));
     } else if (source) {
       this.engine = new ResidentSpriteController(new THREE.Group(), animation => source.create(animation),
         drawn => source.release(drawn), source.create(first.clip.name, held ? 'last' : 'first'), { name: first.clip.name, held });
@@ -90,6 +107,12 @@ export class PrefabDisplay {
     this.fx = new FxAttachments(this.model);
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
     this.cleanups.push(createEffect(() => { art.get(); this.dress(json.peek()); state.artChanged(); }));
+    // A billboard turns to TheCamera itself, through its own bridge to the world's camera rotation.
+    const watchWorldContent = first.billboard ? getBoundWatchWorldContent() : undefined;
+    if (watchWorldContent) {
+      const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop));
+      this.cleanups.push(createEffect(() => this.faceCamera(camera.get())));
+    }
   }
 
   get model(): THREE.Group { return this.engine.model; }
@@ -100,6 +123,14 @@ export class PrefabDisplay {
   /** Take over another display's source and drawn sprite (a reskin); this model, entity and json stay. */
   adopt(other: PrefabDisplay): void {
     if (!this.disposed) this.engine.adopt(other.engine);
+  }
+
+  /** A static archive billboard turns its drawn sprite; any other sprite turns with the model. */
+  private faceCamera(rotation: THREE.Quaternion): void {
+    if (this.disposed) return;
+    if (!this.engine.faceCamera) { this.model.quaternion.copy(rotation); return; }
+    (this.facing ??= new THREE.Quaternion()).copy(rotation);
+    this.engine.faceCamera(this.facing);
   }
 
   private applyStatus(status: PrefabStatus): void {
@@ -129,6 +160,7 @@ export class PrefabDisplay {
 
   private applySprite(json: SpriteJson): void {
     const { engine: controller, applied, state } = this;
+    if (json.visible !== undefined) this.model.visible = json.visible;
     if (json.clip !== applied.clip) {
       const clip = json.clip;
       if (clip.pose) controller.setPose(clip.pose.name);
@@ -145,10 +177,16 @@ export class PrefabDisplay {
     if (json.frame !== applied.frame) { applied.frame = json.frame; if (json.frame !== undefined) controller.setFrame(json.frame); }
     if (json.transient !== applied.transient) { applied.transient = json.transient; if (json.transient) controller.playTransient(json.transient.name); }
     if (json.image !== applied.image) { applied.image = json.image; if (json.image !== undefined) controller.showImage(json.image); }
-    if (json.facing !== applied.facing) { applied.facing = json.facing; if (json.facing !== undefined) controller.setFacing(json.facing); }
+    if (json.facing !== applied.facing || json.mirrored !== applied.mirrored) {
+      applied.facing = json.facing; applied.mirrored = json.mirrored;
+      if (json.facing !== undefined) controller.setFacing(json.facing, json.mirrored);
+    }
     if (json.colour !== applied.colour) { applied.colour = json.colour; if (json.colour) controller.setColour(json.colour); }
     if (json.opacity !== applied.opacity) { applied.opacity = json.opacity; if (json.opacity !== undefined) controller.setOpacity(json.opacity); }
     if (json.paused !== applied.paused) { applied.paused = json.paused; if (json.paused !== undefined) controller.setPaused?.(json.paused); }
+    if (json.erosion !== applied.erosion) { applied.erosion = json.erosion; if (json.erosion !== undefined) controller.setErosion?.(json.erosion); }
+    if (json.ground !== applied.ground) { applied.ground = json.ground; if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat); }
+    if (json.meshOrder !== applied.meshOrder) { applied.meshOrder = json.meshOrder; if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder); }
     for (const [key, op] of json.appearance) if (applied.appearance.get(key) !== op) this.dressOne(op);
     applied.appearance = json.appearance;
   }
@@ -157,17 +195,24 @@ export class PrefabDisplay {
   private dress(json: SpriteJson): void {
     const controller = this.engine;
     if (!controller.loaded) return;
+    if (this.facing) controller.faceCamera?.(this.facing);
     if (json.image !== undefined) controller.showImage(json.image);
-    if (json.facing !== undefined) controller.setFacing(json.facing);
+    if (json.facing !== undefined) controller.setFacing(json.facing, json.mirrored);
     if (json.colour) controller.setColour(json.colour);
     if (json.opacity !== undefined) controller.setOpacity(json.opacity);
     if (json.paused !== undefined) controller.setPaused?.(json.paused);
+    if (json.erosion !== undefined) controller.setErosion?.(json.erosion);
+    if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat);
+    if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder);
     for (const op of json.appearance.values()) this.dressOne(op);
   }
 
   private dressOne(op: AppearanceJson): void {
     const controller = this.engine;
     switch (op.kind) {
+      case 'archive-symbol': controller.setSymbolOverride?.(op.symbol, op.archive, op.sourceSymbol); break;
+      case 'archive-hidden': controller.setSymbolHidden?.(op.symbol, op.hidden); break;
+      case 'archive-build': controller.setBuildArchive?.(op.archive); break;
       case 'layer': if (op.hidden) controller.hideLayer(op.layer); else controller.showLayer(op.layer); break;
       case 'symbols': controller.setSymbolOverrides(op.overrides, op.hiddenLayers); break;
       case 'symbol': controller.overrideSymbol(op.symbol, op.override); break;

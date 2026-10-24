@@ -102,11 +102,13 @@ it('spawns grass through the debug command using its source bank and build, then
 
   grasses.remove(model as THREE.Group);
   expect(pickable.state.phase.peek()).toBe('removed');
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(model.parent).toBeNull();
   season.set({ season: 'winter', progress: 0 });
   tickWorld(scheduler, grasses, 1080, new THREE.Quaternion());
   expect(pickable.state.phase.peek()).toBe('removed');
 
   registry.dispose();
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(scene.children).toHaveLength(0);
 });

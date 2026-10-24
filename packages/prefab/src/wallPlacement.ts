@@ -1,5 +1,4 @@
 import { ModelRecords } from './modelRecords';
-import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { disposeSprite } from './disposeSprite';
 import {
@@ -13,7 +12,7 @@ import type { WorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import { nextReskin } from './reskin_tool';
@@ -23,7 +22,7 @@ import { actionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { GroundItemAssets } from './groundItems';
-import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -142,8 +141,6 @@ interface WallInstance<BuildId extends string> extends WallArt {
     /** resolveanimtoplay(health percent), derived from the health signal. */
     healthAnim: Memo<string>;
     stopHealthAnim: () => void;
-    /** walls.lua MakeObstaclePhysics(inst, .5); present once placed, in the world only while health > 0. */
-    body?: CANNON.Body;
 }
 
 /** A live, attackable wall for combat target selection. */
@@ -188,7 +185,7 @@ export class WallPlacement<BuildId extends string> {
     private readonly cleanups: (() => void)[] = [];
     private readonly world: WorldContext;
     private readonly effectAssets = new GroundItemAssets();
-    private readonly effects = new Set<ArchiveSprite>();
+    private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
     private readonly sources = new Map<string, Promise<StaticSpriteFactory>>();
 
     constructor(
@@ -264,7 +261,7 @@ export class WallPlacement<BuildId extends string> {
                 object: model,
                 footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
                 cameraDepth: 0,
-            })).concat([...this.effects].map(effect => ({ object: effect.model, footPosition: effect.model.position, cameraDepth: 0 })));
+            })).concat([...this.effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })));
     }
 
     get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
@@ -367,7 +364,7 @@ export class WallPlacement<BuildId extends string> {
             this.disposeWallComponents(instance);
             disposeSprite(instance.model);
         }
-        for (const effect of this.effects) effect.dispose();
+        for (const { instance, display } of this.effects) { instance.remove(); display.dispose(); }
         this.effects.clear(); this.effectAssets.dispose();
         this.placed.clear();
         for (const source of this.sources.values()) void source.then(factory => factory.dispose(), () => {});
@@ -383,7 +380,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     update(dt = 0) {
-        for (const effect of this.effects) { this.faceCamera(effect.model); effect.update(dt); }
+        for (const { instance, display } of this.effects) { this.faceCamera(display.model); instance.sprite.update(dt); }
         this.cursor.update();
         for (const wall of this.placed) {
             this.faceCamera(wall.model);
@@ -581,14 +578,19 @@ export class WallPlacement<BuildId extends string> {
             definition: this.definitions[wall.buildId], health: wall.health, position,
             dropLoot: items => this.world.dropLoot?.(items, position),
             spawnEffect: () => {
-                void createSharedArchiveSprite(this.effectAssets, {
+                const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.effectAssets, {
                     animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-                    bank: 'collapse', animation: 'collapse_small', loop: false,
-                }).then(effect => {
-                    if (this.disposed) { effect.dispose(); return; }
-                    Object.assign(effect.model.userData, { tags: ['NOCLICK', 'FX'], persists: false });
-                    effect.model.position.copy(position); this.scene.add(effect.model); this.effects.add(effect);
-                    effect.playOnce('collapse_small', () => { effect.dispose(); this.effects.delete(effect); });
+                    bank: 'collapse', animation: clip.name, loop: clip.loop,
+                });
+                void create({ name: 'collapse_small', loop: false }).then(initial => {
+                    if (this.disposed) { initial.dispose(); return; }
+                    const effect = createArchiveEntity('collapse_small', { create, initial }, { name: 'collapse_small' }, 'collapse_small');
+                    for (const tag of ['NOCLICK', 'FX']) effect.instance.addTag(tag);
+                    effect.instance.persists = false;
+                    effect.instance.position.copy(position); this.scene.add(effect.display.model); this.effects.add(effect);
+                    effect.instance.sprite.playOnce('collapse_small', () => {
+                        effect.instance.remove(); effect.display.dispose(); this.effects.delete(effect);
+                    });
                 }).catch((error: unknown) => { if (!this.disposed) console.error('Unable to play wall collapse effect', error); });
             },
             remove: () => {
@@ -602,24 +604,19 @@ export class WallPlacement<BuildId extends string> {
     private place(wall: WallInstance<BuildId>): void {
         this.placed.add(wall); this.mouseRecords.set(wall.model, wall);
         this.updateFacing(wall, this.facing.peek());
-        const ground = wall.model.position.clone().setY(wall.model.position.y - wall.groundOffset);
-        wall.body = MakeObstaclePhysics(ground, .5);
+        // walls.lua: MakeObstaclePhysics(inst, .5); Physics:SetDontRemoveOnSleep(true), so pens hold outside the ticking area.
+        MakeObstaclePhysics(wall.instance, .5).SetDontRemoveOnSleep(true);
         this.setObstacle(wall, !wall.health.IsDead());
+        if (this.world.physics) wall.instance.bindPhysics(this.world.physics, wall.model.userData.getGroundPosition);
         wall.stopActivity = watchTileActivity(wall.model, this.world.tickingarea, active => wall.instance.setActive(active));
     }
 
-    /** walls.lua makeobstacle/clearobstacle: Physics:SetActive follows health > 0. */
+    /** walls.lua makeobstacle/clearobstacle: Physics:SetActive follows health > 0. Previews have no physics. */
     private setObstacle(wall: WallInstance<BuildId>, active: boolean): void {
-        const { body } = wall;
-        const physics = this.world.physics;
-        if (!body || !physics) return;
-        if (active) physics.addBody(body);
-        else physics.removeBody(body);
+        if (this.placed.has(wall)) wall.instance.physics.SetActive(active);
     }
 
     private disposeWallComponents(wall: WallInstance<BuildId>): void {
-        this.setObstacle(wall, false);
-        wall.body = undefined;
         wall.model.userData.removed = true;
         wall.stopActivity?.();
         wall.stopAppearance();

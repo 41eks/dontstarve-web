@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
+import type * as CANNON from 'cannon-es';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteController } from '@dontstarve-web/animation/sprite';
+import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import { Heater } from '../../componets/src/heater';
 import { ComponentTimer } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -9,7 +9,10 @@ import { actionEntity } from './actionEntity';
 import { setPrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { MiniMapEntity } from './minimapEntity';
+import { MakePondPhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
+import { createPrefabEntity, prefabInstance } from './prefabInstance';
+import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 
 const WORLD_SCALE = TILE_SIZE / 4;
 export const LAVA_POND_ID = 'lava_pond' as const;
@@ -30,17 +33,6 @@ export interface LavaPondRecord {
 export interface LavaPondRockRecord extends Omit<LavaPondRecord, 'components'> { components: Record<string, never>; }
 const copyLayout = (rocks: readonly LavaPondRockLayout[]) => rocks.map(rock => ({ ...rock, offset: [...rock.offset] as [number, number, number] }));
 
-/** standardcomponents.lua MakePondPhysics: static vertical capsule, with its ground origin intact. */
-function pondBody(position: THREE.Vector3): CANNON.Body {
-  const height = 2 * WORLD_SCALE;
-  const body = new CANNON.Body({ mass: 0, type: CANNON.Body.STATIC,
-    position: new CANNON.Vec3(position.x, position.y + height / 2, position.z) });
-  body.addShape(new CANNON.Cylinder(LAVA_POND_RADIUS, LAVA_POND_RADIUS, height, 24));
-  body.addShape(new CANNON.Sphere(LAVA_POND_RADIUS), new CANNON.Vec3(0, -height / 2, 0));
-  body.addShape(new CANNON.Sphere(LAVA_POND_RADIUS), new CANNON.Vec3(0, height / 2, 0));
-  return body;
-}
-
 /** lava_pond.lua SpawnRocks/OnLoad/OnRemove; art and physics are owned by the prefab manager. */
 class LavaPond {
   private readonly rocksState = createSignal<readonly LavaPondRockLayout[] | undefined>(undefined);
@@ -51,7 +43,6 @@ class LavaPond {
   readonly heater: Heater;
   /** lava_pond.lua: MiniMapEntity:SetIcon("lava_pond.png"). */
   readonly minimap: MiniMapEntity;
-  readonly body: CANNON.Body;
   readonly model: THREE.Group;
   private readonly rockFactory: AnimatedSpriteFactory;
   private readonly random: () => number;
@@ -64,7 +55,6 @@ class LavaPond {
     this.minimap.SetIcon('lava_pond.png');
     this.heater = new Heater(inst); this.heater.SetHeat(LAVA_POND_HEAT);
     inst.components.heater = this.heater;
-    this.body = pondBody(model.position);
     this.initializer = new ComponentTimer(scheduler, () => this.spawnRocks());
     this.timer = this.initializer.snapshot;
     this.initializer.start(0);
@@ -102,17 +92,25 @@ class LavaPond {
     this.minimap.dispose();
     this.heater.dispose(); delete this.model.userData.components.heater;
     setPrefabLocalLight(this.model, null);
-    for (const child of this.children) { child.userData.removed = true; this.rockFactory.disposeSprite(child); }
+    for (const child of this.children) { child.userData.removed = true; removeEntity(child); }
     this.children.length = 0;
   }
 }
 
+/** The entity and its drawn sprite leave together; the factory stays with the manager. */
+function removeEntity(model: THREE.Group): void {
+  prefabInstance(model)!.remove();
+  (model.userData.display as PrefabDisplay).dispose();
+}
+
 function createRock(factory: AnimatedSpriteFactory, prefab: LavaPondRockId, saved?: LavaPondRockRecord): THREE.Group {
   const type = prefab.slice('lava_pond_rock'.length);
-  const model = factory.create({ initialAnimation: `idle${type}`, name: prefab });
+  const { instance, display } = createPrefabEntity(prefab, { create: animation => factory.create({ initialAnimation: animation, name: prefab }),
+    release: sprite => factory.disposeSprite(sprite) }, { name: `idle${type}`, billboard: true }, prefab);
+  const model = display.model;
   // matrixWorld is read directly: getWorldPosition() calls updateWorldMatrix, which re-enters the spatial index sync.
   const groundPosition = new THREE.Vector3();
-  (model.userData.animationController as SpriteController).playOnce(`idle${type}`);
+  instance.sprite.playOnce(`idle${type}`);
   Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId(), persists: true,
     prefabNameOverride: 'lava_pond_rock', getGroundPosition: () => groundPosition.setFromMatrixPosition(model.matrixWorld) });
   actionEntity(model, prefab);
@@ -151,19 +149,23 @@ export class LavaPondManager {
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid lava pond position');
     const [factory, rocks] = await Promise.all([this.factory(false), this.factory(true)]);
     if (this.disposed) throw new Error('Lava pond manager has been disposed');
-    const model = factory.create({ initialAnimation: 'bubble_lava', name: LAVA_POND_ID });
+    const { instance, display } = createPrefabEntity(LAVA_POND_ID, { create: animation => factory.create({ initialAnimation: animation, name: LAVA_POND_ID }),
+      release: sprite => factory.disposeSprite(sprite) }, { name: 'bubble_lava' }, LAVA_POND_ID);
+    const model = display.model;
     model.position.copy(position); model.userData.billboard = false;
     // OnGround rotates only art; the entity root and child offsets stay in world space.
-    const visual = model.children[0]; visual.rotation.x = -Math.PI / 2; visual.position.y = .01;
-    visual.children[0].renderOrder = -.5; // Same BACKGROUND/sort order 3 as pond.lua.
+    instance.sprite.setGround(0); instance.sprite.setMeshOrder(-.5); // Same BACKGROUND/sort order 3 as pond.lua.
     Object.assign(model.userData, { prefab: LAVA_POND_ID, entityId: saved?.id ?? newEntityId(),
       noWetPrefix: true, deploySmartRadius: 2 * WORLD_SCALE, sourceSortOrder: 3 });
     const pool = new LavaPond(model, rocks, this.scheduler, this.random, saved?.components.lavaPond);
-    model.userData.lavaPond = pool; model.userData.physicsBody = pool.body;
+    model.userData.lavaPond = pool;
+    // lava_pond.lua MakePondPhysics(inst, 1.95)
+    MakePondPhysics(instance, LAVA_POND_RADIUS / WORLD_SCALE);
+    instance.bindPhysics(this.physics);
     model.userData.remove = () => this.remove(model);
     setPrefabLocalLight(model, { radius: 1.5 * WORLD_SCALE, falloff: .66, intensity: .66,
       colour: [235 / 255, 121 / 255, 12 / 255] });
-    this.pools.set(model, pool); this.scene.add(model); this.physics.addBody(pool.body);
+    this.pools.set(model, pool); this.scene.add(model);
     return model;
   }
   async spawnRock(prefab: LavaPondRockId, position: THREE.Vector3, saved?: LavaPondRockRecord): Promise<THREE.Group> {
@@ -175,12 +177,12 @@ export class LavaPondManager {
     this.standaloneRocks.add(model); this.scene.add(model);
     return model;
   }
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const pool of this.pools.values()) (pool.model.userData.animationController as SpriteController).update(dt);
+    for (const pool of this.pools.values()) (pool.model.userData.animationController as SpriteState).update(dt);
     for (const rock of this.rockModels) {
-      rock.quaternion.copy(cameraQuaternion); (rock.userData.animationController as SpriteController).update(dt);
+      (rock.userData.animationController as SpriteState).update(dt);
     }
   }
   get miniMapEntities(): MiniMapEntity[] { return [...this.pools.values()].map(pool => pool.minimap); }
@@ -199,13 +201,11 @@ export class LavaPondManager {
   remove(model: THREE.Group): void {
     const pool = this.pools.get(model);
     if (pool) {
-      this.pools.delete(model); pool.dispose(); this.physics.removeBody(pool.body);
-      model.removeFromParent();
-      void this.poolRequest!.then(factory => factory.disposeSprite(model));
+      this.pools.delete(model); pool.dispose();
+      removeEntity(model);
     } else if (this.standaloneRocks.delete(model)) {
       model.userData.removed = true;
-      model.removeFromParent();
-      void this.rockRequest!.then(factory => factory.disposeSprite(model));
+      removeEntity(model);
     }
   }
   dispose(): void {

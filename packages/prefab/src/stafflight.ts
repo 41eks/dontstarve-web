@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, type Memo, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import type { PrefabDisplay } from '@dontstarve-web/display';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './yellowstaff';
@@ -54,10 +56,14 @@ export interface DwarfStarRecord {
 }
 
 interface Star {
-  /** Stable entity handle; no mesh or animation resources while unloaded. */
+  /** Stable entity handle; its display draws no mesh while the entity is asleep. */
   model: THREE.Group;
-  sprite?: THREE.Group;
-  animation?: SpriteAnimationController;
+  instance: PrefabInstance;
+  display: PrefabDisplay;
+  /** Loaded near the player: art, light and sound are presented. */
+  awake: boolean;
+  /** Each load's presentation; callbacks of an earlier one are stale. */
+  generation: number;
   remaining: Signal<number>;
   removed: Signal<boolean>;
   phase: Memo<StaffLightPhase>;
@@ -113,10 +119,17 @@ export class DwarfStarManager {
       throw new RangeError(`Invalid ${this.prefabId} position or lifetime`);
     if (this.disposed) throw new Error('Dwarf star manager has been disposed');
     if (!this.spriteFactory) throw new Error('Dwarf star assets must be prepared before spawning');
-    const model = new THREE.Group();
-    model.name = this.prefabId;
-    model.position.set(position.x, 0, position.z);
-    model.userData.entityId = saved?.id ?? newEntityId();
+    const factory = this.spriteFactory, name = this.prefabId, entityId = saved?.id ?? newEntityId();
+    // A star spawned near the player is drawn at once, so its appear clip plays; a far one starts asleep.
+    const nearby = this.isNearby(position, this.getPlayerPosition?.());
+    const { instance, display } = createPrefabEntity(this.prefabId, { create: (animation, frame) => {
+      const sprite = factory.create({ initialAnimation: animation, initialFrame: frame, name });
+      sprite.userData.entityId = entityId;
+      return sprite;
+    }, release: sprite => factory.disposeSprite(sprite) }, { name: 'idle_loop' }, this.prefabId, instance => { if (!nearby) instance.setActive(false); });
+    const model = display.model;
+    instance.position.set(position.x, 0, position.z);
+    instance.entityId = entityId;
     const remaining = createSignal(remainingSeconds);
     const removed = createSignal(false);
     const phase = createMemo<StaffLightPhase>(() => removed.get() ? 'removed'
@@ -124,8 +137,7 @@ export class DwarfStarManager {
     model.userData.staffLightState = Object.freeze({
       remaining: readonlySignal(remaining), removed: readonlySignal(removed), phase: readonlySignal(phase),
     } satisfies StaffLightState);
-    model.userData.persists = true;
-    const star: Star = { model, remaining, removed, phase,
+    const star: Star = { model, instance, display, awake: false, generation: 0, remaining, removed, phase,
       ageSeconds: this.duration - remainingSeconds, lastSettlementSeconds: this.elapsedSeconds,
       pendingFrames: 0, removalAtSeconds: null };
     const inst = actionEntity(model, this.prefabId);
@@ -141,13 +153,15 @@ export class DwarfStarManager {
       star.propagator.spreading.set(true);
     }
     this.stars.add(star);
-    if (this.isNearby(model.position, this.getPlayerPosition?.())) this.load(star, !saved);
+    // The display keeps the model in the scene while awake and takes it out while asleep.
+    this.scene.add(model);
+    if (nearby) this.load(star, !saved);
     return model;
   }
 
   get renderEntities() {
-    return Array.from(this.stars).filter((star) => star.sprite)
-      .map(({ model, sprite }) => ({ object: sprite!, footPosition: model.position, cameraDepth: 0 }));
+    return Array.from(this.stars).filter((star) => star.awake)
+      .map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
   }
 
   update(dt: number, cameraWorldQuaternion: THREE.Quaternion): void {
@@ -158,7 +172,7 @@ export class DwarfStarManager {
     const playerPosition = this.getPlayerPosition?.();
     for (const star of this.stars) {
       const awake = this.isNearby(star.model.position, playerPosition);
-      const changed = awake !== Boolean(star.sprite);
+      const changed = awake !== star.awake;
       if (changed) {
         // Flush the partial batch on departure; catch up all sleeping time on
         // return, before enabling art, light or sound for an expired entity.
@@ -167,7 +181,7 @@ export class DwarfStarManager {
         else this.unload(star);
       }
       if (!changed && star.phase.peek() === 'active' && ++star.pendingFrames === 60
-        && star.sprite
+        && star.awake
         && !this.settle(star, true)) continue;
       if (star.removalAtSeconds !== null && this.elapsedSeconds >= star.removalAtSeconds) {
         this.removeStar(star);
@@ -177,16 +191,16 @@ export class DwarfStarManager {
       // even when a sleeping star's lifetime has not yet been settled for presentation/save.
       const removalAt = star.removalAtSeconds ?? star.lastSettlementSeconds + star.remaining.peek() + 1;
       star.propagator?.Update(Math.max(0, Math.min(dt, removalAt - (this.elapsedSeconds - dt))));
-      if (!star.sprite) continue;
+      if (!star.awake) continue;
       star.model.quaternion.copy(cameraWorldQuaternion);
-      star.animation!.update(dt);
+      star.instance.sprite.update(dt);
       const age = star.ageSeconds + this.elapsedSeconds - star.lastSettlementSeconds;
       setPrefabLocalLight(star.model, this.light(age));
     }
   }
 
   exportRecords(): DwarfStarRecord[] {
-    for (const star of this.stars) this.settle(star, Boolean(star.sprite));
+    for (const star of this.stars) this.settle(star, star.awake);
     return Array.from(this.stars).filter((star) => star.phase.peek() === 'active').map((star) => ({
       id: String(star.model.userData.entityId),
       transform: { position: [star.model.position.x, 0, star.model.position.z], rotationY: 0 },
@@ -218,8 +232,8 @@ export class DwarfStarManager {
   haunt(model: THREE.Object3D): boolean {
     const star = Array.from(this.stars).find(star => star.model === model);
     if (!star) return false;
-    if (!this.settle(star, Boolean(star.sprite))) return true;
-    if (star.phase.peek() === 'active') this.beginDisappearance(star, this.elapsedSeconds, Boolean(star.sprite));
+    if (!this.settle(star, star.awake)) return true;
+    if (star.phase.peek() === 'active') this.beginDisappearance(star, this.elapsedSeconds, star.awake);
     return true;
   }
 
@@ -241,47 +255,50 @@ export class DwarfStarManager {
     return this.prefabId === POLAR_LIGHT_ID ? polarLight(ageSeconds) : dwarfStarLight(ageSeconds);
   }
 
-  private startIdle(star: Star, animation: SpriteAnimationController): void {
-    if (this.disposed || star.animation !== animation || star.phase.peek() !== 'active' || !this.stars.has(star)) return;
+  private startIdle(star: Star, generation: number): void {
+    if (this.disposed || star.generation !== generation || star.phase.peek() !== 'active' || !this.stars.has(star)) return;
+    const animation = star.instance.sprite;
     if (this.prefabId === POLAR_LIGHT_ID) {
       const clips = ['idle_loop', 'idle_loop2', 'idle_loop3'];
-      animation.playOnce(clips[Math.floor(Math.random() * clips.length)], () => this.startIdle(star, animation));
+      animation.playOnce(clips[Math.floor(Math.random() * clips.length)], () => this.startIdle(star, generation));
     } else animation.start('idle_loop');
   }
 
   private load(star: Star, appear: boolean): void {
-    if (this.disposed || !this.stars.has(star) || star.phase.peek() !== 'active' || star.sprite) return;
-    const sprite = this.spriteFactory!.create({
-      initialAnimation: appear ? 'appear' : 'idle_loop', name: this.prefabId,
-    });
-    sprite.userData.entityId = star.model.userData.entityId;
-    star.sprite = sprite;
-    star.animation = sprite.userData.animationController as SpriteAnimationController;
-    const animation = star.animation;
-    star.model.userData.animationController = star.animation;
-    star.model.add(sprite);
-    if (appear) {
-      star.creationSound = PlaySound('dontstarve/common/staff_star_create', star.model.position);
-      animation.playOnce('appear', () => this.startIdle(star, animation));
-    } else this.startIdle(star, animation);
+    if (this.disposed || !this.stars.has(star) || star.phase.peek() !== 'active' || star.awake) return;
+    star.awake = true;
+    const generation = ++star.generation, animation = star.instance.sprite;
+    if (appear) star.creationSound = PlaySound('dontstarve/common/staff_star_create', star.model.position);
+    const begin = () => {
+      if (appear) animation.playOnce('appear', () => this.startIdle(star, generation));
+      else this.startIdle(star, generation);
+    };
     star.loopSound = PlaySound(this.loopEvent, star.model.position);
     setPrefabLocalLight(star.model, this.light(star.ageSeconds));
-    this.scene.add(star.model);
+    star.instance.setActive(true);
+    // OnEntityWake: the idle chain starts once the display has drawn the sprite again.
+    let waiting = !animation.loaded;
+    const stopWaiting = waiting ? createEffect(() => {
+      animation.art.get();
+      if (!waiting || !animation.loaded || star.generation !== generation) return;
+      waiting = false; begin();
+    }) : undefined;
+    if (!waiting) begin();
     let presentedPhase: StaffLightPhase | undefined;
     const stop = createEffect(() => {
       const phase = star.phase.get();
-      if (phase === presentedPhase || star.animation !== animation || !this.stars.has(star)) return;
+      if (phase === presentedPhase || star.generation !== generation || !this.stars.has(star)) return;
       presentedPhase = phase;
       if (phase === 'disappearing') {
         const loopSound = star.loopSound;
         animation.playOnce('disappear', () => {
-          if (star.animation === animation && this.stars.has(star)) loopSound?.stop();
+          if (star.generation === generation && this.stars.has(star)) loopSound?.stop();
         });
       } else if (phase === 'removed') this.releaseVisual(star);
     });
     star.releaseAppearance = () => {
-      stop();
-      if (star.animation === animation) this.releaseVisual(star);
+      stop(); stopWaiting?.();
+      if (star.generation === generation) this.releaseVisual(star);
     };
   }
 
@@ -298,11 +315,10 @@ export class DwarfStarManager {
     star.creationSound = undefined;
     star.loopSound = undefined;
     setPrefabLocalLight(star.model, null);
-    if (star.sprite) this.spriteFactory!.disposeSprite(star.sprite);
-    star.sprite = undefined;
-    star.animation = undefined;
-    delete star.model.userData.animationController;
-    star.model.removeFromParent();
+    // OnEntitySleep: the display releases the drawn sprite; callbacks of this presentation become stale.
+    star.awake = false;
+    star.generation++;
+    star.instance.setActive(false);
   }
 
   private removeStar(star: Star): void {
@@ -315,6 +331,7 @@ export class DwarfStarManager {
     star.removed.set(true);
     this.unload(star);
     star.phase.dispose();
+    star.instance.remove(); star.display.dispose();
   }
 
   private isNearby(position: THREE.Vector3, player: Pick<THREE.Vector3, 'x' | 'z'> | undefined): boolean {

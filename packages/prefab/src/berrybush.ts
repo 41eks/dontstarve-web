@@ -23,7 +23,7 @@ export const BERRYBUSH_DEFINITION: PickablePlantDefinition = {
   empty: { name: 'idle', frame: 'first' }, grow: 'grow', barren: 'dead',
   dugLoot: 'dug_berrybush', extraLoot: ['twigs', 'twigs'], maxCycles: () => 4 + Math.floor(Math.random() * 2),
   witherable: true, burnTime: 30, burnFxLevel: 4, propagatorSize: 'medium', deploySmartRadius: 3,
-  physicsRadius: .1, snowCovered: true, resident: true,
+  physicsRadius: .1, snowCovered: true,
   skins: BERRYBUSH_SKINS, dugSkins: BERRYBUSH_SKINS.map(skin => `dug_${skin}`),
   digLoot: (model, pickable, withered) => withered || pickable.IsBarren()
     ? [{ prefab: 'twigs' }, { prefab: 'twigs' }]

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { getAxeLifecycle } from '../../prefab/src/axe';
-import { createMoonTreeForest } from '../../prefab/src/moontree';
+import { createMoonTreeManager } from '../../prefab/src/moontree';
 import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -59,11 +59,8 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
   const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene();
   const dropLoot = vi.fn();
-  const forest = await createMoonTreeForest('/dst/data/anim', {
-    positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'],
-  });
-  scene.add(forest.group);
-  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
+  const forest = await createMoonTreeManager('/dst/data/anim', { camera, scene, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
+  forest.spawn('moon_tree', new THREE.Vector3(1, 0, 0), { id: 'tree', transform: { position: [1, 0, 0], rotationY: 0 }, components: {} });
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
   const controller = new PickaxeActionController(world, animation, locomotor, inventory.handEquipment, () => forest.chopTargets, undefined, 'CHOP');
@@ -131,12 +128,9 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     const model = forest.entities[0].model!;
     expect(model.userData.animationController.currentAnimation).toBe('stump_tall');
     expect(forest.chopTargets).toEqual([]);
-    const restored = await createMoonTreeForest('/dst/data/anim', {
-      positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'],
-    });
+    const restored = await createMoonTreeManager('/dst/data/anim', { camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
     try {
-      restored.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
-      restored.restoreState('tree', { stump: true });
+      restored.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), { id: 'tree', transform: { position: [1, 0, 0], rotationY: 0 }, components: { moonTree: { stump: true } } });
       await area.visit(player.position);
       expect(restored.entities[0].model!.userData.animationController.currentAnimation).toBe('stump_tall');
       expect(restored.chopTargets).toEqual([]);
@@ -154,12 +148,9 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
   const shovel = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene(), dropLoot = vi.fn();
-  const forest = await createMoonTreeForest('/dst/data/anim', {
-    positions: [new THREE.Vector3(1, 0, 0), new THREE.Vector3(8, 0, 0)],
-    entityIds: ['stump', 'standing'],
-  });
-  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
-  forest.restoreState('stump', { stump: true });
+  const forest = await createMoonTreeManager('/dst/data/anim', { camera, scene, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
+  forest.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), { id: 'stump', transform: { position: [1, 0, 0], rotationY: 0 }, components: { moonTree: { stump: true } } });
+  forest.spawn('moon_tree_tall', new THREE.Vector3(8, 0, 0), { id: 'standing', transform: { position: [8, 0, 0], rotationY: 0 }, components: {} });
   player.position.set(1, 0, 3);
   await area.visit(player.position);
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
@@ -197,17 +188,18 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     expect(reloaded.entity!.isRemoved).toBe(true);
     expect(reloaded.isValid()).toBe(false);
     expect(reloaded.dig()).toBe(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(geometryDispose).toHaveBeenCalledOnce();
     expect(reloaded.model.parent).toBeNull();
     expect(forest.entities.map(entity => entity.saveId)).toEqual(['standing']);
-    expect(forest.positions).toEqual([standing.position]);
+    expect(forest.entities.map(entity => entity.position)).toEqual([standing.position]);
     expect(forest.renderEntities.map(entity => entity.object)).toEqual([standing.model]);
     expect(forest.digTargets).toEqual([]);
     expect(forest.exportState(forest.entities[0])).toMatchObject({ moonTree: { size: 'tall' }, growable: { stage: 3 } });
     player.position.set(500, 0, 0); await area.visit(player.position);
     player.position.set(1, 0, 3); await area.visit(player.position);
     expect(forest.digTargets).toEqual([]);
-    expect(forest.activeEntities.size).toBe(1);
+    expect(forest.renderEntities.filter(entry => entry.object.userData.prefab === 'moon_tree')).toHaveLength(1);
     expect(forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(16);
   } finally { controller.dispose(); forest.dispose(); inventory.dispose(); }
 });

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createEvergreenForest } from '../../prefab/src/evergreens';
 import { createDeciduousForest } from '../../prefab/src/deciduoustrees';
-import { createMoonTreeForest } from '../../prefab/src/moontree';
+import { createMoonTreeManager } from '../../prefab/src/moontree';
 import { FlowerPlanting } from '../../prefab/src/flower';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Lighter } from '../../componets/src/lighter';
@@ -49,8 +49,8 @@ const light = (target: ComponentActionEntity) => {
   return performLightAction(tool, target, doer());
 };
 /** Presentation effects (fire art) run on the signal queue, after the synchronous domain change. */
-const flush = () => Promise.resolve();
-const fires = (scene: THREE.Object3D) => scene.children.filter(child => child.name === 'fire').length;
+const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+const fires = (scene: THREE.Object3D) => { let count = 0; scene.traverse(child => { if (child.userData.instance?.prefab === 'fire') count++; }); return count; };
 
 async function evergreens(random = () => .5) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
@@ -161,11 +161,10 @@ it('burns a deciduous tree, keeps its season-independent burnt save, and drops c
 
 it('burns a moon tree for its size-scaled time and keeps burnt state through unloading, save and chopping', async () => {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
-  const forest = await createMoonTreeForest('/dst/data/anim', { positions: [], random: () => .5 });
-  forest.bindWorld({ camera: new THREE.PerspectiveCamera(), scene, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query });
-  scene.add(forest.group); await area.visit(new THREE.Vector3());
+  const forest = await createMoonTreeManager('/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scene, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query }, () => .5);
+  await area.visit(new THREE.Vector3());
   try {
-    const tree = forest.spawnTree('moon_tree_tall', new THREE.Vector3(3, 0, 0));
+    const tree = forest.spawn('moon_tree_tall', new THREE.Vector3(3, 0, 0));
     const target = tree.model!.userData.actionEntity as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
     expect(fires(scene)).toBe(1);

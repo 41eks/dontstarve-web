@@ -1,17 +1,27 @@
 import type * as THREE from 'three';
 import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteCommands } from './spriteState';
+import type { PrefabDisplay } from './prefabDisplay';
 
 /** An effect the prefab declares for an entity, shown while `active`; fire on a burning item is one. */
-export interface FxJson {
-  /** Built before it is declared, so that showing it never waits for assets. The declaring prefab disposes it. */
-  readonly sprite: ArchiveSprite;
+interface FxOptions {
   readonly active: ReadonlySignal<boolean>;
-  /** Tags the source adds to the effect entity (`FX`, `HASHEATER`). */
-  readonly tags: readonly string[];
   /** Drawn in the owner's sort group, after the owner (2). */
   readonly sortLayer: number;
+  /** Background children keep their declared render order rather than joining billboard sorting. */
+  readonly background?: boolean;
 }
+
+/** Prepared art, or an entity drawn by its own display (including children that unload with their tile). */
+export type FxJson = FxOptions & (
+  /** Tags the source adds to the effect entity (`FX`, `HASHEATER`). */
+  | { readonly sprite: ArchiveSprite; readonly display?: undefined; readonly tags: readonly string[] }
+  /** A drawn entity's tags belong to its own instance. */
+  | { readonly sprite: ArchiveSpriteCommands; readonly display: PrefabDisplay; readonly tags?: undefined }
+);
+
+const fxModel = (fx: FxJson): THREE.Group => fx.display ? fx.display.model : (fx.sprite as ArchiveSprite).model;
 
 export interface FxRenderEntry {
   readonly object: THREE.Group;
@@ -46,32 +56,35 @@ export class FxAttachments {
   private attach(key: string, fx: FxJson): void {
     const entry: Attached = { fx, stop: () => {} };
     this.attached.set(key, entry);
-    Object.assign(fx.sprite.model.userData, { tags: [...fx.tags], persists: false });
-    fx.sprite.model.position.set(0, 0, 0);
+    const model = fxModel(fx);
+    if (!fx.display) model.userData.tags = [...fx.tags];
+    model.userData.persists = false;
+    model.position.set(0, 0, 0);
     // The watched signal owns the effect that reads it: stopping the bridge stops both.
     const active = watchSignal(fx.active, stop => { entry.stop = stop; });
     createEffect(() => {
-      if (active.get()) this.owner.add(fx.sprite.model);
-      else fx.sprite.model.removeFromParent();
+      if (active.get()) this.owner.add(model);
+      else model.removeFromParent();
     });
   }
 
   private detach(key: string, entry: Attached): void {
     entry.stop();
-    entry.fx.sprite.model.removeFromParent();
+    fxModel(entry.fx).removeFromParent();
     this.attached.delete(key);
   }
 
   update(dt: number): void {
-    for (const { fx } of this.attached.values()) if (fx.sprite.model.parent === this.owner) fx.sprite.update(dt);
+    for (const { fx } of this.attached.values()) if (fxModel(fx).parent === this.owner) fx.sprite.update(dt);
   }
 
   /** Entries for the effects that are shown, ordered with the owner. */
   entries(): FxRenderEntry[] {
     const entries: FxRenderEntry[] = [];
     for (const { fx } of this.attached.values()) {
-      if (fx.sprite.model.parent !== this.owner) continue;
-      entries.push({ object: fx.sprite.model, footPosition: this.owner.position, cameraDepth: 0, sortGroup: this.owner.id, sortLayer: fx.sortLayer });
+      const model = fxModel(fx);
+      if (fx.background || model.parent !== this.owner) continue;
+      entries.push({ object: model, footPosition: this.owner.position, cameraDepth: 0, sortGroup: this.owner.id, sortLayer: fx.sortLayer });
     }
     return entries;
   }

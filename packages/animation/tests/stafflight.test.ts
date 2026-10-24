@@ -4,7 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { DwarfStarManager, dwarfStarLight, DWARF_STAR_DURATION, STAFF_LIGHT_ACTIVE_RADIUS, getStaffLightState, type StaffLightId } from '../../prefab/src/stafflight';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { PlaySound } from '../../prefab/src/sound';
-import { SpriteController, type SpriteAnimationController } from '../src/sprite';
+import type { SpriteAnimationController } from '../src/sprite';
+import { SpriteState } from '@dontstarve-web/display';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import { clockstate, seasonstate, createSignal } from '@dontstarve-web/signals';
 import { InventoryStore, ItemEntity } from '../../inventory/src';
@@ -34,6 +35,10 @@ afterEach(async () => {
   await Promise.resolve();
   vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals();
 });
+
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+/** The factory sprite the star's display has drawn, if any. */
+const drawn = (model: THREE.Object3D) => model.children.find(child => child.userData.animationController);
 
 function setup(prefab: StaffLightId = 'stafflight') {
   const scene = new THREE.Scene(), player = new THREE.Vector3();
@@ -122,7 +127,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(-11.05);
     player.set(STAFF_LIGHT_ACTIVE_RADIUS + 1, 0, 0);
-    update(.1);
+    update(.1); await settle();
     expect(model.parent).toBeNull();
     expect(source.components.heater).toBe(heater);
     player.set(0, 0, 0);
@@ -197,14 +202,15 @@ it('settles lifetime at frame 60 using actual dt and releases light, sound and g
 it('unloads outside the circular XZ range and rebuilds in place after catching up without replaying appearance', async () => {
   const { manager, scene, player, update } = setup();
   const position = new THREE.Vector3(4, 0, 6);
-  const appearances = vi.spyOn(SpriteController.prototype, 'playOnce');
+  const appearances = vi.spyOn(SpriteState.prototype, 'playOnce');
   const model = await manager.spawn(position);
+  await settle();
   const oldAppearDone = appearances.mock.calls.find(([clip]) => clip === 'appear')![1]!;
   const state = getStaffLightState(model)!;
   const controller = model.userData.animationController as SpriteAnimationController;
   const heater = model.userData.components.heater;
   const animationUpdate = vi.spyOn(controller, 'update');
-  const oldSprite = model.children[0];
+  const oldSprite = drawn(model)!;
   const mesh = oldSprite.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const sharedMaterial = mesh.material[0];
   const disposeMaterial = vi.spyOn(sharedMaterial, 'dispose');
@@ -214,10 +220,10 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   update(0.1);
   expect(model.parent).toBe(scene);
   player.x += 0.001;
-  update(0.1);
+  update(0.1); await settle();
   expect(model.parent).toBeNull();
-  expect(model.children).toHaveLength(0);
-  expect(model.userData.animationController).toBeUndefined();
+  expect(drawn(model)).toBeUndefined();
+  expect(model.userData.animationController).toBe(controller);
   expect(disposeMaterial).not.toHaveBeenCalled();
   expect(disposeTexture).not.toHaveBeenCalled();
   expect(getPrefabLocalLight(model)).toBeUndefined();
@@ -231,9 +237,9 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   for (let frame = 0; frame < 120; frame++) update(0.1);
   expect(animationUpdate).not.toHaveBeenCalled();
   player.copy(position);
-  update(0.2);
+  update(0.2); await settle();
   expect(model.parent).toBe(scene);
-  const newSprite = model.children[0];
+  const newSprite = drawn(model)!;
   expect(FindEntities(model.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
   expect(newSprite).not.toBe(oldSprite);
   expect(newSprite.userData.entityId).toBe(model.userData.entityId);
@@ -244,7 +250,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   const newMesh = newSprite.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   expect(newMesh.material[0]).toBe(sharedMaterial);
   expect(newMesh.geometry).not.toBe(mesh.geometry);
-  expect(manager.renderEntities[0].object).toBe(newSprite);
+  expect(manager.renderEntities[0].object).toBe(model);
   expect(manager.renderEntities[0].footPosition).toBe(model.position);
   setSpriteEntityRenderOrder(newSprite, 7);
   expect(newSprite.children[0].renderOrder).toBe(7);
@@ -256,10 +262,10 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   expect(getPrefabLocalLight(model)!.radius).toBeCloseTo(dwarfStarLight(12.6).radius);
   // Moving the entity handle also updates proximity in the current frame.
   model.position.x = player.x + STAFF_LIGHT_ACTIVE_RADIUS + 1;
-  update(0.1);
+  update(0.1); await settle();
   expect(model.parent).toBeNull();
   player.copy(model.position);
-  update(0.1);
+  update(0.1); await settle();
   expect(model.parent).toBe(scene);
   expect(manager.exportRecords()[0].transform.position).toEqual(model.position.toArray());
 });
@@ -344,8 +350,9 @@ it('flushes partial and sleeping time for saves, restores identity and removes e
     { id: 'e_far', remainingSeconds: 100 });
   const expired = await manager.spawn(far.position.clone(), { id: 'e_expired', remainingSeconds: 0.5 });
   expect(far.parent).toBeNull();
-  expect(far.children).toHaveLength(0);
-  expect(expired.children).toHaveLength(0);
+  await settle();
+  expect(drawn(far)).toBeUndefined();
+  expect(drawn(expired)).toBeUndefined();
   expect(getStaffLightState(expired)!.phase.peek()).toBe('active');
   expect(PlaySound).toHaveBeenCalledTimes(1);
   update(0.2); update(0.3);
@@ -366,8 +373,8 @@ it('flushes partial and sleeping time for saves, restores identity and removes e
   player.copy(far.position);
   update(0.1);
   expect(far.parent).toBeNull();
-  expect(far.children).toHaveLength(0);
-  expect(far.userData.animationController).toBeUndefined();
+  await settle();
+  expect(drawn(far)).toBeUndefined();
   expect(PlaySound).toHaveBeenCalledTimes(sounds);
   manager.dispose();
   expect(near.parent).toBeNull();

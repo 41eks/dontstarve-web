@@ -3,8 +3,8 @@ import { MiniMapEntity } from './minimapEntity';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSignal, readonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { createAnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createAnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import { performToolWork, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
@@ -13,11 +13,13 @@ import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { ResidentSprite, type ResidentEntity } from '@dontstarve-web/animation/residentSprite';
+import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { registerPlacementTree } from './placementEntities';
 import { actionEntity } from './actionEntity';
-import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
+import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment } from './treeFire';
@@ -60,18 +62,19 @@ export interface EvergreenWorld {
 }
 interface Tree {
   logical: ResidentEntity;
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
+  sprite: ArchiveSpriteCommands;
   stopActivity(): void;
   stopPlacement(): void;
   minimap: MiniMapEntity;
-  inst: ComponentActionEntity & WorkableInst & { getPosition(): THREE.Vector3 };
+  inst: ComponentActionEntity & WorkableInst & { model: THREE.Group; getPosition(): THREE.Vector3 };
   removeInst(): void;
   stump: Signal<boolean>;
   growable: Growable;
   timer: Timer;
   workable: Workable;
   lootdropper: LootDropper;
-  body?: CANNON.Body;
   sounds: Set<SoundHandle>;
   /** MakeLargeBurnable/MakeMediumPropagator (or the stump's small pair) while the tree is awake. */
   fire?: BurnableBinding;
@@ -117,7 +120,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   let nextId = 0;
   const trees = new Map<ResidentEntity, Tree>();
   const mouseRecords = new ModelRecords<ResidentEntity>();
-  const effects = new Map<THREE.Group, THREE.Vector3>();
+  const effects = new Map<THREE.Group, { entity: ReturnType<typeof createPrefabEntity>; position: THREE.Vector3 }>();
   let disposed = false;
   const stageOf = (tree: Tree) => tree.growable.GetStage() - 1;
   // evergreens.lua old_anims: burnt/chop_burnt reuse the tall clips.
@@ -167,7 +170,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const burntChanges = (tree: Tree) => {
     unbindFire(tree);
     tree.growable.StopGrowing();
-    tree.inst.removeTag('shelter');
+    tree.inst.removeTag('shelter'); tree.inst.removeTag('petrifiable');
     tree.lootdropper.SetLoot([]); tree.lootdropper.SetChanceLootTable('evergreen_burnt');
     if (tree.inst.components.workable === tree.workable) {
       tree.workable.SetWorkLeft(1);
@@ -206,7 +209,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     tree.workable.dispose(); delete tree.inst.components.workable;
     playSound(tree, 'dontstarve/forest/treeCrumble');
     playSound(tree, 'dontstarve/wilson/use_axe_tree');
-    if (tree.body) { world.physics?.removeBody(tree.body); tree.body = undefined; }
+    RemovePhysicsColliders(tree.instance);
     tree.lootdropper.SpawnLootPrefab('charcoal');
     tree.lootdropper.DropLoot();
     tree.pineconeTask?.(); tree.pineconeTask = undefined;
@@ -222,16 +225,15 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     unbindFire(tree);
     tree.minimap.dispose();
     tree.removeInst(); tree.workable.dispose(); tree.growable.dispose(); tree.timer.dispose();
-    if (tree.body) world.physics?.removeBody(tree.body);
     for (const sound of tree.sounds) sound.stop(); tree.sounds.clear();
-    tree.sprite.dispose();
+    tree.instance.remove();
   };
   const makeStump = (tree: Tree) => {
     unbindFire(tree);
     tree.minimap.SetIcon('evergreen_stump.png');
     tree.stump.set(true); tree.growable.StopGrowing();
     tree.inst.removeTag('shelter'); tree.inst.addTag('stump');
-    if (tree.body) { world.physics?.removeBody(tree.body); tree.body = undefined; }
+    RemovePhysicsColliders(tree.instance);
     tree.workable.dispose();
     tree.workable = new Workable(tree.inst);
     tree.inst.components.workable = tree.workable;
@@ -243,12 +245,13 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     if (active.has(tree.logical)) bindFire(tree);
   };
   const spawnNeedles = (tree: Tree) => {
-    const fx = needles.create({ initialAnimation: 'chop', name: 'pine_needles_chop' });
+    const entity = createPrefabEntity('pine_needles_chop', { create: animation => needles.create({ initialAnimation: animation, name: 'pine_needles_chop' }),
+      release: drawn => needles.disposeSprite(drawn) }, { name: 'chop', billboard: true }, 'pine_needles_chop');
+    const fx = entity.display.model; entity.instance.persists = false;
     fx.position.copy(tree.logical.position); fx.position.y += random() * 2 * WORLD_SCALE;
-    fx.quaternion.copy(world.camera.getWorldQuaternion(new THREE.Quaternion()));
-    fx.userData.tags = ['FX', 'NOCLICK']; effects.set(fx, tree.logical.position); group.add(fx);
-    (fx.userData.animationController as SpriteAnimationController).playOnce('chop', () => {
-      effects.delete(fx); needles.disposeSprite(fx);
+    entity.instance.addTag('FX'); effects.set(fx, { entity, position: tree.logical.position }); group.add(fx);
+    entity.instance.sprite.playOnce('chop', () => {
+      effects.delete(fx); entity.instance.remove();
     });
   };
   const chopDown = (tree: Tree, worker: Worker) => {
@@ -268,23 +271,22 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     const model = tree.logical.model;
     model.userData.animationController = tree.sprite;
     Object.assign(model.userData, { entityId: tree.logical.saveId, prefab: 'evergreen', deploySmartRadius: 1,
-      physicsRadius: .25 * WORLD_SCALE, MiniMapEntity: tree.minimap, components: tree.inst.components,
+      MiniMapEntity: tree.minimap, components: tree.inst.components,
       evergreenState: { stump: readonlySignal(tree.stump), growth: tree.growable.state } });
-    Object.defineProperty(model.userData, 'tags', { get: () => ['plant', 'tree', 'evergreens', 'evergreen',
-      'shelter', 'stump', 'burnt', 'fire', 'CHOP_workable', 'DIG_workable'].filter(tag => tree.inst.hasTag(tag)) });
     model.userData.placementLogical = true;
     actionEntity(model, 'evergreen', tree.inst);
     mouseRecords.set(model, tree.logical);
   };
   const setActive = (tree: Tree, awake: boolean) => {
-    const { logical, sprite } = tree;
-    if (!trees.has(logical) || active.has(logical) === awake) return;
+    const { logical, instance } = tree;
+    if (!trees.has(logical)) return;
+    if (active.has(logical) === awake) { instance.setActive(awake); return; }
     if (awake) {
       active.add(logical);
       wakeGrowable(tree);
       bindFire(tree);
       if (tree.inst.hasTag('burnt')) startPineconeTask(tree);
-      sprite.setActive(true);
+      instance.setActive(true);
     } else {
       active.delete(logical);
       tree.growable.OnEntitySleep();
@@ -293,7 +295,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
         else burn(tree, true);
       }
       unbindFire(tree);
-      sprite.setActive(false);
+      instance.setActive(false);
     }
   };
   const targets = (action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] => mouseRecords.select(model, active).flatMap(logical => {
@@ -314,19 +316,22 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       if (disposed) throw new Error('Evergreen forest has been disposed');
       const saveId = saved?.id ?? newEntityId();
       if (entities.some(entity => entity.saveId === saveId)) throw new Error(`Duplicate entity ID: ${saveId}`);
-      const sprite = new ResidentSprite(clip => createTree(clip.name, clip.loop, `Evergreen-${saveId}`),
-        { name: 'sway1_loop_short', loop: true });
-      const model = sprite.model; model.position.copy(position);
+      const { instance, display } = createArchiveEntity('evergreen', { create: clip => createTree(clip.name, clip.loop, `Evergreen-${saveId}`) },
+        { name: 'sway1_loop_short', billboard: true }, `Evergreen-${saveId}`, instance => instance.setActive(false));
+      instance.entityId = saveId;
+      const sprite = instance.sprite, model = display.model;
+      instance.position.copy(position);
       const logical: ResidentEntity = { id: nextId++, saveId, model, position: model.position };
       entities.push(logical);
       const minimap = new MiniMapEntity(logical.position);
       minimap.SetIcon('evergreen.png'); minimap.SetPriority(-1);
-      const removed = createSignal(false), tags = new Set(['plant', 'tree', 'evergreens', 'evergreen']);
+      const removed = createSignal(false);
+      for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) instance.addTag(tag);
       const components: ComponentActionEntity['components'] & { growable?: Growable; lootdropper?: LootDropper; timer?: Timer } = {};
-      const inst: Tree['inst'] = {
+      const inst: Tree['inst'] = { model,
         prefab: 'evergreen', removal: readonlySignal(removed), get isRemoved() { return removed.peek(); }, components,
-        hasTag: tag => components.workable?.HasTag(tag) ?? tags.has(tag),
-        addTag: tag => { tags.add(tag); }, removeTag: tag => { tags.delete(tag); },
+        hasTag: tag => components.workable?.HasTag(tag) ?? instance.hasTag(tag),
+        addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag),
         PushEvent: (name, data) => logical.model.dispatchEvent({ type: name, data } as never),
         getPosition: () => logical.position,
       };
@@ -341,7 +346,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
         fn: () => setStage(trees.get(logical)!), growfn: () => grow(trees.get(logical)!),
       })), seconds => world.growthDuration?.(seconds) ?? seconds);
       components.growable = growable;
-      const tree: Tree = { logical, sprite, stopActivity() {}, stopPlacement() {}, minimap, inst, removeInst: () => removed.set(true), stump: createSignal(false),
+      const tree: Tree = { logical, instance, display, sprite, stopActivity() {}, stopPlacement() {}, minimap, inst, removeInst: () => removed.set(true), stump: createSignal(false),
         growable, workable, lootdropper, sounds: new Set(), burntcone: false,
         timer: new Timer(scheduler, name => { if (name === 'decay') remove(tree); }, ['decay']) };
       components.timer = tree.timer;
@@ -354,7 +359,8 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       growable.SetStage(stage); growable.StartGrowing();
       if (saved?.components.growable) growable.OnLoad(saved.components.growable);
       tree.timer.OnLoad(saved?.components.evergreenTimer);
-      if (world.physics) { tree.body = MakeObstaclePhysics(logical.position, .25); world.physics.addBody(tree.body); }
+      MakeObstaclePhysics(instance, .25);
+      if (world.physics) instance.bindPhysics(world.physics);
       workable.SetOnWorkCallback(() => {
         if (!active.has(logical)) return;
         playSound(tree, 'dontstarve/wilson/use_axe_tree');
@@ -381,17 +387,16 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       if (!world.scheduler) scheduler.advance(dt);
       fireFx.update(dt, quaternion);
       for (const logical of active) {
-        const sprite = logical.model.userData.animationController as ArchiveSprite;
-        sprite.faceCamera(quaternion);
+        const { sprite } = trees.get(logical)!;
         sprite.update(dt);
       }
-      for (const model of [...effects.keys()]) {
-        model.quaternion.copy(quaternion); (model.userData.animationController as SpriteAnimationController).update(dt);
+      for (const { entity } of [...effects.values()]) {
+        entity.instance.sprite.update(dt);
       }
     },
     get renderEntities() {
       return [...Array.from(active, logical => ({ object: logical.model, footPosition: logical.position, cameraDepth: 0 })),
-        ...Array.from(effects, ([object, footPosition]) => ({ object, footPosition, cameraDepth: 0 })), ...fireFx.renderEntities];
+        ...Array.from(effects, ([object, { position }]) => ({ object, footPosition: position, cameraDepth: 0 })), ...fireFx.renderEntities];
     },
     exportRecords: () => [...trees.values()].map(tree => {
       // onsave: a burning tree is saved as burnt; a burning stump is still a stump.
@@ -409,7 +414,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
       if (disposed) return;
       disposed = true;
       for (const tree of [...trees.values()]) remove(tree);
-      for (const model of effects.keys()) needles.disposeSprite(model);
+      for (const { entity } of effects.values()) entity.instance.remove();
       effects.clear(); group.removeFromParent(); assets.dispose(); needles.dispose(); fireFx.dispose();
       if (!world.scheduler) scheduler.dispose();
     },

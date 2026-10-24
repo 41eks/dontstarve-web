@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
-import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type * as CANNON from 'cannon-es';
+import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { WorldContentKey, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { BlowInWind } from '../../componets/src/blowinwind';
@@ -73,9 +74,13 @@ export interface TumbleweedWorld {
 const varyAngle = (angle: number, random: () => number) =>
   Math.min(360, Math.max(0, angle + random() * 2 * ANGLE_VARIANCE - ANGLE_VARIANCE));
 
+interface DrawnEntity { readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
+
 class Tumbleweed {
-  readonly sprite: ArchiveSprite;
+  readonly entity: DrawnEntity;
+  readonly sprite: ArchiveSpriteCommands;
   readonly model: THREE.Group;
+  /** tumbleweed.lua MakeCharacterPhysics(inst, .5, 1); the instance's binding owns the body the wind drives. */
   readonly body: CANNON.Body;
   readonly blowinwind: BlowInWind;
   readonly locomotor: LocoMotor;
@@ -89,12 +94,16 @@ class Tumbleweed {
   private readonly restartMovement: ComponentTimer;
   private readonly cleanups: (() => void)[] = [];
   private readonly heading;
-  private readonly breakFx: ArchiveSprite;
+  private readonly breakFx: DrawnEntity;
   private readonly onRemove: (tumbleweed: Tumbleweed, picked: boolean) => void;
+  private facing?: number;
 
-  constructor(sprite: ArchiveSprite, breakFx: ArchiveSprite, body: CANNON.Body, world: TumbleweedWorld,
+  constructor(entity: DrawnEntity, breakFx: DrawnEntity, physics: CANNON.World, world: TumbleweedWorld,
     onRemove: (tumbleweed: Tumbleweed, picked: boolean) => void) {
-    this.sprite = sprite; this.model = sprite.model; this.breakFx = breakFx; this.body = body; this.world = world;
+    this.entity = entity; this.sprite = entity.instance.sprite; this.model = entity.display.model; this.breakFx = breakFx; this.world = world;
+    MakeCharacterPhysics(entity.instance, .5, 1);
+    entity.instance.bindPhysics(physics);
+    const body = this.body = entity.instance.physicsBody!;
     this.random = world.random ?? Math.random; this.onRemove = onRemove;
     const inst = actionEntity(this.model, TUMBLEWEED_ID);
     inst.addTag('pickable');
@@ -205,7 +214,8 @@ class Tumbleweed {
     this.model.position.set(this.body.position.x, 0, this.body.position.z);
     this.world.constrainPosition(this.model.position);
     this.model.quaternion.copy(cameraQuaternion);
-    this.sprite.setFacing(fourFacingFromRotation(this.rotation, this.heading.peek()));
+    const facing = fourFacingFromRotation(this.rotation, this.heading.peek());
+    if (facing !== this.facing) this.sprite.setFacing(this.facing = facing);
   }
 
   /** Take over a final break pose for the fx, then release timers, listeners and the sprite. */
@@ -217,15 +227,15 @@ class Tumbleweed {
     this.groundCheck.stop(); this.restartMovement.stop();
     for (const cleanup of this.cleanups.splice(0)) cleanup();
     delete this.model.userData.components.pickable;
-    const fx = picked ? this.breakFx.model : undefined;
-    if (!picked) this.breakFx.dispose();
-    this.sprite.dispose();
+    const fx = picked ? this.breakFx.display.model : undefined;
+    if (!picked) this.disposeBreak();
+    this.entity.instance.remove(); this.entity.display.dispose();
     return fx;
   }
-  setBreakFacing(heading: number): void { this.breakFx.setFacing(fourFacingFromRotation(this.rotation, heading)); }
-  playBreak(onDone: () => void): void { this.breakFx.playOnce('break', onDone); }
-  updateBreak(dt: number): void { this.breakFx.update(dt); }
-  disposeBreak(): void { this.breakFx.dispose(); }
+  setBreakFacing(heading: number): void { this.breakFx.instance.sprite.setFacing(fourFacingFromRotation(this.rotation, heading)); }
+  playBreak(onDone: () => void): void { this.breakFx.instance.sprite.playOnce('break', onDone); }
+  updateBreak(dt: number): void { this.breakFx.instance.sprite.update(dt); }
+  disposeBreak(): void { this.breakFx.instance.remove(); this.breakFx.display.dispose(); }
 }
 
 /** tumbleweed.lua: wind-driven, four-faced, picked for three loot rolls. Burning, sounds and haunting are not ported. */
@@ -233,7 +243,6 @@ export class TumbleweedManager {
   private readonly assets: ArchiveSpriteAssets;
   private readonly tumbleweeds = new Map<THREE.Group, Tumbleweed>();
   private readonly breaking = new Set<{ tumbleweed: Tumbleweed; model: THREE.Group }>();
-  private readonly material = new CANNON.Material('tumbleweed');
   private readonly scene: THREE.Scene;
   private readonly physics: CANNON.World;
   private readonly world: TumbleweedWorld;
@@ -242,38 +251,35 @@ export class TumbleweedManager {
   constructor(scene: THREE.Scene, physics: CANNON.World, world: TumbleweedWorld) {
     this.scene = scene; this.physics = physics; this.world = world;
     this.assets = new ArchiveSpriteAssets('tumbleweed');
-    // MakeCharacterPhysics sets friction to zero, so ground contacts must not cancel the wind-driven motor.
-    const materials = new Set([physics.defaultMaterial, ...getRegisteredPhysicsBodies(physics).map(body => body.material)
-      .filter((material): material is CANNON.Material => material !== null)]);
-    for (const material of materials) {
-      physics.addContactMaterial(new CANNON.ContactMaterial(this.material, material, { friction: 0, restitution: 0 }));
-    }
   }
 
-  private createSprite(animation: string, loop: boolean, name: string): Promise<ArchiveSprite> {
-    return createArchiveSprite(this.assets, { animationArchive: 'tumbleweed.zip', buildArchives: ['tumbleweed.zip'],
-      bank: 'tumbleweed', animation, loop,
+  private async createEntity(prefab: string, animation: string, loop: boolean): Promise<DrawnEntity> {
+    const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, { animationArchive: 'tumbleweed.zip',
+      buildArchives: ['tumbleweed.zip'], bank: 'tumbleweed', animation: clip.name, loop: clip.loop,
       // swap_fire is the burn fx attach point (AddBurnFX); it has no art in the build.
-      hiddenSymbols: ['swap_fire'] }, { name });
+      hiddenSymbols: ['swap_fire'] }, { name: prefab });
+    return createArchiveEntity(prefab, { create, initial: await create({ name: animation, loop }) }, { name: animation, held: !loop }, prefab);
   }
 
   async spawn(position: THREE.Vector3, saved?: TumbleweedRecord): Promise<THREE.Group> {
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid tumbleweed position');
     if (this.disposed) throw new Error('Tumbleweed manager has been disposed');
-    const [sprite, breakFx] = await Promise.all([
-      this.createSprite('move_loop', true, TUMBLEWEED_ID), this.createSprite('break', false, 'tumbleweedbreakfx')]);
-    if (this.disposed) { sprite.dispose(); breakFx.dispose(); throw new Error('Tumbleweed manager has been disposed'); }
-    const model = sprite.model;
+    const [entity, breakFx] = await Promise.all([
+      this.createEntity(TUMBLEWEED_ID, 'move_loop', true), this.createEntity('tumbleweedbreakfx', 'break', false)]);
+    if (this.disposed) {
+      for (const { instance, display } of [entity, breakFx]) { instance.remove(); display.dispose(); }
+      throw new Error('Tumbleweed manager has been disposed');
+    }
+    // tumbleweedbreakfx: FX, not persistent.
+    breakFx.instance.addTag('FX'); breakFx.instance.persists = false;
+    const model = entity.display.model;
     model.position.copy(position).setY(0);
     this.world.constrainPosition(model.position);
     model.userData.entityId = saved?.id ?? newEntityId();
-    const radius = WORLD_SCALE;
-    const body = new CANNON.Body({ ...MakeCharacterPhysics(.5, 1), material: this.material, linearDamping: 0,
-      position: new CANNON.Vec3(model.position.x, radius, model.position.z) });
-    const tumbleweed = new Tumbleweed(sprite, breakFx, body, this.world, (target, picked) => this.remove(target.model, picked));
+    const tumbleweed = new Tumbleweed(entity, breakFx, this.physics, this.world, (target, picked) => this.remove(target.model, picked));
     this.tumbleweeds.set(model, tumbleweed);
     model.userData.remove = () => this.remove(model, false);
-    this.physics.addBody(body); this.scene.add(model);
+    this.scene.add(model);
     return model;
   }
 
@@ -304,7 +310,6 @@ export class TumbleweedManager {
     if (!tumbleweed) return;
     this.tumbleweeds.delete(model);
     const position = model.position.clone();
-    this.physics.removeBody(tumbleweed.body);
     const fx = tumbleweed.dispose(picked);
     model.removeFromParent();
     if (!fx) return;

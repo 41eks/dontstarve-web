@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { FliesController } from '../../prefab/src/flies';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import * as sound from '../../prefab/src/sound';
 import { GroundItemManager } from '../../../src/groundItems';
@@ -25,10 +26,10 @@ it('uses private player position updates for source hysteresis and releases each
   const sprite = () => ({ model: new THREE.Group(), currentAnimation: '', frameCount: 1, start: vi.fn(), playOnce: vi.fn(),
     setPaused: vi.fn(), setAnimation: vi.fn(), setFrame: vi.fn(), setOpacity: vi.fn(), setFacing: vi.fn(),
     setBuildArchive: vi.fn(), setSymbolHidden: vi.fn(), faceCamera: vi.fn(), refreshTransform: vi.fn(),
-    update: vi.fn(), dispose: vi.fn() });
+    setVisible: vi.fn(), update: vi.fn(), dispose: vi.fn() });
   const a = sprite(), b = sprite();
-  const first = new FliesController(a, new THREE.Vector3(), scheduler, world.getWatchWorldContent);
-  const second = new FliesController(b, new THREE.Vector3(-20, 0, 0), scheduler, world.getWatchWorldContent);
+  const first = new FliesController(new PrefabInstance('flies', a as never), new THREE.Vector3(), scheduler, world.getWatchWorldContent);
+  const second = new FliesController(new PrefabInstance('flies', b as never), new THREE.Vector3(-20, 0, 0), scheduler, world.getWatchWorldContent);
   scheduler.advance(0);
   expect(handles).toHaveLength(2);
   const waiting = first.playerprox.timerState.peek();
@@ -111,12 +112,13 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     expect(flies.parent).toBe(model);
     expect(flies.userData.tags).toEqual(['NOCLICK', 'DECOR']);
     for (let frame = 0; frame < 20; frame++) manager.update(.1, new THREE.Quaternion());
-    const mesh = flies.children[0].children[0] as THREE.Mesh;
+    let mesh!: THREE.Mesh;
+    flies.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object; });
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     const entries = manager.renderEntities;
     expect(entries).toHaveLength(2);
     setSpriteEntityRenderOrder(flies, 2);
-    expect(flies.children[0].renderOrder).toBe(2);
+    expect(mesh.parent!.renderOrder).toBe(2);
     expect(entries.find(entry => entry.object === flies)!.footPosition.toArray()).toEqual([0, 0, 0]);
     const [saved] = JSON.parse(JSON.stringify(manager.exportRecords()));
     expect(saved).toMatchObject({ id: 'poop-identity', transform: { position: [0, 0, 0] }, components: { stack: { itemId: 'poop', count: 3 } } });

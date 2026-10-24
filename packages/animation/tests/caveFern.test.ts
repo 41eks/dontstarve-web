@@ -6,7 +6,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { bindTestWorld, tickWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '../../signals/src';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { SpriteState } from '@dontstarve-web/display';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -57,7 +57,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   };
   await new Promise(resolve => setTimeout(resolve, 0));
   for (const plant of plants) {
-    expect(plant.userData.animationController).toBeInstanceOf(ResidentSprite);
+    expect(plant.userData.animationController).toBeInstanceOf(SpriteState);
     expect(meshCount(plant)).toBeGreaterThan(0);
   }
   awake.set(false);
@@ -87,6 +87,8 @@ it('preserves cave fern poses and components across residency, then picks foliag
   tickWorld(scheduler, ferns, 1 / 30, new THREE.Quaternion());
   // remove_when_picked: nothing remains to save or render but the restored fern.
   expect(ferns.exportRecords().map(({ record }) => record.id)).toEqual(['restored']);
+  // The display leaves the scene in its effect.
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(scene.children).not.toContain(fern);
   awake.set(false);
   await new Promise(resolve => setTimeout(resolve, 0));

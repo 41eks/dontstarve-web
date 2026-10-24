@@ -1,19 +1,20 @@
 import type * as THREE from 'three';
 import { createMaterials, loadAnim, loadBuild, smallHash, type Animation, type ParsedBuild } from './animationAssets';
-import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory,
-  type SpriteAnimationController } from './sprite';
+import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory } from './sprite';
 
-export interface FacingSpriteAnimationController extends SpriteAnimationController {
-  readonly currentAnimation: string;
-  readonly currentAnimationLength: number;
-  /** Lua AnimState animation queue; events are delivered independently of state changes. */
-  playAnimation(name: string, loop?: boolean): void;
-  pushAnimation(name: string, loop?: boolean): void;
-  onAnimationEvent?: (event: 'animover' | 'animqueueover') => void;
-  /** A single FACING_* bit; changing art preserves playback and one-shot callbacks. */
+/** AnimState:SetBuild names; the shaved build replaces the whole hairy build while hair regrows. */
+export const BEEFALO_BUILD = 'beefalo_build.zip';
+export const BEEFALO_SHAVED_BUILD = 'beefalo_shaved_build.zip';
+
+/** Six-faced art that a prefab turns with a FACING_* bit, mirroring the left-hand facings. */
+export interface FacingSpriteController {
   setFacing(facing: number, mirrored?: boolean): void;
-  /** AnimState:SetBuild("beefalo_shaved_build"), or back to "beefalo_build". */
-  setShaved(shaved: boolean): void;
+  setBuildArchive(archive: string): void;
+}
+
+/** Shared beefalo atlases and each clip's length, for the logical AnimState that times the stategraph. */
+export interface BeefaloSpriteFactory extends AnimatedSpriteFactory {
+  readonly lengths: ReadonlyMap<string, number>;
 }
 
 const HEAT_LAYER = smallHash('HEAT');
@@ -21,65 +22,23 @@ const HEAT_LAYER = smallHash('HEAT');
 interface BeefaloBuild { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] }
 
 /** Six-faced beefalo art; the source prefab hides its HEAT layer. */
-class BeefaloSpriteController extends SpriteController implements FacingSpriteAnimationController {
+class BeefaloSpriteController extends SpriteController implements FacingSpriteController {
   private facing?: number;
   private readonly hairy: BeefaloBuild;
   protected shaved?: BeefaloBuild;
-  onAnimationEvent?: FacingSpriteAnimationController['onAnimationEvent'];
-  private readonly queue: { name: string; loop: boolean }[] = [];
-  private playbackRevision = 0;
-  private animationDone = false;
 
   constructor(...args: ConstructorParameters<typeof SpriteController>) {
     super(...args);
     this.hairy = { build: args[1], materials: args[3] };
   }
 
-  setShaved(shaved: boolean): void {
-    const choice = shaved ? this.shaved : this.hairy;
-    if (choice) this.setBuild(choice.build, choice.materials);
+  setBuildArchive(archive: string): void {
+    const choice = archive === BEEFALO_SHAVED_BUILD ? this.shaved : archive === BEEFALO_BUILD ? this.hairy : undefined;
+    if (!choice) throw new Error(`Beefalo has no build ${archive}`);
+    this.setBuild(choice.build, choice.materials);
   }
 
-  override start(name: string): void { this.playAnimation(name, true); }
-
-  override playOnce(name: string, onComplete?: () => void): void {
-    this.playbackRevision++;
-    this.queue.length = 0;
-    this.animationDone = false;
-    super.playOnce(name, onComplete);
-  }
-
-  playAnimation(name: string, loop = false): void {
-    this.playbackRevision++;
-    this.queue.length = 0;
-    this.playQueuedAnimation(name, loop);
-  }
-
-  pushAnimation(name: string, loop = false): void {
-    if (this.animationDone) this.playQueuedAnimation(name, loop);
-    else {
-      this.queue.push({ name, loop });
-      // A queued clip follows the current iteration of a looping animation.
-      if (this.loop) this.elapsed %= this.currentAnimationLength;
-      this.loop = false;
-    }
-  }
-
-  private playQueuedAnimation(name: string, loop: boolean): void {
-    const revision = this.playbackRevision;
-    this.animationDone = false;
-    super.playOnce(name, () => {
-      if (revision !== this.playbackRevision) return;
-      this.animationDone = true;
-      this.onAnimationEvent?.('animover');
-      if (revision !== this.playbackRevision) return;
-      const next = this.queue.shift();
-      if (next) this.playQueuedAnimation(next.name, next.loop);
-      else this.onAnimationEvent?.('animqueueover');
-    });
-    this.loop = loop;
-  }
-
+  /** A single FACING_* bit; changing art preserves playback and one-shot callbacks. */
   setFacing(facing: number, mirrored = false) {
     this.visual.scale.x = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
     if (this.facing === facing) return;
@@ -103,18 +62,22 @@ class BeefaloSpriteController extends SpriteController implements FacingSpriteAn
 }
 
 /** Beefalo's builds and actions ship in separate source archives. */
-export async function createBeefaloSpriteFactory(assetBaseUrl: string): Promise<AnimatedSpriteFactory> {
+export async function createBeefaloSpriteFactory(assetBaseUrl: string): Promise<BeefaloSpriteFactory> {
   const [buildPackage, shavedPackage, banks] = await Promise.all([
-    loadBuild('beefalo_build.zip', assetBaseUrl),
-    loadBuild('beefalo_shaved_build.zip', assetBaseUrl),
+    loadBuild(BEEFALO_BUILD, assetBaseUrl),
+    loadBuild(BEEFALO_SHAVED_BUILD, assetBaseUrl),
     Promise.all(['beefalo_basic.zip', 'beefalo_actions.zip', 'beefalo_actions_domestic.zip']
       .map((archive) => loadAnim(archive, assetBaseUrl))),
   ]);
   const shaved: BeefaloBuild = { build: shavedPackage.build, materials: createMaterials(shavedPackage) };
-  const factory = createSpriteFactory(buildPackage, { animations: banks.flatMap((bank) => bank.animations) },
+  const animations = banks.flatMap((bank) => bank.animations);
+  const factory = createSpriteFactory(buildPackage, { animations },
     class extends BeefaloSpriteController { protected override shaved = shaved; });
+  // Facings of one clip share its length.
+  const lengths = new Map<string, number>();
+  for (const clip of animations) if (!lengths.has(clip.name)) lengths.set(clip.name, clip.frames.length / clip.frameRate);
   const dispose = factory.dispose;
-  return { ...factory, dispose() {
+  return { ...factory, lengths, dispose() {
     dispose();
     for (const material of shaved.materials) { material.map?.dispose(); material.dispose(); }
   } };

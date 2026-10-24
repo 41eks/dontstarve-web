@@ -17,12 +17,12 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
     const { player, playerBody } = await import(paths.player);
     const { scene } = await import(paths.universal);
     const { view } = await import(paths.view);
-    const { turfMap, moonTreeForest } = await import(paths.building);
+    const { turfMap } = await import(paths.building);
     const { initialSave } = await import(paths.initialSave);
     main.inventory.applySlotChanges(main.inventory.exportState().slots.filter((slot: any) => slot.item)
       .map((slot: any) => ({ slot: slot.address, itemId: slot.item.itemId, skinId: slot.item.skinId, delta: -slot.item.count })));
     const key = (position: number[]) => `${Math.floor(position[0] / 12)},${Math.floor(position[2] / 12)}`;
-    const occupied = new Set(moonTreeForest.entities.map((tree: any) => key(tree.position.toArray())));
+    const occupied = new Set<string>();
     for (const records of Object.values(initialSave.world.entities) as any[]) for (const record of records) occupied.add(key(record.transform.position));
     let center: any;
     for (let col = -17; col < -5 && !center; col++) for (let row = -17; row < -5 && !center; row++) {

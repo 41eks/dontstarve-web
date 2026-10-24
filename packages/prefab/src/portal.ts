@@ -3,9 +3,9 @@ import { loadAnim, loadBuild, loadSpriteSkinArchive, smallHash } from '@dontstar
 import {
   createSpriteFactory,
   type AnimatedSpriteFactory,
-  type SpriteAnimationController,
   SpriteController,
 } from '@dontstarve-web/animation/sprite';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import { MiniMapEntity } from './minimapEntity';
 import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { Hauntable, HAUNT_INSTANT_REZ } from '../../componets/src/hauntable';
@@ -14,6 +14,7 @@ import { FRAMES } from '../../stategraphs/src/stategraph';
 import { actionEntity } from './actionEntity';
 import type { RezSource } from './player_common';
 import { newEntityId } from './saveRecord';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
 export const PORTAL_ID = 'multiplayer_portal_moonrock' as const;
@@ -48,6 +49,8 @@ type SpawnPhase = 'spawn_pre' | 'spawn_loop' | 'spawn_pst';
 interface PortalEntity {
   model: THREE.Group;
   fxModel: THREE.Group;
+  main: { instance: PrefabInstance; display: PrefabDisplay };
+  fx: { instance: PrefabInstance; display: PrefabDisplay };
   minimap: MiniMapEntity;
   jacobSound?: SoundHandle;
   hauntable?: Hauntable;
@@ -113,32 +116,32 @@ export class PortalManager {
 
     const entityId = saved?.id ?? newEntityId();
 
-    // Main portal sprite with symbol overrides from portal_stone.
-    const model = mainFactory.create({
-      initialAnimation: 'idle_loop',
-      name: PORTAL_ID,
-      skinSymbols: [...STONE_SYMBOLS],
-    });
+    // Main portal sprite with symbol overrides from portal_stone. Every drawn controller reports its Jacob frames.
+    const main = createPrefabEntity(PORTAL_ID, { create: animation => {
+      const sprite = mainFactory.create({ initialAnimation: animation, name: PORTAL_ID, skinSymbols: [...STONE_SYMBOLS] });
+      (sprite.userData.animationController as PortalController).onJacobFrame = () => entity.playJacob?.();
+      return sprite;
+    }, release: sprite => mainFactory.disposeSprite(sprite) }, { name: 'idle_loop', billboard: true }, PORTAL_ID);
+    const model = main.display.model;
     model.position.set(position.x, 0, position.z);
     Object.assign(model.userData, { prefab: PORTAL_ID, entityId });
 
     // FX child: same animations, hides 'portal' layer, overrides FX_ray1 from portal_stone.
-    const fxModel = fxFactory.create({
-      initialAnimation: 'idle_loop',
-      name: `${PORTAL_ID}_fx`,
-      skinSymbols: ['FX_ray1'],
-    });
+    const fx = createPrefabEntity(`${PORTAL_ID}_fx`, { create: animation => fxFactory.create({
+      initialAnimation: animation, name: `${PORTAL_ID}_fx`, skinSymbols: ['FX_ray1'],
+    }), release: sprite => fxFactory.disposeSprite(sprite) }, { name: 'idle_loop', billboard: true }, `${PORTAL_ID}_fx`);
+    fx.instance.persists = false;
+    const fxModel = fx.display.model;
     fxModel.position.copy(model.position);
     this.scene.add(fxModel);
 
     const minimap = new MiniMapEntity(model.position);
     minimap.SetIcon('portal_dst.png');
-    const entity: PortalEntity = { model, fxModel, minimap, stopEvents: [] };
+    const entity: PortalEntity = { model, fxModel, main, fx, minimap, stopEvents: [] };
     const playJacob = () => {
       entity.jacobSound?.stop();
       entity.jacobSound = PlaySound(JACOB_SOUND, model.position);
     };
-    (model.userData.animationController as PortalController).onJacobFrame = playJacob;
     playJacob(); // Initial idle entry, after assets and sounds are ready.
     entity.playJacob = playJacob;
     this.bindRez(entity);
@@ -147,11 +150,9 @@ export class PortalManager {
     return model;
   }
 
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     for (const entity of this.portals) {
       const { model, fxModel } = entity;
-      model.quaternion.copy(cameraQuaternion);
-      fxModel.quaternion.copy(cameraQuaternion);
       fxModel.position.copy(model.position);
 
       const spawning = entity.spawning;
@@ -160,10 +161,8 @@ export class PortalManager {
         if (spawning.elapsed >= OPEN_TIME) { spawning.opened = true; PlaySound(OPEN_SOUND, model.position); }
       }
       if (Number.isFinite(dt) && dt > 0) {
-        const controller = model.userData.animationController as SpriteAnimationController;
-        controller.update(dt);
-        const fxController = fxModel.userData.animationController as SpriteAnimationController;
-        fxController.update(dt);
+        entity.main.instance.sprite.update(dt);
+        entity.fx.instance.sprite.update(dt);
       }
     }
   }
@@ -194,11 +193,10 @@ export class PortalManager {
       entity.hauntable?.dispose();
       delete entity.model.userData.components?.hauntable;
       entity.spawning?.loopSound?.stop();
-      (entity.model.userData.animationController as PortalController).onJacobFrame = undefined;
+      entity.playJacob = undefined;
       entity.jacobSound?.stop();
       entity.minimap.dispose();
-      entity.model.removeFromParent();
-      entity.fxModel.removeFromParent();
+      for (const { instance, display } of [entity.main, entity.fx]) { instance.remove(); display.dispose(); }
     }
     this.portals.clear();
     void this.mainFactory?.then((f) => f.dispose(), () => undefined);
@@ -243,9 +241,8 @@ export class PortalManager {
   /** SGmultiplayerportal spawn_pre → spawn_loop → spawn_pst, then back to the idle loop. */
   private startSpawn(entity: PortalEntity): void {
     if (this.disposed) return;
-    const { model, fxModel } = entity;
-    const main = model.userData.animationController as PortalController;
-    const fx = fxModel.userData.animationController as PortalFxController;
+    const { model } = entity;
+    const main = entity.main.instance.sprite, fx = entity.fx.instance.sprite;
     entity.spawning?.loopSound?.stop();
     const spawning: NonNullable<PortalEntity['spawning']> = { phase: 'spawn_pre', elapsed: 0, opened: false };
     entity.spawning = spawning;

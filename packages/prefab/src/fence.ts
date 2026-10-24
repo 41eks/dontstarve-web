@@ -1,8 +1,8 @@
 import { ModelRecords } from './modelRecords';
-import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { facingFromRotation } from '@dontstarve-web/animation/facing';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
@@ -16,6 +16,8 @@ import { Combat, type CombatInst } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { Propagator } from '../../componets/src/propagator';
 import { Workable } from '../../componets/src/workable';
+import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
+import { PhysicsState } from '../../componets/src/physicsState';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { actionEntity, FindEntities } from './actionEntity';
 import { BuildCursor } from './buildCursor';
@@ -75,13 +77,18 @@ export function placerRotation(heading: number): number {
     return -heading;
 }
 
-interface FenceArt {
-    readonly sprite: ResidentSprite;
+interface DrawnEntity { readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
+
+/** The fence's drawn sprite in one bank; the placer keeps the other bank ready for a parity change. */
+interface FenceArt extends DrawnEntity {
     readonly narrow: boolean;
 }
 
 interface FenceInstance {
     readonly buildId: FenceId;
+    /** The fence entity: identity, tags and lifecycle; its art is drawn by a child display. */
+    readonly instance: PrefabInstance;
+    readonly display: PrefabDisplay;
     readonly root: THREE.Group;
     readonly art: Signal<FenceArt>;
     readonly opacity: Signal<number>;
@@ -101,8 +108,10 @@ interface FenceInstance {
     health?: Health;
     combat?: Combat;
     combatInst?: CombatInst;
-    body?: CANNON.Body;
-    fire?: ArchiveSprite;
+    /** inst.Physics; bound to the world once placed. */
+    readonly physics: PhysicsState;
+    physicsBinding?: PhysicsBinding;
+    fire?: DrawnEntity;
     fireSound?: { stop(): void };
     stopBurning?: () => void;
 }
@@ -127,8 +136,8 @@ export class FencePlacement {
     private readonly cleanups: (() => void)[] = [];
     private readonly mouseRecords = new ModelRecords<FenceInstance>();
     private readonly placed = new Set<FenceInstance>();
-    private readonly fires = new Set<ArchiveSprite>();
-    private readonly effects = new Set<ArchiveSprite>();
+    private readonly fires = new Set<DrawnEntity>();
+    private readonly effects = new Set<DrawnEntity>();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
     private active?: FenceInstance;
     private loading?: Promise<void>;
@@ -197,10 +206,10 @@ export class FencePlacement {
 
     get renderEntities() {
         return [...this.placed, ...(this.active ? [this.active] : [])]
-            .filter(({ root, art }) => root.visible && art.peek().sprite.loaded)
+            .filter(({ root, art }) => root.visible && art.peek().instance.sprite.loaded)
             .map(({ root }) => ({ object: root, footPosition: root.position.clone(), cameraDepth: 0 }))
-            .concat([...this.fires, ...this.effects].map(sprite => ({
-                object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 })));
+            .concat([...this.fires, ...this.effects].map(({ display }) => ({
+                object: display.model, footPosition: display.model.position, cameraDepth: 0 })));
     }
 
     get hammerTargets(): readonly HammerTarget[] { return this.getHammerTargets(); }
@@ -285,19 +294,19 @@ export class FencePlacement {
     }
 
     update(dt = 0): void {
-        for (const sprite of this.effects) { this.faceCamera(sprite.model); sprite.update(dt); }
-        for (const fire of this.fires) fire.update(dt);
+        for (const { instance, display } of this.effects) { this.faceCamera(display.model); instance.sprite.update(dt); }
+        for (const fire of this.fires) fire.instance.sprite.update(dt);
         this.cursor.update();
         if (this.active) this.updatePreview(this.active);
         for (const fence of this.placed) {
             this.faceCamera(fence.root);
-            fence.art.peek().sprite.update(dt);
+            fence.art.peek().instance.sprite.update(dt);
             const components = fence.entity?.components;
             components?.burnable?.Update(dt);
             components?.propagator?.Update(dt);
             if (fence.fire) {
-                fence.fire.model.position.copy(fence.root.position);
-                this.faceCamera(fence.fire.model);
+                fence.fire.instance.position.copy(fence.root.position);
+                this.faceCamera(fence.fire.display.model);
             }
         }
     }
@@ -320,7 +329,7 @@ export class FencePlacement {
         this.cancel();
         for (const fence of [...this.placed]) this.disposeFence(fence);
         this.placed.clear();
-        for (const sprite of [...this.effects]) sprite.dispose();
+        for (const effect of [...this.effects]) this.release(effect);
         this.effects.clear();
         this.assets.dispose();
     }
@@ -404,18 +413,18 @@ export class FencePlacement {
     }
 
     private attachArt(fence: FenceInstance, art: FenceArt): void {
-        fence.art.peek().sprite.model.removeFromParent();
+        fence.art.peek().display.model.removeFromParent();
         fence.art.set(art);
-        fence.root.add(art.sprite.model);
-        fence.root.userData.animationController = art.sprite;
-        art.sprite.setActive(fence.awake);
-        art.sprite.playOnce('idle');
+        fence.root.add(art.display.model);
+        fence.root.userData.animationController = art.instance.sprite;
+        art.instance.setActive(fence.awake);
+        art.instance.sprite.playOnce('idle');
     }
 
     private applyFacing(fence: FenceInstance, heading: number): void {
         const facing = facingFromRotation(fence.rotation, heading);
-        fence.art.peek().sprite.setFacing(facing);
-        fence.spare?.sprite.setFacing(facing);
+        fence.art.peek().instance.sprite.setFacing(facing);
+        fence.spare?.instance.sprite.setFacing(facing);
     }
 
     private async createArt(skinId: string | undefined, narrow: boolean, opacity?: number): Promise<FenceArt> {
@@ -426,13 +435,18 @@ export class FencePlacement {
             animationArchive: narrow ? 'fence_thin.zip' : 'fence.zip', buildArchives: ['fence.zip'],
             bank: narrow ? 'fence_thin' : 'fence', animation: clip.name, loop: clip.loop,
         }, { name: 'fence', skinArchive, opacity: opacity ?? 1 });
-        const clip = { name: 'idle', loop: false };
-        const sprite = new ResidentSprite(create, clip, await create(clip), 'fence');
-        if (this.disposed) { sprite.dispose(); throw new Error('Placement has been disposed'); }
-        return { sprite, narrow };
+        const initial = await create({ name: 'idle', loop: false });
+        if (this.disposed) { initial.dispose(); throw new Error('Placement has been disposed'); }
+        const { instance, display } = createArchiveEntity(FENCE_ID, { create, initial }, { name: 'idle' }, 'fence');
+        instance.sprite.playOnce('idle');
+        // The art is the fence's sprite, not an entity of its own: it is never saved.
+        instance.persists = false;
+        return { instance, display, narrow };
     }
 
-    private disposeArt(art: FenceArt): void { art.sprite.dispose(); }
+    private disposeArt(art: FenceArt): void { this.release(art); }
+
+    private release({ instance, display }: DrawnEntity): void { instance.remove(); display.dispose(); }
 
     /** Art and skin state only; a placed fence additionally becomes an inst in `place()`. */
     private async createInstance(buildId: FenceId, rotation: number, requestedSkin: string | undefined, attach: boolean, opacity?: number): Promise<FenceInstance> {
@@ -445,27 +459,32 @@ export class FencePlacement {
         ]);
         const skinId = fenceWorldSkin(buildId, requestedSkin);
         const art = await this.createArt(skinId, isNarrowRotation(rotation), opacity);
-        const root = new THREE.Group();
-        root.name = 'fence';
+        const { instance, display } = createEmptyEntity(FENCE_ID);
+        const root = display.model;
         root.userData.billboard = true;
-        root.add(art.sprite.model);
-        root.userData.animationController = art.sprite;
+        root.add(art.display.model);
+        root.userData.animationController = art.instance.sprite;
         root.userData.fenceRotation = rotation;
         const fence: FenceInstance = {
-            buildId, root, art: createSignal(art), opacity: createSignal(opacity ?? 1),
+            buildId, instance, display, root, art: createSignal(art), opacity: createSignal(opacity ?? 1),
             stopAppearance: () => {}, awake: true, rotation, skinId: createSignal(skinId), inventorySkinId: requestedSkin,
-            preparedSkins: new Set(), stopSkin: () => {},
+            preparedSkins: new Set(), stopSkin: () => {}, physics: new PhysicsState(),
         };
-        fence.stopAppearance = createEffect(() => {
-            const art = fence.art.get();
-            art.sprite.art.get();
-            art.sprite.setFacing(facingFromRotation(fence.rotation, this.heading.get()));
-            art.sprite.setOpacity(fence.opacity.get());
-            const visual = art.sprite.model.children[0]?.children[0];
-            registerSpriteRenderGroup(root, visual instanceof THREE.Group ? visual : art.sprite.model);
+        const stopFacing = createEffect(() => {
+            const { sprite } = fence.art.get().instance;
+            sprite.setFacing(facingFromRotation(fence.rotation, this.heading.get()));
+            sprite.setOpacity(fence.opacity.get());
         });
+        // Each drawn sprite is the fence's render group.
+        const stopRenderGroup = createEffect(() => {
+            const art = fence.art.get();
+            art.instance.sprite.art.get();
+            const visual = art.display.model.children[0]?.children[0];
+            registerSpriteRenderGroup(root, visual instanceof THREE.Group ? visual : art.display.model);
+        });
+        fence.stopAppearance = () => { stopFacing(); stopRenderGroup(); };
         this.bindSkin(fence);
-        if (skinId !== undefined) root.userData.skinId = skinId;
+        instance.skinId = skinId;
         if (attach) this.scene.add(root);
         return fence;
     }
@@ -505,7 +524,7 @@ export class FencePlacement {
     }
 
     private playHit(fence: FenceInstance): void {
-        const { sprite } = fence.art.peek();
+        const { sprite } = fence.art.peek().instance;
         sprite.playOnce('hit', () => sprite.playOnce('idle'));
     }
 
@@ -519,12 +538,11 @@ export class FencePlacement {
             }
             fence.preparedSkin = undefined;
             const previous = fence.art.peek();
-            previous.sprite.adopt(replacement.sprite);
-            replacement.sprite.dispose();
-            fence.art.set({ ...replacement, sprite: previous.sprite });
+            previous.display.adopt(replacement.display);
+            this.release(replacement);
+            fence.art.set({ ...replacement, instance: previous.instance, display: previous.display });
             this.applyFacing(fence, this.heading.peek());
-            if (skinId === undefined) delete fence.root.userData.skinId;
-            else fence.root.userData.skinId = skinId;
+            fence.instance.skinId = skinId;
         });
     }
 
@@ -540,14 +558,17 @@ export class FencePlacement {
     }
 
     private spawnCollapse(position: THREE.Vector3): void {
-        void createSharedArchiveSprite(this.assets, {
+        const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, {
             animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-            bank: 'collapse', animation: 'collapse_small', loop: false,
-        }).then(effect => {
-            if (this.disposed) { effect.dispose(); return; }
-            Object.assign(effect.model.userData, { tags: ['NOCLICK', 'FX'], persists: false });
-            effect.model.position.copy(position); this.scene.add(effect.model); this.effects.add(effect);
-            effect.playOnce('collapse_small', () => { effect.dispose(); this.effects.delete(effect); });
+            bank: 'collapse', animation: clip.name, loop: clip.loop,
+        });
+        void create({ name: 'collapse_small', loop: false }).then(initial => {
+            if (this.disposed) { initial.dispose(); return; }
+            const effect = createArchiveEntity('collapse_small', { create, initial }, { name: 'collapse_small' }, 'collapse_small');
+            for (const tag of ['NOCLICK', 'FX']) effect.instance.addTag(tag);
+            effect.instance.persists = false;
+            effect.instance.position.copy(position); this.scene.add(effect.display.model); this.effects.add(effect);
+            effect.instance.sprite.playOnce('collapse_small', () => { this.release(effect); this.effects.delete(effect); });
         }).catch((error: unknown) => { if (!this.disposed) console.error('Unable to play fence collapse effect', error); });
     }
 
@@ -594,12 +615,16 @@ export class FencePlacement {
 
     private showFire(fence: FenceInstance): void {
         if (!fence.awake || fence.fire) return;
-        void createSharedArchiveSprite(this.assets, { animationArchive: 'fire.zip', buildArchives: ['fire.zip'],
-            bank: 'fire', animation: `level${FENCE_FX_LEVEL}`, loop: true }, { name: 'fire' }).then(fire => {
-            if (this.disposed || !this.placed.has(fence) || !fence.awake || !fence.root.userData.burningSignal.peek() || fence.fire) { fire.dispose(); return; }
-            fire.model.userData.tags = ['FX', 'HASHEATER'];
-            fire.model.position.copy(fence.root.position);
-            this.scene.add(fire.model); this.fires.add(fire);
+        const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, { animationArchive: 'fire.zip',
+            buildArchives: ['fire.zip'], bank: 'fire', animation: clip.name, loop: clip.loop }, { name: 'fire' });
+        const level = `level${FENCE_FX_LEVEL}`;
+        void create({ name: level, loop: true }).then(initial => {
+            if (this.disposed || !this.placed.has(fence) || !fence.awake || !fence.root.userData.burningSignal.peek() || fence.fire) { initial.dispose(); return; }
+            const fire = createArchiveEntity('fire', { create, initial }, { name: level }, 'fire');
+            for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
+            fire.instance.persists = false;
+            fire.instance.position.copy(fence.root.position);
+            this.scene.add(fire.display.model); this.fires.add(fire);
             fence.fire = fire;
             setPrefabLocalLight(fence.root, { colour: [1, 1, 192 / 255], radius: (FENCE_FX_LEVEL + 1) * UNIT, intensity: .8, falloff: .33 });
             fence.fireSound = PlaySound('dontstarve/common/campfire', fence.root.position);
@@ -607,7 +632,7 @@ export class FencePlacement {
     }
 
     private hideFire(fence: FenceInstance): void {
-        if (fence.fire) { this.fires.delete(fence.fire); fence.fire.dispose(); fence.fire = undefined; }
+        if (fence.fire) { this.fires.delete(fence.fire); this.release(fence.fire); fence.fire = undefined; }
         fence.fireSound?.stop(); fence.fireSound = undefined;
         setPrefabLocalLight(fence.root, null);
     }
@@ -618,19 +643,20 @@ export class FencePlacement {
         this.initializeEntity(fence);
         this.faceCamera(fence.root);
         this.applyFacing(fence, this.heading.peek());
-        fence.body = MakeObstaclePhysics(fence.root.position, .5);
-        this.world.physics?.addBody(fence.body);
+        // fence.lua: MakeObstaclePhysics(inst, .5); Physics:SetDontRemoveOnSleep(true), so pens hold outside the ticking area.
+        MakeObstaclePhysics(fence, .5).SetDontRemoveOnSleep(true);
+        if (this.world.physics) fence.physicsBinding ??= bindPhysics(this.world.physics, fence.physics, () => fence.root.position);
         fence.stopActivity = watchTileActivity(fence.root, this.world.tickingarea, active => {
             fence.awake = active;
-            fence.art.peek().sprite.setActive(active);
+            // Only the art follows the tile: the transform-only root stays in the scene like the pen's physics.
+            fence.art.peek().instance.setActive(active);
             if (active && fence.root.userData.burningSignal.peek()) this.showFire(fence);
             else this.hideFire(fence);
         });
     }
 
     private disposeFence(fence: FenceInstance): void {
-        if (fence.body) this.world.physics?.removeBody(fence.body);
-        fence.body = undefined;
+        fence.physicsBinding?.dispose(); fence.physicsBinding = undefined;
         fence.root.userData.removed = true;
         fence.stopActivity?.();
         fence.stopAppearance();
@@ -648,8 +674,8 @@ export class FencePlacement {
         fence.preparedSkins.clear();
         if (fence.spare) { this.disposeArt(fence.spare); fence.spare = undefined; }
         this.disposeArt(fence.art.peek());
-        registerSpriteRenderGroup(fence.root, fence.art.peek().sprite.model);
-        fence.root.removeFromParent();
+        registerSpriteRenderGroup(fence.root, fence.art.peek().display.model);
+        this.release(fence);
     }
 
     private faceCamera(model: THREE.Object3D): void {

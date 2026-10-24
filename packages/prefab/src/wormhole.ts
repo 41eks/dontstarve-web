@@ -6,7 +6,8 @@ import {
   type AnimatedSpriteFactory,
   SpriteController,
 } from '@dontstarve-web/animation/sprite';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { newEntityId } from './saveRecord';
 import { nextReskin } from './reskin_tool';
 import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
@@ -33,6 +34,8 @@ export interface WormholeRecord {
 type WormholeState = 'idle' | 'opening' | 'open' | 'closing';
 interface WormholeEntity {
   model: THREE.Group;
+  instance: PrefabInstance;
+  display: PrefabDisplay;
   skinId?: string;
   state: WormholeState;
   elapsed: number;
@@ -62,11 +65,12 @@ export class WormholeManager {
     const skinId = saved?.components.wormhole?.skinId;
     const factory = await this.getFactory(skinId);
     if (this.disposed) throw new Error('Wormhole manager has been disposed');
-    const model = factory.create({ initialAnimation: 'idle_loop', name: WORMHOLE_ID });
+    const { instance, display } = this.createEntity(factory);
+    const model = display.model;
     model.position.set(position.x, 0, position.z);
     Object.assign(model.userData, { prefab: WORMHOLE_ID, entityId: saved?.id ?? newEntityId() });
     if (skinId !== undefined) model.userData.skinId = skinId;
-    const entity: WormholeEntity = { model, skinId, state: 'idle', elapsed: 0, nearby: false, groundLayer: false };
+    const entity: WormholeEntity = { model, instance, display, skinId, state: 'idle', elapsed: 0, nearby: false, groundLayer: false };
     model.userData.wormholeState = entity.state;
     actionEntity(model, WORMHOLE_ID);
     this.wormholes.add(entity); this.mouseRecords.set(entity.model, entity);
@@ -74,11 +78,10 @@ export class WormholeManager {
     return model;
   }
 
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+  update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
     const players = this.getPlayerPositions();
     for (const entity of this.wormholes) {
       const { model } = entity;
-      model.quaternion.copy(cameraQuaternion);
       if (Number.isFinite(dt) && dt > 0) {
         const distance = entity.nearby ? WORMHOLE_EXIT_DISTANCE : WORMHOLE_ENTER_DISTANCE;
         const nearby = players.some((player) => (player.x - model.position.x) ** 2
@@ -114,9 +117,9 @@ export class WormholeManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const { model } of this.wormholes) {
+    for (const { model, instance, display } of this.wormholes) {
       disposeActionEntity(model);
-      model.removeFromParent();
+      instance.remove(); display.dispose();
     }
     this.wormholes.clear();
     for (const request of this.factories.values()) void request.then((factory) => factory.dispose(), () => undefined);
@@ -138,29 +141,22 @@ export class WormholeManager {
           const skinId = nextReskin(WORMHOLE_SKINS, previousSkin, tool?._cached_reskinname, WORMHOLE_ID);
           const factory = await this.getFactory(skinId);
           if (!isValid()) throw new Error('Wormhole is no longer available');
-          const replacement = factory.create({ initialAnimation: 'idle_loop', name: WORMHOLE_ID });
+          // The replacement's display only lends its source and drawn sprite; this entity, model and json stay.
+          const replacement = this.createEntity(factory);
+          const release = () => { replacement.instance.remove(); replacement.display.dispose(); };
           let used = false;
           return {
             apply: () => {
               if (used || !isValid() || entity.skinId !== previousSkin) return false;
-              const previous = this.controller(entity);
-              for (const child of [...model.children]) {
-                child.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
-                model.remove(child);
-              }
-              for (const child of [...replacement.children]) model.add(child);
-              model.userData.animationController = replacement.userData.animationController;
-              registerSpriteRenderGroup(model, model.children[0] as THREE.Group);
-              this.controller(entity).copyPlaybackFrom(previous);
+              entity.display.adopt(replacement.display);
               entity.skinId = skinId;
               if (skinId === undefined) delete model.userData.skinId;
               else model.userData.skinId = skinId;
-              this.setGroundLayer(entity, entity.groundLayer);
-              factory.disposeSprite(replacement);
+              release();
               used = true;
               return true;
             },
-            dispose: () => { if (!used) { factory.disposeSprite(replacement); used = true; } },
+            dispose: () => { if (!used) { release(); used = true; } },
           };
         },
       };
@@ -186,8 +182,13 @@ export class WormholeManager {
     return request;
   }
 
-  private controller(entity: WormholeEntity): SpriteController {
-    return entity.model.userData.animationController as SpriteController;
+  private createEntity(factory: AnimatedSpriteFactory) {
+    return createPrefabEntity(WORMHOLE_ID, { create: animation => factory.create({ initialAnimation: animation, name: WORMHOLE_ID }),
+      release: sprite => factory.disposeSprite(sprite) }, { name: 'idle_loop', billboard: true }, WORMHOLE_ID);
+  }
+
+  private controller(entity: WormholeEntity): SpriteState {
+    return entity.instance.sprite;
   }
 
   private transition(entity: WormholeEntity, state: 'opening' | 'closing'): void {
@@ -205,9 +206,9 @@ export class WormholeManager {
   }
 
   private setGroundLayer(entity: WormholeEntity, ground: boolean): void {
+    // The frame checks run every update: write the layer only when it changes (the art starts at mesh order 0).
+    if (entity.groundLayer === ground) return;
     entity.groundLayer = ground;
-    const visual = entity.model.children[0] as THREE.Group;
-    visual.renderOrder = 0;
-    (visual.children[0] as THREE.Mesh).renderOrder = ground ? -0.5 : 0;
+    entity.instance.sprite.setMeshOrder(ground ? -0.5 : 0);
   }
 }

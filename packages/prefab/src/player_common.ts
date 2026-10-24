@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type * as CANNON from 'cannon-es';
+import type { PhysicsState } from '../../componets/src/physicsState';
 import type { HealthState, HungerState, SanityState, Signal } from '@dontstarve-web/signals';
 import { actionEntity } from './actionEntity';
 import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
-import { MakeCharacterCollision, MakeGhostPhysics, WORLD_SCALE } from './standardcomponents';
+import { MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from './standardcomponents';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { isGhostValidAction } from '../../stategraphs/src/actions';
 import type { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
@@ -45,7 +45,8 @@ export const RESURRECT_HEALTH = 50;
 export interface PlayerGhostOwner {
   readonly model: THREE.Group;
   readonly animation: Pick<WilsonAnimationController, 'makeGhost' | 'makeAlive' | 'stategraph'>;
-  readonly body: CANNON.Body;
+  /** inst.Physics */
+  readonly physics: PhysicsState;
   readonly stats: { readonly health: HealthState; readonly hunger: HungerState; readonly sanity: SanityState };
   /** sanity.ignore = true */
   readonly sanity: { ignore: boolean };
@@ -102,7 +103,7 @@ export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: b
   }
   owner.sanity.ignore = true;
 
-  MakeGhostPhysics(owner.body);
+  MakeGhostPhysics(owner, 1, .5);
   owner.actionPicker.PushActionFilter(GhostActionFilter, GHOST_ACTION_FILTER_PRIORITY);
   entity.addTag('playerghost');
   if (!loading) health.SetCurrentHealth(RESURRECT_HEALTH);
@@ -213,7 +214,7 @@ function finishRez(owner: PlayerGhostOwner, source: RezSource, position: THREE.V
     source.PushEvent('rez_player');
   }
   owner.setGhostLight(false);
-  MakeCharacterCollision(owner.body);
+  MakeCharacterPhysics(owner, 75, .5);
   owner.animation.makeAlive(amulet ? 'amulet_rebirth' : 'portal_rez');
 
   // CommonActualRez

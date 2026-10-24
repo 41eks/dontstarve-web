@@ -34,9 +34,17 @@ export interface DisplayEngine {
   /** AnimState:SetAnimation-like change of the current clip's name, keeping whether it loops. */
   setAnimation?(name: string): void;
   showImage(image: number): void;
-  setFacing(facing: number): void;
+  setFacing(facing: number, mirrored?: boolean): void;
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
+  setErosion?(amount: number): void;
+  setSymbolOverride?(symbol: string, archive?: string, sourceSymbol?: string): void;
+  setSymbolHidden?(symbol: string, hidden: boolean): void;
+  setBuildArchive?(archive: string): void;
+  setGround?(renderOrder: number, flat: boolean): void;
+  setMeshOrder?(order: number): void;
+  /** Turns the drawn sprite to the camera; without it the display turns the model. */
+  faceCamera?(rotation: THREE.Quaternion): void;
   hideLayer(layer: string): void;
   showLayer(layer: string): void;
   setSymbolOverrides(overrides: SymbolOverrides, hiddenLayers?: readonly string[]): void;
@@ -75,7 +83,15 @@ export class ArchiveEngine implements DisplayEngine {
   setAnimation(name: string): void { this.resident.setAnimation(name); }
   setColour(colour: readonly number[]): void { this.resident.setColour([colour[0], colour[1], colour[2]]); }
   setOpacity(opacity: number): void { this.resident.setOpacity(opacity); }
+  setErosion(amount: number): void { this.resident.setErosion(amount); }
+  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.resident.setSymbolOverride(symbol, archive, sourceSymbol); }
+  setSymbolHidden(symbol: string, hidden: boolean): void { this.resident.setSymbolHidden(symbol, hidden); }
+  setBuildArchive(archive: string): void { this.resident.setBuildArchive(archive); }
+  setGround(renderOrder: number, flat: boolean): void { this.resident.setGround(renderOrder, flat); }
+  setMeshOrder(order: number): void { this.resident.setMeshOrder(order); }
   setFacing(facing: number): void { this.resident.setFacing(facing); }
+  // A static billboard ignores its root's rotation, so the drawn sprite itself is turned.
+  faceCamera(rotation: THREE.Quaternion): void { this.resident.faceCamera(rotation); }
   adopt(other: DisplayEngine): void {
     if (other instanceof ArchiveEngine) this.resident.adopt(other.resident);
     else unsupported('Adopting another kind of sprite');
@@ -98,5 +114,7 @@ export class ArchiveEngine implements DisplayEngine {
 /** Creates an archive sprite in the clip an entity is logically in; `initial` is already built in the first clip. */
 export interface ArchiveSpriteSource {
   create(clip: { name: string; loop: boolean }): ArchiveSprite | Promise<ArchiveSprite>;
-  initial: ArchiveSprite;
+  initial?: ArchiveSprite;
+  /** Preserve artwork that rests its lowest point on the entity's ground origin. */
+  alignBottom?: boolean;
 }

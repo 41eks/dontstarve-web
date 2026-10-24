@@ -5,7 +5,7 @@ import { createEffect, createMemo, WorldContentKey, type Memo } from '@dontstarv
 import { TileTracker } from '../../componets/src/tileManager';
 import { FliesController, FLIES_SOUND } from './flies';
 import { actionEntity } from './actionEntity';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { createArchiveEntity } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { PreloadSounds } from './sound';
 import type {
@@ -22,7 +22,7 @@ export const MERM_HEAD_ID = 'mermhead' as const;
 export type MermHeadId = typeof MERM_HEAD_ID;
 type StickHeadId = PigHeadId | MermHeadId;
 
-interface StickHeadResources extends AnimatedBuildingPreparedResources { readonly flies: ResidentSprite; }
+interface StickHeadResources extends AnimatedBuildingPreparedResources { readonly flies: ReturnType<typeof createArchiveEntity>; }
 
 /** stickheads.lua create_common: SpawnChild("flies") beside the head; the sprite is released with the head's art. */
 async function prepare(): Promise<StickHeadResources> {
@@ -32,8 +32,9 @@ async function prepare(): Promise<StickHeadResources> {
             buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies' });
         const first = { name: 'swarm_pre', loop: false };
         const [created] = await Promise.all([createFlies(first), PreloadSounds(FLIES_SOUND)]);
-        const flies = new ResidentSprite(createFlies, first, created, 'flies');
-        return { materials: [], flies, dispose: () => { flies.dispose(); assets.dispose(); } };
+        const flies = createArchiveEntity('flies', { create: createFlies, initial: created }, { name: first.name }, 'flies');
+        flies.instance.persists = false; flies.display.model.userData.prefab = 'flies';
+        return { materials: [], flies, dispose: () => { flies.instance.remove(); flies.display.dispose(); assets.dispose(); } };
     } catch (error) { assets.dispose(); throw error; }
 }
 
@@ -43,7 +44,7 @@ class StickHead {
     private readonly cleanups: (() => void)[] = [];
     private readonly fliesController?: FliesController;
     private readonly fullMoon?: Memo<boolean>;
-    readonly flies: ResidentSprite;
+    readonly flies: ReturnType<typeof createArchiveEntity>;
     private readonly context: AnimatedBuildingEventContext;
     private readonly id: StickHeadId;
 
@@ -51,12 +52,16 @@ class StickHead {
         this.id = id; this.context = context;
         const { model, world } = context;
         this.flies = (context.prepared as StickHeadResources).flies;
-        model.add(this.flies.model);
+        const flies = this.flies.display.model;
+        model.add(flies);
         // The decorative child must not enlarge the head's pickup target, whenever its sprite is rebuilt.
-        this.flies.onAttach(sprite => sprite.model.traverse(object => { object.raycast = () => {}; }));
+        this.cleanups.push(createEffect(() => {
+            this.flies.instance.sprite.art.get();
+            flies.traverse(object => { object.raycast = () => {}; });
+        }));
         // OnEntitySleep/OnEntityWake: the swarm's frames exist only while the head's tile is active.
-        this.cleanups.push(watchTileActivity(model, world?.tickingarea, active => this.flies.setActive(active)));
-        if (world?.scheduler) this.fliesController = new FliesController(this.flies, model.position, world.scheduler, world.getWatchWorldContent);
+        this.cleanups.push(watchTileActivity(model, world?.tickingarea, active => this.flies.instance.setActive(active)));
+        if (world?.scheduler) this.fliesController = new FliesController(this.flies.instance, model.position, world.scheduler, world.getWatchWorldContent);
         // The head never moves, so its private tile key gates the moon and phase inputs by tickingarea: outside it they hold their last value.
         const options = { tile: new TileTracker(() => model.position).tile };
         const moon = world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop), options);
@@ -90,7 +95,7 @@ class StickHead {
     }
 
     get renderEffects(): BuildingRenderEffect[] {
-        return [{ object: this.flies.model, footPosition: this.context.model.position, sortLayer: 2 }];
+        return [{ object: this.flies.display.model, footPosition: this.context.model.position, sortLayer: 2 }];
     }
 
     update(dt: number): void { this.fliesController?.update(dt); }
@@ -98,7 +103,7 @@ class StickHead {
     dispose(): void {
         this.cleanups.splice(0).forEach(stop => stop());
         this.fliesController?.dispose();
-        this.flies.model.removeFromParent();
+        this.flies.display.model.removeFromParent();
     }
 }
 

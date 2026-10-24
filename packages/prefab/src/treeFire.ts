@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { createEffect, createSignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { loadAnim, loadBuild } from '@dontstarve-web/animation/animationAssets';
 import {
-  createSpriteFactory, type AnimatedSpriteFactory, type TransientSpriteAnimationController,
+  createSpriteFactory, type AnimatedSpriteFactory,
 } from '@dontstarve-web/animation/sprite';
+import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -30,8 +32,8 @@ export interface FireHandle { stop(extinguished: boolean): void }
 
 /** The fire.lua prefab spawned by Burnable:SpawnFX: sprite, loop sound and local light at a ground point. */
 export class FireFxHost {
-  private readonly fires = new Map<THREE.Group, THREE.Vector3>();
-  private readonly owners = new Map<THREE.Group, THREE.Object3D>();
+  private readonly fires = new Map<THREE.Group, { entity: ReturnType<typeof createPrefabEntity>; position: THREE.Vector3;
+    owner?: THREE.Object3D; instance?: PrefabInstance<ArchiveSpriteCommands>; stop(extinguished: boolean): void }>();
   private readonly factory: AnimatedSpriteFactory;
   private disposed = false;
   private constructor(factory: AnimatedSpriteFactory) { this.factory = factory; }
@@ -47,43 +49,45 @@ export class FireFxHost {
   start(parent: THREE.Object3D, position: THREE.Vector3, fxLevel: number, owner?: THREE.Object3D): FireHandle {
     if (this.disposed) throw new Error('Fire effects have been disposed');
     const level = FIRE_LEVELS[Math.min(fxLevel, FIRE_LEVELS.length) - 1];
-    const fire = this.factory.create({ initialAnimation: level.anim, name: 'fire' });
+    const entity = createPrefabEntity('fire', { create: animation => this.factory.create({ initialAnimation: animation, name: 'fire' }),
+      release: drawn => this.factory.disposeSprite(drawn) }, { name: level.anim, billboard: true }, 'fire');
+    const fire = entity.display.model; entity.instance.persists = false;
+    const instance = owner && prefabInstance(owner), key = `fire:${fire.id}`;
     fire.position.set(position.x, 0, position.z);
-    fire.userData.tags = ['FX', 'NOCLICK', 'HASHEATER'];
+    for (const tag of ['FX', 'HASHEATER']) entity.instance.addTag(tag);
     setPrefabLocalLight(fire, { colour: level.colour, radius: level.radius * (TILE_SIZE / 4), intensity: level.intensity, falloff: level.falloff });
-    parent.add(fire);
-    this.fires.set(fire, fire.position);
-    if (owner) this.owners.set(fire, owner);
-    let sound: SoundHandle | undefined = PlaySound(level.sound, fire.position);
-    return {
-      stop: extinguished => {
-        if (!this.fires.delete(fire)) return;
-        this.owners.delete(fire);
-        fire.removeFromParent(); sound?.stop(); sound = undefined;
-        setPrefabLocalLight(fire, null);
-        this.factory.disposeSprite(fire);
-        if (extinguished && !this.disposed) PlaySound('dontstarve/common/fireOut', position);
-      },
+    if (instance) instance.sprite.attachFx(key, { sprite: entity.instance.sprite, display: entity.display,
+      active: createSignal(true), sortLayer: 2 });
+    else parent.add(fire);
+    let sound: SoundHandle | undefined = PlaySound(level.sound, position);
+    const stop = (extinguished: boolean) => {
+      if (!this.fires.delete(fire)) return;
+      instance?.sprite.detachFx(key);
+      entity.instance.remove(); sound?.stop(); sound = undefined;
+      setPrefabLocalLight(fire, null);
+      if (extinguished && !this.disposed) PlaySound('dontstarve/common/fireOut', position);
     };
+    this.fires.set(fire, { entity, position: owner?.position ?? fire.position, owner, instance, stop });
+    return { stop };
   }
 
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    for (const fire of this.fires.keys()) {
-      fire.quaternion.copy(cameraQuaternion);
-      (fire.userData.animationController as TransientSpriteAnimationController).update(dt);
+  update(dt: number, _cameraQuaternion?: THREE.Quaternion): void {
+    for (const { entity, instance } of this.fires.values()) {
+      // Declared children advance with the owner's display; unattached fire advances here.
+      if (!instance) entity.instance.sprite.update(dt);
     }
   }
 
   get renderEntities(): { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number; sortGroup?: number; sortLayer: number }[] {
     // A fire sharing an owner joins its sort group, so it takes the owner's depth and draws after it.
-    return [...this.fires].map(([object, footPosition]) => ({ object, footPosition, cameraDepth: 0,
-      sortGroup: this.owners.get(object)?.id, sortLayer: 2 }));
+    return [...this.fires].map(([object, { position, owner }]) => ({ object, footPosition: position, cameraDepth: 0,
+      sortGroup: owner?.id, sortLayer: 2 }));
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const fire of [...this.fires.keys()]) { fire.removeFromParent(); setPrefabLocalLight(fire, null); this.factory.disposeSprite(fire); }
+    for (const { stop } of [...this.fires.values()]) stop(false);
     this.fires.clear();
     this.factory.dispose();
   }

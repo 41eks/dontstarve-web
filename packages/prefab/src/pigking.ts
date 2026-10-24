@@ -1,10 +1,8 @@
-import * as CANNON from 'cannon-es';
+import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import {
-  createAnimatedSprite,
-  type SpriteAnimationController,
-} from '@dontstarve-web/animation/sprite';
-import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { createEffect, createMemo, getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Trader, type TradeItem } from '../../componets/src/trader';
 import { PigKingStateGraph, type PigKingStateInst } from '../../stategraphs/src/SGpigking';
@@ -14,49 +12,43 @@ import { PlaySound, PreloadSounds } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import definitions from './definitions.json' with { type: 'json' };
 import { MiniMapEntity } from './minimapEntity';
+import { newEntityId } from './saveRecord';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { watchTileActivity } from './tileActivity';
 
-export interface PigKingPrefabOptions {
-  position?: THREE.Vector3;
-  scale?: number;
+export const PIGKING_ID = 'pigking' as const;
+
+/** pigking.lua has no OnSave: records carry only identity and position. */
+export interface PigKingRecord {
+  id: string;
+  transform: { position: [number, number, number]; rotationY: number };
+  components: Record<string, never>;
 }
 
 /** What pigking.lua reads from TheWorld and TheCamera. */
 export interface PigKingWorld {
   camera: THREE.Camera;
-  scheduler?: GameTimeScheduler;
-  /** TheWorld.state.isnight */
-  isNight: ReadonlySignal<boolean>;
+  scheduler: GameTimeScheduler;
+  physics: CANNON.World;
+  /** Without it every king is active. */
+  tickingarea?: TileStateQuery;
   /** SpawnPrefab + Transform:SetPosition + launchitem for each launch factory call. */
   dropLoot(items: readonly { itemId: string; count: number }[], position: THREE.Vector3, launch: () => LootLaunch): void;
-}
-
-export interface PigKingPrefab {
-  body: CANNON.Body;
-  standee: THREE.Group;
-  readonly MiniMapEntity: MiniMapEntity;
-  /** pigking.lua trader: tags `trader` while enabled; GIVE discovers it through the actionEntity. */
-  readonly trader: Trader<TradeItem>;
-  /** The inst's stategraph; undefined until the prefab is bound to a world. */
-  readonly sg: PigKingStateGraph | undefined;
-  setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
-  /** Starts the trader, the day/night sleep watcher and the stategraph. */
-  bind(world: PigKingWorld): void;
-  update(dt: number): void;
-  dispose(): void;
 }
 
 // pigking.lua launchitem / ontradeforgold.
 const TOSS_HEIGHT = 4.5;
 const TOSS_DELAY = 2 / 3;
 const GOLD = 'goldnugget';
+const SOUNDS = ['dontstarve/pig/PigKingThrowGold', 'dontstarve/pig/PigKingHappy', 'dontstarve/pig/PigKingReject'] as const;
 
 /** AnimState:PlayAnimation / PushAnimation: `animover` fires once the queued animations have all ended. */
 class PigKingAnimation {
   private queue: { name: string; loop: boolean }[] = [];
   private playingOnce = false;
-  private readonly controller: SpriteAnimationController;
+  private readonly controller: SpriteState;
   private readonly onOver: () => void;
-  constructor(controller: SpriteAnimationController, onOver: () => void) { this.controller = controller; this.onOver = onOver; }
+  constructor(controller: SpriteState, onOver: () => void) { this.controller = controller; this.onOver = onOver; }
 
   play(name: string, loop = false): void { this.queue = []; this.run(name, loop); }
 
@@ -79,131 +71,192 @@ class PigKingAnimation {
   }
 }
 
-export async function createPigKing(
-  assetBaseUrl: string,
-  options: PigKingPrefabOptions = {},
-): Promise<PigKingPrefab> {
-  const standee = await createAnimatedSprite(assetBaseUrl, definitions.pigKing.archive, {
-    initialAnimation: definitions.pigKing.animationName,
-    name: 'PigKingStandee',
-    scale: options.scale ?? definitions.pigKing.scale,
-  });
-  const position = options.position ?? new THREE.Vector3(0, 0, 25);
-  standee.position.copy(position);
-  standee.updateWorldMatrix(true, true);
-  const bounds = new THREE.Box3().setFromObject(standee);
-  standee.position.y += position.y - bounds.min.y;
-  const miniMapEntity = new MiniMapEntity(standee.position);
-  miniMapEntity.SetIcon('pigking.png');
-  miniMapEntity.SetPriority(1);
+/** pigking.lua fn: obstacle physics, minimap icon, trader, SGpigking and the isnight watcher. */
+class PigKing {
+  readonly model: THREE.Group;
+  readonly instance: PrefabInstance;
+  readonly display: PrefabDisplay;
+  readonly minimap: MiniMapEntity;
+  /** pigking.lua trader: tags `trader` while enabled; GIVE discovers it through the actionEntity. */
+  readonly trader: Trader<TradeItem>;
+  readonly sg: PigKingStateGraph;
+  private readonly world: PigKingWorld;
+  private readonly tasks = new Set<() => void>();
+  private readonly cleanups: (() => void)[] = [];
+  private disposed = false;
 
-  const animation = standee.userData.animationController as SpriteAnimationController;
-  // pigking.lua: MakeObstaclePhysics(inst, 2, .5)
-  const body = MakeObstaclePhysics({ x: standee.position.x, y: position.y, z: standee.position.z }, 2, .5);
+  constructor(world: PigKingWorld, { instance, display }: ReturnType<typeof createPrefabEntity>, getWatchWorldContent?: GetWatchWorldContent) {
+    this.world = world; this.instance = instance; this.display = display;
+    const model = this.model = display.model;
+    // MakeObstaclePhysics(inst, 2, .5): a static capsule on the feet origin.
+    MakeObstaclePhysics(instance, 2, .5);
+    instance.bindPhysics(world.physics);
+    this.minimap = new MiniMapEntity(model.position);
+    this.minimap.SetIcon('pigking.png');
+    this.minimap.SetPriority(1);
 
-  // pigking.lua tags, then components/trader.lua with its pigking callbacks.
-  const entity = actionEntity(standee, 'pigking');
-  // MakeObstaclePhysics(inst, 2): the capsule radius, in scene units.
-  standee.userData.physicsRadius = Math.max(...body.shapes.map(shape => shape instanceof CANNON.Sphere ? shape.radius : 0));
-  for (const tag of ['king', 'birdblocker', 'antlion_sinkhole_blocker']) entity.addTag(tag);
-  const trader = new Trader<TradeItem>(entity);
-  trader.Disable();
-  standee.userData.components.trader = trader;
+    const entity = actionEntity(model, PIGKING_ID);
+    for (const tag of ['king', 'birdblocker', 'antlion_sinkhole_blocker']) entity.addTag(tag);
+    const trader = this.trader = new Trader<TradeItem>(entity);
+    model.userData.components.trader = trader;
+    // Lua only offers GIVE for items with the tradable component.
+    trader.SetAbleToAcceptTest(item => item.components?.tradable ? { ok: true } : { ok: false });
+    trader.SetAcceptTest(item => (item.components?.tradable?.goldvalue ?? 0) > 0);
+    trader.SetOnAccept((giver, item) => {
+      const goldvalue = item.components?.tradable?.goldvalue ?? 0;
+      if (goldvalue <= 0) return;
+      this.sg.goToState('cointoss');
+      this.doTaskInTime(TOSS_DELAY, () => this.tradeForGold(goldvalue, giver));
+    });
+    trader.SetOnRefuse(() => this.sg.goToState('unimpressed'));
 
-  let bound: { world: PigKingWorld; sg: PigKingStateGraph; stopNight: () => void } | undefined;
-  let disposed = false;
-  const tasks = new Set<() => void>();
-  const groundPosition = () => new THREE.Vector3(standee.position.x, 0, standee.position.z);
+    const animation = new PigKingAnimation(instance.sprite, () => this.sg.pushEvent('animover'));
+    const inst: PigKingStateInst = {
+      mem: { sleeping: false },
+      happy: false,
+      trader,
+      playAnimation: (name, loop) => animation.play(name, loop),
+      pushAnimation: (name, loop) => animation.push(name, loop),
+      playSound: path => { PlaySound(path, this.groundPosition()); },
+      doTaskInTime: (seconds, fn) => this.doTaskInTime(seconds, fn),
+    };
+    this.sg = new PigKingStateGraph(inst, world.scheduler);
+    // pigking.lua OnIsNight, via WatchWorldState("isnight") and an initial call.
+    const cycle = getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
+    if (cycle) {
+      const isNight = createMemo(() => cycle.get() === 'night');
+      createEffect(() => {
+        const night = isNight.get();
+        inst.mem.sleeping = night;
+        if (night) {
+          if (this.sg.hasStateTag('idle')) this.sg.goToState('sleep');
+        } else if (this.sg.hasStateTag('sleeping')) this.sg.goToState('wake');
+      });
+    }
+    this.cleanups.push(watchTileActivity(model, world.tickingarea, active => instance.setActive(active)));
+  }
 
-  const doTaskInTime = (seconds: number, fn: () => void): (() => void) => {
-    const scheduler = bound?.world.scheduler;
-    if (!scheduler) return () => undefined;
-    const cancel = scheduler.schedule(seconds, () => { tasks.delete(cancel); if (!disposed) fn(); });
-    tasks.add(cancel);
-    return () => { cancel(); tasks.delete(cancel); };
-  };
+  private groundPosition(): THREE.Vector3 { return new THREE.Vector3(this.model.position.x, 0, this.model.position.z); }
+
+  /** inst:DoTaskInTime, cancelled with the king. */
+  private doTaskInTime(seconds: number, fn: () => void): () => void {
+    const cancel = this.world.scheduler.schedule(seconds, () => { this.tasks.delete(cancel); if (!this.disposed) fn(); });
+    this.tasks.add(cancel);
+    return () => { cancel(); this.tasks.delete(cancel); };
+  }
 
   /** pigking.lua ontradeforgold: goldvalue nuggets thrown from 4.5 units up, toward the giver. */
-  const tradeForGold = (world: PigKingWorld, goldvalue: number, giver: unknown) => {
-    const origin = groundPosition();
+  private tradeForGold(goldvalue: number, giver: unknown): void {
+    const origin = this.groundPosition();
     const giverPosition = (giver as { position?: THREE.Vector3 } | undefined)?.position;
     let angle: number;
     if (giverPosition) angle = Math.atan2(giverPosition.z - origin.z, giverPosition.x - origin.x);
     else {
       // TheCamera:GetDownVec(): the screen-down direction on the ground.
-      const forward = world.camera.getWorldDirection(new THREE.Vector3());
+      const forward = this.world.camera.getWorldDirection(new THREE.Vector3());
       angle = Math.atan2(-forward.z, -forward.x);
     }
-    world.dropLoot([{ itemId: GOLD, count: goldvalue }], origin, () => ({
+    this.world.dropLoot([{ itemId: GOLD, count: goldvalue }], origin, () => ({
       angle: angle + (Math.random() * 60 - 30) * THREE.MathUtils.DEG2RAD,
       height: TOSS_HEIGHT, speed: { min: 2, range: 4 }, ySpeed: { min: 8, range: 2 },
     }));
-  };
+  }
 
-  // Lua only offers GIVE for items with the tradable component.
-  trader.SetAbleToAcceptTest(item => item.components?.tradable ? { ok: true } : { ok: false });
-  trader.SetAcceptTest(item => (item.components?.tradable?.goldvalue ?? 0) > 0);
-  trader.SetOnAccept((giver, item) => {
-    const goldvalue = item.components?.tradable?.goldvalue ?? 0;
-    if (!bound || goldvalue <= 0) return;
-    const { world, sg } = bound;
-    sg.goToState('cointoss');
-    doTaskInTime(TOSS_DELAY, () => tradeForGold(world, goldvalue, giver));
-  });
-  trader.SetOnRefuse(() => bound?.sg.goToState('unimpressed'));
+  update(dt: number): void {
+    if (this.instance.sprite.loaded) this.instance.sprite.update(dt);
+    this.sg.update(dt);
+  }
 
-  return {
-    body,
-    standee,
-    MiniMapEntity: miniMapEntity,
-    trader,
-    get sg() { return bound?.sg; },
-    setNormal(cameraWorldQuaternion) {
-      standee.quaternion.copy(cameraWorldQuaternion);
-    },
-    bind(world) {
-      if (bound) return;
-      disposed = false;
-      miniMapEntity.SetEnabled(true);
-      void PreloadSounds('dontstarve/pig/PigKingThrowGold', 'dontstarve/pig/PigKingHappy', 'dontstarve/pig/PigKingReject');
-      let sg: PigKingStateGraph | undefined;
-      const pigAnimation = new PigKingAnimation(animation, () => sg?.pushEvent('animover'));
-      const inst: PigKingStateInst = {
-        mem: { sleeping: false },
-        happy: false,
-        trader,
-        playAnimation: (name, loop) => pigAnimation.play(name, loop),
-        pushAnimation: (name, loop) => pigAnimation.push(name, loop),
-        playSound: path => { PlaySound(path, groundPosition()); },
-        doTaskInTime,
-      };
-      sg = new PigKingStateGraph(inst, world.scheduler);
-      trader.Enable();
-      bound = { world, sg, stopNight: () => undefined };
-      // pigking.lua OnIsNight, via WatchWorldState("isnight") and an initial call.
-      bound.stopNight = createEffect(() => {
-        const night = world.isNight.get();
-        inst.mem.sleeping = night;
-        if (night) {
-          if (bound!.sg.hasStateTag('idle')) bound!.sg.goToState('sleep');
-        } else if (bound!.sg.hasStateTag('sleeping')) bound!.sg.goToState('wake');
-      });
-    },
-    update(dt) {
-      animation.update(dt);
-      bound?.sg.update(dt);
-    },
-    /** Scene teardown: the prefab outlives the scene, so a later bind() starts it again. */
-    dispose() {
-      miniMapEntity.dispose();
-      if (!bound) return;
-      disposed = true;
-      bound.stopNight();
-      bound.sg.dispose();
-      bound = undefined;
-      for (const cancel of [...tasks]) cancel();
-      trader.Disable();
-      animation.start('idle');
-    },
-  };
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const stop of this.cleanups.splice(0)) stop();
+    for (const cancel of [...this.tasks]) cancel();
+    this.sg.dispose();
+    this.trader.Disable();
+    this.minimap.dispose();
+    this.model.userData.removed = true;
+    this.instance.remove(); this.display.dispose();
+  }
+}
+
+/** pigking.lua: the Pig King, trading gold for tradable items by day and sleeping at night. */
+export class PigKingManager {
+  private factoryRequest?: Promise<AnimatedSpriteFactory>;
+  private readonly kings = new Map<THREE.Group, PigKing>();
+  private readonly scene: THREE.Scene;
+  private readonly assetBaseUrl: string;
+  private readonly world: PigKingWorld;
+  private readonly getWatchWorldContent?: GetWatchWorldContent;
+  private disposed = false;
+
+  constructor(scene: THREE.Scene, assetBaseUrl: string, world: PigKingWorld) {
+    this.scene = scene; this.assetBaseUrl = assetBaseUrl; this.world = world;
+    this.getWatchWorldContent = getBoundWatchWorldContent();
+  }
+
+  async spawn(position: THREE.Vector3, saved?: PigKingRecord): Promise<THREE.Group> {
+    if (this.disposed) throw new Error('Pig kings have been disposed');
+    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid pig king position');
+    if (!this.factoryRequest) {
+      this.factoryRequest = createAnimatedSpriteFactory(this.assetBaseUrl, definitions.pigKing.archive);
+      void this.factoryRequest.catch(() => { this.factoryRequest = undefined; });
+    }
+    const [factory] = await Promise.all([this.factoryRequest, PreloadSounds(...SOUNDS)]);
+    if (this.disposed) throw new Error('Pig kings have been disposed');
+    // The art is lifted once so that its lowest point stands on the entity's feet.
+    let lift: number | undefined;
+    const create = (animation: string) => {
+      const sprite = factory.create({ initialAnimation: animation, name: PIGKING_ID, scale: definitions.pigKing.scale });
+      if (lift === undefined) {
+        sprite.updateWorldMatrix(true, true);
+        lift = -new THREE.Box3().setFromObject(sprite).min.y;
+      }
+      sprite.children[0].position.y += lift;
+      return sprite;
+    };
+    // AnimState:PlayAnimation("idle", true).
+    const entity = createPrefabEntity(PIGKING_ID, { create, release: sprite => factory.disposeSprite(sprite) },
+      { name: definitions.pigKing.animationName, billboard: true }, PIGKING_ID);
+    const model = entity.display.model;
+    model.position.copy(position);
+    Object.assign(model.userData, { prefab: PIGKING_ID, entityId: saved?.id ?? newEntityId() });
+    const king = new PigKing(this.world, entity, this.getWatchWorldContent);
+    model.userData.pigKing = king;
+    this.kings.set(model, king);
+    this.scene.add(model);
+    return model;
+  }
+
+  /** The king's stategraph and sprite advance before physics, like the other world entities' brains. */
+  update(dt: number): void {
+    if (this.disposed) return;
+    for (const king of this.kings.values()) king.update(dt);
+  }
+
+  get renderEntities() {
+    return [...this.kings.values()].filter(({ instance }) => instance.sprite.loaded)
+      .map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
+  }
+
+  get miniMapEntities(): MiniMapEntity[] { return [...this.kings.values()].map(({ minimap }) => minimap); }
+
+  /** The king behind a spawned model, for its trader and stategraph. */
+  get(model: THREE.Object3D): PigKing | undefined { return this.kings.get(model as THREE.Group); }
+
+  exportRecords(): { prefabId: typeof PIGKING_ID; record: PigKingRecord }[] {
+    return [...this.kings.keys()].map(model => ({ prefabId: PIGKING_ID, record: {
+      id: String(model.userData.entityId),
+      transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
+      components: {},
+    } }));
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const king of this.kings.values()) king.dispose();
+    this.kings.clear();
+    void this.factoryRequest?.then(factory => factory.dispose(), () => undefined);
+  }
 }

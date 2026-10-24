@@ -21,7 +21,7 @@ export {
   type PercentAnimationController,
   type TransientSpriteAnimationController,
 } from './sprite';
-export { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from './beefaloSprite';
+export { createBeefaloSpriteFactory, type FacingSpriteController, type BeefaloSpriteFactory } from './beefaloSprite';
 export {
   createStaticSprite, createStaticSpriteFactory,
   type StaticSpriteFactory,

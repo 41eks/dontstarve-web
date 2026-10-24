@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import type { AnimatedSpriteFactory, SpriteController } from '@dontstarve-web/animation/sprite';
+import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
@@ -13,8 +15,9 @@ export interface MoonbaseFxResources {
   durations: Readonly<Record<string, number>>;
 }
 interface Fx extends BuildingRenderEffect {
-  animation: SpriteController;
-  factory: AnimatedSpriteFactory;
+  instance: PrefabInstance;
+  display: PrefabDisplay;
+  animation: SpriteState;
   removal: ComponentTimer;
   createdAt: number;
 }
@@ -45,21 +48,25 @@ export class MoonbaseEffects {
   private foot(): THREE.Vector3 { return this.model.userData.getGroundPosition?.() ?? this.model.position.clone(); }
   private create(prefab: string, clip: string, sortLayer: number, cold = false): Fx {
     const factory = cold ? this.resources.coldFactory : this.resources.beamFactory;
-    const object = factory.create({ initialAnimation: clip, name: prefab, scale: cold ? .02 * .92 : .02,
-      ...(cold ? { hiddenLayers: ['shadow'] } : {}) });
-    object.position.copy(this.foot()); object.quaternion.copy(this.model.quaternion);
-    Object.assign(object.userData, { prefab, persists: false, tags: cold ? ['HASHEATER'] : ['FX'] });
+    const { instance, display } = createPrefabEntity(prefab, { create: initialAnimation => factory.create({ initialAnimation, name: prefab,
+      scale: cold ? .02 * .92 : .02, ...(cold ? { hiddenLayers: ['shadow'] } : {}) }), release: sprite => factory.disposeSprite(sprite) },
+      { name: clip }, prefab);
+    const object = display.model;
+    instance.position.copy(this.foot()); object.quaternion.copy(this.model.quaternion);
+    object.userData.prefab = prefab;
+    instance.persists = false;
+    instance.addTag(cold ? 'HASHEATER' : 'FX');
     setPrefabLightOverride(object, 1);
     let fx!: Fx;
     const removal = new ComponentTimer(this.scheduler, () => this.remove(fx));
-    fx = { object, footPosition: object.position, sortLayer, factory, removal,
-      animation: object.userData.animationController, createdAt: this.scheduler.now };
+    fx = { object, footPosition: object.position, sortLayer, instance, display, removal,
+      animation: instance.sprite, createdAt: this.scheduler.now };
     this.effects.add(fx); this.scene.add(object);
     return fx;
   }
   private remove(fx: Fx): void {
     if (!this.effects.delete(fx)) return;
-    fx.removal.stop(); fx.factory.disposeSprite(fx.object);
+    fx.removal.stop(); fx.instance.remove(); fx.display.dispose();
   }
   private sound(event: string): void {
     for (const sound of this.oneShots) if (!sound.isPlaying()) this.oneShots.delete(sound);
@@ -74,7 +81,7 @@ export class MoonbaseEffects {
       else fx.animation.playOnce(`lunar_${layer}_pre`, () => fx.animation.start(`lunar_${layer}_loop`));
     }
     this.pulse = this.create('positronpulse', 'lunar_2_loop', 3);
-    this.pulse.animation.start('lunar_2_loop'); this.pulse.object.visible = false;
+    this.pulse.animation.start('lunar_2_loop'); this.pulse.animation.setVisible(false);
     this.beamSound = PlaySound(`${PATH}beam`, this.model.position);
     if (!restored) this.sound('beam_level_up');
     this.setLevel(level, false);
@@ -82,7 +89,7 @@ export class MoonbaseEffects {
   }
   setLevel(level: 1 | 2 | 3, playSound = true): void {
     if (!this.pulse) return;
-    this.pulse.object.visible = level > 1;
+    this.pulse.animation.setVisible(level > 1);
     if (level > 1) {
       if (this.pulse.animation.currentAnimation !== `lunar_${level}_loop`) this.pulse.animation.start(`lunar_${level}_loop`);
       if (playSound) this.sound('beam_level_up');
@@ -93,7 +100,7 @@ export class MoonbaseEffects {
     if (!this.pulse) return;
     const pulse = this.pulse; this.pulse = undefined;
     this.beamSound?.stop(); this.beamSound = undefined;
-    this.sound('beam_stop'); pulse.object.visible = true;
+    this.sound('beam_stop'); pulse.animation.setVisible(true);
     pulse.animation.playOnce('lunar_full_pst');
     pulse.removal.start(this.resources.durations.lunar_full_pst + 2 / 30);
   }
@@ -125,7 +132,7 @@ export class MoonbaseEffects {
   update(dt: number): void {
     const foot = this.foot();
     for (const fx of this.effects) {
-      fx.object.position.copy(foot); fx.object.quaternion.copy(this.model.quaternion); fx.animation.update(dt);
+      fx.instance.position.copy(foot); fx.object.quaternion.copy(this.model.quaternion); fx.animation.update(dt);
     }
     if (this.cold) setPrefabLocalLight(this.cold.object, polarLight(this.scheduler.now - this.cold.createdAt));
   }

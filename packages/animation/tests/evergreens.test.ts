@@ -42,6 +42,7 @@ it('cycles all four source stages and split archives, resets chop work, removes 
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(3, 0, 0));
     const model = tree.model!, work = s.forest.chopTargets[0].entity.components.workable!;
     const growable = model.userData.components.growable;
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     expect(work.GetWorkLeft()).toBe(15);
     expect(work.WorkedBy({})).toBe(true);
@@ -69,7 +70,7 @@ it('cycles all four source stages and split archives, resets chop work, removes 
     expect(s.dropLoot.mock.calls.at(-1)![0]).toEqual([{ itemId: 'pinecone', count: 1 }]);
     expect(model.userData.animationController.currentAnimation).toBe('chop_old');
     expect(s.forest.exportRecords()[0].components).toEqual({ evergreen: { stump: true }, growable: { stage: 4 } });
-    expect(s.physics.bodies).toEqual([]);
+    await new Promise(resolve => setTimeout(resolve, 0)); expect(s.physics.bodies).toEqual([]);
     expect(s.forest.digTargets[0].dig()).toBe(true);
     expect(s.dropLoot).toHaveBeenLastCalledWith([{ itemId: 'log', count: 1 }], tree.position);
   } finally { s.forest.dispose(); }
@@ -83,11 +84,14 @@ it('shows growth settled while unloaded as its final stage without the transitio
     await area.visit(new THREE.Vector3(1000, 0, 1000));
     // A sleeping tree keeps its root and state but leaves the scene graph until its tile wakes.
     expect(tree.model).toBe(root); expect(root.parent).toBeNull();
+    expect(root.userData.instance.status.peek()).toBe('asleep');
     expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(false);
     expect(root.userData.removed).not.toBe(true);
     s.scheduler.advance(5000);
     await area.visit(new THREE.Vector3(3, 0, 0));
     expect(root.parent).toBe(s.forest.group);
+    expect(root.userData.instance.status.peek()).toBe('active');
+    expect(root.userData.instance.position).toBe(root.position);
     expect(tree.model).toBe(root); expect(root.userData.animationController).toBe(controller);
     expect(root.userData.components).toBe(components); expect(controller.loaded).toBe(true);
     expect(tree.model!.userData.components.growable.GetStage()).toBeGreaterThan(1);
@@ -116,6 +120,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     while (animation.stategraph.stateName === 'chop_start') animation.update(1 / 30);
     advance(2); expect(work.GetWorkLeft()).toBe(14); expect(axe.components.finiteuses.remaining).toBe(99);
     expect(s.forest.renderEntities.some(entry => entry.object.name === 'pine_needles_chop')).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     const geometry = (tree.model!.children[0].children[0].children[0] as THREE.Mesh).geometry;
     const geometryDispose = vi.spyOn(geometry, 'dispose');
     await area.visit(new THREE.Vector3(500, 0, 0));
@@ -129,7 +134,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     expect(current.isValid()).toBe(false); expect(current.entity.hasTag('CHOP_workable')).toBe(false);
     expect(current.entity.hasTag('DIG_workable')).toBe(true);
     expect(s.dropLoot.mock.calls[0][0]).toEqual([{ itemId: 'log', count: 3 }, { itemId: 'pinecone', count: 2 }]);
-    expect(s.physics.bodies).toEqual([]);
+    await new Promise(resolve => setTimeout(resolve, 0)); expect(s.physics.bodies).toEqual([]);
     const record = s.forest.exportRecords()[0];
     const restored = await setup();
     try {

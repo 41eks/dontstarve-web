@@ -11,6 +11,30 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+it('loads a burnt tree as ash and releases its independent burnt FX on game time without animation updates', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal('window', new EventTarget());
+  vi.spyOn(Math, 'random').mockReturnValue(.5);
+  const { mushWorld, scheduler, ash } = world(), scene = new THREE.Scene(), awake = createSignal(false);
+  const trees = new MushtreeManager(scene, { ...mushWorld, tickingarea: () => createMemo(() => awake.get()) });
+  try {
+    const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7), {
+      id: 'burnt-mushroom', transform: { position: [5, 0, 7], rotationY: 0 }, components: { mushtree: { burnt: true } },
+    });
+    expect(model.userData.instance.status.peek()).toBe('removed');
+    expect(trees.exportRecords()).toEqual([]);
+    expect(ash).toEqual([new THREE.Vector3(5, 0, 7)]);
+    await vi.waitFor(() => expect(scene.children.some(child => child.userData.instance?.prefab === 'mushtree_moon_burntfx')).toBe(true));
+    const fx = scene.children.find(child => child.userData.instance?.prefab === 'mushtree_moon_burntfx')!;
+    expect(fx.userData.tags).toEqual(['FX']);
+    expect(fx.userData.instance.persists).toBe(false);
+    scheduler.advance(10);
+    expect(fx.userData.instance.status.peek()).toBe('removed');
+    awake.set(true); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(scene.children).toEqual([]);
+  } finally { trees.dispose(); scheduler.dispose(); }
+});
+
 function world(season: 'summer' | 'autumn' | 'winter' = 'autumn') {
   const scheduler = new GameTimeScheduler(), bound = bindTestWorld(scheduler), seasonSignal = bound.season;
   seasonSignal.set({ season, temperature: 20 });
@@ -33,11 +57,13 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
     const axe = inventory.entities.create({ itemId: 'axe', count: 1 });
     const [chop] = trees.getChopTargets();
     for (let i = 0; i < 14; i++) expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(mesh.visible).toBe(true); // Working uses the ordinary shared-frame mesh.
     for (let i = 0; i < 100 && mesh.visible; i++) trees.update(.1, new THREE.Quaternion());
     expect(mesh.visible).toBe(false); // Completing work rejoins idle instancing.
     expect(trees.getDigTargets()).toEqual([]);
     expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(mesh.visible).toBe(true);
     // moon_cap has no ground item yet, so only the two logs are dropped.
     expect(drops).toEqual([{ itemId: 'log', count: 2 }]);

@@ -82,12 +82,13 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     expect(restored.canTerraform(point)).toBe(false);
     const restoredMesh = await restored.createDirtMesh('/dst/data');
     expect(restoredMesh.geometry.getAttribute('position').array).toEqual(dirt.geometry.getAttribute('position').array);
-    expect(dirt.geometry.getIndex()!.count).toBe(6);
+    // Like every turf layer, a lone dirt cell blends into its eight neighbours through skirt masks.
+    expect(dirt.geometry.getIndex()!.count).toBe(9 * 6);
     expect((dirt.material as THREE.MeshLambertMaterial).depthWrite).toBe(false);
     expect(dirt.renderOrder).toBeGreaterThan(-2);
     expect(dirt.renderOrder).toBeLessThan(0);
-    expect(dirt.geometry.boundingBox!.min.toArray()).toEqual([-12, 0, 12]);
-    expect(dirt.geometry.boundingBox!.max.toArray()).toEqual([0, 0, 24]);
+    expect(dirt.geometry.boundingBox!.min.toArray()).toEqual([-24, 0, 0]);
+    expect(dirt.geometry.boundingBox!.max.toArray()).toEqual([12, 0, 36]);
   });
 });
 

@@ -21,7 +21,7 @@ import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import { Hauntable } from '../../componets/src/hauntable';
 import { ErodeAway } from '../../componets/src/erodeaway';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { createArchiveEntity } from './prefabInstance';
 import { Workable } from '../../componets/src/workable';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import { LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
@@ -421,28 +421,37 @@ export function createLightFlierGroundFactory(context: GroundPrefabContext): Gro
     },
   });
   const createPrepared = (): GroundItemVisual => {
-      const sprite = new ResidentSprite(clip => habitat.createSprite(clip.name, clip.loop), { name: 'walk_loop', loop: true }, habitat.createSprite(), LIGHTFLIER_ID);
+      const { instance, display } = createArchiveEntity(LIGHTFLIER_ID, { create: clip => habitat.createSprite(clip.name, clip.loop),
+        initial: habitat.createSprite() }, { name: 'walk_loop' }, LIGHTFLIER_ID);
+      const sprite = instance.sprite, model = display.model;
       const active = createSignal(true);
       const cleanups: (() => void)[] = []; let fly: LightFlier | undefined;
+      // Facing and erosion change the sprite json only when their value does.
+      let facing: number | undefined, erosion: number | undefined;
       const heading = habitat.services.cameraHeading ? watchSignal(habitat.services.cameraHeading, stop => cleanups.push(stop)) : undefined;
-      return { model: sprite.model, active: readonlySignal(active),
+      return { model, active: readonlySignal(active),
         bindEntity: entity => {
           configureLightFlierEntity(entity); fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!; habitat.bind(fly);
           const animation = watchSignal(fly.animstate.animation, stop => cleanups.push(stop));
           const awake = watchSignal(fly.active, stop => cleanups.push(stop));
           // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
-          createEffect(() => { active.set(awake.get()); sprite.setActive(awake.get()); if (!awake.get()) setPrefabLocalLight(sprite.model, null); });
+          createEffect(() => { active.set(awake.get()); instance.setActive(awake.get()); if (!awake.get()) setPrefabLocalLight(model, null); });
           createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
-          Object.assign(sprite.model.userData, { lightflier: fly, tags: [...LIGHTFLIER_TAGS], physicsRadius: .5 * WORLD_SCALE });
-          setPrefabLightOverride(sprite.model, 1);
+          // The item entity owns the lightflier's tags.
+          Object.assign(model.userData, { lightflier: fly, physicsRadius: .5 * WORLD_SCALE });
+          setPrefabLightOverride(model, 1);
         },
         update: dt => {
-          fly?.update(dt); sprite.setFacing(fourFacingFromRotation(fly?.facing ?? 0, heading?.peek() ?? 0)); sprite.update(dt);
-          sprite.setErosion(fly?.erosionValue ?? 0);
-          setPrefabLocalLight(sprite.model, fly?.isValid() ? { radius: 1.8 * WORLD_SCALE, intensity: .5, falloff: .7, colour: [237 / 255, 237 / 255, 209 / 255] } : null);
+          fly?.update(dt);
+          const nextFacing = fourFacingFromRotation(fly?.facing ?? 0, heading?.peek() ?? 0);
+          if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
+          sprite.update(dt);
+          const nextErosion = fly?.erosionValue ?? 0;
+          if (nextErosion !== erosion) sprite.setErosion(erosion = nextErosion);
+          setPrefabLocalLight(model, fly?.isValid() ? { radius: 1.8 * WORLD_SCALE, intensity: .5, falloff: .7, colour: [237 / 255, 237 / 255, 209 / 255] } : null);
         },
         isClickable: () => fly?.isValid() ?? true,
-        dispose: () => { cleanups.splice(0).forEach(stop => stop()); setPrefabLocalLight(sprite.model, null); sprite.dispose(); },
+        dispose: () => { cleanups.splice(0).forEach(stop => stop()); setPrefabLocalLight(model, null); instance.remove(); display.dispose(); },
       };
     };
   return { itemIds: [LIGHTFLIER_ID], capture: 'net', configureEntity: configureLightFlierEntity,

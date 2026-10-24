@@ -3,6 +3,7 @@ import { findImage, smallHash, SpriteFrameRenderer, type Animation, type Resolve
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { GroundItemAssets } from './groundItems';
 import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
+import { createEmptyEntity } from './prefabInstance';
 
 /**
  * prefabs/fx.lua entries that play one animation at a world position, optionally play a sound and remove
@@ -40,6 +41,8 @@ export type WorldFxPrefab = keyof typeof FX_PREFABS;
 type FxBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
 interface FxAssets { animation: Animation; build: FxBuild }
 interface FxInstance {
+  /** The fx entity; it draws its frames itself under the display's model. */
+  entity: ReturnType<typeof createEmptyEntity>;
   model: THREE.Group;
   footPosition: THREE.Vector3;
   renderer: SpriteFrameRenderer;
@@ -94,10 +97,11 @@ export class WorldFx {
   spawn(prefab: WorldFxPrefab, position: THREE.Vector3): void {
     const assets = this.ready.get(prefab);
     if (!assets || this.disposed) throw new Error(`FX prefab ${prefab} has not been prepared`);
-    const model = new THREE.Group();
-    model.name = prefab;
-    Object.assign(model.userData, { prefab, persists: false, tags: ['FX'], billboard: true });
-    model.position.set(position.x, 0, position.z);
+    const entity = createEmptyEntity(prefab), model = entity.display.model;
+    Object.assign(model.userData, { prefab, billboard: true });
+    entity.instance.persists = false;
+    entity.instance.addTag('FX');
+    entity.instance.position.set(position.x, 0, position.z);
     const visual = new THREE.Group();
     const definition = FX_PREFABS[prefab];
     const scale = 'scale' in definition ? definition.scale : 1;
@@ -105,7 +109,7 @@ export class WorldFx {
     model.add(visual);
     registerSpriteRenderGroup(model, visual);
     if ('finalOffset' in definition) visual.position.z = definition.finalOffset * .001;
-    const effect: FxInstance = { model, footPosition: model.position.clone(), renderer: new SpriteFrameRenderer(visual),
+    const effect: FxInstance = { entity, model, footPosition: model.position.clone(), renderer: new SpriteFrameRenderer(visual),
       assets, elapsed: 0, frame: -1, lingerFrames: 'lingerFrames' in definition ? definition.lingerFrames : 0 };
     this.showFrame(effect, 0);
     this.active.add(effect);
@@ -146,8 +150,8 @@ export class WorldFx {
   }
 
   private remove(effect: FxInstance): void {
-    effect.model.removeFromParent();
     effect.model.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
+    effect.entity.instance.remove(); effect.entity.display.dispose();
     this.active.delete(effect);
   }
 

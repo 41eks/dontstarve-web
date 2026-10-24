@@ -11,6 +11,8 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { SaveDocument } from '../../../src/save/types';
+import { bindTestWorld } from './worldContentFixture';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -42,6 +44,8 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
   const restoredPhysics = new CANNON.World(), restoredScheduler = new GameTimeScheduler(100);
   const restoredRandom = vi.fn(() => .5);
   const restored = new LavaPondManager(new THREE.Scene(), restoredPhysics, '/dst/data/anim', { scheduler: restoredScheduler, random: restoredRandom });
+  // The rocks' displays turn themselves to the world's camera rotation.
+  const content = bindTestWorld(restoredScheduler);
   try {
     const model = await manager.spawn(new THREE.Vector3(12, 0, -8));
     const state = model.userData.lavaPond;
@@ -61,7 +65,8 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     const source = FindEntities(model.position, 30, ['HASHEATER'], ['INLIMBO']);
     expect(source).toHaveLength(1); expect(source[0].components.heater!.GetHeat()).toBe(500);
 
-    const body = model.userData.physicsBody as CANNON.Body;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const body = prefabInstance(model)!.physicsBody!;
     const moving = new CANNON.Body({ mass: 5, fixedRotation: true, shape: new CANNON.Sphere(4.5),
       position: new CANNON.Vec3(12 + 18, 4.5, -8) });
     physics.addBody(moving);
@@ -84,6 +89,8 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     restoredScheduler.advance(0); expect(restored.renderEntities).toHaveLength(2);
     expect(restored.exportRecords()).toEqual(records);
     const camera = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
+    content.camerarotation.set(camera);
+    await new Promise(resolve => setTimeout(resolve, 0));
     restored.update(0, camera);
     expect(restored.renderEntities.every(entry => entry.object.quaternion.equals(camera))).toBe(true);
     expect(reloaded.position.toArray()).toEqual(record.transform.position);
@@ -91,7 +98,7 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     expect(FindEntities(model.position, 30, ['HASHEATER']).map(entity => entity === reloaded.userData.actionEntity)).toEqual([true]);
     expect(physics.bodies).toEqual([]); expect(getPrefabLocalLight(model)).toBeUndefined();
     expect(manager.renderEntities).toEqual([]); expect(manager.exportRecords()).toEqual([]);
-  } finally { manager.dispose(); restored.dispose(); scheduler.dispose(); restoredScheduler.dispose(); }
+  } finally { manager.dispose(); restored.dispose(); content.unbind(); scheduler.dispose(); restoredScheduler.dispose(); }
 });
 
 it('cancels pending child creation on removal and rejects malformed saved rock layouts before restoration', async () => {

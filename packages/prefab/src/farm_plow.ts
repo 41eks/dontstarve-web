@@ -5,7 +5,8 @@ import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type { FarmSoilTarget, PreparedSeedPlant, PreparedFarmTill, FarmActionWorld } from '@dontstarve-web/stategraphs/farmActions';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
-import { ArchiveSpriteAssets, createArchiveSprite, type ArchiveSprite, type ArchiveSpriteDefinition } from '@dontstarve-web/animation/archiveSprite';
+import { ArchiveSpriteAssets, createSharedArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
+import { createArchiveEntity } from './prefabInstance';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { newEntityId } from './saveRecord';
@@ -51,14 +52,20 @@ export interface FarmPlowSaveState {
 export interface FarmSoilSaveState { broken: boolean; plowId?: string }
 export interface FarmDebrisSaveState { animation: 'f1' | 'f2' | 'f3' | 'f4' }
 export type FarmPlowBlocker = PlacementBlocker;
+/** A farm entity drawn by its own display: plows, soil, debris, planted seeds, placers and fx. */
+type FarmEntity = ReturnType<typeof createArchiveEntity>;
+const release = ({ instance, display }: FarmEntity) => { instance.remove(); display.dispose(); };
+const TEMPORARY_TAGS = ['FX', 'NOCLICK'] as const;
+// The placer tints: blocked cells.
+const BLOCKED_TINT = new THREE.Color(0xff5555).toArray() as [number, number, number];
 interface Plow extends FarmPlowSaveState {
-  id: string; sprite: ArchiveSprite; loopSound?: SoundHandle;
+  id: string; sprite: FarmEntity; loopSound?: SoundHandle;
   dirtTasks: { quad: number; remaining: number }[];
   finished?: boolean;
   returning?: boolean;
 }
 interface Decor {
-  id: string; prefabId: FarmDecorId; sprite: ArchiveSprite;
+  id: string; prefabId: FarmDecorId; sprite: FarmEntity;
   broken: boolean; plowId?: string; animation: FarmDebrisSaveState['animation'];
   stopTracking?: () => void;
 }
@@ -84,19 +91,21 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private readonly cursor: BuildCursor;
   private readonly mousePlows = new ModelRecords<Plow>();
   private readonly plows = new Map<string, Plow>();
-  private readonly plowPositions = new SpatialIndex<Plow>(plow => plow.sprite.model.position);
-  private readonly decorPositions = new SpatialIndex<Decor>(decor => decor.sprite.model.position);
-  private readonly seedPositions = new SpatialIndex<ArchiveSprite>(sprite => sprite.model.position);
-  private readonly stopSeeds = new Map<ArchiveSprite, () => void>();
+  private readonly plowPositions = new SpatialIndex<Plow>(plow => plow.sprite.display.model.position);
+  private readonly decorPositions = new SpatialIndex<Decor>(decor => decor.sprite.display.model.position);
+  private readonly seedPositions = new SpatialIndex<FarmEntity>(sprite => sprite.display.model.position);
+  private readonly stopSeeds = new Map<FarmEntity, () => void>();
   private readonly mouseDecor = new ModelRecords<Decor>();
   private readonly decor = new Map<string, Decor>();
-  private readonly plantedSeeds = new Map<string, ArchiveSprite>();
+  private readonly plantedSeeds = new Map<string, FarmEntity>();
   private debrisLoot?: (itemId: string, position: THREE.Vector3) => Promise<void>;
-  private readonly effects = new Set<ArchiveSprite>();
+  private readonly effects = new Set<FarmEntity>();
   private readonly pendingTiles = new Set<string>();
-  private preview?: ArchiveSprite;
-  private previewOutline?: ArchiveSprite;
-  private previewMaterials: THREE.Material[] = [];
+  private preview?: FarmEntity;
+  private previewOutline?: FarmEntity;
+  /** What the placers' sprite json was last told. */
+  private previewVisible?: boolean;
+  private previewValid?: boolean;
   private takeItem?: () => ItemEntity | undefined;
   private previewVersion = 0;
   private prepareRequest?: Promise<void>;
@@ -118,7 +127,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.cursor = new BuildCursor(world, this.pointer);
     this.removeDigListener = turf.onDig((point) => {
       for (const soil of [...this.decor.values()]) {
-        if (soil.prefabId === 'farm_soil' && this.tileKey(soil.sprite.model.position) === this.tileKey(point)) this.removeSoil(soil);
+        if (soil.prefabId === 'farm_soil' && this.tileKey(soil.sprite.display.model.position) === this.tileKey(point)) this.removeSoil(soil);
       }
     });
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
@@ -149,23 +158,19 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.cursor.show('鼠标右键：布署', 'right');
     try {
       await this.prepare();
-      const preview = await this.create('farm_plow.zip', 'farm_plow', 'idle_place', 'FarmPlowPlacer');
-      const outline = await this.create('gridplacer.zip', 'gridplacer', 'anim', 'FarmPlowTileOutline');
-      if (version !== this.previewVersion || this.disposed) { preview.dispose(); outline.dispose(); return; }
-      for (const root of [preview.model, outline.model]) root.traverse((object) => {
-        if (!(object instanceof THREE.Mesh)) return;
-        const clone = (material: THREE.Material) => {
-          const copy = material.clone(); copy.opacity = 0.65; this.previewMaterials.push(copy); return copy;
-        };
-        object.material = Array.isArray(object.material) ? object.material.map(clone) : clone(object.material);
-      });
+      // Placers own private translucent material copies, tinted only for themselves.
+      const appearance = { opacity: .65, colour: [1, 1, 1] as [number, number, number] };
+      const preview = await this.create('farm_plow.zip', 'farm_plow', 'idle_place', 'FarmPlowPlacer', appearance);
+      const outline = await this.create('gridplacer.zip', 'gridplacer', 'anim', 'FarmPlowTileOutline', appearance);
+      if (version !== this.previewVersion || this.disposed) { release(preview); release(outline); return; }
+      this.previewVisible = undefined; this.previewValid = undefined;
       this.preview = preview;
       this.previewOutline = outline;
-      outline.model.rotation.x = -Math.PI / 2;
-      outline.model.userData.billboard = false;
-      setPrefabLightOverride(outline.model, 1);
-      this.world.scene.add(preview.model, outline.model);
-      this.cursor.setPreview(preview.model, 0, (point) => this.center(point));
+      outline.display.model.rotation.x = -Math.PI / 2;
+      outline.display.model.userData.billboard = false;
+      setPrefabLightOverride(outline.display.model, 1);
+      this.world.scene.add(preview.display.model, outline.display.model);
+      this.cursor.setPreview(preview.display.model, 0, (point) => this.center(point));
       this.cursor.update();
     } catch (error) { if (version === this.previewVersion) this.cancel(); throw error; }
   }
@@ -174,10 +179,8 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.previewVersion++;
     this.takeItem = undefined;
     this.cursor.hide();
-    this.preview?.dispose(); this.preview = undefined;
-    this.previewOutline?.dispose(); this.previewOutline = undefined;
-    for (const material of this.previewMaterials) material.dispose();
-    this.previewMaterials = [];
+    if (this.preview) release(this.preview); this.preview = undefined;
+    if (this.previewOutline) release(this.previewOutline); this.previewOutline = undefined;
   }
 
   canDeploy(point: THREE.Vector3): boolean {
@@ -193,46 +196,47 @@ export class FarmPlowPlacement implements FarmActionWorld {
     const center = this.center(point), key = this.tileKey(center);
     const version = this.previewVersion;
     this.pendingTiles.add(key);
-    let sprite: ArchiveSprite | undefined;
+    let sprite: FarmEntity | undefined;
     try {
       await this.prepare();
       sprite = await this.create('farm_plow.zip', 'farm_plow', 'idle_place', FARM_PLOW_ID);
-      if (this.disposed || version !== this.previewVersion || !this.turf.canPlow(center)) { sprite.dispose(); return false; }
+      if (this.disposed || version !== this.previewVersion || !this.turf.canPlow(center)) { release(sprite); return false; }
       // Recheck external blockers after asset loading, before spending the item.
       if (this.blockers.someOnTile(center, blocker => this.blocksExternal(blocker, IGNORE_BLOCKERS))) {
-        sprite.dispose(); return false;
+        release(sprite); return false;
       }
       const item = takeItem();
-      if (!item) { sprite.dispose(); return false; }
+      if (!item) { release(sprite); return false; }
       if (item.prefab !== FARM_PLOW_ITEM_ID || item.isRemoved || item.components.inventoryitem.owner
         || item.components.stackable.count !== 1) throw new Error('Deployment requires one detached farm_plow_item');
       item.components.finiteuses.setMaxUses(FARM_PLOW_USES);
-      if (!item.components.finiteuses.use(1)) { sprite.dispose(); return false; }
+      if (!item.components.finiteuses.use(1)) { release(sprite); return false; }
       const deployItem = item.isRemoved ? null : item.snapshot();
       if (!item.isRemoved) item.remove();
       this.addPlow(sprite, newEntityId(), center, { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem });
       this.cancel();
       return true;
-    } catch (error) { sprite?.dispose(); throw error; }
+    } catch (error) { if (sprite) release(sprite); throw error; }
     finally { this.pendingTiles.delete(key); }
   }
 
   async spawn(point: THREE.Vector3, saved?: { id: string; state: FarmPlowSaveState }): Promise<THREE.Group> {
     await this.prepare();
     const sprite = await this.create('farm_plow.zip', 'farm_plow', 'idle_place', FARM_PLOW_ID);
-    if (this.disposed) { sprite.dispose(); throw new Error('Farm plow has been disposed'); }
+    if (this.disposed) { release(sprite); throw new Error('Farm plow has been disposed'); }
     this.addPlow(sprite, saved?.id ?? newEntityId(), this.center(point), saved?.state
       ?? { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem: null });
-    return sprite.model;
+    return sprite.display.model;
   }
 
-  private addPlow(sprite: ArchiveSprite, id: string, position: THREE.Vector3, state: FarmPlowSaveState): void {
+  private addPlow(sprite: FarmEntity, id: string, position: THREE.Vector3, state: FarmPlowSaveState): void {
     const plow: Plow = { ...state, deployItem: state.deployItem ? { ...state.deployItem } : null, id, sprite, dirtTasks: [] };
-    sprite.model.position.copy(position);
-    Object.assign(sprite.model.userData, { entityId: id, prefab: FARM_PLOW_ID, tags: ['scarytoprey'] });
+    sprite.display.model.position.copy(position);
+    Object.assign(sprite.display.model.userData, { entityId: id, prefab: FARM_PLOW_ID });
+    this.persist(sprite, ['scarytoprey']);
     this.plowPositions.add(plow);
-    this.plows.set(id, plow); this.mousePlows.set(plow.sprite.model, plow); this.world.scene.add(sprite.model);
-    const entity = actionEntity(sprite.model, FARM_PLOW_ID);
+    this.plows.set(id, plow); this.mousePlows.set(plow.sprite.display.model, plow); this.world.scene.add(sprite.display.model);
+    const entity = actionEntity(sprite.display.model, FARM_PLOW_ID);
     const workable = new Workable(entity);
     entity.components.workable = workable;
     workable.SetWorkAction('HAMMER');
@@ -241,7 +245,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     workable.SetOnFinishCallback(() => {
       if (this.plows.get(plow.id) !== plow || plow.phase === 'collapse') return;
       plow.finished = false;
-      const position = plow.sprite.model.position.clone();
+      const position = plow.sprite.display.model.position.clone();
       this.collapseEffect(position);
       for (const soil of [...this.decor.values()]) if (soil.plowId === plow.id) this.removeSoil(soil);
       if (plow.deployItem !== null) void this.returnSavedItem(plow);
@@ -250,15 +254,15 @@ export class FarmPlowPlacement implements FarmActionWorld {
     if (state.phase === 'drill_loop') this.startDrilling(plow);
     else if (state.phase === 'collapse') this.fold(plow);
     else {
-      sprite.playOnce('drill_pre', () => this.startDrilling(plow));
+      sprite.instance.sprite.playOnce('drill_pre', () => this.startDrilling(plow));
       PlaySound('farming/common/farm/plow/drill_pre', position);
     }
   }
 
   private startDrilling(plow: Plow): void {
     if (!this.plows.has(plow.id) || plow.phase === 'collapse') return;
-    plow.phase = 'drill_loop'; plow.sprite.start('drill_loop');
-    plow.loopSound = PlaySound('farming/common/farm/plow/LP', plow.sprite.model.position);
+    plow.phase = 'drill_loop'; plow.sprite.instance.sprite.start('drill_loop');
+    plow.loopSound = PlaySound('farming/common/farm/plow/LP', plow.sprite.display.model.position);
     plow.dirtTasks = [{ quad: 1, remaining: this.random() * 0.2 }, { quad: 2, remaining: 0.2 + this.random() * 0.3 },
       { quad: 3, remaining: 1 + this.random() * 0.5 }, { quad: 4, remaining: 0.5 + this.random() * 0.3 }];
   }
@@ -267,17 +271,22 @@ export class FarmPlowPlacement implements FarmActionWorld {
     if (this.disposed) return;
     const step = Math.max(0, Math.min(dt, 0.1));
     this.cursor.update();
+    // BuildCursor shows and hides the plow placer; its tile outline follows it.
+    const previewVisible = this.preview?.display.model.visible ?? false;
     if (this.previewOutline) {
-      this.previewOutline.model.visible = this.preview?.model.visible ?? false;
-      if (this.preview) this.previewOutline.model.position.copy(this.preview.model.position).setY(0.05);
+      if (previewVisible !== this.previewVisible) this.previewOutline.instance.sprite.setVisible(this.previewVisible = previewVisible);
+      if (this.preview) this.previewOutline.instance.position.copy(this.preview.instance.position).setY(0.05);
     }
-    if (this.preview?.model.visible) {
-      const valid = this.canDeploy(this.preview.model.position);
-      for (const material of this.previewMaterials) if (material instanceof THREE.MeshBasicMaterial) material.color.set(valid ? 0xffffff : 0xff5555);
+    if (this.preview && previewVisible) {
+      const valid = this.canDeploy(this.preview.instance.position);
+      if (valid !== this.previewValid) {
+        this.previewValid = valid;
+        for (const placer of [this.preview, this.previewOutline]) placer?.instance.sprite.setColour(valid ? [1, 1, 1] : BLOCKED_TINT);
+      }
     }
     for (const plow of [...this.plows.values()]) {
       const drilling = plow.phase === 'drill_loop';
-      plow.sprite.model.quaternion.copy(cameraQuaternion); plow.sprite.update(step);
+      plow.sprite.display.model.quaternion.copy(cameraQuaternion); plow.sprite.instance.sprite.update(step);
       if (!drilling || plow.phase !== 'drill_loop') continue;
       plow.remainingSeconds = Math.max(0, plow.remainingSeconds - step);
       for (const task of plow.dirtTasks) {
@@ -291,15 +300,15 @@ export class FarmPlowPlacement implements FarmActionWorld {
     }
     for (const item of [...this.decor.values()]) {
       if (item.plowId && !this.plows.has(item.plowId)) { this.removeSoil(item); continue; }
-      item.sprite.model.quaternion.copy(cameraQuaternion); item.sprite.update(step);
+      item.sprite.display.model.quaternion.copy(cameraQuaternion); item.sprite.instance.sprite.update(step);
     }
-    for (const effect of this.effects) { effect.model.quaternion.copy(cameraQuaternion); effect.update(step); }
-    for (const sprite of this.plantedSeeds.values()) { sprite.model.quaternion.copy(cameraQuaternion); sprite.update(step); }
+    for (const effect of this.effects) { effect.display.model.quaternion.copy(cameraQuaternion); effect.instance.sprite.update(step); }
+    for (const sprite of this.plantedSeeds.values()) { sprite.display.model.quaternion.copy(cameraQuaternion); sprite.instance.sprite.update(step); }
   }
 
   get soilTargets(): readonly FarmSoilTarget[] {
     return [...this.decor.values()].filter((soil) => this.isPlantableSoil(soil)).map((soil) => ({
-      id: soil.id, model: soil.sprite.model, position: soil.sprite.model.position,
+      id: soil.id, model: soil.sprite.display.model, position: soil.sprite.display.model.position,
       isValid: () => this.isPlantableSoil(soil),
     }));
   }
@@ -313,13 +322,13 @@ export class FarmPlowPlacement implements FarmActionWorld {
 
   getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[] {
     return this.mouseDecor.select(model, this.decor.values()).filter(({ prefabId }) => prefabId === 'farm_soil_debris').map((item) => {
-      const position = item.sprite.model.position;
+      const position = item.sprite.display.model.position;
       const isValid = () => !this.disposed && this.decor.get(item.id) === item
         && this.turf.getTileAtWorld(position) === WORLD_TILES.FARMING_SOIL;
-      return { id: item.id, model: item.sprite.model, position, isValid, dig: () => {
+      return { id: item.id, model: item.sprite.display.model, position, isValid, dig: () => {
         if (!isValid()) return false;
         const origin = position.clone();
-        this.decor.delete(item.id); item.stopTracking?.(); item.sprite.dispose(); this.puff(origin);
+        this.decor.delete(item.id); item.stopTracking?.(); release(item.sprite); this.puff(origin);
         // Base FARM_SOIL_DEBRIS_LOOT_CHANCE, without porting unrelated luck skills.
         if (this.random() < 0.25 && this.debrisLoot) {
           let roll = this.random() * 100;
@@ -337,10 +346,10 @@ export class FarmPlowPlacement implements FarmActionWorld {
   canTill(point: THREE.Vector3): boolean {
     if (this.disposed || this.turf.getTileAtWorld(point) !== WORLD_TILES.FARMING_SOIL) return false;
     const plantSpacing = 0.5 * SCALE + TILL_SPACING / 2;
-    return !this.plowPositions.someNear(point, TILL_SPACING, plow => plow.sprite.model.position.distanceToSquared(point) < TILL_SPACING ** 2)
+    return !this.plowPositions.someNear(point, TILL_SPACING, plow => plow.sprite.display.model.position.distanceToSquared(point) < TILL_SPACING ** 2)
       && !this.decorPositions.someNear(point, TILL_SPACING, item => item.prefabId === 'farm_soil_debris'
-        && item.sprite.model.position.distanceToSquared(point) < TILL_SPACING ** 2)
-      && !this.seedPositions.someNear(point, plantSpacing, sprite => sprite.model.position.distanceToSquared(point) < plantSpacing ** 2)
+        && item.sprite.display.model.position.distanceToSquared(point) < TILL_SPACING ** 2)
+      && !this.seedPositions.someNear(point, plantSpacing, sprite => sprite.display.model.position.distanceToSquared(point) < plantSpacing ** 2)
       && !this.blockers.someNear(point, Math.max(plantSpacing, TILL_SPACING), blocker => this.blocksExternal(blocker, TILL_IGNORE_BLOCKERS)
         && blocker.position.distanceToSquared(point) < (hasPlacementTag(blocker, 'farm_plant') ? plantSpacing : TILL_SPACING) ** 2);
   }
@@ -364,17 +373,17 @@ export class FarmPlowPlacement implements FarmActionWorld {
         used = true;
         this.collapseSoil(position);
         this.addDecor(sprite, { id: newEntityId(), prefabId: 'farm_soil', sprite, broken: false, animation: 'f1' });
-        sprite.model.position.copy(position);
-        sprite.playOnce('till_rise', () => sprite.playOnce('till_idle'));
+        sprite.display.model.position.copy(position);
+        sprite.instance.sprite.playOnce('till_rise', () => sprite.instance.sprite.playOnce('till_idle'));
         return true;
       },
-      dispose: () => { if (!used) { used = true; sprite.dispose(); } },
+      dispose: () => { if (!used) { used = true; release(sprite); } },
     };
   }
 
   private isPlantableSoil(soil: Decor): boolean {
     return !this.disposed && this.decor.get(soil.id) === soil && soil.prefabId === 'farm_soil'
-      && !soil.broken && !soil.plowId && this.turf.getTileAtWorld(soil.sprite.model.position) === WORLD_TILES.FARMING_SOIL;
+      && !soil.broken && !soil.plowId && this.turf.getTileAtWorld(soil.sprite.display.model.position) === WORLD_TILES.FARMING_SOIL;
   }
 
   /** Prepare art before the player's PLANT timeline; commit the seed and hole together. */
@@ -389,14 +398,14 @@ export class FarmPlowPlacement implements FarmActionWorld {
       apply: (takeSeed) => {
         if (used || !this.isPlantableSoil(soil) || !takeSeed()) return false;
         used = true;
-        const position = soil.sprite.model.position.clone();
-        this.decor.delete(soil.id); soil.stopTracking?.(); soil.sprite.dispose();
+        const position = soil.sprite.display.model.position.clone();
+        this.decor.delete(soil.id); soil.stopTracking?.(); release(soil.sprite);
         this.addPlantedSeed(sprite, newEntityId(), position, plantId);
-        sprite.playOnce(art.pre, () => sprite.start(art.idle));
+        sprite.instance.sprite.playOnce(art.pre, () => sprite.instance.sprite.start(art.idle));
         PlaySound('dontstarve/common/plant', position);
         return true;
       },
-      dispose: () => { if (!used) { used = true; sprite.dispose(); } },
+      dispose: () => { if (!used) { used = true; release(sprite); } },
     };
   }
 
@@ -405,23 +414,24 @@ export class FarmPlowPlacement implements FarmActionWorld {
     await this.prepare();
     const art = PLANTED_SEED_ART[plantId];
     const sprite = await this.createPlant(plantId, art.idle);
-    if (this.disposed) { sprite.dispose(); throw new Error('Farm plow has been disposed'); }
+    if (this.disposed) { release(sprite); throw new Error('Farm plow has been disposed'); }
     this.addPlantedSeed(sprite, id, position, plantId);
-    sprite.start(art.idle);
-    return sprite.model;
+    sprite.instance.sprite.start(art.idle);
+    return sprite.display.model;
   }
 
-  private addPlantedSeed(sprite: ArchiveSprite, id: string, position: THREE.Vector3, plantId: string): void {
-    sprite.model.position.copy(position).setY(0);
-    Object.assign(sprite.model.userData, { entityId: id, prefab: plantId, tags: ['plantedsoil', 'farm_plant', 'planted_seed'] });
+  private addPlantedSeed(sprite: FarmEntity, id: string, position: THREE.Vector3, plantId: string): void {
+    sprite.display.model.position.copy(position).setY(0);
+    Object.assign(sprite.display.model.userData, { entityId: id, prefab: plantId });
+    this.persist(sprite, ['plantedsoil', 'farm_plant', 'planted_seed']);
     this.seedPositions.add(sprite);
-    this.stopSeeds.set(sprite, registerPlacementEntity(sprite.model, () => sprite.model.position));
-    this.plantedSeeds.set(id, sprite); this.world.scene.add(sprite.model);
+    this.stopSeeds.set(sprite, registerPlacementEntity(sprite.display.model, () => sprite.display.model.position));
+    this.plantedSeeds.set(id, sprite); this.world.scene.add(sprite.display.model);
   }
 
   exportPlantedSeedRecords() {
-    return [...this.plantedSeeds].map(([id, sprite]) => ({ prefabId: sprite.model.userData.prefab as string, record: {
-      id, transform: { position: sprite.model.position.toArray(), rotationY: 0 }, components: {},
+    return [...this.plantedSeeds].map(([id, sprite]) => ({ prefabId: sprite.display.model.userData.prefab as string, record: {
+      id, transform: { position: sprite.display.model.position.toArray(), rotationY: 0 }, components: {},
     } }));
   }
 
@@ -430,7 +440,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     if (quad === 1 || quad === 3) x = -x;
     if (quad === 1 || quad === 2) z = -z;
     if (x * x + z * z <= 0.75 ** 2) return;
-    const position = plow.sprite.model.position.clone().add(new THREE.Vector3(x * SCALE, 0, z * SCALE));
+    const position = plow.sprite.display.model.position.clone().add(new THREE.Vector3(x * SCALE, 0, z * SCALE));
     if (!this.turf.canPlant(position) || this.blockers.someNear(position, SCALE, blocker => this.blocksExternal(blocker, IGNORE_BLOCKERS)
       && blocker.position.distanceToSquared(position) < SCALE ** 2)) return;
     this.collapseSoil(position);
@@ -439,7 +449,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
   }
 
   private finish(plow: Plow): void {
-    const center = plow.sprite.model.position;
+    const center = plow.sprite.display.model.position;
     if (this.turf.plow(center)) {
       const positions: THREE.Vector3[] = [];
       const count = 2 + Math.floor(this.random() * 3);
@@ -461,13 +471,13 @@ export class FarmPlowPlacement implements FarmActionWorld {
   }
 
   private fold(plow: Plow): void {
-    actionEntity(plow.sprite.model, FARM_PLOW_ID).components.workable?.SetWorkable(false);
+    actionEntity(plow.sprite.display.model, FARM_PLOW_ID).components.workable?.SetWorkable(false);
     plow.phase = 'collapse'; plow.remainingSeconds = 0;
     plow.loopSound?.stop(); plow.loopSound = undefined;
-    this.puff(plow.sprite.model.position);
-    PlaySound('farming/common/farm/plow/collapse', plow.sprite.model.position);
-    PlaySound('farming/common/farm/plow/dirt_puff', plow.sprite.model.position);
-    plow.sprite.playOnce('collapse', () => {
+    this.puff(plow.sprite.display.model.position);
+    PlaySound('farming/common/farm/plow/collapse', plow.sprite.display.model.position);
+    PlaySound('farming/common/farm/plow/dirt_puff', plow.sprite.display.model.position);
+    plow.sprite.instance.sprite.playOnce('collapse', () => {
       void this.returnSavedItem(plow);
     });
   }
@@ -478,7 +488,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     plow.phase = 'collapse'; plow.remainingSeconds = 0;
     plow.loopSound?.stop(); plow.loopSound = undefined;
     try {
-      await this.returnItem(plow.sprite.model.position.clone(), { ...plow.deployItem });
+      await this.returnItem(plow.sprite.display.model.position.clone(), { ...plow.deployItem });
       if (this.plows.get(plow.id) === plow) this.removePlow(plow);
     } catch (error) {
       plow.returning = false;
@@ -490,11 +500,11 @@ export class FarmPlowPlacement implements FarmActionWorld {
 
   getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
     return this.mousePlows.select(model, this.plows.values()).filter((plow) => plow.phase !== 'collapse').map((plow) => ({
-      id: plow.id, entity: actionEntity(plow.sprite.model, FARM_PLOW_ID), model: plow.sprite.model, position: plow.sprite.model.position,
+      id: plow.id, entity: actionEntity(plow.sprite.display.model, FARM_PLOW_ID), model: plow.sprite.display.model, position: plow.sprite.display.model.position,
       isValid: () => !this.disposed && this.plows.get(plow.id) === plow && plow.phase !== 'collapse',
       playHit: () => {
         if (this.plows.get(plow.id) !== plow || plow.phase === 'collapse') return;
-        performToolWork('HAMMER', actionEntity(plow.sprite.model, FARM_PLOW_ID), {});
+        performToolWork('HAMMER', actionEntity(plow.sprite.display.model, FARM_PLOW_ID), {});
       },
     }));
   }
@@ -506,41 +516,41 @@ export class FarmPlowPlacement implements FarmActionWorld {
     const broken = saved && 'broken' in saved ? saved.broken : false;
     const clip = prefabId === 'farm_soil' ? broken ? 'collapse_idle' : 'till_idle' : animation;
     const sprite = await this.create(`${prefabId}.zip`, prefabId, clip, prefabId);
-    if (this.disposed || owner?.finished === false) { sprite.dispose(); return sprite.model; }
-    sprite.model.position.copy(position).setY(0);
+    if (this.disposed || owner?.finished === false) { release(sprite); return sprite.display.model; }
+    sprite.display.model.position.copy(position).setY(0);
     const item: Decor = { id, prefabId, sprite, broken, animation,
       ...(saved && 'plowId' in saved && owner?.finished !== true ? { plowId: saved.plowId } : {}) };
     this.addDecor(sprite, item);
-    if (!saved || owner) sprite.playOnce(prefabId === 'farm_soil' ? 'till_rise' : `${animation}_pre`, () => sprite.playOnce(clip));
-    return sprite.model;
+    if (!saved || owner) sprite.instance.sprite.playOnce(prefabId === 'farm_soil' ? 'till_rise' : `${animation}_pre`, () => sprite.instance.sprite.playOnce(clip));
+    return sprite.display.model;
   }
 
-  private addDecor(sprite: ArchiveSprite, item: Decor): void {
-    Object.assign(sprite.model.userData, { entityId: item.id, prefab: item.prefabId,
-      tags: [item.prefabId === 'farm_soil' ? 'soil' : 'farm_debris'] });
-    this.decor.set(item.id, item); this.mouseDecor.set(item.sprite.model, item);
+  private addDecor(sprite: FarmEntity, item: Decor): void {
+    Object.assign(sprite.display.model.userData, { entityId: item.id, prefab: item.prefabId });
+    this.persist(sprite, [item.prefabId === 'farm_soil' ? 'soil' : 'farm_debris']);
+    this.decor.set(item.id, item); this.mouseDecor.set(item.sprite.display.model, item);
     this.decorPositions.add(item);
-    actionEntity(sprite.model, item.prefabId);
-    item.stopTracking = () => { disposeActionEntity(sprite.model); this.decorPositions.delete(item); };
-    this.world.scene.add(sprite.model);
+    actionEntity(sprite.display.model, item.prefabId);
+    item.stopTracking = () => { disposeActionEntity(sprite.display.model); this.decorPositions.delete(item); };
+    this.world.scene.add(sprite.display.model);
   }
 
   private collapseSoil(position: THREE.Vector3): void {
     for (const soil of [...this.decor.values()]) {
       if (soil.prefabId !== 'farm_soil') continue;
-      const distance = soil.sprite.model.position.distanceTo(position);
+      const distance = soil.sprite.display.model.position.distanceTo(position);
       if (distance < SCALE * 1.25 * 0.5) this.removeSoil(soil);
       else if (distance < SCALE * 1.25 && !soil.broken) {
         soil.broken = true;
-        soil.sprite.playOnce('collapse', () => soil.sprite.playOnce('collapse_idle'));
+        soil.sprite.instance.sprite.playOnce('collapse', () => soil.sprite.instance.sprite.playOnce('collapse_idle'));
       }
     }
   }
 
   private removeSoil(soil: Decor): void {
     this.decor.delete(soil.id); soil.stopTracking?.(); this.effects.add(soil.sprite);
-    soil.sprite.playOnce(soil.broken ? 'collapse_remove' : 'till_remove', () => {
-      this.effects.delete(soil.sprite); soil.sprite.dispose();
+    soil.sprite.instance.sprite.playOnce(soil.broken ? 'collapse_remove' : 'till_remove', () => {
+      this.effects.delete(soil.sprite); release(soil.sprite);
     });
   }
 
@@ -552,32 +562,41 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private effect(archive: string, bank: string, animation: string, position: THREE.Vector3): void {
     const origin = position.clone();
     void this.create(archive, bank, animation, animation).then((sprite) => {
-      if (this.disposed) { sprite.dispose(); return; }
-      sprite.model.position.copy(origin); this.world.scene.add(sprite.model); this.effects.add(sprite);
-      sprite.playOnce(animation, () => { this.effects.delete(sprite); sprite.dispose(); });
+      if (this.disposed) { release(sprite); return; }
+      sprite.display.model.position.copy(origin); this.world.scene.add(sprite.display.model); this.effects.add(sprite);
+      sprite.instance.sprite.playOnce(animation, () => { this.effects.delete(sprite); release(sprite); });
     }).catch((error: unknown) => { if (!this.disposed) console.error('Unable to create farm plow effect', error); });
   }
   private removePlow(plow: Plow): void {
-    plow.sprite.model.userData.actionEntity?.components.workable?.dispose();
-    plow.sprite.model.userData.removed = true;
+    plow.sprite.display.model.userData.actionEntity?.components.workable?.dispose();
+    plow.sprite.display.model.userData.removed = true;
     this.plowPositions.delete(plow);
-    plow.loopSound?.stop(); this.plows.delete(plow.id); plow.sprite.dispose();
+    plow.loopSound?.stop(); this.plows.delete(plow.id); release(plow.sprite);
   }
-  private async create(archive: string, bank: string, animation: string, name: string): Promise<ArchiveSprite> {
-    const sprite = await createArchiveSprite(this.assets, spriteDefinition(archive, bank, animation), { name });
-    sprite.model.userData.animationController = sprite;
+  private create(archive: string, bank: string, animation: string, name: string,
+    appearance?: Pick<ArchiveSpriteOptions, 'opacity' | 'colour'>): Promise<FarmEntity> {
+    return this.createEntity(name, animation, clip => createSharedArchiveSprite(this.assets,
+      { ...spriteDefinition(archive, bank, clip.name), loop: clip.loop }, { name, ...appearance }));
+  }
+  private createPlant(plantId: string, animation: string): Promise<FarmEntity> {
+    const { animationArchive, buildArchives, bank } = PLANTED_SEED_ART[plantId];
+    return this.createEntity(plantId, animation, clip => createSharedArchiveSprite(this.assets, { animationArchive, buildArchives, bank,
+      animation: clip.name, loop: clip.loop, symbolOverrides: soilOverride }, { name: plantId }));
+  }
+  /** The entity starts in PlayAnimation(animation) without loop. */
+  private async createEntity(prefab: string, animation: string,
+    create: Parameters<typeof createArchiveEntity>[1]['create']): Promise<FarmEntity> {
+    const entity = createArchiveEntity(prefab, { create, initial: await create({ name: animation, loop: false }) }, { name: animation }, prefab);
+    entity.instance.sprite.playOnce(animation);
     // Placer and temporary FX are returned for rendering too. They must never
     // count as tile occupants; persistent plows/decor replace these tags on add.
-    sprite.model.userData.tags = ['FX', 'NOCLICK'];
-    return sprite;
+    for (const tag of TEMPORARY_TAGS) entity.instance.addTag(tag);
+    return entity;
   }
-  private async createPlant(plantId: string, animation: string): Promise<ArchiveSprite> {
-    const { animationArchive, buildArchives, bank } = PLANTED_SEED_ART[plantId];
-    const sprite = await createArchiveSprite(this.assets, { animationArchive, buildArchives, bank, animation, loop: false,
-      symbolOverrides: soilOverride }, { name: plantId });
-    sprite.model.userData.animationController = sprite;
-    sprite.model.userData.tags = ['FX', 'NOCLICK'];
-    return sprite;
+  /** A placed plow, soil, debris or seed is no longer a temporary placer or fx. */
+  private persist({ instance }: FarmEntity, tags: readonly string[]): void {
+    for (const tag of TEMPORARY_TAGS) instance.removeTag(tag);
+    for (const tag of tags) instance.addTag(tag);
   }
   private center(point: Pick<THREE.Vector3, 'x' | 'z'>): THREE.Vector3 {
     const center = snapToTileCenter(point); return new THREE.Vector3(center.x, 0, center.z);
@@ -586,21 +605,21 @@ export class FarmPlowPlacement implements FarmActionWorld {
 
   exportRecords() {
     return [...this.plows.values()].map(({ id, sprite, phase, remainingSeconds, deployItem }) => ({
-      id, transform: { position: sprite.model.position.toArray(), rotationY: 0 },
+      id, transform: { position: sprite.display.model.position.toArray(), rotationY: 0 },
       components: { farmPlow: { phase, remainingSeconds, deployItem: deployItem ? { ...deployItem } : null } },
     }));
   }
   exportDecorRecords() {
     return [...this.decor.values()].map(({ id, prefabId, sprite, animation, broken, plowId }) => ({ prefabId, record: {
-      id, transform: { position: sprite.model.position.toArray(), rotationY: 0 },
+      id, transform: { position: sprite.display.model.position.toArray(), rotationY: 0 },
       components: prefabId === 'farm_soil' ? { farmSoil: { broken, ...(plowId ? { plowId } : {}) } } : { farmDebris: { animation } },
     } }));
   }
   get renderEntities() {
     const sprites = [...this.plows.values()].map((plow) => plow.sprite)
-      .concat([...this.decor.values()].map((item) => item.sprite), [...this.plantedSeeds.values()], [...this.effects], this.preview?.model.visible ? [this.preview] : [],
-        this.previewOutline?.model.visible ? [this.previewOutline] : []);
-    return sprites.map(({ model: object }) => ({ object, footPosition: object.position.clone().setY(0), cameraDepth: 0 }));
+      .concat([...this.decor.values()].map((item) => item.sprite), [...this.plantedSeeds.values()], [...this.effects], this.preview?.display.model.visible ? [this.preview] : [],
+        this.previewOutline?.display.model.visible ? [this.previewOutline] : []);
+    return sprites.map(({ display: { model: object } }) => ({ object, footPosition: object.position.clone().setY(0), cameraDepth: 0 }));
   }
   dispose(): void {
     this.stopActionEvents();
@@ -609,9 +628,9 @@ export class FarmPlowPlacement implements FarmActionWorld {
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
     for (const plow of this.plows.values()) this.removePlow(plow);
-    for (const item of this.decor.values()) { item.stopTracking?.(); item.sprite.dispose(); }
-    for (const effect of this.effects) effect.dispose();
-    for (const sprite of this.plantedSeeds.values()) { this.stopSeeds.get(sprite)?.(); sprite.dispose(); }
+    for (const item of this.decor.values()) { item.stopTracking?.(); release(item.sprite); }
+    for (const effect of this.effects) release(effect);
+    for (const sprite of this.plantedSeeds.values()) { this.stopSeeds.get(sprite)?.(); release(sprite); }
     this.stopSeeds.clear(); this.seedPositions.clear();
     this.decor.clear(); this.plantedSeeds.clear(); this.effects.clear(); this.assets.dispose();
   }

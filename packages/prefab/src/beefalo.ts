@@ -18,7 +18,9 @@ import type { FaceEntityInst } from '../../brains/src/behaviours/faceentity';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import { BeefaloStateGraph, type BeefaloStateName } from '../../stategraphs/src/SGBeefalo';
 import { newEntityId } from './saveRecord';
-import { DampCharacterVelocity, MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
+import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
+import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
+import { PhysicsState } from '../../componets/src/physicsState';
 /** beefalo.lua, beefalobrain.lua and SGBeefalo.lua; distances use this world's scale. */
 export const BEEFALO_BEHAVIOR = {
   radius: 0.5 * WORLD_SCALE,
@@ -97,14 +99,20 @@ export class BeefaloController {
   readonly beard: Beard;
   readonly sleeper: Sleeper;
   readonly model: THREE.Group;
+  /** beefalo.lua MakeCharacterPhysics(inst, 100, .5); the binding owns the body the locomotor drives. */
+  readonly physics = new PhysicsState();
+  private readonly physicsBinding: PhysicsBinding;
   readonly body: CANNON.Body;
   private readonly animation: FacingSpriteAnimationController;
   private readonly world: BeefaloWorld;
   private readonly random: () => number;
 
-  constructor(model: THREE.Group, body: CANNON.Body, animation: FacingSpriteAnimationController,
+  constructor(model: THREE.Group, physics: CANNON.World, animation: FacingSpriteAnimationController,
     world: BeefaloWorld, saved?: BeefaloSaveState, random = Math.random) {
-    this.model = model; this.body = body; this.animation = animation;
+    this.model = model; this.animation = animation;
+    MakeCharacterPhysics(this, 100, .5);
+    this.physicsBinding = bindPhysics(physics, this.physics, () => model.position);
+    this.body = this.physicsBinding.body!;
     this.world = world; this.random = random;
     this.home = saved ? new THREE.Vector3(...saved.home) : model.position.clone().setY(0);
     if (saved) {
@@ -301,6 +309,7 @@ export class BeefaloController {
     this.stopAppearance();
     this.beard.dispose();
     this.sleeper.dispose();
+    this.physicsBinding.dispose();
   }
 
   // Entity surface read by components and actions.
@@ -344,8 +353,6 @@ export class BeefaloManager {
   private readonly physics: CANNON.World;
   private readonly assetBaseUrl: string;
   private readonly world: BeefaloWorld;
-  private readonly material = new CANNON.Material({ friction: 0, restitution: 0 });
-  private readonly contactMaterials: CANNON.ContactMaterial[];
   private readonly stopClock: () => void;
   private readonly stopSeason: () => void;
   private readonly scheduler: GameTimeScheduler;
@@ -361,23 +368,9 @@ export class BeefaloManager {
     this.world = {
       ...world, scheduler: this.scheduler, phase: initialClock.phase, season: world.season.peek().season,
     };
-    physics.addEventListener('postStep', this.dampBeefalos);
     this.stopClock = world.clock.subscribe(({ phase }) => { this.world.phase = phase; });
     this.stopSeason = world.season.subscribe(({ season }) => { this.world.season = season; });
-    // MakeCharacterPhysics sets friction to zero. Cannon otherwise cancels the
-    // low walking speed on this heavy, fixed-rotation body's ground contacts.
-    const materials = new Set([physics.defaultMaterial, ...getRegisteredPhysicsBodies(physics).map((body) => body.material)
-      .filter((material): material is CANNON.Material => material !== null)]);
-    this.contactMaterials = Array.from(materials, (material) => {
-      const contact = new CANNON.ContactMaterial(this.material, material, { friction: 0, restitution: 0 });
-      physics.addContactMaterial(contact);
-      return contact;
-    });
   }
-
-  private readonly dampBeefalos = (): void => {
-    for (const beefalo of this.beefalos) DampCharacterVelocity(beefalo.body, this.physics.dt);
-  };
 
   async spawnNear(position: THREE.Vector3): Promise<THREE.Group> {
     for (let ring = 1; ring <= 4; ring++) {
@@ -414,12 +407,8 @@ export class BeefaloManager {
     model.position.copy(position).setY(0);
     this.world.constrainPosition(model.position);
     model.userData.entityId = saved?.id ?? newEntityId();
-    const body = new CANNON.Body({ ...MakeCharacterPhysics(100, 0.5), material: this.material,
-      position: new CANNON.Vec3(model.position.x, BEEFALO_BEHAVIOR.radius, model.position.z),
-      linearDamping: 0 });
-    const controller = new BeefaloController(model, body, model.userData.animationController, this.world, saved?.components.beefalo);
+    const controller = new BeefaloController(model, this.physics, model.userData.animationController, this.world, saved?.components.beefalo);
     this.beefalos.add(controller);
-    this.physics.addBody(body);
     this.scene.add(model);
     return model;
   }
@@ -452,17 +441,14 @@ export class BeefaloManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.physics.removeEventListener('postStep', this.dampBeefalos);
     this.stopClock();
     this.stopSeason();
     if (this.ownsScheduler) this.scheduler.dispose();
     for (const beefalo of this.beefalos) {
       beefalo.dispose();
-      this.physics.removeBody(beefalo.body);
       beefalo.model.removeFromParent();
     }
     this.beefalos.clear();
-    for (const contact of this.contactMaterials) this.physics.removeContactMaterial(contact);
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);
   }
 }

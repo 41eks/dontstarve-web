@@ -117,6 +117,7 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     model.userData.components.burnable.Ignite();
     expect(s.saplings.exportRecords()).toEqual([]);
     tickWorld(s.scheduler, s.saplings, 20, new THREE.Quaternion());
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
     expect(s.ground.exportRecords().at(-1)?.components.stack).toMatchObject({ itemId: 'ash', count: 1 });
   } finally { s.dispose(); }

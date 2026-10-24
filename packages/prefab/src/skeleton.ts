@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
-import { createEffect, type TileStateQuery } from '@dontstarve-web/signals';
+import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -11,7 +12,7 @@ import { Workable } from '../../componets/src/workable';
 import { modelEntries } from './modelRecords';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import { MakeObstaclePhysics } from './standardcomponents';
+import { MakeSmallObstaclePhysics } from './standardcomponents';
 import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
 import { PlaySound, PreloadSounds } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -55,10 +56,10 @@ export interface SkeletonWorld {
 
 interface Skeleton {
   model: THREE.Group;
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
+  sprite: ArchiveSpriteCommands;
   stopActivity?: () => void;
-  stopArt?: () => void;
-  body?: CANNON.Body;
   workable: Workable;
   loot: { itemId: string; output: PreparedGroundSpawn }[];
   prefab: SkeletonId;
@@ -81,9 +82,8 @@ export class SkeletonManager {
   private readonly world: SkeletonWorld;
   private readonly assets = new ArchiveSpriteAssets();
   private readonly skeletons = new Map<THREE.Group, Skeleton>();
-  private readonly effects = new Set<ArchiveSprite>();
+  private readonly effects = new Set<ReturnType<typeof createArchiveEntity>>();
   private source?: ReturnType<typeof preloadSharedArchiveSprite>;
-  private readonly cameraQuaternion = new THREE.Quaternion();
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: SkeletonWorld) {
@@ -123,7 +123,9 @@ export class SkeletonManager {
     }
     const build = (clip: { name: string; loop: boolean }) => create(clip.name, clip.loop, prefab);
     const clip = { name: `idle${anim}`, loop: false };
-    return this.create(prefab, new ResidentSprite(build, clip, build(clip), prefab), loot, position, anim, state, saved);
+    const entity = createArchiveEntity(prefab, { create: build, initial: build(clip) }, { name: clip.name, billboard: true }, prefab);
+    entity.instance.sprite.playOnce(clip.name);
+    return this.create(prefab, entity, loot, position, anim, state, saved);
   }
 
   /** The collapse effect, rock_break sound and every item of the prefab's loot table, ready before the hit. */
@@ -143,18 +145,19 @@ export class SkeletonManager {
     return loot;
   }
 
-  private create(prefab: SkeletonId, sprite: ResidentSprite, loot: Skeleton['loot'], position: THREE.Vector3, anim: number,
+  private create(prefab: SkeletonId, { instance, display }: ReturnType<typeof createArchiveEntity>, loot: Skeleton['loot'], position: THREE.Vector3, anim: number,
     state: SkeletonSaveState | undefined, saved: SkeletonRecord | undefined): THREE.Group {
-    const model = sprite.model;
+    const model = display.model;
+    const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab, tags: skeletonTags(prefab), animationController: sprite });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab, animationController: sprite });
+    for (const tag of skeletonTags(prefab)) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
-    for (const tag of skeletonTags(prefab)) inst.addTag(tag);
     // workable: HAMMER, SKELETON_WORK; OnHammered drops the table, plays collapse_small with the rock material and removes it.
     const workable = new Workable(inst);
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(SKELETON_WORK);
-    const skeleton: Skeleton = { model, sprite, workable, loot, prefab, anim,
+    const skeleton: Skeleton = { model, instance, display, sprite, workable, loot, prefab, anim,
       description: prefab === SKELETON_PLAYER_ID && state?.char ? { char: state.char, playername: state.playername, cause: state.cause, pkname: state.pkname, userid: state.userid } : undefined };
     const lootdropper = new LootDropper(inst, (itemId, point) => {
       // Only the rolled items are consumed; the rest are disposed with the skeleton.
@@ -172,16 +175,11 @@ export class SkeletonManager {
       this.remove(model);
     });
     Object.assign(model.userData.components, { workable, lootdropper });
-    // MakeSmallObstaclePhysics(inst, .25)
-    if (this.world.physics) {
-      skeleton.body = MakeObstaclePhysics(model.position, PHYSICS_RADIUS);
-      model.userData.physicsBody = skeleton.body; model.userData.physicsRadius = PHYSICS_RADIUS;
-      this.world.physics.addBody(skeleton.body);
-    }
-    skeleton.stopArt = createEffect(() => { sprite.art.get(); sprite.faceCamera(this.cameraQuaternion); });
+    MakeSmallObstaclePhysics(instance, PHYSICS_RADIUS);
+    if (this.world.physics) instance.bindPhysics(this.world.physics);
     this.skeletons.set(model, skeleton);
     this.scene.add(model);
-    skeleton.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
+    skeleton.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
 
@@ -202,21 +200,24 @@ export class SkeletonManager {
     void createSharedArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
       bank: 'collapse', animation: 'collapse_small', loop: false }).then(effect => {
       if (this.disposed) { effect.dispose(); return; }
-      effect.model.position.copy(at); effect.model.userData.tags = ['FX', 'NOCLICK']; effect.model.userData.persists = false;
-      this.scene.add(effect.model); this.effects.add(effect);
-      effect.playOnce('collapse_small', () => { effect.dispose(); this.effects.delete(effect); });
+      const entity = createArchiveEntity('collapse_small', { initial: effect, create: clip => createSharedArchiveSprite(this.assets, {
+        animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'], bank: 'collapse', animation: clip.name, loop: clip.loop,
+      }) }, { name: 'collapse_small', billboard: true });
+      entity.instance.position.copy(at); entity.instance.persists = false;
+      for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
+      this.scene.add(entity.display.model); this.effects.add(entity);
+      entity.instance.sprite.playOnce('collapse_small', () => { entity.instance.remove(); this.effects.delete(entity); });
     }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
   }
 
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    this.cameraQuaternion.copy(quaternion);
-    for (const { sprite } of this.skeletons.values()) if (sprite.loaded) { sprite.faceCamera(quaternion); sprite.update(dt); }
-    for (const effect of [...this.effects]) { effect.model.quaternion.copy(quaternion); effect.update(dt); }
+    for (const { sprite } of this.skeletons.values()) if (sprite.loaded) sprite.update(dt);
+    for (const { instance } of [...this.effects]) instance.sprite.update(dt);
   }
 
   get renderEntities() {
-    return [...[...this.skeletons].filter(([, { sprite }]) => sprite.loaded).map(([model]) => model), ...[...this.effects].map(({ model }) => model)]
+    return [...[...this.skeletons].filter(([, { sprite }]) => sprite.loaded).map(([model]) => model), ...[...this.effects].map(({ display }) => display.model)]
       .map(object => ({ object, footPosition: object.position, cameraDepth: 0 }));
   }
 
@@ -245,18 +246,17 @@ export class SkeletonManager {
   private remove(model: THREE.Group): void {
     const skeleton = this.skeletons.get(model); if (!skeleton) return;
     this.skeletons.delete(model); model.userData.removed = true;
-    if (skeleton.body) this.world.physics?.removeBody(skeleton.body);
-    skeleton.stopActivity?.(); skeleton.stopArt?.();
+    skeleton.stopActivity?.();
     skeleton.workable.dispose();
     skeleton.loot.forEach(({ output }) => output.dispose()); skeleton.loot.length = 0;
-    skeleton.sprite.dispose();
+    skeleton.instance.remove();
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.skeletons.keys()]) this.remove(model);
-    for (const effect of this.effects) effect.dispose();
+    for (const { instance } of this.effects) instance.remove();
     this.effects.clear();
     this.assets.dispose();
   }

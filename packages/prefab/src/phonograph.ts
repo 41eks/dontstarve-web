@@ -1,7 +1,8 @@
 import type * as THREE from 'three';
 import { createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext, GroundItemDefinition } from './groundPrefab';
-import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createArchiveEntity } from './prefabInstance';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -78,13 +79,14 @@ export class PhonographController {
 }
 
 export function createPhonographGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const effects = new Set<ArchiveSprite>();
+  const effects = new Set<ReturnType<typeof createArchiveEntity>>();
+  const release = (effect: ReturnType<typeof createArchiveEntity>) => { effect.instance.remove(); effect.display.dispose(); };
   let disposed = false;
   return {
     itemIds: [PHONOGRAPH_ID],
-    update(dt, quaternion) { for (const effect of effects) { effect.model.quaternion.copy(quaternion); effect.update(dt); } },
-    renderEntities: () => [...effects].map(effect => ({ object: effect.model, footPosition: effect.model.position, cameraDepth: 0 })),
-    dispose() { disposed = true; for (const effect of effects) effect.dispose(); effects.clear(); },
+    update(dt, quaternion) { for (const effect of effects) { effect.display.model.quaternion.copy(quaternion); effect.instance.sprite.update(dt); } },
+    renderEntities: () => [...effects].map(({ display: { model } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
+    dispose() { disposed = true; for (const effect of effects) release(effect); effects.clear(); },
     async create(item) {
       await Promise.all([context.assets.loadAnimation('structure_collapse_fx.zip'), context.assets.loadBuild('structure_collapse_fx.zip')]);
       await PreloadSounds(...Object.values(RECORD_SONGS), END_SOUND,
@@ -119,13 +121,17 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
             }
             PlaySound('dontstarve/common/destroy_smoke', position);
             PlaySound('dontstarve/common/destroy_wood', position);
-            void createArchiveSprite(context.assets, {
+            const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, {
               animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
-              bank: 'collapse', animation: 'collapse_small', loop: false,
-            }).then(effect => {
-              if (disposed) { effect.dispose(); return; }
-              effect.model.position.copy(position); context.scene.add(effect.model); effects.add(effect);
-              effect.playOnce('collapse_small', () => { effect.dispose(); effects.delete(effect); });
+              bank: 'collapse', animation: clip.name, loop: clip.loop,
+            });
+            void create({ name: 'collapse_small', loop: false }).then(initial => {
+              if (disposed) { initial.dispose(); return; }
+              const effect = createArchiveEntity('collapse_small', { create, initial }, { name: 'collapse_small' }, 'collapse_small');
+              for (const tag of ['FX', 'NOCLICK']) effect.instance.addTag(tag);
+              effect.instance.persists = false;
+              effect.instance.position.copy(position); context.scene.add(effect.display.model); effects.add(effect);
+              effect.instance.sprite.playOnce('collapse_small', () => { release(effect); effects.delete(effect); });
             }).catch((error: unknown) => console.error('Unable to play collapse effect', error));
             entity.remove();
           });

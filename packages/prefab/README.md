@@ -3,11 +3,11 @@
 DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资源，当前提供：
 
 - `createWilsonPlayer` / `createWilsonPlayerPrefab`
-- `createPigKing`
+- `PigKingManager`（`pigking`）
 - `placeStaticLayout`（`staticLayout`）：`default_pigking` 静态布局的地皮与岩石坐标，由地图生成层登记；`NightmareRockManager`（`nightmarerock`）对应 `sanityrock` / `insanityrock`。
-- `createMoonTreeForest`
+- `createMoonTreeManager`（逐棵月树与幼苗，不生成森林）
 - `TorchController`：`torch.lua` 的装备点燃、卸下熄灭、燃料消耗及耗尽移除；燃料通过调用方的权威状态读写接口保存，独立的只读 `burning` signal 发布燃烧状态，照明通过同步订阅更新。signal 原语来自公共包 `@dontstarve-web/signals`。
-- `@dontstarve-web/animation/residentSprite` 的 `ResidentSprite` / `ResidentSpriteController`：固定实体的 visual 驻留封装，保留根节点与动画请求；`ResidentEntity` 记录稳定的身份和脚点。常青树、桦树、月树通过 `watchTileActivity()` 加载／释放 visual，不重建实体或 Workable。
+- `@dontstarve-web/animation/residentSprite` 的 `ResidentSprite` / `ResidentSpriteController`：固定实体的 visual 驻留封装，保留根节点与动画请求；`ResidentEntity` 记录稳定的身份和脚点。常青树、桦树、月树和蘑菇树通过 `PrefabInstance` + `PrefabDisplay` 与 `watchTileActivity()` 加载／释放 visual，不重建实体或 Workable。
 - `AnimatedBuildingPlacement`，以及基于它的 `CookPotPlacement`、`ResearchLabPlacement`、`TreasureChestPlacement`（sprite 通过 `ResidentSpriteController` 驻留，离开 tickingarea 时交还共享 source，见 [tile 生命周期](../../docs/tile-lifecycle.md)）
 - `WallsPlacement`：`prefabs/walls.lua` 的 9 种墙（石、档案馆石、木、草、铥、档案馆铥、月岩、绝望石、废料），
   含各自的 `wall_*_item` 部署物 ID。
@@ -60,7 +60,7 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 制作时选择的箱子皮肤会映射到 `${import.meta.env.BASE_URL}dst/data/anim/dynamic/`
 下对应的 DST build，并在预览、放置及后续开关动画中保持不变。
 
-`createPigKing` 对应 `pigking.lua`：模型、障碍物碰撞体、`trader` 组件和 `SGpigking` 状态机（昼夜睡觉、金块交易、拒绝），不创建任何地皮。
+`PigKingManager` 对应 `pigking.lua`：每个猪王是 `PrefabInstance` + `PrefabDisplay`（billboard 由 display 订阅相机朝向，visual 随 tile 驻留），附障碍物碰撞体、地图图标、`trader` 组件、`SGpigking` 状态机（经自有 `Cycle` signal 昼夜睡觉、金块交易、拒绝），由场景注册表的 `restore` / `debugSpawn` / `exportRecords` 创建与保存，不创建任何地皮。
 猪王周围的地皮和岩石属于地图生成层（原版 `default_pigking.lua` 静态布局），由
 `scripts/import-static-layouts.py` 生成的 `staticLayouts.json` 驱动：`placeStaticLayout('default_pigking', feet, 'pigking')`
 返回 40 块 `GRASS`、12 块 `WOODFLOOR` 的格子中心和 8 块岩石的位置，主场景把所有格子一次登记到 `TurfMap.setOriginalTiles`；存档覆盖的有效地皮未变时不重建。

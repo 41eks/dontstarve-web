@@ -12,7 +12,7 @@ export const GRASS_DEFINITION: PickablePlantDefinition = {
   prefab: GRASS_ID,
   animArchive: 'grass.zip',
   buildArchive: 'grass1.zip',
-  archiveSprite: { bank: 'grass', instancedAnimations: 'all', resident: true },
+  archiveSprite: { bank: 'grass', instancedAnimations: 'all' },
   tags: ['plant', 'renewable', 'silviculture', 'lunarplant_target'],
   product: 'cutgrass',
   regrowTime: GRASS_REGROW_TIME,

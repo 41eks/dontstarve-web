@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -113,11 +114,14 @@ const isPoolId = (value: GrottoId): value is GrottoPoolId => (GROTTO_POOL_IDS as
 interface Grotto {
   prefab: GrottoId;
   model: THREE.Group;
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
+  sprite: ArchiveSpriteCommands;
   /** makebigmist / makesmallmist: a non-networked child that follows the pool. */
-  mist?: ResidentSprite;
+  mist?: ReturnType<typeof createArchiveEntity>;
+  /** Drawn: inside the tickingarea, or near the player in a world without one. */
+  visible: boolean;
   minimap?: MiniMapEntity;
-  body?: CANNON.Body;
   workable?: Workable;
   lootdropper?: LootDropper;
   loot: Map<string, PreparedGroundSpawn[]>;
@@ -200,18 +204,19 @@ export class GrottoPoolManager {
       for (const outputs of loot.values()) outputs.forEach(output => output.dispose());
       throw failed?.status === 'rejected' ? failed.reason : new Error('Grotto pools have been disposed');
     }
-    const sprite = new ResidentSprite(createSprite, spriteClip, created, prefab);
-    const mist = createdMist && new ResidentSprite(createMist, { name: mistAnimation, loop: true }, createdMist, `${prefab}_mist`);
-    return this.create(prefab, sprite, mist, loot, position, saved);
+    // The pool surface is OnGround; the props and the mist are billboards.
+    const entity = createArchiveEntity(prefab, { create: createSprite, initial: created }, { name: spriteClip.name, billboard: !pool }, prefab);
+    const mist = createdMist && createArchiveEntity(`${prefab}_mist`, { create: createMist, initial: createdMist }, { name: mistAnimation, billboard: true }, `${prefab}_mist`);
+    return this.create(prefab, entity, mist, loot, position, saved);
   }
 
-  private create(prefab: GrottoId, sprite: ResidentSprite, mist: ResidentSprite | undefined, loot: Map<string, PreparedGroundSpawn[]>,
+  private create(prefab: GrottoId, { instance, display }: ReturnType<typeof createArchiveEntity>, mist: Grotto['mist'], loot: Map<string, PreparedGroundSpawn[]>,
     position: THREE.Vector3, saved: GrottoRecord | undefined): THREE.Group {
-    const model = sprite.model;
+    const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
     const id = saved?.id ?? newEntityId();
     Object.assign(model.userData, { entityId: id, prefab, noWetPrefix: true, remove: () => this.remove(model) });
-    const grotto: Grotto = { prefab, model, sprite, mist, loot, children: [], savedChildren: [], stopMoonWatch: [], stopArea: [], removed: false,
+    const grotto: Grotto = { prefab, model, instance, display, sprite, mist, visible: true, loot, children: [], savedChildren: [], stopMoonWatch: [], stopArea: [], removed: false,
       tracker: new TileTracker(() => model.position) };
     const inst = actionEntity(model, prefab);
     if (isPoolId(prefab)) this.createPool(grotto, prefab, inst, saved?.components.grottoPool);
@@ -222,7 +227,7 @@ export class GrottoPoolManager {
       const awake = watchSignal(area, stop => grotto.stopArea.push(stop));
       grotto.awake = awake;
       // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
-      createEffect(() => { model.visible = awake.get(); sprite.setActive(awake.get()); mist?.setActive(awake.get()); });
+      createEffect(() => { grotto.visible = awake.get(); instance.setActive(awake.get()); mist?.instance.setActive(awake.get()); });
     }
     this.grottos.set(model, grotto); this.byId.set(id, model);
     this.scene.add(model);
@@ -234,29 +239,23 @@ export class GrottoPoolManager {
     const { model, mist } = grotto, definition = POOLS[prefab];
     const tags = ['antlion_sinkhole_blocker', 'birdblocker', 'watersource'];
     for (const tag of tags) inst.addTag(tag);
-    Object.assign(model.userData, { tags, billboard: false, deploySmartRadius: definition.smartRadius * WORLD_SCALE,
-      physicsRadius: POOL_RADIUS[prefab] * WORLD_SCALE });
-    grotto.sprite.onAttach(sprite => {
-      const visual = sprite.model.children[0];
-      sprite.model.userData.billboard = false;
-      visual.rotation.x = -Math.PI / 2; visual.position.y = .01;
-      (visual.children[0] as THREE.Object3D).renderOrder = BACKGROUND_RENDER_ORDER;
-    });
+    Object.assign(model.userData, { billboard: false, deploySmartRadius: definition.smartRadius * WORLD_SCALE });
+    // OnGround: the group keeps its order; the pool surface draws by mesh order among the ground layers.
+    grotto.sprite.setGround(0); grotto.sprite.setMeshOrder(BACKGROUND_RENDER_ORDER);
     setPrefabLightOverride(model, .25);
     setPrefabLocalLight(model, { radius: definition.light.radius * WORLD_SCALE, falloff: .6, intensity: definition.light.intensity,
       colour: POOL_LIGHT_COLOUR });
     if (mist) {
       // makebigmist / makesmallmist: FX + NOCLICK, so the steam never intercepts the mouse over the props.
-      mist.model.userData.tags = ['FX', 'NOCLICK'];
-      setPrefabLightOverride(mist.model, .5); model.add(mist.model);
+      const mistModel = mist.display.model;
+      mist.instance.persists = false;
+      for (const tag of ['FX', 'NOCLICK']) mist.instance.addTag(tag);
+      setPrefabLightOverride(mistModel, .5); model.add(mistModel);
     }
     grotto.minimap = new MiniMapEntity(model.position);
     grotto.minimap.SetIcon(`${prefab}.png`);
-    if (this.world.physics) {
-      grotto.body = MakeObstaclePhysics(model.position, POOL_RADIUS[prefab]);
-      model.userData.physicsBody = grotto.body;
-      this.world.physics.addBody(grotto.body);
-    }
+    MakeObstaclePhysics(grotto.instance, POOL_RADIUS[prefab]);
+    if (this.world.physics) grotto.instance.bindPhysics(this.world.physics);
     grotto.savedChildren = saved?.children.map(child => ({ ...child })) ?? [];
     // inst:DoTaskInTime(0, setup_children): after every saved entity has been restored.
     grotto.setup = new ComponentTimer(this.world.scheduler, () => void this.setupChildren(grotto).catch((error: unknown) =>
@@ -292,11 +291,11 @@ export class GrottoPoolManager {
     const { model, sprite } = grotto, definition = CHILDREN[prefab];
     const tags = prefab === 'grotto_waterfall_big' ? ['NOCLICK'] : ['moonglass'];
     for (const tag of tags) inst.addTag(tag);
-    Object.assign(model.userData, { tags, deploySmartRadius: definition.smartRadius * WORLD_SCALE, ...definition.physicsRadius === undefined ? {}
-      : { physicsRadius: definition.physicsRadius * WORLD_SCALE },
+    grotto.instance.physicsRadiusOverride = definition.physicsRadius;
+    Object.assign(model.userData, { deploySmartRadius: definition.smartRadius * WORLD_SCALE,
     ...definition.lootTable ? { prefabNameOverride: 'moonglass_rock' } : {} });
     if (definition.lightOverride !== undefined) setPrefabLightOverride(model, definition.lightOverride);
-    sprite.setFrame(Math.floor(Math.random() * sprite.frameCount));
+    sprite.setFrame(Math.floor(Math.random() * sprite.numFrames));
     if (!definition.lootTable) return;
     const workable = new Workable(inst);
     grotto.workable = workable;
@@ -328,7 +327,7 @@ export class GrottoPoolManager {
 
   private setMined(grotto: Grotto, definition: ChildDefinition): void {
     const { model } = grotto;
-    delete model.userData.physicsRadius;
+    grotto.instance.physicsRadiusOverride = undefined;
     actionEntity(model, grotto.prefab).addTag('NOCLICK');
     grotto.sprite.start(`${definition.animation}_mined`);
     grotto.stopMoonWatch.splice(0).forEach(stop => stop());
@@ -352,7 +351,7 @@ export class GrottoPoolManager {
     if (grotto.removed) return;
     const { model } = grotto;
     grotto.stopMoonWatch.splice(0).forEach(stop => stop());
-    model.userData.physicsRadius = definition.physicsRadius! * WORLD_SCALE;
+    grotto.instance.physicsRadiusOverride = definition.physicsRadius;
     actionEntity(model, grotto.prefab).removeTag('NOCLICK');
     grotto.workable!.SetWorkLeft(ROCKS_MINE);
     this.world.fx.spawn('halloween_moonpuff', model.position);
@@ -371,24 +370,27 @@ export class GrottoPoolManager {
     }
   }
 
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     const focus = this.world.playerPosition();
-    for (const { model, sprite, mist, awake } of this.grottos.values()) {
-      if (!awake) model.visible = model.position.distanceToSquared(focus) <= ACTIVE_RADIUS_SQUARED;
-      if (!model.visible) continue;
-      if (model.userData.billboard !== false) model.quaternion.copy(quaternion);
+    for (const grotto of this.grottos.values()) {
+      const { model, sprite, mist } = grotto;
+      if (!grotto.awake) {
+        const visible = model.position.distanceToSquared(focus) <= ACTIVE_RADIUS_SQUARED;
+        if (visible !== grotto.visible) { grotto.visible = visible; sprite.setVisible(visible); }
+      }
+      if (!grotto.visible) continue;
       sprite.update(dt);
-      if (mist) { mist.model.quaternion.copy(quaternion); mist.update(dt); }
+      mist?.instance.sprite.update(dt);
     }
     this.updateSound(dt);
   }
 
   /** Only upright art needs depth sorting; the pool surface is a background decal. */
   get renderEntities() {
-    return [...this.grottos.values()].filter(({ model }) => model.visible).flatMap(({ model, mist }) => [
+    return [...this.grottos.values()].filter(({ visible }) => visible).flatMap(({ model, mist }) => [
       ...model.userData.billboard !== false ? [{ object: model, footPosition: model.position, cameraDepth: 0 }] : [],
-      ...mist ? [{ object: mist.model, footPosition: model.position, cameraDepth: 0 }] : [],
+      ...mist ? [{ object: mist.display.model, footPosition: model.position, cameraDepth: 0 }] : [],
     ]);
   }
 
@@ -500,11 +502,12 @@ export class GrottoPoolManager {
     for (const emitter of this.emitters) if (emitter.pool?.grotto === grotto) {
       emitter.fade = undefined; emitter.handle?.stop(); emitter.handle = undefined; emitter.pool = undefined; emitter.volume = 0;
     }
-    if (grotto.body) this.world.physics?.removeBody(grotto.body);
     setPrefabLocalLight(model, null);
     grotto.minimap?.dispose(); grotto.workable?.dispose();
     for (const outputs of grotto.loot.values()) outputs.forEach(output => output.dispose());
-    grotto.loot.clear(); grotto.mist?.dispose(); grotto.sprite.dispose();
+    grotto.loot.clear();
+    grotto.mist?.instance.remove(); grotto.mist?.display.dispose();
+    grotto.instance.remove(); grotto.display.dispose();
   }
 
   dispose(): void {

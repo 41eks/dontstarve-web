@@ -5,7 +5,8 @@ import type { WilsonAction } from '../../stategraphs/src/SGwilson';
 import type { ActionAnimationController, ActionLocomotor } from '../../stategraphs/src/actionContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
-import { ArchiveSpriteAssets, createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createArchiveEntity } from './prefabInstance';
 import { turfTileName } from './turfs';
 import { TurfMap } from './turfMap';
 import { TILE_SIZE } from './tile';
@@ -34,8 +35,8 @@ export class TurfDeployment {
   private ready = false;
   private disposed = false;
   private previewEntity?: ItemEntity;
-  private preview?: ArchiveSprite;
-  private readonly previewMaterials: THREE.Material[] = [];
+  /** The gridplacer entity; `visible` and `valid` are what its sprite json was last told. */
+  private preview?: ReturnType<typeof createArchiveEntity> & { visible: boolean; valid?: boolean };
   private readonly reach = 1.1 * TILE_SIZE / 4;
   private readonly world: WorldContext;
   private readonly turf: TurfMap;
@@ -138,40 +139,43 @@ export class TurfDeployment {
     const source = this.getSource(), entity = source?.entity;
     if (entity !== this.previewEntity) {
       this.previewEntity = entity;
-      this.preview?.dispose(); this.preview = undefined;
-      this.previewMaterials.length = 0;
-      if (entity && turfTileName(entity.prefab)) void createArchiveSprite(this.assets, {
-        animationArchive: 'gridplacer.zip', buildArchives: ['gridplacer.zip'], bank: 'gridplacer', animation: 'anim', loop: true,
-      }, { name: 'TurfGridPlacer' }).then(sprite => {
-        if (this.disposed || this.previewEntity !== entity) { sprite.dispose(); return; }
-        sprite.model.userData.tags = ['FX', 'NOCLICK'];
-        sprite.model.userData.billboard = false;
-        sprite.model.visible = false;
-        sprite.model.rotation.x = -Math.PI / 2;
-        sprite.model.traverse(object => {
-          if (!(object instanceof THREE.Mesh)) return;
-          object.renderOrder = -.5;
-          // This placement owner has its own asset cache and may tint its materials.
-          this.previewMaterials.push(...(Array.isArray(object.material) ? object.material : [object.material]));
-        });
-        setPrefabLightOverride(sprite.model, 1);
-        this.preview = sprite;
-        this.world.scene.add(sprite.model);
+      this.releasePreview();
+      // A private colour copy: the placer tints only itself.
+      const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, { animationArchive: 'gridplacer.zip',
+        buildArchives: ['gridplacer.zip'], bank: 'gridplacer', animation: clip.name, loop: clip.loop }, { name: 'TurfGridPlacer', colour: [1, 1, 1] });
+      if (entity && turfTileName(entity.prefab)) void create({ name: 'anim', loop: true }).then(initial => {
+        if (this.disposed || this.previewEntity !== entity) { initial.dispose(); return; }
+        const placer = createArchiveEntity('gridplacer', { create, initial }, { name: 'anim' }, 'TurfGridPlacer');
+        const model = placer.display.model, { sprite } = placer.instance;
+        for (const tag of ['FX', 'NOCLICK']) placer.instance.addTag(tag);
+        placer.instance.persists = false;
+        model.userData.billboard = false;
+        model.rotation.x = -Math.PI / 2;
+        sprite.setVisible(false);
+        sprite.setMeshOrder(-.5);
+        setPrefabLightOverride(model, 1);
+        this.preview = { ...placer, visible: false };
+        this.world.scene.add(model);
       }).catch((error: unknown) => console.error('Unable to load turf gridplacer', error));
     }
     const preview = this.preview;
     if (!preview) return;
-    preview.update(dt);
+    const { sprite } = preview.instance;
+    sprite.update(dt);
     const point = this.pointer.groundPoint();
-    preview.model.visible = point !== undefined && source?.isValid() === true;
+    const visible = point !== undefined && source?.isValid() === true;
+    if (visible !== preview.visible) sprite.setVisible(preview.visible = visible);
     if (!point) return;
     const centre = this.turf.tileCenter(point);
-    preview.model.position.set(centre.x, .05, centre.z);
-    for (const material of this.previewMaterials) if (material instanceof THREE.MeshBasicMaterial) {
-      // gridplacer.lua OnCanBuild / OnCannotBuild.
-      if (this.turf.canPlaceTurf(point)) material.color.setRGB(1, 1, 1);
-      else material.color.setRGB(.75, .25, .25);
-    }
+    preview.instance.position.set(centre.x, .05, centre.z);
+    // gridplacer.lua OnCanBuild / OnCannotBuild.
+    const valid = this.turf.canPlaceTurf(point);
+    if (valid !== preview.valid) sprite.setColour((preview.valid = valid) ? [1, 1, 1] : [.75, .25, .25]);
+  }
+
+  private releasePreview(): void {
+    if (this.preview) { this.preview.instance.remove(); this.preview.display.dispose(); }
+    this.preview = undefined;
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
@@ -188,7 +192,7 @@ export class TurfDeployment {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true; this.cancel(); this.stopActions(); this.stopHover(); this.stopUpdate();
-    this.preview?.dispose();
+    this.releasePreview();
     this.assets.dispose();
     if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown, true);

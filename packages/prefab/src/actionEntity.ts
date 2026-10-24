@@ -5,6 +5,7 @@ import type { WorkableInst } from '../../componets/src/workable';
 import { TileTracker } from '../../componets/src/tileManager';
 import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
 import { activePrefabs, type FoundEntity } from './activePrefabs';
+import { prefabInstance } from './prefabInstance';
 
 export { activePrefabs, type FoundEntity } from './activePrefabs';
 
@@ -37,10 +38,12 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
         const value = component?.HasTag?.(tag);
         if (value !== undefined) return value;
       }
-      return model.userData.tags?.includes(tag) ?? false;
+      const instance = prefabInstance(model);
+      return instance ? instance.hasTag(tag) : model.userData.tags?.includes(tag) ?? false;
     },
     addTag(tag) {
-      if (inst) inst.addTag(tag);
+      const owner = inst ?? prefabInstance(model);
+      if (owner) owner.addTag(tag);
       else {
         model.userData.tags ??= [];
         if (!model.userData.tags.includes(tag)) model.userData.tags.push(tag);
@@ -48,7 +51,8 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
       syncPlacementEntity(model);
     },
     removeTag(tag) {
-      if (inst) inst.removeTag(tag);
+      const owner = inst ?? prefabInstance(model);
+      if (owner) owner.removeTag(tag);
       else model.userData.tags = (model.userData.tags ?? []).filter((value: string) => value !== tag);
       syncPlacementEntity(model);
     },
@@ -59,8 +63,9 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
   };
   model.userData.actionEntity = entity;
   const stopPlacement = registerPlacementEntity(model, entity.getPosition);
-  const stopTags = (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
-    ?.ListenForEvent?.('tagchanged', () => syncPlacementEntity(model));
+  const stopTags = inst ? (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
+    .ListenForEvent?.('tagchanged', () => syncPlacementEntity(model))
+    : prefabInstance(model)?.onTagChanged(() => syncPlacementEntity(model));
   liveEntities.add(entity);
   const stopRemoval = removal.subscribe(removed => { if (removed) disposeActionEntity(model); });
   disposals.set(entity, () => {

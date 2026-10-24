@@ -1,6 +1,6 @@
 import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
-import { PhysicsWorld } from '../packages/componets/src/physicsWorld';
+import { world, worldState } from './physics';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
 import { SpriteRenderOrderSorter } from '@dontstarve-web/animation';
@@ -13,7 +13,7 @@ import { ground, turfGround, turfMap } from './building';
 import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
-import { player, playerBody, setPlayerNormal } from './player';
+import { player, playerBody, playerPhysicsBinding, setPlayerNormal } from './player';
 import {
   type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
@@ -24,35 +24,21 @@ import { view } from './view';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs';
 import { initialSave } from './save/initialSave';
 import type { RuntimeSaveState } from './save/serialize';
-import { createWorldState, createWorldClockUpdater } from './worldState';
+import { createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
 import { bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
-import { GROUND_COLLISION_GROUP } from '../packages/prefab/src/standardcomponents';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
 import { savedPrefabArchives } from './prefabDefinitions';
 
-export const worldState = createWorldState(initialSave.world);
-export const world = new PhysicsWorld({
-  gravity: new CANNON.Vec3(0, -9.82, 0),
-}, worldState.tickingarea);
+export { world, worldState };
 
 turfMap.bindOceanClock(worldState.clock);
 
-const groundMaterial = new CANNON.Material('ground');
-const groundBody = new CANNON.Body({
-  mass: 0,
-  shape: new CANNON.Plane(),
-  material: groundMaterial,
-});
-groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-groundBody.collisionFilterGroup = GROUND_COLLISION_GROUP;
-world.addBody(groundBody);
-world.addBody(playerBody);
 scene.background = new THREE.Color(initialSave.world.prefab === 'cave' ? 0x000000 : 0xbfd1e5);
 scene.add(ground, turfGround, player);
 
@@ -147,6 +133,7 @@ export async function startScene(
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     entities.dispose();
     stopEntityWorld();
+    playerPhysicsBinding.dispose();
     world.dispose();
     disposeTerrain();
     worldState.dispose();
@@ -230,8 +217,6 @@ export async function startScene(
       camera.updateProjectionMatrix();
       camera.getWorldQuaternion(cameraWorldQuaternion);
       setPlayerNormal(cameraWorldQuaternion);
-      // Orient resident visuals without advancing brains, physics or game time.
-      entities.moonTreeForest.setNormals(cameraWorldQuaternion);
       updateCharacterRenderOrder(registry);
       preparing = true;
       try {
@@ -273,6 +258,7 @@ export async function startScene(
     const releaseResources = () => {
       entities.dispose();
       stopEntityWorld();
+      playerPhysicsBinding.dispose();
       world.dispose();
       disposeTerrain();
       worldState.dispose();

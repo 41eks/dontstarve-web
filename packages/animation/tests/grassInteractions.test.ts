@@ -136,6 +136,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     burnable.Ignite();
     tickWorld(s.scheduler, s.grass, 20, new THREE.Quaternion());
     expect(state.phase.peek()).toBe('removed');
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
     expect(s.grass.digTargets).toEqual([]);
     expect(s.grass.renderEntities).toEqual([]);

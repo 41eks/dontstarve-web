@@ -27,7 +27,7 @@ test('spawns the static archive props and keeps their identities, positions and 
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readSaveDownload((await (await download).path())!));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const place = (x: number, z: number) => page.evaluate(([x, z]) => {
     const { player, playerBody } = (window as any).archiveGame;
@@ -36,7 +36,7 @@ test('spawns the static archive props and keeps their identities, positions and 
   const props = () => page.evaluate(() => (window as any).archiveGame.scene.children
     .filter((model: any) => model.userData.prefab?.startsWith('archive_')).map((model: any) => ({
       prefab: model.userData.prefab, id: model.userData.entityId, x: model.position.x, z: model.position.z })));
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   const layout: [string, number, number][] = [['archive_moon_statue', -14, 0], ['archive_rune_statue', -7, 0], ['archive_portal', 0, -24],
     ['archive_switch_base', 22, -24], ['archive_ambient_sfx', 12, 0], ['archive_switch_pad', 30, -24], ['rubble1', 30, 0]];
   for (const [prefab, x, z] of layout) { await place(x, z); await submit(`c_spawn("${prefab}")`); }

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type WorldContentSignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { AnimState } from '../../componets/src/animstate';
 import { ComponentTimer } from '../../componets/src/timer';
 import { ChildSpawner, type ChildSpawnerSave } from '../../componets/src/childspawner';
@@ -65,12 +66,11 @@ export class LightFlierFlower implements BrainEntity {
   private sound?: SoundHandle;
   private awake = false;
   private active = false;
-  private readonly onActive?: (active: boolean) => void;
+  private readonly instance: PrefabInstance<ArchiveSpriteCommands>;
   readonly variant: LightFlierFlowerSave['variant'];
-  constructor(id: string, model: THREE.Group, habitat: LightFlierHabitat, lengths: ReadonlyMap<string, number>,
-    getLightLevel: (model: THREE.Group) => number, variant: LightFlierFlowerSave['variant'], saved?: LightFlierFlowerSave, random = Math.random,
-    onActive?: (active: boolean) => void) {
-    this.onActive = onActive; this.id = id; this.model = model; this.habitat = habitat; this.variant = variant; this.getLightLevel = getLightLevel; this.random = random;
+  constructor(id: string, model: THREE.Group, instance: PrefabInstance<ArchiveSpriteCommands>, habitat: LightFlierHabitat, lengths: ReadonlyMap<string, number>,
+    getLightLevel: (model: THREE.Group) => number, variant: LightFlierFlowerSave['variant'], saved?: LightFlierFlowerSave, random = Math.random) {
+    this.instance = instance; this.id = id; this.model = model; this.habitat = habitat; this.variant = variant; this.getLightLevel = getLightLevel; this.random = random;
     const scheduler = habitat.services.scheduler;
     this.MiniMapEntity = new MiniMapEntity(model.position); this.MiniMapEntity.SetIcon('bulb_plant.png');
     this.tweenStart = scheduler.now - this.tweenTime;
@@ -85,7 +85,8 @@ export class LightFlierFlower implements BrainEntity {
       this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
     });
     this.timers = Object.freeze({ recharge: this.recharge.snapshot, turnoff: this.turnoff.snapshot, wake: this.wake.snapshot, recall: this.recall.snapshot });
-    Object.assign(model.userData, { prefab: this.prefab, entityId: id, tags: ['plant', 'lightflier_home'], lightflierFlower: this, remove: () => this.remove() });
+    Object.assign(model.userData, { prefab: this.prefab, entityId: id, lightflierFlower: this, remove: () => this.remove() });
+    for (const tag of ['plant', 'lightflier_home']) instance.addTag(tag);
     const pickable = new Pickable(model, undefined, LIGHTFLIER_FLOWER_REGROW_TIME, 1, doer => {
       const fly = habitat.spawn(this.getPosition()); this.components.childspawner.TakeOwnership(fly);
       fly.PushEvent('startled'); this.components.childspawner.childreninside = Math.max(0, this.components.childspawner.childreninside - 1);
@@ -120,7 +121,7 @@ export class LightFlierFlower implements BrainEntity {
   getPosition(): THREE.Vector3 { return this.model.position; }
   getPhysicsRadius(): number { return 0; }
   get childrenOutside(): number { return this.components.childspawner.numchildrenoutside; }
-  hasTag(tag: string): boolean { return this.model.userData.tags.includes(tag); }
+  hasTag(tag: string): boolean { return this.instance.hasTag(tag); }
   isValid(): boolean { return !this.removed; }
   canGoHome(): boolean { return !this.removed && !this.components.pickable.canBePicked && !this.components.burnable.IsBurning() && !this.hasTag('burnt'); }
   ListenForEvent(name: string, fn: () => void): () => void { let set = this.events.get(name); if (!set) this.events.set(name, set = new Set()); set.add(fn); return () => set!.delete(fn); }
@@ -165,7 +166,7 @@ export class LightFlierFlower implements BrainEntity {
     if (this.removed || this.active === active) return;
     this.active = active;
     // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
-    this.onActive?.(active);
+    this.instance.setActive(active);
     if (!active) { this.sampleTimer.stop(); return; }
     this.checkLight(); this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (.5 + this.random() * .5)); this.refreshLight();
   }
@@ -191,28 +192,23 @@ export class LightFlierFlower implements BrainEntity {
     this.wake.stop(); this.sampleTimer.stop(); this.recharge.stop(); this.turnoff.stop(); this.recall.stop(); this.animstate.dispose(); this.sound?.stop();
     this.components.childspawner.dispose(); this.components.pickable.dispose(); this.components.burnable.dispose(); this.components.propagator.dispose();
     this.components.hauntable.dispose(); this.MiniMapEntity.dispose();
-    this.cleanups.splice(0).forEach(stop => stop()); this.events.clear(); setPrefabLocalLight(this.model, null); this.model.removeFromParent();
+    this.cleanups.splice(0).forEach(stop => stop()); this.events.clear(); setPrefabLocalLight(this.model, null);
+    this.instance.remove(); this.model.removeFromParent();
   }
 }
 
 export class LightFlierFlowerManager {
   readonly habitat: LightFlierHabitat;
-  private readonly plants = new Map<LightFlierFlower, ResidentSprite>();
+  private readonly plants = new Map<LightFlierFlower, PrefabDisplay>();
   private readonly assets: ArchiveSpriteAssets;
   private readonly factories = new Map<string, Promise<{ create: Awaited<ReturnType<typeof preloadSharedArchiveSprite>>; lengths: Map<string, number> }>>();
   private readonly cleanups = new Map<LightFlierFlower, () => void>();
   private readonly scene: THREE.Scene;
   private readonly getLightLevel: (model: THREE.Group) => number;
   private disposed = false;
-  private readonly cameraRotation?: WorldContentSignal<THREE.Quaternion>;
-  private readonly stops: (() => void)[] = [];
   constructor(scene: THREE.Scene, base: string, services: LightFlierServices, getLightLevel: (model: THREE.Group) => number) {
     this.scene = scene; this.getLightLevel = getLightLevel;
     this.habitat = new LightFlierHabitat(base, services); this.assets = new ArchiveSpriteAssets(LIGHTFLIER_FLOWER_ID, base);
-    if (services.getWatchWorldContent) {
-      // Billboards face the camera: re-orient them only when it turns.
-      this.cameraRotation = services.getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.stops.push(stop));
-    }
   }
   async spawn(position: THREE.Vector3, saved?: LightFlierFlowerRecord): Promise<THREE.Group> {
     const state = saved?.components.lightflierFlower, variant = state?.variant ?? (Math.random() < .5 ? 'single' : 'springy');
@@ -229,38 +225,34 @@ export class LightFlierFlowerManager {
     if (this.disposed) throw new Error('Lightflier flower manager disposed');
     const tint = .75 + Math.random() * .25;
     const appearance = { colour: [tint, tint, tint] as const };
-    const sprite = new ResidentSprite(clip => create(clip.name, clip.loop, LIGHTFLIER_FLOWER_ID, appearance), { name: 'off', loop: false },
-      create('off', false, LIGHTFLIER_FLOWER_ID, appearance), LIGHTFLIER_FLOWER_ID);
-    sprite.model.position.copy(position); sprite.model.position.y = 0;
-    // The sprite does not keep its orientation: dress each drawn sprite again when the camera turns or it is rebuilt.
-    const rotation = this.cameraRotation;
-    const stopFacing = rotation ? createEffect(() => { sprite.art.get(); sprite.faceCamera(rotation.get()); }) : undefined;
-    const plant = new LightFlierFlower(saved?.id ?? newEntityId(), sprite.model, this.habitat, lengths, this.getLightLevel, variant, state,
-      undefined, active => sprite.setActive(active));
-    const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, () => { stopFacing?.(); stop(); }));
+    const { instance, display } = createArchiveEntity(LIGHTFLIER_FLOWER_ID, { create: clip => create(clip.name, clip.loop, LIGHTFLIER_FLOWER_ID, appearance),
+      initial: create('off', false, LIGHTFLIER_FLOWER_ID, appearance) }, { name: 'off', billboard: true }, LIGHTFLIER_FLOWER_ID);
+    const sprite = instance.sprite, model = display.model;
+    sprite.playOnce('off');
+    instance.position.copy(position); instance.position.y = 0;
+    const plant = new LightFlierFlower(saved?.id ?? newEntityId(), model, instance, this.habitat, lengths, this.getLightLevel, variant, state);
+    const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, stop));
     createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
-    this.plants.set(plant, sprite); this.scene.add(sprite.model); return sprite.model;
+    this.plants.set(plant, display); this.scene.add(model); return model;
   }
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     this.habitat.update(dt);
-    for (const [plant, sprite] of this.plants) {
-      if (!plant.isValid()) { this.release(plant, sprite); continue; }
+    for (const [plant, display] of this.plants) {
+      if (!plant.isValid()) { this.release(plant, display); continue; }
       plant.update(); if (!plant.isActive) continue;
-      if (!this.cameraRotation) sprite.faceCamera(quaternion);
-      sprite.update(dt);
+      (display.model.userData.animationController as ArchiveSpriteCommands).update(dt);
     }
   }
-  private release(plant: LightFlierFlower, sprite: ResidentSprite): void {
-    this.cleanups.get(plant)?.(); this.cleanups.delete(plant); disposeActionEntity(sprite.model); sprite.dispose(); this.plants.delete(plant);
+  private release(plant: LightFlierFlower, display: PrefabDisplay): void {
+    this.cleanups.get(plant)?.(); this.cleanups.delete(plant); disposeActionEntity(display.model); display.dispose(); this.plants.delete(plant);
   }
-  get renderEntities() { return [...this.plants.values()].map(sprite => ({ object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 })); }
+  get renderEntities() { return [...this.plants.values()].map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })); }
   get miniMapEntities() { return [...this.plants.keys()].filter(plant => plant.isValid()).map(plant => plant.MiniMapEntity); }
   exportRecords(): LightFlierFlowerRecord[] { return [...this.plants.keys()].filter(plant => plant.isValid() && !plant.components.burnable.IsBurning()).map(plant => ({ id: plant.id,
     transform: { position: plant.getPosition().toArray(), rotationY: 0 }, components: { lightflierFlower: plant.OnSave() } })); }
   dispose(): void {
     if (this.disposed) return; this.disposed = true;
-    for (const [plant, sprite] of this.plants) { plant.dispose(); this.release(plant, sprite); }
-    this.stops.splice(0).forEach(stop => stop());
+    for (const [plant, display] of this.plants) { plant.dispose(); this.release(plant, display); }
     this.habitat.dispose(); this.assets.dispose();
   }
 }

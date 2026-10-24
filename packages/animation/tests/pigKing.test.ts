@@ -2,10 +2,14 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPigKing } from '../../prefab/src/pigking';
+import { PigKingManager } from '../../prefab/src/pigking';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { bindTestWorld } from './worldContentFixture';
 import { TILE_SIZE, snapToTileCenter } from '../../prefab/src/tile';
 import { placeStaticLayout } from '../../prefab/src/staticLayout';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
+
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -21,27 +25,48 @@ afterEach(() => {
 
 describe('Pig King prefab', () => {
   it.each([
-    undefined,
     new THREE.Vector3(-13, 2, -25),
     new THREE.Vector3(12, 0, 0),
-  ])('stands on its feet with obstacle physics at %s', async (position) => {
-    const king = await createPigKing('/dst/data/anim', { position });
-    const feet = position ?? new THREE.Vector3(0, 0, 25);
-    expect(king.standee.position.x).toBe(feet.x);
-    expect(king.standee.position.z).toBe(feet.z);
-    expect(king.body.position.x).toBe(feet.x);
-    // pigking.lua MakeObstaclePhysics(inst, 2, .5): a static capsule on the feet origin.
-    expect(king.body.position.y).toBe(feet.y + 0.75);
-    expect(king.body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === 6)).toBe(true);
-    expect(king.body.position.z).toBe(feet.z);
-    expect(new THREE.Box3().setFromObject(king.standee).min.y).toBeCloseTo(feet.y);
-    // The prefab owns no terrain: pigking.lua adds no turf, the world layout does.
-    expect(king.standee.children.every(child => child.name !== 'PigKingFloor')).toBe(true);
-    expect(fetch).toHaveBeenCalledTimes(1);
-    setSpriteEntityRenderOrder(king.standee, 9);
-    expect(king.standee.children[0].renderOrder).toBe(9);
-    king.update(0.1);
-    if (position) expect(position.toArray()).toEqual(feet.toArray());
+  ])('stands on its feet with obstacle physics, faces the camera and restores its identity at %s', async (feet) => {
+    const scheduler = new GameTimeScheduler(), physics = new CANNON.World();
+    const world = bindTestWorld(scheduler);
+    const kings = new PigKingManager(new THREE.Scene(), '/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scheduler, physics, dropLoot: vi.fn() });
+    try {
+      const standee = await kings.spawn(feet.clone());
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const body = kings.get(standee)!.instance.physicsBody!;
+      expect(standee.position.toArray()).toEqual(feet.toArray());
+      // pigking.lua MakeObstaclePhysics(inst, 2, .5): a static capsule on the feet origin.
+      expect(physics.bodies).toContain(body);
+      expect(body.position.toArray()).toEqual([feet.x, feet.y + 0.75, feet.z]);
+      expect(body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === 6)).toBe(true);
+      expect(standee.userData.physicsRadius).toBe(6);
+      expect(new THREE.Box3().setFromObject(standee).min.y).toBeCloseTo(feet.y);
+      // The prefab owns no terrain: pigking.lua adds no turf, the world layout does.
+      expect(standee.children.every(child => child.name !== 'PigKingFloor')).toBe(true);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      setSpriteEntityRenderOrder(standee, 9);
+      // The display root holds the drawn sprite, whose art group is the registered render group.
+      expect(standee.children[0].children[0].renderOrder).toBe(9);
+      // A billboard: the display turns the king to TheCamera itself.
+      const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
+      world.camerarotation.set(rotation);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(standee.quaternion.equals(rotation)).toBe(true);
+      kings.update(0.1);
+
+      const [saved] = kings.exportRecords();
+      expect(saved).toEqual({ prefabId: 'pigking', record: { id: standee.userData.entityId,
+        transform: { position: [feet.x, 0, feet.z], rotationY: 0 }, components: {} } });
+      kings.dispose();
+      expect(physics.bodies).not.toContain(body);
+      expect(standee.parent).toBeNull();
+      const restored = new PigKingManager(new THREE.Scene(), '/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scheduler, physics, dropLoot: vi.fn() });
+      const copy = await restored.spawn(new THREE.Vector3(...saved.record.transform.position), saved.record);
+      expect(copy.userData.entityId).toBe(saved.record.id);
+      expect(restored.exportRecords()).toEqual([saved]);
+      restored.dispose();
+    } finally { kings.dispose(); world.unbind(); scheduler.dispose(); }
   });
 });
 

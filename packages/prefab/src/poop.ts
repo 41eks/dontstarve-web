@@ -1,6 +1,7 @@
-import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createArchiveEntity } from './prefabInstance';
 import { createResidentGroundItem, type ResidentGroundItem } from './groundItems';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
@@ -19,10 +20,11 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
     configureEntity: entity => { configureBurnableItemEntity(entity); configureFertilizerEntity(entity); },
     async create(item) {
       if (!context.scheduler) throw new Error('Poop requires the ground registry game-time scheduler');
+      const createFlies = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'flies.zip',
+        buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies', dynamicParent: true });
       const prepared = await Promise.allSettled([
         createResidentGroundItem(context, item),
-        createArchiveSprite(context.assets, { animationArchive: 'flies.zip', buildArchives: ['flies.zip'],
-          bank: 'flies', animation: 'swarm_pre', loop: false }, { name: 'flies', dynamicParent: true }),
+        createFlies({ name: 'swarm_pre', loop: false }),
         PreloadSounds(FLIES_SOUND),
       ]);
       const failure = prepared.find(result => result.status === 'rejected');
@@ -32,19 +34,27 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
         throw failure.reason;
       }
       const base = (prepared[0] as PromiseFulfilledResult<ResidentGroundItem>).value;
-      const flies = (prepared[1] as PromiseFulfilledResult<ArchiveSprite>).value;
+      const flies = createArchiveEntity('flies', { create: createFlies, initial: (prepared[1] as PromiseFulfilledResult<ArchiveSprite>).value },
+        { name: 'swarm_pre' }, 'flies');
+      flies.instance.persists = false; flies.display.model.userData.prefab = 'flies';
+      flies.instance.sprite.setVisible(false);
+      // The decorative child must not enlarge the manure's pickup target, whenever its sprite is drawn again.
+      const stopRaycast = createEffect(() => {
+        flies.instance.sprite.art.get();
+        flies.display.model.traverse(object => { object.raycast = () => {}; });
+      });
+      const releaseFlies = () => { stopRaycast(); flies.instance.remove(); flies.display.dispose(); };
       const model = base.display.model, sprite = base.instance.sprite;
-      flies.model.visible = false;
       let visual: GroundItemVisual;
       try { visual = await createBurnableItemVisual(context, 'poop', base, displays); }
-      catch (error) { base.visual.dispose(); flies.dispose(); throw error; }
+      catch (error) { base.visual.dispose(); releaseFlies(); throw error; }
       let entity: ItemEntity | undefined;
       let controller: FliesController | undefined;
       let stopIgnite: (() => void) | undefined;
       let disposed = false;
       // flies.lua is a child spawned with the manure: declared once, shown while the manure has its swarm.
       const swarming = createSignal(false);
-      sprite.attachFx('flies', { sprite: flies, active: readonlySignal(swarming), tags: ['NOCLICK', 'DECOR'], sortLayer: 2 });
+      sprite.attachFx('flies', { sprite: flies.instance.sprite, display: flies.display, active: readonlySignal(swarming), sortLayer: 2 });
       const removeFlies = () => {
         controller?.dispose(); controller = undefined;
         swarming.set(false);
@@ -52,10 +62,10 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
       };
       const spawnFlies = () => {
         if (disposed || controller || !entity || entity.isRemoved || entity.components.inventoryitem.owner) return;
-        controller = new FliesController(flies, entity.transform.position, context.scheduler!,
+        controller = new FliesController(flies.instance, entity.transform.position, context.scheduler!,
           context.firefliesWorld.getWatchWorldContent);
         swarming.set(true);
-        model.userData.flies = flies.model;
+        model.userData.flies = flies.display.model;
       };
       const stopInventoryEvents = listenInventoryEvents(model, {
         ondropped: spawnFlies,
@@ -76,7 +86,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
           if (disposed) return;
           disposed = true;
           stopIgnite?.(); stopInventoryEvents(); removeFlies();
-          sprite.detachFx('flies'); flies.dispose(); visual.dispose();
+          sprite.detachFx('flies'); releaseFlies(); visual.dispose();
           visuals.delete(result);
         },
       };

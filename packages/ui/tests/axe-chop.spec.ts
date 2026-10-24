@@ -28,28 +28,43 @@ test('chops a moon tree, reloads its stump, and digs it with a shovel, preservin
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readSaveDownload((await (await download).path())!));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const treeAnimation = () => page.evaluate(() => {
-    const forest = (window as any).chopGame.scene.children.find((model: any) => model.name === 'MoonTreeForest');
-    return forest?.children[0]?.userData.animationController.currentAnimation ?? null;
+    const tree = (window as any).chopGame.scene.children.find((model: any) => model.userData.prefab === 'moon_tree');
+    return tree?.userData.animationController.currentAnimation ?? null;
   });
   const clickTree = async () => {
-    const point = await page.evaluate(() => {
+    const point = await page.evaluate(async () => {
       const { scene, camera, renderer } = (window as any).chopGame;
-      const tree = scene.children.find((model: any) => model.name === 'MoonTreeForest').children[0];
-      const mesh = tree.children[0].children[0]; mesh.updateWorldMatrix(true, false);
-      const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.index;
-      const point = tree.position.clone().multiplyScalar(0), vertex = point.clone();
-      for (let i = 0; i < 3; i++) { vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex); }
-      const ndc = point.multiplyScalar(1 / 3).project(camera);
-      const rect = renderer.domElement.getBoundingClientRect();
-      return { x: rect.left + (ndc.x + 1) * rect.width / 2, y: rect.top + (1 - ndc.y) * rect.height / 2 };
+      const tree = scene.children.find((model: any) => model.userData.prefab === 'moon_tree');
+      let mesh: any; tree.traverse((object: any) => { if (!mesh && object.isMesh && object.geometry.index) mesh = object; });
+      mesh.updateWorldMatrix(true, false);
+      const { Raycaster, Vector2, Vector3 } = await import('/node_modules/.vite/deps/three.js');
+      const positions = mesh.geometry.getAttribute('position'), bounds = renderer.domElement.getBoundingClientRect();
+      const raycaster = new Raycaster(), pointer = new Vector2();
+      const point = new Vector3(), origin = new Vector3(), across = new Vector3(), down = new Vector3();
+      // Sample opaque art through the actual sprite raycast, including the shorter stump pose.
+      const count = Number.isFinite(mesh.geometry.drawRange.count) ? mesh.geometry.drawRange.count : mesh.geometry.index.count;
+      for (let quad = count / 6 - 1; quad >= 0; quad--) {
+        origin.fromBufferAttribute(positions, quad * 4);
+        across.fromBufferAttribute(positions, quad * 4 + 1).sub(origin);
+        down.fromBufferAttribute(positions, quad * 4 + 3).sub(origin);
+        for (const v of [.3, .5, .7]) for (const u of [.5, .3, .7]) {
+          point.copy(origin).addScaledVector(across, u).addScaledVector(down, v);
+          mesh.localToWorld(point); point.project(camera);
+          if (Math.abs(point.x) >= .95 || Math.abs(point.y) >= .9) continue;
+          pointer.set(point.x, point.y); raycaster.setFromCamera(pointer, camera);
+          if (!raycaster.intersectObject(mesh).length) continue;
+          return { x: bounds.left + (point.x + 1) * bounds.width / 2, y: bounds.top + (1 - point.y) * bounds.height / 2 };
+        }
+      }
+      throw new Error('No opaque tree pixel is visible');
     });
     await page.mouse.click(point.x, point.y, { button: 'right' });
   };
 
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_give("axe")');
   const bar = page.locator('dst-inventory-bar');
   const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
@@ -69,7 +84,9 @@ test('chops a moon tree, reloads its stump, and digs it with a shovel, preservin
   }
   await expect.poll(treeAnimation, { timeout: 20_000 }).toBe('stump_tall');
   const felled = await saveGame();
-  expect(felled.world.entities.moon_tree[0].components).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+  expect(felled.world.entities.moon_tree[0].components).toMatchObject({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+  const decay = felled.world.entities.moon_tree[0].components.moonTreeTimer.timers.decay;
+  expect(decay.timeleft).toBeGreaterThan(0);
   await expect.poll(async () => (await saveGame()).world.entities.ground_item?.length ?? 0).toBeGreaterThanOrEqual(6);
   const loot = (await saveGame()).world.entities.ground_item.map((record: any) => record.components.stack.itemId);
   expect(loot.filter((itemId: string) => itemId === 'log')).toHaveLength(4);
@@ -78,7 +95,10 @@ test('chops a moon tree, reloads its stump, and digs it with a shovel, preservin
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: felled }));
   await page.reload(); await prepare();
   await expect.poll(treeAnimation).toBe('stump_tall');
-  expect((await saveGame()).world.entities.moon_tree[0].components).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+  const reloaded = (await saveGame()).world.entities.moon_tree[0];
+  expect(reloaded.components).toMatchObject({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+  expect(reloaded.components.moonTreeTimer.timers.decay.initial_time).toBe(decay.initial_time);
+  expect(reloaded.components.moonTreeTimer.timers.decay.timeleft).toBeLessThanOrEqual(decay.timeleft);
 
   await hand.dragTo(bar.locator('.inventory-bar__items .inventory-slot[data-item-id=""]').first());
   await submit('c_give("shovel")');

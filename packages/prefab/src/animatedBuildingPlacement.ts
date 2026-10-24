@@ -189,8 +189,11 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     skinArtReleased?: boolean;
     effectFactory?: AnimatedSpriteFactory;
     fireFactory?: AnimatedSpriteFactory;
-    fire?: THREE.Group;
+    fire?: DrawnEffect;
 }
+
+/** A transient fx entity (fire, collapse) drawn by its own display. */
+interface DrawnEffect { readonly instance: PrefabInstance; readonly display: PrefabDisplay }
 
 export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly actionEvents: WorldContext['actionEvents'];
@@ -215,7 +218,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private previewVersion = 0;
     private readonly mouseRecords = new ModelRecords<AnimatedBuildingInstance<BuildId>>();
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
-    private readonly effects = new Set<THREE.Group>();
+    private readonly effects = new Set<DrawnEffect>();
     private readonly effectFactories = new Map<string, Promise<AnimatedSpriteFactory>>();
     /** Archives, atlas materials and frame geometry shared by every placed building of one build and skin. */
     private readonly spriteSources = new Map<string, Promise<AnimatedSpriteFactory>>();
@@ -431,10 +434,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.model.userData.burningSignal = burnable.burning;
         building.stopBurning = burnable.burning.subscribe(burning => {
             if (!burning) { this.releaseFire(building); return; }
-            const fire = building.fireFactory!.create({ initialAnimation: `level${spec.fxLevel}`, name: 'fire', scale: this.definitions[building.buildId].scale });
-            fire.position.copy(entity.getPosition());
+            const fire = this.createEffect(building.fireFactory!, 'fire', `level${spec.fxLevel}`, true, ['FX', 'HASHEATER'],
+                this.definitions[building.buildId].scale);
+            fire.instance.position.copy(entity.getPosition());
             building.fire = fire;
-            this.scene.add(fire); this.effects.add(fire);
+            this.scene.add(fire.display.model); this.effects.add(fire);
             setPrefabLocalLight(building.model, { colour: [1, 1, 192 / 255], radius: (spec.fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
             building.model.userData.fireSound = PlaySound('dontstarve/common/campfire', building.model.position);
         });
@@ -473,7 +477,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private releaseFire(building: AnimatedBuildingInstance<BuildId>): void {
         if (building.fire) {
             this.effects.delete(building.fire);
-            building.fireFactory!.disposeSprite(building.fire);
+            this.releaseEffect(building.fire);
             building.fire = undefined;
         }
         building.model.userData.fireSound?.stop(); delete building.model.userData.fireSound;
@@ -494,8 +498,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     /** Whole sprite entities and their ground-contact points for depth sorting. */
     get renderEntities() {
         const entries = [...this.placed, ...(this.active ? [this.active] : []),
-            ...Array.from(this.effects, (model) => ({ model, groundOffset: 0 }))]
-            .filter(({ model }) => !this.placed.some(({ fire }) => fire === model))
+            ...Array.from(this.effects, ({ display }) => ({ model: display.model, groundOffset: 0 }))]
+            .filter(({ model }) => !this.placed.some(({ fire }) => fire?.display.model === model))
             .filter(({ model }) => model.visible)
             .map(({ model, groundOffset }) => ({
                 object: model,
@@ -504,8 +508,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 sortGroup: model.id, sortLayer: 1,
             }));
         // A burning building's fire shares its foot point and sort group, drawn after the building.
-        const fires = this.placed.filter(({ fire }) => fire?.visible).map(({ model, fire, groundOffset }) => ({
-            object: fire!, footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
+        const fires = this.placed.filter(({ fire }) => fire?.display.model.visible).map(({ model, fire, groundOffset }) => ({
+            object: fire!.display.model, footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
             cameraDepth: 0, sortGroup: model.id, sortLayer: 2 }));
         return [...entries, ...fires, ...this.placed.flatMap(building =>
             (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? [])
@@ -675,8 +679,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             disposeSprite(instance.model);
         }
         this.placed.length = 0;
-        // Factory-owned effects share materials; only their factory disposes them.
-        for (const effect of this.effects) effect.removeFromParent();
+        // Factory-owned effects share materials: each entity returns its sprite before the factories go.
+        for (const effect of this.effects) this.releaseEffect(effect);
         this.effects.clear();
         // Every sprite is released above; only now can the atlases they drew from go.
         for (const source of this.spriteSources.values()) void source.then((value) => value.dispose(), () => undefined);
@@ -709,8 +713,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             this.faceCamera(building.model);
         }
         for (const effect of this.effects) {
-            (effect.userData.animationController as SpriteAnimationController).update(dt);
-            this.faceCamera(effect);
+            effect.instance.sprite.update(dt);
+            this.faceCamera(effect.display.model);
         }
     }
 
@@ -987,18 +991,14 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             spawnEffect: () => {
                 const definition = this.definitions[building.buildId].hammerEffect;
                 if (!definition || !building.effectFactory || this.disposed) return;
-                const effect = building.effectFactory.create({
-                    initialAnimation: definition.animation, name: definition.name,
-                });
-                effect.position.copy(position);
-                effect.userData.persists = false;
-                effect.userData.tags = ['FX', 'NOCLICK'];
-                this.faceCamera(effect);
-                this.scene.add(effect);
+                const effect = this.createEffect(building.effectFactory, definition.name, definition.animation, false, ['FX', 'NOCLICK']);
+                effect.instance.position.copy(position);
+                this.faceCamera(effect.display.model);
+                this.scene.add(effect.display.model);
                 this.effects.add(effect);
-                (effect.userData.animationController as SpriteAnimationController).playOnce(definition.animation, () => {
+                effect.instance.sprite.playOnce(definition.animation, () => {
                     this.effects.delete(effect);
-                    building.effectFactory!.disposeSprite(effect);
+                    this.releaseEffect(effect);
                 });
             },
             remove: () => {
@@ -1052,6 +1052,17 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private idleAnimation(buildId: BuildId) {
         return this.definitions[buildId].idleAnimation ?? 'idle';
     }
+
+    private createEffect(factory: AnimatedSpriteFactory, prefab: string, animation: string, loop: boolean, tags: readonly string[],
+        scale?: number): DrawnEffect {
+        const effect = createPrefabEntity(prefab, { create: initialAnimation => factory.create({ initialAnimation, name: prefab, scale }),
+            release: sprite => factory.disposeSprite(sprite) }, { name: animation, held: !loop }, prefab);
+        effect.instance.persists = false;
+        for (const tag of tags) effect.instance.addTag(tag);
+        return effect;
+    }
+
+    private releaseEffect({ instance, display }: DrawnEffect): void { instance.remove(); display.dispose(); }
 
     private faceCamera(model: THREE.Object3D) {
         this.camera.getWorldQuaternion(this.cameraWorldQuaternion);

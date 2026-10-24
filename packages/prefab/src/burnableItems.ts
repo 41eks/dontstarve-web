@@ -1,6 +1,7 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
-import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createArchiveEntity } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { BurnableInst } from '../../componets/src/burnable';
@@ -122,9 +123,10 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
   if (!context.prepareSpawn) throw new Error('Burnable ground items require prepared ground output');
   const { visual, instance, display } = base;
   const { igniteSound, loopSound, explosive } = BURNABLE_ITEM_DEFINITIONS[itemId];
+  const createFire = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets, { animationArchive: 'fire.zip',
+    buildArchives: ['fire.zip'], bank: 'fire', animation: clip.name, loop: clip.loop }, { name: 'fire', dynamicParent: true });
   const prepared = await Promise.allSettled([
-    createArchiveSprite(context.assets, { animationArchive: 'fire.zip', buildArchives: ['fire.zip'],
-      bank: 'fire', animation: `level${fxLevel}`, loop: true }, { name: 'fire' }),
+    createFire({ name: `level${fxLevel}`, loop: true }),
     explosive ? Promise.resolve(undefined) : context.prepareSpawn({ ...catalog.items.ash, itemId: 'ash', count: ASH_MAX_STACK }),
     PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut',
       ...(igniteSound ? [igniteSound] : []), ...(loopSound ? [loopSound] : [])),
@@ -133,7 +135,11 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
     for (const result of prepared) if (result.status === 'fulfilled') result.value?.dispose();
     throw (prepared.find(result => result.status === 'rejected') as PromiseRejectedResult).reason;
   }
-  const fire = (prepared[0] as PromiseFulfilledResult<ArchiveSprite>).value;
+  // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.
+  const fire = createArchiveEntity('fire', { create: createFire, initial: (prepared[0] as PromiseFulfilledResult<ArchiveSprite>).value },
+    { name: `level${fxLevel}` }, 'fire');
+  for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
+  fire.instance.persists = false;
   const ash = (prepared[1] as PromiseFulfilledResult<PreparedGroundSpawn | undefined>).value;
   const presentation = { context, ash };
   const model = display.model;
@@ -172,8 +178,7 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
       model.userData.burningSignal = controller.burnable.burning;
       model.userData.burntSignal = controller.burnt;
       model.userData.persistenceSignal = entity.persistence;
-      // fire.lua tags: FX and HASHEATER.
-      instance.sprite.attachFx('fire', { sprite: fire, active: controller.burnable.burning, tags: ['FX', 'HASHEATER'], sortLayer: 2 });
+      instance.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: controller.burnable.burning, sortLayer: 2 });
       stopBurning = controller.burnable.burning.subscribe(syncBurning);
       syncBurning(controller.burnable.IsBurning());
       // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
@@ -189,7 +194,7 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
       disposed = true;
       stopBurning?.(); stopIgnite?.(); controller?.release(presentation);
       clearBurning(); displays.delete(display);
-      instance.sprite.detachFx('fire'); fire.dispose(); ash?.dispose(); visual.dispose();
+      instance.sprite.detachFx('fire'); fire.instance.remove(); fire.display.dispose(); ash?.dispose(); visual.dispose();
     },
   };
 }

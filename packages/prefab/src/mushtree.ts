@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -13,10 +13,12 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { modelEntries } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { ComponentTimer } from '../../componets/src/timer';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
-import { MakeObstaclePhysics } from './standardcomponents';
+import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { setPrefabLocalLight } from './localLight';
 import { BurnableBinding, FireFxHost, type BurnSpec } from './treeFire';
 import { PlaySound, PreloadSounds } from './sound';
@@ -114,10 +116,12 @@ export interface MushtreeWorld {
 interface Tree {
   prefab: MushtreeId;
   data: TreeData;
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
+  model: THREE.Group;
+  sprite: ArchiveSpriteCommands;
   inst: ReturnType<typeof actionEntity>;
   minimap: MiniMapEntity;
-  body?: CANNON.Body;
   workable: Workable;
   growable?: Growable;
   burn?: BurnableBinding;
@@ -142,10 +146,9 @@ export class MushtreeManager {
   private readonly ownsScheduler: boolean;
   private readonly assets = new ArchiveSpriteAssets();
   private readonly trees = new Map<THREE.Group, Tree>();
-  private readonly effects = new Set<ArchiveSprite>();
+  private readonly effects = new Set<{ entity: ReturnType<typeof createArchiveEntity>; timer: ComponentTimer }>();
   private fire?: Promise<FireFxHost>;
   private fireHost?: FireFxHost;
-  private readonly quaternion = new THREE.Quaternion();
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: MushtreeWorld) {
@@ -164,7 +167,7 @@ export class MushtreeManager {
     const createSprite = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets,
       { animationArchive: data.animationArchive, buildArchives: data.buildArchives, bank: data.bank,
         animation: clip.name, loop: clip.loop, hiddenSymbols: HIDDEN_SYMBOLS },
-      { name: prefab, colour: tint, instancedAnimations: ['idle_loop'], staticBillboard: true });
+      { name: prefab, colour: [1, 1, 1], instancedAnimations: ['idle_loop'], staticBillboard: true });
     const [created, fire] = await Promise.all([
       createSprite({ name: 'idle_loop', loop: true }),
       this.fire,
@@ -173,9 +176,10 @@ export class MushtreeManager {
         'dontstarve/cave/mushtree_tall_shrink'),
     ]);
     if (this.disposed) { created.dispose(); throw new Error('Mushtrees have been disposed'); }
-    const sprite = new ResidentSprite(createSprite, { name: 'idle_loop', loop: true }, created, prefab);
+    const entity = createArchiveEntity(prefab, { create: createSprite, initial: created }, { name: 'idle_loop', billboard: true }, prefab);
+    entity.instance.sprite.setColour(tint);
     this.fireHost = fire;
-    return this.create(prefab, data, sprite, position, saved, id.endsWith('_stump'));
+    return this.create(prefab, data, entity, position, saved, id.endsWith('_stump'));
   }
 
   /** inst.AnimState:SetMultColour(color, color, color, 1) with color = .5 + math.random() * .5. */
@@ -184,36 +188,27 @@ export class MushtreeManager {
     return [colour, colour, colour];
   }
 
-  private create(prefab: MushtreeId, data: TreeData, sprite: ResidentSprite, position: THREE.Vector3,
+  private create(prefab: MushtreeId, data: TreeData, { instance, display }: ReturnType<typeof createArchiveEntity>, position: THREE.Vector3,
     saved: MushtreeRecord | undefined, spawnAsStump: boolean): THREE.Group {
-    const model = sprite.model;
+    const model = display.model;
+    const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab, tags: [], physicsRadius: .25 });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab });
     const inst = actionEntity(model, prefab);
     for (const tag of ['cavedweller', 'mushtree', 'plant', 'shelter', 'tree', ...data.webbable ? ['webbable'] : []]) inst.addTag(tag);
-    const tree: Tree = { prefab, data, sprite, inst, stump: false, treestate: 'normal', removed: false, cleanups: [],
+    const tree: Tree = { prefab, data, instance, display, model, sprite, inst, stump: false, treestate: 'normal', removed: false, cleanups: [],
       minimap: new MiniMapEntity(model.position), workable: new Workable(inst) };
     tree.minimap.SetIcon(data.icon);
     setPrefabLocalLight(model, { colour: data.lightColour, radius: data.lightRadius * (TILE_SIZE / 4), intensity: .8, falloff: .5 });
-    if (this.world.physics) {
-      tree.body = MakeObstaclePhysics(model.position, .25);
-      model.userData.physicsBody = tree.body;
-      this.world.physics.addBody(tree.body);
-    }
+    MakeObstaclePhysics(instance, .25);
+    if (this.world.physics) instance.bindPhysics(this.world.physics);
     this.trees.set(model, tree);
     this.scene.add(model);
     model.userData.components.workable = tree.workable;
     // AnimState:SetFrame chooses a random idle frame without advancing game time.
-    sprite.setFrame(Math.floor(Math.random() * sprite.frameCount));
+    sprite.setFrame(Math.floor(Math.random() * sprite.numFrames));
 
     const components = saved?.components, state = components?.mushtree;
-    // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
-    tree.cleanups.push(watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active)));
-    // A rebuilt sprite starts in the first build; the bloom build is dressed on again from the tree's state.
-    tree.cleanups.push(createEffect(() => {
-      sprite.art.get();
-      if (tree.treestate === 'bloom' && data.buildArchives.length > 1) sprite.setBuildArchive(data.buildArchives[1]);
-    }));
     this.watchSeason(tree);
     this.bindBurn(tree);
     if (data.growable) this.createGrowable(tree, components?.growable);
@@ -221,14 +216,15 @@ export class MushtreeManager {
     if (spawnAsStump || state?.stump) this.makeStump(tree, state?.decay);
     else if (state?.burnt) this.treeBurnt(tree);
     else this.initialSeason(tree, state?.treestate);
+    if (!tree.removed) tree.cleanups.push(watchTileActivity(model, this.world.tickingarea, active => { instance.setActive(active); tree.burn?.setActive(active); }));
     return model;
   }
 
   /** WatchWorldState("is"..season, onisinseason): only changes notify, and a tree outside the tickingarea resyncs on return. */
   private watchSeason(tree: Tree): void {
-    const { data, sprite } = tree;
+    const { data, model } = tree;
     if (!data.season || !this.world.getWatchWorldContent) return;
-    const tracker = new TileTracker(() => sprite.model.position);
+    const tracker = new TileTracker(() => model.position);
     const season = tree.season = this.world.getWatchWorldContent(WorldContentKey.Season, cleanup => tree.cleanups.push(cleanup), { tile: tracker.tile });
     let previous = season.peek().season;
     createEffect(() => {
@@ -255,18 +251,18 @@ export class MushtreeManager {
   /** tree_burnt: ash, charcoal half of the time, the burnt fx, then the inst is removed. */
   private treeBurnt(tree: Tree): void {
     if (tree.removed) return;
-    const position = tree.sprite.model.position.clone();
+    const position = tree.model.position.clone();
     this.world.worldEvents.emit('spawnAsh', position);
     if (Math.random() < .5) this.world.dropLoot([{ itemId: 'charcoal', count: 1 }], position);
     void this.spawnBurntFx(tree, position);
-    this.remove(tree.sprite.model);
+    this.remove(tree.model);
   }
 
   /** stump_burnt: one ash. */
   private stumpBurnt(tree: Tree): void {
     if (tree.removed) return;
-    this.world.worldEvents.emit('spawnAsh', tree.sprite.model.position.clone());
-    this.remove(tree.sprite.model);
+    this.world.worldEvents.emit('spawnAsh', tree.model.position.clone());
+    this.remove(tree.model);
   }
 
   /** makeburntfx: chop_burnt in the current build, with the crumble sound, then removed. */
@@ -278,13 +274,23 @@ export class MushtreeManager {
         buildArchives: [data.buildArchives[bloom ? 1 : 0]], bank: data.bank, animation: 'chop_burnt', loop: false,
         hiddenSymbols: HIDDEN_SYMBOLS }, { name: `${tree.prefab}_burntfx` });
       if (this.disposed) { fx.dispose(); return; }
-      fx.model.position.set(position.x, 0, position.z);
-      fx.model.quaternion.copy(this.quaternion);
-      fx.model.userData.tags = ['FX', 'NOCLICK'];
-      this.scene.add(fx.model);
-      this.effects.add(fx);
+      const entity = createArchiveEntity(`${tree.prefab}_burntfx`, { initial: fx, create: clip => createSharedArchiveSprite(this.assets, {
+        animationArchive: data.animationArchive, buildArchives: [data.buildArchives[bloom ? 1 : 0]], bank: data.bank,
+        animation: clip.name, loop: clip.loop, hiddenSymbols: HIDDEN_SYMBOLS,
+      }) }, { name: 'chop_burnt', billboard: true });
+      entity.instance.position.copy(position); entity.instance.persists = false;
+      entity.instance.addTag('FX');
+      this.scene.add(entity.display.model);
+      const remove = () => { timer.stop(); this.effects.delete(effect); entity.instance.remove(); };
+      const timer = new ComponentTimer(this.scheduler, remove), effect = { entity, timer };
+      this.effects.add(effect);
+      // makeburntfx also removes on game time, in case the animation is off screen.
+      const animations = await this.assets.loadAnimation(data.animationArchive);
+      if (this.disposed) { remove(); return; }
+      const clip = animations.animations.find(clip => clip.name === 'chop_burnt')!;
+      timer.start(clip.frames.length / clip.frameRate + FRAMES);
       PlaySound('dontstarve/forest/treeCrumble', position);
-      fx.playOnce('chop_burnt', () => { this.effects.delete(fx); fx.dispose(); });
+      entity.instance.sprite.playOnce('chop_burnt', remove);
     } catch (error) { console.error('Unable to play mushtree burnt fx', error); }
   }
 
@@ -299,17 +305,17 @@ export class MushtreeManager {
       if (tree.stump) return;
       sprite.playOnce(toStage === 1 ? 'shrink' : 'change', () => sprite.start('idle_loop'));
       PlaySound(toStage === 1 ? 'dontstarve/cave/mushtree_tall_shrink'
-        : toStage === 2 ? 'dontstarve/cave/mushtree_tall_grow_1' : 'dontstarve/cave/mushtree_tall_grow_2', sprite.model.position);
+        : toStage === 2 ? 'dontstarve/cave/mushtree_tall_grow_1' : 'dontstarve/cave/mushtree_tall_grow_2', tree.model.position);
       tree.growTask?.();
       tree.growTask = this.scheduler.schedule(14 * FRAMES, growNext);
     };
     const growable = tree.growable = new Growable(this.scheduler, STAGE_SCALE.map((scale, index) => ({
       time: () => MUSHTREE_GROWTH_TIME[index].base + (Math.random() * 2 - 1) * MUSHTREE_GROWTH_TIME[index].random,
-      fn: () => sprite.model.scale.setScalar(scale),
+      fn: () => tree.model.scale.setScalar(scale),
       growfn: () => doGrow((index + 1) as 1 | 2 | 3),
     })));
     growable.loopstages = true; growable.growonly = true;
-    sprite.model.userData.components.growable = growable;
+    tree.model.userData.components.growable = growable;
     if (saved) growable.OnLoad(saved);
     else { growable.SetStage(Math.floor(Math.random() * 3) + 1); growable.StartGrowing(); }
   }
@@ -317,7 +323,7 @@ export class MushtreeManager {
   /** CHOP work with workcallback / workfinishcallback; stumping swaps it for a single DIG. */
   private setupWork(tree: Tree): void {
     const { workable, sprite, data } = tree;
-    const model = sprite.model;
+    const model = tree.model;
     workable.SetWorkAction('CHOP');
     workable.SetWorkLeft(data.work);
     workable.SetOnWorkCallback((_worker, workleft) => {
@@ -346,11 +352,11 @@ export class MushtreeManager {
 
   private makeStump(tree: Tree, decayRemaining?: number): void {
     if (tree.stump) return;
-    const { sprite, inst, workable } = tree, model = sprite.model;
+    const { sprite, inst, workable } = tree, model = tree.model;
     tree.changeTask?.(); tree.changeTask = undefined;
     tree.growTask?.(); tree.growTask = undefined;
     tree.stump = true;
-    if (tree.body) { this.world.physics?.removeBody(tree.body); tree.body = undefined; delete model.userData.physicsBody; }
+    RemovePhysicsColliders(tree.instance);
     inst.addTag('stump'); inst.removeTag('shelter');
     this.bindBurn(tree);
     tree.growable?.StopGrowing();
@@ -385,7 +391,7 @@ export class MushtreeManager {
       tree.changeTask = undefined;
       if (tree.stump || tree.removed) return;
       tree.sprite.playOnce('change', () => tree.sprite.start('idle_loop'));
-      PlaySound(treestate === 'bloom' ? 'dontstarve/cave/mushtree_tall_grow_3' : 'dontstarve/cave/mushtree_tall_shrink', tree.sprite.model.position);
+      PlaySound(treestate === 'bloom' ? 'dontstarve/cave/mushtree_tall_grow_3' : 'dontstarve/cave/mushtree_tall_shrink', tree.model.position);
       tree.changeTask = this.scheduler.schedule(14 * FRAMES, swap);
     });
   }
@@ -417,21 +423,20 @@ export class MushtreeManager {
   update(dt: number, quaternion: THREE.Quaternion, focus?: THREE.Vector3): void {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    this.quaternion.copy(quaternion);
-    for (const { sprite } of this.trees.values()) {
-      const model = sprite.model;
-      model.visible = !focus || model.position.distanceToSquared(focus) <= ACTIVE_RADIUS_SQUARED;
-      if (!model.visible) continue;
-      sprite.faceCamera(quaternion); sprite.update(dt);
+    for (const { sprite, model } of this.trees.values()) {
+      const visible = !focus || model.position.distanceToSquared(focus) <= ACTIVE_RADIUS_SQUARED;
+      if (sprite.sprite.peek().visible !== visible) sprite.setVisible(visible);
+      if (!visible) continue;
+      if (sprite.loaded) sprite.update(dt);
     }
-    for (const fx of this.effects) { fx.model.quaternion.copy(quaternion); fx.update(dt); }
+    for (const { entity: { instance } } of this.effects) instance.sprite.update(dt);
     this.fireHost?.update(dt, quaternion);
   }
 
   get renderEntities() {
     return [
-      ...[...this.trees.values()].filter(({ sprite }) => sprite.model.visible).map(({ sprite }) => ({ object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 })),
-      ...[...this.effects].map(fx => ({ object: fx.model, footPosition: fx.model.position, cameraDepth: 0 })),
+      ...[...this.trees.values()].filter(({ sprite, model }) => sprite.loaded && model.visible).map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
+      ...[...this.effects].map(({ entity: { display: { model } } }) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
       ...this.fireHost?.renderEntities ?? [],
     ];
   }
@@ -471,16 +476,15 @@ export class MushtreeManager {
     tree.changeTask?.(); tree.growTask?.(); tree.decayTask?.();
     tree.burn?.dispose(); tree.growable?.dispose(); tree.workable.dispose();
     for (const cleanup of tree.cleanups.splice(0)) cleanup();
-    if (tree.body) this.world.physics?.removeBody(tree.body);
     setPrefabLocalLight(model, null);
-    tree.minimap.dispose(); tree.sprite.dispose();
+    tree.minimap.dispose(); tree.instance.remove();
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     for (const model of [...this.trees.keys()]) this.remove(model);
-    for (const fx of this.effects) fx.dispose();
+    for (const { entity, timer } of this.effects) { timer.stop(); entity.instance.remove(); }
     this.effects.clear();
     this.fireHost?.dispose();
     this.assets.dispose();

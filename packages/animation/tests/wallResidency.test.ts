@@ -3,7 +3,6 @@ import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
-import { ResidentSprite } from '../src/residentSprite';
 import { SpriteState } from '../../display/src';
 import { WallsPlacement } from '../../prefab/src/walls';
 import { FencePlacement } from '../../prefab/src/fence';
@@ -107,8 +106,8 @@ it('settles a fence hit on sleep, reskins dormant art, restores mirroring, and c
     expect(model.children[0]).toBe(rootSprite);
     expect(model.userData.actionEntity).toBe(entity);
     expect(placement.exportRecords()[0]).toEqual(saved);
-    const resident = model.userData.animationController as ResidentSprite;
-    expect(resident).toBeInstanceOf(ResidentSprite);
+    const resident = model.userData.animationController as SpriteState;
+    expect(resident).toBeInstanceOf(SpriteState);
     expect(resident.currentAnimation).toBe('idle');
     const visual = meshes(model)[0].parent!;
     expect(visual.scale.x).toBeLessThan(0);

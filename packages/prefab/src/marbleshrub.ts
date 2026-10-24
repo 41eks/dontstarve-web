@@ -2,7 +2,8 @@ import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { watchTileActivity } from './tileActivity';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -15,7 +16,7 @@ import { Workable } from '../../componets/src/workable';
 import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import { MakeObstaclePhysics } from './standardcomponents';
+import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -69,7 +70,9 @@ export interface MarbleShrubWorld {
 }
 
 interface Shrub {
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
+  sprite: ArchiveSpriteCommands;
   completion: ComponentTimer;
   stopActivity?: () => void;
   stopAppearance?: () => void;
@@ -81,7 +84,6 @@ interface Shrub {
   stage: StageData;
   /** Mined: the shrub plays its break animation and is gone at animover (persists = false). */
   broken: boolean;
-  body?: CANNON.Body;
   minimap: MiniMapEntity;
   stopSnow?: () => void;
   sounds: Set<SoundHandle>;
@@ -95,7 +97,6 @@ export class MarbleShrubManager {
   private readonly ownsScheduler: boolean;
   private readonly assets = new ArchiveSpriteAssets();
   private source?: ReturnType<typeof preloadSharedArchiveSprite>;
-  private readonly cameraQuaternion = new THREE.Quaternion();
   private readonly shrubs = new Map<THREE.Group, Shrub>();
   private disposed = false;
 
@@ -164,21 +165,22 @@ export class MarbleShrubManager {
         used = true;
         const create = (clip: { name: string; loop: boolean }) => source(clip.name, clip.loop, MARBLESHRUB_ID, { colour: [1, 1, 1] });
         const clip = { name: STAGES[0].idle, loop: false };
-        const sprite = new ResidentSprite(create, clip, create(clip), MARBLESHRUB_ID);
-        return this.create(sprite, loot, position, shapenumber, color, startStage, saved, fromSeed, durations);
+        const entity = createArchiveEntity(MARBLESHRUB_ID, { create, initial: create(clip) }, { name: clip.name, billboard: true }, MARBLESHRUB_ID);
+        return this.create(entity, loot, position, shapenumber, color, startStage, saved, fromSeed, durations);
       },
     };
   }
 
-  private create(sprite: ResidentSprite, loot: Map<string, PreparedGroundSpawn[]>, position: THREE.Vector3, shapenumber: number, color: number,
+  private create({ instance, display }: ReturnType<typeof createArchiveEntity>, loot: Map<string, PreparedGroundSpawn[]>, position: THREE.Vector3, shapenumber: number, color: number,
     startStage: number, saved: MarbleShrubRecord | undefined, fromSeed: boolean, breakDurations: readonly number[]): THREE.Group {
-    const model = sprite.model;
+    const model = display.model;
+    const sprite = instance.sprite;
     model.userData.animationController = sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: MARBLESHRUB_ID, tags: ['boulder', 'SnowCovered'], deploySmartRadius: 1,
-      physicsRadius: PHYSICS_RADIUS });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: MARBLESHRUB_ID, deploySmartRadius: 1 });
+    for (const tag of ['boulder', 'SnowCovered']) instance.addTag(tag);
     const inst = actionEntity(model, MARBLESHRUB_ID);
-    const shrub: Shrub = { sprite, completion: new ComponentTimer(this.scheduler, () => this.remove(model)), loot, shapenumber, color, stage: STAGES[0], broken: false, sounds: new Set(), minimap: new MiniMapEntity(model.position), workable: undefined!, growable: undefined! };
+    const shrub: Shrub = { instance, display, sprite, completion: new ComponentTimer(this.scheduler, () => this.remove(model)), loot, shapenumber, color, stage: STAGES[0], broken: false, sounds: new Set(), minimap: new MiniMapEntity(model.position), workable: undefined!, growable: undefined! };
     const play = (clip: string, then?: string) => sprite.playOnce(clip, then ? () => sprite.playOnce(then) : undefined);
     const lootdropper = new LootDropper(inst, (prefab, point) => {
       const prepared = shrub.loot.get(prefab)?.shift();
@@ -217,7 +219,7 @@ export class MarbleShrubManager {
       shrub.completion.start(breakDurations[shrub.growable.GetStage() - 1]);
       shrub.sounds.add(PlaySound('dontstarve/wilson/rock_break', model.position));
       for (const prefab of shrub.stage.loot(chance => Math.random() <= chance)) lootdropper.SpawnLootPrefab(prefab, inst.getPosition());
-      this.releaseBody(shrub);
+      RemovePhysicsColliders(instance);
     });
     Object.assign(model.userData.components, { growable: shrub.growable, workable: shrub.workable, lootdropper });
     this.shrubs.set(model, shrub);
@@ -225,19 +227,12 @@ export class MarbleShrubManager {
     shrub.minimap.SetIcon(`marbleshrub${shapenumber}.png`); shrub.minimap.SetPriority(-1);
     // weather.lua SNOW_COVERED_THRESHOLD.
     const snowLevel = this.world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { shrub.stopSnow = stop; });
-    shrub.stopAppearance = createEffect(() => {
-      sprite.art.get();
-      sprite.setColour([shrub.color, shrub.color, shrub.color]);
-      sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
-      sprite.setSymbolOverride('marbleshrub_top1', shrub.shapenumber === 1 ? undefined : 'marbleshrub_build.zip', `marbleshrub_top${shrub.shapenumber}`);
-      sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < .015);
-      sprite.faceCamera(this.cameraQuaternion);
-    });
-    if (this.world.physics) {
-      shrub.body = MakeObstaclePhysics(model.position, PHYSICS_RADIUS);
-      model.userData.physicsBody = shrub.body;
-      this.world.physics.addBody(shrub.body);
-    }
+    sprite.setColour([color, color, color]);
+    sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
+    sprite.setSymbolOverride('marbleshrub_top1', shapenumber === 1 ? undefined : 'marbleshrub_build.zip', `marbleshrub_top${shapenumber}`);
+    shrub.stopAppearance = createEffect(() => sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < .015));
+    MakeObstaclePhysics(instance, PHYSICS_RADIUS);
+    if (this.world.physics) instance.bindPhysics(this.world.physics);
     if (saved) {
       // OnLoad restores shape/colour through the sprite; growable:OnLoad re-enters the saved stage.
       shrub.growable.OnLoad(saved.components.growable);
@@ -251,19 +246,18 @@ export class MarbleShrubManager {
       }
     }
     this.scene.add(model);
-    shrub.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
+    shrub.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     return model;
   }
 
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    this.cameraQuaternion.copy(quaternion);
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const { sprite } of this.shrubs.values()) if (sprite.loaded) { sprite.faceCamera(quaternion); sprite.update(dt); }
+    for (const { sprite } of this.shrubs.values()) if (sprite.loaded) sprite.update(dt);
   }
 
   get renderEntities() {
-    return [...this.shrubs.values()].filter(({ sprite }) => sprite.loaded).map(({ sprite }) => ({ object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 }));
+    return [...this.shrubs].filter(([, { sprite }]) => sprite.loaded).map(([model]) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
   }
 
   get miniMapEntities(): MiniMapEntity[] { return [...this.shrubs.values()].map(({ minimap }) => minimap); }
@@ -288,21 +282,15 @@ export class MarbleShrubManager {
     }));
   }
 
-  private releaseBody(shrub: Shrub): void {
-    if (shrub.body) this.world.physics?.removeBody(shrub.body);
-    shrub.body = undefined;
-  }
-
   private remove(model: THREE.Group): void {
     const shrub = this.shrubs.get(model); if (!shrub) return;
     this.shrubs.delete(model); model.userData.removed = true;
-    this.releaseBody(shrub);
     shrub.stopActivity?.(); shrub.stopAppearance?.();
     shrub.stopSnow?.(); shrub.minimap.dispose(); shrub.completion.stop();
     shrub.growable.dispose(); shrub.workable.dispose();
     for (const sound of shrub.sounds) sound.stop();
     for (const outputs of shrub.loot.values()) outputs.forEach(output => output.dispose());
-    shrub.loot.clear(); shrub.sprite.dispose();
+    shrub.loot.clear(); shrub.instance.remove();
   }
 
   dispose(): void {

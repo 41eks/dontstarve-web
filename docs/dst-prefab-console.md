@@ -482,6 +482,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `sapling_moon` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
 | `sanityrock`、`insanityrock` | 可生成 | 不能入栏 | `prefabs/nightmarerock.lua`：无 inventoryitem；项目已接入 `SGnightmarerock`（`raise` / `lower` / `conceal` / `reveal`）、障碍物随激活开关，以及 `sanity_raise` / `sanity_lower` 特效；静态布局 `default_pigking` 在猪王周围放置各 4 块，可由 `c_save()` 保存位置与实体 ID |
 | `pond` | 可生成 | 不能入栏 | `prefabs/pond.lua` |
+| `pigking` | 可生成 | 不能入栏 | `prefabs/pigking.lua`：`trader`（tradable 的 `goldvalue` 换金块）、`SGpigking`（idle / cointoss / happy / unimpressed / sleep / wake）、`WatchWorldState("isnight")`、障碍物与地图图标；小游戏、作祟与 YOTP 外观未接入。`c_spawn` 不放置 `default_pigking` 布局；`c_save()` 保存身份与位置 |
 | `tumbleweed` | 可生成 | 不能入栏 | `prefabs/tumbleweed.lua`、`components/blowinwind.lua`、`components/worldwind.lua`：风向驱动滚动、`PICK` 触发 `startlongaction` 停止／重启、3 件加权战利品与 `break` 特效；未接入燃烧、音效和作祟，无 prefab 的战利品不掉落 |
 | `hotspring` | 可生成 | 不能入栏 | `prefabs/hotspring.lua`：heater（`HOTSPRING_HEAT` PASSIVE 45 / ACTIVE 90）、投入沐浴球后点亮的光源与 `bathbombable`；项目已接入这三条分支及 `isbathbombed` 存档，结晶、沐浴池、蒸汽、水源和音效未接入 |
 | `bathbomb` | 可生成 | 可 `c_give` | `prefabs/bathbomb.lua`：`bathbomb`、`fuel`（`MED_FUEL`）、可燃、堆叠 20、无 perishable；`BATHBOMB` 动作经 `bathbomb` 与 `bathbombable` 标签匹配，库存图标 `bathbomb.tex`（`inventoryimages1.xml`） |

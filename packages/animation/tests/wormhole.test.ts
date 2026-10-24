@@ -4,6 +4,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { WormholeManager, WORMHOLE_SKINS, WORMHOLE_ENTER_DISTANCE, WORMHOLE_EXIT_DISTANCE } from '../../prefab/src/wormhole';
 import { loadSpriteSkinArchive } from '../src/animationAssets';
 import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
+import { bindTestWorld } from './worldContentFixture';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -26,6 +28,8 @@ async function stubWormholeAssets() {
 
 it('opens and closes with source distance hysteresis and frame-specific layering, including interrupted transitions', async () => {
   await stubWormholeAssets();
+  // The wormhole's display turns itself to the world's camera rotation.
+  const content = bindTestWorld(new GameTimeScheduler());
   const player = new THREE.Vector3(100, 50, 0);
   const manager = new WormholeManager(new THREE.Scene(), '/dst/data/anim', () => [player]);
   const model = await manager.spawn(new THREE.Vector3());
@@ -43,10 +47,14 @@ it('opens and closes with source distance hysteresis and frame-specific layering
     expect(manager.renderEntities).toHaveLength(1);
     step(1);
     expect(manager.renderEntities).toHaveLength(0);
-    expect(model.children[0].renderOrder).toBe(0);
-    expect(model.children[0].children[0].renderOrder).toBe(-0.5);
+    // The display applies the declared layer in its effect, under the root it keeps around the drawn sprite.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(model.children[0].children[0].renderOrder).toBe(0);
+    expect(model.children[0].children[0].children[0].renderOrder).toBe(-0.5);
     step(60);
     expect(clip()).toBe('open_loop');
+    content.camerarotation.set(quaternion);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.quaternion.equals(quaternion)).toBe(true);
     player.x = WORMHOLE_EXIT_DISTANCE;
     step(1);
@@ -70,7 +78,7 @@ it('opens and closes with source distance hysteresis and frame-specific layering
     expect(clip()).toBe('open_pre');
     step(60);
     expect(clip()).toBe('open_loop');
-  } finally { manager.dispose(); }
+  } finally { manager.dispose(); content.unbind(); }
   expect(isMouseTarget(model)).toBe(false);
 });
 
@@ -110,7 +118,7 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
       if (skinId) {
         const skin = await loadSpriteSkinArchive(`dynamic/${skinId}.zip`, '/dst/data/anim');
         expect(skin.buildPackage.build.name).toBe(skinId);
-        const mesh = model.children[0].children[0] as THREE.Mesh;
+        const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         expect(materials.some((material) => ((material as THREE.MeshBasicMaterial).map as THREE.DataTexture | null)?.image.data
           === skin.buildPackage.atlases[0].pixels)).toBe(true);

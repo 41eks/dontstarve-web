@@ -37,6 +37,13 @@ export interface TurfTileSave {
   underTileId?: number;
 }
 
+const MAX_GROUND_RENDER_ORDER = Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder));
+
+/** LAYER_GROUND: stay within [-1, -0.6), below snow (-0.55) and LAYER_BACKGROUND decor (-0.5). */
+function groundLayerRenderOrder(name: GroundTileName): number {
+  return -1 + 0.4 * GROUND_TILE_DEFINITIONS[name].renderOrder / (MAX_GROUND_RENDER_ORDER + 1);
+}
+
 /** Inclusive-exclusive signed cells; omitted on a full terrain/resource change. */
 export interface TerrainCellBounds { minCol: number; minRow: number; maxCol: number; maxRow: number }
 
@@ -255,8 +262,7 @@ export class TurfMap {
         if (this.visual !== visual) { assets.material.dispose(); return; }
         const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
         mesh.name = `TurfBlend:${name}`;
-        mesh.renderOrder = -1 + 0.4 * GROUND_TILE_DEFINITIONS[name].renderOrder
-          / (Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder)) + 1);
+        mesh.renderOrder = groundLayerRenderOrder(name);
         mesh.receiveShadow = true;
         visual.add(mesh);
         this.layers.set(WORLD_TILES[name], { mesh, assets });
@@ -327,7 +333,8 @@ export class TurfMap {
     const material = this.dirtAssets.material;
     this.dirt = new THREE.Mesh(new THREE.BufferGeometry(), material);
     this.dirt.name = 'DugTurf:DIRT';
-    this.dirt.renderOrder = -1.5;
+    // Same source layer order and edge masks as every other turf; above the falloff (-1.25), which it covers where coplanar.
+    this.dirt.renderOrder = groundLayerRenderOrder('DIRT');
     this.dirt.receiveShadow = true;
     this.rebuildGeometry();
     return this.dirt;
@@ -350,9 +357,7 @@ export class TurfMap {
     for (const [name, assets] of [['DECIDUOUS', deciduous], ['GRASS', grass], ['WOODFLOOR', woodfloor], ['FARMING_SOIL', farming], ['MONKEY_DOCK', dock]] as const) {
       const mesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
       mesh.name = `TurfBlend:${name}`;
-      // LAYER_GROUND: stay within [-1, -0.6), below snow (-0.55) and LAYER_BACKGROUND decor (-0.5).
-      mesh.renderOrder = -1 + 0.4 * GROUND_TILE_DEFINITIONS[name].renderOrder
-        / (Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder)) + 1);
+      mesh.renderOrder = groundLayerRenderOrder(name);
       mesh.receiveShadow = true;
       this.visual.add(mesh);
       this.layers.set(WORLD_TILES[name], { mesh, assets });
@@ -360,7 +365,7 @@ export class TurfMap {
     // Only the falloff writes depth (prepass); turf layers stay depth-free and are ordered by renderOrder.
     this.falloffMesh = new THREE.Mesh(new THREE.BufferGeometry(), falloff.material);
     this.falloffMesh.name = 'TurfFalloff';
-    // Above dirt (-1.5) but below every turf layer (>= -1): turf is drawn after, so it covers the falloff where they are coplanar.
+    // Above ocean (-1.75) but below every turf layer, dirt included (>= -1): turf is drawn after, so it covers the falloff where they are coplanar.
     this.falloffMesh.renderOrder = -1.25;
     const modelView = new THREE.Matrix4();
     this.falloffMesh.onBeforeRender = (_renderer, _scene, camera, geometry) => {
@@ -467,17 +472,7 @@ export class TurfMap {
     this.terrainNamesCache = undefined;
     for (const listener of this.terrainListeners) listener(bounds);
     if (!this.dirt || !this.dirtAssets) return;
-    const quads = [...this.dugTiles.values()].filter(({ tileId }) => tileId === WORLD_TILES.DIRT)
-      .map((tile) => ({ ...tile, variant: 1 }));
-    for (const tile of this.dugTiles.values()) {
-      if (!isOceanTile(tile.tileId)) continue;
-      const variant = this.variantAt(tile.col, tile.row, WORLD_TILES.DIRT);
-      if (variant !== 17) quads.push({ ...tile, variant });
-    }
-    const geometry = groundTileGeometry(quads, this.dirtAssets, this.size);
-    this.dirt.geometry.dispose();
-    this.dirt.geometry = geometry;
-    this.dirt.visible = quads.length > 0;
+    this.rebuildLayer(WORLD_TILES.DIRT, this.dirt, this.dirtAssets);
     for (const [tileId, { mesh, assets }] of this.layers) this.rebuildLayer(tileId, mesh, assets);
     this.rebuildFalloff();
     this.ocean?.rebuildColours();

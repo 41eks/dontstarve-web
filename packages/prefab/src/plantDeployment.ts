@@ -2,7 +2,8 @@ import { placementEntities, ignoresPlacement, type PlacementQuery } from './plac
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { loadBuild, loadAnim, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
-import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory, type TransientSpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import { createPrefabEntity } from './prefabInstance';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { bindActionCancellation } from '../../stategraphs/src/actionEvents';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -33,7 +34,8 @@ export class PlantDeployment {
   private disposed = false;
   private pending?: { point: THREE.Vector3; source: TurfSource; prepared?: PreparedPlant };
   private buffered?: BufferedAction<'DEPLOY'>;
-  private preview?: { model: THREE.Group; factory: AnimatedSpriteFactory };
+  /** The placer entity, drawn by its own display; `visible` is what its sprite json was last told. */
+  private preview?: ReturnType<typeof createPrefabEntity> & { model: THREE.Group; visible: boolean };
   private previewEntity?: ItemEntity;
   private previewVersion = 0;
   private previewSkin?: string;
@@ -156,8 +158,7 @@ export class PlantDeployment {
     if (entity !== this.previewEntity || entity?.skinId !== this.previewSkin) {
       const version = ++this.previewVersion;
       this.previewEntity = entity; this.previewSkin = entity?.skinId;
-      if (this.preview) this.preview.factory.disposeSprite(this.preview.model);
-      this.preview = undefined;
+      this.releasePreview();
       const definition = entity && PLANTABLES[entity.prefab];
       if (definition) {
         const key = `${entity!.prefab}:${entity!.skinId ?? ''}`;
@@ -172,19 +173,24 @@ export class PlantDeployment {
         }
         void request.then(factory => {
           if (this.disposed || this.previewVersion !== version) return;
-          const model = factory.create({ initialAnimation: definition.animation, name: 'PlantPlacer' });
-          model.userData.tags = ['FX', 'NOCLICK']; model.userData.placer = true;
+          const placer = createPrefabEntity(`${entity!.prefab}_placer`, { create: initialAnimation => factory.create({ initialAnimation, name: 'PlantPlacer' }),
+            release: sprite => factory.disposeSprite(sprite) }, { name: definition.animation }, 'PlantPlacer');
+          const model = placer.display.model;
+          for (const tag of ['FX', 'NOCLICK']) placer.instance.addTag(tag);
+          placer.instance.persists = false; model.userData.placer = true;
           setPrefabLightOverride(model, 1);
-          model.visible = false; this.preview = { model, factory }; this.world.scene.add(model);
+          placer.instance.sprite.setVisible(false);
+          this.preview = { ...placer, model, visible: false }; this.world.scene.add(model);
         }).catch(error => console.error('Unable to load plant placer', error));
       }
     }
     const preview = this.preview, point = this.pointer.groundPoint();
     if (!preview) return;
-    preview.model.visible = !!point && !!source?.isValid();
+    const visible = !!point && !!source?.isValid();
+    if (visible !== preview.visible) preview.instance.sprite.setVisible(preview.visible = visible);
     if (!point || !source) return;
-    preview.model.position.copy(point); preview.model.quaternion.copy(this.world.camera.quaternion);
-    (preview.model.userData.animationController as TransientSpriteAnimationController).update(dt);
+    preview.instance.position.copy(point); preview.model.quaternion.copy(this.world.camera.quaternion);
+    preview.instance.sprite.update(dt);
     const valid = this.canDeploy(point, source.entity);
     preview.model.traverse(object => {
       if (!(object instanceof THREE.Mesh)) return;
@@ -212,12 +218,16 @@ export class PlantDeployment {
     const point = this.pointer.groundPoint();
     if (!point || !this.request(point)) this.cancel();
   };
+  private releasePreview(): void {
+    if (this.preview) { this.preview.instance.remove(); this.preview.display.dispose(); }
+    this.preview = undefined;
+  }
   private readonly keyDown = (event: KeyboardEvent): void => { if (event.code === 'Escape') this.cancel(); };
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true; this.cancel(); this.cleanups.splice(0).forEach(cleanup => cleanup());
     this.sound?.stop();
-    if (this.preview) this.preview.factory.disposeSprite(this.preview.model);
+    this.releasePreview();
     for (const request of this.factories.values()) void request.then(factory => factory.dispose(), () => undefined);
     this.world.renderer.domElement.removeEventListener('pointerdown', this.pointerDown, true);
     window.removeEventListener('keydown', this.keyDown);

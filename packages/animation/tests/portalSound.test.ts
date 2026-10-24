@@ -18,7 +18,7 @@ async function setup() {
   const model = await manager.spawn(new THREE.Vector3(4, 0, 6));
   // Observe frames actually submitted by the source sprite, rather than a
   // second timer that could agree with the audio while the art drifts away.
-  const controller = model.userData.animationController as { update(dt: number): void; showFrame(index: number): void };
+  const controller = model.children[0].userData.animationController as { update(dt: number): void; showFrame(index: number): void };
   const showFrame = controller.showFrame.bind(controller);
   let displayedFrame = 0;
   vi.spyOn(controller, 'showFrame').mockImplementation((index) => { showFrame(index); displayedFrame = index; });

@@ -11,12 +11,14 @@ test('equipped torch right-click ignites structures and ground materials, closin
     const { player, playerBody } = await import(paths.player);
     const { scene } = await import(paths.universal);
     const { view } = await import(paths.view);
-    const { moonTreeForest } = await import(paths.building);
+    const { initialSave } = await import(paths.initialSave);
+    const { Vector3 } = await import('/node_modules/.vite/deps/three.js');
+    const treePositions = (initialSave.world.entities.moon_tree ?? []).map((tree: any) => new Vector3(...tree.transform.position));
     let center: { x: number; z: number } | undefined;
     for (let col = -17; col < -5 && !center; col++) {
       for (let row = -17; row < -5 && !center; row++) {
-        const point = { x: col * 12 + 6, z: row * 12 + 6 };
-        if (!moonTreeForest.entities.some((tree: any) => Math.hypot(tree.position.x - point.x, tree.position.z - point.z) < 20)) center = point;
+        const point = new Vector3(col * 12 + 6, 0, row * 12 + 6);
+        if (!treePositions.some((position: any) => position.distanceToSquared(point) < 20 ** 2)) center = point;
       }
     }
     if (!center) throw new Error('No free spot for torch ignition');
@@ -29,8 +31,8 @@ test('equipped torch right-click ignites structures and ground materials, closin
     playerBody.position.set(center.x, playerBody.shapes[0].radius, center.z);
     playerBody.velocity.set(0, 0, 0); player.position.set(center.x, 0, center.z);
     (window as any).igniteGame = { main, player, playerBody, scene, view, center, targets: new Map() };
-  }, Object.fromEntries(['main', 'player', 'universal', 'view', 'building'].map(name =>
-    [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`])));
+  }, Object.fromEntries(['main', 'player', 'universal', 'view', 'save/initialSave'].map(name =>
+    [name === 'save/initialSave' ? 'initialSave' : name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`])));
 
   const submit = async (command: string) => {
     await page.keyboard.press('Backquote');

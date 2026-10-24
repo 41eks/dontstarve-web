@@ -15,7 +15,7 @@ const DAY = 480;
 
 function setup(random = () => 0) {
   const model = new THREE.Group();
-  const body = new CANNON.Body({ mass: 100 });
+  const physics = new CANNON.World();
   let complete: (() => void) | undefined;
   let clip = '', revision = 0;
   const queue: { name: string; loop: boolean }[] = [];
@@ -49,8 +49,9 @@ function setup(random = () => 0) {
     spawnPrize: vi.fn(),
     getPlayerPositions: () => players, findPath: vi.fn((_start, target) => [target]),
     constrainPosition: vi.fn(), getPoopPositions: () => poop, spawnPoop: vi.fn() };
-  const controller = new BeefaloController(model, body, animation, world, undefined, random);
-  return { controller, model, body, animation, world,
+  const controller = new BeefaloController(model, physics, animation, world, undefined, random);
+  const body = controller.body;
+  return { controller, model, body, physics, animation, world,
     setPlayers: (value: THREE.Vector3[]) => { players = value; },
     setPoop: (value: Iterable<THREE.Vector3>) => { poop = value; },
     setNight: (value: boolean) => { world.phase = value ? 'night' : 'day'; cycle.set(world.phase); },
@@ -184,7 +185,7 @@ describe('wild beefalo behavior', () => {
     expect(vi.mocked(s.world.spawnPoop).mock.calls[0][0].toArray()).toEqual([s.model.position.x - 3, 0, 0]);
     const saved = s.controller.exportState();
     const restoredScene = setup(); restoredScene.controller.dispose();
-    const restored = new BeefaloController(restoredScene.model, restoredScene.body, restoredScene.animation, s.world, saved, () => 0);
+    const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.animation, s.world, saved, () => 0);
     expect(restored.exportState()).toEqual(saved);
     restored.dispose(); restored.update(0.1);
     expect(restored.periodicspawner.timerState.peek()).toEqual({ status: 'stopped' });
@@ -254,7 +255,7 @@ describe('wild beefalo behavior', () => {
     const shavedState = s.controller.exportState();
     expect(shavedState.beard).toMatchObject({ growth: 0, bits: 0 });
     const restoredScene = setup(); restoredScene.controller.dispose();
-    const restored = new BeefaloController(restoredScene.model, restoredScene.body, restoredScene.animation, s.world, shavedState, () => 0);
+    const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.animation, s.world, shavedState, () => 0);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(restoredScene.animation.setShaved).toHaveBeenLastCalledWith(true);
     expect(restored.model.userData.actionEntity.hasTag('has_beard')).toBe(false);

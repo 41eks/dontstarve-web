@@ -46,6 +46,7 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   // The single hit finishes the work: boneshard drops, the bone leaves the scene and the save.
   expect(dropped).toEqual(['boneshard']);
   expect(bones.exportRecords().map(({ record }) => record.id)).not.toContain('a');
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(scene.children).not.toContain(one);
   bones.dispose();
 });

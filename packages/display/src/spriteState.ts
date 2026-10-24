@@ -22,21 +22,34 @@ export type AppearanceJson =
   | { readonly kind: 'layer'; readonly layer: string; readonly hidden: boolean }
   | { readonly kind: 'symbols'; readonly overrides: SymbolOverrideMap; readonly hiddenLayers: readonly string[] }
   | { readonly kind: 'symbol'; readonly symbol: string; readonly override: SymbolOverrideValue }
+  | { readonly kind: 'archive-symbol'; readonly symbol: string; readonly archive?: string; readonly sourceSymbol?: string }
+  | { readonly kind: 'archive-hidden'; readonly symbol: string; readonly hidden: boolean }
+  | { readonly kind: 'archive-build'; readonly archive: string }
   | { readonly kind: 'build'; readonly name: string; readonly override: LoadedBuildOverride | undefined };
 
 /** What an entity looks like, as plain data. The prefab writes it; the display draws it. */
 export interface SpriteJson {
   readonly clip: ClipJson;
+  /** Turned to the camera by the display: the source's default orientation, unlike OnGround art. Declared at creation. */
+  readonly billboard?: boolean;
   readonly queue: readonly { readonly name: string; readonly loop: boolean }[];
   readonly frame?: number;
   /** A fresh object is one more request for a brief feedback clip. */
   readonly transient?: { readonly name: string };
   readonly image?: number;
   readonly facing?: number;
+  /** Left-hand facings drawn as their mirrored right-hand art. */
+  readonly mirrored?: boolean;
   readonly colour?: readonly number[];
   readonly opacity?: number;
   /** Held out of the world, such as an item in a pack. */
   readonly paused?: boolean;
+  readonly visible?: boolean;
+  readonly erosion?: number;
+  /** Background art keeps its source orientation and draw order across visual reloads. */
+  readonly ground?: { readonly renderOrder: number; readonly flat: boolean };
+  /** LAYER_BACKGROUND art that draws by mesh order among the ground layers, keeping its group order. */
+  readonly meshOrder?: number;
   readonly appearance: ReadonlyMap<string, AppearanceJson>;
 }
 
@@ -52,7 +65,7 @@ export interface SpriteProbe {
 
 /**
  * What a shared archive sprite can be told: clips, frames, pausing, tint, facing and declared effects. An entity drawn
- * from an archive is typed with this, so a call it cannot draw (a pose, a queue, a symbol override) does not compile.
+ * from an archive is typed with this, so a call it cannot draw (a static pose or a queue) does not compile.
  */
 export interface ArchiveSpriteCommands {
   readonly sprite: ReadonlySignal<SpriteJson>;
@@ -72,6 +85,13 @@ export interface ArchiveSpriteCommands {
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
   setPaused(paused: boolean): void;
+  setVisible(visible: boolean): void;
+  setErosion(amount: number): void;
+  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void;
+  setSymbolHidden(symbol: string, hidden: boolean): void;
+  setBuildArchive(archive: string): void;
+  setGround(renderOrder: number, flat?: boolean): void;
+  setMeshOrder(order: number): void;
   attachFx(key: string, fx: FxJson): void;
   detachFx(key: string): void;
   followAnimation(source: ReadonlySignal<string | number> | undefined): void;
@@ -98,11 +118,12 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   private probe: SpriteProbe | undefined;
   private awake = true;
 
-  /** `held` marks an initial clip shown on its last frame. */
-  constructor(clip: { name: string; held?: boolean }) {
+  /** `held` marks an initial clip shown on its last frame; `billboard` entities face the camera. */
+  constructor(clip: { name: string; held?: boolean; billboard?: boolean }) {
     this.initialAnimation = clip.name;
     this.json = createSignal<SpriteJson>({
       clip: { name: clip.name, loop: !clip.held, finished: clip.held === true }, queue: [], appearance: new Map(),
+      ...clip.billboard ? { billboard: true } : {},
     });
     this.sprite = readonlySignal(this.json);
   }
@@ -174,10 +195,21 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   }
   setFrame(frame: number): void { this.write({ frame }); }
   showImage(image: number): void { this.write({ image }); }
-  setFacing(facing: number): void { this.write({ facing }); }
+  setFacing(facing: number, mirrored?: boolean): void { this.write({ facing, mirrored }); }
   setColour(colour: readonly number[]): void { this.write({ colour }); }
   setOpacity(opacity: number): void { this.write({ opacity }); }
   setPaused(paused: boolean): void { this.write({ paused }); }
+  setVisible(visible: boolean): void { this.write({ visible }); }
+  setErosion(erosion: number): void { this.write({ erosion }); }
+  setGround(renderOrder: number, flat = true): void { this.write({ ground: { renderOrder, flat } }); }
+  setMeshOrder(meshOrder: number): void { this.write({ meshOrder }); }
+  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
+    this.withAppearance(`archive-symbol:${symbol}`, { kind: 'archive-symbol', symbol, archive, sourceSymbol });
+  }
+  setSymbolHidden(symbol: string, hidden: boolean): void {
+    this.withAppearance(`archive-hidden:${symbol}`, { kind: 'archive-hidden', symbol, hidden });
+  }
+  setBuildArchive(archive: string): void { this.withAppearance('archive-build', { kind: 'archive-build', archive }); }
   /** Declares an effect under `key`; declaring the key again replaces it. */
   attachFx(key: string, fx: FxJson): void { this.fxDeclared.set(new Map(this.fxDeclared.peek()).set(key, fx)); }
   detachFx(key: string): void {

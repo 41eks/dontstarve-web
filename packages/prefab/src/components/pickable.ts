@@ -3,6 +3,7 @@ import { batch, createMemo, createSignal, readonlySignal } from '@dontstarve-web
 import type { PickableComponent, PickDoer } from '@dontstarve-web/stategraphs/pick';
 import { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
+import { setModelTag } from '../prefabInstance';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 
 export interface PickableSaveState {
@@ -243,12 +244,7 @@ export class Pickable implements PickableComponent {
   }
 
   private refreshTag(): void {
-    const tags: string[] = this.model.userData.tags ??= [];
-    const index = tags.indexOf('pickable');
-    if (this.canBePicked && this.canInteractWith) { if (index < 0) tags.push('pickable'); }
-    else if (index >= 0) tags.splice(index, 1);
-    const barren = tags.indexOf('barren');
-    if (!this.removed.peek() && this.IsBarren()) { if (barren < 0) tags.push('barren'); }
-    else if (barren >= 0) tags.splice(barren, 1);
+    setModelTag(this.model, 'pickable', this.canBePicked && this.canInteractWith);
+    setModelTag(this.model, 'barren', !this.removed.peek() && this.IsBarren());
   }
 }

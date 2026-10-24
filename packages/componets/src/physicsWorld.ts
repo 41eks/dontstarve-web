@@ -39,13 +39,14 @@ export class PhysicsWorld extends CANNON.World {
 
   get registeredBodies(): Iterable<CANNON.Body> { return this.registrations.keys(); }
 
-  override addBody(body: CANNON.Body): void {
+  /** `dontRemoveOnSleep` keeps a static body simulated outside the ticking area (Physics:SetDontRemoveOnSleep). */
+  override addBody(body: CANNON.Body, options: { dontRemoveOnSleep?: boolean } = {}): void {
     if (this.disposed) throw new Error('Physics world is disposed');
     if (this.registrations.has(body)) return;
     const registration: BodyRegistration = { dispose() {} };
     this.registrations.set(body, registration);
     // Infinite ground and moving bodies keep their existing simulation lifecycle.
-    if (body.type !== CANNON.Body.STATIC || body.shapes.some(shape => shape instanceof CANNON.Plane)) {
+    if (options.dontRemoveOnSleep || body.type !== CANNON.Body.STATIC || body.shapes.some(shape => shape instanceof CANNON.Plane)) {
       this.setActive(body, true);
       return;
     }

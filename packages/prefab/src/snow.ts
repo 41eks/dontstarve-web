@@ -3,6 +3,7 @@ import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 import { WORLD_SCALE } from './standardcomponents';
 import { TILE_SIZE } from './tile';
+import { createEmptyEntity } from './prefabInstance';
 import type { GroundOverlayGeometry, GroundOverlaySource } from './groundTiles';
 
 // prefabs/snow.lua (ordinary snow; Winter's Feast is a separate source branch).
@@ -68,7 +69,9 @@ export class SnowEffect {
   private readonly cover: ReadonlySignal<number>;
   private stopGroundOverlay?: () => void;
   private mesh?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
-  private readonly visual = new THREE.Group();
+  /** snow.lua: the FX emitter entity; its particles are drawn under the display's model. */
+  private readonly entity = createEmptyEntity('snow');
+  private readonly visual = this.entity.display.model;
   private ground?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial | THREE.MeshLambertMaterial[]>;
   private disposed = false;
   private particlesPerTick = 0;
@@ -96,6 +99,8 @@ export class SnowEffect {
     // Three sorts transparent groups before their meshes' renderOrder. Give
     // snowfall its own final group so foot-sorted billboards cannot cover it.
     this.visual.name = 'SnowWeatherOverlay';
+    this.entity.instance.persists = false;
+    this.entity.instance.addTag('FX');
     this.visual.renderOrder = Number.MAX_SAFE_INTEGER;
     this.rate = watchSignal(options.rate, cleanup => { this.stopRate = cleanup; });
     this.cover = watchSignal(options.cover, cleanup => { this.stopCover = cleanup; });
@@ -158,7 +163,6 @@ export class SnowEffect {
     material.customProgramCacheKey = () => 'dst-snow-edge-blur-v1';
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.name = 'snow';
-    Object.assign(this.mesh.userData, { prefab: 'snow', persists: false, tags: ['FX'] });
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = Number.MAX_SAFE_INTEGER;
     this.visual.add(this.mesh);
@@ -414,6 +418,6 @@ export class SnowEffect {
     }
     this.mesh = undefined;
     this.ground = undefined;
-    this.visual.removeFromParent();
+    this.entity.instance.remove(); this.entity.display.dispose();
   }
 }

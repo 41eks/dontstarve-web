@@ -3,9 +3,7 @@ export { configureHeatRockEntity, HEATROCK_ID, HEATROCK_FUEL, HEATROCK_IMAGES } 
 export { LavaPondManager, LAVA_POND_ID, LAVA_POND_ROCK_IDS, LAVA_POND_HEAT, LAVA_POND_RADIUS,
   type LavaPondRecord, type LavaPondSaveState, type LavaPondRockRecord, type LavaPondRockId } from './lava_pond';
 export {
-  createMoonTreeForest,
-  type MoonTreeForest,
-  type MoonTreeForestOptions,
+  createMoonTreeManager,
 } from './moontree';
 export {
   DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, DRAGONFLY_CHEST_SKIN_ARCHIVES,
@@ -63,9 +61,10 @@ export {
   type CookPotId,
 } from './cook_pot';
 export {
-  createPigKing,
-  type PigKingPrefab,
-  type PigKingPrefabOptions,
+  PIGKING_ID,
+  PigKingManager,
+  type PigKingRecord,
+  type PigKingWorld,
 } from './pigking';
 export {
   createWilsonPlayer,

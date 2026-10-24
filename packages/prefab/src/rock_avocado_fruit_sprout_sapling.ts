@@ -2,7 +2,8 @@ import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import { createEffect, createMemo, readonlySignal, getBoundWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -27,10 +28,10 @@ export interface RockAvocadoSaplingRecord {
   transform: { position: [number, number, number]; rotationY: number };
   components: { saplingTimer?: NamedTimerSave };
 }
+interface DrawnEntity { instance: PrefabInstance<ArchiveSpriteCommands>; display: PrefabDisplay }
 interface Sapling {
-  sprite: ResidentSprite;
+  entity: DrawnEntity;
   stopActivity?: () => void;
-  stopAppearance: () => void;
   timer: Timer;
   completion: ComponentTimer;
   transitionAt: number;
@@ -38,7 +39,7 @@ interface Sapling {
   workable: Workable;
   burnable: Burnable;
   propagator: Propagator;
-  fire: ResidentSprite;
+  fire: DrawnEntity;
   sound?: SoundHandle;
   stopBurning(): void;
   outputs: PreparedGroundSpawn[];
@@ -60,7 +61,6 @@ export class RockAvocadoSaplingManager {
   private readonly assets: ArchiveSpriteAssets;
   private source?: ReturnType<typeof preloadSharedArchiveSprite>;
   private fireSource?: ReturnType<typeof preloadSharedArchiveSprite>;
-  private readonly cameraQuaternion = new THREE.Quaternion();
   private readonly saplings = new Map<THREE.Group, Sapling>();
   private readonly sounds = new Set<SoundHandle>();
   private disposed = false;
@@ -106,20 +106,18 @@ export class RockAvocadoSaplingManager {
         if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid sprout position');
         used = true;
         const create = (clip: { name: string; loop: boolean }) => source(clip.name, clip.loop, ROCK_AVOCADO_SAPLING_ID);
-        const clip = { name: 'idle_buried_seed', loop: false };
-        const sprite = new ResidentSprite(create, clip, create(clip), ROCK_AVOCADO_SAPLING_ID);
-        const fire = new ResidentSprite(clip => createFire(clip.name, clip.loop, 'fire'), { name: 'level2', loop: true }, undefined, 'fire');
-        fire.model.userData.tags = ['FX', 'HASHEATER'];
-        const model = sprite.model;
-        model.userData.animationController = sprite;
-        const stopAppearance = createEffect(() => {
-          sprite.art.get(); fire.art.get();
-          sprite.setSymbolHidden('snow', true);
-          sprite.faceCamera(this.cameraQuaternion); fire.faceCamera(this.cameraQuaternion);
-        });
-        model.position.set(position.x, 0, position.z);
-        Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: ROCK_AVOCADO_SAPLING_ID,
-          deploySmartRadius: 3, tags: [] });
+        const drawn: DrawnEntity = createArchiveEntity(ROCK_AVOCADO_SAPLING_ID, { create, initial: create({ name: 'idle_buried_seed', loop: false }) },
+          { name: 'idle_buried_seed', billboard: true }, ROCK_AVOCADO_SAPLING_ID);
+        const sprite = drawn.instance.sprite;
+        sprite.playOnce('idle_buried_seed'); sprite.setSymbolHidden('snow', true);
+        // The burning fx entity is drawn only while the sprout burns.
+        const fire: DrawnEntity = createArchiveEntity('fire', { create: clip => createFire(clip.name, clip.loop, 'fire') },
+          { name: 'level2', billboard: true }, 'fire', instance => instance.setActive(false));
+        for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
+        fire.instance.persists = false;
+        const model = drawn.display.model, fireModel = fire.display.model;
+        drawn.instance.position.set(position.x, 0, position.z);
+        Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: ROCK_AVOCADO_SAPLING_ID, deploySmartRadius: 3 });
         const entity = actionEntity(model, ROCK_AVOCADO_SAPLING_ID);
         const completion = new ComponentTimer(this.scheduler, () => {
           if (this.saplings.get(model) !== sapling) return;
@@ -156,17 +154,17 @@ export class RockAvocadoSaplingManager {
         burnable.SetOnBurntFn(() => { if (!ash.spawn(model.position)) throw new Error('Missing sprout ash'); this.remove(model); });
         const phase = createMemo(() => burnable.burning.get() ? 'burning'
           : completion.snapshot.get().status === 'scheduled' ? 'emerging' : 'growing');
-        const sapling: Sapling = { sprite, fire, stopAppearance, timer, completion, workable, burnable, propagator,
+        const sapling: Sapling = { entity: drawn, fire, timer, completion, workable, burnable, propagator,
           transitionAt: this.scheduler.now, phase, stopBurning: () => {}, outputs: [root, ash], bush };
         this.saplings.set(model, sapling);
         model.userData.saplingState = { phase: readonlySignal(phase), growTimer: timer.snapshot('grow'), completionTimer: completion.snapshot };
         sapling.stopBurning = createEffect(() => {
           sprite.art.get();
           const visible = burnable.burning.get() && sprite.loaded;
-          fire.setActive(visible);
+          fire.instance.setActive(visible);
           if (visible) {
-            fire.model.position.copy(model.position);
-            if (!fire.model.parent) this.scene.add(fire.model);
+            fire.instance.position.copy(model.position);
+            if (!fireModel.parent) this.scene.add(fireModel);
             sapling.sound ??= PlaySound('dontstarve/common/campfire', model.position);
             setPrefabLocalLight(model, { colour: [1, 1, 192 / 255], radius: 9, intensity: .8, falloff: .33 });
           } else {
@@ -176,23 +174,23 @@ export class RockAvocadoSaplingManager {
         });
         startGrowing(); timer.OnLoad(saved?.components.saplingTimer);
         this.scene.add(model);
-        sapling.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
+        sapling.stopActivity = watchTileActivity(model, this.world.tickingarea, active => drawn.instance.setActive(active));
         return model;
       },
     };
   }
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    this.cameraQuaternion.copy(quaternion);
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const { sprite, fire, transitionAt } of this.saplings.values()) {
-      if (sprite.loaded) { sprite.faceCamera(quaternion); sprite.update(Math.min(dt, this.scheduler.now - transitionAt)); }
-      if (fire.loaded) { fire.model.position.copy(sprite.model.position); fire.faceCamera(quaternion); fire.update(dt); }
+    for (const { entity, fire, transitionAt } of this.saplings.values()) {
+      if (entity.instance.sprite.loaded) entity.instance.sprite.update(Math.min(dt, this.scheduler.now - transitionAt));
+      if (fire.instance.sprite.loaded) { fire.instance.position.copy(entity.instance.position); fire.instance.sprite.update(dt); }
     }
   }
   get renderEntities() {
-    return [...this.saplings.values()].flatMap(({ sprite, fire }) => [...sprite.loaded ? [sprite.model] : [], ...fire.loaded ? [fire.model] : []]
-      .map(object => ({ object, footPosition: sprite.model.position, cameraDepth: 0 })));
+    return [...this.saplings.values()].flatMap(({ entity, fire }) => [...entity.instance.sprite.loaded ? [entity.display.model] : [],
+      ...fire.instance.sprite.loaded ? [fire.display.model] : []]
+      .map(object => ({ object, footPosition: entity.display.model.position, cameraDepth: 0 })));
   }
   get digTargets(): ShovelTarget[] { return this.getDigTargets(); }
 
@@ -212,11 +210,12 @@ export class RockAvocadoSaplingManager {
   remove(model: THREE.Group): void {
     const sapling = this.saplings.get(model); if (!sapling) return;
     this.saplings.delete(model); model.userData.removed = true;
-    sapling.stopActivity?.(); sapling.stopAppearance(); sapling.stopBurning();
+    sapling.stopActivity?.(); sapling.stopBurning();
     sapling.burnable.SetOnExtinguishFn(undefined); sapling.burnable.dispose(); sapling.propagator.dispose();
     sapling.timer.dispose(); sapling.completion.stop(); sapling.workable.dispose(); sapling.phase.dispose();
     sapling.sound?.stop(); setPrefabLocalLight(model, null);
-    sapling.sprite.dispose(); sapling.fire.dispose(); sapling.outputs.forEach(output => output.dispose()); sapling.bush?.dispose();
+    for (const { instance, display } of [sapling.entity, sapling.fire]) { instance.remove(); display.dispose(); }
+    sapling.outputs.forEach(output => output.dispose()); sapling.bush?.dispose();
   }
   dispose(): void {
     if (this.disposed) return;

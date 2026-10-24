@@ -4,6 +4,7 @@ import { createEffect, watchSignal, type TileStateQuery } from '@dontstarve-web/
 import type { ShimmerKind, WaveMap, WaveSpawner } from '../../componets/src/wavemanager';
 import { TileTracker } from '../../componets/src/tileManager';
 import { GroundItemAssets } from './groundItems';
+import { createEmptyEntity } from './prefabInstance';
 
 // prefabs/wave_shimmer.lua and wave_shore.lua: non-persistent LAYER_BACKGROUND fx removed on animover.
 const SHIMMERS = {
@@ -22,6 +23,8 @@ const DEGREES = Math.PI / 180;
 type FxBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
 interface WaveAssets { animations: ReadonlyMap<string, Animation>; build: FxBuild }
 interface Wave {
+  /** The wave entity; it draws its frames itself under the display's model. */
+  entity: ReturnType<typeof createEmptyEntity>;
   model: THREE.Group;
   renderer: SpriteFrameRenderer;
   assets: WaveAssets;
@@ -97,9 +100,12 @@ export class OceanWaves implements WaveSpawner {
     if (!assets || this.disposed) return;
     const animation = assets.animations.get(`${smallHash(bank)}:${name}`);
     if (!animation?.frames.length) throw new Error(`Missing wave animation ${bank}:${name}`);
-    const model = new THREE.Group();
-    Object.assign(model.userData, { prefab: archive.replace('.zip', ''), persists: false, tags: ['FX', 'NOCLICK'], billboard: !flat });
-    model.position.set(x, 0, z);
+    const prefab = archive.replace('.zip', '');
+    const entity = createEmptyEntity(prefab), model = entity.display.model;
+    Object.assign(model.userData, { prefab, billboard: !flat });
+    entity.instance.persists = false;
+    for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
+    entity.instance.position.set(x, 0, z);
     const visual = new THREE.Group();
     visual.scale.set(0.02, -0.02, 0.02);
     if (flat) {
@@ -112,7 +118,7 @@ export class OceanWaves implements WaveSpawner {
     const renderer = new SpriteFrameRenderer(visual);
     // Ground layers share group order 0 and sort by mesh order; a group order would draw the waves before the ocean.
     visual.children[0].renderOrder = BACKGROUND_RENDER_ORDER;
-    const wave: Wave = { model, renderer, assets, animation, flat, elapsed: 0, frame: -1 };
+    const wave: Wave = { entity, model, renderer, assets, animation, flat, elapsed: 0, frame: -1 };
     this.showFrame(wave, 0);
     this.active.add(wave);
     this.scene.add(model);
@@ -145,8 +151,8 @@ export class OceanWaves implements WaveSpawner {
   private remove(wave: Wave): void {
     if (!this.active.delete(wave)) return;
     wave.stopTileActivity?.();
-    wave.model.removeFromParent();
     wave.model.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
+    wave.entity.instance.remove(); wave.entity.display.dispose();
   }
 
   private showFrame(wave: Wave, index: number): void {

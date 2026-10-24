@@ -1,12 +1,15 @@
 import { readFile } from 'node:fs/promises';
-import { Vector3 } from 'three';
+import * as CANNON from 'cannon-es';
+import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MiniMapEntity } from '../../prefab/src/minimapEntity';
 import { loadMinimapIcon } from '../../prefab/src/minimapIcons';
 import { ItemEntity, InventoryStore, BodySlot, equipmentSlotAddress } from '../../inventory/src';
 import { configureBackpackEntity } from '../../prefab/src/backpack';
-import { createPigKing } from '../../prefab/src/pigking';
-import { disposeSprite } from '../../prefab/src/disposeSprite';
+import { PigKingManager } from '../../prefab/src/pigking';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -83,11 +86,13 @@ it('keeps a backpack icon on the logical item through equip, drop, reskin and lo
 it('initializes the source pig king icon and priority, and hides it on scene disposal', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(
     `../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url))));
-  const king = await createPigKing('/dst/data/anim', { position: new Vector3(48, 0, 60) });
-  expect(king.MiniMapEntity.icon).toBe('pigking.png');
-  expect(king.MiniMapEntity.priority).toBe(1);
-  expect(king.MiniMapEntity.position).toBe(king.standee.position);
-  king.dispose();
-  expect(king.MiniMapEntity.enabled).toBe(false);
-  disposeSprite(king.standee);
+  const kings = new PigKingManager(new Scene(), '/dst/data/anim', {
+    camera: new PerspectiveCamera(), scheduler: new GameTimeScheduler(), physics: new CANNON.World(), dropLoot: vi.fn() });
+  const model = await kings.spawn(new Vector3(48, 0, 60));
+  const [minimap] = kings.miniMapEntities;
+  expect(minimap.icon).toBe('pigking.png');
+  expect(minimap.priority).toBe(1);
+  expect(minimap.position).toBe(model.position);
+  kings.dispose();
+  expect(minimap.enabled).toBe(false);
 });

@@ -2,17 +2,17 @@ import { ModelRecords, modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import {
   createAnimatedSpriteFactory,
-  type SpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
-import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable, type Worker } from '../../componets/src/workable';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import catalog from './groundItems.json' with { type: 'json' };
-import { ResidentSprite, type ResidentEntity } from '@dontstarve-web/animation/residentSprite';
+import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { createArchiveEntity, createPrefabEntity } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { registerPlacementTree } from './placementEntities';
 import { PlaySound } from './sound';
@@ -25,10 +25,10 @@ import { newEntityId } from './saveRecord';
 import { MiniMapEntity } from './minimapEntity';
 import { PreloadSounds, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment, type BurnSpec } from './treeFire';
-import { getBoundWatchWorldContent, WorldContentKey, createEffect, type GetWatchWorldContent, type ReadonlySignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
+import { getBoundWatchWorldContent, WorldContentKey, createEffect, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorldEventEmitter } from './worldContext';
 
-/** tuning.lua MOON_TREE_CHOPS_TALL: the forest's trees are the tall stage. */
+/** tuning.lua MOON_TREE_CHOPS_TALL: the tall stage requires sixteen chops. */
 export const MOON_TREE_CHOPS_TALL = 16;
 export const MOON_TREE_SIZES = ['short', 'normal', 'tall'] as const;
 export type MoonTreeSize = typeof MOON_TREE_SIZES[number];
@@ -51,15 +51,15 @@ SetSharedLootTable('moontree_tall', [
 // moontree.lua moontree_burnt: a burnt tree's chop leaves only charcoal.
 SetSharedLootTable('moontree_burnt', [['charcoal', 1]]);
 
-/** What the forest needs from the running game once a scene exists. */
+/** World services owned by this moon-tree manager. */
 export interface MoonTreeWorld {
   readonly camera: THREE.Camera;
   readonly scheduler?: GameTimeScheduler;
-  /** Only visuals are resident while the entity's tile is active; set by `bindWorld`. */
+  /** Only visuals are resident while the entity's tile is active. */
   readonly tickingarea?: TileStateQuery;
   /** Searched for propagator neighbours; receives fire effects. */
   readonly scene: THREE.Object3D;
-  readonly season?: ReadonlySignal<SeasonState>;
+  readonly getWatchWorldContent?: GetWatchWorldContent;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   worldEvents: WorldEventEmitter;
   growthDuration?(seconds: number): number;
@@ -89,99 +89,50 @@ interface TreeController {
   stopSnow?: () => void;
 }
 
-export interface MoonTreeForestOptions {
-  animationName?: string;
-  areaSize?: number;
-  count?: number;
-  exclusionRadiusSquared?: number;
-  /** Explicit ground positions; takes precedence over random generation options. */
-  positions?: readonly THREE.Vector3[];
-  entityIds?: readonly string[];
-  random?: () => number;
-  scale?: number;
+export interface MoonTreeRecord {
+  id: string;
+  transform: { position: [number, number, number]; rotationY: number };
+  components: MoonTreeComponents;
 }
 
-export interface MoonTreeForest {
-  group: THREE.Group;
-  positions: readonly THREE.Vector3[];
-  entities: readonly ResidentEntity[];
-  readonly miniMapEntities: readonly MiniMapEntity[];
-  readonly activeEntities: ReadonlySet<ResidentEntity>;
-  setNormals(cameraWorldQuaternion: THREE.Quaternion): void;
-  update(dt: number): void;
-  dispose(): void;
-  /** Binds the loot sink and camera used by tree work; returns the matching release. */
-  bindWorld(world: MoonTreeWorld): () => void;
-  /** CHOP_workable trees with resident visuals, at their ground-contact points. */
-  readonly chopTargets: readonly PickaxeTarget[];
-  getChopTargets(model?: THREE.Object3D): readonly PickaxeTarget[];
-  /** DIG_workable stumps with resident visuals. */
-  readonly digTargets: readonly ShovelTarget[];
-  getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[];
-  /** Resident tree visuals plus transient chop effects, for whole-entity depth ordering. */
-  readonly renderEntities: readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
-  restoreState(saveId: string, state: MoonTreeSaveState | undefined, growth?: GrowableSave, timer?: NamedTimerSave): void;
-  exportState(entity: ResidentEntity): MoonTreeComponents;
-  spawnTree(prefab: typeof MOON_TREE_SPAWN_IDS[number], position: THREE.Vector3, id?: string, fromSeed?: boolean): ResidentEntity;
-  spawnSapling(position: THREE.Vector3, saved?: MoonTreeSaplingRecord): THREE.Group;
-  prepareTransplant(): Promise<{ spawn(position: THREE.Vector3): boolean; dispose(): void }>;
-  exportSaplings(): MoonTreeSaplingRecord[];
-}
-
-export async function createMoonTreeForest(
-  assetBaseUrl: string,
-  options: MoonTreeForestOptions = {},
-): Promise<MoonTreeForest> {
-  const count = options.count ?? 500;
-  const areaSize = options.areaSize ?? 1000;
-  const exclusionRadiusSquared = options.exclusionRadiusSquared ?? 600;
-  const random = options.random ?? Math.random;
-  const scale = options.scale ?? definitions.moonTree.scale;
+/** Placed moon_tree entities and their planted saplings; no generated forest or separate world binding. */
+export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTreeWorld, random = Math.random) {
+  const scale = definitions.moonTree.scale;
   const treeAssets = new ArchiveSpriteAssets('moon_tree', assetBaseUrl);
-  const standingAnimation = options.animationName ?? definitions.moonTree.animationName;
-  const [createTree, fxFactory, saplingFactory, fireFx] = await Promise.all([
+  const standingAnimation = definitions.moonTree.animationName;
+  const [createTree, fxFactory, createSapling, fireFx] = await Promise.all([
     // MakeSnowCoveredPristine: the `snow` placeholder is drawn from snow.zip while the snow level is covered.
     preloadSharedArchiveSprite(treeAssets, { animationArchive: definitions.moonTree.archive,
       buildArchives: [definitions.moonTree.archive, 'snow.zip'], bank: 'moon_tree', hiddenSymbols: ['snow'],
       symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } } },
     { scale, staticBillboard: true, instancedAnimations: [...new Set([standingAnimation, ...MOON_TREE_SIZES.map(size => `sway1_loop_${size}`)])] }),
     createAnimatedSpriteFactory(assetBaseUrl, 'tree_petal_fx.zip'),
-    createAnimatedSpriteFactory(assetBaseUrl, 'baby_moon_tree.zip'),
+    preloadSharedArchiveSprite(treeAssets, { animationArchive: 'baby_moon_tree.zip', buildArchives: ['baby_moon_tree.zip'], bank: 'baby_moon_tree' },
+      { staticBillboard: true, instancedAnimations: 'all' }),
     FireFxHost.load(assetBaseUrl),
     PreloadSounds('dontstarve/wilson/plant_tree', 'dontstarve/forest/treeCrumble', 'dontstarve/wilson/use_axe_tree', 'dontstarve/forest/treeGrow', 'dontstarve/forest/treeGrowFromWilt'),
   ]);
-  const positions = options.positions?.map((position) => position.clone())
-    ?? Array.from({ length: count }, () => {
-      while (true) {
-        const x = random() * areaSize - areaSize / 2;
-        const z = random() * areaSize - areaSize / 2;
-        if (x * x + z * z > exclusionRadiusSquared) return new THREE.Vector3(x, 0, z);
-      }
-    });
   const unit = TILE_SIZE / 4;
-  const group = new THREE.Group(); group.name = 'MoonTreeForest';
   const entities: ResidentEntity[] = [];
   const active = new Set<ResidentEntity>();
-  const sprites = new Map<ResidentEntity, ResidentSprite>();
+  const sprites = new Map<ResidentEntity, ReturnType<typeof createArchiveEntity>>();
   const placementStops = new Map<ResidentEntity, () => void>();
   let nextId = 0;
   const states = new Map<ResidentEntity, TreeState>();
   const controllers = new Map<THREE.Group, TreeController>();
   const mouseRecords = new ModelRecords<ResidentEntity>();
-  const effects = new Set<THREE.Group>();
-  const saplings = new Map<THREE.Group, { timer: Timer; workable: Workable }>();
+  const effects = new Set<ReturnType<typeof createPrefabEntity>>();
+  const saplings = new Map<THREE.Group, { entity: ReturnType<typeof createArchiveEntity>; timer: Timer; workable: Workable; stopActivity(): void; stopPlacement(): void }>();
   const sounds = new Set<SoundHandle>();
   const sound = (path: Parameters<typeof PlaySound>[0], position: THREE.Vector3) => {
     for (const handle of sounds) if (!handle.isPlaying?.()) sounds.delete(handle);
     sounds.add(PlaySound(path, position));
   };
-  let scheduler = new GameTimeScheduler();
-  let ownsScheduler = true;
+  const scheduler = world.scheduler ?? new GameTimeScheduler();
+  const ownsScheduler = !world.scheduler;
   let disposed = false;
-  let world: MoonTreeWorld | undefined;
-  let getWatchWorldContent: GetWatchWorldContent | undefined;
-  const lastQuaternion = new THREE.Quaternion();
-  const env = (): BurnEnvironment => ({ scheduler, root: world!.scene, fire: fireFx });
+  const getWatchWorldContent = world.getWatchWorldContent ?? getBoundWatchWorldContent();
+  const env = (): BurnEnvironment => ({ scheduler, root: world.scene, fire: fireFx });
   const sizeOf = (state: TreeState): MoonTreeSize => MOON_TREE_SIZES[state.growable.GetStage() - 1];
   /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
   let catchingUp = false;
@@ -191,7 +142,7 @@ export async function createMoonTreeForest(
   };
   const playGrowth = (entity: ResidentEntity, clip: string, wilt = false) => {
     if (!active.has(entity) || catchingUp) return;
-    const animation = entity.model.userData.animationController as SpriteAnimationController;
+    const animation = entity.model.userData.animationController as ArchiveSpriteCommands;
     sound(wilt ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow', entity.position);
     animation.playOnce(clip, () => animation.start(`sway1_loop_${sizeOf(stateOf(entity))}`));
   };
@@ -206,12 +157,12 @@ export async function createMoonTreeForest(
           const controller = controllers.get(entity.model);
           if (controller && !current.stump && !current.burnt) {
             controller.workable?.SetWorkLeft(current.workLeft);
-            (controller.model.userData.animationController as SpriteAnimationController).start(`sway1_loop_${size}`);
+            (controller.model.userData.animationController as ArchiveSpriteCommands).start(`sway1_loop_${size}`);
             refreshFire(controller);
           }
         },
         growfn: () => playGrowth(entity, ['grow_tall_to_short', 'grow_short_to_normal', 'grow_normal_to_tall'][index], index === 0),
-      })), seconds => world?.growthDuration?.(seconds) ?? seconds);
+      })), seconds => world.growthDuration?.(seconds) ?? seconds);
       const minimap = new MiniMapEntity(entity.position);
       minimap.SetIcon('moon_tree.png'); minimap.SetPriority(-1);
       const timer = new Timer(scheduler, name => { if (name === 'decay') removeTree(entity); }, ['decay']);
@@ -223,7 +174,7 @@ export async function createMoonTreeForest(
     return state;
   };
   const cameraRight = () => {
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(world!.camera.getWorldQuaternion(new THREE.Quaternion()));
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(world.camera.getWorldQuaternion(new THREE.Quaternion()));
     return right.setY(0).normalize();
   };
 
@@ -241,15 +192,15 @@ export async function createMoonTreeForest(
   };
   const bindFire = (controller: TreeController) => {
     const state = stateOf(controller.entity);
-    if (!world || !active.has(controller.entity) || controller.burn || state.burnt) return;
+    if (!active.has(controller.entity) || controller.burn || state.burnt) return;
     controller.burn = new BurnableBinding(controller.inst, burnSpec(controller.entity, state), env());
   };
   /** weather.lua SNOW_COVERED_THRESHOLD; without a bound world the snow layer stays hidden. */
   const bindSnow = (controller: TreeController) => {
     controller.stopSnow?.(); controller.stopSnow = undefined;
-    const sprite = controller.model.userData.animationController as ResidentSprite;
+    const sprite = controller.model.userData.animationController as ArchiveSpriteCommands;
     const level = getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { controller.stopSnow = stop; });
-    const stopWatch = controller.stopSnow, stopEffect = createEffect(() => { sprite.art.get(); sprite.setSymbolHidden('snow', level ? level.get() < .015 : true); });
+    const stopWatch = controller.stopSnow, stopEffect = createEffect(() => { sprite.setSymbolHidden('snow', level ? level.get() < .015 : true); });
     controller.stopSnow = () => { stopEffect(); (stopWatch as (() => void) | undefined)?.(); };
   };
   const unbindFire = (controller: TreeController) => { controller.burn?.dispose(); controller.burn = undefined; };
@@ -260,7 +211,7 @@ export async function createMoonTreeForest(
   };
   /** DefaultBurntFn on a stump: one ash, then the inst is removed. */
   const burnStump = (entity: ResidentEntity) => {
-    world?.worldEvents.emit('spawnAsh', entity.position.clone());
+    world.worldEvents.emit('spawnAsh', entity.position.clone());
     removeTree(entity);
   };
   const removeTree = (entity: ResidentEntity) => {
@@ -277,7 +228,7 @@ export async function createMoonTreeForest(
     controllers.delete(entity.model);
     placementStops.get(entity)?.(); placementStops.delete(entity);
     entity.model.userData.removed = true; disposeActionEntity(entity.model);
-    const sprite = sprites.get(entity); sprites.delete(entity); sprite?.dispose();
+    const drawn = sprites.get(entity); sprites.delete(entity); drawn?.instance.remove();
   };
   /** burnt_changes on a loaded model: no burnable, shelter or growth; one chop for charcoal. */
   const configureBurnt = (controller: TreeController) => {
@@ -296,7 +247,7 @@ export async function createMoonTreeForest(
     startDecay(state);
     const controller = controllers.get(entity.model);
     controller?.inst.addTag('burnt');
-    (controller?.model.userData.animationController as SpriteAnimationController | undefined)?.start(`burnt_${sizeOf(state)}`);
+    (controller?.model.userData.animationController as ArchiveSpriteCommands | undefined)?.start(`burnt_${sizeOf(state)}`);
     const changes = () => {
       state.growable.StopGrowing();
       const current = controllers.get(entity.model);
@@ -315,8 +266,8 @@ export async function createMoonTreeForest(
     const dropper = new LootDropper({ getPosition: () => entity.position }, prefab => { loot.push(prefab); return undefined; });
     dropper.SetChanceLootTable('moontree_burnt');
     dropper.DropLoot();
-    world?.dropLoot(loot.map(itemId => ({ itemId, count: 1 })), entity.position.clone());
-    const animation = controller?.model.userData.animationController as SpriteAnimationController | undefined;
+    world.dropLoot(loot.map(itemId => ({ itemId, count: 1 })), entity.position.clone());
+    const animation = controller?.model.userData.animationController as ArchiveSpriteCommands | undefined;
     if (animation) animation.playOnce(`chop_burnt_${sizeOf(state)}`, () => removeTree(entity));
     else removeTree(entity);
   };
@@ -344,25 +295,26 @@ export async function createMoonTreeForest(
     workable.SetWorkLeft(1);
     // dig_up_stump: NORMAL/TALL drop two logs, then inst:Remove().
     workable.SetOnFinishCallback(() => {
-      world?.dropLoot([{ itemId: 'log', count: sizeOf(stateOf(entity)) === 'short' ? 1 : 2 }], entity.position);
+      world.dropLoot([{ itemId: 'log', count: sizeOf(stateOf(entity)) === 'short' ? 1 : 2 }], entity.position);
       removeTree(entity);
     });
     bindFire(controller);
   };
 
   const spawnChopFx = (position: THREE.Vector3, size: MoonTreeSize) => {
-    const fx = fxFactory.create({ initialAnimation: 'chop', name: 'tree_petal_fx_chop' });
+    const drawn = createPrefabEntity('tree_petal_fx_chop', { create: animation => fxFactory.create({ initialAnimation: animation, name: 'tree_petal_fx_chop' }),
+      release: sprite => fxFactory.disposeSprite(sprite) }, { name: 'chop', billboard: true }, 'tree_petal_fx_chop');
+    const fx = drawn.display.model; drawn.instance.persists = false;
     // on_chop_tree: TALL spawns 2.0..2.25 units up at scale 1.25.
     fx.position.set(position.x, (size === 'short' ? .25 : size === 'normal' ? .8 + random() * .25 : 2 + random() * .25) * unit, position.z);
     fx.scale.setScalar(size === 'short' ? .75 : size === 'normal' ? 1 : 1.25);
-    fx.userData.tags = ['FX', 'NOCLICK'];
+    drawn.instance.addTag('FX');
     fx.userData.footPosition = position;
-    fx.quaternion.copy(world!.camera.getWorldQuaternion(new THREE.Quaternion()));
-    group.add(fx);
-    effects.add(fx);
-    (fx.userData.animationController as SpriteAnimationController).playOnce('chop', () => {
-      effects.delete(fx);
-      fxFactory.disposeSprite(fx);
+    world.scene.add(fx);
+    effects.add(drawn);
+    drawn.instance.sprite.playOnce('chop', () => {
+      effects.delete(drawn);
+      drawn.instance.remove();
     });
   };
 
@@ -382,7 +334,7 @@ export async function createMoonTreeForest(
     inst.addTag('SnowCovered');
     if (state.stump) {
       makeStump(controller);
-      (model.userData.animationController as SpriteAnimationController).playOnce(`stump_${sizeOf(state)}`);
+      (model.userData.animationController as ArchiveSpriteCommands).playOnce(`stump_${sizeOf(state)}`);
       return;
     }
     if (state.burnt) {
@@ -392,12 +344,12 @@ export async function createMoonTreeForest(
       model.userData.components.workable = workable;
       workable.SetWorkAction('CHOP'); workable.SetWorkLeft(1);
       workable.SetOnFinishCallback(() => chopDownBurnt(entity));
-      (model.userData.animationController as SpriteAnimationController).start(`burnt_${sizeOf(state)}`);
+      (model.userData.animationController as ArchiveSpriteCommands).start(`burnt_${sizeOf(state)}`);
       return;
     }
     bindFire(controller);
     inst.addTag('shelter');
-    const animation = model.userData.animationController as SpriteAnimationController;
+    const animation = model.userData.animationController as ArchiveSpriteCommands;
     animation.start(`sway1_loop_${sizeOf(state)}`);
     const workable = new Workable(inst);
     controller.workable = workable;
@@ -409,7 +361,7 @@ export async function createMoonTreeForest(
       state.workLeft = workLeft;
       PlaySound('dontstarve/wilson/use_axe_tree', entity.position);
       animation.playOnce(`chop_${sizeOf(state)}`, () => animation.start(`sway1_loop_${sizeOf(state)}`));
-      if (world) spawnChopFx(entity.position, sizeOf(state));
+      spawnChopFx(entity.position, sizeOf(state));
     });
     // on_chop_tree_down: fall away from the chopper, scatter loot on the fall side and leave a stump.
     workable.SetOnFinishCallback((worker: Worker) => {
@@ -425,7 +377,7 @@ export async function createMoonTreeForest(
       dropper.DropLoot();
       const items = new Map<string, number>();
       for (const itemId of loot) if (Object.hasOwn(catalog.items, itemId)) items.set(itemId, (items.get(itemId) ?? 0) + 1);
-      world?.dropLoot([...items].map(([itemId, count]) => ({ itemId, count })),
+      world.dropLoot([...items].map(([itemId, count]) => ({ itemId, count })),
         entity.position.clone().addScaledVector(right, chopperOnRight ? -unit : unit));
       state.stump = true;
       makeStump(controller);
@@ -434,32 +386,28 @@ export async function createMoonTreeForest(
   };
 
   const createEntity = (position: THREE.Vector3, saveId?: string): ResidentEntity => {
+    if (disposed) throw new Error('Moon tree manager has been disposed');
     if (saveId && entities.some(entity => entity.saveId === saveId)) throw new Error(`Duplicate entity ID: ${saveId}`);
     const id = nextId++;
-    const sprite = new ResidentSprite(clip => {
-      const drawn = createTree(clip.name, clip.loop, `MoonTree-${id}`);
-      drawn.model.updateWorldMatrix(true, true);
-      const bounds = new THREE.Box3().setFromObject(drawn.model);
-      drawn.model.children[0].position.y -= bounds.min.y;
-      return drawn;
-    }, { name: standingAnimation, loop: true });
-    const model = sprite.model; model.position.copy(position);
-    model.userData.animationController = sprite;
+    const drawn = createArchiveEntity('moon_tree', { create: clip => createTree(clip.name, clip.loop, `MoonTree-${id}`), alignBottom: true },
+      { name: standingAnimation, billboard: true }, `MoonTree-${id}`, instance => instance.setActive(false));
+    const model = drawn.display.model; drawn.instance.position.copy(position);
     model.userData.placementLogical = true;
     if (saveId) model.userData.entityId = saveId;
     const entity: ResidentEntity = { id, saveId, model, position: model.position };
-    sprites.set(entity, sprite); entities.push(entity); group.add(model);
-    placementStops.set(entity, registerPlacementTree(group, entity, 'moon_tree', 1.6 * unit));
+    sprites.set(entity, drawn); entities.push(entity); world.scene.add(model);
+    placementStops.set(entity, registerPlacementTree(world.scene, entity, 'moon_tree', 1.6 * unit));
     return entity;
   };
   const setActive = (controller: TreeController, awake: boolean) => {
-    const { entity } = controller, sprite = sprites.get(entity);
-    if (!sprite || active.has(entity) === awake) return;
+    const { entity } = controller, drawn = sprites.get(entity);
+    if (!drawn) return;
+    if (active.has(entity) === awake) { drawn.instance.setActive(awake); return; }
     if (awake) {
       active.add(entity);
       wakeGrowable(entity);
       bindSnow(controller); bindFire(controller);
-      sprite.setActive(true);
+      drawn.instance.setActive(true);
     } else {
       active.delete(entity);
       const state = stateOf(entity);
@@ -470,14 +418,14 @@ export async function createMoonTreeForest(
       }
       unbindFire(controller);
       controller.stopSnow?.(); controller.stopSnow = undefined;
-      sprite.setActive(false);
+      drawn.instance.setActive(false);
     }
   };
   const bindActivity = (entity: ResidentEntity) => {
     let controller = controllers.get(entity.model);
     if (!controller) { attach(entity, entity.model); controller = controllers.get(entity.model)!; }
     controller.stopActivity?.();
-    controller.stopActivity = watchTileActivity(entity.model, world?.tickingarea, awake => setActive(controller!, awake));
+    controller.stopActivity = watchTileActivity(entity.model, world.tickingarea, awake => setActive(controller!, awake));
   };
 
   const removeSapling = (model: THREE.Group) => {
@@ -485,45 +433,50 @@ export async function createMoonTreeForest(
     if (!sapling) return;
     model.userData.removed = true;
     sapling.timer.dispose(); sapling.workable.dispose();
-    saplings.delete(model); saplingFactory.disposeSprite(model);
+    saplings.delete(model); sapling.stopActivity(); sapling.stopPlacement(); sapling.entity.instance.remove();
   };
 
-  const spawnTree = (prefab: typeof MOON_TREE_SPAWN_IDS[number], position: THREE.Vector3,
-    id = newEntityId(), fromSeed = false): ResidentEntity => {
-    const stage = prefab === 'moon_tree' ? Math.min(3, Math.floor(random() * 3) + 1) : MOON_TREE_SPAWN_IDS.indexOf(prefab);
-    const entity = createEntity(position, id);
+  const spawn = (prefab: typeof MOON_TREE_SPAWN_IDS[number], position: THREE.Vector3,
+    saved?: MoonTreeRecord, fromSeed = false): ResidentEntity => {
+    const stage = saved ? saved.components.growable?.stage ?? MOON_TREE_SIZES.indexOf(saved.components.moonTree?.size ?? 'tall') + 1
+      : prefab === 'moon_tree' ? Math.min(3, Math.floor(random() * 3) + 1) : MOON_TREE_SPAWN_IDS.indexOf(prefab);
+    const entity = createEntity(position, saved?.id ?? newEntityId());
     stateOf(entity, stage);
-    if (world) bindActivity(entity);
+    if (saved) restoreState(entity, saved.components.moonTree, saved.components.growable, saved.components.moonTreeTimer);
+    bindActivity(entity);
     if (fromSeed) playGrowth(entity, 'grow_seed_to_short');
     return entity;
   };
 
   const spawnSapling = (position: THREE.Vector3, saved?: MoonTreeSaplingRecord): THREE.Group => {
-    const model = saplingFactory.create({ initialAnimation: 'idle', name: 'moonbutterfly_sapling' });
+    const create = (clip: { name: string; loop: boolean }) => createSapling(clip.name, clip.loop, 'moonbutterfly_sapling');
+    const entity = createArchiveEntity('moonbutterfly_sapling', { create }, { name: 'idle', billboard: true }, 'moonbutterfly_sapling', instance => instance.setActive(false));
+    const model = entity.display.model;
+    entity.instance.sprite.playOnce('idle');
     model.position.copy(position);
-    model.quaternion.copy(world!.camera.getWorldQuaternion(new THREE.Quaternion()));
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: 'moonbutterfly_sapling', deploySmartRadius: 1.6 * unit, tags: ['plant', 'moon_tree'] });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: 'moonbutterfly_sapling', placementLogical: true, deploySmartRadius: 1.6 * unit });
+    for (const tag of ['plant', 'moon_tree']) entity.instance.addTag(tag);
     const inst = actionEntity(model, 'moonbutterfly_sapling');
     const timer = new Timer(scheduler, () => {
-      spawnTree('moon_tree_short', model.position, undefined, true);
+      spawn('moon_tree_short', model.position, undefined, true);
       removeSapling(model);
     }, ['grow']);
     const workable = new Workable(inst);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => {
-      world?.dropLoot([{ itemId: 'twigs', count: 1 }], model.position);
+      world.dropLoot([{ itemId: 'twigs', count: 1 }], model.position);
       removeSapling(model);
     });
     model.userData.components.workable = workable;
     model.userData.components.timer = timer;
-    saplings.set(model, { timer, workable }); group.add(model);
+    saplings.set(model, { entity, timer, workable, stopPlacement: registerPlacementTree(world.scene, { model, position: model.position }, 'moonbutterfly_sapling', 1.6 * unit), stopActivity: watchTileActivity(model, world.tickingarea, active => entity.instance.setActive(active)) });
+    world.scene.add(model);
     timer.StartTimer('grow', MOONBUTTERFLY_SAPLING_GROW_TIME.base + (random() * 2 - 1) * MOONBUTTERFLY_SAPLING_GROW_TIME.random);
     timer.OnLoad(saved?.components.saplingTimer);
     return model;
   };
 
   const workTargets = (action: 'CHOP' | 'DIG', selectedModel?: THREE.Object3D): PickaxeTarget[] => {
-    if (!world) return [];
     return mouseRecords.select(selectedModel, active).flatMap(entity => {
       const model = entity.model!;
       const controller = controllers.get(model);
@@ -545,106 +498,74 @@ export async function createMoonTreeForest(
       dig: () => target.isValid() && performToolWork('DIG', target.entity, {}),
     }));
   };
-  if (options.entityIds && (options.entityIds.length !== positions.length
-    || new Set(options.entityIds).size !== positions.length || options.entityIds.some(id => !id))) throw new Error('Invalid persistent entity IDs');
-  positions.forEach((position, index) => createEntity(position, options.entityIds?.[index]));
+  const restoreState = (entity: ResidentEntity, saved: MoonTreeSaveState | undefined, growth?: GrowableSave, timer?: NamedTimerSave) => {
+    const state = stateOf(entity);
+    state.timer.OnLoad(timer);
+    state.stump = saved?.stump ?? false;
+    if (state.stump) { state.minimap.SetIcon('moon_tree_stump.png'); startDecay(state); }
+    if (growth) state.growable.OnLoad(growth);
+    else if (saved?.size) {
+      state.growable.SetStage(MOON_TREE_SIZES.indexOf(saved.size) + 1);
+      state.growable.StartGrowing();
+    }
+    if (state.stump) state.growable.StopGrowing();
+    else if (!active.has(entity)) state.growable.OnEntitySleep();
+    const controller = controllers.get(entity.model);
+    if (controller?.workable && state.stump) {
+      makeStump(controller);
+      (controller.model.userData.animationController as ArchiveSpriteCommands).start(`stump_${sizeOf(state)}`);
+    }
+    // on_load: a saved burnt tree (or one that was burning) becomes burnt at once; its stump variant is not restored.
+    if (saved?.burnt && !state.stump) burn(entity, true);
+  };
+  const exportState = (entity: ResidentEntity): MoonTreeComponents => {
+    const state = stateOf(entity);
+    // on_save: a burning tree is saved as burnt; a burning stump is still a stump.
+    const controller = controllers.get(entity.model);
+    const burnt = !state.stump && (state.burnt || controller?.burn?.burnable.IsBurning() === true);
+    const timer = state.timer.OnSave();
+    return { moonTree: { size: sizeOf(state), ...(state.stump ? { stump: true } : {}), ...(burnt ? { burnt: true } : {}) },
+      growable: burnt ? { stage: state.growable.GetStage() } : state.growable.OnSave(),
+      ...(timer ? { moonTreeTimer: timer } : {}) };
+  };
   return {
-    group,
-    get positions() { return entities.map(entity => entity.position); },
     entities,
     get miniMapEntities() { return [...states.values()].map(state => state.minimap); },
-    get activeEntities() { return active; },
-    setNormals(cameraWorldQuaternion) {
-      lastQuaternion.copy(cameraWorldQuaternion);
-      for (const entity of active) {
-        (entity.model.userData.animationController as ArchiveSprite).faceCamera(cameraWorldQuaternion);
-      }
-      for (const fx of effects) fx.quaternion.copy(cameraWorldQuaternion);
-      for (const model of saplings.keys()) model.quaternion.copy(cameraWorldQuaternion);
-    },
-    update(dt) {
+
+    update(dt: number) {
       if (ownsScheduler) scheduler.advance(dt);
-      fireFx.update(dt, lastQuaternion);
+      fireFx.update(dt);
       for (const entity of active) {
-        const animation = entity.model.userData.animationController as SpriteAnimationController;
-        animation.update(dt);
+        const drawn = sprites.get(entity)!;
+        drawn.instance.sprite.update(dt);
       }
-      for (const fx of [...effects]) (fx.userData.animationController as SpriteAnimationController).update(dt);
-      for (const model of saplings.keys()) (model.userData.animationController as SpriteAnimationController).update(dt);
-    },
-    bindWorld(next) {
-      for (const controller of controllers.values()) {
-        controller.stopActivity?.(); controller.stopActivity = undefined;
-        setActive(controller, false);
-      }
-      world = next;
-      getWatchWorldContent = getBoundWatchWorldContent();
-      if (next.scheduler && ownsScheduler && !states.size && !saplings.size) {
-        scheduler.dispose(); scheduler = next.scheduler; ownsScheduler = false;
-      }
-      for (const entity of entities) { stateOf(entity); bindActivity(entity); }
-      return () => {
-        if (world !== next) return;
-        for (const controller of controllers.values()) {
-          controller.stopActivity?.(); controller.stopActivity = undefined;
-          setActive(controller, false);
-        }
-        world = undefined; getWatchWorldContent = undefined;
-      };
+      for (const drawn of [...effects]) { drawn.instance.sprite.update(dt); }
+      for (const { entity } of saplings.values()) if (entity.instance.sprite.loaded) { entity.instance.sprite.update(dt); }
     },
     get chopTargets() { return workTargets('CHOP'); },
-    getChopTargets(model) { return workTargets('CHOP', model); },
+    getChopTargets(model?: THREE.Object3D) { return workTargets('CHOP', model); },
     get digTargets() { return digTargets(); },
     getDigTargets: digTargets,
     get renderEntities() {
       return [
         ...Array.from(active, (entity) => ({ object: entity.model, footPosition: entity.position, cameraDepth: 0 })),
-        ...Array.from(effects, (fx) => ({ object: fx, footPosition: fx.userData.footPosition as THREE.Vector3, cameraDepth: 0 })),
-        ...Array.from(saplings.keys(), model => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
+        ...Array.from(effects, ({ display: { model } }) => ({ object: model, footPosition: model.userData.footPosition as THREE.Vector3, cameraDepth: 0 })),
+        ...Array.from(saplings).filter(([, { entity }]) => entity.instance.sprite.loaded).map(([model]) => ({ object: model, footPosition: model.position, cameraDepth: 0 })),
         ...fireFx.renderEntities,
       ];
     },
-    restoreState(saveId, saved, growth, timer) {
-      const entity = entities.find(candidate => candidate.saveId === saveId);
-      if (!entity) return;
-      const state = stateOf(entity);
-      state.timer.OnLoad(timer);
-      state.stump = saved?.stump ?? false;
-      if (state.stump) { state.minimap.SetIcon('moon_tree_stump.png'); startDecay(state); }
-      if (growth) state.growable.OnLoad(growth);
-      else if (saved?.size) {
-        state.growable.SetStage(MOON_TREE_SIZES.indexOf(saved.size) + 1);
-        state.growable.StartGrowing();
-      }
-      if (state.stump) state.growable.StopGrowing();
-      else if (!active.has(entity)) state.growable.OnEntitySleep();
-      const controller = controllers.get(entity.model);
-      if (controller?.workable && state.stump) {
-        makeStump(controller);
-        (controller.model.userData.animationController as SpriteAnimationController).start(`stump_${sizeOf(state)}`);
-      }
-      // on_load: a saved burnt tree (or one that was burning) becomes burnt at once; its stump variant is not restored.
-      if (saved?.burnt && !state.stump) burn(entity, true);
-    },
-    exportState(entity) {
-      const state = stateOf(entity);
-      // on_save: a burning tree is saved as burnt; a burning stump is still a stump.
-      const controller = controllers.get(entity.model);
-      const burnt = !state.stump && (state.burnt || controller?.burn?.burnable.IsBurning() === true);
-      const timer = state.timer.OnSave();
-      return { moonTree: { size: sizeOf(state), ...(state.stump ? { stump: true } : {}), ...(burnt ? { burnt: true } : {}) },
-        growable: burnt ? { stage: state.growable.GetStage() } : state.growable.OnSave(),
-        ...(timer ? { moonTreeTimer: timer } : {}) };
-    },
-    spawnTree,
+    exportState,
+    exportRecords: (): MoonTreeRecord[] => entities.map(entity => ({ id: entity.saveId!,
+      transform: { position: entity.position.toArray(), rotationY: 0 }, components: exportState(entity) })),
+    spawn,
     spawnSapling,
     async prepareTransplant() {
-      if (disposed || !world) throw new Error('Moon tree forest is unavailable');
+      if (disposed) throw new Error('Moon tree manager is unavailable');
       let available = true;
       return {
         dispose: () => { available = false; },
-        spawn: position => {
-          if (!available || disposed || !world) return false;
+        spawn: (position: THREE.Vector3) => {
+          if (!available || disposed) return false;
           available = false;
           spawnSapling(position);
           return true;
@@ -660,17 +581,16 @@ export async function createMoonTreeForest(
       disposed = true;
       for (const entity of [...entities]) {
         if (states.has(entity)) removeTree(entity);
-        else { placementStops.get(entity)?.(); sprites.get(entity)?.dispose(); }
+        else { placementStops.get(entity)?.(); sprites.get(entity)?.instance.remove(); }
       }
-      entities.length = 0; sprites.clear(); placementStops.clear(); group.removeFromParent();
+      entities.length = 0; sprites.clear(); placementStops.clear();
       for (const model of [...saplings.keys()]) removeSapling(model);
       for (const handle of sounds) handle.stop(); sounds.clear();
-      for (const fx of effects) fxFactory.disposeSprite(fx);
+      for (const drawn of effects) drawn.instance.remove();
       effects.clear();
       treeAssets.dispose();
       fxFactory.dispose();
       fireFx.dispose();
-      saplingFactory.dispose();
       if (ownsScheduler) scheduler.dispose();
     },
   };

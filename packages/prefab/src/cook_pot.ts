@@ -7,6 +7,7 @@ import {
 } from './animatedBuildingPlacement';
 import type { WorldContext } from './worldContext';
 import type { AnimatedBuildingEventContext } from './animatedBuildingPlacement';
+import { setModelTag } from './prefabInstance';
 import { createEffect } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
@@ -76,13 +77,11 @@ function continueCooking(model: THREE.Group): void {
 
 function initializePot({ model, art }: AnimatedBuildingEventContext): void {
     initializeFoodArt(model);
-    model.userData.tags ??= [];
     const components = model.userData.components;
-    // actionEntity.removeTag replaces userData.tags, so always go through the model.
     const stewer = new Stewer({ prefab: 'cookpot', components,
         getPosition: () => model.userData.getGroundPosition(),
-        addTag: tag => { if (!model.userData.tags.includes(tag)) model.userData.tags.push(tag); },
-        removeTag: tag => { model.userData.tags = model.userData.tags.filter((value: string) => value !== tag); },
+        addTag: tag => setModelTag(model, tag, true),
+        removeTag: tag => setModelTag(model, tag, false),
         }, (prefab, count = 1) => model.userData.dropLoot([{ itemId: prefab, count }]));
     components.stewer = stewer;
     stewer.onstartcooking = () => continueCooking(model);

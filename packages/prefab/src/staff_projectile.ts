@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createArchiveEntity } from './prefabInstance';
 import type { CombatActor } from '../../componets/src/combat';
 import { Projectile, type ProjectileOwner, type ProjectileTarget } from '../../componets/src/projectile';
 import { WORLD_SCALE } from './standardcomponents';
@@ -18,7 +19,7 @@ export interface StaffProjectileWorld {
   fx: { prepare(prefab: WorldFxPrefab): Promise<void>; spawn(prefab: WorldFxPrefab, position: THREE.Vector3): void };
 }
 
-interface ActiveProjectile { component: Projectile; sprite?: ArchiveSprite; removed: boolean }
+interface ActiveProjectile { component: Projectile; entity?: ReturnType<typeof createArchiveEntity>; removed: boolean }
 
 /** staff_projectile.lua: transient (persists = false) projectiles flown by components/projectile. */
 export class StaffProjectileManager {
@@ -45,11 +46,15 @@ export class StaffProjectileManager {
     while (!this.disposed && this.ready.length + this.pending < READY_SPRITES) {
       this.pending++;
       try {
-        const sprite = await createArchiveSprite(this.assets, { animationArchive: 'staff_projectile.zip',
-          buildArchives: ['staff_projectile.zip'], bank: 'projectile', animation: 'fire_spin_loop', loop: true }, { name: FIRE_PROJECTILE_ID });
+        const sprite = await this.create({ name: 'fire_spin_loop', loop: true });
         if (this.disposed) sprite.dispose(); else this.ready.push(sprite);
       } finally { this.pending--; }
     }
+  }
+
+  private create(clip: { name: string; loop: boolean }): Promise<ArchiveSprite> {
+    return createSharedArchiveSprite(this.assets, { animationArchive: 'staff_projectile.zip',
+      buildArchives: ['staff_projectile.zip'], bank: 'projectile', animation: clip.name, loop: clip.loop }, { name: FIRE_PROJECTILE_ID });
   }
 
   /** Weapon:LaunchProjectile → SpawnPrefab("fire_projectile") at the attacker, then projectile:Throw. */
@@ -70,12 +75,15 @@ export class StaffProjectileManager {
     return component;
   }
 
-  private attach(entry: ActiveProjectile, sprite: ArchiveSprite): void {
-    entry.sprite = sprite;
-    Object.assign(sprite.model.userData, { prefab: FIRE_PROJECTILE_ID, persists: false, tags: ['projectile'] });
-    sprite.model.position.copy(entry.component.position);
-    sprite.model.visible = entry.component.visible;
-    this.scene.add(sprite.model);
+  private attach(entry: ActiveProjectile, initial: ArchiveSprite): void {
+    const entity = entry.entity = createArchiveEntity(FIRE_PROJECTILE_ID, { create: clip => this.create(clip), initial },
+      { name: 'fire_spin_loop' }, FIRE_PROJECTILE_ID);
+    entity.display.model.userData.prefab = FIRE_PROJECTILE_ID;
+    entity.instance.persists = false;
+    entity.instance.addTag('projectile');
+    entity.instance.position.copy(entry.component.position);
+    entity.display.model.visible = entry.component.visible;
+    this.scene.add(entity.display.model);
   }
 
   /** staff_projectile.lua OnHitFire: an unlit target gets a fire_fail_fx where the projectile met its edge. */
@@ -100,19 +108,19 @@ export class StaffProjectileManager {
     if (this.disposed) return;
     for (const entry of [...this.active]) {
       entry.component.Update(dt);
-      if (!entry.removed && !entry.sprite && this.ready.length > 0) this.attach(entry, this.ready.shift()!);
-      if (entry.removed || !entry.sprite) continue;
-      const { model } = entry.sprite;
-      model.position.copy(entry.component.position);
+      if (!entry.removed && !entry.entity && this.ready.length > 0) this.attach(entry, this.ready.shift()!);
+      if (entry.removed || !entry.entity) continue;
+      const { instance, display: { model } } = entry.entity;
+      instance.position.copy(entry.component.position);
       model.visible = entry.component.visible;
       model.quaternion.copy(quaternion);
-      entry.sprite.update(dt);
+      instance.sprite.update(dt);
     }
   }
 
   get renderEntities() {
-    return [...this.active].flatMap(({ component, sprite }) => sprite
-      ? [{ object: sprite.model, footPosition: component.position, cameraDepth: 0 }] : []);
+    return [...this.active].flatMap(({ component, entity }) => entity
+      ? [{ object: entity.display.model, footPosition: component.position, cameraDepth: 0 }] : []);
   }
 
   private remove(entry: ActiveProjectile): void {
@@ -120,7 +128,7 @@ export class StaffProjectileManager {
     entry.removed = true;
     this.active.delete(entry);
     entry.component.Stop();
-    if (entry.sprite) { entry.sprite.model.removeFromParent(); entry.sprite.dispose(); }
+    if (entry.entity) { entry.entity.instance.remove(); entry.entity.display.dispose(); }
   }
 
   dispose(): void {

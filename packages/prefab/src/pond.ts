@@ -9,6 +9,8 @@ import { actionEntity } from './actionEntity';
 import { WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
 import { MiniMapEntity } from './minimapEntity';
+import { createPrefabEntity, prefabInstance } from './prefabInstance';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 
 export const POND_ID = 'pond' as const;
 /** pond.lua MakePondPhysics(inst, 1.95), in scene units. */
@@ -101,15 +103,13 @@ export class PondManager {
     }
     const factory = await this.factoryRequest;
     if (this.disposed) throw new Error('Pond manager has been disposed');
-    const model = factory.create({ initialAnimation: 'idle', name: POND_ID });
+    const { instance, display } = createPrefabEntity(POND_ID, { create: animation => factory.create({ initialAnimation: animation, name: POND_ID }),
+      release: sprite => factory.disposeSprite(sprite) }, { name: 'idle' }, POND_ID);
+    const model = display.model;
     model.position.set(position.x, 0, position.z);
-    model.rotation.x = -Math.PI / 2;
-    // Lift only the artwork above terrain; the entity/save origin stays grounded.
-    const visual = model.children[0];
-    visual.position.z = 0.01;
-    // Ground layers share group order 0 and use mesh order. A negative group
-    // order would draw the pond before transparent turf, which covers it up.
-    visual.children[0].renderOrder = -0.5;
+    // OnGround: lift only the artwork above terrain; the entity/save origin stays grounded. Ground layers share
+    // group order 0 and use mesh order. A negative group order would draw the pond before transparent turf, which covers it up.
+    instance.sprite.setGround(0); instance.sprite.setMeshOrder(-0.5);
     Object.assign(model.userData, {
       billboard: false, prefab: POND_ID, entityId: saved?.id ?? newEntityId(),
     });
@@ -166,7 +166,8 @@ export class PondManager {
     this.cleanups.splice(0).forEach(stop => stop());
     for (const model of this.ponds) {
       (actionEntity(model, POND_ID).components as { fishable?: Fishable }).fishable?.OnRemoveFromEntity();
-      model.removeFromParent();
+      prefabInstance(model)!.remove();
+      (model.userData.display as PrefabDisplay).dispose();
     }
     for (const minimap of this.minimaps.values()) minimap.dispose();
     this.minimaps.clear();

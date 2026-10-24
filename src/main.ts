@@ -35,7 +35,7 @@ import { view, actionEvents } from './view';
 import { followCamera } from './camera';
 import { spellCastMap } from './spellCastMap';
 import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type InventoryStack } from '@dontstarve-web/inventory';
-import { player, playerBody } from './player';
+import { player, playerBody, playerPhysics } from './player';
 import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { bindPlayerHandEquipment } from './playerHandEquipment';
 import { bindPlayerHeadEquipment } from './playerHeadEquipment';
@@ -304,7 +304,7 @@ disposalEvents.on('dispose', () => {
 });
 const disposalActions = disposalResources.register(disposalEvents, sceneResources);
 const wortox = playerAnimation ? await WortoxPlayer.create({
-  world: view, body: playerBody, animation: playerAnimation, locomotor, inventory, scheduler, fx: worldFx,
+  world: view, body: playerBody, physics: playerPhysics, animation: playerAnimation, locomotor, inventory, scheduler, fx: worldFx,
   isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
   isManualMovement: () => input.isManualMovement(), saved: initialSave.players.local.wortox,
   resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),
@@ -334,7 +334,7 @@ playerAnimation?.bindDeath({
 // player_common.lua ListenForEvent("makeplayerghost", ex_fns.OnMakePlayerGhost), with the ghost art prepared beforehand.
 let deathCause = 'unknown';
 const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
-  model: player, animation: playerAnimation, body: playerBody, stats: playerStats, sanity: playerSanity, ghostMode: playerGhostMode,
+  model: player, animation: playerAnimation, physics: playerPhysics, stats: playerStats, sanity: playerSanity, ghostMode: playerGhostMode,
   actionPicker: view.mouseActions!,
   // SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause.
   spawnDeathProduct: position => {
@@ -359,9 +359,9 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
   // Physics:Teleport
   teleport: position => {
     tilePerfMark(`soulhop teleport to ${position.x.toFixed(1)},${position.z.toFixed(1)}`);
-    playerBody.position.set(position.x, playerBody.position.y, position.z);
-    playerBody.velocity.set(0, playerBody.velocity.y, 0);
     player.position.set(position.x, player.position.y, position.z);
+    playerPhysics.Teleport();
+    playerBody.velocity.set(0, playerBody.velocity.y, 0);
   },
   setControllerEnabled: enabled => { player.userData.controllerEnabled = enabled; },
   // inst:ShowHUD

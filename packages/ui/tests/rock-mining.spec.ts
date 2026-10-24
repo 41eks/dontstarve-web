@@ -43,7 +43,8 @@ test('right-click mining breaks a moon shell and preserves the orb and mineral d
     const point = await page.evaluate(() => {
       const { scene, renderer, camera } = (window as any).miningGame;
       const shell = scene.children.find((model: any) => model.userData.entityId === 'mine-shell');
-      const mesh = shell.children[0].children[0]; mesh.updateWorldMatrix(true, false);
+      let mesh: any; shell.traverse((object: any) => { if (!mesh && object.isMesh && object.geometry.index) mesh = object; });
+      mesh.updateWorldMatrix(true, false);
       const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.index;
       const point = shell.position.clone().multiplyScalar(0), vertex = point.clone();
       for (let i = 0; i < 3; i++) { vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex); }

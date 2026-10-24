@@ -6,8 +6,9 @@ import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worl
 import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { MakeObstaclePhysics } from './standardcomponents';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 
 export const CAVE_EXIT_ID = 'cave_exit' as const;
@@ -35,9 +36,9 @@ export interface CaveExitWorld {
 }
 
 interface Exit {
-  sprite: ResidentSprite;
+  instance: PrefabInstance<ArchiveSpriteCommands>;
+  display: PrefabDisplay;
   minimap: MiniMapEntity;
-  body?: CANNON.Body;
   stopActivity: () => void;
   stopMigration: () => void;
 }
@@ -63,19 +64,15 @@ export class CaveExitManager {
     if (this.disposed) throw new Error('Cave exits have been disposed');
     const create = (clip: { name: string; loop: boolean }) => source(clip.name, clip.loop, CAVE_EXIT_ID);
     const clip = { name: 'open', loop: true };
-    const sprite = new ResidentSprite(create, clip, create(clip), CAVE_EXIT_ID);
-    const model = sprite.model;
+    const { instance, display } = createArchiveEntity(CAVE_EXIT_ID, { create, initial: create(clip) }, { name: clip.name, billboard: true }, CAVE_EXIT_ID);
+    const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: CAVE_EXIT_ID, tags: [],
-      physicsRadius: PHYSICS_RADIUS * WORLD_SCALE });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: CAVE_EXIT_ID });
     const inst = actionEntity(model, CAVE_EXIT_ID);
-    const exit: Exit = { sprite, minimap: new MiniMapEntity(model.position), stopActivity: () => {}, stopMigration: () => {} };
+    const exit: Exit = { instance, display, minimap: new MiniMapEntity(model.position), stopActivity: () => {}, stopMigration: () => {} };
     exit.minimap.SetIcon('cave_open2.png');
-    if (this.world.physics) {
-      exit.body = MakeObstaclePhysics(model.position, PHYSICS_RADIUS);
-      model.userData.physicsBody = exit.body;
-      this.world.physics.addBody(exit.body);
-    }
+    MakeObstaclePhysics(instance, PHYSICS_RADIUS);
+    if (this.world.physics) instance.bindPhysics(this.world.physics);
     // fn: the migration events pick the loop; the destination is the Master shard.
     const migrator = new WorldMigrator(inst, this.world.shard ?? NO_SHARD);
     const listeners = { migration_available: 'open', migration_unavailable: 'no_access', migration_full: 'over_capacity' } as const;
@@ -88,18 +85,18 @@ export class CaveExitManager {
     model.userData.components.worldmigrator = migrator;
     this.exits.set(model, exit);
     this.scene.add(model);
-    exit.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
+    exit.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
     migrator.SetDestinationWorld(MASTER_SHARD);
     return model;
   }
 
-  update(dt: number, quaternion: THREE.Quaternion): void {
+  update(dt: number, _quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    for (const { sprite } of this.exits.values()) { sprite.faceCamera(quaternion); sprite.update(dt); }
+    for (const { instance } of this.exits.values()) instance.sprite.update(dt);
   }
 
   get renderEntities() {
-    return [...this.exits.values()].map(({ sprite }) => ({ object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 }));
+    return [...this.exits.values()].map(({ display }) => ({ object: display.model, footPosition: display.model.position, cameraDepth: 0 }));
   }
 
   get miniMapEntities(): MiniMapEntity[] { return [...this.exits.values()].map(({ minimap }) => minimap); }
@@ -117,8 +114,7 @@ export class CaveExitManager {
     this.disposed = true;
     for (const [model, exit] of this.exits) {
       model.userData.removed = true;
-      if (exit.body) this.world.physics?.removeBody(exit.body);
-      exit.minimap.dispose(); exit.stopActivity(); exit.stopMigration(); exit.sprite.dispose();
+      exit.minimap.dispose(); exit.stopActivity(); exit.stopMigration(); exit.instance.remove(); exit.display.dispose();
     }
     this.exits.clear();
     this.assets.dispose();

@@ -1,5 +1,6 @@
 import type { Vector3 } from 'three';
-import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import type { PrefabInstance } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
 import { PlayerProx } from '../../componets/src/playerprox';
@@ -10,25 +11,24 @@ import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 export const FLIES_SOUND = 'dontstarve/common/flies';
 
 /**
- * flies.lua: a NOCLICK/DECOR child with independent proximity, animation and looping audio.
+ * flies.lua: a NOCLICK/DECOR child with independent proximity, animation and looping audio. The owner draws the entity
+ * and keeps its pickup target clear of the swarm's art.
  */
 export class FliesController {
   readonly playerprox: PlayerProx;
   private readonly init: ComponentTimer;
-  private readonly sprite: ArchiveSprite;
+  private readonly sprite: ArchiveSpriteCommands;
   private readonly position: Vector3;
   private sound?: SoundHandle;
   private asleep = false;
   private disposed = false;
   private animationRevision = 0;
 
-  constructor(sprite: ArchiveSprite, position: Vector3, scheduler: GameTimeScheduler,
+  constructor(instance: PrefabInstance<ArchiveSpriteCommands>, position: Vector3, scheduler: GameTimeScheduler,
     getWatchWorldContent?: GetWatchWorldContent) {
-    this.sprite = sprite; this.position = position;
-    sprite.model.visible = true;
-    Object.assign(sprite.model.userData, { prefab: 'flies', tags: ['NOCLICK', 'DECOR'], fliesController: this });
-    // The decorative child must not enlarge the parent's pickup target.
-    sprite.model.traverse(object => { object.raycast = () => {}; });
+    const sprite = this.sprite = instance.sprite; this.position = position;
+    sprite.setVisible(true);
+    for (const tag of ['NOCLICK', 'DECOR']) instance.addTag(tag);
     this.playerprox = new PlayerProx({ isValid: () => !this.disposed, getPosition: () => position }, scheduler, getWatchWorldContent);
     this.playerprox.SetDist(2 * WORLD_SCALE, 3 * WORLD_SCALE);
     this.playerprox.SetOnPlayerNear(() => {
@@ -81,7 +81,7 @@ export class FliesController {
     this.disposed = true;
     this.animationRevision++;
     this.init.stop(); this.playerprox.dispose(); this.stopSound();
-    // The owning prefab retains the prepared sprite until its visual is disposed.
-    this.sprite.model.visible = false;
+    // The owning prefab retains the entity until its visual is disposed.
+    this.sprite.setVisible(false);
   }
 }
