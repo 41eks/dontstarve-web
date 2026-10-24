@@ -11,6 +11,11 @@ vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
   new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+function firstMesh(model: THREE.Object3D): THREE.Mesh {
+  let found: THREE.Mesh | undefined;
+  model.traverse(object => { if (!found && object instanceof THREE.Mesh) found = object; });
+  return found!;
+}
 
 it('shares split-bank cave-in art and preserves its variation, raised pose, identity and resources through reload', async () => {
   const world = { prepareSpawn: vi.fn(async () => ({ spawn: () => true, dispose() {} })) };
@@ -21,7 +26,7 @@ it('shares split-bank cave-in art and preserves its variation, raised pose, iden
   try {
     const first = await manager.spawn('cavein_boulder', new THREE.Vector3(...saved.transform.position), saved);
     const second = await manager.spawn('cavein_boulder', new THREE.Vector3(10, 0, 4), { ...saved, id: 'neighbour' });
-    const mesh = (model: THREE.Group) => model.children[0].children[0] as THREE.Mesh;
+    const mesh = (model: THREE.Group) => firstMesh(model);
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
     expect(first.userData.animationController.currentAnimation).toBe('idle_raised');
     expect(first.userData.tags).toEqual(expect.arrayContaining(['heavy', 'boulder', 'caveindebris']));
@@ -49,7 +54,7 @@ it('keeps the celestial orb as static art without mining or preparing loot', asy
     const model = await manager.spawn('moonrockseed', new THREE.Vector3());
     expect(model.userData.animationController.currentAnimation).toBe('idle');
     expect(model.userData.tags).toEqual(expect.arrayContaining(['irreplaceable', 'nonpotatable', 'celestial_station']));
-    expect((model.children[0].children[0] as THREE.Mesh).geometry.getAttribute('position').count).toBeGreaterThan(0);
+    expect(firstMesh(model).geometry.getAttribute('position').count).toBeGreaterThan(0);
     expect(manager.mineTargets).toEqual([]);
   } finally { manager.dispose(); }
 });

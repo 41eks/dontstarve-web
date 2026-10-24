@@ -25,13 +25,13 @@ import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { nextReskin } from './reskin_tool';
 import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import type { GrowableSave } from '../../componets/src/growable';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
 
-type PlantAnimation = SpriteController | ArchiveSprite;
+type PlantAnimation = SpriteController | ResidentSpriteController | ArchiveSprite;
 type CreatePlantArchiveSprite = Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
 
 export interface PickablePlantRecord {
@@ -55,7 +55,7 @@ export interface PickablePlantWorld {
   isOcean?(position: THREE.Vector3): boolean;
 }
 
-export interface PickablePlantAppearanceContext<T extends PlantAnimation = SpriteController> {
+export interface PickablePlantAppearanceContext<T extends PlantAnimation = SpriteController | ResidentSpriteController> {
   readonly model: THREE.Group;
   readonly animation: T;
   play(clips: readonly string[], loopLast?: boolean, onFirstOver?: () => void): void;
@@ -99,6 +99,8 @@ export interface PickablePlantDefinition {
   readonly archiveSprite?: { readonly bank: string; readonly instancedAnimations: ArchiveSpriteOptions['instancedAnimations'];
     /** Release the sprite while the plant's tile is outside the tickingarea (see `ResidentSprite`). */
     readonly resident?: boolean };
+  /** Factory-path plants: release the sprite while the tile is outside the tickingarea (see `ResidentSpriteController`). */
+  readonly resident?: boolean;
   readonly tags: readonly string[];
   readonly product: string;
   readonly regrowTime?: number;
@@ -147,6 +149,8 @@ interface Plant {
   pickable: Pickable;
   factory?: AnimatedSpriteFactory;
   sprite?: ArchiveSprite;
+  /** Owns the drawn factory sprite of a resident plant; `model` is its stable root. */
+  residentController?: ResidentSpriteController;
   readonly animation: PlantAnimation;
   version: number;
   transitionAt: number;
@@ -299,19 +303,27 @@ export class PickablePlantManager {
         const sprite = resident ?? created;
         const factory = typeof source === 'function' ? undefined : source;
         if (sprite && initial.initialFrame === 'last') sprite.setFrame(sprite.frameCount - 1);
-        const model = sprite?.model ?? factory!.create({ ...initial,
+        const factoryOptions = (animationName: string, frame?: AnimatedSpriteOptions['initialFrame']): AnimatedSpriteOptions => ({
+          ...initial, initialAnimation: animationName, ...frame ? { initialFrame: frame } : {},
           getWatchWorldContent: this.getWatchWorldContent, snowCovered: snow });
+        const residentController = factory && definition.resident
+          ? new ResidentSpriteController(new THREE.Group(), animationName => factory.create(factoryOptions(animationName)),
+            drawn => factory.disposeSprite(drawn), factory.create(factoryOptions(initial.initialAnimation, initial.initialFrame)),
+            { name: initial.initialAnimation, held: initial.initialFrame === 'last' })
+          : undefined;
+        const model = sprite?.model ?? residentController?.model ?? factory!.create(factoryOptions(initial.initialAnimation, initial.initialFrame));
+        if (residentController) model.name = prefab;
         model.position.set(position.x, 0, position.z);
         this.face({ sprite, model }, this.cameraRotation?.peek() ?? model.quaternion);
         Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId(), tags: [...definition.tags] });
         if (skinId) model.userData.skinId = skinId;
         if (definition.physicsRadius !== undefined) model.userData.physicsRadius = definition.physicsRadius * (TILE_SIZE / 4);
         if (definition.deploySmartRadius !== undefined) model.userData.deploySmartRadius = definition.deploySmartRadius;
-        let animation: PlantAnimation = sprite ?? model.userData.animationController as SpriteController;
+        let animation: PlantAnimation = sprite ?? residentController ?? model.userData.animationController as SpriteController;
         model.userData.animationController = animation;
         // sapling.lua: AnimState:SetFrame(math.random(GetCurrentAnimationNumFrames()) - 1).
         if (!state?.picked && definition.idle.randomFrame) animation.setFrame(Math.floor(Math.random()
-          * (animation instanceof SpriteController ? animation.numFrames : animation.frameCount)));
+          * ('numFrames' in animation ? animation.numFrames : animation.frameCount)));
         const playSequence = (first: string, last?: string, loop = false) => {
           const version = ++plant.version;
           plant.transitionAt = this.scheduler.now;
@@ -338,8 +350,8 @@ export class PickablePlantManager {
           },
         };
         const appearance = definition.createAppearance?.({ ...animationContext, get animation() {
-          if (!(animation instanceof SpriteController)) throw new Error('Layered plant appearance requires a SpriteController');
-          return animation;
+          if (animation instanceof SpriteController || animation instanceof ResidentSpriteController) return animation;
+          throw new Error('Layered plant appearance requires a factory controller');
         } });
         const pickable: Pickable = new Pickable(model, definition.product, definition.regrowTime, definition.numToHarvest ?? 1, () => {
           plant.sound?.stop();
@@ -434,8 +446,8 @@ export class PickablePlantManager {
           }
           this.remove(model);
         });
-        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, version: 0,
-          transitionAt: this.scheduler.now, awake: !resident, stopEffect: () => {}, stopBurning: () => {},
+        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, residentController, version: 0,
+          transitionAt: this.scheduler.now, awake: !resident && !residentController, stopEffect: () => {}, stopBurning: () => {},
           burnable, propagator, workable, persistence, fire, fireFactory, phase, outputs, variant };
         if (resident && this.cameraRotation) plant.stopArt = createEffect(() => {
           resident.art.get();
@@ -482,6 +494,15 @@ export class PickablePlantManager {
           plant.awake = active;
           this.track(plant);
         });
+        if (residentController) {
+          // Layers and snow are prefab state: dress every drawn sprite again from the plant's own components.
+          if (appearance) plant.stopArt = createEffect(() => { residentController.art.get(); appearance.restore(pickable); });
+          plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
+            residentController.setActive(active);
+            plant.awake = active;
+            this.track(plant);
+          });
+        }
         if (definition.physicsRadius !== undefined && this.world.physics) {
           plant.body = MakeObstaclePhysics(model.position, definition.physicsRadius);
           model.userData.physicsBody = plant.body;
@@ -580,17 +601,25 @@ export class PickablePlantManager {
           const skinId = nextReskin(definition.skins!, previousSkin, tool?._cached_reskinname, definition.prefab);
           const factory = await this.getFactory(definition, skinId);
           if (!isValid()) throw new Error('Plant is no longer available');
-          const replacement = factory.create({ initialAnimation: definition.idle.name,
-            getWatchWorldContent: this.getWatchWorldContent,
-            snowCovered: definition.snowCovered ? await this.snowRequest : undefined });
+          const snowCovered = definition.snowCovered ? await this.snowRequest : undefined;
+          const options = (initialAnimation: string) => ({ initialAnimation,
+            getWatchWorldContent: this.getWatchWorldContent, snowCovered });
+          const replacement = plant.residentController
+            ? new ResidentSpriteController(new THREE.Group(), animationName => factory.create(options(animationName)),
+              drawn => factory.disposeSprite(drawn), factory.create(options(definition.idle.name)), { name: definition.idle.name })
+            : factory.create(options(definition.idle.name));
+          const release = () => {
+            if (replacement instanceof ResidentSpriteController) replacement.dispose(); else factory.disposeSprite(replacement);
+          };
           let used = false;
           return { apply: () => {
             if (used || !isValid() || model.userData.skinId !== previousSkin) return false;
-            model.userData.replacePlantAppearance(replacement);
+            if (replacement instanceof ResidentSpriteController) plant.residentController!.adopt(replacement);
+            else model.userData.replacePlantAppearance(replacement);
             if (skinId) model.userData.skinId = skinId; else delete model.userData.skinId;
-            factory.disposeSprite(replacement); used = true;
+            release(); used = true;
             return true;
-          }, dispose: () => { if (!used) { factory.disposeSprite(replacement); used = true; } } };
+          }, dispose: () => { if (!used) { release(); used = true; } } };
         },
       }];
     });
@@ -666,6 +695,7 @@ export class PickablePlantManager {
     plant.stopEffect();
     plant.sound?.stop();
     if (plant.sprite) plant.sprite.dispose();
+    else if (plant.residentController) plant.residentController.dispose();
     else plant.factory!.disposeSprite(model);
   }
 

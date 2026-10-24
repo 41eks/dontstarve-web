@@ -184,11 +184,13 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     expect(drawnIndices(first)).toBeLessThan(initialSnow);
     s.snowLevel.set(.015); await settleEffects();
     expect(drawnIndices(first)).toBe(initialSnow);
-    const oldController = first.userData.animationController;
+    // The resident controller is the entity's stable handle; the drawn sprite and its controller are replaced.
+    const drawnController = () => first.children.find(child => child.userData.animationController)!.userData.animationController;
+    const oldController = drawnController();
     const oldHide = vi.spyOn(oldController, 'hideLayer'), oldShow = vi.spyOn(oldController, 'showLayer');
     const skin = await s.bushes.reskinTargets[0].prepareNextSkin();
     expect(skin.apply()).toBe(true); skin.dispose();
-    expect(first.userData.animationController).not.toBe(oldController);
+    expect(drawnController()).not.toBe(oldController);
     const reskinnedSnow = drawnIndices(first);
     s.snowLevel.set(0); await settleEffects();
     expect(drawnIndices(first)).toBeLessThan(reskinnedSnow);
