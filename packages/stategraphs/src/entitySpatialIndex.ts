@@ -1,4 +1,4 @@
-import { Box3, Mesh, Vector3, type Object3D, type Ray } from 'three';
+import { Box3, Matrix4, Mesh, Vector3, type Object3D, type Ray } from 'three';
 import { prepareSpatialGeometryBounds, spriteSpatialRadius, watchSpatialBounds } from '../../animation/src/spatialBounds.ts';
 
 // Ground cells also hold tall visual envelopes. Rays traverse cells, never a foot-point radius.
@@ -12,6 +12,10 @@ interface Entry {
   bounds: Box3;
   keys: string[];
   left: number; right: number; top: number; bottom: number;
+  /** Set when something other than the transform changed (children, mouse flag, registration). */
+  stale: boolean;
+  lastMatrix: Matrix4;
+  lastPosition: Vector3;
   sync(): void;
   dispose(): void;
 }
@@ -54,10 +58,16 @@ export function retainSpatialEntity(model: Object3D, positionOf?: () => Vector3)
       model, owners: 0, mouse: false, positionOf: positionOf ?? (() => model.position),
       position: new Vector3(), bounds: new Box3(), keys: [],
       left: NaN, right: NaN, top: NaN, bottom: NaN,
+      stale: true, lastMatrix: new Matrix4(), lastPosition: new Vector3(),
       sync() {
-        if (!model.parent) { removeCells(owned); owned.left = NaN; return; }
-        owned.position.copy(owned.positionOf());
+        if (!model.parent) { removeCells(owned); owned.left = NaN; owned.stale = true; return; }
+        const nextPosition = owned.positionOf();
         const matrix = model.matrixWorld;
+        if (!owned.stale && owned.lastPosition.equals(nextPosition) && owned.lastMatrix.equals(matrix)) return;
+        owned.stale = false;
+        owned.lastMatrix.copy(matrix);
+        owned.lastPosition.copy(nextPosition);
+        owned.position.copy(nextPosition);
         const radius = owned.mouse ? localRadius(model) * matrix.getMaxScaleOnAxis() : 0;
         owned.bounds.min.setFromMatrixPosition(matrix).addScalar(-radius);
         owned.bounds.max.setFromMatrixPosition(matrix).addScalar(radius);
@@ -98,7 +108,7 @@ export function retainSpatialEntity(model: Object3D, positionOf?: () => Vector3)
       updateWorldMatrix.call(this, parents, children); owned.sync(); dirty.delete(owned);
     };
     const sync = () => model.updateWorldMatrix(true, true);
-    const stopBounds = watchSpatialBounds(model, () => dirty.add(owned));
+    const stopBounds = watchSpatialBounds(model, () => { owned.stale = true; dirty.add(owned); });
     model.addEventListener('added', sync);
     model.addEventListener('removed', sync);
     entries.set(model, entry = owned);
@@ -106,12 +116,12 @@ export function retainSpatialEntity(model: Object3D, positionOf?: () => Vector3)
   }
   const owned = entry;
   owned.owners++;
-  if (positionOf) { owned.positionOf = positionOf; owned.sync(); }
+  if (positionOf) { owned.positionOf = positionOf; owned.stale = true; owned.sync(); }
   let disposed = false;
   return {
     setMouse(enabled: boolean) {
       if (disposed || owned.mouse === enabled) return;
-      owned.mouse = enabled; syncEntitySpatial(model);
+      owned.mouse = enabled; owned.stale = true; syncEntitySpatial(model);
     },
     dispose() { if (!disposed) { disposed = true; if (--owned.owners === 0) owned.dispose(); } },
   };

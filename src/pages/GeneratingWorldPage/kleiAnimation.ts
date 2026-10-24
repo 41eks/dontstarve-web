@@ -1,3 +1,5 @@
+import { parseKtex } from "@dontstarve-web/animation/parseKtex"
+
 export type Matrix = [number, number, number, number, number, number]
 
 export type AnimElement = {
@@ -219,93 +221,10 @@ export function parseAnimation(buffer: ArrayBuffer): Animation {
   return parseAnimations(buffer)[0]
 }
 
-function rgb565(value: number): [number, number, number] {
-  const red = (value >> 11) & 31
-  const green = (value >> 5) & 63
-  const blue = value & 31
-  return [Math.round(red * 255 / 31), Math.round(green * 255 / 63), Math.round(blue * 255 / 31)]
-}
-
-function decodeDxt5(data: Uint8Array, width: number, height: number) {
-  const output = new Uint8ClampedArray(width * height * 4)
-  let offset = 0
-
-  for (let blockY = 0; blockY < Math.ceil(height / 4); blockY += 1) {
-    for (let blockX = 0; blockX < Math.ceil(width / 4); blockX += 1) {
-      const alpha0 = data[offset]
-      const alpha1 = data[offset + 1]
-      const alphaBits = data.subarray(offset + 2, offset + 8)
-      const alphas = new Uint8Array(8)
-      alphas[0] = alpha0
-      alphas[1] = alpha1
-      if (alpha0 > alpha1) {
-        for (let i = 1; i <= 6; i += 1) alphas[i + 1] = Math.round(((7 - i) * alpha0 + i * alpha1) / 7)
-      } else {
-        for (let i = 1; i <= 4; i += 1) alphas[i + 1] = Math.round(((5 - i) * alpha0 + i * alpha1) / 5)
-        alphas[6] = 0
-        alphas[7] = 255
-      }
-
-      const color0 = data[offset + 8] | (data[offset + 9] << 8)
-      const color1 = data[offset + 10] | (data[offset + 11] << 8)
-      const first = rgb565(color0)
-      const second = rgb565(color1)
-      const colors = [
-        first,
-        second,
-        first.map((value, channel) => Math.round((2 * value + second[channel]) / 3)) as [number, number, number],
-        first.map((value, channel) => Math.round((value + 2 * second[channel]) / 3)) as [number, number, number],
-      ]
-      const colorBits = (
-        data[offset + 12] |
-        (data[offset + 13] << 8) |
-        (data[offset + 14] << 16) |
-        (data[offset + 15] << 24)
-      ) >>> 0
-
-      for (let pixel = 0; pixel < 16; pixel += 1) {
-        const x = blockX * 4 + (pixel % 4)
-        const sourceY = blockY * 4 + Math.floor(pixel / 4)
-        if (x >= width || sourceY >= height) continue
-        let alphaCode = 0
-        const alphaBit = pixel * 3
-        for (let bit = 0; bit < 3; bit += 1) {
-          const absoluteBit = alphaBit + bit
-          alphaCode |= ((alphaBits[Math.floor(absoluteBit / 8)] >> (absoluteBit % 8)) & 1) << bit
-        }
-        const alpha = alphas[alphaCode]
-        const color = colors[(colorBits >>> (pixel * 2)) & 3]
-        const targetY = height - 1 - sourceY
-        const target = (targetY * width + x) * 4
-        output[target] = alpha ? Math.min(255, Math.round(color[0] * 255 / alpha)) : 0
-        output[target + 1] = alpha ? Math.min(255, Math.round(color[1] * 255 / alpha)) : 0
-        output[target + 2] = alpha ? Math.min(255, Math.round(color[2] * 255 / alpha)) : 0
-        output[target + 3] = alpha
-      }
-      offset += 16
-    }
-  }
-  return output
-}
-
 export function parseAtlas(buffer: ArrayBuffer): DecodedTexture {
-  const reader = new BinaryReader(buffer)
-  if (reader.string(4) !== "KTEX") throw new Error("不是有效的 Klei KTEX 文件")
-  const header = reader.u32()
-  const mipCount = Math.floor(header / 8192) % 32
-  const pixelFormat = Math.floor(header / 16) % 32
+  const pixelFormat = Math.floor(new DataView(buffer).getUint32(4, true) / 16) % 32
   if (pixelFormat !== 2) throw new Error(`当前展示仅支持 DXT5 图集（收到格式 ${pixelFormat}）`)
-
-  const mipmaps = Array.from({ length: mipCount }, () => ({
-    width: reader.u16(),
-    height: reader.u16(),
-    pitch: reader.u16(),
-    size: reader.u32(),
-  }))
-  const first = mipmaps[0]
-  const compressed = new Uint8Array(buffer, reader.offset, first.size)
-  const rgba = decodeDxt5(compressed, first.width, first.height)
-  return { width: first.width, height: first.height, pixels: new Uint8Array(rgba.buffer) }
+  return parseKtex(new Uint8Array(buffer), "atlas")
 }
 
 export async function loadKleiAnimationAsset(root: string): Promise<KleiAnimationAsset> {

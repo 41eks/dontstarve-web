@@ -10,7 +10,7 @@
 ```ts
 import { ArchiveSpriteAssets, createArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 
-const assets = new ArchiveSpriteAssets(`${import.meta.env.BASE_URL}dst/data/anim`);
+const assets = new ArchiveSpriteAssets();
 const sprite = await createArchiveSprite(assets, {
   animationArchive: 'torch.zip', buildArchives: ['swap_torch.zip'],
   bank: 'torch', animation: 'idle', loop: false,
@@ -28,6 +28,49 @@ assets.dispose(); // 所有使用此缓存的实体移除后释放共享资源
 每帧部件合并为一个几何体，保留源图层顺序和连续材质组；内部 visual 已注册到
 实体绘制排序系统。`setAnimation(name)` 切换同一 bank 的动画，`setPaused(boolean)`
 控制更新，具体掉落和库存行为由 prefab 层监听事件后调用。
+
+## 通用共享帧入口
+
+prefab 可直接使用 `createSharedArchiveSprite(assets, definition, options?)`，参数与返回的控制器沿用
+`createArchiveSprite()`。所有动画在首次显示某帧时缓存几何，后续 `start()` / `playOnce()` 切换的 clip 也自动共享，
+无需在 prefab 里列出普通、开采后或其他状态的动画清单。
+
+```ts
+import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+
+// 每个 manager 只创建一个资源所有者，所有实例共用；不要在逐实体构造中重新创建。
+const assets = new ArchiveSpriteAssets();
+const sprite = await createSharedArchiveSprite(assets, {
+  animationArchive: 'moonglasspool_tile.zip',
+  buildArchives: ['moonglasspool_tile.zip'],
+  bank: 'moonglasspool_tile', animation: 'idle', loop: true,
+}, { name: 'grotto_pool_big' });
+sprite.update(dt);
+sprite.dispose(); // 只释放本实例的资源
+assets.dispose(); // manager 的所有实例移除后，统一释放缓存几何、材质和纹理
+```
+
+缓存按实际 clip、帧、build、皮肤、符号覆盖和隐藏配置区分；模型位置、播放进度、完成回调和私有颜色／透明度仍独立。
+共享的是不可变几何，调用方不要直接修改其顶点、UV、索引或释放它。`grotto_pool` 已使用此入口；
+仅需部分动画共享时，仍可用 `createArchiveSprite()` 的 `sharedAnimations: ['idle']`。
+
+## prefab 的动画切换
+
+动画包统一提供共享帧和通用播放接口；动作对应哪个源 clip、结束后播放什么，由 prefab 按 Lua 选择。
+例如蘑菇树直接使用 `createSharedArchiveSprite()` 返回的控制器：
+
+```ts
+sprite.setFrame(Math.floor(Math.random() * sprite.frameCount));
+sprite.playOnce('chop', () => sprite.start('idle_loop'));
+sprite.playOnce('fall', () => sprite.start('idle_stump'));
+sprite.playOnce('change', () => sprite.start('idle_loop'));
+```
+
+待机、受击、倒下、树桩及生长／开花的帧几何自动共享，各实体保留独立模型节点、播放进度、完成回调和材质颜色。
+换帧命中缓存时不再逐实体解析部件、重写顶点或上传几何；仍按实体脚点排序与绘制，不合并 draw call。
+砍伐次数、掉落、生长阶段、计时和保存仍由 prefab 与组件负责。
+
+底层 `createArchiveSprite()` 的 `options.sharedAnimations` 支持 clip 列表或 `'all'`；默认保留独立几何。
 
 ## DST 图片 XML 索引
 

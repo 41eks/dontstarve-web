@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -176,11 +176,13 @@ export class GrottoPoolManager {
     const mistAnimation = prefab === GROTTO_POOL_BIG_ID ? 'steam_big' : `steam_small${1 + Math.floor(Math.random() * 2)}`;
     const resources = await Promise.allSettled([
       pool
-        ? createArchiveSprite(this.assets, { animationArchive: 'moonglasspool_tile.zip', buildArchives: ['moonglasspool_tile.zip'],
-          bank: 'moonglasspool_tile', animation: POOLS[prefab].animation, loop: true }, { name: prefab })
-        : createArchiveSprite(this.assets, { animationArchive: 'moonglass_bigwaterfall.zip', buildArchives: ['moonglass_bigwaterfall.zip'],
-          bank: 'moonglass_bigwaterfall', animation: definition!.animation, loop: true }, { name: prefab }),
-      pool ? createArchiveSprite(this.assets, { animationArchive: 'moonglass_bigwaterfall_steam.zip',
+        ? createSharedArchiveSprite(this.assets, { animationArchive: 'moonglasspool_tile.zip', buildArchives: ['moonglasspool_tile.zip'],
+          bank: 'moonglasspool_tile', animation: POOLS[prefab].animation, loop: true },
+        { name: prefab })
+        : createSharedArchiveSprite(this.assets, { animationArchive: 'moonglass_bigwaterfall.zip', buildArchives: ['moonglass_bigwaterfall.zip'],
+          bank: 'moonglass_bigwaterfall', animation: definition!.animation, loop: true },
+        { name: prefab }),
+      pool ? createSharedArchiveSprite(this.assets, { animationArchive: 'moonglass_bigwaterfall_steam.zip',
         buildArchives: ['moonglass_bigwaterfall_steam.zip'], bank: 'moonglass_bigwaterfall_steam', animation: mistAnimation, loop: true },
       { name: `${prefab}_mist` }) : undefined,
       pool ? PreloadSounds(WATERFALL_LOOP) : undefined,

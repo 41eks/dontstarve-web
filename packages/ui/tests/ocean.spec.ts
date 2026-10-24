@@ -21,6 +21,7 @@ test('ocean renders moving water and phase colours while snow follows terrain co
   expect(result.previousGeometryReleased).toBe(1);
   expect(result.atlasesPreserved).toBe(true);
   expect(result.terrainReleasedAtlases).toBe(true);
+  expect(result.matrixUpdatesPerRender).toEqual([1, 1, 1, 1, 1]);
   expect(errors).toEqual([]);
   await page.locator('canvas').screenshot({ path: testInfo.outputPath('coastal-snow.png') });
 });

@@ -30,7 +30,7 @@ export {
 } from './wallSprite';
 export { SpriteRenderOrderSorter, compareRenderEntries, isSpriteEntityRendered, setSpriteEntityRenderOrder } from './renderOrder';
 export {
-  ArchiveSpriteAssets, createArchiveSprite,
+  ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite,
   type ArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions, type ArchiveSpriteBuild,
 } from './archiveSprite';
 export {

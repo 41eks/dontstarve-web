@@ -27,9 +27,9 @@ let displayHeight = 0;
 let displayPixelRatio = 0;
 
 function resizeRendererToDisplaySize() {
-  const canvas = renderer.domElement;
-  const width = Math.max(1, Math.floor(canvas.clientWidth));
-  const height = Math.max(1, Math.floor(canvas.clientHeight));
+  // The canvas is fixed at 100vw x 100vh; reading clientWidth would force a synchronous layout every frame.
+  const width = Math.max(1, Math.floor(window.innerWidth));
+  const height = Math.max(1, Math.floor(window.innerHeight));
   const pixelRatio = Math.min(window.devicePixelRatio, 2);
   const needsResize =
     width !== displayWidth ||

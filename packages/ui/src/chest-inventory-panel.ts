@@ -45,7 +45,7 @@ export function createChestInventoryPanel(
 
   const update = () => {
     if (!openModel || !openModel.visible || (!element.slotContainer && !element.isClosing)) {
-      element.hidden = true;
+      if (!element.hidden) element.hidden = true;
       return;
     }
 
@@ -81,7 +81,7 @@ export function createChestInventoryPanel(
     const inView = anchor.z >= -1 && anchor.z <= 1
       && anchor.x >= -1.2 && anchor.x <= 1.2
       && anchor.y >= -1.2 && anchor.y <= 1.2;
-    element.hidden = !inView;
+    if (element.hidden === inView) element.hidden = !inView;
     if (!inView) return;
 
     const canvasBounds = canvas.getBoundingClientRect();

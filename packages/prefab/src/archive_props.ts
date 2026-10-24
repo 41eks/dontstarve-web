@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -133,9 +133,9 @@ export class ArchivePropsManager {
     const initial = prefab === ARCHIVE_MOON_STATUE_ID ? `idle_full_${anim}` : prefab === ARCHIVE_RUNE_STATUE_ID
       ? (anim === 1 ? 'idle' : `idle${anim}`) : 'idle';
     const resources = await Promise.allSettled([
-      createArchiveSprite(this.assets, { animationArchive: definition.animationArchive, buildArchives: [definition.buildArchive],
+      createSharedArchiveSprite(this.assets, { animationArchive: definition.animationArchive, buildArchives: [definition.buildArchive],
         bank: definition.bank, animation: initial, loop: false, hiddenSymbols: definition.hiddenSymbols }, { name: prefab }),
-      definition.ground && prefab === ARCHIVE_PORTAL_ID ? createArchiveSprite(this.assets, { animationArchive: PORTAL_SHADOW.animationArchive,
+      definition.ground && prefab === ARCHIVE_PORTAL_ID ? createSharedArchiveSprite(this.assets, { animationArchive: PORTAL_SHADOW.animationArchive,
         buildArchives: [PORTAL_SHADOW.buildArchive], bank: PORTAL_SHADOW.bank, animation: 'idle', loop: false }, { name: `${prefab}_shadow` }) : undefined,
       prefab === ARCHIVE_MOON_STATUE_ID ? this.prepareStatue() : undefined,
     ] as const);
@@ -262,7 +262,7 @@ export class ArchivePropsManager {
     const at = position.clone();
     PlaySound('dontstarve/common/destroy_smoke', at);
     PlaySound('dontstarve/wilson/rock_break', at);
-    void createArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
+    void createSharedArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
       bank: 'collapse', animation: 'collapse_small', loop: false }).then(effect => {
       if (this.disposed) { effect.dispose(); return; }
       effect.model.position.copy(at); effect.model.userData.tags = ['FX', 'NOCLICK']; effect.model.userData.persists = false;

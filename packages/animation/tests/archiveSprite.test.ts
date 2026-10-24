@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { ArchiveSpriteAssets, createArchiveSprite } from '../src/archiveSprite';
+import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 
 beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -9,6 +9,31 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (url: string) => {
   return new Response(await readFile(new URL(`../../../public/dst/data/${path}`, import.meta.url)));
 })));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
+it('shares later-selected clips without prefab clip lists while keeping opacity and completion callbacks local', async () => {
+  const assets = new ArchiveSpriteAssets();
+  const definition = { animationArchive: 'moonglass_bigwaterfall.zip', buildArchives: ['moonglass_bigwaterfall.zip'],
+    bank: 'moonglass_bigwaterfall', animation: 'moonglass_1', loop: true };
+  const first = await createSharedArchiveSprite(assets, definition, { opacity: .5 });
+  const second = await createSharedArchiveSprite(assets, definition, { opacity: .8 });
+  const mesh = (sprite: typeof first) => sprite.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  try {
+    expect(mesh(first).geometry).toBe(mesh(second).geometry);
+    first.setOpacity(1);
+    expect(mesh(first).material[0].opacity).toBe(1);
+    expect(mesh(second).material[0].opacity).toBe(.8);
+    const doneFirst = vi.fn(), doneSecond = vi.fn();
+    first.playOnce('moonglass_1_mined', doneFirst);
+    expect(mesh(first).geometry).not.toBe(mesh(second).geometry);
+    second.playOnce('moonglass_1_mined', doneSecond);
+    expect(mesh(first).geometry).toBe(mesh(second).geometry);
+    for (let i = 0; i < 300 && doneFirst.mock.calls.length === 0; i++) first.update(.1);
+    expect(doneFirst).toHaveBeenCalledOnce();
+    expect(doneSecond).not.toHaveBeenCalled();
+    first.update(.1);
+    expect(doneFirst).toHaveBeenCalledOnce();
+  } finally { first.dispose(); second.dispose(); assets.dispose(); }
+});
 
 it('creates split-archive sprites without prefab metadata and shares materials across independent geometry', async () => {
   vi.stubEnv('BASE_URL', '/preview/');

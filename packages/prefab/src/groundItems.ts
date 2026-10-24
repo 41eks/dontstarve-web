@@ -1,5 +1,5 @@
 import {
-  ArchiveSpriteAssets, createArchiveSprite,
+  ArchiveSpriteAssets, createSharedArchiveSprite,
   type ArchiveSprite, type ArchiveSpriteDefinition,
 } from '@dontstarve-web/animation/archiveSprite';
 import type { InventoryItemSpec, InventorySkinSpec } from '@dontstarve-web/inventory';
@@ -105,7 +105,7 @@ export async function createGroundItemSprite(
   if (!definition) throw new Error(`Unknown ground item: ${itemId}`);
   const skinArchive = skinId === undefined ? undefined : definition.skinArchives[skinId];
   if (skinId !== undefined && !skinArchive) throw new Error(`Unknown ground skin ${skinId} for ${itemId}`);
-  const sprite = await createArchiveSprite(assets, definition, { skinArchive, name: `GroundItem:${itemId}` });
+  const sprite = await createSharedArchiveSprite(assets, definition, { skinArchive, name: `GroundItem:${itemId}` });
   Object.assign(sprite.model.userData, { itemId, skinId });
   const removeInventoryEvents = listenInventoryEvents(sprite.model, {
     ondropped: () => sprite.setPaused(false),
