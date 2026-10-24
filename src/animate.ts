@@ -68,7 +68,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
             }
 
             dstLighting.render(scene, camera);
-            cursorUi.update();
+            cursorUi.tick();
             fpsDisplay?.update(timestamp);
             debugStats?.update();
             if (firstFrame) {

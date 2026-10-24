@@ -26,7 +26,7 @@ it('derives lighting with an effect, preserves transitions across progress updat
   try {
     expect(lighting.getPhase()).toBe('dusk');
     expect(lighting.getSeason()).toBe('winter');
-    const material = (lighting as unknown as { material: THREE.ShaderMaterial }).material;
+    const material = (lighting as unknown as { bakeMaterial: THREE.ShaderMaterial }).bakeMaterial;
     const initialLut = material.uniforms.destinationLut.value;
     clockstate.set({ phase: 'night', timeinphase: 0 });
     seasonstate.set({ season: 'summer', progress: 0.5 });

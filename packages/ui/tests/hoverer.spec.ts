@@ -39,6 +39,16 @@ test('shared hover text shows primary and secondary actions, honors overrides, a
   await expect(secondary).toBeHidden();
   await page.evaluate(() => (window as any).hoverer.tooltip(false));
   await expect(primary.locator('span')).toHaveText('捕捉');
+  await page.evaluate(() => {
+    const hoverer = (window as any).hoverer;
+    hoverer.coverWorld(true);
+    hoverer.tooltip(true);
+    hoverer.step();
+  });
+  await expect(hover).toBeHidden();
+  await page.evaluate(() => (window as any).hoverer.coverWorld(false));
+  await expect(primary.locator('span')).toHaveText('建造预览');
+  await page.evaluate(() => (window as any).hoverer.tooltip(false));
   const viewport = page.viewportSize()!;
   for (const point of [{ x: 2, y: 2 }, { x: viewport.width - 2, y: viewport.height - 2 }]) {
     await page.mouse.move(point.x, point.y); await step();

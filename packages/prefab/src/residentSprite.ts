@@ -22,6 +22,8 @@ export interface ResidentEntity {
  * The stable root keeps the entity origin, identity and render-order slot; inactive entities hold an empty
  * placeholder group. The logical clip, callback and appearance requests are kept and replayed on `load()`.
  * `create` receives the logical clip so a factory sprite is built directly in it.
+ * `setActive(false)` also takes the stable root out of its parent and `setActive(true)` puts it back, so scene
+ * traversals (projection, matrix updates) skip inactive entities; the owner keeps the root and its state.
  */
 export class ResidentSprite implements ArchiveSprite {
   readonly model = new THREE.Group();
@@ -39,7 +41,12 @@ export class ResidentSprite implements ArchiveSprite {
   private generation = 0;
   private disposed = false;
   private paused = false;
+  /** Inactive: the root is held out of the scene and returns to `home` on activation. */
+  private asleep = false;
+  private home: THREE.Object3D | undefined;
   private readonly create: (clip: { name: string; loop: boolean }) => ArchiveSprite | Promise<ArchiveSprite>;
+  // The owner may add the root to its parent after the tile was already found inactive.
+  private readonly onAdded = () => { if (this.asleep) this.sleep(); };
 
   /** `initial` is an already created sprite in `clip`; without it the sprite stays unloaded until `load()`. */
   constructor(create: ResidentSprite['create'], clip: { name: string; loop: boolean }, initial?: ArchiveSprite, name = 'ResidentSprite') {
@@ -49,6 +56,7 @@ export class ResidentSprite implements ArchiveSprite {
     this.model.userData.billboard = true;
     this.model.add(this.placeholder);
     registerSpriteRenderGroup(this.model, this.placeholder);
+    this.model.addEventListener('added', this.onAdded);
     if (initial) this.attach(initial);
     this.stopVisualEffect = createEffect(() => this.matrixGate.setRenderEnabled(this.visual.get() !== undefined));
   }
@@ -100,7 +108,23 @@ export class ResidentSprite implements ArchiveSprite {
     invalidateEntitySpatial(this.model);
   }
 
-  setActive(active: boolean): void { if (active) this.load(); else this.unload(); }
+  setActive(active: boolean): void {
+    if (active) { this.wake(); this.load(); } else { this.unload(); this.asleep = true; this.sleep(); }
+  }
+
+  private sleep(): void {
+    const parent = this.model.parent;
+    if (!parent) return;
+    this.home = parent;
+    this.model.removeFromParent();
+  }
+
+  private wake(): void {
+    this.asleep = false;
+    const home = this.home;
+    this.home = undefined;
+    if (home && !this.model.parent && !this.disposed) home.add(this.model);
+  }
 
   private attach(sprite: ArchiveSprite): void {
     this.matrixGate.markDirty();
@@ -171,6 +195,9 @@ export class ResidentSprite implements ArchiveSprite {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.asleep = false;
+    this.home = undefined;
+    this.model.removeEventListener('added', this.onAdded);
     this.stopVisualEffect();
     this.unload();
     this.matrixGate.dispose();

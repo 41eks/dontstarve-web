@@ -150,6 +150,8 @@ interface Plant {
   readonly animation: PlantAnimation;
   version: number;
   transitionAt: number;
+  /** Its tile is in the tickingarea (always true without residency): the visual may exist and must be advanced and ordered. */
+  awake: boolean;
   stopEffect: () => void;
   stopActivity?: () => void;
   sound?: SoundHandle;
@@ -181,6 +183,8 @@ export class PickablePlantManager {
   private fireFactoryRequest?: Promise<AnimatedSpriteFactory>;
   private snowRequest?: Promise<LoadedBuildOverride>;
   private readonly plants = new Map<THREE.Group, Plant>();
+  /** Plants that are awake or burning; the rest hold no visual and have nothing to advance or order. */
+  private readonly running = new Set<Plant>();
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
   private readonly cleanups: (() => void)[] = [];
@@ -430,7 +434,7 @@ export class PickablePlantManager {
           this.remove(model);
         });
         const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, version: 0,
-          transitionAt: this.scheduler.now, stopEffect: () => {}, stopBurning: () => {},
+          transitionAt: this.scheduler.now, awake: !resident, stopEffect: () => {}, stopBurning: () => {},
           burnable, propagator, workable, persistence, fire, fireFactory, phase, outputs, variant };
         plant.behavior = definition.createBehavior?.({ ...animationContext, get animation() { return animation; }, pickable,
           scheduler: this.scheduler,
@@ -450,12 +454,14 @@ export class PickablePlantManager {
           if (burning) {
             fire.position.copy(model.position);
             this.scene.add(fire);
+            this.track(plant);
             plant.fireSound = PlaySound('dontstarve/common/campfire', model.position);
             const large = definition.burnFxLevel === 4;
             setPrefabLocalLight(model, { colour: large ? [1, 190 / 255, 121 / 255] : [1, 1, 192 / 255],
               radius: ((definition.burnFxLevel ?? 3) + 1) * (TILE_SIZE / 4), intensity: large ? .9 : .8, falloff: large ? .25 : .33 });
           } else {
             fire.removeFromParent(); plant.fireSound?.stop(); plant.fireSound = undefined;
+            this.track(plant);
             setPrefabLocalLight(model, null);
             if (this.plants.get(model) === plant && !this.disposed) {
               plant.extinguishSound?.stop(); plant.extinguishSound = PlaySound('dontstarve/common/fireOut', model.position);
@@ -463,7 +469,12 @@ export class PickablePlantManager {
           }
         });
         this.plants.set(model, plant);
-        if (resident) plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => resident.setActive(active));
+        this.track(plant);
+        if (resident) plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
+          resident.setActive(active);
+          plant.awake = active;
+          this.track(plant);
+        });
         if (definition.physicsRadius !== undefined && this.world.physics) {
           plant.body = MakeObstaclePhysics(model.position, definition.physicsRadius);
           model.userData.physicsBody = plant.body;
@@ -513,10 +524,11 @@ export class PickablePlantManager {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const plant of this.plants.values()) {
+    const now = this.scheduler.now;
+    for (const plant of this.running) {
       const { animation, transitionAt, fire, model } = plant;
       if (!this.cameraRotation) this.face(plant, cameraQuaternion);
-      animation.update(Math.min(dt, this.scheduler.now - transitionAt));
+      animation.update(Math.min(dt, now - transitionAt));
       if (fire.parent) {
         fire.position.copy(model.position); fire.quaternion.copy(cameraQuaternion);
         (fire.userData.animationController as TransientSpriteAnimationController).update(dt);
@@ -524,9 +536,18 @@ export class PickablePlantManager {
     }
   }
 
+  /** A sleeping plant draws nothing, so it has no order to resolve. */
   get renderEntities() {
-    return [...this.plants.values()].flatMap(({ model, fire }) => [model, ...(fire.parent ? [fire] : [])]
-      .map(object => ({ object, footPosition: model.position, cameraDepth: 0 })));
+    const entries: { object: THREE.Object3D; footPosition: THREE.Vector3; cameraDepth: number }[] = [];
+    for (const { model, fire, awake } of this.running) {
+      if (awake) entries.push({ object: model, footPosition: model.position, cameraDepth: 0 });
+      if (fire.parent) entries.push({ object: fire, footPosition: model.position, cameraDepth: 0 });
+    }
+    return entries;
+  }
+
+  private track(plant: Plant): void {
+    if (plant.awake || plant.fire.parent) this.running.add(plant); else this.running.delete(plant);
   }
   get digTargets(): readonly ShovelTarget[] { return this.getDigTargets(); }
 
@@ -618,6 +639,7 @@ export class PickablePlantManager {
     const plant = this.plants.get(model);
     if (!plant) return;
     this.plants.delete(model);
+    this.running.delete(plant);
     plant.version++;
     model.userData.removed = true;
     if (plant.body) this.world.physics?.removeBody(plant.body);

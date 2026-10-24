@@ -1,4 +1,4 @@
-import { loadMinimapIcon } from '@dontstarve-web/prefab/minimapIcons';
+import { loadMinimapIcon, preloadMinimapAtlases } from '@dontstarve-web/prefab/minimapIcons';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 import { MinimapDomView } from './minimap-dom-view';
 import { MinimapGroundImage, type GroundImageOptions } from './minimap-ground-image';
@@ -39,7 +39,14 @@ export class MinimapDomRenderer {
 
   get root(): HTMLElement { return this.dom.root; }
 
-  prepare(): Promise<void> { return this.terrain.prepare(); }
+  /** Terrain and the icon atlases are ready before the first marker or the map is shown. */
+  async prepare(): Promise<void> {
+    await Promise.all([
+      this.terrain.prepare(),
+      // A failed preload only defers the work: loadMinimapIcon requests the atlas again on demand.
+      preloadMinimapAtlases(this.dataRoot).catch(error => console.error('Unable to preload minimap icon atlases', error)),
+    ]);
+  }
 
   inspect(): MinimapInspection {
     return { ready: this.terrain.ready, icons: [...this.loadedIcons] };

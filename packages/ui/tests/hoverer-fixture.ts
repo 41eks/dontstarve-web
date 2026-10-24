@@ -42,6 +42,7 @@ export async function setupHoverer() {
     step,
     get queries() { return queries; },
     updateInactive: () => { inactive.update(); inactive.hide(); },
+    coverWorld: (covered: boolean) => ui.setWorldCovered(covered),
     equip: (value: boolean) => { equipped = value; step(); },
     valid: (value: boolean) => { valid = value; step(); },
     tooltip: (value: boolean) => { if (value) tooltip.show('建造预览'); else tooltip.hide(); },
