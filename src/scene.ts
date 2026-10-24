@@ -26,7 +26,7 @@ import { createWorldState, createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
-import { FindEntities } from '../packages/prefab/src/actionEntity';
+import { bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
@@ -142,8 +142,9 @@ export async function startScene(
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
   player.userData.locomotor = locomotor;
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, () => [player.position]);
+  const stopEntityWorld = bindActionEntityWorld(scene, worldState.tickingarea, worldState.playerpositions);
   const scheduler = worldState.scheduler;
-  const perishWorld: PerishWorld = { perishClock: worldState.perishClock };
+  const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
   itemEntities?.bindPerishWorld(perishWorld);
   const entities = await createSceneEntities(world, worldState, consumeBufferedBuild,
     onBuildingInteraction, onFlowerPlanted, itemEntities, inventory, scheduler);
@@ -156,6 +157,7 @@ export async function startScene(
   } catch (error) {
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     entities.dispose();
+    stopEntityWorld();
     disposeTerrain();
     worldState.dispose();
     dstLighting.dispose();
@@ -184,12 +186,11 @@ export async function startScene(
     turfMap.update(dt);
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     builder.OnUpdate();
-    // Inventory, container and ground insts share one registry; each settles every 10 game seconds.
-    for (const entity of itemEntities?.values() ?? []) {
-      entity.components.perishable.onFrame(dt);
-      entity.components.temperature?.OnUpdate(dt);
-    }
+    worldState.componentUpdates.update(dt);
     camera.getWorldQuaternion(cameraWorldQuaternion);
+    if (!worldState.camerarotation.peek().equals(cameraWorldQuaternion)) {
+      worldState.camerarotation.set(cameraWorldQuaternion.clone());
+    }
     setPlayerNormal(cameraWorldQuaternion);
     registry.update(dt, cameraWorldQuaternion);
     updateCharacterRenderOrder(registry);
@@ -268,6 +269,7 @@ export async function startScene(
     }
     const releaseResources = () => {
       entities.dispose();
+      stopEntityWorld();
       disposeTerrain();
       worldState.dispose();
       dstLighting.dispose();

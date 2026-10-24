@@ -1,12 +1,12 @@
 import { watchSignal, type Memo, type ReadonlySignal, type Signal } from './signal';
 import type { SeasonState, WorldPhase, WorldMoonPhase } from './world';
 import type { GameTimeScheduler } from './gameTimeScheduler';
-import type { Vector3 } from 'three';
+import type { Quaternion, Vector3 } from 'three';
 
 /** Named world inputs; compatible with erasableSyntaxOnly. */
 export const WorldContentKey = {
   Cycle: 'cycle', Moon: 'moon', Season: 'season', Temperature: 'temperature', Wind: 'wind', PerishClock: 'perishTick', SnowLevel: 'snowLevel',
-  PlayerPositions: 'playerpositions',
+  PlayerPositions: 'playerpositions', CameraRotation: 'camerarotation',
 } as const;
 export type WorldContentKey = typeof WorldContentKey[keyof typeof WorldContentKey];
 
@@ -19,6 +19,8 @@ export interface WorldContentValues {
   perishTick: PerishTick;
   snowLevel: number;
   playerpositions: Vector3[];
+  /** Camera world orientation, republished only when it changes; billboards copy it instead of polling the camera. */
+  camerarotation: Quaternion;
 }
 
 /** Publish moonphase and iswaxingmoon together, without an intermediate mixed pair. */

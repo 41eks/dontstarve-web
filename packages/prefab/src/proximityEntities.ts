@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeActionEntity } from './actionEntity';
 
 export interface ProximityEntity {
   readonly id: number;
@@ -87,6 +88,7 @@ export class ProximityEntities {
   private unload(entity: ProximityEntity): void {
     entity.model!.removeFromParent();
     this.disposeModel(entity.model!);
+    disposeActionEntity(entity.model!);
     entity.model = undefined;
     this.loaded.delete(entity);
   }

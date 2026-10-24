@@ -53,7 +53,6 @@ import {
   type PlaceableBuildingId,
 } from './placeableBuilding';
 import { dstLighting, renderer, scene } from './universal';
-import type { ButterflyFlower } from '@dontstarve-web/prefab/butterfly';
 import { FlowerPlanting } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
 import { initialSave } from './save/initialSave';
@@ -75,7 +74,7 @@ import { PREFAB_DEFINITIONS } from './prefabDefinitions';
 import { disposeSprite } from '@dontstarve-web/prefab/disposeSprite';
 import type { WorldState } from './worldState';
 
-type SceneWorldState = Pick<WorldState, 'clock' | 'season' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'tickingarea' | 'worldwind' | 'scheduler' | 'temperature' | 'weather' | 'perishClock'>;
+type SceneWorldState = Pick<WorldState, 'clock' | 'season' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'tickingarea' | 'worldwind' | 'scheduler' | 'componentUpdates' | 'temperature' | 'weather' | 'perishClock'>;
 
 const MANAGER_DEFINITIONS = {
   'buildings': PREFAB_DEFINITIONS.buildings,
@@ -214,8 +213,9 @@ export async function createSceneEntities(
   const Managers = {} as SceneManagers;
 
   const sceneInventory = inventory ?? createInventoryStore();
-  sceneInventory.entities.bindPerishWorld({ perishClock: worldState.perishClock });
+  sceneInventory.entities.bindPerishWorld({ perishClock: worldState.perishClock, scheduler: worldState.scheduler });
   sceneInventory.entities.bindTemperatureWorld({
+    componentUpdates: worldState.componentUpdates,
     temperature: worldState.temperature, clock: worldState.clock, unitScale: WORLD_SCALE,
     findHeaters: (position, radius, ignoredTags) => FindEntities(scene, position, radius, ['HASHEATER'], ignoredTags) as TemperatureSource[],
   });
@@ -438,16 +438,7 @@ export async function createSceneEntities(
       {
         getWatchWorldContent: worldState.getWatchWorldContent,
         getThreatPositions: () => [player.position],
-        getFlowers: () => {
-          const flowers: ButterflyFlower[] = [];
-          scene.traverse((object) => {
-            if (object.userData.tags?.includes('flower')) flowers.push({
-              id: object.userData.entityId ?? object.uuid,
-              position: object.getWorldPosition(new THREE.Vector3()),
-            });
-          });
-          return flowers;
-        },
+        getFlowers: () => Managers['flower'].plantedFlowers,
         constrainPosition: (position) => {
           const edge = initialSave.world.map.generator.options.size / 2 - 0.5;
           position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
@@ -458,11 +449,12 @@ export async function createSceneEntities(
         getWatchWorldContent: worldState.getWatchWorldContent,
       },
       { getSanityPercent: () => playerStats.sanity.percent.peek() },
-      itemEntities,
+      itemEntities ?? sceneInventory.entities,
       scheduler,
       Managers['world_fx'],
       Managers['molehill'].habitat,
       worldEvents,
+      worldState.getWatchWorldContent,
     );
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => {

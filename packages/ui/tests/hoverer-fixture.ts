@@ -28,11 +28,18 @@ export async function setupHoverer() {
     { action: { action: 'NET' }, button: 'left', model: target },
     { action: { action: 'CASTSPELL', modifier: 'RESKIN' }, button: 'right', model: target },
   ];
-  const unregister = picker.register(() => valid ? sources.map(candidate => ({ ...candidate, available: equipped })) : []);
+  let queries = 0;
+  const unregister = picker.register(() => {
+    queries++;
+    return valid ? sources.map(candidate => ({ ...candidate, available: equipped })) : [];
+  });
   const tooltip = ui.createLabel(pointer);
+  const inactive = ui.createLabel(pointer);
   const step = () => { renderer.render(scene, camera); ui.update(); };
   Object.assign(window, { hoverer: {
     step,
+    get queries() { return queries; },
+    updateInactive: () => { inactive.update(); inactive.hide(); },
     equip: (value: boolean) => { equipped = value; step(); },
     valid: (value: boolean) => { valid = value; step(); },
     tooltip: (value: boolean) => { if (value) tooltip.show('建造预览'); else tooltip.hide(); },

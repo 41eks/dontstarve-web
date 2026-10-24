@@ -1,7 +1,8 @@
 import type * as THREE from 'three';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
-import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorkableInst } from '../../componets/src/workable';
+import { TileTracker } from '../../componets/src/tileManager';
 
 /** Existing world removal writes update the sole lifecycle signal, including inside batches. */
 function modelRemoval(model: THREE.Group): ReadonlySignal<boolean> {
@@ -24,7 +25,7 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
     removal,
     get isRemoved() { return removal.peek(); },
     get components() { return inst?.components ?? model.userData.components; },
-    getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+    getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
     getPhysicsRadius: () => model.userData.physicsRadius ?? 0,
     hasTag: tag => {
       if (inst) return inst.hasTag(tag);
@@ -35,13 +36,17 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
       return model.userData.tags?.includes(tag) ?? false;
     },
     addTag(tag) {
-      if (inst) { inst.addTag(tag); return; }
-      model.userData.tags ??= [];
-      if (!model.userData.tags.includes(tag)) model.userData.tags.push(tag);
+      if (inst) inst.addTag(tag);
+      else {
+        model.userData.tags ??= [];
+        if (!model.userData.tags.includes(tag)) model.userData.tags.push(tag);
+      }
+      if (tag === 'tickingarea' && !entity.isRemoved) activeEntities.add(entity);
     },
     removeTag(tag) {
       if (inst) inst.removeTag(tag);
       else model.userData.tags = (model.userData.tags ?? []).filter((value: string) => value !== tag);
+      if (tag === 'tickingarea') activeEntities.delete(entity);
     },
     PushEvent: (name, data) => {
       if (inst) inst.PushEvent?.(name, data);
@@ -49,23 +54,127 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
     },
   };
   model.userData.actionEntity = entity;
+  liveEntities.add(entity);
+  const stopRemoval = removal.subscribe(removed => { if (removed) disposeActionEntity(model); });
+  disposals.set(entity, () => {
+    stopRemoval();
+    entityWorlds.get(entity)?.remove(entity);
+    entity.removeTag('tickingarea');
+    liveEntities.delete(entity);
+    delete model.userData.actionEntity;
+  });
+  if (!entity.isRemoved) {
+    if (currentEntityWorld) currentEntityWorld.add(entity);
+    else entity.addTag('tickingarea'); // Standalone worlds have no area gate.
+  }
   return entity;
+}
+
+/**
+ * The engine's entity list: every projected inst, so FindEntities never walks the scene graph (whose nodes are
+ * mostly sprite internals). Removed insts leave when their removal signal fires; attachment to a root is checked per query.
+ */
+const liveEntities = new Set<FoundEntity>();
+const activeEntities = new Set<FoundEntity>();
+const disposals = new Map<FoundEntity, () => void>();
+const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
+let currentEntityWorld: EntityTickingArea | undefined;
+
+/** Release a model projection, including when its logical item survives a visual replacement or pickup. */
+export function disposeActionEntity(model: THREE.Group): void {
+  const entity = model.userData.actionEntity as FoundEntity | undefined;
+  if (!entity) return;
+  const dispose = disposals.get(entity);
+  disposals.delete(entity);
+  dispose?.();
+}
+
+/** One player-position bridge per world; moving entities refresh on the existing 60-frame snapshots. */
+class EntityTickingArea {
+  private readonly records = new Map<FoundEntity, { tracker: TileTracker; stop(): void }>();
+  private readonly positions;
+  private readonly cleanups: (() => void)[] = [];
+  private readonly query: TileStateQuery;
+
+  constructor(query: TileStateQuery, positions: ReadonlySignal<THREE.Vector3[]>) {
+    this.query = query;
+    this.positions = watchSignal(positions, stop => this.cleanups.push(stop));
+    createEffect(() => {
+      this.positions.get();
+      for (const { tracker } of this.records.values()) tracker.sync();
+    });
+  }
+
+  add(entity: FoundEntity): void {
+    if (this.records.has(entity)) return;
+    const model = (entity as FoundEntity & { model: THREE.Group }).model;
+    const tracker = new TileTracker(() => entity.getPosition());
+    const area = this.query(tracker.tile);
+    const cleanups: (() => void)[] = [];
+    const sync = () => tracker.sync();
+    model.addEventListener('added', sync);
+    this.records.set(entity, { tracker, stop: () => {
+      model.removeEventListener('added', sync);
+      cleanups.splice(0).forEach(stop => stop());
+      area?.dispose();
+    } });
+    entityWorlds.set(entity, this);
+    if (area) {
+      const active = watchSignal(area, stop => cleanups.push(stop));
+      createEffect(() => {
+        if (active.get()) entity.addTag('tickingarea');
+        else entity.removeTag('tickingarea');
+      });
+    } else entity.addTag('tickingarea');
+  }
+
+  remove(entity: FoundEntity): void {
+    const record = this.records.get(entity);
+    this.records.delete(entity);
+    entityWorlds.delete(entity);
+    record?.stop();
+  }
+
+  dispose(): void {
+    this.cleanups.splice(0).forEach(stop => stop());
+    for (const entity of [...this.records.keys()]) disposeActionEntity((entity as FoundEntity & { model: THREE.Group }).model);
+  }
+}
+
+/** Bind before restoring/spawning world entities; also adopt projections already attached to this root. */
+export function bindActionEntityWorld(root: THREE.Object3D, query: TileStateQuery,
+  positions: ReadonlySignal<THREE.Vector3[]>): () => void {
+  const world = new EntityTickingArea(query, positions);
+  currentEntityWorld = world;
+  for (const entity of liveEntities) {
+    const model = (entity as FoundEntity & { model: THREE.Group }).model;
+    if (isUnder(model, root) && !entityWorlds.has(entity)) world.add(entity);
+  }
+  return () => {
+    if (currentEntityWorld === world) currentEntityWorld = undefined;
+    world.dispose();
+  };
+}
+
+function isUnder(model: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let object: THREE.Object3D | null = model; object; object = object.parent) if (object === root) return true;
+  return false;
 }
 
 export type FoundEntity = ComponentActionEntity & WorkableInst & { getPosition(): THREE.Vector3 };
 
-/** TheSim:FindEntities on the ground plane: must/cant/oneof tag filters, then radius. */
+/** Query only tickingarea-tagged entities, then apply root, caller tags and radius. */
 export function FindEntities(root: THREE.Object3D, position: THREE.Vector3, radius: number,
   mustTags: readonly string[] = [], cantTags: readonly string[] = [], oneOfTags: readonly string[] = []): FoundEntity[] {
   const found: FoundEntity[] = [];
   const radiusSquared = radius ** 2;
-  root.traverse(object => {
-    const inst = object.userData.actionEntity as FoundEntity | undefined;
-    if (!inst || inst.isRemoved || typeof inst.getPosition !== 'function') return;
+  for (const inst of activeEntities) {
+    const model = (inst as { model?: THREE.Object3D }).model;
+    if (!model || !isUnder(model, root) || inst.isRemoved || !inst.hasTag('tickingarea')) continue;
     if (mustTags.some(tag => !inst.hasTag(tag)) || cantTags.some(tag => inst.hasTag(tag))
-      || (oneOfTags.length > 0 && !oneOfTags.some(tag => inst.hasTag(tag)))) return;
-    if (inst.getPosition().distanceToSquared(position) > radiusSquared) return;
+      || (oneOfTags.length > 0 && !oneOfTags.some(tag => inst.hasTag(tag)))) continue;
+    if (inst.getPosition().distanceToSquared(position) > radiusSquared) continue;
     found.push(inst);
-  });
+  }
   return found;
 }

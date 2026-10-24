@@ -1,3 +1,4 @@
+import { Quaternion } from 'three';
 import { bindWorldContent, createSignal, getWatchWorldContent, type GetWatchWorldContent, type WorldContentEnvironment, type SeasonState, type WorldPhase, type WorldMoonState } from '../../signals/src';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
@@ -8,13 +9,14 @@ export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldC
   const cycle = createSignal<WorldPhase>('day');
   const moon = createSignal<WorldMoonState>({ phase: 'new', waxing: true });
   const playerpositions = createSignal<import('three').Vector3[]>([]);
+  const camerarotation = createSignal(new Quaternion());
   const sources = {
-    scheduler, season, snowLevel, cycle, moon, playerpositions, temperature: createSignal(20),
+    scheduler, season, snowLevel, cycle, moon, playerpositions, camerarotation, temperature: createSignal(20),
     wind: createSignal({ angle: 0, velocity: 0 }), perishTick: createSignal({ time: 0, total: 0 }), tickingarea,
   } satisfies WorldContentEnvironment;
   const unbind = bindWorldContent(sources);
   const getContent: GetWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
-  return { season, snowLevel, cycle, moon, playerpositions, getWatchWorldContent: getContent, unbind };
+  return { season, snowLevel, cycle, moon, playerpositions, camerarotation, getWatchWorldContent: getContent, unbind };
 }
 
 /** The bound world owns game time, so a frame advances the scheduler before the manager samples it. */

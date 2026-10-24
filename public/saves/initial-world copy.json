@@ -32241,8 +32241,8 @@
                 "slotKey": "2",
                 "item": {
                   "entityId": "e_de1b2a40e41415328215c58886c176fa",
-                  "itemId": "torch",
-                  "count": 1
+                  "itemId": 	"turf_cotl_brick",
+                  "count": 20
                 }
               },
               {
@@ -32258,7 +32258,7 @@
                 "slotKey": "5",
                 "item": {
                   "entityId": "e_ce28f3798d0a92bc24c1b1c2cbf99ed3",
-                  "itemId": "green_cap_cooked",
+                  "itemId": "red_cap",
                   "count": 16,
                   "freshnessPercent": 0.9730257500000054
                 }
@@ -32267,8 +32267,8 @@
                 "slotKey": "6",
                 "item": {
                   "entityId": "e_dd2f40d6829c5076db6e49cc0a1f0c23",
-                  "itemId": "log",
-                  "count": 20
+                  "itemId": "book_moon",
+                  "count": 1
                 }
               },
               {
@@ -32362,7 +32362,9 @@
         "bufferedBuilds": [
           {
             "recipeId": "winterometer"
-          }
+          }, {
+          "recipeId": "bookstation"
+        }
         ]
       }
     }

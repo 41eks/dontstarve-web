@@ -103,7 +103,8 @@ export class SpriteFrameRenderer {
 
   constructor(visual: THREE.Group) {
     this.mesh = new THREE.Mesh(this.geometry, this.materials);
-    this.mesh.frustumCulled = false;
+    // The frame geometry is rewritten by show(), which keeps its bounding sphere current.
+    this.geometry.boundingSphere = new THREE.Sphere();
     visual.add(this.mesh);
   }
 
@@ -181,8 +182,24 @@ export class SpriteFrameRenderer {
       this.geometry.addGroup(groupStart, groupCount, currentMaterialIndex);
     }
     this.geometry.setDrawRange(0, sprites.length * 6);
+    this.updateBoundingSphere(sprites.length * 4);
     this.geometry.getAttribute('position').needsUpdate = true;
     this.geometry.getAttribute('uv').needsUpdate = true;
+  }
+
+  /** Bounds only the drawn vertices; stale capacity beyond the draw range is ignored. */
+  private updateBoundingSphere(vertexCount: number) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let offset = 0; offset < vertexCount * 3; offset += 3) {
+      const x = this.positions[offset], y = this.positions[offset + 1];
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const sphere = this.geometry.boundingSphere!;
+    sphere.center.set((minX + maxX) / 2, (minY + maxY) / 2, 0);
+    sphere.radius = Math.hypot(maxX - minX, maxY - minY) / 2;
   }
 
   private setPosition(

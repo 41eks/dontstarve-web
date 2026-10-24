@@ -65,10 +65,7 @@ export class ReskinActionController {
     this.handEquipment = handEquipment; this.getTargets = getTargets; this.effects = effects;
     this.doer = { position: world.player.position, components: {}, hasTag: tag => world.player.userData.tags?.includes(tag) ?? false };
     this.stopEquipment = bindHandEquipmentUpdate(handEquipment, {
-      isEquipped: equipment => {
-        const entity = equippedActionEntity(equipment);
-        return !!entity?.components.spellcaster && entity.hasTag('veryquickcast') && entity.hasTag('castontargets');
-      },
+      isEquipped: equipment => this.isEquipped(equipment),
       cancel: () => this.cancel(),
       update: dt => this.update(dt),
       registerFrameTask: world.registerFrameTask,
@@ -76,7 +73,8 @@ export class ReskinActionController {
     this.isManualMovement = isManualMovement; this.onError = onError;
     this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    this.unregisterHover = world.mouseActions?.register(() =>
+    // Without the tool equipped no target can be reskinned, so none is built or ray-tested.
+    this.unregisterHover = world.mouseActions?.register(() => !this.getTool() ? [] :
       this.getTargets().filter(target => target.isValid()).map(target => ({
         action: { action: 'CASTSPELL', modifier: 'RESKIN', invobject: equippedActionEntity(this.getTool()) },
         button: 'right', model: target.model,
@@ -113,10 +111,14 @@ export class ReskinActionController {
     finally { prepared?.dispose(); if (version === this.version) this.loading = false; }
   }
 
+  private isEquipped(equipment = this.handEquipment.peek()): boolean {
+    const entity = equippedActionEntity(equipment);
+    return !!entity?.components.spellcaster && entity.hasTag('veryquickcast') && entity.hasTag('castontargets');
+  }
+
   private getTool() {
     const equipment = this.handEquipment.peek();
-    const entity = equippedActionEntity(equipment);
-    return entity?.components.spellcaster && entity.hasTag('veryquickcast') && entity.hasTag('castontargets') ? equipment : undefined;
+    return this.isEquipped(equipment) ? equipment : undefined;
   }
 
   private canCast(target: ReskinTarget): boolean {

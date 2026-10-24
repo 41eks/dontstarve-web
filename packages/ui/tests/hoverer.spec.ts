@@ -11,7 +11,15 @@ test('shared hover text shows primary and secondary actions, honors overrides, a
   const primary = hover.locator('[data-role="primary"]');
   const secondary = hover.locator('[data-role="secondary"]');
   const step = () => page.evaluate(() => (window as any).hoverer.step());
+  await step();
+  expect(await page.evaluate(() => (window as any).hoverer.queries)).toBe(0);
   await page.mouse.move(200, 200); await step();
+  const queries = await page.evaluate(() => {
+    const hoverer = (window as any).hoverer, before = hoverer.queries;
+    hoverer.updateInactive();
+    return { before, after: hoverer.queries };
+  });
+  expect(queries.after).toBe(queries.before);
   await expect(primary.locator('span')).toHaveText('捕捉');
   await expect(primary.locator('canvas')).toBeVisible();
   await expect(primary.locator('canvas')).toHaveAttribute('data-glyph', 'U+E100');
@@ -49,10 +57,12 @@ test('shared hover text shows primary and secondary actions, honors overrides, a
   const blocker = await page.evaluate(() => {
     const div = document.createElement('div');
     div.id = 'hover-blocker'; div.style.cssText = 'position:fixed;inset:0;z-index:200'; document.body.append(div);
-    (window as any).hoverer.step(); return div.id;
+    const hoverer = (window as any).hoverer, before = hoverer.queries;
+    hoverer.step(); return { id: div.id, before, after: hoverer.queries };
   });
+  expect(blocker.after).toBe(blocker.before);
   await expect(hover).toBeHidden();
-  await page.locator(`#${blocker}`).evaluate(element => element.remove()); await step();
+  await page.locator(`#${blocker.id}`).evaluate(element => element.remove()); await step();
   await expect(hover).toBeVisible();
   await page.evaluate(() => (window as any).hoverer.dispose());
   await expect(hover).toHaveCount(0);

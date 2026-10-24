@@ -171,6 +171,7 @@ export class Birdcage {
                 perishClock: context.world?.perishClock,
                 snowLevel: context.world?.snowLevel ?? readonlySignal(createSignal(0)),
                 playerpositions: context.world?.playerpositions ?? readonlySignal(createSignal<THREE.Vector3[]>([])),
+                camerarotation: readonlySignal(createSignal(new THREE.Quaternion())),
                 moon: context.world?.moon ?? readonlySignal(createSignal({ phase: 'new', waxing: true })),
                 scheduler, temperature: context.world?.temperature ?? readonlySignal(createSignal(30)),
                 cycle: context.world?.cycle ?? readonlySignal(createSignal<WorldPhase>('day')),
@@ -291,7 +292,8 @@ export class Birdcage {
     }
 
     private onOccupied(bird: ItemEntity): void {
-        if (this.context.world?.perishClock) bird.components.perishable.BindWorld({ perishClock: this.context.world.perishClock });
+        const world = this.context.world;
+        if (world?.perishClock && world.scheduler) bird.components.perishable.BindWorld({ perishClock: world.perishClock, scheduler: world.scheduler });
         this.setCageState(CAGE_STATES.FULL);
         // Only if the bird can actually sleep: every ported bird has a sleeper in birds.lua.
         if (this.getWatchWorldContent && !this.sleeper) {
@@ -481,7 +483,8 @@ export class Birdcage {
     };
 
     private onGetShelfItem(item: ItemEntity): void {
-        if (this.context.world?.perishClock) item.components.perishable.BindWorld({ perishClock: this.context.world.perishClock });
+        const world = this.context.world;
+        if (world?.perishClock && world.scheduler) item.components.perishable.BindWorld({ perishClock: world.perishClock, scheduler: world.scheduler });
         // De-activate occupiable.
         this.removeOccupiable();
         this.shelf.cantakeitem = true;
@@ -574,16 +577,6 @@ export class Birdcage {
         if (this.slot) this.shelf.PutItemOnShelf(this.slot);
     }
 
-    /** Perishing of the occupant and the shelved item settles with the shared 60-frame batches. */
-    update(dt: number): void {
-        const world = this.context.world;
-        // The scene registry already updates registered items, including the cage's occupant and shelf.
-        if (world?.itemEntities) return;
-        const perishWorld = world?.perishClock ? { perishClock: world.perishClock } : undefined;
-        this.getBird()?.components.perishable.onFrame(dt, perishWorld);
-        this.slot?.components.perishable.onFrame(dt, perishWorld);
-    }
-
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
@@ -629,6 +622,5 @@ export const BIRDCAGE_DEFINITION: AnimatedBuildingDefinition = {
     onrestore: ({ model }, components) => { if (components.birdcage) cageOf(model).restore(components.birdcage); },
     exportComponents: ({ model }) => ({ birdcage: cageOf(model).save() }),
     onreskin: ({ model, prepared }) => cageOf(model).reapplyArt(prepared as BirdcageResources | undefined),
-    onupdate: ({ model }, dt) => cageOf(model).update(dt),
     ondispose: ({ model }) => cageOf(model).dispose(),
 };

@@ -1,6 +1,6 @@
 import { batch, createEffect, createMemo, createSignal, readonlySignal, watchSignal, type ReadonlySignal } from '../../signals/src';
 import type { PerishClock, PerishTick } from './worldperishclock';
-import { GameTimeScheduler } from './gameTimeScheduler';
+import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer, type TimerSnapshot } from './timer';
 
 // tuning.lua (perish_warp = 1).
@@ -43,10 +43,17 @@ export interface PerishableOwner {
 /** The world owns temperature integration; entities only sample cumulative ticks. */
 export interface PerishWorld {
   readonly perishClock: PerishClock;
+  readonly scheduler: GameTimeScheduler;
 }
 
-const STOPPED: PerishTimer = Object.freeze({ status: 'stopped' });
+const STOPPED = Object.freeze({ status: 'stopped' as const });
 const PERISHED: PerishTimer = Object.freeze({ status: 'perished' });
+
+function perishPercent(perishtime: number | undefined, timer: PerishTimer): number | undefined {
+  if (perishtime === undefined || timer.status === 'stopped') return undefined;
+  if (timer.status === 'perished' || perishtime <= 0) return 0;
+  return Math.max(0, Math.min(1, timer.remainingSeconds / perishtime));
+}
 
 /** components/perishable.lua; elapsed time settles every 10 game seconds. */
 export class Perishable {
@@ -54,7 +61,10 @@ export class Perishable {
   private readonly timerState = createSignal<PerishTimer>(STOPPED);
   readonly perishtime = readonlySignal(this.perishTimeState);
   readonly timer = readonlySignal(this.timerState);
-  readonly updateTimer: ReadonlySignal<TimerSnapshot>;
+  private readonly updateTaskState = createSignal<ComponentTimer | undefined>(undefined);
+  private readonly updateTimerMemo = createMemo((): TimerSnapshot =>
+    this.updateTaskState.get()?.snapshot.get() ?? STOPPED);
+  readonly updateTimer = readonlySignal(this.updateTimerMemo);
   /** undefined without a perish time, so presentations hide the spoilage meter. */
   readonly percent: ReadonlySignal<number | undefined>;
   readonly stage: ReadonlySignal<PerishStage | undefined>;
@@ -71,38 +81,18 @@ export class Perishable {
   private readonly stopWatchingWet: () => void;
   /** Wetness in effect at lastTick, rather than the already changed source value. */
   private settledWet: boolean;
-  private readonly scheduler = new GameTimeScheduler();
-  private readonly updateTask: ComponentTimer;
-  /** Convert scheduler deadlines to this world's game-time coordinates. */
-  private schedulerOrigin: number;
+  private get updateTask(): ComponentTimer | undefined { return this.updateTaskState.peek(); }
   private world?: PerishWorld;
-  private lastTick: PerishTick;
-  /** Standalone components use normal-temperature game seconds until a world is injected. */
-  private localTick: PerishTick = Object.freeze({ time: 0, total: 0 });
+  private lastTick: PerishTick = Object.freeze({ time: 0, total: 0 });
   private disposed = false;
 
   constructor(inst: PerishableInst, wet: ReadonlySignal<boolean>, world?: PerishWorld) {
     this.inst = inst;
-    this.world = world;
-    this.lastTick = world?.perishClock.GetTick() ?? this.localTick;
-    this.schedulerOrigin = this.lastTick.time;
-    this.updateTask = new ComponentTimer(this.scheduler, () => {
-      const time = this.scheduler.now + this.schedulerOrigin;
-      this.Update(this.world?.perishClock.GetTick(time) ?? Object.freeze({ time, total: time }));
-      if (!this.disposed && !this.inst.isRemoved && this.IsPerishing()) this.updateTask.start(UPDATE_PERIOD);
-    });
-    this.updateTimer = this.updateTask.snapshot;
     let stop!: () => void;
     this.wet = watchSignal(wet, cleanup => { stop = cleanup; });
     this.stopWatchingWet = stop;
     this.settledWet = this.wet.peek();
-    this.percentMemo = createMemo(() => {
-      const perishtime = this.perishTimeState.get();
-      const timer = this.timerState.get();
-      if (perishtime === undefined || timer.status === 'stopped') return undefined;
-      if (timer.status === 'perished' || perishtime <= 0) return 0;
-      return Math.max(0, Math.min(1, timer.remainingSeconds / perishtime));
-    });
+    this.percentMemo = createMemo(() => perishPercent(this.perishTimeState.get(), this.timerState.get()));
     this.stageMemo = createMemo((): PerishStage | undefined => {
       const percent = this.percentMemo.get();
       return percent === undefined ? undefined
@@ -113,13 +103,15 @@ export class Perishable {
     createEffect(() => {
       this.setWetness(this.wet.get());
     });
+    if (world) this.BindWorld(world);
   }
 
   IsFresh(): boolean { return this.stage.peek() === 'fresh'; }
   IsStale(): boolean { return this.stage.peek() === 'stale'; }
   IsSpoiled(): boolean { return this.stage.peek() === 'spoiled'; }
   IsPerishing(): boolean { return this.timerState.peek().status === 'perishing'; }
-  GetPercent(): number { return this.percent.peek() ?? 0; }
+  /** Domain snapshots can be requested inside a scheduler batch before presentation memos settle. */
+  GetPercent(): number { return perishPercent(this.perishTimeState.peek(), this.timerState.peek()) ?? 0; }
 
   SetPerishTime(time: number): void {
     if (!Number.isFinite(time) || time <= 0) throw new RangeError('Invalid perish time');
@@ -130,7 +122,7 @@ export class Perishable {
       this.perishTimeState.set(time);
       this.timerState.set(Object.freeze({ status: status === 'perishing' ? 'perishing' : 'paused', remainingSeconds: time }));
     });
-    if (status === 'perishing') this.updateTask.start(UPDATE_PERIOD);
+    if (status === 'perishing') this.updateTask?.start(UPDATE_PERIOD);
   }
 
   SetPercent(percent: number): void {
@@ -151,7 +143,7 @@ export class Perishable {
     this.timerState.set(Object.freeze({
       status: timer.status === 'perishing' ? 'perishing' : 'paused', remainingSeconds,
     }));
-    if (timer.status === 'perishing') this.updateTask.start(UPDATE_PERIOD);
+    if (timer.status === 'perishing') this.updateTask?.start(UPDATE_PERIOD);
   }
 
   StartPerishing(): void {
@@ -161,30 +153,21 @@ export class Perishable {
     const timer = this.timerState.peek();
     if (timer.status === 'paused' || timer.status === 'perishing') {
       this.timerState.set(Object.freeze({ status: 'perishing', remainingSeconds: timer.remainingSeconds }));
-      this.updateTask.start(UPDATE_PERIOD);
+      this.updateTask?.start(UPDATE_PERIOD);
     }
   }
 
   StopPerishing(): void {
     this.flush();
-    this.updateTask.stop();
+    this.updateTask?.stop();
     const timer = this.timerState.peek();
     if (timer.status === 'perishing') this.timerState.set(Object.freeze({ status: 'paused', remainingSeconds: timer.remainingSeconds }));
   }
 
-  /** Advance active game time; only the scheduled 10-second tasks change remaining time. */
-  onFrame(dt: number, world?: PerishWorld): void {
-    if (this.disposed || this.inst.isRemoved || this.perishTimeState.peek() === undefined) return;
-    if (world) this.BindWorld(world);
-    if (this.timerState.peek().status !== 'perishing' || this.inst.isRemoved || !Number.isFinite(dt) || dt <= 0) return;
-    if (!this.world) this.localTick = Object.freeze({ time: this.localTick.time + dt, total: this.localTick.total + dt });
-    const tick = this.world?.perishClock.GetTick() ?? this.localTick;
-    this.scheduler.advanceTo(tick.time - this.schedulerOrigin);
-  }
-
   /** Settle a partial period before saving, transferring, eating or changing the timer. */
   flush(): void {
-    this.Update(this.world?.perishClock.GetTick() ?? this.localTick);
+    if (this.disposed || this.inst.isRemoved || !this.world) return;
+    this.Update(this.world.perishClock.GetTick(Math.max(this.lastTick.time, this.world.scheduler.now)));
   }
 
   /** Normal settlement, wake-up and future morning snapshots all consume the same prefix difference. */
@@ -192,8 +175,6 @@ export class Perishable {
     if (this.disposed || this.inst.isRemoved) return;
     if (!Number.isFinite(tick.time) || !Number.isFinite(tick.total)
       || tick.time < this.lastTick.time || tick.total < this.lastTick.total) throw new RangeError('Perish ticks must be finite and monotonic');
-    this.scheduler.advanceTo(tick.time - this.schedulerOrigin);
-    if (this.disposed || this.inst.isRemoved) return;
     const owner = this.inst.components.inventoryitem.owner;
     const frozen = this.inst.hasTag?.('frozen') === true;
     const refrigeratedFrozen = frozen && owner?.hasTag?.('fridge') === true
@@ -204,7 +185,6 @@ export class Perishable {
       : tick.total - this.lastTick.total;
     // Advance before callbacks: a perish event can remove or transfer this entity and flush again.
     this.lastTick = Object.freeze({ time: tick.time, total: tick.total });
-    if (!this.world && tick.time >= this.localTick.time) this.localTick = this.lastTick;
     const timer = this.timerState.peek(), perishtime = this.perishTimeState.peek();
     if (timer.status !== 'perishing' || perishtime === undefined || this.inst.isRemoved) return;
     if (accumulatedPerish === 0 && timer.remainingSeconds > 0) return;
@@ -217,7 +197,7 @@ export class Perishable {
   }
 
   Perish(): void {
-    this.updateTask.stop();
+    this.updateTask?.stop();
     this.timerState.set(PERISHED);
     this.perishfn?.(this.inst);
     if (this.inst.isRemoved) return;
@@ -232,8 +212,8 @@ export class Perishable {
     this.flush();
     this.disposed = true;
     this.stopWatchingWet();
-    this.updateTask.stop();
-    this.scheduler.dispose();
+    this.updateTask?.stop();
+    this.updateTimerMemo.dispose();
     this.world = undefined;
     this.percentMemo.dispose();
     this.stageMemo.dispose();
@@ -241,12 +221,21 @@ export class Perishable {
 
   /** Bind at creation/restoration, before the first world frame; preserve state when changing worlds. */
   BindWorld(world: PerishWorld): void {
-    if (this.disposed || this.inst.isRemoved || world.perishClock === this.world?.perishClock) return;
+    if (this.disposed || this.inst.isRemoved
+      || (world.perishClock === this.world?.perishClock && world.scheduler === this.world.scheduler)) return;
     this.flush();
     if (this.inst.isRemoved || this.disposed) return;
+    const remaining = this.updateTask?.remainingSeconds ?? UPDATE_PERIOD;
+    this.updateTask?.stop();
     this.world = world;
-    this.lastTick = world.perishClock.GetTick();
-    this.schedulerOrigin = this.lastTick.time - this.scheduler.now;
+    this.lastTick = world.perishClock.GetTick(world.scheduler.now);
+    const task = new ComponentTimer(world.scheduler, () => {
+      // Callbacks sample their deadline, including transfers and removals during a long-frame catch-up.
+      if (world.scheduler.now >= this.lastTick.time) this.Update(world.perishClock.GetTick(world.scheduler.now));
+      if (!this.disposed && !this.inst.isRemoved && this.updateTask === task && this.IsPerishing()) task.start(UPDATE_PERIOD);
+    });
+    this.updateTaskState.set(task);
+    if (this.IsPerishing()) task.start(remaining);
   }
 
   private setWetness(wet: boolean): void {

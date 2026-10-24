@@ -111,13 +111,13 @@ describe('butterfly planting', () => {
       await restored.manager.spawnFromSave(`e_variant_${index}`, animation, new THREE.Vector3(index, 0, 10));
     }
     expect(restored.world.scene.children).toHaveLength(12);
+    expect(restored.manager.plantedFlowers).toHaveLength(12);
+    expect(restored.manager.plantedFlowers.map(({ id }) => id)).toContain(record.id);
     const animation = { start() {}, playOnce() {}, update() {}, currentAnimation: 'idle_flight_loop', currentAnimationLength: 1 };
     const butterfly = new ButterflyController(BUTTERFLY_DEFINITIONS.butterfly, new ItemEntity({ itemId: 'butterfly', count: 1 }).transform,
       animation, {
         getThreatPositions: () => [],
-        getFlowers: () => restored.world.scene.children.map((object) => ({
-          id: object.userData.entityId, position: object.position,
-        })),
+        getFlowers: () => restored.manager.plantedFlowers,
       }, undefined, () => 0);
     // PriorityNode scatter delays the first evaluation; FindFlower then targets the nearest restored flower.
     for (let i = 0; i < 20; i++) butterfly.update(0.1);

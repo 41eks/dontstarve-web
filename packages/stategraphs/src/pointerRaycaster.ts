@@ -1,18 +1,49 @@
 import * as THREE from 'three';
 import type { ActionWorldContext as WorldContext } from './actionContext.ts';
 
-/** AnimState:SetRayTestOnBB swarms use their full bounds, including particle gaps. */
+function mouseVisible(object: THREE.Object3D): boolean {
+    if (!object.visible) return false;
+    const inst = object.userData.actionEntity as { hasTag?(tag: string): boolean } | undefined;
+    return !(inst?.hasTag?.('NOCLICK') ?? object.userData.tags?.includes('NOCLICK'));
+}
+
+/** Input:GetWorldEntityUnderMouse excludes invisible/NOCLICK entities before action selection. */
 export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THREE.Object3D[], recursive = true): THREE.Intersection[] {
-    const hits = raycaster.intersectObjects(objects.filter(object => !object.userData.rayTestOnBB), recursive);
+    const hits: THREE.Intersection[] = [];
+    const box = new THREE.Box3(), partBox = new THREE.Box3();
+    const expandVisibleBounds = (object: THREE.Object3D) => {
+        if (!mouseVisible(object)) return;
+        if (object instanceof THREE.Mesh) {
+            if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+            if (object.geometry.boundingBox) box.union(partBox.copy(object.geometry.boundingBox).applyMatrix4(object.matrixWorld));
+        }
+        for (const child of object.children) expandVisibleBounds(child);
+    };
+    const intersect = (object: THREE.Object3D) => {
+        if (!mouseVisible(object)) return;
+        let propagate = true;
+        if (object.layers.test(raycaster.layers)) {
+            if (object.userData.rayTestOnBB) {
+                // AnimState:SetRayTestOnBB includes visible particle gaps, never hidden parts.
+                object.updateWorldMatrix(true, true);
+                box.makeEmpty();
+                expandVisibleBounds(object);
+                const point = box.isEmpty() ? null : raycaster.ray.intersectBox(box, new THREE.Vector3());
+                if (point) {
+                    const distance = point.distanceTo(raycaster.ray.origin);
+                    if (distance >= raycaster.near && distance <= raycaster.far) hits.push({ distance, point, object });
+                }
+                return;
+            }
+            // Match Three's layer and custom raycast propagation rules while pruning hidden subtrees.
+            propagate = (object.raycast(raycaster, hits) as unknown) !== false;
+        }
+        if (recursive && propagate) for (const child of object.children) intersect(child);
+    };
     for (const object of objects) {
-        if (!object.userData.rayTestOnBB) continue;
-        object.updateWorldMatrix(true, true);
-        const box = new THREE.Box3().setFromObject(object);
-        if (box.isEmpty()) continue;
-        const point = raycaster.ray.intersectBox(box, new THREE.Vector3());
-        if (!point) continue;
-        const distance = point.distanceTo(raycaster.ray.origin);
-        if (distance >= raycaster.near && distance <= raycaster.far) hits.push({ distance, point, object });
+        let parent = object.parent;
+        while (parent && mouseVisible(parent)) parent = parent.parent;
+        if (!parent) intersect(object);
     }
     return hits.sort((a, b) => a.distance - b.distance);
 }

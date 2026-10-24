@@ -172,3 +172,23 @@ describe('original bugnet assets and Wilson action', () => {
     expect(body.position.x).toBeGreaterThan(8);
   });
 });
+
+describe('NET hover candidates', () => {
+  it('builds no targets for the mouse picker until the net is equipped', () => {
+    let provider!: () => readonly unknown[];
+    const world = { player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
+      renderer: { domElement: new EventTarget() },
+      mouseActions: { pointer: {}, register: (source: typeof provider) => { provider = source; return () => {}; } } } as unknown as WorldContext;
+    const equipped = createEquipmentExistenceState('HANDS');
+    const target: ButterflyCaptureTarget = { id: 'butterfly1', entity: netEntity(() => true), model: new THREE.Group(),
+      position: new THREE.Vector3(), isValid: () => true, capture: () => true };
+    const getTargets = vi.fn(() => [target]);
+    const controller = new BugNetCaptureController(world, { isNetting: false, isCasting: false } as unknown as WilsonAnimationController,
+      { goToPoint: vi.fn(), stop: vi.fn(), destination: undefined } as never, equipped, getTargets);
+    expect(provider()).toEqual([]);
+    expect(getTargets).not.toHaveBeenCalled();
+    equipped.set(actionTool('bugnet'));
+    expect(provider()).toHaveLength(1);
+    controller.dispose();
+  });
+});

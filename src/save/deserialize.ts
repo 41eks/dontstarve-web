@@ -25,7 +25,6 @@ export interface SaveCatalog {
 }
 
 export const MAX_SAVE_BYTES = 8 * 1024 * 1024;
-const MAX_ENTITIES = 10_000;
 
 /** Parses and validates all data before any resources or runtime entities are created. */
 export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocument {
@@ -181,13 +180,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     return { slotCount: keys.length, slots };
   };
   const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
-  let entityCount = 0;
   const parsers = prefabSaveParsers(catalog.prefabs ?? Object.values(PREFAB_DEFINITIONS));
   const groups = object(world.entities, 'world.entities', [...parsers.keys()]);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;
-    const records = array(values, path).map((value, i): SavedEntity => {
-      if (++entityCount > MAX_ENTITIES) fail(path, 'too many entities');
+    const records = array(values, path, Number.MAX_SAFE_INTEGER).map((value, i): SavedEntity => {
       const recordPath = `${path}[${i}]`;
       const o = object(value, recordPath, ['id', 'transform', 'components']);
       const id = string(o.id, `${recordPath}.id`);
@@ -305,7 +302,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
           id: string(generator.id, 'world.map.generator.id'),
           ...(generator.seed === undefined ? {} : { seed: string(generator.seed, 'world.map.generator.seed') }),
           options: {
-            size, moonTreeCount: integer(options.moonTreeCount, 'world.map.generator.options.moonTreeCount', 0, MAX_ENTITIES),
+            size, moonTreeCount: integer(options.moonTreeCount, 'world.map.generator.options.moonTreeCount'),
             moonTreeExclusionRadiusSquared: number(options.moonTreeExclusionRadiusSquared, 'world.map.generator.options.moonTreeExclusionRadiusSquared', 0, size * size / 2),
           },
         },

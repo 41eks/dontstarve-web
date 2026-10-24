@@ -68,7 +68,8 @@ export class PickaxeActionController {
     this.isManualMovement = isManualMovement;
     this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    this.unregisterHover = world.mouseActions?.register(() =>
+    // Without the pickaxe equipped no target can be worked, so none is built or ray-tested.
+    this.unregisterHover = world.mouseActions?.register(() => !this.isEquipped() ? [] :
       this.getTargets().filter(target => target.isValid()).map(target => ({
         action: { action: this.action, invobject: equippedActionEntity(this.handEquipment.peek()), target: target.entity },
         button: 'right', model: target.model, available: this.canWork(target), source: 'equipped',

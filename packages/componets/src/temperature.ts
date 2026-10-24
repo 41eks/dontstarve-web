@@ -1,6 +1,7 @@
 import type { Vector3 } from 'three';
 import { createSignal, readonlySignal, watchSignal, type ReadonlySignal } from '../../signals/src';
 import type { Heater } from './heater';
+import type { ComponentUpdates } from './componentUpdates';
 
 export interface TemperatureOwner {
   hasTag?(tag: string): boolean;
@@ -20,6 +21,7 @@ export interface TemperatureSource {
 }
 export interface TemperatureWorld {
   readonly temperature: ReadonlySignal<number>;
+  readonly componentUpdates: ComponentUpdates;
   readonly clock?: ReadonlySignal<{ readonly phase: string }>;
   /** Scene units per DST unit; radius and falloff calculations use the same scale. */
   readonly unitScale?: number;
@@ -64,6 +66,7 @@ export class Temperature {
       this.initialized = true;
     }
     this.OnUpdate(0);
+    if (!this.disposed && !this.inst.isRemoved) this.cleanups.push(world.componentUpdates.register(this));
   }
   GetCurrent(): number { return this.currentState.peek(); }
   GetMax(): number { return this.maxtemp; }

@@ -69,7 +69,8 @@ export class SpellCastActionController {
       () => world.player.userData.controllerEnabled !== false);
     this.stopHover = this.picker.register(() => {
       const item = this.equipped(), point = this.picker.pointer.groundPoint();
-      const targets = this.getTargets().map(target => ({
+      // Targets are only castable with a spell item in hand.
+      const targets = !item ? [] : this.getTargets().map(target => ({
         action: { action: 'CASTSPELL' as const, invobject: item, target }, button: 'right' as const,
         model: target.model, source: 'equipped' as const,
         available: !!item && !item.hasTag('veryquickcast') && target.isValid()

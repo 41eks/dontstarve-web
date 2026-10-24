@@ -9,35 +9,41 @@ const LIGHTMAP_SIZE = 256;
 const LIGHTMAP_SPAN = 2 * (TILE_SIZE / 4) * 6;
 
 const VERTEX_SHADER = /* glsl */`
-  varying vec2 vUv;
   void main() {
-    vUv = uv;
     gl_Position = vec4(position.xy, 0.0, 1.0);
   }
 `;
 
-const FRAGMENT_SHADER = /* glsl */`
-  uniform vec3 dstAmbientColour;
-  uniform vec3 lightColour;
-  uniform vec3 lightParameters;
-  uniform vec2 lightPosition;
+const LIGHT_VERTEX_SHADER = /* glsl */`
+  attribute vec3 lightOriginRadius;
+  attribute vec3 lightColour;
+  attribute float lightLogFalloff;
   uniform vec4 dstLightmapExtents;
-  uniform float ambientPass;
-  varying vec2 vUv;
+  varying vec2 vLightOffset;
+  varying vec3 vLightColour;
+  varying float vLightLogFalloff;
 
   void main() {
-    if (ambientPass > 0.5) {
-      gl_FragColor = vec4(dstAmbientColour, 1.0);
-      return;
-    }
-    vec2 worldXZ = dstLightmapExtents.xy + vUv / dstLightmapExtents.zw;
-    float dist = distance(worldXZ, lightPosition);
-    float normalizedDistance = max(dist / lightParameters.x, 0.0001);
-    float attenuation = clamp(exp(lightParameters.y
-      * pow(normalizedDistance, -lightParameters.z)), 0.0, 1.0);
-    // Approximate finite support, keeping the map border at ambient colour.
+    // Each instance covers only its finite support, instead of the whole lightmap.
+    vLightOffset = position.xy * 3.0;
+    vec2 worldXZ = lightOriginRadius.xy + vLightOffset * lightOriginRadius.z;
+    vec2 lightUv = (worldXZ - dstLightmapExtents.xy) * dstLightmapExtents.zw;
+    gl_Position = vec4(lightUv * 2.0 - 1.0, 0.0, 1.0);
+    vLightColour = lightColour;
+    vLightLogFalloff = lightLogFalloff;
+  }
+`;
+
+const LIGHT_FRAGMENT_SHADER = /* glsl */`
+  varying vec2 vLightOffset;
+  varying vec3 vLightColour;
+  varying float vLightLogFalloff;
+
+  void main() {
+    float normalizedDistance = max(length(vLightOffset), 0.0001);
+    float attenuation = clamp(exp(vLightLogFalloff * normalizedDistance * normalizedDistance), 0.0, 1.0);
     attenuation *= 1.0 - smoothstep(2.5, 3.0, normalizedDistance);
-    gl_FragColor = vec4(lightColour * attenuation, 1.0);
+    gl_FragColor = vec4(vLightColour * attenuation, 1.0);
   }
 `;
 
@@ -53,35 +59,51 @@ export class DstLocalLighting {
   private readonly patchedMaterials = new WeakSet<THREE.Material>();
   private readonly lightOverrides = new WeakMap<THREE.Material, { value: number }>();
   private readonly ownerPosition = new THREE.Vector3();
+  private readonly lightPosition = new THREE.Vector3();
   private readonly prefabLights: { owner: THREE.Object3D; settings: PrefabLocalLight }[] = [];
   private readonly ambient = { value: new THREE.Vector3() };
   private readonly extents = { value: new THREE.Vector4(0, 0, 1 / LIGHTMAP_SPAN, 1 / LIGHTMAP_SPAN) };
   private readonly lightmap = { value: this.target.texture };
+  private readonly ambientMaterial: THREE.ShaderMaterial;
   private readonly lightmapMaterial: THREE.ShaderMaterial;
+  private readonly lightGeometry = new THREE.InstancedBufferGeometry();
+  private readonly lightMesh: THREE.Mesh;
+  private lightCapacity = 0;
 
   constructor() {
     this.target.texture.name = 'DST world XZ lightmap';
     this.target.texture.colorSpace = THREE.NoColorSpace;
-    const material = new THREE.ShaderMaterial({
-      name: 'DST estimated local light falloff',
-      uniforms: {
-        dstAmbientColour: this.ambient,
-        ambientPass: { value: 1 },
-        lightColour: { value: new THREE.Vector3() },
-        lightParameters: { value: new THREE.Vector3() },
-        lightPosition: { value: new THREE.Vector2() },
-        dstLightmapExtents: this.extents,
-      },
+    this.ambientMaterial = new THREE.ShaderMaterial({
+      name: 'DST lightmap ambient',
+      uniforms: { dstAmbientColour: this.ambient },
       vertexShader: VERTEX_SHADER,
-      fragmentShader: FRAGMENT_SHADER,
+      fragmentShader: 'uniform vec3 dstAmbientColour; void main() { gl_FragColor = vec4(dstAmbientColour, 1.0); }',
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
+      blending: THREE.NoBlending,
+    });
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.ambientMaterial);
+    quad.frustumCulled = false;
+    this.scene.add(quad);
+    this.lightmapMaterial = new THREE.ShaderMaterial({
+      name: 'DST batched local light falloff',
+      uniforms: { dstLightmapExtents: this.extents },
+      vertexShader: LIGHT_VERTEX_SHADER,
+      fragmentShader: LIGHT_FRAGMENT_SHADER,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
       depthTest: false,
       depthWrite: false,
       toneMapped: false,
     });
-    this.lightmapMaterial = material;
-    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
-    quad.frustumCulled = false;
-    this.scene.add(quad);
+    this.lightGeometry.setIndex(quad.geometry.index!.clone());
+    this.lightGeometry.setAttribute('position', quad.geometry.getAttribute('position').clone());
+    this.ensureLightCapacity(1);
+    this.lightGeometry.instanceCount = 0;
+    this.lightMesh = new THREE.Mesh(this.lightGeometry, this.lightmapMaterial);
+    this.lightMesh.frustumCulled = false;
+    this.scene.add(this.lightMesh);
   }
 
   setAmbientColour(colour: THREE.Vector3): void {
@@ -97,10 +119,16 @@ export class DstLocalLighting {
     signal?.throwIfAborted();
     renderer.initRenderTarget(this.target);
     const previousTarget = renderer.getRenderTarget();
+    const previousCount = this.lightGeometry.instanceCount;
+    const previousVisible = this.lightMesh.visible;
+    this.lightGeometry.instanceCount = Math.max(1, previousCount);
+    this.lightMesh.visible = true;
     renderer.setRenderTarget(this.target);
     try {
       await prewarmScene(renderer, this.scene, this.camera, signal);
     } finally {
+      this.lightGeometry.instanceCount = previousCount;
+      this.lightMesh.visible = previousVisible;
       renderer.setRenderTarget(previousTarget);
     }
   }
@@ -108,6 +136,7 @@ export class DstLocalLighting {
   dispose(): void {
     this.prefabLights.length = 0;
     this.target.dispose();
+    this.ambientMaterial.dispose();
     this.lightmapMaterial.dispose();
     for (const quad of this.scene.children) if (quad instanceof THREE.Mesh) quad.geometry.dispose();
     this.scene.clear();
@@ -133,20 +162,35 @@ export class DstLocalLighting {
   }
 
   renderLightmap(renderer: THREE.WebGLRenderer): void {
-    const sources = [...this.prefabLights];
-    const lights = sources.map(({ owner, settings }) => ({
-      settings, position: owner.getWorldPosition(new THREE.Vector3()),
-    }));
+    this.ensureLightCapacity(this.prefabLights.length);
+    const origins = this.lightGeometry.getAttribute('lightOriginRadius') as THREE.InstancedBufferAttribute;
+    const colours = this.lightGeometry.getAttribute('lightColour') as THREE.InstancedBufferAttribute;
+    const falloffs = this.lightGeometry.getAttribute('lightLogFalloff') as THREE.InstancedBufferAttribute;
+    let count = 0;
     let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
-    for (const { position, settings } of lights) {
+    for (const { owner, settings } of this.prefabLights) {
+      if (settings.radius <= 0 || settings.intensity <= 0) continue;
+      const position = owner.getWorldPosition(this.lightPosition);
+      if (count === 0) this.ownerPosition.copy(position);
+      origins.setXYZ(count, position.x, position.z, settings.radius);
+      colours.setXYZ(count, settings.colour[0] * settings.intensity,
+        settings.colour[1] * settings.intensity, settings.colour[2] * settings.intensity);
+      falloffs.setX(count, Math.log(settings.falloff));
+      count++;
       const support = settings.radius * 3;
       minX = Math.min(minX, position.x - support);
       minZ = Math.min(minZ, position.z - support);
       maxX = Math.max(maxX, position.x + support);
       maxZ = Math.max(maxZ, position.z + support);
     }
-    if (lights.length) {
-      this.ownerPosition.copy(lights[0].position);
+    this.lightGeometry.instanceCount = count;
+    this.lightMesh.visible = count > 0;
+    if (count) {
+      for (const attribute of [origins, colours, falloffs]) {
+        attribute.clearUpdateRanges();
+        attribute.addUpdateRange(0, count * attribute.itemSize);
+        attribute.needsUpdate = true;
+      }
       this.extents.value.set(minX, minZ, 1 / (maxX - minX), 1 / (maxZ - minZ));
     } else {
       this.extents.value.set(this.ownerPosition.x - LIGHTMAP_SPAN / 2,
@@ -154,29 +198,26 @@ export class DstLocalLighting {
     }
     const previousTarget = renderer.getRenderTarget();
     const previousAutoClear = renderer.autoClear;
-    const material = this.lightmapMaterial;
     try {
       renderer.setRenderTarget(this.target);
       renderer.autoClear = true;
-      material.blending = THREE.NoBlending;
-      material.uniforms.ambientPass.value = 1;
+      // One ambient draw plus one instanced additive draw, independent of light count.
+      // RGBA8 clamps after every fragment addition as in the former per-source passes.
       renderer.render(this.scene, this.camera);
-      material.blending = THREE.AdditiveBlending;
-      material.uniforms.ambientPass.value = 0;
-      renderer.autoClear = false;
-      // Each source gets a pass, avoiding a fixed maximum light count. RGBA8
-      // addition clamps ambient + lights, matching the existing estimate.
-      for (const { settings, position } of lights) {
-        (material.uniforms.lightColour.value as THREE.Vector3)
-          .fromArray(settings.colour).multiplyScalar(settings.intensity);
-        (material.uniforms.lightParameters.value as THREE.Vector3)
-          .set(settings.radius, Math.log(settings.falloff), -2);
-        (material.uniforms.lightPosition.value as THREE.Vector2).set(position.x, position.z);
-        renderer.render(this.scene, this.camera);
-      }
     } finally {
       renderer.autoClear = previousAutoClear;
       renderer.setRenderTarget(previousTarget);
+    }
+  }
+
+  private ensureLightCapacity(count: number): void {
+    if (count <= this.lightCapacity) return;
+    // Release old GPU attributes before replacing them; retain and re-upload the shared quad.
+    if (this.lightCapacity) this.lightGeometry.dispose();
+    this.lightCapacity = THREE.MathUtils.ceilPowerOfTwo(count);
+    for (const [name, size] of [['lightOriginRadius', 3], ['lightColour', 3], ['lightLogFalloff', 1]] as const) {
+      this.lightGeometry.setAttribute(name, new THREE.InstancedBufferAttribute(
+        new Float32Array(this.lightCapacity * size), size).setUsage(THREE.DynamicDrawUsage));
     }
   }
 

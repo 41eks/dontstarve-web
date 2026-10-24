@@ -5,6 +5,7 @@ import type { BernieWorld } from './bernie';
 import type { ButterflyWorld } from './butterfly';
 import type { FirefliesWorld } from './fireflies';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { ReadonlySignal } from '@dontstarve-web/signals';
 
 export interface GroundItemDefinition {
   mole?: import('@dontstarve-web/inventory').InventoryStack['mole'];
@@ -31,10 +32,17 @@ export interface GroundItemDefinition {
 
 export interface GroundItemVisual {
   model: THREE.Group;
+  /** Resource presence, driven by the prefab's tile activity. Logical items still persist while false. */
+  active?: ReadonlySignal<boolean>;
   /** Bind movement/proximity to the committed inst; the model only projects its position. */
   bindTransform?(transform: ItemEntity['transform']): void;
   bindEntity?(entity: ItemEntity): void;
   update?(dt: number): void;
+  /**
+   * StartUpdatingComponent/StopUpdatingComponent: while false the manager skips update(); absent means always
+   * updating. Visuals with neither update nor isRemoved are static.
+   */
+  updating?: ReadonlySignal<boolean>;
   isRemoved?(): boolean;
   isClickable?(): boolean;
   isWorkable?(): boolean;

@@ -10,9 +10,11 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';
 import { createSignal, type WorldPhase } from '../../signals/src';
+import { createPerishWorld } from './perishWorldFixture';
 
 function createBird(prefab = 'canary') {
-  const bird = new ItemEntity({ itemId: prefab, count: 1 });
+  const perishWorld = createPerishWorld();
+  const bird = Object.assign(new ItemEntity({ itemId: prefab, count: 1 }, perishWorld), { perishWorld });
   bird.configure({ perishTime: BIRD_PERISH_TIME, configureEntity: configureBirdEntity });
   return bird;
 }
@@ -20,8 +22,8 @@ const tags = () => {
   const set = new Set<string>();
   return { set, addTag: (tag: string) => set.add(tag), removeTag: (tag: string) => set.delete(tag) };
 };
-const settle = (bird: ItemEntity, seconds: number) => {
-  bird.components.perishable.onFrame(seconds);
+const settle = (bird: ReturnType<typeof createBird>, seconds: number) => {
+  bird.perishWorld.advance(seconds);
   bird.components.perishable.flush();
 };
 

@@ -7,6 +7,8 @@ import { configureHeatRockEntity } from '../../prefab/src/heatrock';
 import { GroundItemAssets, createGroundItemSprite, createGroundItemFactory } from '../../prefab/src/groundItems';
 import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
 import { createRecipe } from '../../ui/src/categories/shared';
+import { createSignal } from '../../signals/src';
+import { ComponentUpdates } from '../../componets/src/componentUpdates';
 
 beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
@@ -30,6 +32,44 @@ it('creates individual unequippable stones with source tags and preserves their 
     expect(saved.snapshot().remainingFuel).toBe(62.5);
     expect(saved.signals.durabilityPercent.peek()).toBe(.625);
   } finally { inventory.dispose(); saved.destroy(); }
+});
+
+it('registers temperature updates once, moves them between worlds and unregisters during removal', () => {
+  const inventory = createPickupInventory(), updates = new ComponentUpdates(), nextUpdates = new ComponentUpdates();
+  const temperature = createSignal(35);
+  inventory.entities.bindTemperatureWorld({ temperature, componentUpdates: updates });
+  try {
+    inventory.add('log', 1);
+    inventory.add('heatrock', 2);
+    const first = inventory.getEntity(inventorySlotAddress(1))!, second = inventory.getEntity(inventorySlotAddress(2))!;
+    inventory.configureItem(first);
+    inventory.configureItem(first);
+    const firstUpdate = vi.spyOn(first.components.temperature!, 'OnUpdate');
+    const secondUpdate = vi.spyOn(second.components.temperature!, 'OnUpdate');
+    first.components.temperature!.SetTemperature(45);
+    updates.update(1);
+    expect(first.components.temperature!.GetCurrent()).toBe(44);
+    expect(firstUpdate).toHaveBeenCalledTimes(1);
+    expect(secondUpdate).toHaveBeenCalledTimes(1);
+    inventory.entities.bindTemperatureWorld({ temperature, componentUpdates: nextUpdates });
+    firstUpdate.mockClear(); secondUpdate.mockClear();
+    updates.update(10);
+    expect(firstUpdate).not.toHaveBeenCalled();
+    expect(secondUpdate).not.toHaveBeenCalled();
+    // Removal from inside OnUpdate must unregister the component while allowing its peer to update.
+    const onTemperature = first.ListenForEvent('temperaturedelta', () => first.remove());
+    nextUpdates.update(1);
+    expect(first.isRemoved).toBe(true);
+    expect(firstUpdate).toHaveBeenCalledTimes(1);
+    expect(secondUpdate).toHaveBeenCalledTimes(1);
+    nextUpdates.update(1);
+    expect(firstUpdate).toHaveBeenCalledTimes(1);
+    expect(secondUpdate).toHaveBeenCalledTimes(2);
+    onTemperature();
+    inventory.dispose();
+    nextUpdates.update(1);
+    expect(secondUpdate).toHaveBeenCalledTimes(2);
+  } finally { inventory.dispose(); updates.dispose(); nextUpdates.dispose(); }
 });
 
 it('renders the source neutral pose for base and skinned stones and resolves their crafting icons', async () => {
