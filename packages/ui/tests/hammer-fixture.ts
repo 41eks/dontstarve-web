@@ -13,7 +13,6 @@ export async function checkResearchLabDestruction() {
     ...worldState,
     clock: createSignal({ phase: 'day', timeinphase: 0 }),
     season: createSignal({ season: 'spring', progress: 0 }),
-    fullMoon: createSignal(false),
     isNight: createSignal(false),
   }, () => false);
   const { scene, renderer } = await import('../../../src/universal');

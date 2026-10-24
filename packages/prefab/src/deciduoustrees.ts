@@ -17,6 +17,7 @@ import { newEntityId } from './saveRecord';
 import { DeciduousTreeLeaves, type DeciduousTreeSave, type LeafWorld, type LeafBuild } from './deciduousTreeLeaves';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment } from './treeFire';
+import type { WorldEventEmitter } from './worldContext';
 
 export const DECIDUOUS_SPAWN_IDS = ['deciduoustree', 'deciduoustree_short', 'deciduoustree_normal', 'deciduoustree_tall'] as const;
 export type DeciduousSpawnId = typeof DECIDUOUS_SPAWN_IDS[number];
@@ -38,7 +39,7 @@ export interface DeciduousWorld {
   /** Searched for propagator neighbours; receives fire effects. */
   scene: THREE.Object3D;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
-  spawnAsh(position: THREE.Vector3): void;
+  worldEvents: WorldEventEmitter;
   scheduler?: GameTimeScheduler;
   physics?: CANNON.World;
   season: LeafWorld['season'];
@@ -162,7 +163,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   };
   /** DefaultBurntFn on a stump: one ash, then the inst is removed. */
   const burnStump = (tree: Tree) => {
-    world.spawnAsh(tree.logical.position.clone());
+    world.worldEvents.emit('spawnAsh', tree.logical.position.clone());
     remove(tree);
   };
   const burntChanges = (tree: Tree) => {

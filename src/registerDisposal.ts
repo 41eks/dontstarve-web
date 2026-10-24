@@ -107,7 +107,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'beefalos' | 'molehills'>;
+  'registry' | 'moonTreeForest' | 'evergreenForest' | 'deciduousForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'rockAvocadoSaplings' | 'rockAvocadoBushes' | 'berrybushes' | 'monkeytails' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'beefalos' | 'molehills'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -127,7 +127,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, beefalos } = scene;
+      const { moonTreeForest, evergreenForest, deciduousForest, buildingPlacement, groundItems, molehills, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, rockAvocadoSaplings, rockAvocadoBushes, berrybushes, monkeytails, grasses, saplings, scheduler, weather, moon, getWatchWorldContent, beefalos } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -290,7 +290,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       const reader = new Reader<PlayerReaderInst, BookWorld>(readerInst);
       readerInst.components.reader = reader;
       const bookWorld: BookWorld = {
-        root: view.scene, scheduler, weather, moon,
+        root: view.scene, scheduler, weather, moon, getWatchWorldContent,
         spawnFx(prefab, { getPosition }) {
           const { x, z } = getPosition();
           if (isWorldFx(prefab)) worldFx.spawn(prefab, new Vector3(x, 0, z));

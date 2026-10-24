@@ -1,12 +1,13 @@
-import * as THREE from 'three';
+import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
-import { createMemo, createSignal, readonlySignal, type EquipmentLifecycle, type ReadonlySignal } from '@dontstarve-web/signals';
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, type EquipmentLifecycle, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
+import * as THREE from 'three';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets, createGroundItemSprite } from './groundItems';
+import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
+import { listenInventoryEvents } from './inventoryEvents';
 import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
-import { listenInventoryEvents } from './inventoryEvents';
-import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 
 export const LANTERN_ID = 'lantern';
 export const LANTERN_COLOUR = [180 / 255, 195 / 255, 150 / 255] as const;
@@ -33,14 +34,24 @@ export class LanternController implements ItemRuntimeComponent {
   private firstPeriod = 0;
   private pendingSeconds = 0;
   private pendingFrames = 0;
+  readonly light = new LanternLightController();
+  private ground?: THREE.Object3D;
+  private hand?: LanternHandContext;
+  private owner?: EquipmentOwner;
+  private stopTrackingOwner?: () => void;
+  private readonly cleanups: (() => void)[] = [];
   private equipped = false;
   private disposed = false;
 
   constructor(entity: ItemEntity) {
     if (entity.prefab !== LANTERN_ID) throw new Error('LanternController requires a lantern entity');
     this.entity = entity;
+    const fuel = watchSignal(entity.components.fueled.fuel, stop => this.cleanups.push(stop));
     this.fuelPercentMemo = createMemo(() =>
-      Math.max(0, Math.min(1, (entity.components.fueled.fuel.get() ?? LANTERN_FUEL) / LANTERN_FUEL)));
+      Math.max(0, Math.min(1, (fuel.get() ?? LANTERN_FUEL) / LANTERN_FUEL)));
+    createEffect(() => this.light.setFuelPercent(
+      Math.max(0, Math.min(1, (fuel.get() ?? LANTERN_FUEL) / LANTERN_FUEL))));
+    entity.components.inventoryitem.SetOnPutInInventoryFn(() => this.OnPutInInventory());
     this.fuelPercent = readonlySignal(this.fuelPercentMemo);
   }
 
@@ -55,33 +66,65 @@ export class LanternController implements ItemRuntimeComponent {
       // fueled:StartConsuming charges the first period once, on top of elapsed time.
       this.firstPeriod = this.currentFuel() >= LANTERN_FUEL ? TURNON_FULL_FUELED_CONSUMPTION : TURNON_FUELED_CONSUMPTION;
     }
+    this.light.setFuelPercent(this.fuelPercent.peek());
+    this.light.setLit(true);
+    if (this.equipped) this.hand?.AnimState?.Show('LANTERN_OVERLAY');
     this.isOnState.set(true);
   }
 
   /** turnoff: settles elapsed time; StopConsuming cancels an uncharged first period. */
   TurnOff(): void {
     if (this.disposed) return;
+    this.stopTrackingOwner?.();
+    this.stopTrackingOwner = undefined;
     this.flushFuel();
     this.consuming = false;
     this.firstPeriod = 0;
+    this.light.setLit(false);
+    if (this.equipped) this.hand?.AnimState?.Hide('LANTERN_OVERLAY');
     this.isOnState.set(false);
   }
 
   /** inventoryitem:SetOnDroppedFn(ondropped): turnoff, then turnon. */
-  OnDropped(): void { this.TurnOff(); this.TurnOn(); }
+  OnDropped(): void { this.TurnOff(); this.light.setParent(this.ground); this.TurnOn(); }
+
+  /** Visual replacement only reattaches the existing light; it does not change machine/fueled state. */
+  bindGround(model: THREE.Object3D): void {
+    this.ground = model;
+    if (!this.equipped) this.light.setParent(model);
+  }
+  releaseGround(model: THREE.Object3D): void {
+    if (this.ground !== model) return;
+    this.ground = undefined;
+    if (!this.equipped && this.light.parent === model) this.light.setParent(undefined);
+  }
   /** inventoryitem:SetOnPutInInventoryFn(turnoff). */
   OnPutInInventory(): void { this.TurnOff(); }
   /** machine:OnLoad restores the saved switch. */
   OnLoad(ison: boolean): void { if (ison) this.TurnOn(); else this.TurnOff(); }
 
-  onequip(): void {
+  onequip(owner?: EquipmentOwner, context?: LanternHandContext): void {
+    if (this.disposed) return;
     this.equipped = true;
+    this.owner = owner;
+    this.hand = context;
+    this.light.setParent(context?.lightParent);
     if (!this.IsEmpty()) this.TurnOn();
+    else context?.AnimState?.Hide('LANTERN_OVERLAY');
   }
-  /** The receiving slot or ground decides the next switch state; held items do not consume. */
+  /** mininglantern.lua only clears worn art here; pocket/drop/equip events decide when to turn off. */
   onunequip(): void {
+    this.flushFuel();
+    this.hand?.AnimState?.Hide('LANTERN_OVERLAY');
+    this.stopTrackingOwner?.();
+    this.stopTrackingOwner = this.isOn ? this.owner?.ListenForEvent?.('equip', data => {
+      const event = data as { item?: { hasTag?(tag: string): boolean }; eslot?: string };
+      if (event.item !== this.entity && (event.eslot === 'HANDS'
+        || (event.eslot === 'BODY' && event.item?.hasTag?.('heavy')))) this.TurnOff();
+    }) : undefined;
     this.equipped = false;
-    this.TurnOff();
+    this.owner = undefined;
+    this.hand = undefined;
   }
   get isEquipped(): boolean { return this.equipped; }
 
@@ -113,13 +156,21 @@ export class LanternController implements ItemRuntimeComponent {
     this.consuming = false;
     this.isOnState.set(false);
     this.disposed = true;
-    this.fuelPercentMemo.dispose();
+    this.stopTrackingOwner?.();
+    this.stopTrackingOwner = undefined;
+    this.light.dispose();
+    for (const stop of this.cleanups) stop();
+    this.owner = undefined;
+    this.hand = undefined;
+    this.ground = undefined;
   }
 
   private nofuel(): void {
     this.consuming = false;
     this.firstPeriod = 0;
-    this.isOnState.set(false);
+    const owner = this.equipped ? this.owner : undefined;
+    this.TurnOff();
+    owner?.PushEvent('torchranout', { prefab: this.entity.prefab, equipslot: 'HANDS' });
   }
 
   private currentFuel(): number { return this.entity.components.fueled.remaining ?? LANTERN_FUEL; }
@@ -145,13 +196,16 @@ export class LanternLightController {
   private fuelPercent = 1;
   private requestedOn = false;
 
-  constructor(owner: THREE.Object3D, onChange?: (lit: boolean) => void) {
-    this.owner = owner;
-    this.onChange = onChange;
-  }
+  private node?: THREE.Object3D;
+  private owner?: THREE.Object3D;
+  constructor(owner?: THREE.Object3D) { this.owner = owner; }
 
-  private readonly owner: THREE.Object3D;
-  private readonly onChange?: (lit: boolean) => void;
+  get parent(): THREE.Object3D | undefined { return this.owner; }
+  setParent(parent?: THREE.Object3D): void {
+    this.owner = parent;
+    this.node?.removeFromParent();
+    if (parent && this.node) parent.add(this.node);
+  }
 
   get isLit(): boolean { return this.requestedOn && this.fuelPercent > 0; }
 
@@ -168,46 +222,41 @@ export class LanternLightController {
 
   dispose(): void {
     this.setLit(false);
+    this.owner = undefined;
   }
 
   private refresh(): void {
-    setPrefabLocalLight(this.owner, this.isLit ? {
+    if (!this.isLit) {
+      if (this.node) setPrefabLocalLight(this.node, null);
+      this.node?.removeFromParent();
+      this.node = undefined;
+      return;
+    }
+    if (!this.node) {
+      this.node = new THREE.Object3D();
+      this.node.name = 'lanternlight';
+      this.owner?.add(this.node);
+    }
+    setPrefabLocalLight(this.node, {
       radius: THREE.MathUtils.lerp(3, 5, this.fuelPercent) * (TILE_SIZE / 4),
       intensity: THREE.MathUtils.lerp(0.4, 0.6, this.fuelPercent),
       falloff: 0.9,
       colour: LANTERN_COLOUR,
-    } : null);
-    this.onChange?.(this.isLit);
+    });
   }
 }
 
-/** Presentation subscribes to the inst's switch and fuel; it never writes them. */
-function bindLanternState(controller: LanternController, present: (ison: boolean, fuelPercent: number) => void): () => void {
-  const sync = () => present(controller.ison.peek(), controller.fuelPercent.peek());
-  const stops = [controller.ison.subscribe(sync), controller.fuelPercent.subscribe(sync)];
-  sync();
-  return () => stops.forEach(stop => stop());
-}
-
 export interface LanternHandContext {
-  setLanternLight?(ison: boolean, fuelPercent: number): void;
+  lightParent: THREE.Object3D;
+  AnimState?: Pick<AnimState, 'Show' | 'Hide'>;
 }
 
-/** Equipment-scoped light binding; the controller stays on the item entity. */
+/** The item owns the light; equipping only supplies its parent and AnimState overlay interface. */
 export function createLanternHandLifecycle(entity: ItemEntity, context: LanternHandContext): EquipmentLifecycle {
   const controller = getLanternController(entity);
-  let stop: (() => void) | undefined;
   return {
-    onequip() {
-      controller.onequip();
-      stop?.();
-      stop = bindLanternState(controller, (ison, percent) => context.setLanternLight?.(ison, percent));
-    },
-    onunequip() {
-      controller.onunequip();
-      stop?.(); stop = undefined;
-      context.setLanternLight?.(false, controller.fuelPercent.peek());
-    },
+    onequip: owner => controller.onequip(owner, context),
+    onunequip: () => controller.onunequip(),
     onFrame: dt => controller.onFrame(dt),
     flush: () => controller.flushFuel(),
   };
@@ -218,23 +267,23 @@ export async function createLanternGroundSprite(assets: GroundItemAssets, skinId
   readonly light: LanternLightController;
 }> {
   const sprite = await createGroundItemSprite(assets, LANTERN_ID, skinId);
-  const light = new LanternLightController(sprite.model, (lit) => sprite.setAnimation(lit ? 'idle_on' : 'idle_off'));
   let controller: LanternController | undefined;
   let stopState: (() => void) | undefined;
   let savedOn: boolean | undefined;
   const removeInventoryEvents = listenInventoryEvents(sprite.model, {
     ondropped: () => controller?.OnDropped(),
-    onputininventory: () => controller?.OnPutInInventory(),
     // Older saves predate machine.ison; their ground lanterns were dropped, hence on.
     onload: () => controller?.OnLoad(savedOn ?? true),
   });
   return {
     model: sprite.model,
-    light,
+    get light() { return controller!.light; },
     bindEntity(entity) {
       stopState?.();
       controller = getLanternController(entity);
-      stopState = bindLanternState(controller, (ison, percent) => { light.setFuelPercent(percent); light.setLit(ison); });
+      controller.bindGround(sprite.model);
+      const ison = watchSignal(controller.ison, stop => { stopState = stop; });
+      createEffect(() => sprite.setAnimation(ison.get() ? 'idle_on' : 'idle_off'));
     },
     setDefinition(definition) { savedOn = definition.lanternOn; },
     getDefinition() {
@@ -242,7 +291,7 @@ export async function createLanternGroundSprite(assets: GroundItemAssets, skinId
       return controller ? { lanternOn: controller.isOn } : {};
     },
     update(dt: number) { controller?.onFrame(dt); sprite.update(dt); },
-    dispose() { removeInventoryEvents(); stopState?.(); light.dispose(); sprite.dispose(); },
+    dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(sprite.model); sprite.dispose(); },
   };
 }
 
@@ -257,17 +306,6 @@ export async function loadLanternEquipment(assets: GroundItemAssets, skinId?: st
   return { builds: skin ? [skin, base] : [base] };
 }
 
-/** Worn art uses swap_lantern and lantern_overlay, never the ground idle pose. */
-export function resolveLanternPlayerSprite(equipment: LanternEquipment, element: AnimElement): ResolvedSprite[] {
-  const hash = element.imageHash === smallHash('swap_object') ? smallHash('swap_lantern')
-    : smallHash('lantern_overlay');
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, hash, element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-  }
-  return [];
-}
-
 export function createLanternGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   return {
     itemIds: [LANTERN_ID],
@@ -275,3 +313,9 @@ export function createLanternGroundFactory(context: GroundPrefabContext): Ground
     create: (item) => createLanternGroundSprite(context.assets, item.skinId),
   };
 }
+
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareLanternVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const equipment = await loadLanternEquipment(assets, item.skinId);
+  return handEquipmentVisual(item, equipment.builds, 'swap_lantern', [{ symbol: 'lantern_overlay', source: 'lantern_overlay' }]);
+};

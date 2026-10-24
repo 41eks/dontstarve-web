@@ -27,7 +27,7 @@ function setup(tiles = oceanTiles(), blockers: { position: THREE.Vector3; tags?:
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  return { turf, placement: new DockKitPlacement(world, turf, '/dst/data', () => blockers) };
+  return { turf, placement: new DockKitPlacement(world, turf, () => blockers) };
 }
 const kit = () => new ItemEntity({ itemId: 'dock_kit', count: 1 });
 

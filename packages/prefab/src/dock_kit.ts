@@ -57,11 +57,11 @@ export class DockKitPlacement {
   private prepareRequest?: Promise<void>;
   private disposed = false;
 
-  constructor(world: WorldContext, turf: TurfMap, assetBaseUrl: string, blockers: () => readonly DockBlocker[] = () => []) {
+  constructor(world: WorldContext, turf: TurfMap, blockers: () => readonly DockBlocker[] = () => []) {
     this.world = world; this.turf = turf; this.blockers = blockers;
     this.dockmanager = new DockManager(dockMapOf(turf), { dock: WORLD_TILES.MONKEY_DOCK, farmingSoil: WORLD_TILES.FARMING_SOIL });
     this.stopActionEvents = bindActionCancellation(world, this, 'deploy', () => this.cancel());
-    this.assets = new ArchiveSpriteAssets(`${assetBaseUrl.replace(/\/$/, '')}/anim`, 'dock-kit');
+    this.assets = new ArchiveSpriteAssets('dock-kit');
     this.pointer = new PointerRaycaster(world);
     this.cursor = new BuildCursor(world, this.pointer);
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);

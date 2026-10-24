@@ -1,9 +1,9 @@
-import type * as THREE from 'three';
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
+import type * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
 import { PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
@@ -86,11 +86,11 @@ export async function loadTridentEquipment(assets: GroundItemAssets, skinId?: st
   return { builds: skin ? [skin, base] : [base] };
 }
 
-export function resolveTridentPlayerSprite(equipment: TridentEquipment, element: AnimElement): ResolvedSprite[] {
-  const symbol = smallHash('swap_trident');
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, symbol, element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-  }
-  return [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareTridentVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const [equipment] = await Promise.all([loadTridentEquipment(assets, item.skinId), PreloadSounds(TRIDENT_STRUM_SOUND)]);
+  // SGwilson's play_strum uses the unskinned swap_trident symbol.
+  const plain = await assets.loadBuild('swap_trident.zip');
+  const visual = handEquipmentVisual(item, equipment.builds, 'swap_trident');
+  return { ...visual, onequip(owner) { owner.AnimState.RegisterBuild('swap_trident', plain); visual.onequip(owner); } };
+};

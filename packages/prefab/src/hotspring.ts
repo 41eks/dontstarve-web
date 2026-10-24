@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteController } from '@dontstarve-web/animation/sprite';
+import { createEffect, watchSignal, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
 import { BathBombable } from '../../componets/src/bathbombable';
 import { Heater } from '../../componets/src/heater';
 import { actionEntity } from './actionEntity';
@@ -30,6 +31,8 @@ class Hotspring {
   readonly bathbombable: BathBombable;
   readonly body: CANNON.Body;
   private readonly model: THREE.Group;
+  private tileActivity?: Signal<boolean>;
+  private stopTileActivity?: () => void;
   constructor(model: THREE.Group, saved?: HotspringSaveState) {
     this.model = model;
     const inst = actionEntity(model, HOTSPRING_ID);
@@ -43,6 +46,11 @@ class Hotspring {
     setPrefabLocalLight(model, null); // Light:Enable(false)
     // OnLoad: `bathbombable:OnBathBombed()` with POPULATING set.
     if (saved?.isbathbombed) { this.bathbombable.OnBathBombed(); this.onBathBombed(true); }
+  }
+  bindTileActivity(source: ReadonlySignal<boolean>, onChange: (active: boolean) => void): void {
+    this.stopTileActivity?.();
+    this.tileActivity = watchSignal(source, stop => { this.stopTileActivity = stop; });
+    createEffect(() => onChange(this.tileActivity!.get()));
   }
   private getHeat(): number {
     if (this.bathbombable.is_bathbombed) { this.heater.SetThermics(true, false); return HOTSPRING_HEAT.ACTIVE; }
@@ -58,6 +66,7 @@ class Hotspring {
   }
   exportSave(): HotspringSaveState { return this.bathbombable.is_bathbombed ? { isbathbombed: true } : {}; }
   dispose(): void {
+    this.stopTileActivity?.();
     this.heater.dispose(); this.bathbombable.dispose();
     const components = this.model.userData.components;
     delete components.heater; delete components.bathbombable;
@@ -69,12 +78,15 @@ class Hotspring {
 export class HotspringManager {
   private factoryRequest?: Promise<AnimatedSpriteFactory>;
   private readonly springs = new Map<THREE.Group, Hotspring>();
+  private readonly activeSprings = new Set<THREE.Group>();
   private readonly scene: THREE.Scene;
   private readonly physics: CANNON.World;
   private readonly baseUrl: string;
+  private readonly getTileStateAtPoint?: TileStateQuery;
   private disposed = false;
-  constructor(scene: THREE.Scene, physics: CANNON.World, baseUrl: string) {
+  constructor(scene: THREE.Scene, physics: CANNON.World, baseUrl: string, getTileStateAtPoint?: TileStateQuery) {
     this.scene = scene; this.physics = physics; this.baseUrl = baseUrl;
+    this.getTileStateAtPoint = getTileStateAtPoint;
   }
   private factory(): Promise<AnimatedSpriteFactory> {
     if (this.disposed) return Promise.reject(new Error('Hotspring manager has been disposed'));
@@ -97,12 +109,25 @@ export class HotspringManager {
     const spring = new Hotspring(model, saved?.components.hotspring);
     model.userData.hotspring = spring; model.userData.physicsBody = spring.body;
     model.userData.remove = () => this.remove(model);
-    this.springs.set(model, spring); this.scene.add(model); this.physics.addBody(spring.body);
+    this.springs.set(model, spring);
+    const tileActivity = this.getTileStateAtPoint?.(model.position);
+    if (tileActivity) spring.bindTileActivity(tileActivity, active => this.setActive(model, spring, active));
+    else this.setActive(model, spring, true);
     return model;
+  }
+  private setActive(model: THREE.Group, spring: Hotspring, active: boolean): void {
+    if (this.disposed || !this.springs.has(model) || this.activeSprings.has(model) === active) return;
+    if (active) {
+      this.activeSprings.add(model);
+      this.scene.add(model); this.physics.addBody(spring.body);
+    } else {
+      this.activeSprings.delete(model);
+      model.removeFromParent(); this.physics.removeBody(spring.body);
+    }
   }
   update(dt: number): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
-    for (const model of this.springs.keys()) (model.userData.animationController as SpriteController).update(dt);
+    for (const model of this.activeSprings) (model.userData.animationController as SpriteController).update(dt);
   }
   exportRecords(): { prefabId: typeof HOTSPRING_ID; record: HotspringRecord }[] {
     return [...this.springs].map(([model, spring]) => ({ prefabId: HOTSPRING_ID, record: {
@@ -113,7 +138,7 @@ export class HotspringManager {
   remove(model: THREE.Group): void {
     const spring = this.springs.get(model);
     if (!spring) return;
-    this.springs.delete(model); model.userData.removed = true;
+    this.springs.delete(model); this.activeSprings.delete(model); model.userData.removed = true;
     spring.dispose(); this.physics.removeBody(spring.body); model.removeFromParent();
     void this.factoryRequest?.then(factory => factory.disposeSprite(model));
   }

@@ -1,19 +1,21 @@
-import * as THREE from 'three';
 import {
   findImage, smallHash, SpriteFrameRenderer, type AnimElement, type Matrix2D, type ResolvedSprite,
 } from '@dontstarve-web/animation/animationAssets';
 import {
-  bloomPadding, compose, HatArtAssets, isHatPlayerElementVisible, resolveHatElement, resolveHatSprites,
-  type HatArtDefinition, type HatEquipment as ArtHatEquipment, type HatEquipMode,
+  bloomPadding, compose, HatArtAssets, resolveHatElement, resolveHatSprites,
+  type HatEquipment as ArtHatEquipment,
+  type HatArtDefinition,
+  type HatEquipMode,
 } from '@dontstarve-web/animation/hatAssets';
-import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { attachPrefabLight, type PrefabLocalLight } from './localLight';
-import { createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
-import { TILE_SIZE } from './tile';
+import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
+import { createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
+import * as THREE from 'three';
+import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import catalog from './hats.json' with { type: 'json' };
 import { listenInventoryEvents } from './inventoryEvents';
-import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import { attachPrefabLight, type PrefabLocalLight } from './localLight';
+import { TILE_SIZE } from './tile';
 
 export type { HatEquipMode };
 export type HatEquipment = ArtHatEquipment<HatDefinition>;
@@ -86,14 +88,6 @@ export class HatEquipmentAssets extends HatArtAssets<HatDefinition> {
   constructor(assetBaseUrl: string) { super(assetBaseUrl, HAT_DEFINITIONS); }
 }
 
-/** The element hashes are immutable animation data; only the hat mode changes, so only it is a signal. */
-export function createHatPlayerVisibility(mode: ReadonlySignal<HatEquipMode | null>): Memo<(element: AnimElement) => boolean> {
-  return createMemo(() => {
-    const current = mode.get();
-    return (element: AnimElement) => isHatPlayerElementVisible(element, current);
-  });
-}
-
 /** hats.lua activation and alterguardian_hat_equipped.lua's two NoFaced layers. */
 export class HatActivationController {
   private readonly owner: THREE.Object3D;
@@ -103,16 +97,19 @@ export class HatActivationController {
   readonly activated: ReadonlySignal<boolean>;
   private readonly activatedMemo: Memo<boolean>;
   private readonly stopActivated: () => void;
+  private stopSanity?: () => void;
   private active = false;
   private deactivating = false;
   private elapsed = 0;
 
   constructor(owner: THREE.Object3D, sanityPercent?: ReadonlySignal<number>) {
     this.owner = owner;
+    const sanity = sanityPercent && watchSignal(sanityPercent, stop => { this.stopSanity = stop; });
     this.activatedMemo = createMemo(() => {
+      const percent = sanity?.get() ?? 1;
       const hat = this.hat.get();
       const config = hat?.definition.equip.activated;
-      return !!hat?.activated && !!config && (sanityPercent?.get() ?? 1) > config.sanityThreshold;
+      return !!hat?.activated && !!config && percent > config.sanityThreshold;
     });
     this.activated = readonlySignal(this.activatedMemo);
     this.stopActivated = this.activatedMemo.subscribe(active => this.apply(active));
@@ -133,7 +130,8 @@ export class HatActivationController {
 
   dispose(): void {
     this.stopActivated();
-    this.activatedMemo.dispose();
+    if (this.stopSanity) this.stopSanity();
+    else this.activatedMemo.dispose();
     this.removeLight?.(); this.removeLight = null;
   }
 
@@ -274,4 +272,72 @@ export function createHatGroundFactory(context: GroundPrefabContext): GroundItem
     create: (item) => createHatGroundSprite(assets, item.itemId, item.skinId),
     dispose: () => assets.dispose(),
   };
+}
+
+import type { EquipmentVisual, EquipmentVisualItem, EquipmentVisualOwner } from './equipmentVisual';
+
+/** hats.lua's simple/opentop/fullhelm equip branches and their owned follower FX. */
+export async function prepareHatVisual(
+  assets: HatEquipmentAssets, item: EquipmentVisualItem, lightParent: THREE.Object3D,
+  sanityPercent?: ReadonlySignal<number>,
+): Promise<EquipmentVisual> {
+  const hat = await assets.load(item.prefab, item.skinId);
+  let owner: EquipmentVisualOwner | undefined;
+  const stops: (() => void)[] = [];
+  let activation: HatActivationController | undefined;
+  let elapsed = 0;
+  const mode = hat.definition.equip.mode;
+  const symbol = mode === 'fullhelm' ? 'headbase_hat' : 'swap_hat';
+  return {
+    onequip(equipper) {
+      owner = equipper;
+      const anim = owner.AnimState;
+      if (item.skinId) {
+        owner.PushEvent('equipskinneditem', item.skinId);
+        anim.OverrideItemSkinSymbol(symbol, hat.builds, hat.definition.equip.symbol, item.id);
+      } else anim.OverrideSymbol(symbol, hat.builds, hat.definition.equip.symbol);
+      if (mode !== 'fullhelm') anim.ClearOverrideSymbol('headbase_hat');
+      for (const layer of ['HAT', 'HAIR_HAT', 'HAIR_NOHAT', 'HAIR', 'HEAD', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) {
+        const visible = layer === 'HAT' ? mode !== 'fullhelm'
+          : layer === 'HAIR_HAT' ? mode === 'normal'
+          : layer === 'HAIR_NOHAT' || layer === 'HAIR' || layer === 'HEAD' ? mode === 'opentop'
+          : layer === 'HEAD_HAT' ? mode !== 'opentop'
+          : layer === 'HEAD_HAT_NOHELM' ? mode === 'normal' : mode === 'fullhelm';
+        if (visible) anim.Show(layer); else anim.Hide(layer);
+      }
+      if (mode === 'fullhelm') for (const name of ['face', 'swap_face', 'beard', 'cheeks']) anim.HideSymbol(name);
+      activation = new HatActivationController(lightParent, sanityPercent);
+      activation.setHat(hat);
+      if (hat.definition.equip.follow || hat.activated) {
+        stops.push(anim.FollowSymbol(symbol, element => activation!.hidesSwapHat ? [] : resolveHatSprites(hat, element, elapsed)));
+      }
+      stops.push(anim.AddAttachment({
+        get isAnimating() { return !!hat.definition.equip.follow || activation!.isAnimating; },
+        update(dt) { elapsed += dt; activation!.update(dt); },
+        resolve(elements, mirrored) {
+          const anchor = elements.find(element => element.imageHash === smallHash(hat.definition.equip.activated?.symbol ?? 'hair'));
+          return anchor ? activation!.resolve(anchor, mirrored) : { back: [], front: [] };
+        },
+      }));
+    },
+    onunequip() {
+      if (!owner) return;
+      for (const stop of stops) stop();
+      stops.length = 0;
+      activation?.dispose(); activation = undefined;
+      const anim = owner.AnimState;
+      if (item.skinId) owner.PushEvent('unequipskinneditem', item.skinId);
+      anim.ClearOverrideSymbol('headbase_hat');
+      anim.ClearOverrideSymbol('swap_hat');
+      for (const layer of ['HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) anim.Hide(layer);
+      for (const layer of ['HAIR_NOHAT', 'HAIR', 'HEAD']) anim.Show(layer);
+      if (mode === 'fullhelm') for (const name of ['face', 'swap_face', 'beard', 'cheeks']) anim.ShowSymbol(name);
+      owner = undefined;
+    },
+  };
+}
+
+import { preparedEquipmentLifecycle, type EquipmentVisualContext } from './equipmentVisual';
+export function createHatEquipmentLifecycle(item: EquipmentVisualItem, context: EquipmentVisualContext) {
+  return preparedEquipmentLifecycle(() => prepareHatVisual(context.hats, item, context.lightParent, context.sanityPercent), context);
 }

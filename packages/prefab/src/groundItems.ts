@@ -87,7 +87,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
 
 /** Keep the existing ground material names used by equipment and lighting. */
 export class GroundItemAssets extends ArchiveSpriteAssets {
-  constructor(animationBaseUrl: string) { super(animationBaseUrl, 'ground'); }
+  constructor() { super('ground'); }
 }
 
 export type GroundItemSprite = ArchiveSprite;

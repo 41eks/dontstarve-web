@@ -1,7 +1,13 @@
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionContext';
-import type { WorldContentContext } from '@dontstarve-web/signals';
+import type { EventEmitter, WorldContentContext } from '@dontstarve-web/signals';
+
+/** Discrete requests emitted by prefabs; the running scene owns the handlers. */
+export interface WorldEvents {
+    spawnAsh: THREE.Vector3;
+}
+export type WorldEventEmitter = EventEmitter<WorldEvents>;
 
 /**
  * Everything a prefab needs from the host application to place itself in the
@@ -9,6 +15,7 @@ import type { WorldContentContext } from '@dontstarve-web/signals';
  * and the ground, so prefabs receive them instead of creating their own.
  */
 export interface WorldContext extends ActionWorldContext, Partial<WorldContentContext> {
+    worldEvents?: WorldEventEmitter;
     /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
     cameraFacing: import('@dontstarve-web/signals').ReadonlySignal<number>;
     /** TheCamera:GetHeading() in degrees. */
@@ -18,9 +25,6 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     itemEntities?: import('@dontstarve-web/inventory').ItemEntityRegistry;
     /** GetLocalTemperature at a DST ground position, in scene units. */
     getLocalTemperature?: (x: number, z: number) => number;
-    /** TheWorld.state.moonphase and iswaxingmoon. */
-    moon?: import('@dontstarve-web/signals').ReadonlySignal<{ readonly phase: import('@dontstarve-web/signals').WorldMoonPhase; readonly waxing: boolean }>;
-    fullMoon?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
     dynamicMusic?: import('../../componets/src/dynamicmusic').DynamicMusic;
     registerContainer?: (id: string, container: import('./containers').BuildingContainer,
         saved?: { slots: readonly { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] }) => void;

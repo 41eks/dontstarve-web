@@ -99,7 +99,7 @@
       "archive": "researchlab.zip",
       "buildLabel": "科学机器",
       "name": "ResearchLab",
-      "onProximity": true,
+      "onProximity": false,
       "scale": 0.016,
       "skinArchives": {
         "researchlab_gothic": "dynamic/researchlab_gothic.zip",
@@ -122,7 +122,7 @@
       "archive": "researchlab2.zip",
       "buildLabel": "炼金引擎",
       "name": "ResearchLab2",
-      "onProximity": true,
+      "onProximity": false,
       "scale": 0.02,
       "skinArchives": {
         "researchlab2_alchemytable": "dynamic/researchlab2_alchemytable.zip",
@@ -147,7 +147,7 @@
       "archive": "researchlab3.zip",
       "buildLabel": "暗影操控器",
       "name": "ResearchLab3",
-      "onProximity": true,
+      "onProximity": false,
       "scale": 0.02,
       "skinArchives": {
         "researchlab3_adventure": "dynamic/researchlab3_adventure.zip",
@@ -162,7 +162,7 @@
       "archive": "researchlab4.zip",
       "buildLabel": "灵子分解器",
       "name": "ResearchLab4",
-      "onProximity": true,
+      "onProximity": false,
       "scale": 0.02,
       "skinArchives": {
         "researchlab4_catcoon_costume": "dynamic/researchlab4_catcoon_costume.zip",

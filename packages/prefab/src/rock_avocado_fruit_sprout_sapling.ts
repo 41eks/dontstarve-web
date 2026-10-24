@@ -55,9 +55,9 @@ export class RockAvocadoSaplingManager {
   private readonly saplings = new Map<THREE.Group, Sapling>();
   private readonly sounds = new Set<SoundHandle>();
   private disposed = false;
-  constructor(scene: THREE.Scene, assetBaseUrl: string, world: RockAvocadoSaplingWorld) {
+  constructor(scene: THREE.Scene, world: RockAvocadoSaplingWorld) {
     this.scene = scene; this.world = world; this.scheduler = world.scheduler ?? new GameTimeScheduler();
-    this.ownsScheduler = !world.scheduler; this.assets = new ArchiveSpriteAssets(assetBaseUrl);
+    this.ownsScheduler = !world.scheduler; this.assets = new ArchiveSpriteAssets();
   }
   async spawn(position: THREE.Vector3, saved?: RockAvocadoSaplingRecord): Promise<THREE.Group> {
     return (await this.prepare()).spawn(position, saved);

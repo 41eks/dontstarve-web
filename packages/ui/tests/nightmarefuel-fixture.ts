@@ -3,7 +3,7 @@ import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } fro
 import { createArchiveSprite } from '../../animation/src/archiveSprite';
 
 export async function checkNightmareFuelTransparency() {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const source = GROUND_ITEM_DEFINITIONS.nightmarefuel;
   const fuel = await createGroundItemSprite(assets, 'nightmarefuel');
   const opaque = await createArchiveSprite(assets, { ...source, multColour: [1, 1, 1, 1] });

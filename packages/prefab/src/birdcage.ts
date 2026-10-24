@@ -170,6 +170,8 @@ export class Birdcage {
                 perishTick: context.world?.perishTick ?? readonlySignal(createSignal({ time: scheduler.now, total: 0 })),
                 perishClock: context.world?.perishClock,
                 snowLevel: context.world?.snowLevel ?? readonlySignal(createSignal(0)),
+                playerpositions: context.world?.playerpositions ?? readonlySignal(createSignal<THREE.Vector3[]>([])),
+                moon: context.world?.moon ?? readonlySignal(createSignal({ phase: 'new', waxing: true })),
                 scheduler, temperature: context.world?.temperature ?? readonlySignal(createSignal(30)),
                 cycle: context.world?.cycle ?? readonlySignal(createSignal<WorldPhase>('day')),
                 season: context.world?.season ?? readonlySignal(createSignal({ season: 'spring', progress: .5 })),

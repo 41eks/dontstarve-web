@@ -23,6 +23,7 @@ import { newEntityId } from './saveRecord';
 import { PreloadSounds, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment, type BurnSpec } from './treeFire';
 import { getBoundWatchWorldContent, type GetWatchWorldContent, type ReadonlySignal, type SeasonState } from '@dontstarve-web/signals';
+import type { WorldEventEmitter } from './worldContext';
 
 /** tuning.lua MOON_TREE_CHOPS_TALL: the forest's trees are the tall stage. */
 export const MOON_TREE_CHOPS_TALL = 16;
@@ -55,7 +56,7 @@ export interface MoonTreeWorld {
   readonly scene: THREE.Object3D;
   readonly season?: ReadonlySignal<SeasonState>;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
-  spawnAsh(position: THREE.Vector3): void;
+  worldEvents: WorldEventEmitter;
   growthDuration?(seconds: number): number;
   dropLoot(items: readonly { itemId: string; count: number }[], position: THREE.Vector3): void;
 }
@@ -226,7 +227,7 @@ export async function createMoonTreeForest(
   };
   /** DefaultBurntFn on a stump: one ash, then the inst is removed. */
   const burnStump = (entity: ProximityEntity) => {
-    world?.spawnAsh(entity.position.clone());
+    world?.worldEvents.emit('spawnAsh', entity.position.clone());
     removeTree(entity);
   };
   const removeTree = (entity: ProximityEntity) => {

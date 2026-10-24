@@ -1,7 +1,8 @@
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Tool } from '../../componets/src/tool';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { PreloadSounds } from './sound';
 
 export function configureBugNetEntity(entity: ItemEntity): void {
   entity.components.finiteuses.setMaxUses(10); // TUNING.BUGNET_USES
@@ -25,11 +26,8 @@ export async function loadBugNetEquipment(assets: GroundItemAssets, skinId?: str
   return { builds: skin ? [skin, base] : [base] };
 }
 
-/** bugnet.lua replaces the player's swap_object with the swap_bugnet symbol. */
-export function resolveBugNetPlayerSprite(equipment: BugNetEquipment, element: AnimElement): ResolvedSprite[] {
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, smallHash('swap_bugnet'), element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-  }
-  return [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareBugnetVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const [equipment] = await Promise.all([loadBugNetEquipment(assets, item.skinId), PreloadSounds('dontstarve/wilson/dig')]);
+  return handEquipmentVisual(item, equipment.builds, 'swap_bugnet');
+};

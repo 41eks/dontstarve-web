@@ -114,7 +114,7 @@ describe('butterfly planting', () => {
     const animation = { start() {}, playOnce() {}, update() {}, currentAnimation: 'idle_flight_loop', currentAnimationLength: 1 };
     const butterfly = new ButterflyController(BUTTERFLY_DEFINITIONS.butterfly, new ItemEntity({ itemId: 'butterfly', count: 1 }).transform,
       animation, {
-        isDay: () => true, getThreatPositions: () => [],
+        getThreatPositions: () => [],
         getFlowers: () => restored.world.scene.children.map((object) => ({
           id: object.userData.entityId, position: object.position,
         })),

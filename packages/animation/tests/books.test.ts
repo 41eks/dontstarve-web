@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { ItemEntity } from '../../inventory/src/entity';
 import { GameTimeScheduler } from '../../prefab/src/components/gameTimeScheduler';
 import { Pickable } from '../../prefab/src/components/pickable';
@@ -9,6 +9,17 @@ import { TILE_SIZE } from '../../prefab/src/tile';
 import { Reader } from '../../componets/src/reader';
 import { Weather } from '../../componets/src/weather';
 import { createWorldClockUpdater, createWorldState } from '../../../src/worldState';
+import { bindTestWorld } from './worldContentFixture';
+
+const cleanups: (() => void)[] = [];
+afterEach(() => { cleanups.splice(0).forEach(stop => stop()); });
+
+function bookWorld(root: THREE.Scene, scheduler: GameTimeScheduler, weather: Weather): BookWorld {
+  const { moon, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
+  cleanups.push(unbind);
+  return { root, scheduler, weather, getWatchWorldContent,
+    moon: { SetMoonPhase: phase => moon.set({ ...moon.peek(), phase }) } };
+}
 
 const newWeather = () => new Weather({ totalDayTime: 480, temperature: () => 20, random: () => 0.5 });
 
@@ -44,7 +55,7 @@ it('reads book_silviculture: regrows picked plants in range, spends a use and ch
   expect(bookActionObject(book)).toMatchObject({ swap_build: 'swap_books', swap_prefix: 'book_silviculture',
     def: { fx_under_prefab: 'fx_roots_under_book', layer_sound: { frame: 17 } } });
 
-  expect(reader.Read(book, { root: scene, scheduler, weather: newWeather() })).toEqual([true]);
+  expect(reader.Read(book, bookWorld(scene, scheduler, newWeather()))).toEqual([true]);
   // One target grows now; the rest wait up to 1 - 1 / (#remaining + 1) seconds.
   expect([near, alsoNear].filter(plant => plant.canBePicked)).toHaveLength(1);
   scheduler.advance(.5);
@@ -61,7 +72,7 @@ it('fails with NOSILVICULTURE without spending a use or sanity when only ready p
   const book = new ItemEntity({ itemId: 'book_silviculture', count: 1, remainingUses: 2 });
   book.configure(BOOK_ITEM_SPECS.book_silviculture);
   const { reader, doDelta } = readerFor(new THREE.Vector3());
-  expect(reader.Read(book, { root: scene, scheduler, weather: newWeather() })).toEqual([false, 'NOSILVICULTURE']);
+  expect(reader.Read(book, bookWorld(scene, scheduler, newWeather()))).toEqual([false, 'NOSILVICULTURE']);
   expect(book.components.finiteuses.uses.peek()).toBe(2);
   expect(doDelta).not.toHaveBeenCalled();
   reader.OnRemoveFromEntity();
@@ -73,7 +84,7 @@ it('reads book_rain: toggles precipitation through moisture, spawns its fx and c
   const book = new ItemEntity({ itemId: 'book_rain', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_rain);
   const { reader, doDelta } = readerFor(new THREE.Vector3());
-  const world: BookWorld = { root: scene, scheduler, weather, spawnFx };
+  const world: BookWorld = { ...bookWorld(scene, scheduler, weather), spawnFx };
   expect(bookActionObject(book).def?.fx).toBe('fx_book_rain');
 
   // ms_forceprecipitation true: moisture jumps to the ceiling and the next update starts the rain.
@@ -129,7 +140,7 @@ it('reads book_moon: forces a full moon through the world clock, refuses when al
   book.configure(BOOK_ITEM_SPECS.book_moon);
   const { reader, doDelta } = readerFor(new THREE.Vector3());
   const world = { root: new THREE.Scene(), scheduler: new GameTimeScheduler(), weather: newWeather(),
-    moon: { phase: state.moonPhase, SetMoonPhase: state.SetMoonPhase } } as BookWorld;
+    getWatchWorldContent: state.getWatchWorldContent, moon: { SetMoonPhase: state.SetMoonPhase } } as BookWorld;
   try {
     expect(state.moonPhase.peek()).toBe('quarter');
     expect(reader.Read(book, world)).toEqual([true]);

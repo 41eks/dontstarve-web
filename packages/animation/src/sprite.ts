@@ -105,6 +105,8 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   protected loop = true;
   private paused = false;
   private onComplete?: () => void;
+  private animationQueue: { name: string; loop: boolean }[] = [];
+  private queueAfter = 0;
   private transientRestore?: () => void;
   private readonly skin?: SpriteSkin;
   private overrides = new Map<number, SymbolOverride>();
@@ -164,6 +166,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   }
 
   start(name: string) {
+    this.animationQueue = [];
     if (name === this.animationName && this.loop) return;
     this.selectAnimation(name, true);
   }
@@ -243,6 +246,8 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.animStateHiddenLayers = new Set(source.animStateHiddenLayers);
     if (this.snow) this.updateSnowLayer(this.snowLevel?.peek() ?? 0);
     this.selectAnimation(source.animationName, source.loop, source.onComplete);
+    this.animationQueue = source.animationQueue.map(entry => ({ ...entry }));
+    this.queueAfter = source.queueAfter;
     this.elapsed = source.elapsed;
     this.update(0);
     this.paused = source.paused;
@@ -252,11 +257,25 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.selectAnimation(name, false, onComplete);
   }
 
+  /** AnimState:PushAnimation: finish this pass before advancing to the queued clip. */
+  pushAnimation(name: string, loop = false): void {
+    this.findAnimation(name);
+    if (this.animationQueue.length === 0) {
+      const duration = this.currentAnimationLength;
+      this.queueAfter = this.loop ? (Math.floor(this.elapsed / duration) + 1) * duration : duration;
+    }
+    this.animationQueue.push({ name, loop });
+  }
+
   playTransient(name: string) {
     const { animationName, elapsed, loop, onComplete } = this;
+    const queue = this.animationQueue.map(entry => ({ ...entry }));
+    const queueAfter = this.queueAfter;
     const restore = this.transientRestore ?? (() => {
       this.selectAnimation(animationName, loop, onComplete);
       this.elapsed = elapsed;
+      this.animationQueue = queue;
+      this.queueAfter = queueAfter;
       const frame = Math.floor(elapsed * this.animation.frameRate);
       this.showFrame(loop ? frame % this.animation.frames.length : Math.min(frame, this.animation.frames.length - 1));
     });
@@ -283,6 +302,17 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   update(dt: number) {
     if (this.paused) return;
     this.elapsed += Math.min(dt, 0.1);
+    if (this.animationQueue.length > 0 && this.elapsed >= this.queueAfter) {
+      const [next, ...remaining] = this.animationQueue;
+      const remainder = this.elapsed - this.queueAfter;
+      const completion = this.onComplete;
+      this.onComplete = undefined;
+      completion?.();
+      this.selectAnimation(next.name, next.loop);
+      this.animationQueue = remaining;
+      this.queueAfter = this.currentAnimationLength;
+      this.elapsed = remainder;
+    }
     const elapsedFrame = Math.floor(this.elapsed * this.animation.frameRate);
     if (!this.loop && elapsedFrame >= this.animation.frames.length) {
       const completion = this.onComplete;
@@ -304,6 +334,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.animationName = name;
     this.loop = loop;
     this.onComplete = onComplete;
+    this.animationQueue = [];
     this.transientRestore = undefined;
     this.paused = false;
     this.elapsed = 0;

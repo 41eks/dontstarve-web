@@ -18,7 +18,7 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
   expect(GROUND_ITEM_DEFINITIONS.backpack).toMatchObject({
     animationArchive: 'backpack.zip', buildArchives: ['swap_backpack.zip'], bank: 'backpack1', animation: 'anim',
   });
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const skins = ['backpack_babybeef', 'backpack_catcoonp', 'backpack_invisible'];
   for (const skinId of [undefined, ...skins]) {
     const ground = await createGroundItemSprite(assets, 'backpack', skinId);

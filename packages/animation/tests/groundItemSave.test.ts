@@ -5,6 +5,8 @@ import type { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createGroundItemSprite } from '@dontstarve-web/prefab/groundItems';
+import { EventEmitter } from '@dontstarve-web/signals';
+import type { WorldEvents } from '../../prefab/src/worldContext';
 
 vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
   loadImageAtlas: async () => ({
@@ -76,16 +78,46 @@ function setup() {
   const inventory = createPickupInventory();
   const pickup = vi.spyOn(inventory, 'GiveItem');
   const player = new THREE.Group();
+  const worldEvents = new EventEmitter<WorldEvents>();
   const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
-    { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, 'anim', player);
+    { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, 'anim', player,
+    undefined, undefined, undefined, undefined, undefined, undefined, undefined, worldEvents);
   const doer = createPickupDoer(player, inventory);
   const pick = (model: THREE.Object3D) => performPickupAction(model.userData.pickupTarget, doer);
-  return { manager, scene, pickup, pick, player, inventory, canvas };
+  return { manager, scene, pickup, pick, player, inventory, canvas, worldEvents };
 }
 
 const definition = { itemId: 'log', count: 1, name: 'Log', icon: 'log.tex' };
 
 describe('ground item save records', () => {
+  it('spawns ash through scene events, preserves its saved identity and position, and stops listening on disposal', async () => {
+    const first = setup(), restored = setup();
+    try {
+      const position = new THREE.Vector3(7, 0, 9);
+      first.worldEvents.emit('spawnAsh', position);
+      position.set(100, 0, 100);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const records = first.manager.exportRecords();
+      expect(records).toHaveLength(1);
+      expect(records[0]).toMatchObject({
+        transform: { position: [7, 0, 9] }, components: { stack: { itemId: 'ash', count: 1 } },
+      });
+      expect(restored.manager.exportRecords()).toEqual([]);
+      await restored.manager.spawnFromSave(records[0].id,
+        { ...restored.inventory.getItemSpec('ash'), ...records[0].components.stack! },
+        new THREE.Vector3(...records[0].transform.position));
+      expect(restored.manager.exportRecords()).toEqual(records);
+      const spawn = vi.spyOn(first.manager, 'spawnFromSave');
+      first.manager.dispose();
+      first.worldEvents.emit('spawnAsh', position);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(spawn).not.toHaveBeenCalled();
+      expect(restored.manager.exportRecords()).toEqual(records);
+    } finally {
+      first.manager.dispose(); restored.manager.dispose(); first.inventory.dispose(); restored.inventory.dispose();
+    }
+  });
+
   it('saves and restores inventory overflow before its ground art finishes loading', async () => {
     const { manager, inventory, player } = setup();
     try {

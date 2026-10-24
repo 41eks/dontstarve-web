@@ -31,7 +31,7 @@ export async function checkLightbulbLighting() {
     return pixel[0] + pixel[1] + pixel[2];
   };
   const baseline = sample(0);
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const bulb = await createLightbulbGroundSprite(assets);
   scene.add(bulb.model);
   bulb.model.quaternion.copy(camera.quaternion);

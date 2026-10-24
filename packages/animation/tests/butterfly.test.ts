@@ -1,10 +1,16 @@
 import * as THREE from 'three';
 import { ItemEntity } from '../../inventory/src';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BUTTERFLY_DEFINITIONS, ButterflyController, createButterflyGroundFactory,
   type ButterflyFlower, type ButterflyWorld,
 } from '../../prefab/src/butterfly';
+
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { bindTestWorld } from './worldContentFixture';
+
+const cleanups: (() => void)[] = [];
+afterEach(() => { cleanups.splice(0).forEach(stop => stop()); });
 
 function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = vi.fn()) {
   let complete: (() => void) | undefined;
@@ -17,20 +23,22 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
   };
   let threats: THREE.Vector3[] = [];
   let flowers: ButterflyFlower[] = [];
-  let day = true;
+  const scheduler = new GameTimeScheduler();
+  const { cycle, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const world: ButterflyWorld = {
-    isDay: () => day,
+    getWatchWorldContent,
     getThreatPositions: () => threats,
     getFlowers: () => flowers,
   };
   const entity = new ItemEntity({ itemId: prefab, count: 1 });
   const controller = new ButterflyController(BUTTERFLY_DEFINITIONS[prefab], entity.transform, animation, world, () => [], () => 0, dropLoot);
+  cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
   return {
-    animation, controller, world, entity,
+    cycle, animation, controller, world, entity,
     position: () => entity.transform.position.clone(),
     setThreats: (value: THREE.Vector3[]) => { threats = value; },
     setFlowers: (value: ButterflyFlower[]) => { flowers = value; },
-    setDay: (value: boolean) => { day = value; },
+    setDay: (value: boolean) => { cycle.set(value ? 'day' : 'dusk'); },
     complete: () => { const callback = complete; complete = undefined; callback?.(); },
     tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 10); i++) controller.update(0.1); },
   };
@@ -96,7 +104,7 @@ describe('live butterfly source behavior', () => {
     expect(s.controller.components.pollinator!.flowers).toHaveLength(1);
   });
 
-  it('goes home to a flower at night and is removed only after landing', () => {
+  it('goes home to a flower at dusk and is removed only after landing', () => {
     const s = setup();
     s.setDay(false);
     s.setFlowers([{ id: 'home', position: new THREE.Vector3(3, 0, 0) }]);

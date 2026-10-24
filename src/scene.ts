@@ -27,9 +27,11 @@ import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
 import { FindEntities } from '../packages/prefab/src/actionEntity';
-import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { bindPlayerBuilder, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
+import { preloadAnimationArchives } from '@dontstarve-web/animation/preloadArchives';
+import { savedPrefabArchives } from './prefabDefinitions';
 
 export const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -9.82, 0),
@@ -139,7 +141,7 @@ export async function startScene(
   };
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
   player.userData.locomotor = locomotor;
-  const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds);
+  const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, () => [player.position]);
   const scheduler = worldState.scheduler;
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock };
   itemEntities?.bindPerishWorld(perishWorld);
@@ -147,6 +149,9 @@ export async function startScene(
     onBuildingInteraction, onFlowerPlanted, itemEntities, inventory, scheduler);
   const { registry } = entities;
   try {
+    // Scan the save here; the archive worker decodes the needed art while entities restore and share its cache.
+    void preloadAnimationArchives(savedPrefabArchives(registry.prefabDefinitions, initialSave.world.entities),
+      `${import.meta.env.BASE_URL}dst/data/anim`);
     await registry.restoreAll(initialSave.world.entities);
   } catch (error) {
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
@@ -156,6 +161,10 @@ export async function startScene(
     dstLighting.dispose();
     throw error;
   }
+  const builder = bindPlayerBuilder(player, {
+    findEntities: (position, radius, mustTags, cantTags) => FindEntities(scene, position, radius, mustTags, cantTags),
+  });
+  builder.OnUpdate();
   // player_common.lua AddComponent("slipperyfeet"); frozen ponds are its slipperyfeettarget entities.
   const stategraph = (player.userData.animationController as WilsonAnimationController | undefined)?.stategraph;
   const slipperyfeet = stategraph && new SlipperyFeet({
@@ -174,6 +183,7 @@ export async function startScene(
   const updateEntities = (dt: number) => {
     turfMap.update(dt);
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
+    builder.OnUpdate();
     // Inventory, container and ground insts share one registry; each settles every 10 game seconds.
     for (const entity of itemEntities?.values() ?? []) {
       entity.components.perishable.onFrame(dt);
@@ -240,6 +250,8 @@ export async function startScene(
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     if (player.userData.locomotor === locomotor) delete player.userData.locomotor;
     animation?.stop();
+    builder.dispose();
+    if (player.userData.components?.builder === builder) delete player.userData.components.builder;
     slipperyfeet?.dispose();
     if (player.userData.slipperyfeet === slipperyfeet) delete player.userData.slipperyfeet;
     const slipTask = backTasks.indexOf(updateSlipperyFeet);
@@ -267,7 +279,8 @@ export async function startScene(
     else releaseResources();
   };
   return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather,
-    moon: { phase: worldState.moonPhase, SetMoonPhase: worldState.SetMoonPhase },
+    getWatchWorldContent: worldState.getWatchWorldContent,
+    moon: { SetMoonPhase: worldState.SetMoonPhase },
     getSaveState, disposalEvents, start, dispose };
 }
 

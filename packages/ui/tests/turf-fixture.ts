@@ -29,7 +29,7 @@ export async function checkTurfOcclusion() {
   const camera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 200);
   const reference = new Uint8Array(256 * 256 * 4);
   const actual = new Uint8Array(reference.length);
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const failures: string[] = [];
   let comparisons = 0;
   try {

@@ -178,7 +178,7 @@ export class WallPlacement<BuildId extends string> {
     private readonly facing: Signal<number>;
     private readonly cleanups: (() => void)[] = [];
     private readonly world: WorldContext;
-    private readonly effectAssets = new GroundItemAssets(`${import.meta.env.BASE_URL}dst/data/anim`);
+    private readonly effectAssets = new GroundItemAssets();
     private readonly effects = new Set<ArchiveSprite>();
 
     constructor(

@@ -3,6 +3,11 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // scienceprototyper.lua / magicprototyper.lua → dontstarve.fev sounddefs 244/245/619/944; file_index + 1.
+  'dontstarve/common/researchmachine_lvl1_idle_LP': { bank: 'common', streams: [248], loop: true, volume: .15848931670188904 },
+  'dontstarve/common/researchmachine_lvl2_idle_LP': { bank: 'common', streams: [249], loop: true, volume: .15848931670188904 },
+  'dontstarve/common/researchmachine_lvl3_idle_LP': { bank: 'common', streams: [251], loop: true, volume: .15848931670188904 },
+  'dontstarve/common/researchmachine_lvl4_idle_LP': { bank: 'common', streams: [213], loop: true, volume: .10000000149011612, pitchOctaves: -.25 },
   // rock_avocado_bush.lua picksound → dontstarve.fev sounddef 86 → wilson file_index 19–21.
   'dontstarve/wilson/harvest_berries': { bank: 'wilson', streams: [20, 21, 22], loop: false },
   // flies.lua → dontstarve.fev sounddef 56 → common file_index 74–80 (Flies_soothed_DST_-001..007).

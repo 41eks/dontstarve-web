@@ -40,11 +40,11 @@ export class OceanWaves implements WaveSpawner {
   private prepared?: Promise<void>;
   private disposed = false;
 
-  constructor(scene: THREE.Scene, map: WaveMap, scale: number, animationBaseUrl: string) {
+  constructor(scene: THREE.Scene, map: WaveMap, scale: number) {
     this.scene = scene;
     this.map = map;
     this.scale = scale;
-    this.assets = new GroundItemAssets(animationBaseUrl);
+    this.assets = new GroundItemAssets();
   }
 
   /** Load every wave archive; spawn requests are ignored until it resolves. */

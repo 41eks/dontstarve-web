@@ -432,6 +432,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         entity.addTag('burnt');
         if (entity.components.burnable) entity.components.burnable.canlight = false;
         entity.PushEvent?.('burntup', undefined);
+        entity.components.prototyper?.OnRemoveFromEntity();
+        delete entity.components.prototyper;
         entity.components.workable?.SetWorkLeft(1);
         const container = model.userData.components?.container;
         container?.DropEverything(entity.getPosition());

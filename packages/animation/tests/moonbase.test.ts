@@ -24,8 +24,20 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer } from '../../componets/src/timer';
 import { createSignal } from '../../signals/src';
 import { getPickActions } from '../../stategraphs/src/pick';
+import { bindTestWorld } from './worldContentFixture';
+
+const worldCleanups: (() => void)[] = [];
+function moonWorld(scheduler: GameTimeScheduler, full: boolean) {
+  const world = bindTestWorld(scheduler);
+  world.cycle.set('night');
+  world.moon.set({ phase: full ? 'full' : 'new', waxing: true });
+  worldCleanups.push(world.unbind);
+  return world;
+}
+
 
 afterEach(() => {
+  worldCleanups.splice(0).forEach(stop => stop());
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -163,8 +175,9 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
 });
 
 it('charges through three source stages, restores the remaining timers and morphs a skinned staff at full durability', async () => {
-  const fullMoon = createSignal(false), scheduler = new GameTimeScheduler();
-  const { placement, world, model } = await createMoonbase({ fullMoon, scheduler });
+  const scheduler = new GameTimeScheduler();
+  const { moon, getWatchWorldContent } = moonWorld(scheduler, false);
+  const { placement, world, model } = await createMoonbase({ getWatchWorldContent, scheduler });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
   model.userData.components.repairable.Repair(rock, () => true);
   scheduler.advance(0);
@@ -172,7 +185,8 @@ it('charges through three source stages, restores the remaining timers and morph
   model.userData.components.trader.AcceptGift(original, () => true);
   const state = getMoonbaseState(model), changed = vi.fn();
   const stop = state.timers.mooncharge.subscribe(changed);
-  fullMoon.set(true);
+  moon.set({ phase: 'full', waxing: true });
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(state.charge.peek()).toBe('preparing');
   scheduler.advance(9.99); expect(state.charge.peek()).toBe('preparing');
   scheduler.advance(.01); expect(state.charge.peek()).toBe('charging_1');
@@ -193,8 +207,9 @@ it('charges through three source stages, restores the remaining timers and morph
   const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG);
   stop(); placement.dispose(); scheduler.dispose(); rock.destroy();
 
-  const restoredScheduler = new GameTimeScheduler(1000), restoredMoon = createSignal(true);
-  const restored = await createMoonbase({ fullMoon: restoredMoon, scheduler: restoredScheduler }, parsed.world.entities.moonbase[0]);
+  const restoredScheduler = new GameTimeScheduler(1000);
+  const restoredWorld = moonWorld(restoredScheduler, true);
+  const restored = await createMoonbase({ getWatchWorldContent: restoredWorld.getWatchWorldContent, scheduler: restoredScheduler }, parsed.world.entities.moonbase[0]);
   const next = getMoonbaseState(restored.model);
   try {
     restoredScheduler.advance(0);
@@ -222,8 +237,9 @@ it('charges through three source stages, restores the remaining timers and morph
 });
 
 it('cancels charge on early retrieval or moonset, then starts fresh and releases pending tasks on removal', async () => {
-  const fullMoon = createSignal(true), scheduler = new GameTimeScheduler();
-  const { placement, model } = await createMoonbase({ fullMoon, scheduler });
+  const scheduler = new GameTimeScheduler();
+  const { cycle, getWatchWorldContent } = moonWorld(scheduler, true);
+  const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
   const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
   model.userData.components.repairable.Repair(rock, () => true);
   scheduler.advance(0);
@@ -239,15 +255,18 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
   trader.AcceptGift(staff, () => true); scheduler.advance(1);
   expect(model.userData.components.timer.GetTimeLeft('mooncharge')).toBeCloseTo(MOONBASE_CHARGE_DURATION);
   scheduler.advance(19); expect(state.charge.peek()).toBe('charging_2');
-  fullMoon.set(false);
+  cycle.set('day');
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(state.charge.peek()).toBe('idle');
   expect(model.userData.actionEntity.hasTag('intense')).toBe(false);
   expect(state.staff.peek()).toBe(staff);
-  fullMoon.set(true); scheduler.advance(10);
+  cycle.set('night');
+  await new Promise(resolve => setTimeout(resolve, 0)); scheduler.advance(10);
   expect(state.charge.peek()).toBe('charging_1');
   placement.dispose();
   expect(state.timers.mooncharge.peek().status).toBe('stopped');
-  scheduler.advance(200); fullMoon.set(false);
+  scheduler.advance(200); cycle.set('day');
+  await new Promise(resolve => setTimeout(resolve, 0));
   expect(staff.isRemoved).toBe(true); expect(placement.renderEntities).toEqual([]);
   rock.destroy(); scheduler.dispose();
 });

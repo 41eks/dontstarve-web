@@ -26,6 +26,7 @@ import { actionEntity } from '../packages/prefab/src/actionEntity';
 import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
 import type { DeconstructionTarget, DeconstructionLoot, PreparedDeconstruction } from '@dontstarve-web/prefab/greenstaff';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
+import type { WorldEventEmitter } from '../packages/prefab/src/worldContext';
 
 export interface PreparedDrop {
   /** Takes the item from the inventory and places it; false (and disposes the art) when the take fails. */
@@ -61,6 +62,7 @@ export class GroundItemManager {
   private readonly items = new Map<THREE.Group, GroundItemRecord>();
   private readonly inventory: InventoryStore;
   private readonly stopDrops: () => void;
+  private readonly stopSpawnAsh?: () => void;
   private readonly pendingDrops = new Map<string, { entity: ItemEntity; definition: GroundItemDefinition }>();
   private onNetCapture?: (target: NetCaptureTarget) => boolean;
   private readonly pointer: PointerRaycaster;
@@ -79,13 +81,14 @@ export class GroundItemManager {
     inventory: InventoryStore,
     animationBaseUrl: string,
     player: THREE.Object3D,
-    butterflyWorld: ButterflyWorld = { isDay: () => true, getThreatPositions: () => [], getFlowers: () => [] },
-    firefliesWorld: FirefliesWorld = { isNight: () => false, getPlayerPositions: () => [] },
+    butterflyWorld: ButterflyWorld = { getThreatPositions: () => [], getFlowers: () => [] },
+    firefliesWorld: FirefliesWorld = {},
     bernieWorld: BernieWorld = { getSanityPercent: () => 1 },
     entities = new ItemEntityRegistry(),
     scheduler?: GameTimeScheduler,
     fx?: GroundPrefabOptions['fx'],
     moleWorld?: GroundPrefabOptions['moleWorld'],
+    worldEvents?: WorldEventEmitter,
   ) {
     this.entities = entities;
     this.scene = scene;
@@ -103,11 +106,17 @@ export class GroundItemManager {
     });
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     this.stopDrops = inventory.subscribeDropped(entity => this.onInventoryDrop(entity));
+    // DefaultBurntFn requests one ash at the burnt inst's ground position.
+    this.stopSpawnAsh = worldEvents?.on('spawnAsh', position => {
+      void this.spawnFromSave(newEntityId(), { ...inventory.getItemSpec('ash'), itemId: 'ash', count: 1 }, position.clone())
+        .catch((error: unknown) => console.error('Unable to spawn ash', error));
+    });
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopSpawnAsh?.();
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     this.pointer.dispose();
     this.stopDrops();

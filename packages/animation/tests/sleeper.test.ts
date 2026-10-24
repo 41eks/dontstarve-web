@@ -5,7 +5,7 @@ import { Sleeper } from '../../componets/src/sleeper';
 
 it('reacts to day/night after effects settle, preserves other checks and cancels a queued effect on disposal', async () => {
   const cycle = createSignal<WorldPhase>('day'), scheduler = new GameTimeScheduler();
-  const sources: WorldContentEnvironment = { snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
+  const sources: WorldContentEnvironment = { playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
   const components = { combat: { target: undefined as object | undefined }, locomotor: { Stop: vi.fn() } };
   const PushEvent = vi.fn();
   let busy = true;
@@ -63,7 +63,7 @@ it('reacts to day/night after effects settle, preserves other checks and cancels
 
 it('nocturnal sleepers own independent cycle watches and wake at dusk or night', async () => {
   const scheduler = new GameTimeScheduler(), cycle = createSignal<WorldPhase>('day');
-  const sources: WorldContentEnvironment = { snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
+  const sources: WorldContentEnvironment = { playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
   const requests = vi.fn();
   const watch: GetWatchWorldContent = (key, register) => {
     requests(key); return getWatchWorldContent(key, register, sources);

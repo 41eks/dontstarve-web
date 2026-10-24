@@ -138,7 +138,7 @@ export class FencePlacement {
         this.player = world.player;
         this.ground = world.ground;
         this.consumeBufferedBuild = consumeBufferedBuild;
-        this.assets = new GroundItemAssets(`${import.meta.env.BASE_URL}dst/data/anim`);
+        this.assets = new GroundItemAssets();
         this.stopActionEvents = bindActionCancellation(world, this, 'building', () => this.cancel());
         this.pointer = new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);

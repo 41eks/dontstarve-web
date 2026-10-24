@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
-import { loadNightswordEquipment, resolveNightswordPlayerSprite } from '../../prefab/src/nightsword';
+import { loadNightswordEquipment } from '../../prefab/src/nightsword';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import type { AnimElement } from '../src/animationAssets';
+import { smallHash, type AnimElement } from '../src/animationAssets';
+import { AnimState } from '../src/animState';
 import { GroundItemManager } from '../../../src/groundItems';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -28,7 +29,7 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('uses separate source ground and equipped art and renders a skin while moving and changing facing', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
   const mesh = player.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
@@ -42,7 +43,9 @@ it('uses separate source ground and equipped art and renders a skin while moving
     expect(GROUND_ITEM_SKIN_SPECS.nightsword_cotl).toMatchObject({ itemId: 'nightsword', icon: 'nightsword_cotl.tex' });
     const equipment = await loadNightswordEquipment(assets);
     expect(equipment.build.build.name).toBe('swap_nightmaresword');
-    expect(resolveNightswordPlayerSprite(equipment, { imageIndex: 0 } as AnimElement)).toHaveLength(1);
+    const animState = new AnimState(() => {});
+    animState.OverrideSymbol('swap_object', equipment.build, 'swap_nightmaresword');
+    expect(animState.ResolveSymbol({ imageHash: smallHash('swap_object'), imageIndex: 0 } as AnimElement)).toHaveLength(1);
     await expect(loadNightswordEquipment(assets, 'pickaxe_invisible')).rejects.toThrow('Unknown nightsword skin');
     for (const skinId of [undefined, 'nightsword_cotl']) {
       const ground = await createGroundItemSprite(assets, 'nightsword', skinId);

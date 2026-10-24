@@ -82,7 +82,7 @@ describe('NET action on a moving butterfly', () => {
 describe('original bugnet assets and Wilson action', () => {
   function useRealAssets() {
     vi.stubGlobal('fetch', async (url: string) => {
-      const file = new URL(String(url), 'https://test.invalid').pathname.replace('/anim/', '');
+      const file = new URL(String(url), 'https://test.invalid').pathname.split('/anim/').at(-1)!;
       const bytes = await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url));
       return new Response(bytes);
     });
@@ -96,7 +96,7 @@ describe('original bugnet assets and Wilson action', () => {
     useRealAssets();
     expect(inventoryItemMaxStack('bugnet')).toBe(1);
     expect(inventoryItemEquipmentKind('bugnet')).toBe('hand');
-    const assets = new GroundItemAssets('/anim');
+    const assets = new GroundItemAssets();
     const ground = await createGroundItemSprite(assets, 'bugnet');
     const meshes: THREE.Mesh[] = [];
     ground.model.traverse(object => { if (object instanceof THREE.Mesh) meshes.push(object); });

@@ -63,6 +63,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     fueled.TakeFuelItem(relight);
     expect(controller.isOn).toBe(true);
     controller.onunequip();
+    controller.OnPutInInventory();
     lantern.setRemainingFuel(LANTERN_FUEL - 1);
     const clamp = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(clamp);
     fueled.TakeFuelItem(clamp);

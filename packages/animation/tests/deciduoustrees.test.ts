@@ -1,3 +1,5 @@
+import { EventEmitter } from '@dontstarve-web/signals';
+import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -17,7 +19,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function setup(seasonName: SeasonState['season'] = 'summer') {
   const scheduler = new GameTimeScheduler(), season = createSignal<SeasonState>({ season: seasonName, progress: .5 });
   const physics = new CANNON.World(), dropLoot = vi.fn();
-  const forest = await createDeciduousForest('/dst/data/anim', { scheduler, season, physics, camera: new THREE.PerspectiveCamera(), scene: new THREE.Scene(), spawnAsh: vi.fn(), dropLoot,
+  const forest = await createDeciduousForest('/dst/data/anim', { scheduler, season, physics, camera: new THREE.PerspectiveCamera(), scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), dropLoot,
     secondsUntilNextDay: now => 480 - now % 480, growthDuration: time => time * (season.peek().season === 'spring' ? .75 : 1) }, () => .5, 20);
   return { forest, scheduler, season, physics, dropLoot };
 }

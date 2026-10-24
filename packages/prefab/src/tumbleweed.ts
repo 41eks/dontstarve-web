@@ -238,9 +238,9 @@ export class TumbleweedManager {
   private readonly world: TumbleweedWorld;
   private disposed = false;
 
-  constructor(scene: THREE.Scene, physics: CANNON.World, assetBaseUrl: string, world: TumbleweedWorld) {
+  constructor(scene: THREE.Scene, physics: CANNON.World, world: TumbleweedWorld) {
     this.scene = scene; this.physics = physics; this.world = world;
-    this.assets = new ArchiveSpriteAssets(assetBaseUrl, 'tumbleweed');
+    this.assets = new ArchiveSpriteAssets('tumbleweed');
     // MakeCharacterPhysics sets friction to zero, so ground contacts must not cancel the wind-driven motor.
     const materials = new Set([physics.defaultMaterial, ...physics.bodies.map(body => body.material)
       .filter((material): material is CANNON.Material => material !== null)]);

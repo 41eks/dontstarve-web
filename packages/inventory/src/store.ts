@@ -434,7 +434,6 @@ export class InventoryStore {
       remaining -= count;
     }
     if (remaining > 0 || !this.applySlotChanges(changes)) return false;
-    entity.components.inventoryitem.OnPutInInventory(this.actor);
     if (!this.registrations.some(({ slot }) => slot.getEntity() === entity)) this.entities.destroy(entity);
     onReceived?.(changes);
     return true;
@@ -762,7 +761,12 @@ export class InventoryStore {
       changed.set(key, cloneAddress(registration.address));
     }
     if (!this.validEntityAssignments(next)) return false;
+    const previous = new Map([...changed].map(([key, address]) => [key, this.getEntity(address)]));
     this.commit(next);
+    for (const [key, address] of changed) {
+      const entity = this.getEntity(address);
+      if (entity && entity !== previous.get(key)) entity.components.inventoryitem.OnPutInInventory(this.actor);
+    }
     this.notify([...changed.values()], changedEquipmentKinds([...changed.values()]));
     return true;
   }
@@ -970,6 +974,7 @@ export class InventoryStore {
     if (kind === 'hand') publish(this.handEquipmentExistenceState, 'HANDS');
     else if (kind === 'head') publish(this.headEquipmentExistenceState, 'HEAD');
     else publish(this.bodyEquipmentExistenceState, 'BODY');
+    if (entity) this.actor.PushEvent('equip', { item: entity, eslot: kind === 'hand' ? 'HANDS' : kind === 'head' ? 'HEAD' : 'BODY' });
   }
 
   private notify(changedSlots: readonly SlotAddress[], replacedEquipment: readonly EquipmentKind[] = []): void {

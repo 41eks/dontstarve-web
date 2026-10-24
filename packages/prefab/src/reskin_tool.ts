@@ -1,13 +1,14 @@
-import * as THREE from 'three';
-import { findImage, smallHash, SpriteFrameRenderer, type AnimElement, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import * as THREE from 'three';
+import { SpellCaster } from '../../componets/src/spellcaster';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
 import { setPrefabLightOverride } from './localLight';
 import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
 import { TILE_SIZE } from './tile';
-import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import type { ItemEntity } from '@dontstarve-web/inventory';
-import { SpellCaster } from '../../componets/src/spellcaster';
 
 export function configureReskinToolEntity(entity: ItemEntity): void {
   entity.addTag('nopunch');
@@ -85,9 +86,9 @@ export class ReskinEffects {
   private readonly active = new Set<EffectInstance>();
   private disposed = false;
 
-  constructor(scene: THREE.Scene, animationBaseUrl: string) {
+  constructor(scene: THREE.Scene) {
     this.scene = scene;
-    this.assets = new GroundItemAssets(animationBaseUrl);
+    this.assets = new GroundItemAssets();
   }
 
   async prepare(toolSkinId?: string): Promise<void> {
@@ -205,13 +206,8 @@ export async function loadReskinToolEquipment(assets: GroundItemAssets, skinId?:
   return { builds: skin ? [skin, base] : [base] };
 }
 
-/** reskin_tool.lua overrides the player's swap_object with swap_reskin_tool. */
-export function resolveReskinToolPlayerSprite(equipment: ReskinToolEquipment, element: AnimElement): ResolvedSprite[] {
-  const symbol = smallHash('swap_reskin_tool');
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, symbol, element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-    if (source.build.symbols.has(symbol)) return [];
-  }
-  return [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const prepareReskinToolVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const [equipment] = await Promise.all([loadReskinToolEquipment(assets, item.skinId), PreloadSounds('dontstarve/wilson/attack_weapon')]);
+  return handEquipmentVisual(item, equipment.builds, 'swap_reskin_tool');
+};

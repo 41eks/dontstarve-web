@@ -63,7 +63,7 @@ it('eats meatballs through the solid-food action and applies source stats only a
 });
 
 it('renders source raw/cooked mushroom poses and applies harmful and restorative food values', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const raw = await createGroundItemSprite(assets, 'green_cap');
   const cooked = await createGroundItemSprite(assets, 'blue_cap_cooked');
   const { animation, actions, store, slot, source } = await fixture('green_cap');
@@ -86,7 +86,7 @@ it('renders source raw/cooked mushroom poses and applies harmful and restorative
 
 it('drinks source bananajuice art, consumes once at frame 12 and restores the remaining item and numerical stats', async () => {
   const { animation, actions, store, slot, entity, source } = await fixture();
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const ground = await createGroundItemSprite(assets, 'bananajuice');
   const onEaten = vi.fn(() => applyPlayerFoodEffects(FOOD_EFFECTS.bananajuice));
   try {

@@ -23,12 +23,12 @@ function farmSetup(player = new THREE.Group()) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
-  const farm = new FarmPlowPlacement(world, turf, '/dst/data', async () => {});
+  const farm = new FarmPlowPlacement(world, turf, async () => {});
   return { farm, turf, world };
 }
 
 it('renders the original ground seed pose and commits quick eating once at frame 12, preserving other stats', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const sprite = await createGroundItemSprite(assets, 'seeds');
   expect(GROUND_ITEM_DEFINITIONS.seeds).toMatchObject({ atlas: 'images/inventoryimages.xml', bank: 'seeds',
     animationArchive: 'seeds.zip', animation: 'idle', skinArchives: {} });
@@ -105,7 +105,7 @@ it('plants only an intact finished hole, replaces it atomically and restores the
 });
 
 it('renders veggie ground art and plants split bank/build veggie seeds, preserving them through save restore', async () => {
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   expect(GROUND_ITEM_DEFINITIONS.carrot_seeds).toMatchObject({ icon: 'carrot_seeds.tex', atlas: 'images/inventoryimages.xml',
     bank: 'farm_plant_seeds', animationArchive: 'farm_plant_seeds.zip', animation: 'carrot' });
   expect(GROUND_ITEM_DEFINITIONS.tomato.icon).toBe('quagmire_tomato.tex');

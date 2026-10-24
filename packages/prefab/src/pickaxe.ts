@@ -1,8 +1,9 @@
-import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { Tool } from '../../componets/src/tool';
+import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
+import { PreloadSounds } from './sound';
 
 export const PICKAXE_USES = 33; // tuning.lua; gold consumes 1 / GOLDENTOOLFACTOR = .25 per MINE.
 
@@ -76,13 +77,8 @@ export async function loadHeldToolEquipment<Tool extends string>(
   return { tool, symbol: swap.symbol, builds: skin ? [skin, base] : [base] };
 }
 
-export function resolvePickaxePlayerSprite(equipment: HeldToolEquipment, element: AnimElement): ResolvedSprite[] {
-  const symbol = smallHash(equipment.symbol);
-  for (const source of equipment.builds) {
-    const image = findImage(source.build, symbol, element.imageIndex);
-    if (image) return [{ element, image, materials: source.materials }];
-    // Missing held frames in an explicitly overridden symbol mean hidden art.
-    if (source.build.symbols.has(symbol)) return [];
-  }
-  return [];
-}
+/** Source prefab onequip/onunequip: prepared art is applied through the owner's AnimState. */
+export const preparePickaxeVisual: PrepareEquipmentVisual = async (assets, item) => {
+  const [equipment] = await Promise.all([loadPickaxeEquipment(assets, item.prefab as PickaxeTool, item.skinId), PreloadSounds('dontstarve/wilson/use_pick_rock')]);
+  return handEquipmentVisual(item, equipment.builds, equipment.symbol);
+};

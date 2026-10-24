@@ -7,25 +7,73 @@ import { FirefliesController, FIREFLIES_LIGHT } from '../../prefab/src/fireflies
 import { getPrefabLightOverride, getPrefabLocalLight } from '../../prefab/src/localLight';
 import { GroundItemManager } from '../../../src/groundItems';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { bindTestWorld } from './worldContentFixture';
+
+const cleanups: (() => void)[] = [];
+afterEach(() => { cleanups.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = () => 0) {
+  const scheduler = new GameTimeScheduler();
+  const { cycle, playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
+  cycle.set(night ? 'night' : 'day');
+  playerpositions.set([position.clone()]);
   const model = new THREE.Group();
   model.add(new THREE.Group());
   const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn() };
-  let players = [position];
   const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
   const controller = new FirefliesController(model, animation,
-    { isNight: () => night, getPlayerPositions: () => players }, entity.transform, random);
-  return { model, animation, controller, setNight: (value: boolean) => { night = value; },
-    setPlayers: (value: THREE.Vector3[]) => { players = value; },
-    tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 100); i++) controller.update(0.01); } };
+    { getWatchWorldContent }, entity.transform, random);
+  cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
+  return { model, animation, controller, cycle, playerpositions, setNight: (value: boolean) => { cycle.set(value ? 'night' : 'day'); },
+    setPlayers: (value: THREE.Vector3[]) => { playerpositions.set(value.map(player => player.clone())); },
+    tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 100); i++) { scheduler.advance(.01); controller.update(.01); } } };
 }
 
 describe('source fireflies light and proximity', () => {
-  it('fades in at night and uses the source radius, intensity, colour and falloff', () => {
+  it('uses private world cycle changes for the delayed night check and releases world inputs on disposal', async () => {
+    const s = setup(false);
+    s.controller.place(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    s.setPlayers([new THREE.Vector3(10, 0, 0)]);
+    const distance = vi.spyOn(s.playerpositions.peek()[0], 'distanceToSquared');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(distance).not.toHaveBeenCalled();
+    s.cycle.set('dusk');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    s.tick(3);
+    expect(s.controller.clickable).toBe(false);
+    s.setNight(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(distance).toHaveBeenCalled();
+    s.tick(1.9);
+    expect(s.controller.clickable).toBe(false);
+    s.tick(.2);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(s.controller.clickable).toBe(true);
+    s.tick(3);
+    s.setNight(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    s.tick(1.9);
+    expect(s.controller.intensity).toBe(.5);
+    s.tick(.2);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    s.tick(.8);
+    expect(s.controller.intensity).toBe(0);
+    s.controller.dispose();
+    const readCycle = vi.spyOn(s.cycle, 'get');
+    const readPositions = vi.spyOn(s.playerpositions, 'get');
+    s.setNight(true);
+    s.setPlayers([new THREE.Vector3()]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(readCycle).not.toHaveBeenCalled();
+    expect(readPositions).not.toHaveBeenCalled();
+  });
+
+  it('fades in at night and uses the source radius, intensity, colour and falloff', async () => {
     const s = setup();
     s.controller.place(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('swarm_pre', expect.any(Function));
     expect(s.controller.clickable).toBe(true);
     expect(s.controller.workable).toBe(true);
@@ -39,11 +87,21 @@ describe('source fireflies light and proximity', () => {
     expect(s.animation.start).toHaveBeenLastCalledWith('swarm_loop');
   });
 
-  it('fades out at 3 units, keeps NET briefly and reappears only after 5 units', () => {
-    const s = setup();
+  it('uses published player snapshots and scaled near/far boundaries, retaining NET briefly during fade-out', async () => {
+    const player = new THREE.Vector3(10, 0, 0);
+    const s = setup(true, player);
     s.controller.place(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(3.1);
-    s.setPlayers([new THREE.Vector3(3, 0, 0)]);
+    player.set(0, 0, 0);
+    s.tick(1);
+    expect(s.controller.intensity).toBe(0.5); // Moving the live player does not mutate the world snapshot.
+    s.setPlayers([new THREE.Vector3(9, 0, 0)]);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    s.tick(.1);
+    expect(s.controller.intensity).toBe(.5); // Source near boundary is strictly < 3 * TILE_SIZE / 4.
+    s.setPlayers([new THREE.Vector3(30, 0, 0), new THREE.Vector3(8.99, 0, 0)]);
+    await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(0.4);
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('swarm_pst', expect.any(Function));
     expect(s.controller.intensity).toBeLessThan(0.5);
@@ -54,23 +112,28 @@ describe('source fireflies light and proximity', () => {
     expect(getPrefabLocalLight(s.model)).toBeUndefined();
     s.tick(1.6);
     expect(s.controller.workable).toBe(false);
-    s.setPlayers([new THREE.Vector3(4.9, 0, 0)]);
+    s.setPlayers([new THREE.Vector3(14.99, 0, 0)]);
+    await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(1);
     expect(s.controller.intensity).toBe(0);
-    s.setPlayers([new THREE.Vector3(5, 0, 0)]);
+    s.setPlayers([new THREE.Vector3(15, 0, 0)]);
+    await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(0.1);
     expect(s.controller.intensity).toBeGreaterThan(0);
     expect(s.controller.workable).toBe(true);
   });
 
-  it('reverses a fade without restarting the light at zero and removes light on disposal', () => {
+  it('reverses a fade without restarting the light at zero and removes light on disposal', async () => {
     const s = setup();
     s.controller.place(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(3.1);
     s.setPlayers([new THREE.Vector3()]);
+    await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(0.3);
     const value = s.controller.intensity;
     s.setPlayers([]);
+    await new Promise(resolve => setTimeout(resolve, 0));
     s.tick(0.1);
     expect(s.controller.intensity).toBeGreaterThan(value);
     const stale = s.animation.playOnce.mock.calls[1][1] as () => void;
@@ -96,9 +159,13 @@ describe('real fireflies archive and ground transfers', () => {
     const inventory = createPickupInventory();
     const pickup = vi.spyOn(inventory, 'GiveItem');
     pickup.mockImplementationOnce(entity => { entity.PushEvent('ondropped', undefined); return false; });
+    const scheduler = new GameTimeScheduler();
+    const { cycle, getWatchWorldContent, unbind } = bindTestWorld(scheduler); cycle.set('night');
+    cleanups.push(() => { unbind(); scheduler.dispose(); });
     const manager = new GroundItemManager(scene, new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group(), undefined,
-      { isNight: () => true, getPlayerPositions: () => [] });
+      { getWatchWorldContent });
+    cleanups.push(() => manager.dispose());
     const definition = { itemId: 'fireflies', count: 2, name: '萤火虫', icon: 'fireflies.tex' };
     expect(await manager.drop(definition, new THREE.Vector3(8, 0, 9), () => false)).toBe(false);
     expect(scene.children).toHaveLength(0);
@@ -118,6 +185,7 @@ describe('real fireflies archive and ground transfers', () => {
     expect(manager.exportRecords()).toHaveLength(1);
     const dark = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(),
       { domElement: canvas } as unknown as THREE.WebGLRenderer, 'images.zip', inventory, '/anim', new THREE.Group());
+    cleanups.push(() => dark.dispose());
     const restored = await dark.spawnFromSave(records[0].id, { ...definition, count: 1 }, new THREE.Vector3(8, 0, 9));
     expect(dark.exportRecords()).toEqual([records[0]]);
     expect(getPrefabLocalLight(restored)).toBeUndefined();

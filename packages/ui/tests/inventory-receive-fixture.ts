@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mountGameUi, INVENTORY_RECIPES } from '../src';
 import { createInventoryStore } from '../../../src/inventory';
 import { GroundItemManager } from '../../../src/groundItems';
+import { createWorldState } from '../../../src/worldState';
 import { inventoryReceiveEffect, projectInventorySource } from '../../../src/inventoryReceive';
 import { inventorySlotAddress } from '@dontstarve-web/inventory';
 
@@ -25,9 +26,10 @@ export async function createReceiveFixture() {
   inventory.subscribe((addresses) => addresses.forEach(sync));
   const scene = new THREE.Scene();
   inventory.subscribeReceived((received, source) => { if (source) inventoryReceiveEffect(inventoryBar, camera, canvas, new THREE.Vector3(source.x, source.y, source.z))(received); });
+  const worldState = createWorldState({ elapsedSeconds: 450, systems: {} });
   const ground = new GroundItemManager(scene, camera, { domElement: canvas } as unknown as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group(), undefined,
-    { isNight: () => true, getPlayerPositions: () => [] });
+    { getWatchWorldContent: worldState.getWatchWorldContent });
   return {
     inventory, inventoryBar,
     add(itemId: string, count: number, x = 0, z = 0, skinId?: string) {
@@ -53,6 +55,6 @@ export async function createReceiveFixture() {
       const stack = inventory.get(slot)!;
       inventory.applySlotChanges([{ slot, itemId: stack.itemId, skinId: stack.skinId, delta: -stack.count }]);
     },
-    dispose() { ground.dispose(); inventoryBar.remove(); canvas.remove(); },
+    dispose() { ground.dispose(); worldState.dispose(); inventoryBar.remove(); canvas.remove(); },
   };
 }

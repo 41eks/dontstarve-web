@@ -19,7 +19,7 @@ export async function checkBernieGround() {
   const manager = new GroundItemManager(scene, camera, renderer, '/missing-inventory-atlas.zip',
     pickup.inventory, '/dst/data/anim', new THREE.Group(), undefined, undefined,
     { getSanityPercent: () => sanity });
-  const assets = new GroundItemAssets('/dst/data/anim');
+  const assets = new GroundItemAssets();
   const failures: string[] = [];
   const cases = [];
   const inventoryForms: string[] = [];

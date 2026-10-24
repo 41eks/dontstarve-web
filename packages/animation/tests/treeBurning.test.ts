@@ -9,15 +9,23 @@ import { FlowerPlanting } from '../../prefab/src/flower';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Lighter } from '../../componets/src/lighter';
 import { collectEquippedActions, performLightAction, performToolWork, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
-import { createSignal, type SeasonState } from '@dontstarve-web/signals';
-import type { WorldContext } from '../../prefab/src/worldContext';
+import { EventEmitter, createSignal, type SeasonState } from '@dontstarve-web/signals';
+import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+const cleanups: (() => void)[] = [];
+afterEach(() => { cleanups.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+function ashEvents() {
+  const worldEvents = new EventEmitter<WorldEvents>();
+  const ashSpawned = vi.fn();
+  cleanups.push(worldEvents.on('spawnAsh', ashSpawned));
+  return { worldEvents, ashSpawned };
+}
 
 /** A torch-like tool: only its lighter component matters to the LIGHT action. */
 function torch(): ComponentActionEntity {
@@ -39,12 +47,13 @@ const flush = () => Promise.resolve();
 const fires = (scene: THREE.Object3D) => scene.children.filter(child => child.name === 'fire').length;
 
 async function evergreens(random = () => .5) {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn(), spawnAsh = vi.fn();
+  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
+  const { worldEvents, ashSpawned } = ashEvents();
   const forest = await createEvergreenForest('/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scene, scheduler,
-    physics: new CANNON.World(), dropLoot, spawnAsh }, random, 20);
+    physics: new CANNON.World(), dropLoot, worldEvents }, random, 20);
   scene.add(forest.group);
   forest.updateNearby(new THREE.Vector3());
-  return { scene, scheduler, forest, dropLoot, spawnAsh };
+  return { scene, scheduler, forest, dropLoot, ashSpawned };
 }
 
 it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one charcoal chop and survives save/load', async () => {
@@ -103,7 +112,7 @@ it('burns an evergreen stump to ash and removes it, and finishes a burning tree 
     // The save of a burning stump is still the stump.
     expect(s.forest.exportRecords()[0].components.evergreen).toEqual({ stump: true });
     s.scheduler.advance(10); await flush();
-    expect(s.spawnAsh).toHaveBeenCalledWith(new THREE.Vector3(2, 0, 0));
+    expect(s.ashSpawned).toHaveBeenCalledWith(new THREE.Vector3(2, 0, 0));
     expect(s.forest.entities).toEqual([]); expect(stump.isRemoved).toBe(true); expect(fires(s.scene)).toBe(0);
 
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(4, 0, 0));
@@ -121,7 +130,7 @@ it('burns a deciduous tree, keeps its season-independent burnt save, and drops c
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
   const season = createSignal<SeasonState>({ season: 'summer', progress: .5 });
   const forest = await createDeciduousForest('/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scene, scheduler, season,
-    physics: new CANNON.World(), dropLoot, spawnAsh: vi.fn(), secondsUntilNextDay: now => 480 - now % 480 }, () => .5, 20);
+    physics: new CANNON.World(), dropLoot, worldEvents: new EventEmitter<WorldEvents>(), secondsUntilNextDay: now => 480 - now % 480 }, () => .5, 20);
   scene.add(forest.group); forest.updateNearby(new THREE.Vector3());
   try {
     const tree = forest.spawn('deciduoustree_normal', new THREE.Vector3(3, 0, 0));
@@ -144,7 +153,7 @@ it('burns a deciduous tree, keeps its season-independent burnt save, and drops c
 it('burns a moon tree for its size-scaled time and keeps burnt state through unloading, save and chopping', async () => {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
   const forest = await createMoonTreeForest('/dst/data/anim', { positions: [], random: () => .5, loadRadius: 20 });
-  forest.bindWorld({ camera: new THREE.PerspectiveCamera(), scene, scheduler, dropLoot, spawnAsh: vi.fn() });
+  forest.bindWorld({ camera: new THREE.PerspectiveCamera(), scene, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>() });
   scene.add(forest.group); forest.updateNearby(new THREE.Vector3());
   try {
     const tree = forest.spawnTree('moon_tree_tall', new THREE.Vector3(3, 0, 0));
@@ -167,17 +176,18 @@ it('burns a moon tree for its size-scaled time and keeps burnt state through unl
 });
 
 it('burns a planted flower to ash, leaving it out of the save while it burns', async () => {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), spawnAsh = vi.fn();
+  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
+  const { worldEvents, ashSpawned } = ashEvents();
   const world = { scene, player: new THREE.Group(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  const flowers = new FlowerPlanting(world, '/dst/data/anim', undefined, Math.random, undefined, { scheduler, spawnAsh });
+  const flowers = new FlowerPlanting(world, '/dst/data/anim', undefined, Math.random, undefined, { scheduler, worldEvents });
   try {
     const model = await flowers.spawnFromSave('flower-1', 'f1', new THREE.Vector3(3, 0, 4));
     const target = model.userData.actionEntity as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
     expect(fires(scene)).toBe(1); expect(flowers.exportRecords()).toEqual([]);
     scheduler.advance(10); await flush();
-    expect(spawnAsh).toHaveBeenCalledWith(new THREE.Vector3(3, 0, 4));
+    expect(ashSpawned).toHaveBeenCalledWith(new THREE.Vector3(3, 0, 4));
     expect(fires(scene)).toBe(0); expect(model.parent).toBeNull(); expect(target.isRemoved).toBe(true);
     expect(flowers.exportRecords()).toEqual([]);
   } finally { flowers.dispose(); }

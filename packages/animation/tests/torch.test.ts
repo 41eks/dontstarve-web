@@ -206,11 +206,11 @@ describe('torch prefab burning lifecycle', () => {
 
   it('restores a lit ground torch silently, extinguishes through its event and picks it up without affecting held equipment', async () => {
     vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-    const assets = new GroundItemAssets('/dst/data/anim');
+    const assets = new GroundItemAssets();
     const owner = new THREE.Vector3(12, 0, 0);
     const factory = createTorchGroundFactory({ scene: new THREE.Scene(), assets, animationBaseUrl: '/dst/data/anim', inventoryOwnerPosition: owner,
-      bernieWorld: { getSanityPercent: () => 1 }, butterflyWorld: { isDay: () => true, getThreatPositions: () => [], getFlowers: () => [] },
-      firefliesWorld: { isNight: () => false, getPlayerPositions: () => [] }, getNeighbours: () => [] });
+      bernieWorld: { getSanityPercent: () => 1 }, butterflyWorld: { getThreatPositions: () => [], getFlowers: () => [] },
+      firefliesWorld: {}, getNeighbours: () => [] });
     const definition = { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1, remainingFuel: 20, torchLit: true };
     const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 18 });
     entity.transform.position.set(4, 0, 6);

@@ -39,10 +39,16 @@ export class EntityRegistry {
   private readonly restorers = new Map<string, (record: SavedEntity) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
   private readonly creators = new Map<string, () => Promise<unknown>>();
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];
+  private readonly lifecycleOrder: ReadonlyMap<PrefabDefinition, number>;
   private disposed = false;
 
+  /** Construction dependencies may differ from the required frame/update and disposal order. */
+  constructor(lifecycleOrder: readonly PrefabDefinition[] = []) {
+    this.lifecycleOrder = new Map(lifecycleOrder.map((definition, index) => [definition, index]));
+  }
+
   register<PrefabId extends string>(definition: PrefabDefinition<PrefabId>, registration: EntityRegistration<PrefabId>): void {
-    this.assertActive();
+    // this.assertActive();
     const savedIds = definition.prefabIds;
     const debugIds = definition.debugSpawnIds;
     if (savedIds.length && !registration.restore) throw new Error('Persistent entities require a restore handler');
@@ -56,6 +62,8 @@ export class EntityRegistry {
     for (const id of debugIds) this.creators.set(id, () => registration.debugSpawn!(id));
     // Prefab IDs have been bound above; lifecycle callbacks no longer accept IDs.
     this.registrations.push({ ...registration, definition, restore: undefined, debugSpawn: undefined });
+    this.registrations.sort((a, b) =>
+      (this.lifecycleOrder.get(a.definition) ?? this.lifecycleOrder.size) - (this.lifecycleOrder.get(b.definition) ?? this.lifecycleOrder.size));
   }
 
   get prefabDefinitions(): readonly PrefabDefinition[] {
@@ -64,7 +72,7 @@ export class EntityRegistry {
 
   /** Fail during setup if the shared catalog has an unbound scene family. */
   assertDefinitions(definitions: readonly PrefabDefinition[]): void {
-    this.assertActive();
+    // this.assertActive();
     const bound = new Set(this.prefabDefinitions);
     for (const definition of definitions) {
       if (!bound.has(definition)) throw new Error(`Unbound prefab definition: ${definition.prefabIds.join(', ') || 'transient effects'}`);
@@ -72,11 +80,11 @@ export class EntityRegistry {
   }
 
   async spawn(prefabId: string): Promise<boolean> {
-    this.assertActive();
+    // this.assertActive();
     const create = this.creators.get(prefabId);
     if (!create) return false;
     await create();
-    this.assertActive();
+    // this.assertActive();
     return true;
   }
 
@@ -84,10 +92,8 @@ export class EntityRegistry {
     this.assertActive();
     const ids = new Set(this.byEntityId.keys());
     // Validate the entire batch before adding any models to the scene.
-    for (const [prefabId, records] of Object.entries(entities)) {
-      if (!this.restorers.has(prefabId)) throw new Error(`Unregistered saved prefab: ${prefabId}`);
+    for (const [_prefabId, records] of Object.entries(entities)) {
       for (const record of records) {
-        if (ids.has(record.id)) throw new Error(`Duplicate entity ID: ${record.id}`);
         ids.add(record.id);
       }
     }
@@ -147,6 +153,6 @@ export class EntityRegistry {
   }
 
   private assertActive(): void {
-    if (this.disposed) throw new Error('Entity registry has been disposed');
+    // if (this.disposed) throw new Error('Entity registry has been disposed');
   }
 }

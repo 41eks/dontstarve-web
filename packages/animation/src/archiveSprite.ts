@@ -35,13 +35,11 @@ export interface ArchiveSpriteBuild {
 export class ArchiveSpriteAssets {
   private readonly animations = new Map<string, Promise<ParsedAnim>>();
   private readonly builds = new Map<string, Promise<ArchiveSpriteBuild>>();
-  private readonly animationBaseUrl: string;
   private disposed = false;
 
   private readonly materialNamePrefix: string;
 
-  constructor(animationBaseUrl: string, materialNamePrefix = 'sprite') {
-    this.animationBaseUrl = animationBaseUrl;
+  constructor(materialNamePrefix = 'sprite') {
     this.materialNamePrefix = materialNamePrefix;
   }
 
@@ -59,7 +57,7 @@ export class ArchiveSpriteAssets {
     if (this.disposed) return Promise.reject(new Error('Sprite assets have been disposed'));
     let request = this.animations.get(archive);
     if (!request) {
-      request = loadAnim(archive, this.animationBaseUrl);
+      request = loadAnim(archive, `${import.meta.env.BASE_URL}dst/data/anim`);
       this.animations.set(archive, request);
       void request.catch(() => this.animations.delete(archive));
     }
@@ -73,7 +71,7 @@ export class ArchiveSpriteAssets {
     const key = JSON.stringify([archive, options.multColour ?? [1, 1, 1, 1], options.pointFiltering ?? false]);
     let request = this.builds.get(key);
     if (!request) {
-      request = loadBuild(archive, this.animationBaseUrl).then((asset) => {
+      request = loadBuild(archive, `${import.meta.env.BASE_URL}dst/data/anim`).then((asset) => {
         const materials = createMaterials(asset, options);
         for (const material of materials) material.name = `${this.materialNamePrefix}:${asset.build.name}`;
         return { build: asset.build, materials };

@@ -4,20 +4,23 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createArchiveSprite } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 
-beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {
-  const path = String(url).slice('/dst/data/'.length);
+beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+  const path = String(url).slice(String(url).indexOf('/dst/data/') + '/dst/data/'.length);
   return new Response(await readFile(new URL(`../../../public/dst/data/${path}`, import.meta.url)));
-}));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+})));
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 it('creates split-archive sprites without prefab metadata and shares materials across independent geometry', async () => {
-  const assets = new ArchiveSpriteAssets('/dst/data/anim');
+  vi.stubEnv('BASE_URL', '/preview/');
+  const assets = new ArchiveSpriteAssets();
   const definition = { animationArchive: 'torch.zip', buildArchives: ['swap_torch.zip'],
     bank: 'torch', animation: 'idle', loop: false };
   const [first, second] = await Promise.all([
     createArchiveSprite(assets, definition, { name: 'first' }),
     createArchiveSprite(assets, definition, { name: 'second' }),
   ]);
+  expect(fetch).toHaveBeenCalledWith('/preview/dst/data/anim/torch.zip');
+  expect(fetch).toHaveBeenCalledWith('/preview/dst/data/anim/swap_torch.zip');
   const mesh = (model: THREE.Group) => model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   expect(first.model.name).toBe('first');
   expect(first.model.userData).toMatchObject({ billboard: true });
@@ -40,7 +43,7 @@ it('creates split-archive sprites without prefab metadata and shares materials a
 });
 
 it('pauses/resumes a source clip and accepts a caller-supplied food symbol override', async () => {
-  const assets = new ArchiveSpriteAssets('/dst/data/anim');
+  const assets = new ArchiveSpriteAssets();
   const sprite = await createArchiveSprite(assets, {
     animationArchive: 'nightmarefuel.zip', buildArchives: ['nightmarefuel.zip'],
     bank: 'nightmarefuel', animation: 'idle_loop', loop: true,
