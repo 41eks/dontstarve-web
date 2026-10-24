@@ -72,7 +72,7 @@ sprite.playOnce('change', () => sprite.start('idle_loop'));
 换帧命中缓存时不再逐实体解析部件、重写顶点或上传几何；普通共享帧仍按实体脚点排序与绘制。
 砍伐次数、掉落、生长阶段、计时和保存仍由 prefab 与组件负责。
 
-共享动画的矩阵缓存自动检测模型、visual 和父节点的变换。声明 `staticBillboard: true` 的静态实体保留快速路径：调用 `faceCamera()` 转向，移动或修改 visual 后调用 `refreshTransform()`；父节点移动和重新挂载仍自动失效。烘焙顶点换帧不触发矩阵更新，附加的动态子节点仍执行普通 Three.js 更新。`matrixUpdates.ts` 统一拥有两个矩阵方法的包装，空间索引通过它监听实际更新；缓存和监听可按任意顺序释放，最后一个所有者退出时恢复原方法。
+共享动画的矩阵缓存自动检测模型、visual 和父节点的变换。声明 `staticBillboard: true` 的静态实体保留快速路径：调用 `faceCamera()` 转向，移动或修改 visual 后调用 `refreshTransform()`；重新挂载仍自动失效；默认祖先静止，父节点会在子 sprite 保持挂载时移动的 prefab（如挂在可移动地面物品上的苍蝇）需声明 `dynamicParent: true`。烘焙顶点换帧不触发矩阵更新，附加的动态子节点仍执行普通 Three.js 更新。`matrixUpdates.ts` 统一拥有两个矩阵方法的包装，空间索引通过它监听实际更新；缓存和监听可按任意顺序释放，最后一个所有者退出时恢复原方法。
 
 底层 `createArchiveSprite()` 的 `options.sharedAnimations` 支持 clip 列表或 `'all'`；默认保留独立几何。
 

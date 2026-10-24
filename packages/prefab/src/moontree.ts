@@ -247,10 +247,10 @@ export async function createMoonTreeForest(
   /** weather.lua SNOW_COVERED_THRESHOLD; without a bound world the snow layer stays hidden. */
   const bindSnow = (controller: TreeController) => {
     controller.stopSnow?.(); controller.stopSnow = undefined;
-    const sprite = controller.model.userData.animationController as ArchiveSprite;
+    const sprite = controller.model.userData.animationController as ResidentSprite;
     const level = getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { controller.stopSnow = stop; });
-    if (level) createEffect(() => sprite.setSymbolHidden('snow', level.get() < .015));
-    else sprite.setSymbolHidden('snow', true);
+    const stopWatch = controller.stopSnow, stopEffect = createEffect(() => { sprite.art.get(); sprite.setSymbolHidden('snow', level ? level.get() < .015 : true); });
+    controller.stopSnow = () => { stopEffect(); (stopWatch as (() => void) | undefined)?.(); };
   };
   const unbindFire = (controller: TreeController) => { controller.burn?.dispose(); controller.burn = undefined; };
   /** A stage change reconfigures the burnable in place, unless it is already burning. */

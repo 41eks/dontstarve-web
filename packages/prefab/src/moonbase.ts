@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
 import { ItemEntity, type ItemEntityRegistry, type InventoryStack } from '@dontstarve-web/inventory';
 import { createSpriteFactory, loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
@@ -54,7 +54,7 @@ class Moonbase {
   readonly pickable: Pickable;
   private readonly sounds = new Set<SoundHandle>();
   private readonly model: THREE.Group;
-  private resources: MoonbaseResources;
+  private readonly resources: Signal<MoonbaseResources>;
   private readonly items?: ItemEntityRegistry;
   readonly timer: Timer;
   private readonly scheduler: GameTimeScheduler;
@@ -68,8 +68,8 @@ class Moonbase {
   private readonly musicPulse: ComponentTimer;
   private effects: MoonbaseEffects;
   private disposed = false;
-  constructor(model: THREE.Group, resources: MoonbaseResources, items?: ItemEntityRegistry, world?: WorldContext) {
-    this.model = model; this.resources = resources; this.items = items;
+  constructor(model: THREE.Group, resources: MoonbaseResources, items?: ItemEntityRegistry, world?: WorldContext, art?: ReadonlySignal<number>) {
+    this.model = model; this.resources = createSignal(resources); this.items = items;
     this.world = world; this.ownsScheduler = !world?.scheduler;
     this.scheduler = world?.scheduler ?? new GameTimeScheduler();
     this.moon = world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
@@ -118,6 +118,12 @@ class Moonbase {
     model.userData.components.timer = this.timer;
     model.userData.components.moonbase = this;
     this.makeRepairable();
+    // OverrideSymbol("swap_staffs", ...) follows the held staff and the displayed art, including after the sprite is rebuilt.
+    this.cleanups.push(createEffect(() => {
+      art?.get();
+      const staff = this.staffState.get(), { staffOverrides } = this.resources.get();
+      this.sprite.overrideSymbol('swap_staffs', staff ? staffOverrides[`${staff.prefab}:${staff.skinId ?? 'base'}`] : undefined);
+    }));
     this.initializer.start(0);
   }
   private isFullMoon(track = false): boolean {
@@ -194,7 +200,6 @@ class Moonbase {
     this.pickable.SetUp(staff.prefab, 1000000);
     this.pickable.pause();
     this.pickable.canInteractWith = true;
-    this.refreshArt();
     this.playSound(ITEM_SOUND);
     if (staff.prefab === 'opalstaff') this.effects.showCold(); else this.effects.hideCold();
     if (this.initializer.snapshot.peek().status === 'expired') this.toggleCharge();
@@ -202,26 +207,20 @@ class Moonbase {
   private onStaffTaken(): void {
     this.staffState.set(undefined);
     this.pickable.canInteractWith = false;
-    this.sprite.overrideSymbol('swap_staffs', undefined);
     this.playSound(ITEM_SOUND);
     this.effects.hideCold();
     this.updateTrading();
     if (this.initializer.snapshot.peek().status === 'expired') this.toggleCharge();
   }
-  refreshArt(resources = this.resources): void {
-    const replaced = resources !== this.resources;
-    if (replaced) {
-      this.effects.dispose();
-      this.effects = new MoonbaseEffects(this.model, this.world?.scene ?? new THREE.Scene(), this.scheduler, resources);
-    }
-    this.resources = resources;
-    const staff = this.staffState.peek();
-    this.sprite.overrideSymbol('swap_staffs', staff ? resources.staffOverrides[`${staff.prefab}:${staff.skinId ?? 'base'}`] : undefined);
-    if (replaced) {
-      if (staff?.prefab === 'opalstaff') this.effects.showCold();
-      const phase = this.chargePhase();
-      if (phase.startsWith('charging_')) this.effects.start(phase === 'charging_1' ? 1 : phase === 'charging_2' ? 2 : 3, true);
-    }
+  /** A reskin brings new prepared art: the staff overlay follows through the effect on `resources`. */
+  refreshArt(resources: MoonbaseResources): void {
+    if (resources === this.resources.peek()) return;
+    this.effects.dispose();
+    this.effects = new MoonbaseEffects(this.model, this.world?.scene ?? new THREE.Scene(), this.scheduler, resources);
+    this.resources.set(resources);
+    if (this.staffState.peek()?.prefab === 'opalstaff') this.effects.showCold();
+    const phase = this.chargePhase();
+    if (phase.startsWith('charging_')) this.effects.start(phase === 'charging_1' ? 1 : phase === 'charging_2' ? 2 : 3, true);
   }
   private restingAnimation(): string {
     const state = animationState(this.workable.workleft.peek());
@@ -271,7 +270,7 @@ class Moonbase {
       staff.components.finiteuses.setMaxUses(50);
       if (this.items) this.items.destroy(old); else old.destroy();
       this.staffState.set(staff); this.pickable.SetUp('opalstaff', 1000000); this.pickable.pause();
-      this.refreshArt(); this.effects.showCold(); this.effects.finish(); this.toggleCharge();
+      this.effects.showCold(); this.effects.finish(); this.toggleCharge();
     }
   }
   private pushMusic(): void {
@@ -344,7 +343,7 @@ async function prepare(): Promise<MoonbaseResources> {
 export const MOONBASE_DEFINITION: AnimatedBuildingDefinition = {
   ...definitions.animatedBuildings.moonbase,
   prepare,
-  oninit: ({ model, prepared, itemEntities, world }) => { model.userData.moonbase = new Moonbase(model, prepared as MoonbaseResources, itemEntities, world); },
+  oninit: ({ model, prepared, itemEntities, world, art }) => { model.userData.moonbase = new Moonbase(model, prepared as MoonbaseResources, itemEntities, world, art); },
   onrestore: ({ model }, components) => stateOf(model).restore(components),
   exportComponents: ({ model }) => stateOf(model).exportComponents(),
   onreskin: ({ model, prepared }) => stateOf(model).refreshArt(prepared as MoonbaseResources),

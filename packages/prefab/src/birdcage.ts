@@ -3,7 +3,7 @@ import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { birdcage_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { loadBuildOverride, type LoadedBuildOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
-import { batch, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
+import { batch, createEffect, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type Signal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
 import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf, type ShelfHolder, type ShelfTaker } from '../../componets/src/shelf';
@@ -150,7 +150,9 @@ export class Birdcage {
     private readonly animation: CageAnimation;
     private readonly animationTask: ComponentTimer | undefined;
     private chirpsound: SoundEventPath | undefined;
-    private activeBuild: string | undefined;
+    /** The bird whose override build is drawn; onEmptied hides it while birdType is kept for the dead state. */
+    private readonly shownBird = createSignal<string | undefined>(undefined);
+    private readonly stopBuild: () => void;
     private stopRot: (() => void) | undefined;
     private readonly cancels = new Set<() => void>();
     private disposed = false;
@@ -158,7 +160,8 @@ export class Birdcage {
     private readonly getWatchWorldContent: GetWatchWorldContent | undefined;
     private readonly entity: CageEntity;
     private readonly random: () => number;
-    resources: BirdcageResources | undefined;
+    private readonly resourcesState: Signal<BirdcageResources | undefined>;
+    get resources(): BirdcageResources | undefined { return this.resourcesState.peek(); }
 
     constructor(context: AnimatedBuildingEventContext, random: () => number = Math.random) {
         this.context = context;
@@ -181,8 +184,21 @@ export class Birdcage {
             this.getWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
         }
         this.random = random;
-        this.resources = context.prepared as BirdcageResources | undefined;
+        this.resourcesState = createSignal(context.prepared as BirdcageResources | undefined);
         const entity = this.entity = actionEntity(context.model, BIRDCAGE_ID);
+        // birdcage.lua SetBirdType: AnimState:AddOverrideBuild for the bird shown, re-dressed on every rebuilt sprite.
+        let activeBuild: string | undefined;
+        this.stopBuild = createEffect(() => {
+            context.art?.get();
+            const type = this.shownBird.get(), resources = this.resourcesState.get();
+            if (activeBuild !== undefined) this.controller.clearOverrideBuild(activeBuild);
+            activeBuild = undefined;
+            const build = type !== undefined && isBirdId(type) ? resources?.builds[type] : undefined;
+            if (type !== undefined && build) {
+                activeBuild = `${type}_build`;
+                this.controller.addOverrideBuild(activeBuild, build);
+            }
+        });
         this.animation = new CageAnimation(() => context.model.userData.animationController as SpriteController);
         this.animationTask = scheduler ? new ComponentTimer(scheduler, () => { this.doAnimationTask(); this.animationTask!.start(ANIMATION_PERIOD); }) : undefined;
         for (const tag of ['structure', 'cage']) entity.addTag(tag);
@@ -251,27 +267,14 @@ export class Birdcage {
 
     /** birdcage.lua SetBirdType: swap the override build for the bird's own build. */
     setBirdType(bird: string | undefined): void {
-        if (this.activeBuild !== undefined) this.controller.clearOverrideBuild(this.activeBuild);
-        this.activeBuild = undefined;
         const type = bird === undefined ? undefined : BUILD_OVERRIDES[bird] ?? bird;
         this.birdTypeSignal.set(type);
-        const build = type !== undefined && isBirdId(type) ? this.resources?.builds[type] : undefined;
-        if (type !== undefined && build) {
-            this.activeBuild = `${type}_build`;
-            this.controller.addOverrideBuild(this.activeBuild, build);
-        }
+        this.shownBird.set(type);
     }
 
-    /** A reskin replaces the controller and the prepared builds; re-apply the displayed bird. */
+    /** A reskin brings new prepared builds; the effect re-dresses the displayed bird. */
     reapplyArt(resources: BirdcageResources | undefined): void {
-        this.resources = resources;
-        this.activeBuild = undefined;
-        const type = this.birdTypeSignal.peek();
-        const build = type !== undefined && isBirdId(type) ? resources?.builds[type] : undefined;
-        if (type !== undefined && build) {
-            this.activeBuild = `${type}_build`;
-            this.controller.addOverrideBuild(this.activeBuild, build);
-        }
+        this.resourcesState.set(resources);
     }
 
     // --- occupiable ---------------------------------------------------------------------------
@@ -326,8 +329,7 @@ export class Birdcage {
     }
 
     private onEmptied(): void {
-        if (this.activeBuild !== undefined) this.controller.clearOverrideBuild(this.activeBuild);
-        this.activeBuild = undefined;
+        this.shownBird.set(undefined);
         this.setCageState(CAGE_STATES.EMPTY);
         this.removeSleeper();
         this.trader.Disable();
@@ -590,6 +592,7 @@ export class Birdcage {
         this.shelf.dispose();
         this.trader.dispose();
         this.statusMemo.dispose();
+        this.stopBuild();
     }
 }
 

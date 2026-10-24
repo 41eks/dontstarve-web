@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { createEffect, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase } from '@dontstarve-web/signals';
+import { createEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase, type Signal } from '@dontstarve-web/signals';
 import { loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { moondial_init_fn } from '@dontstarve-web/animation/prefabskin';
@@ -47,7 +47,9 @@ interface MoondialResources extends AnimatedBuildingPreparedResources {
 /** moondial.lua's phase look plus SGmoondial.lua's idle / next / hit / placed states. */
 class Moondial {
     private readonly context: AnimatedBuildingEventContext;
-    private resources: MoondialResources;
+    private readonly resources: Signal<MoondialResources>;
+    /** The phase look inputs; the effect in the constructor dresses the current and every rebuilt sprite from them. */
+    private readonly look = createSignal<{ phase: WorldMoonPhase; waxing: boolean }>({ phase: 'new', waxing: true });
     private readonly cleanups: (() => void)[] = [];
     private readonly moon?: WorldContentSignal<WorldMoonState>;
     private readonly pending = new Set<() => void>();
@@ -59,45 +61,37 @@ class Moondial {
 
     constructor(context: AnimatedBuildingEventContext) {
         this.context = context;
-        this.resources = context.prepared as MoondialResources;
+        this.resources = createSignal(context.prepared as MoondialResources);
         const model = context.model;
         actionEntity(model, MOONDIAL_ID).addTag('structure');
+        // Reflection symbols, light override and light for the current phase. Reskinning rebuilds the sprite.
+        this.cleanups.push(createEffect(() => {
+            context.art?.get();
+            const { phase, waxing } = this.look.get(), { waning } = this.resources.get();
+            const waxingLook = (waxing && phase !== 'new') || phase === 'full';
+            for (const symbol of REFLECTION_SYMBOLS) this.sprite.overrideSymbol(symbol, waxingLook ? undefined : waning[symbol]);
+            const light = LIGHT_STATES[phase];
+            setPrefabLightOverride(model, light.override);
+            setPrefabLocalLight(model, light.radius > 0
+                ? { radius: light.radius * (TILE_SIZE / 4), intensity: .6, falloff: .7, colour: [15 / 255, 160 / 255, 180 / 255] } : null);
+        }));
         this.moon = context.world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
-        if (!this.moon) { this.onMoonPhaseChanged(false); this.idle(); return; }
+        if (!this.moon) { this.idle(); return; }
         // WatchWorldState("moonphase", onmoonphasechagned): the first run is the constructor's own call (phase == nil).
         let first = true;
         createEffect(() => {
             const { phase, waxing } = this.moon!.get();
             const changed = phase !== this.phase;
             this.phase = phase; this.waxing = waxing;
-            if (first) { first = false; this.onMoonPhaseChanged(false); this.idle(); } else if (changed) this.onMoonPhaseChanged(true);
+            this.look.set({ phase, waxing });
+            if (first) { first = false; this.idle(); } else if (changed) this.next();
         });
     }
 
     private get sprite(): SpriteController { return this.context.model.userData.animationController; }
     private get position(): THREE.Vector3 { return this.context.model.position; }
 
-    /** moondial.lua onmoonphasechagned. */
-    private onMoonPhaseChanged(transition: boolean): void {
-        this.applyLook();
-        if (transition) this.next();
-    }
-
-    /** Reflection symbols, light override and light for the current phase. Reskinning rebuilds the sprite, so it reapplies. */
-    private applyLook(): void {
-        const phase = this.phase, sprite = this.sprite;
-        const waxingLook = (this.waxing && phase !== 'new') || phase === 'full';
-        for (const symbol of REFLECTION_SYMBOLS) sprite.overrideSymbol(symbol, waxingLook ? undefined : this.resources.waning[symbol]);
-        const light = LIGHT_STATES[phase], model = this.context.model;
-        setPrefabLightOverride(model, light.override);
-        setPrefabLocalLight(model, light.radius > 0
-            ? { radius: light.radius * (TILE_SIZE / 4), intensity: .6, falloff: .7, colour: [15 / 255, 160 / 255, 180 / 255] } : null);
-    }
-
-    refreshArt(resources: MoondialResources): void {
-        this.resources = resources;
-        this.applyLook();
-    }
+    refreshArt(resources: MoondialResources): void { this.resources.set(resources); }
 
     private phaseAnimation(prefix: string): string { return `${prefix}_${this.phase}`; }
 

@@ -79,6 +79,7 @@ interface Tree {
   acornTask?: () => void;
   removeTask?: () => void;
   stopSnow?: () => void;
+  stopDress?: () => void;
 }
 export interface DeciduousForest {
   group: THREE.Group;
@@ -244,7 +245,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     if (!trees.delete(tree.logical)) return;
     active.delete(tree.logical);
     entities.splice(entities.indexOf(tree.logical), 1);
-    tree.stopActivity(); tree.stopPlacement(); tree.stopSnow?.(); tree.stopSnow = undefined;
+    tree.stopActivity(); tree.stopPlacement(); tree.stopSnow?.(); tree.stopSnow = undefined; tree.stopDress?.(); tree.stopDress = undefined;
     tree.logical.model.userData.removed = true;
     tree.changesTask?.(); tree.acornTask?.(); tree.removeTask?.();
     unbindFire(tree);
@@ -319,9 +320,9 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       active.add(logical);
       wakeGrowable(tree);
       tree.leaves.SetAwake(true);
-      applyBuild(tree);
+      tree.stopDress = createEffect(() => { tree.sprite.art.get(); applyBuild(tree); });
       const snow = getBoundWatchWorldContent()?.(WorldContentKey.SnowLevel, stop => { tree.stopSnow = stop; });
-      if (snow) createEffect(() => tree.sprite.setSymbolHidden('snow', snow.get() < .015));
+      if (snow) createEffect(() => { tree.sprite.art.get(); tree.sprite.setSymbolHidden('snow', snow.get() < .015); });
       bindFire(tree);
       if (tree.inst.hasTag('burnt')) startAcornTask(tree);
       sprite.setActive(true);
@@ -329,6 +330,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
       active.delete(logical);
       tree.growable.OnEntitySleep();
       tree.stopSnow?.(); tree.stopSnow = undefined;
+      tree.stopDress?.(); tree.stopDress = undefined;
       tree.leaves.SetAwake(false);
       if (tree.fire?.burnable.IsBurning()) {
         if (tree.stump.peek()) tree.removeTask = scheduler.schedule(0, () => { tree.removeTask = undefined; burnStump(tree); });

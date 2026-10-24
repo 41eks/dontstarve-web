@@ -1,3 +1,4 @@
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { BASE_COOK_TIME, CalculateRecipe, GetRecipe } from './cooking';
 
 export interface StewerContainer {
@@ -33,8 +34,14 @@ export interface StewerSaveData {
 /** components/stewer.lua: owns the recipe, cooking task, container and save lifecycle. */
 export class Stewer {
   readonly inst: StewerInstance;
-  product?: string;
-  done = false;
+  private readonly productState = createSignal<string | undefined>(undefined);
+  private readonly doneState = createSignal(false);
+  /** Read-only views for presentation effects; the fields below stay the component's own interface. */
+  readonly state = Object.freeze({ product: readonlySignal(this.productState), done: readonlySignal(this.doneState) });
+  get product(): string | undefined { return this.productState.peek(); }
+  set product(value: string | undefined) { this.productState.set(value); }
+  get done(): boolean { return this.doneState.peek(); }
+  set done(value: boolean) { this.doneState.set(value); }
   cooktimemult = 1;
   ingredient_prefabs?: readonly string[];
   chef_id?: string;

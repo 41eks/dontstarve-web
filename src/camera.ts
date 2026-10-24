@@ -11,6 +11,7 @@ const DEFAULT_HEADING = 45;
 const DEFAULT_DISTANCE = 30 * WORLD_SCALE;
 const ROTATION_STEP = 45;
 const EPSILON = 0.01;
+const ORIGIN = new THREE.Vector3();
 
 function normalizeDegrees(angle: number): number {
   return THREE.MathUtils.euclideanModulo(angle, 360);
@@ -41,6 +42,10 @@ export class FollowCameraController {
   private readonly cameraDirection = new THREE.Vector3();
   private readonly cameraRight = new THREE.Vector3();
   private readonly cameraUp = new THREE.Vector3();
+  private readonly orientationMatrix = new THREE.Matrix4();
+  private readonly orientation = new THREE.Quaternion();
+  private orientedHeading = Number.NaN;
+  private orientedPitch = Number.NaN;
 
   private heading = DEFAULT_HEADING;
   /** Eight-faced FACING_* bit of the current heading; written only when the heading crosses a 45-degree sector. */
@@ -202,7 +207,16 @@ export class FollowCameraController {
     this.cameraRight.set(Math.cos(rightRadians), 0, Math.sin(rightRadians));
     this.cameraUp.crossVectors(this.cameraDirection, this.cameraRight).normalize();
     this.camera.up.copy(this.cameraUp);
-    this.camera.lookAt(this.currentPosition);
+    // The orientation depends only on heading and pitch. Recomputing it from the
+    // eye/target difference (camera.lookAt) adds position-dependent rounding, which
+    // makes every camera-facing billboard look rotated while the player walks.
+    if (this.heading !== this.orientedHeading || pitch !== this.orientedPitch) {
+      this.orientationMatrix.lookAt(ORIGIN, this.cameraDirection, this.cameraUp);
+      this.orientation.setFromRotationMatrix(this.orientationMatrix);
+      this.orientedHeading = this.heading;
+      this.orientedPitch = pitch;
+    }
+    this.camera.quaternion.copy(this.orientation);
     this.camera.updateMatrixWorld();
   }
 }

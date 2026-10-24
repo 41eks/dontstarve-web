@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { SpriteController } from '@dontstarve-web/animation/sprite';
 import { bookstation_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -37,6 +37,8 @@ interface BookstationHost {
     readonly model: THREE.Group;
     readonly container: BuildingContainer;
     readonly world: WorldContext;
+    /** Changes whenever the drawn sprite is rebuilt, so the book layers are shown again. */
+    readonly art?: ReadonlySignal<number>;
 }
 
 /** bookstation.lua's RestoreTask, book-count art and prototyper on/off state for one placed inst. */
@@ -44,6 +46,8 @@ export class Bookstation {
     private readonly host: BookstationHost;
     private readonly restoreTimer: ComponentTimer;
     private readonly stopLifecycle: () => void;
+    private readonly stopAesthetics: () => void;
+    private readonly bookCount = createSignal(0);
     private stopWatching?: () => void;
     private disposed = false;
     /** prototyper.on: the player is close enough for onturnon. */
@@ -60,6 +64,16 @@ export class Bookstation {
             const watched = watchSignal(burnt, cleanup => { this.stopWatching = cleanup; });
             createEffect(() => { if (watched.get()) this.stopTimer(); });
         }
+        // UpdateBookAesthetics: Show/Hide the book layers by fullness, also on every rebuilt sprite and reskin.
+        this.stopAesthetics = createEffect(() => {
+            host.art?.get();
+            const count = this.bookCount.get(), animation = this.animation;
+            if (!animation) return;
+            const show = (layer: string, visible: boolean) => visible ? animation.showLayer(layer) : animation.hideLayer(layer);
+            show(BOOKS_SOME, count > 0);
+            show(BOOKS_MORE, count >= .5);
+            show(BOOKS_FULL, count >= 1);
+        });
         this.refresh();
     }
 
@@ -75,7 +89,7 @@ export class Bookstation {
         const running = this.restoreTimer.snapshot.peek().status === 'scheduled';
         if (hasBook && !running) this.restoreTimer.start(BOOKSTATION_RESTORE_TIME);
         else if (!hasBook && running) this.restoreTimer.stop();
-        this.updateBookAesthetics();
+        this.bookCount.set(this.countBooks());
     }
 
     private stopTimer(): void { this.restoreTimer.stop(); }
@@ -83,16 +97,6 @@ export class Bookstation {
     private countBooks(): number {
         const { container } = this.host;
         return container.NumItems() / container.GetNumSlots();
-    }
-
-    /** Re-applies the layers to the current art, including after a skin change. */
-    updateBookAesthetics(count = this.countBooks()): void {
-        const animation = this.animation;
-        if (!animation) return;
-        const show = (layer: string, visible: boolean) => visible ? animation.showLayer(layer) : animation.hideLayer(layer);
-        show(BOOKS_SOME, count > 0);
-        show(BOOKS_MORE, count >= .5);
-        show(BOOKS_FULL, count >= 1);
     }
 
     /** RestoreBooks: +1% of the maximum uses, doubled while a bookbuilder is within range. */
@@ -118,6 +122,7 @@ export class Bookstation {
         if (this.disposed) return;
         this.disposed = true;
         this.stopLifecycle();
+        this.stopAesthetics();
         this.stopWatching?.();
         this.restoreTimer.stop();
     }
@@ -140,12 +145,12 @@ function onbuilt(context: AnimatedBuildingBuiltContext): void {
     });
 }
 
-function oninit({ model, world }: AnimatedBuildingEventContext): void {
+function oninit({ model, world, art }: AnimatedBuildingEventContext): void {
     const container = model.userData.components?.container as BuildingContainer | undefined;
     if (!world || !container) throw new Error('A bookstation needs its container and world');
     const entity = actionEntity(model, BOOKSTATION_ID);
     for (const tag of ['structure', 'giftmachine', 'prototyper']) entity.addTag(tag);
-    model.userData.bookstation = new Bookstation({ model, container, world });
+    model.userData.bookstation = new Bookstation({ model, container, world, art });
 }
 
 function onturnon(context: AnimatedBuildingEventContext): void {

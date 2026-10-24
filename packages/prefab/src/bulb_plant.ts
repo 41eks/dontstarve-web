@@ -295,8 +295,7 @@ export class BulbPlantManager {
     this.assets = new ArchiveSpriteAssets(BULB_PLANT_ID, assetBaseUrl);
     if (world.getWatchWorldContent) {
       // Billboards face the camera: re-orient them only when it turns.
-      const rotation = this.cameraRotation = world.getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.stops.push(stop));
-      createEffect(() => { const quaternion = rotation.get(); for (const { sprite } of this.plants) sprite.faceCamera(quaternion); });
+      this.cameraRotation = world.getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.stops.push(stop));
     }
   }
 
@@ -323,7 +322,9 @@ export class BulbPlantManager {
     if (!loop) sprite.setFrame(created.frameCount - 1);
     const model = sprite.model;
     model.position.set(position.x, 0, position.z);
-    if (this.cameraRotation) sprite.faceCamera(this.cameraRotation.peek());
+    // The sprite does not keep its orientation: dress each drawn sprite again when the camera turns or it is rebuilt.
+    const rotation = this.cameraRotation;
+    if (rotation) createEffect(() => { sprite.art.get(); sprite.faceCamera(rotation.get()); });
     model.userData.entityId = saved?.id ?? newEntityId();
     model.userData.bulbPlantVariant = variant;
     model.userData.prefab = prefabId;

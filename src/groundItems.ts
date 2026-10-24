@@ -112,6 +112,7 @@ export class GroundItemManager {
     getWatchWorldContent?: GetWatchWorldContent,
     mouseActions?: PlayerActionPicker,
     lightflierWorld?: GroundPrefabOptions['lightflierWorld'],
+    tickingarea?: GroundPrefabOptions['tickingarea'],
   ) {
     this.mouseActions = mouseActions;
     this.entities = entities;
@@ -122,7 +123,7 @@ export class GroundItemManager {
     this.inventory = inventory;
     this.player = player;
     this.prefabs = new GroundPrefabRegistry({
-      scene, animationBaseUrl, scheduler, fx, moleWorld, lightflierWorld, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
+      scene, animationBaseUrl, scheduler, fx, moleWorld, lightflierWorld, tickingarea, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       handEquipment: inventory.handEquipment,
       dropLoot: (items, position) => this.flingLoot(items, position),
       prepareSpawn: definition => this.prepareSpawn(definition),

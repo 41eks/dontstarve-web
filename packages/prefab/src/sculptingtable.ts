@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { sculptingtable_init_fn } from '@dontstarve-web/animation/prefabskin';
+import { createEffect, createSignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
 import {
     type AnimatedBuildingBuiltContext,
@@ -46,7 +47,8 @@ interface SculptingState {
     readonly pickable: Pickable;
     readonly trader: Trader<TradeItem>;
     readonly sounds: Set<SoundHandle>;
-    resources?: SculptingResources;
+    readonly resources: Signal<SculptingResources | undefined>;
+    readonly stopHeldItem: () => void;
 }
 
 const stateOf = (model: THREE.Object3D): SculptingState => model.userData.sculptingtable;
@@ -71,15 +73,15 @@ async function prepare(): Promise<SculptingResources> {
     };
 }
 
-/** OverrideSymbol/ClearOverrideSymbol for the held block; the displayed art owns the loaded builds. */
-function showHeldItem(model: THREE.Group): void {
-    const { pickable, resources } = stateOf(model);
-    const sprite = model.userData.animationController as SpriteController;
-    sprite.overrideSymbol(SCULPTING_SYMBOL, undefined);
-    const itemname = pickable.canInteractWith ? pickable.product : undefined;
-    if (itemname !== undefined && isSculptableMaterial(itemname) && resources) {
-        sprite.overrideSymbol(SCULPTING_SYMBOL, resources.overrides[itemname]);
-    }
+/** OverrideSymbol/ClearOverrideSymbol for the held block, redone for every rebuilt sprite and reskin. */
+function showHeldItem(model: THREE.Group, pickable: Pickable, resources: Signal<SculptingResources | undefined>, art?: ReadonlySignal<number>): () => void {
+    return createEffect(() => {
+        art?.get();
+        const sprite = model.userData.animationController as SpriteController;
+        const loaded = resources.get(), held = pickable.state.canInteractWith.get();
+        const itemname = held ? pickable.product : undefined;
+        sprite.overrideSymbol(SCULPTING_SYMBOL, itemname !== undefined && isSculptableMaterial(itemname) && loaded ? loaded.overrides[itemname] : undefined);
+    });
 }
 
 /** giveitem: the block becomes pickable and shows the offered material. */
@@ -91,7 +93,6 @@ function giveItem(model: THREE.Group, itemname: SculptableMaterial): void {
         pickable.canInteractWith = true;
         playTableSound(model, ITEM_SOUND);
     }
-    showHeldItem(model);
 }
 
 function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext): void {
@@ -102,7 +103,7 @@ function onbuilt({ animation, model, onComplete }: AnimatedBuildingBuiltContext)
     });
 }
 
-function oninit({ model, prepared }: AnimatedBuildingEventContext): void {
+function oninit({ model, prepared, art }: AnimatedBuildingEventContext): void {
     const entity = actionEntity(model, SCULPTING_TABLE_ID);
     entity.addTag('structure');
     // onitemtaken: the pickable stops being interactable and the block disappears.
@@ -111,7 +112,6 @@ function oninit({ model, prepared }: AnimatedBuildingEventContext): void {
             pickable.canInteractWith = false;
             playTableSound(model, ITEM_SOUND);
         }
-        showHeldItem(model);
     });
     pickable.canInteractWith = false;
     pickable.pause();
@@ -125,8 +125,9 @@ function oninit({ model, prepared }: AnimatedBuildingEventContext): void {
         if (isSculptableMaterial(item.prefab)) giveItem(model, item.prefab);
     });
     model.userData.components.trader = trader;
-    model.userData.sculptingtable = { pickable, trader, sounds: new Set(),
-        resources: prepared as SculptingResources | undefined } satisfies SculptingState;
+    const resources = createSignal(prepared as SculptingResources | undefined);
+    model.userData.sculptingtable = { pickable, trader, sounds: new Set(), resources,
+        stopHeldItem: showHeldItem(model, pickable, resources, art) } satisfies SculptingState;
 }
 
 export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
@@ -143,12 +144,10 @@ export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
     onbuilt,
     oninit,
     // The replacement sprite brings its own loaded builds and a fresh controller.
-    onreskin: ({ model, prepared }) => {
-        stateOf(model).resources = prepared as SculptingResources | undefined;
-        showHeldItem(model);
-    },
+    onreskin: ({ model, prepared }) => stateOf(model).resources.set(prepared as SculptingResources | undefined),
     ondispose: ({ model }) => {
-        const { pickable, trader, sounds } = stateOf(model);
+        const { pickable, trader, sounds, stopHeldItem } = stateOf(model);
+        stopHeldItem();
         for (const sound of sounds) sound.stop();
         sounds.clear();
         pickable.dispose();
