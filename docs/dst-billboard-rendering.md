@@ -10,7 +10,7 @@
 
 一个几何体不一定意味着一次 draw call：Three.js 每个几何体材质组发起一次调用，例如 Wilson 手持物品时可能同时使用角色基础 atlas 与 swap atlas。
 
-蘑菇树直接使用动画包的 `createSharedArchiveSprite()`，prefab 按源 Lua 通过 `playOnce()` / `start()` 选择动作与后续待机。待机、受击、倒下、树桩和生长／开花过渡全部按动画帧、build、皮肤和符号配置复用 `FrameGeometryCache` 中的不可变合并几何，燃烧消失的 `chop_burnt` 特效也使用同一共享入口。颜色仍通过每棵树自己的材质副本应用，动作及其完成回调独立运行。每棵树保留自己的模型、随机起始帧、脚点排序和交互组件，因此共享几何不会把树合并为一次绘制。单树移除只释放私有资源，共享帧在所有使用者移除后由 `ArchiveSpriteAssets.dispose()` 释放。
+蘑菇树直接使用动画包的 `createSharedArchiveSprite()`，prefab 按源 Lua 通过 `playOnce()` / `start()` 选择动作与后续待机。`instancedAnimations: ['idle_loop']` 将待机树交给 `InstancedArchiveSprites`，同外观的树共享合成图集和四边形，在实例属性中独立存储帧 UV、颜色、透明度和变换。受击、倒下、树桩和生长／开花过渡继续按动画帧、build、皮肤和符号配置复用 `FrameGeometryCache` 中的不可变合并几何；返回待机自动重新加入实例批次。燃烧消失的 `chop_burnt` 特效也使用共享入口。每棵树保留模型、随机播放进度、完成回调和交互组件；渲染隐藏的源帧仍用于精确 alpha 拾取和空间边界。单树移除退出批次并释放私有资源，共享帧、合成图集与批次由 `ArchiveSpriteAssets.dispose()` 统一释放。
 
 `GrottoPoolManager` 通过通用入口 `createSharedArchiveSprite(assets, definition, options?)` 将池面、雾气、瀑布和月亮玻璃接入同一缓存机制，prefab 不再维护要共享的 clip 清单，运行时切换的动画也自动按帧缓存。每种 clip 及其 `*_mined` 状态分别缓存；池面的 OnGround 旋转、背景顺序、雾气 billboard 和独立实体的随机播放进度仍由原有节点维持。共享几何不合并 draw call，单池移除及其子物件清理不会销毁其他实体借用的帧。
 
@@ -30,13 +30,18 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 实例化的分层 DST 图像先通过 `packages/animation/src/rgbaSpriteAtlas.ts` 预合成为 RGBA sprite atlas，实例共享纹理和单四边形几何体。直接实例化未合成的重叠部件仍会遇到层顺序问题。
 
+源 build 中的 atlas 尺寸可能大于实际 `.tex`；裁切源图时需按归一化 UV 缩放，合成帧使用实际纹理密度并分页。一个 clip 的所有帧使用同一边界、原点与像素网格；逐帧裁切和取整会改变采样相位及四边形缩放，使静止的树干部件抖动。
+
 如果使用实例化 billboard 森林，单个 draw call 无法把各树实例与动态透明角色逐个交错排序。对应绘制顺序为：
 
 1. Alpha test 深度预渲染：`colorWrite = false`、`depthWrite = true`。
-2. 森林透明颜色 pass：`depthWrite = false`，在动态角色之前提交。
-3. 动态角色按各自脚点的深度排序绘制。
+2. 地皮等背景透明层。
+3. 森林透明颜色 pass：`depthWrite = false`，在动态角色之前提交。
+4. 动态角色按各自脚点的深度排序绘制。
 
-森林颜色 pass 写深度会让共面的 DST 层发生 z-fighting，表现为相机移动时闪烁。此方案适用于实例化森林；当前使用独立动画实体的场景仍按实体脚点排序。
+批次父 Group 保持默认 `renderOrder = 0`，颜色 mesh 使用 `renderOrder = -0.4`，排在地皮 mesh（−2～−0.5）之后。Three 先比较 Group 的顺序，再比较 mesh 的顺序；把批次 Group 设为负值会让颜色 pass 早于不写深度的地皮，树便会被地皮覆盖。批次内部实例仍按脚点深度从远到近排列。
+
+森林颜色 pass 写深度会让共面的 DST 层发生 z-fighting，表现为相机移动时闪烁。此方案用于蘑菇树待机实例；普通动画实体仍按实体脚点排序。
 
 ## 墙的源码与朝向
 

@@ -3,7 +3,7 @@ import { markSpatialGeometryBounds, publishSpriteSpatialBounds } from './spatial
 import type { DecodedTexture } from './parseKtex';
 import type { AnimElement, BuildImage, ParsedAnim, ParsedBuild, BuildPackage } from './animationArchive';
 import { loadAnimationArchivePart } from './animationArchiveLoader';
-import { raycastSprite } from './spriteRaycast';
+import { raycastSprite, setInstancedSpriteProxy } from './spriteRaycast';
 
 export { smallHash } from './animationArchive';
 export type { Matrix2D, AnimElement, Animation, ParsedAnim, BuildImage, ParsedBuild, BuildPackage } from './animationArchive';
@@ -159,6 +159,8 @@ export class SpriteFrameRenderer {
   private positions = new Float32Array();
   private uvs = new Float32Array();
   private quadCapacity = 0;
+  private instanced = false;
+  private frameVisible = false;
 
   constructor(visual: THREE.Group) {
     this.visual = visual;
@@ -170,11 +172,19 @@ export class SpriteFrameRenderer {
     visual.add(this.mesh);
   }
 
+  /** Keep exact source alpha picking while the visible frame is drawn by an instance batch. */
+  setInstanced(enabled: boolean): void {
+    this.instanced = enabled;
+    this.mesh.visible = this.frameVisible && !enabled;
+    setInstancedSpriteProxy(this.mesh, enabled && this.frameVisible);
+  }
+
   /** Draw a frame owned by a FrameGeometryCache instead of this renderer's own buffers. */
   showShared(frame: SharedFrame): void {
     this.mesh.geometry = frame.geometry;
     this.mesh.material = frame.materials;
-    this.mesh.visible = frame.visible;
+    this.frameVisible = frame.visible;
+    this.mesh.visible = frame.visible && !this.instanced;
     if (frame.visible && frame.geometry.boundingBox) publishSpriteSpatialBounds(this.visual, frame.geometry.boundingBox.getBoundingSphere(tightSphere));
   }
 
@@ -185,12 +195,16 @@ export class SpriteFrameRenderer {
   }
 
   /** The own buffers are only separate from the mesh's geometry while a shared frame is displayed. */
-  dispose(): void { if (this.mesh.geometry !== this.geometry) this.geometry.dispose(); }
+  dispose(): void {
+    setInstancedSpriteProxy(this.mesh, false);
+    if (this.mesh.geometry !== this.geometry) this.geometry.dispose();
+  }
 
   show(sprites: ResolvedSprite[]) {
     this.mesh.geometry = this.geometry;
     this.mesh.material = this.materials;
     if (sprites.length === 0) {
+      this.frameVisible = false;
       this.mesh.visible = false;
       this.geometry.setDrawRange(0, 0);
       return;
@@ -200,7 +214,8 @@ export class SpriteFrameRenderer {
     }
 
     this.ensureCapacity(sprites.length);
-    this.mesh.visible = true;
+    this.frameVisible = true;
+    this.mesh.visible = !this.instanced;
     this.materials.length = 0;
     this.materialIndices.clear();
     this.geometry.clearGroups();

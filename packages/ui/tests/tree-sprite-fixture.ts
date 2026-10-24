@@ -1,7 +1,51 @@
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { prewarmScenePasses, renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
+import { composeResolvedRgbaSpriteAtlases, createRgbaSpriteFrameGeometry } from '@dontstarve-web/animation/rgbaSpriteAtlas';
+import type { Animation, ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import { DstLocalLighting } from '../../../src/dstLocalLighting';
 
-export async function checkTreeSpriteRendering() {
+function checkAtlasFrameStability(renderer: THREE.WebGLRenderer, target: THREE.WebGLRenderTarget) {
+  const data = new Uint8Array(8 * 4 * 4);
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+    const i = (y * 8 + x) * 4;
+    data[i] = (x + y) % 2 ? 255 : 40; data[i + 1] = 150; data[i + 3] = 255;
+  }
+  const texture = new THREE.DataTexture(data, 8, 4);
+  const source = new THREE.MeshBasicMaterial({ map: texture });
+  const still: ResolvedSprite = {
+    element: { imageHash: 1, imageIndex: 0, layerHash: 1, matrix: [1, 0, 0, 1, 0, 0], z: 0 },
+    image: { index: 0, duration: 1, x: 0, y: 0, width: 8, height: 8, vertexIndex: 0, vertexCount: 6,
+      bbx: 0, bby: 0, canvasWidth: 16, canvasHeight: 8 }, materials: [source],
+  };
+  // A moving transparent part changes the frame bounds while the painted part stays still.
+  const frames = [3, 4, 5, -3].map(tx => [still, { ...still, image: { ...still.image, bbx: 8 },
+    element: { ...still.element, matrix: [1, 0, 0, 1, tx, tx] as [number, number, number, number, number, number] } }]);
+  const animation: Animation = { name: 'idle', frameRate: 30, facing: 0, bankHash: 0,
+    frames: frames.map(parts => ({ elements: parts.map(part => part.element) })) };
+  const pages = composeResolvedRgbaSpriteAtlases(animation, frames, 256);
+  const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-12, 12, 12, -12, .1, 10);
+  camera.position.z = 5;
+  let reference: Uint8Array | undefined;
+  const differences: number[] = [];
+  try {
+    for (const page of pages) for (const frame of page.frames) {
+      const geometry = createRgbaSpriteFrameGeometry(frame);
+      const material = new THREE.MeshBasicMaterial({ map: page.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(geometry, material); scene.add(mesh);
+      renderer.setRenderTarget(target); renderer.render(scene, camera);
+      const pixels = new Uint8Array(192 * 192 * 4);
+      renderer.readRenderTargetPixels(target, 0, 0, 192, 192, pixels);
+      reference ??= pixels;
+      // Different atlas UV offsets can change the final 8-bit rounding by one level.
+      differences.push(pixels.reduce((sum, value, index) => sum + Number(Math.abs(value - reference![index]) > 1), 0));
+      mesh.removeFromParent(); geometry.dispose(); material.dispose();
+    }
+    return differences;
+  } finally { pages.forEach(page => page.texture.dispose()); texture.dispose(); source.dispose(); }
+}
+
+export async function checkTreeSpriteRendering(instanced = false) {
   const assets = new ArchiveSpriteAssets();
   const definition = {
     animationArchive: 'mushroom_tree_tall.zip',
@@ -11,13 +55,16 @@ export async function checkTreeSpriteRendering() {
   };
   const shared = await Promise.all([.6, .9].map(colour => createSharedArchiveSprite(assets, {
     ...definition, animation: 'idle_loop', loop: true,
-  }, { colour: [colour, colour, colour] })));
+  }, { colour: [colour, colour, colour], instancedAnimations: instanced ? ['idle_loop'] : undefined })));
   const independent = await Promise.all([.6, .9].map(colour => createArchiveSprite(assets, {
     ...definition, animation: 'idle_loop', loop: true,
   }, { colour: [colour, colour, colour] })));
   const renderer = new THREE.WebGLRenderer();
   renderer.setSize(192, 192);
   renderer.setClearColor(0x26333f);
+  const lighting = instanced ? new DstLocalLighting() : undefined;
+  lighting?.setAmbientColour(new THREE.Vector3(1, 1, 1));
+  lighting?.renderLightmap(renderer);
   const target = new THREE.WebGLRenderTarget(192, 192);
   const camera = new THREE.OrthographicCamera(-12, 12, 15, -3, .1, 100);
   camera.position.set(0, 6, 25);
@@ -34,22 +81,36 @@ export async function checkTreeSpriteRendering() {
   });
   const pixels = (scene: THREE.Scene) => {
     renderer.setRenderTarget(target);
-    renderer.render(scene, camera);
+    renderSceneWithPasses(renderer, scene, camera);
     const result = new Uint8Array(192 * 192 * 4);
     renderer.readRenderTargetPixels(target, 0, 0, 192, 192, result);
     return result;
   };
   const differences: number[] = [];
+  const meanErrors: number[] = [];
   let paintedPixels = 0;
   const compare = () => {
     const cached = pixels(scenes[0]), reference = pixels(scenes[1]);
     differences.push(cached.reduce((count, value, i) => count + Number(value !== reference[i]), 0));
+    meanErrors.push(cached.reduce((sum, value, i) => sum + Math.abs(value - reference[i]), 0) / cached.length);
     for (let i = 0; i < cached.length; i += 4) {
       if (cached[i] !== cached[0] || cached[i + 1] !== cached[1] || cached[i + 2] !== cached[2]) paintedPixels++;
     }
   };
   try {
+    await prewarmScenePasses(renderer, scenes[0], camera);
     compare();
+    if (instanced) for (const frame of [0, 1, 2, 14, 15, 29]) {
+      for (const sprite of [...shared, ...independent]) sprite.setFrame(frame);
+      compare();
+    }
+    if (instanced) {
+      camera.position.set(8, 12, 24); camera.lookAt(0, 6, 0);
+      for (const sprite of [...shared, ...independent]) sprite.model.quaternion.copy(camera.quaternion);
+      compare();
+      camera.position.set(0, 6, 25); camera.lookAt(0, 6, 0);
+      for (const sprite of [...shared, ...independent]) sprite.model.quaternion.copy(camera.quaternion);
+    }
     shared[0].playOnce('chop'); independent[0].playOnce('chop');
     shared[0].update(.1); independent[0].update(.1);
     compare();
@@ -58,9 +119,60 @@ export async function checkTreeSpriteRendering() {
       sprite.start('idle_loop'); sprite.setFrame(7);
     }
     compare();
-    return { differences, paintedPixels };
+    const drawCalls: number[] = [];
+    const occlusion: number[][] = [];
+    // More trees with distinct phases must grow instance counts, not draw calls per entity.
+    const extra = [];
+    if (instanced) {
+      const treePixels = pixels(scenes[0]);
+      let sampleIndex = -1;
+      for (let y = 20; y < 172 && sampleIndex < 0; y++) for (let x = 20; x < 172; x++) {
+        let interior = true;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          const i = ((y + dy) * 192 + x + dx) * 4;
+          if (treePixels[i + 2] < 45) interior = false;
+        }
+        if (interior) { sampleIndex = (y * 192 + x) * 4; break; }
+      }
+      if (sampleIndex < 0) throw new Error('No opaque tree sample');
+      const px = sampleIndex / 4 % 192, py = Math.floor(sampleIndex / 4 / 192);
+      const world = new THREE.Vector3((px + .5) / 96 - 1, (py + .5) / 96 - 1, 0).unproject(camera);
+      // Turf draws transparently without writing depth, just like the real ground layers.
+      const turf = new THREE.Mesh(new THREE.PlaneGeometry(100, 100),
+        new THREE.MeshBasicMaterial({ color: 0x246622, transparent: true, depthWrite: false, depthTest: false }));
+      turf.position.z = -2; turf.renderOrder = -1;
+      const ground = new THREE.Group(); ground.add(turf); scenes[0].add(ground);
+      const withTurf = pixels(scenes[0]);
+      occlusion.push([...treePixels.slice(sampleIndex, sampleIndex + 3)], [...withTurf.slice(sampleIndex, sampleIndex + 3)]);
+      const marker = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+      marker.position.set(world.x, world.y, -5); marker.renderOrder = 100;
+      scenes[0].add(marker);
+      occlusion.push([...pixels(scenes[0]).slice(sampleIndex, sampleIndex + 3)]);
+      marker.position.z = 5;
+      occlusion.push([...pixels(scenes[0]).slice(sampleIndex, sampleIndex + 3)]);
+      ground.removeFromParent(); turf.geometry.dispose(); turf.material.dispose();
+      marker.removeFromParent(); marker.geometry.dispose(); marker.material.dispose();
+      for (let i = 0; i < 48; i++) {
+        const sprite = await createSharedArchiveSprite(assets, {
+          ...definition, animation: 'idle_loop', loop: true,
+        }, { instancedAnimations: ['idle_loop'] });
+        sprite.model.position.set((i % 8 - 4) * .5, 0, Math.floor(i / 8) * .1);
+        sprite.setFrame(i % sprite.frameCount); scenes[0].add(sprite.model); extra.push(sprite);
+      }
+      renderer.info.autoReset = false; renderer.info.reset();
+      pixels(scenes[0]); drawCalls.push(renderer.info.render.calls);
+      shared[0].playOnce('chop');
+      renderer.info.reset(); pixels(scenes[0]); drawCalls.push(renderer.info.render.calls);
+      shared[0].start('idle_loop');
+      renderer.info.reset(); pixels(scenes[0]); drawCalls.push(renderer.info.render.calls);
+      for (const sprite of [...shared, ...extra]) sprite.dispose();
+      renderer.info.reset(); pixels(scenes[0]); drawCalls.push(renderer.info.render.calls);
+    }
+    const stabilityDifferences = instanced ? checkAtlasFrameStability(renderer, target) : [];
+    return { differences, meanErrors, paintedPixels, drawCalls, occlusion, stabilityDifferences };
   } finally {
     for (const sprite of [...shared, ...independent]) sprite.dispose();
-    assets.dispose(); target.dispose(); renderer.dispose();
+    assets.dispose(); target.dispose(); lighting?.dispose(); renderer.dispose();
   }
 }

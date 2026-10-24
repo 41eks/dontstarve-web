@@ -126,6 +126,10 @@ function resolveFrame(
         : undefined;
     })
     .filter((sprite): sprite is ResolvedSprite => Boolean(sprite));
+  return layoutFrame(animation, frameIndex, sprites);
+}
+
+function layoutFrame(animation: Animation, frameIndex: number, sprites: ResolvedSprite[]): FrameLayout {
   const bounds = transformedBounds(sprites);
   return {
     animationName: animation.name,
@@ -155,6 +159,64 @@ export function composeRgbaSpriteAtlas(
   animation: Animation,
   options: Omit<RgbaSpriteAtlasOptions, 'animationName'> = {},
 ): RgbaSpriteAtlas {
+  let sources: HTMLCanvasElement[] | undefined;
+  return composeAtlas(animation, index => resolveFrame(buildPackage, animation, index),
+    sprite => (sources ??= buildPackage.atlases.map(decodedTextureCanvas))[sprite.image.sampler ?? 0], options);
+}
+
+/** Precompose resolved split builds/hidden symbols into bounded pages for instanced drawing. */
+export function composeResolvedRgbaSpriteAtlases(
+  animation: Animation,
+  frames: readonly ResolvedSprite[][],
+  maxTextureSize: number,
+): RgbaSpriteAtlas[] {
+  const layouts = frames.map((sprites, index) => layoutFrame(animation, index, sprites));
+  // Preserve the source texel density instead of expanding downscaled DST atlases
+  // back to their build-coordinate dimensions (which can triple each axis).
+  const resolutionScale = Math.min(1, Math.max(...frames.flatMap(sprites => sprites.map(({ image, materials }) => {
+    const texture = materials[image.sampler ?? 0].map!;
+    if (!(texture instanceof THREE.DataTexture)) throw new Error('Instanced sprite source must be a decoded atlas');
+    return Math.max(texture.image.width / image.canvasWidth!, texture.image.height / image.canvasHeight!);
+  }))));
+  // A clip uses one origin and one texel grid. Cropping and rounding each frame
+  // independently changes its sampling phase and stretches the last partial
+  // texel back onto the quad, making stationary parts wobble between frames.
+  const minX = Math.floor(Math.min(...layouts.map(frame => frame.minX)) * resolutionScale) / resolutionScale;
+  const minY = Math.floor(Math.min(...layouts.map(frame => frame.minY)) * resolutionScale) / resolutionScale;
+  const maxX = Math.ceil(Math.max(...layouts.map(frame => frame.maxX)) * resolutionScale) / resolutionScale;
+  const maxY = Math.ceil(Math.max(...layouts.map(frame => frame.maxY)) * resolutionScale) / resolutionScale;
+  for (const frame of layouts) Object.assign(frame, { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY });
+  const cellWidth = Math.max(...layouts.map(frame => Math.ceil(frame.width * resolutionScale))) + 4;
+  const cellHeight = Math.max(...layouts.map(frame => Math.ceil(frame.height * resolutionScale))) + 4;
+  const columns = Math.floor(maxTextureSize / cellWidth), rows = Math.floor(maxTextureSize / cellHeight);
+  if (columns < 1 || rows < 1) throw new Error('Sprite frame exceeds the maximum atlas size');
+  const capacity = columns * rows;
+  const sources = new Map<THREE.Texture, HTMLCanvasElement>();
+  const sourceOf = ({ image, materials }: ResolvedSprite) => {
+    const texture = materials[image.sampler ?? 0].map;
+    if (!(texture instanceof THREE.DataTexture)) throw new Error('Instanced sprite source must be a decoded atlas');
+    let canvas = sources.get(texture);
+    if (!canvas) {
+      canvas = decodedTextureCanvas({ width: texture.image.width, height: texture.image.height,
+        pixels: texture.image.data as Uint8Array });
+      sources.set(texture, canvas);
+    }
+    return canvas;
+  };
+  const pages: RgbaSpriteAtlas[] = [];
+  for (let offset = 0; offset < frames.length; offset += capacity) {
+    const frameIndices = frames.slice(offset, offset + capacity).map((_, index) => index + offset);
+    pages.push(composeAtlas(animation, index => layouts[index], sourceOf, { columns, frameIndices, resolutionScale }));
+  }
+  return pages;
+}
+
+function composeAtlas(
+  animation: Animation,
+  resolve: (index: number) => FrameLayout,
+  sourceOf: (sprite: ResolvedSprite) => HTMLCanvasElement,
+  options: Omit<RgbaSpriteAtlasOptions, 'animationName'>,
+): RgbaSpriteAtlas {
   const frameIndices = options.frameIndices ?? animation.frames.map((_, index) => index);
   if (frameIndices.length === 0) throw new Error('At least one sprite frame is required');
   const padding = Math.max(0, Math.floor(options.padding ?? 2));
@@ -162,9 +224,7 @@ export function composeRgbaSpriteAtlas(
   if (!Number.isFinite(resolutionScale) || resolutionScale <= 0) {
     throw new Error('RGBA sprite atlas resolutionScale must be greater than 0');
   }
-  const layouts = frameIndices.map((frameIndex) =>
-    resolveFrame(buildPackage, animation, frameIndex)
-  );
+  const layouts = frameIndices.map(resolve);
   layouts.forEach((frame) => {
     frame.pixelWidth = Math.max(1, Math.ceil(frame.width * resolutionScale));
     frame.pixelHeight = Math.max(1, Math.ceil(frame.height * resolutionScale));
@@ -180,21 +240,25 @@ export function composeRgbaSpriteAtlas(
   const height = cellHeight * rows;
   const canvas = createCanvas(width, height);
   const context = context2d(canvas);
-  const sourceCanvases = buildPackage.atlases.map(decodedTextureCanvas);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = 'high';
 
   layouts.forEach((frame, layoutIndex) => {
     frame.atlasX = (layoutIndex % columns) * cellWidth + padding;
     frame.atlasY = Math.floor(layoutIndex / columns) * cellHeight + padding;
-    for (const { element, image } of frame.sprites) {
-      const source = sourceCanvases[image.sampler ?? 0];
+    for (const sprite of frame.sprites) {
+      const { element, image } = sprite;
+      const source = sourceOf(sprite);
       if (!source) {
         throw new Error(`Sprite frame references missing atlas ${image.sampler ?? 0}`);
       }
       const [a, b, c, d, tx, ty] = element.matrix;
       const x0 = image.x - image.width / 2;
       const y0 = image.y - image.height / 2;
+      // Build UVs may describe the original atlas size while the shipped texture
+      // is downscaled. Match the normalized UVs used by the ordinary sprite mesh.
+      const sourceScaleX = source.width / image.canvasWidth!;
+      const sourceScaleY = source.height / image.canvasHeight!;
       context.setTransform(
         a * resolutionScale,
         b * resolutionScale,
@@ -205,10 +269,10 @@ export function composeRgbaSpriteAtlas(
       );
       context.drawImage(
         source,
-        image.bbx!,
-        image.bby!,
-        image.width,
-        image.height,
+        image.bbx! * sourceScaleX,
+        image.bby! * sourceScaleY,
+        image.width * sourceScaleX,
+        image.height * sourceScaleY,
         x0,
         y0,
         image.width,
