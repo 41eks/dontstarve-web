@@ -13,8 +13,8 @@ import type { WorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import { PrefabInstance } from './prefabInstance';
-import { ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import { nextReskin } from './reskin_tool';
 import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
@@ -121,7 +121,8 @@ export interface WallHammerContext {
 interface WallArt {
     model: THREE.Group;
     readonly instance: PrefabInstance;
-    animation: ResidentSpriteController;
+    readonly display: PrefabDisplay;
+    animation: SpriteState;
     opacity: Signal<number>;
     stopAppearance: () => void;
     groundOffset: number;
@@ -454,15 +455,18 @@ export class WallPlacement<BuildId extends string> {
         }
         const source = await request;
         if (this.disposed) throw new Error('Placement has been disposed');
-        const sprite = source.create();
-        const model = new THREE.Group();
-        model.name = definition.name;
-        const instance = new PrefabInstance(buildId, model, { create: () => source.create(), release: sprite => source.disposeSprite(sprite),
-            initial: sprite, clip: { name: 'half', held: true } });
-        const animation = instance.animation;
-        model.userData.animationController = animation;
-        animation.setPose(undefined);
         const opacity = createSignal(1);
+        const dress = (animation: SpriteState) => {
+            const facing = this.facing.peek();
+            animation.showImage(this.isFrontFacing(facing) ? definition.frontImageIndex : definition.sideImageIndex);
+            animation.setFacing(facing);
+            if (definition.multColour) animation.setColour(definition.multColour);
+            animation.setOpacity(opacity.peek());
+        };
+        const { instance, display } = createPrefabEntity(buildId, { create: () => source.create(), release: sprite => source.disposeSprite(sprite) },
+            { name: 'half', held: true }, definition.name, entity => { entity.sprite.setPose(undefined); dress(entity.sprite); });
+        const { model } = display;
+        const animation = instance.sprite;
         const stopAppearance = createEffect(() => {
             animation.art.get();
             const facing = this.facing.get();
@@ -473,7 +477,7 @@ export class WallPlacement<BuildId extends string> {
         });
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
-        return { model, instance, animation, opacity, stopAppearance, groundOffset: -bounds.min.y };
+        return { model, instance, display, animation, opacity, stopAppearance, groundOffset: -bounds.min.y };
     }
 
     private async createInstance(buildId: BuildId, attach = true, requestedSkin?: string): Promise<WallInstance<BuildId>> {
@@ -562,8 +566,8 @@ export class WallPlacement<BuildId extends string> {
             wall.preparedSkin = undefined;
             const footY = wall.model.position.y - wall.groundOffset;
             replacement.stopAppearance();
-            wall.animation.adopt(replacement.animation);
-            replacement.instance.dispose();
+            wall.display.adopt(replacement.display);
+            disposeSprite(replacement.model);
             wall.groundOffset = replacement.groundOffset;
             wall.model.position.y = footY + wall.groundOffset;
             wall.instance.skinId = skinId;

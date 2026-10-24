@@ -1,5 +1,4 @@
 import { syncPlacementEntity } from './placementEntities';
-import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import * as CANNON from 'cannon-es';
 import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
 import * as THREE from 'three';
@@ -273,7 +272,6 @@ export class BeefaloController {
     }
     syncPlacementEntity(this.model);
     this.model.quaternion.copy(cameraQuaternion);
-    syncEntitySpatial(this.model);
     this.right.set(1, 0, 0).applyQuaternion(cameraQuaternion).setY(0).normalize();
     this.forward.set(0, 0, -1).applyQuaternion(cameraQuaternion).setY(0).normalize();
     const x = this.direction.dot(this.right);

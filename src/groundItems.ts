@@ -1,5 +1,4 @@
 import { syncPlacementEntity } from '../packages/prefab/src/placementEntities';
-import { syncEntitySpatial } from '../packages/stategraphs/src/entitySpatialIndex';
 import { modelValues } from '../packages/prefab/src/modelRecords';
 import { ItemEntity, ItemEntityRegistry, type InventoryStore } from '@dontstarve-web/inventory';
 import type { PickupTarget } from '@dontstarve-web/stategraphs';
@@ -513,7 +512,7 @@ export class GroundItemManager {
         console.error(`Unable to replace perished ${entity.prefab}`, error)); }),
       // physics.lua LaunchAt: any inst may be thrown from its own position.
       entity.ListenForEvent('launch', launch => { record.fling = new LootFling(entity.transform, undefined, undefined, launch as LootLaunch); this.refreshUpdating(record); }),
-      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); syncPlacementEntity(model); syncEntitySpatial(model); model.dispatchEvent({ type: 'ondropped' }); }),
+      entity.ListenForEvent('ondropped', () => { record.fling = undefined; model.position.copy(entity.transform.position); syncPlacementEntity(model); model.dispatchEvent({ type: 'ondropped' }); }),
     ];
     record.stopInventoryEvents = () => stops.forEach(stop => stop());
     // An inst that perished between holders is replaced once it reaches the ground.
@@ -851,11 +850,9 @@ export class GroundItemManager {
     if (!this.cameraRotation) for (const { model } of this.activeItems) {
       if (model.quaternion.equals(cameraQuaternion)) continue;
       model.quaternion.copy(cameraQuaternion);
-      syncEntitySpatial(model);
     }
     for (const item of [...this.updatingItems]) {
       const previousX = item.model.position.x, previousY = item.model.position.y, previousZ = item.model.position.z;
-      const wasFlung = item.fling !== undefined;
       item.model.position.copy(item.entity.transform.position);
       item.update?.(dt);
       if (item.fling) {
@@ -869,10 +866,8 @@ export class GroundItemManager {
         this.entities.destroy(item.entity);
       } else {
         const moved = item.model.position.x !== previousX || item.model.position.y !== previousY || item.model.position.z !== previousZ;
-        // Animation-only updates do not move the ground origin. Bounds expansion
-        // is already published by the sprite renderer, and tags sync on change.
+        // Placement tracks the logical ground origin; pointer queries update visual matrices on demand.
         if (moved) syncPlacementEntity(item.model);
-        if (moved || wasFlung) syncEntitySpatial(item.model);
       }
     }
   }

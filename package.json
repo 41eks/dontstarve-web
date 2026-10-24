@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@dontstarve-web/animation": "workspace:*",
+    "@dontstarve-web/display": "workspace:*",
     "@dontstarve-web/inventory": "workspace:*",
     "@dontstarve-web/prefab": "workspace:*",
     "@dontstarve-web/signals": "workspace:*",

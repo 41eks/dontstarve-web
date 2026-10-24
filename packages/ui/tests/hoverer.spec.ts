@@ -74,6 +74,11 @@ test('shared hover text shows primary and secondary actions, honors overrides, a
   await expect(hover).toBeHidden();
   await page.locator(`#${blocker.id}`).evaluate(element => element.remove()); await step();
   await expect(hover).toBeVisible();
+  await page.evaluate(() => (window as any).hoverer.scaleTarget(.5));
+  await page.mouse.move(viewport.width * .78, viewport.height * .5); await step();
+  await expect(hover).toBeVisible(); // Outside the drawn edge (.75), within the padded edge (.80).
+  await page.mouse.move(viewport.width * .83, viewport.height * .5); await step();
+  await expect(hover).toBeHidden();
   await page.evaluate(() => (window as any).hoverer.dispose());
   await expect(hover).toHaveCount(0);
   expect(errors).toEqual([]);

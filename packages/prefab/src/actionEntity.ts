@@ -3,9 +3,10 @@ import type { ComponentActionEntity } from '../../stategraphs/src/componentactio
 import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorkableInst } from '../../componets/src/workable';
 import { TileTracker } from '../../componets/src/tileManager';
-import { registerMouseTarget } from '../../stategraphs/src/mouseTargets';
-import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
+import { activePrefabs, type FoundEntity } from './activePrefabs';
+
+export { activePrefabs, type FoundEntity } from './activePrefabs';
 
 /** Existing world removal writes update the sole lifecycle signal, including inside batches. */
 function modelRemoval(model: THREE.Group): ReadonlySignal<boolean> {
@@ -22,7 +23,6 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
   if (model.userData.actionEntity) return model.userData.actionEntity;
   model.userData.components ??= {};
   const removal = inst?.removal ?? modelRemoval(model);
-  let mouseTarget: ReturnType<typeof registerMouseTarget> | undefined;
   const entity: ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3; getPhysicsRadius(): number } = {
     model,
     prefab,
@@ -45,16 +45,12 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
         model.userData.tags ??= [];
         if (!model.userData.tags.includes(tag)) model.userData.tags.push(tag);
       }
-      if (tag === 'NOCLICK' || tag === 'tickingarea') mouseTarget?.refresh();
       syncPlacementEntity(model);
-      syncEntitySpatial(model);
     },
     removeTag(tag) {
       if (inst) inst.removeTag(tag);
       else model.userData.tags = (model.userData.tags ?? []).filter((value: string) => value !== tag);
-      if (tag === 'NOCLICK' || tag === 'tickingarea') mouseTarget?.refresh();
       syncPlacementEntity(model);
-      syncEntitySpatial(model);
     },
     PushEvent: (name, data) => {
       if (inst) inst.PushEvent?.(name, data);
@@ -63,15 +59,13 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
   };
   model.userData.actionEntity = entity;
   const stopPlacement = registerPlacementEntity(model, entity.getPosition);
-  mouseTarget = registerMouseTarget(model, () => !entity.isRemoved && entity.hasTag('tickingarea') && !entity.hasTag('NOCLICK'));
   const stopTags = (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
-    ?.ListenForEvent?.('tagchanged', () => { mouseTarget?.refresh(); syncPlacementEntity(model); syncEntitySpatial(model); });
+    ?.ListenForEvent?.('tagchanged', () => syncPlacementEntity(model));
   liveEntities.add(entity);
   const stopRemoval = removal.subscribe(removed => { if (removed) disposeActionEntity(model); });
   disposals.set(entity, () => {
     stopRemoval();
     stopTags?.();
-    mouseTarget?.dispose();
     stopPlacement();
     entityWorlds.get(entity)?.remove(entity);
     setPrefabActive(entity, false);
@@ -91,10 +85,9 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
 
 /**
  * The engine's lifecycle list adopts projected insts when a world binds. Area effects maintain the active
- * prefab list independently of scene attachment; mouse queries retain their own spatial registration.
+ * prefab list independently of scene attachment. Radius queries and mouse picking share that list.
  */
 const liveEntities = new Set<FoundEntity>();
-export const activePrefabs: FoundEntity[] = [];
 const disposals = new Map<FoundEntity, () => void>();
 const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
 let currentEntityWorld: EntityTickingArea | undefined;
@@ -191,8 +184,6 @@ function isUnder(model: THREE.Object3D, root: THREE.Object3D): boolean {
   for (let object: THREE.Object3D | null = model; object; object = object.parent) if (object === root) return true;
   return false;
 }
-
-export type FoundEntity = ComponentActionEntity & WorkableInst & { getPosition(): THREE.Vector3 };
 
 /** Query tickingarea-registered prefabs by their logical position and tags, independently of their visual. */
 export function FindEntities(position: THREE.Vector3, radius: number,

@@ -11,6 +11,9 @@ importers:
       '@dontstarve-web/animation':
         specifier: workspace:*
         version: link:packages/animation
+      '@dontstarve-web/display':
+        specifier: workspace:*
+        version: link:packages/display
       '@dontstarve-web/inventory':
         specifier: workspace:*
         version: link:packages/inventory
@@ -89,6 +92,25 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(@types/node@26.6.3)(vite@8.0.14(@types/node@26.6.3))
 
+  packages/display:
+    dependencies:
+      '@dontstarve-web/animation':
+        specifier: workspace:*
+        version: link:../animation
+      '@dontstarve-web/signals':
+        specifier: workspace:*
+        version: link:../signals
+      three:
+        specifier: ^0.184.0
+        version: 0.184.0
+    devDependencies:
+      '@types/three':
+        specifier: ^0.184.1
+        version: 0.184.1
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+
   packages/inventory:
     dependencies:
       '@dontstarve-web/signals':
@@ -125,6 +147,9 @@ importers:
       '@dontstarve-web/animation':
         specifier: workspace:*
         version: link:../animation
+      '@dontstarve-web/display':
+        specifier: workspace:*
+        version: link:../display
       '@dontstarve-web/inventory':
         specifier: workspace:*
         version: link:../inventory

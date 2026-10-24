@@ -1,85 +1,68 @@
 import type * as THREE from 'three';
-import { ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { PrefabDisplay, SpriteState, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import type { PlacementSaveRecord } from './saveRecord';
 
-/** What the instance's resident visual is built from: the shared source and the sprite first drawn. */
-export interface PrefabVisualSource {
-  /** Builds a sprite from the entity's shared source, directly in the given animation. */
-  create(animation: string): THREE.Group;
-  /** Returns a drawn sprite to that source. */
-  release(sprite: THREE.Group): void;
-  initial: THREE.Group;
-  clip: { name: string; held?: boolean };
-}
-
 /**
- * The entity behind a placed prefab: identity, save record, skin and persistence belong here, not to the model.
- * The model is the entity's anchor in the scene and the key other owners register it under. It is held in the scene
- * only while the tile is active; `animation` owns the sprite under it, which is built and released with it. `userData` keeps accessors
- * to the fields below for readers that have not moved to the instance yet.
+ * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
+ * `sprite` json. It holds no model. A `PrefabDisplay` subscribes to `status` and `sprite` and draws them, so the
+ * prefab only changes data: asleep releases the visual and the model leaves the scene, removed releases everything.
  */
 export class PrefabInstance {
   readonly prefab: string;
-  readonly model: THREE.Group;
+  private readonly lifecycle = createSignal<PrefabStatus>('active');
+  readonly status: ReadonlySignal<PrefabStatus> = readonlySignal(this.lifecycle);
+  readonly sprite: SpriteState;
   entityId?: string;
   saveRecord?: PlacementSaveRecord;
   skinId?: string;
   /** inst.persists: false keeps the entity out of the save. */
   persists = true;
-  /** The drawn sprite, present only while the tile is active; the model is its stable root. */
-  readonly animation: ResidentSpriteController;
-  private asleep = false;
-  private home: THREE.Object3D | undefined;
-  // The owner may add the model to the scene after its tile was already found inactive.
-  private readonly onAdded = () => { if (this.asleep) this.sleep(); };
 
-  constructor(prefab: string, model: THREE.Group, source: PrefabVisualSource) {
+  /** `clip` is the sprite's first clip; `held` shows it on its last frame. */
+  constructor(prefab: string, clip: { name: string; held?: boolean }) {
     this.prefab = prefab;
-    this.model = model;
-    this.animation = new ResidentSpriteController(model, source.create, source.release, source.initial, source.clip);
-    model.userData.instance = this;
-    for (const key of ['entityId', 'saveRecord', 'skinId', 'persists'] as const) {
-      Object.defineProperty(model.userData, key, {
-        enumerable: true, configurable: true,
-        get: () => this[key], set: (value: never) => { this[key] = value; },
-      });
-    }
-    model.addEventListener('added', this.onAdded);
+    this.sprite = new SpriteState(clip);
   }
 
-  /** OnEntitySleep / OnEntityWake: the visual is released and the anchor leaves the scene, or both return. */
+  /** OnEntitySleep / OnEntityWake: follows the entity's tile; a removed entity stays removed. */
   setActive(active: boolean): void {
-    if (active) { this.wake(); this.animation.setActive(true); return; }
-    this.animation.setActive(false);
-    this.asleep = true;
-    this.sleep();
+    if (this.lifecycle.peek() === 'removed') return;
+    this.sprite.setAwake(active);
+    this.lifecycle.set(active ? 'active' : 'asleep');
   }
 
-  private sleep(): void {
-    const parent = this.model.parent;
-    if (!parent) return;
-    this.home = parent;
-    this.model.removeFromParent();
-  }
+  remove(): void { this.lifecycle.set('removed'); }
+}
 
-  private wake(): void {
-    this.asleep = false;
-    const home = this.home;
-    this.home = undefined;
-    if (home && !this.model.parent) home.add(this.model);
-  }
-
-  /** Releases the visual and leaves the scene; shared sources stay with their owner. */
-  dispose(): void {
-    this.asleep = false;
-    this.home = undefined;
-    this.model.removeEventListener('added', this.onAdded);
-    this.animation.dispose();
-    this.model.removeFromParent();
-    if (this.model.userData.instance === this) delete this.model.userData.instance;
+/**
+ * Transitional: readers that still look at `userData` keep working while the entity's data lives on the instance.
+ * `instance` is how a model finds its entity.
+ */
+export function bindInstance(model: THREE.Object3D, instance: PrefabInstance): void {
+  model.userData.instance = instance;
+  for (const key of ['entityId', 'saveRecord', 'skinId', 'persists'] as const) {
+    Object.defineProperty(model.userData, key, {
+      enumerable: true, configurable: true,
+      get: () => instance[key], set: (value: never) => { instance[key] = value; },
+    });
   }
 }
 
 export function prefabInstance(model: THREE.Object3D): PrefabInstance | undefined {
   return model.userData.instance as PrefabInstance | undefined;
+}
+
+/** A new entity and the display that draws it. The model is the display's; the entity never holds it. */
+export function createPrefabEntity(prefab: string, source: SpriteSource, clip: { name: string; held?: boolean }, name?: string,
+  /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
+  initialize?: (instance: PrefabInstance) => void):
+  { instance: PrefabInstance; display: PrefabDisplay } {
+  const instance = new PrefabInstance(prefab, clip);
+  initialize?.(instance);
+  const display = new PrefabDisplay({ name, source, status: instance.status, sprite: instance.sprite });
+  bindInstance(display.model, instance);
+  display.model.userData.display = display;
+  display.model.userData.animationController = instance.sprite;
+  return { instance, display };
 }

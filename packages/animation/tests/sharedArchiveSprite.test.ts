@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createSharedArchiveSprite, type ArchiveSprite } from '../src/archiveSprite';
-import { retainSpatialEntity } from '../../stategraphs/src/entitySpatialIndex';
 import { isSpriteEntityRendered, SpriteRenderOrderSorter } from '../src/renderOrder';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
@@ -26,7 +25,6 @@ it('changes baked animation geometry without invalidating static transforms, and
   const assets = new ArchiveSpriteAssets();
   const sprite = await createSharedArchiveSprite(assets, definition, { instancedAnimations: ['idle_loop'] });
   const scene = new THREE.Scene();
-  const spatial = retainSpatialEntity(sprite.model);
   scene.add(sprite.model);
   const update = vi.spyOn(sprite.model.children[0], 'updateMatrixWorld');
   try {
@@ -52,7 +50,7 @@ it('changes baked animation geometry without invalidating static transforms, and
     expect(update).toHaveBeenCalledTimes(initialVisits + 2);
     sprite.start('idle_loop');
     expect(isSpriteEntityRendered(sprite.model)).toBe(false);
-  } finally { spatial.dispose(); sprite.dispose(); assets.dispose(); }
+  } finally { sprite.dispose(); assets.dispose(); }
 });
 
 it('shares idle, work and fall frames across tinted trees while playback and resource lifetimes stay independent', async () => {
