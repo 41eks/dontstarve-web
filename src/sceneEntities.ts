@@ -29,8 +29,7 @@ import { RockAvocadoBushManager, ROCK_AVOCADO_BUSH_ID } from '@dontstarve-web/pr
 import { BerrybushManager, BERRYBUSH_ID } from '@dontstarve-web/prefab/berrybush';
 import { MonkeytailManager, MONKEYTAIL_ID } from '@dontstarve-web/prefab/monkeytail';
 import { GrassManager, GRASS_ID } from '@dontstarve-web/prefab/grass';
-import { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
-import { WorldWind } from '../packages/componets/src/worldwind';
+import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
 import { TumbleweedManager, TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumbleweed';
 import { SaplingManager } from '@dontstarve-web/prefab/sapling';
 import { PondManager, POND_ID } from '@dontstarve-web/prefab/pond';
@@ -74,7 +73,7 @@ import type { WorldState } from './worldState';
 
 export async function createSceneEntities(
   world: CANNON.World,
-  worldState: Pick<WorldState, 'clock' | 'season' | 'moon' | 'fullMoon' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'scheduler' | 'temperature' | 'weather' | 'perishClock'>,
+  worldState: Pick<WorldState, 'clock' | 'season' | 'moon' | 'fullMoon' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'worldwind' | 'scheduler' | 'temperature' | 'weather' | 'perishClock'>,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
   onFlowerPlanted?: () => void,
@@ -91,7 +90,7 @@ export async function createSceneEntities(
   const dynamicMusic = scheduler ? new DynamicMusic(scheduler, path => PlaySound(path)) : undefined;
   scene.add(moonTreeForest.group);
   const buildingPlacement = new PlaceableBuildingPlacement(
-    { ...view, physics: world, scheduler, season: worldState.season, dynamicMusic, fullMoon: worldState.fullMoon,
+    { ...view, physics: world, scheduler, dynamicMusic, fullMoon: worldState.fullMoon,
       moon: worldState.moon,
       getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
       cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, isNight: worldState.isNight, perishClock: worldState.perishClock,
@@ -114,7 +113,7 @@ export async function createSceneEntities(
         tags: object.userData.tags,
         inventoryRadius: object.userData.itemId ? object.userData.physicsRadius ?? .5 : undefined,
         smartRadius: object.userData.deploySmartRadius })),
-  }, scheduler ? { scheduler, season: worldState.season, spawnAsh: position => spawnAsh(position) } : undefined);
+  }, scheduler ? { scheduler, spawnAsh: position => spawnAsh(position) } : undefined);
   const worldFx = new WorldFx(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
   const moleScheduler = scheduler ?? worldState.scheduler;
   const moleBaits = new Map<string, MoleBait>();
@@ -184,7 +183,6 @@ export async function createSceneEntities(
     { getSanityPercent: () => playerStats.sanity.percent.peek() },
     itemEntities,
     scheduler,
-    worldState.season,
     worldFx,
     molehills.habitat,
   );
@@ -195,7 +193,7 @@ export async function createSceneEntities(
       .catch((error: unknown) => console.error('Unable to spawn ash', error));
   };
   const dwarfStars = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
-    DWARF_STAR_ID, () => player.position, worldState.season);
+    DWARF_STAR_ID, () => player.position);
   const polarLights = new DwarfStarManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
     POLAR_LIGHT_ID, () => player.position);
   const bulbPlants = new BulbPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
@@ -206,39 +204,35 @@ export async function createSceneEntities(
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
   const rockAvocadoBushes = new RockAvocadoBushManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    scheduler, season: worldState.season, rain: worldState.weather.preciptype, snowLevel: worldState.weather.snowLevel,
+    rain: worldState.weather.preciptype,
     physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
   const rockAvocadoSaplings = new RockAvocadoSaplingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    scheduler, season: worldState.season, bushes: rockAvocadoBushes,
+    scheduler, bushes: rockAvocadoBushes,
     prepareSpawn: definition => groundItems.prepareSpawn(definition),
   });
   const berrybushes = new BerrybushManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    scheduler, season: worldState.season, rain: worldState.weather.preciptype, snowLevel: worldState.weather.snowLevel,
+    rain: worldState.weather.preciptype,
     physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
   const monkeytails = new MonkeytailManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    scheduler, season: worldState.season, rain: worldState.weather.preciptype,
+    rain: worldState.weather.preciptype,
     getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
   const grasses = new GrassManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    scheduler, season: worldState.season,
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
   const saplings = new SaplingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    scheduler, season: worldState.season,
     prepareSpawn: (definition, fling) => groundItems.prepareSpawn(definition, fling),
   });
-  const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, worldState.weather.snowLevel);
+  const ponds = new PondManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, worldState.getWatchWorldContent);
   const lavaPonds = new LavaPondManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, { scheduler });
-  // forest.lua adds worldwind to the world; its change task needs a scheduler even when the caller supplies none.
-  const windScheduler = scheduler ?? new GameTimeScheduler();
-  const worldWind = new WorldWind(windScheduler);
+  const worldWind = worldState.worldwind;
   const tumbleweeds = new TumbleweedManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
-    scheduler: windScheduler, wind: worldWind, cameraHeading: view.cameraHeading,
+    scheduler: worldState.scheduler, wind: worldWind, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading,
     isOnValidGround: position => { const tile = turfMap.getTileAtWorld(position);
       return tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL; },
     constrainPosition: position => {
@@ -304,7 +298,7 @@ export async function createSceneEntities(
   });
   const registry = new EntityRegistry();
   const evergreenForest = await createEvergreenForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
-    camera, scene, scheduler, physics: world, season: worldState.season, spawnAsh,
+    camera, scene, scheduler, physics: world, spawnAsh,
     growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
     dropLoot: (items, position) => {
       void groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
@@ -641,10 +635,10 @@ export async function createSceneEntities(
     }),
     debugSpawn: () => tumbleweeds.spawn(player.position.clone().setY(0)),
     exportRecords: () => tumbleweeds.exportRecords().map(record => ({ prefabId: TUMBLEWEED_ID, record })),
-    beforePhysics: dt => { if (!scheduler) windScheduler.advance(Math.min(dt, .1)); tumbleweeds.beforePhysics(dt); },
+    beforePhysics: dt => tumbleweeds.beforePhysics(dt),
     update: (_, quaternion) => tumbleweeds.sync(quaternion),
     renderEntities: () => tumbleweeds.renderEntities,
-    dispose: () => { tumbleweeds.dispose(); worldWind.dispose(); if (!scheduler) windScheduler.dispose(); },
+    dispose: () => tumbleweeds.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.hotsprings, {
     restore: (_, record) => hotsprings.spawn(new THREE.Vector3(...record.transform.position), {

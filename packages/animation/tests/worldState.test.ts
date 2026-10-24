@@ -10,12 +10,55 @@ function updateClock(state: ReturnType<typeof createWorldState>, elapsedSeconds:
 }
 
 describe('session world temperature', () => {
+  it('injects component wind and perish signals at init, preserves live queries and stops world tasks on disposal', () => {
+    const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+    const cleanups: (() => void)[] = [];
+    const wind = state.getWatchWorldContent(WorldContentKey.Wind, stop => cleanups.push(stop));
+    const perish = state.getWatchWorldContent(WorldContentKey.PerishClock, stop => cleanups.push(stop));
+    const windChanged = vi.fn(), perishChanged = vi.fn();
+    wind.subscribe(windChanged); perish.subscribe(perishChanged);
+    const updater = createWorldClockUpdater(state, 0);
+    try {
+      expect(state.wind).toBe(state.worldwind.windchange);
+      expect(state.perishTick).toBe(state.perishClock.snapshot);
+      expect(wind.peek()).toBe(state.wind.peek());
+      expect(perish.peek()).toBe(state.perishTick.peek());
+      expect(wind.scheduler).toBe(state.scheduler);
+      expect(perish.scheduler).toBe(wind.scheduler);
+      expect(perish.perishClock).toBe(state.perishClock);
+
+      updater.update(1);
+      state.scheduler.advanceTo(updater.elapsedSeconds);
+      expect(windChanged).toHaveBeenCalledExactlyOnceWith(state.wind.peek(), expect.any(Object));
+      expect(perishChanged).not.toHaveBeenCalled();
+      expect(perish.peek().time).toBe(0);
+      expect(perish.perishClock?.GetTick().time).toBe(1);
+      updater.flush();
+      expect(perish.peek()).toBe(state.perishTick.peek());
+      expect(perish.peek().time).toBe(1);
+      expect(perishChanged).toHaveBeenCalledOnce();
+
+      cleanups.splice(0).forEach(stop => stop());
+      updater.update(31); state.scheduler.advanceTo(updater.elapsedSeconds); updater.flush();
+      expect(windChanged).toHaveBeenCalledOnce();
+      expect(perishChanged).toHaveBeenCalledOnce();
+      expect(state.perishClock.GetTick().time).toBe(32);
+      state.dispose();
+      expect(state.worldwind.timerSnapshot.peek().status).toBe('stopped');
+      state.scheduler.advance(100);
+      expect(windChanged).toHaveBeenCalledOnce();
+    } finally { cleanups.splice(0).forEach(stop => stop()); state.dispose(); }
+  });
+
   it('settles clock, moon phase and temperature every 60 active frames using actual dt and flushes partial batches', () => {
     const initialElapsedSeconds = 10 * 480 - 0.5;
     const state = createWorldState({ elapsedSeconds: initialElapsedSeconds, systems: {} });
     const cleanups: (() => void)[] = [];
     const localCycle = state.getWatchWorldContent(WorldContentKey.Cycle, stop => cleanups.push(stop));
+    const localTemperature = state.getWatchWorldContent(WorldContentKey.Temperature, stop => cleanups.push(stop));
     expect(localCycle.scheduler).toBe(state.scheduler);
+    expect(localTemperature.scheduler).toBe(localCycle.scheduler);
+    expect(localTemperature.peek()).toBe(state.temperature.peek());
     expect(localCycle.scheduler.now).toBe(initialElapsedSeconds);
     const observed = vi.fn();
     const cycleChanges = vi.fn(), stopCycle = state.cycle.subscribe(cycleChanges);
@@ -38,6 +81,7 @@ describe('session world temperature', () => {
     updater.update(0);
     expect(state.clock.peek()).toBe(clock);
     expect(state.temperature.peek()).toBe(temperature);
+    expect(localTemperature.peek()).toBe(temperature);
     expect(state.perishClock.snapshot.peek()).toBe(perishSnapshot);
     expect(state.perishClock.GetTick().time).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
     expect(state.worldtemperature.OnSave().noisetime).toBe(initialElapsedSeconds);
@@ -48,6 +92,7 @@ describe('session world temperature', () => {
     elapsed += 0.1;
     updater.update(0.1);
     expect(observed).toHaveBeenCalledOnce();
+    expect(localTemperature.peek()).toBe(state.temperature.peek());
     expect(state.clock.peek().phase).toBe('day');
     expect(cycleChanges).toHaveBeenCalledExactlyOnceWith('day', 'night');
     expect(state.isNight.peek()).toBe(false);

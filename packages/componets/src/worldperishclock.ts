@@ -1,16 +1,8 @@
 import { createMemo, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type Signal } from '../../signals/src';
+import type { PerishClock, PerishTick } from '../../signals/src/worldContent';
 
 /** A prefix sum of temperature-weighted game seconds, relative to this loaded world. */
-export interface PerishTick {
-  readonly time: number;
-  readonly total: number;
-}
-
-export interface PerishClock {
-  GetTick(time?: number): PerishTick;
-  /** Frozen perishables have zero decay below freezing, overriding holder and wetness factors. */
-  GetFrozenTick?(time?: number): PerishTick;
-}
+export type { PerishTick, PerishClock } from '../../signals/src/worldContent';
 
 interface PerishInterval {
   readonly start: PerishTick;

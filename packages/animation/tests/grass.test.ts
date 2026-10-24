@@ -6,6 +6,8 @@ import type { InventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GrassManager, GRASS_ID } from '../../prefab/src/grass';
+import { bindTestWorld, tickWorld } from './worldContentFixture';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createSignal, type SeasonState } from '../../signals/src';
 
 afterEach(() => {
@@ -23,8 +25,9 @@ it('spawns grass through the debug command using its source bank and build, then
   vi.stubGlobal('window', new EventTarget());
 
   const scene = new THREE.Scene();
-  const season = createSignal<SeasonState>({ season: 'autumn', progress: 0 });
-  const grasses = new GrassManager(scene, '/dst/data/anim', { season,
+  const scheduler = new GameTimeScheduler();
+  const { season } = bindTestWorld(scheduler);
+  const grasses = new GrassManager(scene, '/dst/data/anim', {
     prepareSpawn: async () => ({ spawn: () => true, dispose() {} }),
   });
   const registry = new EntityRegistry();
@@ -34,7 +37,7 @@ it('spawns grass through the debug command using its source bank and build, then
     }),
     debugSpawn: () => grasses.spawn(new THREE.Vector3(4, 0, -6)),
     exportRecords: () => grasses.exportRecords().map((record) => ({ prefabId: GRASS_ID, record })),
-    update: (dt, quaternion) => grasses.update(dt, quaternion),
+    update: (dt, quaternion) => tickWorld(scheduler, grasses, dt, quaternion),
     renderEntities: () => grasses.renderEntities,
     dispose: () => grasses.dispose(),
   });
@@ -55,7 +58,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(mesh.isMesh).toBe(true);
   expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(4);
 
-  grasses.update(1 / 30, new THREE.Quaternion());
+  tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
   expect(model.quaternion.x).toBe(0);
   expect([...grasses.renderEntities]).toEqual([{ object: model, footPosition: model.position, cameraDepth: 0 }]);
 
@@ -67,7 +70,7 @@ it('spawns grass through the debug command using its source bank and build, then
   const pickable = model.userData.components.pickable;
   expect(pickable.pick({ giveItem: (id: string, count: number) => id === 'cutgrass' && count === 1 })).toBe(true);
   expect(controller.currentAnimation).toBe('picking');
-  for (let i = 0; i < 60; i++) grasses.update(1 / 30, new THREE.Quaternion());
+  for (let i = 0; i < 60; i++) tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('picked');
   const pickedRecord = grasses.exportRecords()[0];
   expect(pickedRecord.components.pickable?.picked).toBe(true);
@@ -76,10 +79,10 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(pickedRestored.userData.animationController.currentAnimation).toBe('picked');
   expect(pickedRestored.userData.components.pickable.state.phase.peek()).toBe('picked');
   expect(pickedRestored.userData.components.pickable.remainingSeconds).toBeCloseTo(1438);
-  grasses.update(pickable.remainingSeconds, new THREE.Quaternion());
+  tickWorld(scheduler, grasses, pickable.remainingSeconds, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('grow');
   expect(pickable.state.phase.peek()).toBe('ready');
-  for (let i = 0; i < 60; i++) grasses.update(1 / 30, new THREE.Quaternion());
+  for (let i = 0; i < 60; i++) tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('idle');
 
   const restored = await grasses.spawn(new THREE.Vector3(...record.transform.position), {
@@ -92,7 +95,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(pickable.pick({ giveItem: () => true })).toBe(true);
   expect(pickable.exportState()).toEqual({ picked: true, paused: true });
   expect(pickable.state.timer.peek()).toEqual({ status: 'stopped' });
-  grasses.update(500, new THREE.Quaternion());
+  tickWorld(scheduler, grasses, 500, new THREE.Quaternion());
   expect(pickable.canBePicked).toBe(false);
   season.set({ season: 'spring', progress: 0 });
   expect(pickable.remainingSeconds).toBe(1080);
@@ -101,7 +104,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(pickable.state.phase.peek()).toBe('removed');
   expect(model.parent).toBeNull();
   season.set({ season: 'winter', progress: 0 });
-  grasses.update(1080, new THREE.Quaternion());
+  tickWorld(scheduler, grasses, 1080, new THREE.Quaternion());
   expect(pickable.state.phase.peek()).toBe('removed');
 
   registry.dispose();

@@ -16,6 +16,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -29,9 +30,8 @@ function setup() {
   const scheduler = new GameTimeScheduler();
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const season = createSignal<SeasonState>({ season: 'autumn', progress: 0 });
-  const snowLevel = createSignal(0);
-  const bushes = new RockAvocadoBushManager(scene, '/dst/data/anim', { scheduler, physics, season, snowLevel,
+  const { season, snowLevel } = bindTestWorld(scheduler);
+  const bushes = new RockAvocadoBushManager(scene, '/dst/data/anim', { physics,
     prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {

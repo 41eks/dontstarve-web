@@ -43,7 +43,6 @@ export interface EvergreenWorld {
   camera: THREE.Camera;
   /** Searched for propagator neighbours; receives fire effects. */
   scene: THREE.Object3D;
-  season?: BurnEnvironment['season'];
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   spawnAsh(position: THREE.Vector3): void;
   scheduler?: GameTimeScheduler;
@@ -105,7 +104,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const rest = (tree: Tree) => tree.stump.peek() ? `stump_${EVERGREEN_STAGES[stageOf(tree)]}`
     : tree.inst.hasTag('burnt') ? `burnt_${burntStage(tree)}`
     : stageOf(tree) === 3 ? 'idle_old' : `sway1_loop_${EVERGREEN_STAGES[stageOf(tree)]}`;
-  const env: BurnEnvironment = { scheduler, root: world.scene, fire: fireFx, season: world.season };
+  const env: BurnEnvironment = { scheduler, root: world.scene, fire: fireFx };
   const animationOf = (tree: Tree) => tree.logical.model?.userData.animationController as SpriteAnimationController | undefined;
   const playSound = (tree: Tree, path: SoundEventPath) => {
     for (const sound of tree.sounds) if (sound.isPlaying?.() === false) tree.sounds.delete(sound);

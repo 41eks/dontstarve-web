@@ -24,7 +24,7 @@ async function fixture(daytime = false) {
   const scheduler = new GameTimeScheduler(), cycle = createSignal<WorldPhase>(daytime ? 'day' : 'dusk'), heading = createSignal(0);
   const items: ItemEntity[] = [], baits: MoleBait[] = [], drops: { entity?: ItemEntity; prefab: string; position: THREE.Vector3 }[] = [];
   const spawnItem = (state: InventoryStack) => { const item = new ItemEntity(state); items.push(item); if (state.itemId === 'mole') configureMoleEntity(item); else configureMoleBaitEntity(item); return item; };
-  const sources: WorldContentEnvironment = { scheduler, cycle, season: createSignal({ season: 'spring', progress: .5 }) };
+  const sources: WorldContentEnvironment = { snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
   const requests = vi.fn();
   const watch: GetWatchWorldContent = (key, register) => {
     requests(key); return getWatchWorldContent(key, register, sources);

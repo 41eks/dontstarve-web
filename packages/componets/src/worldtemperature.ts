@@ -1,7 +1,7 @@
 import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
 import {
-  batch, createMemo, createSignal, clockstate, seasonstate, type Memo,
-  type WorldSeason, type WorldPhase, type SeasonTick, type ClockTick, type SeasonState, type ClockState,
+  batch, createMemo, createSignal, watchSignal, clockstate, seasonstate, type Memo,
+  type Signal, type WorldSeason, type WorldPhase, type SeasonTick, type ClockTick, type ClockState, type SeasonState,
 } from '../../signals/src';
 
 export interface WorldTemperatureSaveData {
@@ -19,9 +19,29 @@ export interface WorldTemperatureOptions {
   onTemperatureTick?: (temperature: number) => void;
 }
 
-const TEMPERATURE_NOISE_SCALE = 0.025;
+const TEMPERATURE_NOISE_SCALE = .025;
 const TEMPERATURE_NOISE_MAG = 8;
 const PHASE_TEMPERATURES: Record<WorldPhase, number> = { day: 5, dusk: 0, night: -6 };
+
+/** worldtemperature.lua seasonal curves, preserving saved temperature terms. */
+function getWorldSeasonTemperature(state: SeasonState): number {
+  if ('temperature' in state) return state.temperature;
+  const p = state.progress;
+  switch (state.season) {
+    case 'winter': return 5 - 30 * Math.sin(Math.PI * p);
+    case 'spring': return 5 + 50 * p;
+    case 'summer': return 55 + 40 * Math.sin(Math.PI * p);
+    case 'autumn': return 55 - 50 * p;
+    default: throw new RangeError(`Invalid season: ${state.season}`);
+  }
+}
+
+function getWorldPhaseTemperature(state: ClockState): number {
+  if ('temperature' in state) return state.temperature;
+  if (!Object.hasOwn(PHASE_TEMPERATURES, state.phase)) throw new RangeError(`Invalid phase: ${state.phase}`);
+  return PHASE_TEMPERATURES[state.phase] * Math.sin(Math.PI * state.timeinphase);
+}
+
 const noise = new ImprovedNoise();
 
 /** Normalized ImprovedNoise; DST's native perlin implementation is not in Lua. */
@@ -39,34 +59,6 @@ function nonnegative(value: number, name: string): number {
   return value;
 }
 
-function progress(value: number, name: string): number {
-  if (finite(value, name) < 0 || value > 1) throw new RangeError(`${name} must be between 0 and 1`);
-  return value;
-}
-
-function seasonTemperature(season: WorldSeason, p: number): number {
-  switch (season) {
-    case 'winter': return 5 - 30 * Math.sin(Math.PI * p);
-    case 'spring': return 5 + 50 * p;
-    case 'summer': return 55 + 40 * Math.sin(Math.PI * p);
-    case 'autumn': return 55 - 50 * p;
-    default: throw new RangeError(`Invalid season: ${season}`);
-  }
-}
-
-function phaseTemperature(phase: WorldPhase, p: number): number {
-  if (!Object.hasOwn(PHASE_TEMPERATURES, phase)) throw new RangeError(`Invalid phase: ${phase}`);
-  return PHASE_TEMPERATURES[phase] * Math.sin(Math.PI * p);
-}
-
-function seasonalTerm(state: SeasonState): number {
-  return 'temperature' in state ? state.temperature : seasonTemperature(state.season, state.progress);
-}
-
-function phaseTerm(state: ClockState): number {
-  return 'temperature' in state ? state.temperature : phaseTemperature(state.phase, state.timeinphase);
-}
-
 /** worldtemperature.lua's temperature state; the host supplies clock/season ticks and active dt. */
 export class WorldTemperature {
   readonly temperature: Memo<number>;
@@ -74,15 +66,24 @@ export class WorldTemperature {
   private readonly modifiers = createSignal({ multiplier: 1, locus: 0 });
   private readonly perlin: NonNullable<WorldTemperatureOptions['perlin']>;
   private readonly stopTemperatureTick?: () => void;
+  private readonly cleanups: (() => void)[] = [];
+  private readonly clock: Signal<ClockState>;
+  private readonly season: Signal<SeasonState>;
 
   constructor(options: WorldTemperatureOptions = {}) {
     this.perlin = options.perlin ?? defaultPerlin;
-    this.temperature = createMemo(() => {
-      const sample = progress(this.perlin(0, 0, this.noisetime.get() * TEMPERATURE_NOISE_SCALE), 'perlin');
-      const noise = 2 * TEMPERATURE_NOISE_MAG * sample - TEMPERATURE_NOISE_MAG;
-      const { multiplier, locus } = this.modifiers.get();
-      return (noise + seasonalTerm(seasonstate.get()) + phaseTerm(clockstate.get()) - locus) * multiplier + locus;
-    });
+    this.clock = watchSignal(clockstate, stop => this.cleanups.push(stop));
+    this.season = watchSignal(seasonstate, stop => this.cleanups.push(stop));
+    try {
+      this.temperature = createMemo(() => {
+        const sample = this.perlin(0, 0, this.noisetime.get() * TEMPERATURE_NOISE_SCALE);
+        if (!Number.isFinite(sample)) throw new RangeError('perlin must be finite');
+        if (sample < 0 || sample > 1) throw new RangeError('perlin must be between 0 and 1');
+        const noise = 2 * TEMPERATURE_NOISE_MAG * sample - TEMPERATURE_NOISE_MAG;
+        const { multiplier, locus } = this.modifiers.get();
+        return (noise + getWorldSeasonTemperature(this.season.get()) + getWorldPhaseTemperature(this.clock.get()) - locus) * multiplier + locus;
+      });
+    } catch (error) { this.cleanups.splice(0).forEach(stop => stop()); throw error; }
     if (options.onTemperatureTick) {
       options.onTemperatureTick(this.temperature.peek());
       this.stopTemperatureTick = this.temperature.subscribe(value => options.onTemperatureTick!(value));
@@ -118,12 +119,12 @@ export class WorldTemperature {
   LongUpdate(dt: number): void { this.OnUpdate(dt); }
 
   OnSave(): WorldTemperatureSaveData {
-    const season = seasonstate.peek(), clock = clockstate.peek();
+    const season = this.season.peek(), clock = this.clock.peek();
     return {
       ...(clock.phase === 'day' ? { daylight: true } : {}),
       season: season.season,
-      seasontemperature: seasonalTerm(season),
-      phasetemperature: phaseTerm(clock),
+      seasontemperature: getWorldSeasonTemperature(season),
+      phasetemperature: getWorldPhaseTemperature(clock),
       noisetime: this.noisetime.peek(),
     };
   }
@@ -132,7 +133,7 @@ export class WorldTemperature {
   OnLoad(data: Partial<WorldTemperatureSaveData>): void {
     // Validate all fields before changing state, so a rejected load preserves the world.
     const season = data.season ?? 'autumn';
-    const fallback = seasonTemperature(season, 0.5);
+    const fallback = getWorldSeasonTemperature({ season, progress: .5 });
     const seasontemperature = finite(data.seasontemperature ?? fallback, 'seasontemperature');
     const phasetemperature = finite(data.phasetemperature ?? 0, 'phasetemperature');
     const noisetime = nonnegative(data.noisetime ?? 0, 'noisetime');
@@ -154,6 +155,7 @@ export class WorldTemperature {
   dispose(): void {
     this.stopTemperatureTick?.();
     this.temperature.dispose();
+    this.cleanups.splice(0).forEach(stop => stop());
   }
 }
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
-import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal } from '@dontstarve-web/signals';
 import { SlipperyFeetTarget } from '../../componets/src/slipperyfeettarget';
 import { WILSON_RUN_SPEED } from '../../componets/src/slipperyfeet';
 import { actionEntity } from './actionEntity';
@@ -29,15 +29,19 @@ export class PondManager {
   private readonly ponds = new Set<THREE.Group>();
   private readonly scene: THREE.Scene;
   private readonly assetBaseUrl: string;
-  private readonly stopSnowLevel?: () => void;
+  private readonly snowLevel?: WorldContentSignal<number>;
+  private readonly cleanups: (() => void)[] = [];
   private frozen = false;
   private disposed = false;
 
-  /** `snowLevel` is the weather's read-only snowlevel (WatchWorldState("snowlevel", OnSnowLevel)). */
-  constructor(scene: THREE.Scene, assetBaseUrl: string, snowLevel?: ReadonlySignal<number>) {
+  /** WatchWorldState("snowlevel", OnSnowLevel), with a private watched weather signal. */
+  constructor(scene: THREE.Scene, assetBaseUrl: string, getWatchWorldContent?: GetWatchWorldContent) {
     this.scene = scene;
     this.assetBaseUrl = assetBaseUrl;
-    if (snowLevel) this.stopSnowLevel = createEffect(() => this.onSnowLevel(snowLevel.get()));
+    if (getWatchWorldContent) {
+      this.snowLevel = getWatchWorldContent(WorldContentKey.SnowLevel, stop => this.cleanups.push(stop));
+      createEffect(() => this.onSnowLevel(this.snowLevel!.get()));
+    }
   }
 
   private onSnowLevel(snowlevel: number): void {
@@ -111,7 +115,7 @@ export class PondManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.stopSnowLevel?.();
+    this.cleanups.splice(0).forEach(stop => stop());
     for (const model of this.ponds) model.removeFromParent();
     this.ponds.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);

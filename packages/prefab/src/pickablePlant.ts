@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type SeasonState } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState } from '@dontstarve-web/signals';
 import { Witherable, type WitherableSave } from '../../componets/src/witherable';
-import { loadAnim, loadBuild, loadSpriteSkinArchive, smallHash } from '@dontstarve-web/animation/animationAssets';
+import { loadAnim, loadBuild, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
 import {
   createSpriteFactory, SpriteController, loadBuildOverride, type LoadedBuildOverride, type AnimatedSpriteFactory, type TransientSpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
@@ -34,10 +34,8 @@ export interface PickablePlantRecord {
 }
 
 export interface PickablePlantWorld {
-  scheduler?: GameTimeScheduler;
-  season?: ReadonlySignal<SeasonState>;
+  /** Season, snow level and the scheduler come from the bound world content. */
   rain?: ReadonlySignal<'none' | 'rain' | 'snow'>;
-  snowLevel?: ReadonlySignal<number>;
   physics?: CANNON.World;
   getLocalTemperature?(position: THREE.Vector3): number;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
@@ -120,7 +118,7 @@ interface Plant {
   model: THREE.Group;
   pickable: Pickable;
   factory: AnimatedSpriteFactory;
-  animation: TransientSpriteAnimationController;
+  readonly animation: TransientSpriteAnimationController;
   version: number;
   transitionAt: number;
   stopEffect: () => void;
@@ -153,8 +151,8 @@ export class PickablePlantManager {
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
   private readonly cleanups: (() => void)[] = [];
-  private readonly season?: ReadonlySignal<SeasonState>;
-  private readonly snowLevel?: ReadonlySignal<number>;
+  private readonly season?: WorldContentSignal<SeasonState>;
+  private readonly getWatchWorldContent?: GetWatchWorldContent;
   private disposed = false;
 
   private readonly scene: THREE.Scene;
@@ -163,18 +161,13 @@ export class PickablePlantManager {
 
   constructor(scene: THREE.Scene, assetBaseUrl: string, world: PickablePlantWorld) {
     this.scene = scene; this.assetBaseUrl = assetBaseUrl; this.world = world;
-    this.scheduler = world.scheduler ?? new GameTimeScheduler();
-    this.ownsScheduler = !world.scheduler;
     // MakeNoGrowInWinter belongs to the component/world binding, not the appearance effect.
-    this.season = world.season && watchSignal(world.season, cleanup => this.cleanups.push(cleanup));
-    this.snowLevel = world.snowLevel && watchSignal(world.snowLevel, cleanup => this.cleanups.push(cleanup));
-    createEffect(() => {
-      const covered = (this.snowLevel?.get() ?? 0) > 0;
-      for (const plant of this.plants.values()) if (plant.definition.snowCovered) {
-        const controller = plant.animation as SpriteController;
-        if (covered) controller.showLayer('snow'); else controller.hideLayer('snow');
-      }
-    });
+    this.getWatchWorldContent = getBoundWatchWorldContent();
+    if (this.getWatchWorldContent) {
+      this.season = this.getWatchWorldContent(WorldContentKey.Season, cleanup => this.cleanups.push(cleanup));
+    }
+    this.scheduler = this.season?.scheduler ?? new GameTimeScheduler();
+    this.ownsScheduler = !this.season;
     // Preserve the existing immediate world-state callback; ownership stays on the local bridge.
     this.season?.subscribe((current, previous) => {
       if ((current.season === 'winter') === (previous.season === 'winter')) return;
@@ -238,11 +231,12 @@ export class PickablePlantManager {
         if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefab} position`);
         consumed = true;
         const state = saved?.components.pickable;
-        const model = factory.create(state?.cyclesLeft === 0 && definition.barren
+        const model = factory.create({ ...(state?.cyclesLeft === 0 && definition.barren
           ? { initialAnimation: definition.barren, initialFrame: 'last', name: prefab }
           : state?.picked
           ? { initialAnimation: definition.empty.name, initialFrame: definition.empty.frame, name: prefab }
-          : { initialAnimation: definition.idle.name, initialFrame: 'first', name: prefab });
+          : { initialAnimation: definition.idle.name, initialFrame: 'first', name: prefab }),
+          getWatchWorldContent: this.getWatchWorldContent, snowCovered: snow });
         model.position.set(position.x, 0, position.z);
         Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId(), tags: [...definition.tags] });
         if (skinId) model.userData.skinId = skinId;
@@ -325,7 +319,7 @@ export class PickablePlantManager {
             if (other.getPosition().distanceToSquared(model.position) <= radius ** 2) nearby.push(other);
           });
           return nearby;
-        }, TILE_SIZE / 4, this.scheduler, this.world.season);
+        }, TILE_SIZE / 4, this.scheduler, this.getWatchWorldContent);
         entity.components.propagator = propagator;
         const persistence = createSignal(true);
         const phase = createMemo(() => pickable.state.removed.get() ? 'removed'
@@ -362,7 +356,7 @@ export class PickablePlantManager {
           }
           this.remove(model);
         });
-        const plant: Plant = { definition, model, animation, pickable, factory, version: 0,
+        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, version: 0,
           transitionAt: this.scheduler.now, stopEffect: () => {}, stopBurning: () => {},
           burnable, propagator, workable, persistence, fire, fireFactory, phase, outputs };
         plant.behavior = definition.createBehavior?.({ ...animationContext, get animation() { return animation; }, pickable,
@@ -400,21 +394,23 @@ export class PickablePlantManager {
           model.userData.physicsBody = plant.body;
           this.world.physics.addBody(plant.body);
         }
-        this.applySnow(plant, snow);
         plant.behavior?.initialize(saved);
         appearance?.restore(pickable);
         model.userData.replacePlantAppearance = (replacement: THREE.Group) => {
           const previous = animation;
+          previous.dispose();
           for (const child of [...model.children]) {
             child.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
             model.remove(child);
           }
           for (const child of [...replacement.children]) model.add(child);
-          animation = replacement.userData.animationController as SpriteController;
-          model.userData.animationController = animation; plant.animation = animation;
+          const controller = replacement.userData.animationController as SpriteController;
+          controller.copyPlaybackFrom(previous);
           registerSpriteRenderGroup(model, model.children[0] as THREE.Group);
-          animation.copyPlaybackFrom(previous);
-          this.applySnow(plant, snow);
+          animation = controller;
+          model.userData.animationController = controller;
+          // The live plant owns the transferred controller; only the empty wrapper is disposed.
+          delete replacement.userData.animationController;
         };
         if (definition.noGrowInWinter !== false && this.season?.peek().season === 'winter') pickable.pause();
         else pickable.resume();
@@ -477,7 +473,9 @@ export class PickablePlantManager {
           const skinId = nextReskin(definition.skins!, previousSkin, tool?._cached_reskinname, definition.prefab);
           const factory = await this.getFactory(definition, skinId);
           if (!isValid()) throw new Error('Plant is no longer available');
-          const replacement = factory.create({ initialAnimation: definition.idle.name });
+          const replacement = factory.create({ initialAnimation: definition.idle.name,
+            getWatchWorldContent: this.getWatchWorldContent,
+            snowCovered: definition.snowCovered ? await this.snowRequest : undefined });
           let used = false;
           return { apply: () => {
             if (used || !isValid() || model.userData.skinId !== previousSkin) return false;
@@ -489,13 +487,6 @@ export class PickablePlantManager {
         },
       }];
     });
-  }
-
-  private applySnow(plant: Plant, snow?: LoadedBuildOverride): void {
-    if (!plant.definition.snowCovered) return;
-    const animation = plant.animation as SpriteController;
-    if (snow) animation.overrideSymbol('snow', { build: snow.build, materials: snow.materials, symbolHash: smallHash('snow') });
-    if ((this.snowLevel?.peek() ?? 0) > 0) animation.showLayer('snow'); else animation.hideLayer('snow');
   }
 
   private getFactory(definition: PickablePlantDefinition, skinId?: string): Promise<AnimatedSpriteFactory> {

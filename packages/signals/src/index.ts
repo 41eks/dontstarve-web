@@ -1,6 +1,6 @@
 export { createSignal, createEffect, createMemo, watchSignal, batch, onCleanUp, readonlySignal } from './signal';
-export { WorldContentKey, bindWorldContent, getWatchWorldContent } from './worldContent';
-export type { WorldContentValues, WorldContentSources, WorldContentEnvironment, WorldContentSignal, WorldContentContext, GetWatchWorldContent } from './worldContent';
+export { WorldContentKey, bindWorldContent, getWatchWorldContent, getBoundWatchWorldContent, isWorldContentBound } from './worldContent';
+export type { WorldContentValues, WorldContentSources, WorldContentEnvironment, WorldContentSignal, WorldContentContext, GetWatchWorldContent, WorldWindChange, PerishTick, PerishClock } from './worldContent';
 export { GameTimeScheduler } from './gameTimeScheduler';
 export { EventEmitter } from './EventEmitter';
 export type { Signal, ReadonlySignal, SignalListener, Memo } from './signal';

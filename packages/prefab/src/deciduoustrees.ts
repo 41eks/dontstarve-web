@@ -106,7 +106,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   const rest = (tree: Tree) => tree.stump.peek() ? `stump_${DECIDUOUS_STAGES[stageOf(tree)]}`
     : tree.inst.hasTag('burnt') ? `burnt_${DECIDUOUS_STAGES[stageOf(tree)]}`
     : `sway1_loop_${DECIDUOUS_STAGES[stageOf(tree)]}`;
-  const env: BurnEnvironment = { scheduler, root: world.scene, fire: fireFx, season: world.season };
+  const env: BurnEnvironment = { scheduler, root: world.scene, fire: fireFx };
   const animationOf = (tree: Tree) => tree.logical.model?.userData.animationController as SpriteAnimationController | undefined;
   const playSound = (tree: Tree, path: SoundEventPath) => {
     for (const sound of tree.sounds) if (sound.isPlaying?.() === false) tree.sounds.delete(sound);

@@ -84,7 +84,6 @@ export class GroundItemManager {
     bernieWorld: BernieWorld = { getSanityPercent: () => 1 },
     entities = new ItemEntityRegistry(),
     scheduler?: GameTimeScheduler,
-    season?: GroundPrefabOptions['season'],
     fx?: GroundPrefabOptions['fx'],
     moleWorld?: GroundPrefabOptions['moleWorld'],
   ) {
@@ -96,7 +95,7 @@ export class GroundItemManager {
     this.inventory = inventory;
     this.player = player;
     this.prefabs = new GroundPrefabRegistry({
-      scene, animationBaseUrl, scheduler, season, fx, moleWorld, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
+      scene, animationBaseUrl, scheduler, fx, moleWorld, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       dropLoot: (items, position) => this.flingLoot(items, position),
       prepareSpawn: definition => this.prepareSpawn(definition),
       getNeighbours: () => [...this.items.values()]

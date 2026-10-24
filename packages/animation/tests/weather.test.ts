@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSignal, seasonstate } from '../../signals/src';
+import { createSignal, WorldContentKey, seasonstate } from '../../signals/src';
 import { Weather } from '../../componets/src/weather';
 import { createWorldState, createWorldClockUpdater } from '../../../src/worldState';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -73,6 +73,10 @@ describe('snow weather', () => {
   it('settles the default winter snowfall in 60-frame batches and preserves season, weather and cover through export/reload', () => {
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     const world = createWorldState(template.world);
+    const cleanups: (() => void)[] = [];
+    const snow = world.getWatchWorldContent(WorldContentKey.SnowLevel, stop => cleanups.push(stop));
+    expect(world.snowLevel).toBe(world.weather.snowLevel);
+    expect(snow.peek()).toBe(world.weather.snowLevel.peek());
     const updater = createWorldClockUpdater(world, template.world.elapsedSeconds);
     expect(world.season.peek().season).toBe('winter');
     expect(world.temperature.peek()).toBeLessThan(5);
@@ -80,8 +84,10 @@ describe('snow weather', () => {
     const initial = world.weather.OnSave();
     for (let frame = 0; frame < 59; frame++) updater.update(frame % 2 === 0 ? 0.02 : 0.04);
     expect(world.weather.OnSave()).toEqual(initial);
+    expect(snow.peek()).toBe(initial.snowlevel);
     updater.update(0.1);
     expect(world.weather.snowLevel.peek()).toBeGreaterThan(initial.snowlevel!);
+    expect(snow.peek()).toBe(world.weather.snowLevel.peek());
     const settled = world.weather.OnSave();
     updater.update(0.25);
     expect(world.weather.OnSave()).toEqual(settled);
@@ -93,10 +99,11 @@ describe('snow weather', () => {
       inventory: inventoryStateFromSave(template), elapsedSeconds: updater.elapsedSeconds,
       worldtemperature: world.worldtemperature.OnSave(), weather: saved,
     }, SAVE_CATALOG);
-    world.dispose();
+    cleanups.forEach(stop => stop()); world.dispose();
     const document = deserializeSave(json, SAVE_CATALOG);
     const restored = createWorldState(document.world);
     expect(restored.season.peek().season).toBe('winter');
+    expect(restored.snowLevel.peek()).toBe(saved.snowlevel);
     expect(restored.weather.OnSave()).toEqual(saved);
     expect(restored.weather.snowRate.peek()).toBeGreaterThan(0);
     expect(restored.weather.snowCover.peek()).toBeCloseTo(saved.snowlevel! * 3);

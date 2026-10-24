@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal } from '@dontstarve-web/signals';
 import {
   createMaterials,
   findImage,
@@ -63,6 +64,9 @@ export interface AnimatedSpriteOptions {
   skinAnimationBanks?: readonly string[];
   symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
   hiddenLayers?: readonly string[];
+  getWatchWorldContent?: GetWatchWorldContent;
+  /** MakeSnowCoveredPristine: the prefab opts in and owns the shared snow build. */
+  snowCovered?: LoadedBuildOverride;
 }
 
 interface SymbolOverride {
@@ -108,6 +112,9 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   private hiddenLayers = new Set<number>();
   /** AnimState:Hide layers; independent of the skin's hiddenLayers, which setSymbolOverrides replaces. */
   private animStateHiddenLayers = new Set<number>();
+  private readonly snow?: LoadedBuildOverride;
+  private snowLevel?: WorldContentSignal<number>;
+  private stopSnow?: () => void;
 
   constructor(
     visual: THREE.Group,
@@ -116,6 +123,8 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     materials: THREE.MeshBasicMaterial[],
     initialAnimation: string,
     skin?: SpriteSkin,
+    getWatchWorldContent?: GetWatchWorldContent,
+    snowCovered?: LoadedBuildOverride,
   ) {
     this.visual = visual;
     this.renderer = new SpriteFrameRenderer(visual);
@@ -123,7 +132,35 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.animations = animations;
     this.materials = materials;
     this.skin = skin;
+    this.snow = snowCovered;
     this.selectAnimation(initialAnimation, true);
+    if (this.snow) {
+      this.overrideSymbol('snow', { build: this.snow.build, materials: this.snow.materials, symbolHash: smallHash('snow') });
+      this.setWorldContent(getWatchWorldContent);
+    }
+  }
+
+  /** Each controller owns its world bridge, including when the host replaces its world binding. */
+  setWorldContent(getWatchWorldContent?: GetWatchWorldContent): void {
+    this.stopSnow?.();
+    this.stopSnow = undefined;
+    this.snowLevel = undefined;
+    if (!this.snow) return;
+    this.snowLevel = getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { this.stopSnow = stop; });
+    const snowLevel = this.snowLevel;
+    if (snowLevel) createEffect(() => this.updateSnowLayer(snowLevel.get()));
+    else this.hideLayer('snow');
+  }
+
+  private updateSnowLayer(level: number): void {
+    // weather.lua SNOW_COVERED_THRESHOLD.
+    if (level >= .015) this.showLayer('snow'); else this.hideLayer('snow');
+  }
+
+  dispose(): void {
+    this.stopSnow?.();
+    this.stopSnow = undefined;
+    this.snowLevel = undefined;
   }
 
   start(name: string) {
@@ -151,6 +188,9 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
 
   setSymbolOverrides(overrides: Map<number, SymbolOverride>, hiddenLayers: readonly string[] = []): void {
     this.overrides = overrides;
+    if (this.snow) this.overrides.set(smallHash('snow'), {
+      build: this.snow.build, materials: this.snow.materials, symbolHash: smallHash('snow'),
+    });
     this.hiddenLayers = new Set(hiddenLayers.map(smallHash));
     this.reshowFrame();
   }
@@ -201,6 +241,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   /** Keep a live entity's clip, progress and completion callback across reskinning. */
   copyPlaybackFrom(source: SpriteController): void {
     this.animStateHiddenLayers = new Set(source.animStateHiddenLayers);
+    if (this.snow) this.updateSnowLayer(this.snowLevel?.peek() ?? 0);
     this.selectAnimation(source.animationName, source.loop, source.onComplete);
     this.elapsed = source.elapsed;
     this.update(0);
@@ -394,6 +435,7 @@ export function createSpriteFactory(
   let disposed = false;
   const disposeSprite = (sprite: THREE.Group) => {
     if (!sprites.delete(sprite)) return;
+    (sprite.userData.animationController as SpriteController | undefined)?.dispose();
     sprite.removeFromParent();
     sprite.traverse((object) => {
       if (object instanceof THREE.Mesh) object.geometry.dispose();
@@ -450,6 +492,8 @@ function createSprite(
     materials,
     options.initialAnimation,
     skin,
+    options.getWatchWorldContent,
+    options.snowCovered,
   );
   if (options.initialFrame === 'last') controller.holdLastFrame(options.initialAnimation);
   sprite.userData.animationController = controller;

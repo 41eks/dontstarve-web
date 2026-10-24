@@ -2,11 +2,11 @@ import { batch, GameTimeScheduler, createMemo, readonlySignal, bindWorldContent,
 import { WorldTemperature } from '../packages/componets/src/worldtemperature';
 import { Weather } from '../packages/componets/src/weather';
 import { WorldPerishClock } from '../packages/componets/src/worldperishclock';
+import { WorldWind } from '../packages/componets/src/worldwind';
 import type { SaveDocument } from './save/types';
 import { getDstCycle, getDstClock, MOON_PHASE_CYCLES, TUNING } from './tuning';
 
 export interface WorldState extends WorldContentContext {
-  readonly temperature: ReadonlySignal<number>;
   readonly clock: Signal<ClockState>;
   readonly season: Signal<SeasonState>;
   readonly moonPhase: Signal<WorldMoonPhase>;
@@ -24,6 +24,7 @@ export interface WorldState extends WorldContentContext {
   readonly worldtemperature: WorldTemperature;
   readonly weather: Weather;
   readonly perishClock: WorldPerishClock;
+  readonly worldwind: WorldWind;
 }
 
 /** Session temperature derived from the shared clock/season singleton signals. */
@@ -50,14 +51,22 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     moonphasestate.set(moonPhase);
   });
   worldtemperature.OnUpdate(0);
-  const perishClock = new WorldPerishClock(worldtemperature.temperature, world.elapsedSeconds);
+  const temperature = readonlySignal(worldtemperature.temperature);
+  const perishClock = new WorldPerishClock(temperature, world.elapsedSeconds);
+  const worldwind = new WorldWind(scheduler);
   const fullMoon = createMemo(() => clockstate.get().phase === 'night' && moonphasestate.get() === 'full');
   const moon = createMemo(() => ({ phase: moonphasestate.get(), waxing: clockstate.get().waxing ?? true }));
   const cycle = createMemo(() => clockstate.get().phase);
-  const worldContent: WorldContentEnvironment = Object.freeze({ scheduler, cycle: readonlySignal(cycle), season: readonlySignal(seasonstate) });
+  // init: inject the component's existing signal; world content only resolves keys and watches it.
+  const worldContent: WorldContentEnvironment = Object.freeze({
+    scheduler, temperature, cycle: readonlySignal(cycle), season: readonlySignal(seasonstate),
+    wind: worldwind.windchange, perishTick: perishClock.snapshot, perishClock,
+    snowLevel: weather.snowLevel,
+  });
   const unbindWorldContent = bindWorldContent(worldContent);
   const isNight = createMemo(() => cycle.get() === 'night');
-  return { scheduler, temperature: worldtemperature.temperature, clock: clockstate, cycle: worldContent.cycle,
+  return { scheduler, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle,
+    wind: worldContent.wind, perishTick: worldContent.perishTick, snowLevel: worldContent.snowLevel, worldwind,
     getWatchWorldContent: (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, worldContent),
     SetMoonPhase(phase, waxing) {
       const length = MOON_PHASE_CYCLES.length;
@@ -76,7 +85,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     moonPhaseCycle: () => ((clockstate.peek().cycles ?? 0) + moonCycleOffset) % MOON_PHASE_CYCLES.length + 1,
     clockAt,
     season: seasonstate, moonPhase: moonphasestate, moon: readonlySignal(moon), fullMoon: readonlySignal(fullMoon), isNight: readonlySignal(isNight), worldtemperature, weather, perishClock,
-    dispose() { unbindWorldContent(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); fullMoon.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
+    dispose() { unbindWorldContent(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); fullMoon.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */

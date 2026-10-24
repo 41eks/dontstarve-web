@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, getBoundWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
 import {
     createAnimatedSprite,
@@ -410,7 +410,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 if ((position.x - origin.x) ** 2 + (position.z - origin.z) ** 2 <= radius ** 2) targets.push(target);
             });
             return targets;
-        }, TILE_SIZE / 4, undefined, this.worldContext.season);
+        }, TILE_SIZE / 4, undefined, getBoundWatchWorldContent());
         building.model.userData.burningSignal = burnable.burning;
         building.stopBurning = burnable.burning.subscribe(burning => {
             if (!burning) { this.releaseFire(building); return; }

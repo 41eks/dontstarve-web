@@ -16,8 +16,6 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     /** The host's physics world, for prefabs that own static obstacle bodies. */
     physics?: CANNON.World;
     itemEntities?: import('@dontstarve-web/inventory').ItemEntityRegistry;
-    /** Temperature-weighted game-time prefixes shared by inventory, ground and caged items. */
-    perishClock?: import('../../componets/src/worldperishclock').PerishClock;
     /** GetLocalTemperature at a DST ground position, in scene units. */
     getLocalTemperature?: (x: number, z: number) => number;
     /** TheWorld.state.moonphase and iswaxingmoon. */

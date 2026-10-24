@@ -32,9 +32,9 @@ class SeasonObserver {
 
 本地 signal 应保持为所属 class 的私有输入；消费者一旦读取它，就归这个 class 生命周期管理，停止时整个 effect 会被清理。不要把同一个本地 signal 交给生命周期独立的其他 class；其他 class 应分别从世界 signal 创建自己的本地 signal。普通 JavaScript class 没有自动析构回调，仍由实体移除／场景销毁调用 class 的 `dispose()`。`DeciduousTreeLeaves` 只保存本地 signal 的统一清理函数，季节回调继续用普通 `createEffect`，季节转换、初始化／读档和调试命令行为不变。
 
-`WorldContentKey` 统一定义 `Cycle` 与 `Season`；`Cycle` 是世界从 `clock.phase` 纯派生的 `'day' | 'dusk' | 'night'`，不另存可写阶段。`WorldContentContext` 定义世界来源、共享调度器和 `getWatchWorldContent` 契约，应用的 `WorldState` 与 prefab 的 `WorldContext` 共用它，prefab 不再重复定义昼夜、季节信号的类型。`WorldContext` 另补充场景、相机和物理接口。
+`WorldContentKey` 统一定义 `Cycle`、`Season`、`Temperature`、`Wind`、`PerishClock` 与 `SnowLevel`；`Cycle` 是世界从 `clock.phase` 纯派生的 `'day' | 'dusk' | 'night'`，不另存可写阶段。`WorldContentContext` 定义世界来源、共享调度器和 `getWatchWorldContent` 契约，应用的 `WorldState` 与 prefab 的 `WorldContext` 共用它，prefab 不再重复定义昼夜、季节信号的类型。`WorldContext` 另补充场景、相机和物理接口。
 
-世界提供绑定自身原始来源的 `getWatchWorldContent(key, registerCleanup)` 函数，内部调用 `watchSignal`，返回保留 `get()`／`set()`／`peek()`／`subscribe()` 的本地 signal，并附带只读的 `scheduler` 引用。同一世界的 Cycle、Season 以及不同消费者取得的 scheduler 都是同一实例。Mole 将同一个函数直接传给 Sleeper；函数没有绑定 Mole 的清理列表，Sleeper 用自己的清理注册创建私有 `cycle`，移除时独立释放。Sleeper 的测试回调接收阶段值 `(inst, cycle)`，无需暴露或转交组件的本地 signal。
+世界提供绑定自身原始来源的 `getWatchWorldContent(key, registerCleanup)` 函数，内部调用 `watchSignal`，返回保留 `get()`／`set()`／`peek()`／`subscribe()` 的本地 signal，并附带只读的 `scheduler` 引用。同一世界的 所有世界内容键以及不同消费者取得的 scheduler 都是同一实例。Mole 将同一个函数直接传给 Sleeper；函数没有绑定 Mole 的清理列表，Sleeper 用自己的清理注册创建私有 `cycle`，移除时独立释放。Sleeper 的测试回调接收阶段值 `(inst, cycle)`，无需暴露或转交组件的本地 signal。
 
 ```ts
 // Sleeper 内部；getWatchWorldContent 是世界注入的函数。
@@ -45,6 +45,14 @@ createEffect(() => this.runTest(this.cycle.get()));
 ```
 
 包导出的同名函数也可通过 `bindWorldContent(sources)` 解析当前世界，或用第三个参数显式指定包含 `scheduler` 的世界来源。应用注入的函数始终绑定所属世界；旧世界的清理不会解除新世界的绑定。组件释放只停止自身的监听和 timer，不释放 scheduler；世界状态负责创建、恢复游戏时间起点和销毁该实例。`GameTimeScheduler` 的实现位于本包，原 `componets/src/gameTimeScheduler.ts` 路径保留重新导出，类身份及调度行为一致。
+
+世界温度 signal 由 `packages/componets/src/worldtemperature.ts` 的 `WorldTemperature` 组件创建、计算和释放，保持 Lua 的职责边界；组件管理季节项、昼夜项、噪声时间、温度修正和存档，对共享昼夜、季节输入分别创建私有 `watchSignal`。世界初始化完成恢复后，把该温度 signal 的只读视图注入 `WorldContentEnvironment.temperature`，与 Cycle、Season 和共享 scheduler 一起绑定。`worldContent.ts` 只定义 Temperature 的类型、解析枚举键并创建私有监听，不计算或复制温度。消费方使用 `getWatchWorldContent(WorldContentKey.Temperature, registerCleanup)`；60 帧结算、部分结算和保存／恢复沿用现有行为。
+
+`WorldWind` 和 `WorldPerishClock` 同样保留组件内的计算、计时和清理。世界 init 创建两者并注入原有来源：`Wind`（`wind`）对应 `worldwind.windchange` 的 `{ angle, velocity }`，重复角度仍因新对象而通知；`PerishClock`（`perishTick`）对应 `perishClock.snapshot` 的已结算 `{ time, total }`。风滚草在游戏场景内通过 `getWatchWorldContent(WorldContentKey.Wind, registerCleanup)` 创建私有监听，保留初始风向与后续变风的区别。
+
+`SnowLevel`（`snowLevel`）在世界 init 时注入 `Weather.snowLevel` 的原有只读信号，计算、保存和恢复由天气组件负责。Pond 接收 `getWatchWorldContent` 并自行创建私有 SnowLevel signal，用普通 effect 的 `get()` 调用冻结／解冻方法；清理统一登记到池塘管理器。天气和世界时间仍按 60 活动帧结算。
+
+本地 signal 同时附带只读 `perishClock` 服务引用（独立上下文可缺省），实际世界传入同一个组件的 `GetTick()`／`GetFrozenTick()` 接口，支持尚未发布及历史时间段的查询。快照只在 60 帧结算或显式 Flush 时发布；逐帧累计不写 signal。释放本地监听不会销毁这些共享服务，世界负责停止风向 timer、释放腐烂时钟的温度输入和共享 scheduler。数据／服务协议在本包定义，组件路径保留类型重新导出；组件实现仍在 `packages/componets`。
 
 世界昼夜与季节由 `clockstate`、`seasonstate` 两个全局唯一单例持有，从本包统一导出。初始值分别为 `{ phase: 'day', timeinphase: 0 }` 和 `{ season: 'autumn', progress: 0.5 }`。`set()` 校验阶段／季节、有限数值及 `[0, 1]` 进度，保存不可变快照；无效写入保留原值且不通知订阅者。读档可写入 `{ phase, temperature }` 或 `{ season, temperature }`，保留源保存的温度项。创建 `WorldTemperature` 不重置这两个状态；场景加载恢复它们，温度、光照和牛的行为共享同一份输入。场景销毁只释放消费者的订阅，单例保留。
 

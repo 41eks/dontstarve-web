@@ -1,5 +1,5 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
@@ -86,7 +86,7 @@ export class BurnableItemController {
   }
   bind(presentation: BurnPresentation): void {
     this.presentation = presentation;
-    this.propagator.setSeason(presentation.context.season);
+    this.propagator.setWorldContent(getBoundWatchWorldContent());
   }
   release(presentation: BurnPresentation): void {
     if (this.presentation === presentation) this.presentation = undefined;

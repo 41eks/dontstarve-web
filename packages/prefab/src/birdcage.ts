@@ -166,7 +166,11 @@ export class Birdcage {
         const scheduler = context.world?.scheduler;
         if (!this.getWatchWorldContent && scheduler) {
             const sources: WorldContentEnvironment = {
-                scheduler,
+                wind: context.world?.wind ?? readonlySignal(createSignal({ angle: 0, velocity: 1 })),
+                perishTick: context.world?.perishTick ?? readonlySignal(createSignal({ time: scheduler.now, total: 0 })),
+                perishClock: context.world?.perishClock,
+                snowLevel: context.world?.snowLevel ?? readonlySignal(createSignal(0)),
+                scheduler, temperature: context.world?.temperature ?? readonlySignal(createSignal(30)),
                 cycle: context.world?.cycle ?? readonlySignal(createSignal<WorldPhase>('day')),
                 season: context.world?.season ?? readonlySignal(createSignal({ season: 'spring', progress: .5 })),
             };

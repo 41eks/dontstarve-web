@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { facingFromRotation } from '@dontstarve-web/animation/facing';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { createEffect, createSignal, readonlySignal, watchSignal, type Signal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal, getBoundWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
@@ -554,7 +554,7 @@ export class FencePlacement {
                 if ((position.x - origin.x) ** 2 + (position.z - origin.z) ** 2 <= radius ** 2) targets.push(target);
             });
             return targets;
-        }, UNIT, undefined, this.world.season);
+        }, UNIT, undefined, getBoundWatchWorldContent());
         fence.root.userData.burningSignal = burnable.burning;
         burnable.SetOnIgniteFn(() => { fence.root.userData.persists = false; });
         fence.stopBurning = burnable.burning.subscribe(burning => {
