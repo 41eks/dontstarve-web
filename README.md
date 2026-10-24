@@ -9,6 +9,10 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 ## 调试命令（debugCommand）
 
+入口在主场景资源、存档实体和交互绑定初始化完成并渲染完整场景后才关闭世界生成页；可等待 `src/main.ts` 导出的 `gameReady`，或检查主 canvas 的 `data-loaded="true"`。加载失败时保留生成页并显示错误，开发模式也使用相同的加载等待。调试命令语法、参数及支持 ID 不变。
+
+`PlaySound` 的统一音量倍率为 `0.7`，各音效的独立音量和距离衰减在此基础上叠乘；调试命令语法、参数和支持的 prefab/item ID 不变。
+
 采摘产物统一交给 `Inventory.GiveItem()` 处理：先填充可用槽位和堆叠，背包满时把余量掉在玩家脚边，采摘仍然成功；采摘入口不再预加载或手动生成地面产物。地面贴图加载期间，掉落实体的 ID、数量、位置和组件状态仍可由 `c_save()` 保存。调试命令的语法、参数和支持的 prefab/item ID 不变。
 
 草丛 `grass` 和洞穴花 `flower_cave` 的采摘／再生、灰烬 `ash` 的生成／拾取／移除，以及矮星 `stafflight` 的生成／消失／注销如何映射到 signal，见 [DST 事件与 signal 映射](docs/dst-event.md)。矮星已接入：私有 signal 保存寿命与移除标记，`createMemo` 派生 `active → disappearing → removed`，effect 只同步消失表现；计时和永久移除同步执行。远离卸载模型时释放表现绑定，保留逻辑状态与 memo；永久移除直接清理资源并释放 memo。草丛和洞穴花的再生／灯光 timer 已接入 signal：共享游戏时间调度器在设置、暂停、恢复、取消或到期时提交，等待期间不扣减 timer，memo 派生状态。灰烬消散的 timer signal 仍是后续方案。实体表现 effect 用 `get()` 订阅自身状态，用 `peek()` 读取环境，包含同步调用的辅助函数。调试命令语法和参数保持不变；补齐 `c_spawn("stafflight")`／`c_spawn("staffcoldlight")` 的注册入口。
@@ -31,7 +35,6 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 建筑和建成墙的 `skinId` 使用 signal，`reskinTargets.prepareNextSkin()` 先准备原版资源，成功提交时设置皮肤 signal。表现订阅替换美术、保留动画进度与地面脚点，并释放旧资源；根实体、容器、烹饪组件及墙的血量、战斗和敲击组件保持不变。墙的皮肤准备只创建美术资源，皮肤初始化映射由 `packages/animation/src/prefabskin.ts` 的 Lua 对应函数提供，包括共享 build 的 alternate 皮肤。取消准备、加载失败或移除实体不改变皮肤，准备资源只释放一次；保存读取当前 signal。用 `c_give("reskin_tool")` 装备清洁扫把后，按现有换肤方式操作建筑和墙，并可用 `c_save()` 保存选中的皮肤。命令语法、参数和支持 ID 不变。
 
-`c_give("backpack")` 获取背包，第二个参数为数量（默认 `1`，例如 `c_give("backpack", 2)`），每个占一格。拖到身体装备槽或右键背包即可装备，角色显示 `swap_backpack.zip` 的原版外观；右侧播放 `anim/ui_backpack_2x4.zip` 的 `open` 动画并显示 2 列 × 4 行的 8 个储物格，可与物品栏、其他容器拖放物品，材料可用于制作。Shift + 右键丢弃时使用原版 `anim/backpack.zip` 的 bank `backpack1`、`anim` 地面姿态和 `anim/swap_backpack.zip` 的 build，点击可拾回。支持 36 个原版皮肤及其实际库存图标 atlas；可在制作面板选择皮肤，或装备清洁扫把右键地面背包循环换肤。拾回和重新装备保留皮肤，隐形皮肤仅隐藏穿戴外观，地面姿态仍可见。卸下时播放 `close` 并隐藏储物格，再次装备时恢复内容；每个背包实体独立持有自己的 8 个格子，换包时面板切换到对应容器；未装备背包的材料不可用于制作。背包不能放入背包或箱子。内容随背包丢弃、拾回、换肤及 `c_save()` 保存和恢复，存档嵌套在该背包的 `item.container` 中。容器逻辑由 `packages/componets/src/container.ts` 的 Lua 风格 `Container` 组件负责，装备和卸下调用 `Open/Close`，内容经 `OnSave/OnLoad` 保存恢复。`toSignal()` 将容器 DTO 提供给背包面板，事务提交后统一刷新数量、皮肤和耐久，换包或关闭面板时释放订阅；沿用玩家物品栏的槽位 signal 和渲染器。旧 `player:backpack` 存档仅在归属明确时迁移到对应背包。
 
 在游戏页面按反引号键（`Backquote`，通常与 `~` 共用）打开或关闭调试控制台，输入命令后按 `Enter` 执行。执行后控制台自动关闭；`Esc` 可关闭，`↑` / `↓` 可浏览最近 50 条历史命令。执行结果或错误显示在浏览器开发者工具的 Console 中。
 
@@ -59,7 +62,6 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 玩家动作控制器统一由 `@dontstarve-web/stategraphs` 导出，实现在 `packages/stategraphs/src`：锤击、采矿、捕虫、铲地、园艺锄耕坑、铲垃圾、种子交互、换肤及法杖施法输入。锤子、镐、干草叉、铲子、园艺锄、捕虫网、清洁扫把和光照法杖控制器接收只读 `inventory.handEquipment` signal，在内部读取装备实体的能力；锤子、捕虫网和清洁扫把按组件及标签选择动作，其他手部工具保留其已支持的 ID 分支；卸装、换成另一实体或换肤会立即取消旧动作，控制器销毁时释放订阅。同一装备实体和皮肤的状态更新不重复取消，控制器不写入装备 signal。光照法杖按召唤目标 `stafflight/staffcoldlight` 选择 `yellowstaff/opalstaff`，更换装备后原先预加载或排入时间线的施法不会生成新光源。`src/main.ts` 注入装备 signal、`registerFrameTask` 帧调度服务、移动、动画和目标操作接口；控制器根据 signal 自行注册／移除帧任务，每帧只更新当前装备对应的手部动作控制器，读档后已有装备也立即注册。卸装和销毁会移除任务，同一身份重复发布不重复注册；法杖由输入事件与状态图时间线驱动，无独立帧任务。`packages/prefab` 负责工具美术、目标实体与特效，`SGwilson` 负责动作状态和提交帧。`c_give`、`c_spawn` 和 `c_save` 的语法与参数保持不变；当前支持 ID 见下方对象表。
 
-`SGwilson` 的已支持源状态按 Lua 顺序显式写成 `State({ name, tags, onenter, onupdate, timeline, ontimeout, events, onexit })`，仅填写已实现的回调；标签使用源定义，浏览器动作身份另行维护。状态图的外部状态请求使用 `request…`，进入状态后的回调使用 `onEnter…`。`ActionHandler` 支持源动态目标函数和可选条件：采矿、锤击、挖掘、捕虫读取前摇/工作标签决定拒绝、前摇或动作循环；扫把换肤使用 `CASTSPELL`，由工具的 `veryquickcast` 标签选择快施法状态。浏览器跳跃、制作和半速拾取以 `busy` 阻止新动作，跳跃期间所有动作等待落地；表情检查源 `busy/nopredict/sleeping/floating` 标签，可以打断未被这些标签阻止的工作状态。动画完成事件与状态超时独立，采矿、锤击、挖掘及耕坑的收尾动画在 `idle` 内继续播放。种植使用 `doshortaction`，第 6 帧提交，第 10 帧超时进入待机并保留动画队列，退出仅清理自己的缓冲动作。采收使用 `dolongaction`，第 4 帧移除 `busy`，1 秒后提交并播放 `build_pst`，退出清理自己的缓冲动作和制作声。浏览器适配及暂缺的 Lua 分支见 [状态图源码核对](docs/dst-stategraphs.md)。`c_spawn`、`c_give`、`c_emote` 和 `c_save` 的语法、参数及支持 ID 保持不变。
 
 悬停文字按 Lua 的动作选择与 `hoverer` 分工统一显示：共享鼠标命中，按源优先级分别选择左右键动作，文字取自源简体中文字符串；控制器只注册动作候选。左键显示原版左键图标及动作文字，右键显示原版右键图标及 `: 动作文字`，可以同时显示两条；建造预览提示优先，鼠标位于 UI 上时隐藏世界提示，文字限制在屏幕边界内。用 `c_give("bugnet")`、`c_give("hammer")`、`c_give("reskin_tool")` 获取并装备相应工具后，目标上分别显示“捕捉”“敲”“打扫”；播种提示为“栽种”，铲子/干草叉为“挖”。选中唱片后，仅在靠近且可插片的留声机上显示“放置唱片”。卸装或目标失效后提示自动清除。详见 [鼠标悬停动作文字](docs/dst-hover-text.md)。这些命令的参数和支持 prefab/item ID 保持不变。
 
@@ -72,7 +74,6 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 `c_spawn("poop")` 在玩家脚点生成一份便便，`c_give("poop", 3)` 给予三份。地面便便（包括皮弗娄牛定时生成的便便、丢弃和读档恢复）会附带原版 `anim/flies.zip` 的苍蝇子实体：`swarm_pre → swarm_loop` 配独立的 `dontstarve/common/flies` 循环声。玩家进入 2 个 DST 单位（场景 6）内时播放 `swarm_pst` 并停声；离开 3 个单位（场景 9）后重新出现并恢复声音，不要求夜间。拾取、燃烧或移除便便会移除苍蝇并取消其计时和音源；苍蝇是 `NOCLICK/DECOR`，不扩大便便的拾取目标，也不单独入档。`c_save()` 保留便便的身份、位置、数量，读档按当前位置重新建立苍蝇和邻近检测。便便没有原版皮肤；命令语法、参数和支持 ID 不变。
 
-`c_spawn("beefalo")` 的被动行为按 Lua 的 `BeefaloBrain` / `SGBeefalo` 分工：睡眠组件通过 effect 读取世界的只读昼夜 signal，进入或离开夜晚时在微任务中执行原有睡眠／唤醒测试，无需等待周期定时器，保留忙碌等限制和每 4 ± 0.5 游戏秒的其他条件检查；状态图仍保留睡眠前摇期间的 `nowake` 时序，移除时取消订阅。`idle` 等待 1～2 秒后以 50% / 25% / 25% 选择 `graze_empty` / `shake` / `bellow`；吃草从前摇起计时 1～6 秒，后摇期间已经进入 `idle` 并开始下一次等待。`walk_pre` 期间即开始移动，注视附近玩家使用 `alert_pre → alert_idle`。粪肥间隔按 `SetRandomTimes(40, 60)` 修正为 40～100 秒，计时在保存时按 Lua 向下取整。`c_save()` 保留身份、位置、朝向、胡须、named locations 和粪肥剩余计时（允许向下取整后的 0 秒）；存档校验器同步接受并校验 named locations，避免导出被拒绝。瞬时状态图与游荡等待不入档，读档从 `idle` 恢复。状态与粪肥计时使用离散游戏时间任务，移除时取消；命令语法、参数与支持 ID 不变。详见 [Beefalo](docs/dst-beefalo.md)。
 
 `c_give("razor")` 获取剃刀，`c_spawn("razor")` 在玩家脚点生成地面剃刀；剃刀每格一件、不可装备，也没有耐久。地面美术使用原版 `anim/razor.zip` 的 bank `razor` 与 `anim/swap_razor.zip` 的 build，物品栏图标取自 `inventoryimages.xml` 的 `razor.tex`；三款原版皮肤 `razor_barber`、`razor_scissors`、`razor_straight` 可用 `c_give("reskin_tool")` 的清洁扫把右键地面剃刀循环换肤，身份与位置保持。`c_spawn("beefalo")` 生成的皮弗娄牛现在按 `beard`、`sleeper` 组件工作：夜间由 sleeper 每 4 ± 0.5 秒（游戏时间）检测并入睡，天亮后同样周期检测醒来。左键点击物品栏里的剃刀，让它被鼠标举着，再左键点击牛：玩家走近后进入 `shave` 状态（`build_pre → build_loop`，循环声 `dontstarve/wilson/shave_LP`），1 秒后提交 `SHAVE`。牛醒着时状态以 `AWAKEBEEFALO` 拒绝，胡须为零时以 `NOBITS` 拒绝，鼠标上的剃刀都保持不变；牛睡着时掉落 3 份 `beefalowool`、换成 `beefalo_shaved_build` 并播放 `shave`，之后继续睡，醒着则播放 `sleep_pst`。毛量按 `beard` 的 `daysgrowth` 回调，剃光后第 3 天的 `OnHairGrowth` 让牛在下次进入待机时依次播放 `hair_growth_pre`、`hair_growth`，恢复 3 份毛；`bits`、`daysgrowth` 是组件私有 signal，`has_beard` 标签和 `beefalo_build` / `beefalo_shaved_build` 外观都由 `beard.hairy` memo 派生，详见 [DST 事件与 signal 映射](docs/dst-event.md#beefalo胡须与睡眠)。`c_save()` 保存牛的 `components.beefalo.beard`（`growth`、`growthaccumulator`、`bits`），读档按 `beard.lua:OnLoad` 重放日回调，已剃光的牛直接显示剃光外观；鼠标上的剃刀随 `player:cursor/0` 保存恢复，缺少 `beard` 字段的旧存档按满毛加载。刷毛 `brushable`、驯化 `domesticatable`、牛铃 `beefbell` 和皮肤 `skinner_beefalo` 尚未移植，所以剃毛暂不改变顺从度。命令语法、参数不变，新增 `c_spawn` / `c_give` ID：`razor`。
 
@@ -100,7 +101,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 木箱燃烧 10 秒、锅燃烧 20 秒，使用 `anim/fire.zip` 的 `level2` / `level3` 原版火焰、局部照明及独立循环火声；附近已接入燃烧组件的建筑和地面物品按原版热量传播和阴燃分支受热。建筑、草丛／树苗、可燃地面物品和矮星的传播半径按当前季节派生：春季乘原版 `SPRING_FIRE_RANGE_MOD = 0.67`，其他季节使用基础半径；邻居查询与距离热量衰减共用修正后的半径。季节切换不重启传播定时器，下一次 0.5 游戏秒传播更新读取新半径。烧毁后显示原版 `burnt` 残骸、掉出容器中的真实物品，锅掉出已有料理并停止烹饪；残骸不能打开，再锤击一次即可拆除。建筑提供只读 `userData.burningSignal` 和 `userData.burntSignal`，火焰表现和容器 UI 订阅状态更新，烧毁主动关闭已打开的面板；换肤保留根实体、组件、signal、位置和燃烧进度，移除实体或关闭面板时释放订阅。`c_save()` 按原版将正在燃烧或已烧毁的建筑保存为 `building.burnt: true`，读档直接恢复残骸，保留实体 ID、位置、皮肤以及掉出物品的身份、数量和组件状态。当前接入这些建筑和下述材料的普通点火、烧毁及干燥天气传播分支，其他植物/物品、雨水和角色技能修正仍未接入。命令语法和参数不变；材料新增的 `c_spawn` 入口见下文。
 
-地面上的干草 `cutgrass`、木头 `log` 和草簇 `dug_grass` 同样支持手持 `torch` 右键点燃。可执行 `c_give("torch");c_spawn("cutgrass");`，装备火把后右键地面干草；`c_spawn("log")` 生成木头，也可将 `c_give("cutgrass", 3)` / `c_give("log", 7)` 得到的物品丢到地上再点燃。干草燃烧 7.5 秒、木头燃烧 15 秒、草簇燃烧 30 秒，整叠烧毁后在原脚点生成同数量的一叠灰烬 `ash`（原版上限 40），原物品移除；灰烬美术提前准备，烧毁后立即 `c_save()` 即可保存灰烬实体、位置和数量并读档恢复。物品通过只读 `burningSignal`、`burntSignal` 和 `persistenceSignal` 通知表现及存档状态。正在燃烧时不能拾取，按原版 `DefaultBurnFn` 不写入存档；熄灭后重新可保存、可拾取，身份、数量和已有组件状态不变，拾回再丢弃保留同一份燃烧组件和 signal。石头等未声明燃烧组件的物品不提供“点燃”。新增 `c_spawn("cutgrass")`、`c_spawn("log")`、`c_spawn("ash")`，均生成在玩家脚点；`c_give` 已支持这三个 ID，语法与数量参数不变。
+地面上的干草 `cutgrass`、木头 `log` 和草簇 `dug_grass` 同样支持手持 `torch` 右键点燃。可执行 `c_give("torch");c_spawn("cutgrass");`，装备火把后右键地面干草；`c_spawn("log")` 生成木头，也可将 `c_give("cutgrass", 3)` / `c_give("log", 7)` 得到的物品丢到地上再点燃。干草燃烧 7.5 秒、木头燃烧 15 秒、草簇燃烧 30 秒，整叠烧毁后在原脚点生成同数量的一叠灰烬 `ash`（原版上限 40），原物品移除；灰烬美术提前准备，烧毁后立即 `c_save()` 即可保存灰烬实体、位置和数量并读档恢复。物品通过只读 `burningSignal`、`burntSignal` 和 `persistenceSignal` 通知表现及存档状态。正在燃烧时不能拾取，按原版 `DefaultBurnFn` 不写入存档；熄灭后重新可保存、可拾取，身份、数量和已有组件状态不变，拾回再丢弃保留同一份燃烧组件和 signal。活木 `livinglog`（`c_spawn("livinglog")` / `c_give("livinglog", 3)`）同样可被火把点燃并燃烧 15 秒、烧成灰烬：按 `livinglog.lua` 的 `onignite` 在点燃瞬间播放 `dontstarve/creatures/leif/livinglog_burn`（`leif.fsb` 四个样本随机选一），燃烧期间沿用通用火焰与循环火声；读档恢复燃烧不重播惨叫。石头等未声明燃烧组件的物品不提供“点燃”。新增 `c_spawn("cutgrass")`、`c_spawn("log")`、`c_spawn("ash")`，均生成在玩家脚点；`c_give` 已支持这三个 ID，语法与数量参数不变。
 
 原版 Lua 中哪些 prefab 可用 `c_spawn`、哪些可通过 `c_give` 入栏，见 [prefab 命令静态核对表](docs/dst-prefab-console.md)。该表记录源码调查结果；本项目当前支持的 ID 以本文下方对象列表及物品定义为准。
 
@@ -183,7 +184,6 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 蘑菇数值来自 `prefabs/mushrooms.lua` 的生／熟数据。`c_give("red_cap", 2)` 等命令获取蘑菇，数量可省略，默认一份；`c_spawn("blue_cap_cooked")` 等命令在玩家脚下生成地面物品，支持表中六个 `*_cap` / `*_cap_cooked` ID。库存图标均来自 `images/inventoryimages.xml`，地面使用原版 `anim/mushrooms.zip` 的 `mushrooms` bank/build 和与物品 ID 同名的静态姿态，无原版皮肤。右键进食使用 `quick_eat_pre → quick_eat`，第 12 帧扣除一份后结算属性，结果限制在玩家属性范围；取消时不消耗、不结算。现有物品栏转移、丢弃、拾取和 `c_save()` 继续适用，保留实体身份、位置、数量及食用后的属性；暂不实现蘑菇采集、烹饪、种植或其他专属交互。
 
-`red_cap` 按 `prefabs/mushrooms.lua` 接入 `components/perishable.lua`：腐烂时间 `PERISH_MED`（10 天，4800 秒），生成或 `c_give` 时为满新鲜度。剩余时间保存在组件私有的 timer signal（腐烂中／暂停／未设置／已腐烂四种状态）中，新鲜度百分比和 `fresh`（≥50%，绿）/ `stale`（>20%，黄）/ `spoiled`（≤20%，红）三个阶段都由 `createMemo` 从该 signal 派生；物品栏格子的原版 `spoiled_meter` 读取同一百分比。帧任务只累计时间，每 60 个活动帧按实际 `dt` 结算一次；转移、拾取、丢弃、进食和 `c_save()` 前先结算未满一批的时间。地面腐烂速度为 1.5 倍，潮湿再乘 1.3，世界温度低于 0 ℃ 乘 0.75、高于 70 ℃ 乘 1.25；冰箱和盐盒的保鲜倍率尚未接入。堆叠合并按 `perishable:Dilute` 以数量加权平均新鲜度。腐烂完成后整堆在原格子替换为同数量的 `spoiled_food`，地面上则在同一脚点替换。进食按 `components/edible.lua` 在扣除前读取当前阶段：
 
 | `red_cap` 阶段 | 生命 | 饥饿 | 理智 |
 | --- | --- | --- | --- |
@@ -204,11 +204,8 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 矮星与极光可分别用 `c_give("yellowstaff")`、`c_give("opalstaff")` 获取法杖后施放，寿命分别为 24 分钟、16 分钟。法杖装备到手部后右键地面，通用 `spellcaster` 通过 `castonpoint` / `castonpointwater` 标签提供 `CASTSPELL`；原版距离 20 单位换算为 60 场景单位，超出距离时先走近。黄法杖满耐久 20 次，蓝法杖 50 次；`staff_pre → staff` 第 13 帧播放法杖配置的 `staffteleport`，第 53 帧同步生成星体、扣一次耐久与 20 理智，第 69 帧恢复世界输入和移动。提前取消、替换装备或落点无效时不生成、不消耗；最后一次使用通过库存移除法杖并播放宝石碎裂声。UI 显示剩余耐久比例；`c_save()` 保留法杖实体 ID、数量、皮肤、剩余次数、玩家理智和星体位置／寿命，旧存档缺省剩余次数按满耐久加载。玩家位置每帧读取一次，所有星体共享该位置进行 XZ 距离判断。玩家在星体地面 XZ 距离 10 格（120 场景单位）内时，每 60 个有效游戏帧结算一次寿命，按累计实际 `dt` 扣减；附近的动画和光照脉动仍逐帧更新。远离时结算不足 60 帧的部分，将星体移出场景，销毁独立动画模型的网格并停止、断开音源，仅保留位置、实体 ID 和寿命等逻辑状态；同类星体共享的纹理和材质由管理器缓存，退出时统一释放。寿命按游戏时间继续流逝；再次靠近时先统一补算，已过期的直接清除逻辑状态，未过期的在原位置重建待机模型和独立循环音效，不重播出现动画或音效。`c_save()` 会补算所有星体（包括远处星体），保存实体 ID、位置和最新剩余时间，过期星体不写入存档；读档不重播出现音效。游戏暂停期间不扣寿命。
 
-`c_give("greenstaff", count)` 获取拆解魔杖，`count` 可省略（默认 1），每把占一格；`c_spawn("greenstaff")` 生成地面魔杖。装备到手部后右键有可拆解配方的地面物品或已支持的动画建筑，超出 60 场景单位时先走近。使用原版 `staff_pre → staff` 动画和绿色施法光，第 53 帧拆解，成功后消耗一次耐久与 20 理智，满耐久为 5 次；最后一次使用移除法杖并播放宝石碎裂声。Esc、换装、目标被拾取或移除会阻止未提交的拆解，不扣耐久或理智。材料按目标剩余耐久比例、配方产量向上取整，每种非零材料至少返还 1 个；普通宝石不返还，彩虹宝石属于例外。拆堆目标只移除一件，容器物品与已烹饪完成的料理先掉落。
 
-可用 `c_spawn("opalstaff")` 生成极光法杖作为拆解目标；满耐久拆解返还 4 个噩梦燃料、2 个活木和 1 个彩虹宝石 `opalpreciousgem`。彩虹宝石支持 `c_spawn("opalpreciousgem")` 和 `c_give("opalpreciousgem", count)`，地面使用 `gems.zip` 的 `opalgem_idle`，库存使用其实际 atlas。绿法杖支持原版 `greenstaff_an`、`greenstaff_clockwork`、`greenstaff_planet` 三款皮肤，通过清洁扫把换肤，地面、库存与手持外观分别使用源资源。`c_save()` 无新增参数，导出并恢复法杖实体 ID、数量、皮肤、剩余次数与理智，以及掉落材料的实体 ID、数量和位置；拆解的目标不再保存。旧存档缺省剩余次数时按满耐久加载。
 
-`c_give("nightmarefuel", count)` 获取噩梦燃料，`count` 可省略（默认 1）；Shift + 右键物品槽可丢到地面，也可通过绿法杖拆解获得。地面使用 `anim/nightmarefuel.zip` 的 `idle_loop`，保留源 `SetMultColour(1, 1, 1, 0.5)`（纹理 alpha 再乘以 0.5）与 `UsePointFiltering(true)`，呈半透明黑烟；库存图标使用独立 atlas，不套用地面透明度。数量、实体 ID 与位置照常随 `c_save()` 恢复，透明度及采样设置由源资源目录重建。命令语法、参数与支持 ID 保持不变。
 
 `c_give("book_silviculture")` 获取《应用造林学》，`c_spawn("book_silviculture")` 在玩家脚点生成地面书本；每格只放一本，满耐久 5 次。玩家按需求带有 `reader` 组件与标签，右键物品栏中的书执行原版 `READ`（`componentactions.lua` 的 INVENTORY `book` 动作）：`book` 状态播放 `player_actions_uniqueitem.zip` 的 `action_uniqueitem_pre` 并生成 `book_fx`，`book2` 播放 `book`，`book_open` / `book_closed` 覆盖为 `swap_books.zip` 的 `book_silviculture_open/closed`（皮肤 `book_silviculture_livinglog` 使用皮肤 build），根须特效 `fx_books.zip:roots` 跟随 `swap_book_fx_under`。声音按源时间线：第 17 帧 `wickerbottom_rework/book_spells/silviculture`（两层），第 19 帧翻页 `use_book_light`，第 50 帧 `book_spell` 并提交，第 51 帧合书 `use_book_close`。提交时以玩家为中心 30 单位（90 场景单位）查找带 `silviculture/tree` 等标签、已被采摘的植物，其中一株立即完成再生，其余在 `1 - 1/(n+1)` 秒内随机完成；成功扣 1 次耐久与 33 理智，最后一次使用移除书本。范围内没有可催生的植物时返回 `NOSILVICULTURE`，`book_fx` 播放失败动画和 `book_spells/fail`，不扣耐久或理智。第 50 帧移除 `busy` 前移动被阻止，之后移动或跳跃会结束状态；选槽、右键其他物品、制作或表情与进食一样随时取消阅读。退出时未播放的层音效取消，已在播放的降为一半音量。可用 `c_spawn("grass")` 后采摘草丛来验证催生。`c_save()` 保存书本实体 ID、皮肤、剩余次数与地面位置，读档恢复。当前项目只有草丛具备 `pickable` 催生分支；树木、作物、蘑菇农场和树精分支，以及 `talker` 的失败台词、`aspiring_bookworm` 浏览、骑乘和书架尚未接入；书本作为燃料的 `fuel` 组件也未接入（目前仅接入提灯的 `CAVE` 燃料）。
 
@@ -224,11 +221,8 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 `c_give("goldnugget")`、`c_give("meat")`、`c_give("pigskin")`、`c_give("bird_egg")` 等带 `tradable.goldvalue` 的物品可交给猪王（物品栏拿起后点击猪王）：猪王播放 `cointoss`（第 17 帧 `PigKingThrowGold`）→ `happy`（第 6 帧 `PigKingHappy`），2/3 秒后向交易者方向抛出与 `goldvalue` 等量的金块，物品被消耗。`goldvalue` 为 0 的物品（如 `monstermeat`、`humanmeat`、`barnacle`）会被拒绝，猪王播放 `unimpressed` 与 `PigKingReject`；没有 `tradable` 组件的物品（如斧头）不能给予。夜晚猪王进入 `sleep`（`sleep_pre` → `sleep_loop`）并禁用 trader，天亮播放 `sleep_pst` 后恢复；睡觉与交易状态不写入存档，加载后按当前昼夜重新判定。猪王位置随 `c_save()` 保存。未移植 `pig_token` 小游戏、万圣夜糖果和 `tradefor`（目录中没有物品设置它）。
 
-### 猪王静态布局（default_pigking）
 
-猪王周围按 `map/static_layouts/default_pigking.lua` 放置：8 × 8 的地皮（40 块 `GRASS`、中央 12 块 `WOODFLOOR`）加 4 块 `sanityrock` 与 4 块 `insanityrock`。导入命令 `pnpm --filter @dontstarve-web/prefab static-layouts:import`（`:check` 校验）、转换规则、放置公式和与原版 worldgen 的差异见 [静态布局导入](docs/dst-static-layouts.md)。
 
-`c_spawn("sanityrock")` / `c_spawn("insanityrock")` 在玩家当前位置生成方尖碑（`anim/blocker_sanity.zip`）。`sanityrock` 在理智正常的玩家进入 30 个场景单位（原版 10）时升起，`insanityrock` 在理智过低时升起，离开 33 个场景单位（原版 11）后降下；理智状态使用 `sanity.lua` 的 30/200 与 35/200 滞后阈值。升起时才有碰撞（寻路同样把它当障碍），播放 `raise` / `lower`、`shadowrock_*` 音效和半透明 `sanity_raise` / `sanity_lower` 特效。状态由附近玩家推导，`c_save()` 只保存位置与实体 ID。未移植：猪王小游戏的 `ConcealForMinigame` 调用方、`LaunchAndClearArea` 弹开物品、检查文本与小地图图标。旧存档的猪王周围不会补生成方尖碑。
 
 ### c_spawn 支持的对象
 
@@ -261,7 +255,6 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 `c_spawn("pond")` 在玩家当前位置生成池塘，使用原版 `anim/marsh_tile.zip` 的 bank/build `marsh_tile` 和循环 `idle` 动画，贴图平铺在地面上并绘制在角色下方。当前仅实现池塘外观，不包含交互、碰撞、鱼蛙生成、岸边植物或季节变化；位置随 `c_save()` 保存并在加载时恢复。
 
-`c_spawn("nightmaregrowth")` 在玩家当前位置生成梦魇疯长，使用原版 `anim/nightmaregrowth.zip` 的 bank/build `nightmaregrowth`：主体显示 `idle`，地面裂纹显示 `crack_idle` 并随机旋转。当前仅实现外观；位置和裂纹朝向随 `c_save()` 保存并在加载时恢复。
 
 | 类型 | prefab_id |
 | --- | --- |

@@ -34,7 +34,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
       const flies = (prepared[1] as PromiseFulfilledResult<ArchiveSprite>).value;
       flies.model.visible = false;
       let visual: GroundItemVisual;
-      try { visual = await createBurnableItemVisual(context, sprite, fires); }
+      try { visual = await createBurnableItemVisual(context, 'poop', sprite, fires); }
       catch (error) { sprite.dispose(); flies.dispose(); throw error; }
       let entity: ItemEntity | undefined;
       let controller: FliesController | undefined;

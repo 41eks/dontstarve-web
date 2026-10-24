@@ -49,7 +49,7 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
     async create(item) {
       const sprite = await createGroundItemSprite(context.assets, item.itemId, item.skinId);
       if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return sprite;
-      try { return await createBurnableItemVisual(context, sprite, fires, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel); }
+      try { return await createBurnableItemVisual(context, item.itemId, sprite, fires, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel); }
       catch (error) { sprite.dispose(); throw error; }
     },
     update(dt, quaternion) { for (const fire of fires) { fire.model.quaternion.copy(quaternion); fire.update(dt); } },

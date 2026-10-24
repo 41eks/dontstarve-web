@@ -66,27 +66,28 @@ describe('dwarf star source sounds', () => {
     UpdateSoundListener(new THREE.Vector3());
     const near = await manager.spawn(new THREE.Vector3());
     const far = await manager.spawn(new THREE.Vector3(24, 0, 0));
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1, 1, 0.25, 0.25]);
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1, 1, 0.25, 0.25].map(volume => volume * .7));
     expect(s.sources.map((source) => source.connect.mock.calls[0][0])).toEqual(s.gains);
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 0.25, 0.25]);
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 0.25, 0.25].map(volume => volume * .7));
     far.position.x = 48;
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1]);
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1].map(volume => volume * .7));
     UpdateSoundListener(new THREE.Vector3(144, 0, 0));
     expect(s.gains.map(({ gain }) => gain.value)).toEqual([0, 0, 0, 0]);
     expect(s.sources.every((source) => source.stop.mock.calls.length === 0)).toBe(true);
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1]);
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1].map(volume => volume * .7));
     expect(near.position.x).toBe(0);
     // Player-local sounds bypass distance attenuation; SetVolume scales only their own gain.
     await PreloadSounds('dontstarve/wilson/use_gemstaff');
     const local = PlaySound('dontstarve/wilson/use_gemstaff');
     expect(s.sources[4].connect).toHaveBeenCalledWith(s.gains[4]);
     expect(s.gains[4].connect).toHaveBeenCalledWith(s.context.destination);
+    expect(s.gains[4].gain.value).toBe(.7);
     local.setVolume(.5);
     UpdateSoundListener(new THREE.Vector3(144, 0, 0));
-    expect(s.gains[4].gain.value).toBe(.5);
+    expect(s.gains[4].gain.value).toBe(.35);
     expect(local.isPlaying()).toBe(true);
     local.stop();
     expect(local.isPlaying()).toBe(false);
@@ -95,7 +96,7 @@ describe('dwarf star source sounds', () => {
     manager.dispose();
     expect(s.gains.every((gain) => gain.disconnect.mock.calls.length === 1)).toBe(true);
     UpdateSoundListener(new THREE.Vector3());
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1, .5]);
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1, .5].map(volume => volume * .7));
   });
 
   it('preloads all polar light layers and stops each independent summon together', async () => {
