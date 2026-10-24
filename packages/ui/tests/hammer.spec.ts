@@ -1,0 +1,108 @@
+import { fileURLToPath } from 'node:url';
+import { expect, test } from '@playwright/test';
+
+test('science building skins support four-hit destruction, persistent loot and pickup', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async (url) => (await import(url)).checkResearchLabDestruction(),
+    `/@fs${fileURLToPath(new URL('./hammer-fixture.ts', import.meta.url))}`);
+  expect(result.cases.map((entry) => entry.loot)).toEqual([
+    [{ itemId: 'goldnugget', count: 1 }, { itemId: 'log', count: 2 }, { itemId: 'rocks', count: 2 }],
+    [{ itemId: 'boards', count: 2 }, { itemId: 'cutstone', count: 1 }, { itemId: 'transistor', count: 1 }],
+    [{ itemId: 'livinglog', count: 2 }, { itemId: 'purplegem', count: 1 }, { itemId: 'nightmarefuel', count: 4 }],
+    [{ itemId: 'rabbit', count: 2 }, { itemId: 'boards', count: 2 }, { itemId: 'tophat', count: 1 }],
+  ]);
+  for (const entry of result.cases) {
+    expect(entry).toMatchObject({ remainedAfterThree: true, removed: true, records: [], effect: true,
+      airborne: true, moved: true, spread: true, inFlightGrounded: true, settled: true, stable: true });
+  }
+  expect(result.records.ground_item).toHaveLength(21);
+  expect(result.records.ground_item.every((record) => record.components.stack.count === 1)).toBe(true);
+  expect(result.records.ground_item.every((record) => record.transform.position[1] === 0)).toBe(true);
+  expect(result).toMatchObject({ effectsCleaned: true, pickupRemoved: true,
+    pickedUp: [{ itemId: 'goldnugget', count: 1 }] });
+  expect(errors).toEqual([]);
+});
+
+test('game UI equips, drops and picks up hammer, then right-click hammers a building', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/tests/dst-lighting.html');
+  await page.evaluate(async (urls) => {
+    const main = await import(urls.main);
+    const player = await import(urls.player);
+    const { scene } = await import(urls.universal);
+    const { view } = await import(urls.view);
+    const { equipmentSlotAddress } = await import(urls.inventory);
+    const handAddress = equipmentSlotAddress('hand');
+    const equipped = main.inventory.get(handAddress);
+    // This scenario starts with an empty hand, regardless of the saved equipment.
+    if (equipped) main.inventory.applySlotChanges([
+      { slot: handAddress, itemId: equipped.itemId, skinId: equipped.skinId, delta: -equipped.count },
+    ]);
+    const target = scene.children.find((model: any) => model.name === 'TreasureChest');
+    if (!target) throw new Error('Missing saved treasure chest');
+    const radius = player.playerBody.shapes[0].radius;
+    player.playerBody.position.set(target.position.x, radius, target.position.z + 3);
+    player.player.position.set(target.position.x, 0, target.position.z + 3);
+    if (main.inventory.count('hammer') === 0) main.inventory.add('hammer', 1);
+    (window as any).hammerGame = { main, ...player, scene, view, target };
+  }, {
+    ...Object.fromEntries(['main', 'player', 'universal', 'view'].map((name) =>
+      [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`])),
+    inventory: `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`,
+  });
+  const bar = page.locator('dst-inventory-bar');
+  const hammerSlot = bar.locator('.inventory-bar__items .inventory-slot[data-item-id="hammer"]');
+  await expect(hammerSlot).toBeVisible();
+  await expect(hammerSlot.locator('.inventory-slot__icon[data-loaded="true"]')).toBeVisible();
+  const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
+  await hammerSlot.dragTo(hand);
+  await expect(hand).toHaveAttribute('data-item-id', 'hammer');
+  // Actual Shift + right-click uses the application store and source ground model.
+  await page.keyboard.down('Shift');
+  await hand.click({ button: 'right' });
+  await page.keyboard.up('Shift');
+  await expect.poll(() => page.evaluate(() => (window as any).hammerGame.scene.children.some((model: any) => model.name === 'GroundItem:hammer'))).toBe(true);
+  const point = await page.evaluate(() => {
+    const { scene, view } = (window as any).hammerGame;
+    const dropped = scene.children.find((model: any) => model.name === 'GroundItem:hammer');
+    const position = dropped.position.clone();
+    dropped.children[0].children[0].geometry.computeBoundingBox();
+    const box = dropped.children[0].children[0].geometry.boundingBox;
+    position.y += -(box.min.y + box.max.y) * 0.01;
+    const ndc = position.project(view.camera);
+    const bounds = view.renderer.domElement.getBoundingClientRect();
+    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
+  });
+  await page.mouse.click(point.x, point.y);
+  await expect(hand).toHaveAttribute('data-item-id', 'hammer');
+  await expect.poll(() => page.evaluate(() => (window as any).hammerGame.scene.children.some((model: any) => model.name === 'GroundItem:hammer'))).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).hammerGame.player.children[0].children[0].material
+    .some((material: any) => material.name === 'ground:swap_hammer'))).toBe(true);
+  const targetPoint = await page.evaluate(async () => {
+    const { target, view } = (window as any).hammerGame;
+    const before = JSON.stringify(target.userData.saveRecord);
+    (window as any).hammerGame.before = before;
+    (window as any).hammerGame.hitSeen = false;
+    const controller = target.userData.animationController;
+    const original = controller.playTransient.bind(controller);
+    controller.playTransient = (name: string) => { (window as any).hammerGame.hitSeen = name === 'hit'; original(name); };
+    await new Promise(requestAnimationFrame);
+    const ndc = target.position.clone().project(view.camera);
+    const bounds = view.renderer.domElement.getBoundingClientRect();
+    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
+  });
+  await page.mouse.click(targetPoint.x, targetPoint.y, { button: 'right' });
+  await expect.poll(() => page.evaluate(() => (window as any).hammerGame.hitSeen)).toBe(true);
+  expect(await page.evaluate(() => {
+    const { target, before } = (window as any).hammerGame;
+    return JSON.stringify(target.userData.saveRecord) === before;
+  })).toBe(true);
+  await expect(page.locator('dst-chest-panel .chest-panel')).toBeHidden();
+  expect(errors).toEqual([]);
+});

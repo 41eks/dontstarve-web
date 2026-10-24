@@ -1,0 +1,214 @@
+:host {
+  display: contents;
+}
+
+:host([hidden]) {
+  display: none !important;
+}
+
+.inventory-bar,
+.inventory-bar * {
+  box-sizing: border-box;
+}
+
+.inventory-bar {
+  --inventory-bar-bottom: clamp(3px, 0.8vh, 9px);
+
+  position: fixed;
+  z-index: 55;
+  bottom: var(--inventory-bar-bottom);
+  left: 50%;
+  display: grid;
+  width: min(1140px, calc(100vw - 18px));
+  grid-template-columns: minmax(0, 15fr) minmax(0, 3fr) minmax(0, 1.42fr);
+  align-items: end;
+  padding: 7px 7px 5px;
+  filter: drop-shadow(2px 4px 2px rgb(0 0 0 / 45%));
+  pointer-events: auto;
+  transform: translateX(-50%) scale(0.75);
+  transform-origin: bottom center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.inventory-bar__backdrop {
+  position: absolute;
+  /* The atlas frame has an inset wooden rim; extend it beyond the slot layout
+     so the first and last slots remain inside that rim. */
+  left: -16px;
+  /* Centre the full texture on the viewport's bottom edge, compensating for
+     the bar's 0.75 scale and bottom gap so only its upper half stays visible. */
+  bottom: calc(-1 * var(--inventory-bar-bottom) / 0.75);
+  z-index: -1;
+  display: block;
+  width: calc(100% + 32px);
+  aspect-ratio: 1352 / 250;
+  pointer-events: none;
+  transform: translateY(50%);
+}
+
+.inventory-bar__items,
+.inventory-bar__equipment {
+  display: grid;
+  min-width: 0;
+}
+
+.inventory-bar__items {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.inventory-bar__item-group {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.inventory-bar__equipment {
+  position: relative;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-left: 7px;
+}
+
+.inventory-bar__equipment::before {
+  content: '';
+  position: absolute;
+  top: 13%;
+  bottom: 13%;
+  left: 3px;
+  width: 2px;
+  border-radius: 50%;
+  background: rgb(14 12 9 / 72%);
+  box-shadow: 1px 0 0 rgb(154 116 70 / 55%);
+}
+
+.inventory-slot,
+.inventory-bar__inspect {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.inventory-slot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  touch-action: none;
+}
+
+.inventory-slot__background,
+.inventory-bar__inspect img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  transition: filter 90ms ease, transform 90ms ease;
+}
+
+.inventory-slot__content {
+  position: absolute;
+  inset: 9%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.inventory-slot__icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.inventory-slot__count {
+  position: absolute;
+  right: 9%;
+  bottom: 5%;
+  z-index: 2;
+  color: #fff;
+  font: 700 clamp(13px, 1.9vw, 24px) / 1 sans-serif;
+  pointer-events: none;
+  text-shadow:
+    -1px -1px 0 #21180e,
+    1px -1px 0 #21180e,
+    -1px 1px 0 #21180e,
+    1px 1px 0 #21180e,
+    0 2px 2px rgb(0 0 0 / 80%);
+}
+
+.inventory-bar__inspect {
+  width: 100%;
+  aspect-ratio: 1;
+  margin: 0 0 -5px -1px;
+}
+
+.inventory-slot:hover .inventory-slot__background,
+.inventory-slot:focus-visible .inventory-slot__background,
+.inventory-bar__inspect:hover img,
+.inventory-bar__inspect:focus-visible img {
+  filter: brightness(1.14) drop-shadow(0 0 3px rgb(255 221 151 / 52%));
+  transform: translateY(-2px) scale(1.035);
+}
+
+.inventory-slot:active .inventory-slot__background,
+.inventory-bar__inspect:active img {
+  filter: brightness(0.9);
+  transform: translateY(1px) scale(0.97);
+}
+
+.inventory-slot.is-selected::after,
+.inventory-slot.is-drop-target::after {
+  content: '';
+  position: absolute;
+  inset: 5%;
+  z-index: 3;
+  border: 3px solid rgb(245 214 142 / 92%);
+  border-radius: 10%;
+  box-shadow: 0 0 7px rgb(255 223 144 / 75%);
+  pointer-events: none;
+}
+
+.inventory-slot.is-drop-target::after {
+  border-color: rgb(157 231 126 / 96%);
+  box-shadow: 0 0 9px rgb(115 232 94 / 90%);
+}
+
+.inventory-slot.is-dragging .inventory-slot__content {
+  opacity: 0.48;
+}
+
+.inventory-slot:focus-visible,
+.inventory-bar__inspect:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid rgb(245 214 142 / 95%);
+  outline-offset: -5px;
+}
+
+@media (max-width: 700px) {
+  .inventory-bar {
+    --inventory-bar-bottom: 2px;
+    width: calc(100vw - 6px);
+    padding: 4px 3px 3px;
+  }
+
+  .inventory-bar__equipment {
+    padding-left: 3px;
+  }
+
+  .inventory-bar__items {
+    gap: 3px;
+  }
+
+  .inventory-bar__equipment::before {
+    left: 1px;
+    width: 1px;
+  }
+}

@@ -1,0 +1,59 @@
+.page {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: #ca30d1;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #ca30d1;
+}
+
+.stageBackground,
+.animationCanvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.stageBackground { z-index: 0; }
+.animationCanvas { z-index: 1; }
+
+.loader,
+.error {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  color: rgba(23, 23, 19, .75);
+  background: #ca30d1;
+  font: 700 12px/1 "Noto Sans SC", system-ui, sans-serif;
+  letter-spacing: .14em;
+}
+
+.loader i {
+  width: 42px;
+  height: 42px;
+  border: 2px solid rgba(23, 23, 19, .18);
+  border-top-color: #171713;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.error b { color: #6b1425; }
+.error span { max-width: min(80vw, 640px); text-align: center; opacity: .72; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .loader i { animation: none; }
+}

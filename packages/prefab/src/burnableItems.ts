@@ -1,0 +1,154 @@
+import * as THREE from 'three';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { Burnable } from '../../componets/src/burnable';
+import { Propagator } from '../../componets/src/propagator';
+import type { BurnableInst } from '../../componets/src/burnable';
+import type { GroundPrefabContext, GroundItemVisual, PreparedGroundSpawn } from './groundPrefab';
+import catalog from './groundItems.json' with { type: 'json' };
+import { setPrefabLocalLight } from './localLight';
+import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { TILE_SIZE } from './tile';
+
+// cutgrass.lua / log.lua / books.lua: MakeSmallBurnable(SMALL/MED_BURNTIME), MakeSmallPropagator.
+export const BURNABLE_ITEM_DEFINITIONS: Readonly<Record<string, { burnTime: number; tags: readonly string[]; fxLevel?: 2 | 3 }>> = {
+  cutgrass: { burnTime: 30 * .25, tags: ['cattoy', 'renewable', 'cutgrass'] },
+  log: { burnTime: 30 * .5, tags: ['log'] },
+  dug_grass: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 }, // plantables.lua LARGE_BURNTIME.
+  dug_sapling: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
+  dug_sapling_moon: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
+  book_silviculture: { burnTime: 30 * .5, tags: [] }, // books.lua tags belong to configureBookEntity.
+};
+const ASH_MAX_STACK = 40; // ash.lua: TUNING.STACK_SIZE_SMALLITEM
+
+interface BurnPresentation {
+  context: GroundPrefabContext;
+  ash: PreparedGroundSpawn;
+}
+
+/** The inst owns the burning clock and persistence; preparing/replacing art keeps this component. */
+export class BurnableItemController {
+  private readonly burntState = createSignal(false);
+  readonly burnt = readonlySignal(this.burntState);
+  readonly burnable: Burnable;
+  readonly propagator: Propagator;
+  private presentation?: BurnPresentation;
+  private removed = false;
+  private readonly entity: ItemEntity;
+
+  constructor(entity: ItemEntity) {
+    this.entity = entity;
+    for (const tag of BURNABLE_ITEM_DEFINITIONS[entity.prefab].tags) entity.addTag(tag);
+    this.burnable = new Burnable(entity);
+    entity.components.burnable = this.burnable;
+    this.burnable.SetBurnTime(BURNABLE_ITEM_DEFINITIONS[entity.prefab].burnTime);
+    this.propagator = new Propagator(entity, 'small', radius => {
+      const origin = entity.getPosition(), neighbours: BurnableInst[] = [];
+      this.presentation?.context.scene.traverse(model => {
+        const inst = model.userData.actionEntity as BurnableInst | undefined;
+        if (!inst?.components.propagator || inst.isRemoved || inst.hasTag('INLIMBO')) return;
+        const position = inst.getPosition();
+        if ((position.x - origin.x) ** 2 + (position.z - origin.z) ** 2 <= radius ** 2) neighbours.push(inst);
+      });
+      return neighbours;
+    }, TILE_SIZE / 4);
+    entity.components.propagator = this.propagator;
+    this.burnable.SetOnIgniteFn(() => { entity.persists = false; }); // DefaultBurnFn
+    this.burnable.SetOnExtinguishFn(() => { entity.persists = true; }); // DefaultExtinguishFn
+    this.burnable.SetOnBurntFn(() => {
+      const count = Math.min(ASH_MAX_STACK, entity.components.stackable.count);
+      const position = new THREE.Vector3().fromArray(entity.transform.position);
+      // DefaultBurntFn creates one ash stack at the original inst's position, then removes the inst.
+      if (!this.presentation?.ash.spawn(position, count)) throw new Error('Burning item requires prepared ash output');
+      this.burntState.set(true);
+      entity.remove();
+    });
+  }
+  bind(presentation: BurnPresentation): void { this.presentation = presentation; }
+  release(presentation: BurnPresentation): void {
+    if (this.presentation === presentation) this.presentation = undefined;
+  }
+  update(dt: number): void {
+    if (this.removed || this.entity.isRemoved || this.entity.components.inventoryitem.owner) return;
+    this.burnable.Update(dt);
+    this.propagator.Update(dt);
+  }
+  dispose(): void {
+    if (this.removed) return;
+    this.removed = true;
+    this.burnable.SetOnExtinguishFn(undefined);
+    this.burnable.dispose(); this.propagator.dispose();
+    this.presentation = undefined;
+  }
+}
+
+export function configureBurnableItemEntity(entity: ItemEntity): void {
+  if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, entity.prefab)) return;
+  entity.component('burnable_item', () => new BurnableItemController(entity));
+}
+
+/** Existing ground art, generic fire FX and a prepared ash stack; all resources precede ignition. */
+export async function createBurnableItemVisual(context: GroundPrefabContext,
+  sprite: ArchiveSprite, fires: Set<ArchiveSprite>, fxLevel: 2 | 3 = 2): Promise<GroundItemVisual> {
+  if (!context.prepareSpawn) throw new Error('Burnable ground items require prepared ground output');
+  const prepared = await Promise.allSettled([
+    createArchiveSprite(context.assets, { animationArchive: 'fire.zip', buildArchives: ['fire.zip'],
+      bank: 'fire', animation: `level${fxLevel}`, loop: true }, { name: 'fire' }),
+    context.prepareSpawn({ ...catalog.items.ash, itemId: 'ash', count: ASH_MAX_STACK }),
+    PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut'),
+  ]);
+  if (prepared.some(result => result.status === 'rejected')) {
+    for (const result of prepared) if (result.status === 'fulfilled') result.value?.dispose();
+    throw (prepared.find(result => result.status === 'rejected') as PromiseRejectedResult).reason;
+  }
+  const fire = (prepared[0] as PromiseFulfilledResult<ArchiveSprite>).value;
+  const ash = (prepared[1] as PromiseFulfilledResult<PreparedGroundSpawn>).value;
+  const presentation = { context, ash };
+  let controller: BurnableItemController | undefined;
+  let stopBurning: (() => void) | undefined;
+  let sound: SoundHandle | undefined;
+  let disposed = false;
+  const clearFire = () => {
+    fire.model.removeFromParent(); fires.delete(fire);
+    sound?.stop(); sound = undefined;
+    setPrefabLocalLight(sprite.model, null);
+  };
+  const syncBurning = (burning: boolean) => {
+    if (burning) {
+      fire.model.position.copy(sprite.model.position);
+      context.scene.add(fire.model); fires.add(fire);
+      sound = PlaySound('dontstarve/common/campfire', sprite.model.position);
+      setPrefabLocalLight(sprite.model, { colour: [1, 1, 192 / 255], radius: (fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
+    } else {
+      const wasBurning = fires.has(fire);
+      clearFire();
+      if (wasBurning) PlaySound('dontstarve/common/fireOut', sprite.model.position);
+    }
+  };
+  return {
+    model: sprite.model,
+    bindEntity(entity) {
+      configureBurnableItemEntity(entity);
+      controller = entity.getComponent<BurnableItemController>('burnable_item')!;
+      controller.bind(presentation);
+      sprite.model.userData.burningSignal = controller.burnable.burning;
+      sprite.model.userData.burntSignal = controller.burnt;
+      sprite.model.userData.persistenceSignal = entity.persistence;
+      stopBurning = controller.burnable.burning.subscribe(syncBurning);
+      syncBurning(controller.burnable.IsBurning());
+    },
+    update(dt) {
+      controller?.update(dt);
+      if (disposed) return;
+      sprite.update(dt);
+      if (fires.has(fire)) fire.model.position.copy(sprite.model.position);
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      stopBurning?.(); controller?.release(presentation);
+      clearFire(); fire.dispose(); ash.dispose(); sprite.dispose();
+    },
+  };
+}

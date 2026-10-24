@@ -1,0 +1,576 @@
+import * as THREE from 'three';
+import {
+  createAnimatedSpriteFactory,
+  createSpriteFactory,
+  SpriteController,
+  type AnimatedSpriteFactory,
+} from '@dontstarve-web/animation/sprite';
+import { loadAnimationArchive, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
+import { listenInventoryEvents } from './inventoryEvents';
+import type { GroundItemDefinition, GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { ButterflyStateGraph, type ButterflyStateInst, type ButterflyStateName } from '../../stategraphs/src/SGbutterfly';
+import { LocoMotor, type LocoMotorInst, type LocoMotorPoint } from '../../componets/src/locomotor';
+import { KnownLocations } from '../../componets/src/knownlocations';
+import { Pollinator } from '../../componets/src/pollinator';
+import { Workable } from '../../componets/src/workable';
+import { Brain } from '../../brains/src/brain';
+import { ButterflyBrain } from '../../brains/src/butterflybrain';
+import { MoonButterflyBrain } from '../../brains/src/moonbutterflybrain';
+import { RADIANS } from '../../brains/src/simutil';
+import type { BrainComponents, BrainEntity, BrainInst, BrainWorld } from '../../brains/src/types';
+import catalog from './groundItems.json' with { type: 'json' };
+import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
+import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
+import { PlaySound, PreloadSounds } from './sound';
+import { TILE_SIZE } from './tile';
+
+export const BUTTERFLY_ID = 'butterfly';
+export const MOONBUTTERFLY_ID = 'moonbutterfly';
+export type ButterflyPrefabId = typeof BUTTERFLY_ID | typeof MOONBUTTERFLY_ID;
+
+export { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED };
+
+export function configureButterflyEntity(entity: ItemEntity): void {
+  entity.components.inventoryitem.canbepickedup = false;
+  entity.components.inventoryitem.canbepickedupalive = true;
+  entity.addTag('catchable');
+  entity.components.workable = entity.component('workable', () => {
+    const workable = new Workable(entity);
+    workable.SetWorkAction('NET');
+    workable.SetWorkLeft(1);
+    workable.SetOnFinishCallback(worker => {
+      const [x, y, z] = entity.transform.position;
+      worker.components?.inventory?.GiveItem(entity, { x, y, z });
+      if (worker.components?.inventory) PlaySound('dontstarve/common/butterfly_trap', { x, z });
+    });
+    entity.ListenForEvent('ondropped', () => workable.SetWorkLeft(1));
+    return workable;
+  });
+}
+
+/** moonbutterfly.lua: it spoils four times slower in an inventory and is simply removed if it perishes there. */
+export function configureMoonButterflyEntity(entity: ItemEntity): void {
+  configureButterflyEntity(entity);
+  const perishable = entity.components.perishable;
+  perishable.localMultiplier = () => entity.components.inventoryitem.owner ? MOONBUTTERFLY_PERISH_INV_MODIFIER : 1;
+  perishable.perishfn = () => {
+    const owner = entity.components.inventoryitem.owner as { remove?(): boolean } | null;
+    owner?.remove?.();
+  };
+}
+
+export interface ButterflyFlower {
+  readonly id: string;
+  readonly position: THREE.Vector3;
+}
+
+export interface ButterflyWorld {
+  isDay(): boolean;
+  /** Player and other entities carrying DST's scarytoprey tag. */
+  getThreatPositions(): readonly THREE.Vector3[];
+  getFlowers(): readonly ButterflyFlower[];
+  /** Flying creatures ignore obstacles, but cannot leave the world. */
+  constrainPosition?(position: THREE.Vector3): void;
+}
+
+export type ButterflyState = ButterflyStateName | 'removed';
+
+interface ButterflyAnimation {
+  start(name: string): void;
+  playOnce(name: string, onComplete?: () => void): void;
+  update(dt: number): void;
+  readonly currentAnimation: string;
+  readonly currentAnimationLength: number;
+}
+
+const BASE_TAGS = ['butterfly', 'flying', 'ignorewalkableplatformdrowning', 'insect', 'smallcreature',
+  'cattoyairborne', 'wildfireprotected', 'deployedplant'] as const;
+
+export interface ButterflyDefinition {
+  readonly prefab: ButterflyPrefabId;
+  readonly tags: readonly string[];
+  readonly walkspeed?: number;
+  readonly pollinates: boolean;
+  readonly createBrain: (inst: BrainInst) => Brain;
+  /** lootdropper:DropLoot at death, as item IDs. */
+  readonly generateLoot: (random: () => number) => readonly string[];
+}
+
+export const BUTTERFLY_DEFINITIONS: Readonly<Record<ButterflyPrefabId, ButterflyDefinition>> = {
+  // butterfly.lua: AddRandomLoot("butter", 0.1), ("butterflywings", 5), numrandomloot = 1.
+  butterfly: {
+    prefab: BUTTERFLY_ID, tags: [...BASE_TAGS, 'noember'], pollinates: true,
+    createBrain: inst => new ButterflyBrain(inst),
+    generateLoot: random => {
+      const roll = random() * 5.1;
+      return [roll < .1 ? 'butter' : 'butterflywings'];
+    },
+  },
+  // moonbutterfly.lua: SetChanceLootTable('moonbutterfly') → moonbutterflywings 1.0.
+  moonbutterfly: {
+    prefab: MOONBUTTERFLY_ID, walkspeed: MOONBUTTERFLY_SPEED, pollinates: false,
+    tags: [...BASE_TAGS, 'show_spoilage', 'small_livestock', 'lunar_aligned'],
+    createBrain: inst => new MoonButterflyBrain(inst),
+    generateLoot: () => ['moonbutterflywings'],
+  },
+};
+
+/** An entity as the brains see it: tags, a ground position and a validity flag. */
+function positionOf(transform: ItemEntity['transform']): () => THREE.Vector3 {
+  const scratch = new THREE.Vector3();
+  return () => scratch.fromArray(transform.position);
+}
+
+class SimpleEntity implements BrainEntity {
+  readonly components: BrainComponents = {};
+  valid = true;
+  readonly prefab: string;
+  readonly tags: ReadonlySet<string>;
+  readonly position: () => THREE.Vector3;
+  constructor(prefab: string, tags: readonly string[], position: () => THREE.Vector3) {
+    this.prefab = prefab;
+    this.tags = new Set(tags);
+    this.position = position;
+  }
+  hasTag(tag: string): boolean { return this.tags.has(tag); }
+  isValid(): boolean { return this.valid; }
+  getPosition(): LocoMotorPoint { const { x, y, z } = this.position(); return { x, y, z }; }
+  getPhysicsRadius(): number { return 0; }
+}
+
+/** Flower and threat entities shared by every butterfly of one world, so identity comparisons hold. */
+class ButterflyEntities {
+  private readonly flowers = new Map<string, SimpleEntity>();
+  private readonly flowerPositions = new Map<string, THREE.Vector3>();
+  private readonly ids = new Map<BrainEntity, string>();
+  private readonly threats: SimpleEntity[] = [];
+  private threatPositions: readonly THREE.Vector3[] = [];
+
+  sync(world: ButterflyWorld): { flowers: SimpleEntity[]; threats: SimpleEntity[] } {
+    const present = new Set<string>();
+    for (const flower of world.getFlowers()) {
+      present.add(flower.id);
+      this.flowerPositions.set(flower.id, flower.position);
+      if (!this.flowers.has(flower.id)) {
+        const entity = new SimpleEntity('flower', ['flower'], () => this.flowerPositions.get(flower.id)!);
+        this.flowers.set(flower.id, entity);
+        this.ids.set(entity, flower.id);
+      }
+    }
+    for (const [id, entity] of this.flowers) {
+      if (present.has(id)) continue;
+      entity.valid = false;
+      this.flowers.delete(id);
+      this.flowerPositions.delete(id);
+      this.ids.delete(entity);
+    }
+    const positions = world.getThreatPositions();
+    this.threatPositions = positions;
+    while (this.threats.length < positions.length) {
+      const index = this.threats.length;
+      this.threats.push(new SimpleEntity('wilson', ['scarytoprey', 'player'], () => this.threatPositions[index]));
+    }
+    return { flowers: [...this.flowers.values()], threats: this.threats.slice(0, positions.length) };
+  }
+
+  idOf(entity: BrainEntity): string | undefined { return this.ids.get(entity); }
+}
+
+const entityRegistries = new WeakMap<ButterflyWorld, ButterflyEntities>();
+
+const distanceSquared = (a: LocoMotorPoint, b: LocoMotorPoint) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
+
+/**
+ * The live butterfly or moonbutterfly inst: components, stategraph and brain as in butterfly.lua,
+ * SGbutterfly.lua and the *brain.lua files, driven from the committed inventory entity's transform.
+ */
+export class ButterflyCreature extends SimpleEntity implements BrainInst, ButterflyStateInst, LocoMotorInst {
+  readonly definition: ButterflyDefinition;
+  readonly world: BrainWorld;
+  readonly locomotor: LocoMotor;
+  readonly sg: ButterflyStateGraph;
+  readonly brain: Brain;
+  readonly dynamicTags = new Set<string>();
+  bufferedaction: BufferedAction | undefined;
+  removed = false;
+  private rotation = 0;
+  private motorSpeed = 0;
+  private time = 0;
+  private readonly listeners = new Map<string, Set<(data?: unknown) => void>>();
+  private readonly transform: ItemEntity['transform'];
+  private readonly animation: ButterflyAnimation;
+  private readonly sharedEntities: ButterflyEntities;
+  private readonly butterflyWorld: ButterflyWorld;
+  private readonly getOthers: () => readonly ButterflyCreature[];
+  private readonly randomSource: () => number;
+  private readonly onAnimationOver: () => void;
+  private readonly dropLootItems?: (itemIds: readonly string[], position: THREE.Vector3) => void;
+  private snapshot: { flowers: SimpleEntity[]; threats: SimpleEntity[] } = { flowers: [], threats: [] };
+  private readonly scratch = new THREE.Vector3();
+
+  constructor(definition: ButterflyDefinition, transform: ItemEntity['transform'], animation: ButterflyAnimation,
+    butterflyWorld: ButterflyWorld, getOthers: () => readonly ButterflyCreature[] = () => [],
+    random: () => number = Math.random, dropLoot?: ButterflyCreature['dropLootItems']) {
+    super(definition.prefab, definition.tags, positionOf(transform));
+    this.definition = definition;
+    this.transform = transform;
+    this.animation = animation;
+    this.butterflyWorld = butterflyWorld;
+    this.getOthers = getOthers;
+    this.randomSource = random;
+    this.dropLootItems = dropLoot;
+    for (const tag of definition.tags) this.dynamicTags.add(tag);
+    let shared = entityRegistries.get(butterflyWorld);
+    if (!shared) entityRegistries.set(butterflyWorld, shared = new ButterflyEntities());
+    this.sharedEntities = shared;
+    this.world = this.createWorld();
+    // locomotor must be constructed before the stategraph.
+    this.locomotor = new LocoMotor(this);
+    if (definition.walkspeed !== undefined) this.locomotor.walkspeed = definition.walkspeed;
+    this.components.locomotor = this.locomotor;
+    this.components.knownlocations = new KnownLocations();
+    if (definition.pollinates) this.components.pollinator = new Pollinator<BrainEntity>(this);
+    this.onAnimationOver = () => this.sg.pushEvent('animover');
+    this.sg = new ButterflyStateGraph(this);
+    this.brain = definition.createBrain(this);
+    this.brain.inst.brain = this.brain;
+    // OnDropped explicitly enters idle rather than the graph's initial takeoff.
+    this.onDropped();
+  }
+
+  // --- BrainInst / entity script
+  getTime(): number { return this.time; }
+  random(): number { return this.randomSource(); }
+  addTag(tag: string): void { this.dynamicTags.add(tag); this.tagsChanged?.(); }
+  removeTag(tag: string): void { this.dynamicTags.delete(tag); this.tagsChanged?.(); }
+  override hasTag(tag: string): boolean { return this.dynamicTags.has(tag); }
+  isNear(other: BrainEntity, distance: number): boolean {
+    return distanceSquared(this.getPosition(), other.getPosition()) <= distance * distance;
+  }
+  getAngleToPoint(x: number, _y: number, z: number): number {
+    const position = this.getPosition();
+    const angle = Math.atan2(-(z - position.z), x - position.x) * RADIANS;
+    return (angle % 360 + 360) % 360;
+  }
+  setRotation(degrees: number): void { this.rotation = degrees; }
+  get facing(): number { return this.rotation; }
+
+  ListenForEvent(name: string, fn: (data?: unknown) => void): void {
+    let set = this.listeners.get(name);
+    if (!set) this.listeners.set(name, set = new Set());
+    set.add(fn);
+  }
+  RemoveEventCallback(name: string, fn: (data?: unknown) => void): void { this.listeners.get(name)?.delete(fn); }
+
+  PushEvent(name: string, data?: unknown): void {
+    for (const listener of [...this.listeners.get(name) ?? []]) listener(data);
+    this.sg.pushEvent(name, data);
+  }
+
+  /** entityscript.lua PushBufferedAction */
+  PushBufferedAction(action: BufferedAction): void {
+    const current = this.bufferedaction;
+    if (current && current.target === action.target && current.action === action.action
+      && current.invobject === action.invobject && !this.sg.hasStateTag('idle')) return;
+    if (current) {
+      current.fail();
+      this.bufferedaction = undefined;
+    }
+    if (!action.isValid()) {
+      this.PushEvent('actionfailed', { action });
+      return;
+    }
+    this.bufferedaction = action;
+    if (!this.sg.startAction(action)) {
+      this.PushEvent('performaction', { action });
+      action.fail();
+      this.bufferedaction = undefined;
+    }
+  }
+
+  // --- ButterflyStateInst
+  performBufferedAction(): boolean | undefined {
+    const action = this.bufferedaction;
+    if (!action) return undefined;
+    const target = action.target as BrainEntity | undefined;
+    if (target?.isValid()) {
+      const { x, y, z } = target.getPosition();
+      this.setRotation(this.getAngleToPoint(x, y, z));
+    }
+    this.PushEvent('performaction', { action });
+    const success = action.do();
+    if (success) {
+      if (this.bufferedaction === action) this.bufferedaction = undefined;
+      return true;
+    }
+    this.PushEvent('actionfailed', { action });
+    action.fail();
+    if (this.bufferedaction === action) this.bufferedaction = undefined;
+    return undefined;
+  }
+
+  playAnimation(name: string, loop = false): void {
+    if (loop) this.animation.start(name);
+    else this.animation.playOnce(name, this.onAnimationOver);
+  }
+  // PushAnimation is only used after the previous animation completed, so it plays immediately.
+  pushAnimation(name: string, loop = false): void { this.playAnimation(name, loop); }
+  isCurrentAnimation(name: string): boolean { return this.animation.currentAnimation === name; }
+  getCurrentAnimationLength(): number { return this.animation.currentAnimationLength; }
+  stopPhysics(): void { this.motorSpeed = 0; }
+  removePhysicsColliders(): void { /* flying creatures have no physics body in this world */ }
+  setMotorSpeed(speed: number): void { this.motorSpeed = speed; }
+  landFlyingCreature(): void { this.removeTag('flying'); this.PushEvent('on_landed'); }
+  raiseFlyingCreature(): void { this.addTag('flying'); this.PushEvent('on_no_longer_landed'); }
+  dropLoot(): void {
+    const items = this.definition.generateLoot(() => this.random());
+    const { x, y, z } = this.getPosition();
+    this.dropLootItems?.(items, new THREE.Vector3(x, y, z));
+  }
+  remove(): void {
+    if (this.removed) return;
+    this.removed = true;
+    this.valid = false;
+    this.brain.Stop();
+    this.stopPhysics();
+  }
+  isValid(): boolean { return this.valid && !this.removed; }
+
+  // --- lifecycle driven by the inventory entity
+  get state(): ButterflyState { return this.removed ? 'removed' : this.sg.stateName; }
+  get targetFlowerId(): string | undefined {
+    const target = this.components.pollinator?.target;
+    return target ? this.sharedEntities.idOf(target) : undefined;
+  }
+
+  onDropped(): void {
+    this.removed = false;
+    this.valid = true;
+    this.bufferedaction = undefined;
+    this.brain.Stop();
+    this.locomotor.Stop();
+    this.sg.goToState('idle');
+    this.brain.Start();
+  }
+
+  onPutInInventory(): void {
+    this.brain.Stop();
+    this.locomotor.Stop();
+    this.bufferedaction = undefined;
+    this.removed = true;
+    this.valid = false;
+  }
+
+  /** One frame: brain, locomotor, stategraph, then the physics motor. */
+  update(dt: number): void {
+    if (this.removed) return;
+    const step = Math.max(0, Math.min(dt, 0.1));
+    this.time += step;
+    this.snapshot = this.sharedEntities.sync(this.butterflyWorld);
+    this.brain.tick(this.time);
+    if (this.locomotor.isUpdating) this.locomotor.update(step);
+    if (this.removed) return;
+    this.sg.update(step);
+    if (this.removed) return;
+    this.stepMotor(step);
+    this.animation.update(step);
+  }
+
+  private stepMotor(dt: number): void {
+    if (this.motorSpeed <= 0) return;
+    const radians = this.rotation / RADIANS;
+    const position = this.scratch.fromArray(this.transform.position);
+    position.x += Math.cos(radians) * this.motorSpeed * dt;
+    position.z -= Math.sin(radians) * this.motorSpeed * dt;
+    this.butterflyWorld.constrainPosition?.(position);
+    this.transform.position = position.toArray();
+  }
+
+  tagsChanged?: () => void;
+
+  private createWorld(): BrainWorld {
+    const world = this.butterflyWorld;
+    const creature = this;
+    const candidates = (): BrainEntity[] => {
+      const { flowers, threats } = creature.snapshot;
+      return [...threats, ...flowers, ...creature.getOthers().filter(other => other !== creature && other.isValid())];
+    };
+    const matches = (entity: BrainEntity, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) =>
+      (must ?? []).every(tag => entity.hasTag(tag)) && !(cant ?? []).some(tag => entity.hasTag(tag))
+      && (!oneOf?.length || oneOf.some(tag => entity.hasTag(tag)));
+    const find = (from: BrainEntity, radius: number, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) => {
+      const origin = from.getPosition();
+      return candidates()
+        .filter(entity => entity !== from && entity.isValid() && matches(entity, must, cant, oneOf)
+          && distanceSquared(origin, entity.getPosition()) <= radius * radius)
+        .sort((a, b) => distanceSquared(origin, a.getPosition()) - distanceSquared(origin, b.getPosition()));
+    };
+    return {
+      get isDay() { return world.isDay(); },
+      findEntity: (from, radius, fn, must, cant, oneOf) =>
+        find(from, radius, must, cant, oneOf).find(entity => fn === undefined || fn(entity, from)),
+      getClosestInstWithTag: (tags, from, radius) => find(from, radius, tags)[0],
+      isAboveGroundAtPoint: (x, _y, z) => {
+        if (!world.constrainPosition) return true;
+        const point = new THREE.Vector3(x, 0, z);
+        world.constrainPosition(point);
+        return point.x === x && point.z === z;
+      },
+    };
+  }
+}
+
+/** Share original DST build textures across separately animated butterflies. */
+export class ButterflyAssets {
+  private readonly factories = new Map<ButterflyPrefabId, Promise<AnimatedSpriteFactory>>();
+  private disposed = false;
+  private readonly assetBaseUrl: string;
+
+  constructor(assetBaseUrl: string) { this.assetBaseUrl = assetBaseUrl; }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const factory of this.factories.values()) void factory.then((value) => value.dispose(), () => undefined);
+    this.factories.clear();
+  }
+
+  private factory(prefab: ButterflyPrefabId): Promise<AnimatedSpriteFactory> {
+    let request = this.factories.get(prefab);
+    if (!request) {
+      // butterfly.lua: bank butterfly / build butterfly_basic. moonbutterfly.lua: the same bank with butterfly_moon.
+      request = prefab === BUTTERFLY_ID
+        ? createAnimatedSpriteFactory(this.assetBaseUrl, 'butterfly_basic.zip')
+        : (async () => {
+          const [{ buildPackage, animations }, skin] = await Promise.all([
+            loadAnimationArchive('butterfly_basic.zip', this.assetBaseUrl),
+            loadSpriteSkinArchive('butterfly_moon.zip', this.assetBaseUrl),
+          ]);
+          return createSpriteFactory(buildPackage, animations, SpriteController, skin);
+        })();
+      this.factories.set(prefab, request);
+      void request.catch(() => this.factories.delete(prefab));
+    }
+    return request;
+  }
+
+  async create(prefab: ButterflyPrefabId, world: ButterflyWorld,
+    getOthers: () => readonly ButterflyCreature[], dropLoot?: ButterflyCreature['dropLootItems']) {
+    if (this.disposed) throw new Error('Insect assets have been disposed');
+    const factory = await this.factory(prefab);
+    if (this.disposed) throw new Error('Insect assets have been disposed');
+    const model = factory.create({ initialAnimation: 'idle_flight_loop', name: `GroundItem:${prefab}` });
+    let creature: ButterflyCreature | undefined;
+    const removeInventoryEvents = listenInventoryEvents(model, {
+      ondropped: () => creature?.onDropped(),
+      onputininventory: () => creature?.onPutInInventory(),
+    });
+    return {
+      model, get controller() { return creature; },
+      bindTransform(transform: ItemEntity['transform']) {
+        creature = new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], transform,
+          model.userData.animationController as SpriteController, world, getOthers, undefined, dropLoot);
+        creature.tagsChanged = () => { model.userData.tags = [...creature!.dynamicTags]; };
+        model.userData.tags = [...creature.dynamicTags];
+        Object.assign(model.userData, { itemId: prefab, prefab, butterflyController: creature });
+      },
+      update: (dt: number) => creature?.update(dt),
+      isRemoved: () => creature?.removed ?? false,
+      dispose() { removeInventoryEvents(); creature?.onPutInInventory(); factory.disposeSprite(model); },
+    };
+  }
+}
+
+/** Keep the butterfly's flower-occupancy rules with its own prefab. */
+export async function createButterflyGroundSprite(
+  assets: ButterflyAssets,
+  world: ButterflyWorld,
+  getNeighbours: () => readonly { model: THREE.Group; position: THREE.Vector3 }[],
+  prefab: ButterflyPrefabId = BUTTERFLY_ID,
+  dropLoot?: ButterflyCreature['dropLootItems'],
+) {
+  let model: THREE.Group | undefined;
+  const visual = await assets.create(prefab, world, () => getNeighbours()
+    .filter(neighbour => neighbour.model !== model)
+    .flatMap(neighbour => {
+      const creature = neighbour.model.userData.butterflyController as ButterflyCreature | undefined;
+      return creature ? [creature] : [];
+    }), dropLoot);
+  model = visual.model;
+  return { ...visual, get controller() { return visual.controller; }, isRemoved: () => visual.controller?.removed ?? false };
+}
+
+/** Back-compat name for the live inst driving a ground butterfly's model. */
+export { ButterflyCreature as ButterflyController };
+
+export function createButterflyGroundFactory(context: GroundPrefabContext): GroundItemFactory {
+  const assets = new ButterflyAssets(context.animationBaseUrl);
+  const dropLoot = (itemIds: readonly string[], position: THREE.Vector3) => {
+    const counts = new Map<string, number>();
+    for (const itemId of itemIds) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
+    const items: GroundItemDefinition[] = [...counts].map(([itemId, count]) => ({
+      ...catalog.items[itemId as keyof typeof catalog.items], itemId, count,
+    }));
+    void context.dropLoot?.(items, position).catch((error: unknown) => console.error('Unable to drop butterfly loot', error));
+  };
+  return {
+    itemIds: [BUTTERFLY_ID, MOONBUTTERFLY_ID], capture: 'net',
+    configureEntity: entity => (entity.prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(entity),
+    create: async (definition) => {
+      const prefab = definition.itemId === MOONBUTTERFLY_ID ? MOONBUTTERFLY_ID : BUTTERFLY_ID;
+      await PreloadSounds('dontstarve/common/butterfly_trap');
+      const visual = await createButterflyGroundSprite(assets, context.butterflyWorld, context.getNeighbours, prefab, dropLoot);
+      if (prefab === MOONBUTTERFLY_ID) bindMoonButterflyVisual(visual);
+      return visual;
+    },
+    dispose: () => assets.dispose(),
+  };
+}
+
+// moonbutterfly.lua light: radius .5, intensity .5 flickering, falloff .8, colour (.3, .55, .45), light override .15.
+const LIGHT_RADIUS = .5 * (TILE_SIZE / 4), LIGHT_INTENSITY = .5, LIGHT_FALLOFF = .8;
+
+function bindMoonButterflyVisual(visual: Awaited<ReturnType<typeof createButterflyGroundSprite>>): void {
+  const { model } = visual;
+  let flickerTime = 0, flickerElapsed = 0, lit = true;
+  const setLight = (intensity: number) => setPrefabLocalLight(model, lit
+    ? { colour: [.3, .55, .45], radius: LIGHT_RADIUS, intensity, falloff: LIGHT_FALLOFF } : null);
+  setPrefabLightOverride(model, .15);
+  setLight(LIGHT_INTENSITY);
+  const update = visual.update;
+  // OnUpdateFlicker runs every .1s: intensity = .5 + .05 * (1 + sin(t * .7 + sin(t * 6.28))) / 2, t in 15x seconds.
+  visual.update = (dt: number) => {
+    update(dt);
+    flickerElapsed += dt;
+    while (flickerElapsed >= .1) {
+      flickerElapsed -= .1;
+      flickerTime += .1;
+      const time = flickerTime * 15;
+      const flicker = (1 + Math.sin(time * .7 + Math.sin(time * 6.28))) * .5;
+      setLight(LIGHT_INTENSITY + .05 * flicker);
+    }
+  };
+  const bindEntity = (entity: ItemEntity) => {
+    entity.ListenForEvent('perished', () => {
+      if (entity.components.inventoryitem.owner || visual.controller?.removed) return;
+      // onperish: the net no longer works, the light goes out, then `death` and removal after 3 seconds.
+      entity.components.workable?.SetWorkable(false);
+      lit = false;
+      setLight(0);
+      setPrefabLightOverride(model, null);
+      visual.controller?.addTag('dead');
+      visual.controller?.removeTag('spore');
+      visual.controller?.PushEvent('death');
+      setTimeout(() => { if (!entity.isRemoved) entity.remove(); }, 3000);
+    });
+    entity.ListenForEvent('onputininventory', () => { lit = false; setLight(0); });
+    entity.ListenForEvent('ondropped', () => {
+      lit = true;
+      visual.controller?.components.knownlocations?.RememberLocation('home', visual.controller.getPosition());
+      setLight(LIGHT_INTENSITY);
+    });
+  };
+  Object.assign(visual, { bindEntity });
+}

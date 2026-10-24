@@ -1,0 +1,63 @@
+
+# 自动部署 Vite 项目到 GitHub Pages
+name: Deploy static content to Pages
+
+on:
+  # 支持在 Actions 页面手动触发部署
+  workflow_dispatch:
+  # 每次推送到 main 分支时触发部署
+  push:
+    branches: ['main'] # 如果你的默认分支是 master，请将其改为 master
+
+# 设置所需的权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 允许并发部署，但会自动取消正在进行的旧部署，只保留最新的一次
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  # 部署任务
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. 新增这一步：安装 pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9 # 你可以指定为你本地使用的 pnpm 版本，如 8 或 9
+        
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm' # 如果你使用的是 pnpm 或 yarn，请将这里改为 'pnpm' 或 'yarn'
+          
+      - name: Install dependencies
+        run: pnpm install # 如果使用 pnpm，改为 pnpm install
+        
+      - name: Build
+        run: pnpm run build # 如果使用 pnpm，改为 pnpm run build
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Vite 构建后的默认输出目录是 dist
+          path: './dist' 
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

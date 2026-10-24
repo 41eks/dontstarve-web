@@ -1,0 +1,5422 @@
+{
+  "items": {
+    "cutgrass": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/cutgrass.lua",
+      "name": "采下的草",
+      "icon": "cutgrass.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cutgrass.zip",
+      "buildArchives": [
+        "cutgrass.zip"
+      ],
+      "bank": "cutgrass",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "twigs": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/twigs.lua",
+      "name": "树枝",
+      "icon": "twigs.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "twigs.zip",
+      "buildArchives": [
+        "twigs.zip"
+      ],
+      "bank": "twigs",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "log": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/log.lua",
+      "name": "木头",
+      "icon": "log.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "log.zip",
+      "buildArchives": [
+        "log.zip"
+      ],
+      "bank": "log",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cutreeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/cutreeds.lua",
+      "name": "采下的芦苇",
+      "icon": "cutreeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cutreeds.zip",
+      "buildArchives": [
+        "cutreeds.zip"
+      ],
+      "bank": "cutreeds",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "boards": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/boards.lua",
+      "name": "木板",
+      "icon": "boards.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "boards.zip",
+      "buildArchives": [
+        "boards.zip"
+      ],
+      "bank": "boards",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "rope": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/rope.lua",
+      "name": "绳子",
+      "icon": "rope.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "rope.zip",
+      "buildArchives": [
+        "rope.zip"
+      ],
+      "bank": "rope",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cutstone": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/cutstone.lua",
+      "name": "石砖",
+      "icon": "cutstone.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cutstone.zip",
+      "buildArchives": [
+        "cutstone.zip"
+      ],
+      "bank": "cutstone",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "flint": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/flint.lua",
+      "name": "燧石",
+      "icon": "flint.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "flint.zip",
+      "buildArchives": [
+        "flint.zip"
+      ],
+      "bank": "flint",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "goldnugget": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/goldnugget.lua",
+      "name": "金块",
+      "icon": "goldnugget.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gold_nugget.zip",
+      "buildArchives": [
+        "gold_nugget.zip"
+      ],
+      "bank": "goldnugget",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "gears": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gears.lua",
+      "name": "齿轮",
+      "icon": "gears.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gears.zip",
+      "buildArchives": [
+        "gears.zip"
+      ],
+      "bank": "gears",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "charcoal": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/charcoal.lua",
+      "name": "木炭",
+      "icon": "charcoal.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "charcoal.zip",
+      "buildArchives": [
+        "charcoal.zip"
+      ],
+      "bank": "charcoal",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pigskin": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pigskin.lua",
+      "name": "猪皮",
+      "icon": "pigskin.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pigskin.zip",
+      "buildArchives": [
+        "pigskin.zip"
+      ],
+      "bank": "pigskin",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "silk": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/silk.lua",
+      "name": "蜘蛛丝",
+      "icon": "silk.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "silk.zip",
+      "buildArchives": [
+        "silk.zip"
+      ],
+      "bank": "silk",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "stinger": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/stinger.lua",
+      "name": "针刺",
+      "icon": "stinger.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "stinger.zip",
+      "buildArchives": [
+        "stinger.zip"
+      ],
+      "bank": "stinger",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "houndstooth": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/houndstooth.lua",
+      "name": "犬牙",
+      "icon": "houndstooth.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "hounds_tooth.zip",
+      "buildArchives": [
+        "hounds_tooth.zip"
+      ],
+      "bank": "houndstooth",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "nitre": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/nitre.lua",
+      "name": "硝石",
+      "icon": "nitre.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "nitre.zip",
+      "buildArchives": [
+        "nitre.zip"
+      ],
+      "bank": "nitre",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "livinglog": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/livinglog.lua",
+      "name": "活木头",
+      "icon": "livinglog.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "livinglog.zip",
+      "buildArchives": [
+        "livinglog.zip"
+      ],
+      "bank": "livinglog",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "nightmarefuel": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/nightmarefuel.lua",
+      "name": "噩梦燃料",
+      "icon": "nightmarefuel.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "nightmarefuel.zip",
+      "buildArchives": [
+        "nightmarefuel.zip"
+      ],
+      "bank": "nightmarefuel",
+      "animation": "idle_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "multColour": [
+        1.0,
+        1.0,
+        1.0,
+        0.5
+      ],
+      "pointFiltering": true
+    },
+    "petals": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/petals.lua",
+      "name": "花瓣",
+      "icon": "petals.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "flower_petals.zip",
+      "buildArchives": [
+        "flower_petals.zip"
+      ],
+      "bank": "petals",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "petals_evil": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/petals_evil.lua",
+      "name": "深色花瓣",
+      "icon": "petals_evil.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "flower_petals_evil.zip",
+      "buildArchives": [
+        "flower_petals_evil.zip"
+      ],
+      "bank": "flower_petals_evil",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "ash": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/ash.lua",
+      "name": "灰烬",
+      "icon": "ash.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "ash.zip",
+      "buildArchives": [
+        "ash.zip"
+      ],
+      "bank": "ashes",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "beefalowool": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/beefalowool.lua",
+      "name": "牛毛",
+      "icon": "beefalowool.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "beefalo_wool.zip",
+      "buildArchives": [
+        "beefalo_wool.zip"
+      ],
+      "bank": "beefalo_wool",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "boneshard": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/boneshard.lua",
+      "name": "骨头碎片",
+      "icon": "boneshard.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bone_shards.zip",
+      "buildArchives": [
+        "bone_shards.zip"
+      ],
+      "bank": "bone_shards",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "butterflywings": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/butterflywings.lua",
+      "name": "蝴蝶翅膀",
+      "icon": "butterflywings.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "butterfly_wings.zip",
+      "buildArchives": [
+        "butterfly_wings.zip"
+      ],
+      "bank": "butterfly_wings",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "honey": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/honey.lua",
+      "name": "蜂蜜",
+      "icon": "honey.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "honey.zip",
+      "buildArchives": [
+        "honey.zip"
+      ],
+      "bank": "honey",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "honeycomb": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/honeycomb.lua",
+      "name": "蜜脾",
+      "icon": "honeycomb.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "honeycomb.zip",
+      "buildArchives": [
+        "honeycomb.zip"
+      ],
+      "bank": "honeycomb",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "thulecite": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/thulecite.lua",
+      "name": "铥矿",
+      "icon": "thulecite.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "thulecite.zip",
+      "buildArchives": [
+        "thulecite.zip"
+      ],
+      "bank": "thulecite",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "thulecite_pieces": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/thulecite_pieces.lua",
+      "name": "铥矿碎片",
+      "icon": "thulecite_pieces.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "thulecite_pieces.zip",
+      "buildArchives": [
+        "thulecite_pieces.zip"
+      ],
+      "bank": "thulecite_pieces",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "guano": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/guano.lua",
+      "name": "鸟粪",
+      "icon": "guano.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "guano.zip",
+      "buildArchives": [
+        "guano.zip"
+      ],
+      "bank": "guano",
+      "animation": "dump",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "tentaclespots": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/tentaclespots.lua",
+      "name": "触手皮",
+      "icon": "tentaclespots.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "tentaclespots.zip",
+      "buildArchives": [
+        "tentaclespots.zip"
+      ],
+      "bank": "tentaclespots",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "spidergland": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/spidergland.lua",
+      "name": "蜘蛛腺",
+      "icon": "spidergland.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "spider_gland.zip",
+      "buildArchives": [
+        "spider_gland.zip"
+      ],
+      "bank": "spider_gland",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "slurtleslime": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/slurtleslime.lua",
+      "name": "蛞蝓龟黏液",
+      "icon": "slurtleslime.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "slurtle_slime.zip",
+      "buildArchives": [
+        "slurtle_slime.zip"
+      ],
+      "bank": "slurtle_slime",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "slurtle_shellpieces": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/slurtle_shellpieces.lua",
+      "name": "外壳碎片",
+      "icon": "slurtle_shellpieces.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "slurtle_shellpieces.zip",
+      "buildArchives": [
+        "slurtle_shellpieces.zip"
+      ],
+      "bank": "slurtle_shellpieces",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "walrus_tusk": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walrus_tusk.lua",
+      "name": "海象牙",
+      "icon": "walrus_tusk.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "walrus_tusk.zip",
+      "buildArchives": [
+        "walrus_tusk.zip"
+      ],
+      "bank": "walrus_tusk",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "deerclops_eyeball": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/deerclops_eyeball.lua",
+      "name": "独眼巨鹿眼球",
+      "icon": "deerclops_eyeball.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "deerclops_eyeball.zip",
+      "buildArchives": [
+        "deerclops_eyeball.zip"
+      ],
+      "bank": "deerclops_eyeball",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "bearger_fur": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bearger_fur.lua",
+      "name": "熊皮",
+      "icon": "bearger_fur.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bearger_fur.zip",
+      "buildArchives": [
+        "bearger_fur.zip"
+      ],
+      "bank": "bearger_fur",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dragon_scales": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/dragon_scales.lua",
+      "name": "鳞片",
+      "icon": "dragon_scales.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "dragon_scales.zip",
+      "buildArchives": [
+        "dragon_scales.zip"
+      ],
+      "bank": "dragon_scales",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "glommerfuel": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/glommerfuel.lua",
+      "name": "格罗姆的黏液",
+      "icon": "glommerfuel.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "glommer_fuel.zip",
+      "buildArchives": [
+        "glommer_fuel.zip"
+      ],
+      "bank": "glommer_fuel",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "acorn": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/acorn.lua",
+      "name": "桦栗果",
+      "icon": "acorn.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "acorn.zip",
+      "buildArchives": [
+        "acorn.zip"
+      ],
+      "bank": "acorn",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dreadstone": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/dreadstone.lua",
+      "name": "绝望石",
+      "icon": "dreadstone.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "dreadstone.zip",
+      "buildArchives": [
+        "dreadstone.zip"
+      ],
+      "bank": "dreadstone",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "wagpunk_bits": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/wagpunk_bits.lua",
+      "name": "废料",
+      "icon": "wagpunk_bits.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "wagpunk_bits.zip",
+      "buildArchives": [
+        "wagpunk_bits.zip"
+      ],
+      "bank": "wagpunk_bits",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "moonrocknugget": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/moonrocknugget.lua",
+      "name": "月岩",
+      "icon": "moonrocknugget.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "moonrock_nugget.zip",
+      "buildArchives": [
+        "moonrock_nugget.zip"
+      ],
+      "bank": "moonrocknugget",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "rocks": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/inv_rocks.lua",
+      "name": "石头",
+      "icon": "rocks.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "rocks.zip",
+      "buildArchives": [
+        "rocks.zip"
+      ],
+      "bank": "rocks",
+      "animation": "f1",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "ice": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/inv_rocks_ice.lua",
+      "name": "冰",
+      "icon": "ice.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "ice.zip",
+      "buildArchives": [
+        "ice.zip"
+      ],
+      "bank": "ice",
+      "animation": "f1",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "marble": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/inv_marble.lua",
+      "name": "大理石",
+      "icon": "marble.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "marble.zip",
+      "buildArchives": [
+        "marble.zip"
+      ],
+      "bank": "marble",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "moonbutterfly": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/moonbutterfly.lua",
+      "name": "月蛾",
+      "icon": "moonbutterfly.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "butterfly_basic.zip",
+      "buildArchives": [
+        "butterfly_moon.zip"
+      ],
+      "bank": "butterfly",
+      "animation": "idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "moonbutterflywings": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/moonbutterflywings.lua",
+      "name": "月蛾翅膀",
+      "icon": "moonbutterflywings.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "moonbutterfly_wings.zip",
+      "buildArchives": [
+        "moonbutterfly_wings.zip"
+      ],
+      "bank": "moonbutterfly_wings",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "moon_tree_blossom": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/moontree_blossom.lua",
+      "name": "月树花",
+      "icon": "moon_tree_blossom.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "moon_tree_petal.zip",
+      "buildArchives": [
+        "moon_tree_petal.zip"
+      ],
+      "bank": "moon_tree_petal",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/seeds.lua",
+      "name": "种子",
+      "icon": "seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "seeds.zip",
+      "buildArchives": [
+        "seeds.zip"
+      ],
+      "bank": "seeds",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "seeds_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/seeds.lua",
+      "name": "烤种子",
+      "icon": "seeds_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "seeds.zip",
+      "buildArchives": [
+        "seeds.zip"
+      ],
+      "bank": "seeds",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "red_cap": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "采摘的红蘑菇",
+      "icon": "red_cap.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "red_cap",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "red_cap_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "熟红蘑菇",
+      "icon": "red_cap_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "red_cap_cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "green_cap": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "采摘的绿蘑菇",
+      "icon": "green_cap.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "green_cap",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "green_cap_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "熟绿蘑菇",
+      "icon": "green_cap_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "green_cap_cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "blue_cap": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "采摘的蓝蘑菇",
+      "icon": "blue_cap.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "blue_cap",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "blue_cap_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
+      "name": "熟蓝蘑菇",
+      "icon": "blue_cap_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "mushrooms.zip",
+      "buildArchives": [
+        "mushrooms.zip"
+      ],
+      "bank": "mushrooms",
+      "animation": "blue_cap_cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pinecone": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pinecone.lua",
+      "name": "松果",
+      "icon": "pinecone.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pinecone.zip",
+      "buildArchives": [
+        "pinecone.zip"
+      ],
+      "bank": "pinecone",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "acorn_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/acorn.lua",
+      "name": "烤桦栗果",
+      "icon": "acorn_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "acorn.zip",
+      "buildArchives": [
+        "acorn.zip"
+      ],
+      "bank": "acorn",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "poop": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/poop.lua",
+      "name": "粪肥",
+      "icon": "poop.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "poop.zip",
+      "buildArchives": [
+        "poop.zip"
+      ],
+      "bank": "poop",
+      "animation": "dump",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "spoiled_food": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/spoiledfood.lua",
+      "name": "腐烂物",
+      "icon": "spoiled_food.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "spoiled_food.zip",
+      "buildArchives": [
+        "spoiled_food.zip"
+      ],
+      "bank": "spoiled",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "redgem": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
+      "name": "红宝石",
+      "icon": "redgem.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gems.zip",
+      "buildArchives": [
+        "gems.zip"
+      ],
+      "bank": "gems",
+      "animation": "redgem_idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "bluegem": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
+      "name": "蓝宝石",
+      "icon": "bluegem.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gems.zip",
+      "buildArchives": [
+        "gems.zip"
+      ],
+      "bank": "gems",
+      "animation": "bluegem_idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "purplegem": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
+      "name": "紫宝石",
+      "icon": "purplegem.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gems.zip",
+      "buildArchives": [
+        "gems.zip"
+      ],
+      "bank": "gems",
+      "animation": "purplegem_idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "greengem": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
+      "name": "绿宝石",
+      "icon": "greengem.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gems.zip",
+      "buildArchives": [
+        "gems.zip"
+      ],
+      "bank": "gems",
+      "animation": "greengem_idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "orangegem": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
+      "name": "橙宝石",
+      "icon": "orangegem.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gems.zip",
+      "buildArchives": [
+        "gems.zip"
+      ],
+      "bank": "gems",
+      "animation": "orangegem_idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "yellowgem": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
+      "name": "黄宝石",
+      "icon": "yellowgem.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gems.zip",
+      "buildArchives": [
+        "gems.zip"
+      ],
+      "bank": "gems",
+      "animation": "yellowgem_idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "opalpreciousgem": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
+      "name": "彩虹宝石",
+      "icon": "opalpreciousgem.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "gems.zip",
+      "buildArchives": [
+        "gems.zip"
+      ],
+      "bank": "gems",
+      "animation": "opalgem_idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "feather_crow": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
+      "name": "黑色羽毛",
+      "icon": "feather_crow.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "feather_crow.zip",
+      "buildArchives": [
+        "feather_crow.zip"
+      ],
+      "bank": "feather_crow",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "feather_robin": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
+      "name": "红色羽毛",
+      "icon": "feather_robin.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "feather_robin.zip",
+      "buildArchives": [
+        "feather_robin.zip"
+      ],
+      "bank": "feather_robin",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "feather_robin_winter": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
+      "name": "蓝色羽毛",
+      "icon": "feather_robin_winter.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "feather_robin_winter.zip",
+      "buildArchives": [
+        "feather_robin_winter.zip"
+      ],
+      "bank": "feather_robin_winter",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "feather_canary": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
+      "name": "黄色羽毛",
+      "icon": "feather_canary.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "feather_canary.zip",
+      "buildArchives": [
+        "feather_canary.zip"
+      ],
+      "bank": "feather_canary",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "torch": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/torch.lua",
+      "name": "火炬",
+      "icon": "torch.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "torch.zip",
+      "buildArchives": [
+        "swap_torch.zip"
+      ],
+      "bank": "torch",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "torch_barber": "dynamic/torch_barber.zip",
+        "torch_carrat": "dynamic/torch_carrat.zip",
+        "torch_carrat_alt": "dynamic/torch_carrat.zip",
+        "torch_cawnival": "dynamic/torch_cawnival.zip",
+        "torch_nautical": "dynamic/torch_nautical.zip",
+        "torch_pillar": "dynamic/torch_pillar.zip",
+        "torch_pillar_alt": "dynamic/torch_pillar.zip",
+        "torch_pronged": "dynamic/torch_pronged.zip",
+        "torch_rag": "dynamic/torch_rag.zip",
+        "torch_shadow": "dynamic/torch_shadow.zip",
+        "torch_shadow_alt": "dynamic/torch_shadow_alt.zip",
+        "torch_spooky": "dynamic/torch_spooky.zip",
+        "torch_spookyp": "dynamic/torch_spooky.zip",
+        "torch_tesla": "dynamic/torch_tesla.zip"
+      }
+    },
+    "backpack": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/backpack.lua",
+      "name": "背包",
+      "icon": "backpack.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "backpack.zip",
+      "buildArchives": [
+        "swap_backpack.zip"
+      ],
+      "bank": "backpack1",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "backpack_babybeef": "dynamic/backpack_babybeef.zip",
+        "backpack_basic_blue_catcoon": "dynamic/backpack_basic_blue_catcoon.zip",
+        "backpack_basic_green_olive": "dynamic/backpack_basic_green_olive.zip",
+        "backpack_bat": "dynamic/backpack_bat.zip",
+        "backpack_beefalo": "dynamic/backpack_beefalo.zip",
+        "backpack_buckle_grey_pewter": "dynamic/backpack_buckle_grey_pewter.zip",
+        "backpack_buckle_navy_phthalo": "dynamic/backpack_buckle_navy_phthalo.zip",
+        "backpack_buckle_red_rook": "dynamic/backpack_buckle_red_rook.zip",
+        "backpack_camping_green_viridian": "dynamic/backpack_camping_green_viridian.zip",
+        "backpack_camping_orange_carrot": "dynamic/backpack_camping_orange_carrot.zip",
+        "backpack_camping_red_koalefant": "dynamic/backpack_camping_red_koalefant.zip",
+        "backpack_carrat": "dynamic/backpack_carrat.zip",
+        "backpack_catcoon": "dynamic/backpack_catcoon.zip",
+        "backpack_catcoonp": "dynamic/backpack_catcoon.zip",
+        "backpack_chester": "dynamic/backpack_chester.zip",
+        "backpack_crab": "dynamic/backpack_crab.zip",
+        "backpack_crab_resurrected": "dynamic/backpack_crab.zip",
+        "backpack_deerclops": "dynamic/backpack_deerclops.zip",
+        "backpack_deerclops_resurrected": "dynamic/backpack_deerclops.zip",
+        "backpack_dragonfly_fire": "dynamic/backpack_dragonfly_fire.zip",
+        "backpack_glommer": "dynamic/backpack_glommer.zip",
+        "backpack_glommer_resurrected": "dynamic/backpack_glommer.zip",
+        "backpack_heart": "dynamic/backpack_heart.zip",
+        "backpack_hound": "dynamic/backpack_hound.zip",
+        "backpack_invisible": "dynamic/backpack_invisible.zip",
+        "backpack_koalefant": "dynamic/backpack_koalefant.zip",
+        "backpack_labrat": "dynamic/backpack_labrat.zip",
+        "backpack_mandrake": "dynamic/backpack_mandrake.zip",
+        "backpack_mandrake_resurrected": "dynamic/backpack_mandrake.zip",
+        "backpack_minigolf": "dynamic/backpack_minigolf.zip",
+        "backpack_mushy": "dynamic/backpack_mushy.zip",
+        "backpack_poop": "dynamic/backpack_poop.zip",
+        "backpack_rabbit": "dynamic/backpack_rabbit.zip",
+        "backpack_smallbird": "dynamic/backpack_smallbird.zip",
+        "backpack_spider": "dynamic/backpack_spider.zip",
+        "backpack_splumonkey": "dynamic/backpack_splumonkey.zip"
+      }
+    },
+    "bernie_inactive": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bernie_inactive.lua",
+      "name": "伯尼",
+      "icon": "bernie_inactive.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bernie.zip",
+      "buildArchives": [
+        "bernie_build.zip"
+      ],
+      "bank": "bernie",
+      "animation": "inactive",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "bernie_cat": "dynamic/bernie_cat.zip",
+        "bernie_dog": "dynamic/bernie_dog.zip"
+      }
+    },
+    "farm_plow_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/farm_plow.lua",
+      "name": "耕地机",
+      "icon": "farm_plow_item.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "farm_plow.zip",
+      "buildArchives": [
+        "farm_plow.zip"
+      ],
+      "bank": "farm_plow",
+      "animation": "idle_packed",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "lantern": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/mininglantern.lua",
+      "name": "提灯",
+      "icon": "lantern.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "lantern.zip",
+      "buildArchives": [
+        "lantern.zip"
+      ],
+      "bank": "lantern",
+      "animation": "idle_off",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "lantern_crystal": "dynamic/lantern_crystal.zip",
+        "lantern_flower": "dynamic/lantern_flower.zip",
+        "lantern_flower_alt": "dynamic/lantern_flower.zip",
+        "lantern_gothic": "dynamic/lantern_gothic.zip",
+        "lantern_insect": "dynamic/lantern_insect.zip",
+        "lantern_mummy": "dynamic/lantern_mummy.zip",
+        "lantern_mummy_alt": "dynamic/lantern_mummy.zip",
+        "lantern_mystical": "dynamic/lantern_mystical.zip",
+        "lantern_retro": "dynamic/lantern_retro.zip",
+        "lantern_tesla": "dynamic/lantern_tesla.zip",
+        "lantern_winter": "dynamic/lantern_winter.zip",
+        "lantern_winter_alt": "dynamic/lantern_winter.zip"
+      }
+    },
+    "phonograph": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/phonograph.lua",
+      "name": "留声机",
+      "icon": "phonograph.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "phonograph.zip",
+      "buildArchives": [
+        "phonograph.zip"
+      ],
+      "bank": "phonograph",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "decor_phonograph_cawnival": "dynamic/decor_phonograph_cawnival.zip",
+        "decor_phonograph_fantasy": "dynamic/decor_phonograph_fantasy.zip",
+        "decor_phonograph_hallowed": "dynamic/decor_phonograph_hallowed.zip",
+        "decor_phonograph_handmade": "dynamic/decor_phonograph_handmade.zip",
+        "decor_phonograph_rose": "dynamic/decor_phonograph_rose.zip",
+        "decor_phonograph_western": "dynamic/decor_phonograph_western.zip"
+      },
+      "hiddenSymbols": [
+        "snow"
+      ]
+    },
+    "record": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/records.lua",
+      "name": "唱片",
+      "icon": "record.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "records.zip",
+      "buildArchives": [
+        "records.zip"
+      ],
+      "bank": "records",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "record_creepyforest": "dynamic/record_creepyforest.zip",
+        "record_drstyle": "dynamic/record_drstyle.zip",
+        "record_efs": "dynamic/record_efs.zip",
+        "record_hallowednights": "dynamic/record_hallowednights.zip"
+      }
+    },
+    "lightbulb": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/lightbulb.lua",
+      "name": "荧光果",
+      "icon": "lightbulb.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bulb.zip",
+      "buildArchives": [
+        "bulb.zip"
+      ],
+      "bank": "bulb",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dug_grass": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
+      "name": "草丛",
+      "icon": "dug_grass.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "grass.zip",
+      "buildArchives": [
+        "grass1.zip"
+      ],
+      "bank": "grass",
+      "animation": "dropped",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dug_sapling": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
+      "name": "树苗",
+      "icon": "dug_sapling.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "sapling.zip",
+      "buildArchives": [
+        "sapling.zip"
+      ],
+      "bank": "sapling",
+      "animation": "dropped",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dug_sapling_moon": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
+      "name": "树苗",
+      "icon": "dug_sapling_moon.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "sapling_moon.zip",
+      "buildArchives": [
+        "sapling_moon.zip"
+      ],
+      "bank": "sapling_moon",
+      "animation": "dropped",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "butterfly": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/butterfly.lua",
+      "name": "蝴蝶",
+      "icon": "butterfly.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "butterfly_basic.zip",
+      "buildArchives": [
+        "butterfly_basic.zip"
+      ],
+      "bank": "butterfly",
+      "animation": "idle",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fireflies": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/fireflies.lua",
+      "name": "萤火虫",
+      "icon": "fireflies.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "fireflies.zip",
+      "buildArchives": [
+        "fireflies.zip"
+      ],
+      "bank": "fireflies",
+      "animation": "swarm_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "yellowstaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "唤星者魔杖",
+      "icon": "yellowstaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "yellowstaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "starstaff_crystal": "dynamic/starstaff_crystal.zip",
+        "starstaff_portal": "dynamic/starstaff_portal.zip",
+        "starstaff_relic": "dynamic/starstaff_relic.zip",
+        "starstaff_swamp": "dynamic/starstaff_swamp.zip"
+      }
+    },
+    "opalstaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "唤月者魔杖",
+      "icon": "opalstaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "opalstaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "moonstaff_crystal": "dynamic/starstaff_crystal.zip",
+        "moonstaff_portal": "dynamic/starstaff_portal.zip",
+        "moonstaff_relic": "dynamic/starstaff_relic.zip",
+        "moonstaff_swamp": "dynamic/starstaff_swamp.zip"
+      }
+    },
+    "greenstaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "拆解魔杖",
+      "icon": "greenstaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "greenstaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "greenstaff_an": "dynamic/greenstaff_an.zip",
+        "greenstaff_clockwork": "dynamic/greenstaff_clockwork.zip",
+        "greenstaff_planet": "dynamic/greenstaff_planet.zip"
+      }
+    },
+    "reskin_tool": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/reskin_tool.lua",
+      "name": "清洁扫把",
+      "icon": "reskin_tool.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "reskin_tool.zip",
+      "buildArchives": [
+        "reskin_tool.zip"
+      ],
+      "bank": "reskin_tool",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "reskin_tool_bouquet": "dynamic/reskin_tool_bouquet.zip",
+        "reskin_tool_brush": "dynamic/reskin_tool_brush.zip",
+        "reskin_tool_toilet": "dynamic/reskin_tool_toilet.zip",
+        "reskin_tool_wand": "dynamic/reskin_tool_wand.zip"
+      }
+    },
+    "book_silviculture": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/books.lua",
+      "name": "应用造林学",
+      "icon": "book_silviculture.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "books.zip",
+      "buildArchives": [
+        "books.zip"
+      ],
+      "bank": "books",
+      "animation": "book_silviculture",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "book_silviculture_livinglog": "dynamic/book_silviculture_livinglog.zip"
+      }
+    },
+    "hammer": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hammer.lua",
+      "name": "锤子",
+      "icon": "hammer.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "hammer.zip",
+      "buildArchives": [
+        "swap_hammer.zip"
+      ],
+      "bank": "hammer",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "hammer_crowbar": "dynamic/hammer_crowbar.zip",
+        "hammer_forge": "dynamic/hammer_forge.zip",
+        "hammer_hammush": "dynamic/hammer_hammush.zip",
+        "hammer_invisible": "dynamic/hammer_invisible.zip",
+        "hammer_rw_startingforest": "dynamic/hammer_rw_startingforest.zip"
+      }
+    },
+    "nightsword": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/nightsword.lua",
+      "name": "暗夜剑",
+      "icon": "nightsword.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "nightmaresword.zip",
+      "buildArchives": [
+        "nightmaresword.zip"
+      ],
+      "bank": "nightmaresword",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "nightsword_cotl": "dynamic/nightsword_cotl.zip",
+        "nightsword_curve": "dynamic/nightsword_curve.zip",
+        "nightsword_lightsbane": "dynamic/nightsword_lightsbane.zip",
+        "nightsword_sharp": "dynamic/nightsword_sharp.zip",
+        "nightsword_wizard": "dynamic/nightsword_wizard.zip"
+      }
+    },
+    "bugnet": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bugnet.lua",
+      "name": "捕虫网",
+      "icon": "bugnet.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bugnet.zip",
+      "buildArchives": [
+        "swap_bugnet.zip"
+      ],
+      "bank": "bugnet",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "bugnet_frog": "dynamic/bugnet_frog.zip",
+        "bugnet_garden": "dynamic/bugnet_garden.zip",
+        "bugnet_lavaproof": "dynamic/bugnet_lavaproof.zip",
+        "bugnet_spider": "dynamic/bugnet_spider.zip",
+        "bugnet_spider_white": "dynamic/bugnet_spider_white.zip"
+      }
+    },
+    "pitchfork": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
+      "name": "干草叉",
+      "icon": "pitchfork.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pitchfork.zip",
+      "buildArchives": [
+        "pitchfork.zip"
+      ],
+      "bank": "pitchfork",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "pitchfork_fork": "dynamic/pitchfork_fork.zip",
+        "pitchfork_invisible": "dynamic/pitchfork_invisible.zip",
+        "pitchfork_rose": "dynamic/pitchfork_rose.zip"
+      }
+    },
+    "goldenpitchfork": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
+      "name": "黄金干草叉",
+      "icon": "goldenpitchfork.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "goldenpitchfork.zip",
+      "buildArchives": [
+        "goldenpitchfork.zip"
+      ],
+      "bank": "goldenpitchfork",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "goldenpitchfork_invisible": "dynamic/goldenpitchfork_invisible.zip"
+      }
+    },
+    "farm_hoe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/farm_hoe.lua",
+      "name": "园艺锄",
+      "icon": "farm_hoe.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "quagmire_hoe.zip",
+      "buildArchives": [
+        "quagmire_hoe.zip"
+      ],
+      "bank": "quagmire_hoe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "farm_hoe_invisible": "dynamic/farm_hoe_invisible.zip",
+        "farm_hoe_rustic": "dynamic/farm_hoe_rustic.zip"
+      }
+    },
+    "golden_farm_hoe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/farm_hoe.lua",
+      "name": "黄金园艺锄",
+      "icon": "golden_farm_hoe.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "goldenhoe.zip",
+      "buildArchives": [
+        "goldenhoe.zip"
+      ],
+      "bank": "goldenhoe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "golden_farmhoe_garden": "dynamic/golden_farmhoe_garden.zip",
+        "golden_farmhoe_invisible": "dynamic/golden_farmhoe_invisible.zip"
+      }
+    },
+    "axe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/axe.lua",
+      "name": "斧头",
+      "icon": "axe.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "axe.zip",
+      "buildArchives": [
+        "axe.zip"
+      ],
+      "bank": "axe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "axe_feathered": "dynamic/axe_feathered.zip",
+        "axe_heart": "dynamic/axe_heart.zip",
+        "axe_invisible": "dynamic/axe_invisible.zip",
+        "axe_northern": "dynamic/axe_northern.zip",
+        "axe_rose": "dynamic/axe_rose.zip",
+        "axe_victorian": "dynamic/axe_victorian.zip"
+      }
+    },
+    "goldenaxe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/axe.lua",
+      "name": "黄金斧头",
+      "icon": "goldenaxe.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "goldenaxe.zip",
+      "buildArchives": [
+        "goldenaxe.zip"
+      ],
+      "bank": "goldenaxe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "goldenaxe_invisible": "dynamic/goldenaxe_invisible.zip",
+        "goldenaxe_northern": "dynamic/goldenaxe_northern.zip"
+      }
+    },
+    "pickaxe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pickaxe.lua",
+      "name": "鹤嘴锄",
+      "icon": "pickaxe.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pickaxe.zip",
+      "buildArchives": [
+        "pickaxe.zip"
+      ],
+      "bank": "pickaxe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "pickaxe_feathered": "dynamic/pickaxe_feathered.zip",
+        "pickaxe_invisible": "dynamic/pickaxe_invisible.zip",
+        "pickaxe_northern": "dynamic/pickaxe_northern.zip",
+        "pickaxe_reavershark": "dynamic/pickaxe_reavershark.zip",
+        "pickaxe_scythe": "dynamic/pickaxe_scythe.zip",
+        "pickaxe_scythe_alt": "dynamic/pickaxe_scythe.zip",
+        "pickaxe_victorian": "dynamic/pickaxe_victorian.zip"
+      }
+    },
+    "goldenpickaxe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pickaxe.lua",
+      "name": "黄金鹤嘴锄",
+      "icon": "goldenpickaxe.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "goldenpickaxe.zip",
+      "buildArchives": [
+        "goldenpickaxe.zip"
+      ],
+      "bank": "goldenpickaxe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "goldenpickaxe_invisible": "dynamic/goldenpickaxe_invisible.zip",
+        "goldenpickaxe_northern": "dynamic/goldenpickaxe_northern.zip"
+      }
+    },
+    "shovel": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/shovel.lua",
+      "name": "铲子",
+      "icon": "shovel.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "shovel.zip",
+      "buildArchives": [
+        "shovel.zip"
+      ],
+      "bank": "shovel",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "shovel_feathered": "dynamic/shovel_feathered.zip",
+        "shovel_heart": "dynamic/shovel_heart.zip",
+        "shovel_invisible": "dynamic/shovel_invisible.zip",
+        "shovel_northern": "dynamic/shovel_northern.zip",
+        "shovel_rose": "dynamic/shovel_rose.zip",
+        "shovel_spoon": "dynamic/shovel_spoon.zip",
+        "shovel_victorian": "dynamic/shovel_victorian.zip"
+      }
+    },
+    "goldenshovel": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/shovel.lua",
+      "name": "黄金铲子",
+      "icon": "goldenshovel.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "goldenshovel.zip",
+      "buildArchives": [
+        "goldenshovel.zip"
+      ],
+      "bank": "goldenshovel",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "goldenshovel_invisible": "dynamic/goldenshovel_invisible.zip",
+        "goldenshovel_northern": "dynamic/goldenshovel_northern.zip"
+      }
+    },
+    "moonglassaxe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/axe.lua",
+      "name": "月光玻璃斧",
+      "icon": "moonglassaxe.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "glassaxe.zip",
+      "buildArchives": [
+        "glassaxe.zip"
+      ],
+      "bank": "glassaxe",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "wall_stone_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "石墙",
+      "icon": "wall_stone_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_stone.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_stone_ancient_alt_item": "dynamic/wall_stone_ancient.zip",
+        "wall_stone_ancientitem": "dynamic/wall_stone_ancient.zip",
+        "wall_stone_anitem": "dynamic/wall_stone_an.zip",
+        "wall_stone_gothicitem": "dynamic/wall_stone_gothic.zip",
+        "wall_stone_roseitem": "dynamic/wall_stone_rose.zip",
+        "wall_stone_shellitem": "dynamic/wall_stone_shell.zip",
+        "wall_stone_victorianitem": "dynamic/wall_stone_victorian.zip"
+      }
+    },
+    "wall_wood_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "木墙",
+      "icon": "wall_wood_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_wood.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_wood_ornateitem": "dynamic/wall_wood_ornate.zip"
+      }
+    },
+    "wall_hay_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "草墙",
+      "icon": "wall_hay_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_hay.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_hay_cornitem": "dynamic/wall_hay_corn.zip"
+      }
+    },
+    "wall_ruins_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "铥墙",
+      "icon": "wall_ruins_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_ruins.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_ruins_thulecite2item": "dynamic/wall_ruins_thulecite2.zip",
+        "wall_ruins_thulecite2item_alt": "dynamic/wall_ruins_thulecite2.zip",
+        "wall_ruins_thulecite_alt_item": "dynamic/wall_ruins_thulecite.zip",
+        "wall_ruins_thuleciteitem": "dynamic/wall_ruins_thulecite.zip",
+        "wall_ruins_victorianitem": "dynamic/wall_ruins_victorian.zip"
+      }
+    },
+    "wall_moonrock_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "月岩墙",
+      "icon": "wall_moonrock_item.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_moonrock.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_moonrock_victorianitem": "dynamic/wall_moonrock_victorian.zip"
+      }
+    },
+    "wall_scrap_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "废料墙",
+      "icon": "wall_scrap_item.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "wall.zip",
+      "buildArchives": [
+        "wall_scrap.zip"
+      ],
+      "bank": "wall",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "wall_dreadstone_item": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
+      "name": "绝望石墙",
+      "icon": "wall_dreadstone_item.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "wall_dreadstone.zip",
+      "buildArchives": [
+        "wall_dreadstone.zip"
+      ],
+      "bank": "wall_dreadstone",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "wall_dreadstone_relicitem": "dynamic/wall_dreadstone_relic.zip"
+      }
+    },
+    "meat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "肉",
+      "icon": "meat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat.zip",
+      "buildArchives": [
+        "meat.zip"
+      ],
+      "bank": "meat",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cookedmeat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟肉",
+      "icon": "cookedmeat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat.zip",
+      "buildArchives": [
+        "meat.zip"
+      ],
+      "bank": "meat",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "meat_dried": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "肉干",
+      "icon": "meat_dried.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_rack_food.zip",
+      "buildArchives": [
+        "meat_rack_food.zip"
+      ],
+      "bank": "meat_rack_food",
+      "animation": "idle_dried_large",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "monstermeat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "怪物肉",
+      "icon": "monstermeat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_monster.zip",
+      "buildArchives": [
+        "meat_monster.zip"
+      ],
+      "bank": "monstermeat",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cookedmonstermeat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟怪物肉",
+      "icon": "cookedmonstermeat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_monster.zip",
+      "buildArchives": [
+        "meat_monster.zip"
+      ],
+      "bank": "monstermeat",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "monstermeat_dried": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "怪物肉干",
+      "icon": "monstermeat_dried.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_rack_food.zip",
+      "buildArchives": [
+        "meat_rack_food.zip"
+      ],
+      "bank": "meat_rack_food",
+      "animation": "idle_dried_monster",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "smallmeat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "小肉",
+      "icon": "smallmeat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_small.zip",
+      "buildArchives": [
+        "meat_small.zip"
+      ],
+      "bank": "meat_small",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cookedsmallmeat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟小肉",
+      "icon": "cookedsmallmeat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_small.zip",
+      "buildArchives": [
+        "meat_small.zip"
+      ],
+      "bank": "meat_small",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "smallmeat_dried": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "小肉干",
+      "icon": "smallmeat_dried.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_rack_food.zip",
+      "buildArchives": [
+        "meat_rack_food.zip"
+      ],
+      "bank": "meat_rack_food",
+      "animation": "idle_dried_small",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "drumstick": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "鸟腿",
+      "icon": "drumstick.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "drumstick.zip",
+      "buildArchives": [
+        "drumstick.zip"
+      ],
+      "bank": "drumstick",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "drumstick_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "炸鸟腿",
+      "icon": "drumstick_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "drumstick.zip",
+      "buildArchives": [
+        "drumstick.zip"
+      ],
+      "bank": "drumstick",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "batwing": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "洞穴蝙蝠翅膀",
+      "icon": "batwing.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "batwing.zip",
+      "buildArchives": [
+        "batwing.zip"
+      ],
+      "bank": "batwing",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "batwing_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟蝙蝠翅膀",
+      "icon": "batwing_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "batwing.zip",
+      "buildArchives": [
+        "batwing.zip"
+      ],
+      "bank": "batwing",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "plantmeat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "叶肉",
+      "icon": "plantmeat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "plant_meat.zip",
+      "buildArchives": [
+        "plant_meat.zip"
+      ],
+      "bank": "plant_meat",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "plantmeat_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟叶肉",
+      "icon": "plantmeat_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "plant_meat.zip",
+      "buildArchives": [
+        "plant_meat.zip"
+      ],
+      "bank": "plant_meat",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fishmeat_small": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "小鱼块",
+      "icon": "fishmeat_small.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "fishmeat_small.zip",
+      "buildArchives": [
+        "fishmeat_small.zip"
+      ],
+      "bank": "fishmeat_small",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fishmeat_small_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟小鱼块",
+      "icon": "fishmeat_small_cooked.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "fishmeat_small.zip",
+      "buildArchives": [
+        "fishmeat_small.zip"
+      ],
+      "bank": "fishmeat_small",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fishmeat_small_dried": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "小鱼干",
+      "icon": "fishmeat_small_dried.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "meat_rack_food_tot.zip",
+      "buildArchives": [
+        "meat_rack_food_tot.zip"
+      ],
+      "bank": "meat_rack_food_tot",
+      "animation": "dried_fishmeat_small",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fishmeat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "生鱼肉",
+      "icon": "fishmeat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "fishmeat.zip",
+      "buildArchives": [
+        "fishmeat.zip"
+      ],
+      "bank": "fishmeat",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fishmeat_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "鱼排",
+      "icon": "fishmeat_cooked.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "fishmeat.zip",
+      "buildArchives": [
+        "fishmeat.zip"
+      ],
+      "bank": "fishmeat",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fishmeat_dried": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "鱼肉干",
+      "icon": "fishmeat_dried.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "meat_rack_food_tot.zip",
+      "buildArchives": [
+        "meat_rack_food_tot.zip"
+      ],
+      "bank": "meat_rack_food_tot",
+      "animation": "dried_fishmeat",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "humanmeat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "长猪",
+      "icon": "humanmeat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_human.zip",
+      "buildArchives": [
+        "meat_human.zip"
+      ],
+      "bank": "meat_human",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "humanmeat_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟长猪",
+      "icon": "humanmeat_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_human.zip",
+      "buildArchives": [
+        "meat_human.zip"
+      ],
+      "bank": "meat_human",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "humanmeat_dried": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "长猪肉干",
+      "icon": "humanmeat_dried.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "meat_rack_food.zip",
+      "buildArchives": [
+        "meat_rack_food.zip"
+      ],
+      "bank": "meat_rack_food",
+      "animation": "idle_dried_human",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "barnacle": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "藤壶",
+      "icon": "barnacle.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "barnacle.zip",
+      "buildArchives": [
+        "barnacle.zip"
+      ],
+      "bank": "barnacle",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "barnacle_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟藤壶",
+      "icon": "barnacle_cooked.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "barnacle.zip",
+      "buildArchives": [
+        "barnacle.zip"
+      ],
+      "bank": "barnacle",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "batnose": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "裸露鼻孔",
+      "icon": "batnose.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "batnose.zip",
+      "buildArchives": [
+        "batnose.zip"
+      ],
+      "bank": "batnose",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "batnose_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "炭烤鼻孔",
+      "icon": "batnose_cooked.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "batnose.zip",
+      "buildArchives": [
+        "batnose.zip"
+      ],
+      "bank": "batnose",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "mitegland": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "火腺",
+      "icon": "mitegland.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "mite_gland.zip",
+      "buildArchives": [
+        "mite_gland.zip"
+      ],
+      "bank": "mite_gland",
+      "animation": "raw",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "mitegland_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
+      "name": "熟火腺",
+      "icon": "mitegland_cooked.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "mite_gland.zip",
+      "buildArchives": [
+        "mite_gland.zip"
+      ],
+      "bank": "mite_gland",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cave_banana": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "香蕉",
+      "icon": "cave_banana.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cave_banana.zip",
+      "buildArchives": [
+        "cave_banana.zip"
+      ],
+      "bank": "cave_banana",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cave_banana_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "熟香蕉",
+      "icon": "cave_banana_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cave_banana.zip",
+      "buildArchives": [
+        "cave_banana.zip"
+      ],
+      "bank": "cave_banana",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "carrot": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "胡萝卜",
+      "icon": "carrot.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "carrot.zip",
+      "buildArchives": [
+        "carrot.zip"
+      ],
+      "bank": "carrot",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "carrot_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤胡萝卜",
+      "icon": "carrot_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "carrot.zip",
+      "buildArchives": [
+        "carrot.zip"
+      ],
+      "bank": "carrot",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "corn": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "玉米",
+      "icon": "corn.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "corn.zip",
+      "buildArchives": [
+        "corn.zip"
+      ],
+      "bank": "corn",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "corn_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "爆米花",
+      "icon": "corn_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "corn.zip",
+      "buildArchives": [
+        "corn.zip"
+      ],
+      "bank": "corn",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pumpkin": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "南瓜",
+      "icon": "pumpkin.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pumpkin.zip",
+      "buildArchives": [
+        "pumpkin.zip"
+      ],
+      "bank": "pumpkin",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pumpkin_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤南瓜",
+      "icon": "pumpkin_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pumpkin.zip",
+      "buildArchives": [
+        "pumpkin.zip"
+      ],
+      "bank": "pumpkin",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "eggplant": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "茄子",
+      "icon": "eggplant.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "eggplant.zip",
+      "buildArchives": [
+        "eggplant.zip"
+      ],
+      "bank": "eggplant",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "eggplant_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤茄子",
+      "icon": "eggplant_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "eggplant.zip",
+      "buildArchives": [
+        "eggplant.zip"
+      ],
+      "bank": "eggplant",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "durian": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "榴莲",
+      "icon": "durian.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "durian.zip",
+      "buildArchives": [
+        "durian.zip"
+      ],
+      "bank": "durian",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "durian_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "超臭榴莲",
+      "icon": "durian_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "durian.zip",
+      "buildArchives": [
+        "durian.zip"
+      ],
+      "bank": "durian",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pomegranate": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "石榴",
+      "icon": "pomegranate.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pomegranate.zip",
+      "buildArchives": [
+        "pomegranate.zip"
+      ],
+      "bank": "pomegranate",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pomegranate_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "切片熟石榴",
+      "icon": "pomegranate_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pomegranate.zip",
+      "buildArchives": [
+        "pomegranate.zip"
+      ],
+      "bank": "pomegranate",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dragonfruit": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "火龙果",
+      "icon": "dragonfruit.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "dragonfruit.zip",
+      "buildArchives": [
+        "dragonfruit.zip"
+      ],
+      "bank": "dragonfruit",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dragonfruit_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "熟火龙果",
+      "icon": "dragonfruit_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "dragonfruit.zip",
+      "buildArchives": [
+        "dragonfruit.zip"
+      ],
+      "bank": "dragonfruit",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "berries": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "浆果",
+      "icon": "berries.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "berries.zip",
+      "buildArchives": [
+        "berries.zip"
+      ],
+      "bank": "berries",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "berries_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤浆果",
+      "icon": "berries_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "berries.zip",
+      "buildArchives": [
+        "berries.zip"
+      ],
+      "bank": "berries",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "berries_juicy": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "多汁浆果",
+      "icon": "berries_juicy.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "berries_juicy.zip",
+      "buildArchives": [
+        "berries_juicy.zip"
+      ],
+      "bank": "berries_juicy",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "berries_juicy_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤多汁浆果",
+      "icon": "berries_juicy_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "berries_juicy.zip",
+      "buildArchives": [
+        "berries_juicy.zip"
+      ],
+      "bank": "berries_juicy",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fig": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "无花果",
+      "icon": "fig.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "fig.zip",
+      "buildArchives": [
+        "fig.zip"
+      ],
+      "bank": "fig",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "fig_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "熟无花果",
+      "icon": "fig_cooked.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "fig.zip",
+      "buildArchives": [
+        "fig.zip"
+      ],
+      "bank": "fig",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cactus_meat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "仙人掌肉",
+      "icon": "cactus_meat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cactus_meat.zip",
+      "buildArchives": [
+        "cactus_meat.zip"
+      ],
+      "bank": "cactus_meat",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "cactus_meat_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "熟仙人掌肉",
+      "icon": "cactus_meat_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cactus_meat.zip",
+      "buildArchives": [
+        "cactus_meat.zip"
+      ],
+      "bank": "cactus_meat",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "watermelon": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "西瓜",
+      "icon": "watermelon.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "watermelon.zip",
+      "buildArchives": [
+        "watermelon.zip"
+      ],
+      "bank": "watermelon",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "watermelon_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤西瓜",
+      "icon": "watermelon_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "watermelon.zip",
+      "buildArchives": [
+        "watermelon.zip"
+      ],
+      "bank": "watermelon",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "kelp": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "海带叶",
+      "icon": "kelp.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "kelp.zip",
+      "buildArchives": [
+        "kelp.zip"
+      ],
+      "bank": "kelp",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "kelp_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "熟海带叶",
+      "icon": "kelp_cooked.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "kelp.zip",
+      "buildArchives": [
+        "kelp.zip"
+      ],
+      "bank": "kelp",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "tomato": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "番茄",
+      "icon": "quagmire_tomato.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "tomato.zip",
+      "buildArchives": [
+        "tomato.zip"
+      ],
+      "bank": "tomato",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "tomato_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤番茄",
+      "icon": "quagmire_tomato_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "tomato.zip",
+      "buildArchives": [
+        "tomato.zip"
+      ],
+      "bank": "tomato",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "potato": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "土豆",
+      "icon": "potato.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "potato.zip",
+      "buildArchives": [
+        "potato.zip"
+      ],
+      "bank": "potato",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "potato_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤土豆",
+      "icon": "potato_cooked.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "potato.zip",
+      "buildArchives": [
+        "potato.zip"
+      ],
+      "bank": "potato",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "asparagus": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "芦笋",
+      "icon": "asparagus.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "asparagus.zip",
+      "buildArchives": [
+        "asparagus.zip"
+      ],
+      "bank": "asparagus",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "asparagus_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤芦笋",
+      "icon": "asparagus_cooked.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "asparagus.zip",
+      "buildArchives": [
+        "asparagus.zip"
+      ],
+      "bank": "asparagus",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "onion": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "洋葱",
+      "icon": "quagmire_onion.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "onion.zip",
+      "buildArchives": [
+        "onion.zip"
+      ],
+      "bank": "onion",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "onion_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤洋葱",
+      "icon": "quagmire_onion_cooked.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "onion.zip",
+      "buildArchives": [
+        "onion.zip"
+      ],
+      "bank": "onion",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "garlic": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "大蒜",
+      "icon": "garlic.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "garlic.zip",
+      "buildArchives": [
+        "garlic.zip"
+      ],
+      "bank": "garlic",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "garlic_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤大蒜",
+      "icon": "garlic_cooked.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "garlic.zip",
+      "buildArchives": [
+        "garlic.zip"
+      ],
+      "bank": "garlic",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pepper": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "辣椒",
+      "icon": "pepper.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "pepper.zip",
+      "buildArchives": [
+        "pepper.zip"
+      ],
+      "bank": "pepper",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pepper_cooked": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "烤辣椒",
+      "icon": "pepper_cooked.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "pepper.zip",
+      "buildArchives": [
+        "pepper.zip"
+      ],
+      "bank": "pepper",
+      "animation": "cooked",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "carrot_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "椭圆形种子",
+      "icon": "carrot_seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "carrot",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "corn_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "簇状种子",
+      "icon": "corn_seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "corn",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pumpkin_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "尖种子",
+      "icon": "pumpkin_seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "pumpkin",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "eggplant_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "漩涡种子",
+      "icon": "eggplant_seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "eggplant",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "durian_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "脆籽荚",
+      "icon": "durian_seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "durian",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pomegranate_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "风刮来的种子",
+      "icon": "pomegranate_seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "pomegranate",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "dragonfruit_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "球茎状种子",
+      "icon": "dragonfruit_seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "dragonfruit",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "watermelon_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "方形种子",
+      "icon": "watermelon_seeds.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "watermelon",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "tomato_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "带刺的种子",
+      "icon": "tomato_seeds.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "tomato",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "potato_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "毛茸茸的种子",
+      "icon": "potato_seeds.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "potato",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "asparagus_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "筒状种子",
+      "icon": "asparagus_seeds.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "asparagus",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "onion_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "尖形种子",
+      "icon": "onion_seeds.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "onion",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "garlic_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "种子荚",
+      "icon": "garlic_seeds.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "garlic",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "pepper_seeds": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "块状种子",
+      "icon": "pepper_seeds.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "farm_plant_seeds.zip",
+      "buildArchives": [
+        "farm_plant_seeds.zip"
+      ],
+      "bank": "farm_plant_seeds",
+      "animation": "pepper",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "kelp_dried": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
+      "name": "干海带叶",
+      "icon": "kelp_dried.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "meat_rack_food_tot.zip",
+      "buildArchives": [
+        "meat_rack_food_tot.zip"
+      ],
+      "bank": "meat_rack_food_tot",
+      "animation": "dried_kelp",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "butterflymuffin": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "蝴蝶松饼",
+      "icon": "butterflymuffin.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "butterflymuffin"
+        }
+      },
+      "skinArchives": {}
+    },
+    "frogglebunwich": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "蛙腿三明治",
+      "icon": "frogglebunwich.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "frogglebunwich"
+        }
+      },
+      "skinArchives": {}
+    },
+    "taffy": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "太妃糖",
+      "icon": "taffy.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "taffy"
+        }
+      },
+      "skinArchives": {}
+    },
+    "pumpkincookie": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "南瓜饼干",
+      "icon": "pumpkincookie.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "pumpkincookie"
+        }
+      },
+      "skinArchives": {}
+    },
+    "stuffedeggplant": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "酿茄子",
+      "icon": "stuffedeggplant.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "stuffedeggplant"
+        }
+      },
+      "skinArchives": {}
+    },
+    "fishsticks": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "炸鱼排",
+      "icon": "fishsticks.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "fishsticks"
+        }
+      },
+      "skinArchives": {}
+    },
+    "honeynuggets": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "蜜汁卤肉",
+      "icon": "honeynuggets.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "honeynuggets"
+        }
+      },
+      "skinArchives": {}
+    },
+    "honeyham": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "蜜汁火腿",
+      "icon": "honeyham.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "honeyham"
+        }
+      },
+      "skinArchives": {}
+    },
+    "dragonpie": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "火龙果派",
+      "icon": "dragonpie.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "dragonpie"
+        }
+      },
+      "skinArchives": {}
+    },
+    "kabobs": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "肉串",
+      "icon": "kabobs.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "kabobs"
+        }
+      },
+      "skinArchives": {}
+    },
+    "mandrakesoup": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "曼德拉草汤",
+      "icon": "mandrakesoup.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "mandrakesoup"
+        }
+      },
+      "skinArchives": {}
+    },
+    "baconeggs": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "培根煎蛋",
+      "icon": "baconeggs.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "baconeggs"
+        }
+      },
+      "skinArchives": {}
+    },
+    "meatballs": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "肉丸",
+      "icon": "meatballs.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "meatballs"
+        }
+      },
+      "skinArchives": {}
+    },
+    "bonestew": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "炖肉汤",
+      "icon": "bonestew.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "bonestew"
+        }
+      },
+      "skinArchives": {}
+    },
+    "perogies": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "波兰水饺",
+      "icon": "perogies.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "perogies"
+        }
+      },
+      "skinArchives": {}
+    },
+    "turkeydinner": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "火鸡正餐",
+      "icon": "turkeydinner.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "turkeydinner"
+        }
+      },
+      "skinArchives": {}
+    },
+    "ratatouille": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "蔬菜杂烩",
+      "icon": "ratatouille.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "ratatouille"
+        }
+      },
+      "skinArchives": {}
+    },
+    "jammypreserves": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "果酱",
+      "icon": "jammypreserves.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "jammypreserves"
+        }
+      },
+      "skinArchives": {}
+    },
+    "fruitmedley": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "水果圣代",
+      "icon": "fruitmedley.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "fruitmedley"
+        }
+      },
+      "skinArchives": {}
+    },
+    "fishtacos": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "鱼肉玉米卷",
+      "icon": "fishtacos.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "fishtacos"
+        }
+      },
+      "skinArchives": {}
+    },
+    "waffles": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "华夫饼",
+      "icon": "waffles.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "waffles"
+        }
+      },
+      "skinArchives": {}
+    },
+    "monsterlasagna": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "怪物千层饼",
+      "icon": "monsterlasagna.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "monsterlasagna"
+        }
+      },
+      "skinArchives": {}
+    },
+    "powcake": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "粉末蛋糕",
+      "icon": "powcake.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "powcake"
+        }
+      },
+      "skinArchives": {}
+    },
+    "unagi": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "鳗鱼料理",
+      "icon": "unagi.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "unagi"
+        }
+      },
+      "skinArchives": {}
+    },
+    "wetgoop": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "潮湿黏糊",
+      "icon": "wetgoop.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "wetgoop"
+        }
+      },
+      "skinArchives": {}
+    },
+    "flowersalad": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "花沙拉",
+      "icon": "flowersalad.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "flowersalad"
+        }
+      },
+      "skinArchives": {}
+    },
+    "icecream": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "冰淇淋",
+      "icon": "icecream.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "icecream"
+        }
+      },
+      "skinArchives": {}
+    },
+    "watermelonicle": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "西瓜冰棍",
+      "icon": "watermelonicle.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "watermelonicle"
+        }
+      },
+      "skinArchives": {}
+    },
+    "trailmix": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "什锦干果",
+      "icon": "trailmix.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "trailmix"
+        }
+      },
+      "skinArchives": {}
+    },
+    "hotchili": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "辣椒炖肉",
+      "icon": "hotchili.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "hotchili"
+        }
+      },
+      "skinArchives": {}
+    },
+    "guacamole": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "鳄梨酱",
+      "icon": "guacamole.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "guacamole"
+        }
+      },
+      "skinArchives": {}
+    },
+    "jellybean": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "彩虹糖豆",
+      "icon": "jellybean.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "jellybean"
+        }
+      },
+      "skinArchives": {}
+    },
+    "potatotornado": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "花式回旋块茎",
+      "icon": "potatotornado.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "potatotornado"
+        }
+      },
+      "skinArchives": {}
+    },
+    "mashedpotatoes": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "奶油土豆泥",
+      "icon": "mashedpotatoes.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "mashedpotatoes"
+        }
+      },
+      "skinArchives": {}
+    },
+    "asparagussoup": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "芦笋汤",
+      "icon": "asparagussoup.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "asparagussoup"
+        }
+      },
+      "skinArchives": {}
+    },
+    "vegstinger": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "蔬菜鸡尾酒",
+      "icon": "vegstinger.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "vegstinger"
+        }
+      },
+      "skinArchives": {}
+    },
+    "bananapop": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "香蕉冻",
+      "icon": "bananapop.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "bananapop"
+        }
+      },
+      "skinArchives": {}
+    },
+    "frozenbananadaiquiri": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "冰香蕉冻唇蜜",
+      "icon": "frozenbananadaiquiri.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food9.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food9.zip",
+          "symbol": "frozenbananadaiquiri"
+        }
+      },
+      "skinArchives": {}
+    },
+    "bananajuice": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "香蕉奶昔",
+      "icon": "bananajuice.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food10.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food10.zip",
+          "symbol": "bananajuice"
+        }
+      },
+      "skinArchives": {}
+    },
+    "ceviche": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "酸橘汁腌鱼",
+      "icon": "ceviche.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "ceviche"
+        }
+      },
+      "skinArchives": {}
+    },
+    "salsa": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "生鲜萨尔萨酱",
+      "icon": "salsa.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "salsa"
+        }
+      },
+      "skinArchives": {}
+    },
+    "pepperpopper": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "爆炒填馅辣椒",
+      "icon": "pepperpopper.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food.zip",
+          "symbol": "pepperpopper"
+        }
+      },
+      "skinArchives": {}
+    },
+    "californiaroll": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "加州卷",
+      "icon": "californiaroll.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food2.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food2.zip",
+          "symbol": "californiaroll"
+        }
+      },
+      "skinArchives": {}
+    },
+    "seafoodgumbo": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "海鲜浓汤",
+      "icon": "seafoodgumbo.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food2.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food2.zip",
+          "symbol": "seafoodgumbo"
+        }
+      },
+      "skinArchives": {}
+    },
+    "surfnturf": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "海鲜牛排",
+      "icon": "surfnturf.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food2.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food2.zip",
+          "symbol": "surfnturf"
+        }
+      },
+      "skinArchives": {}
+    },
+    "lobsterbisque": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "龙虾汤",
+      "icon": "lobsterbisque.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food3.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food3.zip",
+          "symbol": "lobsterbisque"
+        }
+      },
+      "skinArchives": {}
+    },
+    "lobsterdinner": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "龙虾正餐",
+      "icon": "lobsterdinner.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food3.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food3.zip",
+          "symbol": "lobsterdinner"
+        }
+      },
+      "skinArchives": {}
+    },
+    "barnaclepita": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "藤壶皮塔饼",
+      "icon": "barnaclepita.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food5.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food5.zip",
+          "symbol": "barnaclepita"
+        }
+      },
+      "skinArchives": {}
+    },
+    "barnaclesushi": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "藤壶握寿司",
+      "icon": "barnaclesushi.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food5.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food5.zip",
+          "symbol": "barnaclesushi"
+        }
+      },
+      "skinArchives": {}
+    },
+    "barnaclinguine": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "藤壶中细面",
+      "icon": "barnaclinguine.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food5.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food5.zip",
+          "symbol": "barnaclinguine"
+        }
+      },
+      "skinArchives": {}
+    },
+    "barnaclestuffedfishhead": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "酿鱼头",
+      "icon": "barnaclestuffedfishhead.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food5.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food5.zip",
+          "symbol": "barnaclestuffedfishhead"
+        }
+      },
+      "skinArchives": {}
+    },
+    "leafloaf": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "叶肉糕",
+      "icon": "leafloaf.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food4.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food4.zip",
+          "symbol": "leafloaf"
+        }
+      },
+      "skinArchives": {}
+    },
+    "leafymeatburger": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "素食堡",
+      "icon": "leafymeatburger.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food4.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food4.zip",
+          "symbol": "leafymeatburger"
+        }
+      },
+      "skinArchives": {}
+    },
+    "leafymeatsouffle": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "果冻沙拉",
+      "icon": "leafymeatsouffle.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food4.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food4.zip",
+          "symbol": "leafymeatsouffle"
+        }
+      },
+      "skinArchives": {}
+    },
+    "meatysalad": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "牛肉绿叶菜",
+      "icon": "meatysalad.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food4.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food4.zip",
+          "symbol": "meatysalad"
+        }
+      },
+      "skinArchives": {}
+    },
+    "shroomcake": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "蘑菇蛋糕",
+      "icon": "shroomcake.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food6.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food6.zip",
+          "symbol": "shroomcake"
+        }
+      },
+      "skinArchives": {}
+    },
+    "sweettea": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "舒缓茶",
+      "icon": "sweettea.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food7.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food7.zip",
+          "symbol": "sweettea"
+        }
+      },
+      "skinArchives": {}
+    },
+    "koalefig_trunk": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "无花果酿象鼻",
+      "icon": "koalefig_trunk.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food8.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food8.zip",
+          "symbol": "koalefig_trunk"
+        }
+      },
+      "skinArchives": {}
+    },
+    "figatoni": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "无花果意面",
+      "icon": "figatoni.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food8.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food8.zip",
+          "symbol": "figatoni"
+        }
+      },
+      "skinArchives": {}
+    },
+    "figkabab": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "无花果烤串",
+      "icon": "figkabab.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food8.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food8.zip",
+          "symbol": "figkabab"
+        }
+      },
+      "skinArchives": {}
+    },
+    "frognewton": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "无花果蛙腿三明治",
+      "icon": "frognewton.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food8.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food8.zip",
+          "symbol": "frognewton"
+        }
+      },
+      "skinArchives": {}
+    },
+    "bunnystew": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "炖兔子",
+      "icon": "bunnystew.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food9.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food9.zip",
+          "symbol": "bunnystew"
+        }
+      },
+      "skinArchives": {}
+    },
+    "justeggs": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "普通煎蛋",
+      "icon": "justeggs.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food11.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food11.zip",
+          "symbol": "justeggs"
+        }
+      },
+      "skinArchives": {}
+    },
+    "veggieomlet": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "早餐锅",
+      "icon": "veggieomlet.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food11.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food11.zip",
+          "symbol": "veggieomlet"
+        }
+      },
+      "skinArchives": {}
+    },
+    "talleggs": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "苏格兰高鸟蛋",
+      "icon": "talleggs.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food11.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food11.zip",
+          "symbol": "talleggs"
+        }
+      },
+      "skinArchives": {}
+    },
+    "beefalofeed": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "蒸树枝",
+      "icon": "beefalofeed.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food11.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food11.zip",
+          "symbol": "beefalofeed"
+        }
+      },
+      "skinArchives": {}
+    },
+    "beefalotreat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "皮弗娄牛零食",
+      "icon": "beefalotreat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food11.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food11.zip",
+          "symbol": "beefalotreat"
+        }
+      },
+      "skinArchives": {}
+    },
+    "shroombait": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
+      "name": "酿夜帽",
+      "icon": "shroombait.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "cook_pot_food.zip",
+      "buildArchives": [
+        "cook_pot_food11.zip"
+      ],
+      "bank": "cook_pot_food",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "swap_food": {
+          "archive": "cook_pot_food11.zip",
+          "symbol": "shroombait"
+        }
+      },
+      "skinArchives": {}
+    }
+  },
+  "skinSpecs": {
+    "axe_feathered": {
+      "itemId": "axe",
+      "name": "猎人斧",
+      "icon": "axe_feathered.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "axe_heart": {
+      "itemId": "axe",
+      "name": "心斧",
+      "icon": "axe_heart.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "axe_invisible": {
+      "itemId": "axe",
+      "name": "拟真斧头",
+      "icon": "axe_invisible.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "axe_northern": {
+      "itemId": "axe",
+      "name": "北欧斧头",
+      "icon": "axe_northern.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "axe_rose": {
+      "itemId": "axe",
+      "name": "怒放斧",
+      "icon": "axe_rose.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "axe_victorian": {
+      "itemId": "axe",
+      "name": "华丽斧头",
+      "icon": "axe_victorian.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_babybeef": {
+      "itemId": "backpack",
+      "name": "迷你皮弗娄牛旅行包",
+      "icon": "backpack_babybeef.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_basic_blue_catcoon": {
+      "itemId": "backpack",
+      "name": "背包",
+      "icon": "backpack_basic_blue_catcoon.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_basic_green_olive": {
+      "itemId": "backpack",
+      "name": "背包",
+      "icon": "backpack_basic_green_olive.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_bat": {
+      "itemId": "backpack",
+      "name": "蝙蝠背包",
+      "icon": "backpack_bat.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_beefalo": {
+      "itemId": "backpack",
+      "name": "皮弗娄旅行包",
+      "icon": "backpack_beefalo.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_buckle_grey_pewter": {
+      "itemId": "backpack",
+      "name": "带扣背包",
+      "icon": "backpack_buckle_grey_pewter.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_buckle_navy_phthalo": {
+      "itemId": "backpack",
+      "name": "带扣背包",
+      "icon": "backpack_buckle_navy_phthalo.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_buckle_red_rook": {
+      "itemId": "backpack",
+      "name": "带扣背包",
+      "icon": "backpack_buckle_red_rook.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_camping_green_viridian": {
+      "itemId": "backpack",
+      "name": "帆布背包",
+      "icon": "backpack_camping_green_viridian.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_camping_orange_carrot": {
+      "itemId": "backpack",
+      "name": "帆布背包",
+      "icon": "backpack_camping_orange_carrot.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_camping_red_koalefant": {
+      "itemId": "backpack",
+      "name": "帆布背包",
+      "icon": "backpack_camping_red_koalefant.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_carrat": {
+      "itemId": "backpack",
+      "name": "胡萝卜鼠背包",
+      "icon": "backpack_carrat.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_catcoon": {
+      "itemId": "backpack",
+      "name": "浣猫旅行包",
+      "icon": "backpack_catcoon.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_catcoonp": {
+      "itemId": "backpack",
+      "name": "浣猫旅行包",
+      "icon": "backpack_catcoonp.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_chester": {
+      "itemId": "backpack",
+      "name": "切斯特背包",
+      "icon": "backpack_chester.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_crab": {
+      "itemId": "backpack",
+      "name": "螃蟹背包",
+      "icon": "backpack_crab.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_crab_resurrected": {
+      "itemId": "backpack",
+      "name": "螃蟹背包",
+      "icon": "backpack_crab_resurrected.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_deerclops": {
+      "itemId": "backpack",
+      "name": "独眼巨鹿背包",
+      "icon": "backpack_deerclops.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_deerclops_resurrected": {
+      "itemId": "backpack",
+      "name": "独眼巨鹿背包",
+      "icon": "backpack_deerclops_resurrected.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_dragonfly_fire": {
+      "itemId": "backpack",
+      "name": "烈焰背包",
+      "icon": "backpack_dragonfly_fire.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_glommer": {
+      "itemId": "backpack",
+      "name": "格罗姆背包",
+      "icon": "backpack_glommer.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_glommer_resurrected": {
+      "itemId": "backpack",
+      "name": "格罗姆背包",
+      "icon": "backpack_glommer_resurrected.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_heart": {
+      "itemId": "backpack",
+      "name": "丘比特旅行包",
+      "icon": "backpack_heart.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_hound": {
+      "itemId": "backpack",
+      "name": "猎犬背包",
+      "icon": "backpack_hound.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_invisible": {
+      "itemId": "backpack",
+      "name": "拟真背包",
+      "icon": "backpack_invisible.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_koalefant": {
+      "itemId": "backpack",
+      "name": "考拉象方便小包",
+      "icon": "backpack_koalefant.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_labrat": {
+      "itemId": "backpack",
+      "name": "可变光谱背包",
+      "icon": "backpack_labrat.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_mandrake": {
+      "itemId": "backpack",
+      "name": "曼德拉草背包",
+      "icon": "backpack_mandrake.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_mandrake_resurrected": {
+      "itemId": "backpack",
+      "name": "曼德拉草背包",
+      "icon": "backpack_mandrake_resurrected.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_minigolf": {
+      "itemId": "backpack",
+      "name": "鸦年华推杆手包",
+      "icon": "backpack_minigolf.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "backpack_mushy": {
+      "itemId": "backpack",
+      "name": "破旧的背包",
+      "icon": "backpack_mushy.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_poop": {
+      "itemId": "backpack",
+      "name": "便便袋",
+      "icon": "backpack_poop.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_rabbit": {
+      "itemId": "backpack",
+      "name": "兔子背包",
+      "icon": "backpack_rabbit.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_smallbird": {
+      "itemId": "backpack",
+      "name": "小鸟背包",
+      "icon": "backpack_smallbird.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_spider": {
+      "itemId": "backpack",
+      "name": "蜘蛛袋",
+      "icon": "backpack_spider.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "backpack_splumonkey": {
+      "itemId": "backpack",
+      "name": "穴居猴背包",
+      "icon": "backpack_splumonkey.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bernie_cat": {
+      "itemId": "bernie_inactive",
+      "name": "艾希莉",
+      "icon": "bernie_cat.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bernie_dog": {
+      "itemId": "bernie_inactive",
+      "name": "小火花",
+      "icon": "bernie_dog.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "book_silviculture_livinglog": {
+      "itemId": "book_silviculture",
+      "name": "被诅咒的造林学",
+      "icon": "book_silviculture_livinglog.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bugnet_frog": {
+      "itemId": "bugnet",
+      "name": "青蛙捕虫网",
+      "icon": "bugnet_frog.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bugnet_garden": {
+      "itemId": "bugnet",
+      "name": "抓人捕虫网",
+      "icon": "bugnet_garden.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bugnet_lavaproof": {
+      "itemId": "bugnet",
+      "name": "防熔岩虫网",
+      "icon": "bugnet_lavaproof.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "bugnet_spider": {
+      "itemId": "bugnet",
+      "name": "贪婪蛛网",
+      "icon": "bugnet_spider.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "bugnet_spider_white": {
+      "itemId": "bugnet",
+      "name": "巨穴蛛网",
+      "icon": "bugnet_spider_white.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_cawnival": {
+      "itemId": "phonograph",
+      "name": "鸦年华氛围机",
+      "icon": "decor_phonograph_cawnival.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_fantasy": {
+      "itemId": "phonograph",
+      "name": "花之旋律",
+      "icon": "decor_phonograph_fantasy.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_hallowed": {
+      "itemId": "phonograph",
+      "name": "幽美旋律发声器",
+      "icon": "decor_phonograph_hallowed.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_handmade": {
+      "itemId": "phonograph",
+      "name": "田园唱机",
+      "icon": "decor_phonograph_handmade.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_rose": {
+      "itemId": "phonograph",
+      "name": "镀金玫瑰留声机",
+      "icon": "decor_phonograph_rose.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "decor_phonograph_western": {
+      "itemId": "phonograph",
+      "name": "客厅留声机",
+      "icon": "decor_phonograph_western.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "farm_hoe_invisible": {
+      "itemId": "farm_hoe",
+      "name": "拟真园艺锄",
+      "icon": "farm_hoe_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "farm_hoe_rustic": {
+      "itemId": "farm_hoe",
+      "name": "家纺园艺锄",
+      "icon": "farm_hoe_rustic.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "golden_farmhoe_garden": {
+      "itemId": "golden_farm_hoe",
+      "name": "订制园艺锄",
+      "icon": "golden_farmhoe_garden.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "golden_farmhoe_invisible": {
+      "itemId": "golden_farm_hoe",
+      "name": "拟真黄金园艺锄",
+      "icon": "golden_farmhoe_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "goldenaxe_invisible": {
+      "itemId": "goldenaxe",
+      "name": "拟真黄金斧头",
+      "icon": "goldenaxe_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "goldenaxe_northern": {
+      "itemId": "goldenaxe",
+      "name": "华丽北欧斧头",
+      "icon": "goldenaxe_northern.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "goldenpickaxe_invisible": {
+      "itemId": "goldenpickaxe",
+      "name": "拟真黄金鹤嘴锄",
+      "icon": "goldenpickaxe_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "goldenpickaxe_northern": {
+      "itemId": "goldenpickaxe",
+      "name": "华丽北欧鹤嘴锄",
+      "icon": "goldenpickaxe_northern.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "goldenpitchfork_invisible": {
+      "itemId": "goldenpitchfork",
+      "name": "拟真黄金干草叉",
+      "icon": "goldenpitchfork_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "goldenshovel_invisible": {
+      "itemId": "goldenshovel",
+      "name": "拟真黄金铲子",
+      "icon": "goldenshovel_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "goldenshovel_northern": {
+      "itemId": "goldenshovel",
+      "name": "华丽北欧铲子",
+      "icon": "goldenshovel_northern.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "greenstaff_an": {
+      "itemId": "greenstaff",
+      "name": "新拆解器",
+      "icon": "greenstaff_an.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "greenstaff_clockwork": {
+      "itemId": "greenstaff",
+      "name": "发条拆解魔杖",
+      "icon": "greenstaff_clockwork.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "greenstaff_planet": {
+      "itemId": "greenstaff",
+      "name": "全局解构魔杖",
+      "icon": "greenstaff_planet.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hammer_crowbar": {
+      "itemId": "hammer",
+      "name": "铁撬锤",
+      "icon": "hammer_crowbar.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "hammer_forge": {
+      "itemId": "hammer",
+      "name": "锻锤",
+      "icon": "hammer_forge.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "hammer_hammush": {
+      "itemId": "hammer",
+      "name": "蘑菇锤",
+      "icon": "hammer_hammush.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hammer_invisible": {
+      "itemId": "hammer",
+      "name": "拟真锤子",
+      "icon": "hammer_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "hammer_rw_startingforest": {
+      "itemId": "hammer",
+      "name": "嫩肉锤",
+      "icon": "hammer_rw_startingforest.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_crystal": {
+      "itemId": "lantern",
+      "name": "盐灯",
+      "icon": "lantern_crystal.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_flower": {
+      "itemId": "lantern",
+      "name": "纸灯笼",
+      "icon": "lantern_flower.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_flower_alt": {
+      "itemId": "lantern",
+      "name": "纸灯笼",
+      "icon": "lantern_flower_alt.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_gothic": {
+      "itemId": "lantern",
+      "name": "哥特灯笼",
+      "icon": "lantern_gothic.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_insect": {
+      "itemId": "lantern",
+      "name": "蝇光灯",
+      "icon": "lantern_insect.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_mummy": {
+      "itemId": "lantern",
+      "name": "怪兽提灯",
+      "icon": "lantern_mummy.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_mummy_alt": {
+      "itemId": "lantern",
+      "name": "怪兽提灯",
+      "icon": "lantern_mummy_alt.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_mystical": {
+      "itemId": "lantern",
+      "name": "紫晶提灯",
+      "icon": "lantern_mystical.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_retro": {
+      "itemId": "lantern",
+      "name": "电气化灯笼",
+      "icon": "lantern_retro.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "lantern_tesla": {
+      "itemId": "lantern",
+      "name": "特斯拉线圈提灯",
+      "icon": "lantern_tesla.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "lantern_winter": {
+      "itemId": "lantern",
+      "name": "冬季盛宴提灯",
+      "icon": "lantern_winter.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "lantern_winter_alt": {
+      "itemId": "lantern",
+      "name": "冬季盛宴提灯",
+      "icon": "lantern_winter_alt.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "moonstaff_crystal": {
+      "itemId": "opalstaff",
+      "name": "棱镜唤月者魔杖",
+      "icon": "moonstaff_crystal.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "moonstaff_portal": {
+      "itemId": "opalstaff",
+      "name": "月亮魔杖",
+      "icon": "moonstaff_portal.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "moonstaff_relic": {
+      "itemId": "opalstaff",
+      "name": "扭曲唤月者魔杖",
+      "icon": "moonstaff_relic.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "moonstaff_swamp": {
+      "itemId": "opalstaff",
+      "name": "原始唤月者魔杖",
+      "icon": "moonstaff_swamp.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "nightsword_cotl": {
+      "itemId": "nightsword",
+      "name": "咩咩之刃",
+      "icon": "nightsword_cotl.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "nightsword_curve": {
+      "itemId": "nightsword",
+      "name": "扭曲匕首",
+      "icon": "nightsword_curve.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "nightsword_lightsbane": {
+      "itemId": "nightsword",
+      "name": "魔光剑",
+      "icon": "nightsword_lightsbane.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "nightsword_sharp": {
+      "itemId": "nightsword",
+      "name": "腐败刀锋",
+      "icon": "nightsword_sharp.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "nightsword_wizard": {
+      "itemId": "nightsword",
+      "name": "诅咒之剑",
+      "icon": "nightsword_wizard.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pickaxe_feathered": {
+      "itemId": "pickaxe",
+      "name": "猎人鹤嘴锄",
+      "icon": "pickaxe_feathered.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pickaxe_invisible": {
+      "itemId": "pickaxe",
+      "name": "拟真鹤嘴锄",
+      "icon": "pickaxe_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pickaxe_northern": {
+      "itemId": "pickaxe",
+      "name": "北欧鹤嘴锄",
+      "icon": "pickaxe_northern.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pickaxe_reavershark": {
+      "itemId": "pickaxe",
+      "name": "掠夺鲨",
+      "icon": "pickaxe_reavershark.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pickaxe_scythe": {
+      "itemId": "pickaxe",
+      "name": "生锈镰刀",
+      "icon": "pickaxe_scythe.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pickaxe_scythe_alt": {
+      "itemId": "pickaxe",
+      "name": "生锈镰刀",
+      "icon": "pickaxe_scythe_alt.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pickaxe_victorian": {
+      "itemId": "pickaxe",
+      "name": "华丽鹤嘴锄",
+      "icon": "pickaxe_victorian.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pitchfork_fork": {
+      "itemId": "pitchfork",
+      "name": "pitchfork_fork",
+      "icon": "pitchfork_fork.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pitchfork_invisible": {
+      "itemId": "pitchfork",
+      "name": "拟真干草叉",
+      "icon": "pitchfork_invisible.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "pitchfork_rose": {
+      "itemId": "pitchfork",
+      "name": "怒放干草叉",
+      "icon": "pitchfork_rose.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "record_creepyforest": {
+      "itemId": "record",
+      "name": "惊悚森林",
+      "icon": "record_creepyforest.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "record_drstyle": {
+      "itemId": "record",
+      "name": "D.R.风格",
+      "icon": "record_drstyle.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "record_efs": {
+      "itemId": "record",
+      "name": "E.F.S.",
+      "icon": "record_efs.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "record_hallowednights": {
+      "itemId": "record",
+      "name": "万圣夜",
+      "icon": "record_hallowednights.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "reskin_tool_bouquet": {
+      "itemId": "reskin_tool",
+      "name": "可爱花束",
+      "icon": "reskin_tool_bouquet.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "reskin_tool_brush": {
+      "itemId": "reskin_tool",
+      "name": "幽灵漆刷",
+      "icon": "reskin_tool_brush.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "reskin_tool_toilet": {
+      "itemId": "reskin_tool",
+      "name": "厕所刷",
+      "icon": "reskin_tool_toilet.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "reskin_tool_wand": {
+      "itemId": "reskin_tool",
+      "name": "荆棘扭扭杖",
+      "icon": "reskin_tool_wand.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "shovel_feathered": {
+      "itemId": "shovel",
+      "name": "猎人铲子",
+      "icon": "shovel_feathered.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "shovel_heart": {
+      "itemId": "shovel",
+      "name": "红桃铲子",
+      "icon": "shovel_heart.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "shovel_invisible": {
+      "itemId": "shovel",
+      "name": "拟真铲子",
+      "icon": "shovel_invisible.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "shovel_northern": {
+      "itemId": "shovel",
+      "name": "北欧铲子",
+      "icon": "shovel_northern.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "shovel_rose": {
+      "itemId": "shovel",
+      "name": "怒放铲子",
+      "icon": "shovel_rose.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "shovel_spoon": {
+      "itemId": "shovel",
+      "name": "shovel_spoon",
+      "icon": "shovel_spoon.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "shovel_victorian": {
+      "itemId": "shovel",
+      "name": "华丽铲子",
+      "icon": "shovel_victorian.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "starstaff_crystal": {
+      "itemId": "yellowstaff",
+      "name": "光芒唤星者魔杖",
+      "icon": "starstaff_crystal.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "starstaff_portal": {
+      "itemId": "yellowstaff",
+      "name": "星星魔杖",
+      "icon": "starstaff_portal.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "starstaff_relic": {
+      "itemId": "yellowstaff",
+      "name": "扭曲唤星者魔杖",
+      "icon": "starstaff_relic.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "starstaff_swamp": {
+      "itemId": "yellowstaff",
+      "name": "原始唤星者魔杖",
+      "icon": "starstaff_swamp.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_barber": {
+      "itemId": "torch",
+      "name": "油脂火炬",
+      "icon": "torch_barber.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_carrat": {
+      "itemId": "torch",
+      "name": "胡萝卜鼠火炬",
+      "icon": "torch_carrat.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_carrat_alt": {
+      "itemId": "torch",
+      "name": "胡萝卜鼠火炬",
+      "icon": "torch_carrat_alt.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_cawnival": {
+      "itemId": "torch",
+      "name": "鸦年华火炬",
+      "icon": "torch_cawnival.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_nautical": {
+      "itemId": "torch",
+      "name": "海螺火炬",
+      "icon": "torch_nautical.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_pillar": {
+      "itemId": "torch",
+      "name": "雕刻石制火炬",
+      "icon": "torch_pillar.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_pillar_alt": {
+      "itemId": "torch",
+      "name": "雕刻石制火炬",
+      "icon": "torch_pillar_alt.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_pronged": {
+      "itemId": "torch",
+      "name": "乡村火炬",
+      "icon": "torch_pronged.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_rag": {
+      "itemId": "torch",
+      "name": "饱经风霜的火炬",
+      "icon": "torch_rag.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "torch_shadow": {
+      "itemId": "torch",
+      "name": "悲剧火炬",
+      "icon": "torch_shadow.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "torch_shadow_alt": {
+      "itemId": "torch",
+      "name": "悲剧火炬",
+      "icon": "torch_shadow_alt.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "torch_spooky": {
+      "itemId": "torch",
+      "name": "神圣灯光",
+      "icon": "torch_spooky.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "torch_spookyp": {
+      "itemId": "torch",
+      "name": "神圣灯光",
+      "icon": "torch_spookyp.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "torch_tesla": {
+      "itemId": "torch",
+      "name": "电中子火炬",
+      "icon": "torch_tesla.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_dreadstone_relicitem": {
+      "itemId": "wall_dreadstone_item",
+      "name": "分层绝望石墙",
+      "icon": "wall_dreadstone_relicitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_hay_cornitem": {
+      "itemId": "wall_hay_item",
+      "name": "玉米墙",
+      "icon": "wall_hay_cornitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_moonrock_victorianitem": {
+      "itemId": "wall_moonrock_item",
+      "name": "月光维多利亚墙",
+      "icon": "wall_moonrock_victorianitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_thulecite2item": {
+      "itemId": "wall_ruins_item",
+      "name": "远古装饰墙",
+      "icon": "wall_ruins_thulecite2item.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_thulecite2item_alt": {
+      "itemId": "wall_ruins_item",
+      "name": "远古装饰墙",
+      "icon": "wall_ruins_thulecite2item_alt.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_thulecite_alt_item": {
+      "itemId": "wall_ruins_item",
+      "name": "远古装饰墙",
+      "icon": "wall_ruins_thulecite_alt_item.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_thuleciteitem": {
+      "itemId": "wall_ruins_item",
+      "name": "远古装饰墙",
+      "icon": "wall_ruins_thuleciteitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_ruins_victorianitem": {
+      "itemId": "wall_ruins_item",
+      "name": "维多利亚铥墙",
+      "icon": "wall_ruins_victorianitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_stone_ancient_alt_item": {
+      "itemId": "wall_stone_item",
+      "name": "远古石墙",
+      "icon": "wall_stone_ancient_alt_item.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_stone_ancientitem": {
+      "itemId": "wall_stone_item",
+      "name": "远古石墙",
+      "icon": "wall_stone_ancientitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_stone_anitem": {
+      "itemId": "wall_stone_item",
+      "name": "新石墙",
+      "icon": "wall_stone_anitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_stone_gothicitem": {
+      "itemId": "wall_stone_item",
+      "name": "哥特柱",
+      "icon": "wall_stone_gothicitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_stone_roseitem": {
+      "itemId": "wall_stone_item",
+      "name": "玫瑰花瓣柱",
+      "icon": "wall_stone_roseitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_stone_shellitem": {
+      "itemId": "wall_stone_item",
+      "name": "贝艺墙",
+      "icon": "wall_stone_shellitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_stone_victorianitem": {
+      "itemId": "wall_stone_item",
+      "name": "维多利亚石墙",
+      "icon": "wall_stone_victorianitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "wall_wood_ornateitem": {
+      "itemId": "wall_wood_item",
+      "name": "胡桃木书架",
+      "icon": "wall_wood_ornateitem.tex",
+      "atlas": "images/inventoryimages3.xml"
+    }
+  },
+  "staffMorphSkins": {
+    "starstaff_crystal": "moonstaff_crystal",
+    "starstaff_portal": "moonstaff_portal",
+    "starstaff_relic": "moonstaff_relic",
+    "starstaff_swamp": "moonstaff_swamp"
+  }
+}

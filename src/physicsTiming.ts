@@ -1,0 +1,3 @@
+export const FIXED_TIMESTEP = 1 / 60;
+export const MAX_SUBSTEPS = 3;
+export const MAX_PHYSICS_FRAME_TIME = FIXED_TIMESTEP * MAX_SUBSTEPS;
