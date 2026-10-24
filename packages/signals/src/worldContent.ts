@@ -35,8 +35,11 @@ export interface PerishClock {
 
 export type WorldContentSources = { readonly [K in WorldContentKey]: ReadonlySignal<WorldContentValues[K]> };
 
-/** The world binds player positions once; consumers query a cached tile memo. */
-export type TileStateQuery = (position: Vector3, radius?: number) => Memo<boolean> | undefined;
+/**
+ * The world binds player positions once; consumers query a cached memo that follows their own tile key
+ * (a number from tileManager's TileTracker), so moving inside one tile never notifies it.
+ */
+export type TileStateQuery = (tile: ReadonlySignal<number>, radius?: number) => Memo<boolean> | undefined;
 
 export type WorldContentEnvironment = WorldContentSources & {
   readonly scheduler: GameTimeScheduler;
@@ -50,11 +53,26 @@ export type WorldContentEnvironment = WorldContentSources & {
 export interface WorldContentSignal<T> extends Signal<T> {
   readonly scheduler: GameTimeScheduler;
   readonly perishClock?: PerishClock;
+  /** The tickingarea memo that gates this signal (see WatchWorldContentOptions.tracker); the consumer's own to watch. */
+  readonly area?: ReadonlySignal<boolean>;
 }
+
+export interface WatchWorldContentOptions {
+  /**
+   * The consumer's own tile key signal (TileTracker.tile), which the entity refreshes itself. While its tickingarea
+   * memo is false the returned signal holds its last value and does not subscribe to the world source; it resyncs
+   * when the area becomes active again. The memo is keyed by this signal, so keep it private to the consumer: its
+   * cleanup releases the memo. Standalone worlds or tiles outside the grid have no memo and stay subscribed.
+   */
+  readonly tile?: ReadonlySignal<number>;
+}
+
+/** Player snapshots published by the world: a consumer's private signal whose value is a `Vector3[]`. */
+export type PlayerPositionsSignal = WorldContentSignal<WorldContentValues['playerpositions']>;
 
 /** Bound to world sources, never to a consumer's cleanup or local signals. */
 export type GetWatchWorldContent = <K extends WorldContentKey>(
-  key: K, registerCleanup: (stop: () => void) => void,
+  key: K, registerCleanup: (stop: () => void) => void, options?: WatchWorldContentOptions,
 ) => WorldContentSignal<WorldContentValues[K]>;
 
 /** Shared contract for the application world and prefab world context. */
@@ -75,22 +93,22 @@ export function bindWorldContent(sources: WorldContentEnvironment): () => void {
 export function isWorldContentBound(): boolean { return currentWorld !== undefined; }
 
 /** Resolve the current world's query without passing its player position source to prefabs. */
-export function GetTileStateAtPoint(position: Vector3, radius = 10): Memo<boolean> | undefined {
+export function GetTileStateAtPoint(tile: ReadonlySignal<number>, radius = 10): Memo<boolean> | undefined {
   const query = currentWorld?.tickingarea;
   if (!query) throw new Error('World tile activity is not bound');
-  return query(position, radius);
+  return query(tile, radius);
 }
 
 /** The bound world's getter for consumers that take world content as a parameter; undefined when standalone. */
 export function getBoundWatchWorldContent(): GetWatchWorldContent | undefined {
   const world = currentWorld;
-  return world ? (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, world) : undefined;
+  return world ? (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, world, options) : undefined;
 }
 
 /** A key resolves to a shared world input; each caller receives its own lifecycle-managed signal. */
 export function getWatchWorldContent<K extends WorldContentKey>(
   key: K, registerCleanup: (stop: () => void) => void,
-  sources?: WorldContentEnvironment,
+  sources?: WorldContentEnvironment, options?: WatchWorldContentOptions,
 ): WorldContentSignal<WorldContentValues[K]> {
   const world = sources ?? currentWorld;
   if (!world) throw new Error(`World content ${key} is not bound`);
@@ -98,9 +116,12 @@ export function getWatchWorldContent<K extends WorldContentKey>(
   const source = signals[key];
   if (!source) throw new Error(`World content ${key} is not bound`);
   if (!world.scheduler) throw new Error('World scheduler is not bound');
-  const local = watchSignal<WorldContentValues[K]>(source, registerCleanup);
+  const area = options?.tile ? world.tickingarea?.(options.tile) : undefined;
+  const local = watchSignal<WorldContentValues[K]>(source,
+    area ? stop => registerCleanup(() => { stop(); area.dispose(); }) : registerCleanup, area);
   return Object.defineProperties(local, {
     scheduler: { value: world.scheduler, enumerable: true },
     perishClock: { value: world.perishClock, enumerable: true },
+    ...(area ? { area: { value: area, enumerable: true } } : {}),
   }) as WorldContentSignal<WorldContentValues[K]>;
 }

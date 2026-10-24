@@ -8,6 +8,8 @@ import { getPrefabLightOverride, getPrefabLocalLight } from '../../prefab/src/lo
 import { GroundItemManager } from '../../../src/groundItems';
 
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { createMemo, createSignal, type ReadonlySignal } from '../../signals/src';
+import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { bindTestWorld } from './worldContentFixture';
 
 const cleanups: (() => void)[] = [];
@@ -143,6 +145,39 @@ describe('source fireflies light and proximity', () => {
     s.tick(5);
     expect(getPrefabLocalLight(s.model)).toBeUndefined();
     expect(s.controller.workable).toBe(false);
+  });
+});
+
+describe('fireflies tickingarea gate', () => {
+  it('stops following world inputs outside the area, resyncs on wake and follows the placed position', async () => {
+    const scheduler = new GameTimeScheduler();
+    const awake = createSignal(true), queried: ReadonlySignal<number>[] = [];
+    const area = createMemo(() => awake.get());
+    const { cycle, playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler, tile => { queried.push(tile); return area; });
+    cycle.set('day'); playerpositions.set([new THREE.Vector3(1, 0, 0)]);
+    const model = new THREE.Group(); model.add(new THREE.Group());
+    const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
+    const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn() };
+    const controller = new FirefliesController(model, animation, { getWatchWorldContent }, entity.transform, () => 0);
+    cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
+    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+    const tick = (seconds: number) => { for (let i = 0; i < Math.round(seconds * 100); i++) { scheduler.advance(.01); controller.update(.01); } };
+    // Both watched inputs share one private tile key, updated when the item is placed on the ground.
+    expect(queried).toHaveLength(2); expect(queried[1]).toBe(queried[0]);
+    entity.transform.position.set(4, 0, 6);
+    controller.place(false); await settle();
+    expect(queried[0].peek()).toBe(GetTileKeyAtPoint(new THREE.Vector3(4, 0, 6)));
+    expect(controller.clickable).toBe(false);
+
+    awake.set(false);
+    cycle.set('night'); playerpositions.set([new THREE.Vector3(40, 0, 6)]);
+    await settle(); tick(5);
+    expect(controller.clickable).toBe(false); // asleep: the swarm never sees night or the player
+    expect(animation.update).not.toHaveBeenCalled(); // OnEntitySleep: update is skipped as well
+
+    awake.set(true); await settle(); tick(3.1); await settle();
+    expect(animation.update).toHaveBeenCalled();
+    expect(controller.clickable).toBe(true); // wake resyncs cycle and positions and runs the usual night check
   });
 });
 

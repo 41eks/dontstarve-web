@@ -6,6 +6,7 @@ import type * as THREE from 'three';
 import { Weapon } from '../../componets/src/weapon';
 import { AXE_USES, configureAxeEntity, getAxeLifecycle, prepareAxeVisual } from './axe';
 import { configureBugNetEntity, prepareBugnetVisual } from './bugnet';
+import { configureFishingRodEntity, FISHINGROD_USES, prepareFishingRodVisual } from './fishingrod';
 import { equipmentVisualLifecycle, type EquipmentVisualOwner, type PrepareEquipmentVisual } from './equipmentVisual';
 import { prepareFarmHoeVisual } from './farm_hoe';
 import { getGreenStaffController, GREENSTAFF_USES, type GreenStaffWorld } from './greenstaff';
@@ -67,6 +68,8 @@ const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
   trident: { prepareVisual: prepareTridentVisual, maxUses: TRIDENT_USES, tags: ['pointy', 'sharp'], weapon: { damage: TRIDENT_DAMAGE },
     createLifecycle: (entity, context) => context.tridentWorld ? getTridentController(entity, context.tridentWorld) : undefined },
   bugnet: { prepareVisual: prepareBugnetVisual, maxUses: 10, weapon: { damage: WILSON_ATTACK * .125, attackwear: 3 }, configureEntity: configureBugNetEntity },
+  // fishingrod.lua: FISHINGROD_DAMAGE = wilson_attack * .125, attackwear 4.
+  fishingrod: { prepareVisual: prepareFishingRodVisual, maxUses: FISHINGROD_USES, weapon: { damage: WILSON_ATTACK * .125, attackwear: 4 }, configureEntity: configureFishingRodEntity },
   hammer: { prepareVisual: prepareHammerVisual, maxUses: 75, weapon: { damage: WILSON_ATTACK * .5 }, configureEntity: configureHammerEntity },
   // nightsword.lua: NIGHTSWORD_DAMAGE = wilson_attack * 2, NIGHTSWORD_USES = 100.
   nightsword: { prepareVisual: prepareNightswordVisual, maxUses: 100, tags: ['shadow', 'sharp'], weapon: { damage: WILSON_ATTACK * 2 }, configureEntity: configureNightswordEntity },

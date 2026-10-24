@@ -40,6 +40,8 @@ export interface PrefabComponentSchema {
   /** finiteuses.lua maximum bounding the saved uses. */
   readonly finiteUses?: number;
   readonly growthStages?: number;
+  /** growable.lua stage deadline limit; defaults to the 2100 s used by the existing growth tables. */
+  readonly growthTime?: number;
 }
 
 export type PrefabComponentParser = (value: unknown, path: string, context: EntitySaveContext) => SavedEntity['components'];
@@ -188,14 +190,25 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       components.moonTree = { ...(tree.stump === true ? { stump: true } : {}), ...(tree.burnt === true ? { burnt: true } : {}),
         ...(tree.size === undefined ? {} : { size: choice(tree.size, `${componentPath}.size`, ['short', 'normal', 'tall']) }) };
     }
+    if (keys.includes('fishable') && c.fishable !== undefined) {
+      // fishable.lua OnSave: only a pond with fish taken out saves its remaining count.
+      const p = `${path}.fishable`, fishable = object(c.fishable, p, ['fish']);
+      components.fishable = { fish: integer(fishable.fish, `${p}.fish`, 0, 9) };
+    }
     if (keys.includes('growable') && c.growable !== undefined) {
       const p = `${path}.growable`, growth = object(c.growable, p, ['stage', 'time', 'sleeptime']);
       components.growable = { stage: integer(growth.stage, `${p}.stage`, 1, schema.growthStages ?? 3),
-        ...(growth.time === undefined ? {} : { time: number(growth.time, `${p}.time`, 0, 2100) }),
+        ...(growth.time === undefined ? {} : { time: number(growth.time, `${p}.time`, 0, schema.growthTime ?? 2100) }),
         ...(growth.sleeptime === undefined ? {} : { sleeptime: number(growth.sleeptime, `${p}.sleeptime`, 0) }) };
       const size = components.moonTree?.size;
       if (size && ['short', 'normal', 'tall'].indexOf(size) + 1 !== components.growable.stage) fail(p, 'stage must match moon tree size');
       if ((components.moonTree?.stump || components.moonTree?.burnt) && growth.time !== undefined) fail(p, 'stumps and burnt trees cannot grow');
+    }
+    if (keys.includes('marbleShrub')) {
+      const p = `${path}.marbleShrub`, shrub = object(c.marbleShrub, p, ['shapenumber', 'color']);
+      if (!components.growable) fail(`${path}.growable`, 'marbleshrub stage is required');
+      components.marbleShrub = { ...shrub.shapenumber === undefined ? {} : { shapenumber: integer(shrub.shapenumber, `${p}.shapenumber`, 2, 3) },
+        color: number(shrub.color, `${p}.color`, .5, 1) };
     }
     if (keys.includes('evergreen')) {
       if (c.evergreen !== undefined) {
@@ -264,7 +277,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (skinId !== undefined && !Object.hasOwn(building.skinArchives ?? {}, skinId)) fail(`${path}.building.skinId`, 'unsupported building skin');
       components.building = { state, ...(skinId === undefined ? {} : { skinId }) };
       if (b.burnt !== undefined) {
-        if (b.burnt !== true || (prefab !== 'treasurechest' && prefab !== 'cookpot' && prefab !== 'winterometer')) fail(`${path}.building.burnt`, 'expected a burnt combustible building');
+        if (b.burnt !== true || (prefab !== 'treasurechest' && prefab !== 'cookpot' && prefab !== 'winterometer' && prefab !== 'pighead' && prefab !== 'mermhead')) fail(`${path}.building.burnt`, 'expected a burnt combustible building');
         components.building.burnt = true;
       }
       if (isContainer && (!b.burnt || c.container !== undefined)) {

@@ -45,6 +45,7 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   farm_hoe: 1,
   golden_farm_hoe: 1,
   shovel: 1,
+  fishingrod: 1,
   goldenshovel: 1,
   book_silviculture: 1,
   book_rain: 1,
@@ -56,6 +57,7 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   bathbomb: 20, // bathbomb.lua: TUNING.STACK_SIZE_MEDITEM.
   dock_kit: 20, // dock_kit.lua: TUNING.STACK_SIZE_MEDITEM.
   fence_item: 20, // fence.lua MakeInvItem: TUNING.STACK_SIZE_MEDITEM.
+  pondfish: 1, // pondfish.lua has no stackable component.
   dug_rock_avocado_bush: 10,
   dug_berrybush: 10,
   dug_monkeytail: 10,
@@ -75,7 +77,7 @@ export function inventoryItemMaxStack(itemId: string): number {
 
 export function inventoryItemEquipmentKind(itemId: string): EquipmentKind | undefined {
   if (itemId === 'backpack') return 'body';
-  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'trident' || itemId === 'bugnet'
+  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'trident' || itemId === 'bugnet' || itemId === 'fishingrod'
     || itemId === 'hammer' || itemId === 'nightsword' || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
     || itemId === 'axe' || itemId === 'goldenaxe' || itemId === 'moonglassaxe'
     || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool'

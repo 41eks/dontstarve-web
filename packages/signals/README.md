@@ -35,6 +35,7 @@ class SeasonObserver {
 `WorldContentKey` 统一定义 `Cycle`、`Season`、`Temperature`、`Wind`、`PerishClock` 与 `SnowLevel`；`Cycle` 是世界从 `clock.phase` 纯派生的 `'day' | 'dusk' | 'night'`，不另存可写阶段。`WorldContentContext` 定义世界来源、共享调度器和 `getWatchWorldContent` 契约，应用的 `WorldState` 与 prefab 的 `WorldContext` 共用它，prefab 不再重复定义昼夜、季节信号的类型。`WorldContext` 另补充场景、相机和物理接口。
 
 世界提供绑定自身原始来源的 `getWatchWorldContent(key, registerCleanup)` 函数，内部调用 `watchSignal`，返回保留 `get()`／`set()`／`peek()`／`subscribe()` 的本地 signal，并附带只读的 `scheduler` 引用。同一世界的 所有世界内容键以及不同消费者取得的 scheduler 都是同一实例。Mole 将同一个函数直接传给 Sleeper；函数没有绑定 Mole 的清理列表，Sleeper 用自己的清理注册创建私有 `cycle`，移除时独立释放。Sleeper 的测试回调接收阶段值 `(inst, cycle)`，无需暴露或转交组件的本地 signal。
+`getWatchWorldContent(key, registerCleanup, { tile })` 可选传入实体私有的 `TileTracker.tile`：对应 tickingarea memo 为 `false` 时，本地 signal 不读取全局源（不订阅），保留最后一次同步的值；变回 `true` 时重新订阅并立即同步。tile 的刷新由实体自己负责（位置赋值后调 `tracker.moved()`，累计 60 次刷新一次）。tile 在网格外或世界未提供 tickingarea 时不门控；清理时一并释放该 memo，所以 tile signal 只能给一个消费者使用。萤火虫是当前的使用者。
 
 ```ts
 // Sleeper 内部；getWatchWorldContent 是世界注入的函数。
@@ -58,7 +59,7 @@ createEffect(() => this.runTest(this.cycle.get()));
 
 `PlayerPositions`（`playerpositions`）对应 `Vector3[]` 玩家位置快照。场景初始化时发布当前玩家位置，之后每 60 个活动游戏帧发布新的数组与位置副本；暂停帧不计数，时钟的保存／停止部分结算不会提前刷新位置或重置位置采样计数。当前场景记录本地玩家，协议支持多名玩家，不写入存档。萤火虫在 controller 中通过 getter 创建私有位置监听，用普通 effect 的 `get()` 响应位置快照变化，先按 Cycle 短路，白天不读取位置输入；便便苍蝇则由 `playerprox` 组件创建自己的私有监听，并调用组件方法刷新靠近／离开状态。位置查询使用 `Vector3.distanceToSquared()`，范围按 `TILE_SIZE / 4` 缩放；监听随拥有者的显式释放清理。
 
-`GetTileStateAtPoint(position, radius = 10)` 查询当前绑定世界的活动状态，返回缓存的 `Memo<boolean> | undefined`；`world.tickingarea` 是固定绑定所属世界的同一查询服务。世界 init 通过 `tileManager.GetTileStateAtPoint(playerPosition)` 柯里化绑定来源，向 `WorldContentEnvironment.tickingarea` 注入查询函数，调用方无需传递 `playerPosition`。signals 仅定义 `TileStateQuery` 协议并解析服务，不依赖游戏组件或计算网格。当前世界从上述快照纯派生首个玩家位置，无玩家时 inactive，采样频率不变；多人并集尚未接入。相同世界、tile 和半径共享一个 memo，消费者只释放自己的订阅；世界 dispose 统一释放网格缓存、排队的 effect 和位置派生 memo。半径为非负整数，默认使用方形范围；无效目标或网格外返回 `undefined`，未绑定 tile 服务时抛错。详见 [tile 生命周期](../../docs/tile-lifecycle.md)。
+`GetTileStateAtPoint(tile, radius = 10)`（`tile` 为 `TileTracker.tile`，即实体私有的 tile key 数字 signal，同一 tile 内移动不通知）查询当前绑定世界的活动状态，返回缓存的 `Memo<boolean> | undefined`；`world.tickingarea` 是固定绑定所属世界的同一查询服务。世界 init 通过 `tileManager.GetTileStateAtPoint(playerPosition)` 柯里化绑定来源，向 `WorldContentEnvironment.tickingarea` 注入查询函数，调用方无需传递 `playerPosition`。signals 仅定义 `TileStateQuery` 协议并解析服务，不依赖游戏组件或计算网格。当前世界从上述快照纯派生首个玩家位置，无玩家时 inactive，采样频率不变；多人并集尚未接入。相同世界、tile 和半径共享一个 memo，消费者只释放自己的订阅；世界 dispose 统一释放网格缓存、排队的 effect 和位置派生 memo。半径为非负整数，默认使用方形范围；无效目标或网格外返回 `undefined`，未绑定 tile 服务时抛错。详见 [tile 生命周期](../../docs/tile-lifecycle.md)。
 
 本地 signal 同时附带只读 `perishClock` 服务引用（独立上下文可缺省），实际世界传入同一个组件的 `GetTick()`／`GetFrozenTick()` 接口，支持尚未发布及历史时间段的查询。快照只在 60 帧结算或显式 Flush 时发布；逐帧累计不写 signal。释放本地监听不会销毁这些共享服务，世界负责停止风向 timer、释放腐烂时钟的温度输入和共享 scheduler。数据／服务协议在本包定义，组件路径保留类型重新导出；组件实现仍在 `packages/componets`。
 

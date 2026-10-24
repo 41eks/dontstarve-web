@@ -5,6 +5,7 @@ import { createEffect, watchSignal, type ReadonlySignal, type Signal, type TileS
 import { BathBombable } from '../../componets/src/bathbombable';
 import { Heater } from '../../componets/src/heater';
 import { ComponentTimer } from '../../componets/src/timer';
+import { TileTracker } from '../../componets/src/tileManager';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
 import { setPrefabLocalLight } from './localLight';
@@ -179,7 +180,7 @@ export class HotspringManager {
     model.userData.hotspring = spring; model.userData.physicsBody = spring.body;
     model.userData.remove = () => this.remove(model);
     this.springs.set(model, spring);
-    const tileActivity = this.tickingarea?.(model.position);
+    const tileActivity = this.tickingarea?.(new TileTracker(() => model.position).tile);
     if (tileActivity) spring.bindTileActivity(tileActivity, active => this.setActive(model, spring, active));
     else this.setActive(model, spring, true);
     return model;

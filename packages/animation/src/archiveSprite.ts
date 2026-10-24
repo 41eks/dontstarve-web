@@ -22,6 +22,8 @@ export interface ArchiveSpriteOptions {
   skinArchive?: string;
   /** Give this sprite private material copies at this opacity, adjustable later with `setOpacity()`. */
   opacity?: number;
+  /** Per-instance AnimState:SetMultColour RGB, multiplied onto private material copies. */
+  colour?: readonly [number, number, number];
   name?: string;
   scale?: number;
 }
@@ -98,6 +100,8 @@ export interface ArchiveSprite {
    * mirrored horizontally when the clip lists both a facing and its left-hand mirror.
    */
   setFacing(facing: number): void;
+  /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
+  setSymbolHidden(symbol: string, hidden: boolean): void;
   /** Geometry belongs to the entity; shared materials belong to its asset cache. */
   dispose(): void;
 }
@@ -116,8 +120,12 @@ export async function createArchiveSprite(
   // Translucent previews cannot share the asset cache's materials with opaque insts.
   const ownedMaterials: THREE.MeshBasicMaterial[] = [];
   const own = <T extends ArchiveSpriteBuild | undefined>(source: T): T => {
-    if (!source || options.opacity === undefined) return source;
-    const materials = source.materials.map(material => { const copy = material.clone(); ownedMaterials.push(copy); return copy; });
+    if (!source || (options.opacity === undefined && !options.colour)) return source;
+    const materials = source.materials.map(material => {
+      const copy = material.clone(); ownedMaterials.push(copy);
+      if (options.colour) copy.color.multiply(new THREE.Color().setRGB(...options.colour));
+      return copy;
+    });
     return { build: source.build, materials } as T;
   };
   const builds = sharedBuilds.map(own);
@@ -225,6 +233,13 @@ export async function createArchiveSprite(
     setOpacity(opacity: number) {
       if (options.opacity === undefined) throw new Error(`Sprite ${model.name} does not own its materials`);
       applyOpacity(opacity);
+    },
+    setSymbolHidden(symbol: string, isHidden: boolean) {
+      const hash = smallHash(symbol);
+      if (disposed || hidden.has(hash) === isHidden) return;
+      if (isHidden) hidden.add(hash); else hidden.delete(hash);
+      previousFrame = -1;
+      update(0);
     },
     setFacing(value: number) {
       if (disposed || facing === value) return;

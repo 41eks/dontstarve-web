@@ -44,6 +44,7 @@ export interface SavedEntity {
     molehill?: import('../../packages/prefab/src/molehill').MolehillSave;
     beefalo?: BeefaloSaveState;
     nightmareGrowth?: NightmareGrowthSaveState;
+    fishable?: import('../../packages/componets/src/fishable').FishableSave;
     lavaPond?: import('@dontstarve-web/prefab/lava_pond').LavaPondSaveState;
     hotspring?: import('@dontstarve-web/prefab/hotspring').HotspringSaveState;
     wormhole?: WormholeSaveState;
@@ -52,6 +53,7 @@ export interface SavedEntity {
     moonTree?: MoonTreeSaveState;
     evergreen?: { stump?: true; burnt?: true; burntcone?: true };
     deciduoustree?: import('../../packages/prefab/src/deciduousTreeLeaves').DeciduousTreeSave;
+    marbleShrub?: import('../../packages/prefab/src/marbleshrub').MarbleShrubSaveState;
     growable?: import('../../packages/componets/src/growable').GrowableSave;
     saplingTimer?: import('../../packages/componets/src/timer').NamedTimerSave;
     sculptingtable?: { itemname: string };

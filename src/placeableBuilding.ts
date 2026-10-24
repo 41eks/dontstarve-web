@@ -40,6 +40,7 @@ import { NIGHT_LIGHT_DEFINITION, NIGHT_LIGHT_ID, type NightLightId } from '@dont
 import { PIG_HOUSE_DEFINITION, PIG_HOUSE_ID, type PigHouseId } from '@dontstarve-web/prefab/pighouse';
 import { BIRDCAGE_DEFINITION, BIRDCAGE_ID, type BirdcageId } from '@dontstarve-web/prefab/birdcage';
 import { MOONDIAL_DEFINITION, MOONDIAL_ID } from '@dontstarve-web/prefab/moondial';
+import { PIG_HEAD_DEFINITION, PIG_HEAD_ID, MERM_HEAD_DEFINITION, MERM_HEAD_ID, type PigHeadId, type MermHeadId } from '@dontstarve-web/prefab/stickheads';
 import { WINTEROMETER_DEFINITION, WINTEROMETER_ID, type WinterometerId } from '@dontstarve-web/prefab/winterometer';
 import { MUSHROOM_LIGHT_DEFINITIONS, MUSHROOM_LIGHT_IDS, type MushroomLightId } from '@dontstarve-web/prefab/mushroom_light';
 
@@ -48,7 +49,7 @@ export { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | typeof TENT_ID
-    | DragonflyChestId | BookstationId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID | typeof WARDROBE_ID;
+    | DragonflyChestId | BookstationId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | PigHeadId | MermHeadId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID | typeof WARDROBE_ID;
 export type PlaceableBuildingId = AnimatedBuildingId | WallId | FenceId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
@@ -70,6 +71,8 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     PIG_HOUSE_ID,
     SCULPTING_TABLE_ID,
     WINTEROMETER_ID,
+    PIG_HEAD_ID,
+    MERM_HEAD_ID,
     BIRDCAGE_ID,
     ...MUSHROOM_LIGHT_IDS,
 ];
@@ -92,6 +95,8 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     [PIG_HOUSE_ID]: PIG_HOUSE_DEFINITION,
     [SCULPTING_TABLE_ID]: SCULPTING_TABLE_DEFINITION,
     [WINTEROMETER_ID]: WINTEROMETER_DEFINITION,
+    [PIG_HEAD_ID]: PIG_HEAD_DEFINITION,
+    [MERM_HEAD_ID]: MERM_HEAD_DEFINITION,
     [BIRDCAGE_ID]: BIRDCAGE_DEFINITION,
     ...MUSHROOM_LIGHT_DEFINITIONS,
 } as const;

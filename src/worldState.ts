@@ -72,7 +72,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   return { scheduler, temperature: worldContent.temperature, clock: clockstate, cycle: worldContent.cycle,
     wind: worldContent.wind, perishTick: worldContent.perishTick, snowLevel: worldContent.snowLevel, worldwind,
     playerpositions, tickingarea,
-    getWatchWorldContent: (key, registerCleanup) => getWatchWorldContent(key, registerCleanup, worldContent),
+    getWatchWorldContent: (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, worldContent, options),
     SetMoonPhase(phase, waxing) {
       const length = MOON_PHASE_CYCLES.length;
       for (let i = waxing ? 1 : length / 2; i <= length; i++) {

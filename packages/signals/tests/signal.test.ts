@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { batch, watchSignal, createEffect, createMemo, createSignal, onCleanUp, readonlySignal } from '../src';
 
 it('notifies synchronous subscribers of every transition while batching effects', async () => {
@@ -210,4 +210,34 @@ it('releases every local observer even if an effect cleanup fails', async () => 
   expect(finished).toBe(1);
   other.set(1); source.set(1); local.set(1); await Promise.resolve();
   expect(observed).toEqual([]); expect(finished).toBe(1);
+});
+
+it('gates a watched bridge: holds the last value without reading the source while inactive and resyncs on wake', async () => {
+  const source = createSignal(1), active = createSignal(true);
+  const reads = vi.fn();
+  const watched = { get: source.get, peek: source.peek, subscribe: source.subscribe } as typeof source;
+  const stops: (() => void)[] = [];
+  const local = watchSignal({ ...watched, get: () => { reads(); return source.get(); } }, stop => stops.push(stop), active);
+  const seen: number[] = [];
+  createEffect(() => seen.push(local.get()));
+  source.set(2);
+  expect(local.peek()).toBe(2);
+
+  active.set(false);
+  reads.mockClear();
+  source.set(3); source.set(4);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(reads).not.toHaveBeenCalled(); // no dependency on the source while inactive
+  expect(local.peek()).toBe(2);
+
+  active.set(true);
+  expect(local.peek()).toBe(4);
+  source.set(5);
+  expect(local.peek()).toBe(5);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(seen).toEqual([1, 2, 5]); // the wake sync and the next update batch into one effect run
+
+  stops.forEach(stop => stop());
+  active.set(false); active.set(true); source.set(6);
+  expect(local.peek()).toBe(5);
 });

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
+import { createEffect, createSignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type PlayerPositionsSignal, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
@@ -8,6 +8,7 @@ import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer } from '../../componets/src/timer';
+import { TileTracker } from '../../componets/src/tileManager';
 
 export function configureFirefliesEntity(entity: ItemEntity): void {
   entity.components.inventoryitem.canbepickedup = false;
@@ -45,10 +46,14 @@ export class FirefliesController {
   private direction = 0;
   private playerClose = false;
   private readonly cycle?: WorldContentSignal<WorldPhase>;
-  private readonly playerpositions?: WorldContentSignal<THREE.Vector3[]>;
+  /** OnEntitySleep: private view of the tickingarea memo that gates the watched world inputs; undefined when ungated. */
+  private readonly awake?: Signal<boolean>;
+  private readonly playerpositions?: PlayerPositionsSignal;
   private readonly cleanups: (() => void)[] = [];
   private readonly checks = createSignal<readonly ComponentTimer[]>([]);
   private readonly placement = createSignal<{ dropped: boolean } | undefined>(undefined);
+  /** Private tile key for the tickingarea gate on the watched world inputs. */
+  private readonly tracker: TileTracker;
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
   private readonly disableWork: ComponentTimer;
@@ -72,8 +77,12 @@ export class FirefliesController {
     this.transform = transform;
     this.animation = animation;
     this.random = random;
-    this.cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
-    this.playerpositions = world.getWatchWorldContent?.(WorldContentKey.PlayerPositions, stop => this.cleanups.push(stop));
+    this.tracker = new TileTracker(() => transform.position);
+    const options = { tile: this.tracker.tile };
+    this.cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop), options);
+    this.playerpositions = world.getWatchWorldContent?.(WorldContentKey.PlayerPositions, stop => this.cleanups.push(stop), options);
+    const area = this.cycle?.area ?? this.playerpositions?.area;
+    if (area) this.awake = watchSignal(area, stop => this.cleanups.push(stop));
     const scheduler = this.cycle?.scheduler ?? this.playerpositions?.scheduler;
     this.scheduler = scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = scheduler === undefined;
@@ -136,11 +145,12 @@ export class FirefliesController {
   place(dropped: boolean): void {
     if (this.disposed) return;
     setPrefabLightOverride(this.model, 1);
+    this.tracker.sync();
     this.placement.set({ dropped });
   }
 
   update(dt: number): void {
-    if (this.disposed || this.inInventory) return;
+    if (this.disposed || this.inInventory || this.awake?.peek() === false) return;
     if (this.ownsScheduler && Number.isFinite(dt) && dt > 0) this.scheduler.advance(dt);
     const step = Math.max(0, Math.min(dt, 0.1));
     this.animation.update(step);

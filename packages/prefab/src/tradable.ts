@@ -14,7 +14,7 @@ export const TRADABLE_GOLD_VALUES: Readonly<Record<string, number>> = {
   meat: MEAT, cookedmeat: MEAT, meat_dried: MEAT,
   smallmeat: MEAT, cookedsmallmeat: MEAT, smallmeat_dried: MEAT,
   drumstick: MEAT, drumstick_cooked: MEAT,
-  fishmeat_small: MEAT, fishmeat_small_cooked: MEAT, fishmeat_small_dried: MEAT,
+  pondfish: MEAT, fishmeat_small: MEAT, fishmeat_small_cooked: MEAT, fishmeat_small_dried: MEAT,
   fishmeat: MEAT, fishmeat_cooked: MEAT, fishmeat_dried: MEAT,
   batwing: MEAT, batwing_cooked: MEAT, plantmeat: MEAT, plantmeat_cooked: MEAT,
   batnose: MEAT, batnose_cooked: MEAT, mitegland: MEAT, mitegland_cooked: MEAT,

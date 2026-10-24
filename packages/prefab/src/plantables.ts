@@ -10,6 +10,9 @@ export const PLANTABLES: Readonly<Record<string, { prefab: string; bank: string;
   rock_avocado_fruit_sprout: { prefab: 'rock_avocado_fruit_sprout_sapling', bank: 'rock_avo_fruit_master',
     build: 'rock_avocado_fruit_build', animationArchive: 'rock_avocado_fruit.zip', animation: 'idle_buried_seed',
     spacing: 2 * (TILE_SIZE / 4), plantSound: 'dontstarve/wilson/plant_tree' },
+  // marblebean.lua: MakePlacer("marblebean_placer", "marblebean", "marblebean", "idle_planted"); default deploy spacing.
+  marblebean: { prefab: 'marblebean_sapling', bank: 'marblebean', build: 'marblebean', animationArchive: 'marblebean.zip',
+    animation: 'idle_planted', spacing: 2 * (TILE_SIZE / 4), plantSound: 'dontstarve/wilson/plant_tree' },
   dug_rock_avocado_bush: { prefab: 'rock_avocado_bush', bank: 'rock_avocado', build: 'rock_avocado_build', animation: 'dead1', spacing: 2 * (TILE_SIZE / 4) },
   dug_berrybush: { prefab: 'berrybush', bank: 'berrybush', build: 'berrybush', animation: 'dead', spacing: 2 * (TILE_SIZE / 4) },
   dug_monkeytail: { prefab: 'monkeytail', bank: 'grass', build: 'reeds_monkeytails', animation: 'idle' },

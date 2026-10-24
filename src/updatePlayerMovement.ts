@@ -52,6 +52,8 @@ export function updateMovement(
         if (animation?.isHammering && interrupting) animation.cancelHammer();
         if (animation?.isDigging && interrupting) animation.cancelDig();
         if (animation?.isReskinning && interrupting) animation.cancelReskin();
+        // SGwilson's locomote event leaves the non-busy fishing states.
+        if (animation?.isFishing && (interrupting || locomotor.destination)) animation.cancelFishing();
         // Movement while asleep is the locomote event that wakes the sleeper; the sleeper never walks.
         const sleeping = animation?.isSleeping === true;
         if (sleeping && (manual || locomotor.destination)) animation!.wakeFromBed();
