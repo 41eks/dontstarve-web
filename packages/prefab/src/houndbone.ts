@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { createEffect, type TileStateQuery } from '@dontstarve-web/signals';
+import { watchTileActivity } from './tileActivity';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -28,12 +31,15 @@ export interface HoundboneRecord {
 }
 
 export interface HoundboneWorld {
+  tickingarea?: TileStateQuery;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
 }
 
 interface Houndbone {
   model: THREE.Group;
-  sprite: ArchiveSprite;
+  sprite: ResidentSprite;
+  stopActivity?: () => void;
+  stopArt?: () => void;
   workable: Workable;
   loot: { itemId: string; output: PreparedGroundSpawn }[];
   bonetype: number;
@@ -47,6 +53,7 @@ export class HoundboneManager {
   private readonly bones = new Map<THREE.Group, Houndbone>();
   private readonly effects = new Set<ArchiveSprite>();
   private creator?: Promise<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>;
+  private readonly cameraQuaternion = new THREE.Quaternion();
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: HoundboneWorld) {
@@ -66,7 +73,9 @@ export class HoundboneManager {
     if (!Number.isInteger(bonetype) || bonetype < 1 || bonetype > HOUNDBONE_PIECES.length) throw new RangeError(`Unsupported houndbone type: ${bonetype}`);
     const [create, loot] = await Promise.all([this.getCreator(), this.prepareHammered(bonetype)]);
     if (this.disposed) { loot.forEach(({ output }) => output.dispose()); throw new Error('Hound bones have been disposed'); }
-    return this.create(create(HOUNDBONE_PIECES[bonetype - 1], false, HOUNDBONE_ID), loot, position, bonetype, saved);
+    const build = (clip: { name: string; loop: boolean }) => create(clip.name, clip.loop, HOUNDBONE_ID);
+    const clip = { name: HOUNDBONE_PIECES[bonetype - 1], loop: false };
+    return this.create(new ResidentSprite(build, clip, build(clip), HOUNDBONE_ID), loot, position, bonetype, saved);
   }
 
   /** The collapse effect, rock_break sound and every item the bone's loot can roll, ready before the hit. */
@@ -87,7 +96,7 @@ export class HoundboneManager {
     return loot;
   }
 
-  private create(sprite: ArchiveSprite, loot: Houndbone['loot'], position: THREE.Vector3, bonetype: number, saved?: HoundboneRecord): THREE.Group {
+  private create(sprite: ResidentSprite, loot: Houndbone['loot'], position: THREE.Vector3, bonetype: number, saved?: HoundboneRecord): THREE.Group {
     const model = sprite.model;
     model.position.set(position.x, 0, position.z);
     Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: HOUNDBONE_ID, tags: ['bone'], animationController: sprite });
@@ -116,8 +125,10 @@ export class HoundboneManager {
       this.remove(model);
     });
     Object.assign(model.userData.components, { workable, lootdropper });
+    bone.stopArt = createEffect(() => { sprite.art.get(); sprite.faceCamera(this.cameraQuaternion); });
     this.bones.set(model, bone);
     this.scene.add(model);
+    bone.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
     return model;
   }
 
@@ -137,12 +148,13 @@ export class HoundboneManager {
 
   update(dt: number, quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    for (const { model, sprite } of this.bones.values()) { model.quaternion.copy(quaternion); sprite.update(dt); }
+    this.cameraQuaternion.copy(quaternion);
+    for (const { sprite } of this.bones.values()) if (sprite.loaded) { sprite.faceCamera(quaternion); sprite.update(dt); }
     for (const effect of [...this.effects]) { effect.model.quaternion.copy(quaternion); effect.update(dt); }
   }
 
   get renderEntities() {
-    return [...this.bones.keys(), ...[...this.effects].map(({ model }) => model)]
+    return [...[...this.bones].filter(([, { sprite }]) => sprite.loaded).map(([model]) => model), ...[...this.effects].map(({ model }) => model)]
       .map(object => ({ object, footPosition: object.position, cameraDepth: 0 }));
   }
 
@@ -171,6 +183,7 @@ export class HoundboneManager {
   private remove(model: THREE.Group): void {
     const bone = this.bones.get(model); if (!bone) return;
     this.bones.delete(model); model.userData.removed = true;
+    bone.stopActivity?.(); bone.stopArt?.();
     bone.workable.dispose();
     bone.loot.forEach(({ output }) => output.dispose()); bone.loot.length = 0;
     bone.sprite.dispose();

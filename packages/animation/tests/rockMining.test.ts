@@ -67,7 +67,7 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
     const state = model.userData.rockMiningState;
     expect(state.breakDelay.peek()).toEqual({ status: 'scheduled', endTime: 2 });
     s.scheduler.advance(2.5); s.manager.update(0, new THREE.Quaternion());
-    expect(getSpriteErosion(model)).toBeCloseTo(.5);
+    expect(getSpriteErosion(model.children[0])).toBeCloseTo(.5); // the drawn sprite carries the erosion
     expect(s.scene.children).toContain(model);
     s.scheduler.advance(.5); // No rendering or presentation effect is needed to remove it.
     expect(s.scene.children).not.toContain(model);

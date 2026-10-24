@@ -1,7 +1,9 @@
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
-import { ArchiveSpriteAssets, createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { setSpriteErosion } from '@dontstarve-web/animation/spriteErosion';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { createEffect, type TileStateQuery } from '@dontstarve-web/signals';
+import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { Workable } from '../../componets/src/workable';
@@ -73,6 +75,7 @@ export function rockArchives(prefab: RockEntityId) {
 
 export interface RockWorld {
   scheduler?: GameTimeScheduler;
+  tickingarea?: TileStateQuery;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
 }
 
@@ -85,7 +88,7 @@ export class RockController {
   private readonly onWorkFinished?: () => void;
 
   constructor(model: THREE.Group, prefab: RockPrefabId, lootdropper: LootDropper, remove: () => void,
-    context: { scheduler: GameTimeScheduler; caveinBoulder?: CaveinBoulderSave; spawnSeed(): void }) {
+    context: { scheduler: GameTimeScheduler; caveinBoulder?: CaveinBoulderSave; spawnSeed(): void; setErosion(amount: number): void }) {
     model.userData.rockController = this;
     this.entity = actionEntity(model, prefab);
     this.workable = new Workable(this.entity);
@@ -110,7 +113,7 @@ export class RockController {
       return;
     }
     if (prefab === 'rock_moon_shell') {
-      this.erode = new ErodeAway(context.scheduler, amount => setSpriteErosion(model, amount), remove);
+      this.erode = new ErodeAway(context.scheduler, context.setErosion, remove);
       model.userData.rockMiningState = { breakDelay: this.erode.delay, erosion: this.erode.timer };
       this.onWorkFinished = () => {
         context.spawnSeed();
@@ -145,19 +148,28 @@ export class RockController {
   }
 }
 
+type RockSource = Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
+
 interface Rock {
   prefabId: RockEntityId;
   model: THREE.Group;
   controller?: RockController;
-  sprite: ArchiveSprite;
+  sprite: ResidentSprite;
   caveinBoulder?: CaveinBoulderSave;
+  /** Last ErodeAway amount; the sprite drawn after a wake is dressed with it. */
+  erosion: number;
+  colour: number;
+  stopActivity?: () => void;
+  stopAppearance?: () => void;
   outputs: Map<string, PreparedGroundSpawn[]>;
-  preparedSeed?: ArchiveSprite;
+  preparedSeed?: ResidentSprite;
 }
 
 /** Shared per-archive sprites, prefab-owned work and loot, and stable foot points. */
 export class RockManager {
   private readonly assets: ArchiveSpriteAssets;
+  private readonly sources = new Map<RockEntityId, ReturnType<typeof preloadSharedArchiveSprite>>();
+  private readonly cameraQuaternion = new THREE.Quaternion();
   private readonly pendingSpawns = new Set<Promise<unknown>>();
   private readonly mouseRecords = new ModelRecords<Rock>();
   private readonly rocks = new Set<Rock>();
@@ -183,18 +195,10 @@ export class RockManager {
       ? saved?.components.caveinBoulder ?? { variation: 1 + Math.floor(Math.random() * 8) } : undefined;
     const tinted = prefabId !== 'cavein_boulder' && prefabId !== 'moonrockseed';
     const colour = tinted ? .5 + Math.random() * .5 : 1;
-    const request = createSharedArchiveSprite(this.assets, {
-      animationArchive: definition.archive, buildArchives: [definition.buildArchive ?? definition.archive], bank: definition.bank,
-      animation: caveinBoulder?.raised ? 'idle_raised' : definition.initialAnimation, loop: false,
-      hiddenSymbols: tinted ? ['snow'] : undefined,
-      symbolOverrides: caveinBoulder && caveinBoulder.variation > 1
-        ? { swap_boulder: { archive: 'swap_cavein_boulder.zip', symbol: `swap_boulder${caveinBoulder.variation}` } } : undefined,
-    }, { name: prefabId, instancedAnimations: 'all', ...(tinted ? { colour: [colour, colour, colour] as const } : {}) });
+    const request = this.getSource(prefabId);
     const resourcesRequest = Promise.allSettled([request,
       definition.loot ? PreloadSounds('dontstarve/wilson/rock_break') : Promise.resolve(),
-      prefabId === 'rock_moon_shell' ? createSharedArchiveSprite(this.assets, {
-        animationArchive: 'moonrock_seed.zip', buildArchives: ['moonrock_seed.zip'], bank: 'moonrock_seed', animation: 'idle', loop: false,
-      }, { name: 'moonrockseed', instancedAnimations: 'all' }) : Promise.resolve(undefined),
+      prefabId === 'rock_moon_shell' ? this.getSource('moonrockseed') : Promise.resolve(undefined),
       ...(definition.loot ?? []).map(([itemId]) => this.world.prepareSpawn({
         ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1,
       }, true)),
@@ -209,20 +213,38 @@ export class RockManager {
     });
     const failure = resources.find(result => result.status === 'rejected');
     if (failure || this.disposed) {
-      const sprite = resources[0] as PromiseSettledResult<ArchiveSprite>;
-      if (sprite.status === 'fulfilled') sprite.value.dispose();
-      const seed = resources[2] as PromiseSettledResult<ArchiveSprite | undefined>;
-      if (seed.status === 'fulfilled') seed.value?.dispose();
       for (const pieces of outputs.values()) pieces.forEach(piece => piece.dispose());
       throw failure?.status === 'rejected' ? failure.reason : new Error('Rock manager has been disposed');
     }
-    const sprite = (resources[0] as PromiseFulfilledResult<ArchiveSprite>).value;
-    const seed = (resources[2] as PromiseFulfilledResult<ArchiveSprite | undefined>).value;
-    return this.create(prefabId, sprite, outputs, position, saved, caveinBoulder, seed);
+    const source = (resources[0] as PromiseFulfilledResult<RockSource>).value;
+    const seedSource = (resources[2] as PromiseFulfilledResult<RockSource | undefined>).value;
+    const sprite = this.createSprite(source, prefabId, caveinBoulder?.raised ? 'idle_raised' : definition.initialAnimation);
+    const seed = seedSource && this.createSprite(seedSource, 'moonrockseed', 'idle');
+    return this.create(prefabId, sprite, outputs, position, saved, caveinBoulder, seed, colour);
   }
 
-  private create(prefabId: RockEntityId, sprite: ArchiveSprite, outputs: Map<string, PreparedGroundSpawn[]>,
-    position: THREE.Vector3, saved?: RockRecord, caveinBoulder?: CaveinBoulderSave, preparedSeed?: ArchiveSprite): THREE.Group {
+  /** One shared source per rock archive/bank; every rock builds its own sprite in the logical clip. */
+  private getSource(prefabId: RockEntityId): Promise<RockSource> {
+    let request = this.sources.get(prefabId);
+    if (!request) {
+      const definition = ROCK_DEFINITIONS[prefabId];
+      request = preloadSharedArchiveSprite(this.assets, {
+        animationArchive: definition.archive, buildArchives: [definition.buildArchive ?? definition.archive], bank: definition.bank,
+        hiddenSymbols: prefabId !== 'cavein_boulder' && prefabId !== 'moonrockseed' ? ['snow'] : undefined,
+      }, { instancedAnimations: 'all' }).catch(error => { this.sources.delete(prefabId); throw error; });
+      this.sources.set(prefabId, request);
+    }
+    return request;
+  }
+
+  private createSprite(source: RockSource, prefabId: RockEntityId, animation: string): ResidentSprite {
+    const create = (clip: { name: string; loop: boolean }) => source(clip.name, clip.loop, prefabId, { colour: [1, 1, 1] });
+    const clip = { name: animation, loop: false };
+    return new ResidentSprite(create, clip, create(clip), prefabId);
+  }
+
+  private create(prefabId: RockEntityId, sprite: ResidentSprite, outputs: Map<string, PreparedGroundSpawn[]>,
+    position: THREE.Vector3, saved?: RockRecord, caveinBoulder?: CaveinBoulderSave, preparedSeed?: ResidentSprite, colour = 1): THREE.Group {
     if (prefabId === 'moonrockseed') sprite.setPaused(true);
     const model = sprite.model;
     model.position.set(position.x, 0, position.z);
@@ -233,7 +255,7 @@ export class RockManager {
       : prefabId === 'moonrockseed' ? ['irreplaceable', 'nonpotatable', 'celestial_station']
       : ['boulder', 'SnowCovered', ...(prefabId === 'rock_moon_shell' ? ['meteor_protection'] : [])];
     const inst = actionEntity(model, prefabId);
-    const rock: Rock = { prefabId, model, sprite, caveinBoulder, outputs, preparedSeed };
+    const rock: Rock = { prefabId, model, sprite, caveinBoulder, outputs, preparedSeed, erosion: 0, colour };
     if ((MINEABLE_ROCK_PREFABS as readonly string[]).includes(prefabId)) {
       const lootdropper = new LootDropper(inst, (prefab, position) => {
         const output = outputs.get(prefab)?.shift();
@@ -245,6 +267,7 @@ export class RockManager {
       lootdropper.SetChanceLootTable(prefabId);
       rock.controller = new RockController(model, prefabId as RockPrefabId, lootdropper, () => this.remove(rock), {
         scheduler: this.scheduler, caveinBoulder,
+        setErosion: amount => { rock.erosion = amount; sprite.setErosion(amount); },
         spawnSeed: () => {
           const seed = rock.preparedSeed;
           if (!seed) throw new Error('Moon shell seed has not been prepared');
@@ -253,17 +276,28 @@ export class RockManager {
         },
       });
     }
+    // Colour, boulder variation, erosion and facing belong to the rock; dress each sprite drawn for it.
+    rock.stopAppearance = createEffect(() => {
+      sprite.art.get();
+      sprite.setColour([rock.colour, rock.colour, rock.colour]);
+      if (caveinBoulder && caveinBoulder.variation > 1) {
+        sprite.setSymbolOverride('swap_boulder', 'swap_cavein_boulder.zip', `swap_boulder${caveinBoulder.variation}`);
+      }
+      sprite.setErosion(rock.erosion);
+      sprite.faceCamera(this.cameraQuaternion);
+    });
     this.rocks.add(rock); this.mouseRecords.set(rock.model, rock);
     this.scene.add(model);
+    rock.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
     return model;
   }
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed) return;
+    this.cameraQuaternion.copy(cameraQuaternion);
     if (this.ownsScheduler) this.scheduler.advance(dt);
     for (const rock of this.rocks) {
-      rock.model.quaternion.copy(cameraQuaternion);
-      rock.sprite.update(dt);
+      if (rock.sprite.loaded) { rock.sprite.faceCamera(cameraQuaternion); rock.sprite.update(dt); }
       rock.controller?.update();
     }
   }
@@ -284,7 +318,7 @@ export class RockManager {
   }
 
   get renderEntities() {
-    return [...this.rocks].map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
+    return [...this.rocks].filter(({ sprite }) => sprite.loaded).map(({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
   }
 
   exportRecords(): { prefabId: RockEntityId; record: RockRecord }[] {
@@ -311,6 +345,7 @@ export class RockManager {
   private remove(rock: Rock): void {
     if (!this.rocks.delete(rock)) return;
     rock.model.userData.removed = true;
+    rock.stopActivity?.(); rock.stopAppearance?.();
     rock.controller?.dispose();
     rock.sprite.dispose();
     rock.preparedSeed?.dispose();

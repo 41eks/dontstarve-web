@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { createEffect, type TileStateQuery } from '@dontstarve-web/signals';
+import { watchTileActivity } from './tileActivity';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -45,13 +48,16 @@ export interface SkeletonRecord {
 }
 
 export interface SkeletonWorld {
+  tickingarea?: TileStateQuery;
   physics?: CANNON.World;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
 }
 
 interface Skeleton {
   model: THREE.Group;
-  sprite: ArchiveSprite;
+  sprite: ResidentSprite;
+  stopActivity?: () => void;
+  stopArt?: () => void;
   body?: CANNON.Body;
   workable: Workable;
   loot: { itemId: string; output: PreparedGroundSpawn }[];
@@ -76,6 +82,8 @@ export class SkeletonManager {
   private readonly assets = new ArchiveSpriteAssets();
   private readonly skeletons = new Map<THREE.Group, Skeleton>();
   private readonly effects = new Set<ArchiveSprite>();
+  private source?: ReturnType<typeof preloadSharedArchiveSprite>;
+  private readonly cameraQuaternion = new THREE.Quaternion();
   private disposed = false;
 
   constructor(scene: THREE.Scene, world: SkeletonWorld) {
@@ -85,9 +93,14 @@ export class SkeletonManager {
   /** Decode the bones and the hammer's collapse effect ahead of the death that leaves them. */
   async prepare(): Promise<void> {
     if (this.disposed) throw new Error('Skeletons have been disposed');
-    await Promise.all([this.assets.loadAnimation('skeletons.zip'), this.assets.loadBuild('skeletons.zip'),
+    await Promise.all([this.getSource(),
       this.assets.loadAnimation('structure_collapse_fx.zip'), this.assets.loadBuild('structure_collapse_fx.zip'),
       PreloadSounds('dontstarve/common/destroy_smoke', 'dontstarve/wilson/rock_break')]);
+  }
+
+  private getSource() {
+    return this.source ??= preloadSharedArchiveSprite(this.assets, { animationArchive: 'skeletons.zip', buildArchives: ['skeletons.zip'],
+      bank: 'skeleton' }, { instancedAnimations: 'all' }).catch((error: unknown) => { this.source = undefined; throw error; });
   }
 
   async spawn(prefab: SkeletonId, position: THREE.Vector3, saved?: SkeletonRecord): Promise<THREE.Group> {
@@ -98,18 +111,19 @@ export class SkeletonManager {
     const { min, max } = SKELETON_ANIMS[prefab];
     const anim = state?.anim ?? min + Math.floor(Math.random() * (max - min + 1));
     const resources = await Promise.allSettled([
-      createArchiveSprite(this.assets, { animationArchive: 'skeletons.zip', buildArchives: ['skeletons.zip'], bank: 'skeleton',
-        animation: `idle${anim}`, loop: false }, { name: prefab }),
+      this.getSource(),
       this.prepareHammered(prefab),
     ] as const);
-    const sprite = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
+    const create = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
     const loot = resources[1].status === 'fulfilled' ? resources[1].value : [];
-    if (resources.some(result => result.status === 'rejected') || this.disposed || !sprite) {
-      sprite?.dispose(); loot.forEach(({ output }) => output.dispose());
+    if (resources.some(result => result.status === 'rejected') || this.disposed || !create) {
+      loot.forEach(({ output }) => output.dispose());
       const failed = resources.find(result => result.status === 'rejected');
       throw failed?.status === 'rejected' ? failed.reason : new Error('Skeletons have been disposed');
     }
-    return this.create(prefab, sprite, loot, position, anim, state, saved);
+    const build = (clip: { name: string; loop: boolean }) => create(clip.name, clip.loop, prefab);
+    const clip = { name: `idle${anim}`, loop: false };
+    return this.create(prefab, new ResidentSprite(build, clip, build(clip), prefab), loot, position, anim, state, saved);
   }
 
   /** The collapse effect, rock_break sound and every item of the prefab's loot table, ready before the hit. */
@@ -129,11 +143,11 @@ export class SkeletonManager {
     return loot;
   }
 
-  private create(prefab: SkeletonId, sprite: ArchiveSprite, loot: Skeleton['loot'], position: THREE.Vector3, anim: number,
+  private create(prefab: SkeletonId, sprite: ResidentSprite, loot: Skeleton['loot'], position: THREE.Vector3, anim: number,
     state: SkeletonSaveState | undefined, saved: SkeletonRecord | undefined): THREE.Group {
     const model = sprite.model;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab, tags: skeletonTags(prefab) });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab, tags: skeletonTags(prefab), animationController: sprite });
     const inst = actionEntity(model, prefab);
     for (const tag of skeletonTags(prefab)) inst.addTag(tag);
     // workable: HAMMER, SKELETON_WORK; OnHammered drops the table, plays collapse_small with the rock material and removes it.
@@ -164,8 +178,10 @@ export class SkeletonManager {
       model.userData.physicsBody = skeleton.body; model.userData.physicsRadius = PHYSICS_RADIUS;
       this.world.physics.addBody(skeleton.body);
     }
+    skeleton.stopArt = createEffect(() => { sprite.art.get(); sprite.faceCamera(this.cameraQuaternion); });
     this.skeletons.set(model, skeleton);
     this.scene.add(model);
+    skeleton.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
     return model;
   }
 
@@ -183,7 +199,7 @@ export class SkeletonManager {
     const at = position.clone();
     PlaySound('dontstarve/common/destroy_smoke', at);
     PlaySound('dontstarve/wilson/rock_break', at);
-    void createArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
+    void createSharedArchiveSprite(this.assets, { animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
       bank: 'collapse', animation: 'collapse_small', loop: false }).then(effect => {
       if (this.disposed) { effect.dispose(); return; }
       effect.model.position.copy(at); effect.model.userData.tags = ['FX', 'NOCLICK']; effect.model.userData.persists = false;
@@ -194,12 +210,13 @@ export class SkeletonManager {
 
   update(dt: number, quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
-    for (const { model, sprite } of this.skeletons.values()) { model.quaternion.copy(quaternion); sprite.update(dt); }
+    this.cameraQuaternion.copy(quaternion);
+    for (const { sprite } of this.skeletons.values()) if (sprite.loaded) { sprite.faceCamera(quaternion); sprite.update(dt); }
     for (const effect of [...this.effects]) { effect.model.quaternion.copy(quaternion); effect.update(dt); }
   }
 
   get renderEntities() {
-    return [...this.skeletons.keys(), ...[...this.effects].map(({ model }) => model)]
+    return [...[...this.skeletons].filter(([, { sprite }]) => sprite.loaded).map(([model]) => model), ...[...this.effects].map(({ model }) => model)]
       .map(object => ({ object, footPosition: object.position, cameraDepth: 0 }));
   }
 
@@ -229,6 +246,7 @@ export class SkeletonManager {
     const skeleton = this.skeletons.get(model); if (!skeleton) return;
     this.skeletons.delete(model); model.userData.removed = true;
     if (skeleton.body) this.world.physics?.removeBody(skeleton.body);
+    skeleton.stopActivity?.(); skeleton.stopArt?.();
     skeleton.workable.dispose();
     skeleton.loot.forEach(({ output }) => output.dispose()); skeleton.loot.length = 0;
     skeleton.sprite.dispose();

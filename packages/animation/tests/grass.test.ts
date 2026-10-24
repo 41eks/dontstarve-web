@@ -53,9 +53,10 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(model.userData.billboard).toBe(true);
   const controller = model.userData.animationController as { currentAnimation: string; update: (dt: number) => void };
   expect(controller.currentAnimation).toBe('idle');
-  const mesh = model.children[0].children[0] as THREE.Mesh;
-  expect(mesh.isMesh).toBe(true);
-  expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(4);
+  let mesh: THREE.Mesh | undefined;
+  model.traverse(object => { if (!mesh && object instanceof THREE.Mesh) mesh = object; });
+  expect(mesh).toBeDefined();
+  expect(mesh!.geometry.getAttribute('position').count).toBeGreaterThan(4);
 
   tickWorld(scheduler, grasses, 1 / 30, new THREE.Quaternion());
   expect(model.quaternion.x).toBe(0);

@@ -608,8 +608,9 @@ export async function createSceneEntities(
     return bulbPlants;
   }
 
-  function registerRocks(registry: EntityRegistry, prefabId: 'rocks', _worldState: SceneWorldState) {
+  function registerRocks(registry: EntityRegistry, prefabId: 'rocks', worldState: SceneWorldState) {
     const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
       scheduler,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
@@ -761,8 +762,9 @@ export async function createSceneEntities(
     return archiveProps;
   }
 
-  function registerHoundbones(registry: EntityRegistry, prefabId: 'houndbone', _worldState: SceneWorldState) {
+  function registerHoundbones(registry: EntityRegistry, prefabId: 'houndbone', worldState: SceneWorldState) {
     const houndbones = new HoundboneManager(scene, {
+      tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -778,8 +780,9 @@ export async function createSceneEntities(
     return houndbones;
   }
 
-  function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton', _worldState: SceneWorldState) {
+  function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton', worldState: SceneWorldState) {
     const skeletons = new SkeletonManager(scene, {
+      tickingarea: worldState.tickingarea,
       physics: world,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
@@ -814,6 +817,7 @@ export async function createSceneEntities(
 
   function registerRockAvocadoBushes(registry: EntityRegistry, prefabId: 'rock_avocado_bush', worldState: SceneWorldState) {
     const rockAvocadoBushes = new RockAvocadoBushManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
@@ -847,6 +851,7 @@ export async function createSceneEntities(
 
   function registerBerrybushes(registry: EntityRegistry, prefabId: 'berrybush', worldState: SceneWorldState) {
     const berrybushes = new BerrybushManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       physics: world, getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
@@ -864,6 +869,7 @@ export async function createSceneEntities(
 
   function registerMonkeytails(registry: EntityRegistry, prefabId: 'monkeytail', worldState: SceneWorldState) {
     const monkeytails = new MonkeytailManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
       rain: worldState.weather.preciptype,
       getLocalTemperature: position => GetTemperatureAtXZ(() => worldState.temperature.peek(), position.x, position.z),
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
@@ -879,8 +885,9 @@ export async function createSceneEntities(
     return monkeytails;
   }
 
-  function registerGrasses(registry: EntityRegistry, prefabId: 'grass', _worldState: SceneWorldState) {
+  function registerGrasses(registry: EntityRegistry, prefabId: 'grass', worldState: SceneWorldState) {
     const grasses = new GrassManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -896,8 +903,9 @@ export async function createSceneEntities(
     return grasses;
   }
 
-  function registerSaplings(registry: EntityRegistry, prefabId: 'sapling', _worldState: SceneWorldState) {
+  function registerSaplings(registry: EntityRegistry, prefabId: 'sapling', worldState: SceneWorldState) {
     const saplings = new SaplingManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
