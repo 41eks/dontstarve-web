@@ -65,7 +65,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   const model = world.scene.children[0];
   expect(model.name).toBe('MoonBase');
   expect(model.userData.animationController.currentAnimation).toBe('med');
-  const mesh = model.children[0].children[0] as THREE.Mesh;
+  const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
   expect(mesh.isMesh).toBe(true);
   expect(mesh.geometry.getAttribute('position').count).toBeGreaterThan(4);
   expect(mesh.geometry.groups.length).toBeGreaterThan(0);

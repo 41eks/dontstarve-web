@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
+import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { GrottoPoolManager } from '../../prefab/src/grotto_pool';
 import { WorldFx } from '../../prefab/src/world_fx';
 import { GroundItemManager } from '../../../src/groundItems';
@@ -21,7 +22,7 @@ vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: () => { sound.stops++; }, isPlaying: () => true, setVolume: (volume: number) => { sound.volumes.push(volume); } })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-function setup(playerAt = new THREE.Vector3()) {
+function setup(playerAt = new THREE.Vector3(), tickingarea?: TileStateQuery) {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
@@ -29,7 +30,7 @@ function setup(playerAt = new THREE.Vector3()) {
   const scheduler = new GameTimeScheduler(), fx = new WorldFx(scene);
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const pools = new GrottoPoolManager(scene, { physics, scheduler, fx, playerPosition: () => player.position,
+  const pools = new GrottoPoolManager(scene, { physics, scheduler, fx, playerPosition: () => player.position, tickingarea,
     prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grottoPools, {
@@ -56,7 +57,7 @@ const prefabs = (s: ReturnType<typeof setup>) => s.pools.exportRecords().map(({ 
 it('shares pool, mist and waterfall frames while mining and removing pools independently', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(.25);
   const s = setup(), disposed = vi.fn();
-  const mesh = (model: THREE.Object3D) => model.children[0].children[0] as THREE.Mesh;
+  const mesh = (model: THREE.Object3D) => model.children[0].children[0].children[0] as THREE.Mesh;
   try {
     const first = await s.pools.spawn('grotto_pool_small', new THREE.Vector3());
     const second = await s.pools.spawn('grotto_pool_small', new THREE.Vector3(10, 0, 0));
@@ -183,3 +184,23 @@ it('gives and spawns the moonglass that the props drop', async () => {
     await vi.waitFor(() => expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['moonglass']));
   } finally { s.dispose(); }
 }, 30000);
+
+it('releases pool and mist sprites outside the tickingarea and reloads them with the pool art settings on return', async () => {
+  const awake = createSignal(true);
+  const s = setup(new THREE.Vector3(), (() => createMemo(() => awake.get())) as TileStateQuery);
+  try {
+    const pool = await s.pools.spawn('grotto_pool_big', new THREE.Vector3(2, 0, 3));
+    const meshes = () => { let count = 0; pool.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(meshes()).toBeGreaterThan(0);
+    awake.set(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(meshes()).toBe(0);
+    awake.set(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(meshes()).toBeGreaterThan(0);
+    const visual = pool.children.find(child => child.name === 'grotto_pool_big')!.children[0];
+    expect(visual.rotation.x).toBeCloseTo(-Math.PI / 2);
+    expect(pool.userData.billboard).toBe(false);
+  } finally { s.dispose(); }
+});

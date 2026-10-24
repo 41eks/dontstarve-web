@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
+import { createMemo, createSignal } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
 import { MushtreeManager, type MushtreeWorld } from '../../prefab/src/mushtree';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -26,7 +27,7 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
   const trees = new MushtreeManager(scene, mushWorld);
   try {
     const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7));
-    const mesh = model.children[0].children[0] as THREE.Mesh;
+    const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.visible).toBe(false); // Idle is drawn by the shared instance batch.
     expect(trees.miniMapEntities.map(({ icon }) => icon)).toEqual(['mushtree_moon.png']);
     const axe = inventory.entities.create({ itemId: 'axe', count: 1 });
@@ -97,3 +98,23 @@ it('blooms a tall mushtree in winter only and carries webbable', async () => {
     expect(model.userData.actionEntity.hasTag('webbable')).toBe(true);
   } finally { trees.dispose(); }
 }, 20000);
+
+it('releases the mushtree sprite outside the tickingarea and settles a transition that ran while unloaded', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal('window', new EventTarget());
+  const { mushWorld } = world(), awake = createSignal(true);
+  const trees = new MushtreeManager(new THREE.Scene(), { ...mushWorld, tickingarea: () => createMemo(() => awake.get()) });
+  try {
+    const model = await trees.spawn('mushtree_moon', new THREE.Vector3(5, 0, 7));
+    const meshes = () => { let count = 0; model.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(meshes()).toBeGreaterThan(0);
+    awake.set(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(meshes()).toBe(0);
+    expect(model.userData.entityId).toBeDefined();
+    awake.set(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(meshes()).toBeGreaterThan(0);
+  } finally { trees.dispose(); }
+});

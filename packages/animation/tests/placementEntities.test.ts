@@ -96,10 +96,11 @@ it('tracks tags, movement, attachment, replacement and permanent removal without
 it('keeps unloaded logical trees blocking their tile, deduplicates loaded visuals and releases permanent removals', () => {
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), point = new THREE.Vector3(11.99, 0, 11.99);
-  const trees = new ProximityEntities([point], 10, () => {
+  const trees = new ProximityEntities([point], () => {
     const model = new THREE.Group(); actionEntity(model, 'evergreen'); return model;
   }, () => {}, undefined, { prefab: 'evergreen', smartRadius: 1 });
   scene.add(trees.group);
+  const unbindArea = trees.bindTickingarea(() => undefined); // No area gate: every entity is active.
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
   const farm = new FarmPlowPlacement(world, new TurfMap(96), async () => {});
@@ -107,11 +108,11 @@ it('keeps unloaded logical trees blocking their tile, deduplicates loaded visual
   try {
     expect(trees.entities[0].model).toBeUndefined();
     expect(farm.canDeploy(origin)).toBe(false); // Tile corner is outside a half-tile radius query.
-    trees.update(point);
+    trees.update();
     let count = 0;
     query.someOnTile(origin, () => { count++; return false; });
     expect(count).toBe(1);
-    trees.update(new THREE.Vector3(1000, 0, 1000));
+    unbindArea(); trees.update();
     expect(trees.entities[0].model).toBeUndefined();
     expect(farm.canDeploy(origin)).toBe(false);
     trees.remove(trees.entities[0]);

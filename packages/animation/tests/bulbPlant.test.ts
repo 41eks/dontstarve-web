@@ -120,14 +120,14 @@ describe('real plant archives, spawning and saving', () => {
       id: 'e_springy', transform: { position: [8, 0, 9], rotationY: 0 },
       components: { bulbPlant: { variant: 'springy', lightState: 'ON', remainingSeconds: 50 } },
     });
-    const mesh = (model: THREE.Group) => model.children[0].children[0] as THREE.Mesh;
+    const mesh = (model: THREE.Group) => model.children[0].children[0].children[0] as THREE.Mesh;
     const material = (model: THREE.Group) => (mesh(model).material as THREE.MeshBasicMaterial[])[0];
     expect(single.position.toArray()).toEqual([1, 0, 2]);
     expect(material(single).map).toBe(material(duplicate).map);
     expect(material(single).map).not.toBe(material(double).map);
     for (let i = 0; i < 80; i++) manager.update(0.1, new THREE.Quaternion());
     for (const model of [single, double, triple, springy]) {
-      expect(model.children[0].children).toHaveLength(1);
+      expect(model.children[0].children[0].children).toHaveLength(1);
       expect(mesh(model).geometry.drawRange.count).toBeGreaterThan(0);
       expect(material(model).forceSinglePass).toBe(true);
     }
@@ -163,6 +163,26 @@ describe('real plant archives, spawning and saving', () => {
     expect(getPrefabLocalLight(single)).toBeUndefined();
     expect(single.userData.tags).toEqual(['plant']);
     expect(single.userData.components.pickable).toBeUndefined();
+  });
+});
+
+describe('flower_cave sprite residency', () => {
+  it('releases the sprite outside the tickingarea and restores the logical clip on return', async () => {
+    vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(
+      `../../../public/dst/data/anim/${String(url).split('/').at(-1)}`, import.meta.url))));
+    const awake = createSignal(true);
+    const manager = new BulbPlantManager(new THREE.Scene(), '/anim', { getLightLevel: () => 1, tickingarea: () => createMemo(() => awake.get()) }, () => 0);
+    const plant = await manager.spawn('flower_cave', new THREE.Vector3(1, 0, 2));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const meshes = () => { let count = 0; plant.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
+    expect(meshes()).toBeGreaterThan(0);
+    awake.set(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(meshes()).toBe(0);
+    awake.set(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(meshes()).toBeGreaterThan(0);
+    manager.dispose();
   });
 });
 

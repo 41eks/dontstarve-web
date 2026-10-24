@@ -3,13 +3,14 @@ import * as THREE from 'three';
 import { createSignal, readonlySignal, getBoundWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 import { disposeSprite } from './disposeSprite';
 import {
-    createAnimatedSprite,
+    createAnimatedSpriteSource,
     createAnimatedSpriteFactory,
-    SpriteController,
     type AnimatedSpriteFactory,
+    type AnimatedSpriteSourceOptions,
     type SpriteAnimationController,
-    type TransientSpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
+import { ResidentSpriteController } from './residentSprite';
+import { watchTileActivity } from './tileActivity';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';
 import { BuildCursor } from './buildCursor';
@@ -20,7 +21,6 @@ import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedE
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { nextReskin } from './reskin_tool';
 import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { isPlayerNearby } from './playerProximity';
 import { createBuildingContainer, isStorageBuildingId } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
@@ -167,7 +167,8 @@ type AnimatedBuildingInteractionState = 'closed' | 'opening' | 'open' | 'closing
 interface AnimatedBuildingInstance<BuildId extends string> {
     buildId: BuildId;
     model: THREE.Group;
-    animation: TransientSpriteAnimationController;
+    /** The sprite is built only while the building's tile is active; the instance keeps one controller for life. */
+    readonly animation: ResidentSpriteController;
     groundOffset: number;
     interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
@@ -177,6 +178,7 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     prepared?: AnimatedBuildingPreparedResources;
     readonly preparedSkins: Map<string | undefined, AnimatedBuildingInstance<BuildId>>;
     stopSkin?: () => void;
+    stopActivity?: () => void;
     stopBurnt?: () => void;
     stopBurning?: () => void;
     skinArtReleased?: boolean;
@@ -210,6 +212,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private readonly placed: AnimatedBuildingInstance<BuildId>[] = [];
     private readonly effects = new Set<THREE.Group>();
     private readonly effectFactories = new Map<string, Promise<AnimatedSpriteFactory>>();
+    /** Archives, atlas materials and frame geometry shared by every placed building of one build and skin. */
+    private readonly spriteSources = new Map<string, Promise<AnimatedSpriteFactory>>();
     private readonly cameraWorldQuaternion = new THREE.Quaternion();
 
     constructor(
@@ -402,6 +406,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             });
         }
         if (definition.burnable) this.initializeBurnable(building);
+        // OnEntitySleep/OnEntityWake: the sprite exists only while the building's tile is active.
+        building.stopActivity = watchTileActivity(model, this.worldContext.tickingarea, active => building.animation.setActive(active));
     }
 
     private initializeBurnable(building: AnimatedBuildingInstance<BuildId>): void {
@@ -474,6 +480,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private releaseBurnable(building: AnimatedBuildingInstance<BuildId>): void {
+        building.stopActivity?.(); building.stopActivity = undefined;
         building.stopBurning?.(); building.stopBurning = undefined;
         building.stopBurnt?.(); building.stopBurnt = undefined;
         const burnable = actionEntity(building.model, building.buildId).components.burnable;
@@ -599,15 +606,14 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             building.preparedSkins.delete(skinId);
             replacement.skinArtReleased = true;
             const footY = building.model.position.y - building.groundOffset;
-            (replacement.animation as SpriteController).copyPlaybackFrom(building.animation as SpriteController);
+            // The controller, root and logical clip stay; only the source and the drawn sprite change.
+            building.animation.adopt(replacement.animation);
             this.disposeBuildingArt(building.model);
-            for (const child of [...replacement.model.children]) building.model.add(child);
-            registerSpriteRenderGroup(building.model, building.model.children[0] as THREE.Group);
-            building.animation = replacement.animation;
             building.prepared = replacement.prepared;
-            building.model.userData.animationController = replacement.animation;
-            building.model.userData.ownedSpriteMaterials = replacement.model.userData.ownedSpriteMaterials;
-            building.model.userData.disposePreparedResources = replacement.model.userData.disposePreparedResources;
+            for (const key of ['ownedSpriteMaterials', 'disposePreparedResources', 'disposeSpriteSource'] as const) {
+                if (replacement.model.userData[key] === undefined) delete building.model.userData[key];
+                else building.model.userData[key] = replacement.model.userData[key];
+            }
             if (skinId === undefined) delete building.model.userData.skinId;
             else building.model.userData.skinId = skinId;
             building.groundOffset = replacement.groundOffset;
@@ -618,21 +624,17 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         });
     }
 
+    /** Releases what the building's art owns besides its sprite, which its controller returns to the source. */
     private disposeBuildingArt(model: THREE.Group): void {
         model.userData.disposePreparedResources?.();
         delete model.userData.disposePreparedResources;
-        const materials = new Set<THREE.Material>();
-        model.traverse(object => {
-            for (const material of object.userData.ownedSpriteMaterials ?? []) materials.add(material);
-            if (!(object instanceof THREE.Mesh)) return;
-            object.geometry.dispose();
-            for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material);
-        });
-        for (const material of materials) {
+        model.userData.disposeSpriteSource?.();
+        delete model.userData.disposeSpriteSource;
+        for (const material of new Set<THREE.Material>(model.userData.ownedSpriteMaterials ?? [])) {
             if (material instanceof THREE.MeshBasicMaterial) material.map?.dispose();
             material.dispose();
         }
-        model.clear();
+        model.userData.ownedSpriteMaterials = [];
     }
 
     private releaseSkin(building: AnimatedBuildingInstance<BuildId>): void {
@@ -677,6 +679,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         // Factory-owned effects share materials; only their factory disposes them.
         for (const effect of this.effects) effect.removeFromParent();
         this.effects.clear();
+        // Every sprite is released above; only now can the atlases they drew from go.
+        for (const source of this.spriteSources.values()) void source.then((value) => value.dispose(), () => undefined);
+        this.spriteSources.clear();
         for (const factory of this.effectFactories.values()) void factory.then((value) => value.dispose(), () => undefined);
         this.effectFactories.clear();
     }
@@ -888,30 +893,35 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
         if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
         const skin = skinId === undefined ? undefined : definition.skinInit?.(skinId);
-        const [model, [preparedResult], effectFactory, fireFactory] = await Promise.all([createAnimatedSprite(
-            `${import.meta.env.BASE_URL}dst/data/anim`,
-            skin?.archive ?? definition.archive,
-            {
-                buildArchive: skin?.buildArchive ?? definition.buildArchive,
-                initialAnimation: preview && definition.previewAnimation ? definition.previewAnimation
-                    : state === 'open' && definition.interaction
-                    ? definition.interaction.openAnimation : this.idleAnimation(buildId),
-                initialFrame: state === 'open' && !definition.interaction?.openAnimationLoop ? 'last' : 'first',
-                name: definition.name,
-                scale: definition.scale,
-                skinArchive: skin?.skinArchive ?? skinArchive,
-                skinSymbols: definition.skinSymbols,
-                baseSymbols: definition.baseSymbols,
-                skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
-                symbolOverrides: definition.symbolOverrides,
-                hiddenLayers: definition.hiddenLayers,
-            },
-        ), Promise.all([definition.prepare?.(), definition.hammerMaterial
-            ? PreloadSounds('dontstarve/common/destroy_smoke', `dontstarve/common/destroy_${definition.hammerMaterial}`) : undefined]),
-          definition.hammerEffect ? this.prepareEffect(definition.hammerEffect.archive) : undefined,
-          definition.burnable ? Promise.all([this.prepareEffect('fire.zip'), PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut')]).then(([factory]) => factory) : undefined]);
+        const archive = skin?.archive ?? definition.archive;
+        const sourceOptions: AnimatedSpriteSourceOptions = { buildArchive: skin?.buildArchive ?? definition.buildArchive,
+            skinArchive: skin?.skinArchive ?? skinArchive, symbolOverrides: definition.symbolOverrides };
+        const initialAnimation = preview && definition.previewAnimation ? definition.previewAnimation
+            : state === 'open' && definition.interaction ? definition.interaction.openAnimation : this.idleAnimation(buildId);
+        const held = state === 'open' && !definition.interaction?.openAnimationLoop;
+        const [source, [preparedResult], effectFactory, fireFactory] = await Promise.all([
+            // A preview is made translucent through its materials, so it keeps a source of its own.
+            preview ? createAnimatedSpriteSource(`${import.meta.env.BASE_URL}dst/data/anim`, archive, sourceOptions)
+                : this.spriteSource(archive, sourceOptions),
+            Promise.all([definition.prepare?.(), definition.hammerMaterial
+                ? PreloadSounds('dontstarve/common/destroy_smoke', `dontstarve/common/destroy_${definition.hammerMaterial}`) : undefined]),
+            definition.hammerEffect ? this.prepareEffect(definition.hammerEffect.archive) : undefined,
+            definition.burnable ? Promise.all([this.prepareEffect('fire.zip'), PreloadSounds('dontstarve/common/campfire', 'dontstarve/common/fireOut')]).then(([factory]) => factory) : undefined]);
+        const spriteOptions = (animation: string, initialFrame: 'first' | 'last' = 'first') => ({
+            initialAnimation: animation, initialFrame, name: definition.name, scale: definition.scale,
+            skinSymbols: definition.skinSymbols, baseSymbols: definition.baseSymbols,
+            skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
+            hiddenLayers: definition.hiddenLayers,
+        });
+        const model = new THREE.Group();
+        model.name = definition.name;
+        model.userData.ownedSpriteMaterials = [];
+        if (preview) model.userData.disposeSpriteSource = () => source.dispose();
+        model.userData.animationController = new ResidentSpriteController(model,
+            animation => source.create(spriteOptions(animation)), sprite => source.disposeSprite(sprite),
+            source.create(spriteOptions(initialAnimation, held ? 'last' : 'first')), { name: initialAnimation, held });
         const prepared = preparedResult as AnimatedBuildingPreparedResources | undefined;
-        if (prepared) (model.userData.ownedSpriteMaterials ??= []).push(...prepared.materials);
+        if (prepared) model.userData.ownedSpriteMaterials.push(...prepared.materials);
         if (prepared?.dispose) model.userData.disposePreparedResources = () => prepared.dispose!();
         if (this.disposed) { disposeSprite(model); throw new Error('Placement has been disposed'); }
         model.updateWorldMatrix(true, true);
@@ -919,7 +929,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const instance: AnimatedBuildingInstance<BuildId> = {
             buildId,
             model,
-            animation: model.userData.animationController as TransientSpriteAnimationController,
+            animation: model.userData.animationController as ResidentSpriteController,
             effectFactory,
             fireFactory,
             groundOffset: -bounds.min.y,
@@ -944,6 +954,17 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         return !this.disposed && this.placed.includes(building) && !building.isPlacing
             && actionEntity(building.model, building.buildId).components.workable?.CanBeWorked() === true
             && building.model.visible && building.model.parent !== null;
+    }
+
+    private spriteSource(archive: string, options: AnimatedSpriteSourceOptions): Promise<AnimatedSpriteFactory> {
+        const key = JSON.stringify([archive, options.buildArchive, options.skinArchive, options.symbolOverrides]);
+        let request = this.spriteSources.get(key);
+        if (!request) {
+            request = createAnimatedSpriteSource(`${import.meta.env.BASE_URL}dst/data/anim`, archive, options);
+            this.spriteSources.set(key, request);
+            void request.catch(() => this.spriteSources.delete(key));
+        }
+        return request;
     }
 
     private prepareEffect(archive: string): Promise<AnimatedSpriteFactory> {

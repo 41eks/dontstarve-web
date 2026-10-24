@@ -53,7 +53,8 @@ for (const harvest of [
     }, { urls, harvest });
     const point = await page.evaluate(() => {
       const { plant, view } = (window as any).pickGame;
-      const mesh = plant.children[0].children[0];
+      let mesh: any;
+      plant.traverse((object: any) => { if (!mesh && object.isMesh) mesh = object; });
       mesh.updateWorldMatrix(true, false);
       // Active frame vertices only: unused animation-buffer capacity is not artwork.
       const vertices = mesh.geometry.getAttribute('position');

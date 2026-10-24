@@ -72,7 +72,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const food = await loadBuild('cook_pot_food11.zip', '/dst/data/anim');
   const foodImage = findImage(food.build, smallHash('beefalofeed'), 0)!;
   expect(foodImage).toBeDefined();
-  const mesh = restored.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const mesh = restored.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   expect(mesh.geometry.groups.some(({ materialIndex }) =>
     (mesh.material[materialIndex!].map!.image as { data: Uint8Array }).data === food.atlases[0].pixels)).toBe(true);
   expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
@@ -87,7 +87,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
       stewer: { product: 'kabobs', phase: 'done', remainingSeconds: 0 } } });
   const ordinaryFood = await loadBuild('cook_pot_food.zip', '/dst/data/anim');
   expect(findImage(ordinaryFood.build, smallHash('kabobs'), 0)).toBeDefined();
-  const highMesh = high.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const highMesh = high.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   expect(highMesh.geometry.groups.some(({ materialIndex }) =>
     (highMesh.material[materialIndex!].map!.image as { data: Uint8Array }).data === ordinaryFood.atlases[0].pixels)).toBe(true);
   const unusedMaterial = full.userData.ownedSpriteMaterials.at(-1) as THREE.Material;

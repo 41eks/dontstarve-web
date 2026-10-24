@@ -379,7 +379,7 @@ export async function createSceneEntities(
     const buildingPlacement = new PlaceableBuildingPlacement(
       { ...view, physics: world, scheduler, dynamicMusic,
         getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
-        cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, isNight: worldState.isNight, perishClock: worldState.perishClock,
+        cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, isNight: worldState.isNight, perishClock: worldState.perishClock,
         secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
         // world_fx registers after the buildings; the manager is read when an fx is played.
         fx: { prepare: prefab => Managers['world_fx'].prepare(prefab), spawn: (prefab, position) => { Managers['world_fx'].spawn(prefab, position); } },
@@ -639,6 +639,7 @@ export async function createSceneEntities(
     const mushrooms = new MushroomPlantManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
       rain: worldState.weather.preciptype,
+      tickingarea: worldState.tickingarea,
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => mushrooms.spawn(new THREE.Vector3(...record.transform.position), {
@@ -655,7 +656,7 @@ export async function createSceneEntities(
 
   function registerMushtrees(registry: EntityRegistry, prefabId: 'mushtree', worldState: SceneWorldState) {
     const mushtrees = new MushtreeManager(scene, {
-      physics: world, scheduler, scene, getWatchWorldContent: worldState.getWatchWorldContent, worldEvents,
+      physics: world, scheduler, scene, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, worldEvents,
       dropLoot: (items, position) => {
         void Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
           .catch((error: unknown) => console.error('Unable to drop mushtree loot', error));
@@ -1094,7 +1095,7 @@ export async function createSceneEntities(
 
   async function registerEvergreens(registry: EntityRegistry, prefabId: 'evergreen', worldState: SceneWorldState) {
     const evergreenForest = await createEvergreenForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
-      camera, scene, scheduler, physics: world, worldEvents,
+      camera, scene, scheduler, physics: world, worldEvents, tickingarea: worldState.tickingarea,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
         void Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
@@ -1107,7 +1108,7 @@ export async function createSceneEntities(
         { ...record, components: { ...record.components, growable: record.components.growable! } }),
       debugSpawn: async prefab => { evergreenForest.spawn(prefab as EvergreenSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => evergreenForest.exportRecords().map(record => ({ prefabId: 'evergreen', record })),
-      update: (dt, quaternion) => { evergreenForest.updateNearby(player.position); evergreenForest.update(dt, quaternion); },
+      update: (dt, quaternion) => { evergreenForest.updateNearby(); evergreenForest.update(dt, quaternion); },
       miniMapEntities: () => evergreenForest.miniMapEntities,
       renderEntities: () => evergreenForest.renderEntities,
       dispose: () => evergreenForest.dispose(),
@@ -1117,7 +1118,7 @@ export async function createSceneEntities(
 
   async function registerDeciduousTrees(registry: EntityRegistry, prefabId: 'deciduoustree', worldState: SceneWorldState) {
     const deciduousForest = await createDeciduousForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
-      camera, scene, scheduler, physics: world, season: worldState.season, worldEvents,
+      camera, scene, scheduler, physics: world, season: worldState.season, worldEvents, tickingarea: worldState.tickingarea,
       secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
@@ -1131,7 +1132,7 @@ export async function createSceneEntities(
         { ...record, components: { ...record.components, deciduoustree: record.components.deciduoustree! } }),
       debugSpawn: async prefab => { deciduousForest.spawn(prefab as DeciduousSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => deciduousForest.exportRecords().map(record => ({ prefabId: 'deciduoustree', record })),
-      update: (dt, quaternion) => { deciduousForest.updateNearby(player.position); deciduousForest.update(dt, quaternion); },
+      update: (dt, quaternion) => { deciduousForest.updateNearby(); deciduousForest.update(dt, quaternion); },
       miniMapEntities: () => deciduousForest.miniMapEntities,
       renderEntities: () => deciduousForest.renderEntities,
       dispose: () => deciduousForest.dispose(),
@@ -1191,6 +1192,7 @@ export async function createSceneEntities(
       camera,
       scene,
       scheduler,
+      tickingarea: worldState.tickingarea,
       season: worldState.season,
       worldEvents,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
@@ -1215,7 +1217,7 @@ export async function createSceneEntities(
         components: moonTreeForest.exportState(entity),
       } })),
       update: (dt, quaternion) => {
-        moonTreeForest.updateNearby(player.position);
+        moonTreeForest.updateNearby();
         moonTreeForest.update(dt);
         moonTreeForest.setNormals(quaternion);
       },

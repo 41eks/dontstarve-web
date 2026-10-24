@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
@@ -96,7 +96,7 @@ export class CaveEntranceManager {
   /** closed: idle_closed; open: `no_access` loop, since no destination shard is active yet. */
   private createSprite(prefab: CaveEntranceId): Promise<ArchiveSprite> {
     const open = prefab === CAVE_ENTRANCE_OPEN_ID;
-    return createArchiveSprite(this.assets, { animationArchive: 'cave_entrance.zip', buildArchives: ['cave_entrance.zip'],
+    return createSharedArchiveSprite(this.assets, { animationArchive: 'cave_entrance.zip', buildArchives: ['cave_entrance.zip'],
       bank: 'cave_entrance', animation: open ? 'no_access' : 'idle_closed', loop: open }, { name: prefab });
   }
 

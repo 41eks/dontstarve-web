@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createTestArea, useTestTileMap } from './tileMapFixture';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -11,6 +12,11 @@ import { Lighter } from '../../componets/src/lighter';
 import { collectEquippedActions, performLightAction, performToolWork, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import { EventEmitter, createSignal, type SeasonState } from '@dontstarve-web/signals';
 import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
+
+useTestTileMap();
+let area: ReturnType<typeof createTestArea>;
+beforeEach(async () => { area = createTestArea(); await area.ready; });
+afterEach(() => area.dispose());
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -50,9 +56,9 @@ async function evergreens(random = () => .5) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
   const { worldEvents, ashSpawned } = ashEvents();
   const forest = await createEvergreenForest('/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scene, scheduler,
-    physics: new CANNON.World(), dropLoot, worldEvents }, random, 20);
+    physics: new CANNON.World(), dropLoot, worldEvents, tickingarea: area.query }, random);
   scene.add(forest.group);
-  forest.updateNearby(new THREE.Vector3());
+  await area.visit(new THREE.Vector3(), forest);
   return { scene, scheduler, forest, dropLoot, ashSpawned };
 }
 
@@ -121,10 +127,10 @@ it('burns an evergreen stump to ash and removes it, and finishes a burning tree 
     const tree = s.forest.spawn('evergreen_tall', new THREE.Vector3(4, 0, 0));
     const target = tree.model!.userData.actionEntity as ComponentActionEntity;
     expect(light(target)).toBe(true); await flush();
-    s.forest.updateNearby(new THREE.Vector3(500, 0, 0)); await flush(); // OnEntitySleep
+    await area.visit(new THREE.Vector3(500, 0, 0), s.forest); await flush(); // OnEntitySleep
     expect(fires(s.scene)).toBe(0);
     expect(s.forest.exportRecords()[0].components).toEqual({ evergreen: { burnt: true }, growable: { stage: 3 } });
-    s.forest.updateNearby(new THREE.Vector3());
+    await area.visit(new THREE.Vector3(), s.forest);
     expect(s.forest.entities[0].model!.userData.animationController.currentAnimation).toBe('burnt_tall');
   } finally { s.forest.dispose(); }
 });
@@ -133,8 +139,8 @@ it('burns a deciduous tree, keeps its season-independent burnt save, and drops c
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
   const season = createSignal<SeasonState>({ season: 'summer', progress: .5 });
   const forest = await createDeciduousForest('/dst/data/anim', { camera: new THREE.PerspectiveCamera(), scene, scheduler, season,
-    physics: new CANNON.World(), dropLoot, worldEvents: new EventEmitter<WorldEvents>(), secondsUntilNextDay: now => 480 - now % 480 }, () => .5, 20);
-  scene.add(forest.group); forest.updateNearby(new THREE.Vector3());
+    physics: new CANNON.World(), dropLoot, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, secondsUntilNextDay: now => 480 - now % 480 }, () => .5);
+  scene.add(forest.group); await area.visit(new THREE.Vector3(), forest);
   try {
     const tree = forest.spawn('deciduoustree_normal', new THREE.Vector3(3, 0, 0));
     const target = tree.model!.userData.actionEntity as ComponentActionEntity;
@@ -155,9 +161,9 @@ it('burns a deciduous tree, keeps its season-independent burnt save, and drops c
 
 it('burns a moon tree for its size-scaled time and keeps burnt state through unloading, save and chopping', async () => {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), dropLoot = vi.fn();
-  const forest = await createMoonTreeForest('/dst/data/anim', { positions: [], random: () => .5, loadRadius: 20 });
-  forest.bindWorld({ camera: new THREE.PerspectiveCamera(), scene, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>() });
-  scene.add(forest.group); forest.updateNearby(new THREE.Vector3());
+  const forest = await createMoonTreeForest('/dst/data/anim', { positions: [], random: () => .5 });
+  forest.bindWorld({ camera: new THREE.PerspectiveCamera(), scene, scheduler, dropLoot, worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query });
+  scene.add(forest.group); await area.visit(new THREE.Vector3(), forest);
   try {
     const tree = forest.spawnTree('moon_tree_tall', new THREE.Vector3(3, 0, 0));
     const target = tree.model!.userData.actionEntity as ComponentActionEntity;
@@ -171,7 +177,7 @@ it('burns a moon tree for its size-scaled time and keeps burnt state through unl
     expect(forest.exportState(tree)).toEqual({ moonTree: { size: 'tall', burnt: true }, growable: { stage: 3 },
       moonTreeTimer: { timers: { decay: { timeleft: 14399, initial_time: 14400, paused: false } } } });
     expect(forest.miniMapEntities[0].icon).toBe('moon_tree_burnt.png');
-    forest.updateNearby(new THREE.Vector3(500, 0, 0)); forest.updateNearby(new THREE.Vector3());
+    await area.visit(new THREE.Vector3(500, 0, 0), forest); await area.visit(new THREE.Vector3(), forest);
     expect(tree.model!.userData.animationController.currentAnimation).toBe('burnt_tall');
     expect(performToolWork('CHOP', tree.model!.userData.actionEntity, {})).toBe(true);
     expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);

@@ -497,6 +497,55 @@ export async function createAnimatedSprite(
   return sprite;
 }
 
+export interface AnimatedSpriteSourceOptions {
+  /** Build zip separate from the bank zip passed as `file`. */
+  buildArchive?: string;
+  /** Skin build archive shared by every sprite of this source. */
+  skinArchive?: string;
+  symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
+}
+
+/**
+ * The shared half of `createAnimatedSprite`: archives, atlas materials and frame geometry are loaded once and
+ * reused by every sprite created from the source; each `create` only builds an entity's controller and meshes.
+ * `create` takes the per-entity skin/symbol options of `createAnimatedSprite`. Disposing the source releases the
+ * atlases, so the owner disposes sprites first (`disposeSprite`) and then the source.
+ */
+export async function createAnimatedSpriteSource(
+  assetBaseUrl: string,
+  file: string,
+  source: AnimatedSpriteSourceOptions = {},
+): Promise<AnimatedSpriteFactory> {
+  const { buildPackage, animations } = source.buildArchive
+    ? { buildPackage: await loadBuild(source.buildArchive, assetBaseUrl), animations: await loadAnim(file, assetBaseUrl) }
+    : await loadAnimationArchive(file, assetBaseUrl);
+  const skinArchive = source.skinArchive ? await loadSpriteSkinArchive(source.skinArchive, assetBaseUrl) : undefined;
+  const overrides = new Map<number, SymbolOverride>();
+  const overrideMaterials = new Map<string, THREE.MeshBasicMaterial[]>();
+  for (const [symbol, from] of Object.entries(source.symbolOverrides ?? {})) {
+    const archive = await loadSpriteSkinArchive(from.archive, assetBaseUrl);
+    let materials = overrideMaterials.get(from.archive);
+    if (!materials) {
+      materials = createMaterials(archive.buildPackage);
+      overrideMaterials.set(from.archive, materials);
+    }
+    overrides.set(smallHash(symbol), { build: archive.buildPackage.build, materials, symbolHash: smallHash(from.symbol) });
+  }
+  const factory = createSpriteFactory(buildPackage, animations, SpriteController, skinArchive);
+  return {
+    create(options) {
+      const sprite = factory.create(options);
+      (sprite.userData.animationController as SpriteController).setSymbolOverrides(new Map(overrides), options.hiddenLayers);
+      return sprite;
+    },
+    disposeSprite: factory.disposeSprite,
+    dispose() {
+      factory.dispose();
+      for (const materials of overrideMaterials.values()) for (const material of materials) { material.map?.dispose(); material.dispose(); }
+    },
+  };
+}
+
 export async function createAnimatedSpriteFactory(
   assetBaseUrl: string,
   file: string,

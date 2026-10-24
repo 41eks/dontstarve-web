@@ -1,6 +1,7 @@
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import * as THREE from 'three';
+import { createTestArea, useTestTileMap } from './tileMapFixture';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMoonTreeForest } from '../../prefab/src/moontree';
@@ -21,6 +22,11 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
 import { bindTestWorld } from './worldContentFixture';
 
+useTestTileMap();
+let area: ReturnType<typeof createTestArea>;
+beforeEach(async () => { area = createTestArea(); await area.ready; });
+afterEach(() => area.dispose());
+
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -31,10 +37,10 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function setup() {
   const scheduler = new GameTimeScheduler(), camera = new THREE.PerspectiveCamera(), dropLoot = vi.fn();
   const { snowLevel, unbind } = bindTestWorld(scheduler);
-  const forest = await createMoonTreeForest('/dst/data/anim', { positions: [], random: () => .5, loadRadius: 20 });
+  const forest = await createMoonTreeForest('/dst/data/anim', { positions: [], random: () => .5 });
   let spring = false;
-  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), scheduler, dropLoot, growthDuration: seconds => seconds * (spring ? .75 : 1) });
-  forest.updateNearby(new THREE.Vector3());
+  forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, scheduler, dropLoot, growthDuration: seconds => seconds * (spring ? .75 : 1) });
+  await area.visit(new THREE.Vector3(), forest);
   return { forest, scheduler, camera, dropLoot, snowLevel, setSpring: () => { spring = true; },
     dispose: () => { forest.dispose(); unbind(); scheduler.dispose(); } };
 }
@@ -91,10 +97,10 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/plant_tree', point);
     expect(planting.canDeploy(point.clone().add(new THREE.Vector3(9.5, 0, 0)), source()!.entity)).toBe(false);
     expect(planting.canDeploy(point.clone().add(new THREE.Vector3(9.7, 0, 0)), source()!.entity)).toBe(true);
-    const unloaded = s.forest.spawnTree('moon_tree_normal', new THREE.Vector3(100, 0, 0));
+    const unloaded = s.forest.spawnTree('moon_tree_normal', new THREE.Vector3(300, 0, 0));
     expect(unloaded.model).toBeUndefined();
-    expect(planting.canDeploy(new THREE.Vector3(109.5, 0, 0), source()!.entity)).toBe(false);
-    expect(planting.canDeploy(new THREE.Vector3(109.7, 0, 0), source()!.entity)).toBe(true);
+    expect(planting.canDeploy(new THREE.Vector3(309.5, 0, 0), source()!.entity)).toBe(false);
+    expect(planting.canDeploy(new THREE.Vector3(309.7, 0, 0), source()!.entity)).toBe(true);
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
@@ -134,10 +140,10 @@ it('keeps logical growth while unloaded and stops growth when chopping or diggin
   const s = await setup();
   try {
     const tree = s.forest.spawnTree('moon_tree_normal', new THREE.Vector3(3, 0, 0));
-    s.forest.updateNearby(new THREE.Vector3(500, 0, 0));
+    await area.visit(new THREE.Vector3(500, 0, 0), s.forest);
     s.scheduler.advance(1600);
     expect(s.forest.exportState(tree).growable).toEqual({ stage: 2, time: 0, sleeptime: 1600 });
-    s.forest.updateNearby(new THREE.Vector3());
+    await area.visit(new THREE.Vector3(), s.forest);
     expect(s.forest.exportState(tree)).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 250 } });
     expect(tree.model!.userData.animationController.currentAnimation).not.toMatch(/^grow_/);
     const target = s.forest.chopTargets[0];
@@ -177,12 +183,12 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     expect(drawnIndices(model)).toBeGreaterThan(bareIndices);
     const oldAnimation = model.userData.animationController;
     const hide = vi.spyOn(oldAnimation, 'setSymbolHidden');
+    await area.visit(new THREE.Vector3(500, 0, 0), s.forest);
     s.snowLevel.set(0);
-    s.forest.updateNearby(new THREE.Vector3(500, 0, 0));
     await settle();
     expect(hide).not.toHaveBeenCalled();
     s.snowLevel.set(.5);
-    s.forest.updateNearby(new THREE.Vector3());
+    await area.visit(new THREE.Vector3(), s.forest);
     expect(tree.model).not.toBe(model);
     expect(drawnIndices(tree.model!)).toBeGreaterThan(bareIndices);
     s.snowLevel.set(0); await settle();
@@ -194,7 +200,7 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
 it('restores a paused moon-tree decay timer while unloaded, then removes its logical map icon at expiration', async () => {
   const s = await setup();
   try {
-    const tree = s.forest.spawnTree('moon_tree_short', new THREE.Vector3(100, 0, 0), 'moon-stump');
+    const tree = s.forest.spawnTree('moon_tree_short', new THREE.Vector3(300, 0, 0), 'moon-stump');
     const timer = { timers: { decay: { timeleft: 10, initial_time: 200, paused: true } } };
     s.forest.restoreState('moon-stump', { size: 'short', stump: true }, { stage: 1 }, timer);
     const icon = s.forest.miniMapEntities[0];

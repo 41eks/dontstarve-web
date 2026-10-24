@@ -23,7 +23,7 @@ import { newEntityId } from './saveRecord';
 import { MiniMapEntity } from './minimapEntity';
 import { PreloadSounds, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment, type BurnSpec } from './treeFire';
-import { getBoundWatchWorldContent, WorldContentKey, createEffect, type GetWatchWorldContent, type ReadonlySignal, type SeasonState } from '@dontstarve-web/signals';
+import { getBoundWatchWorldContent, WorldContentKey, createEffect, type GetWatchWorldContent, type ReadonlySignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorldEventEmitter } from './worldContext';
 
 /** tuning.lua MOON_TREE_CHOPS_TALL: the forest's trees are the tall stage. */
@@ -53,6 +53,8 @@ SetSharedLootTable('moontree_burnt', [['charcoal', 1]]);
 export interface MoonTreeWorld {
   readonly camera: THREE.Camera;
   readonly scheduler?: GameTimeScheduler;
+  /** Models are loaded only for entities whose tile is active; set by `bindWorld`. */
+  readonly tickingarea?: TileStateQuery;
   /** Searched for propagator neighbours; receives fire effects. */
   readonly scene: THREE.Object3D;
   readonly season?: ReadonlySignal<SeasonState>;
@@ -89,8 +91,6 @@ export interface MoonTreeForestOptions {
   areaSize?: number;
   count?: number;
   exclusionRadiusSquared?: number;
-  /** Ground distance in world units; defaults to ten tiles. */
-  loadRadius?: number;
   /** Explicit ground positions; takes precedence over random generation options. */
   positions?: readonly THREE.Vector3[];
   entityIds?: readonly string[];
@@ -105,7 +105,7 @@ export interface MoonTreeForest {
   readonly miniMapEntities: readonly MiniMapEntity[];
   readonly activeEntities: ReadonlySet<ProximityEntity>;
   setNormals(cameraWorldQuaternion: THREE.Quaternion): void;
-  updateNearby(playerPosition: THREE.Vector3): void;
+  updateNearby(): void;
   update(dt: number): void;
   dispose(): void;
   /** Binds the loot sink and camera used by tree work; returns the matching release. */
@@ -170,7 +170,6 @@ export async function createMoonTreeForest(
   let scheduler = new GameTimeScheduler();
   let ownsScheduler = true;
   let disposed = false;
-  const lastPlayerPosition = new THREE.Vector3();
   let world: MoonTreeWorld | undefined;
   let getWatchWorldContent: GetWatchWorldContent | undefined;
   const lastQuaternion = new THREE.Quaternion();
@@ -420,7 +419,6 @@ export async function createMoonTreeForest(
 
   const nearby: ProximityEntities = new ProximityEntities(
     positions,
-    options.loadRadius ?? definitions.moonTree.loadRadiusTiles * TILE_SIZE,
     (entity) => {
       const sprite = createTree(stateOf(entity).stump ? `stump_${sizeOf(stateOf(entity))}`
         : stateOf(entity).burnt ? `burnt_${sizeOf(stateOf(entity))}`
@@ -472,7 +470,7 @@ export async function createMoonTreeForest(
     const stage = prefab === 'moon_tree' ? Math.min(3, Math.floor(random() * 3) + 1) : MOON_TREE_SPAWN_IDS.indexOf(prefab);
     const entity = nearby.add(position, id);
     stateOf(entity, stage);
-    nearby.update(lastPlayerPosition);
+    nearby.update();
     wakeGrowable(entity);
     if (fromSeed) playGrowth(entity, 'grow_seed_to_short');
     return entity;
@@ -531,10 +529,8 @@ export async function createMoonTreeForest(
     entities: nearby.entities,
     get miniMapEntities() { return [...states.values()].map(state => state.minimap); },
     get activeEntities() { return nearby.activeEntities; },
-    updateNearby(playerPosition) {
-      // Retain the current ground point for loading newly planted trees.
-      lastPlayerPosition.copy(playerPosition);
-      nearby.update(playerPosition);
+    updateNearby() {
+      nearby.update();
       for (const entity of nearby.activeEntities) wakeGrowable(entity);
     },
     setNormals(cameraWorldQuaternion) {
@@ -557,6 +553,7 @@ export async function createMoonTreeForest(
     },
     bindWorld(next) {
       world = next;
+      const unbindArea = next.tickingarea ? nearby.bindTickingarea(next.tickingarea) : undefined;
       getWatchWorldContent = getBoundWatchWorldContent();
       for (const controller of controllers.values()) bindSnow(controller);
       if (next.scheduler && ownsScheduler && !states.size && !saplings.size) {
@@ -565,6 +562,7 @@ export async function createMoonTreeForest(
       for (const entity of nearby.entities) stateOf(entity);
       return () => {
         if (world !== next) return;
+        unbindArea?.();
         world = undefined; getWatchWorldContent = undefined;
         for (const controller of controllers.values()) bindSnow(controller);
       };

@@ -1,10 +1,12 @@
 import type * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import { createEffect, createMemo, WorldContentKey, type Memo } from '@dontstarve-web/signals';
 import { TileTracker } from '../../componets/src/tileManager';
 import { FliesController, FLIES_SOUND } from './flies';
 import { actionEntity } from './actionEntity';
+import { ResidentSprite } from './residentSprite';
+import { watchTileActivity } from './tileActivity';
 import { PreloadSounds } from './sound';
 import type {
     AnimatedBuildingDefinition,
@@ -20,17 +22,17 @@ export const MERM_HEAD_ID = 'mermhead' as const;
 export type MermHeadId = typeof MERM_HEAD_ID;
 type StickHeadId = PigHeadId | MermHeadId;
 
-interface StickHeadResources extends AnimatedBuildingPreparedResources { readonly flies: ArchiveSprite; }
+interface StickHeadResources extends AnimatedBuildingPreparedResources { readonly flies: ResidentSprite; }
 
 /** stickheads.lua create_common: SpawnChild("flies") beside the head; the sprite is released with the head's art. */
 async function prepare(): Promise<StickHeadResources> {
     const assets = new ArchiveSpriteAssets();
     try {
-        const [flies] = await Promise.all([
-            createArchiveSprite(assets, { animationArchive: 'flies.zip', buildArchives: ['flies.zip'],
-                bank: 'flies', animation: 'swarm_pre', loop: false }, { name: 'flies' }),
-            PreloadSounds(FLIES_SOUND),
-        ]);
+        const createFlies = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(assets, { animationArchive: 'flies.zip',
+            buildArchives: ['flies.zip'], bank: 'flies', animation: clip.name, loop: clip.loop }, { name: 'flies' });
+        const first = { name: 'swarm_pre', loop: false };
+        const [created] = await Promise.all([createFlies(first), PreloadSounds(FLIES_SOUND)]);
+        const flies = new ResidentSprite(createFlies, first, created, 'flies');
         return { materials: [], flies, dispose: () => { flies.dispose(); assets.dispose(); } };
     } catch (error) { assets.dispose(); throw error; }
 }
@@ -41,7 +43,7 @@ class StickHead {
     private readonly cleanups: (() => void)[] = [];
     private readonly fliesController?: FliesController;
     private readonly fullMoon?: Memo<boolean>;
-    readonly flies: ArchiveSprite;
+    readonly flies: ResidentSprite;
     private readonly context: AnimatedBuildingEventContext;
     private readonly id: StickHeadId;
 
@@ -50,6 +52,10 @@ class StickHead {
         const { model, world } = context;
         this.flies = (context.prepared as StickHeadResources).flies;
         model.add(this.flies.model);
+        // The decorative child must not enlarge the head's pickup target, whenever its sprite is rebuilt.
+        this.flies.onAttach(sprite => sprite.model.traverse(object => { object.raycast = () => {}; }));
+        // OnEntitySleep/OnEntityWake: the swarm's frames exist only while the head's tile is active.
+        this.cleanups.push(watchTileActivity(model, world?.tickingarea, active => this.flies.setActive(active)));
         if (world?.scheduler) this.fliesController = new FliesController(this.flies, model.position, world.scheduler, world.getWatchWorldContent);
         // The head never moves, so its private tile key gates the moon and phase inputs by tickingarea: outside it they hold their last value.
         const options = { tile: new TileTracker(() => model.position).tile };

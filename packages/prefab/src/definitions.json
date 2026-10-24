@@ -626,8 +626,7 @@
   "moonTree": {
     "archive": "moon_tree.zip",
     "animationName": "sway1_loop_tall",
-    "scale": 0.02,
-    "loadRadiusTiles": 10
+    "scale": 0.02
   },
   "pigKing": {
     "archive": "pig_king.zip",

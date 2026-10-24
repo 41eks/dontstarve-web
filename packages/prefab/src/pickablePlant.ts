@@ -1,7 +1,7 @@
 import { modelValues } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
 import { Witherable, type WitherableSave } from '../../componets/src/witherable';
 import { loadAnim, loadBuild, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
 import {
@@ -25,6 +25,8 @@ import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { nextReskin } from './reskin_tool';
 import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
+import { ResidentSprite } from './residentSprite';
+import { watchTileActivity } from './tileActivity';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import type { GrowableSave } from '../../componets/src/growable';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
@@ -45,6 +47,8 @@ export interface PickablePlantRecord {
 export interface PickablePlantWorld {
   /** Season, snow level and the scheduler come from the bound world content. */
   rain?: ReadonlySignal<'none' | 'rain' | 'snow'>;
+  /** Without it every plant is active. */
+  tickingarea?: TileStateQuery;
   physics?: CANNON.World;
   getLocalTemperature?(position: THREE.Vector3): number;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
@@ -92,7 +96,9 @@ export interface PickablePlantDefinition {
   readonly animArchive: string;
   readonly buildArchive: string;
   /** Opt into shared archive frames and instancing while keeping source playback in the prefab behavior. */
-  readonly archiveSprite?: { readonly bank: string; readonly instancedAnimations: ArchiveSpriteOptions['instancedAnimations'] };
+  readonly archiveSprite?: { readonly bank: string; readonly instancedAnimations: ArchiveSpriteOptions['instancedAnimations'];
+    /** Release the sprite while the plant's tile is outside the tickingarea (see `ResidentSprite`). */
+    readonly resident?: boolean };
   readonly tags: readonly string[];
   readonly product: string;
   readonly regrowTime?: number;
@@ -145,6 +151,7 @@ interface Plant {
   version: number;
   transitionAt: number;
   stopEffect: () => void;
+  stopActivity?: () => void;
   sound?: SoundHandle;
   burnable: Burnable;
   propagator: Propagator;
@@ -280,7 +287,11 @@ export class PickablePlantManager {
           : state?.picked && definition.empty
           ? { initialAnimation: definition.empty.name, initialFrame: definition.empty.frame, name: prefab }
           : { initialAnimation: idleName, initialFrame: 'first', name: prefab };
-        const sprite = typeof source === 'function' ? source(initial.initialAnimation, false, prefab) : undefined;
+        const created = typeof source === 'function' ? source(initial.initialAnimation, false, prefab) : undefined;
+        const resident = created && definition.archiveSprite?.resident
+          ? new ResidentSprite(clip => (source as CreatePlantArchiveSprite)(clip.name, false, prefab), { name: initial.initialAnimation, loop: false }, created, prefab)
+          : undefined;
+        const sprite = resident ?? created;
         const factory = typeof source === 'function' ? undefined : source;
         if (sprite && initial.initialFrame === 'last') sprite.setFrame(sprite.frameCount - 1);
         const model = sprite?.model ?? factory!.create({ ...initial,
@@ -452,6 +463,7 @@ export class PickablePlantManager {
           }
         });
         this.plants.set(model, plant);
+        if (resident) plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => resident.setActive(active));
         if (definition.physicsRadius !== undefined && this.world.physics) {
           plant.body = MakeObstaclePhysics(model.position, definition.physicsRadius);
           model.userData.physicsBody = plant.body;
@@ -620,6 +632,7 @@ export class PickablePlantManager {
     setPrefabLocalLight(model, null);
     plant.fireFactory.disposeSprite(plant.fire);
     for (const pieces of plant.outputs.values()) for (const output of pieces) output.dispose();
+    plant.stopActivity?.();
     plant.stopEffect();
     plant.sound?.stop();
     if (plant.sprite) plant.sprite.dispose();

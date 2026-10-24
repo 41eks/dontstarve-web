@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSharedArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
+import { ResidentSprite } from './residentSprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -112,9 +113,9 @@ const isPoolId = (value: GrottoId): value is GrottoPoolId => (GROTTO_POOL_IDS as
 interface Grotto {
   prefab: GrottoId;
   model: THREE.Group;
-  sprite: ArchiveSprite;
+  sprite: ResidentSprite;
   /** makebigmist / makesmallmist: a non-networked child that follows the pool. */
-  mist?: ArchiveSprite;
+  mist?: ResidentSprite;
   minimap?: MiniMapEntity;
   body?: CANNON.Body;
   workable?: Workable;
@@ -174,37 +175,37 @@ export class GrottoPoolManager {
     // A prop saved mined out has nothing to drop until it regrows.
     const lootItems = table && saved?.components.grottoGlass?.workleft !== 0 ? Array.from({ length: LOOT_COUNT[table] }, () => 'moonglass' as const) : [];
     const mistAnimation = prefab === GROTTO_POOL_BIG_ID ? 'steam_big' : `steam_small${1 + Math.floor(Math.random() * 2)}`;
+    const spriteArchive = pool ? 'moonglasspool_tile' : 'moonglass_bigwaterfall';
+    const spriteClip = { name: pool ? POOLS[prefab].animation : definition!.animation, loop: true };
+    const createSprite = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, { animationArchive: `${spriteArchive}.zip`,
+      buildArchives: [`${spriteArchive}.zip`], bank: spriteArchive, animation: clip.name, loop: clip.loop }, { name: prefab });
+    const createMist = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.assets, { animationArchive: 'moonglass_bigwaterfall_steam.zip',
+      buildArchives: ['moonglass_bigwaterfall_steam.zip'], bank: 'moonglass_bigwaterfall_steam', animation: clip.name, loop: clip.loop }, { name: `${prefab}_mist` });
     const resources = await Promise.allSettled([
-      pool
-        ? createSharedArchiveSprite(this.assets, { animationArchive: 'moonglasspool_tile.zip', buildArchives: ['moonglasspool_tile.zip'],
-          bank: 'moonglasspool_tile', animation: POOLS[prefab].animation, loop: true },
-        { name: prefab })
-        : createSharedArchiveSprite(this.assets, { animationArchive: 'moonglass_bigwaterfall.zip', buildArchives: ['moonglass_bigwaterfall.zip'],
-          bank: 'moonglass_bigwaterfall', animation: definition!.animation, loop: true },
-        { name: prefab }),
-      pool ? createSharedArchiveSprite(this.assets, { animationArchive: 'moonglass_bigwaterfall_steam.zip',
-        buildArchives: ['moonglass_bigwaterfall_steam.zip'], bank: 'moonglass_bigwaterfall_steam', animation: mistAnimation, loop: true },
-      { name: `${prefab}_mist` }) : undefined,
+      createSprite(spriteClip),
+      pool ? createMist({ name: mistAnimation, loop: true }) : undefined,
       pool ? PreloadSounds(WATERFALL_LOOP) : undefined,
       table ? Promise.all([PreloadSounds('dontstarve/wilson/rock_break'), this.world.fx.prepare('halloween_moonpuff')]) : undefined,
       ...lootItems.map(itemId => this.world.prepareSpawn({ ...catalog.items[itemId], itemId, count: 1 }, true)),
     ] as const);
-    const sprite = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
-    const mist = resources[1].status === 'fulfilled' ? resources[1].value : undefined;
+    const created = resources[0].status === 'fulfilled' ? resources[0].value : undefined;
+    const createdMist = resources[1].status === 'fulfilled' ? resources[1].value : undefined;
     const loot = new Map<string, PreparedGroundSpawn[]>();
     for (const result of resources.slice(4)) {
       if (result.status === 'fulfilled') loot.set('moonglass', [...loot.get('moonglass') ?? [], result.value as PreparedGroundSpawn]);
     }
     const failed = resources.find(result => result.status === 'rejected');
-    if (failed || this.disposed || !sprite) {
-      sprite?.dispose(); mist?.dispose();
+    if (failed || this.disposed || !created) {
+      created?.dispose(); createdMist?.dispose();
       for (const outputs of loot.values()) outputs.forEach(output => output.dispose());
       throw failed?.status === 'rejected' ? failed.reason : new Error('Grotto pools have been disposed');
     }
+    const sprite = new ResidentSprite(createSprite, spriteClip, created, prefab);
+    const mist = createdMist && new ResidentSprite(createMist, { name: mistAnimation, loop: true }, createdMist, `${prefab}_mist`);
     return this.create(prefab, sprite, mist, loot, position, saved);
   }
 
-  private create(prefab: GrottoId, sprite: ArchiveSprite, mist: ArchiveSprite | undefined, loot: Map<string, PreparedGroundSpawn[]>,
+  private create(prefab: GrottoId, sprite: ResidentSprite, mist: ResidentSprite | undefined, loot: Map<string, PreparedGroundSpawn[]>,
     position: THREE.Vector3, saved: GrottoRecord | undefined): THREE.Group {
     const model = sprite.model;
     model.position.set(position.x, 0, position.z);
@@ -220,7 +221,8 @@ export class GrottoPoolManager {
       // The gate is this prop's own memo: leaving the area hides it and stops its animation until it returns.
       const awake = watchSignal(area, stop => grotto.stopArea.push(stop));
       grotto.awake = awake;
-      createEffect(() => { model.visible = awake.get(); });
+      // OnEntitySleep/OnEntityWake: frames and instance entries exist only while the tile is active.
+      createEffect(() => { model.visible = awake.get(); sprite.setActive(awake.get()); mist?.setActive(awake.get()); });
     }
     this.grottos.set(model, grotto); this.byId.set(id, model);
     this.scene.add(model);
@@ -234,9 +236,12 @@ export class GrottoPoolManager {
     for (const tag of tags) inst.addTag(tag);
     Object.assign(model.userData, { tags, billboard: false, deploySmartRadius: definition.smartRadius * WORLD_SCALE,
       physicsRadius: POOL_RADIUS[prefab] * WORLD_SCALE });
-    const visual = model.children[0];
-    visual.rotation.x = -Math.PI / 2; visual.position.y = .01;
-    (visual.children[0] as THREE.Object3D).renderOrder = BACKGROUND_RENDER_ORDER;
+    grotto.sprite.onAttach(sprite => {
+      const visual = sprite.model.children[0];
+      sprite.model.userData.billboard = false;
+      visual.rotation.x = -Math.PI / 2; visual.position.y = .01;
+      (visual.children[0] as THREE.Object3D).renderOrder = BACKGROUND_RENDER_ORDER;
+    });
     setPrefabLightOverride(model, .25);
     setPrefabLocalLight(model, { radius: definition.light.radius * WORLD_SCALE, falloff: .6, intensity: definition.light.intensity,
       colour: POOL_LIGHT_COLOUR });

@@ -1,7 +1,7 @@
 import { actionTool, reskinEntityFields } from './actionFixtures';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createAnimatedSprite } from '../src/sprite';
+import { createAnimatedSpriteSource } from '../src/sprite';
 import { createStaticSprite } from '../src/wallSprite';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { WallPlacement } from '../../prefab/src/wallPlacement';
@@ -15,7 +15,7 @@ import { ReskinActionController, type ReskinTarget } from '../../stategraphs/src
 import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 
-vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSprite: vi.fn() }));
+vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSprite: vi.fn() }));
 
 function model() {
@@ -31,7 +31,14 @@ function model() {
 beforeEach(() => {
   vi.spyOn(GroundItemAssets.prototype, 'loadAnimation').mockResolvedValue({} as never);
   vi.spyOn(GroundItemAssets.prototype, 'loadBuild').mockResolvedValue({} as never);
-  vi.mocked(createAnimatedSprite).mockImplementation(async () => model());
+  vi.mocked(createAnimatedSpriteSource).mockImplementation(async () => ({
+    create: () => model(),
+    disposeSprite: (sprite: THREE.Group) => {
+      sprite.removeFromParent();
+      sprite.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
+    },
+    dispose: vi.fn(),
+  }));
   vi.mocked(createStaticSprite).mockImplementation(async () => model());
   vi.stubGlobal('window', new EventTarget());
 });
@@ -84,7 +91,7 @@ function setup(kind: 'animated' | 'wall') {
     }, consume);
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
   const click = (button: number) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
-  const load = kind === 'animated' ? vi.mocked(createAnimatedSprite) : vi.mocked(createStaticSprite);
+  const load = kind === 'animated' ? vi.mocked(createAnimatedSpriteSource) : vi.mocked(createStaticSprite);
   return { world, cameraFacing, cursor, store, recipe, consume, onbuilt, placement, begin, click, load };
 }
 
@@ -95,7 +102,7 @@ it('an accepted action cancels a paid preview through events, skips its own canc
   await begin();
   const paidState = store.exportState();
   const preview = world.scene.children[1];
-  const geometry = vi.spyOn((preview.children[0] as THREE.Mesh).geometry, 'dispose');
+  const geometry = vi.spyOn((preview.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
   const equipped = createEquipmentExistenceState('HANDS');
   equipped.set(actionTool('reskin_tool'));
   let valid = false, release!: () => void;
@@ -176,8 +183,8 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
 
 it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelled while assets load', async (kind) => {
   const { world, cursor, store, consume, placement, begin, click, load } = setup(kind);
-  let resolve!: (value: THREE.Group) => void;
-  load.mockImplementationOnce(() => new Promise<THREE.Group>((done) => { resolve = done; }));
+  let resolve!: (value: never) => void;
+  load.mockImplementationOnce((() => new Promise<never>((done) => { resolve = done; })) as never);
   const pending = begin();
   const paidState = store.exportState();
   click(2);
@@ -187,10 +194,10 @@ it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelle
   await begin();
   const resumed = world.scene.children[0];
   const cancelled = model();
-  resolve(cancelled);
+  resolve((kind === 'animated' ? { create: () => cancelled, disposeSprite: vi.fn(), dispose: vi.fn() } : cancelled) as never);
   await pending;
   expect(world.scene.children).toEqual([resumed]);
-  expect(cancelled.parent).toBeNull();
+  if (kind === 'wall') expect(cancelled.parent).toBeNull();
   expect(cursor.hidden).toBe(false);
   expect(consume).not.toHaveBeenCalled();
   click(0);
@@ -205,8 +212,10 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   await placement.spawn('building');
   await begin();
   const resources = world.scene.children.flatMap((model) => {
-    const mesh = model.children[0] as THREE.Mesh;
-    return [vi.spyOn(mesh.geometry, 'dispose'), vi.spyOn(mesh.material as THREE.Material, 'dispose')];
+    // A resident building returns its sprite to the shared source, which keeps the atlas materials.
+    const mesh = (kind === 'animated' ? model.children[0].children[0] : model.children[0]) as THREE.Mesh;
+    return kind === 'animated' ? [vi.spyOn(mesh.geometry, 'dispose')]
+      : [vi.spyOn(mesh.geometry, 'dispose'), vi.spyOn(mesh.material as THREE.Material, 'dispose')];
   });
   placement.dispose(); placement.dispose();
   expect(world.scene.children).toEqual([]);

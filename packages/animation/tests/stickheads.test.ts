@@ -9,6 +9,7 @@ import type { SpriteController } from '../src/sprite';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { Burnable } from '../../componets/src/burnable';
 import * as sound from '../../prefab/src/sound';
+import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -18,7 +19,7 @@ const HEADS = [
   { id: MERM_HEAD_ID, definition: MERM_HEAD_DEFINITION, loot: [{ itemId: 'pondfish', count: 1 }, { itemId: 'spoiled_food', count: 2 }, { itemId: 'twigs', count: 2 }] },
 ] as const;
 
-async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID) {
+async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID, tickingarea?: TileStateQuery) {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.spyOn(sound, 'PlaySound').mockReturnValue({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() });
@@ -27,7 +28,7 @@ async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID) {
   const loot: { itemId: string; count: number }[][] = [];
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler,
-    getWatchWorldContent: content.getWatchWorldContent, dropLoot: (items: { itemId: string; count: number }[]) => loot.push(items) } as unknown as WorldContext;
+    getWatchWorldContent: content.getWatchWorldContent, tickingarea, dropLoot: (items: { itemId: string; count: number }[]) => loot.push(items) } as unknown as WorldContext;
   const placement = new AnimatedBuildingPlacement(world, { [id]: HEADS.find(head => head.id === id)!.definition }, () => false);
   await placement.spawn(id);
   const model = placement.hammerTargets[0].model, sprite = model.userData.animationController as SpriteController;
@@ -71,5 +72,21 @@ it.each(HEADS)('$id burns to a burnt head that keeps sleeping, saves only the bu
     for (let i = 0; i < 3; i++) performToolWork('HAMMER', entity, {});
     expect(s.loot.flat().some(item => item.itemId === 'nightmarefuel')).toBe(true);
     expect(s.placement.exportRecords()).toEqual([]);
+  } finally { s.placement.dispose(); }
+});
+
+it('releases the flies swarm sprite outside the tickingarea and rebuilds it without becoming clickable', async () => {
+  const awake = createSignal(true);
+  const s = await setup(PIG_HEAD_ID, (() => createMemo(() => awake.get())) as TileStateQuery);
+  try {
+    const flies = () => s.model.children.find(child => child.name === 'flies')!;
+    const meshes = () => { let count = 0; flies().traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
+    await s.settle();
+    expect(meshes()).toBeGreaterThan(0);
+    awake.set(false); await s.settle();
+    expect(meshes()).toBe(0);
+    awake.set(true); await s.settle();
+    expect(meshes()).toBeGreaterThan(0);
+    flies().traverse(object => { if ((object as THREE.Mesh).isMesh) expect(object.raycast).not.toBe(THREE.Mesh.prototype.raycast); });
   } finally { s.placement.dispose(); }
 });

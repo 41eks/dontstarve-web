@@ -140,7 +140,7 @@ function mushroomDefinition(prefab: MushroomPlantId): PickablePlantDefinition {
   const data = MUSHROOM_DATA[prefab];
   return {
     prefab, animArchive: 'mushrooms.zip', buildArchive: 'mushrooms.zip', tags: [], product: data.pickloot,
-    archiveSprite: { bank: 'mushrooms', instancedAnimations: 'all' },
+    archiveSprite: { bank: 'mushrooms', instancedAnimations: 'all', resident: true },
     noGrowInWinter: false, idle: { name: data.animname }, picked: { clips: ['picked'] }, empty: { name: 'picked', frame: 'last' },
     grow: data.animname, dugLoot: data.pickloot, burnTime: 10, burnFxLevel: 2, propagatorSize: 'small',
     // workable finish: the unpicked mushroom drops its cap, then always one more.

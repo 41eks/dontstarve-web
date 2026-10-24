@@ -43,7 +43,8 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
   try {
     const target = placement.hammerTargets[0];
     const before = placement.exportRecords();
-    const disposeGeometry = vi.spyOn((model.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
+    // Frame geometry changes with the clip, so observe the release rather than one frame's geometry.
+    const disposeGeometry = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
     for (let i = 0; i < 3; i++) {
       target.playHit();
       expect(animation().currentAnimation).toBe('hit');
@@ -57,7 +58,7 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
     expect(PlaySound).toHaveBeenCalledTimes(2);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/destroy_wood', new THREE.Vector3(3, 0, 4));
     expect(model.parent).toBeNull();
-    expect(disposeGeometry).toHaveBeenCalledOnce();
+    expect(disposeGeometry).toHaveBeenCalled();
     expect(target.isValid()).toBe(false);
     expect(placement.hammerTargets).toEqual([]);
     expect(placement.reskinTargets).toEqual([]);

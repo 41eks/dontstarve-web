@@ -1,0 +1,396 @@
+import * as THREE from 'three';
+import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { setSpriteErosion } from '@dontstarve-web/animation/spriteErosion';
+import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from '@dontstarve-web/animation/sprite';
+
+interface Clip { name: string; loop: boolean; complete?: () => void; finished: boolean; frame?: number }
+
+/**
+ * An `ArchiveSprite` whose frames, materials and instance entries exist only while the entity is active.
+ * The stable root keeps the entity origin, identity and render-order slot; inactive entities hold an empty
+ * placeholder group. The logical clip, callback and appearance requests are kept and replayed on `load()`.
+ * `create` receives the logical clip so a factory sprite is built directly in it.
+ */
+export class ResidentSprite implements ArchiveSprite {
+  readonly model = new THREE.Group();
+  private readonly placeholder = new THREE.Group();
+  private sprite?: ArchiveSprite;
+  private clip: Clip;
+  private generation = 0;
+  private disposed = false;
+  private paused = false;
+  private facing?: number;
+  private buildArchive?: string;
+  private opacity?: number;
+  private colour?: readonly [number, number, number];
+  private rotation?: THREE.Quaternion;
+  private erosion = 0;
+  private readonly overrides = new Map<string, { archive: string; sourceSymbol?: string }>();
+  private readonly hidden = new Map<string, boolean>();
+  private readonly create: (clip: { name: string; loop: boolean }) => ArchiveSprite | Promise<ArchiveSprite>;
+
+  /** `initial` is an already created sprite in `clip`; without it the sprite stays unloaded until `load()`. */
+  constructor(create: ResidentSprite['create'], clip: { name: string; loop: boolean }, initial?: ArchiveSprite, name = 'ResidentSprite') {
+    this.create = create;
+    this.clip = { ...clip, finished: false };
+    this.model.name = name;
+    this.model.userData.billboard = true;
+    this.model.add(this.placeholder);
+    registerSpriteRenderGroup(this.model, this.placeholder);
+    if (initial) this.attach(initial);
+  }
+
+  private attachHook?: (sprite: ArchiveSprite) => void;
+  /** Applies prefab-specific changes to the drawn sprite, now and after every reload. */
+  onAttach(hook: (sprite: ArchiveSprite) => void): void {
+    this.attachHook = hook;
+    if (this.sprite) hook(this.sprite);
+  }
+
+  get loaded(): boolean { return this.sprite !== undefined; }
+  get currentAnimation(): string { return this.sprite?.currentAnimation ?? this.clip.name; }
+  get frameCount(): number { return this.sprite?.frameCount ?? 0; }
+
+  /** Build the sprite for an active entity; a no-op while loaded or loading. A synchronous factory loads immediately. */
+  load(): void {
+    if (this.disposed || this.sprite || this.loading) return;
+    const generation = ++this.generation;
+    const created = this.create({ name: this.clip.name, loop: this.clip.loop });
+    if (!(created instanceof Promise)) { this.attach(created); return; }
+    this.loading = true;
+    void created.then(sprite => {
+      this.loading = false;
+      if (this.disposed || generation !== this.generation) { sprite.dispose(); return; }
+      this.attach(sprite);
+    }, error => {
+      this.loading = false;
+      if (!this.disposed && generation === this.generation) console.error('Unable to load sprite', error);
+    });
+  }
+  private loading = false;
+
+  /** Release frames, materials and instances; the logical clip and appearance requests stay. */
+  unload(): void {
+    this.generation++;
+    this.loading = false;
+    const sprite = this.sprite;
+    if (!sprite) return;
+    this.sprite = undefined;
+    // A transition that was playing is not replayed on return: it settles into its completion state.
+    this.settle();
+    this.placeholder.visible = sprite.model.visible;
+    this.placeholder.position.copy(sprite.model.position);
+    this.model.add(this.placeholder);
+    registerSpriteRenderGroup(this.model, this.placeholder);
+    sprite.dispose();
+  }
+
+  setActive(active: boolean): void { if (active) this.load(); else this.unload(); }
+
+  private attach(sprite: ArchiveSprite): void {
+    this.sprite = sprite;
+    sprite.model.visible = this.placeholder.visible;
+    sprite.model.position.copy(this.placeholder.position);
+    this.model.remove(this.placeholder);
+    this.model.add(sprite.model);
+    registerSpriteRenderGroup(this.model, sprite.model.children[0] as THREE.Group);
+    if (this.facing !== undefined) sprite.setFacing(this.facing);
+    if (this.buildArchive !== undefined) sprite.setBuildArchive(this.buildArchive);
+    for (const [symbol, { archive, sourceSymbol }] of this.overrides) sprite.setSymbolOverride(symbol, archive, sourceSymbol);
+    for (const [symbol, hidden] of this.hidden) sprite.setSymbolHidden(symbol, hidden);
+    if (this.opacity !== undefined) sprite.setOpacity(this.opacity);
+    if (this.colour) sprite.setColour(this.colour);
+    if (this.rotation) sprite.faceCamera(this.rotation);
+    if (this.erosion) setSpriteErosion(sprite.model, this.erosion);
+    this.attachHook?.(sprite);
+    this.play();
+    sprite.setPaused(this.paused);
+  }
+
+  private play(): void {
+    const clip = this.clip, sprite = this.sprite;
+    if (!sprite) return;
+    if (clip.loop) sprite.start(clip.name);
+    else if (clip.finished) { sprite.playOnce(clip.name); sprite.setFrame(sprite.frameCount - 1); }
+    else sprite.playOnce(clip.name, () => {
+      if (this.clip !== clip) return;
+      clip.finished = true;
+      clip.complete?.();
+    });
+    if (clip.frame !== undefined) sprite.setFrame(clip.frame);
+  }
+
+  update(dt: number): void { this.sprite?.update(dt); }
+  start(name: string): void {
+    this.clip = { name, loop: true, finished: false };
+    this.play();
+  }
+  playOnce(name: string, complete?: () => void): void {
+    this.clip = { name, loop: false, complete, finished: false };
+    // Nothing is drawn while unloaded, so the transition settles at once into its completion state.
+    if (!this.sprite && !this.loading) this.settle(); else this.play();
+  }
+  private settle(): void {
+    const clip = this.clip;
+    if (clip.loop || clip.finished) return;
+    clip.finished = true;
+    clip.complete?.();
+  }
+  setAnimation(name: string): void {
+    if (this.clip.name === name) return;
+    this.clip = { name, loop: this.clip.loop, finished: false };
+    this.sprite?.setAnimation(name);
+  }
+  setFrame(frame: number): void {
+    this.clip.frame = Math.max(0, Math.floor(frame));
+    this.sprite?.setFrame(frame);
+  }
+  setPaused(paused: boolean): void { this.paused = paused; this.sprite?.setPaused(paused); }
+  setOpacity(opacity: number): void { this.opacity = opacity; this.sprite?.setOpacity(opacity); }
+  setColour(colour: readonly [number, number, number]): void { this.colour = colour; this.sprite?.setColour(colour); }
+  setFacing(facing: number): void { this.facing = facing; this.sprite?.setFacing(facing); }
+  setBuildArchive(archive: string): void { this.buildArchive = archive; this.sprite?.setBuildArchive(archive); }
+  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
+    if (archive === undefined) this.overrides.delete(symbol); else this.overrides.set(symbol, { archive, sourceSymbol });
+    this.sprite?.setSymbolOverride(symbol, archive, sourceSymbol);
+  }
+  setSymbolHidden(symbol: string, hidden: boolean): void { this.hidden.set(symbol, hidden); this.sprite?.setSymbolHidden(symbol, hidden); }
+  faceCamera(rotation: THREE.Quaternion): void {
+    (this.rotation ??= new THREE.Quaternion()).copy(rotation);
+    this.sprite?.faceCamera(rotation);
+  }
+  /** Erosion is keyed by the drawn sprite model, so it is kept here and applied to each loaded sprite. */
+  setErosion(amount: number): void { this.erosion = amount; if (this.sprite) setSpriteErosion(this.sprite.model, amount); }
+  refreshTransform(): void { this.sprite?.refreshTransform(); }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.unload();
+    this.model.removeFromParent();
+  }
+}
+
+type SymbolOverrideValue = Parameters<SpriteController['overrideSymbol']>[1];
+type SymbolOverrideMap = Parameters<SpriteController['setSymbolOverrides']>[0];
+interface BuildingClip {
+  name: string;
+  loop: boolean;
+  complete?: () => void;
+  finished: boolean;
+  /** AnimState:SetPercent pose, kept as a held frame. */
+  percent?: number;
+}
+
+/**
+ * A `SpriteController` for an entity whose factory-made sprite is built only while its tile is active.
+ * The stable root keeps the entity identity, position and render-order slot; the controller keeps the logical clip,
+ * queue, layers and symbol/build overrides and replays them onto every rebuilt sprite. `create` builds a sprite from
+ * the entity's shared source and `release` returns it to that owner; no atlas belongs to the entity.
+ * Transitions that were running or requested while unloaded settle into their completion state.
+ */
+export class ResidentSpriteController implements TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
+  readonly model: THREE.Group;
+  private readonly placeholder = new THREE.Group();
+  private create: (initialAnimation: string) => THREE.Group;
+  private release: (sprite: THREE.Group) => void;
+  private sprite?: THREE.Group;
+  private clip: BuildingClip;
+  private queue: { name: string; loop: boolean }[] = [];
+  private frame?: number;
+  private readonly hiddenLayers = new Set<string>();
+  private overrideTable?: { overrides: SymbolOverrideMap; hidden: readonly string[] };
+  private readonly symbolOverrides = new Map<string, SymbolOverrideValue>();
+  private readonly buildOverrides = new Map<string, LoadedBuildOverride>();
+  private build?: { build: Parameters<SpriteController['setBuild']>[0]; materials: Parameters<SpriteController['setBuild']>[1] };
+  private disposed = false;
+
+  /** `initial` is the first sprite, already built in `clip`; `held` marks a clip shown on its last frame. */
+  constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group, release: (sprite: THREE.Group) => void,
+    initial: THREE.Group, clip: { name: string; held?: boolean }) {
+    this.model = model;
+    this.create = create;
+    this.release = release;
+    this.clip = { name: clip.name, loop: !clip.held, finished: clip.held === true };
+    model.userData.billboard = true;
+    registerSpriteRenderGroup(model, this.placeholder);
+    this.attach(initial, false);
+  }
+
+  get loaded(): boolean { return this.sprite !== undefined; }
+  private get controller(): SpriteController | undefined { return this.sprite?.userData.animationController as SpriteController | undefined; }
+  get currentAnimation(): string { return this.controller?.currentAnimation ?? this.clip.name; }
+  get numFrames(): number { return this.controller?.numFrames ?? 0; }
+  get currentAnimationLength(): number { return this.controller?.currentAnimationLength ?? 0; }
+
+  setActive(active: boolean): void {
+    if (this.disposed) return;
+    if (!active) { this.unload(); return; }
+    if (this.sprite) return;
+    this.attach(this.create(this.clip.name), true);
+  }
+
+  /** Release the drawn sprite to its owner; the logical state stays. */
+  private unload(): void {
+    const sprite = this.sprite;
+    if (!sprite) return;
+    this.settle();
+    this.placeholder.visible = sprite.visible;
+    this.placeholder.position.copy(sprite.position);
+    this.sprite = undefined;
+    this.release(sprite);
+    this.model.add(this.placeholder);
+    registerSpriteRenderGroup(this.model, this.placeholder);
+  }
+
+  /** A transition that was playing or queued is not replayed: it ends in the state its completion leaves. */
+  private settle(): void {
+    const clip = this.clip;
+    if (!clip.loop && !clip.finished) {
+      clip.finished = true;
+      clip.complete?.();
+      if (this.clip !== clip) return;
+    }
+    const last = this.queue[this.queue.length - 1];
+    if (last) {
+      this.clip = { name: last.name, loop: last.loop, finished: !last.loop };
+      this.queue = [];
+    }
+  }
+
+  private attach(sprite: THREE.Group, replay: boolean): void {
+    this.sprite = sprite;
+    if (replay) { sprite.visible = this.placeholder.visible; sprite.position.copy(this.placeholder.position); }
+    this.placeholder.removeFromParent();
+    this.model.add(sprite);
+    registerSpriteRenderGroup(this.model, sprite.children[0] as THREE.Group);
+    this.applyAppearance();
+    if (replay) this.play();
+  }
+
+  private applyAppearance(): void {
+    const controller = this.controller;
+    if (!controller) return;
+    if (this.build) controller.setBuild(this.build.build, this.build.materials);
+    if (this.overrideTable) controller.setSymbolOverrides(new Map(this.overrideTable.overrides), this.overrideTable.hidden);
+    for (const [symbol, override] of this.symbolOverrides) controller.overrideSymbol(symbol, override);
+    for (const [name, override] of this.buildOverrides) controller.addOverrideBuild(name, override);
+    for (const layer of this.hiddenLayers) controller.hideLayer(layer);
+  }
+
+  private play(): void {
+    const controller = this.controller, clip = this.clip;
+    if (!controller) return;
+    if (clip.percent !== undefined) controller.setPercent(clip.name, clip.percent);
+    else if (clip.loop) controller.start(clip.name);
+    else if (clip.finished) controller.holdLastFrame(clip.name);
+    else controller.playOnce(clip.name, this.completion(clip));
+    for (const entry of this.queue) controller.pushAnimation(entry.name, entry.loop);
+    if (this.frame !== undefined && clip.loop) controller.setFrame(Math.min(this.frame, controller.numFrames - 1));
+  }
+
+  private completion(clip: BuildingClip): () => void {
+    return () => {
+      if (this.clip !== clip) return;
+      clip.finished = true;
+      clip.complete?.();
+    };
+  }
+
+  start(name: string): void {
+    this.clip = { name, loop: true, finished: false };
+    this.queue = []; this.frame = undefined;
+    this.controller?.start(name);
+  }
+  playOnce(name: string, complete?: () => void): void {
+    const clip = this.clip = { name, loop: false, complete, finished: false };
+    this.queue = []; this.frame = undefined;
+    if (this.controller) this.controller.playOnce(name, this.completion(clip)); else this.settle();
+  }
+  pushAnimation(name: string, loop = false): void {
+    this.queue.push({ name, loop });
+    if (this.controller) this.controller.pushAnimation(name, loop); else this.settle();
+  }
+  playTransient(name: string): void { this.controller?.playTransient(name); }
+  holdLastFrame(name: string): void {
+    this.clip = { name, loop: false, finished: true };
+    this.queue = []; this.frame = undefined;
+    this.controller?.holdLastFrame(name);
+  }
+  setPercent(name: string, percent: number): void {
+    this.clip = { name, loop: false, finished: true, percent };
+    this.queue = []; this.frame = undefined;
+    this.controller?.setPercent(name, percent);
+  }
+  setFrame(frame: number): void { this.frame = frame; this.controller?.setFrame(frame); }
+  hideLayer(layer: string): void { this.hiddenLayers.add(layer); this.controller?.hideLayer(layer); }
+  showLayer(layer: string): void { this.hiddenLayers.delete(layer); this.controller?.showLayer(layer); }
+  setBuild(build: Parameters<SpriteController['setBuild']>[0], materials: Parameters<SpriteController['setBuild']>[1]): void {
+    this.build = { build, materials }; this.controller?.setBuild(build, materials);
+  }
+  setSymbolOverrides(overrides: SymbolOverrideMap, hiddenLayers: readonly string[] = []): void {
+    this.overrideTable = { overrides: new Map(overrides), hidden: hiddenLayers };
+    this.symbolOverrides.clear();
+    this.controller?.setSymbolOverrides(overrides, hiddenLayers);
+  }
+  overrideSymbol(symbol: string, override: SymbolOverrideValue): void {
+    if (override) this.symbolOverrides.set(symbol, override); else this.symbolOverrides.delete(symbol);
+    this.controller?.overrideSymbol(symbol, override);
+  }
+  addOverrideBuild(name: string, override: LoadedBuildOverride): void {
+    this.buildOverrides.delete(name); this.buildOverrides.set(name, override);
+    this.controller?.addOverrideBuild(name, override);
+  }
+  clearOverrideBuild(name: string): void { this.buildOverrides.delete(name); this.controller?.clearOverrideBuild(name); }
+  update(dt: number): void { this.controller?.update(dt); }
+
+  /** Keep a live entity's clip, progress and layers across a reskin that replaces the sprite source. */
+  copyPlaybackFrom(source: ResidentSpriteController): void {
+    this.clip = { ...source.clip };
+    this.queue = source.queue.map(entry => ({ ...entry }));
+    this.frame = source.frame;
+    this.hiddenLayers.clear();
+    for (const layer of source.hiddenLayers) this.hiddenLayers.add(layer);
+    const from = source.controller, to = this.controller;
+    if (from && to) to.copyPlaybackFrom(from); else if (to) this.play();
+  }
+
+  /** Take over another controller's source and loaded sprite (a reskin), keeping this root and logical state. */
+  adopt(other: ResidentSpriteController): void {
+    if (this.disposed) return;
+    const old = this.sprite, oldRelease = this.release, taken = other.takeSprite();
+    this.create = other.create; this.release = other.release;
+    this.sprite = undefined;
+    if (old && taken) {
+      taken.visible = old.visible; taken.position.copy(old.position);
+      this.attach(taken, false);
+      (taken.userData.animationController as SpriteController).copyPlaybackFrom(old.userData.animationController as SpriteController);
+      oldRelease(old);
+      return;
+    }
+    if (old) {
+      this.placeholder.visible = old.visible; this.placeholder.position.copy(old.position);
+      oldRelease(old);
+    }
+    if (taken) this.release(taken);
+    this.model.add(this.placeholder);
+    registerSpriteRenderGroup(this.model, this.placeholder);
+  }
+
+  private takeSprite(): THREE.Group | undefined {
+    const sprite = this.sprite;
+    this.sprite = undefined;
+    sprite?.removeFromParent();
+    return sprite;
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    const sprite = this.sprite;
+    this.sprite = undefined;
+    if (sprite) this.release(sprite);
+    this.placeholder.removeFromParent();
+  }
+}

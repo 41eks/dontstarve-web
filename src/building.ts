@@ -2,7 +2,6 @@
 
 import * as THREE from 'three';
 import { createMoonTreeForest } from '@dontstarve-web/prefab/moontree';
-import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { createTurfGround } from '@dontstarve-web/prefab/turf';
 import { TurfMap, WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { initialSave } from './save/initialSave';
@@ -26,7 +25,6 @@ export const moonTreeForest = await createMoonTreeForest(
         positions: (initialSave.world.entities.moon_tree ?? []).map(({ transform }) =>
             new THREE.Vector3(...transform.position)),
         entityIds: (initialSave.world.entities.moon_tree ?? []).map(({ id }) => id),
-        loadRadius: 10 * TILE_SIZE,
     },
 );
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createSignal } from '@dontstarve-web/signals';
+import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { MushroomPlantManager } from '../../prefab/src/mushroom_plant';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
@@ -63,8 +63,8 @@ it('digs an unpicked mushroom into two blue_caps without releasing a neighbourin
   try {
     const model = await s.mushrooms.spawn(new THREE.Vector3(1, 0, 1));
     const neighbour = await s.mushrooms.spawn(new THREE.Vector3(2, 0, 1));
-    const geometry = (model.children[0].children[0] as THREE.Mesh).geometry;
-    expect((neighbour.children[0].children[0] as THREE.Mesh).geometry).toBe(geometry);
+    const geometry = (model.children[0].children[0].children[0] as THREE.Mesh).geometry;
+    expect((neighbour.children[0].children[0].children[0] as THREE.Mesh).geometry).toBe(geometry);
     const disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
     const neighbourRecord = s.mushrooms.exportRecords()[1];
     const [dig] = s.mushrooms.getDigTargets();
@@ -100,7 +100,8 @@ it('turns static billboards only when the camera rotation signal changes and lea
   try {
     const scene = s.mushrooms['scene'] as THREE.Scene;
     const model = await s.mushrooms.spawn(new THREE.Vector3(3, 0, 4));
-    const visual = model.children[0];
+    // The resident root holds the origin; the drawn sprite is its first child and its visual the first grandchild.
+    const sprite = model.children[0], visual = sprite.children[0];
     scene.updateMatrixWorld();
     let visits = 0;
     const original = visual.updateMatrixWorld;
@@ -111,14 +112,42 @@ it('turns static billboards only when the camera rotation signal changes and lea
     const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
     s.world.camerarotation.set(turned);
     await settle();
-    expect(model.quaternion.equals(turned)).toBe(true);
+    expect(sprite.quaternion.equals(turned)).toBe(true);
     scene.updateMatrixWorld();
     expect(visits).toBe(1);
     expect(model.matrixWorld.elements[12]).toBeCloseTo(3);
-    expect(model.matrixWorld.elements[2]).toBeCloseTo(-Math.sin(Math.PI / 4));
+    expect(sprite.matrixWorld.elements[2]).toBeCloseTo(-Math.sin(Math.PI / 4));
 
     // The same rotation again, as the host update passes it every frame, does not wake the subtree.
     s.mushrooms.update(0, turned); scene.updateMatrixWorld();
     expect(visits).toBe(1);
   } finally { s.dispose(); }
 });
+
+it('releases the mushroom sprite outside the tickingarea and keeps its pose and save record while unloaded', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal('window', new EventTarget());
+  const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler), awake = createSignal(true);
+  const inventory = createInventoryStore([]);
+  const ground = new GroundItemManager(new THREE.Scene(), new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
+    '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
+  const mushrooms = new MushroomPlantManager(new THREE.Scene(), '/dst/data/anim', { rain: createSignal<'none' | 'rain' | 'snow'>('none'),
+    tickingarea: () => createMemo(() => awake.get()), prepareSpawn: (d, f) => ground.prepareSpawn(d, f) });
+  const meshes = (model: THREE.Object3D) => { let count = 0; model.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
+  try {
+    const model = await mushrooms.spawn(new THREE.Vector3(3, 0, 4));
+    await settle();
+    expect(meshes(model)).toBe(1);
+    const record = mushrooms.exportRecords()[0].record;
+
+    awake.set(false);
+    await settle();
+    expect(meshes(model)).toBe(0);
+    expect(model.position.toArray()).toEqual([3, 0, 4]);
+    expect(mushrooms.exportRecords()[0].record).toEqual(record);
+
+    awake.set(true);
+    await settle();
+    expect(meshes(model)).toBe(1);
+  } finally { mushrooms.dispose(); ground.dispose(); inventory.dispose(); world.unbind(); scheduler.dispose(); }
+}, 20000);

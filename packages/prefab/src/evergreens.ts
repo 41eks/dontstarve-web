@@ -2,7 +2,7 @@ import { ModelRecords } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createAnimatedSpriteFactory, type SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
@@ -50,6 +50,8 @@ export interface EvergreenWorld {
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   worldEvents: WorldEventEmitter;
   scheduler?: GameTimeScheduler;
+  /** Models are loaded only for entities whose tile is active. */
+  tickingarea: TileStateQuery;
   physics?: CANNON.World;
   growthDuration?(seconds: number): number;
   dropLoot(items: readonly { itemId: string; count: number }[], position: THREE.Vector3): void;
@@ -83,7 +85,7 @@ export interface EvergreenForest {
   getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[];
   readonly renderEntities: readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
   spawn(prefab: EvergreenSpawnId, position: THREE.Vector3, saved?: EvergreenRecord): ProximityEntity;
-  updateNearby(playerPosition: THREE.Vector3): void;
+  updateNearby(): void;
   update(dt: number, quaternion: THREE.Quaternion): void;
   exportRecords(): EvergreenRecord[];
   dispose(): void;
@@ -91,7 +93,7 @@ export interface EvergreenForest {
 
 /** evergreens.lua's normal build. Growth/work belong to logical trees, independently of loaded art. */
 export async function createEvergreenForest(assetBaseUrl: string, world: EvergreenWorld,
-  random = Math.random, loadRadius = 120): Promise<EvergreenForest> {
+  random = Math.random): Promise<EvergreenForest> {
   const assets = new ArchiveSpriteAssets('evergreen', assetBaseUrl);
   const [createTree, needles, fireFx] = await Promise.all([
     // evergreens.lua builds.normal: one bank for every stage; clips are split across two anim archives.
@@ -108,7 +110,6 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const trees = new Map<ProximityEntity, Tree>();
   const mouseRecords = new ModelRecords<ProximityEntity>();
   const effects = new Map<THREE.Group, THREE.Vector3>();
-  const lastPlayerPosition = new THREE.Vector3();
   let disposed = false;
   const stageOf = (tree: Tree) => tree.growable.GetStage() - 1;
   // evergreens.lua old_anims: burnt/chop_burnt reuse the tall clips.
@@ -252,7 +253,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     makeStump(tree);
     animationOf(tree)?.playOnce(clip, () => animationOf(tree)?.start(rest(tree)));
   };
-  const nearby = new ProximityEntities([], loadRadius, logical => {
+  const nearby = new ProximityEntities([], logical => {
     const tree = trees.get(logical)!;
     const sprite = createTree(rest(tree), true, `Evergreen-${logical.saveId}`);
     const model = sprite.model;
@@ -279,6 +280,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     (model.userData.animationController as ArchiveSprite).dispose();
   }, undefined, { prefab: 'evergreen', smartRadius: 1 });
   nearby.group.name = 'EvergreenForest';
+  nearby.bindTickingarea(world.tickingarea);
   const targets = (action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] => mouseRecords.select(model, nearby.activeEntities).flatMap(logical => {
     const tree = trees.get(logical)!, model = logical.model!;
     const isValid = () => !disposed && !tree.inst.isRemoved && logical.model === model
@@ -342,7 +344,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
         tree.burntcone = saved.components.evergreen.burntcone === true;
         burn(tree, true);
       }
-      nearby.update(lastPlayerPosition);
+      nearby.update();
       if (logical.model) wakeGrowable(tree); else growable.OnEntitySleep();
       return logical;
     },
@@ -350,8 +352,8 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     getChopTargets(model) { return targets('CHOP', model); },
     get digTargets() { return digTargets(); },
     getDigTargets: digTargets,
-    updateNearby(position) {
-      lastPlayerPosition.copy(position); nearby.update(position);
+    updateNearby() {
+      nearby.update();
       for (const logical of nearby.activeEntities) wakeGrowable(trees.get(logical)!);
     },
     update(dt, quaternion) {
