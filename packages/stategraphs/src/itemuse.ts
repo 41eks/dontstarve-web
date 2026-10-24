@@ -18,12 +18,16 @@ export interface ItemUseTarget extends ComponentActionEntity {
   readonly model: THREE.Group;
   getPosition(): THREE.Vector3;
 }
-type ItemUseAction = 'GIVE' | 'REPAIR';
+type ItemUseAction = 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE';
 export const ITEM_USE_REACH = 4;
 
 function available(action: ItemUseAction, target: ItemUseTarget, source: ItemUseSource): boolean {
   if (target.isRemoved || target.hasTag('burnt') || target.hasTag('INLIMBO') || !source.isValid()) return false;
   if (action === 'REPAIR') return !!target.components.repairable?.CanRepair(source.entity);
+  // componentactions.lua shaver: the bearded tag alone offers SHAVE; the state reports why it fails.
+  if (action === 'SHAVE') return target.hasTag('bearded') && !!target.components.beard && !!source.entity.components?.shaver;
+  // componentactions.lua USEITEM.occupier: the occupiable only offers STORE to a matching occupier.
+  if (action === 'STORE') return !!target.components.occupiable?.CanOccupy(source.entity);
   return !!target.components.trader?.AbleToAccept(source.entity).ok;
 }
 
@@ -38,6 +42,15 @@ export function getItemUseActions(scene: THREE.Scene, source: ItemUseSource | un
       actions.push({ action: { action: 'REPAIR', target, invobject: source.entity }, button: 'right',
         model, source: 'inventory', available: available('REPAIR', target, source) });
     }
+    if (source.entity.components?.shaver && target.hasTag('bearded') && !target.hasTag('spiderden')) {
+      actions.push({ action: { action: 'SHAVE', target, invobject: source.entity }, button: 'left',
+        model, source: 'inventory', available: available('SHAVE', target, source) });
+    }
+    // componentactions.lua USEITEM.occupier: the occupant's type tag must match the cage's occupiable type.
+    const occupantType = target.components.occupiable?.occupanttype;
+    if (occupantType !== undefined && source.entity.hasTag(occupantType)) actions.push({
+      action: { action: 'STORE', modifier: target.prefab === 'birdcage' ? 'IMPRISON' : undefined, target, invobject: source.entity },
+      button: 'left', model, source: 'inventory', available: available('STORE', target, source) });
     if (target.components.trader) actions.push({ action: { action: 'GIVE', target, invobject: source.entity },
       button: 'left', model, source: 'inventory', available: available('GIVE', target, source) });
   });
@@ -104,9 +117,13 @@ export class ItemUseActionController {
     this.animation.setFacing(Math.abs(depth) >= Math.abs(side) ? (depth > 0 ? 'up' : 'down') : 'side',
       Math.abs(side) > Math.abs(depth) && side < 0);
     const version = this.version;
-    const buffered = new BufferedAction(action, () => action === 'REPAIR'
+    const buffered = new BufferedAction(action, () => action === 'STORE'
+      // actions.lua STORE: Occupy(inventoryitem:RemoveFromOwner()) — the same inst leaves the cursor.
+      ? source.take(false) && target.components.occupiable!.Occupy(source.entity)
+      : action === 'REPAIR'
       ? target.components.repairable!.Repair(source.entity, () => source.take(true))
-      : target.components.trader!.AcceptGift(source.entity, deleteItem => source.take(deleteItem)),
+      : action === 'SHAVE' ? target.components.beard!.Shave(undefined).ok
+        : target.components.trader!.AcceptGift(source.entity, deleteItem => source.take(deleteItem)),
     () => version === this.version && available(action, target, source) && this.inReach(target),
     { target, invobject: source.entity });
     if (this.animation.stategraph.pushBufferedAction(buffered)) {
@@ -129,7 +146,7 @@ export class ItemUseActionController {
     if (this.disposed || event.defaultPrevented || event.button > 2 || event.button === 1) return;
     this.picker.pointer.trackPointer(event);
     const actions = this.picker.getMouseActions(), action = event.button === 0 ? actions.left : actions.right;
-    if ((action?.action !== 'GIVE' && action?.action !== 'REPAIR') || !action.target) { this.cancel(); return; }
+    if ((action?.action !== 'GIVE' && action?.action !== 'REPAIR' && action?.action !== 'SHAVE' && action?.action !== 'STORE') || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     this.request(action.action, action.target as ItemUseTarget);
   };

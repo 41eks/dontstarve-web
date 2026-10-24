@@ -41,9 +41,12 @@
 | 草簇 `dug_grass` | `anim/grass.zip` 的 bank `grass` 与 `anim/grass1.zip` 的 build `grass1` | `prefabs/plantables.lua` 的 `dropped` 地面姿态；库存另用 `images/inventoryimages.xml` 的 `dug_grass.tex`，每叠最多 10 个，无装备外观和源皮肤 |
 | 普通墙物品 | `anim/wall.zip` 与对应 `anim/wall_*.zip` build | 地面物品使用 `idle`；已建墙使用独立的 `half` 姿态 |
 | `wall_dreadstone_item` | `anim/wall_dreadstone.zip` | bank、build、动画均来自此归档 |
+| 暖石 `heatrock` | `anim/heat_rock.zip`，bank/build `heat_rock`；三款皮肤使用 `anim/dynamic/heatrock_*.zip` / `.dyn` | `heatrock.lua` 的 `UpdateImages(inst, 3)` 初始姿态为循环 `3`；库存为 `heat_rock3.tex`，皮肤为 `<skin>3.tex`。目录的 `inventoryImageVariants` 核对基础和皮肤的全部 1～5 档图标 atlas；当前不接入温度变化 |
 | 噩梦燃料 | `anim/nightmarefuel.zip` | `idle_loop` 循环；源 `SetMultColour(1, 1, 1, 0.5)` 和 `UsePointFiltering(true)` 分别控制半透明与点采样 |
 
 NPC 专用的 `shadow_thrall_parasitehat` 不属于玩家帽子目录，不导入库存元数据、配方或图标回退。
+
+熔岩池是独立场景 prefab：`lava_tile.zip` 提供 `lava_tile/bubble_lava` 循环池面，`scorched_rock.zip` 提供焦岩的 `idle`、`idle2`～`idle7`。池面使用 OnGround 背景绘制，焦岩各自作为完整 billboard 参加脚点排序；二者均不使用库存图标，也没有原版皮肤。两份归档纳入同一导入脚本的路径／字节校验。
 
 ## 当前加载流程
 
@@ -65,3 +68,7 @@ python3 packages/prefab/scripts/import-ground-items.py --check
 ```
 
 默认源目录是 `/data/copy/AssetArchive-Dev/data/DST/data`。其他来源可通过 `--source <DST data 目录>` 指定；`--check` 校验生成的定义及源资产字节，避免扁平化路径或替换资源内容。
+
+## razor
+
+`razor.lua` 使用 bank `razor` 与 build `swap_razor`，动画包为 `anim/razor.zip`（clip `idle`），物品栏图标为 `inventoryimages.xml` 的 `razor.tex`。`import-ground-items.py` 将其作为 `animation_archive='razor.zip'` 的普通地面物品导入，并自动收录三款原版皮肤 `razor_barber`、`razor_scissors`、`razor_straight` 的 `dynamic/*.zip` 与对应图标；`--check` 校验源路径与字节。razor 不可装备，没有手持美术，只通过鼠标举着使用。

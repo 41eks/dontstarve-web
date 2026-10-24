@@ -128,7 +128,7 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
       () => inventory.extract(inventorySlotAddress(1), 1)!)).toBe(true);
     const dropped = manager.renderEntities.find(entry => entry.object.userData.itemId === 'log')!.object;
     expect(dropped.userData.burningSignal).toBe(burningSignal); expect(dropped.userData.burntSignal).toBe(burntSignal);
-    expect(entity.snapshot()).toEqual(before); expect(entity.transform.position).toEqual([8, 0, -4]);
+    expect(entity.snapshot()).toEqual(before); expect(entity.transform.position.toArray()).toEqual([8, 0, -4]);
     performLightAction(torch, dropped.userData.actionEntity, torch); manager.update(15, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(true);
     expect(manager.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutgrass', 'ash', 'rocks', 'ash']);

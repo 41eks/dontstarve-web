@@ -8,6 +8,9 @@ import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
+import { configureHeatRockEntity, HEATROCK_ID } from './heatrock';
+import { configureRazorEntity, RAZOR_ID } from './razor';
+import { configureBirdEntity, isBirdId } from './birds';
 
 export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly source: string;
@@ -28,7 +31,10 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
   const fires = new Set<ArchiveSprite>();
   return {
     itemIds: Object.keys(GROUND_ITEM_DEFINITIONS),
-    configureEntity: entity => isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity),
+    configureEntity: entity => isBirdId(entity.prefab) ? configureBirdEntity(entity)
+      : entity.prefab === HEATROCK_ID ? configureHeatRockEntity(entity)
+      : entity.prefab === RAZOR_ID ? configureRazorEntity(entity)
+      : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity),
     async create(item) {
       const sprite = await createGroundItemSprite(context.assets, item.itemId, item.skinId);
       if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return sprite;

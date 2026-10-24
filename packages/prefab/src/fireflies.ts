@@ -17,8 +17,7 @@ export function configureFirefliesEntity(entity: ItemEntity): void {
     workable.SetWorkLeft(1);
     workable.SetWorkable(false);
     workable.SetOnFinishCallback(worker => {
-      const [x, y, z] = entity.transform.position;
-      worker.components?.inventory?.GiveItem(entity, { x, y, z });
+      worker.components?.inventory?.GiveItem(entity, entity.transform.position.clone());
     });
     entity.ListenForEvent('ondropped', () => workable.SetWorkLeft(1));
     return workable;
@@ -149,7 +148,7 @@ export class FirefliesController {
   }
 
   private updateProximity(): boolean {
-    const [x, , z] = this.transform.position;
+    const { x, z } = this.transform.position;
     const distanceSquared = this.world.getPlayerPositions().reduce((nearest, player) => Math.min(nearest,
       (player.x - x) ** 2 + (player.z - z) ** 2), Infinity);
     const close = this.playerClose ? distanceSquared < 5 ** 2 : distanceSquared <= 3 ** 2;

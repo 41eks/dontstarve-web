@@ -39,10 +39,12 @@ export interface SavedEntity {
     pickable?: GrassRecord['components']['pickable'];
     beefalo?: BeefaloSaveState;
     nightmareGrowth?: NightmareGrowthSaveState;
+    lavaPond?: import('@dontstarve-web/prefab/lava_pond').LavaPondSaveState;
     wormhole?: WormholeSaveState;
     wall?: WallSaveState;
     moonTree?: MoonTreeSaveState;
     sculptingtable?: { itemname: string };
+    birdcage?: import('@dontstarve-web/prefab/birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };
     moonbase?: import('@dontstarve-web/prefab/moonbase').MoonbaseSaveState;
     farmPlow?: FarmPlowSaveState;

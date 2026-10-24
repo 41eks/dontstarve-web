@@ -55,6 +55,8 @@ export interface AnimatedBuildingDefinition {
     hammerExtraLoot?: readonly { itemId: string; count: number }[];
     /** Items the building itself holds, dropped with its recipe loot when hammered. */
     hammerHeldLoot?: (context: AnimatedBuildingEventContext) => readonly { itemId: string; count: number }[];
+    /** Existing insts the building holds (occupants, shelved items) leave with their identity and state. */
+    hammerDropEntities?: (context: AnimatedBuildingEventContext) => void;
     /** standardcomponents.lua's burn time, generic fire level and heat propagator size. */
     burnable?: { burnTime: number; fxLevel: 2 | 3; propagator: 'small' | 'medium' };
     onhit?: (context: AnimatedBuildingHammerContext) => void;
@@ -371,6 +373,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                     context.dropLoot([...GetRecipeLoot(lootRecipes.get(buildId), lootRecipes), ...(definition.hammerExtraLoot ?? []),
                         ...(definition.hammerHeldLoot?.(this.eventContext(building)) ?? [])]);
                     model.userData.components?.container?.DropEverything(context.position);
+                    definition.hammerDropEntities?.(this.eventContext(building));
                     context.spawnEffect();
                     PlaySound('dontstarve/common/destroy_smoke', context.position);
                     if (definition.hammerMaterial) PlaySound(`dontstarve/common/destroy_${definition.hammerMaterial}`, context.position);
@@ -723,9 +726,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         this.active = undefined;
         this.cursor.hide();
         onbuilt?.({
-            model: placedBuilding.model,
-            animation: placedBuilding.animation,
-            skinId: placedBuilding.skinId.peek(),
+            ...this.eventContext(placedBuilding),
             onComplete: () => { placedBuilding.isPlacing = false; },
         });
     }

@@ -52,9 +52,9 @@ it('spreads source heat to nearby combustible structures through smoldering befo
     expect(target.components.burnable!.IsBurning()).toBe(true);
     expect(target.hasTag('smolder')).toBe(false);
     source.components.burnable!.Extinguish();
-    const before = target.components.propagator!.currentheat;
+    const before = target.components.propagator!.currentheat.peek();
     source.components.propagator!.Update(2); target.components.propagator!.Update(2);
-    expect(target.components.propagator!.currentheat).toBeLessThan(before);
+    expect(target.components.propagator!.currentheat.peek()).toBeLessThan(before);
   } finally {
     for (const inst of [source, target]) { inst.components.burnable!.dispose(); inst.components.propagator!.dispose(); }
   }
@@ -175,7 +175,7 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     expect(notified).toHaveBeenCalledExactlyOnceWith(true, false);
     stopBurnt();
     expect(dropped).toEqual([item]); expect(item.snapshot()).toEqual(before);
-    expect(item.transform.position).toEqual([3, 0, -6]);
+    expect(item.transform.position.toArray()).toEqual([3, 0, -6]);
     const restored = await restoredPlacement.spawnFromSave('treasurechest', saved.world.entities.treasurechest[0]);
     expect(restored.userData.entityId).toBe('burning_chest');
     expect(restored.userData.skinId).toBe(record.components.building!.skinId);
@@ -185,7 +185,7 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     expect(restored.userData.components.workable.GetWorkLeft()).toBe(1);
     expect(dropped).toHaveLength(2);
     expect(dropped[1].snapshot()).toEqual(before);
-    expect(dropped[1].transform.position).toEqual([3, 0, -6]);
+    expect(dropped[1].transform.position.toArray()).toEqual([3, 0, -6]);
     const burnt = restoredPlacement.exportRecords()[0].record;
     expect(burnt.components.container).toBeUndefined();
     expect(deserializeSave(serializeSave(saved, { entities: { treasurechest: [savedEntity(burnt)] }, inventory: restoredInventory.exportState(), elapsedSeconds: 10,

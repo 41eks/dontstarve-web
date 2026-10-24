@@ -83,6 +83,24 @@ def main():
     add('rocks', 'rocks', 'rocks', 'f1', 'inv_rocks')
     add('ice', 'ice', 'ice', 'f1', 'inv_rocks_ice')
     add('marble', 'marble', 'marble', 'anim', 'inv_marble')
+    # heatrock.lua initializes UpdateImages(inst, 3); the five source images
+    # belong to one nonstackable prefab, not five inventory item IDs.
+    heatrock_lua = read('heatrock')
+    heatrock_range = re.search(r'UpdateImages\(inst, (\d)\)', heatrock_lua)[1]
+    add('heatrock', 'heat_rock', 'heat_rock', heatrock_range, 'heatrock',
+        loop=True, icon_name='heat_rock' + heatrock_range)
+    items['heatrock']['inventoryImageVariants'] = {}
+
+    def heatrock_images(prefix):
+        for range_ in range(1, 6):
+            icon = prefix + str(range_) + '.tex'
+            if icon not in icons:
+                raise ValueError(f'No inventory icon for {icon}')
+            items['heatrock']['inventoryImageVariants'][icon] = {'icon': icon, 'atlas': icons[icon]}
+
+    heatrock_images('heat_rock')
+    # razor.lua: bank razor from razor.zip with the swap_razor build; the cursor-held shaver has no equipped art.
+    add('razor', 'razor', 'swap_razor', 'idle', 'razor', animation_archive='razor.zip')
     # moonbutterfly.lua uses the butterfly bank from butterfly_basic.zip with its own build.
     add('moonbutterfly', 'butterfly', 'butterfly_moon', 'idle', 'moonbutterfly', animation_archive='butterfly_basic.zip', loop=True)
     add('moonbutterflywings', 'moonbutterfly_wings', 'moonbutterfly_wings', 'idle', 'moonbutterflywings')
@@ -92,6 +110,8 @@ def main():
     assets.update('anim/' + name + '.zip' for name in ['swap_axe', 'swap_goldenaxe', 'swap_glassaxe', 'player_actions_axe', 'tree_petal_fx', 'moon_tree'])
     # sculptingtable.lua: the station's cutstone01 symbol is replaced by the marble/cutstone builds.
     assets.add('anim/sculpting_station.zip')
+    # lava_pond.lua: ground-oriented pool plus separately sorted scorched rock children.
+    assets.update(['anim/lava_tile.zip', 'anim/scorched_rock.zip'])
     add('seeds', 'seeds', 'seeds', 'idle', 'seeds')
     add('seeds_cooked', 'seeds', 'seeds', 'cooked', 'seeds')
     # mushrooms.lua's capcommonfn/cookedcommonfn share mushrooms bank/build;
@@ -113,6 +133,15 @@ def main():
     for colour in ['crow', 'robin', 'robin_winter', 'canary']:
         item = 'feather_' + colour
         add(item, item, item, 'idle', 'feathers')
+
+    # birds.lua makebird: a dropped bird shows SGbird's stunned_loop pose (crow bank, <name>_build).
+    for item in ['crow', 'robin', 'robin_winter', 'canary']:
+        add(item, 'crow', item + '_build', 'stunned_loop', 'birds', animation_archive='crow.zip', loop=True)
+        # The shared crow bank animates bird_gem for the rift-possessed birds; plain birds' builds have no such symbol.
+        items[item]['hiddenSymbols'] = ['bird_gem']
+    # egg.lua: bird_egg and rottenegg share the birdegg bank and bird_eggs build; birdcage.lua lays them.
+    add('bird_egg', 'birdegg', 'bird_eggs', 'idle', 'egg')
+    add('rottenegg', 'birdegg', 'bird_eggs', 'rotten', 'egg')
 
     # torch.lua and hammer.lua deliberately split their bank and build archives.
     add('torch', 'torch', 'swap_torch', 'idle', 'torch', animation_archive='torch.zip')
@@ -264,7 +293,9 @@ def main():
         build = override[1] if override else match[1]
         path = f'dynamic/{build}.zip'
         items[base[1]]['skinArchives'][match[1]] = path
-        icon = match[1] + '.tex'
+        icon = match[1] + (heatrock_range if base[1] == 'heatrock' else '') + '.tex'
+        if base[1] == 'heatrock':
+            heatrock_images(match[1])
         if icon not in icons:
             raise ValueError(f'No inventory icon for skin {match[1]}')
         if base[1] == 'yellowstaff':

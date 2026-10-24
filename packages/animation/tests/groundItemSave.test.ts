@@ -136,22 +136,22 @@ describe('ground item save records', () => {
       container: { slotCount: 8, slots: [{ slotKey: '2', item: { itemId: 'log', count: 3 } }] } };
     const model = await manager.spawnFromSave('bag:position', backpack, new THREE.Vector3(2, 0.25, 3));
     const entity = manager.entities.get('bag:position')!;
-    entity.transform.position = [12, 0.25, 13];
+    entity.transform.position.set(12, 0.25, 13);
     model.position.set(-100, 40, -100);
     const projection = manager.renderEntities[0].footPosition;
     projection.set(-10, 50, -10);
     expect(manager.exportRecords()[0].transform.position).toEqual([12, 0.25, 13]);
     expect(manager.renderEntities[0].footPosition.toArray()).toEqual([12, 0.25, 13]);
     manager.update(0, new THREE.Quaternion());
-    expect(model.position.toArray()).toEqual(entity.transform.position);
+    expect(model.position.toArray()).toEqual(entity.transform.position.toArray());
 
     const preparing = manager.reskinTargets[0].prepareNextSkin();
-    entity.transform.position = [20, 0.5, 21];
+    entity.transform.position.set(20, 0.5, 21);
     const prepared = await preparing;
     expect(prepared.apply()).toBe(true);
     prepared.dispose();
     const replacement = manager.renderEntities[0].object;
-    expect(replacement.position.toArray()).toEqual(entity.transform.position);
+    expect(replacement.position.toArray()).toEqual(entity.transform.position.toArray());
     expect(manager.entities.get(entity.id)).toBe(entity);
     const saved = manager.exportRecords()[0];
     expect(saved.transform.position).toEqual([20, 0.5, 21]);
@@ -163,7 +163,7 @@ describe('ground item save records', () => {
     restored.manager.dispose();
 
     // Input checks current entity coordinates before the next active frame.
-    entity.transform.position = [30, 0, 31];
+    entity.transform.position.set(30, 0, 31);
     player.position.set(30, 0, 31);
     const equip = vi.spyOn(inventory, 'Equip');
     equip.mockReturnValueOnce(false);
@@ -261,8 +261,8 @@ describe('ground item save records', () => {
     const entity = manager.entities.get(scene.children[0].userData.entityId)!;
     // The brain's priority scatter and Wander's initial wait come first, then the butterfly flies.
     for (let frame = 0; frame < 40; frame++) manager.update(0.1, new THREE.Quaternion());
-    expect(entity.transform.position[0]).toBeGreaterThan(0);
-    expect(scene.children[0].position.toArray()).toEqual(entity.transform.position);
+    expect(entity.transform.position.x).toBeGreaterThan(0);
+    expect(scene.children[0].position.toArray()).toEqual(entity.transform.position.toArray());
     vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([
       { object: scene.children[0] } as THREE.Intersection,
     ]);

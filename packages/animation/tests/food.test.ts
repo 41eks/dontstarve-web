@@ -136,3 +136,7 @@ it('preserves food and stats when cancelled or replaced before commit and clamps
     expect(playerStats.sanity.peek()).toBe(200);
   } finally { actions.dispose(); store.dispose(); }
 });
+
+it('makes bananapop edible with its source preparedfoods values as a solid VEGGIE food', () => {
+  expect(FOOD_EFFECTS.bananapop).toEqual({ health: 20, hunger: 12.5, sanity: 33 });
+});

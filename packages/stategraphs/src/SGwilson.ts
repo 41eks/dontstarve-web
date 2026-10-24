@@ -9,14 +9,14 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'mine_start' | 'mine' | 'chop_start' | 'chop' | 'hammer_start' | 'hammer'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
   | 'quickeat' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
-  | 'book' | 'book2' | 'attack' | 'give';
-export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR';
+  | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave';
+export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
   | 'quick_eat_pre' | 'quick_eat' | 'quick_drink_pre' | 'quick_drink' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst'
   | 'build_pre' | 'build_loop' | 'build_pst' | 'light_fire' | 'light_fire_pst'
-  | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst';
+  | 'action_uniqueitem_pre' | 'book' | 'punch' | 'toolpunch' | 'give' | 'give_pst' | 'hit';
 
 export const WILSON_ACTION_TIMES = {
   mine: 7 * FRAMES, net: 10 * FRAMES, terraform: 25 * FRAMES,
@@ -48,16 +48,18 @@ export interface WilsonStateGraphHost {
   /** Select the art and return its effective playback duration in seconds. */
   playAnimation(clip: WilsonAnimationClip): number;
   playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'sip' | 'dig' | 'tillEmerge' | 'make'
-    | 'bookLight' | 'bookClose' | 'attack', event?: string): void;
+    | 'bookLight' | 'bookClose' | 'attack' | 'useBreak' | 'shave', event?: string): void;
   /** The player's combat component: attack cooldown for the attack state. */
   getCombat?(): WilsonCombat | undefined;
-  stopSound?(cue: 'make'): void;
+  stopSound?(cue: 'make' | 'shave'): void;
   /** SoundEmitter's named handle: KillSound then PlaySound, PlayingSound and SetVolume. */
   playNamedSound?(name: 'book_layer_sound', event: string): void;
   isPlayingNamedSound?(name: 'book_layer_sound'): boolean;
   setNamedSoundVolume?(name: 'book_layer_sound', volume: number): void;
   /** SpawnPrefab parented to the player, optionally Follower:FollowSymbol on a player symbol. */
   spawnFx?(prefab: string, followSymbol?: string): WilsonFx;
+  /** player_common.lua OnItemRanOut/toolbroke exit: equip another item of this prefab from the inventory. */
+  equipSamePrefab?(prefab: string): boolean;
   overrideSymbol?(symbol: string, build: string, sourceSymbol: string): void;
   overrideItemSkinSymbol?(symbol: string, skinBuild: string, skinSymbol: string, build: string, sourceSymbol: string): void;
   setCasting(casting: boolean, colour?: readonly [number, number, number]): void;
@@ -65,6 +67,13 @@ export interface WilsonStateGraphHost {
   stopMovement?(): void;
   onStateChanged(name: WilsonStateName): void;
 }
+
+/** The SHAVE target: beard.lua ShouldTryToShave gates the state. */
+export interface ShaveTarget {
+  readonly components?: { beard?: { ShouldTryToShave(doer: unknown): { ok: true } | { ok: false; reason?: string } } };
+}
+
+export interface WilsonBrokenTool { readonly prefab: string; readonly nobrokentoolfx?: boolean }
 
 export interface WilsonCombat {
   readonly min_attack_period: number;
@@ -85,6 +94,57 @@ const clip = (key: WilsonAnimationKey, name: string = key): WilsonAnimationClip 
  * branches require components not yet ported here; see docs/dst-stategraphs.md.
  */
 const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
+  State({
+    // SGwilson.lua shave: the beard component (or shaveable) vets the target before the sound and clips start.
+    name: 'shave',
+    tags: ['doing', 'busy', 'shaving', 'nodangle'],
+    onenter: (inst) => {
+      const { host } = inst.context;
+      host.stopMovement?.();
+      const action = inst.context.getBufferedAction();
+      const shavee = action?.target as ShaveTarget | undefined;
+      const shaver = (action?.invobject as { components?: { shaver?: unknown } } | undefined)?.components?.shaver;
+      const verdict = shaver && shavee ? shavee.components?.beard?.ShouldTryToShave(undefined) : undefined;
+      if (!verdict?.ok) {
+        inst.context.failBufferedAction(verdict?.reason);
+        inst.goToState('idle');
+        return;
+      }
+      host.playSound('shave');
+      inst.context.playClips([clip('build_pre'), { ...clip('build_loop'), loop: true }]);
+      inst.statemem.action = action;
+      inst.setTimeout(1);
+    },
+    timeline: [TimeEvent(4 * FRAMES, inst => inst.removeStateTag('busy'))],
+    ontimeout: (inst) => {
+      inst.context.performBufferedAction();
+      inst.context.playClips([clip('build_pst')]);
+      inst.goToState('idle', true);
+    },
+    onexit: (inst) => {
+      inst.context.host.stopSound?.('shave');
+      if (inst.context.getBufferedAction() === inst.statemem.action) inst.context.clearBufferedAction();
+    },
+  }),
+  State({
+    name: 'toolbroke',
+    tags: ['busy', 'pausepredict'],
+    onenter: (inst, tool) => {
+      const { host } = inst.context;
+      host.stopMovement?.();
+      inst.context.playClips([clip('hit')]);
+      host.playSound('useBreak');
+      const broken = tool as WilsonBrokenTool | undefined;
+      if (!broken?.nobrokentoolfx) host.spawnFx?.('brokentool');
+      inst.statemem.toolname = broken?.prefab;
+      inst.setTimeout(10 * FRAMES);
+    },
+    ontimeout: inst => inst.goToState('idle', true),
+    onexit: inst => {
+      const toolname = inst.statemem.toolname as string | undefined;
+      if (toolname !== undefined) inst.context.host.equipSamePrefab?.(toolname);
+    },
+  }),
   State({
     name: 'give', tags: ['giving'],
     onenter: inst => {
@@ -702,6 +762,9 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   ActionHandler('PLANT', 'doshortaction'),
   ActionHandler('PICKUP', 'doshortaction'),
   ActionHandler('HARVEST', 'dolongaction'),
+  ActionHandler('STORE', 'doshortaction'),
+  // SGwilson.lua TAKEITEM: the inventoryitemholder_take and target.takeitem branches belong to unported holders.
+  ActionHandler('TAKEITEM', 'dolongaction'),
   ActionHandler('REPAIR', (_inst, action) => action.target?.hasTag('repairshortaction') ? 'doshortaction' : 'dolongaction'),
   ActionHandler('GIVE', (_inst, action) => action.target?.hasTag('give_dolongaction') ? 'dolongaction' : 'give'),
   ActionHandler('PICK', (_inst, action) => {
@@ -711,6 +774,7 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
     return action.target?.quickpick ? 'doshortaction' : 'dolongaction';
   }),
   ActionHandler('LIGHT', 'catchonfire'),
+  ActionHandler('SHAVE', 'shave'),
   ActionHandler('TERRAFORM', 'terraform'),
   ActionHandler('EAT', (inst) => {
     if (inst.hasStateTag('busy')) return null;
@@ -754,6 +818,15 @@ export class WilsonStateGraph {
     this.host = host;
     this.sg = new StateGraphInstance(this, [...states, ...applicationStates], actionHandlers);
     this.sg.listenForEvent('newstate', () => this.host.onStateChanged(this.sg.stateName));
+    // SGwilson.lua EventHandler("toolbroke"): ignored during nointerrupt states.
+    this.sg.listenForEvent('toolbroke', data => {
+      if (this.sg.hasStateTag('nointerrupt')) return;
+      this.clearBufferedAction();
+      this.activeAction = null;
+      this.activeBufferedAction = undefined;
+      this.activeInvobject = undefined;
+      this.sg.goToState('toolbroke', (data as { tool?: WilsonBrokenTool } | undefined)?.tool);
+    });
     this.sg.goToState('idle');
   }
 
@@ -901,6 +974,13 @@ export class WilsonStateGraph {
     const action = this.bufferedAction;
     this.bufferedAction = null;
     if (action) this.pushEvent('actionfailed', { action });
+  }
+
+  /** inst:PushEvent("actionfailed", { action, reason }) then ClearBufferedAction, without the second event. */
+  failBufferedAction(reason?: string): void {
+    const action = this.bufferedAction;
+    this.bufferedAction = null;
+    if (action) this.pushEvent('actionfailed', { action, reason });
   }
 
   cancelAction(action?: WilsonAction): void {

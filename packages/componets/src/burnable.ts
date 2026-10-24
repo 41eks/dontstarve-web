@@ -1,3 +1,4 @@
+import type { Vector3 } from 'three';
 import type { WorkInst } from './workable';
 import { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
@@ -6,7 +7,7 @@ import { batch, createMemo, createSignal, readonlySignal } from '../../signals/s
 
 export interface BurnableInst extends WorkInst {
   components: { burnable?: Burnable; propagator?: Propagator };
-  getPosition(): { x: number; y: number; z: number };
+  getPosition(): Vector3;
 }
 
 /** The supported structure branches of components/burnable.lua, on active game time. */
@@ -67,7 +68,7 @@ export class Burnable {
     this.setBurning(true);
     this.inst.PushEvent?.('onignite', { source, doer });
     this.onignite?.(this.inst, source, doer);
-    this.inst.components.propagator?.StartSpreading(source);
+    this.inst.components.propagator?.spreading.set(true);
   }
   StartWildfire(): void {
     if (this.removed || this.IsBurning() || this.IsSmoldering() || this.inst.hasTag('fireimmune')) return;
@@ -84,7 +85,7 @@ export class Burnable {
     this.StopSmoldering();
     if (!this.IsBurning()) return;
     if (this.burnTimer.snapshot.peek().status === 'scheduled') this.burnTimer.stop();
-    this.inst.components.propagator?.StopSpreading();
+    this.inst.components.propagator?.spreading.set(false);
     this.setBurning(false);
     this.onextinguish?.(this.inst);
     this.inst.PushEvent?.('onextinguish', undefined);

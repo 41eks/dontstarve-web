@@ -18,6 +18,7 @@ export {
   type AnimatedSpriteOptions,
   type AnimatedSpriteFactory,
   type SpriteAnimationController,
+  type PercentAnimationController,
   type TransientSpriteAnimationController,
 } from './sprite';
 export { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from './beefaloSprite';
@@ -40,6 +41,8 @@ export {
   campfire_init_fn,
   saltbox_init_fn,
   nightlight_init_fn,
+  winterometer_init_fn,
+  birdcage_init_fn,
   pighouse_init_fn,
   sculptingtable_init_fn,
   mushroom_light_init_fn,

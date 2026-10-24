@@ -19,7 +19,8 @@
     "./pointerRaycaster": "./src/pointerRaycaster.ts",
     "./farmActions": "./src/farmActions.ts",
     "./actionContext": "./src/actionContext.ts",
-    "./actionEvents": "./src/actionEvents.ts"
+    "./actionEvents": "./src/actionEvents.ts",
+    "./occupiable": "./src/occupiable.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

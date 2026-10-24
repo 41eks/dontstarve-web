@@ -26,6 +26,11 @@ export interface TransientSpriteAnimationController extends SpriteAnimationContr
   playTransient(name: string): void;
 }
 
+/** AnimState:SetPercent: show a clip at a fixed fraction of its length without advancing it. */
+export interface PercentAnimationController {
+  setPercent(name: string, percent: number): void;
+}
+
 /** AnimState:GetCurrentAnimationNumFrames / SetFrame on the current clip. */
 export interface FrameSeekableAnimationController {
   readonly numFrames: number;
@@ -72,22 +77,24 @@ export interface AnimatedSpriteFactory {
   dispose(): void;
 }
 
-export class SpriteController implements TransientSpriteAnimationController, FrameSeekableAnimationController {
+export class SpriteController implements TransientSpriteAnimationController, FrameSeekableAnimationController, PercentAnimationController {
   protected readonly visual: THREE.Group;
   private readonly renderer: SpriteFrameRenderer;
-  private readonly build: ParsedBuild;
+  private build: ParsedBuild;
   protected readonly animations: ParsedAnim;
-  private readonly materials: THREE.MeshBasicMaterial[];
+  private materials: THREE.MeshBasicMaterial[];
   protected animation!: Animation;
   protected animationName = '';
   protected elapsed = 0;
   protected frameKey = '';
   private layers: Animation[] = [];
   protected loop = true;
+  private paused = false;
   private onComplete?: () => void;
   private transientRestore?: () => void;
   private readonly skin?: SpriteSkin;
   private overrides = new Map<number, SymbolOverride>();
+  private buildOverrides = new Map<string, LoadedBuildOverride>();
   private hiddenLayers = new Set<number>();
 
   constructor(
@@ -123,9 +130,24 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.showFrame(frame);
   }
 
+  setPercent(name: string, percent: number): void {
+    if (!Number.isFinite(percent) || percent < 0 || percent > 1) throw new RangeError('Invalid animation percent');
+    this.selectAnimation(name, false);
+    this.setFrame(Math.min(Math.floor(percent * this.animation.frames.length), this.animation.frames.length - 1));
+    this.paused = true;
+  }
+
   setSymbolOverrides(overrides: Map<number, SymbolOverride>, hiddenLayers: readonly string[] = []): void {
     this.overrides = overrides;
     this.hiddenLayers = new Set(hiddenLayers.map(smallHash));
+    this.reshowFrame();
+  }
+
+  /** AnimState:SetBuild: the base build whose symbols are drawn when no override or skin applies. */
+  setBuild(build: ParsedBuild, materials: THREE.MeshBasicMaterial[]): void {
+    if (build === this.build) return;
+    this.build = build;
+    this.materials = materials;
     this.reshowFrame();
   }
 
@@ -135,6 +157,18 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     if (override) this.overrides.set(hash, override);
     else this.overrides.delete(hash);
     this.reshowFrame();
+  }
+
+  /** AnimState:AddOverrideBuild: every symbol of the build replaces the base and skin symbol of that name. */
+  addOverrideBuild(name: string, override: LoadedBuildOverride): void {
+    this.buildOverrides.delete(name);
+    this.buildOverrides.set(name, override);
+    this.reshowFrame();
+  }
+
+  /** AnimState:ClearOverrideBuild; the caller keeps ownership of the loaded build's materials. */
+  clearOverrideBuild(name: string): void {
+    if (this.buildOverrides.delete(name)) this.reshowFrame();
   }
 
   private reshowFrame(): void {
@@ -148,6 +182,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.selectAnimation(source.animationName, source.loop, source.onComplete);
     this.elapsed = source.elapsed;
     this.update(0);
+    this.paused = source.paused;
   }
 
   playOnce(name: string, onComplete?: () => void) {
@@ -183,6 +218,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   protected isLayerVisible(_layerHash: number): boolean { return true; }
 
   update(dt: number) {
+    if (this.paused) return;
     this.elapsed += Math.min(dt, 0.1);
     const elapsedFrame = Math.floor(this.elapsed * this.animation.frameRate);
     if (!this.loop && elapsedFrame >= this.animation.frames.length) {
@@ -206,6 +242,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.loop = loop;
     this.onComplete = onComplete;
     this.transientRestore = undefined;
+    this.paused = false;
     this.elapsed = 0;
     this.frameKey = '';
     this.layers = this.skin?.animations?.animations.filter((candidate) =>
@@ -232,6 +269,10 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
           const image = findImage(override.build, override.symbolHash, element.imageIndex);
           return image ? { element, image, materials: override.materials } : undefined;
         }
+        for (const override of [...this.buildOverrides.values()].reverse()) {
+          const image = findImage(override.build, element.imageHash, element.imageIndex);
+          if (image) return { element, image, materials: override.materials };
+        }
         const skin = this.skin;
         if (skin && !skin.baseSymbols.has(element.imageHash)
           && (skin.symbols === undefined || skin.symbols.has(element.imageHash))) {
@@ -254,6 +295,22 @@ export async function loadSymbolOverride(assetBaseUrl: string, archive: string, 
   const materials = createMaterials(loaded.buildPackage);
   return {
     build: loaded.buildPackage.build, materials, symbolHash: smallHash(symbol),
+    dispose() { for (const material of materials) { material.map?.dispose(); material.dispose(); } },
+  };
+}
+
+/** A whole build used as an override build; its atlases belong to the caller. */
+export interface LoadedBuildOverride {
+  readonly build: ParsedBuild;
+  readonly materials: THREE.MeshBasicMaterial[];
+  dispose(): void;
+}
+
+export async function loadBuildOverride(assetBaseUrl: string, archive: string): Promise<LoadedBuildOverride> {
+  const loaded = await loadSpriteSkinArchive(archive, assetBaseUrl);
+  const materials = createMaterials(loaded.buildPackage);
+  return {
+    build: loaded.buildPackage.build, materials,
     dispose() { for (const material of materials) { material.map?.dispose(); material.dispose(); } },
   };
 }

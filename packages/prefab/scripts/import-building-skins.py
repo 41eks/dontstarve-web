@@ -18,7 +18,7 @@ def main():
     package = Path(__file__).resolve().parent.parent
     destination = package.parent.parent / "public/dst/data"
     definitions = json.loads((package / "src/definitions.json").read_text())
-    prefabs = ["cookpot", "researchlab", "researchlab2", "researchlab3", "researchlab4", "sculptingtable"]
+    prefabs = ["cookpot", "researchlab", "researchlab2", "researchlab3", "researchlab4", "sculptingtable", "winterometer", "birdcage"]
     archives = sorted({
         f"anim/{archive}"
         for prefab in prefabs

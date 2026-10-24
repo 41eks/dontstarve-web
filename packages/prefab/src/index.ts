@@ -1,4 +1,7 @@
 export { getHandEquipmentDefinition, preloadHandEquipment, type HandEquipmentContext, type HandEquipmentDefinition } from './handEquipment';
+export { configureHeatRockEntity, HEATROCK_ID, HEATROCK_FUEL, HEATROCK_IMAGES } from './heatrock';
+export { LavaPondManager, LAVA_POND_ID, LAVA_POND_ROCK_IDS, LAVA_POND_HEAT, LAVA_POND_RADIUS,
+  type LavaPondRecord, type LavaPondSaveState, type LavaPondRockRecord, type LavaPondRockId } from './lava_pond';
 export {
   createMoonTreeForest,
   type MoonTreeForest,
@@ -20,6 +23,9 @@ export {
   NIGHT_LIGHT_DEFINITION, NIGHT_LIGHT_ID, NIGHT_LIGHT_SKIN_ARCHIVES,
   NightLightPlacement, type NightLightId,
 } from './nightlight';
+export { WINTEROMETER_DEFINITION, WINTEROMETER_ID, WINTEROMETER_SKIN_ARCHIVES, type WinterometerId } from './winterometer';
+export { BIRDCAGE_DEFINITION, BIRDCAGE_ID, type BirdcageId } from './birdcage';
+export { BIRD_IDS, BIRD_PERISH_TIME, configureBirdEntity, isBirdId, type BirdId } from './birds';
 export {
   PIG_HOUSE_DEFINITION, PIG_HOUSE_ID, PIG_HOUSE_SKIN_ARCHIVES,
   PigHousePlacement, type PigHouseId,

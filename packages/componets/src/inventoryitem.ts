@@ -1,3 +1,5 @@
+import type { Vector3 } from 'three';
+
 export interface ItemPosition { readonly x: number; readonly y: number; readonly z: number; }
 export interface InventoryActor {
   hasTag(tag: string): boolean;
@@ -7,7 +9,7 @@ export interface InventoryActor {
 export interface InventoryItemInstance {
   hasTag(tag: string): boolean;
   PushEvent(name: string, data: unknown): void;
-  readonly transform: { position: [number, number, number] };
+  readonly transform: { readonly position: Vector3 };
 }
 
 /** inventoryitem.lua's supported pickup/ownership hooks; slot addresses remain store-owned. */
@@ -33,7 +35,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
     return this.onpickupfn?.(this.inst, doer, source) === true;
   }
   OnPutInInventory(doer: InventoryActor): void {
-    this.inst.transform.position = [0, 0, 0];
+    this.inst.transform.position.set(0, 0, 0);
     this.onputininventoryfn?.(this.inst, doer);
     this.inst.PushEvent('onputininventory', doer);
   }

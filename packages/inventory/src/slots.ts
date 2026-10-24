@@ -13,17 +13,24 @@ export interface ItemSlot {
 const DEFAULT_MAX_STACK = 40;
 const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   backpack: 1,
+  // birds.lua gives live birds an inventoryitem but no stackable.
+  crow: 1,
+  robin: 1,
+  robin_winter: 1,
+  canary: 1,
   bernie_inactive: 1,
   farm_plow_item: 1,
   phonograph: 1,
   record: 1,
   torch: 1,
   lantern: 1,
+  heatrock: 1, // heatrock.lua has inventoryitem but no stackable or equippable.
   yellowstaff: 1,
   opalstaff: 1,
   greenstaff: 1,
   reskin_tool: 1,
   bugnet: 1,
+  razor: 1, // razor.lua has no stackable component.
   hammer: 1,
   nightsword: 1,
   pickaxe: 1,

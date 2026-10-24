@@ -10,6 +10,8 @@ const FX_PREFABS = {
   book_fx: { archive: 'book_fx_wicker.zip', bank: 'book_fx_wicker', anim: 'book_fx_wicker',
     failanim: 'book_fx_fail_wicker', multColour: [1, 1, 1, .4] as const },
   fx_roots_under_book: { archive: 'fx_books.zip', bank: 'fx_books', anim: 'roots' },
+  // brokentool.lua: spawned at the player's position and left in the world until animover.
+  brokentool: { archive: 'broken_tool.zip', bank: 'broketool', anim: 'used', ground: true },
 } as const;
 export type BookFxPrefab = keyof typeof FX_PREFABS;
 const BOOK_FX_FAIL_SOUND = 'wickerbottom_rework/book_spells/fail';
@@ -93,6 +95,7 @@ export class BookFxController {
     if (!this.isPrepared(prefab)) throw new Error(`FX prefab ${prefab} has not been prepared`);
     const fx = new FxInst(this, prefab, this.loaded.get(prefab)!, followSymbol);
     this.fx.push(fx);
+    if ('ground' in FX_PREFABS[fx.prefab]) fx.detach();
     return fx;
   }
 

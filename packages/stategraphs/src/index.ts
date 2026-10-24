@@ -23,6 +23,7 @@ export * from './read.ts';
 export * from './pick.ts';
 export * from './itemuse.ts';
 export * from './harvest.ts';
+export * from './occupiable.ts';
 export * from './lighter.ts';
 export * from './pickup.ts';
 export * from './reskin_tool.ts';

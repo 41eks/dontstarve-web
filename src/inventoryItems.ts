@@ -5,7 +5,10 @@ import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity } from '@dontsta
 import { TORCH_FUEL } from '@dontstarve-web/prefab/torch';
 import { LIGHT_STAFF_USES, isLightStaff } from '@dontstarve-web/prefab/yellowstaff';
 import { configureMoonrockNugget } from '../packages/prefab/src/moonrocknugget';
+import { configureHeatRockEntity, HEATROCK_FUEL, HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';
+import { configureRazorEntity, RAZOR_ID } from '@dontstarve-web/prefab/razor';
 import { configureHandEquipmentEntity, getHandEquipmentDefinition } from '@dontstarve-web/prefab/handEquipment';
+import { configureBirdEntity, isBirdId } from '@dontstarve-web/prefab/birds';
 import { PERISHABLE_FOODS } from '@dontstarve-web/prefab/food';
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../packages/ui/src/inventory-items';
 import { INVENTORY_SKIN_SPECS } from '../packages/ui/src/categories/shared';
@@ -27,7 +30,10 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
     return [itemId, {
       ...display,
       maxStack: inventoryItemMaxStack(itemId),
-      configureEntity: itemId === 'moonrocknugget' ? configureMoonrockNugget
+      configureEntity: isBirdId(itemId) ? configureBirdEntity
+        : itemId === HEATROCK_ID ? configureHeatRockEntity
+        : itemId === RAZOR_ID ? configureRazorEntity
+        : itemId === 'moonrocknugget' ? configureMoonrockNugget
         : Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, itemId) ? configureBurnableItemEntity
         : getHandEquipmentDefinition(itemId) ? configureHandEquipmentEntity : undefined,
       ...(getHandEquipmentDefinition(itemId)?.definition.maxUses === undefined ? {}
@@ -38,6 +44,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
       ...(isLightStaff(itemId) ? { maxUses: LIGHT_STAFF_USES[itemId] } : {}),
       ...(itemId === 'torch' ? { maxFuel: TORCH_FUEL } : {}),
+      ...(itemId === HEATROCK_ID ? { maxFuel: HEATROCK_FUEL } : {}),
       ...(getHandEquipmentDefinition(itemId)?.definition.maxFuel === undefined ? {}
         : { maxFuel: getHandEquipmentDefinition(itemId)!.definition.maxFuel }),
       ...(Object.hasOwn(PERISHABLE_FOODS, itemId)

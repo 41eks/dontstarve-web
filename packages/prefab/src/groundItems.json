@@ -682,6 +682,126 @@
       "symbolOverrides": {},
       "skinArchives": {}
     },
+    "heatrock": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/heatrock.lua",
+      "name": "暖石",
+      "icon": "heat_rock3.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "heat_rock.zip",
+      "buildArchives": [
+        "heat_rock.zip"
+      ],
+      "bank": "heat_rock",
+      "animation": "3",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "heatrock_fantasy": "dynamic/heatrock_fantasy.zip",
+        "heatrock_fire": "dynamic/heatrock_fire.zip",
+        "heatrock_planet": "dynamic/heatrock_planet.zip"
+      },
+      "inventoryImageVariants": {
+        "heat_rock1.tex": {
+          "icon": "heat_rock1.tex",
+          "atlas": "images/inventoryimages.xml"
+        },
+        "heat_rock2.tex": {
+          "icon": "heat_rock2.tex",
+          "atlas": "images/inventoryimages.xml"
+        },
+        "heat_rock3.tex": {
+          "icon": "heat_rock3.tex",
+          "atlas": "images/inventoryimages.xml"
+        },
+        "heat_rock4.tex": {
+          "icon": "heat_rock4.tex",
+          "atlas": "images/inventoryimages.xml"
+        },
+        "heat_rock5.tex": {
+          "icon": "heat_rock5.tex",
+          "atlas": "images/inventoryimages.xml"
+        },
+        "heatrock_fantasy1.tex": {
+          "icon": "heatrock_fantasy1.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fantasy2.tex": {
+          "icon": "heatrock_fantasy2.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fantasy3.tex": {
+          "icon": "heatrock_fantasy3.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fantasy4.tex": {
+          "icon": "heatrock_fantasy4.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fantasy5.tex": {
+          "icon": "heatrock_fantasy5.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fire1.tex": {
+          "icon": "heatrock_fire1.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fire2.tex": {
+          "icon": "heatrock_fire2.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fire3.tex": {
+          "icon": "heatrock_fire3.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fire4.tex": {
+          "icon": "heatrock_fire4.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_fire5.tex": {
+          "icon": "heatrock_fire5.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_planet1.tex": {
+          "icon": "heatrock_planet1.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_planet2.tex": {
+          "icon": "heatrock_planet2.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_planet3.tex": {
+          "icon": "heatrock_planet3.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_planet4.tex": {
+          "icon": "heatrock_planet4.tex",
+          "atlas": "images/inventoryimages2.xml"
+        },
+        "heatrock_planet5.tex": {
+          "icon": "heatrock_planet5.tex",
+          "atlas": "images/inventoryimages2.xml"
+        }
+      }
+    },
+    "razor": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/razor.lua",
+      "name": "剃刀",
+      "icon": "razor.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "razor.zip",
+      "buildArchives": [
+        "swap_razor.zip"
+      ],
+      "bank": "razor",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "razor_barber": "dynamic/razor_barber.zip",
+        "razor_scissors": "dynamic/razor_scissors.zip",
+        "razor_straight": "dynamic/razor_straight.zip"
+      }
+    },
     "moonbutterfly": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moonbutterfly.lua",
       "name": "月蛾",
@@ -1068,6 +1188,108 @@
       ],
       "bank": "feather_canary",
       "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "crow": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/birds.lua",
+      "name": "乌鸦",
+      "icon": "crow.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "crow.zip",
+      "buildArchives": [
+        "crow_build.zip"
+      ],
+      "bank": "crow",
+      "animation": "stunned_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "hiddenSymbols": [
+        "bird_gem"
+      ]
+    },
+    "robin": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/birds.lua",
+      "name": "红雀",
+      "icon": "robin.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "crow.zip",
+      "buildArchives": [
+        "robin_build.zip"
+      ],
+      "bank": "crow",
+      "animation": "stunned_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "hiddenSymbols": [
+        "bird_gem"
+      ]
+    },
+    "robin_winter": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/birds.lua",
+      "name": "雪雀",
+      "icon": "robin_winter.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "crow.zip",
+      "buildArchives": [
+        "robin_winter_build.zip"
+      ],
+      "bank": "crow",
+      "animation": "stunned_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "hiddenSymbols": [
+        "bird_gem"
+      ]
+    },
+    "canary": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/birds.lua",
+      "name": "金丝雀",
+      "icon": "canary.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "crow.zip",
+      "buildArchives": [
+        "canary_build.zip"
+      ],
+      "bank": "crow",
+      "animation": "stunned_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "hiddenSymbols": [
+        "bird_gem"
+      ]
+    },
+    "bird_egg": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/egg.lua",
+      "name": "鸟蛋",
+      "icon": "bird_egg.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bird_eggs.zip",
+      "buildArchives": [
+        "bird_eggs.zip"
+      ],
+      "bank": "birdegg",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
+    "rottenegg": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/egg.lua",
+      "name": "腐烂鸟蛋",
+      "icon": "rottenegg.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bird_eggs.zip",
+      "buildArchives": [
+        "bird_eggs.zip"
+      ],
+      "bank": "birdegg",
+      "animation": "rotten",
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {}
@@ -4932,6 +5154,24 @@
       "icon": "hammer_rw_startingforest.tex",
       "atlas": "images/inventoryimages2.xml"
     },
+    "heatrock_fantasy": {
+      "itemId": "heatrock",
+      "name": "魔力暖石",
+      "icon": "heatrock_fantasy3.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "heatrock_fire": {
+      "itemId": "heatrock",
+      "name": "变形火焰",
+      "icon": "heatrock_fire3.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "heatrock_planet": {
+      "itemId": "heatrock",
+      "name": "烈焰核心",
+      "icon": "heatrock_planet3.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
     "lantern_crystal": {
       "itemId": "lantern",
       "name": "盐灯",
@@ -5117,6 +5357,24 @@
       "name": "怒放干草叉",
       "icon": "pitchfork_rose.tex",
       "atlas": "images/inventoryimages2.xml"
+    },
+    "razor_barber": {
+      "itemId": "razor",
+      "name": "理发剃刀",
+      "icon": "razor_barber.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "razor_scissors": {
+      "itemId": "razor",
+      "name": "剪刀",
+      "icon": "razor_scissors.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "razor_straight": {
+      "itemId": "razor",
+      "name": "折叠式剃刀",
+      "icon": "razor_straight.tex",
+      "atlas": "images/inventoryimages3.xml"
     },
     "record_creepyforest": {
       "itemId": "record",

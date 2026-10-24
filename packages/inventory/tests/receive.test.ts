@@ -26,7 +26,7 @@ it('handles GiveItem when partially or completely full, notifying only received 
     expect(drop).toHaveBeenNthCalledWith(1, partial);
     expect(partial.snapshot()).toMatchObject({ count: 2, wet: true });
     expect(partial.components.inventoryitem.owner).toBeNull();
-    expect(partial.transform.position).toEqual([4, 0, 5]);
+    expect(partial.transform.position.toArray()).toEqual([4, 0, 5]);
 
     const full = inventory.entities.create({ itemId: 'cutgrass', count: 3 });
     expect(inventory.GiveItem(full, source)).toBe(true);
@@ -35,7 +35,7 @@ it('handles GiveItem when partially or completely full, notifying only received 
     expect(drop).toHaveBeenNthCalledWith(2, full);
     expect(full.isRemoved).toBe(false);
     expect(full.snapshot().count).toBe(3);
-    expect(full.transform.position).toEqual([4, 0, 5]);
+    expect(full.transform.position.toArray()).toEqual([4, 0, 5]);
   } finally { inventory.dispose(); }
 });
 

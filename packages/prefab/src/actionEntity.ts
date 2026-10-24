@@ -51,7 +51,7 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
   return entity;
 }
 
-export type FoundEntity = ComponentActionEntity & { getPosition(): { x: number; z: number } };
+export type FoundEntity = ComponentActionEntity & { getPosition(): THREE.Vector3 };
 
 /** TheSim:FindEntities on the ground plane: radius, then must/cant/oneof tag filters. */
 export function FindEntities(root: THREE.Object3D, x: number, z: number, radius: number,

@@ -72,6 +72,10 @@ worldtemperature.dispose();
 
 组件没有独立定时器；结算帧数和累计时间由宿主的 `createWorldClockUpdater` 管理。本阶段不移植网络同步和 `overridecolourmodifier` 夏季 bloom 事件。代表性单元测试位于 [worldtemperature.test.ts](../packages/animation/tests/worldtemperature.test.ts) 和 [worldState.test.ts](../packages/animation/tests/worldState.test.ts)，覆盖公式组合、极端温度与倍率、60 帧结算和部分结算、JSON 保存恢复、响应式清理及无效输入时的状态保留。此次修改不改变调试命令语法、参数或支持 ID。
 
+## 局部温度与温度测量仪
+
+[temperatureoverrider.ts](../packages/componets/src/temperatureoverrider.ts) 的 `GetTemperatureAtXZ` 对应 `GetLocalTemperature`；覆盖器注册表和喷气孔尚未移植，目前直接回退到世界温度，由 `WorldContext.getLocalTemperature` 注入。[winterometer.ts](../packages/prefab/src/winterometer.ts) 用 `ComponentTimer` 实现 `DoPeriodicTask(1, DoCheckTemp, 0)`：首个读数在下一次调度，之后每秒重新排程；锤击和建造时停止，`hit`／`place` 动画结束后重启，烧毁（`burntup`）或移除后取消。读数通过 `SpriteController.setPercent('meter', 1 - clamp(T, 0, 70) / 70)` 停在对应帧。`lava_pond` 只有 `heater`（500），不是覆盖器，所以它不影响温度计读数。
+
 ## 三种不同的温度
 
 | 数值 | 保存／获取方式 | 含义 |
@@ -247,7 +251,15 @@ mintemp = max(default_mintemp, min(0, ambient_temperature))
 
 该扩展通常每 1 秒结算，接近平衡后改为每 3 秒检查；实体睡眠时停止任务，唤醒后补算经过时间。默认温差阈值为 0.25°C，目标为整数温度时另有到达目标的处理。普通升温和降温分别使用夏季／冬季保温限制，冰箱则向 0°C 靠近。堆叠合并按数量加权混合温度，存档保存温度。
 
+## 熔岩池的热源供给端
+
+项目的 `lava_pond` 已挂载通用 `Heater`，固定 `GetHeat(observer) = 500`，默认供热、启用距离衰减且无额外半径截断。Heater 的配置保存在私有 signal 中并提供只读视图，组件拥有 `HASHEATER` 标签，移除时释放标签；没有温度时钟订阅或每帧供热数值更新。现有 `FindEntities` 可在场景中查询实例、位置及 heater 组件。熔岩池不改写 `WorldTemperature` 或局部环境温度。
+
+当前仍未实现实体 `Temperature`，因此靠近不会实际更新角色体温；距离衰减、保温、升降温速率和过热伤害属于后续消费端。熔岩池已接入原版动画、局部光照、障碍、焦岩布局及保存恢复，具体范围见 [实现计划](lava-pond-plan.md) 和 README 的调试命令。
+
 ## 暖石 `heatrock`
+
+当前项目已接入暖石物品、`heat_rock.zip` 的默认第 3 档外观、基础及三款皮肤的五档图标、换肤与保存读档。按实现范围，暂不创建暖石温度／热源组件，不更新档位、热光照或温度导致的耐久消耗；已有 `fueled` 耐久保留。以下温度规则仍为 Lua 源码参考。
 
 ### 初始化与自身温度
 

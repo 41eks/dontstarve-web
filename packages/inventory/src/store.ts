@@ -4,7 +4,7 @@ import {
   batch, createHandEquipmentExistenceState, createHeadEquipmentExistenceState, createBodyEquipmentExistenceState, readonlySignal,
   type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
 } from '@dontstarve-web/signals';
-import { EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, BACKPACK_SLOT_COUNT } from './addresses';
+import { EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, PLAYER_EQUIPMENT_CONTAINER_ID, BACKPACK_SLOT_COUNT } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type { Container } from '../../componets/src/container';
@@ -86,6 +86,25 @@ export class InventoryStore {
     const entity = this.GetEquippedItem(kind);
     return entity ? this.extract(equipmentSlotAddress(kind), entity.components.stackable.count, entity) : null;
   }
+  /** inventory.lua FindItem: item slots and the equipped backpack, never equipment or the cursor. */
+  FindItem(test: (item: ItemEntity) => boolean): ItemEntity | null {
+    for (const { address, slot } of this.registrations) {
+      if (address.containerId === PLAYER_EQUIPMENT_CONTAINER_ID || address.containerId === PLAYER_CURSOR_CONTAINER_ID) continue;
+      const entity = slot.getEntity();
+      if (entity && !entity.isRemoved && test(entity)) return entity;
+    }
+    return null;
+  }
+  /** inventory.lua Equip of an item that currently sits in an inventory slot. */
+  EquipFromInventory(entity: ItemEntity): boolean {
+    const owner = entity.components.inventoryitem.owner;
+    if (!owner || !entity.components.equippable || this.GetEquippedItem(entity.components.equippable.equipslot)) return false;
+    const taken = this.extract(owner.address, 1, entity);
+    if (!taken) return false;
+    if (this.Equip(taken)) return true;
+    this.receive(taken);
+    return false;
+  }
   Equip(entity: ItemEntity): boolean {
     this.configureItem(entity);
     const kind = entity.components.equippable?.equipslot;
@@ -106,7 +125,7 @@ export class InventoryStore {
     const owner = entity.components.inventoryitem.owner;
     if (owner && this.extract(owner.address, entity.components.stackable.count, entity) !== entity) return;
     const position = dropPosition ?? this.actor.GetPosition();
-    entity.transform.position = [position.x, 0, position.z];
+    entity.transform.position.set(position.x, 0, position.z);
     entity.PushEvent('ondropped', undefined);
     for (const listener of this.drops) listener(entity);
   }
@@ -237,7 +256,7 @@ export class InventoryStore {
       const address = { containerId, slotKey: String(slot - 1) };
       const item = this.extract(address, entity.components.stackable.count, entity);
       if (!item) return;
-      item.transform.position = [position.x, position.y, position.z];
+      item.transform.position.set(position.x, position.y, position.z);
       this.DropItem(item, position);
     };
   }
@@ -879,6 +898,8 @@ export class InventoryStore {
       entity.components.inventoryitem.owner = {
         address: cloneAddress(address),
         changed: () => { if (slot.getEntity() === entity) this.notify([cloneAddress(address)]); },
+        // Items in a backpack have the backpack as owner in DST, which has no player handlers.
+        PushEvent: (name, data) => { if (!isBackpackContainerId(address.containerId)) this.actor.PushEvent(name, data); },
         remove: () => slot.getEntity() === entity && this.applySlotChanges([{
           slot: address, itemId: entity.prefab, skinId: entity.skinId, delta: -entity.components.stackable.count,
         }]),

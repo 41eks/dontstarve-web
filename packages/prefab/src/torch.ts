@@ -238,9 +238,9 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
         onGroundExtinguish: () => {
           if (!entity) return;
           const scale = TILE_SIZE / 4, angle = Math.random() * Math.PI * 2, speed = Math.random() * scale;
-          const position = [...entity.transform.position] as [number, number, number];
+          const position = entity.transform.position.clone();
           fling = new LootFling(entity.transform);
-          entity.transform.position = position;
+          entity.transform.position.copy(position);
           fling.height = 0.1 * scale;
           fling.velocity.set(Math.cos(angle) * speed, (8 + Math.random()) * scale, Math.sin(angle) * speed);
         },

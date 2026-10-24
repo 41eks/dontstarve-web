@@ -7,6 +7,7 @@ import { InventoryItem } from '../../componets/src/inventoryitem';
 import { Equippable } from '../../componets/src/equippable';
 import { Perishable } from '../../componets/src/perishable';
 import { EventEmitter } from '@dontstarve-web/signals';
+import { Vector3 } from 'three';
 
 let sequence = 0;
 export function newItemEntityId(): string {
@@ -27,6 +28,8 @@ export interface ItemOwner {
   remove(): boolean;
   /** perishable.lua's onperishreplacement: the same slot receives the replacement stack. */
   replace(prefab: string): boolean;
+  /** Lua owner:PushEvent: the player's inventory forwards to the player; other containers ignore it. */
+  PushEvent(name: string, data: unknown): void;
 }
 
 /** stackable.lua: stack size belongs to the item, independent of its current slot. */
@@ -93,6 +96,8 @@ export class FiniteUsesComponent {
     if (this.entity.isRemoved || !Number.isFinite(amount) || amount <= 0 || this.maximum === undefined) return false;
     const remaining = this.remaining ?? this.maximum;
     const next = Math.max(0, remaining - amount);
+    // finiteuses.lua SetUses pushes percentusedchange before onfinished removes the inst.
+    this.entity.PushEvent('percentusedchange', { percent: next / this.maximum });
     if (next === 0) {
       // Inventory removal must commit through the bound owner before publishing zero uses.
       if (!(this.onFinished ? this.onFinished() : this.entity.remove())) return false;
@@ -125,6 +130,7 @@ export class ItemEntity {
     equippable?: Equippable;
     container?: Container<InventoryStack, ItemEntity, StorageSlot>;
     tool?: import('../../componets/src/tool').Tool;
+    shaver?: import('../../componets/src/shaver').Shaver;
     workable?: import('../../componets/src/workable').Workable;
     spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
     lighter?: import('../../componets/src/lighter').Lighter;
@@ -142,7 +148,7 @@ export class ItemEntity {
   private readonly persistsState = createSignal(true);
   readonly persistence = readonlySignal(this.persistsState);
   private readonly durability;
-  readonly transform: { position: [number, number, number]; rotationY: number } = { position: [0, 0, 0], rotationY: 0 };
+  readonly transform: { readonly position: Vector3; rotationY: number } = { position: new Vector3(), rotationY: 0 };
   skinId?: string;
   spelltype?: string;
   _cached_reskinname?: Map<string, string | undefined>;
@@ -187,10 +193,8 @@ export class ItemEntity {
   get isRemoved(): boolean { return this.removedState.peek(); }
   get persists(): boolean { return this.persistence.peek(); }
   set persists(value: boolean) { this.persistsState.set(value); }
-  getPosition(): { x: number; y: number; z: number } {
-    const [x, y, z] = this.transform.position;
-    return { x, y, z };
-  }
+  /** The live transform position; callers must not mutate it. */
+  getPosition(): Vector3 { return this.transform.position; }
   hasTag(tag: string): boolean { return this.components.workable?.HasTag(tag) ?? this.tags.has(tag); }
   GetIsWet(): boolean { return this.wetState.peek(); }
   addTag(tag: string): void { this.tags.add(tag); }

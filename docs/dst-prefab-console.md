@@ -4,7 +4,7 @@
 
 源码根目录：`/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts/`。下文 `prefabs/*.lua`、`components/*.lua` 等路径均相对于该目录，行号对应本次读取的源码版本。
 
-清单覆盖项目 [groundItems.json](../packages/prefab/src/groundItems.json) 的 234 个 ID、[hats.json](../packages/prefab/src/hats.json) 的 82 个玩家帽子 ID，以及本次查看的 57 个世界实体和部分生物、特殊实体。2026-10-08 补充核对三色生／熟蘑菇的六个物品 ID，2026-10-11 补充核对 `book_silviculture`、`dug_sapling`、`dug_sapling_moon`、`marble`、`moon_tree_blossom`、`moonbutterfly`、`moonbutterflywings` 和 `sculptingtable`。它是已核对范围的快照，不是 DST 全量 prefab 注册表，也不是项目当前命令支持列表。
+清单覆盖项目 [groundItems.json](../packages/prefab/src/groundItems.json) 的 234 个 ID、[hats.json](../packages/prefab/src/hats.json) 的 82 个玩家帽子 ID，以及本次查看的 57 个世界实体和部分生物、特殊实体。2026-10-08 补充核对三色生／熟蘑菇的六个物品 ID，2026-10-11 补充核对 `book_silviculture`、`dug_sapling`、`dug_sapling_moon`、`marble`、`moon_tree_blossom`、`moonbutterfly`、`moonbutterflywings` 和 `sculptingtable`，2026-10-12 补充核对 `bird_egg`、`rottenegg`，并确认 `birdcage` 与四种鸟的入栏形态。它是已核对范围的快照，不是 DST 全量 prefab 注册表，也不是项目当前命令支持列表。
 
 ## 分类汇总
 
@@ -35,7 +35,7 @@
 
 以下“可生成”“可入栏”均指正常服务端游戏环境下的静态源码路径；可入栏还以空间和状态条件允许为前提。后续 AI、延迟任务、角色交互和实体生命周期不由这份表保证。
 
-## 地面物品目录：243 个 ID
+## 地面物品目录
 
 ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文件。共用文件的行号指向共用构造实现，不是每个 ID 的独立注册位置。Lua 文件名与 prefab ID 不必相同。
 
@@ -133,6 +133,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `bernie_inactive` | 可生成 | 可入栏 | `prefabs/bernie_inactive.lua:272` |
 | `farm_plow_item` | 可生成 | 可入栏 | `prefabs/farm_plow.lua:309` |
 | `lantern` | 可生成 | 可入栏 | `prefabs/mininglantern.lua:259` |
+| `heatrock` | 可生成 | 可入栏 | `prefabs/heatrock.lua:232` 的 `inventoryitem`；无 `stackable` 或 `equippable`。本项目暂固定初始第 3 档，温度分支未实现 |
 | `phonograph` | 可生成 | 可入栏 | `prefabs/phonograph.lua:190` |
 | `record` | 可生成 | 可入栏 | `prefabs/records.lua:98` |
 | `lightbulb` | 可生成 | 可入栏 | `prefabs/lightbulb.lua:64` |
@@ -147,6 +148,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `book_silviculture` | 可生成 | 可入栏 | `prefabs/books.lua:1031`（`MakeBook` 共享构造）；`componentactions.lua:2525` 仅向带 `reader` 标签的玩家提供 READ |
 | `hammer` | 可生成 | 可入栏 | `prefabs/hammer.lua:86` |
 | `bugnet` | 可生成 | 可入栏 | `prefabs/bugnet.lua:74` |
+| `razor` | 可生成 | 可入栏 | `prefabs/razor.lua:30`、`:32` 的 `inventoryitem` 与 `shaver`；无 `stackable`、`equippable` 或 `finiteuses`，由鼠标举着对睡着的牛使用 |
 | `pitchfork` | 可生成 | 可入栏 | `prefabs/pitchfork.lua:77` |
 | `goldenpitchfork` | 可生成 | 可入栏 | `prefabs/pitchfork.lua:77` |
 | `farm_hoe` | 可生成 | 可入栏 | `prefabs/farm_hoe.lua:103` |
@@ -174,6 +176,8 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `smallmeat` | 可生成 | 可入栏 | `prefabs/meats.lua:190` |
 | `cookedsmallmeat` | 可生成 | 可入栏 | `prefabs/meats.lua:190` |
 | `smallmeat_dried` | 可生成 | 可入栏 | `prefabs/meats.lua:190` |
+| `bird_egg` | 可生成 | 可入栏 | `prefabs/egg.lua:75`（commonfn("idle", true)） |
+| `rottenegg` | 可生成 | 可入栏 | `prefabs/egg.lua:178` |
 | `drumstick` | 可生成 | 可入栏 | `prefabs/meats.lua:190` |
 | `drumstick_cooked` | 可生成 | 可入栏 | `prefabs/meats.lua:190` |
 | `batwing` | 可生成 | 可入栏 | `prefabs/meats.lua:190` |
@@ -410,6 +414,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `wardrobe` | 可生成 | 不能入栏 | `prefabs/wardrobe.lua` |
 | `pighouse` | 可生成 | 不能入栏 | `prefabs/pighouse.lua` |
 | `sculptingtable` | 可生成 | 不能入栏 | `prefabs/sculptingtable.lua` |
+| `winterometer` | 可生成 | 不能入栏 | `prefabs/winterometer.lua` |
 | `birdcage` | 可生成 | 不能入栏 | `prefabs/birdcage.lua` |
 | `moonbase` | 可生成 | 不能入栏 | `prefabs/moonbase.lua` |
 | `nightlight` | 可生成 | 不能入栏 | `prefabs/nightlight.lua` |
@@ -446,6 +451,8 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `sapling` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
 | `sapling_moon` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
 | `pond` | 可生成 | 不能入栏 | `prefabs/pond.lua` |
+| `lava_pond` | 可生成 | 不能入栏 | `prefabs/lava_pond.lua`：有 heater，无 inventoryitem；项目已接入供热接口、外观、障碍和布局存档 |
+| `lava_pond_rock`、`lava_pond_rock2`～`lava_pond_rock7` | 可生成 | 不能入栏 | `prefabs/lava_pond.lua:makerock` 的 7 个实际 ID；无 inventoryitem，独立生成时可持久化，池的子焦岩不独立持久化 |
 | `pond_mos` | 可生成 | 不能入栏 | `prefabs/pond.lua` |
 | `pond_cave` | 可生成 | 不能入栏 | `prefabs/pond.lua` |
 | `rock1` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |
@@ -460,7 +467,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 
 ## 生物与特殊实体
 
-butterfly、fireflies 已计入前面的 234 个 ID；本表重复列出它们以说明生物的分类依据。
+butterfly、fireflies 已计入前面的地面物品目录；本表重复列出它们以说明生物的分类依据。
 
 | prefab ID | c_spawn | c_give | 源码与说明 |
 | --- | --- | --- | --- |
@@ -468,7 +475,7 @@ butterfly、fireflies 已计入前面的 234 个 ID；本表重复列出它们�
 | `crow` | 可生成 | 可入栏 | `prefabs/birds.lua:343` |
 | `robin` | 可生成 | 可入栏 | `prefabs/birds.lua:343` |
 | `robin_winter` | 可生成 | 可入栏 | `prefabs/birds.lua:343` |
-| `canary` | 可生成 | 可入栏 | `prefabs/birds.lua:343` |
+| `canary` | 可生成 | 可入栏 | `prefabs/birds.lua:343`；项目只移植被捕获后的物品形态（见下） |
 | `bee` | 可生成 | 可入栏 | `prefabs/bee.lua:184` |
 | `killerbee` | 可生成 | 可入栏 | `prefabs/bee.lua:184` |
 | `mosquito` | 可生成 | 可入栏 | `prefabs/mosquito.lua:203` |
@@ -477,6 +484,8 @@ butterfly、fireflies 已计入前面的 234 个 ID；本表重复列出它们�
 | `spider` | 可生成 | 可入栏 | `prefabs/spider.lua:702`；初始 canbepickedup=false 限制地面拾取动作，GiveItem 入口不检查该标记 |
 | `bernie_active` | 可生成 | 入栏时转换为 bernie_inactive | `prefabs/bernie_active.lua:75` 的拾取回调、`:158` 的组件添加 |
 | `shadow_thrall_parasitehat` | 有构造路径 | 有 inventoryitem，带 NPC 专用生命周期逻辑 | `prefabs/hats.lua:5786`；不纳入项目玩家帽子、库存 metadata、配方或图标 fallback |
+
+项目对 `crow`、`robin`、`robin_winter`、`canary` 的支持：`c_give` 入栏，`c_spawn` 生成 `SGbird` `stunned_loop` 姿势的地面物品（`canbepickedup` 恢复可拾取）；野外飞行、`birdbrain`、`birdspawner` 和 `flyaway` 超时未移植。
 
 spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `spider`，不把所有变体重复计数。普通玩家的地面拾取、使用与角色专属玩法仍需分别核对。
 
@@ -505,4 +514,4 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 | 背包入栏 | 项目将背包作为普通库存物品，每个占一格；原版的 cangoincontainer=false 不适用于当前项目库存模型。 |
 | torch 等普通物品 | 原版两种命令都可用；项目的 torch 已支持 c_give 与 c_spawn，其他普通物品的 c_spawn 仍需单独出现在 debugSpawnIds 中。 |
 
-本次只增加调查文档，没有更改命令参数、行为或支持 ID。
+此表记录源码调查及对应的项目实现说明；当前命令支持范围以 README 和注册表为准。

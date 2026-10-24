@@ -486,3 +486,26 @@ test('a failed READ plays fail_fx, and an interrupt before the layer sound cance
   assert.equal(interrupted.log.some(entry => entry.startsWith('layer:') || entry.startsWith('volume:')), false);
   assert.deepEqual(interrupted.fx.map(inst => inst.isValid()), [false, false]);
 });
+
+test('toolbroke interrupts work, plays the break feedback and re-equips the same tool on exit', () => {
+  const { graph, played, sounds } = actor();
+  const spawned = [], equipped = [];
+  graph.host.spawnFx = prefab => { spawned.push(prefab); };
+  graph.host.equipSamePrefab = prefab => { equipped.push(prefab); return true; };
+  let netted = 0;
+  graph.pushBufferedAction(new BufferedAction('NET', () => { netted++; }, () => true, { invobject: bugnet }));
+  graph.update(2 * FRAMES);
+  graph.pushEvent('toolbroke', { tool: { prefab: 'bugnet' } });
+  assert.equal(graph.stateName, 'toolbroke');
+  assert.equal(played.at(-1), 'hit');
+  assert.deepEqual(sounds.at(-1), 'useBreak');
+  assert.deepEqual(spawned, ['brokentool']);
+  assert.equal(graph.hasStateTag('busy'), true);
+  graph.update(30 * FRAMES);
+  assert.equal(netted, 0);
+  assert.equal(graph.stateName, 'idle');
+  assert.deepEqual(equipped, ['bugnet']);
+
+  graph.pushEvent('toolbroke', { tool: { prefab: 'axe', nobrokentoolfx: true } });
+  assert.deepEqual(spawned, ['brokentool']);
+});

@@ -6,7 +6,7 @@ import {
   AttackActionController, SpellCastActionController, BugNetCaptureController, HammerActionController,
   LighterActionController, PickaxeActionController, PitchforkActionController,
   FarmHoeActionController, ShovelActionController, FoodActionController,
-  PickActionController, HarvestActionController, PickupActionController, ReadActionController, ItemUseActionController,
+  PickActionController, HarvestActionController, OccupiableActionController, PickupActionController, ReadActionController, ItemUseActionController,
   ReskinActionController, type PickupDoer, type FoodSource, type ActionLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -181,7 +181,10 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
             dispose: () => drop.dispose(),
           };
         }, isActionInterrupting);
-        frameControllers.push(itemUse, picking, pickup, harvesting);
+        // actions.lua HARVEST (occupiable) / TAKEITEM (shelf): the released inst goes to the player's inventory.
+        const occupiables = new OccupiableActionController(view, playerAnimation, locomotor, (item, position) =>
+          inventory.GiveItem(item as ItemEntity, position), isActionInterrupting);
+        frameControllers.push(itemUse, picking, pickup, harvesting, occupiables);
       }
       const foodActions = playerAnimation ? new FoodActionController(view, playerAnimation, locomotor, farmPlow,
         isActionInterrupting,

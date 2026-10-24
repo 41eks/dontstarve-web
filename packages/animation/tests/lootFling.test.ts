@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
+import { Vector3 } from 'three';
 import { LootFling } from '../../prefab/src/lootFling';
 
-const transform = (x = 0, z = 0) => ({ position: [x, 0, z] as [number, number, number], rotationY: 0 });
+const transform = (x = 0, z = 0) => ({ position: new Vector3(x, 0, z), rotationY: 0 });
 
 it('uses Lua random direction, speed, vertical variance and collision-radius offset', () => {
   const samples = [0.25, 0.5, 0.75];
@@ -18,10 +19,10 @@ it('uses Lua random direction, speed, vertical variance and collision-radius off
   expect(fling.position.y).toBe(0);
   // A teleport changes the integration origin; no private trajectory position
   // can overwrite the entity on the next step.
-  entityTransform.position = [50, 0, 60];
+  entityTransform.position.set(50, 0, 60);
   fling.update(0.1);
-  expect(entityTransform.position[0]).toBeCloseTo(50);
-  expect(entityTransform.position[2]).toBeCloseTo(59.7);
+  expect(entityTransform.position.x).toBeCloseTo(50);
+  expect(entityTransform.position.z).toBeCloseTo(59.7);
 });
 
 it('returns to the ground, rebounds and settles independently of frame subdivision', () => {

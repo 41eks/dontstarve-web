@@ -6,6 +6,9 @@ import { TILE_SIZE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './yellowstaff';
 import { newEntityId } from './saveRecord';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
+import { actionEntity, FindEntities } from './actionEntity';
+import { Propagator } from '../../componets/src/propagator';
+import type { BurnableInst } from '../../componets/src/burnable';
 
 export const DWARF_STAR_ID = 'stafflight';
 // Gameplay duration requested for this project: 24 minutes.
@@ -64,6 +67,7 @@ interface Star {
   creationSound?: SoundHandle;
   loopSound?: SoundHandle;
   releaseAppearance?: () => void;
+  propagator?: Propagator;
 }
 
 /** Independent summon lifetimes; shared DST textures, separate merged frame meshes. */
@@ -122,6 +126,14 @@ export class DwarfStarManager {
     const star: Star = { model, remaining, removed, phase,
       ageSeconds: this.duration - remainingSeconds, lastSettlementSeconds: this.elapsedSeconds,
       pendingFrames: 0, removalAtSeconds: null };
+    if (this.prefabId === DWARF_STAR_ID) {
+      const inst = actionEntity(model, this.prefabId);
+      inst.components.propagator = star.propagator = new Propagator(inst, 'default', radius =>
+        FindEntities(this.scene, model.position.x, model.position.z, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4);
+      // stafflight.lua: bare propagator, heatoutput 15, spreading from creation until removal.
+      star.propagator.heatoutput = 15;
+      star.propagator.spreading.set(true);
+    }
     this.stars.add(star);
     if (this.isNearby(model.position, this.getPlayerPosition?.())) this.load(star, !saved);
     return model;
@@ -148,13 +160,18 @@ export class DwarfStarManager {
         if (awake) this.load(star, false);
         else this.unload(star);
       }
-      if (!star.sprite) continue;
       if (!changed && star.phase.peek() === 'active' && ++star.pendingFrames === 60
+        && star.sprite
         && !this.settle(star, true)) continue;
       if (star.removalAtSeconds !== null && this.elapsedSeconds >= star.removalAtSeconds) {
         this.removeStar(star);
         continue;
       }
+      // Visual unloading retains the component. Never spread beyond the logical removal deadline,
+      // even when a sleeping star's lifetime has not yet been settled for presentation/save.
+      const removalAt = star.removalAtSeconds ?? star.lastSettlementSeconds + star.remaining.peek() + 1;
+      star.propagator?.Update(Math.max(0, Math.min(dt, removalAt - (this.elapsedSeconds - dt))));
+      if (!star.sprite) continue;
       star.model.quaternion.copy(cameraWorldQuaternion);
       star.animation!.update(dt);
       const age = star.ageSeconds + this.elapsedSeconds - star.lastSettlementSeconds;
@@ -285,6 +302,8 @@ export class DwarfStarManager {
   private removeStar(star: Star): void {
     if (!this.stars.delete(star)) return;
     star.model.userData.persists = false;
+    star.model.userData.removed = true;
+    star.propagator?.dispose();
     star.removed.set(true);
     this.unload(star);
     star.phase.dispose();
