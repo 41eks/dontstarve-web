@@ -4,6 +4,7 @@ import { ItemEntity } from '../../inventory/src';
 import { actionEntity, bindActionEntityWorld, disposeActionEntity, FindEntities } from '../../prefab/src/actionEntity';
 import { createMemo, createSignal } from '../../signals/src';
 import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
+import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 
 const cleanups: (() => void)[] = [];
 afterEach(() => cleanups.splice(0).reverse().forEach(stop => stop()));
@@ -28,6 +29,23 @@ function spawn(root: THREE.Object3D, x: number, tags: string[] = [], inst?: Item
 }
 
 describe('FindEntities', () => {
+  it('uses the spatial candidates for radius queries and tracks movement without excluding NOBLOCK', () => {
+    const scene = new THREE.Scene();
+    const near = spawn(scene, 4, ['NOBLOCK', 'flying']);
+    const distant = Array.from({ length: 200 }, (_, i) => spawn(scene, 100 + i * 4));
+    const tagReads = distant.map(entity => vi.spyOn(entity, 'hasTag'));
+    try {
+      expect(FindEntities(scene, new THREE.Vector3(), 4, ['NOBLOCK'])).toEqual([near]);
+      expect(tagReads.every(spy => spy.mock.calls.length === 0)).toBe(true);
+      near.model.position.set(24, 0, 0); syncEntitySpatial(near.model);
+      expect(FindEntities(scene, new THREE.Vector3(), 4)).toEqual([]);
+      expect(FindEntities(scene, near.model.position, 0)).toEqual([near]);
+      near.model.position.set(0, 5, 0); syncEntitySpatial(near.model);
+      expect(FindEntities(scene, new THREE.Vector3(), 4)).toEqual([]);
+      near.model.position.y = 4; syncEntitySpatial(near.model);
+      expect(FindEntities(scene, new THREE.Vector3(), 4)).toEqual([near]);
+    } finally { tagReads.forEach(spy => spy.mockRestore()); }
+  });
   it('filters by tag first, then radius, and only returns entities attached under the queried root', () => {
     const scene = new THREE.Scene(), other = new THREE.Scene();
     const near = spawn(scene, 1, ['prototyper']);

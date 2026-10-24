@@ -283,6 +283,8 @@ class WilsonController implements WilsonAnimationController {
         // toolbroke hides ARM_carry and shows ARM_normal.
         this.carryItem = name === 'toolbroke' ? null : this.equippedCarryItem;
         if (name !== 'emote') this.emote = null;
+        // stategraph.lua pushes "newstate" to the inst; armorsnurtleshell's ProtectionLevels listens for it.
+        visual.parent!.dispatchEvent({ type: 'newstate', data: { statename: name } } as never);
       },
     });
   }
@@ -716,7 +718,7 @@ export async function createWilsonPlayer(
   assetBaseUrl: string,
   options: Pick<WilsonPlayerPrefabOptions, 'sanityPercent'> = {},
 ): Promise<PlayerModel> {
-  const [buildPackage, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip, strum, fishing] = await Promise.all([
+  const [buildPackage, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip, strum, fishing, shell] = await Promise.all([
     loadBuild(`${PLAYER_ART_CHARACTER}.zip`, assetBaseUrl),
     loadAnim('player_idles.zip', assetBaseUrl),
     loadAnim('player_basic.zip', assetBaseUrl),
@@ -734,9 +736,11 @@ export async function createWilsonPlayer(
     loadAnim('player_slip.zip', assetBaseUrl),
     loadAnim('player_strum.zip', assetBaseUrl),
     loadAnim('player_actions_fishing.zip', assetBaseUrl),
+    loadAnim('player_slurtle_armor.zip', assetBaseUrl),
     PreloadSounds('dontstarve/movement/iceslab_slipping', 'dontstarve/movement/slip_fall_whoop',
       'dontstarve/movement/slip_fall_thud', 'dontstarve/characters/wilson/hurt', 'dontstarve/wilson/make_trap', 'dontstarve/wilson/shave_LP', 'dontstarve/wilson/attack_whoosh',
-      'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword'),
+      'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword',
+      'dontstarve/movement/foley/hideshell', 'dontstarve/wilson/hit', 'dontstarve/wilson/hit_armour'),
   ]);
   if (buildPackage.build.name.toLowerCase() !== PLAYER_ART_CHARACTER) {
     throw new Error(`Expected ${PLAYER_ART_CHARACTER} build, received ${buildPackage.build.name}`);
@@ -752,6 +756,8 @@ export async function createWilsonPlayer(
   player.MiniMapEntity.SetDrawOverFogOfWar(true);
   player.name = 'Maxwell';
   player.userData.artCharacter = PLAYER_ART_CHARACTER;
+  // player_common.lua: deployment queries ignore the player's own entity.
+  actionEntity(player, PLAYER_ART_CHARACTER).addTag('player');
   player.position.set(0, 30, 0);
   player.userData.billboard = true;
 
@@ -806,6 +812,7 @@ export async function createWilsonPlayer(
     wakeup: actions,
     strum_pre: strum, strum,
     fishing,
+    hideshell: shell, hideshell_idle: shell, hitshell: shell,
     slip_pre: slip, slip_loop: slip, slip_pst: slip,
     slip_fall_pre: slip, slip_fall_idle: slip, slip_fall_pst: slip,
   }, createMaterials(buildPackage), assetBaseUrl, options.sanityPercent);

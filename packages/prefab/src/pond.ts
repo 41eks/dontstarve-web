@@ -132,8 +132,10 @@ export class PondManager {
   }
 
   /** Frozen ponds drop the `fishable` tag, so the fishing action no longer targets them. */
-  get fishTargets(): readonly FishingPondTarget[] {
-    return [...this.ponds].map(model => {
+  get fishTargets(): readonly FishingPondTarget[] { return this.getFishTargets(); }
+
+  getFishTargets(model?: THREE.Object3D): readonly FishingPondTarget[] {
+    return (model && this.ponds.has(model as THREE.Group) ? [model as THREE.Group] : model ? [] : [...this.ponds]).map(model => {
       const entity = actionEntity(model, POND_ID);
       return { entity, model, position: entity.getPosition(), radius: POND_RADIUS, isValid: () => !entity.isRemoved && this.ponds.has(model) };
     });

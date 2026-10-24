@@ -27,7 +27,7 @@ function setup(player = new THREE.Group(), random = () => 0.9) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
-  const farm = new FarmPlowPlacement(world, turf, async () => {}, () => [], random);
+  const farm = new FarmPlowPlacement(world, turf, async () => {}, undefined, random);
   return { farm, turf, world };
 }
 function advance(animation: WilsonAnimationController, frames: number) {

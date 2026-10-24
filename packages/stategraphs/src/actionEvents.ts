@@ -1,20 +1,20 @@
 import type { ActionWorldContext } from './actionContext.ts';
 
 export type PlayerActionKind = 'ATTACK' | 'HAMMER' | 'MINE' | 'CHOP' | 'TERRAFORM' | 'TILL' | 'DIG'
-  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'FLOWER_PLANT' | 'BUILD' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'FISH';
+  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'BUILD' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'FISH';
 export type ActionInterruptReason = 'slot-select' | 'slot-context-menu' | 'drop' | 'craft' | 'crafting' | 'emote';
 export interface PlayerActionEvents {
   'action:begin': { owner: object; action: PlayerActionKind };
   'action:interrupt': { reason: ActionInterruptReason };
 }
 
-type ActionGroup = 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'play' | 'flower' | 'building' | 'deploy' | 'movement' | 'fishing' | 'harvest' | 'sleep' | 'pickup' | 'pick' | 'itemuse';
+type ActionGroup = 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'fishing' | 'harvest' | 'sleep' | 'pickup' | 'pick' | 'itemuse';
 interface CancellationRule {
   begins: readonly PlayerActionKind[];
   interrupts: readonly ActionInterruptReason[];
 }
 const inventoryInterrupts = ['slot-select', 'slot-context-menu', 'craft', 'crafting', 'emote'] as const;
-const inventoryActions = ['EAT', 'READ', 'SEED_SELECT', 'FLOWER_PLANT', 'BUILD', 'DEPLOY', 'HARVEST', 'PICKUP', 'GIVE', 'FEED', 'REPAIR', 'STORE', 'TAKEITEM', 'ADDFUEL', 'ADDWETFUEL', 'FERTILIZE', 'BATHBOMB', 'PLAY'] as const;
+const inventoryActions = ['EAT', 'READ', 'SEED_SELECT', 'BUILD', 'DEPLOY', 'HARVEST', 'PICKUP', 'GIVE', 'FEED', 'REPAIR', 'STORE', 'TAKEITEM', 'ADDFUEL', 'ADDWETFUEL', 'FERTILIZE', 'BATHBOMB', 'PLAY'] as const;
 const workActions = ['ATTACK', 'HAMMER', 'MINE', 'CHOP', 'TERRAFORM', 'TILL', 'DIG', 'CASTSPELL', 'LIGHT', 'FISH'] as const;
 
 /** Existing interruption scopes, expressed as action categories rather than controller instances. */
@@ -31,7 +31,6 @@ const rules: Record<ActionGroup, CancellationRule> = {
   food: { begins: ['TILL', 'DIG', 'LIGHT', ...inventoryActions], interrupts: inventoryInterrupts },
   read: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },
   play: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },
-  flower: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: ['slot-select', 'drop', 'emote'] },
   building: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: ['emote'] },
   deploy: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },
   fishing: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: inventoryInterrupts },

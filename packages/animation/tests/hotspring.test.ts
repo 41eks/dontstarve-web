@@ -83,7 +83,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
 
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     toss = new ItemUseActionController(s.world, animation, locomotor, source);
-    expect(getItemUseActions(s.scene, source()).some(candidate => candidate.action.action === 'BATHBOMB')).toBe(true);
+    expect(getItemUseActions(model, source()).some(candidate => candidate.action.action === 'BATHBOMB')).toBe(true);
     expect(toss.request('BATHBOMB', inst)).toBe(true);
     toss.update(); graph.update(5 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
@@ -100,7 +100,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     for (let frame = 0; frame < 180; frame++) s.springs.update(1 / 30, s.world.camera.quaternion);
     expect(model!.userData.animationController.currentAnimation).toBe('glow_loop');
     // A bombed spring refuses a second bomb.
-    expect(getItemUseActions(s.scene, source()).some(candidate => candidate.action.action === 'BATHBOMB')).toBe(false);
+    expect(getItemUseActions(model, source()).some(candidate => candidate.action.action === 'BATHBOMB')).toBe(false);
 
     let json = '';
     const saveResult = await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); });

@@ -33,6 +33,8 @@
     "./pickaxe": "./src/pickaxe.ts",
     "./axe": "./src/axe.ts",
     "./nightsword": "./src/nightsword.ts",
+    "./armorsnurtleshell": "./src/armorsnurtleshell.ts",
+    "./equipmentVisual": "./src/equipmentVisual.ts",
     "./rocks": "./src/rocks.ts",
     "./grass": "./src/grass.ts",
     "./rock_avocado_fruit": "./src/rock_avocado_fruit.ts",

@@ -99,6 +99,7 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     manager.update(.1, new THREE.Quaternion());
     expect(sources).toHaveLength(0);
     const model = await manager.spawnFromSave('poop-identity', item, new THREE.Vector3());
+    expect([...manager.iteratePrefabPositions('poop')]).toEqual([manager.entities.get('poop-identity')!.transform.position]);
     manager.update(.1, new THREE.Quaternion());
     expect(sources).toHaveLength(1);
     expect(sources[0].loop).toBe(true);
@@ -119,11 +120,13 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     expect(saved).toMatchObject({ id: 'poop-identity', transform: { position: [0, 0, 0] }, components: { stack: { itemId: 'poop', count: 3 } } });
     const entity = model.userData.pickupTarget.entity;
     expect(inventory.GiveItem(entity)).toBe(true);
+    expect([...manager.iteratePrefabPositions('poop')]).toEqual([]);
     expect(manager.exportRecords()).toEqual([]);
     expect(manager.renderEntities).toEqual([]);
     expect(sources[0].stop).toHaveBeenCalledOnce();
     expect(sources[0].disconnect).toHaveBeenCalledOnce();
     inventory.DropItem(entity, new THREE.Vector3(2, 0, 4));
+    expect([...manager.iteratePrefabPositions('poop')]).toEqual([entity.transform.position]);
     await vi.waitFor(() => expect(scene.children).toHaveLength(1));
     manager.update(.1, new THREE.Quaternion());
     expect(sources).toHaveLength(2);
@@ -141,6 +144,7 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     expect(restored.userData.flies).toBeDefined();
     expect(sources).toHaveLength(3);
     const restoredEntity = restored.userData.pickupTarget.entity;
+    expect([...restoredManager.iteratePrefabPositions('poop')]).toEqual([restoredEntity.transform.position]);
     restoredEntity.components.burnable.Ignite();
     expect(restored.userData.flies).toBeUndefined();
     expect(sources[2].stop).toHaveBeenCalledOnce();

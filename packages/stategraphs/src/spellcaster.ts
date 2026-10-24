@@ -56,21 +56,21 @@ export class SpellCastActionController {
   private readonly doer: SpellCastDoer;
   private readonly isManualMovement: () => boolean;
   private readonly onError: (error: unknown) => void;
-  private readonly getTargets: () => readonly SpellCastTarget[];
+  private readonly getTargets: (model?: THREE.Object3D) => readonly SpellCastTarget[];
 
   constructor(world: ActionWorldContext, animation: SpellCastAnimation, locomotor: ActionLocomotor,
     handEquipment: HandEquipmentSignal, doer: SpellCastDoer, isManualMovement = () => false,
     onError: (error: unknown) => void = console.error,
-    getTargets: () => readonly SpellCastTarget[] = () => []) {
+    getTargets: (model?: THREE.Object3D) => readonly SpellCastTarget[] = () => []) {
     this.getTargets = getTargets;
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.handEquipment = handEquipment; this.doer = doer; this.isManualMovement = isManualMovement; this.onError = onError;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world),
       () => world.player.userData.controllerEnabled !== false);
-    this.stopHover = this.picker.register(() => {
+    this.stopHover = this.picker.register(model => {
       const item = this.equipped(), point = this.picker.pointer.groundPoint();
       // Targets are only castable with a spell item in hand.
-      const targets = !item ? [] : this.getTargets().map(target => ({
+      const targets = !item || !model ? [] : this.getTargets(model).map(target => ({
         action: { action: 'CASTSPELL' as const, invobject: item, target }, button: 'right' as const,
         model: target.model, source: 'equipped' as const,
         available: !!item && !item.hasTag('veryquickcast') && target.isValid()
@@ -172,7 +172,7 @@ export class SpellCastActionController {
     if (event.defaultPrevented) return;
     this.picker.pointer.trackPointer(event);
     if (event.button !== 2) { if (event.button === 0) this.cancel(); return; }
-    const action = this.picker.getMouseActions().right;
+    const action = this.picker.getMouseActions(event).right;
     const point = this.picker.pointer.groundPoint();
     if (action?.action !== 'CASTSPELL' || action.invobject !== this.equipped() || !point) return;
     const target = action.target as SpellCastTarget | undefined;

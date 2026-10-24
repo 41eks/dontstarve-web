@@ -1,3 +1,5 @@
+import { SpatialIndex } from '../../prefab/src/spatialIndex';
+import type { PlacementBlocker } from '../../prefab/src/placementEntities';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -22,12 +24,12 @@ const oceanTiles = (): TurfTileSave[] => Array.from({ length: 32 }, (_, i) => ({
   col: Math.floor(i / 8), row: (i % 8) - 4, tileId: WORLD_TILES.OCEAN_COASTAL }));
 const centre = (col: number, row: number) => new THREE.Vector3(col * 12 + 6, 0, row * 12 + 6);
 
-function setup(tiles = oceanTiles(), blockers: { position: THREE.Vector3; tags?: string[]; smartRadius?: number }[] = []) {
+function setup(tiles = oceanTiles(), blockers = new SpatialIndex<PlacementBlocker>(blocker => blocker.position, blocker => blocker.smartRadius ?? 0)) {
   const turf = new TurfMap(96, tiles);
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
     ground: new THREE.Group(), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
-  return { turf, placement: new DockKitPlacement(world, turf, () => blockers) };
+  return { turf, placement: new DockKitPlacement(world, turf, blockers) };
 }
 const kit = () => new ItemEntity({ itemId: 'dock_kit', count: 1 });
 
@@ -70,15 +72,17 @@ it('deploys only on ocean touching land or a dock, covers the ocean tile and sur
 });
 
 it('refuses a tile with an unrelated entity standing in the water or a dockjammer, ignores ones on land and the player', () => {
-  const blockers = [{ position: centre(0, 1), tags: ['player'] }];
+  const blockers = new SpatialIndex<PlacementBlocker>(blocker => blocker.position);
+  blockers.add({ position: centre(0, 1), tags: ['player'] });
   const { placement } = setup(oceanTiles(), blockers);
   try {
     expect(placement.canDeploy(centre(0, 0))).toBe(true);
-    blockers.push({ position: centre(-1, 0), tags: [] }); // on land: IsDockNearOtherOnOcean ignores it
+    blockers.add({ position: centre(-1, 0), tags: [] }); // on land: IsDockNearOtherOnOcean ignores it
     expect(placement.canDeploy(centre(0, 0))).toBe(true);
-    blockers.push({ position: new THREE.Vector3(8, 0, 8), tags: [] });
+    const obstacle = { position: new THREE.Vector3(8, 0, 8), tags: [] };
+    blockers.add(obstacle);
     expect(placement.canDeploy(centre(0, 0))).toBe(false);
-    blockers.pop(); blockers.push({ position: centre(0, 0), tags: ['dockjammer'] });
+    blockers.delete(obstacle); blockers.add({ position: centre(0, 0), tags: ['dockjammer'] });
     expect(placement.canDeploy(centre(0, 0))).toBe(false);
   } finally { placement.dispose(); }
 });

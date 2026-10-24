@@ -4,6 +4,7 @@ import { PERISH_FAST, PERISH_MED, PERISH_SUPERFAST } from '../../componets/src/p
 import { foods } from '../../componets/src/preparedfoods';
 import { SEEDS_HUNGER } from './seeds';
 import { MOONBUTTERFLY_PERISH_TIME } from './moonbutterflyTuning';
+import { BUTTERFLY_PERISH_TIME } from './butterfly';
 import { BIRD_IDS, BIRD_PERISH_TIME } from './birds';
 import { VEGGIE_FOOD_EFFECTS, VEGGIE_PERISH_TIMES } from './veggies';
 
@@ -21,6 +22,8 @@ export interface FoodEffects {
 
 /** Source edible values; food effects are applied only after inventory consumption succeeds. */
 export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
+  butterflywings: { health: 8, hunger: 9.375, sanity: 0 },
+  butter: { health: 40, hunger: 25, sanity: 0 },
   // lightbulb.lua: HEALING_TINY, zero hunger, default zero sanity, VEGGIE.
   rock_avocado_fruit_ripe: { health: 1, hunger: 12.5, sanity: 0 },
   rock_avocado_fruit_ripe_cooked: { health: 3, hunger: 12.5, sanity: 0 },
@@ -53,6 +56,11 @@ export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
 
 /** SetPerishTime, StartPerishing and spoiled_food replacement from the owning prefab file. */
 export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: number; readonly replacement?: string }>> = {
+  // petals.lua: PERISH_FAST, StartPerishing, spoiled_food replacement.
+  petals: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
+  butterfly: { perishTime: BUTTERFLY_PERISH_TIME },
+  butterflywings: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
+  butter: { perishTime: 40 * 480, replacement: 'spoiled_food' },
   rock_avocado_fruit_ripe: { perishTime: PERISH_SUPERFAST, replacement: 'spoiled_food' },
   rock_avocado_fruit_ripe_cooked: { perishTime: 2 * 480, replacement: 'spoiled_food' },
   lightbulb: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },

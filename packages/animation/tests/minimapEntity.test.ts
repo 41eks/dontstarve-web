@@ -56,22 +56,27 @@ it('keeps a backpack icon on the logical item through equip, drop, reskin and lo
   expect(icon.icon).toBe('backpack.png');
   expect(store.Equip(backpack)).toBe(true);
   expect(icon.enabled).toBe(false);
+  expect(store.entities.miniMapEntities).toEqual([]);
   const state = store.exportState();
   store.replaceState(state, {});
   expect(icon.enabled).toBe(false);
   const restored = store.getEntity(body)!;
   expect(restored.id).toBe('map-backpack');
   expect(restored.MiniMapEntity?.enabled).toBe(false);
+  expect(store.entities.miniMapEntities).toEqual([]);
   store.DropItem(restored, new Vector3(-12, 0, 48));
   expect(restored.MiniMapEntity?.enabled).toBe(true);
+  expect(store.entities.miniMapEntities).toEqual([restored.MiniMapEntity]);
   expect(restored.MiniMapEntity?.position.toArray()).toEqual([-12, 0, 48]);
   const droppedIcon = restored.MiniMapEntity;
   restored.apply({ ...restored.snapshot(), skinId: 'backpack_babybeef' });
   configureBackpackEntity(restored);
   expect(restored.MiniMapEntity).toBe(droppedIcon);
+  expect(store.entities.miniMapEntities).toEqual([droppedIcon]);
   expect(restored.MiniMapEntity?.icon).toBe('backpack.png');
   restored.destroy();
   expect(droppedIcon?.enabled).toBe(false);
+  expect(store.entities.miniMapEntities).toEqual([]);
   store.dispose();
 });
 

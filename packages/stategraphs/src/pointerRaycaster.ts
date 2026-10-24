@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { ActionWorldContext as WorldContext } from './actionContext.ts';
+import { mouseTargetsAlongRay } from './entitySpatialIndex.ts';
+import { prepareSpatialGeometryBounds, spatialAttributeVersion } from '../../animation/src/spatialBounds.ts';
 
 function mouseVisible(object: THREE.Object3D): boolean {
     if (!object.visible) return false;
@@ -7,18 +9,54 @@ function mouseVisible(object: THREE.Object3D): boolean {
     return !(inst?.hasTag?.('NOCLICK') ?? object.userData.tags?.includes('NOCLICK'));
 }
 
+interface BoundsPart {
+    object: THREE.Object3D;
+    visible: boolean;
+    matrix: THREE.Matrix4;
+    geometry?: THREE.BufferGeometry;
+    attribute?: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+    version?: number;
+}
+const visibleBounds = new WeakMap<THREE.Object3D, { box: THREE.Box3; parts: BoundsPart[] }>();
+
+/** Only candidates need this check. Unchanged geometry, transforms and visibility reuse their world box. */
+function spriteBounds(object: THREE.Object3D): THREE.Box3 {
+    let cache = visibleBounds.get(object);
+    let changed = !cache;
+    if (!cache) { cache = { box: new THREE.Box3(), parts: [] }; visibleBounds.set(object, cache); }
+    let count = 0;
+    const inspect = (node: THREE.Object3D) => {
+        const visible = mouseVisible(node), geometry = node instanceof THREE.Mesh ? node.geometry : undefined;
+        const attribute = geometry?.getAttribute('position');
+        const version = attribute ? spatialAttributeVersion(attribute) : undefined;
+        let part = cache.parts[count++];
+        if (!part || part.object !== node) {
+            part = { object: node, visible, matrix: node.matrixWorld.clone(), geometry, attribute, version };
+            cache.parts[count - 1] = part; changed = true;
+        } else if (part.visible !== visible || part.geometry !== geometry || part.attribute !== attribute
+            || part.version !== version || !part.matrix.equals(node.matrixWorld)) {
+            Object.assign(part, { visible, geometry, attribute, version }); part.matrix.copy(node.matrixWorld); changed = true;
+        }
+        if (visible) for (const child of node.children) inspect(child);
+    };
+    inspect(object);
+    if (count !== cache.parts.length) { cache.parts.length = count; changed = true; }
+    if (changed) {
+        cache.box.makeEmpty();
+        const partBox = new THREE.Box3();
+        for (const part of cache.parts) {
+            if (!part.visible || !part.geometry) continue;
+            prepareSpatialGeometryBounds(part.geometry);
+            if (part.geometry.boundingBox) cache.box.union(partBox.copy(part.geometry.boundingBox).applyMatrix4(part.matrix));
+        }
+    }
+    return cache.box;
+}
+
 /** Input:GetWorldEntityUnderMouse excludes invisible/NOCLICK entities before action selection. */
 export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THREE.Object3D[], recursive = true): THREE.Intersection[] {
     const hits: THREE.Intersection[] = [];
-    const box = new THREE.Box3(), partBox = new THREE.Box3();
-    const expandVisibleBounds = (object: THREE.Object3D) => {
-        if (!mouseVisible(object)) return;
-        if (object instanceof THREE.Mesh) {
-            if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
-            if (object.geometry.boundingBox) box.union(partBox.copy(object.geometry.boundingBox).applyMatrix4(object.matrixWorld));
-        }
-        for (const child of object.children) expandVisibleBounds(child);
-    };
+    const point = new THREE.Vector3();
     const intersect = (object: THREE.Object3D) => {
         if (!mouseVisible(object)) return;
         let propagate = true;
@@ -26,12 +64,10 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
             if (object.userData.rayTestOnBB) {
                 // AnimState:SetRayTestOnBB includes visible particle gaps, never hidden parts.
                 object.updateWorldMatrix(true, true);
-                box.makeEmpty();
-                expandVisibleBounds(object);
-                const point = box.isEmpty() ? null : raycaster.ray.intersectBox(box, new THREE.Vector3());
-                if (point) {
+                const box = spriteBounds(object);
+                if (!box.isEmpty() && raycaster.ray.intersectBox(box, point)) {
                     const distance = point.distanceTo(raycaster.ray.origin);
-                    if (distance >= raycaster.near && distance <= raycaster.far) hits.push({ distance, point, object });
+                    if (distance >= raycaster.near && distance <= raycaster.far) hits.push({ distance, point: point.clone(), object });
                 }
                 return;
             }
@@ -49,6 +85,7 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
 }
 
 export class PointerRaycaster {
+    readonly scene?: THREE.Scene;
     private readonly camera: THREE.Camera;
     private readonly renderer: THREE.WebGLRenderer;
     private readonly ground?: THREE.Object3D;
@@ -63,7 +100,8 @@ export class PointerRaycaster {
     private cachedGround?: THREE.Intersection;
 
     /** Object-only picking can omit ground; ground queries then return no hit. */
-    constructor(world: Pick<WorldContext, 'camera' | 'renderer'> & Partial<Pick<WorldContext, 'ground'>>) {
+    constructor(world: Pick<WorldContext, 'camera' | 'renderer'> & Partial<Pick<WorldContext, 'ground' | 'scene'>>) {
+        this.scene = world.scene;
         this.camera = world.camera;
         this.renderer = world.renderer;
         this.ground = world.ground;
@@ -105,12 +143,27 @@ export class PointerRaycaster {
         objects: THREE.Object3D[],
         recursive = true,
     ): THREE.Intersection | undefined {
-        if (!this.hasPointerPosition) return undefined;
+        if (!this.updatePointerRay()) return undefined;
+        return intersectSpriteEntities(this.raycaster, objects, recursive)[0];
+    }
+
+    pickMouseTarget(): THREE.Intersection | undefined {
+        if (!this.updatePointerRay()) return undefined;
+        const candidates = mouseTargetsAlongRay(this.raycaster.ray, this.raycaster.near, this.raycaster.far);
+        const scoped = this.scene ? candidates.filter(model => {
+            for (let node: THREE.Object3D | null = model; node; node = node.parent) if (node === this.scene) return true;
+            return false;
+        }) : candidates;
+        return intersectSpriteEntities(this.raycaster, scoped)[0];
+    }
+
+    private updatePointerRay(): boolean {
+        if (!this.hasPointerPosition) return false;
         const bounds = this.renderer.domElement.getBoundingClientRect();
         this.ndc.x = ((this.clientX - bounds.left) / bounds.width) * 2 - 1;
         this.ndc.y = -((this.clientY - bounds.top) / bounds.height) * 2 + 1;
         this.raycaster.setFromCamera(this.ndc, this.camera);
-        return intersectSpriteEntities(this.raycaster, objects, recursive)[0];
+        return true;
     }
 
     raycast(

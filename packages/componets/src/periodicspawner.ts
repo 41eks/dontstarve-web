@@ -1,11 +1,11 @@
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
+import type { Vector3 } from 'three';
 
-interface Position { x: number; y: number; z: number }
 export interface PeriodicSpawnerSpatial {
-  getPosition(): Position;
+  getPosition(): Vector3;
   /** The host resolves the configured prefab and excludes INLIMBO entities. */
-  getPrefabPositions(): readonly Position[];
+  getPrefabPositions(): Iterable<Vector3>;
 }
 
 /** periodicspawner.lua's scheduled spawn/retry and persistence; host supplies prefab/map validation. */
@@ -49,7 +49,7 @@ export class PeriodicSpawner {
       const origin = this.spatial.getPosition(), radius = this.range ?? this.spacing!;
       let count = 0;
       for (const point of this.spatial.getPrefabPositions()) {
-        const distanceSquared = (point.x - origin.x) ** 2 + (point.z - origin.z) ** 2;
+        const distanceSquared = point.distanceToSquared(origin);
         if (distanceSquared > radius ** 2) continue;
         // TrySpawn checks the default spawn point (the inst's foot), before beefalo's OnSpawn
         // moves the new manure behind it. A density failure uses the normal randomized retry.

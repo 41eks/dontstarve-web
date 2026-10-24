@@ -7,6 +7,7 @@ import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
+import { actionEntity, disposeActionEntity } from './actionEntity';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
@@ -272,6 +273,7 @@ export class BulbPlantManager {
     model.userData.bulbPlantVariant = variant;
     model.userData.prefab = prefabId;
     const controller = new BulbPlantController(model, model.userData.animationController, this.world, variant, state, this.random);
+    actionEntity(model, prefabId);
     this.plants.add({ prefabId, model, controller, variant, factory });
     this.scene.add(model);
     return model;
@@ -300,6 +302,7 @@ export class BulbPlantManager {
     this.disposed = true;
     for (const { model, controller, factory } of this.plants) {
       controller.dispose();
+      disposeActionEntity(model);
       factory.disposeSprite(model);
     }
     this.plants.clear();

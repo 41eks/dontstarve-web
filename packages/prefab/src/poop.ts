@@ -83,7 +83,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
     },
     update(dt, quaternion) { for (const fire of fires) { fire.model.quaternion.copy(quaternion); fire.update(dt); } },
     renderEntities: () => [...children.values(), ...[...fires].map(fire => ({
-      object: fire.model, footPosition: fire.model.position, cameraDepth: 0,
+      object: fire.model, footPosition: fire.model.position, cameraDepth: 0, sortLayer: 2,
     }))],
     dispose() {
       for (const visual of visuals) visual.dispose();

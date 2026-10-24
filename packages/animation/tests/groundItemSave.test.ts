@@ -5,6 +5,7 @@ import type { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createGroundItemSprite } from '@dontstarve-web/prefab/groundItems';
+import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 
@@ -61,7 +62,8 @@ vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
         configureEntity: actual.configureButterflyEntity,
         create: () => actual.createButterflyGroundSprite(
           assets as unknown as InstanceType<typeof actual.ButterflyAssets>,
-          context.butterflyWorld, context.getNeighbours),
+          context.butterflyWorld,
+          (position, radius, mustTags) => FindEntities(context.scene, position, radius, mustTags)),
         dispose: () => assets.dispose(),
       };
     },
@@ -90,6 +92,73 @@ function setup() {
 const definition = { itemId: 'log', count: 1, name: 'Log', icon: 'log.tex' };
 
 describe('ground item save records', () => {
+  it('queries only the requested prefab using live positions, replacing spawn reservations without duplicate entries', async () => {
+    const { manager, inventory } = setup();
+    const createSprite = vi.mocked(createGroundItemSprite).getMockImplementation()!;
+    const position = new THREE.Vector3(8, 0, 9);
+    let release!: () => void;
+    const loading = new Promise<void>(resolve => { release = resolve; });
+    let atCommit: THREE.Vector3[] = [];
+    try {
+      const unrelated = await manager.spawnFromSave('unrelated', { ...definition, itemId: 'ash' }, new THREE.Vector3());
+      vi.mocked(createGroundItemSprite).mockImplementationOnce(async (...args) => {
+        await loading;
+        const sprite = await createSprite(...args);
+        sprite.model.addEventListener('onload', () => { atCommit = [...manager.iteratePrefabPositions('log')]; });
+        return sprite;
+      });
+      const spawning = manager.spawnFromSave('query:log', definition, position);
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([position]);
+      release();
+      const model = await spawning;
+      model.removeFromParent(); // A logical ground item remains queryable without attached art.
+      const entity = manager.entities.get('query:log')!;
+      expect(atCommit).toEqual([entity.transform.position]);
+      const exportRecords = vi.spyOn(manager, 'exportRecords');
+      const snapshot = vi.spyOn(entity, 'snapshot');
+      const unrelatedEntity = unrelated.userData.pickupTarget.entity as ItemEntity;
+      const unrelatedSnapshot = vi.spyOn(unrelatedEntity, 'snapshot');
+      const unrelatedTags = vi.spyOn(unrelatedEntity, 'hasTag');
+      entity.transform.position.set(20, 0, -30);
+      entity.persists = false; // Lua spatial queries include live, non-persistent entities too.
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([entity.transform.position]);
+      expect([...manager.iteratePrefabPositions('log')][0]).toBe(entity.transform.position);
+      entity.addTag('INLIMBO');
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
+      entity.removeTag('INLIMBO');
+      expect(exportRecords).not.toHaveBeenCalled();
+      expect(snapshot).not.toHaveBeenCalled();
+      expect(unrelatedSnapshot).not.toHaveBeenCalled();
+      expect(unrelatedTags).not.toHaveBeenCalled();
+      expect(inventory.GiveItem(entity)).toBe(true);
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
+      entity.destroy();
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
+    } finally { release(); manager.dispose(); inventory.dispose(); }
+  });
+
+  it('releases failed and disposed spawn reservations while art is loading', async () => {
+    const { manager, inventory } = setup();
+    const createSprite = vi.mocked(createGroundItemSprite).getMockImplementation()!;
+    let release!: () => void;
+    const loading = new Promise<void>(resolve => { release = resolve; });
+    try {
+      vi.mocked(createGroundItemSprite).mockRejectedValueOnce(new Error('art failed'));
+      const failed = manager.spawnFromSave('failed', definition, new THREE.Vector3());
+      expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
+      await expect(failed).rejects.toThrow('art failed');
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
+      vi.mocked(createGroundItemSprite).mockImplementationOnce(async (...args) => { await loading; return createSprite(...args); });
+      const late = manager.spawnFromSave('late', definition, new THREE.Vector3());
+      expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
+      manager.dispose();
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
+      release();
+      await expect(late).rejects.toThrow('disposed');
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
+    } finally { release(); manager.dispose(); inventory.dispose(); }
+  });
+
   it('spawns ash through scene events, preserves its saved identity and position, and stops listening on disposal', async () => {
     const first = setup(), restored = setup();
     try {
@@ -127,6 +196,7 @@ describe('ground item save records', () => {
       const entity = inventory.entities.create({ itemId: 'log', count: 1 });
       expect(inventory.GiveItem(entity, new THREE.Vector3(8, 0, 9))).toBe(true);
       expect(manager.renderEntities).toHaveLength(0);
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([entity.transform.position]);
       const records = manager.exportRecords();
       expect(records).toHaveLength(1);
       expect(records[0].id).toBe(entity.id);
@@ -136,6 +206,7 @@ describe('ground item save records', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(manager.exportRecords()).toEqual(records);
       expect(manager.renderEntities).toHaveLength(1);
+      expect([...manager.iteratePrefabPositions('log')]).toEqual([entity.transform.position]);
       expect(inventory.count('log')).toBe(capacity);
       const restored = setup();
       try {
@@ -185,6 +256,7 @@ describe('ground item save records', () => {
     const replacement = manager.renderEntities[0].object;
     expect(replacement.position.toArray()).toEqual(entity.transform.position.toArray());
     expect(manager.entities.get(entity.id)).toBe(entity);
+    expect([...manager.iteratePrefabPositions('backpack')]).toEqual([entity.transform.position]);
     const saved = manager.exportRecords()[0];
     expect(saved.transform.position).toEqual([20, 0.5, 21]);
     expect(saved.components.stack?.container).toEqual(entity.snapshot().container);

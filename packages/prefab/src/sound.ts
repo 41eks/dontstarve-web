@@ -116,6 +116,12 @@ const sounds = {
   'dontstarve/common/staff_coldlight_LP': { bank: 'sfx', streams: [796], loop: true,
     layers: [{ bank: 'sfx', streams: [797] }, { bank: 'common', streams: [158] }] },
   'dontstarve/wilson/hit': { bank: 'sfx', streams: [423, 424], loop: false },
+  // armor_snurtleshell.lua / SGwilson.lua shell_enter → dontstarve.fev movement/foley/hideshell: sounddef 859 (impact_shell_4.wav), sfx file_index 143.
+  'dontstarve/movement/foley/hideshell': { bank: 'sfx', streams: [144], loop: false },
+  // armor_snurtleshell.lua OnBlocked → dontstarve.fev wilson/hit_armour: two simultaneous layers, sounddef 1763
+  // (chop_tree_V2_1..3, common file_index 336–338) and 1768 (chop_tree_1..5, 331–335), file_index + 1.
+  'dontstarve/wilson/hit_armour': { bank: 'common', streams: [337, 338, 339], loop: false,
+    layers: [{ bank: 'common', streams: [332, 333, 334, 335, 336] }] },
   'dontstarve/common/destroy_smoke': { bank: 'common', streams: [56, 57, 58, 59], loop: false,
     layers: [{ bank: 'common', streams: [62] }, { bank: 'common', streams: [187] }] },
   'dontstarve/common/destroy_wood': { bank: 'common', streams: [64], loop: false },

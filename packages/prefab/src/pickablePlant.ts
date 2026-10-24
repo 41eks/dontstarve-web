@@ -1,3 +1,4 @@
+import { modelValues } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState } from '@dontstarve-web/signals';
@@ -105,6 +106,7 @@ export interface PickablePlantDefinition {
   readonly getRegenTime?: (pickable: Pickable) => number;
   readonly extraLoot?: readonly string[];
   readonly digLoot?: (model: THREE.Group, pickable: Pickable, withered: boolean) => readonly { prefab: string; skinId?: string }[];
+  readonly onTransplant?: (pickable: Pickable) => void;
   readonly createAppearance?: (context: PickablePlantAppearanceContext) => PickablePlantAppearance;
   readonly skins?: readonly string[];
   readonly dugSkins?: readonly string[];
@@ -271,7 +273,7 @@ export class PickablePlantManager {
           },
         };
         const appearance = definition.createAppearance?.(animationContext);
-        const pickable = new Pickable(model, definition.product, definition.regrowTime, definition.numToHarvest ?? 1, () => {
+        const pickable: Pickable = new Pickable(model, definition.product, definition.regrowTime, definition.numToHarvest ?? 1, () => {
           plant.sound?.stop();
           if (definition.picked.sound) plant.sound = PlaySound(definition.picked.sound, model.position);
           if (plant.behavior) { plant.behavior.picked(); return; }
@@ -292,7 +294,8 @@ export class PickablePlantManager {
           growthDuration: seconds => this.season?.peek().season === 'spring' ? seconds * 0.75 : seconds,
           maxCycles: definition.maxCycles?.(),
           getRegenTime: definition.getRegenTime,
-          onTransplant: definition.barren ? () => { appearance?.transplant(); pickable.MakeBarren(); } : undefined,
+          onTransplant: definition.onTransplant ? () => definition.onTransplant!(pickable)
+            : definition.barren ? () => { appearance?.transplant(); pickable.MakeBarren(); } : undefined,
           onBarren: definition.barren ? wasEmpty => {
             if (plant.behavior) { plant.behavior.barren(); return; }
             if (appearance) { appearance.barren(pickable, wasEmpty); return; }
@@ -451,17 +454,19 @@ export class PickablePlantManager {
     return [...this.plants.values()].flatMap(({ model, fire }) => [model, ...(fire.parent ? [fire] : [])]
       .map(object => ({ object, footPosition: model.position, cameraDepth: 0 })));
   }
+  get digTargets(): readonly ShovelTarget[] { return this.getDigTargets(); }
 
-  get digTargets(): readonly ShovelTarget[] {
-    return [...this.plants.values()].map(({ definition, model, workable }) => ({
+  getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[] {
+    return modelValues(this.plants, model).map(({ definition, model, workable }) => ({
       id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, definition.prefab),
       isValid: () => !this.disposed && this.plants.has(model) && workable.CanBeWorked(),
       dig: () => performToolWork('DIG', actionEntity(model, definition.prefab), {}),
     }));
   }
+  get reskinTargets(): readonly ReskinTarget[] { return this.getReskinTargets(); }
 
-  get reskinTargets(): readonly ReskinTarget[] {
-    return [...this.plants.values()].flatMap(plant => {
+  getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
+    return modelValues(this.plants, model).flatMap(plant => {
       const { definition, model } = plant;
       if (!definition.skins) return [];
       const isValid = () => !this.disposed && this.plants.get(model) === plant && !model.userData.removed;

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { disposeActionEntity } from './actionEntity';
+import { registerPlacementTree, syncPlacementEntity } from './placementEntities';
 
 export interface ProximityEntity {
   readonly id: number;
@@ -15,6 +16,8 @@ export class ProximityEntities {
   private readonly entityList: ProximityEntity[];
   private nextId: number;
   private readonly loaded = new Set<ProximityEntity>();
+  private readonly placementStops = new Map<ProximityEntity, () => void>();
+  private readonly placement?: { prefab: string; smartRadius: number };
   private readonly radiusSquared: number;
   private readonly createModel: (entity: ProximityEntity) => THREE.Group;
   private readonly disposeModel: (model: THREE.Group) => void;
@@ -25,6 +28,7 @@ export class ProximityEntities {
     createModel: (entity: ProximityEntity) => THREE.Group,
     disposeModel: (model: THREE.Group) => void,
     entityIds?: readonly string[],
+    placement?: { prefab: string; smartRadius: number },
   ) {
     if (!Number.isFinite(radius) || radius < 0) throw new Error('Invalid entity load radius');
     if (entityIds && (entityIds.length !== positions.length
@@ -37,6 +41,8 @@ export class ProximityEntities {
     this.radiusSquared = radius * radius;
     this.createModel = createModel;
     this.disposeModel = disposeModel;
+    this.placement = placement;
+    for (const entity of this.entityList) this.trackPlacement(entity);
   }
 
   get entities(): readonly ProximityEntity[] { return this.entityList; }
@@ -49,6 +55,7 @@ export class ProximityEntities {
     if (this.entityList.some(entity => entity.saveId === saveId)) throw new Error(`Duplicate entity ID: ${saveId}`);
     const entity = { id: this.nextId++, saveId, position: position.clone() };
     this.entityList.push(entity);
+    this.trackPlacement(entity);
     return entity;
   }
 
@@ -57,6 +64,7 @@ export class ProximityEntities {
     const index = this.entityList.indexOf(entity);
     if (index < 0) return false;
     if (entity.model) this.unload(entity);
+    this.placementStops.get(entity)?.(); this.placementStops.delete(entity);
     this.entityList.splice(index, 1);
     return true;
   }
@@ -70,6 +78,7 @@ export class ProximityEntities {
       if (entity.model || !this.isNearby(entity, playerPosition)) continue;
       const model = this.createModel(entity);
       model.position.copy(entity.position);
+      if (this.placement) { model.userData.placementLogical = true; syncPlacementEntity(model); }
       entity.model = model;
       this.group.add(model);
       this.loaded.add(entity);
@@ -79,6 +88,13 @@ export class ProximityEntities {
   dispose(): void {
     for (const entity of this.loaded) this.unload(entity);
     this.group.removeFromParent();
+    for (const stop of this.placementStops.values()) stop();
+    this.placementStops.clear();
+  }
+
+  private trackPlacement(entity: ProximityEntity): void {
+    if (this.placement) this.placementStops.set(entity,
+      registerPlacementTree(this.group, entity, this.placement.prefab, this.placement.smartRadius));
   }
 
   private isNearby(entity: ProximityEntity, player: THREE.Vector3): boolean {

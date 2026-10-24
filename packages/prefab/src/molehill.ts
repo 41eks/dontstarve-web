@@ -1,3 +1,4 @@
+import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createEffect, WorldContentKey } from '@dontstarve-web/signals';
 import type { InventoryStack } from '@dontstarve-web/inventory';
@@ -111,6 +112,7 @@ export class Molehill implements BrainEntity {
 }
 
 export class MolehillManager {
+  private readonly mouseRecords = new ModelRecords<Molehill>();
   private readonly hills = new Map<string, Molehill>();
   private readonly moles = new Set<Mole>();
   private factory?: AnimatedSpriteFactory;
@@ -145,7 +147,7 @@ export class MolehillManager {
     if (this.disposed || !this.factory) throw new Error('Molehill assets unavailable');
     const model = this.factory.create({ initialAnimation: 'mound_idle', name: 'molehill' }); model.position.copy(position);
     const hill = new Molehill(saved?.id ?? newEntityId(), model, this.habitat, this.lengths, saved?.components.molehill, adopt);
-    this.hills.set(hill.id, hill); this.scene.add(model); return hill;
+    this.hills.set(hill.id, hill); this.mouseRecords.set(hill.model, hill); this.scene.add(model); return hill;
   }
   private readonly fx = new Set<THREE.Group>();
   private spawnMoveFx(position: THREE.Vector3): void {
@@ -165,7 +167,8 @@ export class MolehillManager {
     }
     for (const model of this.fx) { model.quaternion.copy(quaternion); (model.userData.animationController as SpriteController).update(dt); }
   }
-  get digTargets() { return [...this.hills.values()].filter(h => h.isValid()).map(h => ({ id: h.id, model: h.model, entity: h.model.userData.actionEntity,
+  get digTargets() { return this.getDigTargets(); }
+  getDigTargets(model?: THREE.Object3D) { return this.mouseRecords.select(model, this.hills.values()).filter(h => h.isValid()).map(h => ({ id: h.id, model: h.model, entity: h.model.userData.actionEntity,
     position: h.getPosition(), dig: () => performToolWork('DIG', h.model.userData.actionEntity, {}), isValid: () => h.isValid() && h.components.workable.CanBeWorked() })); }
   get renderEntities() { return [...this.hills.values()].filter(h => h.isValid()).map(h => h.model).concat([...this.fx])
     .map(object => ({ object, footPosition: object.position, cameraDepth: 0 })); }

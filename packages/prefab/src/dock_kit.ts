@@ -1,3 +1,4 @@
+import { placementEntities, ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
@@ -21,14 +22,7 @@ const DEPLOY_IGNORE_TAGS = new Set(['NOBLOCK', 'player', 'FX', 'INLIMBO', 'DECOR
 const MIN_DISTANCE_FROM_ENTITIES = (4 / 2 + 1.2) * SCALE;
 const DOCK_DEPLOY_SOUND = 'dontstarve/common/together/boat/damage' as const;
 
-export interface DockBlocker {
-  readonly position: Pick<THREE.Vector3, 'x' | 'z'>;
-  readonly tags?: readonly string[];
-  /** deploy_smart_radius, in scene units. */
-  readonly smartRadius?: number;
-  /** GetPhysicsRadius(0.5) of an inventoryitem, in scene units. */
-  readonly inventoryRadius?: number;
-}
+export type DockBlocker = PlacementBlocker;
 
 /** tilegroups.lua classification for the tiles this map has: ocean is OCEAN_COASTAL, everything else valid is land. */
 export const dockMapOf = (turf: TurfMap): DockMap => ({
@@ -48,7 +42,7 @@ export class DockKitPlacement {
   private readonly cursor: BuildCursor;
   private readonly world: WorldContext;
   private readonly turf: TurfMap;
-  private readonly blockers: () => readonly DockBlocker[];
+  private readonly blockers: PlacementQuery;
   private outline?: ArchiveSprite;
   private anchor?: THREE.Object3D;
   private outlineMaterials: THREE.Material[] = [];
@@ -57,7 +51,7 @@ export class DockKitPlacement {
   private prepareRequest?: Promise<void>;
   private disposed = false;
 
-  constructor(world: WorldContext, turf: TurfMap, blockers: () => readonly DockBlocker[] = () => []) {
+  constructor(world: WorldContext, turf: TurfMap, blockers: PlacementQuery = placementEntities(world.scene)) {
     this.world = world; this.turf = turf; this.blockers = blockers;
     this.dockmanager = new DockManager(dockMapOf(turf), { dock: WORLD_TILES.MONKEY_DOCK, farmingSoil: WORLD_TILES.FARMING_SOIL });
     this.stopActionEvents = bindActionCancellation(world, this, 'deploy', () => this.cancel());
@@ -130,7 +124,7 @@ export class DockKitPlacement {
    * CLIENT_CanDeployDockKit followed by Map:CanDeployDockAtPoint: an ocean tile touching permanent land or a dock,
    * with no dockjammer on it and nothing standing in the water within the dock's footprint.
    */
-  canDeploy(point: Pick<THREE.Vector3, 'x' | 'z'>): boolean {
+  canDeploy(point: THREE.Vector3): boolean {
     const [col, row] = this.cell(point), center = this.center(point);
     if (this.turf.tileIdAtCell(col, row) !== WORLD_TILES.OCEAN_COASTAL) return false;
     const map = dockMapOf(this.turf);
@@ -139,11 +133,10 @@ export class DockKitPlacement {
       if ((dx !== 0 || dz !== 0) && map.isLandTile(map.getTile(col + dx, row + dz))) { adjacent = true; break; }
     }
     if (!adjacent) return false;
-    const blockers = this.blockers();
-    if (blockers.some(({ position, tags }) => tags?.includes('dockjammer') && this.cell(position).join() === `${col},${row}`)) return false;
-    return !blockers.some(blocker => {
-      if (blocker.tags?.some(tag => DEPLOY_IGNORE_TAGS.has(tag))) return false;
-      // IsDockNearOtherOnOcean: only things that are not on visual ground block the dock.
+    if (this.blockers.someOnTile(center, blocker => hasPlacementTag(blocker, 'dockjammer'))) return false;
+    return !this.blockers.someNear(center, MIN_DISTANCE_FROM_ENTITIES, blocker => {
+      if (blocker.visible === false || ignoresPlacement(blocker, DEPLOY_IGNORE_TAGS)) return false;
+      // IsDockNearOtherOnOcean only considers entities standing on ocean tiles.
       const [bc, br] = this.cell(blocker.position);
       if (map.isLandTile(map.getTile(bc, br))) return false;
       return isNearOther(blocker, center, MIN_DISTANCE_FROM_ENTITIES);
@@ -206,10 +199,9 @@ export class DockKitPlacement {
 }
 
 /** map.lua IsNearOther (min_spacing form) with deploy_smart_radius and inventoryitem physics radius. */
-function isNearOther(other: DockBlocker, pt: Pick<THREE.Vector3, 'x' | 'z'>, minSpacing: number): boolean {
+function isNearOther(other: DockBlocker, pt: THREE.Vector3, minSpacing: number): boolean {
   let spacing = minSpacing;
   if (other.smartRadius !== undefined) spacing = other.smartRadius + minSpacing / 2;
   else if (other.inventoryRadius !== undefined) spacing = Math.min(other.inventoryRadius + minSpacing / 2, minSpacing);
-  const dx = other.position.x - pt.x, dz = other.position.z - pt.z;
-  return dx * dx + dz * dz < spacing * spacing;
+  return other.position.distanceToSquared(pt) < spacing ** 2;
 }

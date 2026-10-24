@@ -24,6 +24,7 @@ export class LighterActionController {
   private version = 0;
   private disposed = false;
   private readonly direction = new THREE.Vector3();
+  private readonly destination = new THREE.Vector3();
   private readonly forward = new THREE.Vector3();
   private readonly right = new THREE.Vector3();
   private readonly world: ActionWorldContext;
@@ -37,7 +38,7 @@ export class LighterActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor; this.hand = hand;
     this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
-    this.unregister = this.picker.register(() => this.getActions());
+    this.unregister = this.picker.register(model => this.getActions(model));
     this.stopEquipment = bindHandEquipmentUpdate(hand, {
       isEquipped: equipment => !!equippedActionEntity(equipment)?.components.lighter,
       cancel: () => this.cancel(), update: () => this.update(), registerFrameTask: world.registerFrameTask,
@@ -52,14 +53,14 @@ export class LighterActionController {
       && target.components.burnable !== undefined
       && collectEquippedActions(equippedActionEntity(this.hand.peek()), target, true).includes('LIGHT');
   }
-  private getActions(): MouseActionCandidate[] {
+  private getActions(model?: THREE.Object3D): MouseActionCandidate[] {
     const actions: MouseActionCandidate[] = [];
-    this.world.scene.traverse(model => {
-      const target = model.userData.actionEntity as LighterTarget | undefined;
-      if (!target?.components.burnable) return;
-      actions.push({ action: { action: 'LIGHT', invobject: equippedActionEntity(this.hand.peek()), target },
-        button: 'right', source: 'equipped', model, available: this.canLight(target) });
-    });
+    if (!model) return actions;
+    const target = model.userData.actionEntity as LighterTarget | undefined;
+    if (!target?.components.burnable) return actions;
+    actions.push({ action: { action: 'LIGHT', invobject: equippedActionEntity(this.hand.peek()), target },
+      button: 'right', source: 'equipped', model, available: this.canLight(target) });
+
     return actions;
   }
   request(target: LighterTarget): boolean {
@@ -87,7 +88,8 @@ export class LighterActionController {
     const position = target.getPosition();
     if (!this.inReach(target)) {
       this.direction.subVectors(this.world.player.position, position).setY(0).normalize();
-      const destination = position.addScaledVector(this.direction, LIGHT_REACH * .8);
+      // getPosition() may return the target's live position; never move the target.
+      const destination = this.destination.copy(position).addScaledVector(this.direction, LIGHT_REACH * .8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       }
@@ -121,7 +123,7 @@ export class LighterActionController {
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (this.disposed || event.defaultPrevented || (event.button !== 0 && event.button !== 2)) return;
     this.picker.pointer.trackPointer(event);
-    const action = this.picker.getMouseActions().right;
+    const action = this.picker.getMouseActions(event).right;
     if (event.button !== 2 || action?.action !== 'LIGHT' || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     this.request(action.target as LighterTarget);

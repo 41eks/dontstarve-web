@@ -21,7 +21,7 @@ import { GroundItemManager } from './groundItems';
 import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
 import { GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-web/prefab/groundItems';
 import { DockKitPlacement } from '@dontstarve-web/prefab/dock_kit';
-import { FarmPlowPlacement, FARM_PLOW_ID, FARM_DECOR_IDS } from '@dontstarve-web/prefab/farm_plow';
+import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
 import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
@@ -164,7 +164,6 @@ export async function createSceneEntities(
   worldState: SceneWorldState,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
   onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
-  onFlowerPlanted?: () => void,
   itemEntities?: ItemEntityRegistry,
   inventory?: InventoryStore,
   scheduler?: GameTimeScheduler,
@@ -349,18 +348,14 @@ export async function createSceneEntities(
   }
 
   function registerFlowers(registry: EntityRegistry, prefabId: 'flower', _worldState: SceneWorldState) {
-    const flowerPlanting = new FlowerPlanting(view, `${import.meta.env.BASE_URL}dst/data/anim`, onFlowerPlanted, Math.random, {
-      forest: moonTreeForest,
-      canPlant: position => turfMap.canPlant(position) || turfMap.getTileAtWorld(position) === WORLD_TILES.GRASS,
-      getBlockers: () => registry.renderEntities.filter(({ object }) => !object.userData.placer)
-        .map(({ object, footPosition }) => ({ position: footPosition,
-          tags: object.userData.tags,
-          inventoryRadius: object.userData.itemId ? object.userData.physicsRadius ?? .5 : undefined,
-          smartRadius: object.userData.deploySmartRadius })),
-    }, scheduler ? { scheduler, worldEvents } : undefined);
+    const flowerPlanting = new FlowerPlanting(view, Math.random, scheduler ? { scheduler, worldEvents } : undefined);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => flowerPlanting.spawnFromSave(record.id,
         record.components.flower!.animation, new THREE.Vector3(...record.transform.position)),
+      debugSpawn: async () => {
+        const prepared = await flowerPlanting.prepareTransplant();
+        try { prepared.spawn(view.player.position); } finally { prepared.dispose(); }
+      },
       exportRecords: () => flowerPlanting.exportRecords().map((record) => ({ prefabId: 'flower', record })),
       update: (dt, quaternion) => flowerPlanting.update(quaternion, dt),
       renderEntities: () => flowerPlanting.renderEntities,
@@ -455,6 +450,7 @@ export async function createSceneEntities(
       Managers['molehill'].habitat,
       worldEvents,
       worldState.getWatchWorldContent,
+      view.mouseActions,
     );
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => {
@@ -770,7 +766,6 @@ export async function createSceneEntities(
   }
 
   function registerBeefalos(registry: EntityRegistry, prefabId: 'beefalo', worldState: SceneWorldState) {
-    const pendingPoop = new Set<THREE.Vector3>();
     const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
       scheduler,
       // The scheduler runs on world seconds (src/scene.ts), so the next boundary is the next multiple of the day length.
@@ -801,16 +796,12 @@ export async function createSceneEntities(
           .catch((error: unknown) => console.error(`Unable to spawn beefalo ${prefab}`, error));
       },
       getPoopPositions() {
-        return [...pendingPoop, ...Managers['ground_item'].exportRecords()
-          .filter((record) => record.components.stack?.itemId === 'poop')
-          .map((record) => new THREE.Vector3(...record.transform.position))];
+        return Managers['ground_item'].iteratePrefabPositions('poop');
       },
       spawnPoop(position) {
-        pendingPoop.add(position);
         void Managers['ground_item'].spawnFromSave(newEntityId(), {
           ...SAVE_CATALOG.items.poop, itemId: 'poop', count: 1,
-        }, position).catch((error: unknown) => console.error('Unable to spawn beefalo manure', error))
-          .finally(() => pendingPoop.delete(position));
+        }, position).catch((error: unknown) => console.error('Unable to spawn beefalo manure', error));
       },
     });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -877,16 +868,7 @@ export async function createSceneEntities(
       async (position, item) => { await Managers['ground_item'].spawnFromSave(item.entityId ?? newEntityId(), {
         ...SAVE_CATALOG.items[item.itemId], ...item,
       }, position); },
-      () => {
-        const blockers = registry.renderEntities.filter(({ object }) =>
-          object.userData.prefab !== FARM_PLOW_ID && !FARM_DECOR_IDS.includes(object.userData.prefab))
-          .map(({ object, footPosition }) => ({ position: footPosition, tags: object.userData.tags as string[] | undefined }));
-        // The complete forest blocks tiles, including trees outside the visual loading radius.
-        for (const tree of moonTreeForest.entities) blockers.push({ position: tree.position, tags: undefined });
-        for (const tree of Managers['deciduoustree'].entities) blockers.push({ position: tree.position, tags: undefined });
-        for (const tree of Managers['evergreen'].entities) blockers.push({ position: tree.position, tags: undefined });
-        return blockers;
-      });
+    );
     farmPlow.setDebrisLootHandler((itemId, position) => Managers['ground_item'].flingLoot([
       { ...SAVE_CATALOG.items[itemId], itemId, count: 1 },
     ], position));
@@ -916,10 +898,7 @@ export async function createSceneEntities(
 
   function registerDockKit(registry: EntityRegistry, prefabId: 'dock_kit', _worldState: SceneWorldState) {
     // Docks stand in the water: any registered entity there blocks, trees and grass included.
-    const dockKit = new DockKitPlacement(view, turfMap, () =>
-      registry.renderEntities.filter(({ object }) => !object.userData.placer)
-        .map(({ object, footPosition }) => ({ position: footPosition, tags: object.userData.tags as string[] | undefined,
-          inventoryRadius: object.userData.itemId ? object.userData.physicsRadius ?? .5 : undefined, smartRadius: object.userData.deploySmartRadius })));
+    const dockKit = new DockKitPlacement(view, turfMap);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       exportRecords: () => [],
       update: () => dockKit.update(),

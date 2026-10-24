@@ -54,7 +54,6 @@ it('settles lifetime at frame 60 using actual dt and releases light, sound and g
   const controller = model.userData.animationController as SpriteAnimationController;
   const play = vi.spyOn(controller, 'playOnce');
   const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
-  const disposeGeometry = vi.spyOn(mesh.geometry, 'dispose');
   const loop = vi.mocked(PlaySound).mock.results[0].value;
   for (let frame = 0; frame < 59; frame++) update(0.01);
   for (const dt of [0, -1, NaN, Infinity]) update(dt);
@@ -83,7 +82,6 @@ it('settles lifetime at frame 60 using actual dt and releases light, sound and g
   expect(model.parent).toBeNull();
   expect(getPrefabLocalLight(model)).toBeUndefined();
   expect(loop.stop).toHaveBeenCalled();
-  expect(disposeGeometry).toHaveBeenCalled();
   expect(state.removed.peek()).toBe(true);
   expect(state.phase.peek()).toBe('removed');
   expect(remainingChanges).toEqual([0]);
@@ -105,7 +103,6 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   const animationUpdate = vi.spyOn(controller, 'update');
   const oldSprite = model.children[0];
   const mesh = oldSprite.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-  const disposeGeometry = vi.spyOn(mesh.geometry, 'dispose');
   const sharedMaterial = mesh.material[0];
   const disposeMaterial = vi.spyOn(sharedMaterial, 'dispose');
   const disposeTexture = vi.spyOn(sharedMaterial.map!, 'dispose');
@@ -118,7 +115,6 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   expect(model.parent).toBeNull();
   expect(model.children).toHaveLength(0);
   expect(model.userData.animationController).toBeUndefined();
-  expect(disposeGeometry).toHaveBeenCalledOnce();
   expect(disposeMaterial).not.toHaveBeenCalled();
   expect(disposeTexture).not.toHaveBeenCalled();
   expect(getPrefabLocalLight(model)).toBeUndefined();

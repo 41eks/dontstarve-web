@@ -280,8 +280,8 @@ describe('real fireflies archive and ground transfers', () => {
       model.traverse(object => { if (object instanceof THREE.Mesh) result = object.geometry; });
       return result;
     };
-    const originalGeometry = geometry(near)!;
-    const dispose = vi.spyOn(originalGeometry, 'dispose');
+    // Frame buffers are shared and owned by the factory; a departing swarm only drops its mesh.
+    expect(geometry(near)).toBeDefined();
     expect(geometry(far)).toBeUndefined();
     expect(far.parent).toBeNull();
     expect(manager.renderEntities.map(entry => entry.object)).toEqual([near]);
@@ -294,12 +294,12 @@ describe('real fireflies archive and ground transfers', () => {
     position.set(new THREE.Vector3(300, 0, 0));
     playerpositions.set([new THREE.Vector3(300, 0, 0)]);
     await settle();
-    expect(dispose).toHaveBeenCalledOnce();
     expect(geometry(near)).toBeUndefined();
     expect(near.parent).toBeNull();
     expect(getPrefabLocalLight(near)).toBeUndefined();
     expect(geometry(far)).toBeDefined();
-    expect(manager.renderEntities.map(entry => entry.object)).toEqual([far]);
+    // A player standing next to the swarm hides it, and hidden swarms take no part in depth sorting.
+    expect(manager.renderEntities).toEqual([]);
     expect(target.isValid()).toBe(false);
     expect(target.capture()).toBe(false);
     nearUpdate.mockClear();
@@ -311,7 +311,6 @@ describe('real fireflies archive and ground transfers', () => {
     position.set(new THREE.Vector3()); playerpositions.set([new THREE.Vector3()]);
     await settle();
     expect(geometry(near)).toBeDefined();
-    expect(geometry(near)).not.toBe(originalGeometry);
     expect(geometry(far)).toBeUndefined();
     expect(manager.renderEntities.map(entry => entry.object)).toEqual([near]);
     expect(manager.exportRecords()).toEqual(records);

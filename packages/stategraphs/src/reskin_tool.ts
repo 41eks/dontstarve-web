@@ -1,3 +1,4 @@
+import { PlayerActionPicker } from './playeractionpicker.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
 import * as THREE from 'three';
@@ -40,11 +41,12 @@ export class ReskinActionController {
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
   private readonly stopActionEvents: () => void;
-  private readonly getTargets: () => readonly ReskinTarget[];
+  private readonly getTargets: (model?: THREE.Object3D) => readonly ReskinTarget[];
   private readonly effects: ReskinEffectPresenter;
   private readonly isManualMovement: () => boolean;
   private readonly onError: (error: unknown) => void;
   private readonly pointer: PointerRaycaster;
+  private readonly picker: PlayerActionPicker;
   private readonly unregisterHover: () => void;
   private version = 0;
   private pending?: { target: ReskinTarget; prepared?: PreparedReskin; skinId?: string; started: boolean };
@@ -56,7 +58,7 @@ export class ReskinActionController {
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'stop' | 'goToPoint' | 'destination'>,
     handEquipment: HandEquipmentSignal,
-    getTargets: () => readonly ReskinTarget[],
+    getTargets: (model?: THREE.Object3D) => readonly ReskinTarget[],
     effects: ReskinEffectPresenter,
     isManualMovement = () => false,
     onError: (error: unknown) => void = console.error,
@@ -73,9 +75,10 @@ export class ReskinActionController {
     this.isManualMovement = isManualMovement; this.onError = onError;
     this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    // Without the tool equipped no target can be reskinned, so none is built or ray-tested.
-    this.unregisterHover = world.mouseActions?.register(() => !this.getTool() ? [] :
-      this.getTargets().filter(target => target.isValid()).map(target => ({
+    this.picker = world.mouseActions ?? new PlayerActionPicker(this.pointer);
+    // Equipped actions are computed only for the selected entity.
+    this.unregisterHover = this.picker.register(model => !model || !this.getTool() ? [] :
+      this.getTargets(model).filter(target => target.isValid()).map(target => ({
         action: { action: 'CASTSPELL', modifier: 'RESKIN', invobject: equippedActionEntity(this.getTool()) },
         button: 'right', model: target.model,
         available: collectEquippedActions(equippedActionEntity(this.getTool()), target, true).includes('CASTSPELL'), source: 'equipped',
@@ -181,7 +184,7 @@ export class ReskinActionController {
     this.stopEquipment();
     this.cancel();
     this.unregisterHover();
-    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
+    if (this.picker !== this.world.mouseActions) this.picker.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }
@@ -199,15 +202,10 @@ export class ReskinActionController {
       Math.abs(r) > Math.abs(f) && r < 0);
   }
 
-  private hitTarget(): ReskinTarget | undefined {
-    if (!this.getTool()) return undefined;
-    const targets = this.getTargets().filter((target) => target.isValid());
-    const hit = this.pointer.raycastPointer(targets.map((target) => target.model));
-    return hit && targets.find((target) => {
-      let root: THREE.Object3D | null = hit.object;
-      while (root) { if (root === target.model) return true; root = root.parent; }
-      return false;
-    });
+  private hitTarget(event?: PointerEvent): ReskinTarget | undefined {
+    const action = this.picker.getMouseActions(event).right, model = this.picker.targetModel;
+    return model && action?.action === 'CASTSPELL' && action.modifier === 'RESKIN'
+      ? this.getTargets(model).find(target => target.model === model && target.isValid()) : undefined;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
@@ -215,7 +213,7 @@ export class ReskinActionController {
     if (event.button === 0) { this.cancel(); return; }
     if (event.button !== 2 || !this.getTool()) return;
     this.pointer.trackPointer(event);
-    const target = this.hitTarget();
+    const target = this.hitTarget(event);
     if (!target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     void this.request(target);

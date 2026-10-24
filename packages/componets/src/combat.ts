@@ -1,15 +1,18 @@
 import type { Health, HealthAfflicter } from './health';
 import type { Weapon } from './weapon';
 
-export interface CombatInst extends HealthAfflicter {
+export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoDelta'> = Health> extends HealthAfflicter {
   readonly isRemoved?: boolean;
   /** Ground contact in DST units. */
   getPosition(): { x: number; y: number; z: number };
   getPhysicsRadius(): number;
   hasTag(tag: string): boolean;
   PushEvent?(name: string, data: unknown): void;
-  readonly components: { combat?: Combat; health?: Health };
+  readonly components: { combat?: Combat; health?: HealthComponent };
 }
+
+/** Players may bind the combat health operations to their existing authoritative stat store. */
+export type CombatActor = CombatInst<Pick<Health, 'IsDead' | 'DoDelta'>>;
 
 /**
  * The supported branches of components/combat.lua: default/weapon damage,
@@ -21,14 +24,14 @@ export class Combat {
   attackrange = 3;
   hitrange = 3;
   damagemultiplier = 1;
-  onhitfn?: (inst: CombatInst, attacker: CombatInst, damage: number) => void;
+  onhitfn?: (inst: CombatActor, attacker: CombatActor, damage: number) => void;
   keeptargetfn?: () => boolean;
   private laststartattacktime?: number;
-  private readonly inst: CombatInst;
+  private readonly inst: CombatActor;
   private readonly now: () => number;
   private readonly getWeapon: () => Weapon | undefined;
 
-  constructor(inst: CombatInst, now: () => number, getWeapon: () => Weapon | undefined = () => undefined) {
+  constructor(inst: CombatActor, now: () => number, getWeapon: () => Weapon | undefined = () => undefined) {
     this.inst = inst;
     this.now = now;
     this.getWeapon = getWeapon;
@@ -92,7 +95,7 @@ export class Combat {
     return true;
   }
 
-  GetAttacked(attacker: CombatInst, damage: number, weapon?: Weapon): boolean {
+  GetAttacked(attacker: CombatActor, damage: number, weapon?: Weapon): boolean {
     const health = this.inst.components.health;
     if (!health || health.IsDead()) return true;
     // Only positive damage reaches health; it fires ondelta before onhitfn.

@@ -23,18 +23,18 @@ function canSleep(target: SleepTarget): boolean {
 }
 
 /** componentactions.lua SCENE.sleepingbag: free beds offer SLEEPIN on the left button. */
-export function getSleepActions(scene: THREE.Scene): MouseActionCandidate[] {
+export function getSleepActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const actions: MouseActionCandidate[] = [];
-  scene.traverse(model => {
-    const component = model.userData.components?.sleepingbag as SleepingBag | undefined;
-    if (!component) return;
-    const target: SleepTarget = {
-      model, component, prefab: model.userData.prefab,
-      hasTag: tag => model.userData.tags?.includes(tag) ?? false,
-      getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
-    };
-    actions.push({ action: { action: 'SLEEPIN', target }, button: 'left', model, available: canSleep(target) });
-  });
+  if (!model) return actions;
+  const component = model.userData.components?.sleepingbag as SleepingBag | undefined;
+  if (!component) return actions;
+  const target: SleepTarget = {
+    model, component, prefab: model.userData.prefab,
+    hasTag: tag => model.userData.tags?.includes(tag) ?? false,
+    getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+  };
+  actions.push({ action: { action: 'SLEEPIN', target }, button: 'left', model, available: canSleep(target) });
+
   return actions;
 }
 
@@ -60,7 +60,7 @@ export class SleepActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.sleeper = sleeper; this.isManualMovement = isManualMovement;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
-    this.unregister = this.picker.register(() => getSleepActions(world.scene));
+    this.unregister = this.picker.register(model => getSleepActions(model));
     this.stopActionEvents = bindActionCancellation(world, this, 'sleep', () => this.cancel());
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -130,7 +130,7 @@ export class SleepActionController {
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (this.disposed || event.defaultPrevented || event.button !== 0) return;
     this.picker.pointer.trackPointer(event);
-    const action = this.picker.getMouseActions().left;
+    const action = this.picker.getMouseActions(event).left;
     if (action?.action !== 'SLEEPIN' || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     this.request(action.target as SleepTarget);

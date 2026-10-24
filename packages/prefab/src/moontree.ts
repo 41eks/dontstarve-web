@@ -1,3 +1,4 @@
+import { ModelRecords, modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import {
   createAnimatedSpriteFactory,
@@ -108,19 +109,18 @@ export interface MoonTreeForest {
   bindWorld(world: MoonTreeWorld): () => void;
   /** CHOP_workable trees among the loaded models, with their ground-contact points. */
   readonly chopTargets: readonly PickaxeTarget[];
+  getChopTargets(model?: THREE.Object3D): readonly PickaxeTarget[];
   /** DIG_workable stumps among the loaded models. */
   readonly digTargets: readonly ShovelTarget[];
+  getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[];
   /** Loaded trees plus their transient chop effects, for whole-entity depth ordering. */
   readonly renderEntities: readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[];
   restoreState(saveId: string, state: MoonTreeSaveState | undefined, growth?: GrowableSave): void;
   exportState(entity: ProximityEntity): MoonTreeComponents;
   spawnTree(prefab: typeof MOON_TREE_SPAWN_IDS[number], position: THREE.Vector3, id?: string, fromSeed?: boolean): ProximityEntity;
   spawnSapling(position: THREE.Vector3, saved?: MoonTreeSaplingRecord): THREE.Group;
-  deploySapling(position: THREE.Vector3, take: () => boolean): boolean;
+  prepareTransplant(): Promise<{ spawn(position: THREE.Vector3): boolean; dispose(): void }>;
   exportSaplings(): MoonTreeSaplingRecord[];
-  readonly saplingPositions: readonly THREE.Vector3[];
-  createSaplingPreview(): THREE.Group;
-  disposeSaplingPreview(model: THREE.Group): void;
 }
 
 export async function createMoonTreeForest(
@@ -151,6 +151,7 @@ export async function createMoonTreeForest(
   const unit = TILE_SIZE / 4;
   const states = new Map<ProximityEntity, TreeState>();
   const controllers = new Map<THREE.Group, TreeController>();
+  const mouseRecords = new ModelRecords<ProximityEntity>();
   const effects = new Set<THREE.Group>();
   const saplings = new Map<THREE.Group, { timer: Timer; workable: Workable }>();
   const sounds = new Set<SoundHandle>();
@@ -160,6 +161,7 @@ export async function createMoonTreeForest(
   };
   let scheduler = new GameTimeScheduler();
   let ownsScheduler = true;
+  let disposed = false;
   const lastPlayerPosition = new THREE.Vector3();
   let world: MoonTreeWorld | undefined;
   let getWatchWorldContent: GetWatchWorldContent | undefined;
@@ -320,9 +322,10 @@ export async function createMoonTreeForest(
     const state = stateOf(entity);
     const inst = actionEntity(model, 'moon_tree');
     const controller: TreeController = { entity, model, inst };
+    mouseRecords.set(model, entity);
     controllers.set(model, controller);
     model.userData.prefab = 'moon_tree';
-    model.userData.deploySmartRadius = 1.6;
+    model.userData.deploySmartRadius = 1.6 * unit;
     model.userData.components.growable = state.growable;
     for (const tag of ['plant', 'tree', 'moon_tree']) inst.addTag(tag);
     // standardcomponents.lua MakeSnowCoveredPristine applies to trees and stumps, not saplings.
@@ -415,6 +418,7 @@ export async function createMoonTreeForest(
       factory.disposeSprite(model);
     },
     options.entityIds,
+    { prefab: 'moon_tree', smartRadius: 1.6 * unit },
   );
   nearby.group.name = 'MoonTreeForest';
 
@@ -441,7 +445,7 @@ export async function createMoonTreeForest(
     const model = saplingFactory.create({ initialAnimation: 'idle', name: 'moonbutterfly_sapling' });
     model.position.copy(position);
     model.quaternion.copy(world!.camera.getWorldQuaternion(new THREE.Quaternion()));
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: 'moonbutterfly_sapling', deploySmartRadius: 1.6, tags: ['plant', 'moon_tree'] });
+    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: 'moonbutterfly_sapling', deploySmartRadius: 1.6 * unit, tags: ['plant', 'moon_tree'] });
     const inst = actionEntity(model, 'moonbutterfly_sapling');
     const timer = new Timer(scheduler, () => {
       spawnTree('moon_tree_short', model.position, undefined, true);
@@ -461,9 +465,9 @@ export async function createMoonTreeForest(
     return model;
   };
 
-  const workTargets = (action: 'CHOP' | 'DIG'): PickaxeTarget[] => {
+  const workTargets = (action: 'CHOP' | 'DIG', selectedModel?: THREE.Object3D): PickaxeTarget[] => {
     if (!world) return [];
-    return [...nearby.activeEntities].flatMap(entity => {
+    return mouseRecords.select(selectedModel, nearby.activeEntities).flatMap(entity => {
       const model = entity.model!;
       const controller = controllers.get(model);
       const isValid = () => controllers.get(model) === controller
@@ -475,6 +479,15 @@ export async function createMoonTreeForest(
     });
   };
 
+  const digTargets = (model?: THREE.Object3D) => {
+    const saplingTargets = modelEntries(saplings, model).map(([model, { workable }]) => ({
+      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, 'moonbutterfly_sapling'),
+      isValid: () => saplings.has(model) && workable.CanBeWorked(),
+    }));
+    return [...workTargets('DIG', model), ...saplingTargets].map(target => ({ ...target,
+      dig: () => target.isValid() && performToolWork('DIG', target.entity, {}),
+    }));
+  };
   return {
     group: nearby.group,
     get positions() { return nearby.entities.map(entity => entity.position); },
@@ -518,18 +531,10 @@ export async function createMoonTreeForest(
         for (const { model } of controllers.values()) (model.userData.animationController as SpriteController).setWorldContent(undefined);
       };
     },
-    get chopTargets() {
-      return workTargets('CHOP');
-    },
-    get digTargets() {
-      const saplingTargets = [...saplings].map(([model, { workable }]) => ({
-        id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, 'moonbutterfly_sapling'),
-        isValid: () => saplings.has(model) && workable.CanBeWorked(),
-      }));
-      return [...workTargets('DIG'), ...saplingTargets].map(target => ({ ...target,
-        dig: () => target.isValid() && performToolWork('DIG', target.entity, {}),
-      }));
-    },
+    get chopTargets() { return workTargets('CHOP'); },
+    getChopTargets(model) { return workTargets('CHOP', model); },
+    get digTargets() { return digTargets(); },
+    getDigTargets: digTargets,
     get renderEntities() {
       return [
         ...Array.from(nearby.activeEntities, (entity) => ({ object: entity.model!, footPosition: entity.position, cameraDepth: 0 })),
@@ -568,22 +573,26 @@ export async function createMoonTreeForest(
     },
     spawnTree,
     spawnSapling,
-    deploySapling(position, take) {
-      const model = spawnSapling(position);
-      try {
-        if (!take()) { removeSapling(model); return false; }
-      } catch (error) { removeSapling(model); throw error; }
-      sound('dontstarve/wilson/plant_tree', position);
-      return true;
+    async prepareTransplant() {
+      if (disposed || !world) throw new Error('Moon tree forest is unavailable');
+      let available = true;
+      return {
+        dispose: () => { available = false; },
+        spawn: position => {
+          if (!available || disposed || !world) return false;
+          available = false;
+          spawnSapling(position);
+          return true;
+        },
+      };
     },
     exportSaplings: () => [...saplings].map(([model, { timer }]) => ({
       id: String(model.userData.entityId), transform: { position: model.position.toArray(), rotationY: 0 },
       components: { saplingTimer: timer.OnSave()! },
     })),
-    get saplingPositions() { return [...saplings.keys()].map(model => model.position); },
-    createSaplingPreview: () => saplingFactory.create({ initialAnimation: 'idle', name: 'MoonButterflyPlacer' }),
-    disposeSaplingPreview: model => saplingFactory.disposeSprite(model),
     dispose() {
+      if (disposed) return;
+      disposed = true;
       nearby.dispose();
       for (const state of states.values()) { state.changesTask?.(); state.removeTask?.(); state.growable.dispose(); }
       states.clear();

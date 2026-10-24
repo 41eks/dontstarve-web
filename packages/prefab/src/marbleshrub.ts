@@ -1,3 +1,4 @@
+import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -238,8 +239,10 @@ export class MarbleShrubManager {
 
   get miniMapEntities(): MiniMapEntity[] { return [...this.shrubs.values()].map(({ minimap }) => minimap); }
 
-  get mineTargets(): PickaxeTarget[] {
-    return [...this.shrubs].filter(([, shrub]) => !shrub.broken && shrub.workable.CanBeWorked()).map(([model, shrub]) => ({
+  get mineTargets(): PickaxeTarget[] { return this.getMineTargets(); }
+
+  getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
+    return modelEntries(this.shrubs, model).filter(([, shrub]) => !shrub.broken && shrub.workable.CanBeWorked()).map(([model, shrub]) => ({
       id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, MARBLESHRUB_ID),
       isValid: () => this.shrubs.get(model) === shrub && !shrub.broken && shrub.workable.CanBeWorked(),
     }));

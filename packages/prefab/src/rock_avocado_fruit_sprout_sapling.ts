@@ -1,3 +1,4 @@
+import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import { createMemo, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -165,8 +166,10 @@ export class RockAvocadoSaplingManager {
     return [...this.saplings.values()].flatMap(({ sprite, fire }) => [sprite.model, ...fire.model.parent ? [fire.model] : []]
       .map(object => ({ object, footPosition: sprite.model.position, cameraDepth: 0 })));
   }
-  get digTargets(): ShovelTarget[] {
-    return [...this.saplings].map(([model, sapling]) => ({ id: String(model.userData.entityId), model, position: model.position,
+  get digTargets(): ShovelTarget[] { return this.getDigTargets(); }
+
+  getDigTargets(model?: THREE.Object3D): ShovelTarget[] {
+    return modelEntries(this.saplings, model).map(([model, sapling]) => ({ id: String(model.userData.entityId), model, position: model.position,
       entity: actionEntity(model, ROCK_AVOCADO_SAPLING_ID), isValid: () => this.saplings.get(model) === sapling && sapling.workable.CanBeWorked(),
       dig: () => performToolWork('DIG', actionEntity(model, ROCK_AVOCADO_SAPLING_ID), {}),
     }));

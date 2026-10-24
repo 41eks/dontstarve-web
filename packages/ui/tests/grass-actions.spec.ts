@@ -1,24 +1,27 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { useInteractionSave } from './interactionSave';
 
 test('right-click shovels and lights grass, and c_save preserves dug items, tool uses and ash', async ({ page }) => {
   test.setTimeout(180_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
+  await useInteractionSave(page);
   await page.goto('/tests/dst-lighting.html');
-  const urls = Object.fromEntries(['main', 'player', 'universal', 'view', 'building', 'save/deserialize', 'save/catalog',
+  const urls = Object.fromEntries(['main', 'player', 'camera', 'universal', 'view', 'building', 'save/deserialize', 'save/catalog',
     'save/inventoryState', 'groundItems'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
   await page.evaluate(async urls => {
     const { inventory } = await import(urls.main);
     const { player, playerBody } = await import(urls.player);
+    const { followCamera } = await import(urls.camera);
     const { scene } = await import(urls.universal);
     const { view } = await import(urls.view);
     const { moonTreeForest } = await import(urls.building);
     let origin;
-    for (let col = -17; col < -5 && !origin; col++) {
-      for (let row = -17; row < -5 && !origin; row++) {
+    for (let col = -3; col < 0 && !origin; col++) {
+      for (let row = -3; row < 0 && !origin; row++) {
         const point = { x: col * 12 + 6, z: row * 12 + 6 };
         if (!moonTreeForest.entities.some((tree: any) => Math.hypot(tree.position.x - point.x, tree.position.z - point.z) < 20)) origin = point;
       }
@@ -32,7 +35,8 @@ test('right-click shovels and lights grass, and c_save preserves dug items, tool
     if (hand?.item) inventory.applySlotChanges([{ slot: hand.address, ...hand.item, delta: -hand.item.count }]);
     playerBody.position.set(origin.x, playerBody.shapes[0].radius, origin.z);
     playerBody.velocity.set(0, 0, 0); player.position.set(origin.x, 0, origin.z);
-    (window as any).grassGame = { inventory, player, playerBody, scene, view, initial: new Set(scene.children), targets: [] };
+    followCamera.snap();
+    (window as any).grassGame = { inventory, player, playerBody, followCamera, scene, view, initial: new Set(scene.children), targets: [] };
   }, urls);
   const submit = async (command: string) => {
     await page.keyboard.press('Backquote');
@@ -48,16 +52,19 @@ test('right-click shovels and lights grass, and c_save preserves dug items, tool
   await expect(hand).toHaveAttribute('data-item-id', 'shovel');
   await expect.poll(() => page.evaluate(() => {
     const game = (window as any).grassGame;
-    return game.scene.children.some((model: any) => !game.initial.has(model) && model.userData.prefab === 'grass');
+    return game.scene.children.some((model: any) => !game.initial.has(model) && model.userData.prefab === 'grass'
+      && model.userData.pickablePlantState?.phase.peek() === 'ready');
   })).toBe(true);
   const point = async () => page.evaluate(async () => {
     const game = (window as any).grassGame;
-    const model = game.scene.children.find((model: any) => !game.initial.has(model) && model.userData.prefab === 'grass');
+    const model = game.scene.children.find((model: any) => !game.initial.has(model) && model.userData.prefab === 'grass'
+      && model.userData.pickablePlantState?.phase.peek() === 'ready');
     if (!model) throw new Error('No spawned grass');
     game.targets.push(model);
     const foot = model.position;
     game.playerBody.position.set(foot.x + 3, game.playerBody.shapes[0].radius, foot.z);
     game.playerBody.velocity.set(0, 0, 0); game.player.position.set(foot.x + 3, 0, foot.z);
+    game.followCamera.snap();
     await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
     const mesh = model.children[0].children[0]; mesh.updateWorldMatrix(true, false);
     const vertices = mesh.geometry.getAttribute('position');
@@ -71,6 +78,7 @@ test('right-click shovels and lights grass, and c_save preserves dug items, tool
   const digPoint = await point();
   await page.mouse.move(digPoint.x, digPoint.y);
   await expect.poll(() => page.evaluate(() => (window as any).grassGame.view.mouseActions.getMouseActions().right?.action)).toBe('DIG');
+  await expect.poll(() => page.evaluate(() => (window as any).grassGame.player.userData.stategraph.stateName)).toBe('idle');
   await page.mouse.click(digPoint.x, digPoint.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).grassGame.targets[0].userData.pickablePlantState.phase.peek())).toBe('removed');
   const dug = await page.evaluate(() => {
@@ -95,10 +103,19 @@ test('right-click shovels and lights grass, and c_save preserves dug items, tool
   await expect(hand).toHaveAttribute('data-item-id', 'torch');
   await submit('c_spawn("grass")');
   await expect.poll(() => page.evaluate(() => (window as any).grassGame.scene.children.some((model: any) =>
-    !(window as any).grassGame.initial.has(model) && model.userData.prefab === 'grass'))).toBe(true);
+    !(window as any).grassGame.initial.has(model) && model.userData.prefab === 'grass'
+      && model.userData.pickablePlantState?.phase.peek() === 'ready'))).toBe(true);
   const firePoint = await point();
   await page.mouse.move(firePoint.x, firePoint.y);
-  await expect.poll(() => page.evaluate(() => (window as any).grassGame.view.mouseActions.getMouseActions().right?.action)).toBe('LIGHT');
+  await expect.poll(() => page.evaluate(() => {
+    const game = (window as any).grassGame;
+    const action = game.view.mouseActions.getMouseActions().right;
+    return JSON.stringify({ action: action?.action, target: game.view.mouseActions.targetModel?.userData.prefab,
+      active: game.targets[1].userData.actionEntity?.hasTag('tickingarea'),
+      hand: game.inventory.GetEquippedItem('hand')?.prefab,
+      position: game.targets[1].position.toArray(), player: game.player.position.toArray() });
+  })).toContain('"action":"LIGHT"');
+  await expect.poll(() => page.evaluate(() => (window as any).grassGame.player.userData.stategraph.stateName)).toBe('idle');
   await page.mouse.click(firePoint.x, firePoint.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).grassGame.targets[1].userData.pickablePlantState.burning.peek())).toBe(true);
   await expect.poll(() => page.evaluate(() => (window as any).grassGame.targets[1].userData.pickablePlantState.phase.peek()),

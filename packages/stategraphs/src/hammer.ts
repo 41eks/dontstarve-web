@@ -1,3 +1,4 @@
+import { PlayerActionPicker } from './playeractionpicker.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import { WILSON_ACTION_TIMES } from './SGwilson.ts';
@@ -24,6 +25,7 @@ export interface HammerTarget {
 /** componentactions: HAMMER_tool + HAMMER_workable, on the right mouse button. */
 export class HammerActionController {
   private readonly pointer: PointerRaycaster;
+  private readonly picker: PlayerActionPicker;
   private readonly unregisterHover: () => void;
   private target?: HammerTarget;
   private actionVersion = 0;
@@ -37,7 +39,7 @@ export class HammerActionController {
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
   private readonly stopActionEvents: () => void;
-  private readonly getTargets: () => readonly HammerTarget[];
+  private readonly getTargets: (model?: THREE.Object3D) => readonly HammerTarget[];
   private readonly isManualMovement: () => boolean;
   private readonly worker: Worker;
 
@@ -46,7 +48,7 @@ export class HammerActionController {
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
-    getTargets: () => readonly HammerTarget[],
+    getTargets: (model?: THREE.Object3D) => readonly HammerTarget[],
     isManualMovement = () => false,
   ) {
     this.world = world;
@@ -64,9 +66,10 @@ export class HammerActionController {
     this.isManualMovement = isManualMovement;
     this.stopActionEvents = bindActionCancellation(world, this, 'hand', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    // Without the hammer equipped no target can be worked, so none is built or ray-tested.
-    this.unregisterHover = world.mouseActions?.register(() => !this.isEquipped() ? [] :
-      this.getTargets().filter(target => target.isValid()).map(target => ({
+    this.picker = world.mouseActions ?? new PlayerActionPicker(this.pointer);
+    // Equipped actions are computed only for the selected entity.
+    this.unregisterHover = this.picker.register(model => !model || !this.isEquipped() ? [] :
+      this.getTargets(model).filter(target => target.isValid()).map(target => ({
         action: { action: 'HAMMER', invobject: equippedActionEntity(this.handEquipment.peek()), target: target.entity },
         button: 'right', model: target.model, available: this.canWork(target), source: 'equipped',
       }))) ?? (() => {});
@@ -135,7 +138,7 @@ export class HammerActionController {
     this.stopEquipment();
     this.cancel();
     this.unregisterHover();
-    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
+    if (this.picker !== this.world.mouseActions) this.picker.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }
@@ -157,12 +160,10 @@ export class HammerActionController {
       Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
-  private hitTarget(): HammerTarget | undefined {
-    const targets = this.isEquipped() ? this.getTargets().filter((target) => this.canWork(target)) : [];
-    const hit = this.pointer.raycastPointer(targets.map(({ model }) => model));
-    let root: THREE.Object3D | null = hit?.object ?? null;
-    while (root && !targets.some(({ model }) => model === root)) root = root.parent;
-    return targets.find(({ model }) => model === root);
+  private hitTarget(event?: PointerEvent): HammerTarget | undefined {
+    const action = this.picker.getMouseActions(event).right, model = this.picker.targetModel;
+    return model && action?.action === 'HAMMER'
+      ? this.getTargets(model).find(target => target.model === model && target.isValid()) : undefined;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
@@ -170,7 +171,7 @@ export class HammerActionController {
     if (event.button === 0) { this.cancel(); return; }
     if (event.button !== 2 || !this.isEquipped()) return;
     this.pointer.trackPointer(event);
-    const target = this.hitTarget();
+    const target = this.hitTarget(event);
     if (!target) { this.cancel(); return; }
     event.preventDefault();
     event.stopImmediatePropagation();

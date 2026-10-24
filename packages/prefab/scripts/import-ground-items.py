@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 
 SIMPLE = '''cutgrass twigs log cutreeds boards rope cutstone flint goldnugget
 gears charcoal pigskin silk stinger houndstooth nitre livinglog nightmarefuel
-petals petals_evil ash beefalowool boneshard butterflywings honey honeycomb
+petals petals_evil ash beefalowool boneshard butterflywings butter honey honeycomb
 thulecite thulecite_pieces guano tentaclespots spidergland slurtleslime
 slurtle_shellpieces walrus_tusk deerclops_eyeball bearger_fur dragon_scales
 glommerfuel acorn marblebean dreadstone wagpunk_bits moonrocknugget dock_kit papyrus featherpencil
@@ -275,6 +275,10 @@ def main():
     # nightsword.lua: ground nightmaresword bank/build; equip uses swap_nightmaresword.
     add('nightsword', 'nightmaresword', 'nightmaresword', 'idle', 'nightsword')
     assets.add('anim/swap_nightmaresword.zip')
+    # armor_snurtleshell.lua: ground and worn art share armor_slurtleshell (swap_body_tall);
+    # SGwilson's shell states use the hideshell/hitshell clips from player_slurtle_armor.
+    add('armorsnurtleshell', 'armor_slurtleshell', 'armor_slurtleshell', 'anim', 'armor_snurtleshell')
+    assets.add('anim/player_slurtle_armor.zip')
     add('bugnet', 'bugnet', 'swap_bugnet', 'idle', 'bugnet', animation_archive='bugnet.zip')
     assets.add('anim/player_actions_bugnet.zip')
     # fishingrod.lua: ground idle from fishingrod, held swap_fishingrod; SGwilson fishing states use player_actions_fishing.

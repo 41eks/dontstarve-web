@@ -1,3 +1,4 @@
+import { PlayerActionPicker } from './playeractionpicker.ts';
 import { bindActionCancellation } from './actionEvents.ts';
 import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipment.ts';
 import * as THREE from 'three';
@@ -23,6 +24,7 @@ export interface FishingTarget {
 /** componentactions.lua `fishingrod`: FISH a fishable target, or REEL the one already being fished. */
 export class FishingActionController {
   private readonly pointer: PointerRaycaster;
+  private readonly picker: PlayerActionPicker;
   private readonly unregisterHover: () => void;
   private target?: FishingTarget;
   private activeRod?: FishingRod;
@@ -37,7 +39,7 @@ export class FishingActionController {
   private readonly handEquipment: HandEquipmentSignal;
   private readonly stopEquipment: () => void;
   private readonly stopActionEvents: () => void;
-  private readonly getTargets: () => readonly FishingTarget[];
+  private readonly getTargets: (model?: THREE.Object3D) => readonly FishingTarget[];
   private readonly getRod: () => FishingRod | undefined;
   private readonly isManualMovement: () => boolean;
   private readonly fisherman: Fisherman;
@@ -47,7 +49,7 @@ export class FishingActionController {
     animation: WilsonAnimationController,
     locomotor: Pick<Locomotor, 'goToPoint' | 'stop' | 'destination'>,
     handEquipment: HandEquipmentSignal,
-    getTargets: () => readonly FishingTarget[],
+    getTargets: (model?: THREE.Object3D) => readonly FishingTarget[],
     getRod: () => FishingRod | undefined,
     isManualMovement = () => false,
   ) {
@@ -81,7 +83,8 @@ export class FishingActionController {
     });
     this.stopActionEvents = bindActionCancellation(world, this, 'fishing', () => this.cancel());
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
-    this.unregisterHover = world.mouseActions?.register(() => this.hoverCandidates()) ?? (() => {});
+    this.picker = world.mouseActions ?? new PlayerActionPicker(this.pointer);
+    this.unregisterHover = this.picker.register(model => this.hoverCandidates(model)) ?? (() => {});
     // Capture so a fishing click cannot open a container or place a building.
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
@@ -101,11 +104,11 @@ export class FishingActionController {
     return rod?.target === target.entity && this.animation.isFishing && this.animation.stategraph.hasStateTag('fishing');
   }
 
-  private hoverCandidates() {
+  private hoverCandidates(model?: THREE.Object3D) {
     const rod = this.isEquipped() ? this.getRod() : undefined;
-    if (!rod) return [];
+    if (!rod || !model) return [];
     const invobject = equippedActionEntity(this.handEquipment.peek());
-    return this.getTargets().filter(target => target.isValid() && target.entity.hasTag('fishable')).map(target => {
+    return this.getTargets(model).filter(target => target.isValid() && target.entity.hasTag('fishable')).map(target => {
       const reel = this.isFishingAt(rod, target);
       return {
         action: { action: reel ? 'REEL' : 'FISH', invobject, target: target.entity, modifier: reel ? this.reelModifier(rod) ?? 'GENERIC' : undefined },
@@ -181,7 +184,7 @@ export class FishingActionController {
     this.cancel();
     this.animation.bindFishing(undefined);
     this.unregisterHover();
-    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
+    if (this.picker !== this.world.mouseActions) this.picker.dispose();
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
   }
@@ -198,18 +201,16 @@ export class FishingActionController {
       Math.abs(side) > Math.abs(forward) && side < 0);
   }
 
-  private hitTarget(): FishingTarget | undefined {
-    const targets = this.isEquipped() ? this.getTargets().filter(target => target.isValid() && target.entity.hasTag('fishable')) : [];
-    const hit = this.pointer.raycastPointer(targets.map(({ model }) => model));
-    let root: THREE.Object3D | null = hit?.object ?? null;
-    while (root && !targets.some(({ model }) => model === root)) root = root.parent;
-    return targets.find(({ model }) => model === root);
+  private hitTarget(event?: PointerEvent): FishingTarget | undefined {
+    const action = this.picker.getMouseActions(event).left, model = this.picker.targetModel;
+    return model && (action?.action === 'FISH' || action?.action === 'REEL')
+      ? this.getTargets(model).find(target => target.model === model && target.isValid()) : undefined;
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
     if (event.defaultPrevented || event.button !== 0 || !this.isEquipped()) return;
     this.pointer.trackPointer(event);
-    const target = this.hitTarget();
+    const target = this.hitTarget(event);
     // A click elsewhere walks away, which ends fishing.
     if (!target) { this.cancel(); return; }
     event.preventDefault();

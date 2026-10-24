@@ -4,18 +4,18 @@ import { bindActionCancellation, type PlayerActionEvents } from '../../stategrap
 
 it('preserves UI interruption scopes, skips the new owner and releases subscriptions', () => {
   const actionEvents = new EventEmitter<PlayerActionEvents>(), world = { actionEvents };
-  const owners = { hand: {}, net: {}, food: {}, flower: {}, building: {}, deploy: {}, movement: {} };
+  const owners = { hand: {}, net: {}, food: {}, building: {}, deploy: {}, movement: {} };
   const cancels = Object.fromEntries(Object.keys(owners).map(group => [group, vi.fn()]));
   const stops = Object.entries(owners).map(([group, owner]) =>
     bindActionCancellation(world, owner, group as keyof typeof owners, cancels[group]));
   try {
     actionEvents.emit('action:interrupt', { reason: 'slot-select' });
     expect(Object.keys(cancels).filter(group => cancels[group].mock.calls.length))
-      .toEqual(['hand', 'food', 'flower', 'deploy']);
+      .toEqual(['hand', 'food', 'deploy']);
     Object.values(cancels).forEach(cancel => cancel.mockClear());
     actionEvents.emit('action:begin', { owner: owners.hand, action: 'TILL' });
     expect(Object.keys(cancels).filter(group => cancels[group].mock.calls.length))
-      .toEqual(['net', 'food', 'flower', 'building', 'deploy']);
+      .toEqual(['net', 'food', 'building', 'deploy']);
     Object.values(cancels).forEach(cancel => cancel.mockClear());
     actionEvents.emit('action:interrupt', { reason: 'emote' });
     expect(Object.values(cancels).every(cancel => cancel.mock.calls.length === 1)).toBe(true);

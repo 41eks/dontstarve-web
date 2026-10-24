@@ -4,7 +4,7 @@ import type { ActionWorldContext as WorldContext, ActionAnimationController as W
 import type { HandEquipmentSignal } from './handEquipment.ts';
 import { equippedActionEntity } from './componentactions.ts';
 import type { BufferedActionObject } from './bufferedaction.ts';
-import type { Combat, CombatInst } from '../../componets/src/combat';
+import type { Combat, CombatInst, CombatActor } from '../../componets/src/combat';
 
 /** A placed or world inst with combat and health. */
 export interface AttackTarget {
@@ -15,7 +15,7 @@ export interface AttackTarget {
 }
 
 export interface Attacker {
-  readonly inst: CombatInst;
+  readonly inst: CombatActor;
   readonly combat: Combat;
 }
 

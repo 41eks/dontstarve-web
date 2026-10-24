@@ -57,8 +57,11 @@ export function updateMovement(
         // Movement while asleep is the locomote event that wakes the sleeper; the sleeper never walks.
         const sleeping = animation?.isSleeping === true;
         if (sleeping && (manual || locomotor.destination)) animation!.wakeFromBed();
+        // SGwilson's locomote event: movement input leaves the idle-tagged shell state; the busy ones ignore it.
+        const hiding = animation?.stategraph.hasStateTag('shell') === true;
+        if (hiding && (manual || locomotor.destination)) animation!.stategraph.pushLocomote();
         const castingBusy = (animation?.isCasting || animation?.isReading || animation?.isPlayingInstrument) && animation.stategraph.hasStateTag('busy');
-        const acting = slipping || sleeping || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        const acting = slipping || sleeping || hiding || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
         if (slipping && player.userData.wantsToMoveForward) animation!.stategraph.pushLocomote();
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.

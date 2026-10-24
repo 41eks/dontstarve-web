@@ -1,0 +1,107 @@
+import * as THREE from 'three';
+import { afterEach, expect, it, vi } from 'vitest';
+import { SpatialIndex } from '../../prefab/src/spatialIndex';
+import { placementEntities, syncPlacementEntity } from '../../prefab/src/placementEntities';
+import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { ProximityEntities } from '../../prefab/src/proximityEntities';
+import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
+import { TurfMap } from '../../prefab/src/turfMap';
+import { ItemEntity } from '../../inventory/src';
+import type { WorldContext } from '../../prefab/src/worldContext';
+
+afterEach(() => vi.unstubAllGlobals());
+
+it('visits local cells, stops at the first blocker and includes large smart radii across cell boundaries', () => {
+  type Entry = { position: THREE.Vector3; radius: number };
+  const positionOf = vi.fn((entry: Entry) => entry.position);
+  const index = new SpatialIndex(positionOf, (entry: Entry) => entry.radius);
+  for (let i = 0; i < 1000; i++) index.add({ position: new THREE.Vector3(1000 + i * 12, 0, 0), radius: 0 });
+  const first = { position: new THREE.Vector3(-.1, 0, -.1), radius: 0 };
+  index.add(first); index.add({ position: first.position.clone(), radius: 0 });
+  positionOf.mockClear();
+  const visit = vi.fn(() => true);
+  expect(index.someNear(new THREE.Vector3(), 1, visit)).toBe(true);
+  expect(visit).toHaveBeenCalledExactlyOnceWith(first);
+  expect(positionOf).toHaveBeenCalledExactlyOnceWith(first);
+  expect(index.someOnTile(new THREE.Vector3(-12, 0, -12), () => true)).toBe(true);
+  expect(index.someOnTile(new THREE.Vector3(), () => true)).toBe(false);
+
+  const wide = { position: new THREE.Vector3(30, 0, 0), radius: 29 };
+  index.add(wide);
+  expect(index.someNear(new THREE.Vector3(1, 0, 0), 1, entry => entry === wide)).toBe(true);
+  wide.position.set(100, 0, 0); index.sync(wide);
+  expect(index.someNear(new THREE.Vector3(1, 0, 0), 1, entry => entry === wide)).toBe(false);
+  index.delete(first);
+  index.clear();
+  expect(index.someNear(new THREE.Vector3(), 100, () => true)).toBe(false);
+});
+
+it('tracks tags, movement, attachment, replacement and permanent removal without walking scene/render lists', () => {
+  const scene = new THREE.Scene(), other = new THREE.Scene(), model = new THREE.Group();
+  const item = new ItemEntity({ itemId: 'log', count: 1 });
+  item.addTag('NOBLOCK');
+  model.userData.getGroundPosition = () => item.transform.position;
+  actionEntity(model, 'log', item); scene.add(model);
+  const query = placementEntities(scene), position = new THREE.Vector3();
+  const traversal = vi.spyOn(scene, 'traverse'), visit = vi.fn(() => true);
+  let replacement: THREE.Group | undefined;
+  try {
+    expect(query.someNear(position, 1, visit)).toBe(false);
+    expect(visit).not.toHaveBeenCalled(); // Universally ignored entities never enter the index.
+    item.removeTag('NOBLOCK');
+    expect(query.someNear(position, 1, visit)).toBe(true);
+    expect(placementEntities(other).someNear(position, 1, () => true)).toBe(false);
+    item.addTag('NOCLICK');
+    expect(query.someNear(position, 1, () => true)).toBe(true); // PLANT does not ignore NOCLICK.
+    item.transform.position.set(24, 0, 0); syncPlacementEntity(model);
+    expect(query.someNear(position, 1, () => true)).toBe(false);
+    expect(query.someOnTile(item.transform.position, () => true)).toBe(true);
+    model.removeFromParent();
+    expect(query.someNear(item.transform.position, 1, () => true)).toBe(false);
+    scene.add(model);
+    expect(query.someNear(item.transform.position, 1, () => true)).toBe(true);
+    disposeActionEntity(model); model.removeFromParent();
+    replacement = new THREE.Group();
+    replacement.userData.getGroundPosition = () => item.transform.position;
+    actionEntity(replacement, 'log', item); scene.add(replacement);
+    let count = 0;
+    query.someNear(item.transform.position, 1, () => { count++; return false; });
+    expect(count).toBe(1);
+    item.destroy();
+    expect(query.someNear(item.transform.position, 1, () => true)).toBe(false);
+    expect(traversal).not.toHaveBeenCalled();
+  } finally {
+    traversal.mockRestore(); item.destroy(); disposeActionEntity(model);
+    if (replacement) disposeActionEntity(replacement);
+  }
+});
+
+it('keeps unloaded logical trees blocking their tile, deduplicates loaded visuals and releases permanent removals', () => {
+  vi.stubGlobal('window', new EventTarget());
+  const scene = new THREE.Scene(), point = new THREE.Vector3(11.99, 0, 11.99);
+  const trees = new ProximityEntities([point], 10, () => {
+    const model = new THREE.Group(); actionEntity(model, 'evergreen'); return model;
+  }, () => {}, undefined, { prefab: 'evergreen', smartRadius: 1 });
+  scene.add(trees.group);
+  const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
+    renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
+  const farm = new FarmPlowPlacement(world, new TurfMap(96), async () => {});
+  const query = placementEntities(scene), origin = new THREE.Vector3();
+  try {
+    expect(trees.entities[0].model).toBeUndefined();
+    expect(farm.canDeploy(origin)).toBe(false); // Tile corner is outside a half-tile radius query.
+    trees.update(point);
+    let count = 0;
+    query.someOnTile(origin, () => { count++; return false; });
+    expect(count).toBe(1);
+    trees.update(new THREE.Vector3(1000, 0, 1000));
+    expect(trees.entities[0].model).toBeUndefined();
+    expect(farm.canDeploy(origin)).toBe(false);
+    trees.remove(trees.entities[0]);
+    expect(farm.canDeploy(origin)).toBe(true);
+    trees.add(point, 'restored-tree');
+    expect(farm.canDeploy(origin)).toBe(false);
+    trees.dispose();
+    expect(farm.canDeploy(origin)).toBe(true);
+  } finally { trees.dispose(); farm.dispose(); }
+});

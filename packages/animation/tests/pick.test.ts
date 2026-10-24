@@ -1,3 +1,4 @@
+import { registerMouseTarget } from '../../stategraphs/src/mouseTargets';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { getPickActions, PickActionController, PICK_REACH } from '../../stategraphs/src/pick';
@@ -16,24 +17,24 @@ it('uses component-owned pickable tags and blocks fire/intense without consultin
   scene.add(model);
   model.userData.tags = ['plant', 'custom'];
   const component = new Pickable(model, 'log', 10);
-  expect(getPickActions(scene)[0].available).toBe(true);
+  expect(getPickActions(model)[0].available).toBe(true);
   component.canInteractWith = false;
   expect(component.canBePicked).toBe(true);
-  expect(getPickActions(scene)[0].available).toBe(false);
+  expect(getPickActions(model)[0].available).toBe(false);
   expect(component.pick({ giveItem: () => true })).toBe(false);
   component.canInteractWith = true;
   for (const tag of ['fire', 'intense']) {
     model.userData.tags.push(tag);
-    expect(getPickActions(scene)[0].available).toBe(false);
+    expect(getPickActions(model)[0].available).toBe(false);
     model.userData.tags.pop();
   }
   component.pick({ giveItem: () => true });
   expect(model.userData.tags).toEqual(['plant', 'custom']);
-  expect(getPickActions(scene)[0].available).toBe(false);
+  expect(getPickActions(model)[0].available).toBe(false);
   component.update(10);
-  expect(getPickActions(scene)[0].available).toBe(true);
+  expect(getPickActions(model)[0].available).toBe(true);
   component.dispose();
-  expect(getPickActions(scene)).toEqual([]);
+  expect(getPickActions(model)).toEqual([]);
   expect(model.userData.tags).toEqual(['plant', 'custom']);
 });
 
@@ -45,8 +46,9 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   model.userData.tags = ['plant'];
   model.userData.getGroundPosition = () => new THREE.Vector3(20, 0, 0);
   const component = new Pickable(model, 'log', 10, 2);
+  const mouseTarget = registerMouseTarget(model, () => true);
   const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {},
-    raycastPointer: () => ({ object: model }), dispose: vi.fn() } as unknown as PointerRaycaster;
+    pickMouseTarget: () => ({ object: model }), dispose: vi.fn() } as unknown as PointerRaycaster;
   const picker = new PlayerActionPicker(pointer), canvas = new EventTarget();
   const actionEvents = new EventEmitter<PlayerActionEvents>(), begin = vi.fn();
   const stopEvents = actionEvents.on('action:begin', begin);
@@ -108,5 +110,5 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   click();
   expect(giveItem).toHaveBeenCalledTimes(2);
   expect(picker.getMouseActions().left).toBeUndefined();
-  component.dispose(); picker.dispose(); stopEvents();
+  component.dispose(); mouseTarget.dispose(); picker.dispose(); stopEvents();
 });

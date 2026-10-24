@@ -449,7 +449,6 @@ export class DstLightingRenderer {
   render(scene: THREE.Scene, camera: THREE.Camera): void {
     this.resizeRenderTarget();
 
-    this.localLighting.prepareScene(scene);
     this.localLighting.renderLightmap(this.renderer);
     const originalBackground = scene.background;
     if (originalBackground instanceof THREE.Color) {

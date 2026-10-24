@@ -25,6 +25,10 @@ export type BodyEquipment = Equipment<'BODY'>;
 export interface EquipmentOwner {
   ListenForEvent?(name: string, listener: (data: unknown) => void): () => void;
   PushEvent(name: string, data?: unknown): void;
+  /** owner.sg:HasStateTag(tag) */
+  HasStateTag?(tag: string): boolean;
+  /** owner.sg:GoToState(name) */
+  GoToState?(name: string): void;
 }
 
 /** Unequip releases the injected owner; removal goes through the item entity and its inventory owner. */

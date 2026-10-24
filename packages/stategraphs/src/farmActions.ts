@@ -15,7 +15,7 @@ export interface PreparedFarmTill { apply(): boolean; dispose(): void; }
 /** Farm prefabs prepare their art and own atomic changes to soil entities. */
 export interface FarmActionWorld {
   readonly soilTargets: readonly FarmSoilTarget[];
-  canTill(point: Pick<THREE.Vector3, 'x' | 'z'>): boolean;
+  canTill(point: THREE.Vector3): boolean;
   prepareTill(point: THREE.Vector3): Promise<PreparedFarmTill | undefined>;
   prepareSeedPlant(id: string, seedItemId?: string): Promise<PreparedSeedPlant | undefined>;
 }

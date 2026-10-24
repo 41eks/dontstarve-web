@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { WormholeManager, WORMHOLE_SKINS, WORMHOLE_ENTER_DISTANCE, WORMHOLE_EXIT_DISTANCE } from '../../prefab/src/wormhole';
 import { loadSpriteSkinArchive } from '../src/animationAssets';
+import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -28,6 +29,7 @@ it('opens and closes with source distance hysteresis and frame-specific layering
   const player = new THREE.Vector3(100, 50, 0);
   const manager = new WormholeManager(new THREE.Scene(), '/dst/data/anim', () => [player]);
   const model = await manager.spawn(new THREE.Vector3());
+  expect(isMouseTarget(model)).toBe(true);
   const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
   const step = (frames: number) => { for (let i = 0; i < frames; i++) manager.update(1 / 30, quaternion); };
   const clip = () => model.userData.animationController.currentAnimation;
@@ -69,6 +71,7 @@ it('opens and closes with source distance hysteresis and frame-specific layering
     step(60);
     expect(clip()).toBe('open_loop');
   } finally { manager.dispose(); }
+  expect(isMouseTarget(model)).toBe(false);
 });
 
 it('reskins a live opening wormhole and restores its identity and skin', async () => {

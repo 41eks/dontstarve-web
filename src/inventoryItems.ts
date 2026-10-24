@@ -1,6 +1,7 @@
 import { configureMoleEntity, MOLE_PERISH_TIME } from '../packages/prefab/src/mole';
 import { configureMoleBaitEntity } from '../packages/prefab/src/molebait';
 import { configureRockAvocadoFruitEntity } from '../packages/prefab/src/rock_avocado_fruit';
+import { configureButterflyEntity, configureMoonButterflyEntity } from '../packages/prefab/src/butterfly';
 import { configurePlantableEntity } from '@dontstarve-web/prefab/plantables';
 import { BATHBOMB_ID, configureBathbombEntity } from '../packages/prefab/src/bathbomb';
 import { configureFertilizerEntity, FERTILIZER_CYCLES } from '../packages/prefab/src/fertilizers';
@@ -20,6 +21,7 @@ import { configurePanfluteEntity, PANFLUTE_ID, PANFLUTE_USES } from '@dontstarve
 import { configureEquipmentEntity, getHandEquipmentDefinition } from '@dontstarve-web/prefab/handEquipment';
 import { configureBirdEntity, isBirdId } from '@dontstarve-web/prefab/birds';
 import { configureBackpackEntity } from '@dontstarve-web/prefab/backpack';
+import { ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { configureIceEntity, ICE_ID } from '@dontstarve-web/prefab/ice';
 import { PERISHABLE_FOODS } from '@dontstarve-web/prefab/food';
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../packages/ui/src/inventory-items';
@@ -53,8 +55,11 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...display,
       maxStack: inventoryItemMaxStack(itemId),
       configureEntity: withTradable(itemId, isBirdId(itemId) ? configureBirdEntity
+        : itemId === 'butterfly' ? configureButterflyEntity
+        : itemId === 'moonbutterfly' ? configureMoonButterflyEntity
         : itemId === 'mole' ? configureMoleEntity
         : itemId === 'backpack' ? configureBackpackEntity
+        : itemId === ARMORSNURTLESHELL_ID ? configureArmorSnurtleshellEntity
         : itemId === LIGHTBULB_ID ? configureLightbulbEntity
         : itemId === HEATROCK_ID ? configureHeatRockEntity
         : itemId === RAZOR_ID ? configureRazorEntity

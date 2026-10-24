@@ -120,6 +120,8 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
   const s = setup(), restored = setup(), a = actor();
   let deployment: PlantDeployment | undefined, fertilizing: ItemUseActionController | undefined;
   try {
+    // The ground-art fixture must not obstruct the cursor-held plant's deployment point.
+    s.player.position.set(30, 0, 30);
     expect((await executeDebugCommand('c_give("dug_monkeytail",2);c_give("poop",2);c_spawn("dug_monkeytail")', s.inventory,
       id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('dug_monkeytail').maxStack).toBe(10);
@@ -127,6 +129,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     const groundMesh = s.ground.renderEntities[0].object.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
     expect(groundMesh.material.some(material => material.name === 'ground:reeds_monkeytails')).toBe(true);
     expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
+    s.player.position.set(0, 0, 0);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     const source = () => {
       const address = cursorSlotAddress(), entity = s.inventory.getEntity(address);
@@ -139,7 +142,6 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     deployment = new PlantDeployment(s.world, a.animation, a.locomotor, source, {
       plants: { monkeytail: { prepareTransplant: prepare } },
       canPlant: point => point.x >= 0,
-      getBlockers: () => s.monkeytails.renderEntities.map(({ footPosition }) => ({ position: footPosition, smartRadius: 1.5 })),
     });
     expect(deployment.request(new THREE.Vector3(-1, 0, 0))).toBe(false);
     expect(deployment.request(new THREE.Vector3(2, 0, 0))).toBe(true);
@@ -171,7 +173,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
         take: () => { const item = s.inventory.extract(cursorSlotAddress(), 1, entity); if (!item) return false; item.remove(); return true; } };
     };
     fertilizing = new ItemUseActionController(s.world, a.animation, a.locomotor, fertilizerSource);
-    expect(getItemUseActions(s.scene, fertilizerSource()).some(candidate => candidate.action.action === 'FERTILIZE')).toBe(true);
+    expect(getItemUseActions(target.model, fertilizerSource()).some(candidate => candidate.action.action === 'FERTILIZE')).toBe(true);
     expect(fertilizing.request('FERTILIZE', target.entity! as never)).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     fertilizing.update(); a.graph.update(5 / 30); fertilizing.cancel(); a.graph.update(1);

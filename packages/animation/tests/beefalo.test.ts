@@ -39,7 +39,7 @@ function setup(random = () => 0) {
     pushAnimation: vi.fn((name: string, loop = false) => queue.push({ name, loop })),
   };
   let players: THREE.Vector3[] = [];
-  let poop: THREE.Vector3[] = [];
+  let poop: Iterable<THREE.Vector3> = [];
   const scheduler = new GameTimeScheduler();
   const cycle = createSignal<WorldPhase>('day');
   const sources: WorldContentEnvironment = { playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
@@ -51,7 +51,7 @@ function setup(random = () => 0) {
   const controller = new BeefaloController(model, body, animation, world, undefined, random);
   return { controller, model, body, animation, world,
     setPlayers: (value: THREE.Vector3[]) => { players = value; },
-    setPoop: (value: THREE.Vector3[]) => { poop = value; },
+    setPoop: (value: Iterable<THREE.Vector3>) => { poop = value; },
     setNight: (value: boolean) => { world.phase = value ? 'night' : 'day'; cycle.set(world.phase); },
     /** Advance game time to the next day boundary, running every task due on the way. */
     endDay: () => { scheduler.advance(world.secondsUntilNextDay(scheduler.now)); },
@@ -203,8 +203,16 @@ describe('wild beefalo behavior', () => {
     expect(s.world.spawnPoop).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(-3, 0, 0));
     s.setPoop([new THREE.Vector3(BEEFALO_BEHAVIOR.poopSpacing - .01, 0, 0)]);
     expect(s.controller.periodicspawner.TrySpawn().spawned).toBe(false);
-    s.setPoop([new THREE.Vector3(30, 0, 0), new THREE.Vector3(-30, 0, 0)]);
+    const closed = vi.fn();
+    s.setPoop((function* () {
+      try {
+        yield new THREE.Vector3(BEEFALO_BEHAVIOR.poopDensityRadius, 0, 0);
+        yield new THREE.Vector3(-BEEFALO_BEHAVIOR.poopDensityRadius, 0, 0);
+        throw new Error('density failure must not consume the rest of the query');
+      } finally { closed(); }
+    })());
     expect(s.controller.periodicspawner.TrySpawn().spawned).toBe(false);
+    expect(closed).toHaveBeenCalledOnce();
     expect(s.world.spawnPoop).toHaveBeenCalledTimes(1);
     s.controller.dispose();
   });

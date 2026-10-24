@@ -1,3 +1,4 @@
+import type { Object3D } from 'three';
 import {
     COOK_POT_DEFINITION,
     COOK_POT_ID,
@@ -180,8 +181,9 @@ export class PlaceableBuildingPlacement {
         return [...this.animated.renderEntities, ...this.walls.renderEntities, ...this.fences.renderEntities];
     }
 
-    get hammerTargets() {
-        return [...this.animated.hammerTargets, ...this.walls.hammerTargets, ...this.fences.hammerTargets];
+    get hammerTargets() { return this.getHammerTargets(); }
+    getHammerTargets(model?: Object3D) {
+        return [...this.animated.getHammerTargets(model), ...this.walls.getHammerTargets(model), ...this.fences.getHammerTargets(model)];
     }
 
     /** Placed insts with combat and live health; walls and fences are the only ported structures with combat. */
@@ -189,12 +191,14 @@ export class PlaceableBuildingPlacement {
         return [...this.walls.combatTargets, ...this.fences.combatTargets];
     }
 
-    get spellTargets() { return this.animated.spellTargets; }
+    get spellTargets() { return this.getSpellTargets(); }
+    getSpellTargets(model?: Object3D) { return this.animated.getSpellTargets(model); }
 
     get giveTargets() { return this.animated.giveTargets; }
 
-    get reskinTargets() {
-        return [...this.animated.reskinTargets, ...this.walls.reskinTargets, ...this.fences.reskinTargets];
+    get reskinTargets() { return this.getReskinTargets(); }
+    getReskinTargets(model?: Object3D) {
+        return [...this.animated.getReskinTargets(model), ...this.walls.getReskinTargets(model), ...this.fences.getReskinTargets(model)];
     }
 
     update(dt: number): void {

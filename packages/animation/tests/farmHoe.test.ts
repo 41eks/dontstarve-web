@@ -1,3 +1,4 @@
+import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { AnimState } from '../src/animState';
 import { smallHash } from '../src/animationAssets';
 import { readFile } from 'node:fs/promises';
@@ -26,8 +27,8 @@ function setup(player = new THREE.Group()) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);
-  const blockers: { position: THREE.Vector3; tags?: string[] }[] = [];
-  const farm = new FarmPlowPlacement(world, turf, async () => {}, () => blockers);
+  const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
+  const farm = new FarmPlowPlacement(world, turf, async () => {}, blockers);
   return { farm, turf, world, blockers };
 }
 function advance(animation: WilsonAnimationController, frames: number) {
@@ -71,9 +72,10 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
     turf.plow(point);
     await farm.spawnDecor('farm_soil', point, { broken: true }, undefined, 'broken');
     await farm.spawnDecor('farm_soil', new THREE.Vector3(6, 0, 3), { broken: false }, undefined, 'neighbour');
-    blockers.push({ position: point });
+    const blocker = { position: point, tags: [] as string[] };
+    blockers.add(blocker);
     expect(farm.canTill(point)).toBe(false);
-    blockers[0].tags = ['FX'];
+    blocker.tags = ['FX'];
     expect(farm.canTill(point)).toBe(true);
     const cancelled = (await farm.prepareTill(point))!;
     cancelled.dispose(); expect(cancelled.apply()).toBe(false);

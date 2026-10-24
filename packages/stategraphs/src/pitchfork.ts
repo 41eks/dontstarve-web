@@ -146,6 +146,7 @@ export class PitchforkActionController {
     if (event.button === 0) { this.cancel(); return; }
     if (event.button !== 2 || !this.isEquipped()) return;
     this.pointer.trackPointer(event);
+    if (this.world.mouseActions && this.world.mouseActions.getMouseActions(event).right?.action !== 'TERRAFORM') { this.cancel(); return; }
     const target = this.hitTarget();
     if (!target) { this.cancel(); return; }
     event.preventDefault();

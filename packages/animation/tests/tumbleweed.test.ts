@@ -88,7 +88,7 @@ it('rolls with the wind, stops for a long action and restarts, is picked for loo
     step(3);
     expect(model.position.x).toBeGreaterThan(12); expect(Math.abs(model.position.z - 4)).toBeLessThan(.01);
     expect(manager.renderEntities).toHaveLength(1);
-    const target = getPickActions(scene).find(candidate => candidate.model === model)!;
+    const target = getPickActions(model).find(candidate => candidate.model === model)!;
     expect(target.available).toBe(true);
     const before = model.position.x;
 

@@ -34,6 +34,8 @@ export interface ItemOwner {
   remove(): boolean;
   /** perishable.lua's onperishreplacement: the same slot receives the replacement stack. */
   replace(prefab: string): boolean;
+  /** Livestock onperish removes the original stack, then gives its generated loot to the holder. */
+  GiveItem?(item: ItemEntity): boolean;
   /** Lua owner:PushEvent: the player's inventory forwards to the player; other containers ignore it. */
   PushEvent(name: string, data: unknown): void;
 }
@@ -210,6 +212,8 @@ export class ItemEntity {
     tradable?: import('../../componets/src/tradable').Tradable;
     temperature?: Temperature;
     heater?: Heater;
+    armor?: import('../../componets/src/armor').Armor;
+    useableitem?: import('../../componets/src/useableitem').UseableItem;
   };
   readonly signals: InventoryItemSignals;
   /** Display-only itemtile freshness for items without a perishable timer. */
@@ -429,6 +433,8 @@ export class ItemEntity {
     for (const component of this.runtime.values()) component.dispose();
     this.runtime.clear();
     this.components.workable?.dispose();
+    this.components.armor?.dispose();
+    this.components.useableitem?.dispose();
     this.components.container?.dispose();
     this.durability.dispose();
     this.freshness.dispose();

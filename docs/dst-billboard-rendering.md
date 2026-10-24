@@ -12,6 +12,8 @@
 
 `packages/animation/src/renderOrder.ts` 登记每个动画 sprite 最内层的 `visual` group，`setSpriteEntityRenderOrder()` 将实体顺序写到该 group。每帧按实际脚点的相机空间深度由远到近排序；若改用 sprite 中心或包围盒中心，高个实体会过早或过晚改变遮挡关系。
 
+`SpriteRenderOrderSorter` 每帧先遍历可见实体，把深度和各项排序键写进复用的连续数值数组，再排序数值索引数组，最后把序号写回登记的 `visual`。比较函数只读取数组，不访问实体对象。深度按原有 `0.001` 单位先量化，再写入 `Float32Array`；超出单精度精确整数范围时升级为 `Float64Array`，避免丢失远处实体的深度差。背景层、同深度时脚点 x/z 的稳定顺序、分组的 sortGroup/sortLayer/id 规则均保留；附属部分继承本帧可见主体的原始深度。索引沿用 `Array.sort`，保留分组与非分组实体在同深度混排时的比较行为。缓冲区按需扩容，隐藏、移除与换肤后的 visual 在下一帧重新采集。
+
 源 `LAYER_BACKGROUND` 与几何朝向分别处理。温泉 `hotspring.lua` 只设置背景层和 sort order 2，没有 `SetOrientation(OnGround)`；温泉保留动画默认 billboard，活动时随相机四元数旋转，原始脚点、物理体和存档位置不变。实体排序条目的 `renderLayer` 默认为 0，温泉使用背景层 −1，先按层再按脚点深度排序，顺序仍写入登记的 `visual` group。背景层不会把贴图旋转为地面平面。
 
 ## 镜像部件与透明材质

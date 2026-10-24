@@ -85,6 +85,8 @@ export class InventoryStore {
   GetNumSlots(): number { return this.inventorySlots().length; }
   GetActiveItem(): ItemEntity | null { return this.getEntity(cursorSlotAddress()); }
   GetEquippedItem(kind: EquipmentKind): ItemEntity | null { return this.getEntity(equipmentSlotAddress(kind)); }
+  /** inventory.lua EquipHasTag checks only equipped items. */
+  EquipHasTag(tag: string): boolean { return EQUIPMENT_KINDS.some(kind => this.GetEquippedItem(kind)?.hasTag(tag)); }
   Unequip(kind: EquipmentKind): ItemEntity | null {
     const entity = this.GetEquippedItem(kind);
     return entity ? this.extract(equipmentSlotAddress(kind), entity.components.stackable.count, entity) : null;
@@ -140,15 +142,20 @@ export class InventoryStore {
     this.configureItem(entity);
     if (entity.components.inventoryitem.OnPickup(this.actor, source)) return true;
     if (entity.isRemoved) return true;
+    return this.giveToSlots(entity, this.receptionSlots(), source);
+  }
+
+  private giveToSlots(entity: ItemEntity, slots: readonly RegisteredItemSlot[],
+    source?: import('../../componets/src/inventoryitem').ItemPosition,
+    dropPosition?: import('../../componets/src/inventoryitem').ItemPosition): boolean {
     const state = entity.snapshot(), spec = this.requireItemSpec(entity.prefab);
-    const slots = this.receptionSlots();
     const capacity = slots.reduce((total, { slot }) => {
       const stack = slot.get();
       return total + (!stack || isSameStack(stack, state.itemId, state.skinId)
         ? Math.max(0, Math.min(spec.maxStack, slot.maxStack?.(state.itemId) ?? spec.maxStack) - (stack?.count ?? 0)) : 0);
     }, 0);
     const count = Math.min(state.count, capacity);
-    if (count === 0) { this.DropItem(entity); return true; }
+    if (count === 0) { this.DropItem(entity, dropPosition); return true; }
     const incoming = count === state.count ? entity : this.entities.create({ ...state, entityId: undefined, count });
     const received = this.receiveToSlots(incoming, slots, allocations => {
       for (const listener of this.receipts) listener(allocations, source);
@@ -156,7 +163,7 @@ export class InventoryStore {
     if (!received) { if (incoming !== entity) this.entities.destroy(incoming); return false; }
     if (count < state.count) {
       entity.apply({ ...state, count: state.count - count });
-      this.DropItem(entity);
+      this.DropItem(entity, dropPosition);
     }
     return true;
   }
@@ -910,6 +917,12 @@ export class InventoryStore {
           return position instanceof Vector3 ? position : ownerPosition.set(position.x, position.y, position.z);
         },
         changed: () => { if (slot.getEntity() === entity) this.notify([cloneAddress(address)]); },
+        GiveItem: item => {
+          if (!this.worldContainers.has(address.containerId) && !isBackpackContainerId(address.containerId)) return this.GiveItem(item);
+          this.configureItem(item);
+          const slots = this.registrations.filter(registration => registration.address.containerId === address.containerId);
+          return this.giveToSlots(item, slots, undefined, item.getPosition());
+        },
         // Items in a backpack have the backpack as owner in DST, which has no player handlers.
         PushEvent: (name, data) => { if (!isBackpackContainerId(address.containerId)) this.actor.PushEvent(name, data); },
         remove: () => slot.getEntity() === entity && this.applySlotChanges([{

@@ -24,6 +24,7 @@ export interface PickableTiming {
   onBarren?: (wasEmpty: boolean) => void;
   onEmpty?: () => void;
   onTransplant?: () => void;
+  onRemove?: () => void;
 }
 
 /** pickable.lua: component data, regeneration tasks, tags and synchronous domain transitions. */
@@ -47,6 +48,9 @@ export class Pickable implements PickableComponent {
   readonly state;
   /** pickable.lua quickpick defaults to false; SGwilson reads this field. */
   quickpick = false;
+  picksound?: string;
+  wildfirestarter = false;
+  remove_when_picked = false;
   /** Prefabs retaining an original item provide it instead of spawning a product copy. */
   getProductEntity?: () => ItemEntity | undefined;
   get productEntity(): ItemEntity | undefined { return this.getProductEntity?.(); }
@@ -55,11 +59,11 @@ export class Pickable implements PickableComponent {
   private productName: string | undefined;
   private regrowTime: number | undefined;
   private harvestCount: number;
-  private readonly onPicked: () => void;
+  private readonly onPicked: (doer: PickDoer) => void;
   private readonly onRegen: () => void;
 
   constructor(model: THREE.Object3D, product: string | undefined, regenTime: number | undefined,
-    numToHarvest = 1, onPicked: () => void = () => {},
+    numToHarvest = 1, onPicked: (doer: PickDoer) => void = () => {},
     onRegen: () => void = () => {}, saved?: PickableSaveState, timing?: PickableTiming) {
     this.model = model; this.productName = product; this.regrowTime = regenTime;
     this.harvestCount = numToHarvest; this.onPicked = onPicked; this.onRegen = onRegen;
@@ -167,13 +171,17 @@ export class Pickable implements PickableComponent {
         this.protection.set(protection > 0 ? protection : undefined);
         if (protection <= 0) this.model.userData.components?.witherable?.Enable(true);
       }
-      this.onPicked();
+      this.onPicked(doer);
       this.ready.set(false);
       if (this.regrowTime !== undefined && !this.paused.peek() && !this.IsBarren() && !this.model.userData.tags?.includes('withered')) this.timer.start(this.nextGrowthDuration());
       else this.timer.stop();
       this.refreshTag();
     });
-    this.model.dispatchEvent({ type: 'picked', data: { picker: doer, loot: doer.loot, plant: this.model } } as never);
+    this.model.dispatchEvent({ type: 'picked', data: { picker: doer.picker ?? doer, loot: doer.loot, plant: this.model } } as never);
+    if (this.remove_when_picked) {
+      this.callbacks?.onRemove?.();
+      this.dispose();
+    }
     return true;
   }
 

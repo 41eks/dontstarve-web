@@ -196,7 +196,7 @@ it('charges through three source stages, restores the remaining timers and morph
   scheduler.advanceTo(start + 18.7);
   expect(state.charge.peek()).toBe('charging_2');
   expect(model.userData.actionEntity.hasTag('intense')).toBe(true);
-  expect(getPickActions(world.scene).find(action => action.model === model)?.available).toBe(false);
+  expect(getPickActions(model).find(action => action.model === model)?.available).toBe(false);
   const [{ record }] = placement.exportRecords();
   expect(record.components.moonbase?.timer?.timers.mooncharge.timeleft).toBeCloseTo(MOONBASE_CHARGE_DURATION - 18.7);
   expect(record.components.moonbase?.timer?.timers).not.toHaveProperty('mooncharge2');
@@ -226,7 +226,7 @@ it('charges through three source stages, restores the remaining timers and morph
     expect(opal.id).not.toBe(original.id);
     expect(next.timers.mooncharge.peek().status).toBe('expired');
     expect(restored.model.userData.actionEntity.hasTag('intense')).toBe(false);
-    expect(getPickActions(restored.world.scene).find(action => action.model === restored.model)?.available).toBe(true);
+    expect(getPickActions(restored.model).find(action => action.model === restored.model)?.available).toBe(true);
     expect(restored.placement.renderEntities.some(entry => entry.object.name === 'staffcoldlightfx')).toBe(true);
     const giveEntity = vi.fn(() => true);
     expect(restored.model.userData.components.pickable.pick({ giveItem: vi.fn(), giveEntity })).toBe(true);
@@ -302,7 +302,7 @@ it('walks to repair range, cancels before consumption, and commits REPAIR and GI
   const controller = new ItemUseActionController(world, animation, locomotor, source, () => manual);
   const target = model.userData.actionEntity as ItemUseTarget;
   try {
-    expect(getItemUseActions(world.scene, source()).find(action => action.available)?.action.action).toBe('REPAIR');
+    expect(getItemUseActions(model, source()).find(action => action.available)?.action.action).toBe('REPAIR');
     expect(controller.request('REPAIR', target)).toBe(true);
     controller.update(); expect(locomotor.goToPoint).toHaveBeenCalled();
     expect(take).not.toHaveBeenCalled();

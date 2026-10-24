@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ActionHandler, BufferedAction, FRAMES, StateGraphInstance, TimeEvent, WilsonStateGraph } from '../src/index.ts';
-import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler.ts';
+import { GameTimeScheduler } from '../../signals/src/gameTimeScheduler.ts';
 
 test('scheduler-backed state timers stay discrete, prioritize timeout and cancel on exit or disposal', () => {
   const scheduler = new GameTimeScheduler(), events = [];
@@ -544,4 +544,52 @@ test('toolbroke interrupts work, plays the break feedback and re-equips the same
 
   graph.pushEvent('toolbroke', { tool: { prefab: 'axe', nobrokentoolfx: true } });
   assert.deepEqual(spawned, ['brokentool']);
+});
+
+function shellActor() {
+  const log = [];
+  const graph = new WilsonStateGraph({
+    playAnimation: (clip) => { log.push(`anim:${clip.name}`); return 30 * FRAMES; },
+    playSound() {},
+    playEvent: (event) => log.push(`event:${event}`),
+    setCasting() {},
+    onStateChanged: (name) => log.push(`state:${name}`),
+  });
+  return { graph, log };
+}
+
+test('armorsnurtleshell shell states hide, block hits, and yield to movement or unequip', () => {
+  const { graph, log } = shellActor();
+  graph.goToState('shell_enter');
+  assert.equal(graph.hasStateTag('busy'), true);
+  graph.update(5 * FRAMES);
+  assert.equal(log.includes('event:dontstarve/movement/foley/hideshell'), false);
+  graph.update(2 * FRAMES);
+  assert.equal(log.filter(entry => entry === 'event:dontstarve/movement/foley/hideshell').length, 1);
+  graph.pushEvent('locomote');
+  assert.equal(graph.stateName, 'shell_enter', 'the busy entry ignores locomote');
+  graph.update(17 * FRAMES);
+  assert.equal(graph.stateName, 'shell_idle');
+  assert.equal(graph.hasStateTag('busy'), false);
+  assert.equal(graph.hasStateTag('shell'), true);
+
+  graph.pushEvent('blocked');
+  assert.equal(graph.stateName, 'shell_hit');
+  assert.equal(log.at(-2), 'event:dontstarve/wilson/hit');
+  graph.update(3 * FRAMES);
+  assert.equal(graph.stateName, 'shell_idle');
+
+  graph.pushEvent('blocked');
+  graph.pushEvent('unequip');
+  graph.update(3 * FRAMES);
+  assert.equal(graph.stateName, 'idle', 'unequipping during a hit returns to idle, not the shell');
+
+  graph.goToState('shell_idle');
+  graph.pushEvent('locomote');
+  assert.equal(graph.hasStateTag('shell'), false);
+  graph.goToState('shell_idle');
+  graph.pushEvent('unequip');
+  assert.equal(graph.stateName, 'item_out');
+  graph.pushEvent('blocked');
+  assert.equal(graph.stateName, 'item_out', 'blocked only matters while hiding');
 });

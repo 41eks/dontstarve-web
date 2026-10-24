@@ -93,7 +93,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     }
     if (keys.includes('pickable') && c.pickable !== undefined) {
       const p = `${path}.pickable`;
-      const pickable = object(c.pickable, p, ['picked', 'regrowSeconds', 'paused', ...(schema.pickCycles ? ['transplanted', 'cyclesLeft', 'maxCycles', 'protectedCycles'] : [])]);
+      const pickable = object(c.pickable, p, ['picked', 'regrowSeconds', 'paused', 'transplanted', ...(schema.pickCycles ? ['cyclesLeft', 'maxCycles', 'protectedCycles'] : [])]);
       for (const key of ['picked', 'paused', 'transplanted'] as const) {
         if (pickable[key] !== undefined && typeof pickable[key] !== 'boolean') fail(`${p}.${key}`, 'expected a boolean');
       }

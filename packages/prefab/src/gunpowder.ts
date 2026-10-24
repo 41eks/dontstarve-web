@@ -2,7 +2,7 @@ import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Explosive, type ExplosiveTarget } from '../../componets/src/explosive';
 import { FindEntities } from './actionEntity';
-import { configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
+import { configureBurnableItemEntity, burnableFireRenderEntry, createBurnableItemVisual } from './burnableItems';
 import { createGroundItemSprite } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { TILE_SIZE } from './tile';
@@ -35,7 +35,7 @@ export function createGunpowderGroundFactory(context: GroundPrefabContext): Grou
       } };
     },
     update(dt, quaternion) { for (const fire of fires) { fire.model.quaternion.copy(quaternion); fire.update(dt); } },
-    renderEntities: () => [...fires].map(fire => ({ object: fire.model, footPosition: fire.model.position, cameraDepth: 0 })),
+    renderEntities: () => [...fires].map(burnableFireRenderEntry),
     dispose() { for (const fire of fires) fire.dispose(); fires.clear(); },
   };
 }

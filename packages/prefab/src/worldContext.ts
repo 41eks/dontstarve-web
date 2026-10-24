@@ -6,6 +6,7 @@ import type { EventEmitter, WorldContentContext } from '@dontstarve-web/signals'
 /** Discrete requests emitted by prefabs; the running scene owns the handlers. */
 export interface WorldEvents {
     spawnAsh: THREE.Vector3;
+    plantkilled: { doer: import('@dontstarve-web/stategraphs/pick').PickActor | undefined; pos: THREE.Vector3 };
 }
 export type WorldEventEmitter = EventEmitter<WorldEvents>;
 

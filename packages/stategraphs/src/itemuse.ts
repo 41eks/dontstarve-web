@@ -45,40 +45,40 @@ function available(action: ItemUseAction, target: ItemUseTarget, source: ItemUse
 }
 
 /** USEITEM.fuel / repairer / tradable: discover actions from components, never from prefab IDs. */
-export function getItemUseActions(scene: THREE.Scene, source: ItemUseSource | undefined): MouseActionCandidate[] {
+export function getItemUseActions(model: THREE.Object3D | undefined, source: ItemUseSource | undefined): MouseActionCandidate[] {
   if (!source) return [];
   const actions: MouseActionCandidate[] = [];
-  scene.traverse(model => {
-    const target = model.userData.actionEntity as ItemUseTarget | undefined;
-    if (!target) return;
-    if (source.entity.components?.fertilizer && target.hasTag('barren')) actions.push({
-      action: { action: 'FERTILIZE', target, invobject: source.entity }, button: 'left',
-      model, source: 'inventory', available: available('FERTILIZE', target, source) });
-    if (source.entity.hasTag('bathbomb') && target.hasTag('bathbombable')) actions.push({
-      action: { action: 'BATHBOMB', target, invobject: source.entity }, button: 'left',
-      model, source: 'inventory', available: available('BATHBOMB', target, source) });
-    const fueltype = source.entity.components?.fuel?.fueltype;
-    if (fueltype && source.entity.hasTag(`${fueltype}_fuel`) && target.hasTag(`${fueltype}_fueled`)) {
-      const action = source.entity.GetIsWet?.() ? 'ADDWETFUEL' : 'ADDFUEL';
-      actions.push({ action: { action, target, invobject: source.entity }, button: 'left',
-        model, source: 'inventory', available: available(action, target, source) });
-    }
-    if (target.components.repairable && source.entity.components?.repairer) {
-      actions.push({ action: { action: 'REPAIR', target, invobject: source.entity }, button: 'right',
-        model, source: 'inventory', available: available('REPAIR', target, source) });
-    }
-    if (source.entity.components?.shaver && target.hasTag('bearded') && !target.hasTag('spiderden')) {
-      actions.push({ action: { action: 'SHAVE', target, invobject: source.entity }, button: 'left',
-        model, source: 'inventory', available: available('SHAVE', target, source) });
-    }
-    // componentactions.lua USEITEM.occupier: the occupant's type tag must match the cage's occupiable type.
-    const occupantType = target.components.occupiable?.occupanttype;
-    if (occupantType !== undefined && source.entity.hasTag(occupantType)) actions.push({
-      action: { action: 'STORE', modifier: target.prefab === 'birdcage' ? 'IMPRISON' : undefined, target, invobject: source.entity },
-      button: 'left', model, source: 'inventory', available: available('STORE', target, source) });
-    if (target.components.trader) actions.push({ action: { action: 'GIVE', target, invobject: source.entity },
-      button: 'left', model, source: 'inventory', available: available('GIVE', target, source) });
-  });
+  if (!model) return actions;
+  const target = model.userData.actionEntity as ItemUseTarget | undefined;
+  if (!target) return actions;
+  if (source.entity.components?.fertilizer && target.hasTag('barren')) actions.push({
+    action: { action: 'FERTILIZE', target, invobject: source.entity }, button: 'left',
+    model, source: 'inventory', available: available('FERTILIZE', target, source) });
+  if (source.entity.hasTag('bathbomb') && target.hasTag('bathbombable')) actions.push({
+    action: { action: 'BATHBOMB', target, invobject: source.entity }, button: 'left',
+    model, source: 'inventory', available: available('BATHBOMB', target, source) });
+  const fueltype = source.entity.components?.fuel?.fueltype;
+  if (fueltype && source.entity.hasTag(`${fueltype}_fuel`) && target.hasTag(`${fueltype}_fueled`)) {
+    const action = source.entity.GetIsWet?.() ? 'ADDWETFUEL' : 'ADDFUEL';
+    actions.push({ action: { action, target, invobject: source.entity }, button: 'left',
+      model, source: 'inventory', available: available(action, target, source) });
+  }
+  if (target.components.repairable && source.entity.components?.repairer) {
+    actions.push({ action: { action: 'REPAIR', target, invobject: source.entity }, button: 'right',
+      model, source: 'inventory', available: available('REPAIR', target, source) });
+  }
+  if (source.entity.components?.shaver && target.hasTag('bearded') && !target.hasTag('spiderden')) {
+    actions.push({ action: { action: 'SHAVE', target, invobject: source.entity }, button: 'left',
+      model, source: 'inventory', available: available('SHAVE', target, source) });
+  }
+  // componentactions.lua USEITEM.occupier: the occupant's type tag must match the cage's occupiable type.
+  const occupantType = target.components.occupiable?.occupanttype;
+  if (occupantType !== undefined && source.entity.hasTag(occupantType)) actions.push({
+    action: { action: 'STORE', modifier: target.prefab === 'birdcage' ? 'IMPRISON' : undefined, target, invobject: source.entity },
+    button: 'left', model, source: 'inventory', available: available('STORE', target, source) });
+  if (target.components.trader) actions.push({ action: { action: 'GIVE', target, invobject: source.entity },
+    button: 'left', model, source: 'inventory', available: available('GIVE', target, source) });
+
   return actions;
 }
 
@@ -105,7 +105,7 @@ export class ItemUseActionController {
     this.world = world; this.animation = animation; this.locomotor = locomotor;
     this.source = source; this.interrupted = interrupted;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
-    this.unregister = this.picker.register(() => getItemUseActions(world.scene, source()));
+    this.unregister = this.picker.register(model => getItemUseActions(model, source()));
     this.stopActiveItem = this.picker.registerActiveItemSource(() => source() !== undefined);
     this.stopEvents = bindActionCancellation(world, this, 'itemuse', () => this.cancel());
     world.renderer.domElement.addEventListener('pointerdown', this.pointerDown, true);
@@ -209,7 +209,7 @@ export class ItemUseActionController {
   private readonly pointerDown = (event: PointerEvent): void => {
     if (this.disposed || event.defaultPrevented || event.button > 2 || event.button === 1) return;
     this.picker.pointer.trackPointer(event);
-    const actions = this.picker.getMouseActions(), action = event.button === 0 ? actions.left : actions.right;
+    const actions = this.picker.getMouseActions(event), action = event.button === 0 ? actions.left : actions.right;
     if ((action?.action !== 'GIVE' && action?.action !== 'REPAIR' && action?.action !== 'SHAVE' && action?.action !== 'STORE'
       && action?.action !== 'FERTILIZE' && action?.action !== 'BATHBOMB' && action?.action !== 'ADDFUEL' && action?.action !== 'ADDWETFUEL') || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
