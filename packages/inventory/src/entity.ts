@@ -227,6 +227,7 @@ export class ItemEntity {
     if (!this.miniMapEntity) {
       this.miniMapEntity = new MiniMapEntity(this.transform.position);
       this.miniMapEntity.SetEnabled(!this.isRemoved && this.components.inventoryitem.owner === null);
+      this.PushEvent('minimapentityadded', this.miniMapEntity);
     }
     return this.miniMapEntity;
   }
@@ -291,8 +292,14 @@ export class ItemEntity {
   getPosition(): Vector3 { return this.transform.position; }
   hasTag(tag: string): boolean { return this.components.workable?.HasTag(tag) ?? this.tags.has(tag); }
   GetIsWet(): boolean { return this.wetState.peek(); }
-  addTag(tag: string): void { this.tags.add(tag); }
-  removeTag(tag: string): void { this.tags.delete(tag); }
+  addTag(tag: string): void {
+    if (this.tags.has(tag)) return;
+    this.tags.add(tag);
+    this.PushEvent('tagchanged', tag);
+  }
+  removeTag(tag: string): void {
+    if (this.tags.delete(tag)) this.PushEvent('tagchanged', tag);
+  }
   PushEvent(name: string, data: unknown): void { this.events.emit(name, data); }
   ListenForEvent(name: string, listener: (data: unknown) => void): () => void { return this.events.on(name, listener); }
   getComponent<T extends ItemRuntimeComponent>(name: string): T | undefined {
@@ -434,6 +441,35 @@ export class ItemEntity {
 /** Shared by the inventory store and world item manager; contains each live item exactly once. */
 export class ItemEntityRegistry {
   private readonly entities = new Map<string, ItemEntity>();
+  /** Container-bearing entities (backpacks), so container sync never scans the whole item population. */
+  private readonly containerEntities = new Map<string, ItemEntity>();
+  private readonly miniMapIcons = new Set<MiniMapEntity>();
+  private readonly entityCleanups = new Map<ItemEntity, () => void>();
+  /** Only actual icon primitives are visited, independently of the item population and loaded art. */
+  get miniMapEntities(): readonly MiniMapEntity[] {
+    const icons: MiniMapEntity[] = [];
+    for (const icon of this.miniMapIcons) if (icon.enabled) icons.push(icon);
+    return icons;
+  }
+  private register(entity: ItemEntity): void {
+    this.entities.set(entity.id, entity);
+    if (entity.components.container) this.containerEntities.set(entity.id, entity);
+    if (this.entityCleanups.has(entity)) return;
+    const addIcon = () => { if (entity.MiniMapEntity) this.miniMapIcons.add(entity.MiniMapEntity); };
+    addIcon();
+    const stopAdded = entity.ListenForEvent('minimapentityadded', addIcon);
+    const stopRemoved = entity.ListenForEvent('onremove', () => this.unregister(entity));
+    this.entityCleanups.set(entity, () => {
+      stopAdded(); stopRemoved();
+      if (entity.MiniMapEntity) this.miniMapIcons.delete(entity.MiniMapEntity);
+    });
+  }
+  private unregister(entity: ItemEntity): void {
+    this.entityCleanups.get(entity)?.();
+    this.entityCleanups.delete(entity);
+    if (this.entities.get(entity.id) === entity) this.entities.delete(entity.id);
+    if (this.containerEntities.get(entity.id) === entity) this.containerEntities.delete(entity.id);
+  }
   private perishWorld?: PerishWorld;
   private temperatureWorld?: TemperatureWorld;
   bindTemperatureWorld(world: TemperatureWorld): void {
@@ -455,23 +491,26 @@ export class ItemEntityRegistry {
     if (state.entityId && this.get(state.entityId)) throw new Error(`Duplicate item entity: ${state.entityId}`);
     const entity = new ItemEntity(state, this.perishWorld);
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
-    this.entities.set(entity.id, entity);
+    this.register(entity);
     return entity;
   }
   get(id: string): ItemEntity | undefined {
     const entity = this.entities.get(id);
-    if (entity?.isRemoved) { this.entities.delete(id); return undefined; }
+    if (entity?.isRemoved) { this.unregister(entity); return undefined; }
     return entity;
   }
   values(): readonly ItemEntity[] {
     return [...this.entities.values()].filter(entity => !entity.isRemoved);
+  }
+  containers(): ItemEntity[] {
+    return [...this.containerEntities.values()].filter(entity => !entity.isRemoved);
   }
   adopt(entity: ItemEntity): void {
     const existing = this.get(entity.id);
     if (entity.isRemoved || (existing && existing !== entity)) throw new Error(`Invalid item entity: ${entity.id}`);
     if (this.perishWorld) entity.components.perishable.BindWorld(this.perishWorld);
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
-    this.entities.set(entity.id, entity);
+    this.register(entity);
     for (const slot of entity.components.container?.slots ?? []) {
       const child = slot.getEntity();
       if (child) this.adopt(child);
@@ -479,7 +518,7 @@ export class ItemEntityRegistry {
   }
   destroy(entity: ItemEntity): void {
     entity.destroy();
-    if (this.entities.get(entity.id) === entity) this.entities.delete(entity.id);
+    this.unregister(entity);
   }
   dispose(): void {
     for (const entity of this.entities.values()) {
@@ -488,6 +527,10 @@ export class ItemEntityRegistry {
       entity.destroy();
     }
     this.entities.clear();
+    this.containerEntities.clear();
+    for (const cleanup of this.entityCleanups.values()) cleanup();
+    this.entityCleanups.clear();
+    this.miniMapIcons.clear();
     this.perishWorld = undefined;
     this.temperatureWorld = undefined;
   }
