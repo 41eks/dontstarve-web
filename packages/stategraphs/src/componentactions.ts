@@ -26,6 +26,10 @@ export interface ComponentActionEntity extends WorkInst {
     weapon?: import('../../componets/src/weapon').Weapon;
     repairable?: import('../../componets/src/repairable').Repairable;
     repairer?: import('../../componets/src/repairer').Repairer;
+    fueled?: {
+      CanAcceptFuelItem(item: Pick<import('../../componets/src/fuel').FuelItem, 'components'>): boolean;
+      TakeFuelItem(item: import('../../componets/src/fuel').FuelItem): boolean;
+    };
     trader?: import('../../componets/src/trader').Trader<import('../../componets/src/trader').TradeItem>;
     occupiable?: { readonly occupanttype: string | undefined; CanOccupy(item: any): boolean; Occupy(item: any): boolean };
   };

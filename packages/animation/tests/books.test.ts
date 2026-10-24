@@ -7,6 +7,9 @@ import { actionEntity } from '../../prefab/src/actionEntity';
 import { BOOK_ITEM_SPECS, bookActionObject, type BookWorld } from '../../prefab/src/books';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { Reader } from '../../componets/src/reader';
+import { Weather } from '../../componets/src/weather';
+
+const newWeather = () => new Weather({ totalDayTime: 480, temperature: () => 20, random: () => 0.5 });
 
 function pickedGrass(scene: THREE.Scene, scheduler: GameTimeScheduler, x: number) {
   const model = new THREE.Group();
@@ -40,7 +43,7 @@ it('reads book_silviculture: regrows picked plants in range, spends a use and ch
   expect(bookActionObject(book)).toMatchObject({ swap_build: 'swap_books', swap_prefix: 'book_silviculture',
     def: { fx_under_prefab: 'fx_roots_under_book', layer_sound: { frame: 17 } } });
 
-  expect(reader.Read(book, { root: scene, scheduler })).toEqual([true]);
+  expect(reader.Read(book, { root: scene, scheduler, weather: newWeather() })).toEqual([true]);
   // One target grows now; the rest wait up to 1 - 1 / (#remaining + 1) seconds.
   expect([near, alsoNear].filter(plant => plant.canBePicked)).toHaveLength(1);
   scheduler.advance(.5);
@@ -57,8 +60,63 @@ it('fails with NOSILVICULTURE without spending a use or sanity when only ready p
   const book = new ItemEntity({ itemId: 'book_silviculture', count: 1, remainingUses: 2 });
   book.configure(BOOK_ITEM_SPECS.book_silviculture);
   const { reader, doDelta } = readerFor(new THREE.Vector3());
-  expect(reader.Read(book, { root: scene, scheduler })).toEqual([false, 'NOSILVICULTURE']);
+  expect(reader.Read(book, { root: scene, scheduler, weather: newWeather() })).toEqual([false, 'NOSILVICULTURE']);
   expect(book.components.finiteuses.uses.peek()).toBe(2);
   expect(doDelta).not.toHaveBeenCalled();
   reader.OnRemoveFromEntity();
+});
+
+it('reads book_rain: toggles precipitation through moisture, spawns its fx and charges large sanity', () => {
+  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), weather = newWeather();
+  const spawnFx = vi.fn();
+  const book = new ItemEntity({ itemId: 'book_rain', count: 1 });
+  book.configure(BOOK_ITEM_SPECS.book_rain);
+  const { reader, doDelta } = readerFor(new THREE.Vector3());
+  const world: BookWorld = { root: scene, scheduler, weather, spawnFx };
+  expect(bookActionObject(book).def?.fx).toBe('fx_book_rain');
+
+  // ms_forceprecipitation true: moisture jumps to the ceiling and the next update starts the rain.
+  expect(reader.Read(book, world)).toEqual([true]);
+  expect(weather.moisture.peek()).toBe(weather.moistureceil.peek());
+  expect(weather.rainRate.peek()).toBe(0);
+  weather.OnUpdate(1);
+  expect(weather.preciptype.peek()).toBe('rain');
+  expect(weather.rainRate.peek()).toBeCloseTo(0.1, 5);
+  // Moisture dissipates by rate * dt * 10, so the rate climbs toward the peak.
+  for (let i = 0; i < 500; i++) weather.OnUpdate(1);
+  expect(weather.rainRate.peek()).toBeGreaterThan(0.3);
+  expect(weather.rainRate.peek()).toBeLessThanOrEqual(weather.peakprecipitationrate.peek());
+
+  // Reading while it rains forces the floor, which stops the rain.
+  expect(reader.Read(book, world)).toEqual([true]);
+  weather.OnUpdate(1);
+  expect(weather.preciptype.peek()).toBe('none');
+  expect(weather.rainRate.peek()).toBe(0);
+  expect(spawnFx).toHaveBeenCalledTimes(2);
+  expect(spawnFx).toHaveBeenCalledWith('fx_book_rain', expect.anything());
+  expect(book.components.finiteuses.uses.peek()).toBe(3);
+  expect(doDelta).toHaveBeenCalledTimes(2);
+  expect(doDelta).toHaveBeenCalledWith(-33);
+  reader.OnRemoveFromEntity();
+});
+
+it('lets rain dissipate to its floor on its own and restores precipitation from a save', () => {
+  const weather = newWeather();
+  weather.ForcePrecipitation();
+  weather.OnUpdate(1);
+  const saved = weather.OnSave();
+  const restored = newWeather();
+  restored.OnLoad(saved);
+  expect(restored.OnSave()).toEqual(saved);
+  expect(restored.rainRate.peek()).toBe(weather.rainRate.peek());
+  expect(() => restored.OnLoad({ ...saved, preciptype: 'hail' as never })).toThrow(RangeError);
+  expect(restored.OnSave()).toEqual(saved);
+  for (let i = 0; i < 2000 && weather.preciptype.peek() !== 'none'; i++) weather.OnUpdate(1);
+  expect(weather.preciptype.peek()).toBe('none');
+  expect(weather.moisture.peek()).toBe(weather.moisturefloor.peek());
+  // A finished rain re-randomizes the ceiling and does not restart without a new force.
+  const { moisture } = weather.OnSave();
+  weather.OnUpdate(1000);
+  expect(weather.OnSave().moisture).toBe(moisture);
+  weather.dispose(); restored.dispose();
 });

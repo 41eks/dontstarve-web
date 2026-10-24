@@ -305,4 +305,32 @@ describe('original beefalo assets', () => {
     expect(model.position.x).toBeGreaterThan(4);
     manager.dispose();
   });
+
+  it('absorbs a running player collision with the Lua character damping instead of flying far', async () => {
+    serveAssets();
+    const physics = new CANNON.World();
+    const world: BeefaloManagerWorld = {
+      clock: createSignal({ phase: 'day' }), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
+      findPath: (_start, target) => [target], constrainPosition() {}, spawnPoop() {}, spawnPrize() {},
+      secondsUntilNextDay: now => DAY - now % DAY };
+    const manager = new BeefaloManager(new THREE.Scene(), physics, '/dst/data/anim', world);
+    const model = await manager.spawn(new THREE.Vector3());
+    const controller = model.userData.beefaloController as BeefaloController;
+    controller.body.position.set(0, 1.5, 0);
+    const radius = 1.5;
+    const player = new CANNON.Body({ mass: 75, shape: new CANNON.Sphere(radius), fixedRotation: true });
+    player.position.set(-2 * radius, 1.5, 0);
+    physics.addBody(player);
+    let stoppedAt = 0;
+    for (let i = 0; i < 120; i++) {
+      player.velocity.x = i < 10 ? 16 : 0; // player_common MakeCharacterPhysics(75, .5) at run speed
+      manager.update(1 / 60);
+      physics.step(1 / 60);
+      if (i === 29) stoppedAt = controller.body.position.x;
+    }
+    expect(stoppedAt).toBeGreaterThan(0);
+    // After the player stops, the beefalo only slides a short way.
+    expect(controller.body.position.x - stoppedAt).toBeLessThan(1);
+    manager.dispose();
+  });
 });

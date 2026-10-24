@@ -2,6 +2,8 @@ import { getActionString } from './actions.ts';
 
 /** books.lua def fields read by SGwilson's book2 state. */
 export interface BookDef {
+  /** books.lua `fx`: the fx.lua prefab components/book.lua spawns at the reader after a successful read. */
+  readonly fx?: string;
   readonly fx_over_prefab?: string;
   readonly fx_under_prefab?: string;
   readonly layer_sound?: { readonly frame?: number; readonly sound: string };

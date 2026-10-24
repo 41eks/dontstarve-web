@@ -1,7 +1,8 @@
 import { batch, createMemo, readonlySignal, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type Signal, type ClockState, type SeasonState, type WorldMoonPhase } from '@dontstarve-web/signals';
 import { WorldTemperature } from '../packages/componets/src/worldtemperature';
+import { Weather } from '../packages/componets/src/weather';
 import type { SaveDocument } from './save/types';
-import { getDstCycle, getDstClock } from './tuning';
+import { getDstCycle, getDstClock, TUNING } from './tuning';
 
 export interface WorldState {
   readonly temperature: ReadonlySignal<number>;
@@ -11,6 +12,7 @@ export interface WorldState {
   readonly fullMoon: ReadonlySignal<boolean>;
   dispose(): void;
   readonly worldtemperature: WorldTemperature;
+  readonly weather: Weather;
 }
 
 /** Session temperature derived from the shared clock/season singleton signals. */
@@ -22,6 +24,8 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     season: world.systems.season?.name ?? 'spring',
     noisetime: world.elapsedSeconds,
   });
+  const weather = new Weather({ totalDayTime: TUNING.TOTAL_DAY_TIME, temperature: () => worldtemperature.temperature.peek() });
+  weather.OnLoad(world.systems.weather ?? {});
   const cycle = getDstCycle(world.elapsedSeconds);
   const { moonPhase, ...clock } = getDstClock(world.elapsedSeconds);
   batch(() => {
@@ -31,8 +35,8 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   worldtemperature.OnUpdate(0);
   const fullMoon = createMemo(() => clockstate.get().phase === 'night' && moonphasestate.get() === 'full');
   return { temperature: worldtemperature.temperature, clock: clockstate,
-    season: seasonstate, moonPhase: moonphasestate, fullMoon: readonlySignal(fullMoon), worldtemperature,
-    dispose() { fullMoon.dispose(); worldtemperature.dispose(); } };
+    season: seasonstate, moonPhase: moonphasestate, fullMoon: readonlySignal(fullMoon), worldtemperature, weather,
+    dispose() { fullMoon.dispose(); weather.dispose(); worldtemperature.dispose(); } };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */
@@ -53,6 +57,7 @@ export function createWorldClockUpdater(
       state.clock.set({ ...clock, timeinphase: cycle.phaseProgress });
       state.moonPhase.set(moonPhase);
       state.worldtemperature.OnUpdate(dt);
+      state.weather.OnUpdate(dt);
     });
   };
   const updateClock = (dt: number) => {

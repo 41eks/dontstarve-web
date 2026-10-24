@@ -1,3 +1,4 @@
+import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionContext';
 
@@ -7,6 +8,8 @@ import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionConte
  * and the ground, so prefabs receive them instead of creating their own.
  */
 export interface WorldContext extends ActionWorldContext {
+    /** The host's physics world, for prefabs that own static obstacle bodies. */
+    physics?: CANNON.World;
     itemEntities?: import('@dontstarve-web/inventory').ItemEntityRegistry;
     scheduler?: import('../../componets/src/gameTimeScheduler').GameTimeScheduler;
     /** GetLocalTemperature at a DST ground position, in scene units. */

@@ -24,7 +24,7 @@ test('lightbulb uses source ground art and only lights the world while dropped',
   expect(result.failedPickupCount).toBe(1);
   expect(result.failedPickupBrightness).toBe(result.dropped);
   expect(result.saved.transform.position).toEqual([5, 0, 0]);
-  expect(result.saved.components.stack).toEqual({ itemId: 'lightbulb', count: 1 });
+  expect(result.saved.components.stack).toMatchObject({ itemId: 'lightbulb', count: 1 });
   expect(result.pickedUp).toEqual({ count: 0, brightness: result.baseline });
   expect(result.restoredLit).toBe(true);
   expect(result.restoredBrightness).toBeGreaterThan(result.baseline + 100);

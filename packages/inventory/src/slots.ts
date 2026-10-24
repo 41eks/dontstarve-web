@@ -45,6 +45,7 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   shovel: 1,
   goldenshovel: 1,
   book_silviculture: 1,
+  book_rain: 1,
   log: 20,
   dug_grass: 10, // plantables.lua: TUNING.STACK_SIZE_LARGEITEM.
   dug_sapling: 10,

@@ -5,8 +5,11 @@ const sounds = {
   // grass.lua → dontstarve.fev sounddef 19 → wilson file_index 115–118.
   'dontstarve/wilson/pickup_reeds': { bank: 'wilson', streams: [116, 117, 118, 119], loop: false },
   // SGwilson.lua dolongaction → dontstarve.fev sounddefs 1758/1759, two layers.
-  'dontstarve/wilson/make_trap': { bank: 'wilson', streams: [71, 72, 73, 74, 75], loop: true,
+  // Short whooshes are triggered by build_loop cycles; raw sample looping repeats too quickly.
+  'dontstarve/wilson/make_trap': { bank: 'wilson', streams: [71, 72, 73, 74, 75], loop: false,
     layers: [{ bank: 'wilson', streams: [76, 77, 78, 79, 80] }] },
+  // flower_cave.lua onpickedfn → dontstarve.fev sounddef 1023 → wilson file_index 66.
+  'dontstarve/wilson/pickup_lightbulb': { bank: 'wilson', streams: [67], loop: false },
   // cookpot.lua → dontstarve.fev sounddefs 246 / 353 / 203 (file_index + 1).
   'dontstarve/common/cookingpot_rattle': { bank: 'common', streams: [49, 50, 51, 52, 53, 54, 55], loop: true },
   'dontstarve/common/cookingpot_close': { bank: 'common', streams: [340], loop: false },
@@ -75,11 +78,20 @@ const sounds = {
     layers: [{ bank: 'sfx', streams: [846, 857, 859, 860, 861, 862, 863, 864, 865, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 858] },
       { bank: 'sfx', streams: [1274] }] },
   // positronbeam.lua → FEV defs 2154–2156 (same file, adjacent intensity bands) + 2344.
+  // FEV layer 1 volume envelope, EPRP points 357–359; layer 0 has no envelope.
   'dontstarve/common/together/moonbase/beam': { bank: 'sfx', streams: [790], loop: true,
-    layers: [{ bank: 'sfx', streams: [794] }] },
+    layers: [{ bank: 'sfx', streams: [794] }],
+    intensity: [null, [[0, .63589698], [.526735, .702564], [.69965899, 1]]] },
   'dontstarve/common/together/moonbase/beam_level_up': { bank: 'sfx', streams: [792], loop: false },
   'dontstarve/common/together/moonbase/beam_stop': { bank: 'sfx', streams: [795], loop: false },
   'dontstarve/common/together/moonbase/beam_stop_fail': { bank: 'sfx', streams: [793], loop: false },
+  // weather.lua StartAmbientRainSound → dontstarve.fev AMB/rain: sounddefs 2019 / 2018 / 2017 are
+  // amb_rain_heavy / medium / light_LP (forest_stream file_index 73 / 75 / 74, checked with `-m -s`).
+  // `intensity` volume envelopes are EPRP points 6,14,15 (heavy), 6,16,17 (medium) and 3,18,9 (light).
+  'dontstarve/AMB/rain': { bank: 'forest_stream', streams: [74], loop: true,
+    layers: [{ bank: 'forest_stream', streams: [76] }, { bank: 'forest_stream', streams: [75] }],
+    intensity: [[[0, 0], [.404372, 0], [.696721, 1]], [[0, 0], [.342896, 1], [.500662, 1]],
+      [[0, 1], [.381457, 1], [.598485, 1]]] },
   // dynamicmusic.lua's Wilson branch: defs 2266 / 2267. Wigfrid's parameter-gated opera layer stays off.
   'dontstarve/music/music_epicfight_moonbase': { bank: 'music', streams: [25], loop: true },
   'dontstarve/music/music_epicfight_moonbase_b': { bank: 'music', streams: [26], loop: true },
@@ -139,6 +151,9 @@ const sounds = {
   // books.lua layer_sound / book_fx.lua OnFail → wickerbottom_rework.fev sounddefs 17+23 / 16.
   'wickerbottom_rework/book_spells/silviculture': { bank: 'wickerbottom_rework', streams: [13], loop: false,
     layers: [{ bank: 'wickerbottom_rework', streams: [20] }] },
+  // fx.lua fx_book_rain → wickerbottom_rework.fev sounddefs 9 / 20 (file_index 9 / 10 → book_rain_DST, book_rain_sparkle).
+  'wickerbottom_rework/book_spells/rain': { bank: 'wickerbottom_rework', streams: [10], loop: false,
+    layers: [{ bank: 'wickerbottom_rework', streams: [11] }] },
   'wickerbottom_rework/book_spells/fail': { bank: 'wickerbottom_rework', streams: [3], loop: false },
 } as const;
 export type SoundEventPath = keyof typeof sounds;
@@ -195,6 +210,23 @@ function getContext(): AudioContext | undefined {
   return context;
 }
 
+type Envelope = readonly (readonly [number, number])[];
+
+/** Per-layer FEV `intensity` volume envelopes; `null` layers play at constant volume. */
+function intensityEnvelopes(path: SoundEventPath): readonly (Envelope | null)[] | undefined {
+  const event = sounds[path];
+  return 'intensity' in event ? event.intensity : undefined;
+}
+
+/** FEV envelope points are linear between neighbours and hold the first/last value outside them. */
+function evaluateEnvelope(points: Envelope, x: number): number {
+  const next = points.findIndex((point) => point[0] >= x);
+  if (next === 0) return points[0][1];
+  if (next < 0) return points[points.length - 1][1];
+  const [a, b] = [points[next - 1], points[next]];
+  return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
+}
+
 function soundLayers(path: SoundEventPath): string[][] {
   const event = sounds[path];
   const layers = [event, ...('layers' in event ? event.layers : [])];
@@ -231,6 +263,7 @@ export function PlaySound(path: SoundEventPath, position?: SoundPosition, offset
   const filenames = soundLayers(path).map((files) => files.length === 1 ? files[0] : files[Math.floor(Math.random() * files.length)]);
   const sources = new Set<AudioBufferSourceNode>();
   const layerGains: GainNode[] = [];
+  const envelopes = intensityEnvelopes(path);
   let remaining = filenames.length;
   let stopped = false;
   const gain = audio?.createGain();
@@ -245,16 +278,9 @@ export function PlaySound(path: SoundEventPath, position?: SoundPosition, offset
     },
     setParameter(name, value) {
       if (!Number.isFinite(value)) throw new RangeError('Invalid sound parameter');
-      if (path !== 'dontstarve/common/together/moonbase/beam' || name !== 'intensity' || !layerGains[1]) return;
-      // FEV layer 1 volume envelope, EPRP points 357–359; parameter spans 0..1.
-      const points = [[0, .63589698], [.526735, .702564], [.69965899, 1]];
+      if (name !== 'intensity' || !envelopes) return;
       const x = Math.max(0, Math.min(1, value));
-      const next = points.findIndex(point => point[0] >= x);
-      if (next <= 0) layerGains[1].gain.value = next === 0 ? points[0][1] : 1;
-      else {
-        const [a, b] = [points[next - 1], points[next]];
-        layerGains[1].gain.value = a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
-      }
+      envelopes.forEach((points, index) => { if (points && layerGains[index]) layerGains[index].gain.value = evaluateEnvelope(points, x); });
     },
     stop() {
       if (stopped) return;
@@ -295,7 +321,7 @@ export function PlaySound(path: SoundEventPath, position?: SoundPosition, offset
     if (offsetSeconds > 0 && buffer.duration > 0) source.start(0, offsetSeconds % buffer.duration);
     else source.start();
   };
-  if (path === 'dontstarve/common/together/moonbase/beam') {
+  if (envelopes) {
     for (let i = 0; i < filenames.length; i++) { const layer = audio.createGain(); layer.connect(gain!); layerGains.push(layer); }
     handle.setParameter?.('intensity', 0);
   }

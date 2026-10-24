@@ -7,23 +7,29 @@ import type { MouseActionCandidate } from './playeractionpicker.ts';
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { TradeItem } from '../../componets/src/trader';
+import type { FuelItem } from '../../componets/src/fuel';
 
 export interface ItemUseSource {
   readonly entity: TradeItem;
   isValid(): boolean;
   /** Delete a consumed item, or detach the same inst for a trader with deleteitemonaccept=false. */
   take(deleteItem: boolean): boolean;
+  /** actions.lua ADDFUEL removes one live inst before passing it to fueled. */
+  extractFuel?(): FuelItem | null;
+  returnFuel?(item: FuelItem): void;
 }
 export interface ItemUseTarget extends ComponentActionEntity {
-  readonly model: THREE.Group;
+  readonly model: THREE.Object3D;
   getPosition(): THREE.Vector3;
 }
-type ItemUseAction = 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE';
+type ItemUseAction = 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'ADDFUEL' | 'ADDWETFUEL';
 export const ITEM_USE_REACH = 4;
 
 function available(action: ItemUseAction, target: ItemUseTarget, source: ItemUseSource): boolean {
   if (target.isRemoved || target.hasTag('burnt') || target.hasTag('INLIMBO') || !source.isValid()) return false;
   if (action === 'REPAIR') return !!target.components.repairable?.CanRepair(source.entity);
+  if (action === 'ADDFUEL' || action === 'ADDWETFUEL') return !!source.extractFuel && !!source.returnFuel
+    && !!target.components.fueled?.CanAcceptFuelItem({ components: source.entity.components ?? {} });
   // componentactions.lua shaver: the bearded tag alone offers SHAVE; the state reports why it fails.
   if (action === 'SHAVE') return target.hasTag('bearded') && !!target.components.beard && !!source.entity.components?.shaver;
   // componentactions.lua USEITEM.occupier: the occupiable only offers STORE to a matching occupier.
@@ -31,13 +37,19 @@ function available(action: ItemUseAction, target: ItemUseTarget, source: ItemUse
   return !!target.components.trader?.AbleToAccept(source.entity).ok;
 }
 
-/** USEITEM.repairer / tradable: discover actions from components, never from prefab IDs. */
+/** USEITEM.fuel / repairer / tradable: discover actions from components, never from prefab IDs. */
 export function getItemUseActions(scene: THREE.Scene, source: ItemUseSource | undefined): MouseActionCandidate[] {
   if (!source) return [];
   const actions: MouseActionCandidate[] = [];
   scene.traverse(model => {
     const target = model.userData.actionEntity as ItemUseTarget | undefined;
     if (!target) return;
+    const fueltype = source.entity.components?.fuel?.fueltype;
+    if (fueltype && source.entity.hasTag(`${fueltype}_fuel`) && target.hasTag(`${fueltype}_fueled`)) {
+      const action = source.entity.GetIsWet?.() ? 'ADDWETFUEL' : 'ADDFUEL';
+      actions.push({ action: { action, target, invobject: source.entity }, button: 'left',
+        model, source: 'inventory', available: available(action, target, source) });
+    }
     if (target.components.repairable && source.entity.components?.repairer) {
       actions.push({ action: { action: 'REPAIR', target, invobject: source.entity }, button: 'right',
         model, source: 'inventory', available: available('REPAIR', target, source) });
@@ -117,7 +129,9 @@ export class ItemUseActionController {
     this.animation.setFacing(Math.abs(depth) >= Math.abs(side) ? (depth > 0 ? 'up' : 'down') : 'side',
       Math.abs(side) > Math.abs(depth) && side < 0);
     const version = this.version;
-    const buffered = new BufferedAction(action, () => action === 'STORE'
+    const buffered = new BufferedAction(action, () => action === 'ADDFUEL' || action === 'ADDWETFUEL'
+      ? this.addFuel(target, source)
+      : action === 'STORE'
       // actions.lua STORE: Occupy(inventoryitem:RemoveFromOwner()) — the same inst leaves the cursor.
       ? source.take(false) && target.components.occupiable!.Occupy(source.entity)
       : action === 'REPAIR'
@@ -135,6 +149,13 @@ export class ItemUseActionController {
     const position = target.getPosition(), player = this.world.player.position;
     return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= ITEM_USE_REACH ** 2;
   }
+  private addFuel(target: ItemUseTarget, source: ItemUseSource): boolean {
+    const item = source.extractFuel?.();
+    if (!item) return false;
+    if (target.components.fueled?.TakeFuelItem(item)) return true;
+    source.returnFuel?.(item);
+    return false;
+  }
   cancel(): void {
     this.version++;
     if (this.pending || (this.buffered && this.animation.stategraph.isActionActive(this.buffered))) this.locomotor.stop();
@@ -146,7 +167,8 @@ export class ItemUseActionController {
     if (this.disposed || event.defaultPrevented || event.button > 2 || event.button === 1) return;
     this.picker.pointer.trackPointer(event);
     const actions = this.picker.getMouseActions(), action = event.button === 0 ? actions.left : actions.right;
-    if ((action?.action !== 'GIVE' && action?.action !== 'REPAIR' && action?.action !== 'SHAVE' && action?.action !== 'STORE') || !action.target) { this.cancel(); return; }
+    if ((action?.action !== 'GIVE' && action?.action !== 'REPAIR' && action?.action !== 'SHAVE' && action?.action !== 'STORE'
+      && action?.action !== 'ADDFUEL' && action?.action !== 'ADDWETFUEL') || !action.target) { this.cancel(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
     this.request(action.action, action.target as ItemUseTarget);
   };

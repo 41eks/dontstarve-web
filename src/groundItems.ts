@@ -25,6 +25,11 @@ import { performToolWork } from '../packages/stategraphs/src/componentactions';
 import { actionEntity } from '../packages/prefab/src/actionEntity';
 import type { DeconstructionTarget, DeconstructionLoot, PreparedDeconstruction } from '@dontstarve-web/prefab/greenstaff';
 
+export interface PreparedDrop {
+  /** Takes the item from the inventory and places it; false (and disposes the art) when the take fails. */
+  commit(position: THREE.Vector3, takeFromInventory: () => boolean | ItemEntity): boolean;
+  dispose(): void;
+}
 export type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 
 const DEFAULT_ATLAS = 'images/inventoryimages.xml';
@@ -104,35 +109,47 @@ export class GroundItemManager {
     this.prefabs.dispose();
   }
 
+  /** Loads the drop art ahead of time; commit() then takes the item and places it synchronously. */
+  async prepareDrop(definition: GroundItemDefinition): Promise<PreparedDrop> {
+    const visuals = await this.createDropVisuals(definition);
+    let done = false;
+    const dispose = () => { if (!done) { done = true; visuals.forEach((visual) => visual.dispose()); } };
+    return {
+      dispose,
+      commit: (position, takeFromInventory) => {
+        if (done) return false;
+        if (this.disposed) { dispose(); return false; }
+        let taken: boolean | ItemEntity;
+        try {
+          taken = takeFromInventory();
+        } catch (error) {
+          dispose();
+          throw error;
+        }
+        if (!taken) { dispose(); return false; }
+        done = true;
+        if (taken instanceof ItemEntity) {
+          const state = taken.snapshot();
+          for (const [index, visual] of visuals.entries()) {
+            const count = visuals.length === 1 ? state.count : 1;
+            const entity = index === 0 ? taken : this.entities.create({ ...state, entityId: undefined, count });
+            if (index === 0 && visuals.length > 1) entity.apply({ ...state, count });
+            this.addVisual(entity.id, { ...definition, ...entity.snapshot(), entity }, position, visual, true);
+          }
+        } else {
+          for (const visual of visuals) this.addVisual(newEntityId(), this.singleDropDefinition(definition), position, visual, true);
+        }
+        return true;
+      },
+    };
+  }
+
   async drop(
     definition: GroundItemDefinition,
     position: THREE.Vector3,
     takeFromInventory: () => boolean | ItemEntity,
   ): Promise<boolean> {
-    const visuals = await this.createDropVisuals(definition);
-    let taken: boolean | ItemEntity;
-    try {
-      taken = takeFromInventory();
-    } catch (error) {
-      visuals.forEach((visual) => visual.dispose());
-      throw error;
-    }
-    if (!taken) {
-      visuals.forEach((visual) => visual.dispose());
-      return false;
-    }
-    if (taken instanceof ItemEntity) {
-      const state = taken.snapshot();
-      for (const [index, visual] of visuals.entries()) {
-        const count = visuals.length === 1 ? state.count : 1;
-        const entity = index === 0 ? taken : this.entities.create({ ...state, entityId: undefined, count });
-        if (index === 0 && visuals.length > 1) entity.apply({ ...state, count });
-        this.addVisual(entity.id, { ...definition, ...entity.snapshot(), entity }, position, visual, true);
-      }
-    } else {
-      for (const visual of visuals) this.addVisual(newEntityId(), this.singleDropDefinition(definition), position, visual, true);
-    }
-    return true;
+    return (await this.prepareDrop(definition)).commit(position, takeFromInventory);
   }
 
   /** DropLoot spawns each recipe ingredient separately, then FlingItem launches it. */

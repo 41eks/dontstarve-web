@@ -8,6 +8,7 @@ import { Equippable } from '../../componets/src/equippable';
 import { Perishable } from '../../componets/src/perishable';
 import { EventEmitter } from '@dontstarve-web/signals';
 import { Vector3 } from 'three';
+import type { Fuel, FuelItem } from '../../componets/src/fuel';
 
 let sequence = 0;
 export function newItemEntityId(): string {
@@ -53,9 +54,46 @@ export class FueledComponent {
     const maximum = this.maximum.get();
     return maximum === undefined ? undefined : Math.max(0, Math.min(1, (this.state.get() ?? maximum) / maximum));
   });
-  constructor(remaining?: number) {
+  private type = 'BURNABLE';
+  private acceptingFuel = false;
+  private ontakefuel?: (inst: ItemEntity, fuelvalue: number) => void;
+  private readonly inst: ItemEntity;
+  constructor(inst: ItemEntity, remaining?: number) {
+    this.inst = inst;
     this.state = createSignal(remaining);
     this.fuel = readonlySignal(this.state);
+  }
+  get fueltype(): string { return this.type; }
+  set fueltype(value: string) {
+    this.inst.removeTag(`${this.type}_fueled`);
+    this.type = value;
+    if (this.acceptingFuel) this.inst.addTag(`${value}_fueled`);
+  }
+  get accepting(): boolean { return this.acceptingFuel; }
+  set accepting(value: boolean) {
+    this.acceptingFuel = value;
+    if (value) this.inst.addTag(`${this.type}_fueled`);
+    else this.inst.removeTag(`${this.type}_fueled`);
+  }
+  SetTakeFuelFn(fn: (inst: ItemEntity, fuelvalue: number) => void): void { this.ontakefuel = fn; }
+  CanAcceptFuelItem(item: Pick<FuelItem, 'components'>): boolean {
+    return !this.inst.isRemoved && this.acceptingFuel && item.components.fuel?.fueltype === this.type;
+  }
+  /** fueled.lua TakeFuelItem: settle consumption, clamp the delta, notify fuel, remove it, then notify the target. */
+  TakeFuelItem(item: FuelItem): boolean {
+    if (item.isRemoved || !this.CanAcceptFuelItem(item)) return false;
+    this.inst.flush();
+    if (this.inst.isRemoved || item.isRemoved || !this.CanAcceptFuelItem(item)) return false;
+    const maximum = this.maximum.peek();
+    if (maximum === undefined) return false;
+    const fuel = item.components.fuel!;
+    const fuelvalue = fuel.fuelvalue * (item.GetIsWet() ? .75 : 1);
+    this.inst.setRemainingFuel(Math.max(0, Math.min(maximum, (this.remaining ?? maximum) + fuelvalue)));
+    fuel.Taken(this.inst);
+    item.remove();
+    this.ontakefuel?.(this.inst, fuelvalue);
+    this.inst.PushEvent('takefuel', { fuelvalue });
+    return true;
   }
   get remaining(): number | undefined { return this.state.peek(); }
   set remaining(value: number | undefined) { this.state.set(value); }
@@ -63,7 +101,11 @@ export class FueledComponent {
     if (!Number.isFinite(maximum) || maximum <= 0) throw new RangeError('Invalid fuel maximum');
     this.maximum.set(maximum);
   }
-  dispose(): void { this.percent.dispose(); }
+  dispose(): void {
+    this.inst.removeTag(`${this.type}_fueled`);
+    this.ontakefuel = undefined;
+    this.percent.dispose();
+  }
 }
 
 /** finiteuses.lua: Use changes the component and invokes inst removal on depletion. */
@@ -139,6 +181,7 @@ export class ItemEntity {
     book?: import('../../componets/src/book').BookComponent;
     weapon?: import('../../componets/src/weapon').Weapon;
     repairer?: import('../../componets/src/repairer').Repairer;
+    fuel?: Fuel;
   };
   readonly signals: InventoryItemSignals;
   /** Display-only itemtile freshness for items without a perishable timer. */
@@ -166,7 +209,7 @@ export class ItemEntity {
     this.prefab = state.itemId;
     this.components = {
       stackable: new StackableComponent(state.count),
-      fueled: new FueledComponent(state.remainingFuel),
+      fueled: new FueledComponent(this, state.remainingFuel),
       finiteuses: new FiniteUsesComponent(this, state.remainingUses),
       inventoryitem: new InventoryItem<ItemEntity, ItemOwner>(this),
       perishable: new Perishable(this),

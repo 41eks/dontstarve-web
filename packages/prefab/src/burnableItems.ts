@@ -18,6 +18,7 @@ export const BURNABLE_ITEM_DEFINITIONS: Readonly<Record<string, { burnTime: numb
   dug_sapling: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
   dug_sapling_moon: { burnTime: 30, tags: ['deployedplant'], fxLevel: 3 },
   book_silviculture: { burnTime: 30 * .5, tags: [] }, // books.lua tags belong to configureBookEntity.
+  book_rain: { burnTime: 30 * .5, tags: [] },
 };
 const ASH_MAX_STACK = 40; // ash.lua: TUNING.STACK_SIZE_SMALLITEM
 

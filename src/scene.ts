@@ -2,7 +2,7 @@ import type { ItemEntityRegistry, InventoryStore } from '@dontstarve-web/invento
 import * as CANNON from 'cannon-es';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
-import { setSpriteEntityRenderOrder } from '@dontstarve-web/animation';
+import { compareRenderEntries, setSpriteEntityRenderOrder } from '@dontstarve-web/animation';
 import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
@@ -90,10 +90,7 @@ function updateCharacterRenderOrder(registry: EntityRegistry) {
 
   // Visible camera-space z values are negative. Sorting ascending therefore
   // draws the farther entity first, then the nearer entity over it.
-  renderEntries.sort((a, b) =>
-    a.cameraDepth - b.cameraDepth || (a.sortGroup ?? a.object.id) - (b.sortGroup ?? b.object.id)
-      || (a.sortLayer ?? 1) - (b.sortLayer ?? 1) || a.object.id - b.object.id
-  );
+  renderEntries.sort(compareRenderEntries);
   renderEntries.forEach((entry, index) => {
     setSpriteEntityRenderOrder(entry.object, index);
   });
@@ -163,6 +160,7 @@ export async function startScene(
     return {
       entities: registry.exportRecords(), elapsedSeconds: clockUpdater.elapsedSeconds, tiles: turfMap.exportTiles(),
       worldtemperature: worldState.worldtemperature.OnSave(),
+      weather: worldState.weather.OnSave(),
       // Physics may place the foot a fraction below the ground while settling.
       playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },
     };
@@ -190,7 +188,7 @@ export async function startScene(
     worldState.dispose();
     dstLighting.dispose();
   };
-  return { ...entities, byEntityId: registry.byEntityId, scheduler, getSaveState, disposalEvents, dispose };
+  return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather, getSaveState, disposalEvents, dispose };
 }
 
 export function scene_add(model:THREE.Object3D){

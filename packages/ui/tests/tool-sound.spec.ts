@@ -23,3 +23,16 @@ test('hammer and both pickaxes play source sounds once at the hit frame and resp
   await expect.poll(() => audioState()).toBe('closed');
   expect(errors).toEqual([]);
 });
+
+test('gathering whooshes follow hand animation cycles and stop on cancellation', async ({ page }) => {
+  await page.goto('/tests/fixture.html');
+  const result = await page.evaluate(async url => (await import(url)).checkGatheringSounds(),
+    `/@fs${fileURLToPath(new URL('./tool-sound-fixture.ts', import.meta.url))}`);
+  expect(result.normal.committed).toBe(1);
+  expect(result.normal.phases.length).toBeGreaterThan(0);
+  expect(result.normal.phases.length).toBeLessThanOrEqual(3);
+  expect(result.normal.phases.every(phase => phase === 'build_loop')).toBe(true);
+  expect(result.normal.layers).toBe(result.normal.phases.length * 2);
+  expect(result.normal.loops.every(loop => !loop)).toBe(true);
+  expect(result).toMatchObject({ cancelStops: true, noSoundsAfterCancel: true, cancelPreservesProduct: true });
+});

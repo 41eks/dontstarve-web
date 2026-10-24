@@ -1,3 +1,4 @@
+import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,7 +33,9 @@ describe('Pig King woodfloor set piece', () => {
     expect(piece.pigKing.standee.position.x).toBe(feet.x);
     expect(piece.pigKing.standee.position.z).toBe(feet.z);
     expect(piece.pigKing.body.position.x).toBe(feet.x);
-    expect(piece.pigKing.body.position.y).toBe(feet.y + 12);
+    // pigking.lua MakeObstaclePhysics(inst, 2, .5): a static capsule on the feet origin.
+    expect(piece.pigKing.body.position.y).toBe(feet.y + 0.75);
+    expect(piece.pigKing.body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === 6)).toBe(true);
     expect(piece.pigKing.body.position.z).toBe(feet.z);
     expect(piece.turf.position.toArray()).toEqual([center.x, feet.y, center.z]);
     expect(piece.tiles).toHaveLength(9);

@@ -36,6 +36,9 @@ def main():
     items = {}
     assets = set()
 
+    # turfs.lua constructs every item from tiledefs.lua's sixth AddTile argument.
+    read_tiles = runpy.run_path(str(Path(__file__).with_name('turf-source.py')))['read_tiles']
+
     def read(name):
         return (scripts / 'prefabs' / (name + '.lua')).read_text()
 
@@ -58,6 +61,17 @@ def main():
         }
         items[item] = definition
         assets.update('anim/' + path for path in [animation_archive, *builds])
+
+    for tile in read_tiles(scripts):
+        turf = tile['turf']
+        if not turf:
+            continue
+        bank_build = turf.get('bank_build', 'turf')
+        add('turf_' + turf['name'], turf.get('bank_override', bank_build),
+            turf.get('build_override', bank_build), turf.get('anim', turf['name']), 'turfs',
+            animation_archive=turf.get('animzip_override', bank_build) + '.zip',
+            icon_name='turf_' + turf.get('invicon_override', turf['name']))
+        items['turf_' + turf['name']]['groundTile'] = tile['name']
 
     # These constructors have literal bank/build/clip values before SetPristine.
     for item in SIMPLE:
@@ -191,8 +205,10 @@ def main():
     # book/book2 states use player_actions_uniqueitem, swap_books symbols, book_fx
     # (book_fx_wicker) and the def.fx_under roots from fx_books.
     add('book_silviculture', 'books', 'books', 'book_silviculture', 'books')
+    # fx.lua fx_book_rain is spawned by components/book.lua at the reader on a successful read.
+    add('book_rain', 'books', 'books', 'book_rain', 'books')
     assets.update(['anim/player_actions_uniqueitem.zip', 'anim/swap_books.zip',
-                   'anim/book_fx_wicker.zip', 'anim/fx_books.zip'])
+                   'anim/book_fx_wicker.zip', 'anim/fx_books.zip', 'anim/fx_book_rain.zip'])
     add('hammer', 'hammer', 'swap_hammer', 'idle', 'hammer', animation_archive='hammer.zip')
     # nightsword.lua: ground nightmaresword bank/build; equip uses swap_nightmaresword.
     add('nightsword', 'nightmaresword', 'nightmaresword', 'idle', 'nightsword')

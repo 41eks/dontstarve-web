@@ -3,8 +3,20 @@ import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { Fuel } from '../../componets/src/fuel';
 
 export const LIGHTBULB_ID = 'lightbulb';
+/** tuning.lua MED_LARGE_FUEL = seg_time * 3. */
+export const LIGHTBULB_FUEL = 90;
+
+export function configureLightbulbEntity(entity: ItemEntity): void {
+  for (const tag of ['lightbattery', 'vasedecoration', 'light']) entity.addTag(tag);
+  const fuel = entity.component('fuel', () => new Fuel(entity));
+  fuel.fueltype = 'CAVE';
+  fuel.fuelvalue = LIGHTBULB_FUEL;
+  entity.components.fuel = fuel;
+}
 
 /** lightbulb.lua's Light values, with source radius converted to scene units. */
 export const LIGHTBULB_LIGHT: PrefabLocalLight = {
@@ -34,6 +46,7 @@ export async function createLightbulbGroundSprite(assets: GroundItemAssets, opti
 export function createLightbulbGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   return {
     itemIds: [LIGHTBULB_ID],
+    configureEntity: configureLightbulbEntity,
     create: (item) => createLightbulbGroundSprite(context.assets, { skinId: item.skinId }),
   };
 }

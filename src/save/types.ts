@@ -10,6 +10,7 @@ import type { MoonTreeSaveState } from '@dontstarve-web/prefab/moontree';
 import type { WallSaveState } from '@dontstarve-web/prefab/wallSkins';
 import type { FarmPlowSaveState, FarmSoilSaveState, FarmDebrisSaveState } from '@dontstarve-web/prefab/farm_plow';
 import type { WorldTemperatureSaveData } from '../../packages/componets/src/worldtemperature';
+import type { WeatherSaveData } from '../../packages/componets/src/weather';
 
 export interface SavedTransform {
   position: [number, number, number];
@@ -81,6 +82,7 @@ export interface SaveDocument {
       clock?: { day: number; phase: 'day' | 'dusk' | 'night' | 'full_moon'; phaseProgress: number };
       season?: { name: 'autumn' | 'winter' | 'spring' | 'summer'; daysRemaining: number };
       worldtemperature?: WorldTemperatureSaveData;
+      weather?: WeatherSaveData;
       random?: { algorithm: 'xoshiro128ss'; state: number[] };
     };
     map: {

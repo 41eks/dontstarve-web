@@ -130,6 +130,16 @@ export function getLanternController(entity: ItemEntity): LanternController {
   return entity.component('lantern', () => new LanternController(entity));
 }
 
+/** mininglantern.lua: CAVE fuel; ontakefuel turns on only an equipped lantern. */
+export function configureLanternEntity(entity: ItemEntity): void {
+  const controller = getLanternController(entity);
+  const fueled = entity.components.fueled;
+  fueled.setMaxFuel(LANTERN_FUEL);
+  fueled.fueltype = 'CAVE';
+  fueled.accepting = true;
+  fueled.SetTakeFuelFn(() => { if (controller.isEquipped) controller.TurnOn(); });
+}
+
 /** fuelupdate's light: radius 3 → 5 and intensity 0.4 → 0.6 with fuel percent. */
 export class LanternLightController {
   private fuelPercent = 1;
@@ -261,6 +271,7 @@ export function resolveLanternPlayerSprite(equipment: LanternEquipment, element:
 export function createLanternGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   return {
     itemIds: [LANTERN_ID],
+    configureEntity: configureLanternEntity,
     create: (item) => createLanternGroundSprite(context.assets, item.skinId),
   };
 }

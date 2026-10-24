@@ -72,3 +72,22 @@ python3 packages/prefab/scripts/import-ground-items.py --check
 ## razor
 
 `razor.lua` 使用 bank `razor` 与 build `swap_razor`，动画包为 `anim/razor.zip`（clip `idle`），物品栏图标为 `inventoryimages.xml` 的 `razor.tex`。`import-ground-items.py` 将其作为 `animation_archive='razor.zip'` 的普通地面物品导入，并自动收录三款原版皮肤 `razor_barber`、`razor_scissors`、`razor_straight` 的 `dynamic/*.zip` 与对应图标；`--check` 校验源路径与字节。razor 不可装备，没有手持美术，只通过鼠标举着使用。
+
+## Turf 地皮资源
+
+`turfs.lua` 遍历 `worldtiledefs.turf`，定义来自 `tiledefs.lua` 的第六个 `TileManager.AddTile` 参数；`tilemanager.lua` 补齐默认 `bank_build="turf"`、`anim=name`。`import-ground-items.py` 与 `import-ground-tiles.py` 共用 `scripts/turf-source.py` 读取这些参数，覆盖全部 40 种物品。物品资源、库存图标与铺地纹理分别解析，不能互相替代：
+
+| 用途 | 解析方式与例子 |
+| --- | --- |
+| 地面物品 | `bank_build`、`anim` 与可选 overrides。`turf_underrock` 的 clip 是 `rock`，`turf_desertdirt` 是 `dirt`；`turf_carpetfloor2` 使用 `turf_drama.zip:carpet2`，`turf_beard_rug` 使用 `turf_beard.zip:turf_beard`。共用及独立动画包保留源路径 |
+| 库存图标 | 查询 `databundles/images.zip` 的实际 atlas，分别落在 `images/inventoryimages.xml` 和 `images/inventoryimages3.xml`，制作格也使用同一 metadata |
+| 铺地纹理 | 第四个 AddTile 参数的 `name`、`atlas`、`noise_texture`，记录在 `groundTiles.json`；包含全部 turf 及现有 DIRT/FARMING_SOIL，共 42 个地形定义。ROAD 的噪声直接使用 `images/square.tex`，不拼接 `levels/textures/`；`turf_vault` 对应 `VAULT_CLEAN` |
+
+地面物品走共享 ground prefab 工厂，源物品 ID 均支持 `c_spawn` 和 `c_give`，堆叠上限为 `STACK_SIZE_MEDITEM`（20）。原版没有 turf 物品皮肤或装备外观；铺地部署玩法暂未接入。铺地资源可通过 `loadGroundTileAssets` / `createTurfGround` 按地形键加载；现有世界的地形布局不变。
+
+```bash
+python3 packages/prefab/scripts/import-ground-items.py --check
+python3 packages/prefab/scripts/import-ground-tiles.py --check
+```
+
+前者核对全部物品的 bank/build/clip metadata、图标 atlas 和动画源字节；后者核对 terrain metadata、每张 atlas 的 48 个源变体以及纹理／XML 字节。新地形无旧 GROUND ID 时按 TileManager 的 LAND 范围顺序分配，保留源渲染顺序。

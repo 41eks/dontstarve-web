@@ -9,9 +9,7 @@ import { Sleeper } from '../../componets/src/sleeper';
 import { actionEntity } from './actionEntity';
 import { Locomotor, type LocomotorOptions } from './locomotor';
 import { newEntityId } from './saveRecord';
-import { TILE_SIZE } from './tile';
-
-const WORLD_SCALE = TILE_SIZE / 4;
+import { DampCharacterVelocity, MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 /** beefalo.lua, beefalobrain.lua and SGBeefalo.lua; distances use this world's scale. */
 export const BEEFALO_BEHAVIOR = {
   radius: 0.5 * WORLD_SCALE,
@@ -395,6 +393,7 @@ export class BeefaloManager {
     this.world = {
       ...world, scheduler: this.scheduler, phase: initialClock.phase, season: world.season.peek().season,
     };
+    physics.addEventListener('postStep', this.dampBeefalos);
     this.stopClock = world.clock.subscribe(({ phase }) => { this.world.phase = phase; });
     this.stopSeason = world.season.subscribe(({ season }) => { this.world.season = season; });
     // MakeCharacterPhysics sets friction to zero. Cannon otherwise cancels the
@@ -407,6 +406,10 @@ export class BeefaloManager {
       return contact;
     });
   }
+
+  private readonly dampBeefalos = (): void => {
+    for (const beefalo of this.beefalos) DampCharacterVelocity(beefalo.body, this.physics.dt);
+  };
 
   async spawnNear(position: THREE.Vector3): Promise<THREE.Group> {
     for (let ring = 1; ring <= 4; ring++) {
@@ -443,10 +446,9 @@ export class BeefaloManager {
     model.position.copy(position).setY(0);
     this.world.constrainPosition(model.position);
     model.userData.entityId = saved?.id ?? newEntityId();
-    const body = new CANNON.Body({ mass: 100, fixedRotation: true, material: this.material,
-      shape: new CANNON.Sphere(BEEFALO_BEHAVIOR.radius),
+    const body = new CANNON.Body({ ...MakeCharacterPhysics(100, 0.5), material: this.material,
       position: new CANNON.Vec3(model.position.x, BEEFALO_BEHAVIOR.radius, model.position.z),
-      linearDamping: 0.2 });
+      linearDamping: 0 });
     const controller = new BeefaloController(model, body, model.userData.animationController, this.world, saved?.components.beefalo);
     this.beefalos.add(controller);
     this.physics.addBody(body);
@@ -475,6 +477,7 @@ export class BeefaloManager {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.physics.removeEventListener('postStep', this.dampBeefalos);
     this.stopClock();
     this.stopSeason();
     if (this.ownsScheduler) this.scheduler.dispose();

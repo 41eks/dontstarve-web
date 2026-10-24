@@ -20,6 +20,7 @@ import type { GroundItemDefinition } from '@dontstarve-web/prefab/groundPrefab';
 import type { StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import { FOOD_EFFECTS, getFoodEffects, type FoodEffects } from '@dontstarve-web/prefab/food';
 import { bookActionObject, type BookReader, type BookWorld } from '@dontstarve-web/prefab/books';
+import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { PreloadSounds } from '@dontstarve-web/prefab/sound';
 import { backTasks, registerFrontTask } from './animate';
 import type { turfMap } from './building';
@@ -100,7 +101,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'moonTreeForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'flowerPlanting' | 'grasses' | 'saplings' | 'scheduler'>;
+  'moonTreeForest' | 'buildingPlacement' | 'groundItems' | 'farmPlow' | 'rockManager' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'flowerPlanting' | 'grasses' | 'saplings' | 'scheduler' | 'weather'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, inventory, playerAnimation, locomotor, pickupDoer,
@@ -120,7 +121,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         .setOpen(model, isOpen, buildId);
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
-      const { moonTreeForest, buildingPlacement, groundItems, farmPlow, rockManager, wormholes, reskinEffects, flowerPlanting, grasses, saplings, scheduler } = scene;
+      const { moonTreeForest, buildingPlacement, groundItems, farmPlow, rockManager, wormholes, reskinEffects, worldFx, flowerPlanting, grasses, saplings, scheduler, weather } = scene;
       const handEquipment = inventory.handEquipment;
       const handSlotAddress = equipmentSlotAddress('hand');
       const bodySlotAddress = equipmentSlotAddress('body');
@@ -153,13 +154,25 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         if (source) inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement,
           player.position.clone().set(source.x, source.y, source.z))(received);
       });
+      let itemUse: ItemUseActionController | undefined;
       if (playerAnimation) {
-        const itemUse = new ItemUseActionController(view, playerAnimation, locomotor, () => {
+        itemUse = new ItemUseActionController(view, playerAnimation, locomotor, () => {
           const address = cursorSlotAddress(), entity = inventory.getEntity(address);
           if (!entity) return undefined;
           const skin = entity.skinId;
           const isValid = () => !entity.isRemoved && inventory.getEntity(address) === entity && entity.skinId === skin;
-          return { entity, isValid, take: (deleteItem: boolean) => {
+          return { entity, isValid,
+            extractFuel: () => {
+              if (!isValid()) return null;
+              const item = inventory.extract(address, 1, entity);
+              if (item) inventory.configureItem(item);
+              return item;
+            },
+            returnFuel: (item: import('../packages/componets/src/fuel').FuelItem) => {
+              const returned = item as ItemEntity;
+              if (!inventory.receiveAt(address, returned)) inventory.GiveItem(returned);
+            },
+            take: (deleteItem: boolean) => {
             if (!isValid()) return false;
             const item = inventory.extract(address, 1, entity);
             if (!item) return false;
@@ -228,14 +241,22 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       };
       const reader = new Reader<PlayerReaderInst, BookWorld>(readerInst);
       readerInst.components.reader = reader;
-      const bookWorld: BookWorld = { root: view.scene, scheduler };
+      const bookWorld: BookWorld = {
+        root: view.scene, scheduler, weather,
+        spawnFx(prefab, { getPosition }) {
+          const { x, z } = getPosition();
+          if (isWorldFx(prefab)) worldFx.spawn(prefab, new Vector3(x, 0, z));
+        },
+      };
       const readActions = playerAnimation
         ? new ReadActionController(view, playerAnimation, locomotor, isActionInterrupting) : undefined;
       if (readActions) frameControllers.push(readActions);
-      const readInventoryBook = (slot: SlotAddress, entity: ItemEntity) => {
+      const readInventoryBook = async (slot: SlotAddress, entity: ItemEntity) => {
         const isValid = () => !entity.isRemoved && inventory.getEntity(slot) === entity;
+        const book = bookActionObject(entity);
+        if (book.def?.fx && isWorldFx(book.def.fx)) await worldFx.prepare(book.def.fx);
         return readActions!.read({
-          book: bookActionObject(entity), isValid,
+          book, isValid,
           read: () => isValid() && (reader.Read(entity, bookWorld)?.[0] ?? false),
         });
       };
@@ -313,7 +334,6 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         if (action === 'drop') {
           actionEvents.emit('action:interrupt', { reason: 'drop' });
           const spec = inventory.getStackSpec(stack);
-          const position = player.position.clone();
           const entity = inventory.getEntity(slot);
           if (!entity) return;
           const definition: GroundItemDefinition = {
@@ -327,14 +347,18 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
             ...(stack.remainingFuel === undefined ? {} : { remainingFuel: stack.remainingFuel }),
             ...(stack.phonographRecord === undefined ? {} : { phonographRecord: stack.phonographRecord }),
           };
-          void groundItems.drop(definition, position, () => {
+          const take = () => {
             if (isHandSlot(slot)) handEquipmentBinding.flush();
             const current = inventory.get(slot);
             if (current?.itemId !== stack.itemId || current.skinId !== stack.skinId
               || current.remainingUses !== stack.remainingUses || current.phonographRecord !== stack.phonographRecord) return false;
             return inventory.extract(slot, 1, entity) ?? false;
-          }).then((dropped) => {
-            if (dropped) playerAnimation?.playPickup();
+          };
+          // Load the art first, then let the animation's perform frame take the item and place it.
+          void groundItems.prepareDrop(definition).then((prepared) => {
+            const started = playerAnimation?.playDrop(
+              () => prepared.commit(player.position.clone(), take), () => prepared.dispose());
+            if (!started) prepared.dispose();
           }).catch((error: unknown) => {
             console.error(`Unable to drop ${stack.itemId}`, error);
           });
@@ -376,6 +400,18 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         stopContextMenu: () => { stopContextMenu(); reader.OnRemoveFromEntity(); },
       });
       return {
+        useFuel(slot: SlotAddress): boolean {
+          const entity = inventory.getEntity(slot), fuel = inventory.getEntity(cursorSlotAddress());
+          if (!itemUse || !entity || !fuel?.components.fuel || !entity.components.fueled.CanAcceptFuelItem(fuel)) return false;
+          return itemUse.request(fuel.GetIsWet() ? 'ADDWETFUEL' : 'ADDFUEL', {
+            prefab: entity.prefab, model: player, components: entity.components,
+            hasTag: tag => entity.hasTag(tag),
+            addTag: tag => entity.addTag(tag),
+            removeTag: tag => entity.removeTag(tag),
+            getPosition: () => player.position,
+            get isRemoved() { return entity.isRemoved || inventory.getEntity(slot) !== entity; },
+          });
+        },
         beginFood(slot: SlotAddress, itemId: string): boolean {
           if (!foodActions) return false;
           foodActions.begin(inventoryFoodSource(slot, itemId));

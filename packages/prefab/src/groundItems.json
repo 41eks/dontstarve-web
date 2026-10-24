@@ -1,5 +1,645 @@
 {
   "items": {
+    "turf_road": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "卵石路",
+      "icon": "turf_road.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "road",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "ROAD"
+    },
+    "turf_cotl_brick": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "砖地板",
+      "icon": "turf_cotl_brick.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_cotl.zip",
+      "buildArchives": [
+        "turf_cotl.zip"
+      ],
+      "bank": "turf_cotl",
+      "animation": "cotl_brick",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "COTL_BRICK"
+    },
+    "turf_pebblebeach": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "岩石海滩地皮",
+      "icon": "turf_pebblebeach.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_moon.zip",
+      "buildArchives": [
+        "turf_moon.zip"
+      ],
+      "bank": "turf_moon",
+      "animation": "pebblebeach",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "PEBBLEBEACH"
+    },
+    "turf_monkey_ground": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "月亮码头海滩地皮",
+      "icon": "turf_monkey_ground.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_monkey_ground.zip",
+      "buildArchives": [
+        "turf_monkey_ground.zip"
+      ],
+      "bank": "turf_monkey_ground",
+      "animation": "monkey_ground",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "MONKEY_GROUND"
+    },
+    "turf_shellbeach": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "贝壳海滩地皮",
+      "icon": "turf_shellbeach.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_shellbeach.zip",
+      "buildArchives": [
+        "turf_shellbeach.zip"
+      ],
+      "bank": "turf_shellbeach",
+      "animation": "shellbeach",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "SHELLBEACH"
+    },
+    "turf_marsh": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "沼泽地皮",
+      "icon": "turf_marsh.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "marsh",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "MARSH"
+    },
+    "turf_rocky": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "岩石地皮",
+      "icon": "turf_rocky.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "rocky",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "ROCKY"
+    },
+    "turf_savanna": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "热带草原地皮",
+      "icon": "turf_savanna.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "savanna",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "SAVANNA"
+    },
+    "turf_forest": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "森林地皮",
+      "icon": "turf_forest.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "forest",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "FOREST"
+    },
+    "turf_grass": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "长草地皮",
+      "icon": "turf_grass.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "grass",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "GRASS"
+    },
+    "turf_deciduous": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "落叶林地皮",
+      "icon": "turf_deciduous.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "deciduous",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "DECIDUOUS"
+    },
+    "turf_desertdirt": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "沙漠地皮",
+      "icon": "turf_desertdirt.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "dirt",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "DESERT_DIRT"
+    },
+    "turf_cave": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "鸟粪地皮",
+      "icon": "turf_cave.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "cave",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "CAVE"
+    },
+    "turf_fungus": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "真菌地皮",
+      "icon": "turf_fungus.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "fungus",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "FUNGUS"
+    },
+    "turf_fungus_red": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "真菌地皮",
+      "icon": "turf_fungus_red.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "fungus_red",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "FUNGUSRED"
+    },
+    "turf_fungus_green": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "真菌地皮",
+      "icon": "turf_fungus_green.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "fungus_green",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "FUNGUSGREEN"
+    },
+    "turf_fungus_moon": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "变异真菌地皮",
+      "icon": "turf_fungus_moon.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_fungus_moon.zip",
+      "buildArchives": [
+        "turf_fungus_moon.zip"
+      ],
+      "bank": "turf_fungus_moon",
+      "animation": "fungus_moon",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "FUNGUSMOON"
+    },
+    "turf_sinkhole": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "黏滑地皮",
+      "icon": "turf_sinkhole.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "sinkhole",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "SINKHOLE"
+    },
+    "turf_underrock": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "洞穴岩石地皮",
+      "icon": "turf_underrock.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "rock",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "UNDERROCK"
+    },
+    "turf_vent": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "洞穴喷气孔地皮",
+      "icon": "turf_vent.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "fumarole",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "VENT"
+    },
+    "turf_mud": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "泥泞地皮",
+      "icon": "turf_mud.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "mud",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "MUD"
+    },
+    "turf_archive": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "远古石刻",
+      "icon": "turf_archive.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_archives.zip",
+      "buildArchives": [
+        "turf_archives.zip"
+      ],
+      "bank": "turf_archives",
+      "animation": "archive",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "ARCHIVE"
+    },
+    "turf_vault": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "远古圣殿石刻",
+      "icon": "turf_vault.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "vault",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "VAULT_CLEAN"
+    },
+    "turf_ruinsbrick_glow": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "仿远古地面",
+      "icon": "turf_ruinsbrick_glow.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "ruinsbrick_glow",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "BRICK_GLOW"
+    },
+    "turf_ruinsbrick": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "远古地面",
+      "icon": "turf_ruinsbrick.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "ruinsbrick",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "BRICK"
+    },
+    "turf_ruinstiles_glow": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "仿远古瓷砖",
+      "icon": "turf_ruinstiles_glow.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "ruinstiles_glow",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "TILES_GLOW"
+    },
+    "turf_ruinstiles": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "远古瓷砖",
+      "icon": "turf_ruinstiles.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "ruinstiles",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "TILES"
+    },
+    "turf_ruinstrim_glow": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "仿远古砖雕",
+      "icon": "turf_ruinstrim_glow.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "ruinstrim_glow",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "TRIM_GLOW"
+    },
+    "turf_ruinstrim": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "远古砖雕",
+      "icon": "turf_ruinstrim.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "ruinstrim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "TRIM"
+    },
+    "turf_meteor": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "月球环形山地皮",
+      "icon": "turf_meteor.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_moon.zip",
+      "buildArchives": [
+        "turf_moon.zip"
+      ],
+      "bank": "turf_moon",
+      "animation": "meteor",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "METEOR"
+    },
+    "turf_dragonfly": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "龙鳞地板",
+      "icon": "turf_dragonfly.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "dragonfly",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "SCALE"
+    },
+    "turf_woodfloor": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "木地板",
+      "icon": "turf_woodfloor.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "woodfloor",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "WOODFLOOR"
+    },
+    "turf_cotl_gold": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "黄金地板",
+      "icon": "turf_cotl_gold.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_cotl.zip",
+      "buildArchives": [
+        "turf_cotl.zip"
+      ],
+      "bank": "turf_cotl",
+      "animation": "cotl_gold",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "COTL_GOLD"
+    },
+    "turf_checkerfloor": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "棋盘地板",
+      "icon": "turf_checkerfloor.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "checker",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "CHECKER"
+    },
+    "turf_mosaic_grey": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "灰色马赛克地板",
+      "icon": "turf_mosaic_grey.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "mosaic_grey",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "MOSAIC_GREY"
+    },
+    "turf_mosaic_red": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "红色马赛克地板",
+      "icon": "turf_mosaic_red.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "mosaic_red",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "MOSAIC_RED"
+    },
+    "turf_mosaic_blue": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "蓝色马赛克地板",
+      "icon": "turf_mosaic_blue.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "mosaic_blue",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "MOSAIC_BLUE"
+    },
+    "turf_carpetfloor2": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "茂盛地毯",
+      "icon": "turf_carpetfloor2.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_drama.zip",
+      "buildArchives": [
+        "turf_drama.zip"
+      ],
+      "bank": "turf_drama",
+      "animation": "carpet2",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "CARPET2"
+    },
+    "turf_carpetfloor": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "地毯地板",
+      "icon": "turf_carpetfloor.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "turf.zip",
+      "buildArchives": [
+        "turf.zip"
+      ],
+      "bank": "turf",
+      "animation": "carpet",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "CARPET"
+    },
+    "turf_beard_rug": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
+      "name": "胡须地毯",
+      "icon": "turf_beard_rug.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "turf_beard.zip",
+      "buildArchives": [
+        "turf_beard.zip"
+      ],
+      "bank": "turf_beard",
+      "animation": "turf_beard",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "groundTile": "BEARD_RUG"
+    },
     "cutgrass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cutgrass.lua",
       "name": "采下的草",
@@ -1667,6 +2307,21 @@
       "skinArchives": {
         "book_silviculture_livinglog": "dynamic/book_silviculture_livinglog.zip"
       }
+    },
+    "book_rain": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/books.lua",
+      "name": "实用求雨仪式",
+      "icon": "book_rain.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "books.zip",
+      "buildArchives": [
+        "books.zip"
+      ],
+      "bank": "books",
+      "animation": "book_rain",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
     },
     "hammer": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hammer.lua",
