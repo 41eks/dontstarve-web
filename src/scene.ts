@@ -154,7 +154,7 @@ export async function startScene(
     throw error;
   }
   const builder = bindPlayerBuilder(player, {
-    findEntities: (position, radius, mustTags, cantTags) => FindEntities(scene, position, radius, mustTags, cantTags),
+    findEntities: (position, radius, mustTags, cantTags) => FindEntities(position, radius, mustTags, cantTags),
   });
   builder.OnUpdate();
   // player_common.lua AddComponent("slipperyfeet"); frozen ponds are its slipperyfeettarget entities.
@@ -172,7 +172,7 @@ export async function startScene(
       sg: stategraph,
     }, {
       scheduler,
-      findSlipperyEntities: (position, radius) => FindEntities(scene, position, radius, ['slipperyfeettarget']) as never,
+      findSlipperyEntities: (position, radius) => FindEntities(position, radius, ['slipperyfeettarget']) as never,
     });
   };
   // CommonPlayerDeath removes the component and CommonActualRez adds it back: it exists while the player is alive.

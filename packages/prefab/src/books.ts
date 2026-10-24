@@ -71,7 +71,7 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
     fx_under_prefab: 'fx_roots_under_book',
     layer_sound: { frame: 17, sound: 'wickerbottom_rework/book_spells/silviculture' },
     fn(_inst, reader, world) {
-      const ents = FindEntities(world.root, reader.getPosition(), SILVICULTURE_RANGE, [], SILVICULTURE_CANT_TAGS, SILVICULTURE_ONEOF_TAGS)
+      const ents = FindEntities(reader.getPosition(), SILVICULTURE_RANGE, [], SILVICULTURE_CANT_TAGS, SILVICULTURE_ONEOF_TAGS)
         .filter(v => (v.components as GrowthTarget['components']).pickable !== undefined || v.hasTag('leif')) as GrowthTarget[];
       if (ents.length === 0) return [false, 'NOSILVICULTURE'];
       trygrowth(ents.splice(Math.floor(Math.random() * ents.length), 1)[0]);

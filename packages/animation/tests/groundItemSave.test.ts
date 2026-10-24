@@ -64,7 +64,7 @@ vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
         create: () => actual.createButterflyGroundSprite(
           assets as unknown as InstanceType<typeof actual.ButterflyAssets>,
           context.butterflyWorld,
-          (position, radius, mustTags) => FindEntities(context.scene, position, radius, mustTags)),
+          (position, radius, mustTags) => FindEntities(position, radius, mustTags)),
         dispose: () => assets.dispose(),
       };
     },
@@ -111,8 +111,8 @@ describe('ground item save records', () => {
       entity.transform.position.set(24, 0, 0);
       manager.update(.1, new THREE.Quaternion());
       expect(matrices).toHaveBeenCalledOnce();
-      expect(FindEntities(scene, origin, 1)).toHaveLength(0);
-      expect(FindEntities(scene, entity.transform.position, 1).map(inst => inst.prefab)).toEqual(['log']);
+      expect(FindEntities(origin, 1)).toHaveLength(0);
+      expect(FindEntities(entity.transform.position, 1).map(inst => inst.prefab)).toEqual(['log']);
       expect(query.someNear(origin, 1, () => true)).toBe(false);
       expect(query.someNear(entity.transform.position, 1, () => true)).toBe(true);
       entity.addTag('NOBLOCK');

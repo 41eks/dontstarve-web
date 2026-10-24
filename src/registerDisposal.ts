@@ -334,7 +334,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
           play: () => {
             if (!isValid()) return false;
             const played = entity.components.instrument!.Play(readerInst,
-              range => FindEntities(view.scene!, player.position, range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']) as never[]);
+              range => FindEntities(player.position, range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']) as never[]);
             if (played) entity.components.finiteuses.useForAction('PLAY');
             return played;
           },

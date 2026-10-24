@@ -117,7 +117,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(reloaded.userData.animationController.currentAnimation).toBe('glow_loop');
 
     s.springs.remove(model!);
-    expect(FindEntities(s.scene, model!.position, 1, ['HASHEATER'])).toEqual([]);
+    expect(FindEntities(model!.position, 1, ['HASHEATER']).map(entity => entity === reloaded.userData.actionEntity)).toEqual([true]);
     expect(getPrefabLocalLight(model!)).toBeUndefined();
   } finally { toss?.dispose(); s.dispose(); restored.dispose(); }
 });

@@ -31,7 +31,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
     components: { building: { state: 'idle', ...(skinId ? { skinId } : {}) } },
   });
   const builder = new Builder(actionEntity(world.player as THREE.Group, 'waxwell'), {
-    findEntities: (...args) => FindEntities(world.scene, ...args), researchMachineDistance: 4 * WORLD_SCALE,
+    findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
   });
   const animation = () => model.userData.animationController as TransientSpriteAnimationController;
   const finish = () => { for (let i = 0; i < 80; i++) placement.update(1 / 30); };

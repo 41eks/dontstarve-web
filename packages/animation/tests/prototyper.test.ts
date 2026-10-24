@@ -16,7 +16,7 @@ function setup() {
   };
   const player = entity('waxwell');
   const builder = new Builder(player, {
-    findEntities: (...args) => FindEntities(scene, ...args), researchMachineDistance: 4 * WORLD_SCALE,
+    findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
   });
   const station = (position: Vector3, levels: Record<string, number>) => {
     const inst = entity('station', position);

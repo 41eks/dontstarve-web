@@ -385,7 +385,7 @@ export class FencePlacement {
 
     /** FindEntities(x, 0, z, 1.5, {"wall"}) as FixUpFenceOrientation sees it. */
     private neighbours(fence: FenceInstance): FenceNeighbour[] {
-        return FindEntities(this.scene, fence.root.position, 1.5 * UNIT, ['wall'])
+        return FindEntities(fence.root.position, 1.5 * UNIT, ['wall'])
             .map(found => ({ found, model: (found as unknown as { model?: THREE.Object3D }).model }))
             .filter(({ model }) => model !== undefined && model !== fence.root)
             .map(({ found, model }) => ({ isFence: found.hasTag('fence'), rotation: Number(model!.userData.fenceRotation ?? 0) }));

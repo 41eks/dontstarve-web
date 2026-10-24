@@ -574,7 +574,7 @@ export function createButterflyGroundFactory(context: GroundPrefabContext): Grou
       const prefab = definition.itemId === MOONBUTTERFLY_ID ? MOONBUTTERFLY_ID : BUTTERFLY_ID;
       await PreloadSounds('dontstarve/common/butterfly_trap');
       const visual = await createButterflyGroundSprite(assets, context.butterflyWorld,
-        (position, radius, mustTags) => FindEntities(context.scene, position, radius, mustTags), prefab, dropLoot);
+        (position, radius, mustTags) => FindEntities(position, radius, mustTags), prefab, dropLoot);
       if (prefab === MOONBUTTERFLY_ID) bindMoonButterflyVisual(visual);
       return visual;
     },

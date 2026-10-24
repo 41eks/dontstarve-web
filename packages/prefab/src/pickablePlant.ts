@@ -27,6 +27,7 @@ import { nextReskin } from './reskin_tool';
 import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
+import { PrefabInstance } from './prefabInstance';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import type { GrowableSave } from '../../componets/src/growable';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
@@ -151,6 +152,8 @@ interface Plant {
   sprite?: ArchiveSprite;
   /** Owns the drawn factory sprite of a resident plant; `model` is its stable root. */
   residentController?: ResidentSpriteController;
+  /** The entity behind a resident factory plant: its model leaves the scene with its visual. */
+  instance?: PrefabInstance;
   readonly animation: PlantAnimation;
   version: number;
   transitionAt: number;
@@ -306,12 +309,13 @@ export class PickablePlantManager {
         const factoryOptions = (animationName: string, frame?: AnimatedSpriteOptions['initialFrame']): AnimatedSpriteOptions => ({
           ...initial, initialAnimation: animationName, ...frame ? { initialFrame: frame } : {},
           getWatchWorldContent: this.getWatchWorldContent, snowCovered: snow });
-        const residentController = factory && definition.resident
-          ? new ResidentSpriteController(new THREE.Group(), animationName => factory.create(factoryOptions(animationName)),
-            drawn => factory.disposeSprite(drawn), factory.create(factoryOptions(initial.initialAnimation, initial.initialFrame)),
-            { name: initial.initialAnimation, held: initial.initialFrame === 'last' })
+        const instance = factory && definition.resident
+          ? new PrefabInstance(prefab, new THREE.Group(), { create: animationName => factory.create(factoryOptions(animationName)),
+            release: drawn => factory.disposeSprite(drawn), initial: factory.create(factoryOptions(initial.initialAnimation, initial.initialFrame)),
+            clip: { name: initial.initialAnimation, held: initial.initialFrame === 'last' } })
           : undefined;
-        const model = sprite?.model ?? residentController?.model ?? factory!.create(factoryOptions(initial.initialAnimation, initial.initialFrame));
+        const residentController = instance?.animation;
+        const model = sprite?.model ?? instance?.model ?? factory!.create(factoryOptions(initial.initialAnimation, initial.initialFrame));
         if (residentController) model.name = prefab;
         model.position.set(position.x, 0, position.z);
         this.face({ sprite, model }, this.cameraRotation?.peek() ?? model.quaternion);
@@ -446,7 +450,7 @@ export class PickablePlantManager {
           }
           this.remove(model);
         });
-        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, residentController, version: 0,
+        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, residentController, instance, version: 0,
           transitionAt: this.scheduler.now, awake: !resident && !residentController, stopEffect: () => {}, stopBurning: () => {},
           burnable, propagator, workable, persistence, fire, fireFactory, phase, outputs, variant };
         if (resident && this.cameraRotation) plant.stopArt = createEffect(() => {
@@ -498,7 +502,7 @@ export class PickablePlantManager {
           // Layers and snow are prefab state: dress every drawn sprite again from the plant's own components.
           if (appearance) plant.stopArt = createEffect(() => { residentController.art.get(); appearance.restore(pickable); });
           plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
-            residentController.setActive(active);
+            instance!.setActive(active);
             plant.awake = active;
             this.track(plant);
           });
@@ -616,7 +620,7 @@ export class PickablePlantManager {
             if (used || !isValid() || model.userData.skinId !== previousSkin) return false;
             if (replacement instanceof ResidentSpriteController) plant.residentController!.adopt(replacement);
             else model.userData.replacePlantAppearance(replacement);
-            if (skinId) model.userData.skinId = skinId; else delete model.userData.skinId;
+            model.userData.skinId = skinId || undefined;
             release(); used = true;
             return true;
           }, dispose: () => { if (!used) { release(); used = true; } } };
@@ -695,7 +699,7 @@ export class PickablePlantManager {
     plant.stopEffect();
     plant.sound?.stop();
     if (plant.sprite) plant.sprite.dispose();
-    else if (plant.residentController) plant.residentController.dispose();
+    else if (plant.instance) plant.instance.dispose();
     else plant.factory!.disposeSprite(model);
   }
 

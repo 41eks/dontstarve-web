@@ -9,6 +9,7 @@ import {
     type AnimatedSpriteSourceOptions,
     type SpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
+import { PrefabInstance } from './prefabInstance';
 import { ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
@@ -169,6 +170,7 @@ type AnimatedBuildingInteractionState = 'closed' | 'opening' | 'open' | 'closing
 interface AnimatedBuildingInstance<BuildId extends string> {
     buildId: BuildId;
     model: THREE.Group;
+    readonly instance: PrefabInstance;
     /** The sprite is built only while the building's tile is active; the instance keeps one controller for life. */
     readonly animation: ResidentSpriteController;
     groundOffset: number;
@@ -282,8 +284,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             buildId, record.components.building?.skinId, false,
             record.components.building?.state,
         );
-        building.model.userData.entityId = record.id;
-        building.model.userData.saveRecord = record;
+        building.instance.entityId = record.id;
+        building.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
         building.model.position.set(x, y + building.groundOffset, z);
         this.initializeComponents(building);
@@ -301,10 +303,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     exportRecords(): PlacedEntitySaveRecord[] {
         // inst.persists = false: buildings that are being destroyed are not saved.
-        return this.placed.filter(building => building.model.userData.persists !== false).map((building) => ({
+        return this.placed.filter(building => building.instance.persists).map((building) => ({
             prefabId: building.buildId,
             record: {
-                id: building.model.userData.entityId as string,
+                id: building.instance.entityId as string,
                 transform: {
                     position: saveGroundPosition(building.model.position, building.groundOffset),
                     rotationY: 0,
@@ -351,8 +353,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             ?? (isStorageBuildingId(buildId) ? createBuildingContainer(buildId, model) : undefined);
         if (container) {
             model.userData.components = { container };
-            this.worldContext.registerContainer?.(`world:${buildId}:${String(model.userData.entityId)}`, container,
-                (model.userData.saveRecord as PlacementSaveRecord | undefined)?.components.container);
+            this.worldContext.registerContainer?.(`world:${buildId}:${String(building.instance.entityId)}`, container,
+                building.instance.saveRecord?.components.container);
             container.onclosefn = () => {
                 if (building.interactionState !== 'open' && building.interactionState !== 'opening') return;
                 this.closeInteraction(building);
@@ -409,7 +411,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         }
         if (definition.burnable) this.initializeBurnable(building);
         // OnEntitySleep/OnEntityWake: the sprite exists only while the building's tile is active.
-        building.stopActivity = watchTileActivity(model, this.worldContext.tickingarea, active => building.animation.setActive(active));
+        building.stopActivity = watchTileActivity(model, this.worldContext.tickingarea, active => building.instance.setActive(active));
     }
 
     private initializeBurnable(building: AnimatedBuildingInstance<BuildId>): void {
@@ -536,7 +538,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     getHammerTargets(model?: THREE.Object3D): readonly HammerTarget[] {
         return this.mouseRecords.select(model, this.placed).filter(building => actionEntity(building.model, building.buildId).hasTag('HAMMER_workable'))
             .map((building) => ({
-                id: String(building.model.userData.entityId),
+                id: String(building.instance.entityId),
                 entity: actionEntity(building.model, building.buildId),
                 model: building.model,
                 position: building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)),
@@ -552,10 +554,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
 
     getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
         return this.mouseRecords.select(model, this.placed).map(building => {
-                const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing
-                    && building.model.visible && building.model.parent !== null;
+                const isValid = () => !this.disposed && this.placed.includes(building) && !building.isPlacing && building.model.visible;
                 return {
-                    id: String(building.model.userData.entityId), prefabId: building.buildId, model: building.model,
+                    id: String(building.instance.entityId), prefabId: building.buildId, model: building.model,
                     skins: Object.keys(this.definitions[building.buildId].skinArchives ?? {}),
                     get skinId() { return building.skinId.peek(); },
                     get isRemoved() { return building.model.userData.removed === true; },
@@ -616,8 +617,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 if (replacement.model.userData[key] === undefined) delete building.model.userData[key];
                 else building.model.userData[key] = replacement.model.userData[key];
             }
-            if (skinId === undefined) delete building.model.userData.skinId;
-            else building.model.userData.skinId = skinId;
+            building.instance.skinId = skinId;
             building.groundOffset = replacement.groundOffset;
             building.model.position.y = footY + building.groundOffset;
             this.definitions[building.buildId].onreskin?.(this.eventContext(building));
@@ -657,7 +657,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         if (!container) return;
         container.onclosefn = undefined;
         container.onopenfn = undefined;
-        this.worldContext.unregisterContainer?.(`world:${building.buildId}:${String(building.model.userData.entityId)}`, container);
+        this.worldContext.unregisterContainer?.(`world:${building.buildId}:${String(building.instance.entityId)}`, container);
         container.dispose();
     }
 
@@ -919,9 +919,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         model.name = definition.name;
         model.userData.ownedSpriteMaterials = [];
         if (preview) model.userData.disposeSpriteSource = () => source.dispose();
-        model.userData.animationController = new ResidentSpriteController(model,
-            animation => source.create(spriteOptions(animation)), sprite => source.disposeSprite(sprite),
-            source.create(spriteOptions(initialAnimation, held ? 'last' : 'first')), { name: initialAnimation, held });
+        const prefabInstance = new PrefabInstance(buildId, model, {
+            create: animation => source.create(spriteOptions(animation)), release: sprite => source.disposeSprite(sprite),
+            initial: source.create(spriteOptions(initialAnimation, held ? 'last' : 'first')), clip: { name: initialAnimation, held } });
+        model.userData.animationController = prefabInstance.animation;
         const prepared = preparedResult as AnimatedBuildingPreparedResources | undefined;
         if (prepared) model.userData.ownedSpriteMaterials.push(...prepared.materials);
         if (prepared?.dispose) model.userData.disposePreparedResources = () => prepared.dispose!();
@@ -931,7 +932,8 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const instance: AnimatedBuildingInstance<BuildId> = {
             buildId,
             model,
-            animation: model.userData.animationController as ResidentSpriteController,
+            instance: prefabInstance,
+            animation: prefabInstance.animation,
             effectFactory,
             fireFactory,
             groundOffset: -bounds.min.y,
@@ -943,11 +945,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             prepared,
             preparedSkins: new Map(),
         };
-        if (skinArchive !== undefined) model.userData.skinId = skinId;
+        if (skinArchive !== undefined) instance.instance.skinId = skinId;
         if (state === 'open' && definition.interaction?.openAnimationLoop) {
             instance.animation.start(definition.interaction.openAnimation);
         }
-        if (attach) model.userData.entityId = newEntityId();
+        if (attach) instance.instance.entityId = newEntityId();
         if (attach) this.scene.add(model);
         return instance;
     }
