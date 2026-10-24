@@ -3,7 +3,6 @@ import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/sign
 import type { StaticSpriteController } from './wallSprite';
 import type { ArchiveSprite } from './archiveSprite';
 import { registerSpriteRenderGroup } from './renderOrder';
-import { invalidateEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import { setSpriteErosion } from './spriteErosion';
 import { installRootMatrixGate } from './matrixGate';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
@@ -106,7 +105,6 @@ export class ResidentSprite implements ArchiveSprite {
     this.model.add(this.placeholder);
     registerSpriteRenderGroup(this.model, this.placeholder);
     sprite.dispose();
-    invalidateEntitySpatial(this.model);
   }
 
   /** Replace a prepared source for reskinning without replacing the root, logical clip or callbacks. */
@@ -128,7 +126,6 @@ export class ResidentSprite implements ArchiveSprite {
       this.model.add(this.placeholder);
       registerSpriteRenderGroup(this.model, this.placeholder);
     }
-    invalidateEntitySpatial(this.model);
   }
 
   setActive(active: boolean): void {
@@ -159,7 +156,6 @@ export class ResidentSprite implements ArchiveSprite {
     registerSpriteRenderGroup(this.model, sprite.model.children[0] as THREE.Group);
     this.attachHook?.(sprite);
     this.play();
-    invalidateEntitySpatial(this.model);
     sprite.setPaused(this.paused);
   }
 

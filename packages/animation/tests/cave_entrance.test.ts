@@ -7,7 +7,8 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { getMigrateActions } from '../../stategraphs/src/migrate';
-import { mouseTargetsAlongRay } from '../../stategraphs/src/entitySpatialIndex';
+import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { createSignal, readonlySignal } from '../../signals/src';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -74,11 +75,15 @@ it('stays clickable after its tile leaves and re-enters the tickingarea', async 
   const scene = new THREE.Scene(), active = createSignal(true);
   const tickingarea = (() => Object.assign(readonlySignal(active), { dispose: () => {} })) as never;
   const caves = new CaveEntranceManager(scene, { tickingarea, prepareSpawn: () => { throw new Error('unused'); } });
+  const camera = new THREE.PerspectiveCamera(60, 1, .1, 200);
+  camera.position.set(5, 13, 27); camera.lookAt(5, 1, 7); camera.updateMatrixWorld();
+  const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
+  const pointer = new PointerRaycaster({ camera, renderer, scene }), picker = new PlayerActionPicker(pointer);
+  pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
   try {
     const model = await caves.spawn('cave_entrance_open', new THREE.Vector3(5, 0, 7));
     scene.updateMatrixWorld(true);
-    const ray = new THREE.Ray(new THREE.Vector3(5, 13, 27), new THREE.Vector3(0, -.6, -1).normalize());
-    const hit = () => mouseTargetsAlongRay(ray, 0, 200).includes(model);
+    const hit = () => { picker.getMouseActions(); return picker.targetModel === model; };
     expect(hit()).toBe(true);
     active.set(false);
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -88,5 +93,5 @@ it('stays clickable after its tile leaves and re-enters the tickingarea', async 
     await new Promise(resolve => setTimeout(resolve, 0));
     scene.updateMatrixWorld(true);
     expect(hit()).toBe(true);
-  } finally { caves.dispose(); }
+  } finally { picker.dispose(); caves.dispose(); }
 }, 20000);

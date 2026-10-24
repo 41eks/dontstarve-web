@@ -93,7 +93,7 @@ function setup() {
 const definition = { itemId: 'log', count: 1, name: 'Log', icon: 'log.tex' };
 
 describe('ground item save records', () => {
-  it('animates stationary items without resyncing their transforms, but updates movement and tag changes before queries', async () => {
+  it('updates placement from logical movement and tags without forcing visual matrix updates', async () => {
     const { manager, scene, inventory } = setup();
     try {
       const origin = new THREE.Vector3();
@@ -110,7 +110,7 @@ describe('ground item save records', () => {
 
       entity.transform.position.set(24, 0, 0);
       manager.update(.1, new THREE.Quaternion());
-      expect(matrices).toHaveBeenCalledOnce();
+      expect(matrices).not.toHaveBeenCalled();
       expect(FindEntities(origin, 1)).toHaveLength(0);
       expect(FindEntities(entity.transform.position, 1).map(inst => inst.prefab)).toEqual(['log']);
       expect(query.someNear(origin, 1, () => true)).toBe(false);
@@ -122,9 +122,9 @@ describe('ground item save records', () => {
       matrices.mockClear();
       const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
       manager.update(.1, turned);
-      expect(matrices).toHaveBeenCalledOnce();
+      expect(matrices).not.toHaveBeenCalled();
       manager.update(.1, turned);
-      expect(matrices).toHaveBeenCalledOnce();
+      expect(matrices).not.toHaveBeenCalled();
     } finally { manager.dispose(); inventory.dispose(); }
   });
 

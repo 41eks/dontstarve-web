@@ -25,14 +25,15 @@ import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { nextReskin } from './reskin_tool';
 import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
-import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
-import { PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { SpriteState, type PrefabDisplay } from '@dontstarve-web/display';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import type { GrowableSave } from '../../componets/src/growable';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
 
-type PlantAnimation = SpriteController | ResidentSpriteController | ArchiveSprite;
+type PlantAnimation = SpriteController | SpriteState | ArchiveSprite;
 type CreatePlantArchiveSprite = Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
 
 export interface PickablePlantRecord {
@@ -56,7 +57,7 @@ export interface PickablePlantWorld {
   isOcean?(position: THREE.Vector3): boolean;
 }
 
-export interface PickablePlantAppearanceContext<T extends PlantAnimation = SpriteController | ResidentSpriteController> {
+export interface PickablePlantAppearanceContext<T extends PlantAnimation = SpriteController | SpriteState> {
   readonly model: THREE.Group;
   readonly animation: T;
   play(clips: readonly string[], loopLast?: boolean, onFirstOver?: () => void): void;
@@ -150,10 +151,11 @@ interface Plant {
   pickable: Pickable;
   factory?: AnimatedSpriteFactory;
   sprite?: ArchiveSprite;
-  /** Owns the drawn factory sprite of a resident plant; `model` is its stable root. */
-  residentController?: ResidentSpriteController;
-  /** The entity behind a resident factory plant: its model leaves the scene with its visual. */
+  /** A resident factory plant's sprite json; its display draws it only while the tile is active. */
+  residentController?: SpriteState;
+  /** The entity behind a resident factory plant. */
   instance?: PrefabInstance;
+  display?: PrefabDisplay;
   readonly animation: PlantAnimation;
   version: number;
   transitionAt: number;
@@ -309,13 +311,13 @@ export class PickablePlantManager {
         const factoryOptions = (animationName: string, frame?: AnimatedSpriteOptions['initialFrame']): AnimatedSpriteOptions => ({
           ...initial, initialAnimation: animationName, ...frame ? { initialFrame: frame } : {},
           getWatchWorldContent: this.getWatchWorldContent, snowCovered: snow });
-        const instance = factory && definition.resident
-          ? new PrefabInstance(prefab, new THREE.Group(), { create: animationName => factory.create(factoryOptions(animationName)),
-            release: drawn => factory.disposeSprite(drawn), initial: factory.create(factoryOptions(initial.initialAnimation, initial.initialFrame)),
-            clip: { name: initial.initialAnimation, held: initial.initialFrame === 'last' } })
+        const residentEntity = factory && definition.resident
+          ? createPrefabEntity(prefab, { create: (animationName, frame) => factory.create(factoryOptions(animationName, frame)),
+            release: drawn => factory.disposeSprite(drawn) },
+            { name: initial.initialAnimation, held: initial.initialFrame === 'last' }, prefab)
           : undefined;
-        const residentController = instance?.animation;
-        const model = sprite?.model ?? instance?.model ?? factory!.create(factoryOptions(initial.initialAnimation, initial.initialFrame));
+        const instance = residentEntity?.instance, residentController = instance?.sprite;
+        const model = sprite?.model ?? residentEntity?.display.model ?? factory!.create(factoryOptions(initial.initialAnimation, initial.initialFrame));
         if (residentController) model.name = prefab;
         model.position.set(position.x, 0, position.z);
         this.face({ sprite, model }, this.cameraRotation?.peek() ?? model.quaternion);
@@ -354,7 +356,7 @@ export class PickablePlantManager {
           },
         };
         const appearance = definition.createAppearance?.({ ...animationContext, get animation() {
-          if (animation instanceof SpriteController || animation instanceof ResidentSpriteController) return animation;
+          if (animation instanceof SpriteController || animation instanceof SpriteState) return animation;
           throw new Error('Layered plant appearance requires a factory controller');
         } });
         const pickable: Pickable = new Pickable(model, definition.product, definition.regrowTime, definition.numToHarvest ?? 1, () => {
@@ -450,7 +452,7 @@ export class PickablePlantManager {
           }
           this.remove(model);
         });
-        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, residentController, instance, version: 0,
+        const plant: Plant = { definition, model, get animation() { return animation; }, pickable, factory, sprite, residentController, instance, display: residentEntity?.display, version: 0,
           transitionAt: this.scheduler.now, awake: !resident && !residentController, stopEffect: () => {}, stopBurning: () => {},
           burnable, propagator, workable, persistence, fire, fireFactory, phase, outputs, variant };
         if (resident && this.cameraRotation) plant.stopArt = createEffect(() => {
@@ -608,18 +610,18 @@ export class PickablePlantManager {
           const snowCovered = definition.snowCovered ? await this.snowRequest : undefined;
           const options = (initialAnimation: string) => ({ initialAnimation,
             getWatchWorldContent: this.getWatchWorldContent, snowCovered });
-          const replacement = plant.residentController
-            ? new ResidentSpriteController(new THREE.Group(), animationName => factory.create(options(animationName)),
-              drawn => factory.disposeSprite(drawn), factory.create(options(definition.idle.name)), { name: definition.idle.name })
+          const replacement = plant.display
+            ? createPrefabEntity(definition.prefab, { create: animationName => factory.create(options(animationName)),
+              release: drawn => factory.disposeSprite(drawn) }, { name: definition.idle.name }).display
             : factory.create(options(definition.idle.name));
           const release = () => {
-            if (replacement instanceof ResidentSpriteController) replacement.dispose(); else factory.disposeSprite(replacement);
+            if (replacement instanceof THREE.Group) factory.disposeSprite(replacement); else replacement.dispose();
           };
           let used = false;
           return { apply: () => {
             if (used || !isValid() || model.userData.skinId !== previousSkin) return false;
-            if (replacement instanceof ResidentSpriteController) plant.residentController!.adopt(replacement);
-            else model.userData.replacePlantAppearance(replacement);
+            if (replacement instanceof THREE.Group) model.userData.replacePlantAppearance(replacement);
+            else plant.display!.adopt(replacement);
             model.userData.skinId = skinId || undefined;
             release(); used = true;
             return true;
@@ -699,7 +701,7 @@ export class PickablePlantManager {
     plant.stopEffect();
     plant.sound?.stop();
     if (plant.sprite) plant.sprite.dispose();
-    else if (plant.instance) plant.instance.dispose();
+    else if (plant.instance) { plant.instance.remove(); plant.display!.dispose(); }
     else plant.factory!.disposeSprite(model);
   }
 

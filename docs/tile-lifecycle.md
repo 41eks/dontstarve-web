@@ -31,11 +31,11 @@ visual 由驻留对象的私有 signal 持有，普通 `createEffect` 在加载�
 
 `ResidentSprite.setActive(false)` 还会把稳定根节点从父节点摘下，`setActive(true)` 时挂回同一个父节点，使投影、矩阵更新等场景遍历跳过 inactive 实体；根节点、位置、组件和逻辑 timer 仍由所有者持有。所有者在 inactive 之后才把根节点加入场景时，加入事件会立即再摘下，不会落入场景。因此 inactive 的 `ResidentSprite` 根节点不在 `scene.children` 中，通过场景遍历查找实体的代码看不到它们（`FindEntities` 本来就只返回带 `tickingarea` 标签的实体）。`ResidentSpriteController` 尚未采用这一做法。
 
-[actionEntity.ts](../packages/prefab/src/actionEntity.ts) 的世界绑定统一维护 `tickingarea` 标签和活动实体索引。每个投影持有私有 tracker、区域 memo 和 `watchSignal`，普通 effect 在 active 时添加标签及索引，inactive 时移除；带底层 `ItemEntity` 的投影仍通过该实体的标签 API 写入，不维护第二份权威标签。`FindEntities(position, radius, mustTags?, cantTags?, oneOfTags?)` 直接遍历顶层 `activePrefabs` 数组；每个实体的 tickingarea effect 在 active 时注册、inactive 时注销。查询保留移除状态、must/cant/oneof 标签和脚点半径过滤，不读取 inactive 候选的位置，也不依赖 scene、模型父节点或鼠标空间索引。活动逻辑实体的 visual 暂时卸载不影响登记；拾取／模型替换释放投影、永久移除及世界释放时清理数组与订阅，无活动区域查询时按现有约定注册为 active。标签不控制可见性，白天隐藏但仍在活动区域的萤火虫也可带此标签；鼠标交互仍由可见性和 `NOCLICK` 规则控制。
+[actionEntity.ts](../packages/prefab/src/actionEntity.ts) 的世界绑定统一维护 `tickingarea` 标签和活动实体索引。每个投影持有私有 tracker、区域 memo 和 `watchSignal`，普通 effect 在 active 时添加标签及索引，inactive 时移除；带底层 `ItemEntity` 的投影仍通过该实体的标签 API 写入，不维护第二份权威标签。`FindEntities(position, radius, mustTags?, cantTags?, oneOfTags?)` 直接遍历顶层 `activePrefabs` 数组；每个实体的 tickingarea effect 在 active 时注册、inactive 时注销。查询保留移除状态、must/cant/oneof 标签和脚点半径过滤，不读取 inactive 候选的位置，也不依赖 scene、模型父节点或 visual 是否已加载。活动逻辑实体的 visual 暂时卸载不影响登记；拾取／模型替换释放投影、永久移除及世界释放时清理数组与订阅，无活动区域查询时按现有约定注册为 active。标签不控制可见性，白天隐藏但仍在活动区域的萤火虫也可带此标签；鼠标交互仍由可见性和 `NOCLICK` 规则控制。
 
 世界绑定仅建立一个玩家位置 `watchSignal`，沿用现有每 60 活动帧发布的位置快照，批量刷新登记实体的 tracker；玩家停留原 tile 时也刷新移动实体的位置。该采样会检查登记实体，但不会在每次 `FindEntities` 或每个渲染帧扫描全部实体。模型 `added` 时立即同步实际脚点，避免创建模型后才赋位置导致一直查询出生格。查询返回 `undefined` 的原有无门控分支保持 active。拾取、换肤等模型替换释放旧投影订阅；树木的 visual 休眠保留根节点上的同一投影，永久移除及场景销毁才释放投影、标签和索引，逻辑实体保存不受影响。effect 仍在后续微任务提交，测试在后续宏任务观察区域切换。
 
-地面实体的每帧动画更新不再无条件同步空间／放置索引：脚点移动时同步两者，抛物过程同时同步视觉高度；标签变化仍由事件立即同步，动画包围范围扩大仍由 renderer 发布并在查询前刷新。相机视锥裁剪与 tickingarea 分开：离屏的完整帧不提交实例数据，但其逻辑动画、光源和共享资源保持原生命周期。
+鼠标选取同样遍历 `activePrefabs`，没有独立目标集合或空间网格；活动列表成员变化由 tickingarea effect 和实体移除处理。每次输入查询读取当前显隐和 `NOCLICK`，忽略已卸载或脱离父节点的 visual，在精确射线检测前按需更新模型矩阵。地面实体移动及标签变化仅同步放置索引，动画与抛物过程继续更新自己的外观；绘制帧、层级或外观改变后，精确命中检测读取当前几何及可见范围。精确检测无目标时，sprite 输入形状可围绕当前包围盒中心放大 20% 以容纳外缘点击；通过收缩检测射线复用原有 alpha 检测，不修改模型变换或共享几何，也不填补原包围盒内部的透明孔洞。相机视锥裁剪与 tickingarea 分开：离屏的完整帧不提交实例数据，但其逻辑动画、光源和共享资源保持原生命周期。
 
 ```ts
 import { GetTileStateAtPoint } from '@dontstarve-web/signals';

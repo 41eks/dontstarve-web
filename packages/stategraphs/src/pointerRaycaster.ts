@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import type { ActionWorldContext as WorldContext } from './actionContext.ts';
-import { mouseTargetsAlongRay } from './entitySpatialIndex.ts';
+import { activePrefabs } from '../../prefab/src/activePrefabs';
 import { prepareSpatialGeometryBounds, spatialAttributeVersion } from '../../animation/src/spatialBounds.ts';
 import { isInstancedSpriteProxy } from '../../animation/src/spriteRaycast.ts';
+
+/** Ten percent of the sprite's size on each outer edge, used only after exact picking misses. */
+const SPRITE_PICK_SCALE = 1.2;
 
 function mouseVisible(object: THREE.Object3D): boolean {
     if (!object.visible && !isInstancedSpriteProxy(object)) return false;
@@ -64,7 +67,6 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
         if (object.layers.test(raycaster.layers)) {
             if (object.userData.rayTestOnBB) {
                 // AnimState:SetRayTestOnBB includes visible particle gaps, never hidden parts.
-                object.updateWorldMatrix(true, true);
                 const box = spriteBounds(object);
                 if (!box.isEmpty() && raycaster.ray.intersectBox(box, point)) {
                     const distance = point.distanceTo(raycaster.ray.origin);
@@ -80,18 +82,23 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
     for (const object of objects) {
         let parent = object.parent;
         while (parent && mouseVisible(parent)) parent = parent.parent;
-        if (!parent) intersect(object);
+        if (!parent) {
+            object.updateWorldMatrix(true, true);
+            intersect(object);
+        }
     }
     return hits.sort((a, b) => a.distance - b.distance);
 }
 
 export class PointerRaycaster {
-    readonly scene?: THREE.Scene;
     private readonly camera: THREE.Camera;
     private readonly renderer: THREE.WebGLRenderer;
     private readonly ground?: THREE.Object3D;
     private readonly pointerEvents?: EventTarget;
     private readonly raycaster = new THREE.Raycaster();
+    private readonly paddedRaycaster = new THREE.Raycaster();
+    private readonly paddedBounds = new THREE.Box3();
+    private readonly paddingCenter = new THREE.Vector3();
     private readonly ndc = new THREE.Vector2();
     private clientX = 0;
     private clientY = 0;
@@ -102,7 +109,6 @@ export class PointerRaycaster {
 
     /** Object-only picking can omit ground; ground queries then return no hit. */
     constructor(world: Pick<WorldContext, 'camera' | 'renderer'> & Partial<Pick<WorldContext, 'ground' | 'scene'>>) {
-        this.scene = world.scene;
         this.camera = world.camera;
         this.renderer = world.renderer;
         this.ground = world.ground;
@@ -150,12 +156,41 @@ export class PointerRaycaster {
 
     pickMouseTarget(): THREE.Intersection | undefined {
         if (!this.updatePointerRay()) return undefined;
-        const candidates = mouseTargetsAlongRay(this.raycaster.ray, this.raycaster.near, this.raycaster.far);
-        const scoped = this.scene ? candidates.filter(model => {
-            for (let node: THREE.Object3D | null = model; node; node = node.parent) if (node === this.scene) return true;
-            return false;
-        }) : candidates;
-        return intersectSpriteEntities(this.raycaster, scoped)[0];
+        const candidates: THREE.Object3D[] = [];
+        for (const entity of activePrefabs) {
+            if (!entity.isRemoved && entity.model.parent && mouseVisible(entity.model)) candidates.push(entity.model);
+        }
+        return intersectSpriteEntities(this.raycaster, candidates)[0] ?? this.pickPaddedTarget(candidates);
+    }
+
+    /** Enlarge only the input shape: shared geometry and the drawn model remain untouched. */
+    private pickPaddedTarget(candidates: THREE.Object3D[]): THREE.Intersection | undefined {
+        const { raycaster, paddedRaycaster, paddedBounds, paddingCenter } = this;
+        paddedRaycaster.near = raycaster.near / SPRITE_PICK_SCALE;
+        paddedRaycaster.far = raycaster.far / SPRITE_PICK_SCALE;
+        paddedRaycaster.layers.mask = raycaster.layers.mask;
+        paddedRaycaster.camera = raycaster.camera;
+        let nearest: THREE.Intersection | undefined;
+        for (const model of candidates) {
+            const bounds = spriteBounds(model);
+            // Preserve transparent holes inside the original silhouette's enclosing box.
+            if (bounds.isEmpty() || raycaster.ray.intersectsBox(bounds)) continue;
+            bounds.getCenter(paddingCenter);
+            paddedBounds.copy(bounds);
+            paddedBounds.min.sub(paddingCenter).multiplyScalar(SPRITE_PICK_SCALE).add(paddingCenter);
+            paddedBounds.max.sub(paddingCenter).multiplyScalar(SPRITE_PICK_SCALE).add(paddingCenter);
+            if (!raycaster.ray.intersectsBox(paddedBounds)) continue;
+            // Contract the ray around the sprite centre, then reuse its exact alpha-aware picking.
+            paddedRaycaster.ray.origin.copy(raycaster.ray.origin).sub(paddingCenter)
+                .multiplyScalar(1 / SPRITE_PICK_SCALE).add(paddingCenter);
+            paddedRaycaster.ray.direction.copy(raycaster.ray.direction);
+            const hit = intersectSpriteEntities(paddedRaycaster, [model])[0];
+            if (!hit) continue;
+            hit.point.sub(paddingCenter).multiplyScalar(SPRITE_PICK_SCALE).add(paddingCenter);
+            hit.distance = hit.point.distanceTo(raycaster.ray.origin);
+            if (!nearest || hit.distance < nearest.distance) nearest = hit;
+        }
+        return nearest;
     }
 
     private updatePointerRay(): boolean {

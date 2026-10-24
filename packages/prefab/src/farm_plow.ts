@@ -1,6 +1,5 @@
 import { SpatialIndex } from './spatialIndex';
 import { placementEntities, registerPlacementEntity, ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
-import { registerMouseTarget } from '../../stategraphs/src/mouseTargets';
 import { ModelRecords } from './modelRecords';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import type { FarmSoilTarget, PreparedSeedPlant, PreparedFarmTill, FarmActionWorld } from '@dontstarve-web/stategraphs/farmActions';
@@ -18,7 +17,7 @@ import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import type { WorldContext } from './worldContext';
 import { setPrefabLightOverride } from './localLight';
 import { FARM_PLANT_ART, VEGGIE_SEED_IDS } from './veggies';
-import { actionEntity } from './actionEntity';
+import { actionEntity, disposeActionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 
@@ -521,9 +520,8 @@ export class FarmPlowPlacement implements FarmActionWorld {
       tags: [item.prefabId === 'farm_soil' ? 'soil' : 'farm_debris'] });
     this.decor.set(item.id, item); this.mouseDecor.set(item.sprite.model, item);
     this.decorPositions.add(item);
-    const mouse = registerMouseTarget(sprite.model, () => !this.disposed && this.decor.get(item.id) === item);
-    const stopPlacement = registerPlacementEntity(sprite.model, () => sprite.model.position);
-    item.stopTracking = () => { mouse.dispose(); stopPlacement(); this.decorPositions.delete(item); };
+    actionEntity(sprite.model, item.prefabId);
+    item.stopTracking = () => { disposeActionEntity(sprite.model); this.decorPositions.delete(item); };
     this.world.scene.add(sprite.model);
   }
 

@@ -9,8 +9,8 @@ import {
     type AnimatedSpriteSourceOptions,
     type SpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
-import { PrefabInstance } from './prefabInstance';
-import { ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';
@@ -171,8 +171,9 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     buildId: BuildId;
     model: THREE.Group;
     readonly instance: PrefabInstance;
-    /** The sprite is built only while the building's tile is active; the instance keeps one controller for life. */
-    readonly animation: ResidentSpriteController;
+    /** Draws the building; its sprite is built only while the building's tile is active. */
+    readonly display: PrefabDisplay;
+    readonly animation: SpriteState;
     groundOffset: number;
     interactionState?: AnimatedBuildingInteractionState;
     isPlacing: boolean;
@@ -610,7 +611,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             replacement.skinArtReleased = true;
             const footY = building.model.position.y - building.groundOffset;
             // The controller, root and logical clip stay; only the source and the drawn sprite change.
-            building.animation.adopt(replacement.animation);
+            building.display.adopt(replacement.display);
             this.disposeBuildingArt(building.model);
             building.prepared = replacement.prepared;
             for (const key of ['ownedSpriteMaterials', 'disposePreparedResources', 'disposeSpriteSource'] as const) {
@@ -915,14 +916,12 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             skinAnimationBanks: skinId === undefined ? undefined : definition.skinAnimationBanks?.[skinId],
             hiddenLayers: definition.hiddenLayers,
         });
-        const model = new THREE.Group();
-        model.name = definition.name;
+        const { instance: entity, display } = createPrefabEntity(buildId, {
+            create: (animation, frame) => source.create(spriteOptions(animation, frame)), release: sprite => source.disposeSprite(sprite),
+        }, { name: initialAnimation, held }, definition.name);
+        const { model } = display;
         model.userData.ownedSpriteMaterials = [];
         if (preview) model.userData.disposeSpriteSource = () => source.dispose();
-        const prefabInstance = new PrefabInstance(buildId, model, {
-            create: animation => source.create(spriteOptions(animation)), release: sprite => source.disposeSprite(sprite),
-            initial: source.create(spriteOptions(initialAnimation, held ? 'last' : 'first')), clip: { name: initialAnimation, held } });
-        model.userData.animationController = prefabInstance.animation;
         const prepared = preparedResult as AnimatedBuildingPreparedResources | undefined;
         if (prepared) model.userData.ownedSpriteMaterials.push(...prepared.materials);
         if (prepared?.dispose) model.userData.disposePreparedResources = () => prepared.dispose!();
@@ -932,8 +931,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const instance: AnimatedBuildingInstance<BuildId> = {
             buildId,
             model,
-            instance: prefabInstance,
-            animation: prefabInstance.animation,
+            instance: entity,
+            display,
+            animation: entity.sprite,
             effectFactory,
             fireFactory,
             groundOffset: -bounds.min.y,

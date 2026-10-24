@@ -168,6 +168,7 @@
   "dependencies": {
     "@dontstarve-web/stategraphs": "workspace:*",
     "@dontstarve-web/animation": "workspace:*",
+    "@dontstarve-web/display": "workspace:*",
     "cannon-es": "^0.20.0",
     "@dontstarve-web/inventory": "workspace:*",
     "@dontstarve-web/signals": "workspace:*"

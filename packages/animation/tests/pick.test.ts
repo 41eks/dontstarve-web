@@ -1,4 +1,4 @@
-import { registerMouseTarget } from '../../stategraphs/src/mouseTargets';
+import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { getPickActions, PickActionController, PICK_REACH } from '../../stategraphs/src/pick';
@@ -46,7 +46,7 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   model.userData.tags = ['plant'];
   model.userData.getGroundPosition = () => new THREE.Vector3(20, 0, 0);
   const component = new Pickable(model, 'log', 10, 2);
-  const mouseTarget = registerMouseTarget(model, () => true);
+  actionEntity(model, 'grass');
   const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {},
     pickMouseTarget: () => ({ object: model }), dispose: vi.fn() } as unknown as PointerRaycaster;
   const picker = new PlayerActionPicker(pointer), canvas = new EventTarget();
@@ -110,5 +110,5 @@ it('walks to reach, commits a prepared PICK and releases canceled products witho
   click();
   expect(giveItem).toHaveBeenCalledTimes(2);
   expect(picker.getMouseActions().left).toBeUndefined();
-  component.dispose(); mouseTarget.dispose(); picker.dispose(); stopEvents();
+  component.dispose(); disposeActionEntity(model); picker.dispose(); stopEvents();
 });

@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import * as CANNON from 'cannon-es';
 import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
 import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -207,7 +206,6 @@ class Tumbleweed {
     this.world.constrainPosition(this.model.position);
     this.model.quaternion.copy(cameraQuaternion);
     this.sprite.setFacing(fourFacingFromRotation(this.rotation, this.heading.peek()));
-    syncEntitySpatial(this.model);
   }
 
   /** Take over a final break pose for the fx, then release timers, listeners and the sprite. */
