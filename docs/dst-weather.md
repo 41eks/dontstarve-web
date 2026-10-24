@@ -166,7 +166,7 @@ third = (1 - first - second) × layers.r
 alpha = first + second + third
 ```
 
-地表 mesh 的 `renderOrder = -0.1`，绘制在地皮之后、动态实体之前；使用 Lambert 光照、预乘 alpha、透明双面单 pass，`depthTest = true`、`depthWrite = false`。不要把雪花最前层的材质／顺序设置复制到积雪地表。
+地表 mesh 的 `renderOrder = -0.55`。原版积雪是地图的 `SetOverlayTexture`／`SetOverlayLerp` 覆盖层，属于 `LAYER_GROUND`（3），低于池塘和熔岩池的 `LAYER_BACKGROUND`（4）、`SetSortOrder(3)`（对应 `-0.5`）。因此层级固定为：地皮混合层 `[-1, -0.6)` < 积雪 `-0.55` < 背景地面实体 `-0.5` < 动态实体。积雪不能盖住池塘、熔岩池等背景贴花；新增地皮层级必须保持在 `-0.6` 以下；使用 Lambert 光照、预乘 alpha、透明双面单 pass，`depthTest = true`、`depthWrite = false`。不要把雪花最前层的材质／顺序设置复制到积雪地表。
 
 纹理按世界坐标重复，周期为 `TILE_SIZE × 8`（当前 96 场景单位），覆盖量只更新 shader 参数与可见性，不修改 `TurfMap` 的实际地皮数据，也不重建整个地表几何。停雪时保留覆盖，融雪到零才隐藏。
 

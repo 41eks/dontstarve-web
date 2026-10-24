@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./imageAtlas": "./src/imageAtlas.ts",
     "./parseKtex": "./src/parseKtex.ts",
+    "./textureLoader": "./src/textureLoader.ts",
     "./animationAssets": "./src/animationAssets.ts",
     "./hatAssets": "./src/hatAssets.ts",
     "./lightOverride": "./src/lightOverride.ts",

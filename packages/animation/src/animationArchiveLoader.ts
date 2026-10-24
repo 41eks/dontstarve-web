@@ -1,5 +1,6 @@
 import { readAnimationArchivePart, type AnimationArchiveParts } from './animationArchive';
 import type { AnimationArchiveWorkerRequest, AnimationArchiveWorkerResponse } from './animationArchiveWorkerProtocol';
+import { disposeTextureAssets } from './textureLoader';
 
 type ArchivePart = AnimationArchiveParts[keyof AnimationArchiveParts];
 const requests = new Map<string, Promise<ArchivePart>>();
@@ -70,6 +71,7 @@ export function loadAnimationArchivePart<Kind extends keyof AnimationArchivePart
 
 /** Release CPU assets and the decoder worker when the game is shut down. */
 export function disposeAnimationAssets(): void {
+  disposeTextureAssets();
   archiveWorker?.terminate();
   archiveWorker = undefined;
   for (const pending of pendingRequests.values()) pending.reject(new Error('Animation assets disposed'));

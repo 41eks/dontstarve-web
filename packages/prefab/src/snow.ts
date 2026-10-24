@@ -190,8 +190,8 @@ export class SnowEffect {
     material.customProgramCacheKey = () => 'dst-snow-ground-overlay-v1';
     this.ground = new THREE.Mesh(geometry, material);
     this.ground.name = 'SnowGroundOverlay';
-    // Terrain layers draw before this; entity foot ordering starts at zero.
-    this.ground.renderOrder = -0.1;
+    // Source overlay belongs to the ground map: above turf ([-1, -0.6)), below LAYER_BACKGROUND decor (ponds: -0.5).
+    this.ground.renderOrder = -0.55;
     this.setCover(this.options.cover.peek());
     this.options.scene.add(this.ground);
   }

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 import { createEffect, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type WorldSeason } from '@dontstarve-web/signals';
 import { DstLocalLighting } from './dstLocalLighting';
+import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
 
 export type DstSeason = WorldSeason;
 export type DstLightPhase = 'day' | 'dusk' | 'night' | 'full_moon';
@@ -413,7 +414,7 @@ export class DstLightingRenderer {
     }
   }
 
-  render(scene: THREE.Scene, camera: THREE.Camera): void {
+  private resizeRenderTarget(): void {
     this.renderer.getDrawingBufferSize(this.drawingBufferSize);
     if (this.renderTarget.width !== this.drawingBufferSize.x
       || this.renderTarget.height !== this.drawingBufferSize.y) {
@@ -421,6 +422,30 @@ export class DstLightingRenderer {
       (this.material.uniforms.sceneTexelSize.value as THREE.Vector2)
         .set(1 / this.drawingBufferSize.x, 1 / this.drawingBufferSize.y);
     }
+  }
+
+  /** Compile the actual world/lightmap/post-process variants without drawing the world. */
+  async prewarm(scene: THREE.Scene, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    this.resizeRenderTarget();
+    this.localLighting.prepareScene(scene);
+    await this.localLighting.prewarm(this.renderer, signal);
+    await yieldLoadingFrame();
+    signal?.throwIfAborted();
+    this.renderer.initRenderTarget(this.renderTarget);
+    const previousTarget = this.renderer.getRenderTarget();
+    this.renderer.setRenderTarget(this.renderTarget);
+    try {
+      await prewarmScene(this.renderer, scene, camera, signal);
+      this.renderer.setRenderTarget(null);
+      await prewarmScene(this.renderer, this.postScene, this.postCamera, signal);
+    } finally {
+      this.renderer.setRenderTarget(previousTarget);
+    }
+  }
+
+  render(scene: THREE.Scene, camera: THREE.Camera): void {
+    this.resizeRenderTarget();
 
     this.localLighting.prepareScene(scene);
     this.localLighting.renderLightmap(this.renderer);

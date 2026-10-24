@@ -23,31 +23,55 @@ export function registerFrontTask(update: Updatable): () => void {
     };
 }
 
-const timer = new THREE.Timer();
 export function animate(world: World, camera: PerspectiveCamera) {
-    let frameId: number;
+    const timer = new THREE.Timer();
+    let active = true;
+    let firstFrame = true;
+    let resolveReady!: () => void;
+    let rejectReady!: (error: unknown) => void;
+    const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+    let frameId = requestAnimationFrame(tick);
+    function stop() {
+        if (!active) return;
+        active = false;
+        cancelAnimationFrame(frameId);
+        timer.dispose();
+        if (firstFrame) rejectReady(new Error('Scene stopped before its first frame'));
+    }
     function tick() {
-        frameId = requestAnimationFrame(tick);
-        timer.update();
-        const dt = timer.getDelta();
+        if (!active) return;
+        try {
+            timer.update();
+            const dt = firstFrame ? 0 : timer.getDelta();
 
-        [...frontTasks].forEach((listener) => listener(dt));
-        middleTasks.forEach((listener) => listener(dt));
-        // 当这一帧所有的输入和推力都准备好了，物理世界往前走一步
-        world.step(FIXED_TIMESTEP, dt, MAX_SUBSTEPS);
-        backTasks.forEach((listener) => listener(dt));
-        dstLighting.update(dt);
+            [...frontTasks].forEach((listener) => listener(dt));
+            middleTasks.forEach((listener) => listener(dt));
+            // 当这一帧所有的输入和推力都准备好了，物理世界往前走一步
+            world.step(FIXED_TIMESTEP, dt, MAX_SUBSTEPS);
+            backTasks.forEach((listener) => listener(dt));
+            dstLighting.update(dt);
 
-        const { width, height, needsResize } = resizeRendererToDisplaySize();
-        if (needsResize) {
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
+            const { width, height, needsResize } = resizeRendererToDisplaySize();
+            if (needsResize) {
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+            }
+
+            dstLighting.render(scene, camera);
+            cursorUi.update();
+            if (firstFrame) {
+                firstFrame = false;
+                resolveReady();
+            }
+            if (active) frameId = requestAnimationFrame(tick);
+        } catch (error) {
+            const failedFirstFrame = firstFrame;
+            firstFrame = false;
+            stop();
+            if (failedFirstFrame) rejectReady(error);
+            else throw error;
         }
-
-        dstLighting.render(scene, camera);
-        cursorUi.update();
     }
 
-    tick();
-    return () => cancelAnimationFrame(frameId);
+    return { stop, ready };
 }
