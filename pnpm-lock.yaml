@@ -54,6 +54,9 @@ importers:
       '@types/three':
         specifier: ^0.184.1
         version: 0.184.1
+      stats-gl:
+        specifier: ^4.2.3
+        version: 4.2.3(three@0.184.0)
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -576,6 +579,14 @@ packages:
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
 
+  stats-gl@4.2.3:
+    resolution: {integrity: sha512-XxDFKl4kpB9siOTQ5szzT095uvJjj6Q3KLd7AbaceH8lJzRTnFARhBt4AnqKOpdY37iJGK+2H8W9bntMIUghYw==}
+    peerDependencies:
+      three: '*'
+    peerDependenciesMeta:
+      three:
+        optional: true
+
   std-env@4.2.0:
     resolution: {integrity: sha512-oCUKSupKTHX53EyjDtuZQ64pjLJ6yYCtpmEw0goYxtjG9KpbRe8KAsl2tBUGU9DyMcJ0RwJ8GqJAFzMXcXW1Rw==}
 
@@ -999,6 +1010,10 @@ snapshots:
   source-map-js@1.2.1: {}
 
   stackback@0.0.2: {}
+
+  stats-gl@4.2.3(three@0.184.0):
+    optionalDependencies:
+      three: 0.184.0
 
   std-env@4.2.0: {}
 

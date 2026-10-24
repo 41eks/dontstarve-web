@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import type { World } from 'cannon-es';
 import type { PerspectiveCamera } from 'three';
-import { cursorUi, dstLighting, resizeRendererToDisplaySize, scene } from './universal';
+import { cursorUi, dstLighting, renderer, resizeRendererToDisplaySize, scene } from './universal';
 import { IsAutopaused } from './autopause';
 import { FIXED_TIMESTEP, MAX_SUBSTEPS } from './physicsTiming';
 import { createDebugFpsDisplay } from './debugFps';
+import { createDebugStats } from './debugStats';
 
 /** `dt` is zero while autopaused; `unpausedDt` is the real frame time for the camera, which DST keeps updating. */
 type Updatable = (dt: number, unpausedDt?: number) => void;
@@ -29,6 +30,7 @@ export function registerFrontTask(update: Updatable): () => void {
 export function animate(world: World, camera: PerspectiveCamera) {
     const timer = new THREE.Timer();
     const fpsDisplay = import.meta.env.DEV ? createDebugFpsDisplay() : undefined;
+    const debugStats = import.meta.env.DEV ? createDebugStats(renderer) : undefined;
     let active = true;
     let firstFrame = true;
     let resolveReady!: () => void;
@@ -41,6 +43,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
         cancelAnimationFrame(frameId);
         timer.dispose();
         fpsDisplay?.dispose();
+        debugStats?.dispose();
         if (firstFrame) rejectReady(new Error('Scene stopped before its first frame'));
     }
     function tick(timestamp: number) {
@@ -67,6 +70,7 @@ export function animate(world: World, camera: PerspectiveCamera) {
             dstLighting.render(scene, camera);
             cursorUi.update();
             fpsDisplay?.update(timestamp);
+            debugStats?.update();
             if (firstFrame) {
                 firstFrame = false;
                 resolveReady();

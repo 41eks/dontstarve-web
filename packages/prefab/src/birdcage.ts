@@ -3,7 +3,7 @@ import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { birdcage_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { loadBuildOverride, type LoadedBuildOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
-import { batch, createMemo, createSignal, readonlySignal, getWatchWorldContent, type ReadonlySignal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
+import { batch, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
 import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf, type ShelfHolder, type ShelfTaker } from '../../componets/src/shelf';
@@ -169,6 +169,7 @@ export class Birdcage {
                 wind: context.world?.wind ?? readonlySignal(createSignal({ angle: 0, velocity: 1 })),
                 perishTick: context.world?.perishTick ?? readonlySignal(createSignal({ time: scheduler.now, total: 0 })),
                 perishClock: context.world?.perishClock,
+                ...createIdleWeatherSources(),
                 snowLevel: context.world?.snowLevel ?? readonlySignal(createSignal(0)),
                 playerpositions: context.world?.playerpositions ?? readonlySignal(createSignal<THREE.Vector3[]>([])),
                 camerarotation: readonlySignal(createSignal(new THREE.Quaternion())),

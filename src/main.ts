@@ -1,6 +1,7 @@
 // src/main.ts
 
 import './style.css';
+import { tilePerfMark } from '../packages/componets/src/tilePerf';
 import { INVENTORY_ITEM_SPECS } from './inventoryItems';
 import { isPhonographRecord } from '@dontstarve-web/prefab/records';
 import {
@@ -340,6 +341,7 @@ const ghostOwner: PlayerGhostOwner | undefined = playerAnimation && {
   },
   // Physics:Teleport
   teleport: position => {
+    tilePerfMark(`soulhop teleport to ${position.x.toFixed(1)},${position.z.toFixed(1)}`);
     playerBody.position.set(position.x, playerBody.position.y, position.z);
     playerBody.velocity.set(0, playerBody.velocity.y, 0);
     player.position.set(position.x, player.position.y, position.z);

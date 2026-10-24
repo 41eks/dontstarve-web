@@ -11,6 +11,7 @@ import { MiniMapEntity } from '../../componets/src/minimapentity';
 import { Pickable, type PickableSaveState } from './components/pickable';
 import { bulbPlantLight, BULB_PLANT_LIGHT_SAMPLE_INTERVAL, type BulbPlantLightState } from './bulb_plant';
 import { LightFlierHabitat, type LightFlier, type LightFlierServices } from './lightflier';
+import { watchTileActivity } from './tileActivity';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { setPrefabLocalLight } from './localLight';
@@ -62,6 +63,7 @@ export class LightFlierFlower implements BrainEntity {
   private readonly cleanups: (() => void)[] = [];
   private sound?: SoundHandle;
   private awake = false;
+  private active = false;
   readonly variant: LightFlierFlowerSave['variant'];
   constructor(id: string, model: THREE.Group, habitat: LightFlierHabitat, lengths: ReadonlyMap<string, number>,
     getLightLevel: (model: THREE.Group) => number, variant: LightFlierFlowerSave['variant'], saved?: LightFlierFlowerSave, random = Math.random) {
@@ -76,7 +78,7 @@ export class LightFlierFlower implements BrainEntity {
     this.wake = new ComponentTimer(scheduler, () => { this.awake = true; this.sampleLight(); if (this.inLight) this.turnOn(); });
     this.recall = new ComponentTimer(scheduler, () => this.callForLightFlier());
     this.sampleTimer = new ComponentTimer(scheduler, () => {
-      const wasInLight = this.inLight; this.sampleLight(); if (this.awake && !wasInLight && this.inLight) this.turnOn();
+      this.checkLight();
       this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
     });
     this.timers = Object.freeze({ recharge: this.recharge.snapshot, turnoff: this.turnoff.snapshot, wake: this.wake.snapshot, recall: this.recall.snapshot });
@@ -109,7 +111,8 @@ export class LightFlierFlower implements BrainEntity {
     if (saved?.rechargeSeconds !== undefined) this.recharge.start(saved.rechargeSeconds);
     if (saved?.turnoffSeconds !== undefined) this.turnoff.start(saved.turnoffSeconds);
     if (saved?.picked && this.pendingChildren.length) this.startRecall();
-    this.wake.start(1); this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (.5 + random() * .5)); this.refreshLight();
+    this.wake.start(1); this.refreshLight();
+    this.cleanups.push(watchTileActivity(model, habitat.services.tickingarea, active => this.setActive(active)));
   }
   getPosition(): THREE.Vector3 { return this.model.position; }
   getPhysicsRadius(): number { return 0; }
@@ -153,6 +156,15 @@ export class LightFlierFlower implements BrainEntity {
       this.returningHome = [...this.components.childspawner.childrenoutside].find(fly => !fly.components.formationfollower.active);
     this.recall.start(8);
   }
+  get isActive(): boolean { return this.active; }
+  /** OnEntitySleep/OnEntityWake: only the LightWatcher sampling and presentation pause; game-time timers keep running. */
+  private setActive(active: boolean): void {
+    if (this.removed || this.active === active) return;
+    this.active = active;
+    if (!active) { this.sampleTimer.stop(); return; }
+    this.checkLight(); this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (.5 + this.random() * .5)); this.refreshLight();
+  }
+  private checkLight(): void { const wasInLight = this.inLight; this.sampleLight(); if (this.awake && !wasInLight && this.inLight) this.turnOn(); }
   private sampleLight(): void { const level = this.getLightLevel(this.model); this.inLight = this.inLight ? level > .05 : level >= .075; }
   private refreshLight(): void { setPrefabLocalLight(this.model, bulbPlantLight(this.lightOn, (this.habitat.services.scheduler.now - this.tweenStart) / this.tweenTime)); }
   update(): void {
@@ -160,7 +172,7 @@ export class LightFlierFlower implements BrainEntity {
     if (this.pendingChildren.length) {
       this.pendingChildren = this.components.childspawner.LoadPostPass(id => [...this.habitat.flies].find(fly => fly.id === id), this.pendingChildren);
     }
-    this.refreshLight();
+    if (this.active) this.refreshLight();
   }
   OnSave(): LightFlierFlowerSave {
     const children = this.components.childspawner.OnSave(); children.childrenoutside.push(...this.pendingChildren);
@@ -215,7 +227,8 @@ export class LightFlierFlowerManager {
     this.habitat.update(dt);
     for (const [plant, sprite] of this.plants) {
       if (!plant.isValid()) { this.release(plant, sprite); continue; }
-      plant.update(); sprite.model.quaternion.copy(quaternion); sprite.update(dt);
+      plant.update(); if (!plant.isActive) continue;
+      sprite.model.quaternion.copy(quaternion); sprite.update(dt);
     }
   }
   private release(plant: LightFlierFlower, sprite: ArchiveSprite): void {

@@ -13,6 +13,8 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 ## 调试命令（debugCommand）
 
+开发模式（`pnpm dev`）下的性能诊断开关，不是控制台命令，命令语法与支持的 ID 不变：URL 加 `?stats` 显示 stats-gl 面板（FPS／CPU），`?stats=gpu` 另外统计 GPU 时间，库按需加载，不进生产构建；加 `?tileperf` 在控制台输出玩家跨 tile 时的活动网格写入耗时、订阅者耗时和长任务（`[tileperf]`），传送（灵魂跳跃）时附带标记。
+
 月亮洞穴水池及附属雾气、瀑布、月亮玻璃通过动画包通用函数 `createSharedArchiveSprite()` 接入共享帧几何，prefab 无需维护共享动画清单；正常和开采后的 `*_mined` 动画分别缓存，各实体保留自己的播放进度、位置、开采状态及子物件关系，单池移除不释放其他池仍使用的帧。调用方式与资源所有权见 [动画包说明](packages/animation/README.md#通用共享帧入口)。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 的导出和恢复流程沿用原有实现。
 
 蘑菇树通过 `createSharedArchiveSprite()` 的 `instancedAnimations: ['idle_loop']` 实例化待机：源 atlas 零件按动画变换和层顺序合成完整帧，整段动画共用固定原点与像素网格，保留每棵树的随机起始帧、颜色、位置与交互。受击、倒下、树桩、生长／开花及燃烧消失仍使用共享帧几何，返回待机自动重新合批。深度预绘制与不写深度的颜色 pass 保持地皮、树和动态角色的遮挡顺序；资源由 manager 统一释放。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存原有树木状态。
@@ -395,7 +397,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 月亮碎片 | `moonglass`（`c_give("moonglass", 40)` / `c_spawn("moonglass")`，叠加上限 40，地面固定 `f1` 姿态）；`halloween_moonpuff` 特效可 `c_spawn`，不入档 |
 | 洞穴出口 | `cave_exit`（`cave_stairs` 楼梯静态美术，`open` 循环，半径 2 的障碍物理，小地图 `cave_open2.png`；`worldmigrator` 洞穴世界迁移暂未接入）；无 `c_give`，`c_save()` 保留 ID 与位置 |
 | 蘑菇树 | `mushtree_moon`（月亮蘑菇树，15 次 `CHOP`）、`mushtree_medium`（红蘑菇树，10 次 `CHOP`，夏季开花、三阶段生长）、`mushtree_tall`（蓝蘑菇树，15 次 `CHOP`，冬季开花、三阶段生长）及对应 `mushtree_moon_stump`、`mushtree_medium_stump`、`mushtree_tall_stump`；`idle_loop` 使用完整帧实例化，工作／倒下等动画使用共享帧；砍倒后掉落 `log` 并留下 `DIG` 树桩（再掘出 1 个 `log`），可燃烧；`moon_cap` 尚无地面物品，不掉落；孢子、酸雨与再生暂未接入。无 `c_give`，`c_save()` 保留 ID、位置、树桩 / 生长阶段 / 开花状态 |
-| 洞穴蘑菇 | `blue_mushroom`（夜晚破土张开，`PICK` 得 `blue_cap`；采后下雨满 10–20 个 30 秒周期再生；`DIG` 未采得 2 个、已采得 1 个 `blue_cap`；可燃烧）；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批绘制姿态和非循环过渡动画，保持逐株播放与 alpha 拾取；无 `c_give`，`c_save()` 保留 ID、位置、已采状态与剩余雨量，命令语法与支持 ID 不变 |
+| 蘑菇 | `red_mushroom`（白天张开，`red_cap`）、`green_mushroom`（黄昏张开，`green_cap`）、`blue_mushroom`（夜晚破土张开，`blue_cap`），`c_spawn("red_mushroom")` 等；`PICK` 得对应的帽；采后下雨满 10–20 个 30 秒周期再生；`DIG` 未采得 2 个、已采得 1 个对应的帽；可燃烧；`hauntable` 与满月变形未移植；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批绘制姿态和非循环过渡动画，保持逐株播放与 alpha 拾取；无 `c_give`，`c_save()` 保留 ID、位置、已采状态与剩余雨量，命令语法与支持 ID 不变 |
 | 档案馆静态物件 | `archive_moon_statue`、`archive_rune_statue`、`archive_portal`、`archive_switch_base`、`archive_switch_pad`、`archive_ambient_sfx`、`rubble1`、`rubble2`（均无 `c_give`；`archive_switch_pad` 与两种 `rubble` 不入档） |
 | 玩家骷髅 | `skeleton_player`（无 `c_give`；锤子 3 次敲出 2 个 `boneshard`；玩家死亡时自动生成） |
 | 骷髅 | `skeleton`（`idle1`～`idle6`）、`skeleton_notplayer`（`idle7`～`idle8`）、`skeleton_notplayer_1`（`idle7`）、`skeleton_notplayer_2`（`idle8`）（均无 `c_give`；只有 `c_spawn`；锤子 3 次敲出 2 个 `boneshard`，另有 10% 概率掉 `scrapbook_page`；不带 `playerskeleton` 标签，也不保存死者描述） |

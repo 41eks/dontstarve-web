@@ -9,6 +9,8 @@ import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
 import { actionEntity, disposeActionEntity } from './actionEntity';
+import { watchTileActivity } from './tileActivity';
+import type { TileStateQuery } from '@dontstarve-web/signals';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
@@ -73,6 +75,8 @@ export interface BulbPlantWorld {
   /** LightWatcher level at the plant; the host samples ambient and other lights. */
   getLightLevel(model: THREE.Group): number;
   scheduler?: GameTimeScheduler;
+  /** The world's tickingarea query; plants outside it neither watch light nor animate. */
+  tickingarea?: TileStateQuery;
 }
 
 /** flower_cave's light cycle and animation callbacks for its pickable component. */
@@ -93,6 +97,8 @@ export class BulbPlantController {
   private inLight = false;
   private animationVersion = 0;
   private disposed = false;
+  private active = false;
+  private releaseArea: () => void = () => {};
   private pickSound?: SoundHandle;
   readonly pickable: Pickable;
   private readonly model: THREE.Group;
@@ -125,9 +131,7 @@ export class BulbPlantController {
       if (this.inLight) this.turnOn();
     });
     this.sampleTimer = new ComponentTimer(this.scheduler, () => {
-      const wasInLight = this.inLight;
-      this.sampleLight();
-      if (this.awake && !wasInLight && this.inLight) this.turnOn();
+      this.checkLight();
       this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
     });
     Object.assign(model.userData, { tags: [...(model.userData.tags ?? []), 'plant'], bulbPlantController: this });
@@ -146,8 +150,8 @@ export class BulbPlantController {
       else if (this.lightState === 'RECHARGING') this.rechargeTimer.start(saved.remainingSeconds);
     }
     this.wakeTimer.start(1);
-    this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + this.random() * 0.5));
     this.refreshLight();
+    this.releaseArea = watchTileActivity(model, world.tickingarea, active => this.setActive(active));
   }
 
   get lightState(): BulbPlantLightState { return this.lightMode.peek(); }
@@ -163,6 +167,23 @@ export class BulbPlantController {
     this.refreshLight();
   }
 
+  get isActive(): boolean { return this.active; }
+
+  private setActive(active: boolean): void {
+    if (this.disposed || this.active === active) return;
+    this.active = active;
+    if (!active) { this.sampleTimer.stop(); return; }
+    this.checkLight();
+    this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + this.random() * 0.5));
+    this.refreshLight();
+  }
+
+  private checkLight(): void {
+    const wasInLight = this.inLight;
+    this.sampleLight();
+    if (this.awake && !wasInLight && this.inLight) this.turnOn();
+  }
+
   private sampleLight(): void {
     const level = this.world.getLightLevel(this.model);
     this.inLight = this.inLight ? level > 0.05 : level >= 0.075;
@@ -170,9 +191,9 @@ export class BulbPlantController {
 
   update(dt: number): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
-    this.animation.update(dt);
+    if (this.active) this.animation.update(dt);
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    this.refreshLight();
+    if (this.active) this.refreshLight();
   }
 
   turnOn(): void {
@@ -209,6 +230,7 @@ export class BulbPlantController {
     if (this.disposed) return;
     this.disposed = true;
     this.animationVersion++;
+    this.releaseArea();
     this.wakeTimer.stop(); this.sampleTimer.stop(); this.rechargeTimer.stop(); this.turnoffTimer.stop();
     this.appearanceMemo.dispose();
     this.pickable.dispose();
@@ -300,6 +322,7 @@ export class BulbPlantManager {
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     for (const plant of this.plants) {
+      if (!plant.controller.isActive) { plant.controller.update(dt); continue; }
       plant.model.quaternion.copy(cameraQuaternion);
       plant.controller.update(dt);
     }

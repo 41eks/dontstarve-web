@@ -1,4 +1,4 @@
-import { watchSignal, type Memo, type ReadonlySignal, type Signal } from './signal';
+import { createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal, type Signal } from './signal';
 import type { SeasonState, WorldPhase, WorldMoonPhase } from './world';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import type { Quaternion, Vector3 } from 'three';
@@ -7,6 +7,8 @@ import type { Quaternion, Vector3 } from 'three';
 export const WorldContentKey = {
   Cycle: 'cycle', Moon: 'moon', Season: 'season', Temperature: 'temperature', Wind: 'wind', PerishClock: 'perishTick', SnowLevel: 'snowLevel',
   PlayerPositions: 'playerpositions', CameraRotation: 'camerarotation',
+  Moisture: 'moisture', MoistureCeil: 'moistureceil', MoistureFloor: 'moisturefloor', PrecipType: 'preciptype',
+  PeakPrecipitationRate: 'peakprecipitationrate', PrecipitationRate: 'precipitationRate', RainRate: 'rainRate', SnowRate: 'snowRate', SnowCover: 'snowCover',
 } as const;
 export type WorldContentKey = typeof WorldContentKey[keyof typeof WorldContentKey];
 
@@ -18,10 +20,33 @@ export interface WorldContentValues {
   wind: WorldWindChange;
   perishTick: PerishTick;
   snowLevel: number;
+  /** weather.lua moisture state: moisture, its randomized ceiling and floor, and the precipitation they select. */
+  moisture: number;
+  moistureceil: number;
+  moisturefloor: number;
+  preciptype: WorldPrecipitationType;
+  peakprecipitationrate: number;
+  precipitationRate: number;
+  rainRate: number;
+  snowRate: number;
+  snowCover: number;
   playerpositions: Vector3[];
   /** Camera world orientation, republished only when it changes; billboards copy it instead of polling the camera. */
   camerarotation: Quaternion;
 }
+
+/** Dry-weather sources for standalone worlds and fixtures that have no Weather component. */
+export function createIdleWeatherSources() {
+  return {
+    moisture: readonlySignal(createSignal(0)), moistureceil: readonlySignal(createSignal(0)), moisturefloor: readonlySignal(createSignal(0)),
+    preciptype: readonlySignal(createSignal<WorldPrecipitationType>('none')), peakprecipitationrate: readonlySignal(createSignal(1)),
+    precipitationRate: readonlySignal(createSignal(0)), rainRate: readonlySignal(createSignal(0)), snowRate: readonlySignal(createSignal(0)),
+    snowCover: readonlySignal(createSignal(0)),
+  } satisfies Pick<WorldContentSources, 'moisture' | 'moistureceil' | 'moisturefloor' | 'preciptype' | 'peakprecipitationrate'
+    | 'precipitationRate' | 'rainRate' | 'snowRate' | 'snowCover'>;
+}
+
+export type WorldPrecipitationType = 'none' | 'rain' | 'snow';
 
 /** Publish moonphase and iswaxingmoon together, without an intermediate mixed pair. */
 export interface WorldMoonState { readonly phase: WorldMoonPhase; readonly waxing: boolean; }
