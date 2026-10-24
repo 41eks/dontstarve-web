@@ -1,13 +1,17 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { DwarfStarManager, dwarfStarLight, DWARF_STAR_DURATION, STAFF_LIGHT_ACTIVE_RADIUS, getStaffLightState } from '../../prefab/src/stafflight';
+import { DwarfStarManager, dwarfStarLight, DWARF_STAR_DURATION, STAFF_LIGHT_ACTIVE_RADIUS, getStaffLightState, type StaffLightId } from '../../prefab/src/stafflight';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { PlaySound } from '../../prefab/src/sound';
 import { SpriteController, type SpriteAnimationController } from '../src/sprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
-import { clockstate, seasonstate } from '@dontstarve-web/signals';
-import { InventoryStore } from '../../inventory/src';
+import { clockstate, seasonstate, createSignal } from '@dontstarve-web/signals';
+import { InventoryStore, ItemEntity } from '../../inventory/src';
+import { ComponentUpdates } from '../../componets/src/componentUpdates';
+import { configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
+import { FindEntities } from '../../prefab/src/actionEntity';
+import { TILE_SIZE } from '../../prefab/src/tile';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -31,13 +35,112 @@ afterEach(async () => {
   vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals();
 });
 
-function setup() {
+function setup(prefab: StaffLightId = 'stafflight') {
   const scene = new THREE.Scene(), player = new THREE.Vector3();
-  const manager = new DwarfStarManager(scene, '/dst/data/anim', 'stafflight', () => player);
+  const manager = new DwarfStarManager(scene, '/dst/data/anim', prefab, () => player);
   managers.push(manager);
   const update = (dt: number) => manager.update(dt, new THREE.Quaternion());
   return { manager, scene, player, update };
 }
+
+it('heats nearby thermal stones with distance falloff until permanent removal', async () => {
+  const { manager, scene, update } = setup();
+  const model = await manager.spawn(new THREE.Vector3());
+  const source = FindEntities(scene, model.position, 1, ['HASHEATER'])[0];
+  expect(source.prefab).toBe('stafflight');
+  expect(source.components.heater!.GetHeat()).toBe(100);
+  expect(source.components.heater!.IsExothermic()).toBe(true);
+  expect(source.components.heater!.IsEndothermic()).toBe(false);
+  expect(source.components.heater!.ShouldFalloff()).toBe(true);
+  expect(source.components.heater!.GetHeatRadiusCutoff()).toBeUndefined();
+  const updates = new ComponentUpdates();
+  const stone = new ItemEntity({ itemId: 'heatrock', count: 1, temperature: { current: 30 } });
+  configureHeatRockEntity(stone);
+  stone.BindTemperatureWorld({
+    temperature: createSignal(0), componentUpdates: updates, unitScale: TILE_SIZE / 4,
+    findHeaters: (position, radius, ignoredTags) => FindEntities(scene, position, radius, ['HASHEATER'], ignoredTags),
+  });
+  const temperature = stone.components.temperature!;
+  const rock = stone.getComponent<HeatRock>('heatrock')!;
+  try {
+    expect(rock.range.peek()).toBe(4);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBe(31);
+    expect(rock.range.peek()).toBe(5);
+    // Half the search radius: heat = 100 * (1 - .5²) = 75; equilibrium with ambient 0 is 37.5.
+    stone.getPosition().set(5 * TILE_SIZE / 4, 0, 0);
+    temperature.SetTemperature(37.5);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBe(37.5);
+    // At the search boundary the heat contribution is zero.
+    stone.getPosition().set(10 * TILE_SIZE / 4, 0, 0);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBeCloseTo(37.3);
+    stone.getPosition().set(0, 0, 0);
+    manager.haunt(model);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBeCloseTo(38.3); // Lua keeps heater during disappearance.
+    update(1.01);
+    expect(source.hasTag('HASHEATER')).toBe(false);
+    expect(source.components.heater).toBeUndefined();
+    expect(FindEntities(scene, model.position, 1, ['HASHEATER'])).toEqual([]);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBeCloseTo(38.1);
+  } finally { stone.destroy(); updates.dispose(); }
+});
+
+it('cools nearby thermal stones with endothermic falloff until permanent removal', async () => {
+  const { manager, scene, update, player } = setup('staffcoldlight');
+  const model = await manager.spawn(new THREE.Vector3());
+  const source = FindEntities(scene, model.position, 1, ['HASHEATER'])[0];
+  const heater = source.components.heater!;
+  expect(source.prefab).toBe('staffcoldlight');
+  expect(heater.GetHeat()).toBe(-100);
+  expect(heater.IsExothermic()).toBe(false);
+  expect(heater.IsEndothermic()).toBe(true);
+  expect(heater.ShouldFalloff()).toBe(true);
+  expect(source.components.propagator).toBeUndefined();
+  const updates = new ComponentUpdates();
+  const stone = new ItemEntity({ itemId: 'heatrock', count: 1, temperature: { current: 6 } });
+  configureHeatRockEntity(stone);
+  stone.BindTemperatureWorld({
+    temperature: createSignal(35), componentUpdates: updates, unitScale: TILE_SIZE / 4,
+    findHeaters: (position, radius, ignoredTags) => FindEntities(scene, position, radius, ['HASHEATER'], ignoredTags),
+  });
+  const temperature = stone.components.temperature!, rock = stone.getComponent<HeatRock>('heatrock')!;
+  try {
+    expect(rock.range.peek()).toBe(2);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBe(5);
+    expect(rock.range.peek()).toBe(1);
+    // Cold-source falloff is relative to overheattemp 70: (-100 - 70) * .75 + 70 = -57.5.
+    stone.transform.position.set(5 * TILE_SIZE / 4, 0, 0);
+    temperature.SetTemperature(-11.25); // Equilibrium between ambient 35 and cooling target -57.5.
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBe(-11.25);
+    stone.transform.position.set(10 * TILE_SIZE / 4, 0, 0);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBeCloseTo(-11.05);
+    player.set(STAFF_LIGHT_ACTIVE_RADIUS + 1, 0, 0);
+    update(.1);
+    expect(model.parent).toBeNull();
+    expect(source.components.heater).toBe(heater);
+    player.set(0, 0, 0);
+    update(.1);
+    expect(FindEntities(scene, model.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
+    stone.transform.position.set(0, 0, 0);
+    temperature.SetTemperature(5);
+    manager.haunt(model);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBe(4);
+    update(1.01);
+    expect(source.hasTag('HASHEATER')).toBe(false);
+    expect(source.components.heater).toBeUndefined();
+    expect(FindEntities(scene, model.position, 1, ['HASHEATER'])).toEqual([]);
+    updates.update(1);
+    expect(temperature.GetCurrent()).toBeCloseTo(4.2);
+  } finally { stone.destroy(); updates.dispose(); }
+});
 
 it('settles lifetime at frame 60 using actual dt and releases light, sound and geometry after disappearance', async () => {
   const { manager, scene, update } = setup();
@@ -53,7 +156,6 @@ it('settles lifetime at frame 60 using actual dt and releases light, sound and g
   expect('dispose' in state.phase).toBe(false);
   const controller = model.userData.animationController as SpriteAnimationController;
   const play = vi.spyOn(controller, 'playOnce');
-  const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
   const loop = vi.mocked(PlaySound).mock.results[0].value;
   for (let frame = 0; frame < 59; frame++) update(0.01);
   for (const dt of [0, -1, NaN, Infinity]) update(dt);
@@ -100,6 +202,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   const oldAppearDone = appearances.mock.calls.find(([clip]) => clip === 'appear')![1]!;
   const state = getStaffLightState(model)!;
   const controller = model.userData.animationController as SpriteAnimationController;
+  const heater = model.userData.components.heater;
   const animationUpdate = vi.spyOn(controller, 'update');
   const oldSprite = model.children[0];
   const mesh = oldSprite.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
@@ -121,6 +224,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   expect(manager.renderEntities).toEqual([]);
   expect(state.removed.peek()).toBe(false);
   expect(state.phase.peek()).toBe('active');
+  expect(model.userData.components.heater).toBe(heater);
   const oldLoop = vi.mocked(PlaySound).mock.results[1].value;
   expect(oldLoop.stop).toHaveBeenCalledOnce();
   animationUpdate.mockClear();
@@ -130,6 +234,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   update(0.2);
   expect(model.parent).toBe(scene);
   const newSprite = model.children[0];
+  expect(FindEntities(scene, model.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
   expect(newSprite).not.toBe(oldSprite);
   expect(newSprite.userData.entityId).toBe(model.userData.entityId);
   expect(getStaffLightState(model)).toBe(state);
@@ -315,8 +420,14 @@ it('spawns world lights through console definitions and saves and reloads their 
   expect(restored.exportRecords()).toEqual(records);
   expect(vi.mocked(PlaySound).mock.calls.slice(soundsBeforeRestore).map(([event]) => event))
     .toEqual(['dontstarve/common/staff_star_LP', 'dontstarve/common/staff_coldlight_LP']);
-  for (const model of restored.byEntityId.values()) {
-    expect(getStaffLightState(model as THREE.Object3D)!.phase.peek()).toBe('active');
+  for (const entity of restored.byEntityId.values()) {
+    const model = entity as THREE.Object3D;
+    expect(getStaffLightState(model)!.phase.peek()).toBe('active');
+    const heater = FindEntities(model.parent!, model.position, 1, ['HASHEATER'])[0].components.heater!;
+    expect(heater.GetHeat()).toBe(model.name === 'stafflight' ? 100 : -100);
+    expect(heater.IsEndothermic()).toBe(model.name === 'staffcoldlight');
   }
+  const models = [...registry.byEntityId.values(), ...restored.byEntityId.values()] as THREE.Object3D[];
   registry.dispose(); restored.dispose(); inventory.dispose();
+  for (const model of models) expect(model.userData.components?.heater).toBeUndefined();
 });

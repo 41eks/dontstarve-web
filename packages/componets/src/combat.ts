@@ -8,7 +8,7 @@ export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoD
   getPhysicsRadius(): number;
   hasTag(tag: string): boolean;
   PushEvent?(name: string, data: unknown): void;
-  readonly components: { combat?: Combat; health?: HealthComponent };
+  readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { doDelta(delta: number): void } };
 }
 
 /** Players may bind the combat health operations to their existing authoritative stat store. */
@@ -26,6 +26,8 @@ export class Combat {
   damagemultiplier = 1;
   onhitfn?: (inst: CombatActor, attacker: CombatActor, damage: number) => void;
   keeptargetfn?: () => boolean;
+  /** Projectiles hit from wherever they are: the weapon's range was checked at launch. */
+  ignorehitrange = false;
   private laststartattacktime?: number;
   private readonly inst: CombatActor;
   private readonly now: () => number;
@@ -72,8 +74,16 @@ export class Combat {
 
   CanBeAttacked(): boolean { return !this.inst.isRemoved && !(this.inst.components.health?.IsDead() ?? false); }
 
-  CanHitTarget(target: CombatInst): boolean {
-    if (this.inst.isRemoved || target.isRemoved || target.hasTag('INLIMBO') || !target.components.combat?.CanBeAttacked()) return false;
+  /** combat.lua CanLightTarget: a rangedlighter weapon and a burnable that can light and is not already alight. */
+  CanLightTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
+    const burnable = (target.components as { burnable?: { canlight: boolean; IsBurning(): boolean } }).burnable;
+    return !!weapon?.hasTag('rangedlighter') && !!burnable && burnable.canlight && !burnable.IsBurning() && !target.hasTag('burnt');
+  }
+
+  CanHitTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
+    if (this.inst.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) return false;
+    if (!this.CanLightTarget(target, weapon) && !target.components.combat?.CanBeAttacked()) return false;
+    if (this.ignorehitrange) return true;
     return distanceSq(this.inst.getPosition(), target.getPosition()) <= this.CalcHitRangeSq(target);
   }
 
@@ -83,14 +93,20 @@ export class Combat {
     return (weapon ? weapon.GetDamage() : this.defaultdamage) * this.damagemultiplier;
   }
 
-  DoAttack(target: CombatInst, weapon = this.getWeapon()): boolean {
-    if (!this.CanHitTarget(target)) {
+  /** A ranged weapon launches its projectile; the projectile's hit re-enters with `projectile` set. */
+  DoAttack(target: CombatInst, weapon = this.getWeapon(), projectile?: object): boolean {
+    if (!this.CanHitTarget(target, weapon)) {
       this.inst.PushEvent?.('onmissother', { target, weapon });
       return false;
     }
-    const damage = this.CalcDamage(target, weapon);
+    if (weapon && projectile === undefined && weapon.CanRangedAttack()) {
+      weapon.LaunchProjectile(this.inst, target);
+      return true;
+    }
+    // Only combat targets take damage; a lit burnable is handled by the weapon's onattack.
+    const damage = target.components.combat ? this.CalcDamage(target, weapon) : 0;
+    target.components.combat?.GetAttacked(this.inst, damage, weapon);
     weapon?.OnAttack(this.inst, target);
-    target.components.combat!.GetAttacked(this.inst, damage, weapon);
     this.inst.PushEvent?.('onhitother', { target, damage, weapon });
     return true;
   }

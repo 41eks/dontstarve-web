@@ -30,6 +30,10 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     registerContainer?: (id: string, container: import('./containers').BuildingContainer,
         saved?: { slots: readonly { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] }) => void;
     unregisterContainer?: (id: string, container: import('./containers').BuildingContainer) => void;
+    /** Seconds from `now` (scheduler time) to the next day boundary: the delay of a WatchWorldState("cycles") timer. */
+    secondsUntilNextDay?: (now: number) => number;
+    /** SpawnPrefab for the transient fx.lua prefabs: prepare loads art and sound, spawn plays them at a ground position. */
+    fx?: Pick<import('./world_fx').WorldFx, 'prepare' | 'spawn'>;
     /** TheWorld.state.isnight. */
     isNight?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
     /** SpawnPrefab for an inventory item: a configured inst that nothing owns yet. */

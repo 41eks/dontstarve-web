@@ -14,8 +14,8 @@ export const YELLOWSTAFF_ID = 'yellowstaff';
 export const YELLOWSTAFF_COLOUR = [223 / 255, 208 / 255, 69 / 255] as const;
 export const OPALSTAFF_ID = 'opalstaff';
 export const OPALSTAFF_COLOUR = [64 / 255, 64 / 255, 208 / 255] as const;
-export type StaffId = LightStaffId | 'greenstaff';
-export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff'; }
+export type StaffId = LightStaffId | 'greenstaff' | 'firestaff';
+export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff' || itemId === 'firestaff'; }
 export type LightStaffId = typeof YELLOWSTAFF_ID | typeof OPALSTAFF_ID;
 export const LIGHT_STAFF_USES = { yellowstaff: 20, opalstaff: 50 } as const;
 export const LIGHT_STAFF_SANITY_COST = 20;
@@ -83,7 +83,8 @@ export async function loadLightStaffEquipment(assets: GroundItemAssets, itemId: 
   if (skinId && !skinArchive) throw new Error(`Unknown ${itemId} skin: ${skinId}`);
   const base = await assets.loadBuild('swap_staffs.zip');
   const skin = skinArchive ? await assets.loadBuild(skinArchive) : undefined;
-  return { builds: skin ? [skin, base] : [base], symbol: `swap_${itemId}` };
+  // staff.lua swaps `swap_<colour>staff`; the red staff's prefab id is firestaff.
+  return { builds: skin ? [skin, base] : [base], symbol: `swap_${itemId === 'firestaff' ? 'redstaff' : itemId}` };
 }
 
 /** staff_castinglight.lua's expanding light, on a separate child of the caster. */
@@ -91,6 +92,8 @@ export class StaffCastingLight {
   readonly model = new THREE.Group();
   private elapsed = 0;
   private active = false;
+  private duration = 1.9;
+  private delay = 0.33;
   private colour: readonly [number, number, number] = YELLOWSTAFF_COLOUR;
 
   constructor(owner: THREE.Object3D) {
@@ -98,8 +101,11 @@ export class StaffCastingLight {
     owner.add(this.model);
   }
 
-  start(colour: readonly [number, number, number] = YELLOWSTAFF_COLOUR): void {
+  /** staff_castinglight.lua SetUp(colour, duration, delay); the staff's own cast waits .33 seconds for 1.9. */
+  start(colour: readonly [number, number, number] = YELLOWSTAFF_COLOUR, duration = 1.9, delay = 0.33): void {
     this.colour = colour;
+    this.duration = duration;
+    this.delay = delay;
     this.elapsed = 0;
     this.active = true;
     this.refresh(0);
@@ -108,8 +114,8 @@ export class StaffCastingLight {
   update(dt: number): void {
     if (!this.active) return;
     this.elapsed += dt;
-    if (this.elapsed >= 0.33 + 1.9) this.stop();
-    else this.refresh(Math.max(0, (this.elapsed - 0.33) / 1.9));
+    if (this.elapsed >= this.delay + this.duration) this.stop();
+    else this.refresh(Math.max(0, (this.elapsed - this.delay) / this.duration));
   }
 
   stop(): void {

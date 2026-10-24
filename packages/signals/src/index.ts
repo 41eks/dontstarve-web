@@ -5,7 +5,7 @@ export { GameTimeScheduler } from './gameTimeScheduler';
 export { EventEmitter } from './EventEmitter';
 export type { Signal, ReadonlySignal, SignalListener, Memo } from './signal';
 export { createEquipmentExistenceState } from './equipment';
-export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentOwner, EquipmentSlot, HandEquipment, HeadEquipment, BodyEquipment } from './equipment';
+export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentOwner, EquipmentSlot, EquipmentStat, HandEquipment, HeadEquipment, BodyEquipment } from './equipment';
 export { createSanityState, type SanityState } from './sanity';
 export { createHealthState, type HealthState } from './health';
 export { createHungerState, type HungerState } from './hunger';

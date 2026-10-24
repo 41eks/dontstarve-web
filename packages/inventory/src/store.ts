@@ -5,7 +5,7 @@ import {
   batch, createEquipmentExistenceState, readonlySignal,
   type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
 } from '@dontstarve-web/signals';
-import { EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, PLAYER_EQUIPMENT_CONTAINER_ID, BACKPACK_SLOT_COUNT } from './addresses';
+import { PLAYER_INVENTORY_CONTAINER_ID, EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, PLAYER_EQUIPMENT_CONTAINER_ID, BACKPACK_SLOT_COUNT } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type { Container } from '../../componets/src/container';
@@ -67,19 +67,34 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
       && left.count === right.count;
 }
 
+/** A thrown drop in DST units; structurally the prefab package's LootLaunch. `angle` is radians in the scene x/z plane. */
+export interface DropLaunch {
+  angle: number;
+  height: number;
+  speed: { min: number; range: number };
+  ySpeed: { min: number; range: number };
+}
+
+/** inventoryitem.lua DoDropPhysics(randomdir): speed (2 + random), 1 for heavy items, vertical speed = 3 × speed, from y = 1 (.5 heavy). */
+function randomDropLaunch(heavy: boolean, random = Math.random): DropLaunch {
+  const speed = (heavy ? 1 : 2) + random();
+  const angle = random() * Math.PI * 2;
+  return { angle: -angle, height: heavy ? .5 : 1, speed: { min: speed, range: 0 }, ySpeed: { min: speed * 3, range: 0 } };
+}
+
 export class InventoryStore {
   private actor: import('../../componets/src/inventoryitem').InventoryActor = {
     hasTag: tag => tag === 'player', GetPosition: () => ({ x: 0, y: 0, z: 0 }), PushEvent() {},
   };
   private readonly receipts = new Set<(received: readonly InventorySlotDelta[], source?: import('../../componets/src/inventoryitem').ItemPosition) => void>();
-  private readonly drops = new Set<(entity: ItemEntity) => void>();
+  private readonly drops = new Set<(entity: ItemEntity, launch?: DropLaunch) => void>();
 
   bindActor(actor: import('../../componets/src/inventoryitem').InventoryActor): void { this.actor = actor; }
   configureItem(entity: ItemEntity): void { entity.configure(this.requireItemSpec(entity.prefab)); }
   subscribeReceived(listener: (received: readonly InventorySlotDelta[], source?: import('../../componets/src/inventoryitem').ItemPosition) => void): () => void {
     this.receipts.add(listener); return () => { this.receipts.delete(listener); };
   }
-  subscribeDropped(listener: (entity: ItemEntity) => void): () => void {
+  subscribeDropped(listener: (entity: ItemEntity, launch?: DropLaunch) => void): () => void {
     this.drops.add(listener); return () => { this.drops.delete(listener); };
   }
   GetNumSlots(): number { return this.inventorySlots().length; }
@@ -126,13 +141,28 @@ export class InventoryStore {
     for (const listener of this.receipts) listener([{ ...state, slot, delta: state.count }]);
     return true;
   }
-  DropItem(entity: ItemEntity, dropPosition?: import('../../componets/src/inventoryitem').ItemPosition): void {
+  DropItem(entity: ItemEntity, dropPosition?: import('../../componets/src/inventoryitem').ItemPosition, launch?: DropLaunch): void {
     const owner = entity.components.inventoryitem.owner;
     if (owner && this.extract(owner.address, entity.components.stackable.count, entity) !== entity) return;
     const position = dropPosition ?? this.actor.GetPosition();
     entity.transform.position.set(position.x, 0, position.z);
     entity.PushEvent('ondropped', undefined);
-    for (const listener of this.drops) listener(entity);
+    for (const listener of this.drops) { if (launch) listener(entity, launch); else listener(entity); }
+  }
+  /**
+   * inventory.lua DropEverything(ondeath): the cursor item, every item slot, then every equipped item,
+   * each as a whole stack and thrown in a random direction (DropItem(item, true, true) → OnDropped(randomdir)). Backpack contents stay inside the dropped backpack.
+   */
+  DropEverything(): void {
+    const owned = (containerId: string) => this.registrations
+      .filter(({ address }) => address.containerId === containerId)
+      .map(({ slot }) => slot.getEntity());
+    const items = [
+      ...owned(PLAYER_CURSOR_CONTAINER_ID),
+      ...owned(PLAYER_INVENTORY_CONTAINER_ID),
+      ...owned(PLAYER_EQUIPMENT_CONTAINER_ID),
+    ];
+    for (const entity of items) if (entity && !entity.isRemoved) this.DropItem(entity, undefined, randomDropLaunch(entity.hasTag('heavy')));
   }
   /** Calls the pickup hook, allocates slots and drops leftovers; a full inventory still handles the item. */
   GiveItem(entity: ItemEntity, source?: import('../../componets/src/inventoryitem').ItemPosition): boolean {

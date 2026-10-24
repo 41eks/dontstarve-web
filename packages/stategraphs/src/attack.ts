@@ -3,6 +3,8 @@ import { bindActionCancellation } from './actionEvents.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
 import type { HandEquipmentSignal } from './handEquipment.ts';
 import { equippedActionEntity } from './componentactions.ts';
+import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
+import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { BufferedActionObject } from './bufferedaction.ts';
 import type { Combat, CombatInst, CombatActor } from '../../componets/src/combat';
 
@@ -25,6 +27,8 @@ export interface Attacker {
  * Holding the key repeats the attack after each one finishes.
  */
 export class AttackActionController {
+  private readonly picker: PlayerActionPicker;
+  private readonly unregister: () => void;
   private target?: AttackTarget;
   private held = false;
   private forceAttack = false;
@@ -60,6 +64,9 @@ export class AttackActionController {
     this.isDirectWalking = isDirectWalking; this.unit = unit;
     this.stopActionEvents = bindActionCancellation(world, this, 'attack', () => this.cancel());
     this.stopFrame = world.registerFrameTask?.(() => this.update()) ?? (() => {});
+    this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
+    this.unregister = this.picker.register(model => this.getLightActions(model));
+    world.renderer.domElement.addEventListener('pointerdown', this.handleLightPointerDown, true);
     world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
@@ -75,6 +82,35 @@ export class AttackActionController {
     if (this.target !== target) this.world.actionEvents?.emit('action:begin', { owner: this, action: 'ATTACK' });
     this.animation.cancelEmote();
     this.target = target;
+    return true;
+  }
+
+  /** weapon component action: right-click a burnable with a rangedlighter weapon is ATTACK (RANGEDLIGHT). */
+  private getLightActions(model?: THREE.Object3D): MouseActionCandidate[] {
+    const inst = model?.userData.actionEntity as AttackTarget['inst'] | undefined;
+    if (!model || !inst?.components || !(inst.components as { burnable?: unknown }).burnable) return [];
+    const weapon = equippedActionEntity(this.handEquipment.peek());
+    if (!weapon?.components.weapon) return [];
+    return [{ action: { action: 'ATTACK', modifier: 'RANGEDLIGHT', invobject: weapon, target: this.actionTarget(inst) },
+      button: 'right', source: 'equipped', model, available: this.canLight(inst) }];
+  }
+
+  private canLight(inst: AttackTarget['inst']): boolean {
+    return !inst.isRemoved && !inst.hasTag('stealth') && this.attacker.combat.CanLightTarget(inst);
+  }
+
+  private actionTarget(inst: AttackTarget['inst']): BufferedActionObject {
+    return { prefab: inst.prefab, hasTag: tag => inst.hasTag(tag) };
+  }
+
+  /** Right-click ATTACK on a lightable target: walk into weapon range, then launch the projectile. */
+  lightTarget(model: THREE.Object3D): boolean {
+    const inst = model.userData.actionEntity as AttackTarget['inst'] | undefined;
+    if (!inst || !this.canLight(inst)) return false;
+    if (this.target?.inst !== inst) this.world.actionEvents?.emit('action:begin', { owner: this, action: 'ATTACK' });
+    this.animation.cancelEmote();
+    this.target = { id: String(model.userData.entityId), model: model as THREE.Group, inst,
+      isValid: () => !inst.isRemoved && !!model.parent };
     return true;
   }
 
@@ -139,6 +175,9 @@ export class AttackActionController {
     this.cancel();
     this.stopActionEvents();
     this.stopFrame();
+    this.unregister();
+    if (this.picker !== this.world.mouseActions) this.picker.dispose();
+    this.world.renderer.domElement.removeEventListener('pointerdown', this.handleLightPointerDown, true);
     this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
@@ -147,8 +186,10 @@ export class AttackActionController {
 
   /** ValidateAttackTarget for the ported cases: non-hostile targets need force attack. */
   private isValidTarget(target: AttackTarget, forceAttack: boolean): boolean {
-    return target.isValid() && this.attacker.combat.CanTarget(target.inst)
-      && !target.inst.hasTag('stealth') && (forceAttack || target.inst.hasTag('hostile'));
+    if (!target.isValid() || target.inst.hasTag('stealth')) return false;
+    // Light targets have no combat: validity is the rangedlighter test alone.
+    return this.attacker.combat.CanLightTarget(target.inst)
+      || this.attacker.combat.CanTarget(target.inst) && (forceAttack || target.inst.hasTag('hostile'));
   }
 
   private weapon() { return equippedActionEntity(this.handEquipment.peek())?.components.weapon; }
@@ -176,6 +217,16 @@ export class AttackActionController {
     this.animation.setFacing(Math.abs(forward) >= Math.abs(side) ? (forward > 0 ? 'up' : 'down') : 'side',
       Math.abs(side) > Math.abs(forward) && side < 0);
   }
+
+  private readonly handleLightPointerDown = (event: PointerEvent): void => {
+    if (event.defaultPrevented || event.button !== 2) return;
+    this.picker.pointer.trackPointer(event);
+    const action = this.picker.getMouseActions(event).right;
+    const model = this.picker.targetModel;
+    if (action?.action !== 'ATTACK' || action.modifier !== 'RANGEDLIGHT' || !model) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    this.lightTarget(model);
+  };
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
     // A new mouse action replaces the pending attack approach.

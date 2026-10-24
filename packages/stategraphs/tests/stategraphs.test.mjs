@@ -593,3 +593,79 @@ test('armorsnurtleshell shell states hide, block hits, and yield to movement or 
   graph.pushEvent('blocked');
   assert.equal(graph.stateName, 'item_out', 'blocked only matters while hiding');
 });
+
+test('death drops everything, plays the clip and holds the dead state against every later request', () => {
+  const log = [];
+  let controller = true, passable = true;
+  const graph = new WilsonStateGraph({
+    death: { dropEverything: () => log.push('drop'), isPassableAtPoint: () => passable },
+    playAnimation: (clip) => { log.push(`anim:${clip.name}`); return 60 * FRAMES; },
+    playSound() {},
+    playEvent: (event) => log.push(`event:${event}`),
+    setControllerEnabled: (enabled) => { controller = enabled; },
+    pushPlayerEvent: (name, data) => log.push(`player:${name}:${JSON.stringify(data)}`),
+    setCasting() {},
+    onStateChanged: (name) => log.push(`state:${name}`),
+  });
+  graph.pushEvent('death', { cause: 'unknown' });
+  assert.equal(graph.stateName, 'death');
+  assert.equal(graph.hasStateTag('dead'), true);
+  assert.equal(controller, false);
+  assert.deepEqual(log.slice(log.indexOf('event:dontstarve/wilson/death')), [
+    'event:dontstarve/wilson/death', 'event:dontstarve/characters/maxwell/death_voice', 'drop', 'anim:death', 'state:death']);
+
+  graph.requestMovement('run');
+  graph.requestCrafting(true);
+  graph.requestOneShot('item_out');
+  graph.pushEvent('unequip');
+  graph.pushEvent('death');
+  graph.update(120 * FRAMES);
+  assert.equal(graph.stateName, 'death', 'nothing leaves the death state');
+  assert.equal(log.filter(entry => entry === 'drop').length, 1);
+  // SGwilson death animover: makeplayerghost with a skeleton only on passable ground.
+  assert.deepEqual(log.filter(entry => entry.startsWith('player:')), ['player:makeplayerghost:{"skeleton":true}']);
+});
+
+test('a ghost idles, runs, howls on appear and hit, refuses actions and never jumps', () => {
+  const log = [];
+  const graph = new WilsonStateGraph({
+    playAnimation: (clip) => { log.push(`anim:${clip.key}:${clip.name}`); return 30 * FRAMES; },
+    playSound() {},
+    playEvent: (event) => log.push(`event:${event}`),
+    setCasting() {},
+    onStateChanged: (name) => log.push(`state:${name}`),
+  });
+  graph.pushEvent('death');
+  graph.becomeGhost();
+  assert.equal(graph.isGhost, true);
+  assert.equal(graph.hasStateTag('dead'), false, 'SGwilsonghost has no dead state');
+  assert.deepEqual(log.slice(log.indexOf('anim:ghost:appear')), ['anim:ghost:appear', 'event:dontstarve/ghost/ghost_howl', 'state:appear']);
+  graph.update(40 * FRAMES);
+  assert.equal(graph.stateName, 'idle');
+  assert.equal(log.at(-2), 'anim:ghost:idle');
+
+  graph.requestMovement('jump');
+  assert.equal(graph.stateName, 'idle', 'the ghost floats');
+  graph.requestMovement('run');
+  assert.equal(graph.stateName, 'run');
+  const idleStarts = log.filter(entry => entry === 'anim:ghost:idle').length;
+  graph.requestMovement('walk');
+  assert.equal(log.filter(entry => entry === 'anim:ghost:idle').length, idleStarts, 'running keeps the idle loop');
+  graph.requestCrafting(true);
+  graph.requestOneShot('eat');
+  assert.equal(graph.isCrafting, false);
+  assert.equal(graph.stateName, 'walk');
+  assert.equal(graph.pushBufferedAction(new BufferedAction('PICK', () => true)), false, 'no ghost action handler');
+
+  graph.pushEvent('attacked');
+  assert.equal(graph.stateName, 'hit');
+  assert.equal(graph.hasStateTag('busy'), true);
+  graph.update(4 * FRAMES);
+  assert.equal(graph.hasStateTag('busy'), false);
+  graph.update(40 * FRAMES);
+  assert.equal(graph.stateName, 'walk', 'idle resumes the requested movement');
+
+  const loaded = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, setCasting() {}, onStateChanged() {} });
+  loaded.becomeGhost(true);
+  assert.equal(loaded.stateName, 'idle', 'a saved ghost skips appear');
+});

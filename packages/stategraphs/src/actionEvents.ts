@@ -1,14 +1,14 @@
 import type { ActionWorldContext } from './actionContext.ts';
 
 export type PlayerActionKind = 'ATTACK' | 'HAMMER' | 'MINE' | 'CHOP' | 'TERRAFORM' | 'TILL' | 'DIG'
-  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'BUILD' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'FISH';
+  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'BUILD' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'FISH' | 'HAUNT';
 export type ActionInterruptReason = 'slot-select' | 'slot-context-menu' | 'drop' | 'craft' | 'crafting' | 'emote';
 export interface PlayerActionEvents {
   'action:begin': { owner: object; action: PlayerActionKind };
   'action:interrupt': { reason: ActionInterruptReason };
 }
 
-type ActionGroup = 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'fishing' | 'harvest' | 'sleep' | 'pickup' | 'pick' | 'itemuse';
+type ActionGroup = 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'play' | 'building' | 'deploy' | 'movement' | 'fishing' | 'harvest' | 'sleep' | 'haunt' | 'pickup' | 'pick' | 'itemuse';
 interface CancellationRule {
   begins: readonly PlayerActionKind[];
   interrupts: readonly ActionInterruptReason[];
@@ -21,6 +21,7 @@ const workActions = ['ATTACK', 'HAMMER', 'MINE', 'CHOP', 'TERRAFORM', 'TILL', 'D
 const rules: Record<ActionGroup, CancellationRule> = {
   itemuse: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: [...inventoryInterrupts, 'drop'] },
   attack: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: inventoryInterrupts },
+  haunt: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   pickup: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   harvest: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   sleep: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },

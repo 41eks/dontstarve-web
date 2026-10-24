@@ -14,14 +14,18 @@ type ParsedCommand =
   | { type: 'give'; give: GiveCommand }
   | { type: 'spawn'; prefabId: string }
   | { type: 'save' }
+  | { type: 'lightning' }
   | { type: 'sanity'; percent: number };
 
 const GIVE_COMMAND = /^\s*c_give\s*[(（]\s*(["'])([^"']+)\1\s*(?:[,，]\s*(\d+)\s*)?[)）]\s*;?\s*$/;
 const SPAWN_COMMAND = /^\s*c_spawn\s*[(（]\s*(["'])([^"']+)\1\s*[)）]\s*;?\s*$/;
 const SAVE_COMMAND = /^\s*c_save\s*[(（]\s*[)）]\s*;?\s*$/;
+const LIGHTNING_COMMAND = /^\s*c_lightning\s*[(（]\s*[)）]\s*;?\s*$/;
 const SANITY_COMMAND = /^\s*c_setsanity\s*[(（]\s*(\d+(?:\.\d*)?|\.\d+)\s*[)）]\s*;?\s*$/;
 
 export type DebugSpawnPrefab = (prefabId: string) => boolean | Promise<boolean>;
+/** TheWorld:PushEvent("ms_sendlightningstrike", ThePlayer:GetPosition()). */
+export type DebugSendLightning = () => void | Promise<void>;
 export type DebugSaveGame = () => void | Promise<void>;
 
 export async function executeDebugCommand(
@@ -30,18 +34,19 @@ export async function executeDebugCommand(
   spawnPrefab?: DebugSpawnPrefab,
   saveGame?: DebugSaveGame,
   setSanity?: (percent: number) => void,
+  sendLightning?: DebugSendLightning,
 ): Promise<DebugCommandResult> {
   const commands = splitCommands(command)?.map(parseCommand);
   if (!commands?.length || commands.some((entry) => entry === undefined)) {
     return {
       ok: false,
-      message: '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id")、c_setsanity(percent) 或 c_save()；多条命令用分号分隔',
+      message: '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id")、c_setsanity(percent)、c_lightning() 或 c_save()；多条命令用分号分隔',
     };
   }
 
   const messages: string[] = [];
   for (const entry of commands) {
-    const result = await executeSingleCommand(entry!, inventory, spawnPrefab, saveGame, setSanity);
+    const result = await executeSingleCommand(entry!, inventory, spawnPrefab, saveGame, setSanity, sendLightning);
     messages.push(result.message);
     if (!result.ok) return { ok: false, message: messages.join('\n') };
   }
@@ -75,6 +80,7 @@ function parseCommand(command: string): ParsedCommand | undefined {
   const sanity = SANITY_COMMAND.exec(command);
   if (sanity) return { type: 'sanity', percent: Number(sanity[1]) };
   if (SAVE_COMMAND.test(command)) return { type: 'save' };
+  if (LIGHTNING_COMMAND.test(command)) return { type: 'lightning' };
   const give = parseGiveCommand(command);
   if (give) return { type: 'give', give };
   const prefabId = parseSpawnCommand(command);
@@ -88,6 +94,7 @@ async function executeSingleCommand(
   spawnPrefab?: DebugSpawnPrefab,
   saveGame?: DebugSaveGame,
   setSanity?: (percent: number) => void,
+  sendLightning?: DebugSendLightning,
 ): Promise<DebugCommandResult> {
   if (command.type === 'sanity') {
     const { percent } = command;
@@ -97,6 +104,11 @@ async function executeSingleCommand(
     if (!setSanity) return { ok: false, message: '当前无法设置理智' };
     setSanity(percent);
     return { ok: true, message: `已设置理智为 ${percent * 100}%` };
+  }
+  if (command.type === 'lightning') {
+    if (!sendLightning) return { ok: false, message: '当前无法触发闪电' };
+    await sendLightning();
+    return { ok: true, message: '已在玩家位置触发闪电' };
   }
   if (command.type === 'save') {
     if (!saveGame) return { ok: false, message: '当前无法保存游戏' };

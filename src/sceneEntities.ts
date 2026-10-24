@@ -26,7 +26,11 @@ import { playerStats } from './playerStats';
 import { DwarfStarManager, DWARF_STAR_ID, POLAR_LIGHT_ID } from '@dontstarve-web/prefab/stafflight';
 import { BulbPlantManager } from '@dontstarve-web/prefab/bulb_plant';
 import { RockManager } from '@dontstarve-web/prefab/rocks';
+import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
+import { CaveEntranceManager } from '@dontstarve-web/prefab/cave_entrance';
 import { MarbleShrubManager, MARBLESHRUB_ID } from '@dontstarve-web/prefab/marbleshrub';
+import { ArchivePropsManager, type ArchivePropId } from '@dontstarve-web/prefab/archive_props';
+import { SkeletonManager, type SkeletonId } from '@dontstarve-web/prefab/skeleton';
 import { MarbleBeanSaplingManager, MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { RockAvocadoSaplingManager, ROCK_AVOCADO_SAPLING_ID } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
 import { RockAvocadoBushManager, ROCK_AVOCADO_BUSH_ID } from '@dontstarve-web/prefab/rock_avocado_bush';
@@ -74,18 +78,22 @@ import { PREFAB_DEFINITIONS } from './prefabDefinitions';
 import { disposeSprite } from '@dontstarve-web/prefab/disposeSprite';
 import type { WorldState } from './worldState';
 
-type SceneWorldState = Pick<WorldState, 'clock' | 'season' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'tickingarea' | 'worldwind' | 'scheduler' | 'componentUpdates' | 'temperature' | 'weather' | 'perishClock'>;
+type SceneWorldState = Pick<WorldState, 'clock' | 'season' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'tickingarea' | 'worldwind' | 'scheduler' | 'portalRez' | 'componentUpdates' | 'temperature' | 'weather' | 'perishClock'>;
 
 const MANAGER_DEFINITIONS = {
   'buildings': PREFAB_DEFINITIONS.buildings,
   'reskinEffects': PREFAB_DEFINITIONS.reskinEffects,
   'flower': PREFAB_DEFINITIONS.flowers,
   'world_fx': PREFAB_DEFINITIONS.worldFx,
+  'staff_projectile': PREFAB_DEFINITIONS.staffProjectiles,
   'molehill': PREFAB_DEFINITIONS.molehills,
   'ground_item': PREFAB_DEFINITIONS.groundItems,
   'bulb_plant': PREFAB_DEFINITIONS.bulbPlants,
   'rocks': PREFAB_DEFINITIONS.rocks,
+  'cave_entrance': PREFAB_DEFINITIONS.caveEntrances,
   'marbleshrub': PREFAB_DEFINITIONS.marbleShrubs,
+  'archive_props': PREFAB_DEFINITIONS.archiveProps,
+  'skeleton': PREFAB_DEFINITIONS.skeletons,
   'marblebean_sapling': PREFAB_DEFINITIONS.marbleBeanSaplings,
   'rock_avocado_bush': PREFAB_DEFINITIONS.rockAvocadoBushes,
   'rock_avocado_fruit_sprout_sapling': PREFAB_DEFINITIONS.rockAvocadoSaplings,
@@ -135,8 +143,11 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.molehills,
   PREFAB_DEFINITIONS.beefalos,
   PREFAB_DEFINITIONS.rocks,
+  PREFAB_DEFINITIONS.caveEntrances,
   PREFAB_DEFINITIONS.marbleBeanSaplings,
   PREFAB_DEFINITIONS.marbleShrubs,
+  PREFAB_DEFINITIONS.archiveProps,
+  PREFAB_DEFINITIONS.skeletons,
   PREFAB_DEFINITIONS.rockAvocadoSaplings,
   PREFAB_DEFINITIONS.rockAvocadoBushes,
   PREFAB_DEFINITIONS.berrybushes,
@@ -153,6 +164,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.portals,
   PREFAB_DEFINITIONS.reskinEffects,
   PREFAB_DEFINITIONS.worldFx,
+  PREFAB_DEFINITIONS.staffProjectiles,
   PREFAB_DEFINITIONS.nightmareRocks,
   PREFAB_DEFINITIONS.rain,
   PREFAB_DEFINITIONS.snow,
@@ -175,11 +187,15 @@ export async function createSceneEntities(
     'reskinEffects': ReturnType<typeof registerReskinEffects>;
     'flower': ReturnType<typeof registerFlowers>;
     'world_fx': ReturnType<typeof registerWorldFx>;
+    'staff_projectile': ReturnType<typeof registerStaffProjectiles>;
     'molehill': ReturnType<typeof registerMolehills>;
     'ground_item': ReturnType<typeof registerGroundItems>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
     'rocks': ReturnType<typeof registerRocks>;
+    'cave_entrance': ReturnType<typeof registerCaveEntrances>;
     'marbleshrub': ReturnType<typeof registerMarbleShrubs>;
+    'archive_props': ReturnType<typeof registerArchiveProps>;
+    'skeleton': ReturnType<typeof registerSkeletons>;
     'marblebean_sapling': ReturnType<typeof registerMarbleBeanSaplings>;
     'rock_avocado_bush': ReturnType<typeof registerRockAvocadoBushes>;
     'rock_avocado_fruit_sprout_sapling': ReturnType<typeof registerRockAvocadoSaplings>;
@@ -224,6 +240,7 @@ export async function createSceneEntities(
   Managers['reskinEffects'] = registerReskinEffects(registry, 'reskinEffects', worldState);
   Managers['flower'] = registerFlowers(registry, 'flower', worldState);
   Managers['world_fx'] = registerWorldFx(registry, 'world_fx', worldState);
+  Managers['staff_projectile'] = registerStaffProjectiles(registry, 'staff_projectile', worldState);
   Managers['molehill'] = registerMolehills(registry, 'molehill', worldState);
   Managers['ground_item'] = registerGroundItems(registry, 'ground_item', worldState);
 
@@ -231,7 +248,10 @@ export async function createSceneEntities(
   Managers['staffcoldlight'] = registerStaffLights(registry, 'staffcoldlight', worldState);
   Managers['bulb_plant'] = registerBulbPlants(registry, 'bulb_plant', worldState);
   Managers['rocks'] = registerRocks(registry, 'rocks', worldState);
+  Managers['cave_entrance'] = registerCaveEntrances(registry, 'cave_entrance', worldState);
   Managers['marbleshrub'] = registerMarbleShrubs(registry, 'marbleshrub', worldState);
+  Managers['archive_props'] = registerArchiveProps(registry, 'archive_props', worldState);
+  Managers['skeleton'] = registerSkeletons(registry, 'skeleton', worldState);
   Managers['marblebean_sapling'] = registerMarbleBeanSaplings(registry, 'marblebean_sapling', worldState);
   Managers['rock_avocado_bush'] = registerRockAvocadoBushes(registry, 'rock_avocado_bush', worldState);
   Managers['rock_avocado_fruit_sprout_sapling'] = registerRockAvocadoSaplings(registry, 'rock_avocado_fruit_sprout_sapling', worldState);
@@ -289,7 +309,10 @@ export async function createSceneEntities(
     beefalos: Managers['beefalo'],
     molehills: Managers['molehill'],
     rockManager: Managers['rocks'],
+    caveEntrances: Managers['cave_entrance'],
     marbleShrubs: Managers['marbleshrub'],
+    archiveProps: Managers['archive_props'],
+    skeletons: Managers['skeleton'],
     marbleBeanSaplings: Managers['marblebean_sapling'],
     rockAvocadoSaplings: Managers['rock_avocado_fruit_sprout_sapling'],
     rockAvocadoBushes: Managers['rock_avocado_bush'],
@@ -306,6 +329,7 @@ export async function createSceneEntities(
     nightmareGrowths: Managers['nightmaregrowth'],
     reskinEffects: Managers['reskinEffects'],
     worldFx: Managers['world_fx'],
+    staffProjectiles: Managers['staff_projectile'],
     farmPlow: Managers['farm_plow'],
     dockKit: Managers['dock_kit'],
   };
@@ -315,6 +339,9 @@ export async function createSceneEntities(
       { ...view, physics: world, scheduler, dynamicMusic,
         getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
         cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, isNight: worldState.isNight, perishClock: worldState.perishClock,
+        secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
+        // world_fx registers after the buildings; the manager is read when an fx is played.
+        fx: { prepare: prefab => Managers['world_fx'].prepare(prefab), spawn: (prefab, position) => { Managers['world_fx'].spawn(prefab, position); } },
         spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
         dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
         registerContainer: (id, container, saved) => sceneInventory.registerContainer(id, container, saved),
@@ -373,6 +400,17 @@ export async function createSceneEntities(
       dispose: () => worldFx.dispose(),
     });
     return worldFx;
+  }
+
+  function registerStaffProjectiles(registry: EntityRegistry, prefabId: 'staff_projectile', _worldState: SceneWorldState) {
+    const staffProjectiles = new StaffProjectileManager(scene, { fx: Managers['world_fx'] });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      exportRecords: () => [],
+      update: (dt, quaternion) => staffProjectiles.update(dt, quaternion),
+      renderEntities: () => staffProjectiles.renderEntities,
+      dispose: () => staffProjectiles.dispose(),
+    });
+    return staffProjectiles;
   }
 
   function registerMolehills(registry: EntityRegistry, prefabId: 'molehill', worldState: SceneWorldState) {
@@ -511,6 +549,24 @@ export async function createSceneEntities(
     return rockManager;
   }
 
+  function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance', _worldState: SceneWorldState) {
+    const caveEntrances = new CaveEntranceManager(scene, {
+      physics: world, prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (id, record) => caveEntrances.spawn(id, new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: {},
+      }),
+      debugSpawn: id => caveEntrances.spawn(id, player.position.clone()),
+      exportRecords: () => caveEntrances.exportRecords(),
+      update: (dt, quaternion) => caveEntrances.update(dt, quaternion),
+      renderEntities: () => caveEntrances.renderEntities,
+      miniMapEntities: () => caveEntrances.miniMapEntities,
+      dispose: () => caveEntrances.dispose(),
+    });
+    return caveEntrances;
+  }
+
   function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', _worldState: SceneWorldState) {
     const marbleShrubs = new MarbleShrubManager(scene, {
       scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent,
@@ -529,6 +585,43 @@ export async function createSceneEntities(
       dispose: () => marbleShrubs.dispose(),
     });
     return marbleShrubs;
+  }
+
+  function registerArchiveProps(registry: EntityRegistry, prefabId: 'archive_props', _worldState: SceneWorldState) {
+    const archiveProps = new ArchivePropsManager(scene, {
+      physics: world, cameraFacing: view.cameraFacing,
+      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (id, record) => archiveProps.spawn(id, new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: { archiveProp: record.components.archiveProp },
+      }).then(model => model!),
+      debugSpawn: id => archiveProps.spawn(id, player.position.clone()),
+      exportRecords: () => archiveProps.exportRecords() as { prefabId: ArchivePropId; record: ReturnType<typeof archiveProps.exportRecords>[number]['record'] }[],
+      update: (dt, quaternion) => archiveProps.update(dt, quaternion),
+      renderEntities: () => archiveProps.renderEntities,
+      miniMapEntities: () => archiveProps.miniMapEntities,
+      dispose: () => archiveProps.dispose(),
+    });
+    return archiveProps;
+  }
+
+  function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton', _worldState: SceneWorldState) {
+    const skeletons = new SkeletonManager(scene, {
+      physics: world,
+      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (id, record) => skeletons.spawn(id, new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: { skeleton: record.components.skeleton },
+      }),
+      debugSpawn: id => skeletons.spawn(id, player.position.clone()),
+      exportRecords: () => skeletons.exportRecords() as { prefabId: SkeletonId; record: ReturnType<typeof skeletons.exportRecords>[number]['record'] }[],
+      update: (dt, quaternion) => skeletons.update(dt, quaternion),
+      renderEntities: () => skeletons.renderEntities,
+      dispose: () => skeletons.dispose(),
+    });
+    return skeletons;
   }
 
   function registerMarbleBeanSaplings(registry: EntityRegistry, prefabId: 'marblebean_sapling', _worldState: SceneWorldState) {
@@ -735,8 +828,9 @@ export async function createSceneEntities(
     return wormholes;
   }
 
-  function registerPortals(registry: EntityRegistry, prefabId: 'multiplayer_portal_moonrock', _worldState: SceneWorldState) {
-    const portals = new PortalManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+  function registerPortals(registry: EntityRegistry, prefabId: 'multiplayer_portal_moonrock', worldState: SceneWorldState) {
+    const portals = new PortalManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`,
+      { scheduler: worldState.scheduler, portalRez: worldState.portalRez });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => portals.spawn(new THREE.Vector3(...record.transform.position), {
         id: record.id, transform: record.transform, components: {},
@@ -745,6 +839,7 @@ export async function createSceneEntities(
       exportRecords: () => portals.exportRecords().map((record) => ({ prefabId: PORTAL_ID, record })),
       update: (dt, quaternion) => portals.update(dt, quaternion),
       renderEntities: () => portals.renderEntities,
+      miniMapEntities: () => portals.miniMapEntities,
       dispose: () => portals.dispose(),
     });
     return portals;

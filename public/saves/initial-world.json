@@ -7,30 +7,32 @@
     "createdAt": "2026-09-30T00:00:00.000Z"
   },
   "snapshot": {
-    "id": "0000000025",
-    "parentId": "0000000024",
-    "savedAt": "2026-10-13T13:09:00.202Z",
+    "id": "0000000029",
+    "parentId": "0000000028",
+    "savedAt": "2026-10-17T06:46:24.943Z",
     "reason": "manual"
   },
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 4411.6418000026,
+    "elapsedSeconds": 5188.57639999174,
     "systems": {
       "worldtemperature": {
-        "daylight": true,
         "season": "spring",
-        "seasontemperature": -25,
-        "phasetemperature": 4.0950132771846555,
-        "noisetime": 5916.641800002874
+        "seasontemperature": 30,
+        "phasetemperature": 0,
+        "noisetime": 6693.576400002898
       },
       "weather": {
-        "moisture": 1532.1208996466921,
+        "moisture": 1080,
         "moisturefloor": 1080,
-        "moistureceil": 2160,
-        "preciptype": "snow",
+        "moistureceil": 4314.2407652440215,
+        "preciptype": "none",
         "peakprecipitationrate": 0.7906782011227431,
-        "snowlevel": 0.26262636678443535
+        "snowlevel": 0
+      },
+      "moon": {
+        "mooomphasecycle": 11
       }
     },
     "map": {
@@ -29306,8 +29308,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 904,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29327,8 +29329,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1085,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29348,8 +29350,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 975,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29369,8 +29371,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1255,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29390,8 +29392,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 962,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29411,8 +29413,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 895,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29428,12 +29430,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "short"
             },
             "growable": {
-              "stage": 3,
-              "time": 1936,
-              "sleeptime": 3
+              "stage": 1,
+              "time": 385
             }
           }
         },
@@ -29453,8 +29454,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 2024,
-              "sleeptime": 39
+              "time": 221,
+              "sleeptime": 814
             }
           }
         },
@@ -29474,8 +29475,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1003,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29491,11 +29492,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "short"
             },
             "growable": {
-              "stage": 3,
-              "time": 1176
+              "stage": 1,
+              "time": 89
             }
           }
         },
@@ -29515,8 +29516,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1946,
-              "sleeptime": 39
+              "time": 197,
+              "sleeptime": 814
             }
           }
         },
@@ -29536,8 +29537,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1052,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29553,12 +29554,12 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "normal"
             },
             "growable": {
-              "stage": 3,
-              "time": 1407,
-              "sleeptime": 39
+              "stage": 2,
+              "time": 283,
+              "sleeptime": 14
             }
           }
         },
@@ -29578,8 +29579,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1996,
-              "sleeptime": 39
+              "time": 212,
+              "sleeptime": 814
             }
           }
         },
@@ -29599,8 +29600,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 907,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29620,8 +29621,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 2057,
-              "sleeptime": 39
+              "time": 232,
+              "sleeptime": 814
             }
           }
         },
@@ -29641,8 +29642,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1398,
-              "sleeptime": 39
+              "time": 23,
+              "sleeptime": 814
             }
           }
         },
@@ -29662,8 +29663,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1860,
-              "sleeptime": 39
+              "time": 169,
+              "sleeptime": 814
             }
           }
         },
@@ -29683,8 +29684,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 876,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29704,8 +29705,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1978,
-              "sleeptime": 39
+              "time": 207,
+              "sleeptime": 814
             }
           }
         },
@@ -29721,11 +29722,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "short"
             },
             "growable": {
-              "stage": 3,
-              "time": 1183
+              "stage": 1,
+              "time": 289
             }
           }
         },
@@ -29745,8 +29746,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1600,
-              "sleeptime": 39
+              "time": 87,
+              "sleeptime": 814
             }
           }
         },
@@ -29766,8 +29767,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1864,
-              "sleeptime": 39
+              "time": 170,
+              "sleeptime": 814
             }
           }
         },
@@ -29787,8 +29788,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1172,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29808,8 +29809,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1409,
-              "sleeptime": 39
+              "time": 26,
+              "sleeptime": 814
             }
           }
         },
@@ -29829,8 +29830,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1695,
-              "sleeptime": 39
+              "time": 117,
+              "sleeptime": 814
             }
           }
         },
@@ -29850,8 +29851,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 930,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29871,7 +29872,7 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1847
+              "time": 165
             }
           }
         },
@@ -29891,8 +29892,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 869,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -29912,7 +29913,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1541
+              "time": 66,
+              "sleeptime": 256
             }
           }
         },
@@ -29932,8 +29934,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1643,
-              "sleeptime": 39
+              "time": 100,
+              "sleeptime": 814
             }
           }
         },
@@ -29953,8 +29955,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1704,
-              "sleeptime": 39
+              "time": 120,
+              "sleeptime": 814
             }
           }
         },
@@ -29974,7 +29976,7 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1640
+              "time": 100
             }
           }
         },
@@ -29994,8 +29996,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1266,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30011,12 +30013,12 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "normal"
             },
             "growable": {
-              "stage": 3,
-              "time": 1463,
-              "sleeptime": 39
+              "stage": 2,
+              "time": 966,
+              "sleeptime": 14
             }
           }
         },
@@ -30036,8 +30038,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 980,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30057,8 +30059,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1029,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30078,8 +30080,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1604,
-              "sleeptime": 39
+              "time": 88,
+              "sleeptime": 814
             }
           }
         },
@@ -30099,8 +30101,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1636,
-              "sleeptime": 39
+              "time": 98,
+              "sleeptime": 814
             }
           }
         },
@@ -30116,12 +30118,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "normal"
             },
             "growable": {
-              "stage": 3,
-              "time": 864,
-              "sleeptime": 39
+              "stage": 2,
+              "time": 329
             }
           }
         },
@@ -30141,7 +30142,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1757
+              "time": 133,
+              "sleeptime": 141
             }
           }
         },
@@ -30161,8 +30163,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1602,
-              "sleeptime": 39
+              "time": 88,
+              "sleeptime": 814
             }
           }
         },
@@ -30182,8 +30184,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1757,
-              "sleeptime": 39
+              "time": 136,
+              "sleeptime": 814
             }
           }
         },
@@ -30203,8 +30205,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 903,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30224,8 +30226,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1072,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30245,8 +30247,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1769,
-              "sleeptime": 39
+              "time": 141,
+              "sleeptime": 814
             }
           }
         },
@@ -30266,8 +30268,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1312,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30283,12 +30285,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "short"
             },
             "growable": {
-              "stage": 3,
-              "time": 1775,
-              "sleeptime": 39
+              "stage": 1,
+              "time": 278
             }
           }
         },
@@ -30308,8 +30309,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1112,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30329,8 +30330,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1723,
-              "sleeptime": 39
+              "time": 126,
+              "sleeptime": 814
             }
           }
         },
@@ -30350,8 +30351,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1956,
-              "sleeptime": 39
+              "time": 199,
+              "sleeptime": 814
             }
           }
         },
@@ -30371,8 +30372,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1642,
-              "sleeptime": 39
+              "time": 100,
+              "sleeptime": 814
             }
           }
         },
@@ -30392,8 +30393,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1538,
-              "sleeptime": 39
+              "time": 67,
+              "sleeptime": 814
             }
           }
         },
@@ -30413,8 +30414,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1937,
-              "sleeptime": 39
+              "time": 193,
+              "sleeptime": 814
             }
           }
         },
@@ -30434,8 +30435,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1584,
-              "sleeptime": 39
+              "time": 82,
+              "sleeptime": 814
             }
           }
         },
@@ -30455,8 +30456,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1868,
-              "sleeptime": 39
+              "time": 172,
+              "sleeptime": 814
             }
           }
         },
@@ -30476,8 +30477,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1574,
-              "sleeptime": 39
+              "time": 79,
+              "sleeptime": 814
             }
           }
         },
@@ -30497,8 +30498,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1734,
-              "sleeptime": 39
+              "time": 130,
+              "sleeptime": 814
             }
           }
         },
@@ -30518,8 +30519,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1337,
-              "sleeptime": 39
+              "time": 4,
+              "sleeptime": 814
             }
           }
         },
@@ -30539,8 +30540,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1654,
-              "sleeptime": 39
+              "time": 104,
+              "sleeptime": 814
             }
           }
         },
@@ -30560,8 +30561,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1152,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30577,12 +30578,12 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "normal"
             },
             "growable": {
-              "stage": 3,
-              "time": 1225,
-              "sleeptime": 39
+              "stage": 2,
+              "time": 905,
+              "sleeptime": 12
             }
           }
         },
@@ -30602,8 +30603,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 2021,
-              "sleeptime": 39
+              "time": 220,
+              "sleeptime": 814
             }
           }
         },
@@ -30623,8 +30624,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1366,
-              "sleeptime": 39
+              "time": 13,
+              "sleeptime": 814
             }
           }
         },
@@ -30640,11 +30641,12 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "short"
             },
             "growable": {
-              "stage": 3,
-              "time": 1551
+              "stage": 1,
+              "time": 374,
+              "sleeptime": 10
             }
           }
         },
@@ -30660,12 +30662,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "normal"
             },
             "growable": {
-              "stage": 3,
-              "time": 1608,
-              "sleeptime": 39
+              "stage": 2,
+              "time": 412
             }
           }
         },
@@ -30681,12 +30682,12 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "normal"
             },
             "growable": {
-              "stage": 3,
-              "time": 1113,
-              "sleeptime": 39
+              "stage": 2,
+              "time": 327,
+              "sleeptime": 12
             }
           }
         },
@@ -30706,8 +30707,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1070,
-              "sleeptime": 39
+              "time": 0,
+              "sleeptime": 814
             }
           }
         },
@@ -30723,12 +30724,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "short"
             },
             "growable": {
-              "stage": 3,
-              "time": 1854,
-              "sleeptime": 39
+              "stage": 1,
+              "time": 328
             }
           }
         },
@@ -30748,7 +30748,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1323
+              "time": 0,
+              "sleeptime": 179
             }
           }
         },
@@ -30768,8 +30769,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1011,
-              "sleeptime": 3
+              "time": 0,
+              "sleeptime": 586
             }
           }
         },
@@ -30785,12 +30786,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "short"
             },
             "growable": {
-              "stage": 3,
-              "time": 1900,
-              "sleeptime": 39
+              "stage": 1,
+              "time": 200
             }
           }
         },
@@ -30806,12 +30806,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "normal"
             },
             "growable": {
-              "stage": 3,
-              "time": 1098,
-              "sleeptime": 39
+              "stage": 2,
+              "time": 673
             }
           }
         },
@@ -30831,8 +30830,8 @@
             },
             "growable": {
               "stage": 3,
-              "time": 1862,
-              "sleeptime": 39
+              "time": 170,
+              "sleeptime": 814
             }
           }
         },
@@ -30848,12 +30847,11 @@
           },
           "components": {
             "moonTree": {
-              "size": "tall"
+              "size": "short"
             },
             "growable": {
-              "stage": 3,
-              "time": 1488,
-              "sleeptime": 39
+              "stage": 1,
+              "time": 58
             }
           }
         }
@@ -30900,7 +30898,7 @@
                     "entityId": "e_5de5481dfe59039eb6655af84d8dca32",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.8755248385417443
+                    "freshnessPercent": 0.7465355468768781
                   }
                 },
                 {
@@ -30909,7 +30907,7 @@
                     "entityId": "e_1dba80208926f5175f3325190979330c",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.8755248385417443
+                    "freshnessPercent": 0.7465355468768781
                   }
                 },
                 {
@@ -30918,7 +30916,7 @@
                     "entityId": "e_e59bc725b7807bd8dae74d0663fd6a9c",
                     "itemId": "red_cap",
                     "count": 1,
-                    "freshnessPercent": 0.8755248385417443
+                    "freshnessPercent": 0.7465355468768781
                   }
                 },
                 {
@@ -30984,7 +30982,8 @@
                   "item": {
                     "entityId": "e_6eb36343fdeb0d0acade0fa83bcc338f",
                     "itemId": "butterfly",
-                    "count": 31
+                    "count": 31,
+                    "freshnessPercent": 0.5700356944504457
                   }
                 },
                 {
@@ -31157,6 +31156,7 @@
       ],
       "wardrobe": [],
       "dragonflychest": [],
+      "bookstation": [],
       "campfire": [],
       "saltbox": [],
       "nightlight": [],
@@ -31180,6 +31180,8 @@
         }
       ],
       "winterometer": [],
+      "pighead": [],
+      "mermhead": [],
       "birdcage": [
         {
           "id": "e_46b96d2af2a3f1eed68277468ab66673",
@@ -31384,6 +31386,7 @@
       ],
       "wall_dreadstone": [],
       "wall_scrap": [],
+      "fence": [],
       "ground_item": [
         {
           "id": "e_9026f7ec3f32e8ffa91072a763ea3317",
@@ -31399,7 +31402,7 @@
             "stack": {
               "itemId": "lightbulb",
               "count": 1,
-              "freshnessPercent": 0.9224006250001102
+              "freshnessPercent": 0.5999273958379445
             }
           }
         },
@@ -31417,7 +31420,7 @@
             "stack": {
               "itemId": "lightbulb",
               "count": 1,
-              "freshnessPercent": 0.9224006250001102
+              "freshnessPercent": 0.5999273958379445
             }
           }
         },
@@ -31549,16 +31552,17 @@
           "id": "e_21e37cdffd9df98b8f40c7c716d1f2d9",
           "transform": {
             "position": [
-              37.086503335606366,
+              57.727845175798514,
               0,
-              -37.720480839438686
+              -123.42944833840326
             ],
             "rotationY": 0
           },
           "components": {
             "stack": {
               "itemId": "butterfly",
-              "count": 1
+              "count": 1,
+              "freshnessPercent": 1
             }
           }
         },
@@ -31566,16 +31570,17 @@
           "id": "e_d96125953f2a5c9abf3006c7e9814f8b",
           "transform": {
             "position": [
-              -19.891237951424312,
+              -38.6084710688337,
               0,
-              224.40013631446124
+              66.01954205061656
             ],
             "rotationY": 0
           },
           "components": {
             "stack": {
               "itemId": "butterfly",
-              "count": 1
+              "count": 1,
+              "freshnessPercent": 1
             }
           }
         },
@@ -31583,16 +31588,17 @@
           "id": "e_bb2e6b7bc2ac993bbee65beff6992d46",
           "transform": {
             "position": [
-              -142.22638092652525,
+              -273.19629421904926,
               0,
-              -10.949598729287677
+              -108.64571339386174
             ],
             "rotationY": 0
           },
           "components": {
             "stack": {
               "itemId": "butterfly",
-              "count": 1
+              "count": 1,
+              "freshnessPercent": 1
             }
           }
         },
@@ -31600,16 +31606,17 @@
           "id": "e_7d80c7aec9e512f51989a11a65b96473",
           "transform": {
             "position": [
-              -85.418812187117,
+              -57.38876967746304,
               0,
-              1.4750440325584455
+              64.90241689096011
             ],
             "rotationY": 0
           },
           "components": {
             "stack": {
               "itemId": "butterfly",
-              "count": 1
+              "count": 1,
+              "freshnessPercent": 1
             }
           }
         },
@@ -31926,11 +31933,307 @@
               "count": 1
             }
           }
+        },
+        {
+          "id": "e_d24e8979da058681073a21da515f347b",
+          "transform": {
+            "position": [
+              -4.988356890493424,
+              0,
+              49.46766361669739
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_0bc6c89888cef8ae8c9790dc3f77e3ad",
+          "transform": {
+            "position": [
+              34.87734401368903,
+              0,
+              -224.55863181382867
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "heatrock",
+              "count": 1,
+              "temperature": {
+                "current": 39.34187081680098
+              },
+              "remainingFuel": 100
+            }
+          }
+        },
+        {
+          "id": "e_8a30140a7d944bedfb9becbe7fb49bc1",
+          "transform": {
+            "position": [
+              -3.3004458879477725,
+              0,
+              -226.10485042007994
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "heatrock",
+              "count": 1,
+              "temperature": {
+                "current": 27.998064309333813
+              },
+              "remainingFuel": 100
+            }
+          }
+        },
+        {
+          "id": "e_4deafb09f2602cbb38c085a6807532a3",
+          "transform": {
+            "position": [
+              -39.177163383212,
+              0,
+              -189.3441631379492
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "heatrock",
+              "count": 1,
+              "temperature": {
+                "current": 3.6615659218793946
+              },
+              "remainingFuel": 100
+            }
+          }
+        },
+        {
+          "id": "e_d17f9cb5ea74ba458bd47276c49f9b65",
+          "transform": {
+            "position": [
+              -54.859616104369444,
+              0,
+              39.69492077219988
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "poop",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_a2d7407423ea49b87bb1170e99ee5852",
+          "transform": {
+            "position": [
+              -67.51351578521455,
+              0,
+              -137.94278220640615
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "book_rain",
+              "count": 1,
+              "remainingUses": 4
+            }
+          }
+        },
+        {
+          "id": "e_0590d4857580803e8b5947fbfb6b137a",
+          "transform": {
+            "position": [
+              -66.28079246534577,
+              0,
+              -160.49346768253162
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "amulet",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_38e5fe4a0541d9d6e6293d93e31a12c4",
+          "transform": {
+            "position": [
+              -69.7054070331336,
+              0,
+              -176.09977491103712
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "amulet",
+              "count": 1
+            }
+          }
+        },
+        {
+          "id": "e_2712e7e33a7c8aefd3574180effcfd5e",
+          "transform": {
+            "position": [
+              -85.8026437633681,
+              0,
+              -176.09977491103712
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "stack": {
+              "itemId": "amulet",
+              "count": 1
+            }
+          }
         }
       ],
       "flower": [],
-      "stafflight": [],
-      "staffcoldlight": [],
+      "stafflight": [
+        {
+          "id": "e_b385e2243b9e86898aabc684ac6a8291",
+          "transform": {
+            "position": [
+              32.65062417408414,
+              0,
+              -225.50790971133785
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "remainingSeconds": 860.1462999999036
+            }
+          }
+        },
+        {
+          "id": "e_447b054899c21c44cb7db22822fa4784",
+          "transform": {
+            "position": [
+              38.62752552185216,
+              0,
+              -225.41351421736965
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "remainingSeconds": 1137.362799999948
+            }
+          }
+        },
+        {
+          "id": "e_2972745420c1dea1c332fcdf772d078f",
+          "transform": {
+            "position": [
+              35.59406868654005,
+              0,
+              -227.71732542297747
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "remainingSeconds": 1140.4959999999965
+            }
+          }
+        }
+      ],
+      "staffcoldlight": [
+        {
+          "id": "e_ff966c117bd466534d1dfac8e26f2041",
+          "transform": {
+            "position": [
+              -34.871066785087486,
+              0,
+              -186.32022427491506
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "remainingSeconds": 760.7261000000275
+            }
+          }
+        },
+        {
+          "id": "e_3bf0b545b25d3d4699aeb024c0c45800",
+          "transform": {
+            "position": [
+              -40.175973442473996,
+              0,
+              -185.77774748845155
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "remainingSeconds": 763.1268999999794
+            }
+          }
+        },
+        {
+          "id": "e_bbb54fa6b8c8739f8725bd648327fe89",
+          "transform": {
+            "position": [
+              -40.29277170965209,
+              0,
+              -190.2948227410494
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "remainingSeconds": 765.5933999999792
+            }
+          }
+        },
+        {
+          "id": "e_d0c1d5cee93cdc3f3a25755766e1c945",
+          "transform": {
+            "position": [
+              -36.66064828202517,
+              0,
+              -190.2895905306502
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "remainingSeconds": 768.0927000000507
+            }
+          }
+        },
+        {
+          "id": "e_8add60734f04a493ed972e2d25cd6e15",
+          "transform": {
+            "position": [
+              -39.818635505179174,
+              0,
+              -190.1733993468131
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "timer": {
+              "remainingSeconds": 771.2760000000027
+            }
+          }
+        }
+      ],
       "flower_cave": [],
       "flower_cave_double": [],
       "flower_cave_triple": [
@@ -31947,20 +32250,21 @@
           "components": {
             "bulbPlant": {
               "variant": "triple",
-              "lightState": "RECHARGING",
-              "remainingSeconds": 23.425227400662152
+              "lightState": "ON",
+              "remainingSeconds": 4.71048894087653
             }
           }
         }
       ],
+      "molehill": [],
       "beefalo": [
         {
           "id": "e_fbc93491832fbc0f9ee1870641d45c24",
           "transform": {
             "position": [
-              -5.042032766160625,
+              -17.700728635674707,
               0,
-              45.45421049182014
+              -12.785807160342216
             ],
             "rotationY": 0
           },
@@ -31971,8 +32275,8 @@
                 0,
                 0.22546845008602653
               ],
-              "heading": 308.6939220254787,
-              "poopRemainingSeconds": 85,
+              "heading": 40.67393350887971,
+              "poopRemainingSeconds": 15,
               "knownlocations": {
                 "locations": [
                   {
@@ -31984,7 +32288,7 @@
                 ]
               },
               "beard": {
-                "growth": 5,
+                "growth": 6,
                 "growthaccumulator": 0,
                 "bits": 3
               }
@@ -32010,6 +32314,22 @@
       "rock_flintless": [],
       "rock_flintless_med": [],
       "rock_flintless_low": [],
+      "marblebean_sapling": [],
+      "marbleshrub": [],
+      "archive_moon_statue": [],
+      "archive_rune_statue": [],
+      "archive_portal": [],
+      "archive_switch_base": [],
+      "archive_ambient_sfx": [],
+      "skeleton_player": [],
+      "skeleton": [],
+      "skeleton_notplayer": [],
+      "skeleton_notplayer_1": [],
+      "skeleton_notplayer_2": [],
+      "rock_avocado_fruit_sprout_sapling": [],
+      "rock_avocado_bush": [],
+      "berrybush": [],
+      "monkeytail": [],
       "grass": [],
       "sapling": [],
       "sapling_moon": [],
@@ -32085,6 +32405,8 @@
       "lava_pond_rock5": [],
       "lava_pond_rock6": [],
       "lava_pond_rock7": [],
+      "tumbleweed": [],
+      "hotspring": [],
       "nightmaregrowth": [
         {
           "id": "e_b8c5ddba5f7d1d574da52ea9cf8289d0",
@@ -32104,7 +32426,20 @@
         }
       ],
       "wormhole": [],
-      "multiplayer_portal_moonrock": [],
+      "multiplayer_portal_moonrock": [
+        {
+          "id": "e_e7c17f4ccc72c0c147b04a35ee1ac5d8",
+          "transform": {
+            "position": [
+              -87.39139537583905,
+              0,
+              -146.0168130341475
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "sanityrock": [
         {
           "id": "e_sanityrock_000001",
@@ -32213,16 +32548,16 @@
       "shardId": "master",
       "transform": {
         "position": [
-          34.678972272884515,
+          -71.35660181809433,
           0,
-          -217.04685366759455
+          -169.2672908787128
         ],
         "rotationY": 0
       },
       "stats": {
         "health": 150,
-        "hunger": 130,
-        "sanity": 143
+        "hunger": 150,
+        "sanity": 165
       },
       "inventory": {
         "containers": {
@@ -32232,16 +32567,25 @@
               {
                 "slotKey": "0",
                 "item": {
+                  "entityId": "e_d1534027d651c84cf418253fbb4e364a",
+                  "itemId": "bananajuice",
+                  "count": 5
+                }
+              },
+              {
+                "slotKey": "1",
+                "item": {
                   "entityId": "e_d6e9715654097a08e39fd806095c55fb",
                   "itemId": "yellowstaff",
-                  "count": 1
+                  "count": 1,
+                  "remainingUses": 17
                 }
               },
               {
                 "slotKey": "2",
                 "item": {
                   "entityId": "e_de1b2a40e41415328215c58886c176fa",
-                  "itemId": 	"turf_cotl_brick",
+                  "itemId": "turf_cotl_brick",
                   "count": 20
                 }
               },
@@ -32251,7 +32595,16 @@
                   "entityId": "e_5d692812dc3a6f33e8090c3c02807002",
                   "itemId": "bananapop",
                   "count": 8,
-                  "freshnessPercent": 0.6749969618057936
+                  "freshnessPercent": 0.24503265625623927
+                }
+              },
+              {
+                "slotKey": "4",
+                "item": {
+                  "entityId": "e_e3bc034cf0ae436f7779ec63c0df8456",
+                  "itemId": "opalstaff",
+                  "count": 1,
+                  "remainingUses": 45
                 }
               },
               {
@@ -32260,7 +32613,7 @@
                   "entityId": "e_ce28f3798d0a92bc24c1b1c2cbf99ed3",
                   "itemId": "red_cap",
                   "count": 16,
-                  "freshnessPercent": 0.9730257500000054
+                  "freshnessPercent": 0.8440364583351391
                 }
               },
               {
@@ -32276,7 +32629,8 @@
                 "item": {
                   "entityId": "e_e640a364a302fd7fe5f12990a8527391",
                   "itemId": "butterfly",
-                  "count": 15
+                  "count": 15,
+                  "freshnessPercent": 0.5700356944504457
                 }
               },
               {
@@ -32304,12 +32658,12 @@
                 }
               },
               {
-                "slotKey": "11",
+                "slotKey": "12",
                 "item": {
-                  "entityId": "e_a2d7407423ea49b87bb1170e99ee5852",
-                  "itemId": "book_rain",
+                  "entityId": "e_dc92af1ac7c2b93a8512ab98678209f3",
+                  "itemId": "greenstaff",
                   "count": 1,
-                  "remainingUses": 4
+                  "remainingUses": 3
                 }
               },
               {
@@ -32335,15 +32689,6 @@
             "slotCount": 3,
             "slots": [
               {
-                "slotKey": "hand",
-                "item": {
-                  "entityId": "e_dc92af1ac7c2b93a8512ab98678209f3",
-                  "itemId": "greenstaff",
-                  "count": 1,
-                  "remainingUses": 3
-                }
-              },
-              {
                 "slotKey": "head",
                 "item": {
                   "entityId": "e_63e45e55d283bed135c883e55765ff45",
@@ -32362,9 +32707,10 @@
         "bufferedBuilds": [
           {
             "recipeId": "winterometer"
-          }, {
-          "recipeId": "bookstation"
-        }
+          },
+          {
+            "recipeId": "bookstation"
+          }
         ]
       }
     }

@@ -3,11 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ItemEntity, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createPickupInventory } from './pickupFixture';
-import { configureHeatRockEntity } from '../../prefab/src/heatrock';
+import { configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
 import { GroundItemAssets, createGroundItemSprite, createGroundItemFactory } from '../../prefab/src/groundItems';
 import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
 import { createRecipe } from '../../ui/src/categories/shared';
-import { createSignal } from '../../signals/src';
+import { batch, createSignal } from '../../signals/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 
 beforeEach(() => {
@@ -72,6 +72,50 @@ it('registers temperature updates once, moves them between worlds and unregister
   } finally { inventory.dispose(); updates.dispose(); nextUpdates.dispose(); }
 });
 
+it('derives range from temperature signals, updates icons in effects and preserves synchronous usage accounting', async () => {
+  const ambient = createSignal(35), updates = new ComponentUpdates();
+  const entity = new ItemEntity({ itemId: 'heatrock', count: 1, temperature: { current: 66 }, remainingFuel: 75 });
+  configureHeatRockEntity(entity);
+  entity.BindTemperatureWorld({ temperature: ambient, componentUpdates: updates });
+  const temperature = entity.components.temperature!, rock = entity.getComponent<HeatRock>('heatrock')!;
+  const image = () => entity.components.inventoryitem.image.peek()!.icon;
+  try {
+    expect('set' in temperature.current).toBe(false);
+    expect('set' in rock.range).toBe(false);
+    expect(rock.range.peek()).toBe(5);
+    expect(image()).toBe('heat_rock5.tex');
+    // Domain events must account for both transitions before the batched memo/effect settles.
+    batch(() => { updates.update(21); updates.update(1); });
+    expect(temperature.current.peek()).toBe(44);
+    expect(rock.range.peek()).toBe(3);
+    expect(entity.snapshot()).toMatchObject({ temperature: { current: 44 }, remainingFuel: 62.5 });
+    expect(entity.highTemp).toBeUndefined();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(image()).toBe('heat_rock3.tex');
+    // Ambient-only changes also derive a new range; the exact +30 boundary stays in range 4.
+    ambient.set(13); updates.update(0);
+    expect(rock.range.peek()).toBe(5);
+    ambient.set(14); updates.update(0);
+    expect(temperature.current.peek()).toBe(44);
+    expect(rock.range.peek()).toBe(4);
+    expect(entity.snapshot().remainingFuel).toBe(62.5);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(image()).toBe('heat_rock4.tex');
+    entity.skinId = 'heatrock_fantasy';
+    configureHeatRockEntity(entity);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(image()).toBe('heatrock_fantasy4.tex');
+    expect(entity.snapshot()).toMatchObject({ temperature: { current: 44 }, remainingFuel: 62.5, skinId: 'heatrock_fantasy' });
+    const changeImage = vi.spyOn(entity.components.inventoryitem, 'ChangeImageName');
+    temperature.SetTemperature(80);
+    rock.dispose(); // Cancels pending art changes and releases the temperature bridge/memo.
+    temperature.SetTemperature(0);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(changeImage).not.toHaveBeenCalled();
+    expect(rock.range.peek()).toBe(5);
+  } finally { entity.destroy(); updates.dispose(); }
+});
+
 it('renders the source neutral pose for base and skinned stones and resolves their crafting icons', async () => {
   const assets = new GroundItemAssets();
   try {
@@ -103,6 +147,9 @@ it('renders the source neutral pose for base and skinned stones and resolves the
       const mesh = visual.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
       expect(mesh.material.some(material => material.name === 'ground:heatrock_fantasy')).toBe(true);
+      entity.components.temperature!.SetTemperature(80);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect((visual as unknown as { currentAnimation: string }).currentAnimation).toBe('5');
     } finally { visual.dispose(); entity.destroy(); factory.dispose?.(); }
   } finally { assets.dispose(); }
 });

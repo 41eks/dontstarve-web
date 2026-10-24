@@ -53,7 +53,7 @@ const fxInfo: Readonly<Record<string, { offset?: number; scale: number }>> = {
   mushroom_light: { offset: 1.2, scale: 1.8 }, mushroom_light2: { offset: 1.2, scale: 1.8 },
   researchlab: { offset: 0.5, scale: 1.4 }, researchlab2: { offset: 0.5, scale: 1.4 },
   researchlab3: { offset: 0.5, scale: 1.4 }, researchlab4: { offset: 0.5, scale: 1.3 },
-  yellowstaff: { offset: 0.4, scale: 1 }, opalstaff: { offset: 0.4, scale: 1 }, greenstaff: { offset: 0.4, scale: 1 },
+  yellowstaff: { offset: 0.4, scale: 1 }, opalstaff: { offset: 0.4, scale: 1 }, greenstaff: { offset: 0.4, scale: 1 }, firestaff: { offset: 0.4, scale: 1 },
   trident: { offset: 0.4, scale: 1 },
   shovel: { offset: 0.2, scale: 1 }, featherhat: { offset: 0.1, scale: 1.1 },
   wormhole: { scale: 1.3 },

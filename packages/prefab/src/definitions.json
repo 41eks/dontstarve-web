@@ -463,6 +463,22 @@
       },
       "skinSymbols": ["basin"]
     },
+    "lightning_rod": {
+      "archive": "lightning_rod.zip",
+      "buildLabel": "避雷针",
+      "idleAnimation": "idle",
+      "name": "LightningRod",
+      "onProximity": false,
+      "scale": 0.02,
+      "skinArchives": {
+        "lightning_rod_adventure": "dynamic/lightning_rod_adventure.zip",
+        "lightning_rod_gothic": "dynamic/lightning_rod_gothic.zip",
+        "lightning_rod_nautical": "dynamic/lightning_rod_nautical.zip",
+        "lightning_rod_retro": "dynamic/lightning_rod_retro.zip",
+        "lightning_rod_robot": "dynamic/lightning_rod_robot.zip"
+      },
+      "hammerAnimation": "hit"
+    },
     "winterometer": {
       "archive": "winter_meter.zip",
       "buildLabel": "温度测量仪",

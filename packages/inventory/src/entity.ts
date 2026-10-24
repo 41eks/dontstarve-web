@@ -213,6 +213,7 @@ export class ItemEntity {
     temperature?: Temperature;
     heater?: Heater;
     armor?: import('../../componets/src/armor').Armor;
+    hauntable?: import('../../componets/src/hauntable').Hauntable;
     useableitem?: import('../../componets/src/useableitem').UseableItem;
   };
   readonly signals: InventoryItemSignals;
@@ -251,6 +252,7 @@ export class ItemEntity {
   spelltype?: string;
   _cached_reskinname?: Map<string, string | undefined>;
   castsound?: string;
+  projectiledelay?: number;
   fxcolour?: readonly [number, number, number];
   phonographRecord?: string;
   private readonly runtime = new Map<string, ItemRuntimeComponent>();

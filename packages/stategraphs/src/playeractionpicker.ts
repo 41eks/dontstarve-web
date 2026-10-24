@@ -13,6 +13,9 @@ export interface MouseActionCandidate {
   source?: 'equipped' | 'scene' | 'inventory';
 }
 
+/** playeractionpicker.lua actionfilter: the action is kept when this returns true. */
+export type ActionFilter = (action: ActionDescription) => boolean;
+
 export interface MouseActions {
   left?: ActionDescription;
   right?: ActionDescription;
@@ -26,9 +29,21 @@ export class PlayerActionPicker {
   private readonly activeItemSources = new Set<() => boolean>();
   private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
   private selectedModel?: THREE.Object3D;
+  private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
   get targetModel(): THREE.Object3D | undefined { return this.selectedModel; }
 
   constructor(pointer: PointerRaycaster, isEnabled = () => true) { this.pointer = pointer; this.isEnabled = isEnabled; }
+
+  /** Only the highest priority filter is active (the latest pushed among equals), as OnUpdateActionFilterStack picks. */
+  PushActionFilter(fn: ActionFilter, priority = 0): void { this.actionFilters.push({ fn, priority }); }
+  PopActionFilter(fn: ActionFilter): void {
+    const index = this.actionFilters.findLastIndex(filter => filter.fn === fn);
+    if (index >= 0) this.actionFilters.splice(index, 1);
+  }
+  private get actionFilter(): ActionFilter | undefined {
+    return this.actionFilters.reduce<{ fn: ActionFilter; priority: number } | undefined>(
+      (top, filter) => !top || filter.priority >= top.priority ? filter : top, undefined)?.fn;
+  }
 
   register(provider: (target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]): () => void {
     this.providers.add(provider);
@@ -54,11 +69,12 @@ export class PlayerActionPicker {
       while (target && !isMouseTarget(target)) target = target.parent;
       this.selectedModel = target ?? undefined;
       const candidates = [...this.providers].flatMap(provider => provider(target ?? undefined));
+      const filter = this.actionFilter;
       const activeItem = [...this.activeItemSources].some(source => source());
       const result: MouseActions = {};
       for (const button of ['left', 'right'] as const) {
         const available = candidates.filter(candidate => candidate.button === button && candidate.available !== false
-          && (!activeItem || candidate.source === 'inventory'));
+          && (!filter || filter(candidate.action)) && (!activeItem || candidate.source === 'inventory'));
         // Equipped/scene actions take precedence over a point action, as in GetLeft/RightClickActions.
         const entityActions = target ? available.filter(candidate => candidate.model === target) : [];
         const actions = entityActions.length ? entityActions : available.filter(candidate => !candidate.model);

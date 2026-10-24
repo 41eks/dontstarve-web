@@ -15,6 +15,22 @@ export function MakeCharacterPhysics(mass: number, rad: number): { mass: number;
   return { mass, shape: new CANNON.Sphere(rad * WORLD_SCALE), fixedRotation: true };
 }
 
+/** COLLISION.GROUND: the world's ground body. Characters, obstacles and items keep cannon's default group. */
+export const GROUND_COLLISION_GROUP = 2;
+
+/**
+ * standardcomponents.lua MakeGhostPhysics: `SetCollisionMask(COLLISION.GROUND)`, so a ghost passes through every
+ * obstacle and character but still stands on the ground.
+ */
+export function MakeGhostPhysics(body: CANNON.Body): void {
+  body.collisionFilterMask = GROUND_COLLISION_GROUP;
+}
+
+/** standardcomponents.lua MakeCharacterPhysics's collision mask after MakeGhostPhysics: every group again. */
+export function MakeCharacterCollision(body: CANNON.Body): void {
+  body.collisionFilterMask = -1;
+}
+
 /**
  * Apply SetDamping(5) after a physics step. Only the horizontal velocity is damped, since
  * cannon would otherwise also damp gravity; collision impulses fade without moving the

@@ -263,7 +263,7 @@ mintemp = max(default_mintemp, min(0, ambient_temperature))
 
 ## 暖石 `heatrock`
 
-当前项目已接入暖石物品、`heat_rock.zip` 的默认第 3 档外观、基础及三款皮肤的五档图标、换肤与保存读档。按实现范围，暂不创建暖石温度／热源组件，不更新档位、热光照或温度导致的耐久消耗；已有 `fueled` 耐久保留。以下温度规则仍为 Lua 源码参考。
+当前项目已接入暖石的 `temperature`／`heater`、五档地面动画与库存图标、温度循环耐久消耗、三款原版皮肤和保存读档。自身温度由 `Temperature.current` 的只读 signal 提供；`HeatRock` 通过私有 `watchSignal` 读取它，并在 `temperaturedelta` 中采样局部环境温度，使用纯 `createMemo` 派生档位。库存图标与地面动画分别由 `createEffect` 按档位更新，换肤保留当前档位；普通 effect 保持现有微任务调度，测试在后续宏任务检查表现。极值记录、耐久消耗与耗尽移除仍由温度事件同步执行，批次内也逐次结算，不交给表现 effect。移除实体或替换地面模型时清理各自订阅。暖石热光照和角色体温尚未接入，以下规则中的灯光部分仍为 Lua 源码参考。
 
 ### 初始化与自身温度
 

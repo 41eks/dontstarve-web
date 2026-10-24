@@ -8,6 +8,7 @@ import { newEntityId } from './saveRecord';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import { actionEntity, FindEntities } from './actionEntity';
 import { Propagator } from '../../componets/src/propagator';
+import { Heater } from '../../componets/src/heater';
 import type { BurnableInst } from '../../componets/src/burnable';
 
 export const DWARF_STAR_ID = 'stafflight';
@@ -68,6 +69,7 @@ interface Star {
   loopSound?: SoundHandle;
   releaseAppearance?: () => void;
   propagator?: Propagator;
+  heater?: Heater;
 }
 
 /** Independent summon lifetimes; shared DST textures, separate merged frame meshes. */
@@ -126,8 +128,12 @@ export class DwarfStarManager {
     const star: Star = { model, remaining, removed, phase,
       ageSeconds: this.duration - remainingSeconds, lastSettlementSeconds: this.elapsedSeconds,
       pendingFrames: 0, removalAtSeconds: null };
+    const inst = actionEntity(model, this.prefabId);
+    // stafflight.lua: both stars use the heater's default distance falloff.
+    inst.components.heater = star.heater = new Heater(inst);
+    star.heater.SetHeat(this.prefabId === DWARF_STAR_ID ? 100 : -100);
+    if (this.prefabId === POLAR_LIGHT_ID) star.heater.SetThermics(false, true);
     if (this.prefabId === DWARF_STAR_ID) {
-      const inst = actionEntity(model, this.prefabId);
       inst.components.propagator = star.propagator = new Propagator(inst, 'default', radius =>
         FindEntities(this.scene, model.position, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4, undefined, getBoundWatchWorldContent());
       // stafflight.lua: bare propagator, heatoutput 15, spreading from creation until removal.
@@ -304,6 +310,8 @@ export class DwarfStarManager {
     star.model.userData.persists = false;
     star.model.userData.removed = true;
     star.propagator?.dispose();
+    star.heater?.dispose();
+    if (star.heater) delete star.model.userData.components.heater;
     star.removed.set(true);
     this.unload(star);
     star.phase.dispose();

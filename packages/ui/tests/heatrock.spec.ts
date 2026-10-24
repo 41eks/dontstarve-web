@@ -36,18 +36,47 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
       materials: model.children[0].children[0].material.map((material: any) => material.name),
     })));
   const clickStone = async (id: string, button: 'left' | 'right') => {
-    const point = await page.evaluate(id => {
+    await expect.poll(() => page.evaluate(() => !(window as any).heatRockGame.player.userData.stategraph.hasStateTag('busy')),
+      { timeout: 20_000 }).toBe(true);
+    const point = await page.evaluate(async ({ id, pointerUrl }) => {
       const { scene, camera, renderer } = (window as any).heatRockGame;
       const model = scene.children.find((model: any) => model.userData.entityId === id), mesh = model.children[0].children[0];
-      mesh.geometry.computeBoundingBox();
-      const center = mesh.geometry.boundingBox.getCenter(model.position.clone()); mesh.localToWorld(center).project(camera);
+      const { PointerRaycaster } = await import(pointerUrl);
+      const pointer = new PointerRaycaster({ scene, camera, renderer });
       const rect = renderer.domElement.getBoundingClientRect();
-      return { x: rect.left + (center.x + 1) * rect.width / 2, y: rect.top + (1 - center.y) * rect.height / 2 };
-    }, id);
+      // Animation buffers can include unused vertices, and a frame's centre can be transparent.
+      const box = mesh.geometry.boundingBox;
+      try {
+        for (const y of [.5, .3, .7, .1, .9]) for (const x of [.5, .3, .7, .1, .9]) {
+          const sample = model.position.clone().set(box.min.x + (box.max.x - box.min.x) * x,
+            box.min.y + (box.max.y - box.min.y) * y, box.min.z);
+          mesh.localToWorld(sample).project(camera);
+          const point = { x: rect.left + (sample.x + 1) * rect.width / 2, y: rect.top + (1 - sample.y) * rect.height / 2 };
+          pointer.trackPointer({ clientX: point.x, clientY: point.y } as PointerEvent);
+          let picked = pointer.pickMouseTarget()?.object;
+          while (picked && picked !== model) picked = picked.parent;
+          if (picked === model) return point;
+        }
+        throw new Error('No opaque thermal stone pixel to click');
+      } finally { pointer.dispose(); }
+    }, { id, pointerUrl: `/@fs${fileURLToPath(new URL('../../stategraphs/src/pointerRaycaster.ts', import.meta.url))}` });
     await page.mouse.click(point.x, point.y, { button });
   };
   const slots = (save: any) => Object.values(save.players.local.inventory.containers).flatMap((container: any) => container.slots) as any[];
   const stones = (save: any) => slots(save).filter(slot => slot.item.itemId === 'heatrock').map(slot => slot.item);
+  const expectStoneState = (actual: any, expected: any, elapsed: number) => {
+    const { temperature: actualTemperature, ...actualState } = actual;
+    const { temperature: expectedTemperature, ...expectedState } = expected;
+    expect(actualState).toEqual(expectedState);
+    // These neutral stones keep exchanging heat while the browser performs input and save/load.
+    // Their source rate is at most 1 degree/game second; discrete item state must remain exact.
+    expect(Math.abs(actualTemperature.current - expectedTemperature.current)).toBeLessThanOrEqual(elapsed + 1e-6);
+  };
+  const expectInventoryStones = (actual: any, expected: any) => {
+    expect(stones(actual)).toHaveLength(stones(expected).length);
+    stones(actual).forEach((stone: any, index: number) => expectStoneState(stone, stones(expected)[index],
+      actual.world.elapsedSeconds - expected.world.elapsedSeconds));
+  };
 
   await page.goto('/tests/dst-lighting.html'); await prepare();
   await submit('c_give("heatrock", 2); c_give("reskin_tool"); c_spawn("heatrock")');
@@ -60,7 +89,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   await page.evaluate(id => {
     const game = (window as any).heatRockGame;
     game.scene.children.find((model: any) => model.userData.entityId === id).userData.components.fueled.remaining = 75;
-    game.playerBody.position.set(3, game.playerBody.shapes[0].radius, 3); game.player.position.set(3, 0, 3);
+    game.playerBody.position.set(-3, game.playerBody.shapes[0].radius, 3); game.player.position.set(-3, 0, 3);
   }, spawned.id);
   await bag.locator('[data-item-id="reskin_tool"]').dragTo(bar.locator('[data-slot-key="hand"]'));
   await clickStone(spawned.id, 'right');
@@ -78,20 +107,29 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   await page.keyboard.down('Shift'); await skinned.click({ button: 'right' }); await page.keyboard.up('Shift');
   await expect.poll(async () => (await ground()).some(stone => stone.id === spawned.id && stone.skin === 'heatrock_fantasy')).toBe(true);
   const dropped = await saveGame();
-  expect(dropped.world.entities.ground_item.find((record: any) => record.id === spawned.id).components.stack).toEqual(savedStone.components.stack);
+  expectStoneState(dropped.world.entities.ground_item.find((record: any) => record.id === spawned.id).components.stack,
+    savedStone.components.stack, dropped.world.elapsedSeconds - groundSave.world.elapsedSeconds);
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: dropped }));
   await page.reload(); await prepare();
   await expect.poll(async () => (await ground())[0]?.skin).toBe('heatrock_fantasy');
   const restored = await saveGame();
-  expect(restored.world.entities.ground_item).toEqual(dropped.world.entities.ground_item);
-  expect(stones(restored)).toEqual(stones(dropped));
+  expect(restored.world.entities.ground_item).toHaveLength(dropped.world.entities.ground_item.length);
+  restored.world.entities.ground_item.forEach((record: any, index: number) => {
+    const expected = dropped.world.entities.ground_item[index];
+    expect({ ...record, components: undefined }).toEqual({ ...expected, components: undefined });
+    expect({ ...record.components, stack: undefined }).toEqual({ ...expected.components, stack: undefined });
+    expectStoneState(record.components.stack, expected.components.stack,
+      restored.world.elapsedSeconds - dropped.world.elapsedSeconds);
+  });
+  expectInventoryStones(restored, dropped);
   await clickStone(spawned.id, 'left'); await expect(skinned).toBeVisible();
   const taken = await saveGame();
-  expect(stones(taken).find(item => item.entityId === spawned.id)).toEqual({ entityId: spawned.id, ...savedStone.components.stack });
+  expectStoneState(stones(taken).find(item => item.entityId === spawned.id), { entityId: spawned.id, ...savedStone.components.stack },
+    taken.world.elapsedSeconds - groundSave.world.elapsedSeconds);
   expect(taken.world.entities.ground_item ?? []).toEqual([]);
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: taken }));
   await page.reload(); await prepare();
-  expect(stones(await saveGame())).toEqual(stones(taken));
+  expectInventoryStones(await saveGame(), taken);
   await expect(skinned.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'heatrock_fantasy3.tex');
   expect(errors).toEqual([]);
 });

@@ -18,9 +18,18 @@ const FX_PREFABS = {
   // fx.lua crab_king_waterspout: bank Bubble_fx, build crab_king_bubble_fx, FinalOffset1.
   crab_king_waterspout: { archive: 'crab_king_bubble_fx.zip', bank: 'Bubble_fx', anim: 'waterspout',
     sound: 'hookline_2/creatures/boss/crabking/waterspout' },
+  // fx.lua die_fx: bank die_fx, build die, clip small, deathpoof sound, brown mult colour.
+  die_fx: { archive: 'die.zip', bank: 'die_fx', anim: 'small', sound: 'dontstarve/common/deathpoof',
+    tint: [90 / 255, 66 / 255, 41 / 255] },
+  // staff_projectile.lua OnHitFire → fx.lua fire_fail_fx: bank/build fire_fail_fx, clip fx, fireOut sound.
+  fire_fail_fx: { archive: 'fire_fail_fx.zip', bank: 'fire_fail_fx', anim: 'fx', sound: 'dontstarve/common/fireOut' },
+  // fx.lua lightning_rod_fx: bank/build lightning_rod_fx, clip idle.
+  lightning_rod_fx: { archive: 'lightning_rod_fx.zip', bank: 'lightning_rod_fx', anim: 'idle' },
+  // lightning.lua: bank/build lightning, clip anim, Transform:SetScale(2, 2, 2), thunder_close.
+  lightning: { archive: 'lightning.zip', bank: 'lightning', anim: 'anim', sound: 'dontstarve/rain/thunder_close', scale: 2 },
   sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
   sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
-} as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number }>;
+} as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number; scale?: number; tint?: readonly [number, number, number] }>;
 export type WorldFxPrefab = keyof typeof FX_PREFABS;
 
 type FxBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
@@ -64,6 +73,7 @@ export class WorldFx {
         if ('opacity' in definition) for (const material of build.materials) {
           material.transparent = true; material.opacity = definition.opacity;
         }
+        if ('tint' in definition) for (const material of build.materials) material.color.setRGB(...definition.tint);
         const animation = parsed.animations.find((clip) => clip.name === definition.anim && clip.bankHash === smallHash(definition.bank));
         if (!animation?.frames.length) throw new Error(`Missing FX animation ${definition.bank}:${definition.anim}`);
         return { animation, build };
@@ -83,7 +93,9 @@ export class WorldFx {
     Object.assign(model.userData, { prefab, persists: false, tags: ['FX'], billboard: true });
     model.position.set(position.x, 0, position.z);
     const visual = new THREE.Group();
-    visual.scale.set(0.02, -0.02, 0.02);
+    const definition = FX_PREFABS[prefab];
+    const scale = 'scale' in definition ? definition.scale : 1;
+    visual.scale.set(0.02 * scale, -0.02 * scale, 0.02 * scale);
     model.add(visual);
     registerSpriteRenderGroup(model, visual);
     const effect: FxInstance = { model, footPosition: model.position.clone(), renderer: new SpriteFrameRenderer(visual),
@@ -91,7 +103,6 @@ export class WorldFx {
     this.showFrame(effect, 0);
     this.active.add(effect);
     this.scene.add(model);
-    const definition = FX_PREFABS[prefab];
     if ('sound' in definition) PlaySound(definition.sound, effect.footPosition);
   }
 

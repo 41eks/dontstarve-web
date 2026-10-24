@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { prewarmScenePasses, renderScenePasses } from '@dontstarve-web/animation/sceneRenderPass';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
-import { createEffect, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type WorldSeason } from '@dontstarve-web/signals';
+import { createEffect, watchSignal, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type WorldSeason } from '@dontstarve-web/signals';
 import { DstLocalLighting } from './dstLocalLighting';
 import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
 
@@ -10,6 +10,8 @@ export type DstLightPhase = 'day' | 'dusk' | 'night' | 'full_moon';
 
 export interface DstLightingState {
   sanityPercent?: ReadonlySignal<number>;
+  /** playervision:HasGhostVision(); replaces the ambient colour cube. */
+  ghostVision?: ReadonlySignal<boolean>;
 }
 
 declare global {
@@ -33,6 +35,10 @@ const PHASE_BLEND_SECONDS: Record<DstLightPhase, number> = {
 };
 
 const SEASON_BLEND_SECONDS = 10;
+// colourcube.lua DEFAULT_BLEND_TIME, used when playervision overrides the cube table.
+const OVERRIDE_BLEND_SECONDS = 0.25;
+// playervision.lua GHOSTVISION_COLOURCUBES uses one cube for every phase.
+const GHOST_LUT_PATH = 'ghost_cc.tex';
 function currentLightPhase(): DstLightPhase {
   const { phase } = clockstate.get();
   const moonPhase = moonphasestate.get();
@@ -234,6 +240,7 @@ export class DstLightingRenderer {
     const uniquePaths = [...new Set([
       ...Object.values(LUT_PATHS).flatMap((phases) => Object.values(phases)),
       ...Object.values(INSANITY_LUT_PATHS),
+      GHOST_LUT_PATH,
     ])];
     const loaded = await Promise.all(uniquePaths.map(async (path) => [path, await loadLut(colourCubeRoot, path)] as const));
     return new DstLightingRenderer(renderer, new Map(loaded), initialState);
@@ -255,6 +262,7 @@ export class DstLightingRenderer {
   private weatherLight = 1;
   private sanityPercent = 1;
   private stopSanitySubscription?: () => void;
+  private stopGhostVision?: () => void;
   private readonly stopWorldLighting: () => void;
   private disposed = false;
   private distortionSpeed = 0;
@@ -272,7 +280,10 @@ export class DstLightingRenderer {
     this.textures = textures;
     const season = seasonstate.peek().season;
     const phase = this.getPhase();
-    const initialLut = this.requireLut(season, phase);
+    const ghostVision = initialState.ghostVision
+      ? watchSignal(initialState.ghostVision, stop => { this.stopGhostVision = stop; })
+      : undefined;
+    const initialLut = this.requireLut(season, phase, ghostVision?.peek() ?? false);
     const initialInsanityLut = this.requireInsanityLut(phase);
     this.ambientCurrent.copy(ambientFor(season, phase));
     this.ambientStart.copy(this.ambientCurrent);
@@ -332,14 +343,18 @@ export class DstLightingRenderer {
     this.applyAmbientUniform();
     // Retain the previous rendering palette only to select transition duration.
     let previousPalette = LUT_PATHS[season];
+    let previousGhost = ghostVision?.peek() ?? false;
     this.stopWorldLighting = createEffect(() => {
       const season = seasonstate.get().season;
       const phase = currentLightPhase();
+      const ghost = ghostVision?.get() ?? false;
       const palette = LUT_PATHS[season];
-      const duration = palette !== previousPalette ? SEASON_BLEND_SECONDS : PHASE_BLEND_SECONDS[phase];
+      const duration = ghost !== previousGhost ? OVERRIDE_BLEND_SECONDS
+        : palette !== previousPalette ? SEASON_BLEND_SECONDS : PHASE_BLEND_SECONDS[phase];
       previousPalette = palette;
+      previousGhost = ghost;
       this.transitionAmbient(ambientFor(season, phase), duration);
-      this.transitionLut(this.requireLut(season, phase), this.requireInsanityLut(phase), duration);
+      this.transitionLut(this.requireLut(season, phase, ghost), this.requireInsanityLut(phase), duration);
     });
   }
 
@@ -347,6 +362,7 @@ export class DstLightingRenderer {
     if (this.disposed) return;
     this.disposed = true;
     this.stopWorldLighting();
+    this.stopGhostVision?.();
     this.stopSanitySubscription?.();
     this.stopSanitySubscription = undefined;
     this.localLighting.dispose();
@@ -504,8 +520,8 @@ export class DstLightingRenderer {
     return texture;
   }
 
-  private requireLut(season: DstSeason, phase: DstLightPhase): THREE.DataTexture {
-    const path = LUT_PATHS[season][phase];
+  private requireLut(season: DstSeason, phase: DstLightPhase, ghost = false): THREE.DataTexture {
+    const path = ghost ? GHOST_LUT_PATH : LUT_PATHS[season][phase];
     const texture = this.textures.get(path);
     if (!texture) throw new Error(`DST colour cube was not loaded: ${path}`);
     return texture;

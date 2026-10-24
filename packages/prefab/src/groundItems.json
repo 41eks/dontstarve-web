@@ -3444,6 +3444,31 @@
         "greenstaff_planet": "dynamic/greenstaff_planet.zip"
       }
     },
+    "firestaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "火魔杖",
+      "icon": "firestaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "redstaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "firestaff_bee": "dynamic/firestaff_bee.zip",
+        "firestaff_flamelash": "dynamic/firestaff_flamelash.zip",
+        "firestaff_gungnir": "dynamic/firestaff_gungnir.zip",
+        "firestaff_hockey": "dynamic/firestaff_hockey.zip",
+        "firestaff_lance": "dynamic/firestaff_lance.zip",
+        "firestaff_meteor": "dynamic/firestaff_meteor.zip",
+        "firestaff_northern": "dynamic/firestaff_northern.zip",
+        "firestaff_rose": "dynamic/firestaff_rose.zip",
+        "firestaff_rw_swamp": "dynamic/firestaff_rw_swamp.zip"
+      }
+    },
     "trident": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trident.lua",
       "name": "刺耳三叉戟",
@@ -3584,6 +3609,26 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {}
+    },
+    "amulet": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/amulet.lua",
+      "name": "重生护符",
+      "icon": "amulet.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "amulets.zip",
+      "buildArchives": [
+        "amulets.zip"
+      ],
+      "bank": "amulets",
+      "animation": "redamulet",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "amulet_red_heart": "dynamic/amulet_red_heart.zip",
+        "amulet_red_occulteye": "dynamic/amulet_red_occulteye.zip",
+        "amulet_red_relic": "dynamic/amulet_red_relic.zip",
+        "amulet_red_rose": "dynamic/amulet_red_rose.zip"
+      }
     },
     "bugnet": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bugnet.lua",
@@ -6613,6 +6658,30 @@
     }
   },
   "skinSpecs": {
+    "amulet_red_heart": {
+      "itemId": "amulet",
+      "name": "克莱门特生命护符",
+      "icon": "amulet_red_heart.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "amulet_red_occulteye": {
+      "itemId": "amulet",
+      "name": "洞察生命护符",
+      "icon": "amulet_red_occulteye.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "amulet_red_relic": {
+      "itemId": "amulet",
+      "name": "重游护符",
+      "icon": "amulet_red_relic.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
+    "amulet_red_rose": {
+      "itemId": "amulet",
+      "name": "玫瑰红护符",
+      "icon": "amulet_red_rose.tex",
+      "atlas": "images/inventoryimages1.xml"
+    },
     "axe_feathered": {
       "itemId": "axe",
       "name": "猎人斧",
@@ -7055,6 +7124,60 @@
       "itemId": "fence_item",
       "name": "古董青铜篱笆",
       "icon": "fence_victorianbronze_item.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "firestaff_bee": {
+      "itemId": "firestaff",
+      "name": "怒蜂魔杖",
+      "icon": "firestaff_bee.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "firestaff_flamelash": {
+      "itemId": "firestaff",
+      "name": "烈焰火鞭",
+      "icon": "firestaff_flamelash.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "firestaff_gungnir": {
+      "itemId": "firestaff",
+      "name": "火焰尖刺魔杖",
+      "icon": "firestaff_gungnir.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "firestaff_hockey": {
+      "itemId": "firestaff",
+      "name": "火焰竞技魔杖",
+      "icon": "firestaff_hockey.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "firestaff_lance": {
+      "itemId": "firestaff",
+      "name": "火焰螺旋魔杖",
+      "icon": "firestaff_lance.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "firestaff_meteor": {
+      "itemId": "firestaff",
+      "name": "地狱火杖",
+      "icon": "firestaff_meteor.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "firestaff_northern": {
+      "itemId": "firestaff",
+      "name": "北欧火杖",
+      "icon": "firestaff_northern.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "firestaff_rose": {
+      "itemId": "firestaff",
+      "name": "玫瑰火魔杖",
+      "icon": "firestaff_rose.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "firestaff_rw_swamp": {
+      "itemId": "firestaff",
+      "name": "倒钩火魔杖",
+      "icon": "firestaff_rw_swamp.tex",
       "atlas": "images/inventoryimages2.xml"
     },
     "fishingrod_block": {

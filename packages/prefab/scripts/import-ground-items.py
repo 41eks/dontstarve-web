@@ -252,6 +252,8 @@ def main():
     add('yellowstaff', 'staffs', 'staffs', 'yellowstaff', 'staff')
     add('opalstaff', 'staffs', 'staffs', 'opalstaff', 'staff')
     add('greenstaff', 'staffs', 'staffs', 'greenstaff', 'staff')
+    # staff.lua commonfn: anim = colour .. 'staff'; red is registered as `firestaff`.
+    add('firestaff', 'staffs', 'staffs', 'redstaff', 'staff')
     assets.update(['anim/swap_staffs.zip', 'anim/player_staff.zip', 'anim/star_hot.zip', 'anim/star_cold.zip', 'anim/moonbase_fx.zip'])
     # trident.lua: ground bank/build trident from trident.zip, held swap_trident; SGwilson play_strum uses player_strum.zip.
     # fx.lua crab_king_waterspout (bank Bubble_fx) is the spell's water-column fx.
@@ -279,6 +281,10 @@ def main():
     # SGwilson's shell states use the hideshell/hitshell clips from player_slurtle_armor.
     add('armorsnurtleshell', 'armor_slurtleshell', 'armor_slurtleshell', 'anim', 'armor_snurtleshell')
     assets.add('anim/player_slurtle_armor.zip')
+    # amulet.lua: the red amulet's ground pose is amulets/redamulet; worn art is torso_amulets' redamulet swap_body symbol.
+    # SGwilson's amulet_rebirth overrides FX from player_amulet_resurrect.
+    add('amulet', 'amulets', 'amulets', 'redamulet', 'amulet', icon_name='amulet')
+    assets.update(['anim/torso_amulets.zip', 'anim/player_amulet_resurrect.zip'])
     add('bugnet', 'bugnet', 'swap_bugnet', 'idle', 'bugnet', animation_archive='bugnet.zip')
     assets.add('anim/player_actions_bugnet.zip')
     # fishingrod.lua: ground idle from fishingrod, held swap_fishingrod; SGwilson fishing states use player_actions_fishing.

@@ -61,7 +61,9 @@ export function updateMovement(
         const hiding = animation?.stategraph.hasStateTag('shell') === true;
         if (hiding && (manual || locomotor.destination)) animation!.stategraph.pushLocomote();
         const castingBusy = (animation?.isCasting || animation?.isReading || animation?.isPlayingInstrument) && animation.stategraph.hasStateTag('busy');
-        const acting = slipping || sleeping || hiding || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        // SGwilson's death state has the dead tag: the corpse never moves.
+        const dead = animation?.stategraph.isDead === true;
+        const acting = dead || slipping || sleeping || hiding || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
         if (slipping && player.userData.wantsToMoveForward) animation!.stategraph.pushLocomote();
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.
@@ -80,7 +82,7 @@ export function updateMovement(
         if (!player.userData.billboard && direction.lengthSq() > 0) {
             player.lookAt(target.copy(player.position).add(direction));
         }
-        if (!acting && input.isPressed('Space') && playerBody.canJump) {
+        if (!acting && !animation?.isGhost && input.isPressed('Space') && playerBody.canJump) {
             playerBody.velocity.y = JUMP_VELOCITY;
             playerBody.canJump = false;
         }

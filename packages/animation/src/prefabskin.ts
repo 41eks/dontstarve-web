@@ -69,6 +69,10 @@ export function winterometer_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'winter_meter');
 }
 
+export function lightning_rod_init_fn(skinId: string): PrefabSkinInitialization {
+  return basic_init_fn(skinId, 'lightning_rod');
+}
+
 export function mushroom_light_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'mushroom_light');
 }

@@ -1,6 +1,6 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import catalog from './groundItems.json' with { type: 'json' };
-import { createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
 import { Heater } from '../../componets/src/heater';
 
 export const HEATROCK_ID = 'heatrock';
@@ -15,9 +15,16 @@ export function GetHeatRockRange(temperature: number, ambient: number): number {
 
 /** heatrock.lua TemperatureChange owns extremum tracking and charge consumption. */
 export class HeatRock {
-  private readonly rangeState = createSignal(3);
-  readonly range = readonlySignal(this.rangeState);
+  private readonly currentTemperature;
+  private readonly ambientTemperature;
+  private readonly skinState = createSignal<string | undefined>(undefined);
+  private readonly rangeMemo;
+  readonly range;
+  // Last domain event's range, so usage accounting also works inside an open signal batch.
+  private previousRange = 3;
+  private readonly cleanups: (() => void)[] = [];
   private readonly stopTemperature: () => void;
+  private readonly stopImage: () => void;
   private readonly temperature;
   private readonly heater;
   private readonly entity: ItemEntity;
@@ -27,6 +34,11 @@ export class HeatRock {
     this.temperature.inherentinsulation = 120;
     this.temperature.inherentsummerinsulation = 120;
     this.temperature.IgnoreTags('heatrock');
+    this.currentTemperature = watchSignal(this.temperature.current, stop => this.cleanups.push(stop));
+    this.ambientTemperature = createSignal(this.temperature.GetAmbientTemperature());
+    this.rangeMemo = createMemo(() => GetHeatRockRange(this.currentTemperature.get(), this.ambientTemperature.get()));
+    this.range = readonlySignal(this.rangeMemo);
+    this.skinState.set(entity.skinId);
     this.heater = entity.components.heater = entity.component('heater', () => new Heater(entity));
     this.heater.SetThermics(false, false);
     this.heater.SetHeatFn(() => {
@@ -37,16 +49,19 @@ export class HeatRock {
     this.stopTemperature = entity.ListenForEvent('temperaturedelta', data => this.TemperatureChange((data as { hasrate?: boolean })?.hasrate === true));
     // Evaluate restored temperature without spending a charge; fresh stones remain neutral.
     this.TemperatureChange(false);
-    this.RefreshImage();
+    this.stopImage = createEffect(() => {
+      const imageName = `${this.skinState.get() ?? 'heat_rock'}${this.rangeMemo.get()}.tex`;
+      const image = HEATROCK_IMAGES[imageName as keyof typeof HEATROCK_IMAGES];
+      if (!image) throw new Error(`Missing thermal stone image: ${imageName}`);
+      entity.components.inventoryitem.ChangeImageName(image.icon, image.atlas);
+      entity.components.inventoryitem.owner?.changed();
+    });
   }
-  RefreshImage(): void {
-    const imageName = `${this.entity.skinId ?? 'heat_rock'}${this.rangeState.peek()}.tex`;
-    const image = HEATROCK_IMAGES[imageName as keyof typeof HEATROCK_IMAGES];
-    if (!image) throw new Error(`Missing thermal stone image: ${imageName}`);
-    this.entity.components.inventoryitem.ChangeImageName(image.icon, image.atlas);
-  }
+  RefreshSkin(): void { this.skinState.set(this.entity.skinId); }
   private TemperatureChange(hasrate: boolean): void {
     const current = this.temperature.GetCurrent(), ambient = this.temperature.GetAmbientTemperature();
+    // Sample GetLocalTemperature on every event, including when current stays clamped or unchanged.
+    this.ambientTemperature.set(ambient);
     const range = GetHeatRockRange(current, ambient), entity = this.entity;
     if (range <= 1) {
       if (entity.lowTemp === undefined || entity.lowTemp > current) entity.lowTemp = Math.floor(current);
@@ -57,23 +72,26 @@ export class HeatRock {
     } else if (entity.lowTemp !== undefined) {
       if (GetHeatRockRange(entity.lowTemp, ambient) >= 3) entity.lowTemp = undefined;
     } else if (entity.highTemp !== undefined && GetHeatRockRange(entity.highTemp, ambient) <= 3) entity.highTemp = undefined;
-    if (range === this.rangeState.peek()) return;
-    this.rangeState.set(range);
-    this.RefreshImage();
+    if (range === this.previousRange) return;
+    this.previousRange = range;
     if (hasrate && ((entity.lowTemp !== undefined && range >= 3) || (entity.highTemp !== undefined && range <= 3))) {
       entity.lowTemp = undefined; entity.highTemp = undefined;
       const fuel = Math.max(0, (entity.components.fueled.remaining ?? HEATROCK_FUEL) - HEATROCK_FUEL / 8);
       entity.components.fueled.remaining = fuel;
       if (fuel === 0) { entity.remove(); return; }
+      entity.components.inventoryitem.owner?.changed();
     }
-    entity.components.inventoryitem.owner?.changed();
   }
-  dispose(): void { this.stopTemperature(); }
+  dispose(): void {
+    this.stopTemperature();
+    this.stopImage();
+    this.cleanups.splice(0).forEach(stop => stop());
+  }
 }
 
 export function configureHeatRockEntity(entity: ItemEntity): void {
   for (const tag of ['heatrock', 'icebox_valid', 'bait', 'molebait', 'HASHEATER', 'tradable']) entity.addTag(tag);
   entity.components.fueled.setMaxFuel(HEATROCK_FUEL);
   if (entity.components.fueled.remaining === undefined) entity.components.fueled.remaining = HEATROCK_FUEL;
-  entity.component('heatrock', () => new HeatRock(entity)).RefreshImage();
+  entity.component('heatrock', () => new HeatRock(entity)).RefreshSkin();
 }

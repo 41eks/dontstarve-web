@@ -2,6 +2,7 @@ import { BufferedAction } from './bufferedaction.ts';
 import type { BufferedActionObject } from './bufferedaction.ts';
 import { ActionHandler as DefineActionHandler, EventHandler, FRAMES, State as DefineState, StateGraphInstance, TimeEvent } from './stategraph.ts';
 import type { StateActionHandler, StateDefinition } from './stategraph.ts';
+import { ghostActionHandlers, ghostClip, ghostStates } from './SGwilsonghost.ts';
 
 export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
 export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'pickup';
@@ -12,8 +13,14 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'book' | 'book2' | 'attack' | 'give' | 'toolbroke' | 'shave' | 'tent' | 'wakeup' | 'play_flute' | 'play_strum'
   | 'slip' | 'slip_pst' | 'slip_fall' | 'slip_fall_loop' | 'slip_fall_pst'
   | 'fishing_pre' | 'fishing' | 'fishing_pst' | 'fishing_nibble' | 'fishing_strain' | 'catchfish' | 'loserod'
-  | 'shell_enter' | 'shell_idle' | 'shell_hit';
-export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH';
+  | 'shell_enter' | 'shell_idle' | 'shell_hit' | 'death'
+  /** SGwilsonghost.lua states; `idle`, `walk` and `run` are shared names in a separate state table. */
+  | 'appear' | 'hit' | 'haunt_pre' | 'haunt'
+  /** SGwilson.lua portal_rez: the player stepping out of the multiplayer portal after a haunt resurrection. */
+  | 'portal_rez'
+  /** SGwilson.lua amulet_rebirth: the player rising from a red amulet after a haunt resurrection. */
+  | 'amulet_rebirth';
+export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT';
 export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
@@ -24,7 +31,16 @@ export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'bui
   /** player_actions_fishing.zip: the fishing states' clips are selected by name. */
   | 'fishing'
   /** player_slurtle_armor.zip: armorsnurtleshell's hiding clips. */
-  | 'hideshell' | 'hideshell_idle' | 'hitshell';
+  | 'hideshell' | 'hideshell_idle' | 'hitshell'
+  /** player_actions.zip: SGwilson death's `death` clip. */
+  | 'death'
+  /** ghost.zip (bank `ghost`): SGwilsonghost's clips are selected by name. */
+  | 'ghost'
+  /** player_amulet_resurrect.zip: amulet_rebirth's clip. */
+  | 'amulet_rebirth';
+
+/** SGwilson.lua portal_rez colourtweener duration. */
+const PORTAL_REZ_TWEEN_TIME = 14 * FRAMES;
 
 export const WILSON_ACTION_TIMES = {
   mine: 7 * FRAMES, net: 10 * FRAMES, terraform: 25 * FRAMES,
@@ -69,6 +85,14 @@ export interface WilsonSleepHost {
   wakeBed(nostatechange: boolean): void;
 }
 
+/** What SGwilson.lua's death state reaches: DropAllItemsForDeath and the controller. */
+export interface WilsonDeathHost {
+  /** inventory:DropEverything(true) */
+  dropEverything(): void;
+  /** TheWorld.Map:IsPassableAtPoint at the player's feet: only then does the death leave a skeleton. */
+  isPassableAtPoint(): boolean;
+}
+
 /** What SGwilson.lua's slip states reach: slipperyfeet, the locomotor motor velocity and sounds. */
 export interface WilsonSlipHost {
   /** inst.components.locomotor:GetRunSpeed() in DST units. */
@@ -92,10 +116,38 @@ export interface WilsonFishingHost {
   loseRod(): void;
 }
 
+/** What the ghost's haunt states and SGwilson.lua portal_rez reach on the player inst. */
+export interface WilsonRezHost {
+  /** inst:Hide() / inst:Show() with DynamicShadow:Enable. */
+  setHidden(hidden: boolean): void;
+  readonly isHidden: boolean;
+  /** AnimState:SetMultColour(r, g, b, 1) */
+  setMultColour(r: number, g: number, b: number): void;
+  /** inst.components.health:SetInvincible(false) */
+  setInvincible(invincible: boolean): void;
+}
+
+/** What SGwilson.lua amulet_rebirth reaches through the inventory, the HUD and the world. */
+export interface WilsonRebirthHost {
+  /** inventory:RemoveItem on the equipped body `amulet`, then item:Remove(); true when it was consumed. */
+  consumeEquippedAmulet(): boolean;
+  /** inventory:GetEquippedItem(EQUIPSLOTS.BODY) ~= nil */
+  hasBodyItem(): boolean;
+  /** inst:ShowHUD */
+  showHUD(show: boolean): void;
+  /** SpawnPrefab("staff_castinglight") at the player with SetUp(colour, duration, delay). */
+  castLight(colour: readonly [number, number, number], duration: number, delay: number): void;
+  /** Every `sleeper` within `radius` of the player GoToSleep(seconds). */
+  sleepNearby(radius: number, seconds: number): void;
+}
+
 export interface WilsonStateGraphHost {
+  rez?: WilsonRezHost;
+  rebirth?: WilsonRebirthHost;
   sleep?: WilsonSleepHost;
   fishing?: WilsonFishingHost;
   slip?: WilsonSlipHost;
+  death?: WilsonDeathHost;
   /** Select the art and return its effective playback duration in seconds. */
   playAnimation(clip: WilsonAnimationClip): number;
   playSound(cue: 'mine' | 'hammer' | 'cast' | 'reskin' | 'eat' | 'sip' | 'dig' | 'tillEmerge' | 'make'
@@ -124,6 +176,8 @@ export interface WilsonStateGraphHost {
   setCasting(casting: boolean, colour?: readonly [number, number, number]): void;
   setControllerEnabled?(enabled: boolean): void;
   stopMovement?(): void;
+  /** inst:PushEvent on the player entity, for events its component listeners handle (makeplayerghost). */
+  pushPlayerEvent?(name: string, data?: unknown): void;
   onStateChanged(name: WilsonStateName): void;
 }
 
@@ -687,6 +741,102 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     ontimeout: inst => inst.goToState(inst.statemem.unequipped ? 'idle' : 'shell_idle'),
   }),
   State({
+    // SGwilson.lua portal_rez: the player appears black inside the portal, then tweens back to full colour.
+    name: 'portal_rez',
+    tags: ['busy', 'nopredict', 'silentmorph'],
+    onenter: inst => {
+      const { host } = inst.context;
+      host.setControllerEnabled?.(false);
+      inst.context.playClips([{ ...clip('idle', 'idle_loop'), loop: true }]);
+      host.rez?.setMultColour(0, 0, 0);
+      host.rez?.setHidden(true);
+      inst.statemem.tweenElapsed = undefined;
+    },
+    onupdate: (inst, dt) => {
+      // components/colourtweener.lua StartTween({ 1, 1, 1, 1 }, 14 * FRAMES): a linear blend from black.
+      if (inst.statemem.tweenElapsed === undefined) return;
+      const elapsed = Math.min((inst.statemem.tweenElapsed as number) + dt, PORTAL_REZ_TWEEN_TIME);
+      inst.statemem.tweenElapsed = elapsed;
+      const level = elapsed / PORTAL_REZ_TWEEN_TIME;
+      inst.context.host.rez?.setMultColour(level, level, level);
+      if (elapsed >= PORTAL_REZ_TWEEN_TIME) {
+        inst.statemem.istweencomplete = true;
+        inst.goToState('idle');
+      }
+    },
+    timeline: [
+      TimeEvent(12 * FRAMES, inst => { inst.context.host.rez?.setHidden(false); }),
+      TimeEvent(72 * FRAMES, inst => { inst.statemem.tweenElapsed = 0; }),
+    ],
+    onexit: inst => {
+      const { host } = inst.context;
+      // In case of interruptions
+      host.rez?.setHidden(false);
+      host.setControllerEnabled?.(true);
+      host.rez?.setInvincible(false);
+      if (!inst.statemem.istweencomplete) host.rez?.setMultColour(1, 1, 1);
+    },
+  }),
+  State({
+    // SGwilson.lua amulet_rebirth: the resurrecting amulet is consumed while its light and sounds play.
+    name: 'amulet_rebirth',
+    tags: ['busy', 'nopredict', 'silentmorph'],
+    onenter: inst => {
+      const { host } = inst.context;
+      host.setControllerEnabled?.(false);
+      inst.context.playClips([clip('amulet_rebirth')]);
+      host.overrideSymbol?.('FX', 'player_amulet_resurrect', 'FX');
+      host.rez?.setInvincible(true);
+      host.rebirth?.showHUD(false);
+      inst.statemem.usedamulet = host.rebirth?.consumeEquippedAmulet() ?? false;
+    },
+    timeline: [
+      TimeEvent(0, inst => {
+        inst.context.host.rebirth?.castLight([150 / 255, 46 / 255, 46 / 255], 1.7, FRAMES);
+        inst.context.host.playEvent?.('dontstarve/common/rebirth_amulet_raise');
+      }),
+      TimeEvent(60 * FRAMES, inst => { inst.context.host.playEvent?.('dontstarve/common/rebirth_amulet_poof'); }),
+      TimeEvent(80 * FRAMES, inst => { inst.context.host.rebirth?.sleepNearby(10, 20); }),
+    ],
+    events: [
+      EventHandler('animover', inst => {
+        if (inst.context.animationDone) inst.goToState('idle');
+      }),
+    ],
+    onexit: inst => {
+      const { host } = inst.context;
+      if (inst.statemem.usedamulet && !host.rebirth?.hasBodyItem()) host.clearOverrideSymbol?.('swap_body');
+      host.rebirth?.showHUD(true);
+      host.setControllerEnabled?.(true);
+      host.rez?.setInvincible(false);
+      host.clearOverrideSymbol?.('FX');
+    },
+  }),
+  State({
+    // SGwilson.lua death, the unmounted Wilson branch (no vinesave, backup body, revivable corpse or hosted death).
+    // animover hands the player to player_common's OnMakePlayerGhost (ghostenabled); the revivable corpse and playerdied branches are not ported.
+    name: 'death',
+    tags: ['busy', 'dead', 'pausepredict', 'nomorph'],
+    onenter: inst => {
+      const { host } = inst.context;
+      host.stopMovement?.();
+      inst.context.releaseAction();
+      host.playEvent?.('dontstarve/wilson/death');
+      host.playEvent?.('dontstarve/characters/maxwell/death_voice');
+      host.death?.dropEverything();
+      inst.context.playClips([clip('death')]);
+      // playercontroller:Enable(false)
+      host.setControllerEnabled?.(false);
+    },
+    events: [
+      EventHandler('animover', inst => {
+        if (!inst.context.animationDone) return;
+        // if we are not on valid ground then don't drop a skeleton
+        inst.context.host.pushPlayerEvent?.('makeplayerghost', { skeleton: inst.context.host.death?.isPassableAtPoint() ?? false });
+      }),
+    ],
+  }),
+  State({
     name: 'item_in',
     tags: ['idle', 'nodangle', 'keepchannelcasting'],
     onenter: (inst) => inst.context.playClips([clip('item_in')]),
@@ -781,7 +931,18 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
         cooldown = Math.max(cooldown, 13 * FRAMES);
       } else if (equip?.hasTag('weapon') && !equip.hasTag('punch')) {
         inst.context.playClips([clip('atk_pre'), clip('atk')]);
-        inst.context.host.playSound('attack', equip.hasTag('shadow') ? 'dontstarve/wilson/attack_nightsword' : 'dontstarve/wilson/attack_weapon');
+        const projectiledelay = equip.projectiledelay ?? 0;
+        if (projectiledelay > 0) {
+          // Projectiles stay hidden for their first frames, so the swing starts early to keep the animation in sync.
+          inst.statemem.projectiledelay = 8 * FRAMES - projectiledelay;
+          if ((inst.statemem.projectiledelay as number) > FRAMES) {
+            inst.statemem.projectilesound = equip.hasTag('firestaff') ? 'dontstarve/wilson/attack_firestaff' : 'dontstarve/wilson/attack_weapon';
+          } else if ((inst.statemem.projectiledelay as number) <= 0) inst.statemem.projectiledelay = undefined;
+        }
+        if (inst.statemem.projectilesound === undefined) {
+          inst.context.host.playSound('attack', equip.hasTag('shadow') ? 'dontstarve/wilson/attack_nightsword'
+            : equip.hasTag('firestaff') ? 'dontstarve/wilson/attack_firestaff' : 'dontstarve/wilson/attack_weapon');
+        }
         cooldown = Math.max(cooldown, 13 * FRAMES);
       } else if (equip?.hasTag('light') || equip?.hasTag('nopunch')) {
         inst.context.playClips([clip('atk_pre'), clip('atk')]);
@@ -795,8 +956,24 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.setTimeout(cooldown);
       inst.statemem.attacktarget = action?.target;
     },
+    onupdate: (inst, dt) => {
+      const delay = inst.statemem.projectiledelay as number | undefined;
+      if (delay === undefined || delay <= 0) return;
+      inst.statemem.projectiledelay = delay - dt;
+      if (delay - dt <= FRAMES) {
+        if (inst.statemem.projectilesound !== undefined) {
+          inst.context.host.playSound('attack', inst.statemem.projectilesound as string);
+          inst.statemem.projectilesound = undefined;
+        }
+        if (delay - dt <= 0) {
+          inst.context.performBufferedAction();
+          inst.removeStateTag('abouttoattack');
+        }
+      }
+    },
     timeline: [
       TimeEvent(8 * FRAMES, (inst) => {
+        if (inst.statemem.projectiledelay !== undefined) return;
         inst.context.performBufferedAction();
         inst.removeStateTag('abouttoattack');
       }),
@@ -1242,7 +1419,9 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
 
 export class WilsonStateGraph {
   readonly host: WilsonStateGraphHost;
-  private readonly sg: WilsonInstance;
+  private sg: WilsonInstance;
+  private ghost = false;
+  private loadingGhostFlag = false;
   private bufferedAction: BufferedAction<WilsonAction> | null = null;
   private movementState: WilsonMovementState = 'idle';
   private crafting = false;
@@ -1259,6 +1438,11 @@ export class WilsonStateGraph {
 
   constructor(host: WilsonStateGraphHost) {
     this.host = host;
+    this.sg = this.createGraph();
+    this.sg.goToState('idle');
+  }
+
+  private createGraph(): WilsonInstance {
     this.sg = new StateGraphInstance(this, [...states, ...applicationStates], actionHandlers);
     this.sg.listenForEvent('newstate', () => this.host.onStateChanged(this.sg.stateName));
     // SGwilson.lua EventHandler("toolbroke"): ignored during nointerrupt states.
@@ -1269,6 +1453,11 @@ export class WilsonStateGraph {
       this.activeBufferedAction = undefined;
       this.activeInvobject = undefined;
       this.sg.goToState('toolbroke', (data as { tool?: WilsonBrokenTool } | undefined)?.tool);
+    });
+    // SGwilson.lua EventHandler("death"): every state yields except one that has already died.
+    this.sg.listenForEvent('death', () => {
+      if (this.sg.hasStateTag('dead')) return;
+      this.sg.goToState('death');
     });
     // SGwilson.lua EventHandler("blocked"): armor soaked the hit.
     this.sg.listenForEvent('blocked', () => {
@@ -1286,7 +1475,7 @@ export class WilsonStateGraph {
     this.sg.listenForEvent('feetslipped', () => {
       if (this.sg.hasStateTag('running') && !this.sg.hasStateTag('noslip') && this.host.slip) this.sg.goToState('slip');
     });
-    this.sg.goToState('idle');
+    return this.sg;
   }
 
   get stateName(): WilsonStateName { return this.sg.stateName; }
@@ -1294,13 +1483,20 @@ export class WilsonStateGraph {
   get animationTime(): number { return Math.max(0, this.sg.elapsedTime - this.clipStartedAt); }
   get isOneShot(): boolean { return !['idle', 'walk', 'run', 'jump', 'build', 'emote'].includes(this.stateName); }
   get isCrafting(): boolean { return this.crafting; }
+  /** inst:HasTag("playerghost"): SGwilsonghost replaced SGwilson. */
+  get isGhost(): boolean { return this.ghost; }
+  /** inst.loading_ghost: true only while OnMakePlayerGhost enters the ghost's first state for a ghost loaded from a save. */
+  get loadingGhost(): boolean { return this.loadingGhostFlag; }
   get isJumping(): boolean { return this.movementState === 'jump'; }
   get isDrinking(): boolean { return this.foodDrink && this.stateName === 'quickeat'; }
   hasStateTag(tag: string): boolean { return this.sg.hasStateTag(tag); }
+  /** inst.sg:AddStateTag */
+  addStateTag(tag: string): void { this.sg.addStateTag(tag); }
   /** inst.sg:GoToState from an item's use callback (armorsnurtleshell onuse). */
   goToState(name: WilsonStateName): void { this.sg.goToState(name); }
   hasAnyStateTag(...tags: string[]): boolean { return this.sg.hasAnyStateTag(...tags); }
   /** Browser input is held off while the slip states own the motor. */
+  get isDead(): boolean { return this.sg.hasStateTag('dead'); }
   get isSlipping(): boolean { return this.stateName.startsWith('slip'); }
   listenForEvent(name: string, fn: (data: unknown) => void): () => void { return this.sg.listenForEvent(name, fn); }
   pushEvent(name: string, data?: unknown): void {
@@ -1385,8 +1581,58 @@ export class WilsonStateGraph {
     }
   }
 
+  /**
+   * inst:SetStateGraph("SGwilsonghost") from OnMakePlayerGhost. The stategraph is replaced, so pending actions, emotes and
+   * crafting end; `loading` (inst.loading_ghost) skips the appear animation.
+   */
+  becomeGhost(loading = false): void {
+    if (this.ghost) return;
+    this.ghost = true;
+    this.cancelAnimation?.(); this.cancelAnimation = undefined;
+    this.releaseAction();
+    this.crafting = false;
+    this.movementState = 'idle';
+    this.sg.dispose();
+    this.sg = new StateGraphInstance(this, ghostStates, ghostActionHandlers);
+    this.sg.listenForEvent('newstate', () => this.host.onStateChanged(this.sg.stateName));
+    // SGwilsonghost.lua EventHandler("attacked"): a ghost is never dead, so it always flinches.
+    this.sg.listenForEvent('attacked', () => this.sg.goToState('hit'));
+    this.loadingGhostFlag = loading;
+    try { this.sg.goToState('appear'); } finally { this.loadingGhostFlag = false; }
+  }
+
+  /**
+   * inst:SetStateGraph("SGwilson") from DoActualRez, then GoToState(`state`): the ghost's graph is replaced by a fresh
+   * SGwilson one, so pending actions end and the movement request starts over.
+   */
+  becomeAlive(state: WilsonStateName): void {
+    if (!this.ghost) return;
+    this.ghost = false;
+    this.cancelAnimation?.(); this.cancelAnimation = undefined;
+    this.releaseAction();
+    this.crafting = false;
+    this.movementState = 'idle';
+    this.sg.dispose();
+    this.createGraph();
+    this.sg.goToState(state);
+  }
+
+  /** SGwilsonghost idle/run: `if not inst.AnimState:IsCurrentAnimation("idle") then PlayAnimation("idle", true)`. */
+  playGhostIdle(): void {
+    const current = this.clips[this.clipIndex];
+    if (current?.key !== 'ghost' || current.name !== 'idle') this.playClips([ghostClip('idle', true)]);
+  }
+
+  /** The ghost idle state resumes movement the browser requested during the state before it, as onEnterIdle does. */
+  onEnterGhostIdle(): void {
+    this.playGhostIdle();
+    if (this.movementState === 'walk' || this.movementState === 'run') this.sg.goToState(this.movementState);
+  }
+
   /** Record requested movement; resume it when the current action finishes. */
   requestMovement(state: WilsonMovementState): void {
+    // The ghost floats: it has no jump.
+    if (this.ghost && state === 'jump') return;
     if (state !== 'idle' && this.stateName === 'emote') this.cancelEmote();
     if (state === this.movementState) return;
     this.movementState = state;
@@ -1395,6 +1641,7 @@ export class WilsonStateGraph {
 
   /** Update the persistent browser crafting request and reconcile the state. */
   requestCrafting(crafting: boolean): void {
+    if (this.ghost) return;
     if (crafting === this.crafting) return;
     this.crafting = crafting;
     if (crafting && (this.activeAction !== null || this.stateName === 'emote')) this.finish();
@@ -1403,6 +1650,7 @@ export class WilsonStateGraph {
 
   /** Request a visual state, interrupting any buffered action. */
   requestOneShot(state: WilsonOneShotState): void {
+    if (this.isDead || this.ghost) return;
     this.clearBufferedAction();
     this.activeAction = null;
     this.activeBufferedAction = undefined;
@@ -1466,6 +1714,8 @@ export class WilsonStateGraph {
   }
 
   finish(pushanim = false): void {
+    // The dead never resume movement or crafting.
+    if (this.isDead) return;
     this.clearBufferedAction();
     this.activeAction = null;
     this.activeBufferedAction = undefined;
@@ -1477,7 +1727,7 @@ export class WilsonStateGraph {
 
   canEmote(): boolean {
     // SGwilson.lua's emote event, for the supported unmounted player branch.
-    return !this.sg.hasAnyStateTag('busy', 'nopredict', 'sleeping', 'floating');
+    return !this.ghost && !this.sg.hasAnyStateTag('busy', 'nopredict', 'sleeping', 'floating');
   }
   /** Validate the request, prepare its clips, then enter the emote state. */
   requestEmote(names: readonly string[], loop: boolean): boolean {

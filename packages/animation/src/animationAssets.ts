@@ -3,6 +3,7 @@ import { markSpatialGeometryBounds, publishSpriteSpatialBounds } from './spatial
 import type { DecodedTexture } from './parseKtex';
 import type { AnimElement, BuildImage, ParsedAnim, ParsedBuild, BuildPackage } from './animationArchive';
 import { loadAnimationArchivePart } from './animationArchiveLoader';
+import { raycastSprite } from './spriteRaycast';
 
 export { smallHash } from './animationArchive';
 export type { Matrix2D, AnimElement, Animation, ParsedAnim, BuildImage, ParsedBuild, BuildPackage } from './animationArchive';
@@ -148,7 +149,7 @@ export class SpriteFrameRenderer {
   private readonly geometry = new THREE.BufferGeometry();
   private readonly materials: THREE.MeshBasicMaterial[] = [];
   private readonly materialIndices = new Map<THREE.MeshBasicMaterial, number>();
-  private readonly mesh: THREE.Mesh;
+  private readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   private positions = new Float32Array();
   private uvs = new Float32Array();
   private quadCapacity = 0;
@@ -156,6 +157,7 @@ export class SpriteFrameRenderer {
   constructor(visual: THREE.Group) {
     this.visual = visual;
     this.mesh = new THREE.Mesh(this.geometry, this.materials);
+    this.mesh.raycast = raycastSprite;
     // The frame geometry is rewritten by show(), which keeps its bounding sphere current.
     this.geometry.boundingSphere = new THREE.Sphere();
     this.geometry.boundingBox = new THREE.Box3();

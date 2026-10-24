@@ -26,6 +26,11 @@ export interface SaveCatalog {
 
 export const MAX_SAVE_BYTES = 8 * 1024 * 1024;
 
+function ghostFlag(value: unknown): true {
+  if (value !== true) fail('players.local.ghost', 'expected true');
+  return true;
+}
+
 /** Parses and validates all data before any resources or runtime entities are created. */
 export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocument {
   if (text.length > MAX_SAVE_BYTES || new TextEncoder().encode(text).byteLength > MAX_SAVE_BYTES) {
@@ -202,7 +207,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   }));
 
   const players = object(root.players, 'players', ['local']);
-  const player = object(players.local, 'players.local', ['prefab', 'shardId', 'transform', 'stats', 'inventory']);
+  const player = object(players.local, 'players.local', ['prefab', 'shardId', 'transform', 'stats', 'ghost', 'inventory']);
   if (player.shardId !== shardId) fail('players.local.shardId', 'player must belong to this shard');
   const inventory = object(player.inventory, 'players.local.inventory', ['containers', 'bufferedBuilds']);
   const containers = object(inventory.containers, 'players.local.inventory.containers', ['player:inventory', 'player:equipment', 'player:cursor', 'player:backpack']);
@@ -239,8 +244,9 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   });
   let stats: SaveDocument['players']['local']['stats'];
   if (player.stats !== undefined) {
-    const o = object(player.stats, 'players.local.stats', ['health', 'hunger', 'sanity']);
-    stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity') };
+    const o = object(player.stats, 'players.local.stats', ['health', 'hunger', 'sanity', 'penalty']);
+    stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity'),
+      ...o.penalty === undefined ? {} : { penalty: number(o.penalty, 'players.local.stats.penalty') } };
   }
   const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'moon', 'random']);
   const systems: SaveDocument['world']['systems'] = {};
@@ -313,6 +319,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
         prefab: choice(player.prefab, 'players.local.prefab', ['wilson']), shardId,
         transform: transform(player.transform, 'players.local.transform', false),
         ...(stats === undefined ? {} : { stats }),
+        ...(player.ghost === undefined ? {} : { ghost: ghostFlag(player.ghost) }),
         inventory: {
           containers: {
             'player:inventory': playerInventory,

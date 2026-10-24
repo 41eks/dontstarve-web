@@ -42,6 +42,12 @@ export interface PrefabComponentSchema {
   readonly growthStages?: number;
   /** growable.lua stage deadline limit; defaults to the 2100 s used by the existing growth tables. */
   readonly growthTime?: number;
+  /** archive_props.lua: `math.random(n)` pose count, and the rune statues' number of story lines. */
+  readonly archivePropVariants?: number;
+  /** skeleton.lua animnum_min..animnum_max; only skeleton_player saves a description. */
+  readonly skeletonAnims?: { min: number; max: number };
+  readonly skeletonDescribed?: boolean;
+  readonly archiveStoryLines?: number;
 }
 
 export type PrefabComponentParser = (value: unknown, path: string, context: EntitySaveContext) => SavedEntity['components'];
@@ -210,6 +216,20 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       components.marbleShrub = { ...shrub.shapenumber === undefined ? {} : { shapenumber: integer(shrub.shapenumber, `${p}.shapenumber`, 2, 3) },
         color: number(shrub.color, `${p}.color`, .5, 1) };
     }
+    if (keys.includes('archiveProp')) {
+      const p = `${path}.archiveProp`, prop = object(c.archiveProp, p, ['anim', 'storyprogress']);
+      if (prop.storyprogress !== undefined && schema.archiveStoryLines === undefined) fail(`${p}.storyprogress`, 'only rune statues have a story line');
+      components.archiveProp = { anim: integer(prop.anim, `${p}.anim`, 1, schema.archivePropVariants ?? 1),
+        ...(prop.storyprogress === undefined ? {} : { storyprogress: integer(prop.storyprogress, `${p}.storyprogress`, 1, schema.archiveStoryLines) }) };
+    }
+    if (keys.includes('skeleton')) {
+      // skeleton.lua OnSave / Player_OnSave: anim (idle1..6) plus char, playername, userid, pkname and cause.
+      const p = `${path}.skeleton`, bones = object(c.skeleton, p, schema.skeletonDescribed ? ['anim', 'char', 'playername', 'userid', 'pkname', 'cause'] : ['anim']);
+      const optional = (key: 'char' | 'playername' | 'userid' | 'pkname' | 'cause') =>
+        bones[key] === undefined ? {} : { [key]: string(bones[key], `${p}.${key}`) };
+      components.skeleton = { anim: integer(bones.anim, `${p}.anim`, schema.skeletonAnims?.min ?? 1, schema.skeletonAnims?.max ?? 6), ...optional('char'), ...optional('playername'),
+        ...optional('userid'), ...optional('pkname'), ...optional('cause') };
+    }
     if (keys.includes('evergreen')) {
       if (c.evergreen !== undefined) {
         const p = `${path}.evergreen`, tree = object(c.evergreen, p, ['stump', 'burnt', 'burntcone']);
@@ -317,6 +337,12 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     if (keys.includes('finiteuses') && c.finiteuses !== undefined) {
       const p = `${path}.finiteuses`, finite = object(c.finiteuses, p, ['uses']);
       components.finiteuses = { uses: number(finite.uses, `${p}.uses`, 0, schema.finiteUses) };
+    }
+    if (keys.includes('lightningrod') && c.lightningrod !== undefined) {
+      const p = `${path}.lightningrod`, rod = object(c.lightningrod, p, ['charged', 'chargeleft']);
+      // OnSave only writes charged rods; setcharged(3) is the largest charge and the day callback only decrements it.
+      if (rod.charged !== true) fail(`${p}.charged`, 'expected true');
+      components.lightningrod = { charged: true, chargeleft: number(rod.chargeleft, `${p}.chargeleft`, Number.MIN_VALUE, 3) };
     }
     if (keys.includes('moonbase') && c.moonbase !== undefined) {
       const p = `${path}.moonbase`, moonbase = object(c.moonbase, p, ['staff', 'timer']);
