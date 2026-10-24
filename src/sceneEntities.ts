@@ -73,7 +73,7 @@ import { PREFAB_DEFINITIONS } from './prefabDefinitions';
 import { disposeSprite } from '@dontstarve-web/prefab/disposeSprite';
 import type { WorldState } from './worldState';
 
-type SceneWorldState = Pick<WorldState, 'clock' | 'season' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'getTileStateAtPoint' | 'worldwind' | 'scheduler' | 'temperature' | 'weather' | 'perishClock'>;
+type SceneWorldState = Pick<WorldState, 'clock' | 'season' | 'isNight' | 'cycle' | 'getWatchWorldContent' | 'tickingarea' | 'worldwind' | 'scheduler' | 'temperature' | 'weather' | 'perishClock'>;
 
 const MANAGER_DEFINITIONS = {
   'buildings': PREFAB_DEFINITIONS.buildings,
@@ -670,14 +670,15 @@ export async function createSceneEntities(
   }
 
   function registerHotsprings(registry: EntityRegistry, prefabId: 'hotspring', worldState: SceneWorldState) {
-    const hotsprings = new HotspringManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, worldState.getTileStateAtPoint);
+    const hotsprings = new HotspringManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, worldState.tickingarea, { scheduler });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => hotsprings.spawn(new THREE.Vector3(...record.transform.position), {
         id: record.id, transform: record.transform, components: { hotspring: record.components.hotspring },
       }),
       debugSpawn: () => hotsprings.spawn(player.position.clone().setY(0)),
       exportRecords: () => hotsprings.exportRecords(),
-      update: (dt) => hotsprings.update(dt),
+      update: (dt, quaternion) => hotsprings.update(dt, quaternion),
+      renderEntities: () => hotsprings.renderEntities,
       dispose: () => hotsprings.dispose(),
     });
     return hotsprings;

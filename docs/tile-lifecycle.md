@@ -2,7 +2,7 @@
 
 本文记录按 tile 管理生命周期的实施方案：每个 tile 持有一个活动状态 signal，玩家跨 tile 时更新变化的 tile，prefab 读取缓存 memo 派生自身的活动状态。活动网格和温泉的显隐接入已实现；当前 [stafflight.ts](../packages/prefab/src/stafflight.ts) 仍逐帧检查距离，[ProximityEntities](../packages/prefab/src/proximityEntities.ts) 仍遍历实体检查距离，统一的场景生命周期调度和资源卸载尚未实现。
 
-[worldContent.ts](../packages/signals/src/worldContent.ts) 已提供 `GetTileStateAtPoint(position, radius = 10)`，从当前绑定世界解析 tile 查询服务，返回固定位置的 `Memo<boolean> | undefined`，调用方无需传入玩家位置源。世界初始化时通过 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `GetTileStateAtPoint(playerPosition)` 柯里化绑定源，将返回的查询函数注入 `WorldContentEnvironment.getTileStateAtPoint`；`world.getTileStateAtPoint(position, radius)` 始终查询所属世界，全局导出查询当前绑定世界。signals 包只定义服务协议和解析入口，网格计算及缓存仍由 tileManager 管理。
+[worldContent.ts](../packages/signals/src/worldContent.ts) 已提供 `GetTileStateAtPoint(position, radius = 10)`，从当前绑定世界解析 tile 查询服务，返回固定位置的 `Memo<boolean> | undefined`，调用方无需传入玩家位置源。世界初始化时通过 [tileManager.ts](../packages/componets/src/tileManager.ts) 的 `GetTileStateAtPoint(playerPosition)` 柯里化绑定源，将返回的查询函数注入 `WorldContentEnvironment.tickingarea`；`world.tickingarea(position, radius)` 始终查询所属世界，全局导出查询当前绑定世界。signals 包只定义服务协议和解析入口，网格计算及缓存仍由 tileManager 管理。
 
 当前 `WorldState` 从自己的 `playerpositions` 快照纯派生首个玩家位置；没有玩家时为 `undefined`，所有 tile inactive。位置沿用现有初始化和每 60 活动帧采样，不改变更新频率或增加多人并集。范围采用下述方形规则，半径须为非负整数；目标超出 84×84 网格或 X/Z 无效时返回 `undefined`，玩家 X/Z 无效时发布 inactive。缓存按世界绑定的位置源隔离，同一世界、tile 和半径的查询始终返回同一个 memo；不同世界或半径独立。
 

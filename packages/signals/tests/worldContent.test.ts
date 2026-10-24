@@ -98,13 +98,13 @@ it('resolves tile queries through the bound world while captured queries stay wi
   const oldMemo = createMemo(() => true), nextMemo = createMemo(() => false);
   const oldQuery = vi.fn((_position: Vector3, _radius?: number) => oldMemo);
   const nextQuery = vi.fn((_position: Vector3, _radius?: number) => nextMemo);
-  const old = { ...world('day'), getTileStateAtPoint: oldQuery };
-  const next = { ...world('night'), getTileStateAtPoint: nextQuery };
+  const old = { ...world('day'), tickingarea: oldQuery };
+  const next = { ...world('night'), tickingarea: nextQuery };
   const oldCleanup = bindWorldContent(old);
   const position = new Vector3(-12, 0, 12);
   expect(GetTileStateAtPoint(position)).toBe(oldMemo);
   expect(oldQuery).toHaveBeenLastCalledWith(position, 10);
-  const capturedQuery = old.getTileStateAtPoint;
+  const capturedQuery = old.tickingarea;
   const nextCleanup = bindWorldContent(next);
   try {
     oldCleanup();

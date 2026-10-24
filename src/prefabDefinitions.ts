@@ -151,7 +151,7 @@ export const PREFAB_DEFINITIONS = {
   lavaPonds: definePrefabs([LAVA_POND_ID], componentParser({ keys: ['lavaPond'] }), true, ['lava_tile.zip', 'scorched_rock.zip']),
   lavaPondRocks: definePrefabs(LAVA_POND_ROCK_IDS, empty, true, ['scorched_rock.zip']),
   tumbleweeds: definePrefabs([TUMBLEWEED_ID], empty, true),
-  hotsprings: definePrefabs([HOTSPRING_ID], componentParser({ keys: ['hotspring'] }), true, ['crater_pool.zip']),
+  hotsprings: definePrefabs([HOTSPRING_ID], componentParser({ keys: ['hotspring'] }), true, ['crater_pool.zip', 'crater_steam.zip', 'slow_steam.zip']),
   nightmareGrowths: definePrefabs([NIGHTMAREGROWTH_ID], componentParser({ keys: ['nightmareGrowth'] }), true, ['nightmaregrowth.zip']),
   nightmareRocks: definePrefabs(NIGHTMAREROCK_IDS, empty, true),
   wormholes: definePrefabs([WORMHOLE_ID], componentParser({ keys: ['wormhole'] }), true),

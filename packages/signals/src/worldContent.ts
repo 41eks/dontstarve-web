@@ -43,7 +43,7 @@ export type WorldContentEnvironment = WorldContentSources & {
   /** Standalone contexts may omit the world prefix service. */
   readonly perishClock?: PerishClock;
   /** Standalone contexts may omit tile activity. The world owns its cache and cleanup. */
-  readonly getTileStateAtPoint?: TileStateQuery;
+  readonly tickingarea?: TileStateQuery;
 };
 
 /** The signal belongs to the consumer; the scheduler remains owned by the world. */
@@ -60,7 +60,7 @@ export type GetWatchWorldContent = <K extends WorldContentKey>(
 /** Shared contract for the application world and prefab world context. */
 export interface WorldContentContext extends WorldContentEnvironment {
   readonly getWatchWorldContent: GetWatchWorldContent;
-  readonly getTileStateAtPoint: TileStateQuery;
+  readonly tickingarea: TileStateQuery;
 }
 
 let currentWorld: WorldContentEnvironment | undefined;
@@ -76,7 +76,7 @@ export function isWorldContentBound(): boolean { return currentWorld !== undefin
 
 /** Resolve the current world's query without passing its player position source to prefabs. */
 export function GetTileStateAtPoint(position: Vector3, radius = 10): Memo<boolean> | undefined {
-  const query = currentWorld?.getTileStateAtPoint;
+  const query = currentWorld?.tickingarea;
   if (!query) throw new Error('World tile activity is not bound');
   return query(position, radius);
 }
