@@ -52,7 +52,7 @@ def main():
     assets = set()
     read_tiles = runpy.run_path(str(Path(__file__).with_name('turf-source.py')))['read_tiles']
     for tile in read_tiles(scripts):
-        if not tile['turf'] and tile['name'] not in {'DIRT', 'FARMING_SOIL', 'OCEAN_COASTAL', 'MONKEY_DOCK'}:
+        if not tile['turf'] and tile['name'] not in {'DIRT', 'FARMING_SOIL', 'OCEAN_COASTAL', 'MONKEY_DOCK', 'VAULT'}:
             continue
         ground = tile['ground']
         name = ground['name']

@@ -15,6 +15,7 @@
 }
 
 .stageBackground,
+.canvasHost,
 .animationCanvas {
   position: absolute;
   inset: 0;
@@ -24,7 +25,7 @@
 }
 
 .stageBackground { z-index: 0; }
-.animationCanvas { z-index: 1; }
+.canvasHost { z-index: 1; }
 
 .loader,
 .error {

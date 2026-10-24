@@ -261,7 +261,7 @@ frontTasks.push(dt => {
 const disposalResources = createDisposalResources({
   gameUi, view, inventory, playerAnimation, locomotor, pickupDoer, handEquipmentBinding,
   inventorySlotItem, actionEvents, isActionInterrupting: input.isActionInterrupting,
-  updateCursor: () => cursorUi.update(), turfMap,
+  updateCursor: () => cursorUi.update(), getWatchWorldContent: worldState.getWatchWorldContent, turfMap,
 });
 window.dispatchEvent(new CustomEvent('game:lighting-ready', { detail: await lightingReady }));
 const sceneResources = await startScene(
@@ -529,7 +529,7 @@ gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
 });
 
 /** All startup resources and bindings are ready, and the complete scene has rendered. */
-export const gameReady = sceneResources.start().then(() => {
+export const gameReady = gameUi.minimap.prepareTerrain().then(() => sceneResources.start()).then(() => {
   renderer.domElement.dataset.loaded = 'true';
   input.setBlocked(false);
 }).catch(error => {

@@ -4,31 +4,12 @@ import { parseImageAtlasXml, type ImageAtlasElement } from '@dontstarve-web/anim
 import definitions from './groundTiles.json';
 import falloff from './groundFalloff.json';
 import { TILE_SIZE } from './tile';
+import { groundTileVariant } from './groundTileQuads';
 
 export const GROUND_TILE_DEFINITIONS = definitions;
 export type GroundTileName = keyof typeof definitions;
 
-const MIXED_VARIANTS: Readonly<Record<number, Readonly<Record<number, number>>>> = {
-  1: { 2: 36, 4: 44, 6: 40 }, 2: { 4: 33, 8: 41, 12: 37 },
-  4: { 1: 42, 8: 34, 9: 38 }, 8: { 1: 35, 2: 43, 3: 39 },
-  3: { 4: 45 }, 6: { 8: 46 }, 12: { 1: 48 }, 9: { 2: 47 },
-};
-
-/** The 48 source atlas cells: full, cardinal strips, diagonal corners and mixtures.
- * Cardinal bits: west/north/east/south = 1/2/4/8.
- * Diagonal bits: northwest/northeast/southeast/southwest = 1/2/4/8.
- * A cardinal strip already covers both adjacent corners; discard those bits.
- */
-export function groundTileVariant(own: boolean, cardinal: number, diagonal: number): number {
-  if (own) return 1;
-  if (cardinal & 1) diagonal &= ~9;
-  if (cardinal & 2) diagonal &= ~3;
-  if (cardinal & 4) diagonal &= ~6;
-  if (cardinal & 8) diagonal &= ~12;
-  if (!cardinal) return 17 + diagonal;
-  if (!diagonal) return 1 + cardinal;
-  return MIXED_VARIANTS[cardinal][diagonal];
-}
+export { groundTileVariant };
 
 export interface GroundTileAssets {
   readonly material: THREE.MeshLambertMaterial;

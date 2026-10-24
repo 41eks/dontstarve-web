@@ -72,6 +72,8 @@ sprite.playOnce('change', () => sprite.start('idle_loop'));
 换帧命中缓存时不再逐实体解析部件、重写顶点或上传几何；普通共享帧仍按实体脚点排序与绘制。
 砍伐次数、掉落、生长阶段、计时和保存仍由 prefab 与组件负责。
 
+共享动画的矩阵缓存自动检测模型、visual 和父节点的变换。声明 `staticBillboard: true` 的静态实体保留快速路径：调用 `faceCamera()` 转向，移动或修改 visual 后调用 `refreshTransform()`；父节点移动和重新挂载仍自动失效。烘焙顶点换帧不触发矩阵更新，附加的动态子节点仍执行普通 Three.js 更新。`matrixUpdates.ts` 统一拥有两个矩阵方法的包装，空间索引通过它监听实际更新；缓存和监听可按任意顺序释放，最后一个所有者退出时恢复原方法。
+
 底层 `createArchiveSprite()` 的 `options.sharedAnimations` 支持 clip 列表或 `'all'`；默认保留独立几何。
 
 ## 场景动画实例化
@@ -98,11 +100,13 @@ sprite.playOnce('change', () => sprite.start('idle_loop'));
 `swarm_loop` 使用此路径保留夜间自亮，开始和结束动画仍使用普通共享帧。
 嵌套在逻辑实体下的 sprite 可通过 `options.foot` 指定实际脚点节点，排序与抛出时视觉高度分开。
 实例按完整帧的世界包围球做视锥裁剪；离屏实体继续推进动画并保留共享资源，但不参与本帧的实例排序和上传。
+实例代理与空帧由帧渲染器标记为不参与普通实体排序；切换到普通工作动画后恢复，精确 alpha 拾取代理继续保留。批次按槽位复用世界变换和帧边界，矩阵、颜色、UV、透明度、光照覆盖与侵蚀仅在实际 Float32 值变化时标记上传，保留尚未被 WebGL 消费的更新区间。
 
 场景需通过 `renderSceneWithPasses(renderer, scene, camera)` 绘制；启动预热使用
 `await prewarmScenePasses(renderer, scene, camera, signal)`，两者导出自 `@dontstarve-web/animation/sceneRenderPass`。
 单实体保留渲染隐藏的源帧用于精确 alpha 拾取和空间边界，`sprite.dispose()` 释放实体并退出批次，
 所有实体移除后由 `assets.dispose()` 统一释放合成图集、批次和共享源资源。
+pass 注册表直接查找所属场景内可见锚点，每个 pass 每帧执行一次；同一批次的数千个代理无需逐节点发现 pass。可传入光照准备函数作为 `renderSceneWithPasses()` 的第四个参数，该函数在世界矩阵准备完成后、各 pass 绘制前执行并返回共享光照输入，使光照贴图与实例绘制读取同一帧的位置。
 
 ## DST 图片 XML 索引
 

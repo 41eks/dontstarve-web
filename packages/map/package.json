@@ -1,0 +1,18 @@
+{
+  "name": "@dontstarve-web/map",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "bench": "node scripts/bench.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dontstarve-web/prefab": "workspace:*",
+    "@dontstarve-web/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "three": "^0.184.0"
+  }
+}

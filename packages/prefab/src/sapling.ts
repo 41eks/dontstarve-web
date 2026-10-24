@@ -20,6 +20,8 @@ function saplingDefinition(prefab: SaplingPrefabId): PickablePlantDefinition {
     tags: ['plant', 'renewable', 'silviculture', 'lunarplant_target'],
     product: 'twigs',
     regrowTime: SAPLING_REGROW_TIME,
+    witherable: true,
+    barren: 'idle_dead',
     idle: { name: 'sway', randomFrame: true },
     // onpickedfn only plays the clip; pickable.picksound is read by WX-78's stategraph, not the player's.
     picked: { clips: ['picked'] },

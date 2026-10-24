@@ -31,7 +31,7 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
     await page.keyboard.press('m');
     await expect(page.locator('dst-minimap section.minimap')).toBeVisible();
   };
-  await page.goto('/tests/dst-lighting.html');
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   await start();
   const command = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
@@ -42,36 +42,25 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
     const model = g.scene.children.find((object: any) => object.userData.itemId === 'backpack');
     g.bag = model.userData.pickupTarget.entity;
     g.bag.transform.position.set(36, 0, -24);
-    g.map.view.zoom = 6;
-    g.map.view.center(0, 0);
+    g.map.setView({ x: 0, z: 0, zoom: 1 });
     const king = g.scene.getObjectByName('PigKingStandee');
     const pigIcon = g.entities().find((icon: any) => icon.icon === 'pigking.png');
     return { backpackId: g.bag.id, pigKingId: king.userData.entityId, pigPriority: pigIcon.priority };
   });
   expect(identities.pigPriority).toBe(1);
-  await expect.poll(() => page.evaluate(() => {
-    const map = (window as any).worldIcons.map;
-    return Boolean(map.icons.get('pigking.png') && map.icons.get('backpack.png'));
+  await expect.poll(() => page.evaluate(async () => {
+    const { icons } = await (window as any).worldIcons.map.inspect();
+    return icons.includes('pigking.png') && icons.includes('backpack.png');
   })).toBe(true);
-  const frame = () => page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  const pixels = () => page.evaluate(() => {
-    const { map } = (window as any).worldIcons;
-    const context = map.shadowRoot.querySelector('canvas').getContext('2d');
-    return [[0, 36], [36, -24]].map(([x, z]) => {
-      const at = map.view.worldToScreen(x, z);
-      return Array.from(context.getImageData(at.x - 18, at.z - 18, 36, 36).data);
-    });
-  });
-  await frame();
-  const visible = await pixels();
+  const icons = page.locator('dst-minimap img[data-icon="pigking.png"], dst-minimap img[data-icon="backpack.png"]');
+  await expect(icons).toHaveCount(2);
+  await expect.poll(() => icons.evaluateAll(images => images.every(image => !(image as HTMLImageElement).hidden
+    && (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('pigking-backpack-minimap.png') });
   await page.evaluate(() => (window as any).worldIcons.entities().forEach((icon: any) => {
     if (icon.icon === 'pigking.png' || icon.icon === 'backpack.png') icon.SetEnabled(false);
   }));
-  await frame();
-  const hidden = await pixels();
-  expect(visible[0]).not.toEqual(hidden[0]);
-  expect(visible[1]).not.toEqual(hidden[1]);
+  await expect(icons).toHaveCount(0);
   await page.evaluate(() => {
     const g = (window as any).worldIcons;
     g.entities().find((icon: any) => icon.icon === 'pigking.png').SetEnabled(true);
@@ -80,14 +69,16 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
   });
   await expect.poll(() => page.evaluate(() => (window as any).worldIcons.entities().some((icon: any) => icon.icon === 'backpack.png'))).toBe(false);
   expect(await page.evaluate(() => (window as any).worldIcons.bag.MiniMapEntity.enabled)).toBe(false);
+  await expect(page.locator('dst-minimap img[data-icon="backpack.png"]')).toHaveCount(0);
   await page.evaluate(() => {
     const g = (window as any).worldIcons;
     g.main.inventory.DropItem(g.bag, g.bag.transform.position.clone().set(36, 0, -24));
   });
   await expect.poll(() => page.evaluate(() => (window as any).worldIcons.entities().some((icon: any) => icon.icon === 'backpack.png'))).toBe(true);
+  await expect(page.locator('dst-minimap img[data-icon="backpack.png"]')).toBeVisible();
   const download = page.waitForEvent('download');
   await command('c_save()');
-  saved = JSON.parse(await readSaveDownload((await (await download).path())!));
+  saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   const bag = saved.world.entities.ground_item.find((record: any) => record.id === identities.backpackId);
   expect(bag.transform.position).toEqual([36, 0, -24]);
   expect(bag.components.stack).toMatchObject({ itemId: 'backpack', count: 1 });
@@ -99,6 +90,7 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
     return g.entities().filter((icon: any) => icon.icon === 'pigking.png' || icon.icon === 'backpack.png')
       .map((icon: any) => ({ icon: icon.icon, x: icon.position.x, z: icon.position.z }));
   })).toEqual([{ icon: 'pigking.png', x: 0, z: 36 }, { icon: 'backpack.png', x: 36, z: -24 }]);
+  await expect(icons).toHaveCount(2);
   expect(await page.evaluate(() => {
     const g = (window as any).worldIcons;
     return g.scene.children.find((object: any) => object.userData.itemId === 'backpack').userData.entityId;

@@ -40,7 +40,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   try { data = JSON.parse(text); } catch { fail('$', 'invalid JSON'); }
   let nodes = 0;
   const visit = (value: unknown, depth: number) => {
-    if (++nodes > 200_000 || depth > 32) fail('$', 'data exceeds nesting or size limits');
+    // A full DST cave has over 46,000 tile records plus its entities and component state.
+    if (++nodes > 500_000 || depth > 32) fail('$', 'data exceeds nesting or size limits');
     if (typeof value === 'number' && !Number.isFinite(value)) fail('$', 'nonfinite number');
     if (typeof value === 'string' && value.length > 256) fail('$', 'string is too long');
     if (value && typeof value === 'object') Object.values(value).forEach((child) => visit(child, depth + 1));

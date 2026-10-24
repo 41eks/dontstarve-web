@@ -1,4 +1,7 @@
 import { createSignal } from '@dontstarve-web/signals';
+import { PhysicsWorld } from '../../componets/src/physicsWorld';
+import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
+import { useTestTileMap } from './tileMapFixture';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -7,6 +10,8 @@ import { WallsPlacement } from '../../prefab/src/walls';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/wallPlacement';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { Health } from '../../componets/src/health';
+
+useTestTileMap();
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => {
@@ -18,10 +23,9 @@ beforeEach(() => {
 });
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
-function setup() {
+function setup(physics: CANNON.World = new CANNON.World()) {
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 12, 40); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
-  const physics = new CANNON.World();
   const world = { physics, scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
@@ -66,4 +70,28 @@ it('restores a saved broken wall without an obstacle and releases the obstacle w
     placement.hammerTargets.find(target => target.id === 'live')!.playHit();
     expect(wallBodies(physics)).toHaveLength(0);
   } finally { placement.dispose(); }
+});
+
+it('keeps a broken or permanently removed dormant wall from regaining collision when its tile wakes', async () => {
+  const position = createSignal<THREE.Vector3 | undefined>(new THREE.Vector3());
+  const physics = new PhysicsWorld({}, GetTileStateAtPoint(position));
+  const { placement } = setup(physics);
+  try {
+    await placement.spawnFromSave('wall_stone', { id: 'dormant-wall', transform: { position: [240, 0, 0], rotationY: 0 },
+      components: { health: { current: 100, maximum: 400 } } });
+    const [body] = [...physics.registeredBodies];
+    expect(body).toBeDefined();
+    expect(physics.bodies).toEqual([]);
+    healthOf(placement, 0).DoDelta(-100);
+    position.set(new THREE.Vector3(240, 0, 0)); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(physics.bodies).toEqual([]);
+    expect([...physics.registeredBodies]).toEqual([]);
+    healthOf(placement, 0).DoDelta(50);
+    expect(physics.bodies).toEqual([body]);
+    position.set(new THREE.Vector3()); await new Promise(resolve => setTimeout(resolve, 0));
+    placement.dispose();
+    position.set(new THREE.Vector3(240, 0, 0)); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(physics.bodies).toEqual([]);
+    expect([...physics.registeredBodies]).toEqual([]);
+  } finally { placement.dispose(); physics.dispose(); DisposeTileStates(position); }
 });

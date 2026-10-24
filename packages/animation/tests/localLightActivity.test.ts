@@ -38,8 +38,15 @@ it('gates lightmap sources and CPU samples by shared world-space tiles, restores
   } as unknown as THREE.WebGLRenderer;
   const sample = new THREE.Vector3(132, 0, 0);
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  const renderLightmap = () => {
+    scene.updateMatrixWorld();
+    lighting.renderLightmap(renderer, scene);
+  };
   try {
-    lighting.renderLightmap(renderer);
+    const query = vi.spyOn(near, 'getWorldPosition');
+    renderLightmap();
+    expect(query).not.toHaveBeenCalled(); // Rendering consumes the settled world matrices.
+    query.mockRestore();
     expect(sources).toBe(2); // Tile 10 is active; tile 11, detached and out-of-grid lights are excluded.
     expect(lighting.sampleLightLevel(sample)).toBeCloseTo(.4 * .2126);
     expect(tickingarea).toHaveBeenCalledTimes(2); // Rendering, sampling and same-tile owners share watches.
@@ -48,7 +55,7 @@ it('gates lightmap sources and CPU samples by shared world-space tiles, restores
     expect(1 / extents.z).toBeCloseTo(25.9); // Inactive sources do not expand the lightmap.
 
     player.set(new THREE.Vector3(12, 0, 0)); await settle();
-    lighting.renderLightmap(renderer);
+    renderLightmap();
     expect(sources).toBe(3);
     expect(lighting.sampleLightLevel(sample)).toBeCloseTo(.4 * .2126 + .2 * .7152);
     expect(getPrefabLocalLight(far)?.intensity).toBe(.2);
@@ -56,17 +63,17 @@ it('gates lightmap sources and CPU samples by shared world-space tiles, restores
 
     player.set(new THREE.Vector3()); await settle();
     near.position.x = 24.1; // Moving a child must query its new world tile, not its local tile.
-    lighting.renderLightmap(renderer);
+    renderLightmap();
     expect(sources).toBe(1);
     expect(lighting.sampleLightLevel(sample)).toBeCloseTo(.2 * .2126);
     expect(tickingarea).toHaveBeenCalledTimes(3);
     near.position.x = 11.9;
-    lighting.renderLightmap(renderer);
+    renderLightmap();
     expect(sources).toBe(2);
     expect(tickingarea).toHaveBeenCalledTimes(3);
 
     player.set(undefined); await settle();
-    lighting.renderLightmap(renderer);
+    renderLightmap();
     expect(sources).toBe(0);
     expect(lighting.sampleLightLevel(sample)).toBe(0);
     lighting.dispose(); lighting.dispose();

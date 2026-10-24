@@ -9,41 +9,75 @@ export interface MinimapTileLayer {
 }
 
 export interface MinimapTileQuad { readonly col: number; readonly row: number; readonly variant: number }
+export interface MinimapTilePainter {
+  /** Returns the painter's own canvas, valid until the next call. */
+  (quad: MinimapTileQuad): OffscreenCanvas;
+  dispose(): void;
+}
 
-export function pixelsCanvas(pixels: MinimapPixels): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = pixels.width;
-  canvas.height = pixels.height;
-  canvas.getContext('2d')!.putImageData(new ImageData(Uint8ClampedArray.from(pixels.data), pixels.width, pixels.height), 0, 0);
+export interface MinimapCellBounds { minCol: number; minRow: number; maxCol: number; maxRow: number }
+
+/** Terrain read model, independent of the live icon collection and map view. */
+export interface MinimapTerrain {
+  cellRange(): { min: number; max: number };
+  tileIdAtCell(col: number, row: number): number;
+  isVoidAtCell?(col: number, row: number): boolean;
+  tileLayerImages(): Promise<ReadonlyMap<number, MinimapTileLayer>>;
+  tileLayerQuads(bounds?: MinimapCellBounds): ReadonlyMap<number, readonly MinimapTileQuad[]>;
+  minimapOcean(): Promise<import('./minimap-ocean').MinimapOceanConfig>;
+  onTerrainChanged(listener: (bounds?: MinimapCellBounds) => void): () => void;
+}
+
+export function pixelsCanvas(pixels: MinimapPixels): OffscreenCanvas {
+  const canvas = new OffscreenCanvas(pixels.width, pixels.height);
+  canvas.getContext('2d', { willReadFrequently: true })!.putImageData(new ImageData(Uint8ClampedArray.from(pixels.data), pixels.width, pixels.height), 0, 0);
   return canvas;
 }
 
+/** Creating an OffscreenCanvas costs a synchronous round trip, so scaling reuses one
+ * canvas per size. Sources and targets are separate: a mask already at `size` must survive its own scaling.
+ */
+const scratches = new Map<string, OffscreenCanvasRenderingContext2D>();
+function scratch(role: 'source' | 'target', width: number, height: number): OffscreenCanvasRenderingContext2D {
+  const key = `${role}:${width}x${height}`;
+  let context = scratches.get(key);
+  if (!context) {
+    // Read back right after one draw: keep the raster on the CPU instead of waiting on the GPU.
+    context = new OffscreenCanvas(width, height).getContext('2d', { willReadFrequently: true })!;
+    scratches.set(key, context);
+  }
+  return context;
+}
+
 function scaledPixels(pixels: MinimapPixels, size: number): Uint8ClampedArray {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const context = canvas.getContext('2d')!;
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = 'high';
-  context.drawImage(pixelsCanvas(pixels), 0, 0, size, size);
-  return context.getImageData(0, 0, size, size).data;
+  const source = scratch('source', pixels.width, pixels.height);
+  source.putImageData(new ImageData(pixels.data as Uint8ClampedArray<ArrayBuffer>, pixels.width, pixels.height), 0, 0);
+  const target = scratch('target', size, size);
+  target.clearRect(0, 0, size, size);
+  target.imageSmoothingEnabled = true;
+  target.imageSmoothingQuality = 'high';
+  target.drawImage(source.canvas, 0, 0, size, size);
+  return target.getImageData(0, 0, size, size).data;
 }
 
 /** minimap.ksh: atlas RGB *= world-space noise RGB; atlas alpha stays intact.
  * Compose before drawing to the map so multiply cannot affect the layers below.
- * Reuse each mask at each of the 8x8 world-space noise offsets within one rebuild.
+ * Reuse masks at the 8x8 world-space noise offsets across chunk rebuilds.
  */
-export function createMinimapTilePainter(layer: MinimapTileLayer, cellSize: number): (quad: MinimapTileQuad) => HTMLCanvasElement {
+export function createMinimapTilePainter(layer: MinimapTileLayer, cellSize: number): MinimapTilePainter {
   const periodCells = 8;
   const period = periodCells * cellSize;
-  const noise = scaledPixels(layer.noise, period);
+  let noise = scaledPixels(layer.noise, period);
   const masks = new Map<number, Uint8ClampedArray>();
-  const tiles = new Map<string, HTMLCanvasElement>();
+  const tiles = new Map<string, ImageData>();
+  const canvas = new OffscreenCanvas(cellSize, cellSize);
+  const context = canvas.getContext('2d', { willReadFrequently: true })!;
   const wrap = (value: number) => ((value % periodCells) + periodCells) % periodCells;
-  return ({ col, row, variant }) => {
+  const paint: MinimapTilePainter = ({ col, row, variant }) => {
     const cx = wrap(col), cy = wrap(row);
     const key = `${variant},${cx},${cy}`;
     const cached = tiles.get(key);
-    if (cached) return cached;
+    if (cached) { context.putImageData(cached, 0, 0); return canvas; }
     let mask = masks.get(variant);
     if (!mask) {
       const cell = layer.cells.get(variant);
@@ -58,8 +92,17 @@ export function createMinimapTilePainter(layer: MinimapTileLayer, cellSize: numb
       for (let channel = 0; channel < 3; channel++) data[at + channel] = mask[at + channel] * noise[sample + channel] / 255;
       data[at + 3] = mask[at + 3];
     }
-    const tile = pixelsCanvas({ data, width: cellSize, height: cellSize });
+    const tile = new ImageData(data, cellSize, cellSize);
     tiles.set(key, tile);
-    return tile;
+    context.putImageData(tile, 0, 0);
+    // A shared painter survives chunk rebuilds. Bound its mask/noise variants
+    // rather than retaining every world-space combination for the whole map.
+    if (tiles.size > 128) tiles.delete(tiles.keys().next().value!);
+    return canvas;
   };
+  paint.dispose = () => {
+    canvas.width = canvas.height = 0;
+    tiles.clear(); masks.clear(); noise = new Uint8ClampedArray();
+  };
+  return paint;
 }

@@ -121,10 +121,20 @@ export async function checkTreeSpriteRendering(instanced = false) {
     compare();
     const drawCalls: number[] = [];
     const occlusion: number[][] = [];
+    let reusedInstanceBuffers = false;
     // More trees with distinct phases must grow instance counts, not draw calls per entity.
     const extra = [];
     if (instanced) {
       const treePixels = pixels(scenes[0]);
+      const buffers = (assets.instancedSprites as unknown as { scenes: Map<THREE.Scene, { pages: Map<unknown, {
+        colour: THREE.InstancedMesh; geometry: THREE.BufferGeometry;
+      }> }> }).scenes.get(scenes[0])!;
+      const versions = () => [...buffers.pages.values()].flatMap(batch => [batch.colour.instanceMatrix.version,
+        batch.colour.instanceColor!.version, ...(Object.values(batch.geometry.attributes) as THREE.BufferAttribute[]).map(attribute => attribute.version)]);
+      const before = versions();
+      pixels(scenes[0]);
+      const after = versions();
+      reusedInstanceBuffers = before.every((version, index) => version === after[index]);
       let sampleIndex = -1;
       for (let y = 20; y < 172 && sampleIndex < 0; y++) for (let x = 20; x < 172; x++) {
         let interior = true;
@@ -170,7 +180,7 @@ export async function checkTreeSpriteRendering(instanced = false) {
       renderer.info.reset(); pixels(scenes[0]); drawCalls.push(renderer.info.render.calls);
     }
     const stabilityDifferences = instanced ? checkAtlasFrameStability(renderer, target) : [];
-    return { differences, meanErrors, paintedPixels, drawCalls, occlusion, stabilityDifferences };
+    return { differences, meanErrors, paintedPixels, drawCalls, occlusion, stabilityDifferences, reusedInstanceBuffers };
   } finally {
     for (const sprite of [...shared, ...independent]) sprite.dispose();
     assets.dispose(); target.dispose(); lighting?.dispose(); renderer.dispose();

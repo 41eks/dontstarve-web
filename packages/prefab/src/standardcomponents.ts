@@ -1,8 +1,8 @@
 import * as CANNON from 'cannon-es';
-import { TILE_SIZE } from './tile';
+import { WORLD_SCALE } from './tile';
 
 /** World units per DST unit. */
-export const WORLD_SCALE = TILE_SIZE / 4;
+export { WORLD_SCALE } from './tile';
 
 /** standardcomponents.lua MakeCharacterPhysics: phys:SetDamping(5). */
 export const CHARACTER_DAMPING = 5;

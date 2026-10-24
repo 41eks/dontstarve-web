@@ -13,21 +13,28 @@ import { TILE_SIZE } from '../../prefab/src/tile';
 
 afterEach(() => vi.unstubAllGlobals());
 
-it('loads the imported region and retains cave identity, sparse void and player state through save/load', () => {
+it('loads the entire imported map and retains cave identity, sparse void and player state through save/load', () => {
   const template = deserializeSave(JSON.stringify(cave), SAVE_CATALOG);
   const map = new TurfMap(template.world.map.generator.options.size, template.world.map.tiles, template.world.map.defaultTileId);
   try {
     expect(template.world.prefab).toBe('cave');
+    expect(template.world.map.tiles).toHaveLength(46522);
+    expect(map.cellsOfTile(WORLD_TILES.VAULT)).toHaveLength(82);
+    expect(template.world.entities.grass.filter(record => record.components.witherable)).toHaveLength(37);
     const wood = map.cellsOfTile(WORLD_TILES.WOODFLOOR);
-    const cx = (Math.min(...wood.map(([col]) => col)) + Math.max(...wood.map(([col]) => col)) + 1) * TILE_SIZE / 2;
-    const cz = (Math.min(...wood.map(([, row]) => row)) + Math.max(...wood.map(([, row]) => row)) + 1) * TILE_SIZE / 2;
-    // resurrectionstone.lua's heads stand at the midpoints of the 2x2 wood floor's perimeter.
-    expect(template.world.entities.pighead.map(record => record.transform.position).sort()).toEqual([
+    // Sample the intact resurrectionstone layout; the full map also contains a partially destroyed one.
+    const woodNearOrigin = wood.filter(([col, row]) => col < 10 && row > -50);
+    const cx = (Math.min(...woodNearOrigin.map(([col]) => col)) + Math.max(...woodNearOrigin.map(([col]) => col)) + 1) * TILE_SIZE / 2;
+    const cz = (Math.min(...woodNearOrigin.map(([, row]) => row)) + Math.max(...woodNearOrigin.map(([, row]) => row)) + 1) * TILE_SIZE / 2;
+    expect(template.world.entities.pighead.filter(record => new Vector3(...record.transform.position)
+      .distanceToSquared(new Vector3(cx, 0, cz)) <= TILE_SIZE ** 2).map(record => record.transform.position).sort()).toEqual([
       [cx - TILE_SIZE, 0, cz], [cx + TILE_SIZE, 0, cz], [cx, 0, cz - TILE_SIZE], [cx, 0, cz + TILE_SIZE],
     ].sort());
-    expect(template.world.entities.archive_moon_statue.every(record =>
-      map.getTileAtWorld(new Vector3(...record.transform.position)) === WORLD_TILES.ARCHIVE)).toBe(true);
-    expect(map.cellsOfTile(WORLD_TILES.SINKHOLE)).toHaveLength(433);
+    // Three source statues are outside the archive; their original locations must also be retained.
+    expect(template.world.entities.archive_moon_statue.filter(record =>
+      map.getTileAtWorld(new Vector3(...record.transform.position)) === WORLD_TILES.ARCHIVE)).toHaveLength(31);
+    expect(template.world.entities.archive_moon_statue).toHaveLength(34);
+    expect(map.cellsOfTile(WORLD_TILES.SINKHOLE)).toHaveLength(10003);
     expect(map.getTileAtWorld({ x: -map.size / 2 + 6, z: -map.size / 2 + 6 })).toBe(WORLD_TILES.IMPASSABLE);
     expect(map.isPassableAtPoint(new Vector3(...template.players.local.transform.position))).toBe(true);
     const restored = deserializeSave(serializeSave(template, {

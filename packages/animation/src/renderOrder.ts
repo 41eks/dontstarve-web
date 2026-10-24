@@ -1,6 +1,14 @@
 import type * as THREE from 'three';
 
 const spriteRenderGroups = new WeakMap<THREE.Object3D, THREE.Group>();
+const undrawnGroups = new WeakSet<THREE.Object3D>();
+
+/** The frame renderer owns whether its ordinary mesh actually draws. Instance
+ * proxies still support picking, but their batch performs its own foot sorting.
+ */
+export function setSpriteRenderGroupDrawn(group: THREE.Object3D, drawn: boolean): void {
+  if (drawn) undrawnGroups.delete(group); else undrawnGroups.add(group);
+}
 
 export function registerSpriteRenderGroup(
   sprite: THREE.Object3D,
@@ -23,7 +31,9 @@ export function setSpriteEntityRenderOrder(
 /** Hidden entities (or ones whose registered visual is hidden) are not drawn, so their order is irrelevant. */
 export function isSpriteEntityRendered(sprite: THREE.Object3D): boolean {
   if (!sprite.visible) return false;
-  for (let node: THREE.Object3D | null = spriteRenderGroups.get(sprite) ?? null; node && node !== sprite; node = node.parent) {
+  const group = spriteRenderGroups.get(sprite);
+  if (group && undrawnGroups.has(group)) return false;
+  for (let node: THREE.Object3D | null = group ?? null; node && node !== sprite; node = node.parent) {
     if (!node.visible) return false;
   }
   return true;

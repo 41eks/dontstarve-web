@@ -963,13 +963,17 @@ export async function createWilsonPlayer(
   return player;
 }
 
+/** player_common.lua: MakeCharacterPhysics(inst, 75, .5), in DST units. */
+export const PLAYER_PHYSICS_RADIUS = 0.5;
+/** The player's collider radius in world units; UI anchored to the player scales from this. */
+export const PLAYER_COLLIDER_RADIUS = PLAYER_PHYSICS_RADIUS * WORLD_SCALE;
+
 export async function createWilsonPlayerPrefab(
   assetBaseUrl: string,
   options: WilsonPlayerPrefabOptions = {},
 ): Promise<WilsonPlayerPrefab> {
   const model = await createWilsonPlayer(assetBaseUrl, options);
-  // player_common.lua: MakeCharacterPhysics(inst, 75, .5)
-  const physics = MakeCharacterPhysics(options.mass ?? 75, 0.5);
+  const physics = MakeCharacterPhysics(options.mass ?? 75, PLAYER_PHYSICS_RADIUS);
   const shapeRadius = options.shapeRadius ?? (physics.shape as CANNON.Sphere).radius;
   const material = new CANNON.Material('player');
   const body = new CANNON.Body({

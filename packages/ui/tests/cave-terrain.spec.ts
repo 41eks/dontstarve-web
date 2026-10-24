@@ -41,7 +41,7 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
     playerBody.position.set(player.position.x, playerBody.shapes[0].radius, player.position.z);
     playerBody.velocity.setZero();
     followCamera.snap();
-  }, imported.world.entities.pighead);
+  }, imported.world.entities.pighead.slice(-4));
   await page.screenshot({ path: '/tmp/dst-cave-pighead-alignment.png' });
   const boundary = await page.evaluate(() => {
     const { building: { turfMap, ground }, universal: { scene }, camera: { followCamera }, player: { player, playerBody } } = (window as any).caveGame;
@@ -76,7 +76,18 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   expect(position.x).toBeGreaterThan(boundary.edge);
   expect(position.x).toBeLessThanOrEqual(boundary.start + .01);
   await page.keyboard.press('KeyM');
-  await expect(page.locator('dst-minimap canvas')).toBeVisible();
+  await expect(page.locator('dst-minimap .minimap__viewport')).toBeVisible();
+  await expect(page.locator('dst-minimap canvas')).toHaveCount(0);
+  // Check actual decoded terrain images, not only the visibility of their container.
+  await expect.poll(() => page.locator('dst-minimap').evaluate(async (map: any) => {
+    const { sampleDomTerrain } = await import('./minimap-dom-samples.ts');
+    const [centre] = sampleDomTerrain(map, [{ x: map.view.centerX, z: map.view.centerZ }]);
+    return { ready: (await map.inspect()).ready, painted: centre[3] > 0 };
+  }), { timeout: 60_000 }).toEqual({ ready: true, painted: true });
+  await page.locator('dst-minimap').evaluate((map: any) => map.setView({ zoom: 1 }));
+  const image = page.locator('dst-minimap .minimap__ground');
+  await expect(image).toHaveCount(1);
+  expect(await image.evaluate((image: HTMLImageElement) => image.naturalWidth * image.naturalHeight * 4)).toBeLessThanOrEqual(256 * 1024 * 1024);
   await page.keyboard.press('KeyM');
   const staticIds = ['cavein_boulder', 'rock_moon', 'rock_moon_shell', 'moonrockseed'];
   for (const prefab of staticIds) {
@@ -95,7 +106,7 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
   expect(saved.world.prefab).toBe('cave');
   expect(saved.world.map.defaultTileId).toBe(1);
-  expect(saved.world.map.tiles).toHaveLength(4309);
+  expect(saved.world.map.tiles).toHaveLength(imported.world.map.tiles.length);
   for (const prefab of ['pighead', 'archive_moon_statue', 'rock1']) {
     expect(saved.world.entities[prefab]).toEqual(imported.world.entities[prefab]);
   }

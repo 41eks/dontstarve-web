@@ -1,8 +1,8 @@
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { DstMinimapElement } from '../src/minimap';
-import { createMinimapTilePainter } from '../src/minimap-terrain';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
-import { Vector3 } from 'three';
+import { createTurfGround } from '../../prefab/src/turf';
+import { Vector3, WebGLRenderer, Scene, AmbientLight } from 'three';
 import { MiniMapEntity } from '../../prefab/src/minimapEntity';
 
 customElements.define('dst-minimap', DstMinimapElement);
@@ -13,7 +13,11 @@ for (let row = -4; row < 4; row++) for (let col = -4; col < 4; col++) {
 }
 const terrain = new TurfMap(96, tiles);
 terrain.setOriginalTile({ x: -6, z: -6 }, WORLD_TILES.WOODFLOOR);
-await terrain.createVisual('/dst/data');
+const visual = await terrain.createVisual('/dst/data');
+const ground = await createTurfGround({ assetBaseUrl: '/dst/data', noiseTexture: 'Ground_noise_deciduous', tileAtlas: 'DECIDUOUS', size: 96 });
+const scene = new Scene();
+scene.add(ground, visual, new AmbientLight(0xffffff, 1));
+const renderer = new WebGLRenderer({ alpha: true });
 const map = new DstMinimapElement();
 const playerIcon = new MiniMapEntity(new Vector3(6, 0, 6));
 playerIcon.SetIcon('willow.png');
@@ -21,6 +25,8 @@ playerIcon.SetPriority(10);
 playerIcon.SetCanUseCache(false);
 playerIcon.SetDrawOverFogOfWar(true);
 document.body.append(map);
-map.bind({ terrain, cellSize: 12, getPlayerPosition: () => playerIcon.position, cameraHeading: readonlySignal(createSignal(-90)), miniMapEntities: [playerIcon] });
+const heading = createSignal(-90);
+map.bind({ terrain, cellSize: 12, getPlayerPosition: () => playerIcon.position, cameraHeading: readonlySignal(heading), miniMapEntities: [playerIcon] });
+await map.prepareTerrain();
 map.setOpen(true);
-(window as any).minimapEdges = { terrain, map, playerIcon, createMinimapTilePainter };
+(window as any).minimapEdges = { terrain, map, playerIcon, heading, renderer, scene, ground, visual, WORLD_TILES };

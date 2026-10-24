@@ -16,6 +16,8 @@ export const GRASS_DEFINITION: PickablePlantDefinition = {
   tags: ['plant', 'renewable', 'silviculture', 'lunarplant_target'],
   product: 'cutgrass',
   regrowTime: GRASS_REGROW_TIME,
+  witherable: true,
+  barren: 'idle_dead',
   idle: { name: 'idle' },
   picked: { sound: 'dontstarve/wilson/pickup_reeds', clips: ['picking', 'picked'] },
   empty: { name: 'picked', frame: 'last' },

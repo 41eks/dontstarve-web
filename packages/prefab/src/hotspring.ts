@@ -180,6 +180,7 @@ export class HotspringManager {
     model.userData.hotspring = spring; model.userData.physicsBody = spring.body;
     model.userData.remove = () => this.remove(model);
     this.springs.set(model, spring);
+    this.physics.addBody(spring.body);
     const tileActivity = this.tickingarea?.(new TileTracker(() => model.position).tile);
     if (tileActivity) spring.bindTileActivity(tileActivity, active => this.setActive(model, spring, active));
     else this.setActive(model, spring, true);
@@ -189,12 +190,12 @@ export class HotspringManager {
     if (this.disposed || !this.springs.has(model) || this.activeSprings.has(model) === active) return;
     if (active) {
       this.activeSprings.add(model);
-      this.scene.add(model); this.physics.addBody(spring.body);
+      this.scene.add(model);
       spring.wake();
     } else {
       this.activeSprings.delete(model);
       spring.sleep();
-      model.removeFromParent(); this.physics.removeBody(spring.body);
+      model.removeFromParent();
     }
   }
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {

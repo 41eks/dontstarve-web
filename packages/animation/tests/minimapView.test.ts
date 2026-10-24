@@ -1,8 +1,37 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { MinimapView } from '../../ui/src/minimap-view';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
+import { groundTileVariant } from '../../prefab/src/groundTiles';
 
 afterEach(() => vi.unstubAllGlobals());
+
+it('queries bounded terrain with the same neighbour masks and reports the changed source cells', () => {
+  const map = new TurfMap(120, [
+    { col: -1, row: 0, tileId: WORLD_TILES.GRASS },
+    { col: 0, row: 1, tileId: WORLD_TILES.OCEAN_COASTAL },
+    { col: 1, row: 1, tileId: WORLD_TILES.WOODFLOOR },
+  ]);
+  const bounds = { minCol: 0, minRow: -1, maxCol: 2, maxRow: 2 };
+  // A reference calculation includes neighbours outside the requested chunk.
+  for (const [id, quads] of map.tileLayerQuads(bounds)) {
+    const expected = [];
+    for (let row = bounds.minRow; row < bounds.maxRow; row++) for (let col = bounds.minCol; col < bounds.maxCol; col++) {
+      const is = (dx: number, dz: number) => map.tileIdAtCell(col + dx, row + dz) === id;
+      const cardinal = Number(is(-1, 0)) | Number(is(0, -1)) << 1 | Number(is(1, 0)) << 2 | Number(is(0, 1)) << 3;
+      const diagonal = Number(is(-1, -1)) | Number(is(1, -1)) << 1 | Number(is(1, 1)) << 2 | Number(is(-1, 1)) << 3;
+      const variant = groundTileVariant(is(0, 0), cardinal, diagonal);
+      if (variant !== 17) expected.push({ col, row, variant });
+    }
+    expect(quads).toEqual(expected);
+  }
+  const listener = vi.fn(), stop = map.onTerrainChanged(listener);
+  map.dig({ x: 6, z: 6 });
+  expect(listener).toHaveBeenCalledExactlyOnceWith({ minCol: 0, minRow: 0, maxCol: 1, maxRow: 1 });
+  stop();
+  map.setTile(1, 0, WORLD_TILES.GRASS);
+  expect(listener).toHaveBeenCalledTimes(1);
+  map.dispose();
+});
 
 it('round-trips world and screen positions, with screen up being +z', () => {
   const view = new MinimapView(1000, 800, 600);
@@ -16,6 +45,28 @@ it('round-trips world and screen positions, with screen up being +z', () => {
   }
   expect(view.worldToScreen(100, -50)).toEqual({ x: 400, z: 300 });
   expect(view.worldToScreen(100, 0).z).toBeLessThan(300);
+});
+
+it('sizes the padded square to 1.5 viewport long sides at furthest zoom, preserving the inverse zoom ratio', () => {
+  for (const worldSize of [9480, 1200]) {
+    const view = new MinimapView(worldSize, 1280, 720);
+    expect(view.zoom).toBe(3);
+    for (const [width, height] of [[1280, 720], [720, 1280], [1920, 1080]]) {
+      view.resize(width, height);
+      view.center(worldSize / 4, -worldSize / 4);
+      for (const heading of [-90, 45]) {
+        view.heading = heading;
+        for (const zoom of [20, 10, 1]) {
+          view.zoom = zoom;
+          const half = view.boundsSize / 2;
+          const a = view.worldToScreen(-half, -half), b = view.worldToScreen(half, -half), c = view.worldToScreen(half, half);
+          const side = 1.5 * Math.max(width, height) * 20 / zoom;
+          expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeCloseTo(side);
+          expect(Math.hypot(c.x - b.x, c.z - b.z)).toBeCloseTo(side);
+        }
+      }
+    }
+  }
 });
 
 it('turns with the camera heading so screen up is the camera forward and screen right its right', () => {
@@ -53,8 +104,29 @@ it('keeps the point under the cursor fixed while zooming, and clamps zoom and ce
   view.zoomAt(0, 0, 0);
   expect(view.zoom).toBe(1);
   view.pan(-1e9, 1e9);
-  expect(view.centerX).toBe(-500);
-  expect(view.centerZ).toBe(500);
+  const corners = [[0, 0], [800, 0], [800, 600], [0, 600]].map(([x, y]) => view.screenToWorld(x, y));
+  expect(Math.min(...corners.map(point => point.x))).toBeCloseTo(-view.boundsSize / 2);
+  expect(Math.max(...corners.map(point => point.z))).toBeCloseTo(view.boundsSize / 2);
+});
+
+it('limits the entire viewport when panning, zooming out, rotating and resizing near the padded boundary', () => {
+  const view = new MinimapView(1200, 1280, 720);
+  for (const [width, height] of [[1280, 720], [720, 1280], [900, 900]]) {
+    view.resize(width, height);
+    for (const heading of [-90, 45, 135]) {
+      view.heading = heading;
+      for (const direction of [-1, 1]) {
+        view.zoom = 1;
+        view.pan(direction * 1e9, direction * 1e9);
+        view.zoom = 20;
+        const corners = [[0, 0], [width, 0], [width, height], [0, height]].map(([x, y]) => view.screenToWorld(x, y));
+        for (const point of corners) {
+          expect(Math.abs(point.x)).toBeLessThanOrEqual(view.boundsSize / 2 + 1e-8);
+          expect(Math.abs(point.z)).toBeLessThanOrEqual(view.boundsSize / 2 + 1e-8);
+        }
+      }
+    }
+  }
 });
 
 it('loads all source minimap masks and noise per terrain layer, and reports changes', async () => {

@@ -28,8 +28,44 @@ interface PageBatch {
   colour: THREE.InstancedMesh;
   depth: THREE.InstancedMesh;
   capacity: number;
+  attributes: InstanceAttributes;
+  transforms: { id: number; world: THREE.Matrix4; frame: RgbaSpriteAtlasFrame }[];
 }
 interface SceneBatches { group: THREE.Group; pages: Map<RgbaSpriteAtlas, PageBatch>; stopPass: () => void }
+
+/** Track actual Float32 changes, preserving any ranges not yet consumed by WebGL. */
+class InstanceAttributes {
+  private readonly changed = new Map<THREE.BufferAttribute, { start: number; end: number }>();
+
+  begin(): void { for (const range of this.changed.values()) { range.start = Infinity; range.end = 0; } }
+
+  write(attribute: THREE.BufferAttribute, index: number, values: ArrayLike<number>): void {
+    const offset = index * attribute.itemSize;
+    let start = Infinity, end = 0;
+    for (let i = 0; i < attribute.itemSize; i++) {
+      const value = Math.fround(values[i]);
+      if (attribute.array[offset + i] === value) continue;
+      attribute.array[offset + i] = value;
+      start = Math.min(start, offset + i); end = offset + i + 1;
+    }
+    if (start === Infinity) return;
+    let range = this.changed.get(attribute);
+    if (!range) this.changed.set(attribute, range = { start, end });
+    else { range.start = Math.min(range.start, start); range.end = Math.max(range.end, end); }
+  }
+
+  flush(): void {
+    for (const [attribute, range] of this.changed) {
+      if (range.start === Infinity) continue;
+      let start = range.start, end = range.end;
+      for (const pending of attribute.updateRanges) {
+        start = Math.min(start, pending.start); end = Math.max(end, pending.start + pending.count);
+      }
+      attribute.clearUpdateRanges(); attribute.addUpdateRange(start, end - start);
+      attribute.needsUpdate = true;
+    }
+  }
+}
 
 function material(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial): THREE.MeshBasicMaterial {
   const result = new THREE.MeshBasicMaterial({ map: atlas.texture, color: source.color,
@@ -81,6 +117,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   private readonly frustumMatrix = new THREE.Matrix4();
   private readonly frustum = new THREE.Frustum();
   private readonly bounds = new THREE.Sphere();
+  private readonly attributeValues = new Float32Array(4);
 
   retain(model: THREE.Object3D, visual: THREE.Group, colour: readonly [number, number, number] = [1, 1, 1], opacity = 1,
     foot: THREE.Object3D = model) {
@@ -132,7 +169,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     colour.setColorAt(0, new THREE.Color(1, 1, 1));
     colour.instanceColor!.setUsage(THREE.DynamicDrawUsage);
     scene.group.add(depth, colour);
-    return { atlas, geometry, colour, depth, capacity };
+    return { atlas, geometry, colour, depth, capacity, attributes: new InstanceAttributes(), transforms: [] };
   }
 
   private disposeBatch(batch: PageBatch): void {
@@ -210,21 +247,30 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         const opacity = batch.geometry.getAttribute('spriteOpacity') as THREE.InstancedBufferAttribute;
         const lightOverride = batch.geometry.getAttribute('spriteLightOverride') as THREE.InstancedBufferAttribute;
         const erosion = batch.geometry.getAttribute('spriteErosion') as THREE.InstancedBufferAttribute;
+        const writer = batch.attributes, values = this.attributeValues;
+        writer.begin();
         for (let index = 0; index < page.entries.length; index++) {
           const { entry, frame, lightOverride: light } = page.entries[index];
-          this.frameMatrix.makeScale(frame.width, frame.height, 1).setPosition(frame.minX, frame.minY, 0);
-          this.matrix.multiplyMatrices(entry.visual.matrixWorld, this.frameMatrix);
-          batch.colour.setMatrixAt(index, this.matrix);
-          batch.colour.setColorAt(index, entry.colour);
-          uv.setXYZW(index, frame.u0, frame.v0, frame.u1, frame.v1);
-          opacity.setX(index, entry.opacity);
-          lightOverride.setX(index, light);
-          erosion.setX(index, getSpriteErosion(entry.model));
+          let previous = batch.transforms[index];
+          if (!previous || previous.id !== entry.model.id || !previous.world.equals(entry.visual.matrixWorld)
+            || previous.frame.width !== frame.width || previous.frame.height !== frame.height
+            || previous.frame.minX !== frame.minX || previous.frame.minY !== frame.minY) {
+            this.frameMatrix.makeScale(frame.width, frame.height, 1).setPosition(frame.minX, frame.minY, 0);
+            this.matrix.multiplyMatrices(entry.visual.matrixWorld, this.frameMatrix);
+            writer.write(batch.colour.instanceMatrix, index, this.matrix.elements);
+            if (!previous) batch.transforms[index] = previous = { id: entry.model.id, world: new THREE.Matrix4(), frame };
+            previous.id = entry.model.id; previous.world.copy(entry.visual.matrixWorld); previous.frame = frame;
+          }
+          values[0] = entry.colour.r; values[1] = entry.colour.g; values[2] = entry.colour.b;
+          writer.write(batch.colour.instanceColor!, index, values);
+          values[0] = frame.u0; values[1] = frame.v0; values[2] = frame.u1; values[3] = frame.v1;
+          writer.write(uv, index, values);
+          values[0] = entry.opacity; writer.write(opacity, index, values);
+          values[0] = light; writer.write(lightOverride, index, values);
+          values[0] = getSpriteErosion(entry.model); writer.write(erosion, index, values);
         }
         batch.colour.count = batch.depth.count = page.entries.length;
-        for (const attribute of [uv, opacity, lightOverride, erosion, batch.colour.instanceMatrix, batch.colour.instanceColor!]) {
-          attribute.clearUpdateRanges(); attribute.addUpdateRange(0, page.entries.length * attribute.itemSize); attribute.needsUpdate = true;
-        }
+        writer.flush();
       }
     }
   }
