@@ -14,7 +14,7 @@ gears charcoal pigskin silk stinger houndstooth nitre livinglog nightmarefuel
 petals petals_evil ash beefalowool boneshard butterflywings honey honeycomb
 thulecite thulecite_pieces guano tentaclespots spidergland slurtleslime
 slurtle_shellpieces walrus_tusk deerclops_eyeball bearger_fur dragon_scales
-glommerfuel acorn dreadstone wagpunk_bits moonrocknugget'''.split()
+glommerfuel acorn dreadstone wagpunk_bits moonrocknugget dock_kit papyrus featherpencil'''.split()
 
 
 def main():
@@ -124,6 +124,14 @@ def main():
     add('moon_tree_blossom', 'moon_tree_petal', 'moon_tree_petal', 'idle', 'moontree_blossom')
     # axe.lua: held swap builds, player_actions_axe's chop clips, and moontree.lua's chop petals.
     assets.update('anim/' + name + '.zip' for name in ['swap_axe', 'swap_goldenaxe', 'swap_glassaxe', 'player_actions_axe', 'tree_petal_fx', 'moon_tree'])
+    # evergreens.lua normal build: split short/normal and tall/old banks, plus pine_needles_chop.
+    assets.update('anim/' + name + '.zip' for name in ['evergreen_new', 'evergreen_short_normal', 'evergreen_tall_old', 'pine_needles'])
+    # deciduoustrees.lua / fx.lua: trunk, three size banks, seasonal swap_leaves builds and leaf FX.
+    assets.update('anim/' + name + '.zip' for name in [
+        'tree_leaf_trunk_build', 'tree_leaf_short', 'tree_leaf_normal', 'tree_leaf_tall',
+        *['tree_leaf_' + colour + '_build' for colour in ['green', 'red', 'orange', 'yellow']],
+        *['tree_leaf_fx_' + colour for colour in ['green', 'red', 'orange', 'yellow']],
+    ])
     # sculptingtable.lua: the station's cutstone01 symbol is replaced by the marble/cutstone builds.
     assets.add('anim/sculpting_station.zip')
     # lava_pond.lua: ground-oriented pool plus separately sorted scorched rock children.
@@ -211,8 +219,10 @@ def main():
     add('book_silviculture', 'books', 'books', 'book_silviculture', 'books')
     # fx.lua fx_book_rain is spawned by components/book.lua at the reader on a successful read.
     add('book_rain', 'books', 'books', 'book_rain', 'books')
+    # fx.lua fx_book_moon: bank/build fx_book_moon, play_fx.
+    add('book_moon', 'books', 'books', 'book_moon', 'books')
     assets.update(['anim/player_actions_uniqueitem.zip', 'anim/swap_books.zip',
-                   'anim/book_fx_wicker.zip', 'anim/fx_books.zip', 'anim/fx_book_rain.zip'])
+                   'anim/book_fx_wicker.zip', 'anim/fx_books.zip', 'anim/fx_book_rain.zip', 'anim/fx_book_moon.zip'])
     add('hammer', 'hammer', 'swap_hammer', 'idle', 'hammer', animation_archive='hammer.zip')
     # nightsword.lua: ground nightmaresword bank/build; equip uses swap_nightmaresword.
     add('nightsword', 'nightmaresword', 'nightmaresword', 'idle', 'nightsword')

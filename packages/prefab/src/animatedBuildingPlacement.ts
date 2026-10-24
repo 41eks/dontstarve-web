@@ -39,8 +39,13 @@ const lootRecipes = new Map<string, LootRecipe>(recipeData.recipes
     .filter(recipe => recipe.ingredients.every(ingredient => typeof ingredient.type === 'string' && typeof ingredient.amount === 'number'))
     .map(recipe => [recipe.name, { ingredients: recipe.ingredients as LootRecipe['ingredients'] }]));
 
+/** Recipe.ingredients-based DropLoot of a buildable prefab (lootdropper's default for structures). */
+export const buildingRecipeLoot = (buildId: string) => GetRecipeLoot(lootRecipes.get(buildId), lootRecipes);
+
 export interface AnimatedBuildingDefinition {
     archive: string;
+    /** Build zip when `archive` holds only the bank. */
+    buildArchive?: string;
     buildLabel: string;
     idleAnimation?: string;
     previewAnimation?: string;
@@ -58,7 +63,7 @@ export interface AnimatedBuildingDefinition {
     /** Existing insts the building holds (occupants, shelved items) leave with their identity and state. */
     hammerDropEntities?: (context: AnimatedBuildingEventContext) => void;
     /** standardcomponents.lua's burn time, generic fire level and heat propagator size. */
-    burnable?: { burnTime: number; fxLevel: 2 | 3; propagator: 'small' | 'medium' };
+    burnable?: { burnTime: number; fxLevel: 2 | 3 | 4; propagator: 'small' | 'medium' | 'large' };
     onhit?: (context: AnimatedBuildingHammerContext) => void;
     onhammered?: (context: AnimatedBuildingHammerContext) => void;
     /** Preloaded, temporary destruction art, independent of a building's skin. */
@@ -140,6 +145,8 @@ export interface AnimatedBuildingToggleInteraction {
     openAnimation: string;
     openAnimationLoop?: boolean;
     closeImmediately?: boolean;
+    /** Opening plays no clip of its own; onopen drives the animation (bookstation hit). */
+    openImmediately?: boolean;
 }
 
 export interface AnimatedBuildingInteractionChange<BuildId extends string> {
@@ -776,6 +783,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 animation: building.animation,
                 skinId: building.skinId.peek(),
             });
+            if (interaction.openImmediately) {
+                building.interactionState = 'open';
+                this.onInteractionChange?.({ buildId: building.buildId, isOpen: true, model: building.model });
+                return;
+            }
             if (interaction.openAnimationLoop) {
                 building.interactionState = 'open';
                 building.animation.start(interaction.openAnimation);
@@ -857,6 +869,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             `${import.meta.env.BASE_URL}dst/data/anim`,
             skin?.archive ?? definition.archive,
             {
+                buildArchive: skin?.buildArchive ?? definition.buildArchive,
                 initialAnimation: preview && definition.previewAnimation ? definition.previewAnimation
                     : state === 'open' && definition.interaction
                     ? definition.interaction.openAnimation : this.idleAnimation(buildId),

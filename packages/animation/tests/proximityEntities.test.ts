@@ -39,7 +39,7 @@ function spriteMesh(model: THREE.Group): THREE.Mesh<THREE.BufferGeometry, THREE.
 }
 
 describe('nearby entity lifecycle', () => {
-  it('loads the inclusive circular XZ boundary and releases models when leaving', () => {
+  it('loads the inclusive ground-distance boundary and releases models when leaving', () => {
     const create = vi.fn(() => new THREE.Group());
     const dispose = vi.fn();
     const positions = [
@@ -49,7 +49,7 @@ describe('nearby entity lifecycle', () => {
     ];
     const nearby = new ProximityEntities(positions, 10, create, dispose);
     expect(create).not.toHaveBeenCalled();
-    nearby.update(new THREE.Vector3(0, 100, 0));
+    nearby.update(new THREE.Vector3());
     expect(nearby.group.children).toHaveLength(1);
     expect(nearby.entities[0].model!.position).toEqual(positions[0]);
     const original = nearby.entities[0].model!;

@@ -1,4 +1,3 @@
-import { Vector3 } from 'three';
 import { createMemo, createSignal, readonlySignal, type ReadonlySignal, type SeasonState } from '../../signals/src';
 import { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
@@ -6,12 +5,13 @@ import type { BurnableInst } from './burnable';
 
 const SPRING_FIRE_RANGE_MOD = .67; // tuning.lua
 
-// standardcomponents.lua MakeSmall/MediumPropagator, plus bare AddComponent("propagator").
+// standardcomponents.lua MakeSmall/Medium/LargePropagator, plus bare AddComponent("propagator").
 // Each randomized value is [base, random variation].
 const PROPAGATOR_SETTINGS = {
   default: { flashpoint: [100, 0], propagaterange: [3, 0], heatoutput: [5, 0], decayrate: 1, acceptsheat: false },
   small: { flashpoint: [5, 5], propagaterange: [3, 2], heatoutput: [3, 2], decayrate: .5, acceptsheat: true },
   medium: { flashpoint: [15, 10], propagaterange: [5, 2], heatoutput: [5, 3.5], decayrate: .5, acceptsheat: true },
+  large: { flashpoint: [45, 10], propagaterange: [6, 2], heatoutput: [6, 3.5], decayrate: .5, acceptsheat: true },
 } as const;
 
 function randomValue([base, variation]: readonly [number, number]): number {
@@ -48,7 +48,7 @@ export class Propagator {
   private readonly unitsPerMeter: number;
   constructor(inst: BurnableInst, size: keyof typeof PROPAGATOR_SETTINGS,
     nearby: (radius: number) => readonly BurnableInst[], unitsPerMeter = 1, scheduler?: GameTimeScheduler,
-    season?: ReadonlySignal<SeasonState>) {
+    season?: ReadonlySignal<SeasonState>, fixed?: { propagaterange?: number; heatoutput?: number }) {
     this.inst = inst; this.nearby = nearby; this.unitsPerMeter = unitsPerMeter;
     this.scheduler = scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !scheduler;
@@ -58,12 +58,12 @@ export class Propagator {
     this.updating = readonlySignal(this.updatingMemo);
     const settings = PROPAGATOR_SETTINGS[size];
     this.flashpoint = randomValue(settings.flashpoint);
-    this.propagaterange = randomValue(settings.propagaterange);
+    this.propagaterange = fixed?.propagaterange ?? randomValue(settings.propagaterange);
     this.seasonSignal.set(season);
     this.propagationRangeMemo = createMemo(() => this.propagaterange
       * (this.seasonSignal.get()?.get().season === 'spring' ? SPRING_FIRE_RANGE_MOD : 1));
     this.propagationRange = readonlySignal(this.propagationRangeMemo);
-    this.heatoutput = randomValue(settings.heatoutput);
+    this.heatoutput = fixed?.heatoutput ?? randomValue(settings.heatoutput);
     this.decayrate = settings.decayrate;
     this.acceptsheat = settings.acceptsheat;
     // this.calculateHeatCap();
@@ -112,14 +112,11 @@ export class Propagator {
     this.currentheat.set(Math.max(0, ch - .5 * this.decayrate));
     const spreading = this.spreading.peek();
     if (spreading) {
-      const origin = this.inst.getPosition();
-      const offset = new Vector3();
+      const position = this.inst.getPosition();
       const range = this.propagationRange.peek() * this.unitsPerMeter;
       for (const target of this.nearby(range)) {
         if (target === this.inst || target.isRemoved || target.hasTag('INLIMBO')) continue;
-        // Positions are on the ground plane (y is 0), so the squared distance is the dot product of the offset.
-        offset.subVectors(target.getPosition(), origin);
-        const distanceSquared = offset.dot(offset);
+        const distanceSquared = target.getPosition().distanceToSquared(position);
         const nrp = target.components.propagator;
         nrp?.AddHeat(this.heatoutput * Math.max(.1, 1 - distanceSquared / range ** 2) * .5);
       }

@@ -50,6 +50,23 @@ const equipmentSlots = [
 ] as const;
 
 export class DstInventoryBarElement extends AssetElement {
+  static readonly observedAttributes = [...AssetElement.observedAttributes, 'player'];
+
+  get player(): string { return this.getAttribute('player') ?? 'wilson'; }
+  set player(value: string) { this.setAttribute('player', value); }
+
+  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+    super.attributeChangedCallback(name, oldValue, newValue);
+    if (name === 'player' && oldValue !== newValue && this.initialized) {
+      this.shadowRoot!.querySelector<HTMLImageElement>('.inventory-bar__inspect img')!.src = this.inspectAsset();
+    }
+  }
+
+  private inspectAsset(): string {
+    const character = this.player;
+    if (!/^[a-z][a-z0-9_]*$/.test(character)) throw new Error(`Invalid player character: ${character}`);
+    return this.asset(`bag/self_inspect_${character}.tex.png`);
+  }
   private readonly inventory = createSlotContainer({
     id: PLAYER_INVENTORY_CONTAINER_ID,
     kind: 'inventory',
@@ -110,7 +127,7 @@ export class DstInventoryBarElement extends AssetElement {
     if (this.initialized) {
       this.shadowRoot!
         .querySelector<HTMLImageElement>('.inventory-bar__inspect img')!
-        .src = this.asset('bag/self_inspect_wilson.tex.png');
+        .src = this.inspectAsset();
       this.renderers.forEach((renderer) => {
         renderer.refresh();
         renderer.connect();
@@ -131,7 +148,7 @@ export class DstInventoryBarElement extends AssetElement {
         </div>
         <div class="inventory-bar__equipment" role="group" aria-label="装备"></div>
         <button class="inventory-bar__inspect" type="button" aria-label="查看角色">
-          <img src="${this.asset('bag/self_inspect_wilson.tex.png')}" alt="" draggable="false" />
+          <img src="${this.inspectAsset()}" alt="" draggable="false" />
         </button>
       </section>
     `;

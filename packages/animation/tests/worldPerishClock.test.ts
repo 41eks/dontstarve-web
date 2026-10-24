@@ -1,0 +1,31 @@
+import { expect, it, vi } from 'vitest';
+import { createSignal } from '../../signals/src';
+import { WorldPerishClock } from '../../componets/src/worldperishclock';
+
+it('records cumulative temperature-weighted intervals, queries historical ticks and releases the shared input', () => {
+  const temperature = createSignal(-1);
+  const read = vi.spyOn(temperature, 'get');
+  const clock = new WorldPerishClock(temperature, 100);
+  const changed = vi.fn(), stop = clock.snapshot.subscribe(changed);
+  clock.OnUpdate(4);
+  clock.OnUpdate(6);
+  temperature.set(71);
+  clock.OnUpdate(8);
+  temperature.set(70);
+  clock.OnUpdate(5);
+  expect(changed).not.toHaveBeenCalled();
+  expect(clock.GetTick(100)).toEqual({ time: 100, total: 0 });
+  expect(clock.GetTick(105)).toEqual({ time: 105, total: 3.75 });
+  expect(clock.GetTick(110)).toEqual({ time: 110, total: 7.5 });
+  expect(clock.GetTick(114)).toEqual({ time: 114, total: 12.5 });
+  expect(clock.GetTick()).toEqual({ time: 123, total: 22.5 });
+  clock.Flush();
+  expect(changed).toHaveBeenCalledExactlyOnceWith({ time: 123, total: 22.5 }, { time: 100, total: 0 });
+  expect(() => clock.GetTick(99)).toThrow(RangeError);
+  expect(() => clock.GetTick(124)).toThrow(RangeError);
+  clock.dispose();
+  const reads = read.mock.calls.length;
+  temperature.set(-10);
+  expect(read).toHaveBeenCalledTimes(reads);
+  stop(); read.mockRestore();
+});

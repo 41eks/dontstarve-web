@@ -14,7 +14,7 @@ import { GroundPrefabRegistry } from '@dontstarve-web/prefab/groundPrefabRegistr
 import type { GroundItemDefinition, GroundItemVisual, GroundPrefabOptions } from '@dontstarve-web/prefab/groundPrefab';
 import type { NetCaptureTarget } from '@dontstarve-web/stategraphs/bugnet';
 import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
-import { intersectSpriteEntities } from '@dontstarve-web/stategraphs/pointerRaycaster';
+import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
 import { LootFling, type LootLaunch } from '@dontstarve-web/prefab/lootFling';
 import { PHONOGRAPH_ID, PhonographController } from '@dontstarve-web/prefab/phonograph';
@@ -25,6 +25,7 @@ import { performToolWork } from '../packages/stategraphs/src/componentactions';
 import { actionEntity } from '../packages/prefab/src/actionEntity';
 import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
 import type { DeconstructionTarget, DeconstructionLoot, PreparedDeconstruction } from '@dontstarve-web/prefab/greenstaff';
+import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 
 export interface PreparedDrop {
   /** Takes the item from the inventory and places it; false (and disposes the art) when the take fails. */
@@ -47,18 +48,22 @@ interface GroundItemRecord extends GroundItemVisual {
 }
 
 export class GroundItemManager {
+  /** Logical item icons survive visual replacement; owned/picked-up items are
+   * hidden by inventoryitem and leave the ground-item collection.
+   */
+  get miniMapEntities(): readonly MiniMapEntity[] {
+    return this.entities.values().flatMap(entity => entity.MiniMapEntity?.enabled ? [entity.MiniMapEntity] : []);
+  }
   readonly entities: ItemEntityRegistry;
   private readonly atlasRequests = new Map<string, Promise<ImageAtlas>>();
   private readonly archiveUrl: string;
-  private readonly camera: THREE.Camera;
   private readonly prefabs: GroundPrefabRegistry;
   private readonly items = new Map<THREE.Group, GroundItemRecord>();
   private readonly inventory: InventoryStore;
   private readonly stopDrops: () => void;
   private readonly pendingDrops = new Map<string, { entity: ItemEntity; definition: GroundItemDefinition }>();
   private onNetCapture?: (target: NetCaptureTarget) => boolean;
-  private readonly pointer = new THREE.Vector2();
-  private readonly raycaster = new THREE.Raycaster();
+  private readonly pointer: PointerRaycaster;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
   private readonly player: THREE.Object3D;
@@ -83,8 +88,8 @@ export class GroundItemManager {
   ) {
     this.entities = entities;
     this.scene = scene;
-    this.camera = camera;
     this.renderer = renderer;
+    this.pointer = new PointerRaycaster({ camera, renderer });
     this.archiveUrl = archiveUrl;
     this.inventory = inventory;
     this.player = player;
@@ -103,6 +108,7 @@ export class GroundItemManager {
     if (this.disposed) return;
     this.disposed = true;
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
+    this.pointer.dispose();
     this.stopDrops();
     for (const item of [...this.items.values()]) { this.removeVisual(item); this.entities.destroy(item.entity); }
     for (const { entity } of this.pendingDrops.values()) this.entities.destroy(entity);
@@ -580,13 +586,10 @@ export class GroundItemManager {
 
     // Input can arrive between active frames after an entity was teleported.
     for (const record of this.items.values()) record.model.position.copy(record.entity.transform.position);
-    const bounds = this.renderer.domElement.getBoundingClientRect();
-    this.pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
-    this.pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
-    this.raycaster.setFromCamera(this.pointer, this.camera);
+    this.pointer.trackPointer(event);
 
-    const hit = intersectSpriteEntities(this.raycaster, [...this.items.values()]
-      .filter(record => record.isClickable?.() !== false).map(record => record.model), true)[0];
+    const hit = this.pointer.raycastPointer([...this.items.values()]
+      .filter(record => record.isClickable?.() !== false).map(record => record.model), true);
     if (!hit) return;
     let root: THREE.Object3D | null = hit.object;
     while (root && !this.items.has(root as THREE.Group)) root = root.parent;

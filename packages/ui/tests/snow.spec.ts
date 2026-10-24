@@ -43,7 +43,7 @@ test('the current world opens in snowy winter and c_save exports a reloadable sn
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  const paths = Object.fromEntries(['main', 'scene', 'universal', 'player'].map(name =>
+  const paths = Object.fromEntries(['main', 'scene', 'universal', 'player', 'building'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
   const prepare = async () => {
     await page.goto('/tests/dst-lighting.html');
@@ -52,7 +52,8 @@ test('the current world opens in snowy winter and c_save exports a reloadable sn
       const { worldState } = await import(paths.scene);
       const { scene, dstLighting } = await import(paths.universal);
       const { player } = await import(paths.player);
-      (window as any).snowGame = { worldState, scene, dstLighting, player };
+      const { turfMap } = await import(paths.building);
+      (window as any).snowGame = { worldState, scene, dstLighting, player, turfMap };
     }, paths);
     await expect.poll(() => page.evaluate(() => {
       const game = (window as any).snowGame;
@@ -72,15 +73,18 @@ test('the current world opens in snowy winter and c_save exports a reloadable sn
   expect(saved.world.systems.worldtemperature.season).toBe('winter');
   expect(saved.world.systems.weather.preciptype).toBe('snow');
   expect(saved.world.systems.weather.snowlevel).toBeGreaterThanOrEqual(0.08);
+  expect(saved.world.map.tiles.filter((tile: { tileId: number }) => tile.tileId === 201)).toHaveLength(5792);
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
   await prepare();
   const restored = await page.evaluate(() => {
-    const { worldState, scene, player } = (window as any).snowGame;
+    const { worldState, scene, player, turfMap } = (window as any).snowGame;
     return { season: worldState.season.peek().season, type: worldState.weather.preciptype.peek(),
-      cover: scene.getObjectByName('SnowGroundOverlay').userData.snowCover, position: player.position.toArray() };
+      cover: scene.getObjectByName('SnowGroundOverlay').userData.snowCover, position: player.position.toArray(),
+      tiles: turfMap.exportTiles() };
   });
   expect(restored.season).toBe('winter');
   expect(restored.type).toBe('snow');
+  expect(restored.tiles).toEqual(saved.world.map.tiles);
   expect(restored.cover).toBeGreaterThanOrEqual(saved.world.systems.weather.snowlevel * 3);
   expect(restored.position[0]).toBeCloseTo(saved.players.local.transform.position[0]);
   expect(restored.position[2]).toBeCloseTo(saved.players.local.transform.position[2]);

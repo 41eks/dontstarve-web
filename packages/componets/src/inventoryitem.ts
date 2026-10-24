@@ -1,4 +1,6 @@
 import type { Vector3 } from 'three';
+import type { MiniMapEntity } from './minimapentity';
+import { createSignal, readonlySignal } from '../../signals/src';
 
 export interface ItemPosition { readonly x: number; readonly y: number; readonly z: number; }
 export interface InventoryActor {
@@ -10,12 +12,27 @@ export interface InventoryItemInstance {
   hasTag(tag: string): boolean;
   PushEvent(name: string, data: unknown): void;
   readonly transform: { readonly position: Vector3 };
+  readonly MiniMapEntity?: MiniMapEntity;
+  readonly isRemoved?: boolean;
 }
 
 /** inventoryitem.lua's supported pickup/ownership hooks; slot addresses remain store-owned. */
 export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
   readonly inst: Instance;
-  owner: Owner | null = null;
+  private readonly imageState = createSignal<{ readonly icon: string; readonly atlas: string } | undefined>(undefined);
+  readonly image = readonlySignal(this.imageState);
+  ChangeImageName(icon: string, atlas: string): void {
+    const previous = this.imageState.peek();
+    if (previous?.icon !== icon || previous?.atlas !== atlas) this.imageState.set(Object.freeze({ icon, atlas }));
+  }
+  private ownerValue: Owner | null = null;
+  get owner(): Owner | null { return this.ownerValue; }
+  set owner(owner: Owner | null) {
+    this.ownerValue = owner;
+    // inventoryitem.lua removes owned items from the scene and returns them
+    // when ownership is cleared; this applies to every inventory minimap icon.
+    this.inst.MiniMapEntity?.SetEnabled(owner === null && !this.inst.isRemoved);
+  }
   canbepickedup = true;
   canbepickedupalive = false;
   cangoincontainer = true;

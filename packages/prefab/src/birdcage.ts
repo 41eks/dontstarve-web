@@ -277,6 +277,7 @@ export class Birdcage {
     }
 
     private onOccupied(bird: ItemEntity): void {
+        if (this.context.world?.perishClock) bird.components.perishable.BindWorld({ perishClock: this.context.world.perishClock });
         this.setCageState(CAGE_STATES.FULL);
         // Only if the bird can actually sleep: every ported bird has a sleeper in birds.lua.
         const scheduler = this.context.world?.scheduler;
@@ -479,6 +480,7 @@ export class Birdcage {
     };
 
     private onGetShelfItem(item: ItemEntity): void {
+        if (this.context.world?.perishClock) item.components.perishable.BindWorld({ perishClock: this.context.world.perishClock });
         // De-activate occupiable.
         this.removeOccupiable();
         this.shelf.cantakeitem = true;
@@ -574,7 +576,9 @@ export class Birdcage {
     /** Perishing of the occupant and the shelved item settles with the shared 60-frame batches. */
     update(dt: number): void {
         const world = this.context.world;
-        const perishWorld = { temperature: () => world?.getLocalTemperature?.(this.position.x, this.position.z) ?? 20 };
+        // The scene registry already updates registered items, including the cage's occupant and shelf.
+        if (world?.itemEntities) return;
+        const perishWorld = world?.perishClock ? { perishClock: world.perishClock } : undefined;
         this.getBird()?.components.perishable.onFrame(dt, perishWorld);
         this.slot?.components.perishable.onFrame(dt, perishWorld);
     }

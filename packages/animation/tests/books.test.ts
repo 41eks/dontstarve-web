@@ -8,6 +8,7 @@ import { BOOK_ITEM_SPECS, bookActionObject, type BookWorld } from '../../prefab/
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { Reader } from '../../componets/src/reader';
 import { Weather } from '../../componets/src/weather';
+import { createWorldClockUpdater, createWorldState } from '../../../src/worldState';
 
 const newWeather = () => new Weather({ totalDayTime: 480, temperature: () => 20, random: () => 0.5 });
 
@@ -119,4 +120,37 @@ it('lets rain dissipate to its floor on its own and restores precipitation from 
   weather.OnUpdate(1000);
   expect(weather.OnSave().moisture).toBe(moisture);
   weather.dispose(); restored.dispose();
+});
+
+it('reads book_moon: forces a full moon through the world clock, refuses when already full and charges huge sanity', () => {
+  const state = createWorldState({ elapsedSeconds: 480 * 3 + 10, systems: {} });
+  const updater = createWorldClockUpdater(state, 480 * 3 + 10);
+  const book = new ItemEntity({ itemId: 'book_moon', count: 1 });
+  book.configure(BOOK_ITEM_SPECS.book_moon);
+  const { reader, doDelta } = readerFor(new THREE.Vector3());
+  const world = { root: new THREE.Scene(), scheduler: new GameTimeScheduler(), weather: newWeather(),
+    moon: { phase: state.moonPhase, SetMoonPhase: state.SetMoonPhase } } as BookWorld;
+  try {
+    expect(state.moonPhase.peek()).toBe('quarter');
+    expect(reader.Read(book, world)).toEqual([true]);
+    expect(state.moonPhase.peek()).toBe('full');
+    expect(state.clock.peek().waxing).toBe(false); // clock.lua GetMoonPhase for cycle step 11.
+    expect(book.components.finiteuses.uses.peek()).toBe(2);
+    expect(doDelta).toHaveBeenCalledExactlyOnceWith(-50);
+    // The override survives the next settlement and advances one step per day.
+    updater.update(1); updater.flush();
+    expect(state.moonPhase.peek()).toBe('full');
+    updater.update(480); updater.flush();
+    expect(state.moonPhase.peek()).toBe('threequarter');
+    expect(state.moonPhaseCycle()).toBe(12);
+    // Reload keeps the shifted cycle.
+    const restored = createWorldState({ elapsedSeconds: 480 * 4 + 11, systems: { moon: { mooomphasecycle: state.moonPhaseCycle() } } });
+    expect(restored.moonPhase.peek()).toBe('threequarter');
+    restored.dispose();
+
+    state.SetMoonPhase('full');
+    expect(reader.Read(book, world)).toEqual([false, 'ALREADYFULLMOON']);
+    expect(book.components.finiteuses.uses.peek()).toBe(2);
+    expect(doDelta).toHaveBeenCalledTimes(1);
+  } finally { state.dispose(); }
 });

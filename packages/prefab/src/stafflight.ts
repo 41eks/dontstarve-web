@@ -131,7 +131,7 @@ export class DwarfStarManager {
     if (this.prefabId === DWARF_STAR_ID) {
       const inst = actionEntity(model, this.prefabId);
       inst.components.propagator = star.propagator = new Propagator(inst, 'default', radius =>
-        FindEntities(this.scene, model.position.x, model.position.z, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4, undefined, this.season);
+        FindEntities(this.scene, model.position, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4, undefined, this.season);
       // stafflight.lua: bare propagator, heatoutput 15, spreading from creation until removal.
       star.propagator.heatoutput = 15;
       star.propagator.spreading.set(true);

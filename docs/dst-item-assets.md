@@ -35,6 +35,7 @@
 | 物品 | 动画/build 资产 | 地面姿态或符号覆盖 |
 | --- | --- | --- |
 | 火把 | `anim/torch.zip` 与 `anim/swap_torch.zip` | 使用源地面动画及手持 build |
+| 码头套装 `dock_kit` | 地面 `anim/dock_kit.zip`，bank/build `dock_kit`、clip `idle` | `prefabs/dock_kit.lua` 的 `SetBank/SetBuild/PlayAnimation`；库存图标 `dock_kit.tex` 来自 `images/inventoryimages1.xml`，无手持美术和源皮肤。部署预览不是物品美术，而是 `anim/gridplacer.zip`；部署后的 `MONKEY_DOCK` 地皮用 `levels/tiles/cave.*` 图集和 `levels/textures/ground_noise_dock.tex`（小地图 `mini_dock_noise.tex`），由 `import-ground-tiles.py` 导入 |
 | 暗夜剑 `nightsword` | 地面 `anim/nightmaresword.zip`，手持 `anim/swap_nightmaresword.zip` | `prefabs/nightsword.lua` 地面 bank/build 为 `nightmaresword`、姿态为 `idle`；装备以 `swap_nightmaresword` 覆盖玩家 `swap_object`。默认库存图标来自 `inventoryimages.xml`，5 个皮肤图标来自 `inventoryimages2.xml`，地面和手持用各自 `anim/dynamic/nightsword_*.zip` / `.dyn` |
 | 料理 | `anim/cook_pot_food.zip` | 通过 `swap_food` 覆盖显示具体料理 |
 | 三色生／熟蘑菇 | `anim/mushrooms.zip`，bank/build 均为 `mushrooms` | `prefabs/mushrooms.lua` 选择 `red_cap` / `green_cap` / `blue_cap` 及各自的 `_cooked` 单帧姿态；六种库存图标均来自 `images/inventoryimages.xml` |
@@ -47,6 +48,8 @@
 NPC 专用的 `shadow_thrall_parasitehat` 不属于玩家帽子目录，不导入库存元数据、配方或图标回退。
 
 熔岩池是独立场景 prefab：`lava_tile.zip` 提供 `lava_tile/bubble_lava` 循环池面，`scorched_rock.zip` 提供焦岩的 `idle`、`idle2`～`idle7`。池面使用 OnGround 背景绘制，焦岩各自作为完整 billboard 参加脚点排序；二者均不使用库存图标，也没有原版皮肤。两份归档纳入同一导入脚本的路径／字节校验。
+
+常青树 normal build 使用 `anim/evergreen_new.zip` 的 build `evergreen_new`，bank 为 `evergreen_short`；短／中阶段动画在 `anim/evergreen_short_normal.zip`，大／衰老阶段在 `anim/evergreen_tall_old.zip`。加载两份动画后组合到同一共享 build，保留原点并按脚点排序；`pine_needles_chop` 来自 `anim/pine_needles.zip` 的 `chop`。这些文件由导入脚本的 `--check` 验证原始路径和字节，无源皮肤。
 
 ## 当前加载流程
 

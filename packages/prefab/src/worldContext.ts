@@ -13,8 +13,12 @@ export interface WorldContext extends ActionWorldContext {
     itemEntities?: import('@dontstarve-web/inventory').ItemEntityRegistry;
     scheduler?: import('../../componets/src/gameTimeScheduler').GameTimeScheduler;
     season?: import('@dontstarve-web/signals').ReadonlySignal<import('@dontstarve-web/signals').SeasonState>;
+    /** Temperature-weighted game-time prefixes shared by inventory, ground and caged items. */
+    perishClock?: import('../../componets/src/worldperishclock').PerishClock;
     /** GetLocalTemperature at a DST ground position, in scene units. */
     getLocalTemperature?: (x: number, z: number) => number;
+    /** TheWorld.state.moonphase and iswaxingmoon. */
+    moon?: import('@dontstarve-web/signals').ReadonlySignal<{ readonly phase: import('@dontstarve-web/signals').WorldMoonPhase; readonly waxing: boolean }>;
     fullMoon?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
     dynamicMusic?: import('../../componets/src/dynamicmusic').DynamicMusic;
     registerContainer?: (id: string, container: import('./containers').BuildingContainer,

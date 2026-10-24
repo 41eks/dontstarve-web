@@ -1,0 +1,48 @@
+{
+  "paper": "images/minimap_paper.tex",
+  "tuning": {
+    "TEXTURE_BLUR_SIZE": 2.0,
+    "TEXTURE_BLUR_PASS_COUNT": 6.0,
+    "TEXTURE_ALPHA_BLUR_SIZE": 1.0,
+    "TEXTURE_ALPHA_BLUR_PASS_COUNT": 2.0,
+    "MASK_BLUR_SIZE": 2.0,
+    "MASK_BLUR_PASS_COUNT": 8.0,
+    "EDGE_COLOR0": [
+      47.0,
+      52.0,
+      79.0
+    ],
+    "EDGE_PARAMS0": {
+      "THRESHOLD": 0.5,
+      "HALF_THRESHOLD_RANGE": 0.6
+    },
+    "EDGE_COLOR1": [
+      80.0,
+      69.0,
+      54.0
+    ],
+    "EDGE_PARAMS1": {
+      "THRESHOLD": 0.46,
+      "HALF_THRESHOLD_RANGE": 0.4
+    },
+    "EDGE_SHADOW_COLOR": [
+      43.0,
+      43.0,
+      43.0
+    ],
+    "EDGE_SHADOW_PARAMS": {
+      "THRESHOLD": 0.37,
+      "HALF_THRESHOLD_RANGE": 0.4,
+      "UV_OFFSET_X": -0.001,
+      "UV_OFFSET_Y": 0.001
+    },
+    "EDGE_FADE_PARAMS": {
+      "THRESHOLD": 0.41,
+      "HALF_THRESHOLD_RANGE": 0.02,
+      "MASK_INSET": 0.01
+    },
+    "EDGE_NOISE_PARAMS": {
+      "UV_SCALE": 4.0
+    }
+  }
+}

@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 import { WORLD_SCALE } from './standardcomponents';
 import { TILE_SIZE } from './tile';
+import type { GroundOverlayGeometry, GroundOverlaySource } from './groundTiles';
 
 // prefabs/snow.lua (ordinary snow; Winter's Feast is a separate source branch).
 const MAX_PARTICLES = 4800;
@@ -36,6 +37,8 @@ export interface SnowEffectOptions {
   cover: ReadonlySignal<number>;
   /** Ground extent in scene units. */
   groundSize: number;
+  /** Map land coverage with the source terrain atlas masks, including coastal skirts. */
+  groundOverlay?: GroundOverlaySource;
 }
 
 async function loadTexture(root: string, path: string, repeat = false): Promise<THREE.DataTexture> {
@@ -59,11 +62,14 @@ async function loadTexture(root: string, path: string, repeat = false): Promise<
  */
 export class SnowEffect {
   private readonly options: SnowEffectOptions;
-  private readonly stopRate: () => void;
-  private readonly stopCover: () => void;
+  private stopRate!: () => void;
+  private stopCover!: () => void;
+  private readonly rate: ReadonlySignal<number>;
+  private readonly cover: ReadonlySignal<number>;
+  private stopGroundOverlay?: () => void;
   private mesh?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
   private readonly visual = new THREE.Group();
-  private ground?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>;
+  private ground?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial | THREE.MeshLambertMaterial[]>;
   private disposed = false;
   private particlesPerTick = 0;
   private numParticlesToEmit = 0;
@@ -91,8 +97,10 @@ export class SnowEffect {
     // snowfall its own final group so foot-sorted billboards cannot cover it.
     this.visual.name = 'SnowWeatherOverlay';
     this.visual.renderOrder = Number.MAX_SAFE_INTEGER;
-    this.stopRate = createEffect(() => { this.particlesPerTick = 20 * options.rate.get(); });
-    this.stopCover = createEffect(() => this.setCover(options.cover.get()));
+    this.rate = watchSignal(options.rate, cleanup => { this.stopRate = cleanup; });
+    this.cover = watchSignal(options.cover, cleanup => { this.stopCover = cleanup; });
+    createEffect(() => { this.particlesPerTick = 20 * this.rate.get(); });
+    createEffect(() => this.setCover(this.cover.get()));
     void this.loadParticles().catch((error: unknown) => {
       if (!this.disposed) console.error('Unable to load snow particles', error);
     });
@@ -155,7 +163,7 @@ export class SnowEffect {
     this.mesh.renderOrder = Number.MAX_SAFE_INTEGER;
     this.visual.add(this.mesh);
     this.options.scene.add(this.visual);
-    if (this.options.rate.peek() > 0) this.PostInit();
+    if (this.rate.peek() > 0) this.PostInit();
   }
 
   private async loadGround(): Promise<void> {
@@ -166,34 +174,73 @@ export class SnowEffect {
     const size = this.options.groundSize;
     // Same world-space tiling as ground.ksh's existing terrain noise.
     const tileSize = TILE_SIZE * 8;
-    texture.repeat.set(size / tileSize, size / tileSize);
-    texture.offset.set(-size / 2 / tileSize, -size / 2 / tileSize);
-    const geometry = new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2);
+    if (!this.options.groundOverlay) {
+      texture.repeat.set(size / tileSize, size / tileSize);
+      texture.offset.set(-size / 2 / tileSize, -size / 2 / tileSize);
+    }
+    const overlay = this.options.groundOverlay?.createLandOverlay();
+    const geometry = overlay?.geometry ?? new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2);
+    this.ground = new THREE.Mesh(geometry, overlay?.atlases.length
+      ? overlay.atlases.map(atlas => this.createGroundMaterial(texture, atlas)) : this.createGroundMaterial(texture));
+    this.ground.name = 'SnowGroundOverlay';
+    // Source overlay belongs to the ground map: above turf ([-1, -0.6)), below LAYER_BACKGROUND decor (ponds: -0.5).
+    this.ground.renderOrder = -0.55;
+    this.setCover(this.cover.peek());
+    this.options.scene.add(this.ground);
+    this.stopGroundOverlay = this.options.groundOverlay?.onTerrainChanged(() => {
+      this.setGroundOverlay(this.options.groundOverlay!.createLandOverlay());
+    });
+  }
+
+  private createGroundMaterial(texture: THREE.Texture, atlas?: THREE.Texture): THREE.MeshLambertMaterial {
     const material = new THREE.MeshLambertMaterial({
       map: texture, transparent: true, premultipliedAlpha: true,
       depthTest: true, depthWrite: false, side: THREE.DoubleSide,
     });
     material.forceSinglePass = true;
+    material.userData.prewarmTextures = atlas ? [atlas] : [];
     material.onBeforeCompile = shader => {
       shader.uniforms.dstSnowBlend = this.groundBlend;
+      if (atlas) {
+        shader.uniforms.dstSnowGroundAtlas = { value: atlas };
+        shader.vertexShader = shader.vertexShader.replace('#include <common>', `
+          #include <common>
+          attribute vec2 groundTileUv;
+          varying vec2 vSnowGroundTileUv;
+        `).replace('#include <uv_vertex>', `
+          #include <uv_vertex>
+          vSnowGroundTileUv = groundTileUv;
+        `);
+      }
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
         #include <common>
         uniform vec3 dstSnowBlend;
+        ${atlas ? 'uniform sampler2D dstSnowGroundAtlas; varying vec2 vSnowGroundTileUv;' : ''}
       `).replace('#include <map_fragment>', `
+        ${atlas ? `
+          float terrainAlpha = texture2D(dstSnowGroundAtlas, vSnowGroundTileUv).a;
+          if (terrainAlpha < 0.105) discard;
+        ` : 'float terrainAlpha = 1.0;'}
         vec3 snowLayers = texture2D(map, vMapUv).rgb * dstSnowBlend;
         float firstAlpha = snowLayers.b;
         float secondaryAlpha = (1.0 - firstAlpha) * snowLayers.g;
         float thirdAlpha = (1.0 - firstAlpha - secondaryAlpha) * snowLayers.r;
-        diffuseColor.a *= firstAlpha + secondaryAlpha + thirdAlpha;
+        diffuseColor.a *= (firstAlpha + secondaryAlpha + thirdAlpha) * terrainAlpha;
       `);
     };
-    material.customProgramCacheKey = () => 'dst-snow-ground-overlay-v1';
-    this.ground = new THREE.Mesh(geometry, material);
-    this.ground.name = 'SnowGroundOverlay';
-    // Source overlay belongs to the ground map: above turf ([-1, -0.6)), below LAYER_BACKGROUND decor (ponds: -0.5).
-    this.ground.renderOrder = -0.55;
-    this.setCover(this.options.cover.peek());
-    this.options.scene.add(this.ground);
+    material.customProgramCacheKey = () => atlas ? 'dst-snow-ground-overlay-atlas-v1' : 'dst-snow-ground-overlay-v1';
+    return material;
+  }
+
+  private setGroundOverlay(overlay: GroundOverlayGeometry): void {
+    if (!this.ground) { overlay.geometry.dispose(); return; }
+    const previous = Array.isArray(this.ground.material) ? this.ground.material : [this.ground.material];
+    const texture = previous[0].map!;
+    this.ground.geometry.dispose();
+    this.ground.geometry = overlay.geometry;
+    this.ground.material = overlay.atlases.length
+      ? overlay.atlases.map(atlas => this.createGroundMaterial(texture, atlas)) : this.createGroundMaterial(texture);
+    for (const material of previous) material.dispose();
   }
 
   private setCover(cover: number): void {
@@ -355,12 +402,15 @@ export class SnowEffect {
     this.disposed = true;
     this.stopRate();
     this.stopCover();
+    this.stopGroundOverlay?.();
+    this.stopGroundOverlay = undefined;
     for (const mesh of [this.mesh, this.ground]) {
       if (!mesh) continue;
       mesh.removeFromParent();
       mesh.geometry.dispose();
-      mesh.material.map?.dispose();
-      mesh.material.dispose();
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const texture of new Set(materials.map(material => material.map))) texture?.dispose();
+      for (const material of materials) material.dispose();
     }
     this.mesh = undefined;
     this.ground = undefined;

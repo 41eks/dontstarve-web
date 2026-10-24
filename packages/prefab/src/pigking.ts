@@ -13,6 +13,7 @@ import type { LootLaunch } from './lootFling';
 import { PlaySound, PreloadSounds } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import definitions from './definitions.json' with { type: 'json' };
+import { MiniMapEntity } from './minimapEntity';
 
 export interface PigKingPrefabOptions {
   position?: THREE.Vector3;
@@ -32,6 +33,7 @@ export interface PigKingWorld {
 export interface PigKingPrefab {
   body: CANNON.Body;
   standee: THREE.Group;
+  readonly MiniMapEntity: MiniMapEntity;
   /** pigking.lua trader: tags `trader` while enabled; GIVE discovers it through the actionEntity. */
   readonly trader: Trader<TradeItem>;
   /** The inst's stategraph; undefined until the prefab is bound to a world. */
@@ -91,6 +93,9 @@ export async function createPigKing(
   standee.updateWorldMatrix(true, true);
   const bounds = new THREE.Box3().setFromObject(standee);
   standee.position.y += position.y - bounds.min.y;
+  const miniMapEntity = new MiniMapEntity(standee.position);
+  miniMapEntity.SetIcon('pigking.png');
+  miniMapEntity.SetPriority(1);
 
   const animation = standee.userData.animationController as SpriteAnimationController;
   // pigking.lua: MakeObstaclePhysics(inst, 2, .5)
@@ -150,6 +155,7 @@ export async function createPigKing(
   return {
     body,
     standee,
+    MiniMapEntity: miniMapEntity,
     trader,
     get sg() { return bound?.sg; },
     setNormal(cameraWorldQuaternion) {
@@ -158,6 +164,7 @@ export async function createPigKing(
     bind(world) {
       if (bound) return;
       disposed = false;
+      miniMapEntity.SetEnabled(true);
       void PreloadSounds('dontstarve/pig/PigKingThrowGold', 'dontstarve/pig/PigKingHappy', 'dontstarve/pig/PigKingReject');
       let sg: PigKingStateGraph | undefined;
       const pigAnimation = new PigKingAnimation(animation, () => sg?.pushEvent('animover'));
@@ -188,6 +195,7 @@ export async function createPigKing(
     },
     /** Scene teardown: the prefab outlives the scene, so a later bind() starts it again. */
     dispose() {
+      miniMapEntity.dispose();
       if (!bound) return;
       disposed = true;
       bound.stopNight();

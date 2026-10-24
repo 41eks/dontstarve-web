@@ -17,7 +17,7 @@ export const TUNING = {
 
 export type DstCyclePhase = 'day' | 'dusk' | 'night';
 
-const MOON_PHASE_CYCLES = [
+export const MOON_PHASE_CYCLES = [
   'new', 'quarter', 'quarter', 'quarter', 'half', 'half', 'half',
   'threequarter', 'threequarter', 'threequarter', 'full',
   'threequarter', 'threequarter', 'threequarter', 'half', 'half', 'half',
@@ -48,9 +48,10 @@ export function getDstCycle(elapsedSeconds: number): {
 }
 
 /** Surface clock state from clock.lua's default segments and 20-day moon cycle. */
-export function getDstClock(elapsedSeconds: number) {
+/** `moonCycleOffset` shifts clock.lua's _mooomphasecycle after ms_setmoonphase. */
+export function getDstClock(elapsedSeconds: number, moonCycleOffset = 0) {
   const cycle = getDstCycle(elapsedSeconds);
-  const moonIndex = cycle.cycles % MOON_PHASE_CYCLES.length;
+  const moonIndex = (cycle.cycles + moonCycleOffset) % MOON_PHASE_CYCLES.length;
   return {
     cycles: cycle.cycles,
     phase: cycle.phase,

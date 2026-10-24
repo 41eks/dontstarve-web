@@ -12,6 +12,7 @@ import {
   type CraftRequestDetail,
   type ChestCloseDetail,
   type DebugCommandDetail,
+  type MinimapStateDetail,
   type SlotAddress,
   type SlotItem,
   type SlotSelectDetail,
@@ -20,9 +21,12 @@ import {
 } from '@dontstarve-web/ui';
 import { type PickupDoer, PointerRaycaster } from '@dontstarve-web/stategraphs';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { DOCK_KIT_ID } from '@dontstarve-web/prefab/dock_kit';
 import { FARM_PLOW_ITEM_ID, SEED_ITEM_IDS } from '@dontstarve-web/prefab/farm_plow';
 import { UpdateSoundListener } from '@dontstarve-web/prefab/sound';
 import { turfMap } from './building';
+import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
+import { SetAutopaused } from './autopause';
 import { backTasks, frontTasks, registerFrontTask } from './animate';
 import { input } from './InputManager';
 import { view, actionEvents } from './view';
@@ -68,6 +72,17 @@ UpdateSoundListener(player.position);
 backTasks.push(() => UpdateSoundListener(player.position));
 
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
+gameUi.inventoryBar.player = player.userData.artCharacter;
+gameUi.mapControls.addEventListener('game:map-toggle', (event) => {
+  gameUi.minimap.setOpen((event as CustomEvent<{ isOpen: boolean }>).detail.isOpen);
+});
+// MapScreen registers SetAutopaused(true) on open and releases it on destroy; M/Esc close it too.
+gameUi.minimap.addEventListener('game:map-state', (event) => {
+  const { isOpen } = (event as CustomEvent<MinimapStateDetail>).detail;
+  gameUi.mapControls.setMapOpen(isOpen);
+  input.setBlocked(isOpen);
+  SetAutopaused(isOpen);
+});
 function syncPlayerStats(): void {
   gameUi.statusHud.setStats(getPlayerStats());
 }
@@ -226,7 +241,9 @@ const sceneResources = await startScene(
   inventory.entities,
   inventory,
 );
-const { buildingPlacement, groundItems, dwarfStars, polarLights, farmPlow, registry, getSaveState, disposalEvents } = sceneResources;
+const { buildingPlacement, groundItems, dwarfStars, polarLights, farmPlow, dockKit, registry, getSaveState, disposalEvents } = sceneResources;
+gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position,
+  getMiniMapEntities: () => [player.MiniMapEntity, ...registry.miniMapEntities] });
 const playerSanity = new Sanity({ ...pickupDoer, sg: playerAnimation?.stategraph }, playerStats.sanity);
 const sanityVignette = await SanityVignette.create(playerSanity.sane, `${import.meta.env.BASE_URL}dst/data/anim`);
 document.body.append(sanityVignette.canvas);
@@ -235,6 +252,7 @@ const stopSanityUpdate = registerFrontTask(dt => playerSanity.OnUpdate(dt));
 player.userData.components ??= {};
 player.userData.components.sanity = playerSanity;
 disposalEvents.on('dispose', () => {
+  gameUi.minimap.dispose();
   headEquipmentBinding.dispose();
   stopVignetteUpdate();
   sanityVignette.dispose();
@@ -245,6 +263,10 @@ disposalEvents.on('dispose', () => {
 const disposalActions = disposalResources.register(disposalEvents, sceneResources);
 
 let lastSavedSnapshotId = initialSave.snapshot.id;
+// Typing a command must not drive the character; closing releases the keyboard again.
+gameUi.debugConsole.addEventListener('game:debug-console-toggle', (event) => {
+  input.setBlocked((event as CustomEvent<{ isOpen: boolean }>).detail.isOpen);
+});
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
   void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => gameUi.savingIndicator.whileSaving(() => {
@@ -323,6 +345,13 @@ window.addEventListener('game:slot-select', (event) => {
     const entity = inventory.getEntity(slot);
     if (!entity) return;
     void farmPlow.begin(() => inventory.extract(slot, 1, entity) ?? undefined).catch((error: unknown) => console.error('Unable to deploy farm plow', error));
+    return;
+  }
+  if (stack?.itemId === DOCK_KIT_ID) {
+    event.preventDefault();
+    const entity = inventory.getEntity(slot);
+    if (!entity) return;
+    void dockKit.begin(() => inventory.extract(slot, 1, entity) ?? undefined).catch((error: unknown) => console.error('Unable to deploy dock kit', error));
     return;
   }
   if (!stack || !isPlaceableBuildingId(stack.itemId)) return;

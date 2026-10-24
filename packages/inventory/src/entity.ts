@@ -4,11 +4,14 @@ import { StorageSlot } from './slots';
 import { Container } from '../../componets/src/container';
 import { BACKPACK_SLOT_COUNT } from './addresses';
 import { InventoryItem } from '../../componets/src/inventoryitem';
+import { MiniMapEntity } from '../../componets/src/minimapentity';
 import { Equippable } from '../../componets/src/equippable';
-import { Perishable } from '../../componets/src/perishable';
+import { Perishable, type PerishWorld } from '../../componets/src/perishable';
 import { EventEmitter } from '@dontstarve-web/signals';
 import { Vector3 } from 'three';
 import type { Fuel, FuelItem } from '../../componets/src/fuel';
+import { Temperature, type TemperatureWorld, type TemperatureSaveData } from '../../componets/src/temperature';
+import type { Heater } from '../../componets/src/heater';
 
 let sequence = 0;
 export function newItemEntityId(): string {
@@ -25,6 +28,8 @@ export interface ItemRuntimeComponent {
 }
 export interface ItemOwner {
   readonly address: SlotAddress;
+  hasTag?(tag: string): boolean;
+  getPosition?(): Vector3;
   changed(): void;
   remove(): boolean;
   /** perishable.lua's onperishreplacement: the same slot receives the replacement stack. */
@@ -150,6 +155,15 @@ export class FiniteUsesComponent {
     }
     return true;
   }
+  /** finiteuses.lua SetPercent: SetUses(total * percent), keeping the saved step exact. */
+  setPercent(percent: number, step: number): boolean {
+    if (this.entity.isRemoved || this.maximum === undefined || !Number.isFinite(percent) || percent <= 0) return false;
+    const next = Math.round(Math.min(1, percent) * this.maximum / step) * step;
+    this.entity.PushEvent('percentusedchange', { percent: next / this.maximum });
+    this.remaining = next;
+    this.entity.components.inventoryitem.owner?.changed();
+    return true;
+  }
   setConsumption(action: string, amount: number): void {
     if (!Number.isFinite(amount) || amount <= 0) throw new RangeError('Invalid use consumption');
     this.consumption.set(action, amount);
@@ -173,6 +187,7 @@ export class ItemEntity {
     container?: Container<InventoryStack, ItemEntity, StorageSlot>;
     tool?: import('../../componets/src/tool').Tool;
     shaver?: import('../../componets/src/shaver').Shaver;
+    deployable?: import('../../componets/src/deployable').Deployable;
     instrument?: ItemRuntimeComponent & { Play(musician: unknown, listeners: (range: number) => Iterable<never>): boolean };
     workable?: import('../../componets/src/workable').Workable;
     spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
@@ -184,6 +199,8 @@ export class ItemEntity {
     repairer?: import('../../componets/src/repairer').Repairer;
     fuel?: Fuel;
     tradable?: import('../../componets/src/tradable').Tradable;
+    temperature?: Temperature;
+    heater?: Heater;
   };
   readonly signals: InventoryItemSignals;
   /** Display-only itemtile freshness for items without a perishable timer. */
@@ -194,7 +211,28 @@ export class ItemEntity {
   readonly persistence = readonlySignal(this.persistsState);
   private readonly durability;
   readonly transform: { readonly position: Vector3; rotationY: number } = { position: new Vector3(), rotationY: 0 };
+  private miniMapEntity?: MiniMapEntity;
+  get MiniMapEntity(): MiniMapEntity | undefined { return this.miniMapEntity; }
+  /** AddMiniMapEntity is owned by the logical inst, independently of its art. */
+  AddMiniMapEntity(): MiniMapEntity {
+    if (!this.miniMapEntity) {
+      this.miniMapEntity = new MiniMapEntity(this.transform.position);
+      this.miniMapEntity.SetEnabled(!this.isRemoved && this.components.inventoryitem.owner === null);
+    }
+    return this.miniMapEntity;
+  }
   skinId?: string;
+  highTemp?: number;
+  lowTemp?: number;
+  private temperatureWorld?: TemperatureWorld;
+  private savedTemperature?: TemperatureSaveData;
+  AddTemperature(): Temperature {
+    return this.components.temperature ??= this.component('temperature', () => new Temperature(this, this.temperatureWorld, this.savedTemperature));
+  }
+  BindTemperatureWorld(world: TemperatureWorld): void {
+    this.temperatureWorld = world;
+    this.components.temperature?.BindWorld(world);
+  }
   spelltype?: string;
   _cached_reskinname?: Map<string, string | undefined>;
   castsound?: string;
@@ -206,15 +244,16 @@ export class ItemEntity {
   private readonly tags = new Set<string>();
   private events = new EventEmitter<Record<string, unknown>>();
 
-  constructor(state: InventoryStack) {
+  constructor(state: InventoryStack, perishWorld?: PerishWorld) {
     this.id = state.entityId ?? newItemEntityId();
     this.prefab = state.itemId;
+    this.wetState.set(state.wet ?? false);
     this.components = {
       stackable: new StackableComponent(state.count),
       fueled: new FueledComponent(this, state.remainingFuel),
       finiteuses: new FiniteUsesComponent(this, state.remainingUses),
       inventoryitem: new InventoryItem<ItemEntity, ItemOwner>(this),
-      perishable: new Perishable(this),
+      perishable: new Perishable(this, readonlySignal(this.wetState), perishWorld),
     };
     this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.components.fueled.percent.get());
     this.freshness = createMemo(() => this.components.perishable.perishtime.get() === undefined
@@ -226,7 +265,7 @@ export class ItemEntity {
       wet: readonlySignal(this.wetState),
     });
     if (this.prefab === 'backpack') {
-      const container = new Container(this, () => new StorageSlot(), (item: InventoryStack) => new ItemEntity(item));
+      const container = new Container(this, () => new StorageSlot(), (item: InventoryStack) => new ItemEntity(item, perishWorld));
       container.SetNumSlots(BACKPACK_SLOT_COUNT);
       container.OnLoad({ items: Object.fromEntries((state.container?.slots ?? [])
         .map(({ slotKey, item }) => [String(Number(slotKey) + 1), item])) });
@@ -250,7 +289,11 @@ export class ItemEntity {
     return this.runtime.get(name) as T | undefined;
   }
   snapshot(includeIdentity = true): InventoryStack {
+    const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
     return {
+      ...(temperature === undefined ? {} : { temperature }),
+      ...(this.highTemp === undefined ? {} : { highTemp: Math.ceil(this.highTemp) }),
+      ...(this.lowTemp === undefined ? {} : { lowTemp: Math.floor(this.lowTemp) }),
       ...(includeIdentity ? { entityId: this.id } : {}), itemId: this.prefab, count: this.components.stackable.count,
       ...(this.skinId === undefined ? {} : { skinId: this.skinId }),
       ...(this.components.fueled.remaining === undefined ? {} : { remainingFuel: this.components.fueled.remaining }),
@@ -270,6 +313,12 @@ export class ItemEntity {
   apply(state: InventoryStack): void {
     if (state.itemId !== this.prefab || this.isRemoved) throw new Error('Cannot change a removed entity or its prefab');
     this.skinId = state.skinId;
+    this.highTemp = state.highTemp;
+    this.lowTemp = state.lowTemp;
+    this.savedTemperature = state.temperature;
+    if (state.temperature && this.components.temperature?.GetCurrent() !== state.temperature.current) {
+      this.components.temperature?.OnLoad(state.temperature);
+    }
     this.phonographRecord = state.phonographRecord;
     batch(() => {
       this.components.stackable.count = state.count;
@@ -354,6 +403,7 @@ export class ItemEntity {
     this.PushEvent('onremove', undefined);
     this.events = new EventEmitter();
     this.components.inventoryitem.owner = null;
+    this.miniMapEntity?.dispose();
     for (const component of this.runtime.values()) component.dispose();
     this.runtime.clear();
     this.components.workable?.dispose();
@@ -369,9 +419,27 @@ export class ItemEntity {
 /** Shared by the inventory store and world item manager; contains each live item exactly once. */
 export class ItemEntityRegistry {
   private readonly entities = new Map<string, ItemEntity>();
+  private perishWorld?: PerishWorld;
+  private temperatureWorld?: TemperatureWorld;
+  bindTemperatureWorld(world: TemperatureWorld): void {
+    this.temperatureWorld = world;
+    for (const entity of this.values()) entity.BindTemperatureWorld(world);
+  }
+  /** Existing, newly created, adopted and nested entities share the current world's integral. */
+  bindPerishWorld(world: PerishWorld): void {
+    this.perishWorld = world;
+    for (const entity of this.values()) {
+      entity.components.perishable.BindWorld(world);
+      for (const slot of entity.components.container?.slots ?? []) {
+        const child = slot.getEntity();
+        if (child) this.adopt(child);
+      }
+    }
+  }
   create(state: InventoryStack): ItemEntity {
     if (state.entityId && this.get(state.entityId)) throw new Error(`Duplicate item entity: ${state.entityId}`);
-    const entity = new ItemEntity(state);
+    const entity = new ItemEntity(state, this.perishWorld);
+    if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
     this.entities.set(entity.id, entity);
     return entity;
   }
@@ -386,6 +454,8 @@ export class ItemEntityRegistry {
   adopt(entity: ItemEntity): void {
     const existing = this.get(entity.id);
     if (entity.isRemoved || (existing && existing !== entity)) throw new Error(`Invalid item entity: ${entity.id}`);
+    if (this.perishWorld) entity.components.perishable.BindWorld(this.perishWorld);
+    if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
     this.entities.set(entity.id, entity);
     for (const slot of entity.components.container?.slots ?? []) {
       const child = slot.getEntity();
@@ -398,9 +468,12 @@ export class ItemEntityRegistry {
   }
   dispose(): void {
     for (const entity of this.entities.values()) {
+      entity.flush();
       entity.components.inventoryitem.owner = null;
       entity.destroy();
     }
     this.entities.clear();
+    this.perishWorld = undefined;
+    this.temperatureWorld = undefined;
   }
 }

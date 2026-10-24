@@ -117,7 +117,7 @@ export class PickaxeActionController {
     if (distance > PICKAXE_REACH ** 2) {
       // Stop short of the foot point; do not walk into the billboard's centre.
       const destination = target.position.clone();
-      this.direction.subVectors(this.world.player.position, target.position).setY(0).normalize();
+      this.direction.subVectors(this.world.player.position, target.position).normalize();
       destination.addScaledVector(this.direction, PICKAXE_REACH * 0.8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > 0.01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
@@ -152,12 +152,11 @@ export class PickaxeActionController {
   }
 
   private distanceSquared(target: PickaxeTarget): number {
-    return (this.world.player.position.x - target.position.x) ** 2
-      + (this.world.player.position.z - target.position.z) ** 2;
+    return this.world.player.position.distanceToSquared(target.position);
   }
 
   private faceTarget(target: PickaxeTarget): void {
-    this.direction.subVectors(target.position, this.world.player.position).setY(0);
+    this.direction.subVectors(target.position, this.world.player.position);
     if (this.direction.lengthSq() < 1e-8) return;
     this.world.camera.getWorldDirection(this.forward);
     this.forward.setY(0).normalize();

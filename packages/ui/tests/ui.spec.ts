@@ -3,6 +3,7 @@ import { categories, type Recipe } from '../src/categories';
 import { INVENTORY_PRODUCT_SPECS, INVENTORY_RECIPES } from '../src/categories/shared';
 import { createSlotContainer } from '../src/slot/slot-container';
 import type { DstChestPanelElement } from '../src/chest-panel';
+import { buildingContainerDefinition } from '../../prefab/src/containers';
 
 const fixtureUrl = '/tests/fixture.html';
 const renderedCraftingCategories = categories.filter(({ id }) => id !== 'none');
@@ -11,6 +12,7 @@ const renderedQuickItemCount = renderedCraftingCategories.reduce((count, categor
 
 for (const storage of [
   { prefab: 'dragonflychest', slotCount: 12, columns: 3, panelArchive: 'ui_chester_shadow_3x4.zip', singleItems: false },
+  { prefab: 'bookstation', ...buildingContainerDefinition('bookstation') },
 ]) {
   test(`renders ${storage.prefab} with its original panel, capacity and inventory-sized slots`, async ({ page }) => {
     await openFixture(page);
@@ -36,6 +38,31 @@ for (const storage of [
     expect(first.height).toBeCloseTo(inventory.height, 1);
     expect(nextRow.x).toBeCloseTo(first.x, 1);
     expect(nextRow.y).toBeGreaterThan(first.y);
+    if (storage.prefab === 'bookstation') {
+      // containers.lua: (-114 + 75*x, 37 - 79*y), relative to the art origin.
+      for (const width of [1280, 640]) {
+        await page.setViewportSize({ width, height: 900 });
+        const layout = await panel.evaluate((element) => {
+          const art = element.shadowRoot!.querySelector<HTMLCanvasElement>('.chest-panel__background')!;
+          const style = getComputedStyle(element.shadowRoot!.querySelector('.chest-panel')!);
+          return {
+            originX: parseFloat(style.getPropertyValue('--chest-art-origin-x')) / 100,
+            originY: parseFloat(style.getPropertyValue('--chest-art-origin-y')) / 100,
+            sourceWidth: art.width,
+          };
+        });
+        const art = (await background.boundingBox())!;
+        const scale = art.width / layout.sourceWidth;
+        const inventory = (await page.locator('dst-inventory-bar .inventory-slot').first().boundingBox())!;
+        for (let index = 0; index < storage.slotCount; index++) {
+          const slot = (await slots.nth(index).boundingBox())!;
+          expect(slot.width).toBeCloseTo(inventory.width, 1);
+          expect(slot.height).toBeCloseTo(inventory.height, 1);
+          expect(slot.x + slot.width / 2).toBeCloseTo(art.x + art.width * layout.originX + (-114 + 75 * (index % 4)) * scale, 1);
+          expect(slot.y + slot.height / 2).toBeCloseTo(art.y + art.height * layout.originY + (-37 + 79 * Math.floor(index / 4)) * scale, 1);
+        }
+      }
+    }
   });
 }
 
@@ -201,6 +228,13 @@ test('renders the inventory and equipment slots and emits selection events', asy
   await expect(skinnedSlot).toHaveAttribute('aria-label', '猎人斧，数量 1');
   await expect(skinnedSlot.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'axe_feathered.tex');
   await expect(skinnedSlot.locator('.inventory-slot__icon')).toHaveAttribute('data-loaded', 'true');
+
+  await inventoryBar.evaluate(element => { element.setAttribute('player', 'waxwell'); });
+  const inspectImage = inventoryBar.locator('.inventory-bar__inspect img');
+  await expect(inspectImage).toHaveAttribute('src', /bag\/self_inspect_waxwell\.tex\.png$/);
+  await expect.poll(() => inspectImage.evaluate(image => (image as HTMLImageElement).complete
+    && (image as HTMLImageElement).naturalWidth > 0)).toBe(true);
+  await expect(skinnedSlot).toHaveAttribute('data-item-id', 'axe');
 
   await page.evaluate(() => {
     const eventLog: Array<{ type: string; detail: unknown }> = [];

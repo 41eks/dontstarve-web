@@ -26,6 +26,9 @@ import { createWorldState, createWorldClockUpdater } from './worldState';
 import { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, findGroundPath, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
+import { SlipperyFeet } from '../packages/componets/src/slipperyfeet';
+import { FindEntities } from '../packages/prefab/src/actionEntity';
+import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';
 
@@ -34,6 +37,7 @@ export const world = new CANNON.World({
 });
 
 export const worldState = createWorldState(initialSave.world);
+turfMap.bindOceanClock(worldState.clock);
 
 const groundMaterial = new CANNON.Material('ground');
 const groundBody = new CANNON.Body({
@@ -47,8 +51,17 @@ world.addBody(playerBody);
 scene.background = new THREE.Color(0xbfd1e5);
 scene.add(ground, turfGround, player);
 
+function disposeTerrain(): void {
+  turfMap.dispose();
+  ground.removeFromParent();
+  ground.geometry.dispose();
+  (ground.material as THREE.Material).dispose();
+}
+
 const playerRadius = (playerBody.shapes[0] as CANNON.Sphere).radius;
 export const locomotor = new Locomotor(playerBody, {
+  footprintRadius: playerRadius,
+  isPassable: (x, z) => !turfMap.isOceanAtWorld({ x, z }),
   findPath(start, target) {
     const mapEdge = initialSave.world.map.generator.options.size / 2 - playerRadius;
     const obstacles = world.bodies.filter((body) => body.type === CANNON.Body.STATIC
@@ -65,6 +78,7 @@ export const locomotor = new Locomotor(playerBody, {
     return findGroundPath(start, target, {
       cellSize: Math.max(1, playerRadius / 2),
       isWalkable: (point) => Math.abs(point.x) <= mapEdge && Math.abs(point.z) <= mapEdge
+        && !turfMap.isOceanAtWorld(point)
         && !obstacles.some((box) => point.x >= box.minX && point.x <= box.maxX
           && point.z >= box.minZ && point.z <= box.maxZ),
     });
@@ -128,7 +142,9 @@ export async function startScene(
   player.userData.locomotor = locomotor;
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds);
   const scheduler = new GameTimeScheduler(clockUpdater.elapsedSeconds);
-  const entities = createSceneEntities(world, worldState, consumeBufferedBuild,
+  const perishWorld: PerishWorld = { perishClock: worldState.perishClock };
+  itemEntities?.bindPerishWorld(perishWorld);
+  const entities = await createSceneEntities(world, worldState, consumeBufferedBuild,
     onBuildingInteraction, onFlowerPlanted, itemEntities, inventory, scheduler);
   const { registry } = entities;
   try {
@@ -136,17 +152,35 @@ export async function startScene(
   } catch (error) {
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     entities.dispose();
+    disposeTerrain();
     scheduler.dispose();
     worldState.dispose();
     dstLighting.dispose();
     throw error;
   }
+  // player_common.lua AddComponent("slipperyfeet"); frozen ponds are its slipperyfeettarget entities.
+  const stategraph = (player.userData.animationController as WilsonAnimationController | undefined)?.stategraph;
+  const slipperyfeet = stategraph && new SlipperyFeet({
+    getPosition: () => player.position,
+    getMotorSpeed: () => player.userData.currentMotorSpeed as number ?? 0,
+    PushEvent: (name, data) => stategraph.pushEvent(name, data),
+    sg: stategraph,
+  }, {
+    scheduler,
+    findSlipperyEntities: (position, radius) => FindEntities(scene, position, radius, ['slipperyfeettarget']) as never,
+  });
+  player.userData.slipperyfeet = slipperyfeet;
+  const updateSlipperyFeet = (dt: number) => slipperyfeet?.update(dt);
+  if (slipperyfeet) backTasks.push(updateSlipperyFeet);
   const updateBeforePhysics = (dt: number) => registry.beforePhysics(dt);
-  const perishWorld: PerishWorld = { temperature: () => worldState.worldtemperature.temperature.peek() };
   const updateEntities = (dt: number) => {
+    turfMap.update(dt);
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
-    // Inventory, container and ground insts share one registry; each settles its own 60-frame batch.
-    for (const entity of itemEntities?.values() ?? []) entity.components.perishable.onFrame(dt, perishWorld);
+    // Inventory, container and ground insts share one registry; each settles every 10 game seconds.
+    for (const entity of itemEntities?.values() ?? []) {
+      entity.components.perishable.onFrame(dt);
+      entity.components.temperature?.OnUpdate(dt);
+    }
     camera.getWorldQuaternion(cameraWorldQuaternion);
     setPlayerNormal(cameraWorldQuaternion);
     registry.update(dt, cameraWorldQuaternion);
@@ -162,6 +196,7 @@ export async function startScene(
       entities: registry.exportRecords(), elapsedSeconds: clockUpdater.elapsedSeconds, tiles: turfMap.exportTiles(),
       worldtemperature: worldState.worldtemperature.OnSave(),
       weather: worldState.weather.OnSave(),
+      moon: { mooomphasecycle: worldState.moonPhaseCycle() },
       // Physics may place the foot a fraction below the ground while settling.
       playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },
     };
@@ -202,10 +237,15 @@ export async function startScene(
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    player.MiniMapEntity.dispose();
     preparation.abort();
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     if (player.userData.locomotor === locomotor) delete player.userData.locomotor;
     animation?.stop();
+    slipperyfeet?.dispose();
+    if (player.userData.slipperyfeet === slipperyfeet) delete player.userData.slipperyfeet;
+    const slipTask = backTasks.indexOf(updateSlipperyFeet);
+    if (slipTask >= 0) backTasks.splice(slipTask, 1);
     clockUpdater.flush();
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     locomotor.stop();
@@ -218,6 +258,7 @@ export async function startScene(
     }
     const releaseResources = () => {
       entities.dispose();
+      disposeTerrain();
       scheduler.dispose();
       worldState.dispose();
       dstLighting.dispose();
@@ -228,7 +269,9 @@ export async function startScene(
     if (preparing) void startPromise?.catch(() => undefined).then(releaseResources);
     else releaseResources();
   };
-  return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather, getSaveState, disposalEvents, start, dispose };
+  return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather,
+    moon: { phase: worldState.moonPhase, SetMoonPhase: worldState.SetMoonPhase },
+    getSaveState, disposalEvents, start, dispose };
 }
 
 export function scene_add(model:THREE.Object3D){

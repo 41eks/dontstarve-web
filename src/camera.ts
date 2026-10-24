@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { backTasks } from './animate';
 import { player } from './player';
+import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { renderer } from './universal';
 
 const DEFAULT_HEADING = 45;
-const DEFAULT_DISTANCE = 70;
+// followcamera.lua distances (default 30, 15..50) in DST units, scaled by TILE_SIZE / TILE_SCALE.
+const DEFAULT_DISTANCE = 30 * WORLD_SCALE;
 const ROTATION_STEP = 45;
 const EPSILON = 0.01;
 
@@ -44,14 +46,14 @@ export class FollowCameraController {
   private distanceTarget = DEFAULT_DISTANCE;
   private paused = false;
 
-  readonly minDistance = 15;
-  readonly maxDistance = 70;
+  readonly minDistance = 15 * WORLD_SCALE;
+  readonly maxDistance = 50 * WORLD_SCALE;
   readonly minDistancePitch = 30;
   readonly maxDistancePitch = 60;
   readonly panGain = 4;
   readonly headingGain = 20;
   readonly distanceGain = 1;
-  readonly zoomStep = 4;
+  readonly zoomStep = 4 * WORLD_SCALE;
 
   constructor(target: THREE.Object3D) {
     this.target = target;

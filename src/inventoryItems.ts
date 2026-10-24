@@ -13,6 +13,7 @@ import { configureRazorEntity, RAZOR_ID } from '@dontstarve-web/prefab/razor';
 import { configurePanfluteEntity, PANFLUTE_ID, PANFLUTE_USES } from '@dontstarve-web/prefab/panflute';
 import { configureEquipmentEntity, getHandEquipmentDefinition } from '@dontstarve-web/prefab/handEquipment';
 import { configureBirdEntity, isBirdId } from '@dontstarve-web/prefab/birds';
+import { configureBackpackEntity } from '@dontstarve-web/prefab/backpack';
 import { PERISHABLE_FOODS } from '@dontstarve-web/prefab/food';
 import { INVENTORY_ITEM_DISPLAY_SPECS } from '../packages/ui/src/inventory-items';
 import { INVENTORY_SKIN_SPECS } from '../packages/ui/src/categories/shared';
@@ -41,6 +42,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...display,
       maxStack: inventoryItemMaxStack(itemId),
       configureEntity: withTradable(itemId, isBirdId(itemId) ? configureBirdEntity
+        : itemId === 'backpack' ? configureBackpackEntity
         : itemId === LIGHTBULB_ID ? configureLightbulbEntity
         : itemId === HEATROCK_ID ? configureHeatRockEntity
         : itemId === RAZOR_ID ? configureRazorEntity

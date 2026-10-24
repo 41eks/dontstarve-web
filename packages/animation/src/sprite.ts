@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import {
   createMaterials,
   findImage,
+  loadAnim,
   loadAnimationArchive,
+  loadBuild,
   loadSpriteSkinArchive,
   smallHash,
   SpriteFrameRenderer,
@@ -26,6 +28,12 @@ export interface TransientSpriteAnimationController extends SpriteAnimationContr
   playTransient(name: string): void;
 }
 
+/** AnimState:Hide / Show: toggle a named layer of the current build. */
+export interface LayerAnimationController {
+  hideLayer(layer: string): void;
+  showLayer(layer: string): void;
+}
+
 /** AnimState:SetPercent: show a clip at a fixed fraction of its length without advancing it. */
 export interface PercentAnimationController {
   setPercent(name: string, percent: number): void;
@@ -39,6 +47,8 @@ export interface FrameSeekableAnimationController {
 
 export interface AnimatedSpriteOptions {
   initialAnimation: string;
+  /** Build zip separate from the bank zip passed as `file`, e.g. moondial.zip + moondial_build.zip. */
+  buildArchive?: string;
   /** Restore a stable one-shot end pose without replaying its animation. */
   initialFrame?: 'first' | 'last';
   name?: string;
@@ -77,7 +87,7 @@ export interface AnimatedSpriteFactory {
   dispose(): void;
 }
 
-export class SpriteController implements TransientSpriteAnimationController, FrameSeekableAnimationController, PercentAnimationController {
+export class SpriteController implements TransientSpriteAnimationController, FrameSeekableAnimationController, PercentAnimationController, LayerAnimationController {
   protected readonly visual: THREE.Group;
   private readonly renderer: SpriteFrameRenderer;
   private build: ParsedBuild;
@@ -96,6 +106,8 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   private overrides = new Map<number, SymbolOverride>();
   private buildOverrides = new Map<string, LoadedBuildOverride>();
   private hiddenLayers = new Set<number>();
+  /** AnimState:Hide layers; independent of the skin's hiddenLayers, which setSymbolOverrides replaces. */
+  private animStateHiddenLayers = new Set<number>();
 
   constructor(
     visual: THREE.Group,
@@ -143,9 +155,18 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.reshowFrame();
   }
 
+  hideLayer(layer: string): void {
+    const hash = smallHash(layer);
+    if (!this.animStateHiddenLayers.has(hash)) { this.animStateHiddenLayers.add(hash); this.reshowFrame(); }
+  }
+
+  showLayer(layer: string): void {
+    if (this.animStateHiddenLayers.delete(smallHash(layer))) this.reshowFrame();
+  }
+
   /** AnimState:SetBuild: the base build whose symbols are drawn when no override or skin applies. */
   setBuild(build: ParsedBuild, materials: THREE.MeshBasicMaterial[]): void {
-    if (build === this.build) return;
+    if (build === this.build && materials === this.materials) return;
     this.build = build;
     this.materials = materials;
     this.reshowFrame();
@@ -179,6 +200,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
 
   /** Keep a live entity's clip, progress and completion callback across reskinning. */
   copyPlaybackFrom(source: SpriteController): void {
+    this.animStateHiddenLayers = new Set(source.animStateHiddenLayers);
     this.selectAnimation(source.animationName, source.loop, source.onComplete);
     this.elapsed = source.elapsed;
     this.update(0);
@@ -261,7 +283,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.frameKey = key;
     const frames = [this.animation.frames[index], ...this.layers.map((layer, i) => layer.frames[layerIndices[i]])];
     const sprites = frames.flatMap((frame) => [...frame.elements]
-      .filter((element) => !this.hiddenLayers.has(element.layerHash) && this.isLayerVisible(element.layerHash))
+      .filter((element) => !this.hiddenLayers.has(element.layerHash) && !this.animStateHiddenLayers.has(element.layerHash) && this.isLayerVisible(element.layerHash))
       .sort((a, b) => b.z - a.z)
       .map((element) => {
         const override = this.overrides.get(element.imageHash);
@@ -320,7 +342,9 @@ export async function createAnimatedSprite(
   file: string,
   options: AnimatedSpriteOptions,
 ): Promise<THREE.Group> {
-  const { buildPackage, animations } = await loadAnimationArchive(file, assetBaseUrl);
+  const { buildPackage, animations } = options.buildArchive
+    ? { buildPackage: await loadBuild(options.buildArchive, assetBaseUrl), animations: await loadAnim(file, assetBaseUrl) }
+    : await loadAnimationArchive(file, assetBaseUrl);
   const skinArchive = options.skinArchive
     ? await loadSpriteSkinArchive(options.skinArchive, assetBaseUrl) : undefined;
   const skin: SpriteSkin | undefined = skinArchive ? {

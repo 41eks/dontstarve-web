@@ -12,13 +12,15 @@ export function SetSharedLootTable(name: string, entries: ChanceLootTable): void
 /** lootdropper.lua SpawnLootPrefab: the host prepares/creates and flings the actual loot inst. */
 export class LootDropper {
   private chanceLootTable?: string;
+  private loot: readonly string[] = [];
   private readonly inst: LootInst;
   private readonly spawn: (prefab: string, position: ReturnType<LootInst['getPosition']>) => LootEntity | undefined;
   constructor(inst: LootInst, spawn: LootDropper['spawn']) { this.inst = inst; this.spawn = spawn; }
   SetChanceLootTable(name: string): void { this.chanceLootTable = name; }
+  SetLoot(loot: readonly string[]): void { this.loot = [...loot]; }
   GenerateLoot(random = Math.random): string[] {
-    return (sharedLootTables.get(this.chanceLootTable ?? '') ?? [])
-      .filter(([, chance]) => chance >= 1 || random() <= chance).map(([prefab]) => prefab);
+    return [...(sharedLootTables.get(this.chanceLootTable ?? '') ?? [])
+      .filter(([, chance]) => chance >= 1 || random() <= chance).map(([prefab]) => prefab), ...this.loot];
   }
   DropLoot(): void { for (const prefab of this.GenerateLoot()) this.SpawnLootPrefab(prefab); }
   SpawnLootPrefab(prefab: string): LootEntity | undefined {

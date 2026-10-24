@@ -48,7 +48,7 @@ test('spawns native lava and independent scorched rocks, restores their layout a
       vertices: rock.children[0].children[0].geometry.drawRange.count,
       build: rock.userData.animationController.build.name,
     }));
-    const heaters = FindEntities(scene, model.position.x, model.position.z, 30, ['HASHEATER'], ['INLIMBO']);
+    const heaters = FindEntities(scene, model.position, 30, ['HASHEATER'], ['INLIMBO']);
     const withoutPool = dstLighting.sampleLightLevel(model.position, model);
     return { id: model.userData.entityId, position: model.position.toArray(), clip: model.userData.animationController.currentAnimation,
       vertices: mesh.geometry.drawRange.count, frameVersion: mesh.geometry.getAttribute('uv').version, build: model.userData.animationController.build.name,
@@ -107,7 +107,7 @@ test('spawns native lava and independent scorched rocks, restores their layout a
     const model = scene.children.find((model: any) => model.userData.prefab === 'lava_pond');
     const body = model.userData.physicsBody, position = model.position.clone();
     model.userData.remove();
-    return { heaters: FindEntities(scene, position.x, position.z, 30, ['HASHEATER']).length,
+    return { heaters: FindEntities(scene, position, 30, ['HASHEATER']).length,
       body: world.bodies.includes(body), children: model.userData.lavaPond.children.length,
       localLight: dstLighting.sampleLightLevel(position) };
   })).toMatchObject({ heaters: 0, body: false, children: 0 });

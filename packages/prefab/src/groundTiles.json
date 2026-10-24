@@ -1,4 +1,24 @@
 {
+  "OCEAN_COASTAL": {
+    "tileId": 201,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ocean_noise.tex",
+    "renderOrder": 2,
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ocean_noise.tex"
+    }
+  },
   "ROAD": {
     "tileId": 2,
     "name": "cobblestone",
@@ -6,16 +26,38 @@
     "texture": "levels/tiles/cobblestone.tex",
     "noise": "images/square.tex",
     "renderOrder": 13,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_cobblestone_noise.tex"
+    }
   },
   "COTL_BRICK": {
-    "tileId": 2,
+    "tileId": 256,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/ground_noise_cotl_brick.tex",
     "renderOrder": 14,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ground_noise_cotl_brick_mini.tex"
+    }
   },
   "PEBBLEBEACH": {
     "tileId": 42,
@@ -24,16 +66,38 @@
     "texture": "levels/tiles/rocky.tex",
     "noise": "levels/textures/noise_pebblebeach.tex",
     "renderOrder": 15,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_pebblebeach.tex"
+    }
   },
   "MONKEY_GROUND": {
-    "tileId": 3,
+    "tileId": 257,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/ground_noise_monkeyisland.tex",
     "renderOrder": 16,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_pebblebeach.tex"
+    }
   },
   "SHELLBEACH": {
     "tileId": 44,
@@ -42,7 +106,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/ground_noise_shellbeach.tex",
     "renderOrder": 17,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_shellbeach_noise.tex"
+    }
   },
   "MARSH": {
     "tileId": 8,
@@ -51,7 +126,18 @@
     "texture": "levels/tiles/marsh.tex",
     "noise": "levels/textures/Ground_noise_marsh.tex",
     "renderOrder": 18,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_marsh_noise.tex"
+    }
   },
   "ROCKY": {
     "tileId": 3,
@@ -60,7 +146,18 @@
     "texture": "levels/tiles/rocky.tex",
     "noise": "levels/textures/noise_rocky.tex",
     "renderOrder": 21,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_rocky_noise.tex"
+    }
   },
   "SAVANNA": {
     "tileId": 5,
@@ -69,7 +166,18 @@
     "texture": "levels/tiles/yellowgrass.tex",
     "noise": "levels/textures/Ground_noise_grass_detail.tex",
     "renderOrder": 22,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_grass2_noise.tex"
+    }
   },
   "FOREST": {
     "tileId": 7,
@@ -78,7 +186,18 @@
     "texture": "levels/tiles/forest.tex",
     "noise": "levels/textures/Ground_noise.tex",
     "renderOrder": 23,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_forest_noise.tex"
+    }
   },
   "GRASS": {
     "tileId": 6,
@@ -87,7 +206,18 @@
     "texture": "levels/tiles/grass.tex",
     "noise": "levels/textures/Ground_noise.tex",
     "renderOrder": 24,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_grass_noise.tex"
+    }
   },
   "DIRT": {
     "tileId": 4,
@@ -96,7 +226,18 @@
     "texture": "levels/tiles/dirt.tex",
     "noise": "levels/textures/Ground_noise_dirt.tex",
     "renderOrder": 25,
-    "cannotBeDug": true
+    "cannotBeDug": true,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_dirt_noise.tex"
+    }
   },
   "DECIDUOUS": {
     "tileId": 30,
@@ -105,7 +246,18 @@
     "texture": "levels/tiles/deciduous.tex",
     "noise": "levels/textures/Ground_noise_deciduous.tex",
     "renderOrder": 26,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_deciduous_noise.tex"
+    }
   },
   "DESERT_DIRT": {
     "tileId": 31,
@@ -114,7 +266,18 @@
     "texture": "levels/tiles/desert_dirt.tex",
     "noise": "levels/textures/Ground_noise_dirt.tex",
     "renderOrder": 27,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_desert_dirt_noise.tex"
+    }
   },
   "CAVE": {
     "tileId": 13,
@@ -123,7 +286,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_cave.tex",
     "renderOrder": 28,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_cave_noise.tex"
+    }
   },
   "FUNGUS": {
     "tileId": 14,
@@ -132,7 +306,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_fungus.tex",
     "renderOrder": 29,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_fungus_noise.tex"
+    }
   },
   "FUNGUSRED": {
     "tileId": 24,
@@ -141,7 +326,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_fungus_red.tex",
     "renderOrder": 30,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_fungus_red_noise.tex"
+    }
   },
   "FUNGUSGREEN": {
     "tileId": 25,
@@ -150,7 +346,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_fungus_green.tex",
     "renderOrder": 31,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_fungus_green_noise.tex"
+    }
   },
   "FUNGUSMOON": {
     "tileId": 46,
@@ -159,7 +366,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/Ground_noise_moon_fungus.tex",
     "renderOrder": 32,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/Ground_noise_moon_fungus_mini.tex"
+    }
   },
   "SINKHOLE": {
     "tileId": 15,
@@ -168,7 +386,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_sinkhole.tex",
     "renderOrder": 33,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_sinkhole_noise.tex"
+    }
   },
   "UNDERROCK": {
     "tileId": 16,
@@ -177,16 +406,38 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_rock.tex",
     "renderOrder": 34,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_rock_noise.tex"
+    }
   },
   "VENT": {
-    "tileId": 6,
+    "tileId": 260,
     "name": "cave",
     "atlas": "levels/tiles/cave.xml",
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/ground_noise_fumarole.tex",
     "renderOrder": 35,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ground_noise_fumarole_mini.tex"
+    }
   },
   "MUD": {
     "tileId": 17,
@@ -195,7 +446,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_mud.tex",
     "renderOrder": 36,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_mud_noise.tex"
+    }
   },
   "ARCHIVE": {
     "tileId": 45,
@@ -204,16 +466,38 @@
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/Ground_noise_archive.tex",
     "renderOrder": 37,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/Ground_noise_archive_mini.tex"
+    }
   },
   "VAULT_CLEAN": {
-    "tileId": 8,
+    "tileId": 262,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/Ground_noise_vault_clean.tex",
     "renderOrder": 39,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/Ground_noise_vault_clean_mini.tex"
+    }
   },
   "BRICK_GLOW": {
     "tileId": 19,
@@ -222,7 +506,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_ruinsbrick.tex",
     "renderOrder": 40,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_ruinsbrick_noise.tex"
+    }
   },
   "BRICK": {
     "tileId": 18,
@@ -231,7 +526,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_ruinsbrickglow.tex",
     "renderOrder": 41,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_ruinsbrick_noise.tex"
+    }
   },
   "TILES_GLOW": {
     "tileId": 21,
@@ -240,7 +546,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_ruinstile.tex",
     "renderOrder": 42,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_ruinstile_noise.tex"
+    }
   },
   "TILES": {
     "tileId": 20,
@@ -249,7 +566,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_ruinstileglow.tex",
     "renderOrder": 43,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_ruinstile_noise.tex"
+    }
   },
   "TRIM_GLOW": {
     "tileId": 23,
@@ -258,7 +586,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_ruinstrim.tex",
     "renderOrder": 44,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_ruinstile_noise.tex"
+    }
   },
   "TRIM": {
     "tileId": 22,
@@ -267,7 +606,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/noise_ruinstrimglow.tex",
     "renderOrder": 45,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_ruinstrim_noise.tex"
+    }
   },
   "METEOR": {
     "tileId": 43,
@@ -276,7 +626,38 @@
     "texture": "levels/tiles/meteor.tex",
     "noise": "levels/textures/noise_meteor.tex",
     "renderOrder": 46,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_meteor.tex"
+    }
+  },
+  "MONKEY_DOCK": {
+    "tileId": 263,
+    "name": "cave",
+    "atlas": "levels/tiles/cave.xml",
+    "texture": "levels/tiles/cave.tex",
+    "noise": "levels/textures/ground_noise_dock.tex",
+    "renderOrder": 47,
+    "cannotBeDug": true,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_dock_noise.tex"
+    }
   },
   "SCALE": {
     "tileId": 32,
@@ -285,7 +666,18 @@
     "texture": "levels/tiles/cave.tex",
     "noise": "levels/textures/Ground_noise_dragonfly.tex",
     "renderOrder": 52,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_dragonfly_noise.tex"
+    }
   },
   "WOODFLOOR": {
     "tileId": 10,
@@ -294,16 +686,38 @@
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/noise_woodfloor.tex",
     "renderOrder": 53,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_woodfloor_noise.tex"
+    }
   },
   "COTL_GOLD": {
-    "tileId": 14,
+    "tileId": 268,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/ground_noise_cotl_gold.tex",
     "renderOrder": 54,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/ground_noise_cotl_gold_mini.tex"
+    }
   },
   "CHECKER": {
     "tileId": 12,
@@ -312,43 +726,98 @@
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/noise_checker.tex",
     "renderOrder": 55,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_checker_noise.tex"
+    }
   },
   "MOSAIC_GREY": {
-    "tileId": 15,
+    "tileId": 269,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/noise_mosaictiles_grey.tex",
     "renderOrder": 56,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_mosaictiles_grey_noise.tex"
+    }
   },
   "MOSAIC_RED": {
-    "tileId": 16,
+    "tileId": 270,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/noise_mosaictiles_red.tex",
     "renderOrder": 57,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_mosaictiles_red_noise.tex"
+    }
   },
   "MOSAIC_BLUE": {
-    "tileId": 17,
+    "tileId": 271,
     "name": "blocky",
     "atlas": "levels/tiles/blocky.xml",
     "texture": "levels/tiles/blocky.tex",
     "noise": "levels/textures/noise_mosaictiles_blue.tex",
     "renderOrder": 58,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_mosaictiles_blue_noise.tex"
+    }
   },
   "CARPET2": {
-    "tileId": 18,
+    "tileId": 272,
     "name": "carpet",
     "atlas": "levels/tiles/carpet.xml",
     "texture": "levels/tiles/carpet.tex",
     "noise": "levels/textures/noise_carpet2.tex",
     "renderOrder": 59,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_carpet2_noise.tex"
+    }
   },
   "CARPET": {
     "tileId": 11,
@@ -357,16 +826,38 @@
     "texture": "levels/tiles/carpet.tex",
     "noise": "levels/textures/noise_carpet.tex",
     "renderOrder": 60,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_carpet_noise.tex"
+    }
   },
   "BEARD_RUG": {
-    "tileId": 19,
+    "tileId": 273,
     "name": "carpet",
     "atlas": "levels/tiles/carpet.xml",
     "texture": "levels/tiles/carpet.tex",
     "noise": "levels/textures/Ground_beard_hair.tex",
     "renderOrder": 62,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_beard_hair.tex"
+    }
   },
   "FARMING_SOIL": {
     "tileId": 47,
@@ -375,6 +866,17 @@
     "texture": "levels/tiles/farmsoil.tex",
     "noise": "levels/textures/quagmire_soil_noise.tex",
     "renderOrder": 63,
-    "cannotBeDug": false
+    "cannotBeDug": false,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/quagmire_soil_mini.tex"
+    }
   }
 }

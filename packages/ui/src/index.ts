@@ -8,6 +8,7 @@ import { DstDebugConsoleElement } from './debug-console';
 import { DstEmoteWheelElement } from './emote-wheel';
 import { DstInventoryBarElement } from './inventory-bar';
 import { DstMapControlsElement } from './map-controls';
+import { DstMinimapElement } from './minimap';
 import { DstStatusHudElement } from './status-hud';
 import { DstSavingIndicatorElement } from './saving-indicator';
 
@@ -61,6 +62,9 @@ export {
   inventorySlotAddress,
 } from './inventory-bar';
 export { DstMapControlsElement, type CameraTurnDirection } from './map-controls';
+export { DstMinimapElement, type MinimapOptions, type MinimapStateDetail, type MinimapPixels, type MinimapTerrain, type MinimapTileLayer } from './minimap';
+export type { MinimapOceanConfig, MinimapOceanTuning } from './minimap-ocean';
+export { MinimapView, MINIMAP_ZOOM_MAX, MINIMAP_ZOOM_MIN } from './minimap-view';
 export {
   createSlotContainer,
   type CreateSlotContainerOptions,
@@ -109,6 +113,7 @@ export interface GameUiElements {
   emoteWheel: DstEmoteWheelElement;
   inventoryBar: DstInventoryBarElement;
   mapControls: DstMapControlsElement;
+  minimap: DstMinimapElement;
   statusHud: DstStatusHudElement;
   savingIndicator: DstSavingIndicatorElement;
 }
@@ -148,6 +153,9 @@ export function defineGameUiElements(): void {
   if (!customElements.get('dst-map-controls')) {
     customElements.define('dst-map-controls', DstMapControlsElement);
   }
+  if (!customElements.get('dst-minimap')) {
+    customElements.define('dst-minimap', DstMinimapElement);
+  }
 }
 
 export function mountGameUi(options: MountGameUiOptions = {}): GameUiElements {
@@ -166,15 +174,16 @@ export function mountGameUi(options: MountGameUiOptions = {}): GameUiElements {
   const statusHud = getOrCreate('dst-status-hud', overlayTarget);
   const inventoryBar = getOrCreate('dst-inventory-bar', overlayTarget);
   const mapControls = getOrCreate('dst-map-controls', overlayTarget);
+  const minimap = getOrCreate('dst-minimap', overlayTarget);
   const savingIndicator = getOrCreate('dst-saving-indicator', overlayTarget);
 
   if (options.assetBaseUrl) {
-    for (const element of [chestPanel, cookPotPanel, iceBoxPanel, backpackPanel, crafting, debugConsole, emoteWheel, statusHud, inventoryBar, mapControls, savingIndicator]) {
+    for (const element of [chestPanel, cookPotPanel, iceBoxPanel, backpackPanel, crafting, debugConsole, emoteWheel, statusHud, inventoryBar, mapControls, minimap, savingIndicator]) {
       element.setAttribute('asset-base', options.assetBaseUrl);
     }
   }
 
-  return { chestPanel, cookPotPanel, iceBoxPanel, backpackPanel, crafting, debugConsole, emoteWheel, inventoryBar, mapControls, statusHud, savingIndicator };
+  return { chestPanel, cookPotPanel, iceBoxPanel, backpackPanel, crafting, debugConsole, emoteWheel, inventoryBar, mapControls, minimap, statusHud, savingIndicator };
 }
 
 function getOrCreate<K extends keyof HTMLElementTagNameMap>(
@@ -200,6 +209,7 @@ declare global {
     'dst-emote-wheel': DstEmoteWheelElement;
     'dst-inventory-bar': DstInventoryBarElement;
     'dst-map-controls': DstMapControlsElement;
+    'dst-minimap': DstMinimapElement;
     'dst-status-hud': DstStatusHudElement;
     'dst-saving-indicator': DstSavingIndicatorElement;
   }

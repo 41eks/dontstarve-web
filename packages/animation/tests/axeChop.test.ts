@@ -9,6 +9,8 @@ import { PickaxeActionController } from '../../stategraphs/src/pickaxe';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
+import { ShovelActionController } from '../../stategraphs/src/shovel';
+import { collectEquippedActions } from '../../stategraphs/src/componentactions';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
@@ -53,7 +55,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'], loadRadius: 20,
   });
   scene.add(forest.group);
-  forest.bindWorld({ camera, dropLoot });
+  forest.bindWorld({ camera, scene: new THREE.Scene(), spawnAsh: vi.fn(), dropLoot });
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
   const controller = new PickaxeActionController(world, animation, locomotor, inventory.handEquipment, () => forest.chopTargets, undefined, 'CHOP');
@@ -90,7 +92,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
 
     // The last strike fells the tree away from the chopper and leaves a stump.
     vi.spyOn(Math, 'random').mockReturnValue(.9);
-    const worker = { getPosition: () => ({ x: 1, z: 3 }) };
+    const worker = { getPosition: () => new THREE.Vector3(1, 0, 3) };
     const tree = forest.chopTargets[0];
     for (let i = 0; i < 15; i++) expect(performToolWork('CHOP', tree.entity, worker, axe)).toBe(true);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeFall', expect.any(THREE.Vector3));
@@ -100,9 +102,13 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
       { itemId: 'moonbutterfly', count: 1 }]);
     expect(tree.model.userData.animationController.currentAnimation).toMatch(/^fall(left|right)_tall$/);
     expect(forest.chopTargets).toEqual([]);
+    expect(tree.isValid()).toBe(false);
+    expect(forest.digTargets).toHaveLength(1);
+    expect(tree.entity.hasTag('CHOP_workable')).toBe(false);
+    expect(tree.entity.hasTag('DIG_workable')).toBe(true);
     expect(tree.entity.hasTag('stump')).toBe(true);
     expect(performToolWork('CHOP', tree.entity, worker, axe)).toBe(false);
-    expect(forest.exportState(forest.entities[0])).toEqual({ moonTree: { stump: true } });
+    expect(forest.exportState(forest.entities[0])).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
     expect(axe.components.finiteuses.remaining).toBe(84);
 
     // The stump persists through unloading and a restored forest.
@@ -115,12 +121,79 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
       positions: [new THREE.Vector3(1, 0, 0)], entityIds: ['tree'], loadRadius: 20,
     });
     try {
-      restored.bindWorld({ camera, dropLoot });
+      restored.bindWorld({ camera, scene: new THREE.Scene(), spawnAsh: vi.fn(), dropLoot });
       restored.restoreState('tree', { stump: true });
       restored.updateNearby(player.position);
       expect(restored.entities[0].model!.userData.animationController.currentAnimation).toBe('stump_tall');
       expect(restored.chopTargets).toEqual([]);
-      expect(restored.exportState(restored.entities[0])).toEqual({ moonTree: { stump: true } });
+      expect(restored.exportState(restored.entities[0])).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
     } finally { restored.dispose(); }
+  } finally { controller.dispose(); forest.dispose(); inventory.dispose(); }
+});
+
+it('digs a restored moon tree stump at shovel frame 15 and permanently removes it, preserving other trees and cancelled work', async () => {
+  const player = await createWilsonPlayer('/dst/data/anim');
+  const animation = player.userData.animationController as WilsonAnimationController;
+  await animation.setCarryItem('shovel');
+  const inventory = createPickupInventory();
+  inventory.add('shovel', 1);
+  inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
+  const shovel = inventory.getEntity(equipmentSlotAddress('hand'))!;
+  const camera = new THREE.PerspectiveCamera(), scene = new THREE.Scene(), dropLoot = vi.fn();
+  const forest = await createMoonTreeForest('/dst/data/anim', {
+    positions: [new THREE.Vector3(1, 0, 0), new THREE.Vector3(8, 0, 0)],
+    entityIds: ['stump', 'standing'], loadRadius: 20,
+  });
+  forest.bindWorld({ camera, scene: new THREE.Scene(), spawnAsh: vi.fn(), dropLoot });
+  forest.restoreState('stump', { stump: true });
+  player.position.set(1, 0, 3);
+  forest.updateNearby(player.position);
+  const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
+  const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
+  const controller = new ShovelActionController(world, animation, locomotor, inventory.handEquipment, () => forest.digTargets);
+  const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
+  try {
+    const target = forest.digTargets[0];
+    expect(forest.chopTargets.map(target => target.id)).toEqual(['standing']);
+    expect(target.entity!.components.workable!.GetWorkLeft()).toBe(1);
+    expect(collectEquippedActions(shovel, target.entity!, false)).toEqual([]);
+    expect(collectEquippedActions(shovel, target.entity!, true)).toEqual(['DIG']);
+    expect(controller.request(target)).toBe(true); controller.update(0);
+    controller.cancel(); advance(60);
+    expect(target.isValid()).toBe(true);
+    expect(forest.exportState(forest.entities[0])).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+    expect(shovel.components.finiteuses.remaining).toBeUndefined();
+    expect(dropLoot).not.toHaveBeenCalled();
+
+    // Unloading a model invalidates its target, retaining logical stump work.
+    player.position.set(500, 0, 0); forest.updateNearby(player.position);
+    expect(target.isValid()).toBe(false);
+    expect(target.dig()).toBe(false);
+    player.position.set(1, 0, 3); forest.updateNearby(player.position);
+    const reloaded = forest.digTargets[0], standing = forest.chopTargets[0];
+    const geometryDispose = vi.spyOn((reloaded.model.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
+    expect(controller.request(reloaded)).toBe(true); controller.update(0);
+    while (animation.stategraph.stateName === 'dig_start') animation.update(1 / 30);
+    advance(14);
+    expect(reloaded.isValid()).toBe(true);
+    expect(dropLoot).not.toHaveBeenCalled();
+    advance(1);
+    expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'log', count: 2 }], reloaded.position);
+    expect(shovel.components.finiteuses.remaining).toBe(24);
+    expect(reloaded.entity!.isRemoved).toBe(true);
+    expect(reloaded.isValid()).toBe(false);
+    expect(reloaded.dig()).toBe(false);
+    expect(geometryDispose).toHaveBeenCalledOnce();
+    expect(reloaded.model.parent).toBeNull();
+    expect(forest.entities.map(entity => entity.saveId)).toEqual(['standing']);
+    expect(forest.positions).toEqual([standing.position]);
+    expect(forest.renderEntities.map(entity => entity.object)).toEqual([standing.model]);
+    expect(forest.digTargets).toEqual([]);
+    expect(forest.exportState(forest.entities[0])).toMatchObject({ moonTree: { size: 'tall' }, growable: { stage: 3 } });
+    player.position.set(500, 0, 0); forest.updateNearby(player.position);
+    player.position.set(1, 0, 3); forest.updateNearby(player.position);
+    expect(forest.digTargets).toEqual([]);
+    expect(forest.activeEntities.size).toBe(1);
+    expect(forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(16);
   } finally { controller.dispose(); forest.dispose(); inventory.dispose(); }
 });

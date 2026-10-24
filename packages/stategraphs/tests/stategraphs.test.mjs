@@ -279,10 +279,10 @@ test('mining keeps Lua pre-state tags and enters idle while the post-animation s
   assert.deepEqual(played.slice(1), ['pickaxe_pre', 'pickaxe_loop', 'pickaxe_pst', 'idle_loop']);
 });
 
-test('short actions commit at frame 6 and time out at frame 10 without restarting their animation queue', () => {
+test('turf DEPLOY commits at frame 6 and times out at frame 10 without restarting its animation queue', () => {
   const { graph, played } = actor();
   let executed = 0;
-  graph.pushBufferedAction(new BufferedAction('PLANT', () => { executed++; }));
+  graph.pushBufferedAction(new BufferedAction('DEPLOY', () => { executed++; }));
   graph.update(6 * FRAMES);
   assert.equal(executed, 1);
   assert.equal(graph.stateName, 'doshortaction');

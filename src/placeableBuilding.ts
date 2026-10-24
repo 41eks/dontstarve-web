@@ -32,11 +32,13 @@ import { WARDROBE_DEFINITION, WARDROBE_ID } from '@dontstarve-web/prefab/wardrob
 import { FIRE_PIT_DEFINITION, FIRE_PIT_ID, type FirePitId } from '@dontstarve-web/prefab/firepit';
 import { ICE_BOX_DEFINITION, ICE_BOX_ID, type IceBoxId } from '@dontstarve-web/prefab/icebox';
 import { DRAGONFLY_CHEST_DEFINITION, DRAGONFLY_CHEST_ID, type DragonflyChestId } from '@dontstarve-web/prefab/dragonfly_chest';
+import { BOOKSTATION_DEFINITION, BOOKSTATION_ID, type BookstationId } from '@dontstarve-web/prefab/bookstation';
 import { CAMPFIRE_DEFINITION, CAMPFIRE_ID, type CampfireId } from '@dontstarve-web/prefab/campfire';
 import { SALT_BOX_DEFINITION, SALT_BOX_ID, type SaltBoxId } from '@dontstarve-web/prefab/saltbox';
 import { NIGHT_LIGHT_DEFINITION, NIGHT_LIGHT_ID, type NightLightId } from '@dontstarve-web/prefab/nightlight';
 import { PIG_HOUSE_DEFINITION, PIG_HOUSE_ID, type PigHouseId } from '@dontstarve-web/prefab/pighouse';
 import { BIRDCAGE_DEFINITION, BIRDCAGE_ID, type BirdcageId } from '@dontstarve-web/prefab/birdcage';
+import { MOONDIAL_DEFINITION, MOONDIAL_ID } from '@dontstarve-web/prefab/moondial';
 import { WINTEROMETER_DEFINITION, WINTEROMETER_ID, type WinterometerId } from '@dontstarve-web/prefab/winterometer';
 import { MUSHROOM_LIGHT_DEFINITIONS, MUSHROOM_LIGHT_IDS, type MushroomLightId } from '@dontstarve-web/prefab/mushroom_light';
 
@@ -45,7 +47,7 @@ export { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
 export type AnimatedBuildingId = CookPotId | FirePitId | IceBoxId | ResearchLabId | TreasureChestId | typeof TENT_ID
-    | DragonflyChestId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof WARDROBE_ID;
+    | DragonflyChestId | BookstationId | CampfireId | SaltBoxId | NightLightId | PigHouseId | MushroomLightId | WinterometerId | BirdcageId | SculptingTableId | typeof MOONBASE_ID | typeof MOONDIAL_ID | typeof WARDROBE_ID;
 export type PlaceableBuildingId = AnimatedBuildingId | WallId;
 export type PlaceableBuildingInteractionChange = AnimatedBuildingInteractionChange<AnimatedBuildingId>;
 
@@ -57,8 +59,10 @@ const ANIMATED_BUILDING_IDS: readonly AnimatedBuildingId[] = [
     TREASURE_CHEST_ID,
     TENT_ID,
     MOONBASE_ID,
+    MOONDIAL_ID,
     WARDROBE_ID,
     DRAGONFLY_CHEST_ID,
+    BOOKSTATION_ID,
     CAMPFIRE_ID,
     SALT_BOX_ID,
     NIGHT_LIGHT_ID,
@@ -77,8 +81,10 @@ const ANIMATED_BUILDING_DEFINITIONS = {
     [TREASURE_CHEST_ID]: TREASURE_CHEST_DEFINITION,
     [TENT_ID]: TENT_DEFINITION,
     [MOONBASE_ID]: MOONBASE_DEFINITION,
+    [MOONDIAL_ID]: MOONDIAL_DEFINITION,
     [WARDROBE_ID]: WARDROBE_DEFINITION,
     [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_DEFINITION,
+    [BOOKSTATION_ID]: BOOKSTATION_DEFINITION,
     [CAMPFIRE_ID]: CAMPFIRE_DEFINITION,
     [SALT_BOX_ID]: SALT_BOX_DEFINITION,
     [NIGHT_LIGHT_ID]: NIGHT_LIGHT_DEFINITION,

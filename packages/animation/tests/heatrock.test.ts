@@ -4,7 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ItemEntity, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createPickupInventory } from './pickupFixture';
 import { configureHeatRockEntity } from '../../prefab/src/heatrock';
-import { GroundItemAssets, createGroundItemSprite } from '../../prefab/src/groundItems';
+import { GroundItemAssets, createGroundItemSprite, createGroundItemFactory } from '../../prefab/src/groundItems';
+import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
 import { createRecipe } from '../../ui/src/categories/shared';
 
 beforeEach(() => {
@@ -49,5 +50,19 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     const recipe = createRecipe('heatrock');
     expect(recipe.inventoryIcon).toBe('heat_rock3.tex');
     expect(recipe.skins.find(skin => skin.id === 'heatrock_fantasy')?.inventoryIcon).toBe('heatrock_fantasy3.tex');
+    // A cold inst dropped or reskinned receives its own range, rather than the catalog's neutral pose.
+    const entity = new ItemEntity({ itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
+    configureHeatRockEntity(entity);
+    const factory = createGroundItemFactory({ assets } as GroundPrefabContext);
+    const visual = await factory.create({ ...entity.snapshot(), name: '暖石', icon: 'heatrock_fantasy1.tex' });
+    try {
+      visual.bindEntity?.(entity);
+      expect((visual as unknown as { currentAnimation: string }).currentAnimation).toBe('1');
+      visual.update?.(1);
+      expect(entity.snapshot()).toMatchObject({ skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
+      const mesh = visual.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+      expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
+      expect(mesh.material.some(material => material.name === 'ground:heatrock_fantasy')).toBe(true);
+    } finally { visual.dispose(); entity.destroy(); factory.dispose?.(); }
   } finally { assets.dispose(); }
 });

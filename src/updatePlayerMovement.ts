@@ -5,6 +5,7 @@ import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { input } from './InputManager';
 import type { PlayerBody } from './types/Player';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
+import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 
 export const JUMP_VELOCITY = 10;
 
@@ -22,6 +23,8 @@ export function updateMovement(
     const direction = new THREE.Vector3();
     const target = new THREE.Vector3();
     const up = new THREE.Vector3(0, 1, 0);
+    /** Last horizontal travel direction: the slip states' motor velocity points along it. */
+    const heading = new THREE.Vector3(0, 0, 1);
 
     return (speed: number, dt: number) => {
         camera.getWorldDirection(forward);
@@ -36,6 +39,13 @@ export function updateMovement(
         const manual = input.isManualMovement();
         const interrupting = input.isActionInterrupting();
         const animation = player.userData.animationController as WilsonAnimationController | undefined;
+        const slipping = animation?.stategraph.isSlipping === true;
+        // Locomotor facts the slip states read through the player's host.
+        player.userData.runSpeed = speed / WORLD_SCALE;
+        player.userData.wantsToMoveForward = manual || locomotor.destination !== undefined;
+        if (!slipping && Math.hypot(playerBody.velocity.x, playerBody.velocity.z) > 0.01) {
+            heading.set(playerBody.velocity.x, 0, playerBody.velocity.z).normalize();
+        }
         if (animation?.isEmoting && interrupting) animation.cancelEmote();
         if (animation?.isMining && interrupting) animation.cancelMine();
         if (animation?.isChopping && interrupting) animation.cancelChop();
@@ -46,11 +56,21 @@ export function updateMovement(
         const sleeping = animation?.isSleeping === true;
         if (sleeping && (manual || locomotor.destination)) animation!.wakeFromBed();
         const castingBusy = (animation?.isCasting || animation?.isReading || animation?.isPlayingInstrument) && animation.stategraph.hasStateTag('busy');
-        const acting = sleeping || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        const acting = slipping || sleeping || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        if (slipping && player.userData.wantsToMoveForward) animation!.stategraph.pushLocomote();
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.
         else locomotor.update(speed, Math.min(dt, MAX_PHYSICS_FRAME_TIME), manual ? direction : undefined);
 
+        // Physics:GetMotorSpeed is the commanded speed; contact friction lowers the body's measured velocity.
+        const commanded = !acting && ((manual && direction.lengthSq() > 0) || locomotor.destination !== undefined);
+        // SG Physics:SetMotorVel: slide along the heading at the state's speed.
+        const motorSpeed = player.userData.motorSpeed as number | undefined;
+        if (animation?.stategraph.isSlipping && motorSpeed !== undefined) {
+            playerBody.velocity.x = heading.x * motorSpeed * WORLD_SCALE;
+            playerBody.velocity.z = heading.z * motorSpeed * WORLD_SCALE;
+        }
+        player.userData.currentMotorSpeed = slipping ? motorSpeed ?? 0 : commanded ? speed / WORLD_SCALE : 0;
         direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
         if (!player.userData.billboard && direction.lengthSq() > 0) {
             player.lookAt(target.copy(player.position).add(direction));

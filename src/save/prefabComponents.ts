@@ -35,6 +35,7 @@ export interface PrefabComponentSchema {
   readonly regrowTime?: number;
   /** finiteuses.lua maximum bounding the saved uses. */
   readonly finiteUses?: number;
+  readonly growthStages?: number;
 }
 
 export type PrefabComponentParser = (value: unknown, path: string, context: EntitySaveContext) => SavedEntity['components'];
@@ -120,9 +121,63 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     }
     if (keys.includes('moonTree') && c.moonTree !== undefined) {
       const componentPath = `${path}.moonTree`;
-      const tree = object(c.moonTree, componentPath, ['stump']);
-      if (tree.stump !== true) fail(`${componentPath}.stump`, 'expected true');
-      components.moonTree = { stump: true };
+      const tree = object(c.moonTree, componentPath, ['stump', 'burnt', 'size']);
+      if (tree.stump !== undefined && tree.stump !== true) fail(`${componentPath}.stump`, 'expected true');
+      if (tree.burnt !== undefined && tree.burnt !== true) fail(`${componentPath}.burnt`, 'expected true');
+      if (tree.burnt && tree.stump) fail(componentPath, 'a burnt tree is not a stump');
+      components.moonTree = { ...(tree.stump === true ? { stump: true } : {}), ...(tree.burnt === true ? { burnt: true } : {}),
+        ...(tree.size === undefined ? {} : { size: choice(tree.size, `${componentPath}.size`, ['short', 'normal', 'tall']) }) };
+    }
+    if (keys.includes('growable') && c.growable !== undefined) {
+      const p = `${path}.growable`, growth = object(c.growable, p, ['stage', 'time', 'sleeptime']);
+      components.growable = { stage: integer(growth.stage, `${p}.stage`, 1, schema.growthStages ?? 3),
+        ...(growth.time === undefined ? {} : { time: number(growth.time, `${p}.time`, 0, 2100) }),
+        ...(growth.sleeptime === undefined ? {} : { sleeptime: number(growth.sleeptime, `${p}.sleeptime`, 0) }) };
+      const size = components.moonTree?.size;
+      if (size && ['short', 'normal', 'tall'].indexOf(size) + 1 !== components.growable.stage) fail(p, 'stage must match moon tree size');
+      if ((components.moonTree?.stump || components.moonTree?.burnt) && growth.time !== undefined) fail(p, 'stumps and burnt trees cannot grow');
+    }
+    if (keys.includes('evergreen')) {
+      if (c.evergreen !== undefined) {
+        const p = `${path}.evergreen`, tree = object(c.evergreen, p, ['stump', 'burnt', 'burntcone']);
+        for (const key of ['stump', 'burnt', 'burntcone'] as const) {
+          if (tree[key] !== undefined && tree[key] !== true) fail(`${p}.${key}`, 'expected true');
+        }
+        if (tree.stump && (tree.burnt || tree.burntcone)) fail(p, 'a stump is not burnt');
+        if (tree.burntcone && !tree.burnt) fail(`${p}.burntcone`, 'requires burnt');
+        components.evergreen = { ...(tree.stump === true ? { stump: true as const } : {}),
+          ...(tree.burnt === true ? { burnt: true as const } : {}), ...(tree.burntcone === true ? { burntcone: true as const } : {}) };
+      }
+      if (!components.growable) fail(`${path}.growable`, 'evergreen stage is required');
+      if ((components.evergreen?.stump || components.evergreen?.burnt) && components.growable.time !== undefined) fail(`${path}.growable.time`, 'stumps and burnt trees cannot grow');
+    }
+    if (keys.includes('deciduoustree')) {
+      const p = `${path}.deciduoustree`, tree = object(c.deciduoustree, p, ['stump', 'burnt', 'burntcone', 'build', 'leaf_state', 'target_leaf_state', 'leaveschangetime']);
+      for (const key of ['stump', 'burnt', 'burntcone'] as const) {
+        if (tree[key] !== undefined && tree[key] !== true) fail(`${p}.${key}`, 'expected true');
+      }
+      if (tree.stump && (tree.burnt || tree.burntcone)) fail(p, 'a stump is not burnt');
+      if (tree.burntcone && !tree.burnt) fail(`${p}.burntcone`, 'requires burnt');
+      components.deciduoustree = {
+        ...(tree.stump === true ? { stump: true as const } : {}),
+        ...(tree.burnt === true ? { burnt: true as const } : {}), ...(tree.burntcone === true ? { burntcone: true as const } : {}),
+        ...(tree.build === undefined ? {} : { build: choice(tree.build, `${p}.build`, ['normal', 'red', 'orange', 'yellow', 'barren'] as const) }),
+        leaf_state: choice(tree.leaf_state, `${p}.leaf_state`, ['normal', 'colorful', 'barren'] as const),
+        target_leaf_state: choice(tree.target_leaf_state, `${p}.target_leaf_state`, ['normal', 'colorful', 'barren'] as const),
+        ...(tree.leaveschangetime === undefined ? {} : { leaveschangetime: number(tree.leaveschangetime, `${p}.leaveschangetime`, 0, 900) }),
+      };
+      if (!components.growable) fail(`${path}.growable`, 'deciduoustree stage is required');
+      if ((tree.stump || tree.burnt) && (components.growable.time !== undefined || tree.leaveschangetime !== undefined)) fail(p, 'stumps and burnt trees cannot grow or change leaves');
+    }
+    if (keys.includes('saplingTimer')) {
+      const p = `${path}.saplingTimer`, timer = object(c.saplingTimer, p, ['timers']);
+      const timers = object(timer.timers, `${p}.timers`, ['grow']);
+      const grow = object(timers.grow, `${p}.timers.grow`, ['timeleft', 'paused', 'initial_time']);
+      if (typeof grow.paused !== 'boolean') fail(`${p}.timers.grow.paused`, 'expected a boolean');
+      const initial_time = number(grow.initial_time, `${p}.timers.grow.initial_time`, 150, 300);
+      components.saplingTimer = { timers: { grow: {
+        timeleft: number(grow.timeleft, `${p}.timers.grow.timeleft`, 0, initial_time), paused: grow.paused, initial_time,
+      } } };
     }
     if (keys.includes('wormhole') && c.wormhole !== undefined) {
       const componentPath = `${path}.wormhole`;

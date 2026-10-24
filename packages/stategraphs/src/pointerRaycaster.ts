@@ -20,7 +20,8 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
 export class PointerRaycaster {
     private readonly camera: THREE.Camera;
     private readonly renderer: THREE.WebGLRenderer;
-    private readonly ground: THREE.Object3D;
+    private readonly ground?: THREE.Object3D;
+    private readonly pointerEvents?: EventTarget;
     private readonly raycaster = new THREE.Raycaster();
     private readonly ndc = new THREE.Vector2();
     private clientX = 0;
@@ -30,11 +31,13 @@ export class PointerRaycaster {
     private groundCached = false;
     private cachedGround?: THREE.Intersection;
 
-    constructor(world: Pick<WorldContext, 'camera' | 'renderer' | 'ground'>) {
+    /** Object-only picking can omit ground; ground queries then return no hit. */
+    constructor(world: Pick<WorldContext, 'camera' | 'renderer'> & Partial<Pick<WorldContext, 'ground'>>) {
         this.camera = world.camera;
         this.renderer = world.renderer;
         this.ground = world.ground;
-        window.addEventListener('pointermove', this.handlePointerMove);
+        this.pointerEvents = typeof window === 'undefined' ? undefined : window;
+        this.pointerEvents?.addEventListener('pointermove', this.handlePointerMove as EventListener);
     }
 
     get pointerClientX(): number {
@@ -64,7 +67,7 @@ export class PointerRaycaster {
     endFrame(): void { this.cacheGround = false; this.groundCached = false; }
 
     groundPoint(): THREE.Vector3 | undefined {
-        return this.groundHit()?.point.clone();
+        return this.groundHit()?.point.clone().setY(0);
     }
 
     raycastPointer(
@@ -91,7 +94,7 @@ export class PointerRaycaster {
     }
 
     dispose(): void {
-        window.removeEventListener('pointermove', this.handlePointerMove);
+        this.pointerEvents?.removeEventListener('pointermove', this.handlePointerMove as EventListener);
     }
 
     private readonly handlePointerMove = (event: PointerEvent) => {
@@ -99,6 +102,7 @@ export class PointerRaycaster {
     };
 
     private groundHit(): THREE.Intersection | undefined {
+        if (!this.ground) return undefined;
         if (this.cacheGround && this.groundCached) return this.cachedGround;
         this.ground.updateWorldMatrix(true, false);
         this.cachedGround = this.raycastPointer([this.ground], false);

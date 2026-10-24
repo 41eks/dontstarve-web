@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { prewarmScenePasses, renderScenePasses } from '@dontstarve-web/animation/sceneRenderPass';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 import { createEffect, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type WorldSeason } from '@dontstarve-web/signals';
 import { DstLocalLighting } from './dstLocalLighting';
@@ -436,6 +437,7 @@ export class DstLightingRenderer {
     const previousTarget = this.renderer.getRenderTarget();
     this.renderer.setRenderTarget(this.renderTarget);
     try {
+      await prewarmScenePasses(this.renderer, scene, camera, signal);
       await prewarmScene(this.renderer, scene, camera, signal);
       this.renderer.setRenderTarget(null);
       await prewarmScene(this.renderer, this.postScene, this.postCamera, signal);
@@ -459,6 +461,7 @@ export class DstLightingRenderer {
     }
     this.renderer.setRenderTarget(this.renderTarget);
     try {
+      renderScenePasses(this.renderer, scene, camera, this.localLighting.getRenderPassLighting());
       this.renderer.render(scene, camera);
     } finally {
       scene.background = originalBackground;

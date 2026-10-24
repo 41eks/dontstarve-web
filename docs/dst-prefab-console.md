@@ -4,7 +4,7 @@
 
 源码根目录：`/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts/`。下文 `prefabs/*.lua`、`components/*.lua` 等路径均相对于该目录，行号对应本次读取的源码版本。
 
-清单覆盖项目 [groundItems.json](../packages/prefab/src/groundItems.json) 的 235 个 ID、[hats.json](../packages/prefab/src/hats.json) 的 82 个玩家帽子 ID，以及本次查看的 57 个世界实体和部分生物、特殊实体。2026-10-08 补充核对三色生／熟蘑菇的六个物品 ID，2026-10-11 补充核对 `book_silviculture`、`book_rain`、`dug_sapling`、`dug_sapling_moon`、`marble`、`moon_tree_blossom`、`moonbutterfly`、`moonbutterflywings` 和 `sculptingtable`，2026-10-12 补充核对 `bird_egg`、`rottenegg`，并确认 `birdcage` 与四种鸟的入栏形态。它是已核对范围的快照，不是 DST 全量 prefab 注册表，也不是项目当前命令支持列表。
+清单覆盖项目 [groundItems.json](../packages/prefab/src/groundItems.json) 的 235 个 ID、[hats.json](../packages/prefab/src/hats.json) 的 82 个玩家帽子 ID，以及本次查看的 57 个世界实体和部分生物、特殊实体。2026-10-08 补充核对三色生／熟蘑菇的六个物品 ID，2026-10-11 补充核对 `book_silviculture`、`book_rain`、`book_moon`、`dug_sapling`、`dug_sapling_moon`、`marble`、`moon_tree_blossom`、`moonbutterfly`、`moonbutterflywings` 和 `sculptingtable`，2026-10-12 补充核对 `bird_egg`、`rottenegg`，并确认 `birdcage` 与四种鸟的入栏形态。它是已核对范围的快照，不是 DST 全量 prefab 注册表，也不是项目当前命令支持列表。
 
 ## 分类汇总
 
@@ -67,6 +67,8 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `houndstooth` | 可生成 | 可入栏 | `prefabs/houndstooth.lua:45` |
 | `nitre` | 可生成 | 可入栏 | `prefabs/nitre.lua:49` |
 | `livinglog` | 可生成 | 可入栏 | `prefabs/livinglog.lua:63` |
+| `papyrus` | 可生成 | 可入栏 | `prefabs/papyrus.lua:46` |
+| `featherpencil` | 可生成 | 可入栏 | `prefabs/featherpencil.lua:34` |
 | `nightmarefuel` | 可生成 | 可入栏 | `prefabs/nightmarefuel.lua:93` |
 | `petals` | 可生成 | 可入栏 | `prefabs/petals.lua:99` |
 | `petals_evil` | 可生成 | 可入栏 | `prefabs/petals_evil.lua:56` |
@@ -129,9 +131,10 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `feather_robin_winter` | 可生成 | 可入栏 | `prefabs/feathers.lua:47` |
 | `feather_canary` | 可生成 | 可入栏 | `prefabs/feathers.lua:47` |
 | `torch` | 可生成 | 可入栏 | `prefabs/torch.lua:445` |
-| `backpack` | 可生成 | 特殊持有，不能进普通格 | `prefabs/backpack.lua:268` |
+| `backpack` | 可生成；项目支持 `c_spawn("backpack")` | 特殊持有，不能进普通格 | `prefabs/backpack.lua:268`；地面地图图标为 `backpack.png`，拾取／装备后隐藏；`c_save()` 与读档保留身份、位置和容器状态 |
 | `bernie_inactive` | 可生成 | 可入栏 | `prefabs/bernie_inactive.lua:272` |
 | `farm_plow_item` | 可生成 | 可入栏 | `prefabs/farm_plow.lua:309` |
+| `dock_kit` | 可生成 | 可入栏（`stackable`，上限 `STACK_SIZE_MEDITEM = 20`） | `prefabs/dock_kit.lua`；`deployable` 为 `DEPLOYMODE.CUSTOM`，只能铺在与永久陆地或码头相邻的 `OCEAN_COASTAL` 格上，部署后该格变为 `MONKEY_DOCK` |
 | `lantern` | 可生成 | 可入栏 | `prefabs/mininglantern.lua:259` |
 | `heatrock` | 可生成 | 可入栏 | `prefabs/heatrock.lua:232` 的 `inventoryitem`；无 `stackable` 或 `equippable`。本项目暂固定初始第 3 档，温度分支未实现 |
 | `phonograph` | 可生成 | 可入栏 | `prefabs/phonograph.lua:190` |
@@ -147,6 +150,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `reskin_tool` | 可生成 | 可入栏 | `prefabs/reskin_tool.lua:386` |
 | `book_silviculture` | 可生成 | 可入栏 | `prefabs/books.lua:1031`（`MakeBook` 共享构造）；`componentactions.lua:2525` 仅向带 `reader` 标签的玩家提供 READ |
 | `book_rain` | 可生成 | 可入栏 | `prefabs/books.lua:809`（`MakeBook` 共享构造）；`componentactions.lua:2525` 仅向带 `reader` 标签的玩家提供 READ；成功阅读由 `components/book.lua:OnRead` 生成 `fx.lua:3052` 的 `fx_book_rain` |
+| `book_moon` | 可生成 | 可入栏 | `prefabs/books.lua:845`（`MakeBook` 共享构造）；`componentactions.lua:2525` 仅向带 `reader` 标签的玩家提供 READ；成功阅读由 `components/book.lua:OnRead` 生成 `fx.lua:2926` 的 `fx_book_moon` |
 | `hammer` | 可生成 | 可入栏 | `prefabs/hammer.lua:86` |
 | `bugnet` | 可生成 | 可入栏 | `prefabs/bugnet.lua:74` |
 | `razor` | 可生成 | 可入栏 | `prefabs/razor.lua:30`、`:32` 的 `inventoryitem` 与 `shaver`；无 `stackable`、`equippable` 或 `finiteuses`，由鼠标举着对睡着的牛使用 |
@@ -399,7 +403,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `mask_princesshat` | 可生成 | 可入栏 | `prefabs/hats.lua:219` |
 | `yoth_knighthat` | 可生成 | 可入栏 | `prefabs/hats.lua:219` |
 
-## 世界实体：58 个 ID
+## 世界实体
 
 下列实例的构造没有添加 inventoryitem。共用文件可能为其他实体添加该组件，例如 treasurechest.lua 的 sunkenchest 分支；不能按整个文件是否出现 inventoryitem 来分类。
 
@@ -411,6 +415,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `coldfire` | 可生成 | 不能入栏 | `prefabs/coldfire.lua` |
 | `icebox` | 可生成 | 不能入栏 | `prefabs/icebox.lua` |
 | `saltbox` | 可生成 | 不能入栏 | `prefabs/saltbox.lua` |
+| `bookstation` | 可生成 | 不能入栏 | `prefabs/bookstation.lua` |
 | `tent` | 可生成 | 不能入栏 | `prefabs/tent.lua` |
 | `siestahut` | 可生成 | 不能入栏 | `prefabs/tent.lua` |
 | `wardrobe` | 可生成 | 不能入栏 | `prefabs/wardrobe.lua` |
@@ -419,6 +424,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `winterometer` | 可生成 | 不能入栏 | `prefabs/winterometer.lua` |
 | `birdcage` | 可生成 | 不能入栏 | `prefabs/birdcage.lua` |
 | `moonbase` | 可生成 | 不能入栏 | `prefabs/moonbase.lua` |
+| `moondial` | 可生成 | 不能入栏 | `prefabs/moondial.lua` |
 | `nightlight` | 可生成 | 不能入栏 | `prefabs/nightlight.lua` |
 | `mushroom_light` | 可生成 | 不能入栏 | `prefabs/mushroom_light.lua` |
 | `mushroom_light2` | 可生成 | 不能入栏 | `prefabs/mushroom_light.lua` |
@@ -445,6 +451,10 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `hutch` | 可生成 | 不能入栏 | `prefabs/hutch.lua` |
 | `wormhole` | 可生成 | 不能入栏 | `prefabs/wormhole.lua` |
 | `flower` | 可生成 | 不能入栏 | `prefabs/flower.lua` |
+| `evergreen`、`evergreen_short`、`evergreen_normal`、`evergreen_tall` | 可生成 | 不能入栏 | `prefabs/evergreens.lua` normal build：保存名统一为 `evergreen`，四阶段生长，`CHOP` 砍伐、`DIG` 铲树桩；松果为单独库存物品 |
+| `deciduoustree`、`deciduoustree_short`、`deciduoustree_normal`、`deciduoustree_tall` | 可生成 | 不能入栏 | `prefabs/deciduoustrees.lua` normal build：统一保存为 `deciduoustree`，三阶段循环生长，`CHOP` 砍伐、`DIG` 铲树桩；季节树叶与 `acorn` 掉落沿用正常树分支，无 `inventoryitem` |
+| `moon_tree`、`moon_tree_short`、`moon_tree_normal`、`moon_tree_tall` | 可生成 | 不能入栏 | `prefabs/moontree.lua`：世界实体，支持三阶段循环生长；各构造的保存名统一为 `moon_tree` |
+| `moonbutterfly_sapling` | 可生成 | 不能入栏 | `prefabs/planted_tree.lua`：`baby_moon_tree`，`timer` 到期生成 `moon_tree_short`；`moonbutterfly.lua:OnDeploy` 种下此实体并消耗一只月蛾 |
 | `flower_rose` | 可生成 | 不能入栏 | `prefabs/flower.lua` |
 | `flower_cave` | 可生成 | 不能入栏 | `prefabs/flower_cave.lua` |
 | `flower_cave_double` | 可生成 | 不能入栏 | `prefabs/flower_cave.lua` |

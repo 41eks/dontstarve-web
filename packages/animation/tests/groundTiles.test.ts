@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { groundTileVariant, loadGroundTileAssets } from '../../prefab/src/groundTiles';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
+import { createSignal, type ClockState } from '../../signals/src';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {
   const bytes = await readFile(new URL(`../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url));
@@ -32,9 +33,9 @@ it('updates the outer boundary of contiguous dirt while leaving its interior fre
   const edge = visual.getObjectByName('TurfBlend:DECIDUOUS') as THREE.Mesh;
   expect(edge.visible).toBe(false);
   map.dig({ x: 6, z: 6 });
-  expect(edge.geometry.getIndex()!.count).toBe(6);
+  expect(edge.geometry.getIndex()!.count).toBe(9 * 6);
   for (let col = 0; col < 3; col++) for (let row = 0; row < 3; row++) map.dig({ x: col * 12 + 6, z: row * 12 + 6 });
-  expect(edge.geometry.getIndex()!.count).toBe(8 * 6);
+  expect(edge.geometry.getIndex()!.count).toBe(24 * 6);
   const positions = edge.geometry.getAttribute('position');
   for (let i = 0; i < positions.count; i += 4) {
     expect([positions.getX(i), positions.getZ(i)]).not.toEqual([12, 12]);
@@ -58,7 +59,12 @@ it('renders woodfloor above deciduous and dirt, with a concave mask around an ex
   expect(wood.renderOrder).toBeGreaterThan(deciduous.renderOrder);
   expect(deciduous.renderOrder).toBeGreaterThan(dirt.renderOrder);
   expect(map.dig({ x: 18, z: 18 })).toBe(true);
-  expect(deciduous.visible).toBe(false);
+  // The surrounding forest is drawn at its source layer order; the enclosed
+  // dirt hole has no adjacent forest and must not receive a forest quad.
+  const forestPositions = deciduous.geometry.getAttribute('position');
+  for (let i = 0; i < forestPositions.count; i += 4) {
+    expect([forestPositions.getX(i), forestPositions.getZ(i)]).not.toEqual([12, 12]);
+  }
   const position = wood.geometry.getAttribute('position');
   const uvs = wood.geometry.getAttribute('groundTileUv');
   const assets = await loadGroundTileAssets('/dst/data', 'WOODFLOOR');
@@ -71,5 +77,51 @@ it('renders woodfloor above deciduous and dirt, with a concave mask around an ex
     matched = true;
   }
   expect(matched).toBe(true);
+  assets.material.dispose();
+});
+
+it('restores ocean terrain, rejects land actions and keeps ground overlays on land', async () => {
+  const tiles = [{ col: -1, row: 0, tileId: WORLD_TILES.OCEAN_COASTAL }];
+  const map = new TurfMap(48, tiles);
+  const oceanPoint = new THREE.Vector3(-6, 0, 6);
+  expect(map.isOceanAtWorld(oceanPoint)).toBe(true);
+  expect(map.isOceanAtWorld(new THREE.Vector3(6, 0, 6))).toBe(false);
+  expect(map.dig(oceanPoint)).toBe(false);
+  expect(map.plow(oceanPoint)).toBe(false);
+  expect(map.canPlant(oceanPoint)).toBe(false);
+  expect(map.exportTiles()).toEqual(tiles);
+  const visual = await map.createVisual('/dst/data');
+  const ocean = visual.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh;
+  const clock = createSignal<ClockState>({ phase: 'day', timeinphase: 0 });
+  vi.spyOn(clock, 'get');
+  map.bindOceanClock(clock);
+  expect(clock.get).toHaveBeenCalledOnce();
+  expect(ocean.geometry.getIndex()!.count).toBe(6);
+  const overlay = map.createLandOverlay();
+  expect(overlay.geometry.getIndex()!.count).toBe(16 * 6);
+  const positions = overlay.geometry.getAttribute('position');
+  const tileUvs = overlay.geometry.getAttribute('groundTileUv');
+  const assets = await loadGroundTileAssets('/dst/data', 'DECIDUOUS');
+  const shoreCell = assets.elements.get('16')!;
+  let foundCoast = false;
+  for (let i = 0; i < positions.count; i += 4) {
+    if (positions.getX(i) !== -12 || positions.getZ(i) !== 0) continue;
+    expect(tileUvs.getX(i)).toBeCloseTo(shoreCell.u1);
+    expect(tileUvs.getY(i)).toBeCloseTo(1 - shoreCell.v2);
+    foundCoast = true;
+  }
+  expect(foundCoast).toBe(true);
+  const atlasDisposed = vi.fn();
+  overlay.atlases[0].addEventListener('dispose', atlasDisposed);
+  overlay.geometry.dispose();
+  expect(atlasDisposed).not.toHaveBeenCalled();
+  const disposed = vi.fn();
+  ocean.material.addEventListener('dispose', disposed);
+  map.dispose();
+  expect(disposed).toHaveBeenCalledOnce();
+  expect(atlasDisposed).toHaveBeenCalledOnce();
+  vi.mocked(clock.get).mockClear();
+  expect(() => clock.set({ phase: 'dusk', timeinphase: 0 })).not.toThrow();
+  expect(clock.get).not.toHaveBeenCalled();
   assets.material.dispose();
 });

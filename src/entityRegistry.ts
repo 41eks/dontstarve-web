@@ -2,6 +2,7 @@ import type * as THREE from 'three';
 import type { ProximityEntity } from '@dontstarve-web/prefab/proximityEntities';
 import type { SavedEntity } from './save/types';
 import type { PrefabDefinition } from './prefabDefinitions';
+import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 
 export interface EntityRenderEntry {
   object: THREE.Object3D;
@@ -28,6 +29,7 @@ export interface EntityRegistration<PrefabId extends string> {
   beforePhysics?: (dt: number) => void;
   update?: (dt: number, cameraQuaternion: THREE.Quaternion) => void;
   renderEntities?: () => readonly EntityRenderEntry[];
+  miniMapEntities?: () => readonly MiniMapEntity[];
   dispose: () => void;
 }
 
@@ -127,6 +129,10 @@ export class EntityRegistry {
 
   get renderEntities(): readonly EntityRenderEntry[] {
     return this.disposed ? [] : this.registrations.flatMap((registration) => registration.renderEntities?.() ?? []);
+  }
+
+  get miniMapEntities(): readonly MiniMapEntity[] {
+    return this.disposed ? [] : this.registrations.flatMap(registration => registration.miniMapEntities?.() ?? []);
   }
 
   dispose(): void {

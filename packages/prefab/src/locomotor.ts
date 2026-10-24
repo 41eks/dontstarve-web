@@ -81,6 +81,10 @@ export function findGroundPath(
 export interface LocomotorOptions {
     arriveDistance?: number;
     findPath?: (start: THREE.Vector3, target: THREE.Vector3) => readonly THREE.Vector3[] | null;
+    /** Ground-contact passability (land vs. ocean); blocked motion slides along the shore. */
+    isPassable?: (x: number, z: number) => boolean;
+    /** Leading-edge distance ahead of the body centre that must stay passable. */
+    footprintRadius?: number;
 }
 
 /** Owns movement destinations and horizontal physics velocity, like DST's locomotor. */
@@ -88,6 +92,8 @@ export class Locomotor {
     private readonly body: CANNON.Body;
     private readonly arriveDistance: number;
     private readonly findPath?: LocomotorOptions['findPath'];
+    private readonly isPassable?: LocomotorOptions['isPassable'];
+    private readonly footprintRadius: number;
     private path: readonly THREE.Vector3[] = [];
     private pathIndex = 0;
     private readonly direction = new THREE.Vector3();
@@ -97,6 +103,8 @@ export class Locomotor {
         this.arriveDistance = options.arriveDistance ?? 0.25;
         if (!Number.isFinite(this.arriveDistance) || this.arriveDistance <= 0) throw new RangeError('Invalid arrival distance');
         this.findPath = options.findPath;
+        this.isPassable = options.isPassable;
+        this.footprintRadius = options.footprintRadius ?? 0;
     }
 
     get destination(): THREE.Vector3 | undefined {
@@ -153,8 +161,26 @@ export class Locomotor {
                 return;
             }
         }
-        this.body.velocity.x = this.direction.x * speed;
-        this.body.velocity.z = this.direction.z * speed;
+        let vx = this.direction.x * speed;
+        let vz = this.direction.z * speed;
+        if (this.isPassable && (vx !== 0 || vz !== 0)) {
+            // Probe the leading edge one step ahead; drop the blocked axis so the body slides along the shore.
+            const length = Math.hypot(vx, vz);
+            const reach = this.footprintRadius / length;
+            const px = this.body.position.x;
+            const pz = this.body.position.z;
+            const free = (mx: number, mz: number) => this.isPassable!(px + mx * (dt + reach), pz + mz * (dt + reach));
+            if (!free(vx, vz)) {
+                const slideX = vx !== 0 && free(vx, 0);
+                const slideZ = vz !== 0 && free(0, vz);
+                if (slideX && !slideZ) vz = 0;
+                else if (slideZ && !slideX) vx = 0;
+                else { vx = 0; vz = 0; }
+                if (vx === 0 && vz === 0) { this.path = []; this.pathIndex = 0; }
+            }
+        }
+        this.body.velocity.x = vx;
+        this.body.velocity.z = vz;
         // Keep vertical velocity for gravity and jumping.
     }
 }

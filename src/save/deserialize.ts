@@ -4,6 +4,7 @@ import type {
 import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
 import type { BuildingContainerDefinition } from '@dontstarve-web/prefab/containers';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import { GROUND_TILE_DEFINITIONS } from '@dontstarve-web/prefab/groundTiles';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { PREFAB_DEFINITIONS, prefabSaveParsers, type PrefabDefinition } from '../prefabDefinitions';
 import { array, choice, fail, integer, number, object, snapshotId, string, timestamp } from './validation';
@@ -56,6 +57,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   const options = object(generator.options, 'world.map.generator.options', ['size', 'moonTreeCount', 'moonTreeExclusionRadiusSquared']);
   const size = number(options.size, 'world.map.generator.options.size', 1, 10_000);
   const tileKeys = new Set<string>();
+  const supportedTiles = Object.values(GROUND_TILE_DEFINITIONS).map(definition => definition.tileId);
   const tiles = map.tiles === undefined ? undefined : array(map.tiles, 'world.map.tiles',
     (Math.ceil(size / TILE_SIZE) + 1) ** 2).map((value, i) => {
     const path = `world.map.tiles[${i}]`;
@@ -63,10 +65,14 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     const min = Math.floor(-size / 2 / TILE_SIZE), max = Math.ceil(size / 2 / TILE_SIZE) - 1;
     const col = integer(tile.col, `${path}.col`, min, max);
     const row = integer(tile.row, `${path}.row`, min, max);
-    const tileId = choice(tile.tileId, `${path}.tileId`, [WORLD_TILES.DIRT, WORLD_TILES.FARMING_SOIL]);
+    const tileId = choice(tile.tileId, `${path}.tileId`, supportedTiles);
     const underTileId = tile.underTileId === undefined ? undefined
-      : choice(tile.underTileId, `${path}.underTileId`, [WORLD_TILES.DIRT, WORLD_TILES.DECIDUOUS]);
-    if (underTileId !== undefined && tileId !== WORLD_TILES.FARMING_SOIL) fail(`${path}.underTileId`, 'only farming soil has an underlying tile');
+      : choice(tile.underTileId, `${path}.underTileId`, supportedTiles.filter(id => id !== WORLD_TILES.FARMING_SOIL && id !== WORLD_TILES.MONKEY_DOCK));
+    if (underTileId !== undefined && tileId !== WORLD_TILES.FARMING_SOIL && tileId !== WORLD_TILES.MONKEY_DOCK) {
+      fail(`${path}.underTileId`, 'only farming soil and docks have an underlying tile');
+    }
+    if (tileId === WORLD_TILES.MONKEY_DOCK && underTileId !== WORLD_TILES.OCEAN_COASTAL) fail(`${path}.underTileId`, 'a dock covers an ocean tile');
+    if (tileId === WORLD_TILES.FARMING_SOIL && underTileId === WORLD_TILES.OCEAN_COASTAL) fail(`${path}.underTileId`, 'farming soil cannot cover ocean');
     const key = `${col},${row}`;
     if (tileKeys.has(key)) fail(path, 'duplicate terrain tile');
     tileKeys.add(key);
@@ -87,7 +93,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   };
   const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'container']);
+    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'container', 'temperature', 'highTemp', 'lowTemp']);
     const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
     if (entityId !== undefined) {
       if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
@@ -97,6 +103,16 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       }
     }
     const itemId = string(o.itemId, `${path}.itemId`);
+    if ((o.temperature !== undefined || o.highTemp !== undefined || o.lowTemp !== undefined) && itemId !== 'heatrock') {
+      fail(path, 'item has no temperature component');
+    }
+    const temperature = o.temperature === undefined ? undefined : (() => {
+      const data = object(o.temperature, `${path}.temperature`, ['current']);
+      return { current: number(data.current, `${path}.temperature.current`, -20, 90) };
+    })();
+    const highTemp = o.highTemp === undefined ? undefined : integer(o.highTemp, `${path}.highTemp`, -20, 90);
+    const lowTemp = o.lowTemp === undefined ? undefined : integer(o.lowTemp, `${path}.lowTemp`, -20, 90);
+    if (highTemp !== undefined && lowTemp !== undefined) fail(path, 'thermal stone cannot have both temperature extrema');
     const spec = Object.hasOwn(catalog.items, itemId) ? catalog.items[itemId] : undefined;
     if (!spec) fail(`${path}.itemId`, `unknown item ${itemId}`);
     const skinId = o.skinId === undefined ? undefined : string(o.skinId, `${path}.skinId`);
@@ -127,6 +143,9 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     })();
     return { ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
       ...(phonographRecord === undefined ? {} : { phonographRecord }),
+      ...(temperature === undefined ? {} : { temperature }),
+      ...(highTemp === undefined ? {} : { highTemp }),
+      ...(lowTemp === undefined ? {} : { lowTemp }),
       ...(remainingFuel === undefined ? {} : { remainingFuel }),
       ...(freshnessPercent === undefined ? {} : { freshnessPercent }),
       ...(wet === undefined ? {} : { wet }),
@@ -219,7 +238,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     const o = object(player.stats, 'players.local.stats', ['health', 'hunger', 'sanity']);
     stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity') };
   }
-  const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'random']);
+  const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'moon', 'random']);
   const systems: SaveDocument['world']['systems'] = {};
   if (systemsData.clock !== undefined) {
     const o = object(systemsData.clock, 'world.systems.clock', ['day', 'phase', 'phaseProgress']);
@@ -252,6 +271,10 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       peakprecipitationrate: number(o.peakprecipitationrate, `${path}.peakprecipitationrate`, 0, 1),
       ...(o.snowlevel === undefined ? {} : { snowlevel: number(o.snowlevel, `${path}.snowlevel`, 0, 1) }),
     };
+  }
+  if (systemsData.moon !== undefined) {
+    const o = object(systemsData.moon, 'world.systems.moon', ['mooomphasecycle']);
+    systems.moon = { mooomphasecycle: integer(o.mooomphasecycle, 'world.systems.moon.mooomphasecycle', 1, 20) };
   }
   if (systemsData.random !== undefined) {
     const o = object(systemsData.random, 'world.systems.random', ['algorithm', 'state']);

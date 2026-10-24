@@ -1,0 +1,197 @@
+import * as THREE from 'three';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import type { WilsonAction } from '../../stategraphs/src/SGwilson';
+import type { ActionAnimationController, ActionLocomotor } from '../../stategraphs/src/actionContext';
+import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
+import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
+import { ArchiveSpriteAssets, createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { turfTileName } from './turfs';
+import { TurfMap } from './turfMap';
+import { TILE_SIZE } from './tile';
+import { PreloadSounds } from './sound';
+import { setPrefabLightOverride } from './localLight';
+import type { WorldContext } from './worldContext';
+
+export interface TurfSource {
+  readonly entity: ItemEntity;
+  isValid(): boolean;
+  take(): ItemEntity | undefined;
+  putBack(item: ItemEntity): void;
+}
+
+/** Cursor-held turfs: gridplacer, locomotion, buffered DEPLOY and frame-six commit. */
+export class TurfDeployment {
+  private readonly pointer: PointerRaycaster;
+  private readonly stopActions: () => void;
+  private readonly stopHover: () => void;
+  private readonly stopUpdate: () => void;
+  private readonly assets: ArchiveSpriteAssets;
+  private target?: THREE.Vector3;
+  private source?: TurfSource;
+  private action?: BufferedAction<WilsonAction>;
+  private version = 0;
+  private ready = false;
+  private disposed = false;
+  private previewEntity?: ItemEntity;
+  private preview?: ArchiveSprite;
+  private readonly previewMaterials: THREE.Material[] = [];
+  private readonly reach = 1.1 * TILE_SIZE / 4;
+  private readonly world: WorldContext;
+  private readonly turf: TurfMap;
+  private readonly animation: ActionAnimationController;
+  private readonly locomotor: ActionLocomotor;
+  private readonly getSource: () => TurfSource | undefined;
+  private readonly isManualMovement: () => boolean;
+
+  constructor(world: WorldContext, turf: TurfMap,
+    animation: ActionAnimationController, locomotor: ActionLocomotor,
+    getSource: () => TurfSource | undefined, isManualMovement = () => false) {
+    this.world = world; this.turf = turf; this.animation = animation; this.locomotor = locomotor;
+    this.getSource = getSource; this.isManualMovement = isManualMovement;
+    this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
+    this.assets = new ArchiveSpriteAssets(`${import.meta.env.BASE_URL}dst/data/anim`, 'turf-grid');
+    this.stopActions = bindActionCancellation(world, this, 'deploy', () => this.cancel());
+    this.stopHover = world.mouseActions?.register(() => {
+      const source = this.getSource(), point = this.pointer.groundPoint();
+      return source?.entity.components.deployable && point && this.turf.canPlaceTurf(point)
+        ? [{ action: { action: 'DEPLOY', invobject: source.entity }, button: 'right' }] : [];
+    }) ?? (() => {});
+    this.stopUpdate = world.registerFrameTask?.(dt => this.update(dt)) ?? (() => {});
+    world.renderer.domElement.addEventListener('pointerdown', this.onPointerDown, true);
+    window.addEventListener('keydown', this.onKeyDown);
+  }
+
+  request(point: THREE.Vector3): boolean {
+    const source = this.getSource(), name = source && turfTileName(source.entity.prefab);
+    if (this.disposed || !source?.isValid() || !name || !this.turf.canPlaceTurf(point)
+      || this.animation.stategraph.hasStateTag('busy')) return false;
+    this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'DEPLOY' });
+    this.animation.cancelEmote();
+    const centre = this.turf.tileCenter(point);
+    this.target = new THREE.Vector3(centre.x, 0, centre.z);
+    this.source = source;
+    const version = this.version;
+    void Promise.all([this.turf.prepareTurf(name), PreloadSounds('dontstarve/wilson/dig')]).then(() => {
+      if (!this.disposed && version === this.version) this.ready = true;
+    }).catch((error: unknown) => {
+      if (version === this.version) this.cancel();
+      console.error('Unable to prepare turf deployment', error);
+    });
+    return true;
+  }
+
+  cancel(): void {
+    this.version++;
+    if (this.target) this.locomotor.stop();
+    this.target = undefined; this.source = undefined; this.ready = false;
+    if (this.action && this.animation.stategraph.isPerformingAction('DEPLOY')) this.animation.stategraph.cancelAction();
+    this.action = undefined;
+  }
+
+  update(dt = 0): void {
+    if (this.disposed) return;
+    this.updatePreview(dt);
+    if (this.isManualMovement() || this.source && !this.source.isValid()) { this.cancel(); return; }
+    const point = this.target, source = this.source;
+    if (!point || !source) return;
+    if (!this.turf.canPlaceTurf(point)) { this.cancel(); return; }
+    if (this.world.player.position.distanceToSquared(point) > this.reach ** 2) {
+      const direction = this.world.player.position.clone().sub(point).normalize();
+      const destination = point.clone().addScaledVector(direction, this.reach * .8);
+      if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
+        if (!this.locomotor.goToPoint(destination)) this.cancel();
+      }
+      return;
+    }
+    this.locomotor.stop();
+    if (!this.ready) return;
+    const direction = point.clone().sub(this.world.player.position);
+    if (direction.lengthSq() > 1e-8) {
+      const forward = this.world.camera.getWorldDirection(new THREE.Vector3());
+      forward.y = 0; forward.normalize();
+      const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
+      const along = direction.dot(forward), side = direction.dot(right);
+      this.animation.setFacing(Math.abs(along) >= Math.abs(side) ? (along > 0 ? 'up' : 'down') : 'side',
+        Math.abs(side) > Math.abs(along) && side < 0);
+    }
+    const version = this.version;
+    const valid = () => !this.disposed && version === this.version && source.isValid()
+      && this.turf.canPlaceTurf(point) && this.world.player.position.distanceToSquared(point) <= this.reach ** 2;
+    const action = new BufferedAction<WilsonAction>('DEPLOY', () => {
+      if (!valid()) return false;
+      const item = source.take();
+      if (!item) return false;
+      const deployed = item.components.deployable?.Deploy(point, {
+        position: this.world.player.position,
+        PushEvent: (name, data) => this.world.player.dispatchEvent({ type: name, data } as never),
+      }, this.turf) ?? false;
+      if (!deployed) source.putBack(item);
+      this.source = undefined;
+      return deployed;
+    }, valid, { invobject: source.entity, pos: point, distance: this.reach });
+    if (this.animation.stategraph.pushBufferedAction(action)) { this.action = action; this.target = undefined; }
+  }
+
+  private updatePreview(dt: number): void {
+    const source = this.getSource(), entity = source?.entity;
+    if (entity !== this.previewEntity) {
+      this.previewEntity = entity;
+      this.preview?.dispose(); this.preview = undefined;
+      this.previewMaterials.length = 0;
+      if (entity && turfTileName(entity.prefab)) void createArchiveSprite(this.assets, {
+        animationArchive: 'gridplacer.zip', buildArchives: ['gridplacer.zip'], bank: 'gridplacer', animation: 'anim', loop: true,
+      }, { name: 'TurfGridPlacer' }).then(sprite => {
+        if (this.disposed || this.previewEntity !== entity) { sprite.dispose(); return; }
+        sprite.model.userData.tags = ['FX', 'NOCLICK'];
+        sprite.model.userData.billboard = false;
+        sprite.model.visible = false;
+        sprite.model.rotation.x = -Math.PI / 2;
+        sprite.model.traverse(object => {
+          if (!(object instanceof THREE.Mesh)) return;
+          object.renderOrder = -.5;
+          // This placement owner has its own asset cache and may tint its materials.
+          this.previewMaterials.push(...(Array.isArray(object.material) ? object.material : [object.material]));
+        });
+        setPrefabLightOverride(sprite.model, 1);
+        this.preview = sprite;
+        this.world.scene.add(sprite.model);
+      }).catch((error: unknown) => console.error('Unable to load turf gridplacer', error));
+    }
+    const preview = this.preview;
+    if (!preview) return;
+    preview.update(dt);
+    const point = this.pointer.groundPoint();
+    preview.model.visible = point !== undefined && source?.isValid() === true;
+    if (!point) return;
+    const centre = this.turf.tileCenter(point);
+    preview.model.position.set(centre.x, .05, centre.z);
+    for (const material of this.previewMaterials) if (material instanceof THREE.MeshBasicMaterial) {
+      // gridplacer.lua OnCanBuild / OnCannotBuild.
+      if (this.turf.canPlaceTurf(point)) material.color.setRGB(1, 1, 1);
+      else material.color.setRGB(.75, .25, .25);
+    }
+  }
+
+  private readonly onPointerDown = (event: PointerEvent): void => {
+    if (event.defaultPrevented) return;
+    if (event.button === 0) { this.cancel(); return; }
+    if (event.button !== 2 || !this.getSource()?.entity.components.deployable) return;
+    // Claim invalid turf clicks too: they must preserve the cursor item.
+    event.preventDefault(); event.stopImmediatePropagation(); this.pointer.trackPointer(event);
+    const point = this.pointer.groundPoint();
+    if (!point || !this.request(point)) this.cancel();
+  };
+  private readonly onKeyDown = (event: KeyboardEvent): void => { if (event.code === 'Escape') this.cancel(); };
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true; this.cancel(); this.stopActions(); this.stopHover(); this.stopUpdate();
+    this.preview?.dispose();
+    this.assets.dispose();
+    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
+    this.world.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown, true);
+    window.removeEventListener('keydown', this.onKeyDown);
+  }
+}

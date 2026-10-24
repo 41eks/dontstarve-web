@@ -26,6 +26,14 @@ type Effect = {
     depsIndices: number[];  // 存它在各个 Signal.subscribers 数组里的下标
     disposed: boolean;
     synchronous: boolean;
+    owners?: Set<SignalObserverScope>;
+};
+
+/** Class-local signals retain observer ownership even when an effect changes dependencies. */
+type SignalObserverScope = {
+    stopped: boolean;
+    effects: Set<Effect>;
+    listeners: Set<() => void>;
 };
 
 type SignalNode = {
@@ -84,6 +92,7 @@ function createEffectInternal(fn: () => void, synchronous = false) {
             if (effect.disposed) return;
             // ✨ 核心清理动作：执行前，先把自己从所有旧的 Signal 依赖中清除
             cleanup(effect);
+            if (effect.disposed) return;
 
             // 处理嵌套，保存上一层的 Effect 对象
             const parentEffect = activeEffect;
@@ -98,15 +107,20 @@ function createEffectInternal(fn: () => void, synchronous = false) {
     };
 
     // 初始化时，手动调用对象的 runner 触发第一次执行
-    effect.runner();
+    try { effect.runner(); }
+    catch (error) { disposeEffect(effect); throw error; }
 
-    return () => {
-        if (effect.disposed) return;
-        effect.disposed = true;
-        pendingMemos.delete(effect);
-        queue.delete(effect.runner);
-        cleanup(effect);
-    };
+    return () => disposeEffect(effect);
+}
+
+function disposeEffect(effect: Effect): void {
+    if (effect.disposed) return;
+    effect.disposed = true;
+    pendingMemos.delete(effect);
+    queue.delete(effect.runner);
+    for (const owner of effect.owners ?? []) owner.effects.delete(effect);
+    effect.owners?.clear();
+    cleanup(effect);
 }
 
 
@@ -116,6 +130,10 @@ export function createEffect(fn: () => void) {
 
 // 优化 1：直接接收初始值，简化 API
 export function createSignal<T>(initialValue: T): Signal<T> {
+    return createSignalInternal(initialValue);
+}
+
+function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): Signal<T> {
     let _state = initialValue;
     const listeners = new Set<SignalListener<T>>();
     const signalObj: SignalNode = {
@@ -149,6 +167,10 @@ export function createSignal<T>(initialValue: T): Signal<T> {
 
     function getState() {
         if (activeEffect) {
+            if (owner && !owner.stopped) {
+                owner.effects.add(activeEffect);
+                (activeEffect.owners ??= new Set()).add(owner);
+            }
             // 获取在彼此数组中即将推入的下标
             const effectIndex = activeEffect.deps.length;
             const signalIndex = signalObj.subscribers.length;
@@ -168,22 +190,21 @@ export function createSignal<T>(initialValue: T): Signal<T> {
         get: getState, set: setState, peek: () => _state,
         subscribe(listener) {
             listeners.add(listener);
-            return () => { listeners.delete(listener); };
+            const stop = () => { listeners.delete(listener); owner?.listeners.delete(stop); };
+            if (owner && !owner.stopped) owner.listeners.add(stop);
+            return stop;
         },
     };
 };
 
 
 function cleanup(effect: Effect) {
-    if (effect.cleanups.length > 0) {
-        for (let i = 0; i < effect.cleanups.length; i++) {
-            effect.cleanups[i]();
-        }
-        // ✨ 2. 核心！执行完后必须清空数组，防止下一次无端触发！
-        effect.cleanups.length = 0; 
+    const errors: unknown[] = [];
+    // A cleanup may dispose its own class; remove callbacks before invoking them.
+    for (const fn of effect.cleanups.splice(0)) {
+        try { fn(); } catch (error) { errors.push(error); }
     }
     const { deps, depsIndices } = effect;
-    if (deps.length === 0) return;
 
     for (let i = 0; i < deps.length; i++) {
         const signal = deps[i] as SignalNode;
@@ -212,6 +233,8 @@ function cleanup(effect: Effect) {
     // 清空自己的账本，等待下一次运行重新收集
     deps.length = 0;
     depsIndices.length = 0;
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, 'Failed to clean up effect');
 }
 
 
@@ -250,6 +273,34 @@ function _run() {
 export interface Memo<T> extends ReadonlySignal<T> {
     (): T;
     dispose(): void;
+}
+
+/**
+ * Group a class's observers behind one source subscription, returning a standard writable signal.
+ * Any ordinary effect/memo that reads local.get(), and any local.subscribe() listener, belongs
+ * to this local lifetime. The single registered cleanup stops them and the source bridge.
+ * Keep this signal private to its owner: disposing it stops entire consumer effects.
+ */
+export function watchSignal<T>(source: ReadonlySignal<T>, registerCleanup: (stop: () => void) => void): Signal<T> {
+    const owner: SignalObserverScope = { stopped: false, effects: new Set(), listeners: new Set() };
+    const local = createSignalInternal(source.peek(), owner);
+    const stop = createEffectInternal(() => local.set(source.get()), true);
+    const dispose = () => {
+        if (owner.stopped) return;
+        owner.stopped = true;
+        const errors: unknown[] = [];
+        const release = (fn: () => void) => { try { fn(); } catch (error) { errors.push(error); } };
+        for (const unsubscribe of [...owner.listeners]) release(unsubscribe);
+        for (const effect of [...owner.effects]) release(() => disposeEffect(effect));
+        // Retain the final local value on removal inside a game-time transaction.
+        release(settleMemos);
+        release(stop);
+        if (errors.length === 1) throw errors[0];
+        if (errors.length > 1) throw new AggregateError(errors, 'Failed to stop watched signal');
+    };
+    try { registerCleanup(dispose); }
+    catch (error) { dispose(); throw error; }
+    return local;
 }
 
 export function createMemo<T>(fn: () => T): Memo<T> {

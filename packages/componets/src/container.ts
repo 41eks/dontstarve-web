@@ -26,6 +26,11 @@ export interface ContainerSlot<TItem> {
 /** container.lua state and lifecycle; inventory transactions own slot mutations. */
 export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot extends ContainerSlot<TItem>> {
   readonly inst: object;
+  /** Tags belong to the holder, not to its stored items. */
+  hasTag(tag: string): boolean {
+    const inst = this.inst as { hasTag?(tag: string): boolean; tags?: Set<string>; userData?: { tags?: string[] } };
+    return inst.hasTag?.(tag) ?? inst.tags?.has(tag) ?? inst.userData?.tags?.includes(tag) ?? false;
+  }
   canbeopened = true;
   openlimit?: number;
   onopenfn?: (inst: object, doer?: object) => void;

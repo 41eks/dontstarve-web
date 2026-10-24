@@ -456,3 +456,7 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 `poop.lua` 生成、丢弃或读档恢复时拥有 `flies` 子实体；`flies.lua:onfar` 与 `OnWake` 播放 `dontstarve/common/flies`，`onnear`、`OnSleep` 和移除停止具名 `flies` 声音。核对源 `dontstarve.fev`：sound definition 56 → `sfx/objects/Flies_soothed_DST_-001.wav` 至 `_007.wav` → bank `common`，零基 file_index 74～80，提取索引 75～81。
 
 安装 CLI 的 `-h` 已核对，`-m -s 75 -S 81` 显示七个 44100 Hz 单声道样本，长度约 0.785～0.797 秒。以 `-i -s <index> -o public/dst/data/sound/common.fsb-<index>.wav` 导出，七份均与已有源 `common.fsb#<index>.wav` 字节一致。事件映射在统一 `sound.ts`，创建前预加载，浏览器每份苍蝇独立选择一个样本循环，靠近、拾取、燃烧和实体移除停止并断开对应音源。
+
+### 月晷音效
+
+`SGmoondial.lua` 使用四个事件，`dontstarve.fev` 解析如下（bank 均为 `together`，`-s` = file_index + 1）：`fill` sounddef 2361（`moondial_fill_2_1..4`，file_index 1324–1327）、`full_LP` sounddef 2362/2363（同一 `moondial_full_LP.wav`，file_index 1328，循环，作为单层映射）、`water_movement` sounddef 2367（`moondial_water_movement_1..5`，file_index 1337–1341）、`craft` sounddef 2366（`moondial_place.wav`，file_index 1336）。11 份样本用 `-m -s` 核对流名后以 `-i` 导出为 `together.fsb-1325..1329/1337..1342.wav`，与源目录已有的 `together.fsb#<index>.wav` 字节一致。`hit` 事件（sounddef 2364）在状态图里没有被播放，未导出。

@@ -58,6 +58,13 @@ export class DstMapControlsElement extends AssetElement {
     });
   }
 
+  /** Mirrors a map opened or closed elsewhere (M key, Esc) without emitting game:map-toggle. */
+  setMapOpen(isOpen: boolean): void {
+    const button = this.shadowRoot?.querySelector<HTMLButtonElement>('.map-controls__map');
+    button?.setAttribute('aria-pressed', String(isOpen));
+    button?.setAttribute('aria-label', isOpen ? '关闭地图' : '打开地图');
+  }
+
   private emit<T>(type: string, detail: T): void {
     this.dispatchEvent(new CustomEvent(type, { bubbles: true, composed: true, detail }));
   }

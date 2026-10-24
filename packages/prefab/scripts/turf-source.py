@@ -11,7 +11,16 @@ def read_tiles(scripts):
     constants = (scripts / 'constants.lua').read_text()
     ground = re.search(r'\bGROUND\s*=\s*\{(.*?)\}', constants, re.S)[1]
     legacy = {name: int(value) for name, value in re.findall(r'(\w+)\s*=\s*(\d+)', ground)}
-    next_land_id = int(re.search(r'WORLD_TILES_LAND_START\s*=\s*(\d+)', constants)[1])
+    next_land_id = int(re.search(r'\bWORLD_TILES_LAND_START\s*=\s*(\d+)', constants)[1])
+    # `local NAME = { ... minimap_color = {r, g, b, a} }` colour presets referenced as `colors = NAME`.
+    presets = {}
+    for m in re.finditer(r'local\s+(\w+)\s*=\s*\{(.*?)\n\}', source, re.S):
+        colour = re.search(r'minimap_color\s*=\s*\{([^{}]*)\}', m[2])
+        if colour:
+            presets[m[1]] = [int(v) for v in colour[1].split(',')]
+    default_colour = [int(v) for v in re.search(
+        r'DEFAULT_COLOUR\s*=.*?minimap_color\s*=\s*\{([^{}]*)\}',
+        (scripts / 'tilemanager.lua').read_text(), re.S)[1].split(',')]
     render_order = 0
     tiles = []
     for match in re.finditer(r'TileManager.AddTile\(', source):
@@ -48,10 +57,16 @@ def read_tiles(scripts):
 
         name = args[0].strip('"')
         terrain = fields(3)
-        tile = {'name': name, 'ground': terrain, 'turf': fields(5), 'renderOrder': render_order}
+        colours = re.search(r'\bcolors\s*=\s*(\w+)', args[3]) if len(args) > 3 else None
+        tile = {'name': name, 'ground': terrain, 'minimap': fields(4), 'turf': fields(5), 'renderOrder': render_order,
+                'minimapColour': presets[colours[1]] if colours else default_colour}
         if terrain:
             render_order += 1
-        if args[1] == 'TileRanges.LAND':
+        if args[1] == 'TileRanges.OCEAN':
+            old = re.search(r'old_static_id\s*=\s*GROUND\.(\w+)', args[2])
+            if old:
+                tile['tileId'] = legacy[old[1]]
+        elif args[1] == 'TileRanges.LAND':
             old = re.search(r'old_static_id\s*=\s*GROUND\.(\w+)', args[2])
             legacy_id = legacy.get(old[1]) if old else None
             tile['tileId'] = legacy_id if legacy_id is not None else next_land_id

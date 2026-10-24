@@ -21,7 +21,8 @@ const tags = () => {
   return { set, addTag: (tag: string) => set.add(tag), removeTag: (tag: string) => set.delete(tag) };
 };
 const settle = (bird: ItemEntity, seconds: number) => {
-  for (let frame = 0; frame < 60; frame++) bird.components.perishable.onFrame(seconds / 60);
+  bird.components.perishable.onFrame(seconds);
+  bird.components.perishable.flush();
 };
 
 describe('caged birds', () => {
@@ -162,7 +163,9 @@ describe('caged birds', () => {
     const replace = vi.fn(() => true), PushEvent = vi.fn();
     bird.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' }, replace, PushEvent } as unknown as ItemOwner;
     bird.components.perishable.SetPercent(.0001);
-    settle(bird, 30);
+    const random = vi.spyOn(Math, 'random');
+    try { random.mockReturnValue(.2); settle(bird, 30); }
+    finally { random.mockRestore(); }
     expect(replace).toHaveBeenCalledWith('smallmeat');
     expect(PushEvent).toHaveBeenCalledWith('murdered', expect.objectContaining({ victim: bird, negligent: true }));
     // Canary feathers are a tenth as likely as meat; other birds weigh them equally.
