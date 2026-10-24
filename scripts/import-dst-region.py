@@ -443,6 +443,39 @@ def evergreen_components(data):
     return components
 
 
+def moon_tree_components(data):
+    # moontree.lua on_save/on_load; size selects the same three growable stages.
+    if set(data) - {'size', 'growable', 'plantregrowth', 'stump', 'burnt', 'timer'}:
+        raise ValueError('Unsupported moon_tree save state')
+    size = data.get('size', 'normal')
+    if size not in ('short', 'normal', 'tall'):
+        raise ValueError('Unsupported moon_tree size')
+    base = evergreen_components({key: value for key, value in data.items() if key != 'size'})
+    growth = base.get('growable')
+    if growth and growth['stage'] != ('short', 'normal', 'tall').index(size) + 1:
+        raise ValueError('Expected moon_tree stage to match size')
+    state = base.pop('evergreen', {})
+    if 'evergreenTimer' in base:
+        base['moonTreeTimer'] = base.pop('evergreenTimer')
+    return {**base, 'moonTree': {**state, 'size': size}}
+
+
+def moonbutterfly_sapling_components(data):
+    # planted_tree.lua: the timer component owns the saved grow deadline.
+    if set(data) != {'timer'} or not isinstance(data['timer'], dict) or set(data['timer']) != {'timers'}:
+        raise ValueError('Unsupported moonbutterfly_sapling save state')
+    timers = data['timer']['timers']
+    if not isinstance(timers, dict) or set(timers) != {'grow'}:
+        raise ValueError('Unsupported moonbutterfly_sapling timers')
+    grow = timers['grow']
+    if not isinstance(grow, dict) or set(grow) != {'timeleft', 'initial_time', 'paused'} \
+            or type(grow['paused']) is not bool \
+            or any(type(grow[key]) not in (int, float) or not math.isfinite(grow[key]) for key in ('timeleft', 'initial_time')) \
+            or not 150 <= grow['initial_time'] <= 300 or not 0 <= grow['timeleft'] <= grow['initial_time']:
+        raise ValueError('Unsupported moonbutterfly_sapling grow timer')
+    return {'saplingTimer': data['timer']}
+
+
 def pond_components(data):
     # pond.lua OnSave: plants + childspawner/worldsettingstimer (frog spawner, not ported).
     # Only fishable is ported, and a full pond saves nothing, so the frog and plant state is validated and dropped.
@@ -478,6 +511,8 @@ def lava_pond_components(data):
 ENTITY_WHITELIST = {
     'pigking': pigking_components,
     'deciduoustree': deciduoustree_components,
+    'moon_tree': moon_tree_components,
+    'moonbutterfly_sapling': moonbutterfly_sapling_components,
     'fireflies': insect_components('fireflies'),
     'flower': flower_components,
     'butterfly': insect_components('butterfly'),

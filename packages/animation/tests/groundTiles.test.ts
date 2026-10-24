@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { groundTileVariant, loadGroundTileAssets, loadGroundFalloffAssets, groundFalloffGeometry, sortGroundFalloffGeometry } from '../../prefab/src/groundTiles';
+import { groundTileVariant, groundTileGeometry, loadGroundTileAssets, loadGroundFalloffAssets, groundFalloffGeometry, sortGroundFalloffGeometry } from '../../prefab/src/groundTiles';
 import { GroundDepthPrepass } from '../../prefab/src/groundDepthPrepass';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
+import { placeStaticLayout } from '../../prefab/src/staticLayout';
 import { createSignal, type ClockState } from '../../signals/src';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {
@@ -11,6 +12,65 @@ beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {
   return new Response(bytes);
 }));
 afterEach(() => vi.unstubAllGlobals());
+
+it('clips ground geometry without losing UVs, upward normals or large-map indices', async () => {
+  const assets = await loadGroundTileAssets('/dst/data', 'GRASS');
+  const clipped = groundTileGeometry([
+    { col: -1, row: -1, variant: 2 }, { col: 99, row: 0, variant: 1 }, { col: 0, row: 0, variant: 1 },
+  ], assets, 18);
+  const large = groundTileGeometry(Array.from({ length: 16385 }, (_, col) => ({ col, row: 0, variant: 1 })), assets, 400000);
+  const empty = groundTileGeometry([], assets, 18);
+  try {
+    expect(Array.from(clipped.getAttribute('position').array)).toEqual([
+      -9, 0, -9, -9, 0, 0, 0, 0, -9, 0, 0, 0,
+      0, 0, 0, 0, 0, 9, 9, 0, 0, 9, 0, 9,
+    ]);
+    expect(Array.from(clipped.index!.array)).toEqual([0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7]);
+    expect(clipped.boundingBox!.min.toArray()).toEqual([-9, 0, -9]);
+    expect(clipped.boundingBox!.max.toArray()).toEqual([9, 0, 9]);
+    const cell = assets.elements.get('02')!;
+    expect(clipped.getAttribute('groundTileUv').getX(0)).toBeCloseTo(cell.u1 + (cell.u2 - cell.u1) / 4);
+    expect(clipped.getAttribute('groundTileUv').getY(0)).toBeCloseTo(1 - cell.v2 + (cell.v2 - cell.v1) / 4);
+    const normals = Array.from(clipped.getAttribute('normal').array);
+    expect(normals).toEqual(Array.from({ length: 8 }, () => [0, 1, 0]).flat());
+    clipped.computeVertexNormals();
+    expect(Array.from(clipped.getAttribute('normal').array)).toEqual(normals);
+    expect(large.index!.array).toBeInstanceOf(Uint32Array);
+    expect(large.index!.getX(large.index!.count - 1)).toBe(65539);
+    expect(large.getAttribute('position').count).toBe(65540);
+    expect(empty.index!.count).toBe(0);
+    expect(empty.getAttribute('normal').count).toBe(0);
+  } finally { clipped.dispose(); large.dispose(); empty.dispose(); assets.material.dispose(); }
+});
+
+it('commits layout tiles once, preserves saved overrides and retains geometry on unchanged registration', async () => {
+  const tiles = placeStaticLayout('default_pigking', new THREE.Vector3(0, 0, 24), 'pigking').tiles
+    .map(({ position, tile }) => ({ position, tileId: WORLD_TILES[tile] }));
+  const saved = [{ col: Math.floor(tiles[0].position.x / 12), row: Math.floor(tiles[0].position.z / 12), tileId: WORLD_TILES.DIRT }];
+  const map = new TurfMap(240, saved), reference = new TurfMap(240, saved);
+  try {
+    const visual = await map.createVisual('/dst/data');
+    const changed = vi.fn(); map.onTerrainChanged(changed);
+    map.setOriginalTiles(tiles);
+    expect(changed).toHaveBeenCalledOnce();
+    expect(map.getTileAtWorld(tiles[0].position)).toBe(WORLD_TILES.DIRT);
+    expect(map.exportTiles()).toEqual(saved);
+    for (const { position, tileId } of tiles) reference.setOriginalTile(position, tileId);
+    const referenceVisual = await reference.createVisual('/dst/data');
+    for (const name of ['TurfBlend:GRASS', 'TurfBlend:WOODFLOOR', 'TurfBlend:DECIDUOUS']) {
+      const mesh = visual.getObjectByName(name) as THREE.Mesh, expected = referenceVisual.getObjectByName(name) as THREE.Mesh;
+      expect(mesh.geometry.getAttribute('position').array).toEqual(expected.geometry.getAttribute('position').array);
+      expect(mesh.geometry.getAttribute('groundTileUv').array).toEqual(expected.geometry.getAttribute('groundTileUv').array);
+    }
+    const wood = visual.getObjectByName('TurfBlend:WOODFLOOR') as THREE.Mesh, geometry = wood.geometry;
+    const disposed = vi.spyOn(geometry, 'dispose');
+    map.setOriginalTiles(tiles);
+    map.setOriginalTile(tiles[0].position, WORLD_TILES.WOODFLOOR); // Saved dirt still wins.
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(wood.geometry).toBe(geometry);
+    expect(disposed).not.toHaveBeenCalled();
+  } finally { map.dispose(); reference.dispose(); }
+});
 
 it('sorts merged cliff faces across negative coordinates without replacing vertices', async () => {
   const assets = await loadGroundFalloffAssets('/dst/data');
@@ -115,6 +175,19 @@ it('renders woodfloor above deciduous and dirt, with a concave mask around an ex
   }
   expect(matched).toBe(true);
   assets.material.dispose();
+});
+
+it('draws the ocean surface as merged rectangles instead of a quad per cell', async () => {
+  const tiles = [];
+  for (let row = 0; row < 3; row++) for (let col = -3; col < 0; col++) tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL });
+  const map = new TurfMap(96, tiles);
+  const visual = await map.createVisual('/dst/data');
+  const ocean = visual.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  expect(ocean.geometry.getIndex()!.count).toBe(6);
+  expect(ocean.geometry.getAttribute('position').count).toBe(4);
+  const box = new THREE.Box3().setFromBufferAttribute(ocean.geometry.getAttribute('position') as THREE.BufferAttribute);
+  expect([box.min.x, box.max.x, box.min.z, box.max.z]).toEqual([-36, 0, 0, 36]);
+  expect(map.dig(new THREE.Vector3(-18, 0, 18))).toBe(false);
 });
 
 it('restores ocean terrain, rejects land actions and keeps ground overlays on land', async () => {

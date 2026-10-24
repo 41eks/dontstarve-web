@@ -14,6 +14,7 @@ import {
   type ChestCloseDetail,
   type DebugCommandDetail,
   type MinimapStateDetail,
+  type MinimapActionRequestDetail,
   type SlotAddress,
   type SlotItem,
   type SlotSelectDetail,
@@ -31,6 +32,7 @@ import { SetAutopaused } from './autopause';
 import { backTasks, frontTasks, registerFrontTask } from './animate';
 import { input } from './InputManager';
 import { view, actionEvents } from './view';
+import { followCamera } from './camera';
 import { spellCastMap } from './spellCastMap';
 import { backpackContainerId, inventorySlotAddress, cursorSlotAddress, type InventoryStack } from '@dontstarve-web/inventory';
 import { player, playerBody } from './player';
@@ -92,11 +94,15 @@ gameUi.mapControls.addEventListener('game:map-toggle', (event) => {
   gameUi.minimap.setOpen((event as CustomEvent<{ isOpen: boolean }>).detail.isOpen);
 });
 // MapScreen registers SetAutopaused(true) on open and releases it on destroy; M/Esc close it too.
+let mapAutopaused = false;
 gameUi.minimap.addEventListener('game:map-state', (event) => {
-  const { isOpen } = (event as CustomEvent<MinimapStateDetail>).detail;
+  const { isOpen, autopaused } = (event as CustomEvent<MinimapStateDetail>).detail;
   gameUi.mapControls.setMapOpen(isOpen);
   input.setBlocked(isOpen);
-  SetAutopaused(isOpen);
+  if (autopaused !== mapAutopaused) {
+    SetAutopaused(autopaused);
+    mapAutopaused = autopaused;
+  }
 });
 function syncPlayerStats(): void {
   gameUi.statusHud.setStats(getPlayerStats());
@@ -300,9 +306,19 @@ const wortox = playerAnimation ? await WortoxPlayer.create({
   world: view, body: playerBody, animation: playerAnimation, locomotor, inventory, scheduler, fx: worldFx,
   isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
   isManualMovement: () => input.isManualMovement(), saved: initialSave.players.local.wortox,
+  resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),
+  snapCamera: () => followCamera.snap(),
 }) : undefined;
+const onMapActionRequest = (event: Event) => {
+  const { position } = (event as CustomEvent<MinimapActionRequestDetail>).detail;
+  if (wortox?.requestMapHop(position)) event.preventDefault();
+};
+gameUi.minimap.addEventListener('game:map-action-request', onMapActionRequest);
 const stopWortoxUpdate = registerFrontTask(() => wortox?.update());
-disposalEvents.on('dispose', () => { stopWortoxUpdate(); wortox?.dispose(); });
+disposalEvents.on('dispose', () => {
+  gameUi.minimap.removeEventListener('game:map-action-request', onMapActionRequest);
+  stopWortoxUpdate(); wortox?.dispose();
+});
 
 
 // health.lua pushes "death" when health reaches 0; SGwilson.lua's death state drops everything and plays the clip.

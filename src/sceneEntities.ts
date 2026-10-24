@@ -1108,6 +1108,7 @@ export async function createSceneEntities(
       debugSpawn: async prefab => { evergreenForest.spawn(prefab as EvergreenSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => evergreenForest.exportRecords().map(record => ({ prefabId: 'evergreen', record })),
       update: (dt, quaternion) => { evergreenForest.updateNearby(player.position); evergreenForest.update(dt, quaternion); },
+      miniMapEntities: () => evergreenForest.miniMapEntities,
       renderEntities: () => evergreenForest.renderEntities,
       dispose: () => evergreenForest.dispose(),
     });
@@ -1127,10 +1128,11 @@ export async function createSceneEntities(
     scene.add(deciduousForest.group);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => deciduousForest.spawn('deciduoustree', new THREE.Vector3(...record.transform.position),
-        { ...record, components: { deciduoustree: record.components.deciduoustree!, growable: record.components.growable! } }),
+        { ...record, components: { ...record.components, deciduoustree: record.components.deciduoustree! } }),
       debugSpawn: async prefab => { deciduousForest.spawn(prefab as DeciduousSpawnId, new THREE.Vector3(player.position.x, 0, player.position.z)); },
       exportRecords: () => deciduousForest.exportRecords().map(record => ({ prefabId: 'deciduoustree', record })),
       update: (dt, quaternion) => { deciduousForest.updateNearby(player.position); deciduousForest.update(dt, quaternion); },
+      miniMapEntities: () => deciduousForest.miniMapEntities,
       renderEntities: () => deciduousForest.renderEntities,
       dispose: () => deciduousForest.dispose(),
     });
@@ -1201,7 +1203,7 @@ export async function createSceneEntities(
       restore: (_, record) => {
         const tree = treesById.get(record.id);
         if (!tree) throw new Error(`Missing logical tree: ${record.id}`);
-        moonTreeForest.restoreState(record.id, record.components.moonTree, record.components.growable);
+        moonTreeForest.restoreState(record.id, record.components.moonTree, record.components.growable, record.components.moonTreeTimer);
         return tree;
       },
       debugSpawn: async id => {
@@ -1217,6 +1219,7 @@ export async function createSceneEntities(
         moonTreeForest.update(dt);
         moonTreeForest.setNormals(quaternion);
       },
+      miniMapEntities: () => moonTreeForest.miniMapEntities,
       renderEntities: () => moonTreeForest.renderEntities,
       dispose: () => { unbindTrees(); moonTreeForest.dispose(); },
     });
@@ -1232,13 +1235,13 @@ export async function createSceneEntities(
 
   function registerPigKings(registry: EntityRegistry, prefabId: 'pigking', worldState: SceneWorldState) {
     const kingsById = new Map(pigKings.map((king) => [king.record.id, king]));
+    // default_pigking.lua BG_TILES: commit every layout before rebuilding the terrain once.
+    turfMap.setOriginalTiles(pigKings.flatMap(king =>
+      placeStaticLayout('default_pigking', king.feet, 'pigking').tiles.map(({ tile, position }) =>
+        ({ position, tileId: WORLD_TILES[tile] }))));
     pigKings.forEach((king) => {
       world.addBody(king.body);
       scene.add(king.standee);
-      // default_pigking.lua BG_TILES: the layout's grass and woodfloor tiles around the king.
-      for (const { tile, position } of placeStaticLayout('default_pigking', king.feet, 'pigking').tiles) {
-        turfMap.setOriginalTile(position, WORLD_TILES[tile]);
-      }
       king.bind({
         camera, scheduler, isNight: worldState.isNight,
         dropLoot: (items, position, launch) => {

@@ -13,7 +13,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 ## 调试命令（debugCommand）
 
-按 `M` 打开的地图使用世界地皮材质：加载页通过俯视正交相机离屏绘制整张地面，等待 PNG 图片解码后启动游戏，主线程 DOM 用单张 `<img>` 显示底图。地皮、海洋和悬崖复用世界的材质、几何及绘制通道；图标进入地图后独立加载，按实体身份复用节点。拖动、缩放和转向只更新世界容器及一条共享图标样式，静态图标不逐帧写位置。地图初始 `zoom=3`，`zoom=1` 最近、`zoom=20` 最远；地图每侧留出地图边长 10% 的 margin，最远档地图加 margin 构成的正方形边长为窗口长边 1.5 倍；平移按视口大小、缩放和转向限制，视口不能越过该边界，不绘制边缘线。滚轮围绕光标以 0.1 秒插值缩放，向上放大、向下缩小。底图按默认缩放、窗口尺寸和 DPR 提高采样密度，最大 8192×8192；每次离屏只绘制最多 2048×2048 像素，合成后仍显示单张图片，极近距离放大时清晰度受整图上限限制。挖地、铺地和耕地会更新整张底图，窗口扩大时按需提升分辨率，关闭地图保留图片，场景释放时清理对象 URL、节点和订阅。实现见 [世界地皮整图与 DOM 地图](docs/dst-minimap-rendering.md)。调试命令语法、参数、支持的 `c_spawn` / `c_give` ID 和 `c_save()` 存档格式不变。
+按 `M` 打开的地图以两层 DOM 展示：底层平铺海洋图片，上层为按原版地皮遮罩与噪声合成的透明 PNG；加载页等待图片解码后启动游戏。生成陆地图时同步从 alpha（阈值 128）提取 SVG 轮廓，保留岛屿和孔洞；浏览器通过透明 path 命中陆地，陆地显示十字光标，海面／透明处隐藏光标，左键拖动时显示抓取光标。悬停不查询地形或世界坐标，命中区与底图共用缩放、平移和旋转；地皮变化后同步替换图片与轮廓。图标进入地图后独立加载，按实体身份复用节点。地图初始 `zoom=3`，`zoom=1` 最近、`zoom=20` 最远；每侧留出地图边长 10% 的 margin，最远档地图加 margin 构成的正方形边长为窗口长边 1.5 倍；视口平移不越过该边界。滚轮围绕光标以 0.1 秒插值缩放，向上放大、向下缩小。底图按默认缩放、窗口尺寸和 DPR 计算目标采样密度，再乘以 75%，最大 8192×8192；按 32×32 格分块合成，最终显示单张陆地图。预合成地皮块按地皮种类、分辨率、边缘变体及 8×8 噪声相位复用，每种地皮／分辨率共用一张最多 128 槽的图集；缓存命中直接绘制，淘汰复用最久未使用的槽位，销毁时统一释放。图集和读取 alpha 的捕获分块使用 CPU 画布，避免逐块 GPU 像素回读；猪王布局一次登记，有效地皮未变化时跳过全图重建。挖地、铺地和耕地会更新底图及命中区，关闭地图保留资源，场景释放时清理 URL、节点和订阅。实现见 [世界地皮整图与 DOM 地图](docs/dst-minimap-rendering.md)。调试命令语法、参数、支持的 `c_spawn` / `c_give` ID 和 `c_save()` 存档格式不变。
 
 开发模式（`pnpm dev`）下的性能诊断开关，不是控制台命令，命令语法与支持的 ID 不变：URL 加 `?stats` 显示 stats-gl 面板（FPS／CPU），`?stats=gpu` 另外统计 GPU 时间，库按需加载，不进生产构建；加 `?tileperf` 在控制台输出玩家跨 tile 时的活动网格写入耗时、订阅者耗时和长任务（`[tileperf]`），传送（灵魂跳跃）时附带标记。
 
@@ -29,11 +29,13 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 洞穴边缘 falloff 使用地皮／崖壁的 alpha-test 深度预绘制（只写深度、不输出颜色），再按地皮层顺序与相机深度绘制透明颜色；崖壁内部每个边面也按相机深度重排索引，避免相机转向时远处崖壁覆盖近处、或地皮错误盖住前景崖壁。对照原版洞穴参考图，将单张纹理的跨度校准为两格宽、下垂四格高，跨格连续采样并让底部渐隐入黑色虚空；这些尺寸与渐隐是参考图校准值，Lua 仅公开图集与相邻地皮规则，没有公开引擎网格尺寸。调试命令、参数、`c_spawn` / `c_give` 支持 ID 及存档格式不变。
 
-Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒内提示变为「灵魂回声」，第二跳或窗口到期结束本轮；按本项目要求，动作选择与提交均跳过库存灵魂数量判定，空库存也可连续使用。保留原版 BLINK 的 36 DST 单位距离（场景 108），超距先寻路到范围内；鼠标持有物品时使用物品动作，装备的地面动作和场景对象交互优先于跳跃。虚空、海洋和带 `groundtargetblocker`／`groundhole` 标签的阻挡落点不可跳，普通障碍可以跨越。预备动画结束提交动作，入场第 4 帧无敌、第 11 帧传送，出场第 7 帧结束无敌、第 8 帧恢复碰撞、第 14 帧回到 idle；动画、传送红色渐变、FX 和音效来自原版素材。未启用技能树加速或地图跳跃。`c_save()` 保存落点与 `players.local.wortox.freehops` / `soulhopcost`；按 Lua 不保存临时结束任务，读档保留回声计数，下一跳结算。新增 `c_spawn("wortox_portal_jumpin_fx")` / `c_spawn("wortox_portal_jumpout_fx")`，无额外参数，在玩家脚点播放原版瞬时特效，动画结束后再等待 2 帧移除；无皮肤、不可 `c_give`，`persists = false`，不写入存档。运行 `python3 packages/prefab/scripts/import-wortox-soulhop.py --check` 校验动画和 32 个由 FEV 核对的 WAV，去掉 `--check` 重新导入。
+Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒内提示变为「灵魂回声」，第二跳或窗口到期结束本轮；按本项目要求，动作选择与提交均跳过库存灵魂数量判定，空库存也可连续使用。保留原版 BLINK 的 36 DST 单位距离（场景 108），超距先寻路到范围内；鼠标持有物品时使用物品动作，装备的地面动作和场景对象交互优先于跳跃。虚空、海洋和带 `groundtargetblocker`／`groundhole` 标签的阻挡落点不可跳，普通障碍可以跨越。预备动画结束提交动作，入场第 4 帧无敌、第 11 帧传送，出场第 7 帧结束无敌、第 8 帧恢复碰撞、第 14 帧回到 idle；动画、传送红色渐变、FX 和音效来自原版素材。地图跳跃按 `M` 打开地图后右键可见陆地，以 `BLINK_MAP` 直接进入同一套跳跃状态，不受普通跳跃距离限制、不先寻路；按本项目要求跳过距离计费与灵魂消耗，也不修改普通跳跃的回声计数或计时器。SVG 轮廓控制悬停光标，点击和预备动画结束时再校验真实陆地，裸海面与虚空不可落地；地图动作不套用普通 BLINK 的地面目标阻挡检查。接受动作后地图保持打开并解除地图自己的自动暂停，键盘移动仍被地图屏蔽；落地重置地图中心并立即定位镜头，关闭再打开地图会重新自动暂停。技能树加速与船平台辅助落点尚未实现。`c_save()` 保存落点与 `players.local.wortox.freehops` / `soulhopcost`；按 Lua 不保存临时结束任务，读档保留回声计数，下一跳结算。新增 `c_spawn("wortox_portal_jumpin_fx")` / `c_spawn("wortox_portal_jumpout_fx")`，无额外参数，在玩家脚点播放原版瞬时特效，动画结束后再等待 2 帧移除；无皮肤、不可 `c_give`，`persists = false`，不写入存档。运行 `python3 packages/prefab/scripts/import-wortox-soulhop.py --check` 校验动画和 32 个由 FEV 核对的 WAV，去掉 `--check` 重新导入。
 
 玩家美术改用 Wortox 默认外观（`wortox_none`）：本体 `anim/dynamic/wortox.zip` / `.dyn`，幽灵 `anim/dynamic/ghost_wortox_build.zip` / `.dyn`；地图图标和物品栏自检头像同步使用 Wortox。共用 `wilson` 动画 bank、装备符号覆盖、死亡／复活及存档流程沿用现有实现，角色数值和存档角色字段沿用现有实现。资源按原路径和字节镜像，运行 `python3 packages/prefab/scripts/import-player-art.py --check` 校验，去掉 `--check` 可重新导入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变。
 
-默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_58 --output public/saves/Cluster_1 --origin-cell 281 392` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。地表保留 48,007 格陆地、120,242 格海洋及 6,687 个白名单实体；洞穴保留 46,224 格陆地、298 格 `FAKE_GROUND` 及 4,640 个白名单实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 281 392` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。`c_spawn` / `c_give` 的语法、参数和支持 ID 不变；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
+默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_58 --output public/saves/Cluster_1 --origin-cell 281 392` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。地表保留 48,007 格陆地、120,242 格海洋及 6,885 个白名单实体；洞穴保留 46,224 格陆地、298 格 `FAKE_GROUND` 及 4,640 个白名单实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 281 392` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。`c_spawn` / `c_give` 的语法、参数和支持 ID 不变；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
+
+已实现树木的导入白名单包含 `evergreen`、`deciduoustree`、`moon_tree`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`，以及月树幼苗 `moonbutterfly_sapling`。本次重新导入默认存档新增 198 棵月树。常青树、桦树、月树按 Lua 使用原版地图图标、优先级 `-1`，砍倒或烧毁后切换树桩／焦木图标；蘑菇树沿用现有图标。图标属于逻辑树，远处卸载模型时继续显示，永久移除时清理。月树保留大小、生长及 `moonTreeTimer` 腐朽计时器；幼苗保留 `saplingTimer`，按原版不显示地图图标。现有 `c_spawn("evergreen_normal")`、`c_spawn("deciduoustree_normal")`、`c_spawn("moon_tree_normal")` 等命令与支持 ID 不变；`c_save()` 保存树木身份、位置及相应组件状态。
 
 地图导入白名单新增 `pigking`、`deciduoustree`、`fireflies`、`flower`、`butterfly`。`Cluster_58` 当前快照新增猪王 1 个、桦树 695 棵、自然花 441 朵，以及地表／洞穴萤火虫 316／34 群；没有蝴蝶源记录，但导入器支持其存档。桦树保留阶段、树叶、树桩和腐朽计时器；花保留动画与原版 `planted` 标记；萤火虫和蝴蝶进入现有 `ground_item` 存档分组，保留实体 ID、位置、数量和可支持的蝴蝶新鲜度。岩石白名单保持现有内容；调试命令及支持 ID 不变。
 
@@ -444,11 +446,11 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 月树花 | `moon_tree_blossom` |
 | 花瓣 | `petals`（可采花获取，`c_spawn` / `c_give` 均支持，腐败为 `spoiled_food`） |
 | 蝴蝶种花及掉落 | `planted_flower`（运行时为 `flower`）、`butterfly`、`butterflywings`、`butter` |
-| 常青树 | `evergreen`、`evergreen_short`、`evergreen_normal`、`evergreen_tall` |
+| 常青树 | `evergreen`、`evergreen_short`、`evergreen_normal`、`evergreen_tall`（地图显示常态／树桩／烧毁图标） |
 | 松果地面物品 | `pinecone` |
-| 桦树 | `deciduoustree`、`deciduoustree_short`、`deciduoustree_normal`、`deciduoustree_tall` |
+| 桦树 | `deciduoustree`、`deciduoustree_short`、`deciduoustree_normal`、`deciduoustree_tall`（循环摇摆与烧毁姿态使用 `InstancedMesh` 合批；地图显示常态／树桩／烧毁图标；树叶缺失子图保持隐藏） |
 | 桦栗果地面物品 | `acorn` |
-| 月树／幼苗 | `moon_tree`、`moon_tree_short`、`moon_tree_normal`、`moon_tree_tall`、`moonbutterfly_sapling` |
+| 月树／幼苗 | `moon_tree`、`moon_tree_short`、`moon_tree_normal`、`moon_tree_tall`（地图显示常态／树桩／烧毁图标，保存腐朽计时器）、`moonbutterfly_sapling`（幼苗无地图图标） |
 | 火药 | `gunpowder` |
 | 木栅栏 | `fence`（世界栅栏，只能 `c_spawn`）、`fence_item`（`c_give` 与 `c_spawn`） |
 | 石果及石果芽 | `rock_avocado_fruit`、`rock_avocado_fruit_ripe`、`rock_avocado_fruit_ripe_cooked`、`rock_avocado_fruit_sprout` |

@@ -5,13 +5,14 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { WilsonStateGraphHost } from '../../stategraphs/src/SGwilson';
-import { Vector3 } from 'three';
+import { Object3D, PerspectiveCamera, Scene, Vector3, type WebGLRenderer } from 'three';
+import { BlinkActionController } from '../../stategraphs/src/blink';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('allows empty-inventory hops and settles one soul after two hops or five game seconds', () => {
   const scheduler = new GameTimeScheduler(), inventory = { ConsumeByName: vi.fn() };
@@ -91,4 +92,53 @@ it('commits BLINK after the pre-animation, teleports after 11 frames and restore
   graph.goToState('death');
   expect(invincible).toBe(false); expect(tint).toBe(0); expect(collisions).toBe(true);
   state.dispose();
+});
+
+it('buffers a free map jump without walking, revalidates before commit and snaps only after teleporting', () => {
+  vi.stubGlobal('window', new EventTarget());
+  const player = new Object3D(), point = new Vector3(1200, 0, -900);
+  const tryToPortalHop = vi.fn(() => false), snapCamera = vi.fn(() => player.position.clone());
+  const teleport = vi.fn((position: Vector3) => player.position.copy(position));
+  const graph = new WilsonStateGraph({
+    playAnimation: clip => clip.name === 'wortox_portal_jumpin_pre' ? .2 : 1,
+    playSound() {}, setCasting() {}, onStateChanged() {},
+    soulHop: { tryToPortalHop, facePoint() {}, teleport, snapCamera,
+      setPhysicsEnabled() {}, setTint() {}, spawnFx() {}, playSound() {} },
+  });
+  const locomotor = { destination: undefined, stop: vi.fn(), goToPoint: vi.fn(() => false) };
+  let eligible = true, valid = true;
+  const canBlinkTo = vi.fn(() => false);
+  const controller = new BlinkActionController({ player, scene: new Scene(), camera: new PerspectiveCamera(),
+    ground: new Object3D(), renderer: { domElement: new EventTarget() } as unknown as WebGLRenderer },
+  { stategraph: graph }, locomotor, {
+    canSoulHop: () => eligible, canBlinkTo, canMapBlinkTo: () => valid, hasSoulEcho: () => false,
+  });
+  try {
+    eligible = false;
+    expect(controller.requestMap(point)).toBe(false);
+    eligible = true;
+    expect(controller.requestMap(point)).toBe(true);
+    expect(graph.getBufferedAction()?.action).toBe('BLINK_MAP');
+    valid = false;
+    graph.update(.2);
+    expect(graph.stateName).toBe('idle');
+    expect(teleport).not.toHaveBeenCalled();
+    valid = true;
+    expect(controller.requestMap(point)).toBe(true);
+    expect(controller.requestMap(point)).toBe(false);
+    graph.update(.2);
+    expect(graph.stateName).toBe('portal_jumpin');
+    expect(tryToPortalHop).not.toHaveBeenCalled();
+    expect(locomotor.goToPoint).not.toHaveBeenCalled();
+    expect(canBlinkTo).not.toHaveBeenCalled();
+    graph.update(11 / 30);
+    expect(teleport).toHaveBeenCalledExactlyOnceWith(point);
+    expect(snapCamera).toHaveReturnedWith(point);
+    graph.requestOneShot('item_out'); graph.requestCrafting(true); graph.pushEvent('unequip');
+    expect(graph.stateName).toBe('portal_jumpout');
+    graph.update(14 / 30);
+    expect(graph.stateName).toBe('idle');
+    controller.dispose();
+    expect(controller.requestMap(point)).toBe(false);
+  } finally { controller.dispose(); }
 });

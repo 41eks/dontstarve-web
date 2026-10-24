@@ -132,6 +132,10 @@ class RegionImportTest(unittest.TestCase):
         source = {
             'pigking': [{'x': 0, 'z': 0}],
             'deciduoustree': [{'id': 1, 'data': tree}, {'id': 2, 'data': stump}],
+            'moon_tree': [{'id': 6, 'data': {'size': 'normal', 'growable': tree['growable']}},
+                          {'id': 7, 'data': {'size': 'short', 'stump': True, 'timer': stump['timer']}}],
+            'moonbutterfly_sapling': [{'id': 8, 'data': {'timer': {'timers': {
+                'grow': {'timeleft': 80, 'initial_time': 225, 'paused': False}}}}}],
             'flower': [{'id': 3, 'data': {'anim': 'rose', 'pickable': {'caninteractwith': True}}},
                        {'id': 4, 'data': {'anim': 'f9', 'planted': True}}],
             'fireflies': [{'data': {'stackable': {'stack': 8}}}],
@@ -147,6 +151,13 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(entities['deciduoustree'][1]['components'], {
             'growable': stump['growable'], 'deciduoustree': {'stump': True, 'leaf_state': 'normal'},
             'deciduousTimer': stump['timer']})
+        self.assertEqual(entities['moon_tree'][0]['components'], {
+            'moonTree': {'size': 'normal'}, 'growable': tree['growable']})
+        self.assertEqual(entities['moon_tree'][1]['components'], {
+            'moonTree': {'size': 'short', 'stump': True}, 'moonTreeTimer': stump['timer']})
+        self.assertEqual(entities['moonbutterfly_sapling'][0]['components'], {
+            'saplingTimer': source['moonbutterfly_sapling'][0]['data']['timer']})
+        self.assertEqual(provenance['entityCounts']['moon_tree'], {'source': 2, 'imported': 2})
         self.assertEqual([record['components']['flower'] for record in entities['flower']],
                          [{'animation': 'rose'}, {'animation': 'f9', 'planted': True}])
         insects = entities['ground_item']
@@ -158,7 +169,9 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(provenance['entityCounts']['butterfly'], {'source': 1, 'imported': 1})
         self.assertEqual(IMPORTER['convert_entities'](terrain, source, report, 'SURFACE')[0], entities)
         self.assertNotIn('growable', IMPORTER['deciduoustree_components']({'burnt': True, 'leaf_state': 'normal'}))
-        for prefab, data in [('deciduoustree', {**tree, 'monster': True}),
+        for prefab, data in [('moon_tree', {'size': 'short', 'growable': {'stage': 2}}),
+                             ('moonbutterfly_sapling', {'timer': {'timers': {}}}),
+                             ('deciduoustree', {**tree, 'monster': True}),
                              ('deciduoustree', {**tree, 'growable': {'stage': 4}}),
                              ('flower', {'anim': 'f1', 'pickable': {'picked': True}}),
                              ('fireflies', {'stackable': {'stack': 41}}),

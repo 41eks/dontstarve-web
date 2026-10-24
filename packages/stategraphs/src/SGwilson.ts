@@ -22,7 +22,7 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'portal_rez' | 'portal_jumpin_pre' | 'portal_jumpin' | 'portal_jumpout'
   /** SGwilson.lua amulet_rebirth: the player rising from a red amulet after a haunt resurrection. */
   | 'amulet_rebirth';
-export type WilsonAction = 'BLINK' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT';
+export type WilsonAction = 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT';
 export type WilsonAnimationKey = 'wortox_portal' | WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
@@ -143,10 +143,14 @@ export interface WilsonRebirthHost {
   sleepNearby(radius: number, seconds: number): void;
 }
 
+export interface PortalJumpData { dest: Vector3; from_map: boolean }
+
 export interface WilsonSoulHopHost {
   tryToPortalHop(): boolean;
   facePoint(position: Vector3): void;
   teleport(position: Vector3): void;
+  resetMinimapOffset?(): void;
+  snapCamera?(): void;
   setPhysicsEnabled(enabled: boolean): void;
   setTint(value: number): void;
   spawnFx(prefab: 'wortox_portal_jumpin_fx' | 'wortox_portal_jumpout_fx'): void;
@@ -1352,6 +1356,7 @@ const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = 
 /** SGwilson.lua action handlers for the supported, unmounted player/tool branches. */
 const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = [
   ActionHandler('BLINK', (inst, action) => !action.invobject && inst.context.host.soulHop ? 'portal_jumpin_pre' : null),
+  ActionHandler('BLINK_MAP', (inst, action) => !action.invobject && inst.context.host.soulHop ? 'portal_jumpin_pre' : null),
   // Ranged, blowdart and mounted destinations need unported states.
   ActionHandler('ATTACK', (inst, action) =>
     inst.hasStateTag('attack') && action.target === inst.statemem.attacktarget ? null : 'attack'),
@@ -1517,7 +1522,7 @@ export class WilsonStateGraph {
     this.sg.pushEvent(name, data);
     // Browser equipment replacement cancels all owned actions, including states
     // without a Lua-local unequip handler (castspell/veryquickcastspell/bugnet).
-    if (name === 'unequip' && !this.isPerformingAction('BLINK')) this.cancelAction();
+    if (name === 'unequip' && !this.isSoulHopping) this.cancelAction();
   }
   update(dt: number): void { this.sg.update(dt); }
 
@@ -1529,6 +1534,7 @@ export class WilsonStateGraph {
       && (invobjectPrefab === undefined || this.activeInvobject?.prefab === invobjectPrefab);
   }
   isActionActive(action: BufferedAction<WilsonAction>): boolean { return this.activeBufferedAction === action; }
+  get isSoulHopping(): boolean { return this.isPerformingAction('BLINK') || this.isPerformingAction('BLINK_MAP'); }
 
   /** A state that outlives the action's equipment (loserod, catchfish) stops being cancelled by `unequip`. */
   releaseAction(): void {
@@ -1656,7 +1662,7 @@ export class WilsonStateGraph {
   /** Update the persistent browser crafting request and reconcile the state. */
   requestCrafting(crafting: boolean): void {
     if (this.ghost) return;
-    if (crafting && this.isPerformingAction('BLINK')) return;
+    if (crafting && this.isSoulHopping) return;
     if (crafting === this.crafting) return;
     this.crafting = crafting;
     if (crafting && (this.activeAction !== null || this.stateName === 'emote')) this.finish();
@@ -1665,7 +1671,7 @@ export class WilsonStateGraph {
 
   /** Request a visual state, interrupting any buffered action. */
   requestOneShot(state: WilsonOneShotState): void {
-    if (this.isDead || this.ghost || this.isPerformingAction('BLINK')) return;
+    if (this.isDead || this.ghost || this.isSoulHopping) return;
     this.clearBufferedAction();
     this.activeAction = null;
     this.activeBufferedAction = undefined;
@@ -1689,10 +1695,11 @@ export class WilsonStateGraph {
     return true;
   }
 
-  /** ACTIONS.BLINK.fn: only the pre state's buffered action can commit a soul hop. */
-  beginPortalJump(position: Vector3): boolean {
-    if (this.stateName !== 'portal_jumpin_pre' || !this.host.soulHop?.tryToPortalHop()) return false;
-    this.sg.goToState('portal_jumpin', position);
+  /** BLINK / BLINK_MAP commit after the pre-animation. Map jumps intentionally skip soul accounting. */
+  beginPortalJump(position: Vector3, fromMap = false): boolean {
+    if (this.stateName !== 'portal_jumpin_pre' || !this.host.soulHop
+      || (!fromMap && !this.host.soulHop.tryToPortalHop())) return false;
+    this.sg.goToState('portal_jumpin', { dest: position, from_map: fromMap } satisfies PortalJumpData);
     return true;
   }
 

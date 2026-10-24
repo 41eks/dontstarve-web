@@ -4,6 +4,7 @@ import { MinimapView, MINIMAP_ZOOM_DEFAULT, MINIMAP_ZOOM_MAX, MINIMAP_ZOOM_MIN }
 import { MinimapDomRenderer, type MinimapInspection } from './minimap-dom';
 import type { GroundImageOptions } from './minimap-ground-image';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
+import { Vector3 } from 'three';
 import styles from './styles/minimap.css?inline';
 
 export type { MinimapPixels, MinimapTileLayer } from './minimap-terrain';
@@ -18,7 +19,9 @@ export interface MinimapOptions extends GroundImageOptions {
   getMiniMapEntities?(): readonly MiniMapEntity[];
 }
 
-export interface MinimapStateDetail { isOpen: boolean }
+export interface MinimapStateDetail { isOpen: boolean; autopaused: boolean }
+/** Cancel the request event after accepting its action to release the map's own autopause. */
+export interface MinimapActionRequestDetail { position: Vector3 }
 
 /** How often live entity positions are sampled, in milliseconds. */
 export const MINIMAP_ENTITY_SAMPLE_MS = 100;
@@ -35,6 +38,7 @@ export class DstMinimapElement extends AssetElement {
   private root!: HTMLElement;
   private renderer?: MinimapDomRenderer;
   private open = false;
+  private autopaused = false;
   private sampleTimer?: ReturnType<typeof setInterval>;
   private drag?: { pointer: number; x: number; y: number; moved: boolean };
   private readonly headingCleanups: (() => void)[] = [];
@@ -91,6 +95,7 @@ export class DstMinimapElement extends AssetElement {
   setOpen(isOpen: boolean): void {
     if (isOpen === this.open || !this.options) return;
     this.open = isOpen;
+    this.autopaused = isOpen;
     if (this.root) this.root.hidden = !isOpen;
     if (isOpen) {
       this.resize();
@@ -100,7 +105,12 @@ export class DstMinimapElement extends AssetElement {
       this.stopSampling();
       this.cancelZoom();
     }
-    this.dispatchEvent(new CustomEvent<MinimapStateDetail>('game:map-state', { bubbles: true, composed: true, detail: { isOpen } }));
+    this.notifyMapState();
+  }
+
+  private notifyMapState(): void {
+    this.dispatchEvent(new CustomEvent<MinimapStateDetail>('game:map-state', { bubbles: true, composed: true,
+      detail: { isOpen: this.open, autopaused: this.autopaused } }));
   }
 
   protected render(): void {
@@ -119,6 +129,7 @@ export class DstMinimapElement extends AssetElement {
     root.addEventListener('pointerup', this.onPointerEnd);
     root.addEventListener('pointercancel', this.onPointerEnd);
     root.addEventListener('lostpointercapture', this.onPointerEnd);
+    root.addEventListener('contextmenu', event => event.preventDefault());
     window.addEventListener('keydown', this.onKeyDown);
     this.resizeObserver?.disconnect();
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -227,6 +238,20 @@ export class DstMinimapElement extends AssetElement {
   }
 
   private onPointerDown = (event: PointerEvent): void => {
+    if (!this.open || !this.view || event.defaultPrevented) return;
+    if (event.button === 2) {
+      // The browser has already hit the alpha-derived SVG silhouette. No terrain lookup on hover.
+      if (!(event.target instanceof Element) || !event.target.matches('.minimap__land-hit')) return;
+      event.preventDefault();
+      const rect = this.root.getBoundingClientRect();
+      const point = this.view.screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
+      const accepted = !this.dispatchEvent(new CustomEvent<MinimapActionRequestDetail>('game:map-action-request', {
+        bubbles: true, composed: true, cancelable: true, detail: { position: new Vector3(point.x, 0, point.z) },
+      }));
+      // MapScreen keeps BLINK_MAP open and releases its autopause once an action starts.
+      if (accepted && this.open && this.autopaused) { this.autopaused = false; this.notifyMapState(); }
+      return;
+    }
     if (event.button !== 0 || (event.target as Element).closest('.minimap__center')) return;
     this.drag = { pointer: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
     this.root.setPointerCapture(event.pointerId);

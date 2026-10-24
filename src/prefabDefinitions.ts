@@ -116,7 +116,7 @@ export const PREFAB_DEFINITIONS = {
   plantedSeeds: definePrefabs(PLANTED_SEED_IDS, empty, true),
   farmDecor: definePrefabs(FARM_DECOR_IDS, (value, path, context) =>
     (context.prefab === 'farm_soil' ? farmSoil : farmDebris)(value, path, context), true),
-  moonTrees: definePrefabs(['moon_tree'], componentParser({ keys: ['moonTree', 'growable'] }),
+  moonTrees: definePrefabs(['moon_tree'], componentParser({ keys: ['moonTree', 'growable', 'moonTreeTimer'] }),
     ['moon_tree', 'moon_tree_short', 'moon_tree_normal', 'moon_tree_tall'],
     [definitions.moonTree.archive, 'tree_petal_fx.zip', 'baby_moon_tree.zip', 'snow.zip']),
   moonTreeSaplings: definePrefabs(['moonbutterfly_sapling'], componentParser({ keys: ['saplingTimer'] }), true,
@@ -126,6 +126,7 @@ export const PREFAB_DEFINITIONS = {
       { animation: 'tree_leaf_trunk_build.zip', build: 'tree_leaf_trunk_build.zip' },
       ...['short', 'normal', 'tall'].map(stage => ({ animation: `tree_leaf_${stage}.zip`, build: 'tree_leaf_trunk_build.zip' })),
       ...['green', 'red', 'orange', 'yellow'].flatMap(color => [`tree_leaf_${color}_build.zip`, `tree_leaf_fx_${color}.zip`]),
+      'snow.zip',
     ]),
   evergreens: definePrefabs(['evergreen'], componentParser({ keys: ['evergreen', 'growable', 'evergreenTimer'], growthStages: 4 }),
     ['evergreen', 'evergreen_short', 'evergreen_normal', 'evergreen_tall'], [

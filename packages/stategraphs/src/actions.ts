@@ -3,6 +3,7 @@ import type { BufferedActionObject } from './bufferedaction.ts';
 /** Supported action strings from strings.lua + languages/chinese_s.po; priorities from actions.lua. */
 export const ACTIONS = {
   BLINK: { priority: 10, rmb: true, distance: 36, strings: { GENERIC: '传送', SOUL: '灵魂跳跃', FREESOUL: '灵魂回声' } },
+  BLINK_MAP: { priority: 10, rmb: true, map_action: true, strings: { GENERIC: '灵魂跳跃' } },
   NET: { priority: 3, strings: { GENERIC: '捕捉' } },
   ATTACK: { priority: 2, strings: { GENERIC: '攻击', RANGEDLIGHT: '点燃' } },
   HAMMER: { priority: 3, strings: { GENERIC: '敲' } },

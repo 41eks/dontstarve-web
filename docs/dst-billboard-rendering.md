@@ -12,6 +12,8 @@
 
 蘑菇树直接使用动画包的 `createSharedArchiveSprite()`，prefab 按源 Lua 通过 `playOnce()` / `start()` 选择动作与后续待机。`instancedAnimations: ['idle_loop']` 将待机树交给 `InstancedArchiveSprites`，同外观的树共享合成图集和四边形，在实例属性中独立存储帧 UV、颜色、透明度和变换。受击、倒下、树桩和生长／开花过渡继续按动画帧、build、皮肤和符号配置复用 `FrameGeometryCache` 中的不可变合并几何；返回待机自动重新加入实例批次。燃烧消失的 `chop_burnt` 特效也使用共享入口。每棵树保留模型、随机播放进度、完成回调和交互组件；渲染隐藏的源帧仍用于精确 alpha 拾取和空间边界。单树移除退出批次并释放私有资源，共享帧、合成图集与批次由 `ArchiveSpriteAssets.dispose()` 统一释放。
 
+桦树通过同一 `ArchiveSpriteAssets` 和 `preloadSharedArchiveSprite()` 复用三个大小的动画 bank、树干 build、四种叶色及雪层。`sway1_loop_*`、`sway2_loop_*` 和 `burnt_*` 参与实例化，砍树、生长、落叶、倒下及非循环树桩姿态使用共享的普通帧几何，循环状态恢复时自动回到批次。`ArchiveSprite.setSymbolOverride()` 在预载 build 之间切换／清除 `swap_leaves`，`setColour()` 同步实体私有材质和实例颜色，均保留当前动画进度与完成回调。外观与帧决定合成图集，树的颜色不参与缓存键；同外观 1 棵与 21 棵的浏览器验证均为深度、颜色各一次绘制，跨叶色或图集页会增加批次。积雪按原版 0.015 阈值切换，卸载模型时清理私有世界监听并保留逻辑树，整个森林销毁时再释放共享资源。调试命令、参数、支持 ID 和树木存档字段不变。
+
 `GrottoPoolManager` 通过通用入口 `createSharedArchiveSprite(assets, definition, options?)` 将池面、雾气、瀑布和月亮玻璃接入同一缓存机制，prefab 不再维护要共享的 clip 清单，运行时切换的动画也自动按帧缓存。每种 clip 及其 `*_mined` 状态分别缓存；池面的 OnGround 旋转、背景顺序、雾气 billboard 和独立实体的随机播放进度仍由原有节点维持。共享几何不合并 draw call，单池移除及其子物件清理不会销毁其他实体借用的帧。
 
 `packages/animation/src/renderOrder.ts` 登记每个动画 sprite 最内层的 `visual` group，`setSpriteEntityRenderOrder()` 将实体顺序写到该 group。每帧按实际脚点的相机空间深度由远到近排序；若改用 sprite 中心或包围盒中心，高个实体会过早或过晚改变遮挡关系。
@@ -41,7 +43,7 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 批次父 Group 保持默认 `renderOrder = 0`，颜色 mesh 使用 `renderOrder = -0.4`，排在地皮 mesh（−2～−0.5）之后。Three 先比较 Group 的顺序，再比较 mesh 的顺序；把批次 Group 设为负值会让颜色 pass 早于不写深度的地皮，树便会被地皮覆盖。批次内部实例仍按脚点深度从远到近排列。
 
-森林颜色 pass 写深度会让共面的 DST 层发生 z-fighting，表现为相机移动时闪烁。此方案用于蘑菇树、月树待机实例；普通动画实体仍按实体脚点排序。
+森林颜色 pass 写深度会让共面的 DST 层发生 z-fighting，表现为相机移动时闪烁。此方案用于蘑菇树、月树和桦树的循环动画实例；普通动画实体仍按实体脚点排序。
 
 ## 墙的源码与朝向
 
@@ -81,3 +83,5 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 地皮仍按源地皮层混合，崖壁颜色在地皮之后、积雪与动态角色之前绘制，颜色 pass 均不写深度。`GroundDepthPrepass` 为每个地皮／崖壁颜色 Mesh 添加一个借用同一几何体的 opaque 深度 Mesh：`colorWrite=false`、`depthWrite=true`、alpha-test 0.98，仅实心部分建立遮挡，保留软边缘的颜色混合。深度材质复用地皮 atlas 的 onBeforeCompile 和纹理，不能只用噪声图计算 alpha。地皮重建时两个 pass 同步更换几何体；几何体与纹理由原持有者释放，深度 pass 只释放自己的材质。
 
 一个合并的透明 Mesh 不会自动排序内部崖壁面。`sortGroundFalloffGeometry` 根据 model-view 矩阵对等高边面的中心深度由远到近排序，仅更新索引，不重建顶点、不拆成逐面 Mesh；相机矩阵未变化时复用结果。实心深度与软边排序分别处理，不能用一个固定 renderOrder 替代空间遮挡。代表性浏览器验证会反转整组输入边面并旋转相机，比较实际 WebGL 像素；单位测试覆盖跨负坐标纹理连续性、索引更新与几何体／材质的所有权。
+
+动画循环只循环时间轴，不对 build 的子图编号取模。子图只在 `index <= frame < index + duration` 的范围内有效，空白子图或缺失编号保持不可见；共享 archive sprite 同样跳过已知符号的缺失编号，缺失整个符号仍报告资源错误。桦树 `tree_leaf_green_build` 的 `swap_leaves` 只有 0～16 号子图，`sway1_loop_tall` 中 17～19 号插槽必须隐藏，不能回绕到 0～2 号，否则多画三层树叶并出现切半拼接。洞穴池塘也沿用同一空白插槽规则。调试命令、参数及支持的 prefab/item ID 不变。

@@ -11,6 +11,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { TILE_SIZE } from '../../prefab/src/tile';
+import { placeStaticLayout } from '../../prefab/src/staticLayout';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -103,6 +104,11 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(save.world.map.tiles!.filter(tile => tile.tileId === WORLD_TILES.MONKEY_DOCK).every(tile => tile.underTileId !== undefined)).toBe(true);
     expect(save.world.entities.evergreen.filter(entity => entity.components.evergreenTimer)).toHaveLength(8);
     expect(save.world.entities.pigking).toHaveLength(1);
+    const terrainChanged = vi.fn(); map.onTerrainChanged(terrainChanged);
+    map.setOriginalTiles(save.world.entities.pigking.flatMap(king =>
+      placeStaticLayout('default_pigking', new Vector3(...king.transform.position), 'pigking').tiles
+        .map(({ position, tile }) => ({ position, tileId: WORLD_TILES[tile] }))));
+    expect(terrainChanged).not.toHaveBeenCalled(); // Imported final tiles already cover the entire layout.
     expect(save.world.entities.deciduoustree).toHaveLength(695);
     expect(save.world.entities.deciduoustree.filter(entity => entity.components.deciduousTimer)).toHaveLength(2);
     expect(save.world.entities.flower).toHaveLength(441);

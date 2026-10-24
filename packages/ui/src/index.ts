@@ -62,7 +62,7 @@ export {
   inventorySlotAddress,
 } from './inventory-bar';
 export { DstMapControlsElement, type CameraTurnDirection } from './map-controls';
-export { DstMinimapElement, type MinimapOptions, type MinimapStateDetail, type MinimapPixels, type MinimapTerrain, type MinimapTileLayer } from './minimap';
+export { DstMinimapElement, type MinimapOptions, type MinimapStateDetail, type MinimapActionRequestDetail, type MinimapPixels, type MinimapTerrain, type MinimapTileLayer } from './minimap';
 export type { MinimapOceanConfig, MinimapOceanTuning } from './minimap-ocean';
 export { MinimapView, MINIMAP_ZOOM_DEFAULT, MINIMAP_ZOOM_MAX, MINIMAP_ZOOM_MIN } from './minimap-view';
 export {

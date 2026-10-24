@@ -186,3 +186,104 @@ export async function checkTreeSpriteRendering(instanced = false) {
     assets.dispose(); target.dispose(); lighting?.dispose(); renderer.dispose();
   }
 }
+
+/** Compare the actual birch draw with source image intervals, including intentionally absent override slots. */
+export async function checkBirchLeafRendering(instanced = false) {
+  const { loadBuild, loadAnim, smallHash } = await import('@dontstarve-web/animation/animationAssets');
+  const { createSpriteFactory, loadSymbolOverride } = await import('@dontstarve-web/animation/sprite');
+  const base = '/dst/data/anim';
+  const [trunk, leaf, bank, override] = await Promise.all([
+    loadBuild('tree_leaf_trunk_build.zip', base), loadBuild('tree_leaf_green_build.zip', base),
+    loadAnim('tree_leaf_tall.zip', base), loadSymbolOverride(base, 'tree_leaf_green_build.zip', 'swap_leaves'),
+  ]);
+  const factory = createSpriteFactory(trunk, bank);
+  const assets = new ArchiveSpriteAssets();
+  const definition = { animationArchive: 'tree_leaf_tall.zip',
+    buildArchives: ['tree_leaf_trunk_build.zip', 'tree_leaf_green_build.zip'], bank: 'tree_leaf',
+    animation: 'sway1_loop_tall', loop: true,
+    symbolOverrides: { swap_leaves: { archive: 'tree_leaf_green_build.zip', symbol: 'swap_leaves' } },
+    hiddenSymbols: ['mouseover', 'snow'],
+  };
+  const shared = instanced ? await createSharedArchiveSprite(assets, definition,
+    { colour: [1, 1, 1], instancedAnimations: ['sway1_loop_tall'] }) : undefined;
+  const extra: Awaited<ReturnType<typeof createSharedArchiveSprite>>[] = [];
+  const model = shared?.model ?? factory.create({ initialAnimation: 'sway1_loop_tall', scale: .02 });
+  const controller = model.userData.animationController ?? shared;
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, preserveDrawingBuffer: true });
+  renderer.setSize(600, 600); renderer.setClearColor(0, 0);
+  const reference = document.createElement('canvas'); reference.width = reference.height = 600;
+  const actual = document.createElement('canvas'); actual.width = actual.height = 600;
+  const sources: HTMLCanvasElement[] = [];
+  try {
+    if (!shared) controller.setSymbolOverrides(new Map([[smallHash('swap_leaves'), override]]), ['mouseover']);
+    controller.setFrame(0);
+    const scene = new THREE.Scene(); scene.add(model);
+    const camera = new THREE.OrthographicCamera(-40 / 3, 40 / 3, 24, -8 / 3, .1, 100);
+    camera.position.z = 10;
+    renderSceneWithPasses(renderer, scene, camera);
+    actual.getContext('2d')!.drawImage(renderer.domElement, 0, 0);
+    const ctx = reference.getContext('2d')!;
+    ctx.setTransform(.45, 0, 0, .45, 300, 540);
+    const atlases = [trunk, leaf].map(pkg => pkg.atlases.map(atlas => {
+      const canvas = document.createElement('canvas'); canvas.width = atlas.width; canvas.height = atlas.height;
+      canvas.getContext('2d')!.putImageData(new ImageData(Uint8ClampedArray.from(atlas.pixels), atlas.width, atlas.height), 0, 0);
+      sources.push(canvas); return canvas;
+    }));
+    const frame = bank.animations.find(clip => clip.name === 'sway1_loop_tall')!.frames[0];
+    let expectedParts = 0;
+    for (const element of [...frame.elements].sort((a, b) => b.z - a.z)) {
+      if (element.layerHash === smallHash('mouseover')) continue;
+      const source = element.imageHash === smallHash('swap_leaves') ? 1 : 0;
+      // Independent reference: an index outside the source duration draws nothing.
+      const image = [trunk, leaf][source].build.symbols.get(element.imageHash)?.find(image =>
+        image.vertexCount > 0 && image.index <= element.imageIndex && element.imageIndex < image.index + image.duration);
+      if (!image) continue;
+      const atlas = atlases[source][image.sampler ?? 0];
+      const sx = atlas.width / image.canvasWidth!, sy = atlas.height / image.canvasHeight!;
+      ctx.save(); ctx.transform(...element.matrix);
+      ctx.drawImage(atlas, image.bbx! * sx, image.bby! * sy, image.width * sx, image.height * sy,
+        image.x - image.width / 2, image.y - image.height / 2, image.width, image.height);
+      ctx.restore(); expectedParts++;
+    }
+    const gpu = actual.getContext('2d')!.getImageData(0, 0, 600, 600).data;
+    const expected = ctx.getImageData(0, 0, 600, 600).data;
+    const meanError = gpu.reduce((sum, value, i) => sum + Math.abs(value - expected[i]), 0) / gpu.length;
+    const mesh = model.children[0].children[0] as THREE.Mesh;
+    const drawCalls: number[] = [];
+    let privateTint = false, workDrawn = false, independentFrames = false;
+    if (shared) {
+      renderer.info.autoReset = false;
+      const draw = () => { renderer.info.reset(); renderSceneWithPasses(renderer, scene, camera); drawCalls.push(renderer.info.render.calls); };
+      draw();
+      for (let i = 0; i < 20; i++) {
+        const tree = await createSharedArchiveSprite(assets, definition,
+          { colour: [1, 1, 1], instancedAnimations: ['sway1_loop_tall'] });
+        tree.setFrame(i % 8); scene.add(tree.model); extra.push(tree);
+      }
+      draw();
+      shared.setColour([.5, .5, .5]); draw();
+      const colours: number[] = [], phases = new Set<string>();
+      scene.traverse(object => {
+        if (object instanceof THREE.InstancedMesh && object.name === 'ArchiveSpriteInstances:colour') {
+          const uv = object.geometry.getAttribute('spriteUv');
+          for (let i = 0; i < object.count; i++) {
+            colours.push(object.instanceColor!.getX(i));
+            phases.add(`${uv.getX(i)},${uv.getY(i)},${uv.getZ(i)},${uv.getW(i)}`);
+          }
+        }
+      });
+      independentFrames = phases.size > 1;
+      privateTint = colours.filter(colour => colour === .5).length === 1 && colours.filter(colour => colour === 1).length === 20;
+      shared.playOnce('chop_tall', () => shared.start('sway1_loop_tall')); draw();
+      workDrawn = mesh.visible;
+      for (let i = 0; i < 100 && shared.currentAnimation !== 'sway1_loop_tall'; i++) shared.update(.1);
+      draw();
+      shared.dispose(); extra.forEach(tree => tree.dispose()); draw();
+    }
+    return { expectedParts, drawnParts: mesh.geometry.drawRange.count / 6, meanError, drawCalls, privateTint, workDrawn, independentFrames };
+  } finally {
+    shared?.dispose(); extra.forEach(tree => tree.dispose()); assets.dispose();
+    factory.dispose(); override.dispose(); renderer.dispose();
+    for (const canvas of [...sources, actual, reference]) canvas.width = canvas.height = 0;
+  }
+}

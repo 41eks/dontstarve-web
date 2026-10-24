@@ -22,6 +22,8 @@ export interface WortoxPlayerOptions {
   fx: WorldFx;
   isPassableAtPoint(position: THREE.Vector3): boolean;
   isManualMovement(): boolean;
+  resetMinimapOffset?(): void;
+  snapCamera?(): void;
   saved?: WortoxSave;
 }
 
@@ -67,11 +69,14 @@ export class WortoxPlayer {
       },
       setPhysicsEnabled: enabled => this.setPhysicsEnabled(enabled),
       spawnFx: prefab => fx.spawn(prefab, world.player.position),
+      resetMinimapOffset: options.resetMinimapOffset,
+      snapCamera: options.snapCamera,
     });
     this.input = new BlinkActionController(world, animation, locomotor, {
       canSoulHop: () => !this.disposed && !animation.isGhost && !animation.stategraph.isDead
-        && !world.player.userData.tags?.includes('riding') && !inventory.GetActiveItem(),
+        && world.player.userData.controllerEnabled !== false && !world.player.userData.tags?.includes('riding') && !inventory.GetActiveItem(),
       canBlinkTo: position => this.canBlinkTo(position),
+      canMapBlinkTo: position => this.canMapBlinkTo(position),
       hasSoulEcho: () => this.state.hasSoulEcho.peek(),
     }, options.isManualMovement);
   }
@@ -81,6 +86,13 @@ export class WortoxPlayer {
     if (![position.x, position.y, position.z].every(Number.isFinite) || !this.options.isPassableAtPoint(position)) return false;
     return !isGroundTargetBlocked(this.blockers, position, .5 * WORLD_SCALE);
   }
+
+  /** actions.lua map remap requires land; it does not use the normal ground-target blocker check. */
+  private canMapBlinkTo(position: THREE.Vector3): boolean {
+    return [position.x, position.y, position.z].every(Number.isFinite) && this.options.isPassableAtPoint(position);
+  }
+
+  requestMapHop(position: THREE.Vector3): boolean { return this.input.requestMap(position); }
 
   private facePoint(position: THREE.Vector3): void {
     const { world, animation } = this.options;

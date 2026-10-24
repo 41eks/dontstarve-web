@@ -13,6 +13,7 @@ export const SOUL_HOP_DISTANCE = ACTIONS.BLINK.distance * TILE_SIZE / 4;
 export interface SoulHopActor {
   canSoulHop(): boolean;
   canBlinkTo(position: THREE.Vector3): boolean;
+  canMapBlinkTo(position: THREE.Vector3): boolean;
   hasSoulEcho(): boolean;
 }
 
@@ -22,7 +23,7 @@ export class BlinkActionController {
   private readonly unregister: () => void;
   private readonly stopEvents: () => void;
   private destination?: THREE.Vector3;
-  private action?: BufferedAction<'BLINK'>;
+  private action?: BufferedAction<'BLINK' | 'BLINK_MAP'>;
   private disposed = false;
 
   private readonly world: ActionWorldContext;
@@ -58,6 +59,21 @@ export class BlinkActionController {
     return true;
   }
 
+  /** BLINK_MAP has ArriveAnywhere: buffer at the current position without walking into range. */
+  requestMap(position: THREE.Vector3): boolean {
+    if (this.disposed || !this.actor.canSoulHop() || !this.actor.canMapBlinkTo(position)
+      || this.animation.stategraph.hasStateTag('busy')) return false;
+    this.cancel();
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: 'BLINK_MAP' });
+    this.locomotor.stop();
+    const destination = position.clone();
+    const action = new BufferedAction('BLINK_MAP', () => this.animation.stategraph.beginPortalJump(destination, true),
+      () => this.actor.canSoulHop() && this.actor.canMapBlinkTo(destination), { pos: destination });
+    if (!this.animation.stategraph.pushBufferedAction(action)) return false;
+    this.action = action;
+    return true;
+  }
+
   update(): void {
     if (this.disposed) return;
     if (this.action && !this.animation.stategraph.isActionActive(this.action)) this.action = undefined;
@@ -80,7 +96,7 @@ export class BlinkActionController {
     if (this.destination) this.locomotor.stop();
     this.destination = undefined;
     // Once BLINK has committed, its nointerrupt jump-out and cleanup belong to the stategraph.
-    if (this.action && this.animation.stategraph.stateName === 'portal_jumpin_pre') this.animation.stategraph.cancelAction('BLINK');
+    if (this.action && this.animation.stategraph.stateName === 'portal_jumpin_pre') this.animation.stategraph.cancelAction(this.action.action);
     this.action = undefined;
   }
 

@@ -413,6 +413,8 @@
   "entityWhitelist": [
     "pigking",
     "deciduoustree",
+    "moon_tree",
+    "moonbutterfly_sapling",
     "fireflies",
     "flower",
     "butterfly",
@@ -458,6 +460,14 @@
       "imported": 0
     },
     "deciduoustree": {
+      "source": 0,
+      "imported": 0
+    },
+    "moon_tree": {
+      "source": 0,
+      "imported": 0
+    },
+    "moonbutterfly_sapling": {
       "source": 0,
       "imported": 0
     },

@@ -34,7 +34,7 @@ export class MinimapDomRenderer {
     Object.assign(plate.style, { position: 'absolute', left: `${min * unit - margin}px`, top: `${min * unit - margin}px`,
       width: `${(max - min) * unit + 2 * margin}px`, height: `${(max - min) * unit + 2 * margin}px`,
       backgroundImage: `url(${import.meta.env.BASE_URL}minimap/ocean.png)`, backgroundSize: `${OCEAN_PLATE_CELLS * unit}px` });
-    this.dom.overview.append(plate, this.terrain.image);
+    this.dom.overview.append(plate, this.terrain.image, this.terrain.hitRegion);
   }
 
   get root(): HTMLElement { return this.dom.root; }

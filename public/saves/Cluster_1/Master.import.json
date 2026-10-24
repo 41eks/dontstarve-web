@@ -341,6 +341,8 @@
   "entityWhitelist": [
     "pigking",
     "deciduoustree",
+    "moon_tree",
+    "moonbutterfly_sapling",
     "fireflies",
     "flower",
     "butterfly",
@@ -388,6 +390,14 @@
     "deciduoustree": {
       "source": 695,
       "imported": 695
+    },
+    "moon_tree": {
+      "source": 198,
+      "imported": 198
+    },
+    "moonbutterfly_sapling": {
+      "source": 0,
+      "imported": 0
     },
     "fireflies": {
       "source": 316,
@@ -8893,6 +8903,2382 @@
         130.26
       ],
       "sourceNode": "Speak to the king:4:DeepDeciduous"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108721",
+      "prefab": "moon_tree",
+      "sourceIndex": 1,
+      "sourceId": 108721,
+      "sourcePosition": [
+        500.49,
+        0,
+        -293.61
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108722",
+      "prefab": "moon_tree",
+      "sourceIndex": 2,
+      "sourceId": 108722,
+      "sourcePosition": [
+        494.39,
+        0,
+        -290.42
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108723",
+      "prefab": "moon_tree",
+      "sourceIndex": 3,
+      "sourceId": 108723,
+      "sourcePosition": [
+        501.37,
+        0,
+        -287.44
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108724",
+      "prefab": "moon_tree",
+      "sourceIndex": 4,
+      "sourceId": 108724,
+      "sourcePosition": [
+        494.49,
+        0,
+        -286.74
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108725",
+      "prefab": "moon_tree",
+      "sourceIndex": 5,
+      "sourceId": 108725,
+      "sourcePosition": [
+        492.14,
+        0,
+        -294.73
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108726",
+      "prefab": "moon_tree",
+      "sourceIndex": 6,
+      "sourceId": 108726,
+      "sourcePosition": [
+        492.52,
+        0,
+        -288.79
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108727",
+      "prefab": "moon_tree",
+      "sourceIndex": 7,
+      "sourceId": 108727,
+      "sourcePosition": [
+        515.92,
+        0,
+        -292.44
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108728",
+      "prefab": "moon_tree",
+      "sourceIndex": 8,
+      "sourceId": 108728,
+      "sourcePosition": [
+        511.56,
+        0,
+        -292.97
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108729",
+      "prefab": "moon_tree",
+      "sourceIndex": 9,
+      "sourceId": 108729,
+      "sourcePosition": [
+        516.77,
+        0,
+        -288.59
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108730",
+      "prefab": "moon_tree",
+      "sourceIndex": 10,
+      "sourceId": 108730,
+      "sourcePosition": [
+        514.1,
+        0,
+        -286.43
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108731",
+      "prefab": "moon_tree",
+      "sourceIndex": 11,
+      "sourceId": 108731,
+      "sourcePosition": [
+        513.97,
+        0,
+        -293.53
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108732",
+      "prefab": "moon_tree",
+      "sourceIndex": 12,
+      "sourceId": 108732,
+      "sourcePosition": [
+        511.91,
+        0,
+        -287.18
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108733",
+      "prefab": "moon_tree",
+      "sourceIndex": 13,
+      "sourceId": 108733,
+      "sourcePosition": [
+        507.12,
+        0,
+        -291.25
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108734",
+      "prefab": "moon_tree",
+      "sourceIndex": 14,
+      "sourceId": 108734,
+      "sourcePosition": [
+        506.31,
+        0,
+        -288.07
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108735",
+      "prefab": "moon_tree",
+      "sourceIndex": 15,
+      "sourceId": 108735,
+      "sourcePosition": [
+        514.83,
+        0,
+        -282.67
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108736",
+      "prefab": "moon_tree",
+      "sourceIndex": 16,
+      "sourceId": 108736,
+      "sourcePosition": [
+        445.06,
+        0,
+        -272.27
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108737",
+      "prefab": "moon_tree",
+      "sourceIndex": 17,
+      "sourceId": 108737,
+      "sourcePosition": [
+        443.15,
+        0,
+        -277.59
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108738",
+      "prefab": "moon_tree",
+      "sourceIndex": 18,
+      "sourceId": 108738,
+      "sourcePosition": [
+        439.24,
+        0,
+        -270.71
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108739",
+      "prefab": "moon_tree",
+      "sourceIndex": 19,
+      "sourceId": 108739,
+      "sourcePosition": [
+        439.93,
+        0,
+        -273.02
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108740",
+      "prefab": "moon_tree",
+      "sourceIndex": 20,
+      "sourceId": 108740,
+      "sourcePosition": [
+        442.63,
+        0,
+        -274.51
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108741",
+      "prefab": "moon_tree",
+      "sourceIndex": 21,
+      "sourceId": 108741,
+      "sourcePosition": [
+        444.78,
+        0,
+        -281.85
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108742",
+      "prefab": "moon_tree",
+      "sourceIndex": 22,
+      "sourceId": 108742,
+      "sourcePosition": [
+        440.68,
+        0,
+        -282.07
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108743",
+      "prefab": "moon_tree",
+      "sourceIndex": 23,
+      "sourceId": 108743,
+      "sourcePosition": [
+        435.35,
+        0,
+        -270.92
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108744",
+      "prefab": "moon_tree",
+      "sourceIndex": 24,
+      "sourceId": 108744,
+      "sourcePosition": [
+        436.15,
+        0,
+        -278.86
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108745",
+      "prefab": "moon_tree",
+      "sourceIndex": 25,
+      "sourceId": 108745,
+      "sourcePosition": [
+        453.71,
+        0,
+        -271.37
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108746",
+      "prefab": "moon_tree",
+      "sourceIndex": 26,
+      "sourceId": 108746,
+      "sourcePosition": [
+        460.86,
+        0,
+        -273.51
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108747",
+      "prefab": "moon_tree",
+      "sourceIndex": 27,
+      "sourceId": 108747,
+      "sourcePosition": [
+        454.68,
+        0,
+        -277.15
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108748",
+      "prefab": "moon_tree",
+      "sourceIndex": 28,
+      "sourceId": 108748,
+      "sourcePosition": [
+        457.3,
+        0,
+        -277.53
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108749",
+      "prefab": "moon_tree",
+      "sourceIndex": 29,
+      "sourceId": 108749,
+      "sourcePosition": [
+        458.63,
+        0,
+        -271.73
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108750",
+      "prefab": "moon_tree",
+      "sourceIndex": 30,
+      "sourceId": 108750,
+      "sourcePosition": [
+        460.5,
+        0,
+        -277.24
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108751",
+      "prefab": "moon_tree",
+      "sourceIndex": 31,
+      "sourceId": 108751,
+      "sourcePosition": [
+        464.93,
+        0,
+        -271.23
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108752",
+      "prefab": "moon_tree",
+      "sourceIndex": 32,
+      "sourceId": 108752,
+      "sourcePosition": [
+        464.94,
+        0,
+        -277.83
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108753",
+      "prefab": "moon_tree",
+      "sourceIndex": 33,
+      "sourceId": 108753,
+      "sourcePosition": [
+        458.93,
+        0,
+        -281.53
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108754",
+      "prefab": "moon_tree",
+      "sourceIndex": 34,
+      "sourceId": 108754,
+      "sourcePosition": [
+        463.44,
+        0,
+        -280.17
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108755",
+      "prefab": "moon_tree",
+      "sourceIndex": 35,
+      "sourceId": 108755,
+      "sourcePosition": [
+        479.31,
+        0,
+        -266.75
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108756",
+      "prefab": "moon_tree",
+      "sourceIndex": 36,
+      "sourceId": 108756,
+      "sourcePosition": [
+        484.18,
+        0,
+        -268.56
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108757",
+      "prefab": "moon_tree",
+      "sourceIndex": 37,
+      "sourceId": 108757,
+      "sourcePosition": [
+        479.39,
+        0,
+        -273.71
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108758",
+      "prefab": "moon_tree",
+      "sourceIndex": 38,
+      "sourceId": 108758,
+      "sourcePosition": [
+        480.82,
+        0,
+        -273.69
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108759",
+      "prefab": "moon_tree",
+      "sourceIndex": 39,
+      "sourceId": 108759,
+      "sourcePosition": [
+        485.27,
+        0,
+        -272.88
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108760",
+      "prefab": "moon_tree",
+      "sourceIndex": 40,
+      "sourceId": 108760,
+      "sourcePosition": [
+        489.08,
+        0,
+        -268.86
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108761",
+      "prefab": "moon_tree",
+      "sourceIndex": 41,
+      "sourceId": 108761,
+      "sourcePosition": [
+        489.49,
+        0,
+        -274.05
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108762",
+      "prefab": "moon_tree",
+      "sourceIndex": 42,
+      "sourceId": 108762,
+      "sourcePosition": [
+        482.89,
+        0,
+        -275.77
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108763",
+      "prefab": "moon_tree",
+      "sourceIndex": 43,
+      "sourceId": 108763,
+      "sourcePosition": [
+        487.38,
+        0,
+        -275.4
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108764",
+      "prefab": "moon_tree",
+      "sourceIndex": 44,
+      "sourceId": 108764,
+      "sourcePosition": [
+        487.72,
+        0,
+        -313.08
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108765",
+      "prefab": "moon_tree",
+      "sourceIndex": 45,
+      "sourceId": 108765,
+      "sourcePosition": [
+        487.32,
+        0,
+        -307.8
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108766",
+      "prefab": "moon_tree",
+      "sourceIndex": 46,
+      "sourceId": 108766,
+      "sourcePosition": [
+        491.9,
+        0,
+        -313.6
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108767",
+      "prefab": "moon_tree",
+      "sourceIndex": 47,
+      "sourceId": 108767,
+      "sourcePosition": [
+        493.33,
+        0,
+        -310.85
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108768",
+      "prefab": "moon_tree",
+      "sourceIndex": 48,
+      "sourceId": 108768,
+      "sourcePosition": [
+        487.9,
+        0,
+        -309.44
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108769",
+      "prefab": "moon_tree",
+      "sourceIndex": 49,
+      "sourceId": 108769,
+      "sourcePosition": [
+        493.43,
+        0,
+        -306.81
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108770",
+      "prefab": "moon_tree",
+      "sourceIndex": 50,
+      "sourceId": 108770,
+      "sourcePosition": [
+        486.05,
+        0,
+        -302.55
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108771",
+      "prefab": "moon_tree",
+      "sourceIndex": 51,
+      "sourceId": 108771,
+      "sourcePosition": [
+        492.5,
+        0,
+        -302.31
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108772",
+      "prefab": "moon_tree",
+      "sourceIndex": 52,
+      "sourceId": 108772,
+      "sourcePosition": [
+        497.23,
+        0,
+        -310.59
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108773",
+      "prefab": "moon_tree",
+      "sourceIndex": 53,
+      "sourceId": 108773,
+      "sourcePosition": [
+        495.23,
+        0,
+        -304.84
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108774",
+      "prefab": "moon_tree",
+      "sourceIndex": 54,
+      "sourceId": 108774,
+      "sourcePosition": [
+        460.87,
+        0,
+        -287.67
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108775",
+      "prefab": "moon_tree",
+      "sourceIndex": 55,
+      "sourceId": 108775,
+      "sourcePosition": [
+        455.78,
+        0,
+        -288.88
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108776",
+      "prefab": "moon_tree",
+      "sourceIndex": 56,
+      "sourceId": 108776,
+      "sourcePosition": [
+        461.01,
+        0,
+        -291.56
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108777",
+      "prefab": "moon_tree",
+      "sourceIndex": 57,
+      "sourceId": 108777,
+      "sourcePosition": [
+        459.07,
+        0,
+        -292.17
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108778",
+      "prefab": "moon_tree",
+      "sourceIndex": 58,
+      "sourceId": 108778,
+      "sourcePosition": [
+        457.37,
+        0,
+        -288.57
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108779",
+      "prefab": "moon_tree",
+      "sourceIndex": 59,
+      "sourceId": 108779,
+      "sourcePosition": [
+        456.11,
+        0,
+        -292.85
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108780",
+      "prefab": "moon_tree",
+      "sourceIndex": 60,
+      "sourceId": 108780,
+      "sourcePosition": [
+        450.06,
+        0,
+        -288.49
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108781",
+      "prefab": "moon_tree",
+      "sourceIndex": 61,
+      "sourceId": 108781,
+      "sourcePosition": [
+        450.05,
+        0,
+        -291.26
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108782",
+      "prefab": "moon_tree",
+      "sourceIndex": 62,
+      "sourceId": 108782,
+      "sourcePosition": [
+        458.27,
+        0,
+        -297.58
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108783",
+      "prefab": "moon_tree",
+      "sourceIndex": 63,
+      "sourceId": 108783,
+      "sourcePosition": [
+        453.27,
+        0,
+        -296.41
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108784",
+      "prefab": "moon_tree",
+      "sourceIndex": 64,
+      "sourceId": 108784,
+      "sourcePosition": [
+        506.93,
+        0,
+        -325.09
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108785",
+      "prefab": "moon_tree",
+      "sourceIndex": 65,
+      "sourceId": 108785,
+      "sourcePosition": [
+        512.69,
+        0,
+        -323.11
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108786",
+      "prefab": "moon_tree",
+      "sourceIndex": 66,
+      "sourceId": 108786,
+      "sourcePosition": [
+        507.32,
+        0,
+        -319.41
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108787",
+      "prefab": "moon_tree",
+      "sourceIndex": 67,
+      "sourceId": 108787,
+      "sourcePosition": [
+        509.64,
+        0,
+        -318.74
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108788",
+      "prefab": "moon_tree",
+      "sourceIndex": 68,
+      "sourceId": 108788,
+      "sourcePosition": [
+        510.41,
+        0,
+        -323.6
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108789",
+      "prefab": "moon_tree",
+      "sourceIndex": 69,
+      "sourceId": 108789,
+      "sourcePosition": [
+        517.47,
+        0,
+        -325.18
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108790",
+      "prefab": "moon_tree",
+      "sourceIndex": 70,
+      "sourceId": 108790,
+      "sourcePosition": [
+        517.66,
+        0,
+        -318.28
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108791",
+      "prefab": "moon_tree",
+      "sourceIndex": 71,
+      "sourceId": 108791,
+      "sourcePosition": [
+        515.37,
+        0,
+        -315.97
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108792",
+      "prefab": "moon_tree",
+      "sourceIndex": 72,
+      "sourceId": 108792,
+      "sourcePosition": [
+        543.25,
+        0,
+        -308.64
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108793",
+      "prefab": "moon_tree",
+      "sourceIndex": 73,
+      "sourceId": 108793,
+      "sourcePosition": [
+        545.15,
+        0,
+        -303.04
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108794",
+      "prefab": "moon_tree",
+      "sourceIndex": 74,
+      "sourceId": 108794,
+      "sourcePosition": [
+        548.82,
+        0,
+        -306.93
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108795",
+      "prefab": "moon_tree",
+      "sourceIndex": 75,
+      "sourceId": 108795,
+      "sourcePosition": [
+        543.35,
+        0,
+        -305.84
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108796",
+      "prefab": "moon_tree",
+      "sourceIndex": 76,
+      "sourceId": 108796,
+      "sourcePosition": [
+        549.34,
+        0,
+        -303.81
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108797",
+      "prefab": "moon_tree",
+      "sourceIndex": 77,
+      "sourceId": 108797,
+      "sourcePosition": [
+        543.41,
+        0,
+        -298.73
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108798",
+      "prefab": "moon_tree",
+      "sourceIndex": 78,
+      "sourceId": 108798,
+      "sourcePosition": [
+        547.37,
+        0,
+        -298
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108799",
+      "prefab": "moon_tree",
+      "sourceIndex": 79,
+      "sourceId": 108799,
+      "sourcePosition": [
+        553.59,
+        0,
+        -305.77
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108800",
+      "prefab": "moon_tree",
+      "sourceIndex": 80,
+      "sourceId": 108800,
+      "sourcePosition": [
+        552.22,
+        0,
+        -300.53
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108801",
+      "prefab": "moon_tree",
+      "sourceIndex": 81,
+      "sourceId": 108801,
+      "sourcePosition": [
+        534.91,
+        0,
+        -331.94
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108802",
+      "prefab": "moon_tree",
+      "sourceIndex": 82,
+      "sourceId": 108802,
+      "sourcePosition": [
+        541,
+        0,
+        -331.54
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108803",
+      "prefab": "moon_tree",
+      "sourceIndex": 83,
+      "sourceId": 108803,
+      "sourcePosition": [
+        534.85,
+        0,
+        -335.89
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108804",
+      "prefab": "moon_tree",
+      "sourceIndex": 84,
+      "sourceId": 108804,
+      "sourcePosition": [
+        536.75,
+        0,
+        -336.95
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108805",
+      "prefab": "moon_tree",
+      "sourceIndex": 85,
+      "sourceId": 108805,
+      "sourcePosition": [
+        540.35,
+        0,
+        -336.87
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108806",
+      "prefab": "moon_tree",
+      "sourceIndex": 86,
+      "sourceId": 108806,
+      "sourcePosition": [
+        544.5,
+        0,
+        -330.52
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108807",
+      "prefab": "moon_tree",
+      "sourceIndex": 87,
+      "sourceId": 108807,
+      "sourcePosition": [
+        545.28,
+        0,
+        -337.45
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108808",
+      "prefab": "moon_tree",
+      "sourceIndex": 88,
+      "sourceId": 108808,
+      "sourcePosition": [
+        537.86,
+        0,
+        -341.16
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108809",
+      "prefab": "moon_tree",
+      "sourceIndex": 89,
+      "sourceId": 108809,
+      "sourcePosition": [
+        542.92,
+        0,
+        -339.08
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108810",
+      "prefab": "moon_tree",
+      "sourceIndex": 90,
+      "sourceId": 108810,
+      "sourcePosition": [
+        529.78,
+        0,
+        -299.94
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108811",
+      "prefab": "moon_tree",
+      "sourceIndex": 91,
+      "sourceId": 108811,
+      "sourcePosition": [
+        529.25,
+        0,
+        -304.21
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108812",
+      "prefab": "moon_tree",
+      "sourceIndex": 92,
+      "sourceId": 108812,
+      "sourcePosition": [
+        526.51,
+        0,
+        -304.63
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108813",
+      "prefab": "moon_tree",
+      "sourceIndex": 93,
+      "sourceId": 108813,
+      "sourcePosition": [
+        525.25,
+        0,
+        -300.31
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108814",
+      "prefab": "moon_tree",
+      "sourceIndex": 94,
+      "sourceId": 108814,
+      "sourcePosition": [
+        522.59,
+        0,
+        -304.93
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108815",
+      "prefab": "moon_tree",
+      "sourceIndex": 95,
+      "sourceId": 108815,
+      "sourcePosition": [
+        518.35,
+        0,
+        -298.46
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108816",
+      "prefab": "moon_tree",
+      "sourceIndex": 96,
+      "sourceId": 108816,
+      "sourcePosition": [
+        526.39,
+        0,
+        -308.3
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108817",
+      "prefab": "moon_tree",
+      "sourceIndex": 97,
+      "sourceId": 108817,
+      "sourcePosition": [
+        521.26,
+        0,
+        -307.21
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108818",
+      "prefab": "moon_tree",
+      "sourceIndex": 98,
+      "sourceId": 108818,
+      "sourcePosition": [
+        535.42,
+        0,
+        -356.13
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108819",
+      "prefab": "moon_tree",
+      "sourceIndex": 99,
+      "sourceId": 108819,
+      "sourcePosition": [
+        535.17,
+        0,
+        -352.53
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108820",
+      "prefab": "moon_tree",
+      "sourceIndex": 100,
+      "sourceId": 108820,
+      "sourcePosition": [
+        536.97,
+        0,
+        -351.7
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108821",
+      "prefab": "moon_tree",
+      "sourceIndex": 101,
+      "sourceId": 108821,
+      "sourcePosition": [
+        540.56,
+        0,
+        -350.54
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108822",
+      "prefab": "moon_tree",
+      "sourceIndex": 102,
+      "sourceId": 108822,
+      "sourcePosition": [
+        545.34,
+        0,
+        -357.06
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108823",
+      "prefab": "moon_tree",
+      "sourceIndex": 103,
+      "sourceId": 108823,
+      "sourcePosition": [
+        545.39,
+        0,
+        -350.15
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108824",
+      "prefab": "moon_tree",
+      "sourceIndex": 104,
+      "sourceId": 108824,
+      "sourcePosition": [
+        536.24,
+        0,
+        -347.21
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108825",
+      "prefab": "moon_tree",
+      "sourceIndex": 105,
+      "sourceId": 108825,
+      "sourcePosition": [
+        543.8,
+        0,
+        -347.31
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108826",
+      "prefab": "moon_tree",
+      "sourceIndex": 106,
+      "sourceId": 108826,
+      "sourcePosition": [
+        513.54,
+        0,
+        -270.65
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108827",
+      "prefab": "moon_tree",
+      "sourceIndex": 107,
+      "sourceId": 108827,
+      "sourcePosition": [
+        514.66,
+        0,
+        -238.42
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108828",
+      "prefab": "moon_tree",
+      "sourceIndex": 108,
+      "sourceId": 108828,
+      "sourcePosition": [
+        469.63,
+        0,
+        -309.57
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108829",
+      "prefab": "moon_tree",
+      "sourceIndex": 109,
+      "sourceId": 108829,
+      "sourcePosition": [
+        482,
+        0,
+        -317.28
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108830",
+      "prefab": "moon_tree",
+      "sourceIndex": 110,
+      "sourceId": 108830,
+      "sourcePosition": [
+        490.88,
+        0,
+        -281.04
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108831",
+      "prefab": "moon_tree",
+      "sourceIndex": 111,
+      "sourceId": 108831,
+      "sourcePosition": [
+        481.58,
+        0,
+        -310.83
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108832",
+      "prefab": "moon_tree",
+      "sourceIndex": 112,
+      "sourceId": 108832,
+      "sourcePosition": [
+        522.43,
+        0,
+        -321.03
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108833",
+      "prefab": "moon_tree",
+      "sourceIndex": 113,
+      "sourceId": 108833,
+      "sourcePosition": [
+        526.85,
+        0,
+        -317.99
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108834",
+      "prefab": "moon_tree",
+      "sourceIndex": 114,
+      "sourceId": 108834,
+      "sourcePosition": [
+        513,
+        0,
+        -337.44
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108835",
+      "prefab": "moon_tree",
+      "sourceIndex": 115,
+      "sourceId": 108835,
+      "sourcePosition": [
+        513.95,
+        0,
+        -361.07
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108836",
+      "prefab": "moon_tree",
+      "sourceIndex": 116,
+      "sourceId": 108836,
+      "sourcePosition": [
+        514.16,
+        0,
+        -349.23
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108837",
+      "prefab": "moon_tree",
+      "sourceIndex": 117,
+      "sourceId": 108837,
+      "sourcePosition": [
+        498.54,
+        0,
+        -322.5
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108838",
+      "prefab": "moon_tree",
+      "sourceIndex": 118,
+      "sourceId": 108838,
+      "sourcePosition": [
+        642.56,
+        0,
+        -277.73
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108839",
+      "prefab": "moon_tree",
+      "sourceIndex": 119,
+      "sourceId": 108839,
+      "sourcePosition": [
+        638.58,
+        0,
+        -269.19
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108840",
+      "prefab": "moon_tree",
+      "sourceIndex": 120,
+      "sourceId": 108840,
+      "sourcePosition": [
+        617.17,
+        0,
+        -265.86
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108841",
+      "prefab": "moon_tree",
+      "sourceIndex": 121,
+      "sourceId": 108841,
+      "sourcePosition": [
+        642.28,
+        0,
+        -242.19
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108842",
+      "prefab": "moon_tree",
+      "sourceIndex": 122,
+      "sourceId": 108842,
+      "sourcePosition": [
+        626.47,
+        0,
+        -306.39
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108843",
+      "prefab": "moon_tree",
+      "sourceIndex": 123,
+      "sourceId": 108843,
+      "sourcePosition": [
+        649.65,
+        0,
+        -317.98
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108844",
+      "prefab": "moon_tree",
+      "sourceIndex": 124,
+      "sourceId": 108844,
+      "sourcePosition": [
+        621.72,
+        0,
+        -269.37
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108845",
+      "prefab": "moon_tree",
+      "sourceIndex": 125,
+      "sourceId": 108845,
+      "sourcePosition": [
+        638.73,
+        0,
+        -306.73
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108846",
+      "prefab": "moon_tree",
+      "sourceIndex": 126,
+      "sourceId": 108846,
+      "sourcePosition": [
+        626.08,
+        0,
+        -261.09
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108847",
+      "prefab": "moon_tree",
+      "sourceIndex": 127,
+      "sourceId": 108847,
+      "sourcePosition": [
+        634.87,
+        0,
+        -262.6
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108848",
+      "prefab": "moon_tree",
+      "sourceIndex": 128,
+      "sourceId": 108848,
+      "sourcePosition": [
+        641.99,
+        0,
+        -281.29
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108849",
+      "prefab": "moon_tree",
+      "sourceIndex": 129,
+      "sourceId": 108849,
+      "sourcePosition": [
+        625.95,
+        0,
+        -237.39
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108850",
+      "prefab": "moon_tree",
+      "sourceIndex": 130,
+      "sourceId": 108850,
+      "sourcePosition": [
+        642.51,
+        0,
+        -337.02
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108851",
+      "prefab": "moon_tree",
+      "sourceIndex": 131,
+      "sourceId": 108851,
+      "sourcePosition": [
+        641.36,
+        0,
+        -354.32
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108852",
+      "prefab": "moon_tree",
+      "sourceIndex": 132,
+      "sourceId": 108852,
+      "sourcePosition": [
+        642.85,
+        0,
+        -350.76
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108853",
+      "prefab": "moon_tree",
+      "sourceIndex": 133,
+      "sourceId": 108853,
+      "sourcePosition": [
+        666.93,
+        0,
+        -349.86
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108854",
+      "prefab": "moon_tree",
+      "sourceIndex": 134,
+      "sourceId": 108854,
+      "sourcePosition": [
+        601.86,
+        0,
+        -301.96
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108855",
+      "prefab": "moon_tree",
+      "sourceIndex": 135,
+      "sourceId": 108855,
+      "sourcePosition": [
+        570.6,
+        0,
+        -342.65
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108856",
+      "prefab": "moon_tree",
+      "sourceIndex": 136,
+      "sourceId": 108856,
+      "sourcePosition": [
+        598.87,
+        0,
+        -298.18
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108857",
+      "prefab": "moon_tree",
+      "sourceIndex": 137,
+      "sourceId": 108857,
+      "sourcePosition": [
+        562.52,
+        0,
+        -314.01
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108858",
+      "prefab": "moon_tree",
+      "sourceIndex": 138,
+      "sourceId": 108858,
+      "sourcePosition": [
+        597.76,
+        0,
+        -277.18
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108859",
+      "prefab": "moon_tree",
+      "sourceIndex": 139,
+      "sourceId": 108859,
+      "sourcePosition": [
+        597.95,
+        0,
+        -318.44
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108860",
+      "prefab": "moon_tree",
+      "sourceIndex": 140,
+      "sourceId": 108860,
+      "sourcePosition": [
+        569.68,
+        0,
+        -310.76
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108861",
+      "prefab": "moon_tree",
+      "sourceIndex": 141,
+      "sourceId": 108861,
+      "sourcePosition": [
+        593.81,
+        0,
+        -321.77
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108862",
+      "prefab": "moon_tree",
+      "sourceIndex": 142,
+      "sourceId": 108862,
+      "sourcePosition": [
+        553.43,
+        0,
+        -345.21
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108863",
+      "prefab": "moon_tree",
+      "sourceIndex": 143,
+      "sourceId": 108863,
+      "sourcePosition": [
+        578.77,
+        0,
+        -362.27
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108864",
+      "prefab": "moon_tree",
+      "sourceIndex": 144,
+      "sourceId": 108864,
+      "sourcePosition": [
+        538.25,
+        0,
+        -361.23
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108865",
+      "prefab": "moon_tree",
+      "sourceIndex": 145,
+      "sourceId": 108865,
+      "sourcePosition": [
+        610.45,
+        0,
+        -381.88
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108866",
+      "prefab": "moon_tree",
+      "sourceIndex": 146,
+      "sourceId": 108866,
+      "sourcePosition": [
+        601.33,
+        0,
+        -346.46
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108867",
+      "prefab": "moon_tree",
+      "sourceIndex": 147,
+      "sourceId": 108867,
+      "sourcePosition": [
+        577.03,
+        0,
+        -342.14
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108868",
+      "prefab": "moon_tree",
+      "sourceIndex": 148,
+      "sourceId": 108868,
+      "sourcePosition": [
+        614.35,
+        0,
+        -338.14
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108869",
+      "prefab": "moon_tree",
+      "sourceIndex": 149,
+      "sourceId": 108869,
+      "sourcePosition": [
+        589.12,
+        0,
+        -373.63
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108870",
+      "prefab": "moon_tree",
+      "sourceIndex": 150,
+      "sourceId": 108870,
+      "sourcePosition": [
+        365,
+        0,
+        609.68
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108871",
+      "prefab": "moon_tree",
+      "sourceIndex": 151,
+      "sourceId": 108871,
+      "sourcePosition": [
+        349.37,
+        0,
+        588.31
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108872",
+      "prefab": "moon_tree",
+      "sourceIndex": 152,
+      "sourceId": 108872,
+      "sourcePosition": [
+        366.87,
+        0,
+        621.37
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108873",
+      "prefab": "moon_tree",
+      "sourceIndex": 153,
+      "sourceId": 108873,
+      "sourcePosition": [
+        363,
+        0,
+        605.18
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108874",
+      "prefab": "moon_tree",
+      "sourceIndex": 154,
+      "sourceId": 108874,
+      "sourcePosition": [
+        365.62,
+        0,
+        601.68
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108875",
+      "prefab": "moon_tree",
+      "sourceIndex": 155,
+      "sourceId": 108875,
+      "sourcePosition": [
+        368.25,
+        0,
+        607.5
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108876",
+      "prefab": "moon_tree",
+      "sourceIndex": 156,
+      "sourceId": 108876,
+      "sourcePosition": [
+        359.87,
+        0,
+        606.12
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108877",
+      "prefab": "moon_tree",
+      "sourceIndex": 157,
+      "sourceId": 108877,
+      "sourcePosition": [
+        361.18,
+        0,
+        610.06
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108878",
+      "prefab": "moon_tree",
+      "sourceIndex": 158,
+      "sourceId": 108878,
+      "sourcePosition": [
+        344.75,
+        0,
+        592.18
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108879",
+      "prefab": "moon_tree",
+      "sourceIndex": 159,
+      "sourceId": 108879,
+      "sourcePosition": [
+        517.93,
+        0,
+        -255.94
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108880",
+      "prefab": "moon_tree",
+      "sourceIndex": 160,
+      "sourceId": 108880,
+      "sourcePosition": [
+        473.93,
+        0,
+        -295.94
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108881",
+      "prefab": "moon_tree",
+      "sourceIndex": 161,
+      "sourceId": 108881,
+      "sourcePosition": [
+        527.93,
+        0,
+        -342.07
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108882",
+      "prefab": "moon_tree",
+      "sourceIndex": 162,
+      "sourceId": 108882,
+      "sourcePosition": [
+        607.18,
+        0,
+        -281.63
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108883",
+      "prefab": "moon_tree",
+      "sourceIndex": 163,
+      "sourceId": 108883,
+      "sourcePosition": [
+        513.93,
+        0,
+        -253.69
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108884",
+      "prefab": "moon_tree",
+      "sourceIndex": 164,
+      "sourceId": 108884,
+      "sourcePosition": [
+        516.37,
+        0,
+        -258.57
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108885",
+      "prefab": "moon_tree",
+      "sourceIndex": 165,
+      "sourceId": 108885,
+      "sourcePosition": [
+        516.37,
+        0,
+        -253.32
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108886",
+      "prefab": "moon_tree",
+      "sourceIndex": 166,
+      "sourceId": 108886,
+      "sourcePosition": [
+        514.37,
+        0,
+        -258.19
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108887",
+      "prefab": "moon_tree",
+      "sourceIndex": 167,
+      "sourceId": 108887,
+      "sourcePosition": [
+        469.93,
+        0,
+        -293.69
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108888",
+      "prefab": "moon_tree",
+      "sourceIndex": 168,
+      "sourceId": 108888,
+      "sourcePosition": [
+        472.37,
+        0,
+        -298.57
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108889",
+      "prefab": "moon_tree",
+      "sourceIndex": 169,
+      "sourceId": 108889,
+      "sourcePosition": [
+        472.37,
+        0,
+        -293.32
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108890",
+      "prefab": "moon_tree",
+      "sourceIndex": 170,
+      "sourceId": 108890,
+      "sourcePosition": [
+        470.37,
+        0,
+        -298.19
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108891",
+      "prefab": "moon_tree",
+      "sourceIndex": 171,
+      "sourceId": 108891,
+      "sourcePosition": [
+        525.68,
+        0,
+        -346.07
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108892",
+      "prefab": "moon_tree",
+      "sourceIndex": 172,
+      "sourceId": 108892,
+      "sourcePosition": [
+        530.56,
+        0,
+        -343.63
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108893",
+      "prefab": "moon_tree",
+      "sourceIndex": 173,
+      "sourceId": 108893,
+      "sourcePosition": [
+        525.31,
+        0,
+        -343.63
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108894",
+      "prefab": "moon_tree",
+      "sourceIndex": 174,
+      "sourceId": 108894,
+      "sourcePosition": [
+        530.18,
+        0,
+        -345.63
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108895",
+      "prefab": "moon_tree",
+      "sourceIndex": 175,
+      "sourceId": 108895,
+      "sourcePosition": [
+        513.5,
+        0,
+        -255.94
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108896",
+      "prefab": "moon_tree",
+      "sourceIndex": 176,
+      "sourceId": 108896,
+      "sourcePosition": [
+        518.81,
+        0,
+        -258.13
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108897",
+      "prefab": "moon_tree",
+      "sourceIndex": 177,
+      "sourceId": 108897,
+      "sourcePosition": [
+        518.68,
+        0,
+        -253.69
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108898",
+      "prefab": "moon_tree",
+      "sourceIndex": 178,
+      "sourceId": 108898,
+      "sourcePosition": [
+        469.5,
+        0,
+        -295.94
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108899",
+      "prefab": "moon_tree",
+      "sourceIndex": 179,
+      "sourceId": 108899,
+      "sourcePosition": [
+        474.81,
+        0,
+        -298.13
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108900",
+      "prefab": "moon_tree",
+      "sourceIndex": 180,
+      "sourceId": 108900,
+      "sourcePosition": [
+        474.68,
+        0,
+        -293.69
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108901",
+      "prefab": "moon_tree",
+      "sourceIndex": 181,
+      "sourceId": 108901,
+      "sourcePosition": [
+        527.93,
+        0,
+        -346.5
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108902",
+      "prefab": "moon_tree",
+      "sourceIndex": 182,
+      "sourceId": 108902,
+      "sourcePosition": [
+        530.12,
+        0,
+        -341.19
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108903",
+      "prefab": "moon_tree",
+      "sourceIndex": 183,
+      "sourceId": 108903,
+      "sourcePosition": [
+        525.68,
+        0,
+        -341.32
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108904",
+      "prefab": "moon_tree",
+      "sourceIndex": 184,
+      "sourceId": 108904,
+      "sourcePosition": [
+        604.81,
+        0,
+        -282.88
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108905",
+      "prefab": "moon_tree",
+      "sourceIndex": 185,
+      "sourceId": 108905,
+      "sourcePosition": [
+        510.16,
+        0,
+        -273.12
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108906",
+      "prefab": "moon_tree",
+      "sourceIndex": 186,
+      "sourceId": 108906,
+      "sourcePosition": [
+        503.33,
+        0,
+        -272.19
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108907",
+      "prefab": "moon_tree",
+      "sourceIndex": 187,
+      "sourceId": 108907,
+      "sourcePosition": [
+        508.95,
+        0,
+        -267.98
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108908",
+      "prefab": "moon_tree",
+      "sourceIndex": 188,
+      "sourceId": 108908,
+      "sourcePosition": [
+        507.25,
+        0,
+        -267.16
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108909",
+      "prefab": "moon_tree",
+      "sourceIndex": 189,
+      "sourceId": 108909,
+      "sourcePosition": [
+        505.11,
+        0,
+        -271.77
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108910",
+      "prefab": "moon_tree",
+      "sourceIndex": 190,
+      "sourceId": 108910,
+      "sourcePosition": [
+        501.4,
+        0,
+        -267.04
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108911",
+      "prefab": "moon_tree",
+      "sourceIndex": 191,
+      "sourceId": 108911,
+      "sourcePosition": [
+        498.28,
+        0,
+        -268.64
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108912",
+      "prefab": "moon_tree",
+      "sourceIndex": 192,
+      "sourceId": 108912,
+      "sourcePosition": [
+        506.11,
+        0,
+        -263.52
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108913",
+      "prefab": "moon_tree",
+      "sourceIndex": 193,
+      "sourceId": 108913,
+      "sourcePosition": [
+        500.77,
+        0,
+        -263.99
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108914",
+      "prefab": "moon_tree",
+      "sourceIndex": 194,
+      "sourceId": 108914,
+      "sourcePosition": [
+        500.07,
+        0,
+        -296.61
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108915",
+      "prefab": "moon_tree",
+      "sourceIndex": 195,
+      "sourceId": 108915,
+      "sourcePosition": [
+        499.22,
+        0,
+        -291.41
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108916",
+      "prefab": "moon_tree",
+      "sourceIndex": 196,
+      "sourceId": 108916,
+      "sourcePosition": [
+        496.31,
+        0,
+        -296.89
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_108917",
+      "prefab": "moon_tree",
+      "sourceIndex": 197,
+      "sourceId": 108917,
+      "sourcePosition": [
+        494.98,
+        0,
+        -294.79
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_0D8F4BB2B5051283_moon_tree_id_120616",
+      "prefab": "moon_tree",
+      "sourceIndex": 198,
+      "sourceId": 120616,
+      "sourcePosition": [
+        549.079,
+        0,
+        -310.564
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
     },
     {
       "id": "dst_0D8F4BB2B5051283_fireflies_index_000001",

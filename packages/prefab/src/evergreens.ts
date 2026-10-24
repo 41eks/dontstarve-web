@@ -1,4 +1,5 @@
 import { ModelRecords } from './modelRecords';
+import { MiniMapEntity } from './minimapEntity';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSignal, readonlySignal, type Signal } from '@dontstarve-web/signals';
@@ -55,6 +56,7 @@ export interface EvergreenWorld {
 }
 interface Tree {
   logical: ProximityEntity;
+  minimap: MiniMapEntity;
   inst: ComponentActionEntity & WorkableInst & { getPosition(): THREE.Vector3 };
   removeInst(): void;
   stump: Signal<boolean>;
@@ -74,6 +76,7 @@ interface Tree {
 export interface EvergreenForest {
   group: THREE.Group;
   readonly entities: readonly ProximityEntity[];
+  readonly miniMapEntities: readonly MiniMapEntity[];
   readonly chopTargets: readonly PickaxeTarget[];
   getChopTargets(model?: THREE.Object3D): readonly PickaxeTarget[];
   readonly digTargets: readonly ShovelTarget[];
@@ -125,8 +128,14 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     if (stageOf(tree) === 3) tree.inst.removeTag('shelter'); else tree.inst.addTag('shelter');
     animationOf(tree)?.start(rest(tree));
   };
+  /** Growth settled while the tree had no model is shown as its final stage, without the transition animation. */
+  let catchingUp = false;
+  const wakeGrowable = (tree: Tree) => {
+    catchingUp = true;
+    try { tree.growable.OnEntityWake(); } finally { catchingUp = false; }
+  };
   const grow = (tree: Tree) => {
-    if (!tree.logical.model) return;
+    if (!tree.logical.model || catchingUp) return;
     const stage = stageOf(tree);
     playSound(tree, stage === 3 ? 'dontstarve/forest/treeWilt'
       : stage === 0 ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow');
@@ -161,6 +170,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const burn = (tree: Tree, immediate: boolean) => {
     if (tree.inst.hasTag('burnt')) return;
     tree.inst.addTag('burnt');
+    tree.minimap.SetIcon('evergreen_burnt.png');
     animationOf(tree)?.start(rest(tree));
     if (immediate) burntChanges(tree);
     else tree.changesTask = scheduler.schedule(.5, () => { tree.changesTask = undefined; burntChanges(tree); });
@@ -198,6 +208,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const remove = (tree: Tree) => {
     tree.changesTask?.(); tree.pineconeTask?.(); tree.removeTask?.();
     unbindFire(tree);
+    tree.minimap.dispose();
     tree.removeInst(); tree.workable.dispose(); tree.growable.dispose(); tree.timer.dispose();
     if (tree.body) world.physics?.removeBody(tree.body);
     for (const sound of tree.sounds) sound.stop(); tree.sounds.clear();
@@ -205,6 +216,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   };
   const makeStump = (tree: Tree) => {
     unbindFire(tree);
+    tree.minimap.SetIcon('evergreen_stump.png');
     tree.stump.set(true); tree.growable.StopGrowing();
     tree.inst.removeTag('shelter'); tree.inst.addTag('stump');
     if (tree.body) { world.physics?.removeBody(tree.body); tree.body = undefined; }
@@ -248,7 +260,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     bindFire(tree);
     if (tree.inst.hasTag('burnt')) startPineconeTask(tree);
     Object.assign(model.userData, { entityId: logical.saveId, prefab: 'evergreen', deploySmartRadius: 1,
-      physicsRadius: .25 * WORLD_SCALE, components: tree.inst.components,
+      physicsRadius: .25 * WORLD_SCALE, MiniMapEntity: tree.minimap, components: tree.inst.components,
       evergreenState: { stump: readonlySignal(tree.stump), growth: tree.growable.state } });
     Object.defineProperty(model.userData, 'tags', { get: () => ['plant', 'tree', 'evergreens', 'evergreen',
       'shelter', 'stump', 'burnt', 'fire', 'CHOP_workable', 'DIG_workable'].filter(tag => tree.inst.hasTag(tag)) });
@@ -280,9 +292,12 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   return {
     group: nearby.group,
     get entities() { return nearby.entities; },
+    get miniMapEntities() { return [...trees.values()].map(tree => tree.minimap); },
     spawn(prefab, position, saved) {
       if (disposed) throw new Error('Evergreen forest has been disposed');
       const logical = nearby.add(position, saved?.id ?? newEntityId());
+      const minimap = new MiniMapEntity(logical.position);
+      minimap.SetIcon('evergreen.png'); minimap.SetPriority(-1);
       const removed = createSignal(false), tags = new Set(['plant', 'tree', 'evergreens', 'evergreen']);
       const components: ComponentActionEntity['components'] & { growable?: Growable; lootdropper?: LootDropper; timer?: Timer } = {};
       const inst: Tree['inst'] = {
@@ -303,7 +318,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
         fn: () => setStage(trees.get(logical)!), growfn: () => grow(trees.get(logical)!),
       })), seconds => world.growthDuration?.(seconds) ?? seconds);
       components.growable = growable;
-      const tree: Tree = { logical, inst, removeInst: () => removed.set(true), stump: createSignal(false),
+      const tree: Tree = { logical, minimap, inst, removeInst: () => removed.set(true), stump: createSignal(false),
         growable, workable, lootdropper, sounds: new Set(), burntcone: false,
         timer: new Timer(scheduler, name => { if (name === 'decay') remove(tree); }, ['decay']) };
       components.timer = tree.timer;
@@ -328,7 +343,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
         burn(tree, true);
       }
       nearby.update(lastPlayerPosition);
-      if (logical.model) growable.OnEntityWake(); else growable.OnEntitySleep();
+      if (logical.model) wakeGrowable(tree); else growable.OnEntitySleep();
       return logical;
     },
     get chopTargets() { return targets('CHOP'); },
@@ -337,7 +352,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     getDigTargets: digTargets,
     updateNearby(position) {
       lastPlayerPosition.copy(position); nearby.update(position);
-      for (const logical of nearby.activeEntities) trees.get(logical)!.growable.OnEntityWake();
+      for (const logical of nearby.activeEntities) wakeGrowable(trees.get(logical)!);
     },
     update(dt, quaternion) {
       if (!world.scheduler) scheduler.advance(dt);

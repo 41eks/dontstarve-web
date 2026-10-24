@@ -24,6 +24,10 @@
 - Port Lua `WatchWorldState("cycles", fn)` (a once-per-day callback) as a discrete timer on the game-time scheduler, not as a subscription to the global clock signal or a `cycles` comparison. The component owns a `ComponentTimer` whose read-only snapshot is exposed; the world injects `secondsUntilNextDay(now)` (the component never reads the clock or tuning). On expiry, run the day callback and arm the next boundary, so a long frame or a load catches up one day at a time. Disabling or removing the component writes `stopped` and cancels the task; the timer is not saved, and load re-arms it from the current world time. See [DST events, timer signals, and derived state](docs/dst-event.md) (beefalo beard).
 - Preserve timer state through save/load according to the source component's persistence behavior, rebuilding deadlines and tasks from saved remaining time; cancel tasks on permanent removal and retain logical timers when only unloading or replacing visuals. See [DST events, timer signals, and derived state](docs/dst-event.md).
 
+## Tickingarea and animation
+
+- `tickingarea` is this project's own mechanism with no Lua counterpart; do not describe it or justify behavior with Lua semantics. Animation playback must not be decided by `tickingarea`: whether and which animation plays follows the source Lua and the entity's own state, and `tickingarea` only gates resource loading, subscriptions and logical activity as in [tile lifecycle](docs/tile-lifecycle.md). Camera culling is separate from both.
+
 ## Page lifecycle
 
 - Do not register resource cleanup on `pagehide`; leaving the page does not require application-managed disposal. Do not move the same cleanup to `beforeunload` or `unload`, or add a shutdown manager solely for page departure.
