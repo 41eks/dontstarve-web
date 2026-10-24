@@ -1,8 +1,8 @@
 import { expect, it, vi } from 'vitest';
-import { createHandEquipmentExistenceState, createHeadEquipmentExistenceState, createBodyEquipmentExistenceState, type HandEquipment } from '../src';
+import { createEquipmentExistenceState, type HandEquipment } from '../src';
 
 it('accepts hand equipment and null, rejecting invalid slots without changing state or notifying', () => {
-  const handEquipmentExistenceState = createHandEquipmentExistenceState();
+  const handEquipmentExistenceState = createEquipmentExistenceState('HANDS');
   const item: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' };
   handEquipmentExistenceState.set(item);
   const listener = vi.fn();
@@ -21,7 +21,7 @@ it('accepts hand equipment and null, rejecting invalid slots without changing st
 });
 
 it('creates independent head/body states and rejects equipment for the wrong slot', () => {
-  const head = createHeadEquipmentExistenceState(), body = createBodyEquipmentExistenceState();
+  const head = createEquipmentExistenceState('HEAD'), body = createEquipmentExistenceState('BODY');
   const hat = { itemId: 'strawhat', EQUIPSLOTS: 'HEAD' as const };
   const backpack = { itemId: 'backpack', EQUIPSLOTS: 'BODY' as const };
   head.set(hat); body.set(backpack);
@@ -37,8 +37,8 @@ it('creates independent head/body states and rejects equipment for the wrong slo
 });
 
 it('creates independent states and observes subsequent writes synchronously without replay', () => {
-  const handEquipmentExistenceState = createHandEquipmentExistenceState();
-  const other = createHandEquipmentExistenceState();
+  const handEquipmentExistenceState = createEquipmentExistenceState('HANDS');
+  const other = createEquipmentExistenceState('HANDS');
   const first: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' };
   const second: HandEquipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' };
   expect(handEquipmentExistenceState.peek()).toBeNull();

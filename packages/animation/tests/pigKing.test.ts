@@ -1,0 +1,74 @@
+import * as CANNON from 'cannon-es';
+import * as THREE from 'three';
+import { readFile } from 'node:fs/promises';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createPigKing } from '../../prefab/src/pigking';
+import { TILE_SIZE, snapToTileCenter } from '../../prefab/src/tile';
+import { placeStaticLayout } from '../../prefab/src/staticLayout';
+import { setSpriteEntityRenderOrder } from '../src/renderOrder';
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    const bytes = await readFile(new URL(`../../../public${url}`, import.meta.url));
+    return new Response(bytes);
+  }));
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe('Pig King prefab', () => {
+  it.each([
+    undefined,
+    new THREE.Vector3(-13, 2, -25),
+    new THREE.Vector3(12, 0, 0),
+  ])('stands on its feet with obstacle physics at %s', async (position) => {
+    const king = await createPigKing('/dst/data/anim', { position });
+    const feet = position ?? new THREE.Vector3(0, 0, 25);
+    expect(king.standee.position.x).toBe(feet.x);
+    expect(king.standee.position.z).toBe(feet.z);
+    expect(king.body.position.x).toBe(feet.x);
+    // pigking.lua MakeObstaclePhysics(inst, 2, .5): a static capsule on the feet origin.
+    expect(king.body.position.y).toBe(feet.y + 0.75);
+    expect(king.body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === 6)).toBe(true);
+    expect(king.body.position.z).toBe(feet.z);
+    expect(new THREE.Box3().setFromObject(king.standee).min.y).toBeCloseTo(feet.y);
+    // The prefab owns no terrain: pigking.lua adds no turf, the world layout does.
+    expect(king.standee.children.every(child => child.name !== 'PigKingFloor')).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    setSpriteEntityRenderOrder(king.standee, 9);
+    expect(king.standee.children[0].renderOrder).toBe(9);
+    king.update(0.1);
+    if (position) expect(position.toArray()).toEqual(feet.toArray());
+  });
+});
+
+describe('default_pigking static layout', () => {
+  it('places the BG_TILES octagon around the nearest tile corner and the rocks as authored', () => {
+    const layout = placeStaticLayout('default_pigking', { x: 0, z: 25 }, 'pigking');
+    // The 8x8 ground sampled from the 32x32 layer: 40 grass tiles around a core of 12 woodfloor tiles.
+    expect(layout.tiles.filter(({ tile }) => tile === 'GRASS')).toHaveLength(40);
+    const wood = layout.tiles.filter(({ tile }) => tile === 'WOODFLOOR');
+    expect(wood).toHaveLength(12);
+    expect(new Set(layout.tiles.map(({ position }) => `${position.x},${position.z}`)).size).toBe(52);
+    for (const { position } of layout.tiles) {
+      expect(snapToTileCenter(position)).toEqual(position);
+      expect(Math.abs(position.x)).toBeLessThan(4 * TILE_SIZE);
+      expect(Math.abs(position.z - 24)).toBeLessThan(4 * TILE_SIZE);
+    }
+    for (const { position } of wood) {
+      expect(Math.abs(position.x)).toBeLessThan(2 * TILE_SIZE);
+      expect(Math.abs(position.z - 24)).toBeLessThan(2 * TILE_SIZE);
+    }
+    // The pigking is the anchor: only the rocks are separate entities.
+    expect(layout.objects.map(object => object.prefab).sort())
+      .toEqual([...Array(4).fill('insanityrock'), ...Array(4).fill('sanityrock')]);
+    const insanity = layout.objects.filter(object => object.prefab === 'insanityrock')
+      .map(({ position }) => [position.x, position.z]);
+    // Authored offsets in tile units: (-2.125, .125), (-.125, -2.125), (.0625, 2.171875), (2.125, .125).
+    expect(insanity).toContainEqual([-2.125 * TILE_SIZE, 24 + .125 * TILE_SIZE]);
+    expect(insanity).toContainEqual([2.125 * TILE_SIZE, 24 + .125 * TILE_SIZE]);
+  });
+});

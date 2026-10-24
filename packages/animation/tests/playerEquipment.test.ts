@@ -37,7 +37,7 @@ it('drives hats and backpack presentation from restore/transfer signals and rele
     expect(store.getEntity(bag)).toBe(backpack);
     expect(store.transfer(bag, body, 1)).toBe(true);
     expect(animation.setBackpack).toHaveBeenLastCalledWith(true, 'backpack_babybeef');
-    store.headEquipmentExistenceState.set(null);
+    store.getEntity(head)!.remove();
     expect(animation.setHat).toHaveBeenLastCalledWith(null, undefined);
     expect(store.getEntity(head)).toBeNull();
     headBinding.dispose(); bodyBinding.dispose();

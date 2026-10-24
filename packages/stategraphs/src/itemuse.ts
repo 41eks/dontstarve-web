@@ -21,6 +21,8 @@ export interface ItemUseSource {
 export interface ItemUseTarget extends ComponentActionEntity {
   readonly model: THREE.Object3D;
   getPosition(): THREE.Vector3;
+  /** Obstacle radius: the doer stops outside it, so reach is measured from its edge. */
+  getPhysicsRadius?(): number;
 }
 type ItemUseAction = 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'ADDFUEL' | 'ADDWETFUEL';
 export const ITEM_USE_REACH = 4;
@@ -115,7 +117,7 @@ export class ItemUseActionController {
     const position = target.getPosition();
     if (!this.inReach(target)) {
       const direction = this.world.player.position.clone().sub(position).setY(0).normalize();
-      const destination = position.clone().addScaledVector(direction, ITEM_USE_REACH * .8);
+      const destination = position.clone().addScaledVector(direction, (ITEM_USE_REACH + (target.getPhysicsRadius?.() ?? 0)) * .8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       }
@@ -137,7 +139,7 @@ export class ItemUseActionController {
       : action === 'REPAIR'
       ? target.components.repairable!.Repair(source.entity, () => source.take(true))
       : action === 'SHAVE' ? target.components.beard!.Shave(undefined).ok
-        : target.components.trader!.AcceptGift(source.entity, deleteItem => source.take(deleteItem)),
+        : target.components.trader!.AcceptGift(source.entity, deleteItem => source.take(deleteItem), this.world.player),
     () => version === this.version && available(action, target, source) && this.inReach(target),
     { target, invobject: source.entity });
     if (this.animation.stategraph.pushBufferedAction(buffered)) {
@@ -147,7 +149,7 @@ export class ItemUseActionController {
   }
   private inReach(target: ItemUseTarget): boolean {
     const position = target.getPosition(), player = this.world.player.position;
-    return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= ITEM_USE_REACH ** 2;
+    return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= (ITEM_USE_REACH + (target.getPhysicsRadius?.() ?? 0)) ** 2;
   }
   private addFuel(target: ItemUseTarget, source: ItemUseSource): boolean {
     const item = source.extractFuel?.();

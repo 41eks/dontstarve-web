@@ -67,6 +67,10 @@ export interface ActionAnimationController {
   prepareRead(book: BufferedActionObject): Promise<void>;
   playRead(book: BufferedActionObject, onRead: () => boolean): boolean;
   cancelRead(): void;
+  readonly isPlayingInstrument: boolean;
+  prepareFlute(skinArchive?: string): Promise<void>;
+  playFlute(instrument: BufferedActionObject, onPlay: () => boolean): boolean;
+  cancelPlay(): void;
   setFacing(facing: 'up' | 'down' | 'side', mirrored?: boolean): void;
   readonly isAttacking: boolean;
   playAttack(onHit: () => boolean, target: BufferedActionObject, invobject?: BufferedActionObject): boolean;

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { CursorLabelUi } from '../src/cursor-label';
 import { DstLightingRenderer } from '../../../src/dstLighting';
-import { setPrefabLightOverride, getPrefabLightOverride } from '../../prefab/src/localLight';
+import { setPrefabLightOverride, getPrefabLightOverride, attachPrefabLight } from '../../prefab/src/localLight';
+import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { TreasureChestPlacement } from '../../prefab/src/treasurechest';
 import { WallsPlacement } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -59,10 +60,10 @@ export async function checkCursorPreview() {
   const night = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
   const owner = new THREE.Object3D();
   scene.add(owner);
-  lighting.setTorchOwner(owner);
+  const removeTorchLight = attachPrefabLight(owner, 'TorchFireLight', TORCH_LIGHT);
   draw();
   const torch = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
-  lighting.setTorchOwner(null);
+  removeTorchLight();
   setPrefabLightOverride(preview, null);
   draw();
   const committed = { preview: sample(-6, 0), ground: sample(6, 0) };

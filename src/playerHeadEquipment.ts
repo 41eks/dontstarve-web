@@ -9,11 +9,20 @@ export interface PlayerHeadEquipmentOptions {
 }
 
 export function bindPlayerHeadEquipment(options: PlayerHeadEquipmentOptions) {
-  return bindPlayerEquipment({
+  let disposed = false;
+  const binding = bindPlayerEquipment({
     existenceState: options.headEquipmentExistenceState,
     present(equipment) {
-      void options.animation?.setHat(equipment && isHatId(equipment.itemId) ? equipment.itemId : null, equipment?.skinId)
+      const itemId = equipment && isHatId(equipment.itemId) ? equipment.itemId : null;
+      void options.animation?.setHat(itemId, equipment?.skinId)
         .catch((error: unknown) => console.error('Unable to equip hat', error));
     },
   });
+  return { ...binding, dispose() {
+    if (disposed) return;
+    disposed = true;
+    binding.dispose();
+    // Clear only presentation: setHat also invalidates pending asset requests; the inventory stays authoritative.
+    void options.animation?.setHat(null).catch((error: unknown) => console.error('Unable to remove hat', error));
+  } };
 }

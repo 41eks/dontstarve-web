@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
-import { createMemo, createSignal, readonlySignal, type HandEquipmentLifecycle, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createMemo, createSignal, readonlySignal, type EquipmentLifecycle, type ReadonlySignal } from '@dontstarve-web/signals';
 import { findImage, smallHash, type AnimElement, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets, createGroundItemSprite } from './groundItems';
 import { setPrefabLocalLight } from './localLight';
@@ -194,7 +194,7 @@ export interface LanternHandContext {
 }
 
 /** Equipment-scoped light binding; the controller stays on the item entity. */
-export function createLanternHandLifecycle(entity: ItemEntity, context: LanternHandContext): HandEquipmentLifecycle {
+export function createLanternHandLifecycle(entity: ItemEntity, context: LanternHandContext): EquipmentLifecycle {
   const controller = getLanternController(entity);
   let stop: (() => void) | undefined;
   return {

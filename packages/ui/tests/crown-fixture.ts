@@ -2,9 +2,11 @@ import * as THREE from 'three';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { createSanityState } from '@dontstarve-web/signals';
 
 export async function checkCrown() {
-  const player = await createWilsonPlayer('/dst/data/anim');
+  const sanity = createSanityState(200, 200);
+  const player = await createWilsonPlayer('/dst/data/anim', { sanityPercent: sanity.percent });
   player.position.set(0, 0, 0);
   const animation = player.userData.animationController as WilsonAnimationController;
   const scene = new THREE.Scene();
@@ -59,7 +61,7 @@ export async function checkCrown() {
   await animation.setHat('alterguardianhat', 'alterguardianhat_lastprism');
   for (let i = 0; i < 10; i++) animation.update(0.1);
   capture('Last Prism: floating orbit');
-  animation.setSanityPercent(0.85);
+  sanity.set(170);
   for (let i = 0; i < 6; i++) animation.update(0.1);
   capture('Sanity <= 85%: inactive');
 
@@ -83,7 +85,7 @@ export async function checkCrown() {
   };
   draw();
   const dark = sample(8, 8);
-  animation.setSanityPercent(1);
+  sanity.set(200);
   draw();
   const lit = sample(8, 8);
   const far = sample(-35, -35);
@@ -93,8 +95,7 @@ export async function checkCrown() {
   await animation.setHat(null);
   draw();
   const removed = sample(28, 8);
-  const lightOwner = player.children.find(child => child.name === 'HatActivationLight')!;
-  const removedLight = getPrefabLocalLight(lightOwner) === undefined;
+  const removedLight = !player.children.some(child => child.name === 'HatActivationLight');
   renderer.dispose();
   return { differentFrames: rising !== orbit && orbit !== rotated, bloomChangesPixels, failures,
     groundLight: { dark, lit, far, moved, removed }, removedLight };

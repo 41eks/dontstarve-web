@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
 import { ItemEntity, type ItemOwner } from '../../inventory/src';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf } from '../../componets/src/shelf';
 import { PERISH_CAGE_MULT, PERISH_FAST } from '../../componets/src/perishable';
 import { BIRD_PERISH_TIME, configureBirdEntity, generateBirdLoot } from '../../prefab/src/birds';
-import { birdcageAcceptsItem, digestedFoodProduct } from '../../prefab/src/birdcage';
+import { Birdcage, birdcageAcceptsItem, digestedFoodProduct } from '../../prefab/src/birdcage';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import type { WorldContext } from '../../prefab/src/worldContext';
+import type { SpriteAnimationController } from '../src/sprite';
+import { createSignal } from '../../signals/src';
 
 function createBird(prefab = 'canary') {
   const bird = new ItemEntity({ itemId: prefab, count: 1 });
@@ -20,6 +25,78 @@ const settle = (bird: ItemEntity, seconds: number) => {
 };
 
 describe('caged birds', () => {
+  it('subscribes to sleeper state for status and animation, stops idle tasks and detaches removed sleepers', async () => {
+    const scheduler = new GameTimeScheduler();
+    const isNight = createSignal(false);
+    let finish = () => {};
+    const controller = {
+      start: vi.fn(),
+      playOnce: vi.fn((_name: string, onComplete: () => void) => { finish = onComplete; }),
+      clearOverrideBuild: vi.fn(),
+    };
+    const model = new THREE.Group();
+    model.userData.animationController = controller;
+    const cage = new Birdcage({ model, animation: controller as unknown as SpriteAnimationController,
+      world: { scheduler, isNight } as unknown as WorldContext }, () => .9);
+    const bird = createBird();
+    cage.occupiable!.Occupy(bird);
+    expect(cage.status.peek()).toBe('OCCUPIED');
+    const sleeper = cage.sleeper!;
+    isNight.set(true);
+    await Promise.resolve();
+    sleeper.StopTesting();
+    expect(cage.status.peek()).toBe('SLEEPING');
+    expect(controller.playOnce).toHaveBeenLastCalledWith('sleep_pre', expect.any(Function));
+    finish();
+    expect(controller.start).toHaveBeenLastCalledWith('sleep_loop');
+    const calls = controller.playOnce.mock.calls.length;
+    scheduler.advance(6);
+    expect(controller.playOnce).toHaveBeenCalledTimes(calls);
+
+    sleeper.StartTesting();
+    isNight.set(false);
+    await Promise.resolve();
+    expect(cage.status.peek()).toBe('OCCUPIED');
+    expect(controller.playOnce).toHaveBeenLastCalledWith('sleep_pst', expect.any(Function));
+    finish();
+    expect(controller.start).toHaveBeenLastCalledWith('idle_bird');
+    scheduler.advance(6);
+    expect(controller.playOnce).toHaveBeenLastCalledWith('hop', expect.any(Function));
+
+    bird.components.perishable.SetPercent(.2);
+    isNight.set(true);
+    await Promise.resolve();
+    expect(sleeper.IsAsleep()).toBe(false);
+    expect(cage.status.peek()).toBe('STARVING');
+    bird.components.perishable.SetPercent(1);
+    scheduler.advance(4.4);
+    expect(cage.status.peek()).toBe('SLEEPING');
+
+    sleeper.GoToSleep();
+    expect(cage.occupiable!.Harvest()).toBe(bird);
+    expect(cage.status.peek()).toBe('GENERIC');
+    expect(cage.sleeper).toBeUndefined();
+    controller.playOnce.mockClear();
+    isNight.set(false);
+    await Promise.resolve();
+    sleeper.WakeUp();
+    scheduler.advance(12);
+    expect(controller.playOnce).not.toHaveBeenCalled();
+    cage.occupiable!.Occupy(bird);
+    cage.sleeper!.GoToSleep();
+    expect(cage.status.peek()).toBe('SLEEPING');
+    const removedSleeper = cage.sleeper!;
+    cage.dispose();
+    controller.playOnce.mockClear();
+    isNight.set(true);
+    await Promise.resolve();
+    removedSleeper.WakeUp();
+    scheduler.advance(12);
+    expect(controller.playOnce).not.toHaveBeenCalled();
+    bird.destroy();
+    scheduler.dispose();
+  });
+
   it('starve at the cage rate, not the ground rate, and a ground bird does not starve at all', () => {
     const ground = createBird();
     settle(ground, 600);

@@ -1,10 +1,11 @@
+import type * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { HandEquipmentLifecycle } from '@dontstarve-web/signals';
+import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import type { ActionDescription } from '@dontstarve-web/stategraphs';
 import type { WilsonCarryItem } from './player';
 import { configureTorchEntity, createTorchHandLifecycle, TORCH_SOUNDS } from './torch';
 import { configureLanternEntity, createLanternHandLifecycle, LANTERN_FUEL } from './lantern';
-import { PreloadSounds, type SoundPosition } from './sound';
+import { PreloadSounds } from './sound';
 import { getLightStaffController, type LightStaffWorld } from './yellowstaff';
 import { configureBugNetEntity } from './bugnet';
 import { configureHammerEntity } from './hammer';
@@ -21,8 +22,13 @@ const WILSON_ATTACK = 34;
 const GOLDEN_ATTACKWEAR = 1 / 4;
 
 export interface HandEquipmentContext {
-  soundPosition?: SoundPosition;
-  setLightActive(active: boolean): void;
+  soundPosition?: THREE.Vector3;
+  /** The holder; torchfire's light fx is parented to it while burning. */
+  lightParent: THREE.Object3D;
+  /** The holder's FollowSymbol, for fx that follow swap_object; absent when there is no animated holder. */
+  followSymbol?(symbol: string, offsetX: number, offsetY: number): { node: THREE.Object3D; remove(): void };
+  /** Directory containing `fx/*.tex`, i.e. `${BASE_URL}dst/data`. */
+  dataBaseUrl?: string;
   /** The holder's lantern light and LANTERN_OVERLAY follow machine.ison and fuel percent. */
   setLanternLight?(ison: boolean, fuelPercent: number): void;
   lightStaffWorld?: LightStaffWorld;
@@ -39,7 +45,7 @@ export interface HandEquipmentDefinition {
   configureEntity?(entity: ItemEntity): void;
   readonly handAction?: ActionDescription;
   preload?(): Promise<void>;
-  createLifecycle?(entity: ItemEntity, context: HandEquipmentContext): HandEquipmentLifecycle | undefined;
+  createLifecycle?(entity: ItemEntity, context: HandEquipmentContext): EquipmentLifecycle | undefined;
 }
 
 /** Source hand prefabs declare their presentation and equip lifecycle together. */
@@ -71,7 +77,7 @@ const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
 };
 
 /** Prefab configuration for a hand inst: its own configureEntity, source tags and weapon component. */
-export function configureHandEquipmentEntity(entity: ItemEntity): void {
+export function configureEquipmentEntity(entity: ItemEntity): void {
   const entry = getHandEquipmentDefinition(entity.prefab);
   if (!entry) return;
   const { definition } = entry;

@@ -47,6 +47,7 @@ export interface SavedEntity {
     sculptingtable?: { itemname: string };
     birdcage?: import('@dontstarve-web/prefab/birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };
+    finiteuses?: { uses: number };
     moonbase?: import('@dontstarve-web/prefab/moonbase').MoonbaseSaveState;
     farmPlow?: FarmPlowSaveState;
     farmSoil?: FarmSoilSaveState;

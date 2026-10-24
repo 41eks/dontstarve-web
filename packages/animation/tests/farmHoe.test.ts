@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { loadFarmHoeEquipment, resolveFarmHoePlayerSprite } from '../../prefab/src/farm_hoe';
 import { FarmHoeActionController } from '../../stategraphs/src/farm_hoe';
-import { createHandEquipmentExistenceState } from '../../signals/src';
+import { createEquipmentExistenceState } from '../../signals/src';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
@@ -108,7 +108,7 @@ it('approaches the target, creates one hole at till_loop frame 11, and cancels b
   await animation.setCarryItem('golden_farm_hoe');
   const { world, farm, turf } = setup(player);
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
-  const tool = createHandEquipmentExistenceState();
+  const tool = createEquipmentExistenceState('HANDS');
   tool.set({ itemId: 'golden_farm_hoe', EQUIPSLOTS: 'HANDS' });
   const controller = new FarmHoeActionController(world, animation, locomotor, tool, farm);
   const point = new THREE.Vector3(3, 0, 3);

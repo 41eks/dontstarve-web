@@ -6,7 +6,7 @@ import { WallsPlacement } from '../../prefab/src/walls';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/wallPlacement';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { configureHandEquipmentEntity } from '../../prefab/src/handEquipment';
+import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { AttackActionController } from '../../stategraphs/src/attack';
 import { Combat, type CombatInst } from '../../componets/src/combat';
@@ -98,7 +98,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
 
     const hammer = new ItemEntity({ itemId: 'hammer', count: 1 });
     hammer.components.finiteuses.setMaxUses(75);
-    configureHandEquipmentEntity(hammer);
+    configureEquipmentEntity(hammer);
     const player = attacker(new THREE.Vector3(3 + UNIT, 0, -6), () => 0, hammer);
     expect(player.combat.CanTarget(stoneTarget.inst)).toBe(true);
     expect(player.combat.DoAttack(stoneTarget.inst)).toBe(true);

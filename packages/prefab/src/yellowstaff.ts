@@ -6,7 +6,7 @@ import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
 import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { HandEquipment, Signal, HandEquipmentLifecycle } from '@dontstarve-web/signals';
+import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import type { SpellCastDoer, SpellCastMap } from '@dontstarve-web/stategraphs/spellcaster';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { PlaySound, PreloadSounds } from './sound';
@@ -28,12 +28,10 @@ export interface LightStaffWorld {
 }
 
 /** staff.lua yellow/opal: configure one spellcaster on the actual inventory entity. */
-export class LightStaffController implements HandEquipmentLifecycle {
+export class LightStaffController implements EquipmentLifecycle {
   readonly spellcaster: SpellCaster;
   private readonly entity: ItemEntity;
   private readonly world: LightStaffWorld;
-  private slotSignal: Signal<HandEquipment | null> | undefined;
-  private equipment: HandEquipment | null = null;
   constructor(entity: ItemEntity, world: LightStaffWorld) {
     if (!isLightStaff(entity.prefab)) throw new Error('LightStaffController requires a light staff');
     this.entity = entity; this.world = world;
@@ -53,21 +51,15 @@ export class LightStaffController implements HandEquipmentLifecycle {
   private get product(): 'stafflight' | 'staffcoldlight' {
     return this.entity.prefab === 'opalstaff' ? 'staffcoldlight' : 'stafflight';
   }
-  onequip(slotSignal: Signal<HandEquipment | null>): void {
-    this.slotSignal = slotSignal; this.equipment = slotSignal.peek();
-  }
-  onunequip(): void { this.slotSignal = undefined; this.equipment = null; }
-  dispose(): void { this.onunequip(); }
+  onequip(): void {}
+  onunequip(): void {}
+  dispose(): void {}
   private createLight(position: THREE.Vector3, doer: SpellCastDoer): boolean {
     if (this.entity.isRemoved) return false;
     this.world.spawnPrefab(this.product, position);
     const depleted = (this.entity.components.finiteuses.remaining ?? LIGHT_STAFF_USES[this.entity.prefab as LightStaffId]) === 1;
-    const slotSignal = this.slotSignal, equipment = this.equipment;
     if (!this.entity.components.finiteuses.use(1)) return false;
-    if (depleted) {
-      PlaySound('dontstarve/common/gem_shatter', doer.position);
-      if (slotSignal && equipment?.entity === this.entity && slotSignal.peek() === equipment) slotSignal.set(null);
-    }
+    if (depleted) PlaySound('dontstarve/common/gem_shatter', doer.position);
     if (doer.components.staffsanity) doer.components.staffsanity.doCastingDelta(-LIGHT_STAFF_SANITY_COST);
     else doer.components.sanity?.doDelta(-LIGHT_STAFF_SANITY_COST);
     return true;

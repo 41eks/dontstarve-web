@@ -1,7 +1,10 @@
+import { Vector3 } from 'three';
 import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // flies.lua → dontstarve.fev sounddef 56 → common file_index 74–80 (Flies_soothed_DST_-001..007).
+  'dontstarve/common/flies': { bank: 'common', streams: [75, 76, 77, 78, 79, 80, 81], loop: true },
   // grass.lua → dontstarve.fev sounddef 19 → wilson file_index 115–118.
   'dontstarve/wilson/pickup_reeds': { bank: 'wilson', streams: [116, 117, 118, 119], loop: false },
   // SGwilson.lua dolongaction → dontstarve.fev sounddefs 1758/1759, two layers.
@@ -20,6 +23,20 @@ const sounds = {
   // fire.lua → dontstarve.fev sounddefs 1762 / 1765 / 1766, three simultaneous layers.
   'dontstarve/common/campfire': { bank: 'common', streams: [149, 150, 151, 152], loop: true,
     layers: [{ bank: 'common', streams: [153, 154, 155, 156] }, { bank: 'common', streams: [158, 159, 160, 161] }] },
+  // tent.lua → dontstarve.fev sounddefs 1334 (eleven tent_sleep_loop variants, sfx file_index 394–404), 171 and 172.
+  'dontstarve/common/tent_sleep': { bank: 'sfx', streams: [395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405], loop: false },
+  'dontstarve/common/tent_dis_pre': { bank: 'common', streams: [103], loop: false },
+  'dontstarve/common/tent_dis_twirl': { bank: 'common', streams: [104], loop: false },
+  // pigking.lua / SGpigking.lua → dontstarve.fev sounddefs 73 / 71 / 72 → pig file_index 0 / 1 / 2.
+  'dontstarve/pig/PigKingThrowGold': { bank: 'pig', streams: [1], loop: false },
+  'dontstarve/pig/PigKingHappy': { bank: 'pig', streams: [2], loop: false },
+  'dontstarve/pig/PigKingReject': { bank: 'pig', streams: [3], loop: false },
+  // nightmarerock / SGnightmarerock.lua → dontstarve.fev sounddefs 1777 (ghostup) / 1779 (down) layered with 1778 (rockup_1..4),
+  // sanity file_index 47 / 46 / 48–51 (+ 1).
+  'dontstarve/sanity/shadowrock_up': { bank: 'sanity', streams: [48], loop: false, layers: [{ bank: 'sanity', streams: [49, 50, 51, 52] }] },
+  'dontstarve/sanity/shadowrock_reveal': { bank: 'sanity', streams: [48], loop: false, layers: [{ bank: 'sanity', streams: [49, 50, 51, 52] }] },
+  'dontstarve/sanity/shadowrock_down': { bank: 'sanity', streams: [47], loop: false, layers: [{ bank: 'sanity', streams: [49, 50, 51, 52] }] },
+  'dontstarve/sanity/shadowrock_conseal': { bank: 'sanity', streams: [47], loop: false, layers: [{ bank: 'sanity', streams: [49, 50, 51, 52] }] },
   'dontstarve/wilson/equip_item_gold': { bank: 'wilson', streams: [115], loop: false },
   'dontstarve/wilson/dig': { bank: 'wilson', streams: [64, 65, 66], loop: false },
   'dontstarve_DLC001/creatures/mole/emerge': { bank: 'mole', streams: [2, 3, 4], loop: false },
@@ -147,6 +164,8 @@ const sounds = {
   // SGwilson.lua book2 → dontstarve.fev sounddefs 1301 / 1280 / 902 (file_index + 1).
   'dontstarve/common/use_book_light': { bank: 'together', streams: [481, 482, 483, 484], loop: false },
   'dontstarve/common/use_book_close': { bank: 'sfx', streams: [347, 348, 349, 350], loop: false },
+  // SGwilson.lua play_flute → dontstarve.fev wilson/flute_LP → sounddef 88 → wilson ReedFlute_1..7 (file_index 80–86).
+  'dontstarve/wilson/flute_LP': { bank: 'wilson', streams: [81, 82, 83, 84, 85, 86, 87], loop: false },
   'dontstarve/common/book_spell': { bank: 'common', streams: [148], loop: false },
   // books.lua layer_sound / book_fx.lua OnFail → wickerbottom_rework.fev sounddefs 17+23 / 16.
   'wickerbottom_rework/book_spells/silviculture': { bank: 'wickerbottom_rework', streams: [13], loop: false,
@@ -165,32 +184,32 @@ export interface SoundHandle {
   setVolume(volume: number): void;
   setParameter?(name: string, value: number): void;
 }
-export interface SoundPosition { readonly x: number; readonly z: number; }
 export const SOUND_MAX_DISTANCE = TILE_SIZE * 8;
 
 /** Full volume within one tile, inverse-square falloff, then silence at the cutoff. */
 export function inverseSquareAttenuation(
-  distance: number, referenceDistance = TILE_SIZE, maxDistance = SOUND_MAX_DISTANCE,
+  position: Vector3, listenerPosition: Vector3, referenceDistance = TILE_SIZE, maxDistance = SOUND_MAX_DISTANCE,
 ): number {
-  if (distance >= maxDistance) return 0;
-  return (referenceDistance / Math.max(referenceDistance, distance)) ** 2;
+  const distanceSquared = position.distanceToSquared(listenerPosition);
+  if (distanceSquared >= maxDistance * maxDistance) return 0;
+  const referenceSquared = referenceDistance * referenceDistance;
+  return referenceSquared / Math.max(referenceSquared, distanceSquared);
 }
 
 let context: AudioContext | undefined;
 const buffers = new Map<string, AudioBuffer>();
 const requests = new Map<string, Promise<AudioBuffer>>();
 const playing = new Set<SoundHandle>();
-const soundGains = new Map<SoundHandle, { position?: SoundPosition; gain: GainNode; volume: number }>();
-const listener: { x: number; z: number } = { x: 0, z: 0 };
+const soundGains = new Map<SoundHandle, { position?: Vector3; gain: GainNode; volume: number }>();
+const listener = new Vector3();
 
-function updateGain({ position, gain, volume }: { position?: SoundPosition; gain: GainNode; volume: number }): void {
-  gain.gain.value = volume * (position ? inverseSquareAttenuation(Math.hypot(position.x - listener.x, position.z - listener.z)) : 1);
+function updateGain({ position, gain, volume }: { position?: Vector3; gain: GainNode; volume: number }): void {
+  gain.gain.value = volume * (position ? inverseSquareAttenuation(position, listener) : 1);
 }
 
 /** Call each frame after movement; source positions are retained by reference. */
-export function UpdateSoundListener(position: SoundPosition): void {
-  listener.x = position.x;
-  listener.z = position.z;
+export function UpdateSoundListener(position: Vector3): void {
+  listener.copy(position);
   for (const sound of soundGains.values()) updateGain(sound);
 }
 
@@ -258,7 +277,7 @@ export async function PreloadSounds(...paths: SoundEventPath[]): Promise<void> {
 }
 
 /** Optional ground position enables distance attenuation; omitted positions play at full volume. */
-export function PlaySound(path: SoundEventPath, position?: SoundPosition, offsetSeconds = 0): SoundHandle {
+export function PlaySound(path: SoundEventPath, position?: Vector3, offsetSeconds = 0): SoundHandle {
   const audio = getContext();
   const filenames = soundLayers(path).map((files) => files.length === 1 ? files[0] : files[Math.floor(Math.random() * files.length)]);
   const sources = new Set<AudioBufferSourceNode>();
@@ -347,5 +366,5 @@ export function DisposeSounds(): void {
   context = undefined;
   buffers.clear();
   requests.clear();
-  listener.x = listener.z = 0;
+  listener.set(0, 0, 0);
 }

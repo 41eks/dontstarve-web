@@ -1,4 +1,6 @@
 import type { BufferedAction } from './bufferedaction.ts';
+import { ComponentTimer } from '../../componets/src/timer.ts';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 
 /** DST constants.lua: one source animation frame is 1/30 second. */
 export const FRAMES = 1 / 30;
@@ -67,6 +69,12 @@ export class StateGraphInstance<Context, Name extends string> {
   private revision = 0;
   private clock = 0;
   private readonly scheduled = new Set<{ time: number; fn: () => void }>();
+  private readonly scheduler?: GameTimeScheduler;
+  private readonly timeoutTimer?: ComponentTimer;
+  private readonly timelineTimer?: ComponentTimer;
+  private enteredAt = 0;
+  private disposed = false;
+  private readonly cancelScheduled = new Set<() => void>();
   statemem: Record<string, unknown> = {};
   timeInState = 0;
   readonly context: Context;
@@ -74,8 +82,22 @@ export class StateGraphInstance<Context, Name extends string> {
   constructor(
     context: Context, states: readonly StateDefinition<Context, Name>[],
     actionHandlers: readonly StateActionHandler<Context, Name>[] = [],
+    scheduler?: GameTimeScheduler,
   ) {
     this.context = context;
+    this.scheduler = scheduler;
+    if (scheduler) {
+      this.timeoutTimer = new ComponentTimer(scheduler, () => {
+        this.syncSchedulerTime();
+        this.current.ontimeout?.(this);
+      });
+      this.timelineTimer = new ComponentTimer(scheduler, () => {
+        this.syncSchedulerTime();
+        const revision = this.revision;
+        this.current.timeline?.[this.timelineIndex++]?.fn(this);
+        if (revision === this.revision) this.armTimeline();
+      });
+    }
     for (const state of states) {
       if (this.states.has(state.name)) throw new Error(`Duplicate state ${state.name}`);
       this.states.set(state.name, {
@@ -91,6 +113,9 @@ export class StateGraphInstance<Context, Name extends string> {
   get stateName(): Name { return this.current.name; }
   get elapsedTime(): number { return this.clock; }
   get stateRevision(): number { return this.revision; }
+  /** Scheduler-backed graphs publish only setup, cancellation and expiry, never per-frame countdowns. */
+  get timeoutSnapshot() { return this.timeoutTimer?.snapshot; }
+  get timelineSnapshot() { return this.timelineTimer?.snapshot; }
   hasStateTag(tag: string): boolean { return this.tags.has(tag); }
   addStateTag(tag: string): void { this.tags.add(tag); }
   removeStateTag(tag: string): void { this.tags.delete(tag); }
@@ -111,23 +136,41 @@ export class StateGraphInstance<Context, Name extends string> {
   }
 
   goToState(name: Name, data?: unknown): void {
+    if (this.disposed) return;
     const state = this.states.get(name);
     if (!state) throw new Error(`Unknown state ${name}`);
     this.current?.onexit?.(this, name);
+    this.timeoutTimer?.stop();
+    this.timelineTimer?.stop();
     this.statemem = {};
     this.current = state;
     this.revision++;
     this.timeInState = 0;
+    this.enteredAt = this.scheduler?.now ?? this.clock;
     this.timelineIndex = 0;
     this.timeout = null;
     this.tags = new Set(state.tags);
+    const revision = this.revision;
     state.onenter?.(this, data);
+    if (revision !== this.revision) return;
+    this.armTimeline();
     this.notify('newstate', { name });
+  }
+
+  private armTimeline(): void {
+    const event = this.current.timeline?.[this.timelineIndex];
+    if (event && this.scheduler) this.timelineTimer!.start(Math.max(0, this.enteredAt + event.time - this.scheduler.now));
+  }
+
+  private syncSchedulerTime(): void {
+    this.clock = this.scheduler!.now;
+    this.timeInState = this.clock - this.enteredAt;
   }
 
   setTimeout(duration: number): void {
     if (!Number.isFinite(duration) || duration <= 0) throw new Error('Invalid state timeout');
-    this.timeout = this.timeInState + duration;
+    if (this.timeoutTimer) this.timeoutTimer.start(duration);
+    else this.timeout = this.timeInState + duration;
   }
 
   /** Engine timers (e.g. animation completion) survive state transitions.
@@ -135,6 +178,15 @@ export class StateGraphInstance<Context, Name extends string> {
    */
   schedule(duration: number, fn: () => void): () => void {
     if (!Number.isFinite(duration) || duration <= 0) throw new Error('Invalid scheduled duration');
+    if (this.scheduler) {
+      const cancelTask = this.scheduler.schedule(duration, () => {
+        this.cancelScheduled.delete(cancel);
+        fn();
+      });
+      const cancel = () => { cancelTask(); this.cancelScheduled.delete(cancel); };
+      this.cancelScheduled.add(cancel);
+      return cancel;
+    }
     const task = { time: this.clock + duration, fn };
     this.scheduled.add(task);
     return () => { this.scheduled.delete(task); };
@@ -155,6 +207,7 @@ export class StateGraphInstance<Context, Name extends string> {
   }
 
   pushEvent(name: string, data?: unknown): void {
+    if (this.disposed) return;
     const revision = this.revision;
     this.notify(name, data);
     // A listener can interrupt the state; its old handler must not run afterward.
@@ -164,6 +217,12 @@ export class StateGraphInstance<Context, Name extends string> {
 
   update(dt: number): void {
     if (!Number.isFinite(dt) || dt < 0) throw new Error('Invalid stategraph timestep');
+    if (this.disposed) return;
+    if (this.scheduler) {
+      this.syncSchedulerTime();
+      this.current.onupdate?.(this, dt);
+      return;
+    }
     let remaining = dt;
     let updateDt = 0;
     // Consume overshoot in a new state, retaining independent engine timers.
@@ -201,5 +260,15 @@ export class StateGraphInstance<Context, Name extends string> {
       if (revision !== this.revision) updateDt = 0;
     }
     throw new Error('Stategraph did not advance time');
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.timeoutTimer?.stop();
+    this.timelineTimer?.stop();
+    for (const cancel of this.cancelScheduled) cancel();
+    this.scheduled.clear();
+    this.listeners.clear();
   }
 }

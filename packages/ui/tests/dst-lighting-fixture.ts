@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
+import { attachPrefabLight } from '../../prefab/src/localLight';
+import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { getDstCycle } from '../../../src/tuning';
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
@@ -36,7 +38,7 @@ export async function checkDstLocalLighting() {
   const draw = () => lighting.render(scene, camera);
   draw();
   const night = { phase: lighting.getPhase(), season: lighting.getSeason(), centre: sample(0, 0), far: sample(15, 0) };
-  lighting.setTorchOwner(owner);
+  const removeTorchLight = attachPrefabLight(owner, 'TorchFireLight', TORCH_LIGHT);
   draw();
   const torch = { centre: sample(0, 0), middle: sample(6, 0), far: sample(15, 0) };
 
@@ -54,7 +56,7 @@ export async function checkDstLocalLighting() {
   owner.position.x = 12;
   draw();
   const moved = { previous: sample(0, 0), current: sample(12, 0) };
-  lighting.setTorchOwner(null);
+  removeTorchLight();
   draw();
   const removed = { centre: sample(12, 0), instance: sample(0, 2) };
   clockstate.set({ phase: 'day', timeinphase: 0 });

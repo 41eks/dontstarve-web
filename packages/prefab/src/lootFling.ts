@@ -10,6 +10,15 @@ export const LOOT_FLING = {
   inventoryRadius: 0.5, restitution: 0.5, friction: 0.1,
 } as const;
 
+/** A directed launch such as pigking.lua launchitem, in DST units: `angle` is radians in the scene x/z plane. */
+export interface LootLaunch {
+  angle: number;
+  /** Launched from this height instead of the ground, with no collision-radius offset. */
+  height: number;
+  speed: { min: number; range: number };
+  ySpeed: { min: number; range: number };
+}
+
 /** A flat-ground trajectory for loot; height never changes its saved foot point. */
 export class LootFling {
   private readonly transform: ItemEntity['transform'];
@@ -22,8 +31,15 @@ export class LootFling {
   // scaled space as the launch velocities, independent of player jump physics.
   private readonly gravity = 30 * WORLD_SCALE;
 
-  constructor(transform: ItemEntity['transform'], dropperRadius = 0.4, random = Math.random) {
+  constructor(transform: ItemEntity['transform'], dropperRadius = 0.4, random = Math.random, launch?: LootLaunch) {
     this.transform = transform;
+    if (launch) {
+      const speed = (launch.speed.min + random() * launch.speed.range) * WORLD_SCALE;
+      this.height = launch.height * WORLD_SCALE;
+      this.velocity = new THREE.Vector3(Math.cos(launch.angle) * speed,
+        (launch.ySpeed.min + random() * launch.ySpeed.range) * WORLD_SCALE, Math.sin(launch.angle) * speed);
+      return;
+    }
     const angle = random() * Math.PI * 2;
     const speed = (LOOT_FLING.minSpeed + random() * (LOOT_FLING.maxSpeed - LOOT_FLING.minSpeed)) * WORLD_SCALE;
     const ySpeed = (LOOT_FLING.ySpeed + (random() * 2 - 1) * LOOT_FLING.ySpeedVariance) * WORLD_SCALE;

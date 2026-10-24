@@ -37,7 +37,7 @@ describe('greenstaff source deconstruction', () => {
     const entity = inventory.getEntity(slot)!;
     const spawn = vi.fn(() => true), dispose = vi.fn();
     const staff = new GreenStaffController(entity, { prepareLoot: async () => ({ spawn, dispose }) });
-    staff.onequip(inventory.handEquipmentExistenceState);
+    staff.onequip();
     const opal = target();
     const event = vi.fn(); opal.entity.ListenForEvent('ondeconstructstructure', event);
     const doDelta = vi.fn(), staffDelta = vi.fn();

@@ -10,6 +10,9 @@
     "./gameTimeScheduler": "./src/components/gameTimeScheduler.ts",
     "./reskin_tool": "./src/reskin_tool.ts",
     "./sound": "./src/sound.ts",
+    "./tradable": "./src/tradable.ts",
+    "./staticLayout": "./src/staticLayout.ts",
+    "./nightmarerock": "./src/nightmarerock.ts",
     "./rain": "./src/rain.ts",
     "./world_fx": "./src/world_fx.ts",
     "./razor": "./src/razor.ts",
@@ -56,6 +59,7 @@
     "./farm_hoe": "./src/farm_hoe.ts",
     "./shovel": "./src/shovel.ts",
     "./bugnet": "./src/bugnet.ts",
+    "./panflute": "./src/panflute.ts",
     ".": "./src/index.ts",
     "./definitions.json": "./src/definitions.json",
     "./saveRecord": "./src/saveRecord.ts",
@@ -72,7 +76,6 @@
     "./proximityEntities": "./src/proximityEntities.ts",
     "./playerProximity": "./src/playerProximity.ts",
     "./pigking": "./src/pigking.ts",
-    "./setpieces/pigking": "./src/setpieces/pigking.ts",
     "./player": "./src/player.ts",
     "./scienceprototyper": "./src/scienceprototyper.ts",
     "./treasurechest": "./src/treasurechest.ts",
@@ -107,7 +110,9 @@
     "ground-items:import": "python3 scripts/import-ground-items.py",
     "ground-items:check": "python3 scripts/import-ground-items.py --check",
     "ground-tiles:import": "python3 scripts/import-ground-tiles.py",
-    "ground-tiles:check": "python3 scripts/import-ground-tiles.py --check"
+    "ground-tiles:check": "python3 scripts/import-ground-tiles.py --check",
+    "static-layouts:import": "python3 scripts/import-static-layouts.py",
+    "static-layouts:check": "python3 scripts/import-static-layouts.py --check"
   },
   "dependencies": {
     "@dontstarve-web/stategraphs": "workspace:*",

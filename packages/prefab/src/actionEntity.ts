@@ -14,17 +14,18 @@ function modelRemoval(model: THREE.Group): ReadonlySignal<boolean> {
 }
 
 /** Project the engine inst onto its existing world model, keeping one tag/component owner. */
-export function actionEntity(model: THREE.Group, prefab: string, inst?: ComponentActionEntity & WorkableInst): ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3 } {
+export function actionEntity(model: THREE.Group, prefab: string, inst?: ComponentActionEntity & WorkableInst): ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3; getPhysicsRadius(): number } {
   if (model.userData.actionEntity) return model.userData.actionEntity;
   model.userData.components ??= {};
   const removal = inst?.removal ?? modelRemoval(model);
-  const entity: ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3 } = {
+  const entity: ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3; getPhysicsRadius(): number } = {
     model,
     prefab,
     removal,
     get isRemoved() { return removal.peek(); },
     get components() { return inst?.components ?? model.userData.components; },
     getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+    getPhysicsRadius: () => model.userData.physicsRadius ?? 0,
     hasTag: tag => {
       if (inst) return inst.hasTag(tag);
       for (const component of Object.values(model.userData.components) as { HasTag?(tag: string): boolean | undefined }[]) {

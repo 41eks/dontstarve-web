@@ -1,5 +1,4 @@
 import { expect, it, vi } from 'vitest';
-import { createHeadEquipmentExistenceState, createBodyEquipmentExistenceState } from '@dontstarve-web/signals';
 import { InventoryStore, InventorySlot, HandSlot, HeadSlot, BodySlot, equipmentSlotAddress, inventorySlotAddress } from '../src';
 
 const head = equipmentSlotAddress('head'), body = equipmentSlotAddress('body');
@@ -45,7 +44,7 @@ it('publishes committed head/body identity, preserves transfers and restores the
     expect(store.receive(backpack)).toBe(true);
     expect(store.getEntity(b)).toBe(backpack);
     expect(store.transfer(b, body, 1)).toBe(true);
-    store.headEquipmentExistenceState.set(null);
+    expect(hat.remove()).toBe(true);
     expect(store.getEntity(head)).toBeNull();
     expect(hat.isRemoved).toBe(true);
     expect(store.getEntity(body)).toBe(backpack);
@@ -59,29 +58,16 @@ it('publishes committed head/body identity, preserves transfers and restores the
   } finally { stopHead(); stopBody(); store.dispose(); }
 });
 
-it('binds late head/body registrations once and releases all equipment subscriptions on disposal', () => {
-  const headEquipmentExistenceState = createHeadEquipmentExistenceState();
-  const bodyEquipmentExistenceState = createBodyEquipmentExistenceState();
-  const subscribeHead = vi.spyOn(headEquipmentExistenceState, 'subscribe');
-  const subscribeBody = vi.spyOn(bodyEquipmentExistenceState, 'subscribe');
-  const store = new InventoryStore([], specs, skins, undefined, { headEquipmentExistenceState, bodyEquipmentExistenceState });
+it('publishes late head/body registrations once', () => {
+  const store = new InventoryStore([], specs, skins);
   try {
-    expect(subscribeHead).not.toHaveBeenCalled();
-    expect(subscribeBody).not.toHaveBeenCalled();
+    expect(store.headEquipment.peek()).toBeNull();
     store.registerSlots([
       { address: head, slot: new HeadSlot({ itemId: 'strawhat', count: 1 }) },
       { address: body, slot: new BodySlot({ itemId: 'backpack', count: 1 }) },
     ]);
-    store.registerSlots([{ address: equipmentSlotAddress('hand'), slot: new HandSlot() }]);
     expect(() => store.registerSlots([{ address: head, slot: new HeadSlot() }])).toThrow('Duplicate slot address');
-    expect(subscribeHead).toHaveBeenCalledOnce();
-    expect(subscribeBody).toHaveBeenCalledOnce();
-    expect(store.headEquipmentExistenceState).toBe(headEquipmentExistenceState);
-    expect(store.bodyEquipmentExistenceState).toBe(bodyEquipmentExistenceState);
-    const remove = vi.spyOn(store, 'applySlotChanges');
-    store.dispose();
-    headEquipmentExistenceState.set(null);
-    bodyEquipmentExistenceState.set(null);
-    expect(remove).not.toHaveBeenCalled();
+    expect(store.headEquipment.peek()?.entity).toBe(store.getEntity(head));
+    expect(store.bodyEquipment.peek()?.entity).toBe(store.getEntity(body));
   } finally { store.dispose(); }
 });

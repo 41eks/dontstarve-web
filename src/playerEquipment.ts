@@ -1,15 +1,16 @@
-import type { Equipment, EquipmentLifecycle, EquipmentSlot, Signal } from '@dontstarve-web/signals';
+import type { Equipment, EquipmentLifecycle, EquipmentOwner, EquipmentSlot, Signal } from '@dontstarve-web/signals';
 
 interface PlayerEquipmentOptions<S extends EquipmentSlot> {
   existenceState: Signal<Equipment<S> | null>;
-  createLifecycle?(equipment: Equipment<S>): EquipmentLifecycle<S> | undefined;
+  owner?: EquipmentOwner;
+  createLifecycle?(equipment: Equipment<S>): EquipmentLifecycle | undefined;
   present(equipment: Equipment<S> | null): void;
 }
 
 /** Observe committed slot changes; finish old cleanup before processing nested writes. */
 export function bindPlayerEquipment<S extends EquipmentSlot>(options: PlayerEquipmentOptions<S>) {
   const slot = options.existenceState;
-  let active: EquipmentLifecycle<S> | undefined;
+  let active: EquipmentLifecycle | undefined;
   let disposed = false;
   let transitioning = false;
   let pending = false;
@@ -28,7 +29,7 @@ export function bindPlayerEquipment<S extends EquipmentSlot>(options: PlayerEqui
         if (disposed || pending || slot.peek() !== current) continue;
         if (current) {
           active = options.createLifecycle?.(current);
-          active?.onequip(slot);
+          active?.onequip(options.owner);
         }
         if (disposed || pending || slot.peek() !== current) continue;
         options.present(current);

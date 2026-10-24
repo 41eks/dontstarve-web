@@ -11,7 +11,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
 import type { AnimElement } from '../src/animationAssets';
-import { createHandEquipmentExistenceState } from '../../signals/src';
+import { createEquipmentExistenceState } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src/entity';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
@@ -97,7 +97,7 @@ it('walks into reach, commits at shovel_loop frame 15, and preserves cancelled o
   const point = new THREE.Vector3(3, 0, 3);
   turf.plow(point);
   await farm.spawnDecor('farm_soil_debris', point, { animation: 'f1' }, undefined, 'target');
-  const equipped = createHandEquipmentExistenceState();
+  const equipped = createEquipmentExistenceState('HANDS');
   const tool = new ItemEntity({ itemId: 'goldenshovel', count: 1 });
   configureShovelEntity(tool);
   equipped.set({ itemId: 'goldenshovel', EQUIPSLOTS: 'HANDS', entity: tool });

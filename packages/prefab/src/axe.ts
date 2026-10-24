@@ -1,5 +1,5 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { HandEquipmentLifecycle } from '@dontstarve-web/signals';
+import type { EquipmentLifecycle } from '@dontstarve-web/signals';
 import { Tool } from '../../componets/src/tool';
 import type { GroundItemAssets } from './groundItems';
 import { FiniteUsesToolLifecycle, loadHeldToolEquipment, type HeldToolEquipment } from './pickaxe';
@@ -21,7 +21,7 @@ const AXE_TUNING: Readonly<Record<AxeTool, { effectiveness: number; consumption:
   moonglassaxe: { effectiveness: 2.5, consumption: 1.25 },
 };
 
-export function getAxeLifecycle(entity: ItemEntity): HandEquipmentLifecycle {
+export function getAxeLifecycle(entity: ItemEntity): EquipmentLifecycle {
   return entity.component('axe', () => new FiniteUsesToolLifecycle(entity));
 }
 

@@ -7,7 +7,14 @@ import { Beard, type BeardSave } from '../../componets/src/beard';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sleeper } from '../../componets/src/sleeper';
 import { actionEntity } from './actionEntity';
-import { Locomotor, type LocomotorOptions } from './locomotor';
+import type { LocomotorOptions } from './locomotor';
+import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
+import { KnownLocations } from '../../componets/src/knownlocations';
+import { PeriodicSpawner } from '../../componets/src/periodicspawner';
+import { BeefaloBrain } from '../../brains/src/beefalobrain';
+import type { FaceEntityInst } from '../../brains/src/behaviours/faceentity';
+import type { BrainEntity, BrainWorld } from '../../brains/src/types';
+import { BeefaloStateGraph, type BeefaloStateName } from '../../stategraphs/src/SGBeefalo';
 import { newEntityId } from './saveRecord';
 import { DampCharacterVelocity, MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 /** beefalo.lua, beefalobrain.lua and SGBeefalo.lua; distances use this world's scale. */
@@ -19,7 +26,7 @@ export const BEEFALO_BEHAVIOR = {
   faceDistance: 4 * WORLD_SCALE,
   keepFaceDistance: 6 * WORLD_SCALE,
   poopMinSeconds: 40,
-  poopMaxSeconds: 60,
+  poopMaxSeconds: 100,
   poopSpacing: 8 * WORLD_SCALE,
   poopDensityRadius: 20 * WORLD_SCALE,
 } as const;
@@ -31,6 +38,7 @@ export const BEEFALO_PRIZE = 'beefalowool';
 
 export interface BeefaloWorld {
   phase: WorldPhase;
+  readonly isNight: ReadonlySignal<boolean>;
   season: WorldSeason;
   scheduler: GameTimeScheduler;
   /** Seconds from scheduler time `now` to the world's next day boundary; the world owns the day length. */
@@ -40,7 +48,8 @@ export interface BeefaloWorld {
   getPlayerPositions(): readonly THREE.Vector3[];
   findPath: NonNullable<LocomotorOptions['findPath']>;
   constrainPosition(position: THREE.Vector3): void;
-  /** Host applies periodicspawner's density and spacing rules. */
+  /** Visible/pending manure positions for periodicspawner's density and spacing rules. */
+  getPoopPositions(): readonly THREE.Vector3[];
   spawnPoop(position: THREE.Vector3): void;
 }
 
@@ -51,7 +60,9 @@ export interface BeefaloManagerWorld extends Omit<BeefaloWorld, 'phase' | 'seaso
 }
 
 export interface BeefaloSaveState {
+  /** Legacy home field; named locations are authoritative in new saves. */
   home: [number, number, number];
+  knownlocations?: { locations: { name: string; x: number; y: number; z: number }[] };
   heading: number;
   poopRemainingSeconds: number;
   /** beard.lua OnSave; absent in saves written before the beard component existed. */
@@ -64,28 +75,20 @@ export interface BeefaloRecord {
   components: { beefalo: BeefaloSaveState };
 }
 
-export type BeefaloState = 'idle' | 'walk_pre' | 'walk' | 'walk_pst' | 'graze_pre' | 'graze' | 'graze_pst'
-  | 'shake' | 'bellow' | 'sleep_pre' | 'sleep' | 'sleep_pst' | 'shaved' | 'hair_growth' | 'hair_growth_pop';
+export type BeefaloState = BeefaloStateName;
 
-/** SGBeefalo.lua state tags that matter to the sleeper test and the stategraph events. */
-const BUSY_STATES: ReadonlySet<BeefaloState> = new Set(['sleep_pre', 'sleep', 'sleep_pst', 'shaved', 'hair_growth', 'hair_growth_pop']);
-
-/** A passive wild adult: locomotion, idle actions, FaceEntity, sleeper, beard and manure. */
+/** beefalo.lua owns components and physics; its brain and stategraph own behavior and states. */
 export class BeefaloController {
-  private currentState: BeefaloState = 'idle';
-  private readonly locomotor: Locomotor;
+  readonly locomotor: LocoMotor;
+  readonly knownlocations = new KnownLocations();
+  readonly periodicspawner: PeriodicSpawner;
+  readonly brain: BeefaloBrain;
+  readonly sg: BeefaloStateGraph;
   private readonly home: THREE.Vector3;
   private readonly direction = new THREE.Vector3(1, 0, 0);
   private readonly right = new THREE.Vector3();
   private readonly forward = new THREE.Vector3();
-  private faceTarget?: THREE.Vector3;
-  private idleRemaining = 0;
-  private wanderRemaining = 0;
-  private walkRemaining = 0;
-  private grazeRemaining = 0;
-  private poopRemaining: number;
   private disposed = false;
-  /** inst.hairGrowthPending: set by the day-3 callback, consumed when idle is next entered. */
   private readonly hairGrowthPendingState = createSignal(false);
   readonly hairGrowthPending = readonlySignal(this.hairGrowthPendingState);
   private readonly stopAppearance: () => void;
@@ -99,19 +102,37 @@ export class BeefaloController {
 
   constructor(model: THREE.Group, body: CANNON.Body, animation: FacingSpriteAnimationController,
     world: BeefaloWorld, saved?: BeefaloSaveState, random = Math.random) {
-    this.model = model;
-    this.body = body;
-    this.animation = animation;
-    this.world = world;
-    this.random = random;
+    this.model = model; this.body = body; this.animation = animation;
+    this.world = world; this.random = random;
     this.home = saved ? new THREE.Vector3(...saved.home) : model.position.clone().setY(0);
     if (saved) {
       const heading = THREE.MathUtils.degToRad(saved.heading);
       this.direction.set(Math.cos(heading), 0, -Math.sin(heading));
+      this.knownlocations.OnLoad(saved.knownlocations ?? {
+        locations: [{ name: 'herd', x: saved.home[0], y: saved.home[1], z: saved.home[2] }],
+      });
     }
-    this.poopRemaining = saved?.poopRemainingSeconds ?? this.nextPoopTime();
-    this.locomotor = new Locomotor(body, { findPath: world.findPath, arriveDistance: 0.3 });
-    // "bearded" comes from the beard component and "has_beard" from its hair, both through HasTag.
+    const controller = this;
+    const motorInst: LocoMotorInst = {
+      isValid: () => this.isValid(), getPosition: () => this.getPosition(),
+      getPhysicsRadius: () => BEEFALO_BEHAVIOR.radius,
+      setRotation: degrees => this.setRotation(degrees),
+      getAngleToPoint: (x, _y, z) => this.getAngleToPoint(x, z),
+      setMotorSpeed: speed => {
+        this.body.velocity.x = this.direction.x * speed;
+        this.body.velocity.z = this.direction.z * speed;
+      },
+      get sg() { return controller.sg; },
+      components: {}, PushEvent: (name, data) => this.PushEvent(name, data),
+      PushBufferedAction: () => { throw new Error('Passive beefalo has no buffered actions'); },
+    };
+    this.locomotor = new LocoMotor(motorInst, {
+      arriveDistance: .15 * WORLD_SCALE,
+      findPath: (start, target) => world.findPath(new THREE.Vector3(start.x, start.y, start.z),
+        new THREE.Vector3(target.x, target.y, target.z)),
+    });
+    this.locomotor.walkspeed = BEEFALO_BEHAVIOR.walkSpeed;
+    this.locomotor.runspeed = 7 * WORLD_SCALE;
     Object.assign(model.userData, { prefab: 'beefalo', beefaloController: this,
       tags: ['beefalo', 'animal', 'largecreature'] });
     this.beard = new Beard(this, {
@@ -120,125 +141,123 @@ export class BeefaloController {
       spawnPrize: (prefab, count, point) => world.spawnPrize(prefab, count, new THREE.Vector3(point.x, point.y, point.z)),
     });
     this.beard.SetBits(BEEFALO_BEARD_BITS);
-    // assume the beefalo has already grown its hair
     this.beard.SetDaysGrowth(BEEFALO_HAIR_GROWTH_DAYS + 1);
     this.beard.onreset = () => this.onResetBeard();
     this.beard.canshavetest = () => this.canShaveTest();
     this.beard.prize = BEEFALO_PRIZE;
-    // OnShaved only calls ApplyBuildOverrides; the build follows the hairy memo, but Shave still needs this day marker.
+    // OnShaved only applies build overrides; the hairy memo owns the shaved build.
     this.beard.AddCallback(0, () => undefined);
     this.beard.AddCallback(BEEFALO_HAIR_GROWTH_DAYS, () => {
       if (this.beard.bits.peek() === 0) this.hairGrowthPendingState.set(true);
     });
-    const controller = this, beefaloWorld = world;
     this.sleeper = new Sleeper({
-      isValid: () => !controller.disposed,
-      PushEvent: (name, data) => controller.PushEvent(name, data),
-      world: { get isNight() { return beefaloWorld.phase === 'night'; } },
+      isValid: () => this.isValid(), PushEvent: (name, data) => this.PushEvent(name, data),
+      world: { isNight: world.isNight },
       get sg() { return controller.sg; },
       get components() { return controller.components; },
-    }, world.scheduler, random);
+    }, world.scheduler, () => this.random());
     this.sleeper.SetResistance(3);
+    this.periodicspawner = new PeriodicSpawner(world.scheduler, () => {
+      const position = this.model.position.clone().addScaledVector(this.direction, -WORLD_SCALE).setY(0);
+      world.constrainPosition(position);
+      world.spawnPoop(position);
+      return { spawned: true };
+    }, () => this.random(), {
+      getPosition: () => this.getPosition(), getPrefabPositions: () => world.getPoopPositions(),
+    });
+    this.periodicspawner.SetRandomTimes(40, 60);
+    this.periodicspawner.SetDensityInRange(BEEFALO_BEHAVIOR.poopDensityRadius, 2);
+    this.periodicspawner.SetMinimumSpacing(BEEFALO_BEHAVIOR.poopSpacing);
+    this.periodicspawner.Start(saved?.poopRemainingSeconds);
     const beard = this.beard;
-    model.userData.components = { beard, sleeper: this.sleeper,
+    model.userData.components = { ...this.components, beard, sleeper: this.sleeper,
       beefalo: { HasTag: (tag: string) => tag === 'has_beard' ? beard.hairy.peek() : undefined } };
     actionEntity(model, 'beefalo');
-    // getbasebuild: no has_beard means beefalo_shaved_build. Reads only this inst's hairy memo.
     this.stopAppearance = createEffect(() => this.animation.setShaved(!beard.hairy.get()));
-    // beard.lua OnLoad replays the day callbacks; beefalo.lua OnLoadPostPass needs nothing more because
-    // the bare build and has_beard tag follow the loaded bit count.
     if (saved?.beard) this.beard.OnLoad(saved.beard);
-    this.idle();
-    this.wanderRemaining = 1 + random() * 3;
+    this.sg = new BeefaloStateGraph({
+      locomotor: this.locomotor, sleeper: this.sleeper,
+      hairGrowthPending: () => this.hairGrowthPendingState.peek(),
+      growHair: () => { this.beard.SetBits(BEEFALO_BEARD_BITS); this.hairGrowthPendingState.set(false); },
+      playAnimation: (name, loop) => animation.playAnimation(name, loop),
+      pushAnimation: (name, loop) => animation.pushAnimation(name, loop),
+      getCurrentAnimationLength: () => animation.currentAnimationLength,
+      isCurrentAnimation: name => animation.currentAnimation === name,
+      random: () => this.random(),
+    }, world.scheduler);
+    animation.onAnimationEvent = event => this.PushEvent(event);
+    this.sg.sg.listenForEvent('newstate', () => { model.userData.beefaloState = this.state; });
+    model.userData.beefaloState = this.state;
+    this.brain = new BeefaloBrain(this.createBrainInst(), WORLD_SCALE);
+    this.brain.Start();
   }
 
-  get state(): BeefaloState { return this.currentState; }
+  get state(): BeefaloState { return this.sg.stateName; }
 
-  /** Run before physics, so the body's velocity participates in world collisions. */
+  /** Run before physics; only animation and locomotion need a per-frame update. */
   update(dt: number): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
-    const step = Math.min(dt, 0.1);
+    const step = Math.min(dt, .1);
     this.animation.update(step);
-    this.poopRemaining -= step;
-    if (this.poopRemaining <= 0) {
-      this.poopRemaining = this.nextPoopTime();
-      const position = this.model.position.clone().addScaledVector(this.direction, -WORLD_SCALE).setY(0);
-      this.world.constrainPosition(position);
-      this.world.spawnPoop(position);
-    }
+    this.sg.update(step);
+    this.brain.tick(this.world.scheduler.now);
+    this.locomotor.update(step);
+  }
 
-    // Shave and hair growth are animation-driven; the sleeper keeps testing meanwhile.
-    if (this.currentState === 'shaved' || this.currentState === 'hair_growth' || this.currentState === 'hair_growth_pop') return;
-    if (this.sleeper.IsAsleep()) {
-      if (this.currentState !== 'sleep_pre' && this.currentState !== 'sleep') {
-        this.locomotor.stop();
-        this.faceTarget = undefined;
-        this.setState('sleep_pre');
-        this.once('sleep_pre', () => { this.setState('sleep'); this.animation.start('sleep_loop'); });
+  private setRotation(degrees: number): void {
+    const heading = THREE.MathUtils.degToRad(degrees);
+    this.direction.set(Math.cos(heading), 0, -Math.sin(heading));
+  }
+
+  private getAngleToPoint(x: number, z: number): number {
+    return THREE.MathUtils.radToDeg(Math.atan2(this.body.position.z - z, x - this.body.position.x));
+  }
+
+  private createBrainInst(): FaceEntityInst {
+    const players = new WeakMap<THREE.Vector3, BrainEntity>();
+    const playerEntities = () => this.world.getPlayerPositions().map(position => {
+      let entity = players.get(position);
+      if (!entity) {
+        entity = { prefab: 'wilson', components: {}, hasTag: tag => tag === 'player',
+          isValid: () => this.world.getPlayerPositions().includes(position),
+          getPosition: () => position, getPhysicsRadius: () => 0 };
+        players.set(position, entity);
       }
-      return;
-    }
-    if (this.currentState === 'sleep' || this.currentState === 'sleep_pre') {
-      this.setState('sleep_pst');
-      this.once('sleep_pst', () => this.idle());
-      return;
-    }
-    if (this.currentState === 'sleep_pst') return;
-
-    // Wild beefalo look at players rather than fleeing or attacking on proximity.
-    const players = this.world.getPlayerPositions();
-    if (this.faceTarget && (!players.includes(this.faceTarget)
-      || distanceSquared(this.model.position, this.faceTarget) > BEEFALO_BEHAVIOR.keepFaceDistance ** 2)) {
-      this.faceTarget = undefined;
-      this.wanderRemaining = 1 + this.random() * 3;
-    }
-    if (!this.faceTarget) {
-      this.faceTarget = players.reduce<THREE.Vector3 | undefined>((nearest, position) =>
-        distanceSquared(this.model.position, position) <= BEEFALO_BEHAVIOR.faceDistance ** 2
-          && (!nearest || distanceSquared(this.model.position, position) < distanceSquared(this.model.position, nearest))
-          ? position : nearest, undefined);
-    }
-    if (this.faceTarget) {
-      const toward = this.faceTarget.clone().sub(this.model.position).setY(0);
-      if (toward.lengthSq() > 1e-6) this.direction.copy(toward.normalize());
-      if (this.currentState === 'walk' || this.currentState === 'walk_pre') this.stopWalking();
-    }
-
-    if (this.currentState === 'walk') {
-      this.walkRemaining -= step;
-      this.locomotor.update(BEEFALO_BEHAVIOR.walkSpeed, step);
-      const speed = Math.hypot(this.body.velocity.x, this.body.velocity.z);
-      if (speed > 0.01) this.direction.set(this.body.velocity.x / speed, 0, this.body.velocity.z / speed);
-      if (this.walkRemaining <= 0 || !this.locomotor.destination) this.stopWalking();
-      return;
-    }
-    if (this.currentState === 'walk_pre' || this.currentState === 'walk_pst') return;
-
-    if (!this.faceTarget) {
-      this.wanderRemaining -= step;
-      if (this.wanderRemaining <= 0 && this.startWalking()) return;
-    }
-    if (this.currentState === 'graze') {
-      this.grazeRemaining -= step;
-      if (this.grazeRemaining <= 0) {
-        this.setState('graze_pst');
-        this.once('graze2_pst', () => this.idle());
-      }
-    } else if (this.currentState === 'idle') {
-      this.idleRemaining -= step;
-      if (this.idleRemaining <= 0) {
-        const choice = this.random();
-        if (choice < 0.5) {
-          this.setState('graze_pre');
-          this.grazeRemaining = 1 + this.random() * 5;
-          this.once('graze2_pre', () => { this.setState('graze'); this.animation.start('graze2_loop'); });
-        } else {
-          const action = choice < 0.75 ? 'shake' : 'bellow';
-          this.setState(action);
-          this.once(action, () => this.idle());
-        }
-      }
-    }
+      return entity;
+    });
+    const nearest = (from: BrainEntity, radius: number, test: (entity: BrainEntity) => boolean) => {
+      const position = from.getPosition();
+      return playerEntities().filter(entity => test(entity)
+        && distanceSquared(position, entity.getPosition()) <= radius ** 2)
+        .sort((a, b) => distanceSquared(position, a.getPosition()) - distanceSquared(position, b.getPosition()))[0];
+    };
+    const controller = this;
+    const brainWorld: BrainWorld = {
+      get isDay() { return controller.world.phase === 'day'; },
+      findEntity: (from, radius, fn, must, cant, oneOf) => nearest(from, radius, entity =>
+        (!fn || fn(entity, from)) && (!must || must.every(tag => entity.hasTag(tag)))
+        && (!cant || !cant.some(tag => entity.hasTag(tag))) && (!oneOf || oneOf.some(tag => entity.hasTag(tag)))),
+      getClosestInstWithTag: (tags, from, radius) => nearest(from, radius, entity => tags.every(tag => entity.hasTag(tag))),
+      isAboveGroundAtPoint: (x, y, z) => {
+        const point = new THREE.Vector3(x, y, z);
+        this.world.constrainPosition(point);
+        return point.x === x && point.z === z && this.world.findPath(point, point) !== null;
+      },
+    };
+    return {
+      prefab: 'beefalo', world: brainWorld, components: this.components,
+      sg: { hasStateTag: tag => this.sg.hasStateTag(tag), hasState: name => this.sg.hasState(name),
+        goToState: name => this.sg.goToState(name as BeefaloState) },
+      getTime: () => this.world.scheduler.now, random: () => this.random(),
+      getPosition: () => this.getPosition(), isValid: () => this.isValid(),
+      getPhysicsRadius: () => BEEFALO_BEHAVIOR.radius,
+      hasTag: tag => this.model.userData.actionEntity.hasTag(tag),
+      getAngleToPoint: (x, _y, z) => this.getAngleToPoint(x, z),
+      isNear: (entity, distance) => distanceSquared(this.getPosition(), entity.getPosition()) < distance ** 2,
+      facePoint: point => this.setRotation(this.getAngleToPoint(point.x, point.z)),
+      ListenForEvent: (name, fn) => this.model.addEventListener(name as never, fn as never),
+      RemoveEventCallback: (name, fn) => this.model.removeEventListener(name as never, fn as never),
+    };
   }
 
   /** Run after physics. The source origin is the foot point, regardless of pose. */
@@ -263,106 +282,53 @@ export class BeefaloController {
   }
 
   exportState(): BeefaloSaveState {
-    return { home: this.home.toArray(), heading: THREE.MathUtils.euclideanModulo(
-      THREE.MathUtils.radToDeg(Math.atan2(-this.direction.z, this.direction.x)), 360),
-    poopRemainingSeconds: this.poopRemaining, beard: this.beard.OnSave() };
+    return { home: this.home.toArray(), knownlocations: this.knownlocations.OnSave() ?? { locations: [] },
+      heading: THREE.MathUtils.euclideanModulo(
+        THREE.MathUtils.radToDeg(Math.atan2(-this.direction.z, this.direction.x)), 360),
+      poopRemainingSeconds: this.periodicspawner.OnSave()?.time ?? 0, beard: this.beard.OnSave() };
   }
 
   dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
-    this.locomotor.stop();
+    this.animation.onAnimationEvent = undefined;
+    this.brain.Stop();
+    this.sg.dispose();
+    this.locomotor.Stop();
+    this.periodicspawner.dispose();
     this.stopAppearance();
     this.beard.dispose();
     this.sleeper.dispose();
   }
 
-  // --- the inst surface read by beard, sleeper and component actions
+  // Entity surface read by components and actions.
   isValid(): boolean { return !this.disposed; }
-  getPosition(): { x: number; y: number; z: number } { const { x, y, z } = this.model.position; return { x, y, z }; }
-  PushEvent(name: string, data?: unknown): void { this.model.dispatchEvent({ type: name, data } as never); }
-  get sg(): { hasStateTag(tag: string): boolean } {
-    return { hasStateTag: tag => (tag === 'busy' && BUSY_STATES.has(this.currentState))
-      || (tag === 'sleeping' && (this.currentState === 'sleep_pre' || this.currentState === 'sleep')) };
+  getPosition(): { x: number; y: number; z: number } {
+    return { x: this.body.position.x, y: 0, z: this.body.position.z };
   }
-  get components() { return { locomotor: { Stop: () => this.locomotor.stop() } }; }
+  PushEvent(name: string, data?: unknown): void {
+    if (this.disposed) return;
+    if (name === 'gotosleep') this.brain?.Stop();
+    else if (name === 'onwakeup') this.brain?.Start();
+    this.sg?.pushEvent(name, data);
+    this.model.dispatchEvent({ type: name, data } as never);
+  }
+  get components() { return { locomotor: this.locomotor, knownlocations: this.knownlocations,
+    periodicspawner: this.periodicspawner }; }
 
-  /** beefalo.lua CanShaveTest, with no health, beef bell or partner to consult. */
   private canShaveTest(): { ok: true } | { ok: false; reason?: string } {
     return this.sleeper.IsAsleep() ? { ok: true } : { ok: false, reason: 'AWAKEBEEFALO' };
   }
 
-  /** beefalo.lua OnResetBeard (brushable, domesticatable and skinner_beefalo are not ported). */
+  /** beefalo.lua OnResetBeard preserves sleep through the sleeping state's onexit. */
   private onResetBeard(): void {
-    this.locomotor.stop();
-    this.faceTarget = undefined;
-    this.setState('shaved');
-    // SGBeefalo.lua shaved: animover → sleeping while asleep, otherwise wake.
-    this.once('shave', () => {
-      if (this.sleeper.IsAsleep()) { this.setState('sleep'); this.animation.start('sleep_loop'); } else {
-        this.setState('sleep_pst');
-        this.once('sleep_pst', () => this.idle());
-      }
-    });
+    if (this.sleeper.IsAsleep()) this.sg.sg.statemem.continuesleeping = true;
+    this.sg.goToState('shaved');
   }
 
-  /** SGBeefalo.lua hair_growth → hair_growth_pop, entered from idle while hairGrowthPending. */
-  private startHairGrowth(): void {
-    this.locomotor.stop();
-    this.setState('hair_growth');
-    this.once('hair_growth_pre', () => {
-      this.setState('hair_growth_pop');
-      this.beard.SetBits(BEEFALO_BEARD_BITS);
-      this.hairGrowthPendingState.set(false);
-      this.once('hair_growth', () => this.idle());
-    });
-  }
-
-  private startWalking(): boolean {
-    const radius = this.world.phase === 'day' ? BEEFALO_BEHAVIOR.wanderDay : BEEFALO_BEHAVIOR.wanderNight;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const angle = this.random() * Math.PI * 2;
-      const distance = radius * (0.2 + this.random() * 0.8);
-      const target = this.home.clone().add(new THREE.Vector3(Math.cos(angle) * distance, 0, Math.sin(angle) * distance));
-      this.world.constrainPosition(target);
-      if (distanceSquared(this.model.position, target) < 1 || !this.locomotor.goToPoint(target)) continue;
-      this.direction.copy(target).sub(this.model.position).setY(0).normalize();
-      this.walkRemaining = 2 + this.random() * 3;
-      this.setState('walk_pre');
-      this.once('walk_pre', () => { this.setState('walk'); this.animation.start('walk_loop'); });
-      return true;
-    }
-    this.wanderRemaining = 1 + this.random() * 3;
-    return false;
-  }
-
-  private stopWalking(): void {
-    this.locomotor.stop();
-    this.wanderRemaining = 1 + this.random() * 3;
-    this.setState('walk_pst');
-    this.once('walk_pst', () => this.idle());
-  }
-
-  private idle(): void {
-    if (this.hairGrowthPendingState.peek()) { this.startHairGrowth(); return; }
-    this.setState('idle');
-    this.idleRemaining = 1 + this.random();
-    this.animation.start('idle_loop');
-  }
-
-  private setState(state: BeefaloState): void {
-    this.currentState = state;
-    this.model.userData.beefaloState = state;
-  }
-
-  private once(clip: string, callback: () => void): void {
-    const state = this.currentState;
-    this.animation.playOnce(clip, () => { if (!this.disposed && this.currentState === state) callback(); });
-  }
-
-  private nextPoopTime(): number { return BEEFALO_BEHAVIOR.poopMinSeconds + this.random() * 20; }
 }
 
-function distanceSquared(a: THREE.Vector3, b: THREE.Vector3): number {
+function distanceSquared(a: { x: number; z: number }, b: { x: number; z: number }): number {
   return (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
 }
 
@@ -461,6 +427,13 @@ export class BeefaloManager {
     for (const beefalo of this.beefalos) beefalo.update(dt);
   }
   sync(cameraQuaternion: THREE.Quaternion): void { for (const beefalo of this.beefalos) beefalo.sync(cameraQuaternion); }
+
+  /** TheSim:FindEntities around a point on the ground plane: the beefalo's engine inst, with its tags and components. */
+  entitiesNear(position: { readonly x: number; readonly z: number }, range: number): readonly ReturnType<typeof actionEntity>[] {
+    return Array.from(this.beefalos).filter(({ model }) =>
+      Math.hypot(model.position.x - position.x, model.position.z - position.z) <= range)
+      .map(({ model }) => model.userData.actionEntity as ReturnType<typeof actionEntity>);
+  }
 
   get renderEntities() {
     return Array.from(this.beefalos, ({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));

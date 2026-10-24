@@ -41,9 +41,8 @@ export function configureButterflyEntity(entity: ItemEntity): void {
     workable.SetWorkAction('NET');
     workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(worker => {
-      const [x, y, z] = entity.transform.position;
-      worker.components?.inventory?.GiveItem(entity, { x, y, z });
-      if (worker.components?.inventory) PlaySound('dontstarve/common/butterfly_trap', { x, z });
+      worker.components?.inventory?.GiveItem(entity, entity.transform.position);
+      if (worker.components?.inventory) PlaySound('dontstarve/common/butterfly_trap', entity.transform.position);
     });
     entity.ListenForEvent('ondropped', () => workable.SetWorkLeft(1));
     return workable;

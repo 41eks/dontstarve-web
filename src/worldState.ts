@@ -10,6 +10,7 @@ export interface WorldState {
   readonly season: Signal<SeasonState>;
   readonly moonPhase: Signal<WorldMoonPhase>;
   readonly fullMoon: ReadonlySignal<boolean>;
+  readonly isNight: ReadonlySignal<boolean>;
   dispose(): void;
   readonly worldtemperature: WorldTemperature;
   readonly weather: Weather;
@@ -34,9 +35,10 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   });
   worldtemperature.OnUpdate(0);
   const fullMoon = createMemo(() => clockstate.get().phase === 'night' && moonphasestate.get() === 'full');
+  const isNight = createMemo(() => clockstate.get().phase === 'night');
   return { temperature: worldtemperature.temperature, clock: clockstate,
-    season: seasonstate, moonPhase: moonphasestate, fullMoon: readonlySignal(fullMoon), worldtemperature, weather,
-    dispose() { fullMoon.dispose(); weather.dispose(); worldtemperature.dispose(); } };
+    season: seasonstate, moonPhase: moonphasestate, fullMoon: readonlySignal(fullMoon), isNight: readonlySignal(isNight), worldtemperature, weather,
+    dispose() { isNight.dispose(); fullMoon.dispose(); weather.dispose(); worldtemperature.dispose(); } };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */

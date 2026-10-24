@@ -2,7 +2,7 @@
 
 本文记录 `grass` 的采摘／再生、`flower_cave` 的采摘／再生、`ash` 的生成／拾取／消散，以及矮星 `stafflight` 的生成／到期／移除如何映射到 signal。矮星不涉及库存转移和合堆，可先阅读其生命周期示例。矮星已接入下述 signal／memo／effect 生命周期；草丛和洞穴花已接入组件 timer signal 与阶段 memo，灰烬消散仍是后续实施方案，下文分别说明当前实现。原版名称是 `flower_cave`，每个实体都使用独立 ID，不能用 prefab 名称作为唯一实例键。
 
-实体状态统一采用：signal 保存组件权威数据，`createMemo` 纯计算派生状态，effect 更新表现，组件方法和事件处理一次动作或转换。组件拥有写权限，表现层读取只读 signal／memo；计时、产物生成、库存转移和实体移除不能依赖表现 effect 执行。memo 表示当前状态，不对应 Lua 的事件名，也不保存事件次数或事件参数。
+实体状态统一采用：signal 保存组件权威数据，`createMemo` 始终纯计算派生状态。组件应该使用 `createEffect` 和 `get()` 响应外部状态变化，调用组件方法执行转换；表现 effect 只更新表现，不承担领域动作。计时到期及完成动作仍由游戏时间调度器执行，不能通过观察 timer signal 的 effect 补做。组件拥有写权限，表现层读取只读 signal／memo；产物生成、库存转移和实体移除不能依赖表现 effect 执行。memo 表示当前状态，不对应 Lua 的事件名，也不保存事件次数或事件参数。
 
 同一次动作涉及多项权威数据变化时，通过 `batch()` 提交，再发布完整的派生结果；例如灰烬入库存时一起提交归属和停止消散，避免表现读取转移中的组合状态。
 
@@ -12,7 +12,7 @@
 
 库存实体的移除状态由自身 signal 保存，世界实体现有的 `model.userData.removed` 写入则通过属性访问器更新同一生命周期 signal。实体 `hasTag()` 从组件派生工作标签，静态 `model.userData.tags` 不再存储一份 `HAMMER_workable`、`DIG_workable` 等工作能力。动作收集、命中校验和其他组件都使用实体标签 API。
 
-`WorkedBy()` 显式按 Lua 顺序执行：更新工作量 → worker 的 `working` → target 的 `worked` → `onwork` → 耗尽时 `onfinish` → `workfinished` → worker 的 `finishedwork`。memos 仅计算数值和标签，订阅仅观察状态；禁用、取消或 `OnLoad({ workleft: 0 })` 不执行完成回调。批次内动作和事件回调通过 `CanBeWorked()` / `hasTag()` 对当前权威输入应用同一纯计算，避免读取尚未提交的 memo 快照；memo 订阅在批次提交后观察完整结果。
+`WorkedBy()` 显式按 Lua 顺序执行：更新工作量 → worker 的 `working` → target 的 `worked` → `onwork` → 耗尽时 `onfinish` → `workfinished` → worker 的 `finishedwork`。memos 仅计算数值和标签，工作量的表现订阅仅观察状态，不根据数值变化补做完成回调；禁用、取消或 `OnLoad({ workleft: 0 })` 不执行完成回调。批次内动作和事件回调通过 `CanBeWorked()` / `hasTag()` 对当前权威输入应用同一纯计算，避免读取尚未提交的 memo 快照；memo 订阅在批次提交后观察完整结果。
 
 `OnSave()` 继续遵守 `savestate`：关闭时返回空组件状态，开启时保存剩余工作量；读取和载入不额外执行工作。普通墙和岩石保持源 Lua 的默认规则，读档恢复初始工作量。工作计数没有 timer、逐帧扣减或全局时钟依赖。永久移除时先更新生命周期，再释放组件 memo；取消墙预览、废弃换肤资源也释放临时实例的派生依赖，实际墙换肤保留原有工作组件。
 
@@ -110,7 +110,7 @@ timer 使用 [共享游戏时间调度器](../packages/componets/src/gameTimeSch
 
 `grass.lua` 的 `DIG` 由 `Workable` 管理，工作量为 1；通用工具验证和 `SGwilson` 在 `shovel_loop` 第 15 帧提交。`onfinish` 通过 `LootDropper` 生成成熟草的 `cutgrass`，再生成 `dug_grass`，最后移除原草丛。产物美术提前准备，提交时同步落地并执行原版 `LootFling`；失败、取消或重复命中不生成产物、不消耗耐久。普通铲子每次消耗 1，黄金铲子消耗 0.25，原始耐久均为 25，存档验证保留黄金铲子的小数步长。
 
-`Burnable` 保存燃烧／闷烧 timer signal，`Propagator` 保存传播调度 timer signal，两者使用同一游戏时间调度器。`LIGHT` 沿用火把动作提交帧；草丛燃烧 20 秒，显示原版 level3 火焰，`DefaultBurnFn` 设置不可保存，熄灭恢复可保存，`DefaultBurntFn` 同步生成 1 个灰烬再移除草丛。阶段 memo 从移除、燃烧和可采摘状态派生，领域动作不依赖表现 effect；永久移除撤销再生与燃烧任务并释放 memo。在外层 `batch()` 内移除实体时，memo 的 `dispose()` 先结算待处理的派生状态，再解除依赖，使最终快照保留 `removed`。
+`Burnable` 保存燃烧／闷烧 timer signal，`Propagator` 保存传播调度 timer signal，两者使用同一游戏时间调度器。`Propagator` 接收世界只读 season signal，通过纯 memo 派生有效传播半径：春季使用基础半径的 0.67，其他季节使用基础半径。原版 `propagator.lua:OnUpdate` 每次读取 `TheWorld.state.isspring`；这里的周期任务读取派生半径，用于邻居查询和热量距离衰减。季节变化不重新登记传播任务，也不立刻传热。可燃库存实体首次绑定地面时注入季节依赖，替换或释放表现保留逻辑组件及其世界依赖；永久移除释放半径 memo。`LIGHT` 沿用火把动作提交帧；草丛燃烧 20 秒，显示原版 level3 火焰，`DefaultBurnFn` 设置不可保存，熄灭恢复可保存，`DefaultBurntFn` 同步生成 1 个灰烬再移除草丛。阶段 memo 从移除、燃烧和可采摘状态派生，领域动作不依赖表现 effect；永久移除撤销再生与燃烧任务并释放 memo。在外层 `batch()` 内移除实体时，memo 的 `dispose()` 先结算待处理的派生状态，再解除依赖，使最终快照保留 `removed`。
 
 新增 `c_spawn("dug_grass")` 和 `c_give("dug_grass", count)`：草簇每叠最多 10 个，支持地面／库存转移、点燃和保存恢复；可燃草簇整叠燃烧 30 秒后生成同数量灰烬。其地面姿态来自 `plantables.lua` 的 `grass` bank、`grass1` build、`dropped` 动画，不使用库存图标替代地面美术。
 

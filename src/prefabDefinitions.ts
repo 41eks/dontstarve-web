@@ -16,6 +16,8 @@ import { LAVA_POND_ID, LAVA_POND_ROCK_IDS } from '@dontstarve-web/prefab/lava_po
 import { WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
 import { PORTAL_ID } from '@dontstarve-web/prefab/portal';
 import { NIGHTMAREGROWTH_ID } from '@dontstarve-web/prefab/nightmaregrowth';
+import { NIGHTMAREROCK_IDS } from '@dontstarve-web/prefab/nightmarerock';
+import { TENT_ID, TENT_USES } from '@dontstarve-web/prefab/tent';
 import { PLACEABLE_BUILDING_IDS } from './placeableBuilding';
 import { componentParser, type PrefabComponentParser } from './save/prefabComponents';
 import { fail } from './save/validation';
@@ -45,6 +47,7 @@ const storage = componentParser({ keys: ['building', 'container'] });
 const sculptingTable = componentParser({ keys: ['building', 'sculptingtable'] });
 const birdcage = componentParser({ keys: ['building', 'birdcage'] });
 const moonbase = componentParser({ keys: ['building', 'workable', 'moonbase'] });
+const tent = componentParser({ keys: ['building', 'finiteuses'], finiteUses: TENT_USES });
 const cookPot = componentParser({ keys: ['building', 'container', 'stewer'] });
 const wall = componentParser({ keys: ['wall', 'health'] });
 const bulbSingle = componentParser({ keys: ['bulbPlant'], bulbVariants: ['single', 'springy'] });
@@ -62,13 +65,13 @@ export const PREFAB_DEFINITIONS = {
   buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
     const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
     if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable
-      : context.prefab === 'birdcage' ? birdcage
+      : context.prefab === 'birdcage' ? birdcage : context.prefab === TENT_ID ? tent
       : context.prefab === 'moonbase' ? moonbase : spec.container ? storage : building)(value, path, context);
     if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
     return fail(path, `missing building definition for ${context.prefab}`);
   }, PLACEABLE_BUILDING_IDS),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    [...TURF_ITEM_IDS, 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'moon_tree_blossom', 'butterfly', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'reskin_tool', 'greenstaff', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash']),
+    [...TURF_ITEM_IDS, 'fireflies', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'moonrocknugget', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'moon_tree_blossom', 'butterfly', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash']),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] })),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),
@@ -82,6 +85,7 @@ export const PREFAB_DEFINITIONS = {
   lavaPonds: definePrefabs([LAVA_POND_ID], componentParser({ keys: ['lavaPond'] }), true),
   lavaPondRocks: definePrefabs(LAVA_POND_ROCK_IDS, empty, true),
   nightmareGrowths: definePrefabs([NIGHTMAREGROWTH_ID], componentParser({ keys: ['nightmareGrowth'] }), true),
+  nightmareRocks: definePrefabs(NIGHTMAREROCK_IDS, empty, true),
   wormholes: definePrefabs([WORMHOLE_ID], componentParser({ keys: ['wormhole'] }), true),
   portals: definePrefabs([PORTAL_ID], empty, true),
   reskinEffects: definePrefabs([], empty),

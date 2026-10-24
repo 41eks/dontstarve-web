@@ -4,11 +4,16 @@ import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder
 import { GroundItemAssets } from './groundItems';
 import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
 
-/** prefabs/fx.lua entries that play one animation at a world position, play a sound and remove themselves on animover. */
+/**
+ * prefabs/fx.lua entries that play one animation at a world position, optionally play a sound and remove
+ * themselves on animover. `opacity` is fx.lua's `tintalpha`.
+ */
 const FX_PREFABS = {
   fx_book_rain: { archive: 'fx_book_rain.zip', bank: 'fx_book_rain', anim: 'play_fx',
     sound: 'wickerbottom_rework/book_spells/rain' },
-} as const satisfies Record<string, { archive: string; bank: string; anim: string; sound: SoundEventPath }>;
+  sanity_raise: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'raise', opacity: .5 },
+  sanity_lower: { archive: 'blocker_sanity_fx.zip', bank: 'blocker_sanity_fx', anim: 'lower', opacity: .5 },
+} as const satisfies Record<string, { archive: string; bank: string; anim: string; sound?: SoundEventPath; opacity?: number }>;
 export type WorldFxPrefab = keyof typeof FX_PREFABS;
 
 type FxBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
@@ -47,8 +52,11 @@ export class WorldFx {
       request = (async () => {
         const [parsed, build] = await Promise.all([
           this.assets.loadAnimation(definition.archive), this.assets.loadBuild(definition.archive),
-          PreloadSounds(definition.sound),
+          'sound' in definition ? PreloadSounds(definition.sound) : undefined,
         ]);
+        if ('opacity' in definition) for (const material of build.materials) {
+          material.transparent = true; material.opacity = definition.opacity;
+        }
         const animation = parsed.animations.find((clip) => clip.name === definition.anim && clip.bankHash === smallHash(definition.bank));
         if (!animation?.frames.length) throw new Error(`Missing FX animation ${definition.bank}:${definition.anim}`);
         return { animation, build };
@@ -76,7 +84,8 @@ export class WorldFx {
     this.showFrame(effect, 0);
     this.active.add(effect);
     this.scene.add(model);
-    PlaySound(FX_PREFABS[prefab].sound, effect.footPosition);
+    const definition = FX_PREFABS[prefab];
+    if ('sound' in definition) PlaySound(definition.sound, effect.footPosition);
   }
 
   get renderEntities() {

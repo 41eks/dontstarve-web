@@ -1442,6 +1442,26 @@
         "razor_straight": "dynamic/razor_straight.zip"
       }
     },
+    "panflute": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/panflute.lua",
+      "name": "排箫",
+      "icon": "panflute.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pan_flute.zip",
+      "buildArchives": [
+        "pan_flute.zip"
+      ],
+      "bank": "pan_flute",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "panflute_an": "dynamic/panflute_an.zip",
+        "panflute_harlequin": "dynamic/panflute_harlequin.zip",
+        "panflute_insect": "dynamic/panflute_insect.zip",
+        "panflute_swamp": "dynamic/panflute_swamp.zip"
+      }
+    },
     "moonbutterfly": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moonbutterfly.lua",
       "name": "月蛾",
@@ -5951,6 +5971,30 @@
       "itemId": "nightsword",
       "name": "诅咒之剑",
       "icon": "nightsword_wizard.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "panflute_an": {
+      "itemId": "panflute",
+      "name": "新排箫",
+      "icon": "panflute_an.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "panflute_harlequin": {
+      "itemId": "panflute",
+      "name": "愚人排笛",
+      "icon": "panflute_harlequin.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "panflute_insect": {
+      "itemId": "panflute",
+      "name": "蝶箫",
+      "icon": "panflute_insect.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "panflute_swamp": {
+      "itemId": "panflute",
+      "name": "原始排箫",
+      "icon": "panflute_swamp.tex",
       "atlas": "images/inventoryimages2.xml"
     },
     "pickaxe_feathered": {

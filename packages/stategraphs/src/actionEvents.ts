@@ -1,20 +1,20 @@
 import type { ActionWorldContext } from './actionContext.ts';
 
 export type PlayerActionKind = 'ATTACK' | 'HAMMER' | 'MINE' | 'CHOP' | 'TERRAFORM' | 'TILL' | 'DIG'
-  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'FLOWER_PLANT' | 'BUILD' | 'DEPLOY' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL';
+  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'SEED_SELECT' | 'FLOWER_PLANT' | 'BUILD' | 'DEPLOY' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY';
 export type ActionInterruptReason = 'slot-select' | 'slot-context-menu' | 'drop' | 'craft' | 'crafting' | 'emote';
 export interface PlayerActionEvents {
   'action:begin': { owner: object; action: PlayerActionKind };
   'action:interrupt': { reason: ActionInterruptReason };
 }
 
-type ActionGroup = 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'flower' | 'building' | 'deploy' | 'movement' | 'harvest' | 'pickup' | 'pick' | 'itemuse';
+type ActionGroup = 'attack' | 'hand' | 'spell' | 'net' | 'food' | 'read' | 'play' | 'flower' | 'building' | 'deploy' | 'movement' | 'harvest' | 'sleep' | 'pickup' | 'pick' | 'itemuse';
 interface CancellationRule {
   begins: readonly PlayerActionKind[];
   interrupts: readonly ActionInterruptReason[];
 }
 const inventoryInterrupts = ['slot-select', 'slot-context-menu', 'craft', 'crafting', 'emote'] as const;
-const inventoryActions = ['EAT', 'READ', 'SEED_SELECT', 'FLOWER_PLANT', 'BUILD', 'DEPLOY', 'HARVEST', 'PICKUP', 'GIVE', 'REPAIR', 'STORE', 'TAKEITEM', 'ADDFUEL', 'ADDWETFUEL'] as const;
+const inventoryActions = ['EAT', 'READ', 'SEED_SELECT', 'FLOWER_PLANT', 'BUILD', 'DEPLOY', 'HARVEST', 'PICKUP', 'GIVE', 'REPAIR', 'STORE', 'TAKEITEM', 'ADDFUEL', 'ADDWETFUEL', 'PLAY'] as const;
 const workActions = ['ATTACK', 'HAMMER', 'MINE', 'CHOP', 'TERRAFORM', 'TILL', 'DIG', 'CASTSPELL', 'LIGHT'] as const;
 
 /** Existing interruption scopes, expressed as action categories rather than controller instances. */
@@ -23,12 +23,14 @@ const rules: Record<ActionGroup, CancellationRule> = {
   attack: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK'], interrupts: inventoryInterrupts },
   pickup: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   harvest: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
+  sleep: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   pick: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   hand: { begins: ['ATTACK', 'CASTSPELL', 'LIGHT', ...inventoryActions], interrupts: inventoryInterrupts },
   spell: { begins: [...workActions, ...inventoryActions, 'NET', 'PICK', 'CASTSPELL'], interrupts: inventoryInterrupts },
   net: { begins: [...workActions, 'PICK', 'EAT', 'SEED_SELECT'], interrupts: ['emote'] },
   food: { begins: ['TILL', 'DIG', 'LIGHT', ...inventoryActions], interrupts: inventoryInterrupts },
   read: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },
+  play: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: inventoryInterrupts },
   flower: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: ['slot-select', 'drop', 'emote'] },
   building: { begins: [...workActions, 'NET', 'PICK', ...inventoryActions], interrupts: ['emote'] },
   deploy: { begins: ['TILL', 'DIG', 'LIGHT', ...inventoryActions], interrupts: inventoryInterrupts },

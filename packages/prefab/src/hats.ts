@@ -1,20 +1,25 @@
 import * as THREE from 'three';
 import {
-  createMaterials, findImage, loadAnim, loadAnimationArchive, loadBuild, smallHash,
-  type AnimElement, type BuildPackage, type Matrix2D, type ParsedAnim, type ParsedBuild,
-  SpriteFrameRenderer, type ResolvedSprite,
+  findImage, smallHash, SpriteFrameRenderer, type AnimElement, type Matrix2D, type ResolvedSprite,
 } from '@dontstarve-web/animation/animationAssets';
+import {
+  bloomPadding, compose, HatArtAssets, isHatPlayerElementVisible, resolveHatElement, resolveHatSprites,
+  type HatArtDefinition, type HatEquipment as ArtHatEquipment, type HatEquipMode,
+} from '@dontstarve-web/animation/hatAssets';
 import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { setPrefabLightOverride, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
+import { attachPrefabLight, type PrefabLocalLight } from './localLight';
+import { createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
 import { TILE_SIZE } from './tile';
 import catalog from './hats.json' with { type: 'json' };
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
-export type HatEquipMode = 'normal' | 'opentop' | 'fullhelm';
+export type { HatEquipMode };
+export type HatEquipment = ArtHatEquipment<HatDefinition>;
+export { resolveHatSprites };
 
-export interface HatDefinition {
+export interface HatDefinition extends HatArtDefinition {
   readonly name: string;
   readonly icon: string;
   readonly atlas: string;
@@ -76,245 +81,41 @@ export const HAT_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> = 
   }),
 );
 
-interface HatBuild {
-  readonly build: ParsedBuild;
-  readonly materials: THREE.MeshBasicMaterial[];
-}
-export interface HatEquipment {
-  readonly definition: HatDefinition;
-  readonly builds: readonly HatBuild[];
-  readonly animations: ParsedAnim;
-  readonly activated?: {
-    readonly animations: ParsedAnim;
-    readonly builds: readonly HatBuild[];
-    readonly glowMaterials: ReadonlyMap<HatBuild, THREE.MeshBasicMaterial[]>;
-    readonly bloomMaterials: ReadonlyMap<HatBuild, THREE.MeshBasicMaterial[]>;
-  };
-}
-
 /** One cache per player; loads only hats actually equipped and shares atlas materials. */
-export class HatEquipmentAssets {
-  private readonly builds = new Map<string, Promise<HatBuild>>();
-  private readonly hats = new Map<string, Promise<HatEquipment>>();
-  private readonly assetBaseUrl: string;
-  private disposed = false;
-
-  constructor(assetBaseUrl: string) {
-    this.assetBaseUrl = assetBaseUrl;
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    for (const build of this.builds.values()) void build.then(({ materials }) => {
-      for (const material of materials) { material.map?.dispose(); material.dispose(); }
-    }, () => undefined);
-    for (const hat of this.hats.values()) void hat.then(({ activated }) => {
-      if (!activated) return;
-      for (const material of [
-        ...activated.builds.flatMap(({ materials }) => materials),
-        ...Array.from(activated.glowMaterials.values()).flat(),
-        ...Array.from(activated.bloomMaterials.values()).flat(),
-      ]) material.dispose();
-    }, () => undefined);
-    this.builds.clear();
-    this.hats.clear();
-  }
-
-  load(itemId: string, skinId?: string): Promise<HatEquipment> {
-    if (this.disposed) return Promise.reject(new Error('Hat assets have been disposed'));
-    const definition = HAT_DEFINITIONS[itemId];
-    if (!definition) return Promise.reject(new Error(`Unknown hat: ${itemId}`));
-    const key = `${itemId}\n${skinId ?? ''}`;
-    let request = this.hats.get(key);
-    if (!request) {
-      request = this.loadHat(definition, skinId);
-      this.hats.set(key, request);
-      void request.catch(() => this.hats.delete(key));
-    }
-    return request;
-  }
-
-  private async loadHat(definition: HatDefinition, skinId?: string): Promise<HatEquipment> {
-    const { buildPackage, animations } = await loadAnimationArchive(definition.archive, this.assetBaseUrl);
-    if (this.disposed) throw new Error('Hat assets have been disposed');
-    const base = this.builds.get(definition.archive) ?? Promise.resolve(this.materialize(buildPackage));
-    this.builds.set(definition.archive, base);
-    const skinArchive = skinId ? definition.skinArchives[skinId] : undefined;
-    if (skinId && !skinArchive) throw new Error(`Unknown skin ${skinId} for ${definition.archive}`);
-    const archives = [...(skinArchive ? [skinArchive] : []), definition.archive,
-      ...(definition.equip.follow?.extraBuilds ?? [])];
-    const builds = await Promise.all(archives.map((archive) => this.loadBuild(archive)));
-    const activation = definition.equip.activated;
-    let activated: HatEquipment['activated'];
-    if (activation) {
-      const [fxAnimations, fxBuild] = await Promise.all([
-        loadAnim(activation.archive, this.assetBaseUrl), this.loadBuild(activation.archive),
-      ]);
-      // Only p4_piece/fx_glow use the skin; other symbols retain their FX build.
-      const sources = [...(skinArchive ? [await this.loadBuild(skinArchive)] : []),
-        fxBuild];
-      const fxBuilds = sources.map(({ build, materials }) => ({ build,
-        // hats.lua's empty spore container applies a 0.7 multiplier.
-        materials: materials.map((source) => {
-          const material = source.clone();
-          material.color.setRGB(0.7, 0.7, 0.7, THREE.SRGBColorSpace);
-          return material;
-        }),
-      }));
-      activated = { animations: fxAnimations, builds: fxBuilds,
-        glowMaterials: new Map(fxBuilds.map((source) => [source, source.materials.map((base) => {
-          const glow = base.clone();
-          glow.name += ':glow';
-          // Preserve the source glow texture in darkness within the merged mesh.
-          setPrefabLightOverride(glow, 1);
-          return glow;
-        })])),
-        bloomMaterials: new Map(fxBuilds.map((source) => [source, createHatBloomMaterials(source)])),
-      };
-    }
-    const skinMode = skinId ? definition.skinEquipModes[skinId] : undefined;
-    return {
-      definition: skinMode ? { ...definition, equip: { ...definition.equip, mode: skinMode } } : definition,
-      builds, animations, ...(activated ? { activated } : {}),
-    };
-  }
-
-  private loadBuild(archive: string): Promise<HatBuild> {
-    if (this.disposed) return Promise.reject(new Error('Hat assets have been disposed'));
-    let request = this.builds.get(archive);
-    if (!request) {
-      request = loadBuild(archive, this.assetBaseUrl).then((build) => this.materialize(build));
-      this.builds.set(archive, request);
-      void request.catch(() => this.builds.delete(archive));
-    }
-    return request;
-  }
-
-  private materialize(build: BuildPackage): HatBuild {
-    const materials = createMaterials(build);
-    for (const material of materials) material.name = `hat:${build.build.name}`;
-    return { build: build.build, materials };
-  }
+export class HatEquipmentAssets extends HatArtAssets<HatDefinition> {
+  constructor(assetBaseUrl: string) { super(assetBaseUrl, HAT_DEFINITIONS); }
 }
 
-const bloomPadding = 12;
-
-/** Local approximation of the crown's SetBloomEffectHandle, using its own atlas
- * art. Bounds prevent the blur from sampling neighbouring atlas symbols. */
-function createHatBloomMaterials(source: HatBuild): THREE.MeshBasicMaterial[] {
-  const image = findImage(source.build, smallHash('p4_piece'), 0);
-  if (!image) return [];
-  return source.materials.map((base) => {
-    const material = base.clone();
-    material.name += ':bloom';
-    material.blending = THREE.AdditiveBlending;
-    material.opacity = 0.6;
-    material.alphaTest = 0.001;
-    setPrefabLightOverride(material, 1);
-    material.onBeforeCompile = (shader) => {
-      shader.uniforms.hatBloomBounds = { value: new THREE.Vector4(
-        image.bbx! / image.canvasWidth!, image.bby! / image.canvasHeight!,
-        (image.bbx! + image.width) / image.canvasWidth!, (image.bby! + image.height) / image.canvasHeight!,
-      ) };
-      shader.uniforms.hatBloomStep = { value: new THREE.Vector2(
-        bloomPadding / 2 / image.canvasWidth!, bloomPadding / 2 / image.canvasHeight!,
-      ) };
-      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `
-        #include <common>
-        uniform vec4 hatBloomBounds;
-        uniform vec2 hatBloomStep;
-      `).replace('#include <map_fragment>', `
-        vec4 halo = vec4(0.0);
-        float weights = 0.0;
-        for (int x = -2; x <= 2; x++) {
-          for (int y = -2; y <= 2; y++) {
-            vec2 delta = vec2(float(x), float(y));
-            vec2 uv = vMapUv + delta * hatBloomStep;
-            float weight = exp(-dot(delta, delta) * 0.5);
-            weights += weight;
-            if (all(greaterThanEqual(uv, hatBloomBounds.xy))
-              && all(lessThanEqual(uv, hatBloomBounds.zw))) {
-              vec4 texel = texture2D(map, uv);
-              halo += vec4(texel.rgb * texel.a, texel.a) * weight;
-            }
-          }
-        }
-        diffuseColor *= vec4(halo.rgb / max(halo.a, 0.0001), halo.a / weights);
-      `);
-    };
-    material.customProgramCacheKey = () => 'dst-hat-bloom-v1';
-    return material;
+/** The element hashes are immutable animation data; only the hat mode changes, so only it is a signal. */
+export function createHatPlayerVisibility(mode: ReadonlySignal<HatEquipMode | null>): Memo<(element: AnimElement) => boolean> {
+  return createMemo(() => {
+    const current = mode.get();
+    return (element: AnimElement) => isHatPlayerElementVisible(element, current);
   });
-}
-
-const hashSet = (names: readonly string[]) => new Set(names.map(smallHash));
-const hairHashes = hashSet(['hair', 'hairfront', 'hairpigtails']);
-const faceHashes = hashSet(['face', 'swap_face', 'beard', 'cheeks']);
-const hatHairHash = smallHash('HAIR_HAT');
-const headHash = smallHash('headbase');
-const hatHeadHash = smallHash('headbase_hat');
-const swapHatHash = smallHash('swap_hat');
-
-/** DST visibility groups also contain layers named head/hairfront in the ANIM data. */
-export function isHatPlayerElementVisible(element: AnimElement, mode: HatEquipMode | null): boolean {
-  if (element.imageHash === swapHatHash) return mode !== null && mode !== 'fullhelm';
-  if (element.imageHash === hatHeadHash) return mode === 'normal' || mode === 'fullhelm';
-  if (element.imageHash === hatHairHash || element.layerHash === hatHairHash) return mode === 'normal';
-  if (element.imageHash === headHash) return mode === null || mode === 'opentop';
-  if (hairHashes.has(element.imageHash)) return mode === null || mode === 'opentop';
-  if (faceHashes.has(element.imageHash)) return mode !== 'fullhelm';
-  if (element.layerHash === smallHash('HEAD_HAT_HELM')) return mode === 'fullhelm';
-  if (element.layerHash === smallHash('HEAD_HAT_NOHELM')) return mode === 'normal';
-  return true;
-}
-
-function compose(parent: Matrix2D, child: Matrix2D): Matrix2D {
-  const [a, b, c, d, tx, ty] = parent;
-  const [e, f, g, h, ux, uy] = child;
-  return [a * e + c * f, b * e + d * f, a * g + c * h, b * g + d * h,
-    a * ux + c * uy + tx, b * ux + d * uy + ty];
-}
-
-function resolve(hat: HatEquipment, element: AnimElement, hash = element.imageHash): ResolvedSprite | undefined {
-  const source = hat.builds.find(({ build }) => build.symbols.has(hash));
-  if (!source) return undefined;
-  const image = findImage(source.build, hash, element.imageIndex);
-  return image ? { element, image, materials: source.materials } : undefined;
-}
-
-/** Inserts physical FollowSymbol art at its player's layer, in the same merged geometry. */
-export function resolveHatSprites(hat: HatEquipment, anchor: AnimElement, elapsed: number): ResolvedSprite[] {
-  const follow = hat.definition.equip.follow;
-  if (!follow) {
-    const sprite = resolve(hat, anchor, smallHash(hat.definition.equip.symbol));
-    return sprite ? [sprite] : [];
-  }
-  const animation = hat.animations.animations.find(({ name }) =>
-    name === `${follow.animation}${anchor.imageIndex + 1}`);
-  if (!animation) return [];
-  const frame = animation.frames[Math.floor(elapsed * animation.frameRate) % animation.frames.length];
-  const symbols = follow.symbols ? hashSet(follow.symbols) : undefined;
-  return [...frame.elements].filter((element) => !symbols || symbols.has(element.imageHash))
-    .sort((a, b) => b.z - a.z)
-    .flatMap((element) => {
-      const sprite = resolve(hat, { ...element, matrix: compose(anchor.matrix, element.matrix) });
-      return sprite ? [sprite] : [];
-    });
 }
 
 /** hats.lua activation and alterguardian_hat_equipped.lua's two NoFaced layers. */
 export class HatActivationController {
-  readonly model = new THREE.Group();
-  private hat: HatEquipment | null = null;
-  private sanityPercent = 1;
+  private readonly owner: THREE.Object3D;
+  private removeLight: (() => void) | null = null;
+  private readonly hat = createSignal<HatEquipment | null>(null);
+  /** Derived from the equipped hat's threshold and the owner's sanity ratio (hats.lua's 85% boundary). */
+  readonly activated: ReadonlySignal<boolean>;
+  private readonly activatedMemo: Memo<boolean>;
+  private readonly stopActivated: () => void;
   private active = false;
   private deactivating = false;
   private elapsed = 0;
 
-  constructor(owner: THREE.Object3D) {
-    this.model.name = 'HatActivationLight';
-    owner.add(this.model);
+  constructor(owner: THREE.Object3D, sanityPercent?: ReadonlySignal<number>) {
+    this.owner = owner;
+    this.activatedMemo = createMemo(() => {
+      const hat = this.hat.get();
+      const config = hat?.definition.equip.activated;
+      return !!hat?.activated && !!config && (sanityPercent?.get() ?? 1) > config.sanityThreshold;
+    });
+    this.activated = readonlySignal(this.activatedMemo);
+    this.stopActivated = this.activatedMemo.subscribe(active => this.apply(active));
   }
 
   get isAnimating(): boolean { return this.active || this.deactivating; }
@@ -323,24 +124,24 @@ export class HatActivationController {
   }
 
   setHat(hat: HatEquipment | null): void {
-    this.hat = hat;
+    this.hat.set(hat);
     this.active = false;
     this.deactivating = false;
     this.elapsed = 0;
-    this.refresh();
+    this.apply(this.activatedMemo.peek());
   }
 
-  setSanityPercent(percent: number): void {
-    if (!Number.isFinite(percent)) throw new RangeError('Sanity percent must be finite');
-    this.sanityPercent = THREE.MathUtils.clamp(percent, 0, 1);
-    this.refresh();
+  dispose(): void {
+    this.stopActivated();
+    this.activatedMemo.dispose();
+    this.removeLight?.(); this.removeLight = null;
   }
 
   update(dt: number): void {
     if (!this.isAnimating) return;
     this.elapsed += dt;
     if (this.deactivating) {
-      const clip = this.hat!.activated!.animations.animations.find(({ name }) => name === 'activate_pst')!;
+      const clip = this.hat.peek()!.activated!.animations.animations.find(({ name }) => name === 'activate_pst')!;
       if (this.elapsed >= clip.frames.length / clip.frameRate) this.deactivating = false;
     }
   }
@@ -348,7 +149,7 @@ export class HatActivationController {
   resolve(anchor: AnimElement, mirrored: boolean): { back: ResolvedSprite[]; front: ResolvedSprite[] } {
     const back: ResolvedSprite[] = [];
     const front: ResolvedSprite[] = [];
-    const fx = this.hat?.activated;
+    const fx = this.hat.peek()?.activated;
     if (!fx || !this.isAnimating) return { back, front };
     const clips = fx.animations.animations;
     const pre = clips.find(({ name }) => name === 'activate_pre')!;
@@ -385,17 +186,20 @@ export class HatActivationController {
     return { back, front };
   }
 
-  private refresh(): void {
-    const config = this.hat?.definition.equip.activated;
-    const active = !!this.hat?.activated && !!config && this.sanityPercent > config.sanityThreshold;
+  private apply(active: boolean): void {
+    const config = this.hat.peek()?.definition.equip.activated;
     if (active !== this.active) {
       this.deactivating = this.active && !active;
       this.active = active;
       this.elapsed = 0;
     }
-    setPrefabLocalLight(this.model, active && config ? {
-      ...config.light, radius: config.light.radius * (TILE_SIZE / 4),
-    } : null);
+    // hats.lua spawns alterguardianhatlight under the owner on activation and removes it on deactivation.
+    this.removeLight?.(); this.removeLight = null;
+    if (active && config) {
+      this.removeLight = attachPrefabLight(this.owner, 'HatActivationLight', {
+        ...config.light, radius: config.light.radius * (TILE_SIZE / 4),
+      });
+    }
   }
 }
 
@@ -438,7 +242,7 @@ export async function createHatGroundSprite(
     frameIndex = next;
     const sprites = [...animation.frames[next].elements].sort((a, b) => b.z - a.z)
       .flatMap((element) => {
-        const sprite = resolve(hat, element);
+        const sprite = resolveHatElement(hat, element);
         return sprite ? [sprite] : [];
       });
     renderer.show(sprites);

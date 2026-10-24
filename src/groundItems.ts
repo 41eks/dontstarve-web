@@ -11,18 +11,19 @@ import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
 import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
 import { GroundPrefabRegistry } from '@dontstarve-web/prefab/groundPrefabRegistry';
-import type { GroundItemDefinition, GroundItemVisual } from '@dontstarve-web/prefab/groundPrefab';
+import type { GroundItemDefinition, GroundItemVisual, GroundPrefabOptions } from '@dontstarve-web/prefab/groundPrefab';
 import type { NetCaptureTarget } from '@dontstarve-web/stategraphs/bugnet';
 import type { FirefliesWorld } from '@dontstarve-web/prefab/fireflies';
 import { intersectSpriteEntities } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { isPlayerNearby } from '@dontstarve-web/prefab/playerProximity';
-import { LootFling } from '@dontstarve-web/prefab/lootFling';
+import { LootFling, type LootLaunch } from '@dontstarve-web/prefab/lootFling';
 import { PHONOGRAPH_ID, PhonographController } from '@dontstarve-web/prefab/phonograph';
 import { RECORD_ID, RECORD_SONGS, isPhonographRecord } from '@dontstarve-web/prefab/records';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { SavedEntity } from './save/types';
 import { performToolWork } from '../packages/stategraphs/src/componentactions';
 import { actionEntity } from '../packages/prefab/src/actionEntity';
+import type { GameTimeScheduler } from '../packages/componets/src/gameTimeScheduler';
 import type { DeconstructionTarget, DeconstructionLoot, PreparedDeconstruction } from '@dontstarve-web/prefab/greenstaff';
 
 export interface PreparedDrop {
@@ -77,6 +78,8 @@ export class GroundItemManager {
     firefliesWorld: FirefliesWorld = { isNight: () => false, getPlayerPositions: () => [] },
     bernieWorld: BernieWorld = { getSanityPercent: () => 1 },
     entities = new ItemEntityRegistry(),
+    scheduler?: GameTimeScheduler,
+    season?: GroundPrefabOptions['season'],
   ) {
     this.entities = entities;
     this.scene = scene;
@@ -86,7 +89,7 @@ export class GroundItemManager {
     this.inventory = inventory;
     this.player = player;
     this.prefabs = new GroundPrefabRegistry({
-      scene, animationBaseUrl, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
+      scene, animationBaseUrl, scheduler, season, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       dropLoot: (items, position) => this.flingLoot(items, position),
       prepareSpawn: definition => this.prepareSpawn(definition),
       getNeighbours: () => [...this.items.values()]
@@ -153,7 +156,7 @@ export class GroundItemManager {
   }
 
   /** DropLoot spawns each recipe ingredient separately, then FlingItem launches it. */
-  async flingLoot(definitions: readonly GroundItemDefinition[], position: THREE.Vector3): Promise<void> {
+  async flingLoot(definitions: readonly GroundItemDefinition[], position: THREE.Vector3, launch?: () => LootLaunch): Promise<void> {
     if (this.disposed) throw new Error('Ground items have been disposed');
     const origin = position.clone();
     const pieces = definitions.flatMap((definition) => {
@@ -171,7 +174,7 @@ export class GroundItemManager {
     }
     for (const [index, result] of results.entries()) {
       if (result.status !== 'fulfilled') continue;
-      this.addFlungVisual(pieces[index], origin, result.value);
+      this.addFlungVisual(pieces[index], origin, result.value, launch?.());
     }
   }
 
@@ -387,11 +390,11 @@ export class GroundItemManager {
     }) as GroundItemRecord;
   }
 
-  private addFlungVisual(definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual): void {
+  private addFlungVisual(definition: GroundItemDefinition, origin: THREE.Vector3, visual: GroundItemVisual, launch?: LootLaunch): void {
     const entity = definition.entity ?? (definition.entityId ? this.entities.get(definition.entityId) : undefined)
       ?? this.entities.create({ ...definition, entityId: newEntityId() });
     entity.transform.position.copy(origin);
-    const fling = new LootFling(entity.transform);
+    const fling = new LootFling(entity.transform, undefined, undefined, launch);
     this.addVisual(entity.id, { ...definition, entity }, fling.position, visual, true);
     this.items.get(visual.model)!.fling = fling;
   }

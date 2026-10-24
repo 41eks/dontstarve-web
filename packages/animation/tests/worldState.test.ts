@@ -14,6 +14,9 @@ describe('session world temperature', () => {
     const initialElapsedSeconds = 10 * 480 - 0.5;
     const state = createWorldState({ elapsedSeconds: initialElapsedSeconds, systems: {} });
     const observed = vi.fn();
+    const nightChanges = vi.fn(), stopNight = state.isNight.subscribe(nightChanges);
+    expect(state.isNight.peek()).toBe(true);
+    expect('set' in state.isNight).toBe(false);
     const updater = createWorldClockUpdater(state, initialElapsedSeconds);
     const stop = state.temperature.subscribe(observed);
     const clock = state.clock.peek(), temperature = state.temperature.peek();
@@ -30,10 +33,13 @@ describe('session world temperature', () => {
     expect(state.worldtemperature.OnSave().noisetime).toBe(initialElapsedSeconds);
     expect(state.moonPhase.peek()).toBe('threequarter');
     expect(observed).not.toHaveBeenCalled();
+    expect(nightChanges).not.toHaveBeenCalled();
     elapsed += 0.1;
     updater.update(0.1);
     expect(observed).toHaveBeenCalledOnce();
     expect(state.clock.peek().phase).toBe('day');
+    expect(state.isNight.peek()).toBe(false);
+    expect(nightChanges).toHaveBeenCalledExactlyOnceWith(false, true);
     expect(state.moonPhase.peek()).toBe('full');
     expect(state.worldtemperature.OnSave().noisetime).toBeCloseTo(initialElapsedSeconds + elapsed, 10);
     const settled = state.temperature.peek();
@@ -44,10 +50,15 @@ describe('session world temperature', () => {
     const flushedClock = state.clock.peek();
     updater.flush();
     expect(state.clock.peek()).toBe(flushedClock);
+    expect(nightChanges).toHaveBeenCalledOnce();
     const before = updater.elapsedSeconds;
     expect(() => updater.update(-1)).toThrow(RangeError);
     expect(updater.elapsedSeconds).toBe(before);
     stop(); state.dispose();
+    state.clock.set({ phase: 'night', timeinphase: 0 });
+    expect(state.isNight.peek()).toBe(false);
+    expect(nightChanges).toHaveBeenCalledOnce();
+    stopNight();
   });
 
   it('initializes legacy worlds at their current clock and publishes updates to a read-only signal', () => {

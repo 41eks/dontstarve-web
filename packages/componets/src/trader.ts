@@ -8,7 +8,7 @@ export interface TraderInst {
 
 export interface TradeItem {
   readonly prefab: string;
-  readonly components?: { repairer?: import('./repairer').Repairer; shaver?: import('./shaver').Shaver; fuel?: import('./fuel').Fuel };
+  readonly components?: { repairer?: import('./repairer').Repairer; shaver?: import('./shaver').Shaver; fuel?: import('./fuel').Fuel; tradable?: import('./tradable').Tradable };
   GetIsWet?(): boolean;
   hasTag(tag: string): boolean;
 }

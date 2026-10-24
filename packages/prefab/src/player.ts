@@ -1,7 +1,7 @@
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonCombat, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonMovementState, type WilsonOneShotState } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonCombat, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost } from '@dontstarve-web/stategraphs';
 import {
   createMaterials,
   findImage,
@@ -15,9 +15,10 @@ import {
   type ParsedBuild,
   type ResolvedSprite,
 } from '@dontstarve-web/animation/animationAssets';
+import { createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import {
-  HatActivationController, HatEquipmentAssets, isHatPlayerElementVisible, resolveHatSprites, type HatEquipment,
+  HatActivationController, HatEquipmentAssets, createHatPlayerVisibility, resolveHatSprites, type HatEquipMode, type HatEquipment,
 } from './hats';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { LanternLightController, loadLanternEquipment, resolveLanternPlayerSprite, type LanternEquipment } from './lantern';
@@ -39,8 +40,13 @@ import { loadReskinToolEquipment } from './reskin_tool';
 import { resolveReskinToolPlayerSprite, type ReskinToolEquipment } from './reskin_tool';
 
 export type WilsonFacing = 'up' | 'down' | 'side';
+export interface SymbolFollower {
+  readonly node: THREE.Object3D;
+  remove(): void;
+}
+
 export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'bugnet' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
-type ReadAnimationKey = 'action_uniqueitem_pre' | 'book';
+type ReadAnimationKey = 'action_uniqueitem_pre' | 'book' | 'flute';
 type WilsonAnimations = Record<Exclude<WilsonAnimationKey, 'emote' | ReadAnimationKey>, ParsedAnim>;
 /** player_common_extensions.lua AddOverrideBuild; its anims are loaded with the first READ. */
 const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
@@ -63,9 +69,14 @@ export interface WilsonAnimationController extends ActionAnimationController {
   /** The equipped lantern's machine.ison and fuel percent; carrying alone does not light it. */
   setLanternLight(ison: boolean, fuelPercent: number): void;
   setHat(itemId: string | null, skinId?: string): Promise<void>;
+  /** Follower:FollowSymbol(owner.GUID, symbol, offsetX, offsetY): a node tracking the symbol, in the player's space. */
+  followSymbol(symbol: string, offsetX: number, offsetY: number): SymbolFollower;
   setBackpack(equipped: boolean, skinId?: string): Promise<void>;
-  /** Normalized sanity; defaults to full until the application supplies state. */
-  setSanityPercent(percent: number): void;
+  /** The application's sleeper services for SGwilson's tent and wakeup states. */
+  bindSleep(sleep: WilsonSleepHost | undefined): void;
+  readonly isSleeping: boolean;
+  wakeFromBed(): void;
+  goToWakeup(): void;
   update(dt: number, jumpProgress?: number): void;
 }
 
@@ -80,6 +91,8 @@ export interface WilsonPlayerPrefab {
 export interface WilsonPlayerPrefabOptions {
   mass?: number;
   shapeRadius?: number;
+  /** The owner's authoritative sanity ratio; standalone previews default to full sanity. */
+  sanityPercent?: ReadonlySignal<number>;
 }
 
 /** Source tags: bugnet tool component and reskin_tool.lua's veryquickcast. */
@@ -153,6 +166,9 @@ class WilsonController implements WilsonAnimationController {
   private readonly hatAssets: HatEquipmentAssets;
   private readonly hatActivation: HatActivationController;
   private hat: HatEquipment | null = null;
+  private readonly symbolFollowers = new Set<{ hash: number; offset: readonly [number, number]; node: THREE.Object3D }>();
+  private readonly hatMode = createSignal<HatEquipMode | null>(null);
+  private readonly hatVisibility = createHatPlayerVisibility(this.hatMode);
   private hatRequest = 0;
   private hatKey = '';
   private hatElapsed = 0;
@@ -168,7 +184,8 @@ class WilsonController implements WilsonAnimationController {
   private readonly symbolBuilds = new Map<string, CarryBuild>();
   private readonly symbolOverrides = new Map<number, { source: CarryBuild; hash: number }>();
   private readonly bookFx: BookFxController;
-  private bookLayerSound?: SoundHandle;
+  private sleepHost?: WilsonSleepHost;
+  private readonly namedSounds = new Map<string, SoundHandle>();
   private inventory?: Parameters<typeof equipSamePrefab>[0];
   private readonly assetBaseUrl: string;
 
@@ -179,6 +196,7 @@ class WilsonController implements WilsonAnimationController {
     materials: THREE.MeshBasicMaterial[],
     torch: CarryBuild,
     assetBaseUrl: string,
+    sanityPercent?: ReadonlySignal<number>,
   ) {
     this.visual = visual;
     this.build = build;
@@ -190,10 +208,12 @@ class WilsonController implements WilsonAnimationController {
     this.lanternLight = new LanternLightController(visual.parent!);
     this.castingLight = new StaffCastingLight(visual.parent!);
     this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
-    this.hatActivation = new HatActivationController(visual.parent!);
+    this.hatActivation = new HatActivationController(visual.parent!, sanityPercent);
     this.renderer = new SpriteFrameRenderer(visual);
     this.bookFx = new BookFxController(this.lanternAssets, visual);
+    const controller = this;
     this.stategraph = new WilsonStateGraph({
+      get sleep() { return controller.sleepHost; },
       playAnimation: (clip) => this.selectAnimation(clip),
       getCombat: () => this.combat,
       playSound: (cue, castsound) => {
@@ -217,12 +237,14 @@ class WilsonController implements WilsonAnimationController {
               : cue === 'hammer' ? 'dontstarve/wilson/hit' : 'dontstarve/wilson/use_pick_rock';
         PlaySound(event);
       },
-      playNamedSound: (_name, event) => {
-        this.bookLayerSound?.stop();
-        this.bookLayerSound = PlaySound(event as SoundEventPath);
+      playNamedSound: (name, event) => {
+        this.namedSounds.get(name)?.stop();
+        this.namedSounds.set(name, PlaySound(event as SoundEventPath));
       },
-      isPlayingNamedSound: () => this.bookLayerSound?.isPlaying() ?? false,
-      setNamedSoundVolume: (_name, volume) => this.bookLayerSound?.setVolume(volume),
+      stopNamedSound: name => { this.namedSounds.get(name)?.stop(); this.namedSounds.delete(name); },
+      isPlayingNamedSound: name => this.namedSounds.get(name)?.isPlaying() ?? false,
+      setNamedSoundVolume: (name, volume) => this.namedSounds.get(name)?.setVolume(volume),
+      clearOverrideSymbol: symbol => { this.symbolOverrides.delete(smallHash(symbol)); this.refreshFrame(); },
       spawnFx: (prefab, followSymbol) => this.bookFx.spawn(prefab, followSymbol),
       overrideSymbol: (symbol, build, sourceSymbol) => this.overrideSymbol(symbol, build, sourceSymbol),
       overrideItemSkinSymbol: (symbol, skinBuild, skinSymbol, build, sourceSymbol) => {
@@ -290,6 +312,14 @@ class WilsonController implements WilsonAnimationController {
 
   get isReading(): boolean { return this.stategraph.isPerformingAction('READ'); }
 
+  /** The application's sleeper services for SGwilson's tent and wakeup states. */
+  bindSleep(sleep: WilsonSleepHost | undefined): void { this.sleepHost = sleep; }
+  get isSleeping(): boolean { return this.stategraph.isSleeping; }
+  /** Movement input while asleep: the locomote event wakes the sleeper. */
+  wakeFromBed(): void { this.stategraph.pushLocomote(); }
+  /** sleepingbaguser:DoWakeUp's `inst.sg:GoToState("wakeup")`. */
+  goToWakeup(): void { this.stategraph.wakeUp(); }
+
   async prepareRead(book: BufferedActionObject): Promise<void> {
     const fx = (['book_fx', book.def?.fx_over_prefab, book.def?.fx_under_prefab] as const)
       .filter((prefab): prefab is BookFxPrefab => prefab !== undefined);
@@ -314,6 +344,28 @@ class WilsonController implements WilsonAnimationController {
   }
 
   cancelRead(): void { this.stategraph.cancelAction('READ'); }
+
+  get isPlayingInstrument(): boolean { return this.stategraph.isPerformingAction('PLAY'); }
+
+  /** Load SGwilson's play_flute art and the flute loop before buffering the action. */
+  async prepareFlute(skinArchive?: string): Promise<void> {
+    const [animations] = await Promise.all([
+      this.uniqueItemAnimations ?? this.lanternAssets.loadAnimation(`${UNIQUE_ITEM_BUILD}.zip`),
+      this.loadSymbolBuild(`${UNIQUE_ITEM_BUILD}.zip`),
+      this.loadSymbolBuild('pan_flute.zip'),
+      skinArchive ? this.loadSymbolBuild(skinArchive) : undefined,
+      PreloadSounds('dontstarve/wilson/flute_LP'),
+    ]);
+    this.uniqueItemAnimations = animations;
+  }
+
+  playFlute(instrument: BufferedActionObject, onPlay: () => boolean): boolean {
+    if (this.stategraph.hasStateTag('busy') || !this.uniqueItemAnimations || !this.symbolBuilds.has('pan_flute')) return false;
+    this.cancelEmote();
+    return this.stategraph.pushBufferedAction(new BufferedAction('PLAY', onPlay, undefined, { invobject: instrument }));
+  }
+
+  cancelPlay(): void { this.stategraph.cancelAction('PLAY'); }
 
   private async loadSymbolBuild(archive: string): Promise<void> {
     const build = await this.lanternAssets.loadBuild(archive);
@@ -467,6 +519,7 @@ class WilsonController implements WilsonAnimationController {
     // Facing changes select different art without restarting the state timeline.
     this.selectAnimation(this.stategraph.animationClip);
     this.showCurrentFrame();
+    this.updateSymbolFollowers();
   }
 
   async setCarryItem(item: WilsonCarryItem | null, skinId?: string): Promise<void> {
@@ -629,6 +682,7 @@ class WilsonController implements WilsonAnimationController {
     this.hatKey = key;
     const request = ++this.hatRequest;
     this.hat = null;
+    this.hatMode.set(null);
     this.hatActivation.setHat(null);
     this.hatElapsed = 0;
     this.refreshFrame();
@@ -637,6 +691,7 @@ class WilsonController implements WilsonAnimationController {
       const hat = await this.hatAssets.load(itemId, skinId);
       if (request !== this.hatRequest) return;
       this.hat = hat;
+      this.hatMode.set(hat.definition.equip.mode);
       this.hatActivation.setHat(hat);
       this.refreshFrame();
     } catch (error) {
@@ -678,9 +733,28 @@ class WilsonController implements WilsonAnimationController {
     }
   }
 
-  setSanityPercent(percent: number): void {
-    this.hatActivation.setSanityPercent(percent);
-    this.refreshFrame();
+  followSymbol(symbol: string, offsetX: number, offsetY: number): SymbolFollower {
+    const node = new THREE.Object3D();
+    node.name = `Follow:${symbol}`;
+    this.visual.parent!.add(node);
+    const follower = { hash: smallHash(symbol), offset: [offsetX, offsetY] as const, node };
+    this.symbolFollowers.add(follower);
+    this.updateSymbolFollowers();
+    return { node, remove: () => { this.symbolFollowers.delete(follower); node.removeFromParent(); } };
+  }
+
+  /** The symbol's matrix places the offset in animation pixels; the visual's scale and mirroring map it to the scene. */
+  private updateSymbolFollowers(): void {
+    if (!this.symbolFollowers.size) return;
+    const elements = this.animation.frames[Math.max(0, this.frameIndex)]?.elements ?? [];
+    this.visual.updateMatrix();
+    for (const { hash, offset: [x, y], node } of this.symbolFollowers) {
+      const element = elements.find((candidate) => candidate.imageHash === hash);
+      node.visible = !!element;
+      if (!element) continue;
+      const [a, b, c, d, tx, ty] = element.matrix;
+      node.position.set(a * x + c * y + tx, b * x + d * y + ty, 0).applyMatrix4(this.visual.matrix);
+    }
   }
 
   private refreshFrame() {
@@ -727,7 +801,7 @@ class WilsonController implements WilsonAnimationController {
     this.state = clip.key;
     this.clipName = clip.name;
     const parsed = this.state === 'emote' ? this.emote!.animations
-      : this.state === 'action_uniqueitem_pre' || this.state === 'book' ? this.uniqueItemAnimations : this.animations[this.state];
+      : this.state === 'action_uniqueitem_pre' || this.state === 'book' || this.state === 'flute' ? this.uniqueItemAnimations : this.animations[this.state];
     if (!parsed) throw new Error(`Wilson animation ${clip.name} has not been loaded`);
     const bankHash = smallHash('wilson');
     const facing = facingValues[this.facing];
@@ -750,9 +824,10 @@ class WilsonController implements WilsonAnimationController {
     if (index === this.frameIndex && !this.hat?.definition.equip.follow && !this.hatActivation.isAnimating
       && !this.bookFx.isAnimating) return;
     this.frameIndex = index;
+    this.updateSymbolFollowers();
     const bookFx = this.bookFx.resolve(this.animation.frames[index].elements);
     const sprites = [...this.animation.frames[index].elements]
-      .filter((element) => isHatPlayerElementVisible(element, this.hat?.definition.equip.mode ?? null))
+      .filter(this.hatVisibility.peek())
       .filter((element) => !this.hatActivation.hidesSwapHat || element.imageHash !== smallHash('swap_hat'))
       .filter((element) => this.carryItem && this.state !== 'build'
         ? element.layerHash !== normalArmLayerHash
@@ -826,7 +901,10 @@ class WilsonController implements WilsonAnimationController {
   }
 }
 
-export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Group> {
+export async function createWilsonPlayer(
+  assetBaseUrl: string,
+  options: Pick<WilsonPlayerPrefabOptions, 'sanityPercent'> = {},
+): Promise<THREE.Group> {
   const [buildPackage, torchBuildPackage, torchAnimation, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions] = await Promise.all([
     loadBuild('willow.zip', assetBaseUrl),
     loadBuild('swap_torch.zip', assetBaseUrl),
@@ -908,10 +986,11 @@ export async function createWilsonPlayer(assetBaseUrl: string): Promise<THREE.Gr
     till_loop: till,
     till_pst: till,
     hit: actions,
+    wakeup: actions,
   }, createMaterials(buildPackage), {
     build: torchBuildPackage.build,
     materials: createMaterials(torchBuildPackage),
-  }, assetBaseUrl);
+  }, assetBaseUrl, options.sanityPercent);
   await controller.prepareToolBroke();
   player.userData.animationController = controller;
   player.userData.stategraph = controller.stategraph;
@@ -922,7 +1001,7 @@ export async function createWilsonPlayerPrefab(
   assetBaseUrl: string,
   options: WilsonPlayerPrefabOptions = {},
 ): Promise<WilsonPlayerPrefab> {
-  const model = await createWilsonPlayer(assetBaseUrl);
+  const model = await createWilsonPlayer(assetBaseUrl, options);
   // player_common.lua: MakeCharacterPhysics(inst, 75, .5)
   const physics = MakeCharacterPhysics(options.mass ?? 75, 0.5);
   const shapeRadius = options.shapeRadius ?? (physics.shape as CANNON.Sphere).radius;

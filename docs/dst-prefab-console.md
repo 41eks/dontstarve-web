@@ -150,6 +150,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `hammer` | 可生成 | 可入栏 | `prefabs/hammer.lua:86` |
 | `bugnet` | 可生成 | 可入栏 | `prefabs/bugnet.lua:74` |
 | `razor` | 可生成 | 可入栏 | `prefabs/razor.lua:30`、`:32` 的 `inventoryitem` 与 `shaver`；无 `stackable`、`equippable` 或 `finiteuses`，由鼠标举着对睡着的牛使用 |
+| `panflute` | 可生成 | 可入栏 | `prefabs/panflute.lua:128`–`:144` 的 `instrument`、`tool(PLAY)`、`finiteuses(10)`；`componentactions.lua:2697` 向物品栏提供 PLAY，催眠仅对 `sleeper` 标签生效 |
 | `pitchfork` | 可生成 | 可入栏 | `prefabs/pitchfork.lua:77` |
 | `goldenpitchfork` | 可生成 | 可入栏 | `prefabs/pitchfork.lua:77` |
 | `farm_hoe` | 可生成 | 可入栏 | `prefabs/farm_hoe.lua:103` |
@@ -451,6 +452,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `grass` | 可生成 | 不能入栏 | `prefabs/grass.lua` |
 | `sapling` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
 | `sapling_moon` | 可生成 | 不能入栏 | `prefabs/sapling.lua` |
+| `sanityrock`、`insanityrock` | 可生成 | 不能入栏 | `prefabs/nightmarerock.lua`：无 inventoryitem；项目已接入 `SGnightmarerock`（`raise` / `lower` / `conceal` / `reveal`）、障碍物随激活开关，以及 `sanity_raise` / `sanity_lower` 特效；静态布局 `default_pigking` 在猪王周围放置各 4 块，可由 `c_save()` 保存位置与实体 ID |
 | `pond` | 可生成 | 不能入栏 | `prefabs/pond.lua` |
 | `lava_pond` | 可生成 | 不能入栏 | `prefabs/lava_pond.lua`：有 heater，无 inventoryitem；项目已接入供热接口、外观、障碍和布局存档 |
 | `lava_pond_rock`、`lava_pond_rock2`～`lava_pond_rock7` | 可生成 | 不能入栏 | `prefabs/lava_pond.lua:makerock` 的 7 个实际 ID；无 inventoryitem，独立生成时可持久化，池的子焦岩不独立持久化 |

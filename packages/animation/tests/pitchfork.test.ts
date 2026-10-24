@@ -8,7 +8,7 @@ import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } fro
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
-import { createHandEquipmentExistenceState } from '../../signals/src';
+import { createEquipmentExistenceState } from '../../signals/src';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -96,7 +96,7 @@ function setupAction() {
   const player = new THREE.Group();
   const world = { player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas } } as unknown as WorldContext;
-  const equipped = createHandEquipmentExistenceState();
+  const equipped = createEquipmentExistenceState('HANDS');
   equipped.set({ itemId: 'pitchfork', EQUIPSLOTS: 'HANDS' });
   let manual = false, onDig: (() => void) | undefined;
   const animation = { isDigging: false, isCasting: false, isNetting: false,

@@ -1,11 +1,13 @@
 import { ItemEntity } from '@dontstarve-web/inventory';
-import { createSignal, readonlySignal, type HandEquipment, type HandEquipmentLifecycle, type Signal } from '@dontstarve-web/signals';
-import { PlaySound, PreloadSounds, type SoundHandle, type SoundPosition } from './sound';
+import { createSignal, readonlySignal, type HandEquipment, type EquipmentLifecycle, type EquipmentOwner } from '@dontstarve-web/signals';
+import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import { createGroundItemSprite } from './groundItems';
 import { listenInventoryEvents } from './inventoryEvents';
-import { setPrefabLocalLight } from './localLight';
+import type * as THREE from 'three';
+import { attachPrefabLight, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { LootFling } from './lootFling';
 import { TILE_SIZE } from './tile';
+import { TorchFireEffect, TORCH_FIRE_OFFSET_Y } from './torchfire';
 import { Lighter } from '../../componets/src/lighter';
 
 export function configureTorchEntity(entity: ItemEntity): void {
@@ -16,10 +18,15 @@ import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 export const TORCH_ID = 'torch';
 /** tuning.lua: TORCH_FUEL = night_time * 1.25, with a default 30 * 2 second night. */
 export const TORCH_FUEL = 30 * 2 * 1.25;
+/** torchfire_common.lua CreateLight with TUNING.TORCH_RADIUS[1] and TORCH_FALLOFF[1]. */
+export const TORCH_LIGHT: PrefabLocalLight = {
+  radius: 2 * (TILE_SIZE / 4), falloff: 0.5, intensity: 0.75,
+  colour: [180 / 255, 195 / 255, 150 / 255],
+};
 export const TORCH_SOUNDS = ['dontstarve/wilson/torch_swing', 'dontstarve/common/fireOut'] as const;
 
 export interface TorchLifecycleOptions {
-  soundPosition?: SoundPosition;
+  soundPosition?: THREE.Vector3;
   returnToIdle?(): void;
   onGroundExtinguish?(): void;
 }
@@ -32,8 +39,7 @@ export class TorchController implements HandEquipment {
   readonly burning = readonlySignal(this.burningState);
   private disposed = false;
   readonly entity: ItemEntity;
-  private slotSignal: Signal<HandEquipment | null> | null = null;
-  private equipment: HandEquipment | null = null;
+  private owner: EquipmentOwner | null = null;
   private held = false;
   private hasFire = false;
   private pendingFrames = 0;
@@ -58,19 +64,17 @@ export class TorchController implements HandEquipment {
     return this.entity.isRemoved ? null : this.entity.components.fueled.remaining ?? TORCH_FUEL;
   }
 
-  onequip(slotSignal: Signal<HandEquipment | null>): void {
+  onequip(owner?: EquipmentOwner): void {
     if (this.disposed) return;
     this.held = true;
-    this.slotSignal = slotSignal;
-    this.equipment = slotSignal.peek();
+    this.owner = owner ?? null;
     this.ignite();
   }
   onunequip(): void {
     this.flushFuel();
     this.stopFire(true);
     this.held = false;
-    this.slotSignal = null;
-    this.equipment = null;
+    this.owner = null;
   }
 
   ignite(playSound = true): void {
@@ -89,22 +93,14 @@ export class TorchController implements HandEquipment {
     this.stopFire(true);
   }
 
-  private clearDepletedEquipment(): boolean {
-    const slotSignal = this.slotSignal, equipment = this.equipment;
-    if (!slotSignal || slotSignal.peek() !== equipment || equipment?.itemId !== TORCH_ID) return false;
-    slotSignal.set(null);
-    return true;
-  }
-
   /** torch.lua: pickup clears fire, restores idle and stops fuel without emptying it. */
-  OnPutInInventory(ownerPosition?: SoundPosition): void {
+  OnPutInInventory(ownerPosition?: THREE.Vector3): void {
     this.flushFuel();
     if (this.disposed) return;
     this.held = true;
     this.options.returnToIdle?.();
     this.stopFire(true, ownerPosition);
-    this.slotSignal = null;
-    this.equipment = null;
+    this.owner = null;
     this.stopOwnSounds();
   }
 
@@ -138,7 +134,6 @@ export class TorchController implements HandEquipment {
     const remaining = this.remainingFuel();
     if (remaining === null) {
       this.extinguish();
-      this.clearDepletedEquipment();
       this.dispose();
       return;
     }
@@ -147,9 +142,11 @@ export class TorchController implements HandEquipment {
     else {
       // Emit the final one-shot before Remove invokes component disposal.
       this.stopFire(true, this.options.soundPosition);
-      const requested = this.clearDepletedEquipment();
-      // Ground/local unowned torches have no player store; stale bound items use their own owner.
-      if (!this.entity.isRemoved && (!requested || !this.entity.components.inventoryitem.owner)) this.entity.remove();
+      // Removal unequips this controller and releases the owner, so take it first.
+      const owner = this.owner;
+      if (!this.entity.isRemoved) this.entity.remove();
+      // torch.lua onfuelchange: Remove before itemranout so the owner can re-equip another torch.
+      if (this.entity.isRemoved) owner?.PushEvent('itemranout', { prefab: TORCH_ID, equipslot: 'hand', announce: 'ANNOUNCE_TORCH_OUT' });
       if (this.entity.isRemoved) this.dispose();
     }
   }
@@ -159,8 +156,7 @@ export class TorchController implements HandEquipment {
     this.disposed = true;
     this.stopFire(false);
     this.held = false;
-    this.slotSignal = null;
-    this.equipment = null;
+    this.owner = null;
     this.stopOwnSounds();
   }
 
@@ -168,14 +164,14 @@ export class TorchController implements HandEquipment {
     this.burningState.set(burning);
   }
 
-  private stopFire(playSound: boolean, ownerPosition?: SoundPosition): void {
+  private stopFire(playSound: boolean, ownerPosition?: THREE.Vector3): void {
     const hadFire = this.hasFire;
     this.hasFire = false;
     this.setBurning(false);
     if (hadFire && playSound) this.playSound('dontstarve/common/fireOut', ownerPosition);
   }
 
-  private playSound(path: typeof TORCH_SOUNDS[number], ownerPosition?: SoundPosition): void {
+  private playSound(path: typeof TORCH_SOUNDS[number], ownerPosition?: THREE.Vector3): void {
     const handle = PlaySound(path, ownerPosition ?? this.options.soundPosition);
     // Equipped/pickup sounds belong to the player, so their one-shots can finish.
     if (!this.held && ownerPosition === undefined) this.ownSounds.add(handle);
@@ -195,25 +191,46 @@ export function getTorchController(entity: ItemEntity): TorchController {
 /** Equipment-scoped presentation bindings; the controller stays on the item entity. */
 export function createTorchHandLifecycle(
   entity: ItemEntity,
-  options: { soundPosition?: SoundPosition; setLightActive(active: boolean): void },
-): HandEquipmentLifecycle {
+  options: {
+    soundPosition?: THREE.Vector3;
+    lightParent: THREE.Object3D;
+    followSymbol?(symbol: string, offsetX: number, offsetY: number): { node: THREE.Object3D; remove(): void };
+    dataBaseUrl?: string;
+  },
+): EquipmentLifecycle {
   const controller = getTorchController(entity);
   const presentation = { soundPosition: options.soundPosition };
   let stopBurning: (() => void) | undefined;
+  let removeLight: (() => void) | undefined;
+  let removeFire: (() => void) | undefined;
+  let fire: TorchFireEffect | undefined;
+  // torch.lua onequip: torchfire follows swap_object and AttachLightTo(owner); both leave when it stops burning.
+  const syncLight = (burning: boolean) => {
+    removeLight?.(); removeLight = undefined;
+    fire?.dispose(); fire = undefined;
+    removeFire?.(); removeFire = undefined;
+    if (!burning) return;
+    removeLight = attachPrefabLight(options.lightParent, 'TorchFireLight', TORCH_LIGHT);
+    if (options.followSymbol && options.dataBaseUrl !== undefined) {
+      const follower = options.followSymbol('swap_object', 0, TORCH_FIRE_OFFSET_Y);
+      removeFire = follower.remove;
+      fire = new TorchFireEffect(follower.node, options.dataBaseUrl);
+    }
+  };
   return {
-    onequip(slot) {
-      const equipment = slot.peek();
+    onequip(owner) {
       controller.setPresentation(presentation);
-      stopBurning = controller.burning.subscribe(burning => options.setLightActive(burning));
-      options.setLightActive(controller.isBurning);
-      if (slot.peek() === equipment) controller.onequip(slot);
+      stopBurning = controller.burning.subscribe(syncLight);
+      syncLight(controller.isBurning);
+      controller.onequip(owner);
     },
     onunequip() {
       controller.onunequip();
       stopBurning?.(); stopBurning = undefined;
+      syncLight(false);
       controller.releasePresentation(presentation);
     },
-    onFrame: dt => controller.onFrame(dt),
+    onFrame: dt => { controller.onFrame(dt); fire?.update(dt); },
     flush: () => controller.flushFuel(),
   };
 }
@@ -246,10 +263,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
         },
       };
       const syncBurning = (burning: boolean) => {
-        setPrefabLocalLight(sprite.model, burning ? {
-          radius: 2 * (TILE_SIZE / 4) * 1.5, falloff: 0.5, intensity: 0.75,
-          colour: [180 / 255, 195 / 255, 150 / 255],
-        } : null);
+        setPrefabLocalLight(sprite.model, burning ? TORCH_LIGHT : null);
         if (burning) sprite.setAnimation('land');
       };
       const bind = () => {

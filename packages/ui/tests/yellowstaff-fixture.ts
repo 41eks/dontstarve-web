@@ -79,7 +79,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
       isOceanAtPoint: () => false, isGroundTargetBlocked: () => false },
     preparePrefab: () => stars.prepare(), spawnPrefab: (_prefab, point) => stars.spawnPrepared(point),
   });
-  staff.onequip(equipped);
+  staff.onequip();
   let stops = 0, sanity = 100;
   const casting = new SpellCastActionController({ scene, camera, renderer, ground, player }, animation,
     { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true }, inventory.handEquipment,

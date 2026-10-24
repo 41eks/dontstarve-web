@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { HandEquipment, HandEquipmentLifecycle, ReadonlySignal, Signal } from '@dontstarve-web/signals';
+import type { EquipmentLifecycle, ReadonlySignal } from '@dontstarve-web/signals';
 import { SpellCaster, type PreparedSpellCast, type SpellCastDoer } from '../../componets/src/spellcaster';
 import { getDeconstructionRecipe } from '../../componets/src/recipes';
 import type { SpellCastTarget } from '../../stategraphs/src/spellcaster';
@@ -51,10 +51,8 @@ const ingredientSounds: Readonly<Record<string, SoundEventPath>> = {
   cutgrass: 'dontstarve/common/destroy_straw', cutreeds: 'dontstarve/common/destroy_straw',
 };
 
-export class GreenStaffController implements HandEquipmentLifecycle {
+export class GreenStaffController implements EquipmentLifecycle {
   readonly spellcaster: SpellCaster;
-  private slot?: Signal<HandEquipment | null>;
-  private equipment: HandEquipment | null = null;
   private readonly entity: ItemEntity;
   constructor(entity: ItemEntity, world: GreenStaffWorld) {
     this.entity = entity;
@@ -80,9 +78,9 @@ export class GreenStaffController implements HandEquipmentLifecycle {
       return results[0].value;
     });
   }
-  onequip(slot: Signal<HandEquipment | null>): void { this.slot = slot; this.equipment = slot.peek(); }
-  onunequip(): void { this.slot = undefined; this.equipment = null; }
-  dispose(): void { this.onunequip(); }
+  onequip(): void {}
+  onunequip(): void {}
+  dispose(): void {}
   private destroyStructure(target: DeconstructionTarget, doer: SpellCastDoer, prepared?: PreparedDeconstruction): boolean {
     const recipe = getDeconstructionRecipe(target.prefab);
     if (!recipe || !prepared || !target.isValid() || this.entity.isRemoved) return false;
@@ -101,12 +99,8 @@ export class GreenStaffController implements HandEquipmentLifecycle {
     if (doer.components.staffsanity) doer.components.staffsanity.doCastingDelta(-20);
     else doer.components.sanity?.doDelta(-20);
     const depleted = (this.entity.components.finiteuses.remaining ?? GREENSTAFF_USES) === 1;
-    const slot = this.slot, equipment = this.equipment;
     this.entity.components.finiteuses.use(1);
-    if (depleted) {
-      PlaySound('dontstarve/common/gem_shatter', doer.position);
-      if (slot && equipment?.entity === this.entity && slot.peek() === equipment) slot.set(null);
-    }
+    if (depleted) PlaySound('dontstarve/common/gem_shatter', doer.position);
     return true;
   }
 }

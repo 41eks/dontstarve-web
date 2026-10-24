@@ -60,7 +60,7 @@ describe('lantern fuel', () => {
     const lifecycle = createLanternHandLifecycle(entity, { setLanternLight: light });
     try {
       expect(controller.isOn).toBe(false);
-      lifecycle.onequip(inventory.handEquipmentExistenceState);
+      lifecycle.onequip();
       expect(controller.isOn).toBe(true);
       expect(light).toHaveBeenLastCalledWith(true, 1);
       // Frames only accumulate; fuel and its percent change once per settlement, plus the full-fuel first period.
@@ -83,7 +83,7 @@ describe('lantern fuel', () => {
       expect(entity.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 70 - 1 / 60, 9);
 
       // A partial lantern pays TURNON_FUELED_CONSUMPTION; running out only turns it off.
-      lifecycle.onequip(inventory.handEquipmentExistenceState);
+      lifecycle.onequip();
       for (let frame = 0; frame < 60; frame++) lifecycle.onFrame!(LANTERN_FUEL / 60);
       expect(entity.isRemoved).toBe(false);
       expect(entity.components.fueled.remaining).toBe(0);
@@ -92,7 +92,7 @@ describe('lantern fuel', () => {
       expect(entity.signals.durabilityPercent.peek()).toBe(0);
       expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
       lifecycle.onunequip();
-      lifecycle.onequip(inventory.handEquipmentExistenceState);
+      lifecycle.onequip();
       expect(controller.isOn).toBe(false);
       expect(inventory.get(hand)).toMatchObject({ itemId: 'lantern', remainingFuel: 0 });
     } finally { lifecycle.onunequip(); inventory.dispose(); }

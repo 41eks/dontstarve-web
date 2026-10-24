@@ -26,7 +26,7 @@ it('wears axes by CHOP consumption, with golden and moonglass variants, and remo
       expect(inventory.add(prefab, 1)).toBe(true);
       expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
       const entity = inventory.getEntity(hand)!;
-      getAxeLifecycle(entity).onequip(inventory.handEquipmentExistenceState);
+      getAxeLifecycle(entity).onequip();
       expect(entity.hasTag('CHOP_tool')).toBe(true);
       expect(entity.components.tool!.GetEffectiveness('CHOP')).toBe(effectiveness);
       entity.components.finiteuses.useForAction('CHOP');
