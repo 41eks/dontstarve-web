@@ -50,7 +50,7 @@ function removeCells(entry: Entry): void {
   entry.keys.length = 0;
 }
 
-/** Share registration between engine radius queries and input; NOBLOCK remains queryable. */
+/** Retain a spatial entry for pointer queries; NOBLOCK remains queryable. */
 export function retainSpatialEntity(model: Object3D, positionOf?: () => Vector3) {
   let entry = entries.get(model);
   if (!entry) {
@@ -141,22 +141,6 @@ export function invalidateEntitySpatial(model: Object3D): void {
 function flushBounds(): void {
   for (const entry of dirty) syncEntitySpatial(entry.model);
   dirty.clear();
-}
-
-export function visitEntitiesNear(position: Vector3, radius: number, visit: (model: Object3D) => void): void {
-  if (!Number.isFinite(radius) || radius < 0) throw new RangeError('Invalid entity query radius');
-  if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return;
-  flushBounds();
-  const seen = new Set<Entry>(), radiusSquared = radius * radius;
-  for (let x = Math.floor((position.x - radius) / CELL_SIZE); x <= Math.floor((position.x + radius) / CELL_SIZE); x++) {
-    for (let z = Math.floor((position.z - radius) / CELL_SIZE); z <= Math.floor((position.z + radius) / CELL_SIZE); z++) {
-      for (const entry of cells.get(`${x},${z}`) ?? []) {
-        if (seen.has(entry)) continue;
-        seen.add(entry);
-        if (entry.position.distanceToSquared(position) <= radiusSquared) visit(entry.model);
-      }
-    }
-  }
 }
 
 /** Clip an infinite pointer ray to occupied world bounds, then use grid DDA (including vertical rays). */

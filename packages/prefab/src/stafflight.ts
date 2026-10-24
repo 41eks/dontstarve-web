@@ -135,7 +135,7 @@ export class DwarfStarManager {
     if (this.prefabId === POLAR_LIGHT_ID) star.heater.SetThermics(false, true);
     if (this.prefabId === DWARF_STAR_ID) {
       inst.components.propagator = star.propagator = new Propagator(inst, 'default', radius =>
-        FindEntities(this.scene, model.position, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4, undefined, getBoundWatchWorldContent());
+        FindEntities(model.position, radius, [], ['INLIMBO']) as BurnableInst[], TILE_SIZE / 4, undefined, getBoundWatchWorldContent());
       // stafflight.lua: bare propagator, heatoutput 15, spreading from creation until removal.
       star.propagator.heatoutput = 15;
       star.propagator.spreading.set(true);

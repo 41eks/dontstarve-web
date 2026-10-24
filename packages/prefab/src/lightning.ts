@@ -18,7 +18,7 @@ export interface LightningStrikeWorld {
  * playerlightningtarget, moonstorm lightning and StrikeLightningAtPoint's shock and fire are not ported.
  */
 export async function SendLightningStrike(world: LightningStrikeWorld, position: THREE.Vector3): Promise<THREE.Vector3> {
-    const [rod] = FindEntities(world.root, position, LIGHTNINGSTRIKE_SEARCH_RANGE, [], LIGHTNINGSTRIKE_CANT_TAGS, LIGHTNINGSTRIKE_ONEOF_TAGS);
+    const [rod] = FindEntities(position, LIGHTNINGSTRIKE_SEARCH_RANGE, [], LIGHTNINGSTRIKE_CANT_TAGS, LIGHTNINGSTRIKE_ONEOF_TAGS);
     const strike = rod ? rod.getPosition().clone() : position.clone();
     // SpawnPrefab("lightning") is placed after the rod has handled the event.
     await world.fx.prepare('lightning');

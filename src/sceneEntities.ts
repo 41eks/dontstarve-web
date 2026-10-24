@@ -263,7 +263,7 @@ export async function createSceneEntities(
   sceneInventory.entities.bindTemperatureWorld({
     componentUpdates: worldState.componentUpdates,
     temperature: worldState.temperature, clock: worldState.clock, unitScale: WORLD_SCALE,
-    findHeaters: (position, radius, ignoredTags) => FindEntities(scene, position, radius, ['HASHEATER'], ignoredTags) as TemperatureSource[],
+    findHeaters: (position, radius, ignoredTags) => FindEntities(position, radius, ['HASHEATER'], ignoredTags) as TemperatureSource[],
   });
   const dynamicMusic = scheduler ? new DynamicMusic(scheduler, path => PlaySound(path)) : undefined;
 

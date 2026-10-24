@@ -55,10 +55,10 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     expect(entries.map(entry => entry.object.userData.prefab)).toEqual(['lava_pond_rock', 'lava_pond_rock7']);
     expect(entries[0].footPosition.x).toBe(12);
     expect(entries[0].footPosition.z).toBeCloseTo(-1.7);
-    expect(FindEntities(scene, entries[0].footPosition, .01).map(inst => inst.prefab))
+    expect(FindEntities(entries[0].footPosition, .01).map(inst => inst.prefab))
       .toEqual(['lava_pond_rock']);
     expect(entries.every(entry => entry.object.userData.persists === false)).toBe(true);
-    const source = FindEntities(scene, model.position, 30, ['HASHEATER'], ['INLIMBO']);
+    const source = FindEntities(model.position, 30, ['HASHEATER'], ['INLIMBO']);
     expect(source).toHaveLength(1); expect(source[0].components.heater!.GetHeat()).toBe(500);
 
     const body = model.userData.physicsBody as CANNON.Body;
@@ -88,7 +88,7 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     expect(restored.renderEntities.every(entry => entry.object.quaternion.equals(camera))).toBe(true);
     expect(reloaded.position.toArray()).toEqual(record.transform.position);
     manager.remove(model);
-    expect(FindEntities(scene, model.position, 30, ['HASHEATER'])).toEqual([]);
+    expect(FindEntities(model.position, 30, ['HASHEATER']).map(entity => entity === reloaded.userData.actionEntity)).toEqual([true]);
     expect(physics.bodies).toEqual([]); expect(getPrefabLocalLight(model)).toBeUndefined();
     expect(manager.renderEntities).toEqual([]); expect(manager.exportRecords()).toEqual([]);
   } finally { manager.dispose(); restored.dispose(); scheduler.dispose(); restoredScheduler.dispose(); }

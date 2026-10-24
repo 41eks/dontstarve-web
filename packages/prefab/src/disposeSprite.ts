@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { SpriteController } from '@dontstarve-web/animation/sprite';
 import { ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { prefabInstance } from './prefabInstance';
 
 /** Release a standalone sprite whose geometry, materials and textures are owned. */
 export function disposeSprite(root: THREE.Object3D): void {
   root.userData.disposePreparedResources?.();
   delete root.userData.disposePreparedResources;
   root.removeFromParent();
+  prefabInstance(root)?.dispose();
   if (root.userData.disposeSharedSprite) { root.userData.disposeSharedSprite(); return; }
   // A resident controller returns its sprite to the shared source, whose atlases must not be freed with the entity.
   if (root.userData.animationController instanceof ResidentSpriteController) root.userData.animationController.dispose();

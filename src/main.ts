@@ -378,7 +378,7 @@ playerAnimation?.bindRebirth({
   hasBodyItem: () => inventory.GetEquippedItem('body') !== null,
   showHUD: show => ghostOwner?.showHUD(show),
   sleepNearby: (radius, seconds) => {
-    for (const inst of FindEntities(scene, player.position, radius * WORLD_SCALE)) {
+    for (const inst of FindEntities(player.position, radius * WORLD_SCALE)) {
       (inst as unknown as { model: { userData: { components?: { sleeper?: { GoToSleep(seconds: number): void } } } } }).model.userData.components?.sleeper?.GoToSleep(seconds);
     }
   },

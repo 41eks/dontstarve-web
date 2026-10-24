@@ -257,6 +257,9 @@ describe('DST building skins', () => {
     awake.set(false);
     await tick();
     expect(meshes()).toBe(0);
+    // The anchor leaves the scene with its visual; identity stays on the instance.
+    expect(model.parent).toBeNull();
+    expect(model.userData.entityId).toBe('lab:resident');
     const animation = model.userData.animationController as SpriteAnimationController;
     animation.start('proximity_loop');
     expect(animation.currentAnimation).toBe('proximity_loop');
@@ -268,6 +271,7 @@ describe('DST building skins', () => {
     awake.set(true);
     await tick();
     expect(meshes()).toBe(1);
+    expect(model.parent).toBe(world.scene);
     expect(model.userData.animationController).toBe(animation);
     expect(animation.currentAnimation).toBe('proximity_loop');
     expect(placement.exportRecords()[0].record).toMatchObject({ components: { building: { skinId } } });

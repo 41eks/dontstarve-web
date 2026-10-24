@@ -44,9 +44,9 @@ function setup(prefab: StaffLightId = 'stafflight') {
 }
 
 it('heats nearby thermal stones with distance falloff until permanent removal', async () => {
-  const { manager, scene, update } = setup();
+  const { manager, update } = setup();
   const model = await manager.spawn(new THREE.Vector3());
-  const source = FindEntities(scene, model.position, 1, ['HASHEATER'])[0];
+  const source = FindEntities(model.position, 1, ['HASHEATER'])[0];
   expect(source.prefab).toBe('stafflight');
   expect(source.components.heater!.GetHeat()).toBe(100);
   expect(source.components.heater!.IsExothermic()).toBe(true);
@@ -58,7 +58,7 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
   configureHeatRockEntity(stone);
   stone.BindTemperatureWorld({
     temperature: createSignal(0), componentUpdates: updates, unitScale: TILE_SIZE / 4,
-    findHeaters: (position, radius, ignoredTags) => FindEntities(scene, position, radius, ['HASHEATER'], ignoredTags),
+    findHeaters: (position, radius, ignoredTags) => FindEntities(position, radius, ['HASHEATER'], ignoredTags),
   });
   const temperature = stone.components.temperature!;
   const rock = stone.getComponent<HeatRock>('heatrock')!;
@@ -83,16 +83,16 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
     update(1.01);
     expect(source.hasTag('HASHEATER')).toBe(false);
     expect(source.components.heater).toBeUndefined();
-    expect(FindEntities(scene, model.position, 1, ['HASHEATER'])).toEqual([]);
+    expect(FindEntities(model.position, 1, ['HASHEATER'])).toEqual([]);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(38.1);
   } finally { stone.destroy(); updates.dispose(); }
 });
 
 it('cools nearby thermal stones with endothermic falloff until permanent removal', async () => {
-  const { manager, scene, update, player } = setup('staffcoldlight');
+  const { manager, update, player } = setup('staffcoldlight');
   const model = await manager.spawn(new THREE.Vector3());
-  const source = FindEntities(scene, model.position, 1, ['HASHEATER'])[0];
+  const source = FindEntities(model.position, 1, ['HASHEATER'])[0];
   const heater = source.components.heater!;
   expect(source.prefab).toBe('staffcoldlight');
   expect(heater.GetHeat()).toBe(-100);
@@ -105,7 +105,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
   configureHeatRockEntity(stone);
   stone.BindTemperatureWorld({
     temperature: createSignal(35), componentUpdates: updates, unitScale: TILE_SIZE / 4,
-    findHeaters: (position, radius, ignoredTags) => FindEntities(scene, position, radius, ['HASHEATER'], ignoredTags),
+    findHeaters: (position, radius, ignoredTags) => FindEntities(position, radius, ['HASHEATER'], ignoredTags),
   });
   const temperature = stone.components.temperature!, rock = stone.getComponent<HeatRock>('heatrock')!;
   try {
@@ -127,7 +127,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     expect(source.components.heater).toBe(heater);
     player.set(0, 0, 0);
     update(.1);
-    expect(FindEntities(scene, model.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
+    expect(FindEntities(model.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
     stone.transform.position.set(0, 0, 0);
     temperature.SetTemperature(5);
     manager.haunt(model);
@@ -136,7 +136,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     update(1.01);
     expect(source.hasTag('HASHEATER')).toBe(false);
     expect(source.components.heater).toBeUndefined();
-    expect(FindEntities(scene, model.position, 1, ['HASHEATER'])).toEqual([]);
+    expect(FindEntities(model.position, 1, ['HASHEATER'])).toEqual([]);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(4.2);
   } finally { stone.destroy(); updates.dispose(); }
@@ -234,7 +234,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   update(0.2);
   expect(model.parent).toBe(scene);
   const newSprite = model.children[0];
-  expect(FindEntities(scene, model.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
+  expect(FindEntities(model.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
   expect(newSprite).not.toBe(oldSprite);
   expect(newSprite.userData.entityId).toBe(model.userData.entityId);
   expect(getStaffLightState(model)).toBe(state);
@@ -423,7 +423,7 @@ it('spawns world lights through console definitions and saves and reloads their 
   for (const entity of restored.byEntityId.values()) {
     const model = entity as THREE.Object3D;
     expect(getStaffLightState(model)!.phase.peek()).toBe('active');
-    const heater = FindEntities(model.parent!, model.position, 1, ['HASHEATER'])[0].components.heater!;
+    const heater = FindEntities(model.position, 1, ['HASHEATER']).find(entity => entity === model.userData.actionEntity)!.components.heater!;
     expect(heater.GetHeat()).toBe(model.name === 'stafflight' ? 100 : -100);
     expect(heater.IsEndothermic()).toBe(model.name === 'staffcoldlight');
   }

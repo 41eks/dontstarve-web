@@ -27,7 +27,7 @@ export function createGunpowderGroundFactory(context: GroundPrefabContext): Grou
       return { ...visual, bindEntity(entity: ItemEntity) {
         visual.bindEntity?.(entity);
         const explosive = entity.component('explosive', () => new Explosive(entity,
-          (center, radius) => FindEntities(context.scene, center, radius, [], CANT_TAGS) as unknown as readonly ExplosiveTarget[],
+          (center, radius) => FindEntities(center, radius, [], CANT_TAGS) as unknown as readonly ExplosiveTarget[],
           TILE_SIZE / 4));
         entity.components.explosive = explosive;
         // explosive.explosivedamage only feeds combat targets, which this scene does not model.

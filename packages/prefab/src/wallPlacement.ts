@@ -13,6 +13,7 @@ import type { WorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
+import { PrefabInstance } from './prefabInstance';
 import { ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import { nextReskin } from './reskin_tool';
@@ -119,6 +120,7 @@ export interface WallHammerContext {
 
 interface WallArt {
     model: THREE.Group;
+    readonly instance: PrefabInstance;
     animation: ResidentSpriteController;
     opacity: Signal<number>;
     stopAppearance: () => void;
@@ -245,8 +247,8 @@ export class WallPlacement<BuildId extends string> {
 
     async spawnFromSave(buildId: BuildId, record: PlacementSaveRecord): Promise<THREE.Group> {
         const wall = await this.createInstance(buildId, false, record.components.wall?.skinId);
-        wall.model.userData.entityId = record.id;
-        wall.model.userData.saveRecord = record;
+        wall.instance.entityId = record.id;
+        wall.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
         wall.model.position.set(x, y + wall.groundOffset, z);
         // health:OnLoad after the position is known, so a full wall picks its stable variant.
@@ -276,7 +278,7 @@ export class WallPlacement<BuildId extends string> {
             const entity = actionEntity(wall.model, wallWorldPrefab(wall.buildId));
             if (!entity.hasTag('HAMMER_workable')) continue;
             targets.push({
-                id: String(wall.model.userData.entityId), model: wall.model, entity,
+                id: String(wall.instance.entityId), model: wall.model, entity,
                 position: wall.model.position.clone().add(new THREE.Vector3(0, -wall.groundOffset, 0)),
                 isValid: () => !this.disposed && this.placed.has(wall) && wall.model.visible && wall.model.parent !== null,
                 playHit: () => { performToolWork('HAMMER', entity, {}); },
@@ -288,7 +290,7 @@ export class WallPlacement<BuildId extends string> {
     /** Live walls that combat:CanTarget; broken walls are dead and excluded. */
     get combatTargets(): readonly WallCombatTarget[] {
         return Array.from(this.placed, (wall) => ({
-            id: String(wall.model.userData.entityId), model: wall.model, inst: wall.combatInst,
+            id: String(wall.instance.entityId), model: wall.model, inst: wall.combatInst,
             isValid: () => !this.disposed && this.placed.has(wall) && wall.model.visible && wall.model.parent !== null
                 && !wall.health.IsDead(),
         }));
@@ -299,9 +301,9 @@ export class WallPlacement<BuildId extends string> {
     getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
         return Array.from(this.mouseRecords.select(model, this.placed), (wall) => {
                 const isValid = () => !this.disposed && this.placed.has(wall)
-                    && wall.model.visible && wall.model.parent !== null;
+                    && wall.model.visible;
                 return {
-                    id: String(wall.model.userData.entityId), prefabId: wallWorldPrefab(wall.buildId), model: wall.model,
+                    id: String(wall.instance.entityId), prefabId: wallWorldPrefab(wall.buildId), model: wall.model,
                     skins: Object.keys(this.definitions[wall.buildId].skinArchives ?? {}), get skinId() { return wall.skinId.peek(); },
                     get isRemoved() { return !isValid(); }, hasTag: tag => actionEntity(wall.model, wallWorldPrefab(wall.buildId)).hasTag(tag),
                     get position() { return wall.model.position.clone().add(new THREE.Vector3(0, -wall.groundOffset, 0)); }, isValid,
@@ -342,7 +344,7 @@ export class WallPlacement<BuildId extends string> {
             return {
                 prefabId: wall.buildId,
                 record: {
-                    id: wall.model.userData.entityId as string,
+                    id: wall.instance.entityId as string,
                     transform: {
                         position: saveGroundPosition(wall.model.position, wall.groundOffset),
                         rotationY: 0,
@@ -455,7 +457,9 @@ export class WallPlacement<BuildId extends string> {
         const sprite = source.create();
         const model = new THREE.Group();
         model.name = definition.name;
-        const animation = new ResidentSpriteController(model, () => source.create(), sprite => source.disposeSprite(sprite), sprite, { name: 'half', held: true });
+        const instance = new PrefabInstance(buildId, model, { create: () => source.create(), release: sprite => source.disposeSprite(sprite),
+            initial: sprite, clip: { name: 'half', held: true } });
+        const animation = instance.animation;
         model.userData.animationController = animation;
         animation.setPose(undefined);
         const opacity = createSignal(1);
@@ -469,7 +473,7 @@ export class WallPlacement<BuildId extends string> {
         });
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
-        return { model, animation, opacity, stopAppearance, groundOffset: -bounds.min.y };
+        return { model, instance, animation, opacity, stopAppearance, groundOffset: -bounds.min.y };
     }
 
     private async createInstance(buildId: BuildId, attach = true, requestedSkin?: string): Promise<WallInstance<BuildId>> {
@@ -541,8 +545,8 @@ export class WallPlacement<BuildId extends string> {
             if (definition.onhammered) definition.onhammered(context);
             else context.remove();
         });
-        if (skinId !== undefined) model.userData.skinId = skinId;
-        if (attach) model.userData.entityId = newEntityId();
+        if (skinId !== undefined) wall.instance.skinId = skinId;
+        if (attach) wall.instance.entityId = newEntityId();
         if (attach) this.scene.add(model);
         return wall;
     }
@@ -559,11 +563,10 @@ export class WallPlacement<BuildId extends string> {
             const footY = wall.model.position.y - wall.groundOffset;
             replacement.stopAppearance();
             wall.animation.adopt(replacement.animation);
-            replacement.animation.dispose();
+            replacement.instance.dispose();
             wall.groundOffset = replacement.groundOffset;
             wall.model.position.y = footY + wall.groundOffset;
-            if (skinId === undefined) delete wall.model.userData.skinId;
-            else wall.model.userData.skinId = skinId;
+            wall.instance.skinId = skinId;
             this.updateFacing(wall, this.facing.peek());
         });
     }
@@ -602,7 +605,7 @@ export class WallPlacement<BuildId extends string> {
         const ground = wall.model.position.clone().setY(wall.model.position.y - wall.groundOffset);
         wall.body = MakeObstaclePhysics(ground, .5);
         this.setObstacle(wall, !wall.health.IsDead());
-        wall.stopActivity = watchTileActivity(wall.model, this.world.tickingarea, active => wall.animation.setActive(active));
+        wall.stopActivity = watchTileActivity(wall.model, this.world.tickingarea, active => wall.instance.setActive(active));
     }
 
     /** walls.lua makeobstacle/clearobstacle: Physics:SetActive follows health > 0. */

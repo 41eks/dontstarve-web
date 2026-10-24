@@ -4,7 +4,7 @@ import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlyS
 import type { WorkableInst } from '../../componets/src/workable';
 import { TileTracker } from '../../componets/src/tileManager';
 import { registerMouseTarget } from '../../stategraphs/src/mouseTargets';
-import { retainSpatialEntity, syncEntitySpatial, visitEntitiesNear } from '../../stategraphs/src/entitySpatialIndex';
+import { syncEntitySpatial } from '../../stategraphs/src/entitySpatialIndex';
 import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
 
 /** Existing world removal writes update the sole lifecycle signal, including inside batches. */
@@ -62,7 +62,6 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
     },
   };
   model.userData.actionEntity = entity;
-  const spatial = retainSpatialEntity(model, entity.getPosition);
   const stopPlacement = registerPlacementEntity(model, entity.getPosition);
   mouseTarget = registerMouseTarget(model, () => !entity.isRemoved && entity.hasTag('tickingarea') && !entity.hasTag('NOCLICK'));
   const stopTags = (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
@@ -74,27 +73,38 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
     stopTags?.();
     mouseTarget?.dispose();
     stopPlacement();
-    spatial.dispose();
     entityWorlds.get(entity)?.remove(entity);
+    setPrefabActive(entity, false);
     entity.removeTag('tickingarea');
     liveEntities.delete(entity);
     delete model.userData.actionEntity;
   });
   if (!entity.isRemoved) {
     if (currentEntityWorld) currentEntityWorld.add(entity);
-    else entity.addTag('tickingarea'); // Standalone worlds have no area gate.
+    else {
+      entity.addTag('tickingarea'); // Standalone worlds have no area gate.
+      setPrefabActive(entity, true);
+    }
   }
   return entity;
 }
 
 /**
- * The engine's lifecycle list adopts projected insts when a world binds. Radius and mouse queries use the shared
- * spatial index; removed insts leave both registrations when their removal signal fires.
+ * The engine's lifecycle list adopts projected insts when a world binds. Area effects maintain the active
+ * prefab list independently of scene attachment; mouse queries retain their own spatial registration.
  */
 const liveEntities = new Set<FoundEntity>();
+export const activePrefabs: FoundEntity[] = [];
 const disposals = new Map<FoundEntity, () => void>();
 const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
 let currentEntityWorld: EntityTickingArea | undefined;
+
+function setPrefabActive(entity: FoundEntity, active: boolean): void {
+  const index = activePrefabs.indexOf(entity);
+  if (active && !entity.isRemoved) {
+    if (index === -1) activePrefabs.push(entity);
+  } else if (index !== -1) activePrefabs.splice(index, 1);
+}
 
 /** Release a model projection, including when its logical item survives a visual replacement or pickup. */
 export function disposeActionEntity(model: THREE.Group): void {
@@ -138,10 +148,15 @@ class EntityTickingArea {
     if (area) {
       const active = watchSignal(area, stop => cleanups.push(stop));
       createEffect(() => {
-        if (active.get()) entity.addTag('tickingarea');
+        const awake = active.get();
+        if (awake) entity.addTag('tickingarea');
         else entity.removeTag('tickingarea');
+        setPrefabActive(entity, awake);
       });
-    } else entity.addTag('tickingarea');
+    } else {
+      entity.addTag('tickingarea');
+      setPrefabActive(entity, true);
+    }
   }
 
   remove(entity: FoundEntity): void {
@@ -179,18 +194,18 @@ function isUnder(model: THREE.Object3D, root: THREE.Object3D): boolean {
 
 export type FoundEntity = ComponentActionEntity & WorkableInst & { getPosition(): THREE.Vector3 };
 
-/** Query only tickingarea-tagged entities, then apply root, caller tags and radius. */
-export function FindEntities(root: THREE.Object3D, position: THREE.Vector3, radius: number,
+/** Query tickingarea-registered prefabs by their logical position and tags, independently of their visual. */
+export function FindEntities(position: THREE.Vector3, radius: number,
   mustTags: readonly string[] = [], cantTags: readonly string[] = [], oneOfTags: readonly string[] = []): FoundEntity[] {
+  if (!Number.isFinite(radius) || radius < 0) throw new RangeError('Invalid entity query radius');
+  if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return [];
   const found: FoundEntity[] = [];
-  visitEntitiesNear(position, radius, model => {
-    const inst = model.userData.actionEntity as FoundEntity | undefined;
-    // Radius has already narrowed the grid candidates; test tags before walking the root chain.
-    if (!inst || inst.isRemoved || !inst.hasTag('tickingarea')) return;
+  const radiusSquared = radius * radius;
+  for (const inst of activePrefabs) {
+    if (inst.isRemoved || !(inst.getPosition().distanceToSquared(position) <= radiusSquared)) continue;
     if (mustTags.some(tag => !inst.hasTag(tag)) || cantTags.some(tag => inst.hasTag(tag))
-      || (oneOfTags.length > 0 && !oneOfTags.some(tag => inst.hasTag(tag)))) return;
-    if (!isUnder(model, root)) return;
+      || (oneOfTags.length > 0 && !oneOfTags.some(tag => inst.hasTag(tag)))) continue;
     found.push(inst);
-  });
+  }
   return found;
 }
