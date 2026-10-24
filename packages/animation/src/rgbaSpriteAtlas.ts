@@ -204,47 +204,66 @@ export function composeResolvedRgbaSpriteAtlases(
 export interface RgbaSpriteAtlasComposer {
   /** Composes frames until `budgetMs` has elapsed; returns the pages once every frame is drawn. */
   step(budgetMs: number): RgbaSpriteAtlas[] | undefined;
+  /** Releases unfinished work. Completed pages have already passed to the caller. */
+  cancel(): void;
 }
+
+type ResolvedFrames = readonly ResolvedSprite[][] | ((frameIndex: number) => ResolvedSprite[]);
 
 /** `composeResolvedRgbaSpriteAtlases()` split into per-frame steps so a caller can spread it over several frames. */
 export function createResolvedRgbaSpriteAtlasComposer(
   animation: Animation,
-  frames: readonly ResolvedSprite[][],
+  frames: ResolvedFrames,
   maxTextureSize: number,
   renderer?: THREE.WebGLRenderer,
 ): RgbaSpriteAtlasComposer {
   const steps = composeResolvedSteps(animation, frames, maxTextureSize, renderer && canComposeAtlasOnGpu(renderer) ? renderer : undefined);
   let pages: RgbaSpriteAtlas[] | undefined;
+  let cancelled = false;
   return {
     step(budgetMs) {
+      if (cancelled) throw new Error('Atlas composition cancelled');
       if (pages) return pages;
       const deadline = performance.now() + budgetMs;
       do {
         const end = spritePerfSpan('step:next', animation.name);
-        const next = steps.next();
-        end();
+        let next: IteratorResult<void, RgbaSpriteAtlas[]>;
+        try { next = steps.next(); } catch (error) { cancelled = true; throw error; } finally { end(); }
         if (next.done) return pages = next.value;
       } while (performance.now() < deadline);
       return undefined;
+    },
+    cancel() {
+      if (cancelled || pages) return;
+      cancelled = true;
+      steps.return([]);
     },
   };
 }
 
 function* composeResolvedSteps(
   animation: Animation,
-  frames: readonly ResolvedSprite[][],
+  frames: ResolvedFrames,
   maxTextureSize: number,
   gpu?: THREE.WebGLRenderer,
 ): Generator<void, RgbaSpriteAtlas[]> {
-  const endLayout = spritePerfSpan('step:layout', `${frames.length} frames`);
-  const layouts = frames.map((sprites, index) => layoutFrame(animation, index, sprites));
+  const frameCount = typeof frames === 'function' ? animation.frames.length : frames.length;
+  const layouts: FrameLayout[] = [];
   // Preserve the source texel density instead of expanding downscaled DST atlases
   // back to their build-coordinate dimensions (which can triple each axis).
   let density = 0;
-  for (const sprites of frames) for (const { image, materials } of sprites) {
-    const texture = materials[image.sampler ?? 0].map!;
-    if (!(texture instanceof THREE.DataTexture)) throw new Error('Instanced sprite source must be a decoded atlas');
-    density = Math.max(density, texture.image.width / image.canvasWidth!, texture.image.height / image.canvasHeight!);
+  for (let index = 0; index < frameCount; index++) {
+    const end = spritePerfSpan('step:layout', animation.name);
+    try {
+      const sprites = typeof frames === 'function' ? frames(index) : frames[index];
+      layouts.push(layoutFrame(animation, index, sprites));
+      for (const { image, materials } of sprites) {
+        const texture = materials[image.sampler ?? 0].map!;
+        if (!(texture instanceof THREE.DataTexture)) throw new Error('Instanced sprite source must be a decoded atlas');
+        density = Math.max(density, texture.image.width / image.canvasWidth!, texture.image.height / image.canvasHeight!);
+      }
+    } finally { end(); }
+    yield;
   }
   const resolutionScale = Math.min(1, density);
   // A clip uses one origin and one texel grid. Cropping and rounding each frame
@@ -265,8 +284,7 @@ function* composeResolvedSteps(
   const columns = Math.floor(maxTextureSize / cellWidth), rows = Math.floor(maxTextureSize / cellHeight);
   if (columns < 1 || rows < 1) throw new Error('Sprite frame exceeds the maximum atlas size');
   const capacity = columns * rows;
-  endLayout();
-  for (const sprites of gpu ? [] : frames) for (const { image, materials } of sprites) {
+  for (const { sprites } of gpu ? [] : layouts) for (const { image, materials } of sprites) {
     const texture = materials[image.sampler ?? 0].map;
     if (!(texture instanceof THREE.DataTexture)) throw new Error('Instanced sprite source must be a decoded atlas');
     if (decodedSources.has(texture)) continue;
@@ -275,13 +293,21 @@ function* composeResolvedSteps(
   }
   const sourceOf = ({ image, materials }: ResolvedSprite) => decodedSources.get(materials[image.sampler ?? 0].map!)!;
   const pages: RgbaSpriteAtlas[] = [];
-  for (let offset = 0; offset < frames.length; offset += capacity) {
-    const frameIndices = frames.slice(offset, offset + capacity).map((_, index) => index + offset);
-    const options = { columns, frameIndices, resolutionScale };
-    pages.push(gpu ? yield* composeGpuPageSteps(gpu, animation, frameIndices.map(index => layouts[index]), options)
-      : yield* composeAtlasSteps(animation, index => layouts[index], sourceOf, options));
+  const scratch = gpu ? new GpuAtlasScratch() : undefined;
+  let delivered = false;
+  try {
+    for (let offset = 0; offset < layouts.length; offset += capacity) {
+      const frameIndices = layouts.slice(offset, offset + capacity).map((_, index) => index + offset);
+      const options = { columns, frameIndices, resolutionScale };
+      pages.push(gpu ? yield* composeGpuPageSteps(gpu, scratch!, animation, frameIndices.map(index => layouts[index]), options)
+        : yield* composeAtlasSteps(animation, index => layouts[index], sourceOf, options));
+    }
+    delivered = true;
+    return pages;
+  } finally {
+    scratch?.dispose();
+    if (!delivered) for (const page of pages) page.texture.dispose();
   }
-  return pages;
 }
 
 /** Assigns each frame its texel size and cell in one grid page; returns the page size. */
@@ -378,137 +404,181 @@ function withRendererState(renderer: THREE.WebGLRenderer, draw: () => void) {
   const face = renderer.getActiveCubeFace(), level = renderer.getActiveMipmapLevel();
   const autoClear = renderer.autoClear, clearAlpha = renderer.getClearAlpha();
   const clearColor = renderer.getClearColor(new THREE.Color());
-  const { info } = renderer, counters = { ...info.render }, autoReset = info.autoReset;
+  const { info } = renderer, autoReset = info.autoReset;
+  const { calls, triangles, points, lines } = info.render;
+  const counters = { calls, triangles, points, lines };
   info.autoReset = false;
   try { draw(); } finally {
     renderer.setRenderTarget(target, face, level);
     renderer.autoClear = autoClear;
     renderer.setClearColor(clearColor, clearAlpha);
+    // WebGLObjects uses info.render.frame to upload a geometry once per render.
+    // Rolling it back would suppress later writes to our reused scratch buffers.
     Object.assign(info.render, counters);
     info.autoReset = autoReset;
   }
 }
 
-/**
- * One atlas page composed on the GPU: every part is a textured quad drawn in source z order into a premultiplied
- * half-float target, then resolved to a straight-alpha sRGB texture like the canvas path produces. No source
- * texture is decoded into a second CPU copy.
- */
+/** Task-owned scratch buffers and materials, reused across frames and pages, never shared finished geometry. */
+class GpuAtlasScratch {
+  readonly scene = new THREE.Scene();
+  readonly camera = new THREE.Camera();
+  readonly size = { value: new THREE.Vector2() };
+  readonly uploaded = new Set<THREE.Texture>();
+  private readonly materials: THREE.ShaderMaterial[] = [];
+  private readonly materialIndices = new Map<THREE.Texture, number>();
+  private readonly geometry = new THREE.BufferGeometry();
+  private readonly mesh = new THREE.Mesh(this.geometry, this.materials);
+  private positions = new Float32Array();
+  private uvs = new Float32Array();
+  private capacity = 0;
+  readonly resolve = new THREE.ShaderMaterial({
+    uniforms: { map: { value: null as THREE.Texture | null } }, vertexShader: GPU_RESOLVE_VERTEX,
+    fragmentShader: GPU_RESOLVE_FRAGMENT, blending: THREE.NoBlending, depthTest: false, depthWrite: false,
+  });
+  readonly resolveScene = new THREE.Scene();
+  private readonly quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.resolve);
+
+  constructor() {
+    this.mesh.frustumCulled = this.quad.frustumCulled = false;
+    this.scene.add(this.mesh); this.resolveScene.add(this.quad);
+  }
+
+  private ensureCapacity(count: number): void {
+    if (count > 0x3fff) throw new Error('A sprite frame cannot contain more than 16383 parts');
+    if (count <= this.capacity) return;
+    // Dispose old GPU buffers before replacing attributes on this task's private geometry.
+    if (this.capacity) this.geometry.dispose();
+    this.capacity = Math.min(0x3fff, THREE.MathUtils.ceilPowerOfTwo(count));
+    this.positions = new Float32Array(this.capacity * 12);
+    this.uvs = new Float32Array(this.capacity * 8);
+    const indices = new Uint16Array(this.capacity * 6);
+    for (let part = 0; part < this.capacity; part++) {
+      const vertex = part * 4, offset = part * 6;
+      indices[offset] = vertex; indices[offset + 1] = vertex + 1; indices[offset + 2] = vertex + 2;
+      indices[offset + 3] = vertex; indices[offset + 4] = vertex + 2; indices[offset + 5] = vertex + 3;
+    }
+    this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage));
+    this.geometry.setAttribute('uv', new THREE.BufferAttribute(this.uvs, 2).setUsage(THREE.DynamicDrawUsage));
+    this.geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  }
+
+  private materialIndex(map: THREE.Texture): number {
+    let index = this.materialIndices.get(map);
+    if (index !== undefined) return index;
+    index = this.materials.length;
+    this.materialIndices.set(map, index);
+    this.materials.push(new THREE.ShaderMaterial({
+      uniforms: { map: { value: map }, size: this.size }, vertexShader: GPU_VERTEX, fragmentShader: GPU_PART_FRAGMENT,
+      transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
+      blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
+      blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+      blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
+    }));
+    return index;
+  }
+
+  drawFrame(frame: FrameLayout, scale: number): void {
+    const count = frame.sprites.length;
+    this.ensureCapacity(count);
+    this.geometry.clearGroups();
+    let run = -1, runStart = 0;
+    for (let part = 0; part < count; part++) {
+      const { element, image, materials } = frame.sprites[part];
+      const [a, b, c, d, tx, ty] = element.matrix;
+      const x0 = image.x - image.width / 2, y0 = image.y - image.height / 2;
+      const u0 = image.bbx! / image.canvasWidth!, u1 = (image.bbx! + image.width) / image.canvasWidth!;
+      const v0 = image.bby! / image.canvasHeight!, v1 = (image.bby! + image.height) / image.canvasHeight!;
+      for (let corner = 0; corner < 4; corner++) {
+        const right = corner === 1 || corner === 2, bottom = corner >= 2;
+        const x = x0 + (right ? image.width : 0), y = y0 + (bottom ? image.height : 0);
+        const vertex = part * 4 + corner;
+        this.positions[vertex * 3] = (a * x + c * y + tx - frame.minX) * scale + frame.atlasX;
+        this.positions[vertex * 3 + 1] = (b * x + d * y + ty - frame.minY) * scale + frame.atlasY;
+        this.uvs[vertex * 2] = right ? u1 : u0; this.uvs[vertex * 2 + 1] = bottom ? v1 : v0;
+      }
+      const material = this.materialIndex(materials[image.sampler ?? 0].map!);
+      if (material !== run) {
+        if (run >= 0) this.geometry.addGroup(runStart * 6, (part - runStart) * 6, run);
+        run = material; runStart = part;
+      }
+    }
+    if (count) this.geometry.addGroup(runStart * 6, (count - runStart) * 6, run);
+    this.geometry.setDrawRange(0, count * 6);
+    for (const [name, length] of [['position', count * 12], ['uv', count * 8]] as const) {
+      const attribute = this.geometry.getAttribute(name) as THREE.BufferAttribute;
+      // A render may not have consumed previous writes (e.g. during context loss).
+      let end = length;
+      for (const range of attribute.updateRanges) end = Math.max(end, range.start + range.count);
+      attribute.clearUpdateRanges(); attribute.addUpdateRange(0, end); attribute.needsUpdate = true;
+    }
+  }
+
+  dispose(): void {
+    this.geometry.dispose(); this.materials.forEach(material => material.dispose());
+    this.quad.geometry.dispose(); this.resolve.dispose();
+    this.scene.clear(); this.resolveScene.clear();
+  }
+}
+
+/** A page keeps its output target; all transient drawing resources belong to the enclosing task. */
 function* composeGpuPageSteps(
   renderer: THREE.WebGLRenderer,
+  scratch: GpuAtlasScratch,
   animation: Animation,
   layouts: FrameLayout[],
   options: Omit<RgbaSpriteAtlasOptions, 'animationName'>,
 ): Generator<void, RgbaSpriteAtlas> {
   if (layouts.length === 0) throw new Error('At least one sprite frame is required');
   const { width, height, resolutionScale } = layoutAtlasPage(layouts, options);
-  const sources = new Set<THREE.Texture>();
-  for (const frame of layouts) for (const { image, materials } of frame.sprites) sources.add(materials[image.sampler ?? 0].map!);
-  for (const texture of sources) {
+  for (const frame of layouts) for (const { image, materials } of frame.sprites) {
+    const texture = materials[image.sampler ?? 0].map!;
+    if (scratch.uploaded.has(texture)) continue;
     const end = spritePerfSpan('step:gpu-upload', texture.name || texture.uuid);
-    renderer.initTexture(texture);
-    end();
+    try { renderer.initTexture(texture); scratch.uploaded.add(texture); } finally { end(); }
     yield;
   }
-
-  const size = { value: new THREE.Vector2(width, height) };
-  const materialIndex = new Map<THREE.Texture, number>();
-  const partMaterials = [...sources].map((map, index) => {
-    materialIndex.set(map, index);
-    return new THREE.ShaderMaterial({
-      uniforms: { map: { value: map }, size }, vertexShader: GPU_VERTEX, fragmentShader: GPU_PART_FRAGMENT,
-      transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
-      blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
-      blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
-      blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
-    });
-  });
   const accumulation = new THREE.WebGLRenderTarget(width, height, { type: THREE.HalfFloatType, depthBuffer: false,
     minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
   const target = new THREE.WebGLRenderTarget(width, height, { depthBuffer: false,
     minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false });
   target.texture.colorSpace = THREE.SRGBColorSpace;
-  const scene = new THREE.Scene(), camera = new THREE.Camera();
-  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), partMaterials);
-  mesh.frustumCulled = false;
-  scene.add(mesh);
-
+  let delivered = false;
   try {
+    scratch.size.value.set(width, height);
     withRendererState(renderer, () => {
       renderer.setRenderTarget(accumulation);
-      renderer.setClearColor(0x000000, 0);
-      renderer.clear();
+      renderer.setClearColor(0x000000, 0); renderer.clear();
     });
     yield;
     for (const frame of layouts) {
       const end = spritePerfSpan('step:gpu-frame', `${frame.sprites.length} parts`);
-      const count = frame.sprites.length;
-      const positions = new Float32Array(count * 12), uvs = new Float32Array(count * 8), indices = new Uint16Array(count * 6);
-      const geometry = new THREE.BufferGeometry();
-      let run = -1, runStart = 0;
-      frame.sprites.forEach((sprite, part) => {
-        const { element, image, materials } = sprite;
-        const [a, b, c, d, tx, ty] = element.matrix;
-        const x0 = image.x - image.width / 2, y0 = image.y - image.height / 2;
-        const x1 = x0 + image.width, y1 = y0 + image.height;
-        // Build UVs may describe the original atlas size while the shipped texture is downscaled; the normalised
-        // rectangle matches what the ordinary sprite mesh samples. Data rows are stored top-down (flipY false).
-        const u0 = image.bbx! / image.canvasWidth!, u1 = (image.bbx! + image.width) / image.canvasWidth!;
-        const v0 = image.bby! / image.canvasHeight!, v1 = (image.bby! + image.height) / image.canvasHeight!;
-        const corners = [[x0, y0, u0, v0], [x1, y0, u1, v0], [x1, y1, u1, v1], [x0, y1, u0, v1]];
-        corners.forEach(([x, y, u, v], corner) => {
-          const vertex = part * 4 + corner;
-          positions[vertex * 3] = ((a * x + c * y + tx - frame.minX) * resolutionScale) + frame.atlasX;
-          positions[vertex * 3 + 1] = ((b * x + d * y + ty - frame.minY) * resolutionScale) + frame.atlasY;
-          uvs[vertex * 2] = u; uvs[vertex * 2 + 1] = v;
+      try {
+        scratch.drawFrame(frame, resolutionScale);
+        withRendererState(renderer, () => {
+          renderer.setRenderTarget(accumulation); renderer.autoClear = false;
+          renderer.render(scratch.scene, scratch.camera);
         });
-        indices.set([0, 1, 2, 0, 2, 3].map(index => index + part * 4), part * 6);
-        // Layers keep their z order; consecutive parts from one source texture share a draw.
-        const material = materialIndex.get(materials[image.sampler ?? 0].map!)!;
-        if (material !== run) {
-          if (run >= 0) geometry.addGroup(runStart * 6, (part - runStart) * 6, run);
-          run = material; runStart = part;
-        }
-      });
-      geometry.addGroup(runStart * 6, (count - runStart) * 6, run);
-      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-      geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-      mesh.geometry = geometry;
-      withRendererState(renderer, () => {
-        renderer.setRenderTarget(accumulation);
-        renderer.autoClear = false;
-        renderer.render(scene, camera);
-      });
-      geometry.dispose();
-      end();
+      } finally { end(); }
       yield;
     }
-
-    const endResolve = spritePerfSpan('step:gpu-resolve', `${width}x${height}`);
-    const resolve = new THREE.ShaderMaterial({
-      uniforms: { map: { value: accumulation.texture } }, vertexShader: GPU_RESOLVE_VERTEX,
-      fragmentShader: GPU_RESOLVE_FRAGMENT, blending: THREE.NoBlending, depthTest: false, depthWrite: false,
-    });
-    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), resolve);
-    quad.frustumCulled = false;
-    const resolveScene = new THREE.Scene();
-    resolveScene.add(quad);
+    const end = spritePerfSpan('step:gpu-resolve', `${width}x${height}`);
     try {
+      scratch.resolve.uniforms.map.value = accumulation.texture;
       withRendererState(renderer, () => {
-        renderer.setRenderTarget(target);
-        renderer.autoClear = false;
-        renderer.render(resolveScene, camera);
+        renderer.setRenderTarget(target); renderer.autoClear = false;
+        renderer.render(scratch.resolveScene, scratch.camera);
       });
-    } finally { quad.geometry.dispose(); resolve.dispose(); }
-    endResolve();
+    } finally { end(); }
+    const atlas = atlasResult(animation, layouts, target.texture, width, height, resolutionScale);
+    target.texture.addEventListener('dispose', () => target.dispose());
+    delivered = true;
+    return atlas;
   } finally {
-    mesh.geometry.dispose();
-    partMaterials.forEach(material => material.dispose());
+    scratch.resolve.uniforms.map.value = null;
     accumulation.dispose();
+    if (!delivered) target.dispose();
   }
-  target.texture.addEventListener('dispose', () => target.dispose());
-  return atlasResult(animation, layouts, target.texture, width, height, resolutionScale);
 }
 
 function* composeAtlasSteps(

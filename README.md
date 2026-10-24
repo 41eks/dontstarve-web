@@ -17,6 +17,8 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 开发模式（`pnpm dev`）下的性能诊断开关，不是控制台命令，命令语法与支持的 ID 不变：URL 加 `?stats` 显示 stats-gl 面板（FPS／CPU），`?stats=gpu` 另外统计 GPU 时间，库按需加载，不进生产构建；加 `?tileperf` 在控制台输出玩家跨 tile 时的活动网格写入耗时、订阅者耗时和长任务（`[tileperf]`），传送（灵魂跳跃）时附带标记。
 
+精灵性能诊断使用 `?perf`：控制台调用 `__spritePerf.summary()` 查看从加载或上次 `__spritePerf.clear()` 起的 count／total／max；普通模式只累计统计，不逐次写入 User Timing 或打印慢帧警告。`__spritePerf.records` 返回最多 4096 条按时间排列的近期明细，保留准备阶段与慢渲染，普通快速 `render` 每 60 次采样一条，汇总仍统计全部调用。需要浏览器时间线中的全部 `sprite:*` 标记时使用 `?perf=trace`；该模式有额外测量开销，建议只截取待定位的一段。例：`?perf&stats`；开始操作前执行 `__spritePerf.clear()`，结束后查看 `__spritePerf.summary()`。异步 `preload` 包括资源等待时间，嵌套阶段不能相加当作总 CPU 时间；`render.count` 是各资源所有者的 pass 调用数，不是游戏帧数。
+
 月亮洞穴水池及附属雾气、瀑布、月亮玻璃通过动画包通用函数 `createSharedArchiveSprite()` 接入共享帧几何，prefab 无需维护共享动画清单；正常和开采后的 `*_mined` 动画分别缓存，各实体保留自己的播放进度、位置、开采状态及子物件关系，单池移除不释放其他池仍使用的帧。调用方式与资源所有权见 [动画包说明](packages/animation/README.md#通用共享帧入口)。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 的导出和恢复流程沿用原有实现。
 
 蘑菇树通过 `createSharedArchiveSprite()` 的 `instancedAnimations: ['idle_loop']` 实例化待机：源 atlas 零件按动画变换和层顺序合成完整帧，整段动画共用固定原点与像素网格，保留每棵树的随机起始帧、颜色、位置与交互。受击、倒下、树桩、生长／开花及燃烧消失仍使用共享帧几何，返回待机自动重新合批。深度预绘制与不写深度的颜色 pass 保持地皮、树和动态角色的遮挡顺序；资源由 manager 统一释放。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存原有树木状态。

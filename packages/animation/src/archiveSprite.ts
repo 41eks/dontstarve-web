@@ -49,6 +49,34 @@ export interface ArchiveSpriteBuild {
   readonly materials: THREE.MeshBasicMaterial[];
 }
 
+interface SpriteAppearance {
+  animation: ParsedAnim['animations'][number];
+  builds: readonly ArchiveSpriteBuild[];
+  skin?: ArchiveSpriteBuild;
+  overrides: ReadonlyMap<number, { hash: number; source: ArchiveSpriteBuild }>;
+  hidden: ReadonlySet<number>;
+}
+
+function resolveAppearanceFrame({ animation, builds, skin, overrides, hidden }: SpriteAppearance, index: number): ResolvedSprite[] {
+  return [...animation.frames[index].elements]
+    // These banks include bounding-only symbols with no build art.
+    .filter(element => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash))
+    .sort((a, b) => b.z - a.z).flatMap((element): ResolvedSprite[] => {
+      const override = overrides.get(element.imageHash), hash = override?.hash ?? element.imageHash;
+      for (const build of [...(skin ? [skin] : []), ...(override ? [override.source] : builds)]) {
+        const image = findImage(build.build, hash, element.imageIndex);
+        if (image) return [{ element, image, materials: build.materials }];
+      }
+      // Missing source intervals draw nothing (e.g. leaf FX supplied by a separate prefab).
+      return [];
+    });
+}
+
+/** This closure retains immutable source appearance data, never the sprite that first requested it. */
+function appearanceResolver(appearance: SpriteAppearance): (index: number) => ResolvedSprite[] {
+  return index => resolveAppearanceFrame(appearance, index);
+}
+
 /** Separate caches support animation-only banks and build-only swap archives. */
 export class ArchiveSpriteAssets {
   private readonly animations = new Map<string, Promise<ParsedAnim>>();
@@ -248,21 +276,12 @@ function constructArchiveSprite(
   let disposed = false;
   let loop = definition.loop;
   let onComplete: (() => void) | undefined;
-  const resolveSprites = (index: number, shared: boolean): ResolvedSprite[] => [...animation.frames[index].elements]
-    // These banks include a bounding-only symbol with no build art.
-    .filter((element) => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash))
-    .sort((a, b) => b.z - a.z).flatMap((element): ResolvedSprite[] => {
-      const override = overrides.get(element.imageHash);
-      const hash = override?.hash ?? element.imageHash;
-      const candidates = [...(skin ? [skin] : []), ...(override ? [override.source] : activeBuilds)];
-      for (const build of candidates) {
-        const image = findImage(build.build, hash, element.imageIndex);
-        if (image) return [{ element, image, materials: (shared ? source(build) : build).materials }];
-      }
-      // AnimState draws nothing for a symbol its builds lack or omit from this frame (e.g. the leaf-fx symbols
-      // in drop_leaves, which come from the separate tree_leaf_fx build).
-      return [];
-    });
+  // Keep only source data in the deferred resolver, without retaining this entity's controller or private materials.
+  const snapshotAppearance = (): SpriteAppearance => ({ animation, builds: activeBuilds.map(source), skin: skin && source(skin),
+    overrides: new Map([...overrides].map(([hash, override]) => [hash, { hash: override.hash, source: source(override.source) }])),
+    hidden: new Set(hidden) });
+  const resolveSprites = (index: number, shared: boolean): ResolvedSprite[] => resolveAppearanceFrame(shared ? snapshotAppearance()
+    : { animation, builds: activeBuilds, skin, overrides, hidden }, index);
   const update = (dt: number) => {
     if (paused || disposed) return;
     elapsed += Math.max(0, Math.min(dt, 0.1));
@@ -302,7 +321,7 @@ function constructArchiveSprite(
     if (instanced) {
       sharedAppearance ||= appearanceKey();
       instances.show(`${cache.idOf(animation)}:${sharedAppearance}`, animation,
-        () => animation.frames.map((_, index) => resolveSprites(index, true)), index);
+        () => appearanceResolver(snapshotAppearance()), index);
     } else instances?.hide();
     previousFrame = index;
   };
