@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { createMoonTreeForest } from '@dontstarve-web/prefab/moontree';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { createTurfGround } from '@dontstarve-web/prefab/turf';
-import { TurfMap } from '@dontstarve-web/prefab/turfMap';
+import { TurfMap, WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { initialSave } from './save/initialSave';
 
 const ground = await createTurfGround({
@@ -14,7 +14,10 @@ const ground = await createTurfGround({
     size: initialSave.world.map.generator.options.size,
 });
 
-export const turfMap = new TurfMap(initialSave.world.map.generator.options.size, initialSave.world.map.tiles);
+export const turfMap = new TurfMap(initialSave.world.map.generator.options.size, initialSave.world.map.tiles,
+    initialSave.world.map.defaultTileId);
+// The plane remains a pointer target; local maps draw only their saved land cells.
+(ground.material as THREE.Material).visible = turfMap.defaultTileId === WORLD_TILES.DECIDUOUS;
 export const turfGround = await turfMap.createVisual(`${import.meta.env.BASE_URL}dst/data`);
 
 export const moonTreeForest = await createMoonTreeForest(

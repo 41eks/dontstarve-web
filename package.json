@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test:asset-cache": "pnpm build && node --test tests/asset-cache-build.test.mjs && pnpm --filter @dontstarve-web/ui exec playwright test --config asset-cache.playwright.config.ts",
     "preview": "vite preview"
   },
   "devDependencies": {

@@ -1,0 +1,509 @@
+{
+  "regions": [
+    "BlueForest",
+    "MoonCaveForest",
+    "ArchiveMaze",
+    "CaveExitTask1"
+  ],
+  "nodes": [
+    "BlueForest:5:PitRoom",
+    "BlueForest:BG_24:BGBlueMush",
+    "BlueForest:5:PitRoom:BLOCKER_BLANK_1",
+    "BlueForest:2:BlueMushMeadow",
+    "BlueForest:BG_23:BGBlueMush",
+    "BlueForest:5:PitRoom:BLOCKER_BLANK_2",
+    "BlueForest:BG_25:BGBlueMush",
+    "BlueForest:0:DropperDesolation",
+    "BlueForest:1:BlueSpiderForest",
+    "BlueForest:4:BlueMushForest",
+    "BlueForest:3:BlueMushMeadow",
+    "ArchiveMaze:1:ArchiveMazeRooms",
+    "ArchiveMaze:BG_85:ArchiveMazeRooms",
+    "ArchiveMaze:4:ArchiveMazeEntrance:BLOCKER_BLANK_2",
+    "ArchiveMaze:4:ArchiveMazeEntrance",
+    "ArchiveMaze:3:ArchiveMazeRooms",
+    "ArchiveMaze:2:ArchiveMazeRooms",
+    "ArchiveMaze:BG_87:ArchiveMazeRooms",
+    "ArchiveMaze:0:ArchiveMazeRooms",
+    "ArchiveMaze:BG_86:ArchiveMazeRooms",
+    "ArchiveMaze:4:ArchiveMazeEntrance:BLOCKER_BLANK_1",
+    "CaveExitTask1:1:CaveExitRoom",
+    "CaveExitTask1:0:RabbitArea",
+    "MoonCaveForest:2:MoonMushForest",
+    "MoonCaveForest:3:MoonMushForest",
+    "MoonCaveForest:0:MoonMushForest_entrance",
+    "MoonCaveForest:BG_104:MoonMushForest",
+    "MoonCaveForest:BG_103:MoonMushForest",
+    "MoonCaveForest:1:MoonMushForest"
+  ],
+  "sourceDimensions": [
+    471,
+    471
+  ],
+  "sourceBounds": [
+    250,
+    326,
+    311,
+    458
+  ],
+  "sourceOriginCell": [
+    281,
+    392
+  ],
+  "worldScale": 3.0,
+  "translation": [
+    -540.0,
+    0,
+    -1872.0
+  ],
+  "tileCounts": {
+    "ARCHIVE": 709,
+    "DIRT": 16,
+    "FAKE_GROUND": 136,
+    "FUNGUS": 1083,
+    "FUNGUSMOON": 1893,
+    "MUD": 1,
+    "ROCKY": 34,
+    "SINKHOLE": 433,
+    "WOODFLOOR": 4
+  },
+  "landCells": 4173,
+  "savedCells": 4309,
+  "note": "Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.",
+  "entityWhitelist": [
+    "pighead",
+    "archive_moon_statue"
+  ],
+  "entityCounts": {
+    "pighead": {
+      "source": 7,
+      "imported": 4,
+      "outsideRegion": 3
+    },
+    "archive_moon_statue": {
+      "source": 34,
+      "imported": 31,
+      "outsideRegion": 3
+    }
+  },
+  "entitySources": [
+    {
+      "id": "dst_7FD049B25CA83C50_pighead_index_000004",
+      "prefab": "pighead",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        216,
+        0,
+        472
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_pighead_index_000005",
+      "prefab": "pighead",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        212,
+        0,
+        476
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_pighead_index_000006",
+      "prefab": "pighead",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        212,
+        0,
+        468
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_pighead_index_000007",
+      "prefab": "pighead",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        208,
+        0,
+        472
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106732",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 1,
+      "sourceId": 106732,
+      "sourcePosition": [
+        218.43,
+        0,
+        802.5
+      ],
+      "sourceNode": "ArchiveMaze:0:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106733",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 2,
+      "sourceId": 106733,
+      "sourcePosition": [
+        218.56,
+        0,
+        821.5
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106734",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 3,
+      "sourceId": 106734,
+      "sourcePosition": [
+        188.12,
+        0,
+        867
+      ],
+      "sourceNode": "ArchiveMaze:BG_85:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106735",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 4,
+      "sourceId": 106735,
+      "sourcePosition": [
+        270,
+        0,
+        742.93
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106736",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 5,
+      "sourceId": 106736,
+      "sourcePosition": [
+        189.93,
+        0,
+        773.93
+      ],
+      "sourceNode": "ArchiveMaze:3:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106737",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 6,
+      "sourceId": 106737,
+      "sourcePosition": [
+        125.93,
+        0,
+        805.93
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106738",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 7,
+      "sourceId": 106738,
+      "sourcePosition": [
+        253.93,
+        0,
+        805.93
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106739",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 8,
+      "sourceId": 106739,
+      "sourcePosition": [
+        174,
+        0,
+        838.93
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106740",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 9,
+      "sourceId": 106740,
+      "sourcePosition": [
+        189.93,
+        0,
+        818.06
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106741",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 10,
+      "sourceId": 106741,
+      "sourcePosition": [
+        125.93,
+        0,
+        882.06
+      ],
+      "sourceNode": "ArchiveMaze:BG_87:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106742",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 11,
+      "sourceId": 106742,
+      "sourcePosition": [
+        299.87,
+        0,
+        757
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106743",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 12,
+      "sourceId": 106743,
+      "sourcePosition": [
+        171.87,
+        0,
+        821
+      ],
+      "sourceNode": "ArchiveMaze:2:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106744",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 13,
+      "sourceId": 106744,
+      "sourcePosition": [
+        297.06,
+        0,
+        790
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106745",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 14,
+      "sourceId": 106745,
+      "sourcePosition": [
+        225.93,
+        0,
+        790
+      ],
+      "sourceNode": "ArchiveMaze:0:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106746",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 15,
+      "sourceId": 106746,
+      "sourcePosition": [
+        229.93,
+        0,
+        773.93
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106747",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 16,
+      "sourceId": 106747,
+      "sourcePosition": [
+        193.93,
+        0,
+        854
+      ],
+      "sourceNode": "ArchiveMaze:BG_85:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106748",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 17,
+      "sourceId": 106748,
+      "sourcePosition": [
+        197.93,
+        0,
+        837.93
+      ],
+      "sourceNode": "ArchiveMaze:1:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106749",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 18,
+      "sourceId": 106749,
+      "sourcePosition": [
+        220,
+        0,
+        838
+      ],
+      "sourceNode": "ArchiveMaze:BG_85:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106750",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 19,
+      "sourceId": 106750,
+      "sourcePosition": [
+        282,
+        0,
+        817.06
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106751",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 20,
+      "sourceId": 106751,
+      "sourcePosition": [
+        266.06,
+        0,
+        850.06
+      ],
+      "sourceNode": "ArchiveMaze:BG_85:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106752",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 21,
+      "sourceId": 106752,
+      "sourcePosition": [
+        218,
+        0,
+        881.06
+      ],
+      "sourceNode": "ArchiveMaze:BG_85:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106753",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 22,
+      "sourceId": 106753,
+      "sourcePosition": [
+        138,
+        0,
+        836
+      ],
+      "sourceNode": "ArchiveMaze:BG_87:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106754",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 23,
+      "sourceId": 106754,
+      "sourcePosition": [
+        266.5,
+        0,
+        786.5
+      ],
+      "sourceNode": "ArchiveMaze:BG_86:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106755",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 24,
+      "sourceId": 106755,
+      "sourcePosition": [
+        153.93,
+        0,
+        890
+      ],
+      "sourceNode": "ArchiveMaze:BG_87:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106756",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 25,
+      "sourceId": 106756,
+      "sourcePosition": [
+        149.87,
+        0,
+        886.12
+      ],
+      "sourceNode": "ArchiveMaze:BG_87:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106757",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 26,
+      "sourceId": 106757,
+      "sourcePosition": [
+        173.87,
+        0,
+        890.06
+      ],
+      "sourceNode": "ArchiveMaze:BG_85:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106758",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 27,
+      "sourceId": 106758,
+      "sourcePosition": [
+        178,
+        0,
+        886
+      ],
+      "sourceNode": "ArchiveMaze:BG_85:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106759",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 28,
+      "sourceId": 106759,
+      "sourcePosition": [
+        150,
+        0,
+        866
+      ],
+      "sourceNode": "ArchiveMaze:BG_87:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106760",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 29,
+      "sourceId": 106760,
+      "sourcePosition": [
+        154,
+        0,
+        862
+      ],
+      "sourceNode": "ArchiveMaze:BG_87:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106761",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 30,
+      "sourceId": 106761,
+      "sourcePosition": [
+        174,
+        0,
+        862
+      ],
+      "sourceNode": "ArchiveMaze:BG_87:ArchiveMazeRooms"
+    },
+    {
+      "id": "dst_7FD049B25CA83C50_archive_moon_statue_id_106762",
+      "prefab": "archive_moon_statue",
+      "sourceIndex": 31,
+      "sourceId": 106762,
+      "sourcePosition": [
+        177.93,
+        0,
+        865.93
+      ],
+      "sourceNode": "ArchiveMaze:BG_87:ArchiveMazeRooms"
+    }
+  ],
+  "source": "public/saves/Cluster_58/Caves/save/session/7FD049B25CA83C50/0000000022",
+  "sourceSha256": "b65805f373d653b028700d24e0a1d73e26d800fd7eb0bf7d42d72c073fd800f5"
+}

@@ -56,12 +56,18 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   if (parentId !== null && parentId >= id) fail('snapshot.parentId', 'must refer to an earlier snapshot');
   const world = object(root.world, 'world', ['shardId', 'prefab', 'seed', 'elapsedSeconds', 'systems', 'map', 'entities']);
   const shardId = string(world.shardId, 'world.shardId');
-  const map = object(world.map, 'world.map', ['kind', 'generator', 'tiles']);
+  const map = object(world.map, 'world.map', ['kind', 'generator', 'tiles', 'defaultTileId']);
   const generator = object(map.generator, 'world.map.generator', ['id', 'seed', 'options']);
   const options = object(generator.options, 'world.map.generator.options', ['size', 'moonTreeCount', 'moonTreeExclusionRadiusSquared']);
   const size = number(options.size, 'world.map.generator.options.size', 1, 10_000);
   const tileKeys = new Set<string>();
-  const supportedTiles = Object.values(GROUND_TILE_DEFINITIONS).map(definition => definition.tileId);
+  const groundTiles = Object.values(GROUND_TILE_DEFINITIONS).map(definition => definition.tileId);
+  const supportedTiles = [...groundTiles, WORLD_TILES.IMPASSABLE, WORLD_TILES.FAKE_GROUND];
+  const defaultTileId = map.defaultTileId === undefined ? undefined
+    : choice(map.defaultTileId, 'world.map.defaultTileId', [WORLD_TILES.DECIDUOUS, WORLD_TILES.IMPASSABLE]);
+  if (world.prefab === 'cave' && defaultTileId !== WORLD_TILES.IMPASSABLE) {
+    fail('world.map.defaultTileId', 'cave maps require an impassable background');
+  }
   const tiles = map.tiles === undefined ? undefined : array(map.tiles, 'world.map.tiles',
     (Math.ceil(size / TILE_SIZE) + 1) ** 2).map((value, i) => {
     const path = `world.map.tiles[${i}]`;
@@ -71,7 +77,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     const row = integer(tile.row, `${path}.row`, min, max);
     const tileId = choice(tile.tileId, `${path}.tileId`, supportedTiles);
     const underTileId = tile.underTileId === undefined ? undefined
-      : choice(tile.underTileId, `${path}.underTileId`, supportedTiles.filter(id => id !== WORLD_TILES.FARMING_SOIL && id !== WORLD_TILES.MONKEY_DOCK));
+      : choice(tile.underTileId, `${path}.underTileId`, groundTiles.filter(id => id !== WORLD_TILES.FARMING_SOIL && id !== WORLD_TILES.MONKEY_DOCK));
     if (underTileId !== undefined && tileId !== WORLD_TILES.FARMING_SOIL && tileId !== WORLD_TILES.MONKEY_DOCK) {
       fail(`${path}.underTileId`, 'only farming soil and docks have an underlying tile');
     }
@@ -298,11 +304,12 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     session: { id: string(session.id, 'session.id'), createdAt: timestamp(session.createdAt, 'session.createdAt') },
     snapshot: { id, parentId, savedAt: timestamp(snapshot.savedAt, 'snapshot.savedAt'), reason: choice(snapshot.reason, 'snapshot.reason', ['initial', 'manual', 'autosave']) },
     world: {
-      shardId, prefab: choice(world.prefab, 'world.prefab', ['forest']),
+      shardId, prefab: choice(world.prefab, 'world.prefab', ['forest', 'cave']),
       ...(world.seed === undefined ? {} : { seed: string(world.seed, 'world.seed') }),
       elapsedSeconds: number(world.elapsedSeconds, 'world.elapsedSeconds'), systems,
       map: {
         kind: choice(map.kind, 'world.map.kind', ['generated']),
+        ...(defaultTileId === undefined ? {} : { defaultTileId }),
         ...(tiles === undefined ? {} : { tiles }),
         generator: {
           id: string(generator.id, 'world.map.generator.id'),

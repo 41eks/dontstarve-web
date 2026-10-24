@@ -8,7 +8,7 @@ import { BuildCursor } from './buildCursor';
 import { setPrefabLightOverride } from './localLight';
 import { PlaySound, PreloadSounds } from './sound';
 import { snapToTileCenter, TILE_SIZE } from './tile';
-import { TurfMap, WORLD_TILES } from './turfMap';
+import { TurfMap, WORLD_TILES, isLandTile } from './turfMap';
 import type { WorldContext } from './worldContext';
 import { DockManager, type DockMap } from '../../componets/src/dockmanager';
 
@@ -24,12 +24,12 @@ const DOCK_DEPLOY_SOUND = 'dontstarve/common/together/boat/damage' as const;
 
 export type DockBlocker = PlacementBlocker;
 
-/** tilegroups.lua classification for the tiles this map has: ocean is OCEAN_COASTAL, everything else valid is land. */
+/** tilegroups.lua classification: void tiles are neither land nor ocean. */
 export const dockMapOf = (turf: TurfMap): DockMap => ({
   getTile: (col, row) => turf.tileIdAtCell(col, row),
   setTile: (col, row, tile, under) => turf.setTile(col, row, tile as never, under as never),
   cellsOfTile: tile => turf.cellsOfTile(tile),
-  isLandTile: tile => tile !== WORLD_TILES.INVALID && tile !== WORLD_TILES.OCEAN_COASTAL,
+  isLandTile,
   isTemporaryTile: tile => tile === WORLD_TILES.FARMING_SOIL || tile === WORLD_TILES.MONKEY_DOCK,
 });
 

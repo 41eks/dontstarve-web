@@ -9,4 +9,11 @@ export async function loadSaveJson(url: string): Promise<SaveDocument> {
   return deserializeSave(await response.text(), SAVE_CATALOG);
 }
 
-export const initialSave = await loadSaveJson(`${import.meta.env.BASE_URL}saves/initial-world.json`);
+/** Select a bundled save relative to public/saves, e.g. ?save=Cluster_1/Caves.json. */
+export function saveUrl(search: string, base: string): string {
+  const selected = new URLSearchParams(search).get('save') ?? 'initial-world.json';
+  if (!/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*\.json$/.test(selected)) throw new Error('Invalid save path');
+  return `${base}saves/${selected}`;
+}
+
+export const initialSave = await loadSaveJson(saveUrl(window.location.search, import.meta.env.BASE_URL));

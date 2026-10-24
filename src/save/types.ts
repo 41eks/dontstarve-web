@@ -93,7 +93,7 @@ export interface SaveDocument {
   snapshot: { id: string; parentId: string | null; savedAt: string; reason: string };
   world: {
     shardId: string;
-    prefab: 'forest';
+    prefab: 'forest' | 'cave';
     seed?: string;
     elapsedSeconds: number;
     systems: {
@@ -107,6 +107,8 @@ export interface SaveDocument {
     };
     map: {
       kind: 'generated';
+      /** Missing cells use this tile; omitted in legacy forest saves. */
+      defaultTileId?: number;
       tiles?: TurfTileSave[];
       generator: {
         id: string;

@@ -3,6 +3,9 @@ import '@fontsource/noto-sans-sc/chinese-simplified-900.css';
 import { createRoot } from 'react-dom/client';
 import GeneratingWorldPage from './pages/GeneratingWorldPage';
 import HamletMainScreenPage from './pages/HamletMainScreenPage';
+import { registerAssetCache } from './registerAssetCache';
+
+registerAssetCache();
 
 const app = document.querySelector<HTMLElement>('#app');
 
