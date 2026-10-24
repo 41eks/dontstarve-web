@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { useInteractionSave } from './interactionSave';
@@ -122,7 +122,7 @@ test('right-click shovels and lights grass, and c_save preserves dug items, tool
     { timeout: 35_000 }).toBe('removed');
   const downloadPromise = page.waitForEvent('download');
   await submit('c_save()');
-  const json = await readFile((await (await downloadPromise).path())!, 'utf8');
+  const json = await readSaveDownload((await (await downloadPromise).path())!);
   const restored = await page.evaluate(async ({ urls, json }) => {
     const { deserializeSave } = await import(urls['save/deserialize']);
     const { SAVE_CATALOG } = await import(urls['save/catalog']);

@@ -1,3 +1,4 @@
+import { readSaveDownload } from './save-download';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
@@ -49,7 +50,7 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const save = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
 
   await page.goto('/tests/dst-lighting.html'); await prepare();

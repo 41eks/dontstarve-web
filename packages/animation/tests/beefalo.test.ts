@@ -1,3 +1,4 @@
+import { createTestWorldSources } from './worldContentFixture';
 import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -42,7 +43,7 @@ function setup(random = () => 0) {
   let poop: Iterable<THREE.Vector3> = [];
   const scheduler = new GameTimeScheduler();
   const cycle = createSignal<WorldPhase>('day');
-  const sources: WorldContentEnvironment = { playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
+  const sources: WorldContentEnvironment = { ...createTestWorldSources(scheduler), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
   const world: BeefaloWorld = { phase: 'day', getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: 'spring', scheduler,
     secondsUntilNextDay: now => DAY - now % DAY,
     spawnPrize: vi.fn(),
@@ -332,7 +333,7 @@ describe('original beefalo assets', () => {
     const clock = createSignal<{ phase: BeefaloWorld['phase']; cycles?: number }>({ phase: 'night' });
     const season = createSignal<{ season: BeefaloWorld['season'] }>({ season: 'winter' });
     const cycle = createMemo(() => clock.get().phase);
-    const sources: WorldContentEnvironment = { playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler: new GameTimeScheduler(), temperature: createSignal(30), cycle, season: createSignal({ season: 'winter', progress: .5 }) };
+    const sources: WorldContentEnvironment = { ...createTestWorldSources(new GameTimeScheduler()), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }),  temperature: createSignal(30), cycle, season: createSignal({ season: 'winter', progress: .5 }) };
     const clockPeek = vi.spyOn(clock, 'peek'), seasonPeek = vi.spyOn(season, 'peek');
     const stopClock = vi.fn(), stopSeason = vi.fn();
     const subscribeClock = clock.subscribe, subscribeSeason = season.subscribe;
@@ -433,7 +434,7 @@ describe('original beefalo assets', () => {
     const floor = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: new CANNON.Material('ground') });
     floor.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
     physics.addBody(floor);
-    const sources: WorldContentEnvironment = { playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler: new GameTimeScheduler(), temperature: createSignal(30), cycle: createSignal<WorldPhase>('day'), season: createSignal({ season: 'spring', progress: .5 }) };
+    const sources: WorldContentEnvironment = { ...createTestWorldSources(new GameTimeScheduler()), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }),  temperature: createSignal(30), cycle: createSignal<WorldPhase>('day'), season: createSignal({ season: 'spring', progress: .5 }) };
     const world: BeefaloManagerWorld = {
       scheduler: sources.scheduler, clock: createSignal({ phase: 'day' }), getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
       findPath: (_start, target) => [target], constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {},
@@ -460,7 +461,7 @@ describe('original beefalo assets', () => {
   it('absorbs a running player collision with the Lua character damping instead of flying far', async () => {
     serveAssets();
     const physics = new CANNON.World();
-    const sources: WorldContentEnvironment = { playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler: new GameTimeScheduler(), temperature: createSignal(30), cycle: createSignal<WorldPhase>('day'), season: createSignal({ season: 'spring', progress: .5 }) };
+    const sources: WorldContentEnvironment = { ...createTestWorldSources(new GameTimeScheduler()), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }),  temperature: createSignal(30), cycle: createSignal<WorldPhase>('day'), season: createSignal({ season: 'spring', progress: .5 }) };
     const world: BeefaloManagerWorld = {
       scheduler: sources.scheduler, clock: createSignal({ phase: 'day' }), getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources), season: createSignal({ season: 'spring' }), getPlayerPositions: () => [],
       findPath: (_start, target) => [target], constrainPosition() {}, getPoopPositions: () => [], spawnPoop() {}, spawnPrize() {},

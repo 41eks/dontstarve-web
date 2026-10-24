@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -94,7 +94,7 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
   await expect.poll(() => page.evaluate(() => (window as any).greenGame.player.userData.animationController.stategraph.isOneShot)).toBe(false);
   const download = page.waitForEvent('download');
   await command('c_save()');
-  const file = await download, savedText = await readFile((await file.path())!, 'utf8');
+  const file = await download, savedText = await readSaveDownload((await file.path())!);
   const saved = JSON.parse(savedText), records = saved.world.entities.ground_item;
   const loot = records.filter((record: any) => ['nightmarefuel', 'livinglog', 'opalpreciousgem'].includes(record.components.stack.itemId));
   expect(loot.filter((record: any) => record.components.stack.itemId === 'nightmarefuel')).toHaveLength(4);

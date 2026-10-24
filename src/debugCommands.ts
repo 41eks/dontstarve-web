@@ -114,7 +114,7 @@ async function executeSingleCommand(
     if (!saveGame) return { ok: false, message: '当前无法保存游戏' };
     try {
       await saveGame();
-      return { ok: true, message: '已下载存档 initial-world.json' };
+      return { ok: true, message: '已下载存档 Cluster_1.zip' };
     } catch (error: unknown) {
       return { ok: false, message: `保存失败：${error instanceof Error ? error.message : String(error)}` };
     }

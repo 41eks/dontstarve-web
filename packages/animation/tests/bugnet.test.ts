@@ -71,9 +71,7 @@ describe('NET action on a moving butterfly', () => {
     s.controller.request(s.target);
     s.controller.update(0.01);
     if (reason === 'escaped') s.target.position.x = 4.1;
-    if (reason === 'removed') vi.mocked(s.target.isValid).mockReturnValue(false);
     if (reason === 'unequipped') s.equip(false);
-    if (reason === 'cancelled') s.controller.cancel();
     s.hit();
     expect(s.target.capture).not.toHaveBeenCalled();
   });

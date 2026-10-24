@@ -7,7 +7,6 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createSignal, type SeasonState } from '../../signals/src';
 import { createDeciduousForest } from '../../prefab/src/deciduoustrees';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { performToolWork } from '../../stategraphs/src/componentactions';
 import { DeciduousTreeLeaves } from '../../prefab/src/deciduousTreeLeaves';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));

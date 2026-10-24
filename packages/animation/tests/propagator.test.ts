@@ -56,7 +56,7 @@ it('uses the current spring radius for neighbour queries and heat falloff withou
   expect(propagator.propagationRange.peek()).toBe(3);
   expect(propagator.timer.peek()).toEqual({ status: 'stopped' });
   expect(nearby).toHaveBeenCalledTimes(calls);
-  scheduler.dispose();
+  scheduler.dispose(); unbind();
 });
 
 it('binds a persistent inventory propagator to world season and releases the previous dependency on rebinding', () => {

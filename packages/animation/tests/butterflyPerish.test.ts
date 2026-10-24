@@ -16,7 +16,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-it('settles captured butterflies every ten seconds, pauses on the ground and preserves freshness through pickup and save/load', async () => {
+it('settles captured butterflies every ten seconds and preserves freshness through cursor transfer and save/load', async () => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const world = createPerishWorld(), restoredWorld = createPerishWorld();
@@ -38,11 +38,8 @@ it('settles captured butterflies every ten seconds, pauses on the ground and pre
     world.advance(9); expect(perish.timer.peek()).toBe(timer);
     world.advance(1); expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 1430 });
     world.advance(3);
-    inventory.DropItem(entity, new THREE.Vector3(9, 0, 6));
-    expect(perish.timer.peek()).toEqual({ status: 'paused', remainingSeconds: 1427 });
-    expect(perish.updateTimer.peek()).toEqual({ status: 'stopped' });
-    world.advance(3000); expect(perish.timer.peek()).toEqual({ status: 'paused', remainingSeconds: 1427 });
-    expect(inventory.GiveItem(entity)).toBe(true);
+    inventory.exportState();
+    expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 1427 });
     world.advance(7); inventory.exportState();
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: 1420 });
     expect(inventory.transfer(address, cursorSlotAddress(), 2)).toBe(true);

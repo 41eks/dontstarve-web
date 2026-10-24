@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 test('equipped crown follows real sanity at the 85 percent boundary and recomputes activation after save/reload', async ({ page }) => {
@@ -36,7 +36,7 @@ test('equipped crown follows real sanity at the 85 percent boundary and recomput
   });
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const head = (save: any) => save.players.local.inventory.containers['player:equipment'].slots.find((slot: any) => slot.slotKey === 'head')?.item;
   await page.goto('/tests/dst-lighting.html'); await prepare();

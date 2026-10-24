@@ -1,8 +1,9 @@
+import { testMap } from './tileMapFixture';
 import { describe, expect, it, vi } from 'vitest';
 import { createWorldState, createWorldClockUpdater } from '../../../src/worldState';
 import { getDstCycle } from '../../../src/tuning';
 import { clockstate, seasonstate, moonphasestate, WorldContentKey, createSignal, GetTileStateAtPoint } from '../../signals/src';
-import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
+import { GetTileKeyAtPoint, INVALID_TILE_KEY, TileTracker } from '../../componets/src/tileManager';
 import { Vector3 } from 'three';
 
 function updateClock(state: ReturnType<typeof createWorldState>, elapsedSeconds: number, dt: number) {
@@ -12,8 +13,39 @@ function updateClock(state: ReturnType<typeof createWorldState>, elapsedSeconds:
 }
 
 describe('session world temperature', () => {
+  it('injects saved map dimensions and keeps old trackers and cleanup isolated from a replacement world', async () => {
+    const large = createWorldState({ map: testMap(1200), elapsedSeconds: 0, systems: {} });
+    const point = new Vector3(590, 0, 590);
+    const tracker = new TileTracker(() => point);
+    const active = large.tickingarea(tracker.tile, 0)!;
+    const key = tracker.tile.peek();
+    let small: ReturnType<typeof createWorldState> | undefined;
+    try {
+      expect(key).toBe(9999);
+      large.playerpositions.set([point.clone()]);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(active()).toBe(true);
+      small = createWorldState({ map: testMap(48), elapsedSeconds: 0, systems: {} });
+      expect(GetTileKeyAtPoint(point)).toBe(INVALID_TILE_KEY);
+      tracker.sync();
+      expect(tracker.tile.peek()).toBe(key);
+      point.set(0, 0, 0); tracker.sync();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(active()).toBe(false);
+      large.dispose();
+      const center = new TileTracker(() => point);
+      expect(center.tile.peek()).toBe(10);
+      const smallActive = small.tickingarea(center.tile, 0)!;
+      small.playerpositions.set([point.clone()]);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(smallActive()).toBe(true);
+      small.dispose();
+      expect(GetTileKeyAtPoint(point)).toBe(INVALID_TILE_KEY);
+    } finally { large.dispose(); small?.dispose(); }
+  });
+
   it('binds cached tile queries to player snapshots and releases their pending updates with the world', async () => {
-    const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+    const state = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
     const position = createSignal(GetTileKeyAtPoint(new Vector3()));
     const active = state.tickingarea(position, 0)!;
     const reads = vi.spyOn(state.playerpositions, 'get');
@@ -39,7 +71,7 @@ describe('session world temperature', () => {
   });
 
   it('publishes independent player position snapshots every 60 active frames, including across clock flushes', () => {
-    const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+    const state = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
     const players = [new Vector3(3, 0, 4), new Vector3(8, 0, 9)];
     const positions = vi.fn(() => players);
     const updater = createWorldClockUpdater(state, 0, positions);
@@ -73,7 +105,7 @@ describe('session world temperature', () => {
   });
 
   it('injects component wind and perish signals at init, preserves live queries and stops world tasks on disposal', () => {
-    const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+    const state = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
     const cleanups: (() => void)[] = [];
     const wind = state.getWatchWorldContent(WorldContentKey.Wind, stop => cleanups.push(stop));
     const perish = state.getWatchWorldContent(WorldContentKey.PerishClock, stop => cleanups.push(stop));
@@ -118,7 +150,7 @@ describe('session world temperature', () => {
 
   it('settles clock, moon phase and temperature every 60 active frames using actual dt and flushes partial batches', () => {
     const initialElapsedSeconds = 10 * 480 - 0.5;
-    const state = createWorldState({ elapsedSeconds: initialElapsedSeconds, systems: {} });
+    const state = createWorldState({ map: testMap(), elapsedSeconds: initialElapsedSeconds, systems: {} });
     const cleanups: (() => void)[] = [];
     const localCycle = state.getWatchWorldContent(WorldContentKey.Cycle, stop => cleanups.push(stop));
     const localTemperature = state.getWatchWorldContent(WorldContentKey.Temperature, stop => cleanups.push(stop));
@@ -191,7 +223,7 @@ describe('session world temperature', () => {
   });
 
   it('initializes legacy worlds at their current clock and publishes updates to a read-only signal', () => {
-    const state = createWorldState({ elapsedSeconds: 419.5, systems: {
+    const state = createWorldState({ map: testMap(), elapsedSeconds: 419.5, systems: {
       season: { name: 'winter', daysRemaining: 7 },
     } });
     expect(state.clock).toBe(clockstate);
@@ -216,7 +248,7 @@ describe('session world temperature', () => {
     state.season.set({ season: 'winter', progress: 0.5 });
     updateClock(state, 423, 1);
     expect(state.temperature.peek()).toBe(temperature);
-    const next = createWorldState({ elapsedSeconds: 0, systems: {} });
+    const next = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
     expect(next.clock).toBe(state.clock);
     expect(next.season).toBe(state.season);
     expect(next.worldtemperature.OnSave().season).toBe('spring');

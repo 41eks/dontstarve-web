@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const modules = Object.fromEntries(['main', 'player', 'universal'].map(name =>
@@ -74,7 +74,7 @@ test('right-click plays the panflute: play_flute timing and sound, one use spent
 
   await submit('c_spawn("panflute")');
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const save = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: save }));
   await page.reload(); await prepare();
   expect(await uses()).toBe(9);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type WorldContentSignal } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { AnimState } from '../../componets/src/animstate';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -199,9 +199,16 @@ export class LightFlierFlowerManager {
   private readonly scene: THREE.Scene;
   private readonly getLightLevel: (model: THREE.Group) => number;
   private disposed = false;
+  private readonly cameraRotation?: WorldContentSignal<THREE.Quaternion>;
+  private readonly stops: (() => void)[] = [];
   constructor(scene: THREE.Scene, base: string, services: LightFlierServices, getLightLevel: (model: THREE.Group) => number) {
     this.scene = scene; this.getLightLevel = getLightLevel;
     this.habitat = new LightFlierHabitat(base, services); this.assets = new ArchiveSpriteAssets(LIGHTFLIER_FLOWER_ID, base);
+    if (services.getWatchWorldContent) {
+      // Billboards face the camera: re-orient them only when it turns.
+      const rotation = this.cameraRotation = services.getWatchWorldContent(WorldContentKey.CameraRotation, stop => this.stops.push(stop));
+      createEffect(() => { const quaternion = rotation.get(); for (const sprite of this.plants.values()) sprite.faceCamera(quaternion); });
+    }
   }
   async spawn(position: THREE.Vector3, saved?: LightFlierFlowerRecord): Promise<THREE.Group> {
     const state = saved?.components.lightflierFlower, variant = state?.variant ?? (Math.random() < .5 ? 'single' : 'springy');
@@ -209,7 +216,7 @@ export class LightFlierFlowerManager {
     let prepared = this.factories.get(variant);
     if (!prepared) {
       prepared = Promise.all([
-        preloadSharedArchiveSprite(this.assets, { animationArchive: archive, buildArchives: [archive], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'] }),
+        preloadSharedArchiveSprite(this.assets, { animationArchive: archive, buildArchives: [archive], bank: `bulb_plant_${variant}` }, { instancedAnimations: ['idle'], staticBillboard: true }),
         this.assets.loadAnimation(archive), this.habitat.prepare(), PreloadSounds('dontstarve/wilson/pickup_lightbulb', 'dontstarve/wilson/pickup_reeds'),
       ]).then(([create, bank]) => ({ create, lengths: new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate])) }));
       this.factories.set(variant, prepared);
@@ -218,6 +225,7 @@ export class LightFlierFlowerManager {
     if (this.disposed) throw new Error('Lightflier flower manager disposed');
     const tint = .75 + Math.random() * .25;
     const sprite = create('off', false, LIGHTFLIER_FLOWER_ID, { colour: [tint, tint, tint] }); sprite.model.position.copy(position); sprite.model.position.y = 0;
+    if (this.cameraRotation) sprite.faceCamera(this.cameraRotation.peek());
     const plant = new LightFlierFlower(saved?.id ?? newEntityId(), sprite.model, this.habitat, lengths, this.getLightLevel, variant, state);
     const animation = watchSignal(plant.animstate.animation, stop => this.cleanups.set(plant, stop));
     createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
@@ -228,7 +236,8 @@ export class LightFlierFlowerManager {
     for (const [plant, sprite] of this.plants) {
       if (!plant.isValid()) { this.release(plant, sprite); continue; }
       plant.update(); if (!plant.isActive) continue;
-      sprite.model.quaternion.copy(quaternion); sprite.update(dt);
+      if (!this.cameraRotation) sprite.faceCamera(quaternion);
+      sprite.update(dt);
     }
   }
   private release(plant: LightFlierFlower, sprite: ArchiveSprite): void {
@@ -241,6 +250,7 @@ export class LightFlierFlowerManager {
   dispose(): void {
     if (this.disposed) return; this.disposed = true;
     for (const [plant, sprite] of this.plants) { plant.dispose(); this.release(plant, sprite); }
+    this.stops.splice(0).forEach(stop => stop());
     this.habitat.dispose(); this.assets.dispose();
   }
 }

@@ -79,9 +79,10 @@ it('lights gunpowder with a torch, explodes its stack, works nearby stone fruit 
 it('works at most 20 inventory items, pushes explosion to survivors and throws a surviving stone fruit', async () => {
   const s = setup();
   try {
-    const events: unknown[] = [];
-    const burst: ExplosiveInst = { isRemoved: false, hasTag: () => false, addTag() {}, removeTag() {}, getPosition: () => new THREE.Vector3(),
-      PushEvent() {}, remove() { this.isRemoved = true; return true; }, components: { stackable: { count: 1 } } };
+    const events: [number, string, unknown][] = [];
+    let removed = false;
+    const burst: ExplosiveInst = { get isRemoved() { return removed; }, hasTag: () => false, addTag() {}, removeTag() {}, getPosition: () => new THREE.Vector3(),
+      PushEvent() {}, remove() { removed = true; return true; }, components: { stackable: { count: 1 } } };
     const targets: ExplosiveTarget[] = Array.from({ length: EXPLOSIVE_MAX_WORKABLE_INVENTORYITEMS + 1 }, (_, i) => {
       const target: ExplosiveTarget = { isRemoved: false, hasTag: () => false, addTag() {}, removeTag() {}, getPosition: () => new THREE.Vector3(),
         PushEvent: (name, data) => events.push([i, name, data]), components: { inventoryitem: {}, stackable: { count: 1 } } };

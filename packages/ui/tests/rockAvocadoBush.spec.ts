@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 test('picks rock avocado, clears overripe fruit, digs and replants a root, fertilizes and reloads the saved growth state', async ({ page }) => {
@@ -110,7 +110,7 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   }, root.id)).toBe('scheduled'); // Rock avocado keeps growing during winter.
 
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
   const plant = saved.world.entities.rock_avocado_bush.find((record: any) => record.id === root.id);
   expect(plant.transform.position).toEqual(root.position);
   expect(plant.components.pickable).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 3 });

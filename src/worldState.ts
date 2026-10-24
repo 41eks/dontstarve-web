@@ -5,7 +5,7 @@ import { Weather } from '../packages/componets/src/weather';
 import { WorldPerishClock } from '../packages/componets/src/worldperishclock';
 import { WorldWind } from '../packages/componets/src/worldwind';
 import { ComponentUpdates } from '../packages/componets/src/componentUpdates';
-import { GetTileStateAtPoint as bindTileStateQuery, DisposeTileStates } from '../packages/componets/src/tileManager';
+import { BindTileMapSize, GetTileStateAtPoint as bindTileStateQuery, DisposeTileStates } from '../packages/componets/src/tileManager';
 import type { SaveDocument } from './save/types';
 import { getDstCycle, getDstClock, MOON_PHASE_CYCLES, TUNING } from './tuning';
 
@@ -33,7 +33,8 @@ export interface WorldState extends WorldContentContext {
 }
 
 /** Session temperature derived from the shared clock/season singleton signals. */
-export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeconds' | 'systems'>): WorldState {
+export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeconds' | 'systems' | 'map'>): WorldState {
+  const unbindTileMapSize = BindTileMapSize(world.map.generator.options.size);
   const scheduler = new GameTimeScheduler(world.elapsedSeconds);
   const componentUpdates = new ComponentUpdates();
   const worldtemperature = new WorldTemperature();
@@ -105,7 +106,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     moonPhaseCycle: () => ((clockstate.peek().cycles ?? 0) + moonCycleOffset) % MOON_PHASE_CYCLES.length + 1,
     clockAt,
     season: seasonstate, moonPhase: moonphasestate, moon: worldContent.moon, isNight: readonlySignal(isNight), worldtemperature, weather, perishClock,
-    dispose() { unbindWorldContent(); DisposeTileStates(playerPosition); playerPosition.dispose(); componentUpdates.dispose(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
+    dispose() { unbindWorldContent(); DisposeTileStates(playerPosition); unbindTileMapSize(); playerPosition.dispose(); componentUpdates.dispose(); worldwind.dispose(); scheduler.dispose(); moon.dispose(); isNight.dispose(); cycle.dispose(); weather.dispose(); perishClock.dispose(); worldtemperature.dispose(); } };
 }
 
 /** Accumulate active frame time without writing clock/temperature signals between settlements. */

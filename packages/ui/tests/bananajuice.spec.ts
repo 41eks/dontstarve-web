@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const modules = Object.fromEntries(['main', 'player', 'universal', 'playerStats'].map(name =>
@@ -77,7 +77,7 @@ test('eating and drinking update the HUD and preserve food and spawned items thr
   }
 
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const save = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
   const savedJuice = save.players.local.inventory.containers['player:inventory'].slots.find((slot: any) => slot.item.itemId === 'bananajuice').item;
   expect(savedJuice.count).toBe(1);
   expect(save.players.local.stats).toEqual({ health: 149, hunger: 150, sanity: 88 });

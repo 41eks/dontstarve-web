@@ -76,12 +76,12 @@ describe('save JSON deserialization', () => {
     }, SAVE_CATALOG);
     const restored = deserializeSave(json, SAVE_CATALOG);
     expect(restored.world.entities.beefalo).toEqual([beefalo]);
-    beefalo.components.beefalo.knownlocations.locations = [];
-    expect(deserializeSave(JSON.stringify(restored), SAVE_CATALOG).world.entities.beefalo[0].components.beefalo.knownlocations)
+    beefalo.components.beefalo!.knownlocations.locations = [];
+    expect(deserializeSave(JSON.stringify(restored), SAVE_CATALOG).world.entities.beefalo[0].components.beefalo!.knownlocations)
       .toEqual({ locations: [{ name: 'herd', x: 30, y: 0, z: 40 }] });
-    delete restored.world.entities.beefalo[0].components.beefalo.knownlocations;
-    restored.world.entities.beefalo[0].components.beefalo.poopRemainingSeconds = 99;
-    expect(deserializeSave(JSON.stringify(restored), SAVE_CATALOG).world.entities.beefalo[0].components.beefalo.poopRemainingSeconds).toBe(99);
+    delete restored.world.entities.beefalo[0].components.beefalo!.knownlocations;
+    restored.world.entities.beefalo[0].components.beefalo!.poopRemainingSeconds = 99;
+    expect(deserializeSave(JSON.stringify(restored), SAVE_CATALOG).world.entities.beefalo[0].components.beefalo!.poopRemainingSeconds).toBe(99);
   });
 
   it.each([

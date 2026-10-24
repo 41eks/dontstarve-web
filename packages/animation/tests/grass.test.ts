@@ -8,7 +8,6 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GrassManager, GRASS_ID } from '../../prefab/src/grass';
 import { bindTestWorld, tickWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createSignal, type SeasonState } from '../../signals/src';
 
 afterEach(() => {
   vi.restoreAllMocks();

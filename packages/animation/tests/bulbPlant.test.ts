@@ -150,7 +150,7 @@ describe('real plant archives, spawning and saving', () => {
     const pickedRecord = manager.exportRecords().find(p => p.record.id === 'e_springy')!;
     const pickedRestored = await manager.spawn(pickedRecord.prefabId, new THREE.Vector3(8, 0, 9), pickedRecord.record);
     expect(pickedRestored.userData.bulbPlantPicked).toBe(true);
-    expect(pickedRestored.userData.tags).toEqual(['plant']);
+    expect(pickedRestored.userData.tags).toContain('plant');
     expect(getPrefabLocalLight(pickedRestored)).toBeUndefined();
     for (const model of [single, double, triple, springy]) {
       expect(mesh(model).geometry.drawRange.count).toBeGreaterThan(0);

@@ -1,3 +1,4 @@
+import { useTestTileMap, testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -6,6 +7,8 @@ import type { WaveMap } from '../../componets/src/wavemanager';
 import { createSignal, type TileStateQuery } from '../../signals/src';
 import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { createWorldState } from '../../../src/worldState';
+
+useTestTileMap();
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -51,7 +54,7 @@ it('plays standalone and undefined-query waves to completion and keeps shared ar
 });
 
 it('removes sleeping FX permanently, preserves other tile consumers, and cancels queued effects on disposal', async () => {
-  const state = createWorldState({ elapsedSeconds: 0, systems: {} });
+  const state = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
   state.playerpositions.set([new THREE.Vector3()]);
   const read = vi.fn();
   const query = vi.fn<TileStateQuery>((position, radius) => {

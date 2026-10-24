@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 test('mole console commands, hammer capture and save export/reload preserve animal identity and inventory', async ({ page }) => {
@@ -72,7 +72,7 @@ test('mole console commands, hammer capture and save export/reload preserve anim
   await bar.locator(`[data-slot-key="${capturedSlot}"]`).click();
   await expect.poll(() => page.evaluate(id => (window as any).moleGame.inventory.entities.get(id)?.snapshot().mole.health, identity)).toBe(23);
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
   const moles = saved.players.local.inventory.containers['player:inventory'].slots.filter((s: any) => s.item.itemId === 'mole');
   expect(moles).toHaveLength(3);
   expect(moles.find((s: any) => s.item.entityId === identity).item.mole.health).toBe(23);

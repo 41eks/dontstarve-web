@@ -16,7 +16,6 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createSignal, type SeasonState } from '../../signals/src';
 import { bindTestWorld, tickWorld } from './worldContentFixture';
 import { getPickActions } from '../../stategraphs/src/pick';
 

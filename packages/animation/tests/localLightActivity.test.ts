@@ -1,9 +1,12 @@
+import { useTestTileMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { createSignal, type Memo, type TileStateQuery } from '@dontstarve-web/signals';
 import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { getPrefabLocalLight, setPrefabLocalLight } from '../../prefab/src/localLight';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
+
+useTestTileMap();
 
 it('gates lightmap sources and CPU samples by shared world-space tiles, restores lights and releases tile watches', async () => {
   const player = createSignal<THREE.Vector3 | undefined>(new THREE.Vector3());

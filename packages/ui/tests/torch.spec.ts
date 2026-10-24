@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const url = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url))}`;
@@ -170,7 +170,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   });
   await expect(items.locator('[data-item-id="torch"] .inventory-slot__percent')).toHaveText('75%');
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const save = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
   const records = save.world.entities.ground_item.filter((record: any) => record.components.stack.itemId === 'torch');
   expect(records).toHaveLength(2);
   expect(records.find((record: any) => record.components.stack.skinId === 'torch_barber').id).toBe(paused.item.entityId);
@@ -190,7 +190,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
     skinId: record.components.stack.skinId, count: record.components.stack.count })));
   // Save once more to prove ground fuel was restored, rather than inferred from art.
   const secondDownload = page.waitForEvent('download'); await submit('c_save()');
-  const savedAgain = JSON.parse(await readFile((await (await secondDownload).path())!, 'utf8'));
+  const savedAgain = JSON.parse(await readSaveDownload((await (await secondDownload).path())!));
   const again = savedAgain.world.entities.ground_item.filter((record: any) => record.components.stack.itemId === 'torch');
   expect(again.find((record: any) => !record.components.torch)).toEqual(records.find((record: any) => !record.components.torch));
   const litAgain = again.find((record: any) => record.components.torch), litBefore = records.find((record: any) => record.components.torch);
@@ -213,7 +213,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
       light: !!player.getObjectByName('TorchFireLight') };
   })).toEqual({ equipment: null, carry: null, light: false });
   const exhaustedDownload = page.waitForEvent('download'); await submit('c_save()');
-  const exhaustedSave = JSON.parse(await readFile((await (await exhaustedDownload).path())!, 'utf8'));
+  const exhaustedSave = JSON.parse(await readSaveDownload((await (await exhaustedDownload).path())!));
   expect(exhaustedSave.players.local.inventory.containers['player:equipment'].slots.some((slot: any) => slot.slotKey === 'hand')).toBe(false);
   expect(exhaustedSave.players.local.inventory.containers['player:inventory'].slots.some((slot: any) => slot.item.itemId === 'torch')).toBe(false);
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: exhaustedSave }));

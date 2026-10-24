@@ -140,7 +140,7 @@ export async function createMoonTreeForest(
     preloadSharedArchiveSprite(treeAssets, { animationArchive: definitions.moonTree.archive,
       buildArchives: [definitions.moonTree.archive, 'snow.zip'], bank: 'moon_tree', hiddenSymbols: ['snow'],
       symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } } },
-    { scale, instancedAnimations: [...new Set([standingAnimation, ...MOON_TREE_SIZES.map(size => `sway1_loop_${size}`)])] }),
+    { scale, staticBillboard: true, instancedAnimations: [...new Set([standingAnimation, ...MOON_TREE_SIZES.map(size => `sway1_loop_${size}`)])] }),
     createAnimatedSpriteFactory(assetBaseUrl, 'tree_petal_fx.zip'),
     createAnimatedSpriteFactory(assetBaseUrl, 'baby_moon_tree.zip'),
     FireFxHost.load(assetBaseUrl),
@@ -516,7 +516,7 @@ export async function createMoonTreeForest(
     setNormals(cameraWorldQuaternion) {
       lastQuaternion.copy(cameraWorldQuaternion);
       for (const entity of nearby.activeEntities) {
-        entity.model!.quaternion.copy(cameraWorldQuaternion);
+        (entity.model!.userData.animationController as ArchiveSprite).faceCamera(cameraWorldQuaternion);
       }
       for (const fx of effects) fx.quaternion.copy(cameraWorldQuaternion);
       for (const model of saplings.keys()) model.quaternion.copy(cameraWorldQuaternion);

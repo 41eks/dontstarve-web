@@ -22,8 +22,10 @@ it('uses private player position updates for source hysteresis and releases each
   const player = new THREE.Vector3(12, 0, 0);
   const publishPlayer = () => world.playerpositions.set([player.clone()]);
   publishPlayer();
-  const sprite = () => ({ model: new THREE.Group(), currentAnimation: '', start: vi.fn(), playOnce: vi.fn(),
-    setPaused: vi.fn(), setAnimation: vi.fn(), update: vi.fn(), dispose: vi.fn() });
+  const sprite = () => ({ model: new THREE.Group(), currentAnimation: '', frameCount: 1, start: vi.fn(), playOnce: vi.fn(),
+    setPaused: vi.fn(), setAnimation: vi.fn(), setFrame: vi.fn(), setOpacity: vi.fn(), setFacing: vi.fn(),
+    setBuildArchive: vi.fn(), setSymbolHidden: vi.fn(), faceCamera: vi.fn(), refreshTransform: vi.fn(),
+    update: vi.fn(), dispose: vi.fn() });
   const a = sprite(), b = sprite();
   const first = new FliesController(a, new THREE.Vector3(), scheduler, world.getWatchWorldContent);
   const second = new FliesController(b, new THREE.Vector3(-20, 0, 0), scheduler, world.getWatchWorldContent);

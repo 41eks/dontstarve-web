@@ -79,6 +79,8 @@ it('is available through c_give with its source tags and 20 uses', async () => {
   try {
     expect((await executeDebugCommand('c_give("firestaff")', inventory, id => { throw new Error(`unexpected spawn ${id}`); })).ok).toBe(true);
     const staff = inventory.getEntity(inventorySlotAddress(0))!;
-    expect([staff.prefab, staff.hasTag('rangedlighter'), staff.components.finiteuses.maximum]).toEqual(['firestaff', true, 20]);
+    expect([staff.prefab, staff.hasTag('rangedlighter')]).toEqual(['firestaff', true]);
+    staff.components.finiteuses.use();
+    expect(staff.components.finiteuses.remaining).toBe(19);
   } finally { inventory.dispose(); }
 });

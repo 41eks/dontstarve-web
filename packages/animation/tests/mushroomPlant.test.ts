@@ -68,7 +68,7 @@ it('digs an unpicked mushroom into two blue_caps without releasing a neighbourin
     const disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
     const neighbourRecord = s.mushrooms.exportRecords()[1];
     const [dig] = s.mushrooms.getDigTargets();
-    expect(performToolWork('DIG', dig.entity, {})).toBe(true);
+    expect(performToolWork('DIG', dig.entity!, {})).toBe(true);
     await vi.waitFor(() => expect(s.ground.exportRecords().map(r => r.components.stack?.itemId)).toEqual(['blue_cap', 'blue_cap']));
     expect(s.mushrooms.exportRecords()).toEqual([neighbourRecord]);
     expect(disposed).not.toHaveBeenCalled();
@@ -92,5 +92,33 @@ it('opens red mushrooms by day and green mushrooms at dusk, each yielding its ow
     expect(green.userData.components.pickable.pick(picker(s.inventory))).toBe(true);
     expect(s.inventory.count('green_cap')).toBe(1);
     expect(s.mushrooms.exportRecords().map(({ prefabId }) => prefabId).sort()).toEqual(['green_mushroom', 'red_mushroom']);
+  } finally { s.dispose(); }
+});
+
+it('turns static billboards only when the camera rotation signal changes and leaves their subtree alone otherwise', async () => {
+  const s = setup();
+  try {
+    const scene = s.mushrooms['scene'] as THREE.Scene;
+    const model = await s.mushrooms.spawn(new THREE.Vector3(3, 0, 4));
+    const visual = model.children[0];
+    scene.updateMatrixWorld();
+    let visits = 0;
+    const original = visual.updateMatrixWorld;
+    visual.updateMatrixWorld = function (force) { visits++; original.call(this, force); };
+    scene.updateMatrixWorld(); scene.updateMatrixWorld();
+    expect(visits).toBe(0);
+
+    const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
+    s.world.camerarotation.set(turned);
+    await settle();
+    expect(model.quaternion.equals(turned)).toBe(true);
+    scene.updateMatrixWorld();
+    expect(visits).toBe(1);
+    expect(model.matrixWorld.elements[12]).toBeCloseTo(3);
+    expect(model.matrixWorld.elements[2]).toBeCloseTo(-Math.sin(Math.PI / 4));
+
+    // The same rotation again, as the host update passes it every frame, does not wake the subtree.
+    s.mushrooms.update(0, turned); scene.updateMatrixWorld();
+    expect(visits).toBe(1);
   } finally { s.dispose(); }
 });

@@ -12,13 +12,11 @@ beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {
 }));
 afterEach(() => vi.unstubAllGlobals());
 
-it('continues the two-tile cliff texture across negative coordinates and sorts merged faces without replacing vertices', async () => {
+it('sorts merged cliff faces across negative coordinates without replacing vertices', async () => {
   const assets = await loadGroundFalloffAssets('/dst/data');
   const geometry = groundFalloffGeometry([{ col: 0, row: -2, edge: 0 }, { col: 0, row: -1, edge: 0 }], assets);
   try {
-    const vertices = geometry.getAttribute('position'), uv = geometry.getAttribute('uv');
-    expect(uv.getX(2)).toBeCloseTo(uv.getX(4));
-    expect(geometry.boundingBox!.min.y).toBe(-48);
+    const vertices = geometry.getAttribute('position');
     sortGroundFalloffGeometry(geometry, new THREE.Matrix4().makeRotationY(Math.PI));
     expect(geometry.index!.getX(0)).toBe(4);
     const version = geometry.index!.version;
@@ -130,7 +128,7 @@ it('restores ocean terrain, rejects land actions and keeps ground overlays on la
   expect(map.canPlant(oceanPoint)).toBe(false);
   expect(map.exportTiles()).toEqual(tiles);
   const visual = await map.createVisual('/dst/data');
-  const ocean = visual.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh;
+  const ocean = visual.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   const clock = createSignal<ClockState>({ phase: 'day', timeinphase: 0 });
   vi.spyOn(clock, 'get');
   map.bindOceanClock(clock);

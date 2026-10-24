@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const modules = Object.fromEntries(['main', 'player', 'universal', 'playerStats', 'scene'].map(name =>
@@ -109,7 +109,7 @@ test('right-click reads book_silviculture with the source states, sounds and gro
   const savedBook = await page.evaluate(() => (window as any).bookGame.main.inventory.exportState().slots
     .find((slot: any) => slot.item?.itemId === 'book_silviculture').item);
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const save = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
   const ground = save.world.entities.ground_item.find((entity: any) => entity.id === groundId);
   expect(ground.components.stack).toMatchObject({ itemId: 'book_silviculture', count: 1 });
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: save }));
@@ -212,7 +212,7 @@ test('raining weather is exported by c_save and restored with its rain on reload
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const saved = JSON.parse(await readFile(await (await download).path(), 'utf8'));
+  const saved = JSON.parse(await readSaveDownload(await (await download).path()));
   expect(saved.world.systems.weather).toMatchObject({ preciptype: 'rain' });
   const exported = saved.world.systems.weather;
   expect(exported.moisture).toBeGreaterThan(exported.moisturefloor);

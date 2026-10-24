@@ -37,7 +37,7 @@ describe('trident water spell', () => {
 
   it('skips spokes that are not on water and breaks on the last use, reporting toolbroke before removal', () => {
     const { inventory, slot, entity, trident, spawnWaterspout } = setup(4, point => point.z < 0);
-    const toolbroke = vi.fn(() => expect(inventory.getEntity(slot)).toBe(entity));
+    const toolbroke = vi.fn((_data: unknown) => expect(inventory.getEntity(slot)).toBe(entity));
     inventory.bindActor({ PushEvent: (name: string, data: unknown) => { if (name === 'toolbroke') toolbroke(data); } } as never);
     expect(trident.spellcaster.castSpell(undefined, new THREE.Vector3(0, 0, -1), doer)).toBe(true);
     expect(spawnWaterspout.mock.calls.length).toBeLessThan(4);

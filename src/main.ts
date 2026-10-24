@@ -59,7 +59,7 @@ import { initialSave } from './save/initialSave';
 import { inventoryStateFromSave } from './save/inventoryState';
 import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
-import { downloadSaveJson } from './save/download';
+import { downloadClusterSave } from './save/download';
 import { inventoryReceiveEffect } from './inventoryReceive';
 import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } from './playerStats';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
@@ -402,20 +402,26 @@ disposalEvents.on('dispose', () => {
 });
 
 let lastSavedSnapshotId = initialSave.snapshot.id;
+let pendingSave = Promise.resolve();
+function saveGame(): Promise<void> {
+  const save = pendingSave.then(() => gameUi.savingIndicator.whileSaving(async () => {
+    handEquipmentBinding.flush();
+    const json = serializeSave(initialSave, {
+      ...getSaveState(), playerWortox: wortox?.state.OnSave(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
+    }, SAVE_CATALOG, lastSavedSnapshotId);
+    await downloadClusterSave(json, initialSave.world.prefab);
+    lastSavedSnapshotId = (JSON.parse(json) as typeof initialSave).snapshot.id;
+  }));
+  pendingSave = save.catch(() => {});
+  return save;
+}
 // Typing a command must not drive the character; closing releases the keyboard again.
 gameUi.debugConsole.addEventListener('game:debug-console-toggle', (event) => {
   input.setBlocked((event as CustomEvent<{ isOpen: boolean }>).detail.isOpen);
 });
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
-  void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), () => gameUi.savingIndicator.whileSaving(() => {
-    handEquipmentBinding.flush();
-    const json = serializeSave(initialSave, {
-      ...getSaveState(), playerWortox: wortox?.state.OnSave(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
-    }, SAVE_CATALOG, lastSavedSnapshotId);
-    downloadSaveJson(json);
-    lastSavedSnapshotId = (JSON.parse(json) as typeof initialSave).snapshot.id;
-  }), setPlayerSanityPercent, async () => { await SendLightningStrike({ root: scene, fx: worldFx }, player.position); }).then((result) => {
+  void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), saveGame, setPlayerSanityPercent, async () => { await SendLightningStrike({ root: scene, fx: worldFx }, player.position); }).then((result) => {
     if (result.ok) console.info(result.message);
     else console.warn(result.message);
   }).catch((error: unknown) => {

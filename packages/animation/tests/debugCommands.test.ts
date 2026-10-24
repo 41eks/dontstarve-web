@@ -133,7 +133,7 @@ describe('debug command sequences', () => {
     expect(save).not.toHaveBeenCalled();
     finishSpawn(true);
     expect(await result).toEqual({
-      ok: true, message: '已生成 icebox\n已添加 1 个 alterguardianhat\n已下载存档 initial-world.json',
+      ok: true, message: '已生成 icebox\n已添加 1 个 alterguardianhat\n已下载存档 Cluster_1.zip',
     });
     expect(save).toHaveBeenCalledTimes(1);
   });

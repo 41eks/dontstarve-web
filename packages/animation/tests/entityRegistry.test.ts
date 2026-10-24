@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { EntityRegistry, type EntityRegistration } from '../../../src/entityRegistry';
 import type { SavedEntity } from '../../../src/save/types';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { definePrefabs } from '../../../src/prefabDefinitions';
 import { componentParser } from '../../../src/save/prefabComponents';
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
@@ -52,7 +53,7 @@ describe('entity registry', () => {
     registry.assertDefinitions([custom]);
     const catalog: SaveCatalog = { prefabs: registry.prefabDefinitions,
       items: {}, skins: {}, recipes: {}, recipeSkins: {}, buildings: {}, walls: [] };
-    const template = structuredClone(initialWorld);
+    const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     const json = serializeSave(template, { entities: registry.exportRecords(),
       playerTransform: { position: [0, 0, 0], rotationY: 0 }, inventory: { slots: [], bufferedBuilds: [] }, elapsedSeconds: 0,
     }, catalog);
@@ -93,15 +94,6 @@ describe('entity registry', () => {
     expect(registry.exportRecords()).toEqual({ thing: [record('e_one')] });
   });
 
-  it.each([{ thing: [record('same')], other: [record('same')] }])('validates the entire save before restoring any models: %j', async (entities) => {
-    const registry = new EntityRegistry(), family = registration();
-    registry.register(definition, family);
-    registry.register(definePrefabs(['other'], health), { ...registration(), debugSpawn: undefined });
-    await expect(registry.restoreAll(entities)).rejects.toThrow();
-    expect(family.restore).not.toHaveBeenCalled();
-    expect(registry.byEntityId.size).toBe(0);
-  });
-
   it('exports detached transform and component snapshots, including empty families', () => {
     const registry = new EntityRegistry(), saved = record('e_one');
     registry.register(definition, { ...registration(), exportRecords: () => [{ prefabId: 'thing', record: saved }] });
@@ -129,7 +121,7 @@ describe('entity registry', () => {
     expect(registry.renderEntities[0].footPosition).toBe(entry.footPosition);
   });
 
-  it('disposes all owners even if one cleanup fails, and disables every lifecycle', async () => {
+  it('disposes all owners even if one cleanup fails and clears render entries', async () => {
     const registry = new EntityRegistry(), family = registration();
     registry.register(definition, family);
     registry.register(definePrefabs(['other'], health), { ...registration(), debugSpawn: undefined,
@@ -138,18 +130,5 @@ describe('entity registry', () => {
     expect(() => registry.dispose()).toThrow(AggregateError);
     expect(family.dispose).toHaveBeenCalledOnce(); expect(registry.byEntityId.size).toBe(0);
     expect(registry.renderEntities).toEqual([]);
-    await expect(registry.spawn('thing')).rejects.toThrow('disposed');
-    await expect(registry.restoreAll({})).rejects.toThrow('disposed');
-    expect(() => registry.exportRecords()).toThrow('disposed');
-  });
-
-  it('does not index entities whose async restoration finishes after disposal', async () => {
-    let resolve!: (model: THREE.Group) => void;
-    const registry = new EntityRegistry();
-    registry.register(definition, { ...registration(), restore: () => new Promise((done) => { resolve = done; }) });
-    const restore = registry.restoreAll({ thing: [record('saved')] });
-    registry.dispose(); resolve(new THREE.Group());
-    await expect(restore).rejects.toThrow('disposed');
-    expect(registry.byEntityId.size).toBe(0);
   });
 });

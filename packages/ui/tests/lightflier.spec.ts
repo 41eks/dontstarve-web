@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'view'].map(name =>
@@ -29,7 +29,7 @@ test('picks a lunar flower, nets its insect, and preserves spawned insects and c
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const point = (prefab: string) => page.evaluate(prefab => {
     const { scene, renderer, camera, view } = (window as any).lightFlierGame;

@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'player', 'playerStats'].map(name =>
@@ -27,7 +27,7 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const player = () => page.evaluate(() => {
     const { player, stats } = (window as any).ghostGame, controller = player.userData.animationController;
@@ -132,7 +132,7 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
   await expect.poll(async () => (await player()).portalTags, { timeout: 15_000 }).not.toContain('haunted');
 
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const saved = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   expect(saved.players.local.ghost).toBeFalsy();
   expect(saved.players.local.stats).toMatchObject({ health: 50, penalty: .25 });
   expect(errors).toEqual([]);

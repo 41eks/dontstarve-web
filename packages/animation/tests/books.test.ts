@@ -1,3 +1,4 @@
+import { testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ItemEntity } from '../../inventory/src/entity';
@@ -134,7 +135,7 @@ it('lets rain dissipate to its floor on its own and restores precipitation from 
 });
 
 it('reads book_moon: forces a full moon through the world clock, refuses when already full and charges huge sanity', () => {
-  const state = createWorldState({ elapsedSeconds: 480 * 3 + 10, systems: {} });
+  const state = createWorldState({ map: testMap(), elapsedSeconds: 480 * 3 + 10, systems: {} });
   const updater = createWorldClockUpdater(state, 480 * 3 + 10);
   const book = new ItemEntity({ itemId: 'book_moon', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_moon);
@@ -155,7 +156,7 @@ it('reads book_moon: forces a full moon through the world clock, refuses when al
     expect(state.moonPhase.peek()).toBe('threequarter');
     expect(state.moonPhaseCycle()).toBe(12);
     // Reload keeps the shifted cycle.
-    const restored = createWorldState({ elapsedSeconds: 480 * 4 + 11, systems: { moon: { mooomphasecycle: state.moonPhaseCycle() } } });
+    const restored = createWorldState({ map: testMap(), elapsedSeconds: 480 * 4 + 11, systems: { moon: { mooomphasecycle: state.moonPhaseCycle() } } });
     expect(restored.moonPhase.peek()).toBe('threequarter');
     restored.dispose();
 

@@ -1,5 +1,5 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
@@ -49,7 +49,7 @@ test('repairs moonbase with a cursor moonrock, inserts and retrieves a skinned s
   });
   const saveGame = async () => {
     const download = page.waitForEvent('download'); await submit('c_save()');
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const clickMoonbase = async (button: 'left' | 'right' = 'left') => {
     const point = await page.evaluate(() => {
@@ -173,7 +173,7 @@ test('shows native charge layers, resumes after a downloaded save, and returns t
     const download = page.waitForEvent('download');
     await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
       new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+    return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   await page.goto('/tests/dst-lighting.html'); await prepare();
   await page.keyboard.press('Shift'); // Resume Web Audio with an actual user gesture.

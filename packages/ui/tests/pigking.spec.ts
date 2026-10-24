@@ -1,3 +1,4 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -46,7 +47,7 @@ test('places the default_pigking layout: grass and woodfloor tiles around the ki
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const save = JSON.parse(await (await import('node:fs/promises')).readFile((await (await download).path())!, 'utf8'));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
   expect(save.world.entities.insanityrock).toHaveLength(5);
   expect(save.world.entities.sanityrock).toHaveLength(4);
   expect(new Set(Object.values(save.world.entities).flat().map((entity: any) => entity.id)).size)
@@ -94,7 +95,7 @@ test('walks to the pig king, trades held meat and throws the gold', async ({ pag
   // The gold appears two thirds of a second after the toss starts.
   await page.waitForTimeout(2500);
   await submit('c_save()');
-  const save = JSON.parse(await (await import('node:fs/promises')).readFile((await (await download).path())!, 'utf8'));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
   const gold = Object.values(save.world.entities).flat().filter((entity: any) => entity.components?.stack?.itemId === 'goldnugget');
   expect(gold).toHaveLength(1);
 

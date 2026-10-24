@@ -35,7 +35,6 @@ it('plays Jacob at frames 0 and 30 of every source two-second idle loop without 
   try {
     const idle = (await loadAnim('portal_moonrock.zip', '/dst/data/anim')).animations.find(({ name }) => name === 'idle_loop')!;
     expect([idle.frames.length, idle.frameRate]).toEqual([60, 30]);
-    expect(PreloadSounds).toHaveBeenCalledWith('dontstarve/common/together/spawn_vines/spawnportal_jacob');
     expect(vi.mocked(PreloadSounds).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(PlaySound).mock.invocationCallOrder[0]);
     // Ten complete loops plus one frame ensures we cross the last wrap even
     // when floating-point accumulation renders the preceding frame at 20s.

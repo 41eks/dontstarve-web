@@ -5,6 +5,7 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { createWorldState } from '../../../src/worldState';
 import { inventoryReceiveEffect, projectInventorySource } from '../../../src/inventoryReceive';
 import { inventorySlotAddress } from '@dontstarve-web/inventory';
+import initialWorld from '../../../public/saves/initial-world.json';
 
 export async function createReceiveFixture() {
   const { inventoryBar } = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
@@ -26,7 +27,7 @@ export async function createReceiveFixture() {
   inventory.subscribe((addresses) => addresses.forEach(sync));
   const scene = new THREE.Scene();
   inventory.subscribeReceived((received, source) => { if (source) inventoryReceiveEffect(inventoryBar, camera, canvas, new THREE.Vector3(source.x, source.y, source.z))(received); });
-  const worldState = createWorldState({ elapsedSeconds: 450, systems: {} });
+  const worldState = createWorldState({ elapsedSeconds: 450, systems: {}, map: { ...initialWorld.world.map, kind: 'generated' } });
   // Keep the capture scene in tickingarea, with the player outside the swarm's hide radius.
   worldState.playerpositions.set([new THREE.Vector3(20, 0, 3)]);
   const ground = new GroundItemManager(scene, camera, { domElement: canvas } as unknown as THREE.WebGLRenderer,
