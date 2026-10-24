@@ -6,6 +6,7 @@ import { createPickupInventory } from './pickupFixture';
 import { configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
 import { GroundItemAssets, createGroundItemSprite, createGroundItemFactory } from '../../prefab/src/groundItems';
 import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createRecipe } from '../../ui/src/categories/shared';
 import { batch, createSignal } from '../../signals/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
@@ -141,15 +142,19 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     const visual = await factory.create({ ...entity.snapshot(), name: '暖石', icon: 'heatrock_fantasy1.tex' });
     try {
       visual.bindEntity?.(entity);
-      expect((visual as unknown as { currentAnimation: string }).currentAnimation).toBe('1');
+      // The prefab only declares what the sprite follows; the display applies it.
+      const sprite = prefabInstance(visual.model)!.sprite;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(sprite.currentAnimation).toBe('1');
       visual.update?.(1);
       expect(entity.snapshot()).toMatchObject({ skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
-      const mesh = visual.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+      let mesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+      visual.model.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object as typeof mesh; });
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
       expect(mesh.material.some(material => material.name === 'ground:heatrock_fantasy')).toBe(true);
       entity.components.temperature!.SetTemperature(80);
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect((visual as unknown as { currentAnimation: string }).currentAnimation).toBe('5');
+      expect(sprite.currentAnimation).toBe('5');
     } finally { visual.dispose(); entity.destroy(); factory.dispose?.(); }
   } finally { assets.dispose(); }
 });

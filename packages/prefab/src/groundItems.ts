@@ -2,16 +2,18 @@ import {
   ArchiveSpriteAssets, createSharedArchiveSprite,
   type ArchiveSprite, type ArchiveSpriteDefinition,
 } from '@dontstarve-web/animation/archiveSprite';
-import type { InventoryItemSpec, InventorySkinSpec } from '@dontstarve-web/inventory';
+import type { InventoryItemSpec, InventorySkinSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemDefinition, GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
-import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, burnableFireRenderEntry, createBurnableItemVisual } from './burnableItems';
+import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
-import { configureHeatRockEntity, HEATROCK_ID, type HeatRock } from './heatrock';
-import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
-import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { configureHeatRockEntity, declareHeatRockSprite, HEATROCK_ID } from './heatrock';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import type { PrefabInstance } from './prefabInstance';
+import { createMemo } from '@dontstarve-web/signals';
+import { createArchiveEntity } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { configureRazorEntity, RAZOR_ID } from './razor';
 import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';
@@ -48,7 +50,7 @@ export const TURF_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = Obje
 );
 
 export function createGroundItemFactory(context: GroundPrefabContext): GroundItemFactory {
-  const fires = new Set<ArchiveSprite>();
+  const displays = new Set<PrefabDisplay>();
   return {
     itemIds: Object.keys(GROUND_ITEM_DEFINITIONS),
     configureEntity: entity => {
@@ -65,30 +67,13 @@ export function createGroundItemFactory(context: GroundPrefabContext): GroundIte
       : isBook(entity.prefab) ? configureBookEntity(entity) : configureBurnableItemEntity(entity);
     },
     async create(item) {
-      if (item.itemId !== HEATROCK_ID && !Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return createResidentGroundItem(context, item);
-      const sprite = await createGroundItemSprite(context.assets, item.itemId, item.skinId);
-      if (item.itemId === HEATROCK_ID) {
-        let stopWatching: (() => void) | undefined;
-        return {
-          ...sprite,
-          get currentAnimation() { return sprite.currentAnimation; },
-          bindEntity(entity) {
-            stopWatching?.();
-            const rock = entity.getComponent<HeatRock>('heatrock');
-            if (!rock) return;
-            const range = watchSignal(rock.range, stop => { stopWatching = stop; });
-            createEffect(() => { sprite.setAnimation(String(range.get())); });
-          },
-          dispose() { stopWatching?.(); sprite.dispose(); },
-        };
-      }
-      if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return sprite;
-      try { return await createBurnableItemVisual(context, item.itemId, sprite, fires, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel); }
-      catch (error) { sprite.dispose(); throw error; }
+      const base = await createResidentGroundItem(context, item, item.itemId === HEATROCK_ID ? declareHeatRockSprite : undefined);
+      if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, item.itemId)) return base.visual;
+      try { return await createBurnableItemVisual(context, item.itemId, base, displays, BURNABLE_ITEM_DEFINITIONS[item.itemId].fxLevel); }
+      catch (error) { base.visual.dispose(); throw error; }
     },
-    update(dt, quaternion) { for (const fire of fires) { fire.model.quaternion.copy(quaternion); fire.update(dt); } },
-    renderEntities: () => [...fires].map(burnableFireRenderEntry),
-    dispose() { for (const fire of fires) fire.dispose(); fires.clear(); },
+    renderEntities: () => [...displays].flatMap(display => display.fxRenderEntries),
+    dispose() { displays.clear(); },
   };
 }
 
@@ -126,7 +111,12 @@ export async function createGroundItemSprite(
  * A plain ground item whose sprite exists only while the tile under it is active. The tile is bound once the item's
  * position is settled (loaded or dropped, including the end of a fling), not while it is still moving.
  */
-async function createResidentGroundItem(context: GroundPrefabContext, item: GroundItemDefinition): Promise<GroundItemVisual> {
+/** A ground item's visual with the instance and display behind it, for prefabs that declare more on its sprite. */
+export interface ResidentGroundItem { readonly visual: GroundItemVisual; readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
+
+export async function createResidentGroundItem(context: GroundPrefabContext, item: GroundItemDefinition,
+  /** The prefab's declaration of what its sprite follows, made once the item's entity is bound. */
+  declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): Promise<ResidentGroundItem> {
   const { itemId, skinId } = item;
   const definition = GROUND_ITEM_DEFINITIONS[itemId];
   if (!definition) throw new Error(`Unknown ground item: ${itemId}`);
@@ -135,24 +125,27 @@ async function createResidentGroundItem(context: GroundPrefabContext, item: Grou
   const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets,
     { ...definition, animation: clip.name, loop: clip.loop }, { skinArchive, name: `GroundItem:${itemId}` });
   const clip = { name: definition.animation, loop: definition.loop };
-  const resident = new ResidentSprite(create, clip, await create(clip), `GroundItem:${itemId}`);
-  const model = resident.model;
+  const { instance, display } = createArchiveEntity(itemId, { create, initial: await create(clip) },
+    { name: definition.animation, held: !definition.loop }, `GroundItem:${itemId}`);
+  const model = display.model, sprite = instance.sprite;
   Object.assign(model.userData, { itemId, skinId });
-  const active = createSignal(true);
+  const active = createMemo(() => instance.status.get() === 'active');
   let stopTile = () => {};
   const bindTile = () => {
     stopTile();
-    stopTile = watchTileActivity(model, context.tickingarea, awake => { active.set(awake); resident.setActive(awake); });
+    stopTile = watchTileActivity(model, context.tickingarea, awake => instance.setActive(awake));
   };
   const removeInventoryEvents = listenInventoryEvents(model, {
-    ondropped: () => { resident.setPaused(false); bindTile(); },
-    onload: () => { resident.setPaused(false); bindTile(); },
-    onputininventory: () => { resident.setPaused(true); stopTile(); stopTile = () => {}; },
+    ondropped: () => { sprite.setPaused(false); bindTile(); },
+    onload: () => { sprite.setPaused(false); bindTile(); },
+    onputininventory: () => { sprite.setPaused(true); stopTile(); stopTile = () => {}; },
   });
-  return {
+  const visual: GroundItemVisual = {
     model,
-    active: readonlySignal(active),
-    update: dt => resident.update(dt),
-    dispose() { removeInventoryEvents(); stopTile(); resident.dispose(); },
+    active,
+    bindEntity: declare && (entity => declare(entity, sprite)),
+    update: dt => sprite.update(dt),
+    dispose() { removeInventoryEvents(); stopTile(); active.dispose(); instance.remove(); display.dispose(); },
   };
+  return { visual, instance, display };
 }

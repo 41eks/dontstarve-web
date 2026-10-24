@@ -32,7 +32,7 @@ it('uses private player position updates for source hysteresis and releases each
   scheduler.advance(0);
   expect(handles).toHaveLength(2);
   const waiting = first.playerprox.timerState.peek();
-  scheduler.advance(.2); first.update(.1);
+  scheduler.advance(.2);
   expect(first.playerprox.timerState.peek()).toBe(waiting);
   const stale = a.playOnce.mock.calls[0][1];
   player.x = 6; publishPlayer(); scheduler.advance(.2);

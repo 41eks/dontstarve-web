@@ -1,4 +1,5 @@
 import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import type { FxJson } from './fxAttachments';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from '@dontstarve-web/animation/sprite';
 
 type SymbolOverrideValue = Parameters<SpriteController['overrideSymbol']>[1];
@@ -34,6 +35,8 @@ export interface SpriteJson {
   readonly facing?: number;
   readonly colour?: readonly number[];
   readonly opacity?: number;
+  /** Held out of the world, such as an item in a pack. */
+  readonly paused?: boolean;
   readonly appearance: ReadonlyMap<string, AppearanceJson>;
 }
 
@@ -48,13 +51,46 @@ export interface SpriteProbe {
 }
 
 /**
+ * What a shared archive sprite can be told: clips, frames, pausing, tint, facing and declared effects. An entity drawn
+ * from an archive is typed with this, so a call it cannot draw (a pose, a queue, a symbol override) does not compile.
+ */
+export interface ArchiveSpriteCommands {
+  readonly sprite: ReadonlySignal<SpriteJson>;
+  readonly fx: ReadonlySignal<ReadonlyMap<string, FxJson>>;
+  readonly animationSource: ReadonlySignal<ReadonlySignal<string | number> | undefined>;
+  readonly art: ReadonlySignal<number>;
+  readonly loaded: boolean;
+  readonly currentAnimation: string;
+  readonly numFrames: number;
+  update(dt: number): void;
+  setAwake(awake: boolean): void;
+  start(name: string): void;
+  playOnce(name: string, complete?: () => void): void;
+  holdLastFrame(name: string): void;
+  setFrame(frame: number): void;
+  setFacing(facing: number): void;
+  setColour(colour: readonly number[]): void;
+  setOpacity(opacity: number): void;
+  setPaused(paused: boolean): void;
+  attachFx(key: string, fx: FxJson): void;
+  detachFx(key: string): void;
+  followAnimation(source: ReadonlySignal<string | number> | undefined): void;
+}
+
+/**
  * The prefab-side sprite of an entity: animation commands become a `SpriteJson` snapshot, and nothing here touches a
  * model. It offers the controller surface prefabs already call, so a prefab changes the json and the display reacts.
  */
-export class SpriteState implements TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
+export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
   private readonly json: ReturnType<typeof createSignal<SpriteJson>>;
   /** Snapshots of the entity's sprite; the display subscribes to this. */
   readonly sprite: ReadonlySignal<SpriteJson>;
+  private readonly fxDeclared = createSignal<ReadonlyMap<string, FxJson>>(new Map());
+  /** Effects shown on the entity while their `active` signal is true; apart from `sprite`, so a clip change does not reach them. */
+  readonly fx = readonlySignal(this.fxDeclared);
+  private readonly followed = createSignal<ReadonlySignal<string | number> | undefined>(undefined);
+  /** The clip follows this signal's value for as long as it is declared. */
+  readonly animationSource = readonlySignal(this.followed);
   private readonly artVersion = createSignal(0);
   /** Changes whenever the drawn sprite is attached or released; owners dress what they keep outside the json after it. */
   readonly art = readonlySignal(this.artVersion);
@@ -141,6 +177,16 @@ export class SpriteState implements TransientSpriteAnimationController, PercentA
   setFacing(facing: number): void { this.write({ facing }); }
   setColour(colour: readonly number[]): void { this.write({ colour }); }
   setOpacity(opacity: number): void { this.write({ opacity }); }
+  setPaused(paused: boolean): void { this.write({ paused }); }
+  /** Declares an effect under `key`; declaring the key again replaces it. */
+  attachFx(key: string, fx: FxJson): void { this.fxDeclared.set(new Map(this.fxDeclared.peek()).set(key, fx)); }
+  detachFx(key: string): void {
+    const fx = new Map(this.fxDeclared.peek());
+    fx.delete(key);
+    this.fxDeclared.set(fx);
+  }
+  /** Declares that the animation is this signal's value; the display keeps it so. Undefined ends it. */
+  followAnimation(source: ReadonlySignal<string | number> | undefined): void { this.followed.set(source); }
 
   hideLayer(layer: string): void { this.withAppearance(`layer:${layer}`, { kind: 'layer', layer, hidden: true }); }
   showLayer(layer: string): void { this.withAppearance(`layer:${layer}`, { kind: 'layer', layer, hidden: false }); }

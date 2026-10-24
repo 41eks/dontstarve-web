@@ -1,10 +1,11 @@
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable, type Worker } from '../../componets/src/workable';
-import { createGroundItemSprite } from './groundItems';
+import { createGroundItemSprite, createResidentGroundItem } from './groundItems';
 import { configureTradableEntity } from './tradable';
-import { burnableFireRenderEntry, createBurnableItemVisual } from './burnableItems';
+import { createBurnableItemVisual } from './burnableItems';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import type { GroundItemFactory, GroundPrefabContext, PreparedGroundSpawn } from './groundPrefab';
 import type { LootLaunch } from './lootFling';
 import type { Vector3 } from 'three';
@@ -85,21 +86,22 @@ export function configureRockAvocadoFruitEntity(entity: ItemEntity): void {
 
 /** All possible outputs are prepared before a stack becomes an actionable ground target. */
 export function createRockAvocadoGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const fires = new Set<ArchiveSprite>();
+  const displays = new Set<PrefabDisplay>();
   return {
     itemIds: ['rock_avocado_fruit', 'rock_avocado_fruit_ripe'], configureEntity: configureRockAvocadoFruitEntity,
     async create(item) {
-      const sprite = await createGroundItemSprite(context.assets, item.itemId);
       if (item.itemId === 'rock_avocado_fruit_ripe') {
+        const base = await createResidentGroundItem(context, item), sprite = base.instance.sprite;
         let stop: (() => void) | undefined;
         let visual;
-        try { visual = await createBurnableItemVisual(context, item.itemId, sprite, fires); }
-        catch (error) { sprite.dispose(); throw error; }
+        try { visual = await createBurnableItemVisual(context, item.itemId, base, displays); }
+        catch (error) { base.visual.dispose(); throw error; }
         return { ...visual, bindEntity(entity: ItemEntity) {
           visual.bindEntity?.(entity);
           stop = entity.ListenForEvent('split_open', () => sprite.playOnce('split_open', () => sprite.playOnce('idle_split_open')));
         }, dispose() { stop?.(); visual.dispose(); } };
       }
+      const sprite = await createGroundItemSprite(context.assets, item.itemId);
       if (!context.prepareSpawn) { sprite.dispose(); throw new Error('Stone fruit needs prepared loot'); }
       const requests = PRODUCTS.flatMap(prefab => Array.from({ length: item.count }, () => ({ prefab,
         request: context.prepareSpawn!({ ...catalog.items[prefab], itemId: prefab, count: 40 }),
@@ -119,8 +121,7 @@ export function createRockAvocadoGroundFactory(context: GroundPrefabContext): Gr
         controller?.release(presentation); for (const pieces of outputs.values()) pieces.forEach(output => output.dispose()); sprite.dispose();
       } };
     },
-    update(dt, quaternion) { for (const fire of fires) { fire.model.quaternion.copy(quaternion); fire.update(dt); } },
-    renderEntities: () => [...fires].map(burnableFireRenderEntry),
-    dispose() { for (const fire of fires) fire.dispose(); fires.clear(); },
+    renderEntities: () => [...displays].flatMap(display => display.fxRenderEntries),
+    dispose() { displays.clear(); },
   };
 }

@@ -1,6 +1,7 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import catalog from './groundItems.json' with { type: 'json' };
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { Heater } from '../../componets/src/heater';
 
 export const HEATROCK_ID = 'heatrock';
@@ -87,6 +88,12 @@ export class HeatRock {
     this.stopImage();
     this.cleanups.splice(0).forEach(stop => stop());
   }
+}
+
+/** heatrock.lua: the ground animation is the stone's range, `1`..`5`. */
+export function declareHeatRockSprite(entity: ItemEntity, sprite: ArchiveSpriteCommands): void {
+  const rock = entity.getComponent<HeatRock>('heatrock');
+  if (rock) sprite.followAnimation(rock.range);
 }
 
 export function configureHeatRockEntity(entity: ItemEntity): void {

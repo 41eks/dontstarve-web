@@ -5,6 +5,8 @@ import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { BurnableInst } from '../../componets/src/burnable';
 import type { GroundPrefabContext, GroundItemVisual, PreparedGroundSpawn } from './groundPrefab';
+import type { ResidentGroundItem } from './groundItems';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import catalog from './groundItems.json' with { type: 'json' };
 import { setPrefabLocalLight } from './localLight';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
@@ -110,16 +112,15 @@ export function configureBurnableItemEntity(entity: ItemEntity): void {
   entity.component('burnable_item', () => new BurnableItemController(entity));
 }
 
-/** Existing ground art, generic fire FX and a prepared ash stack; all resources precede ignition. */
-/** Render entry that keeps a burning item's fire in the owner's sort group, drawn after the item. */
-export function burnableFireRenderEntry(fire: ArchiveSprite) {
-  return { object: fire.model, footPosition: fire.model.position, cameraDepth: 0,
-    sortGroup: fire.model.userData.fireOwnerId as number | undefined, sortLayer: 2 };
-}
-
+/**
+ * Existing ground art, generic fire FX and a prepared ash stack; all resources precede ignition. The prefab declares the
+ * fire as an effect that is active while the item burns; its display shows it as a child of the item, as DST's
+ * Burnable:SpawnFX does. Sound and light follow the same burning signal.
+ */
 export async function createBurnableItemVisual(context: GroundPrefabContext,
-  itemId: string, sprite: ArchiveSprite, fires: Set<ArchiveSprite>, fxLevel: 2 | 3 = 2): Promise<GroundItemVisual> {
+  itemId: string, base: ResidentGroundItem, displays: Set<PrefabDisplay>, fxLevel: 2 | 3 = 2): Promise<GroundItemVisual> {
   if (!context.prepareSpawn) throw new Error('Burnable ground items require prepared ground output');
+  const { visual, instance, display } = base;
   const { igniteSound, loopSound, explosive } = BURNABLE_ITEM_DEFINITIONS[itemId];
   const prepared = await Promise.allSettled([
     createArchiveSprite(context.assets, { animationArchive: 'fire.zip', buildArchives: ['fire.zip'],
@@ -135,57 +136,60 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
   const fire = (prepared[0] as PromiseFulfilledResult<ArchiveSprite>).value;
   const ash = (prepared[1] as PromiseFulfilledResult<PreparedGroundSpawn | undefined>).value;
   const presentation = { context, ash };
+  const model = display.model;
   let controller: BurnableItemController | undefined;
   let stopBurning: (() => void) | undefined;
   let stopIgnite: (() => void) | undefined;
   let sound: SoundHandle | undefined;
   let loop: SoundHandle | undefined;
+  let burningNow = false;
   let disposed = false;
-  const clearFire = () => {
-    fire.model.removeFromParent(); fires.delete(fire);
+  const clearBurning = () => {
+    burningNow = false;
     sound?.stop(); sound = undefined;
     loop?.stop(); loop = undefined;
-    setPrefabLocalLight(sprite.model, null);
+    setPrefabLocalLight(model, null);
   };
   const syncBurning = (burning: boolean) => {
     if (burning) {
-      fire.model.position.copy(sprite.model.position);
-      fire.model.userData.fireOwnerId = sprite.model.id;
-      context.scene.add(fire.model); fires.add(fire);
-      sound = PlaySound('dontstarve/common/campfire', sprite.model.position);
-      if (loopSound) loop = PlaySound(loopSound, sprite.model.position);
-      setPrefabLocalLight(sprite.model, { colour: [1, 1, 192 / 255], radius: (fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
+      burningNow = true;
+      sound = PlaySound('dontstarve/common/campfire', model.position);
+      if (loopSound) loop = PlaySound(loopSound, model.position);
+      setPrefabLocalLight(model, { colour: [1, 1, 192 / 255], radius: (fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
     } else {
-      const wasBurning = fires.has(fire);
-      clearFire();
-      if (wasBurning) PlaySound('dontstarve/common/fireOut', sprite.model.position);
+      const wasBurning = burningNow;
+      clearBurning();
+      if (wasBurning) PlaySound('dontstarve/common/fireOut', model.position);
     }
   };
+  displays.add(display);
   return {
-    model: sprite.model,
+    ...visual,
     bindEntity(entity) {
       configureBurnableItemEntity(entity);
       controller = entity.getComponent<BurnableItemController>('burnable_item')!;
       controller.bind(presentation);
-      sprite.model.userData.burningSignal = controller.burnable.burning;
-      sprite.model.userData.burntSignal = controller.burnt;
-      sprite.model.userData.persistenceSignal = entity.persistence;
+      model.userData.burningSignal = controller.burnable.burning;
+      model.userData.burntSignal = controller.burnt;
+      model.userData.persistenceSignal = entity.persistence;
+      // fire.lua tags: FX and HASHEATER.
+      instance.sprite.attachFx('fire', { sprite: fire, active: controller.burnable.burning, tags: ['FX', 'HASHEATER'], sortLayer: 2 });
       stopBurning = controller.burnable.burning.subscribe(syncBurning);
       syncBurning(controller.burnable.IsBurning());
       // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
-      if (igniteSound) stopIgnite = entity.ListenForEvent('onignite', () => { PlaySound(igniteSound, sprite.model.position); });
+      if (igniteSound) stopIgnite = entity.ListenForEvent('onignite', () => { PlaySound(igniteSound, model.position); });
     },
     update(dt) {
       controller?.update(dt);
       if (disposed) return;
-      sprite.update(dt);
-      if (fires.has(fire)) fire.model.position.copy(sprite.model.position);
+      visual.update?.(dt);
     },
     dispose() {
       if (disposed) return;
       disposed = true;
       stopBurning?.(); stopIgnite?.(); controller?.release(presentation);
-      clearFire(); fire.dispose(); ash?.dispose(); sprite.dispose();
+      clearBurning(); displays.delete(display);
+      instance.sprite.detachFx('fire'); fire.dispose(); ash?.dispose(); visual.dispose();
     },
   };
 }

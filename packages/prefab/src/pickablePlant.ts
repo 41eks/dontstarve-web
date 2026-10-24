@@ -701,7 +701,7 @@ export class PickablePlantManager {
     plant.stopEffect();
     plant.sound?.stop();
     if (plant.sprite) plant.sprite.dispose();
-    else if (plant.instance) { plant.instance.remove(); plant.display!.dispose(); }
+    else if (plant.instance) { plant.instance.remove(); }
     else plant.factory!.disposeSprite(model);
   }
 

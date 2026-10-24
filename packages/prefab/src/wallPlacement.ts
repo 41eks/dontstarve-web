@@ -235,11 +235,7 @@ export class WallPlacement<BuildId extends string> {
     async spawn(buildId: BuildId, skinId?: string): Promise<void> {
         const wall = await this.createInstance(buildId, true, skinId);
         const target = this.playerFrontGroundPosition();
-        wall.model.position.set(
-            target.x,
-            target.y + wall.groundOffset,
-            target.z,
-        );
+        wall.model.position.set(target.x, target.y + wall.groundOffset, target.z);
         wall.model.visible = true;
         wall.opacity.set(1);
         this.faceCamera(wall.model);
