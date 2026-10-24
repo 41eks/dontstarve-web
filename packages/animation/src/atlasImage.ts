@@ -151,6 +151,7 @@ export function createAtlasImage(className: string, atlasPath: string, elementNa
   viewport.className = 'viewport';
   const sprite = document.createElement('span');
   sprite.className = 'sprite';
+  sprite.part.add('sprite');
   viewport.append(sprite);
   root.append(viewport);
   const currentGeneration = generation;
