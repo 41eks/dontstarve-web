@@ -80,6 +80,8 @@ export async function checkTreeSpriteRendering(instanced = false) {
     return scene;
   });
   const pixels = (scene: THREE.Scene) => {
+    // Newly shown appearances are composed over several frames; finish them so each comparison draws complete art.
+    assets.instancedSprites.flush(renderer);
     renderer.setRenderTarget(target);
     renderSceneWithPasses(renderer, scene, camera);
     const result = new Uint8Array(192 * 192 * 4);
@@ -220,6 +222,7 @@ export async function checkBirchLeafRendering(instanced = false) {
     const scene = new THREE.Scene(); scene.add(model);
     const camera = new THREE.OrthographicCamera(-40 / 3, 40 / 3, 24, -8 / 3, .1, 100);
     camera.position.z = 10;
+    assets.instancedSprites.flush(renderer);
     renderSceneWithPasses(renderer, scene, camera);
     actual.getContext('2d')!.drawImage(renderer.domElement, 0, 0);
     const ctx = reference.getContext('2d')!;

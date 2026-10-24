@@ -289,35 +289,46 @@ tile 差集、计时与订阅规则用单元测试验证；浏览器保留少量
 
 ## 首次遍历地图的卡顿：新外观的一次性准备
 
-现象：玩家（含灵魂跳跃传送）第一次走到某片区域时卡顿，再次经过已走过的区域不卡。**这是依据代码和该现象做出的推断，尚未用 Performance 面板确认**；确认前不要把它当作已证实的结论，也不要据此调整 tickingarea 的信号结构。
+现象：玩家（含灵魂跳跃传送）第一次走到某片区域时卡顿，再次经过已走过的区域不卡。已用 `?perf` 埋点在真机上测量，原因是实例化渲染为每个"动画 × 外观"组合在渲染帧内同步合成图集；该合成已改为 GPU 渲染到纹理并分帧完成。tickingarea 的信号结构不是原因，未做改动。
 
-### 推断的原因
+### 原因（已测量）
 
-实体进入活动范围时，模型和逻辑的创建本身很轻，重的是实例化渲染对每个"动画 × 外观"组合只做一次、但在渲染帧内同步完成的准备工作，见 [instancedArchiveSprites.ts](../packages/animation/src/instancedArchiveSprites.ts)：
+实体进入活动范围时，模型和逻辑的创建很轻。重的是 [instancedArchiveSprites.ts](../packages/animation/src/instancedArchiveSprites.ts) 对每个外观只做一次的图集合成，原先在 `render` 里、该外观第一次出现在画面里时同步完成：
 
-1. **解析整段动画。** `show` 在某个外观第一次被使用时，对该动画的**所有帧**调用 `resolve()`，为每帧每个零件匹配贴图和材质。
-2. **CPU 上合成图集。** `render` 在该外观第一次出现在画面里时同步调用 `composeResolvedRgbaSpriteAtlases`，把整段动画所有帧合成为图集。这是像素级合成，是其中最重的一步。
-3. **首次上传和编译。** 新图集第一次绘制时上传显存，同时创建新的 `InstancedMesh` 批次和材质，可能触发着色器程序编译。
-4. **按需下载资源。** `preloadSharedArchiveSprite` 对每种 prefab 的 zip 惰性加载，首次 `spawn` 才下载和解析。
+- 合成由 CPU 的 2D canvas 完成：先把整张源贴图 `putImageData` 解码成 canvas（每次合成重复一遍），再逐帧 `drawImage`。真机上单次合成 40～300ms，`render` 单帧最大 352ms。
+- 其余阶段都不是大头：`resolve` 最大约 3～14ms，`createBatch` 约 1ms，`construct` 约 3～18ms。`preload` 的 1～2 秒是异步下载等待，不阻塞主线程，只让实体晚一点出现。
+- 实体切换到新外观、树换生长阶段或皮肤时也会触发同样的合成；加载界面的 `prewarm` 只处理当时已存在的实体。
 
-现有的 `prewarm`（`InstancedArchiveSprites.prewarm`、[prewarmScene.ts](../src/prewarmScene.ts)）只在加载界面里处理当时已经存在的实体，之后第一次遇到的新外观没有人提前处理，所以这些工作落在玩家第一次到达新区域的那一帧。同一外观再次出现时命中 `appearances` 缓存，不再重复。
+### 处理
 
-外观缓存键由 build、皮肤、符号覆盖和隐藏符号决定（`appearanceKey`），不包含单实体的颜色；因此重复出现的外观开销只发生一次，但每个新的树阶段、动画片段或皮肤组合都各算一次。
+1. **提前并分帧。** 外观第一次 `show` 时就进入合成队列，不等它出现在画面里；每帧最多花 `COMPOSE_BUDGET_MS`（4ms）推进合成，合成完成的外观才参与绘制。尚未完成的外观继续绘制上一个已完成的外观，避免实体短暂消失。加载界面的 `prewarm` 不受预算限制，一次合成完。`flush(renderer)` 供需要立即得到完整画面的调用方使用（测试夹具）。
+2. **GPU 合成。** 实例化渲染使用 `createResolvedRgbaSpriteAtlasComposer(..., renderer)`：每个图集页把各帧零件按源 z 顺序画成带 UV 的四边形，写入预乘的半浮点渲染目标，再由一个全屏通道取消预乘，输出 sRGB 直通 alpha 纹理，格式与原 canvas 路径一致，因此实例化材质、`dstLighting` 和深度预通道不变。不再对源贴图做 CPU 解码，也不保留解码后的 canvas。合成期间保存并恢复渲染器的目标、清除色、`autoClear` 与 `info.render` 计数，不影响外部绘制统计。
+3. **回退。** 渲染器缺少 `EXT_color_buffer_float` 和 `EXT_color_buffer_half_float` 时回退到 CPU 路径；回退路径同样分步执行，源贴图按行块解码，并在跨调用共享的 `WeakMap` 缓存中复用。
+4. **同步入口保持不变。** `composeResolvedRgbaSpriteAtlases` 与 `composeRgbaSpriteAtlas` 仍同步返回 canvas 图集。
+
+GPU 合成的做法参考了 Spine 的 three.js 运行时（不在运行时用 CPU 合成图集、预乘混合）；实现细节、参考点与未采纳部分见 [实例化精灵的 GPU 图集合成](dst-gpu-atlas-composition.md)。
+
+### 测量方式与结果
+
+`packages/animation/src/spritePerf.ts` 提供默认关闭的埋点，URL 加 `?perf` 启用，控制台读 `__spritePerf.summary()`，`__spritePerf.records` 保留每条记录的 `key`。阶段：`resolve`、`construct`、`preload`、`createBatch`、`render`、`compose`（游戏中每帧的分步合成）、`compose:prewarm`（加载界面）、`compose:flush`，以及子阶段 `step:layout`、`step:decode-chunk`、`step:canvas`、`step:draw-frame`、`step:texture`（CPU 路径）和 `step:gpu-upload`、`step:gpu-frame`、`step:gpu-resolve`（GPU 路径）、`step:next`（合成器每次推进的单步）。结合 `?tileperf` 的长任务日志，可把长任务对应到具体阶段。
+
+同一场景、同一台机器的单次运行最大值：
+
+| 指标 | CPU 路径 | GPU 路径 |
+| --- | --- | --- |
+| `compose` 最大 | 118～392ms | 12ms |
+| `render` 最大 | 119～352ms | 12.3ms |
+| `step:next` 最大 | 139～185ms | 11.4ms |
+
+CPU 路径的最大值在运行间波动很大（同一代码的 `step:layout` 在 3ms 与 138ms 之间变化，疑为垃圾回收或系统抖动），因此比较时以多次运行为准，不要依据单次的最大值下结论。GPU 路径的总合成时间与 CPU 路径相近，约 300ms／54 次调用，差别是被摊到各帧、单步都在预算内。
+
+### 已知限制
+
+- 源贴图首次上传（`initTexture`）仍是不可再切的主线程调用，最大约 10ms；每页的全屏取消预乘通道平均约 4ms。
+- GPU 合成的图集是渲染目标，WebGL 上下文丢失后内容不会自动恢复，尚未实现丢失后的重新合成；原 `CanvasTexture` 路径会自动重新上传。
+- 仍有少量图集页走 CPU 路径（来自 `composeRgbaSpriteAtlas` 的其他调用方，量小，未进一步追查）。
+- 加载界面的 `prewarm` 只覆盖当时已存在的实体，不预热存档中尚未加载的 prefab；尚未实现按存档类型的后台预热，也未使用 Worker。
 
 ### 与 tickingarea 响应的关系
 
-跨 tile 时的网格写入和 memo 重算（见"玩家跨 tile 时发布变化"）与上述准备工作发生在同一时刻，但两者规模不同：网格每次最多写入 `2 × (2R + 1)²` 个格子，而一个外观的合成按整段动画的帧数计。在拿到 Performance 数据之前，不能断定哪一部分占主导。
-
-### 如何确认
-
-1. 在 Performance 面板录制首次走过新区域的一段，在 Bottom-Up 里查看自身耗时：`composeResolvedRgbaSpriteAtlases`、canvas 的 `drawImage`／`putImageData`、`texImage2D`、`compileShader`／`linkProgram`、`resolveSprites`。
-2. 查看 Network 面板，卡顿时是否有新的 `.zip` 请求。
-3. 用 `?tileperf`（见 README 调试说明）对照：`write` 与订阅者耗时都小而长任务很大，则指向上述准备工作；再次经过同一区域应当不再出现。
-4. 再走一次已走过的区域，确认不卡。
-
-### 候选缓解方向（未实施）
-
-- 创建 sprite creator 之后，按其 `instancedAnimations` 预先解析并合成对应外观，随后初始化纹理；分帧执行，沿用 `prewarmScene.ts` 的每帧预算（8 ms）。
-- 玩家接近尚未见过的 prefab 种类时，在它进入视野之前触发上述预合成，而不是等到第一次渲染。
-- 世界加载时预热存档中出现过的 prefab 种类，代价是加载时间变长。
-- 激活回调里的重活（创建 sprite、加物理体）可用游戏时间调度器做按实体确定性的随机延迟摊薄；轻量的标签与状态更新保持同步，active → inactive 不延迟。
+跨 tile 时的网格写入和 memo 重算（见"玩家跨 tile 时发布变化"）与外观准备发生在同一时刻，但原因测量表明首次遍历的卡顿来自图集合成，而不是 tickingarea 的信号结构。外观的合成与资源下载属于资源加载，由 tickingarea 的活动状态触发；动画是否播放仍按源 Lua 与实体自身状态决定，不由 tickingarea 决定。
