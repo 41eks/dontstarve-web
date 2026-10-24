@@ -1,5 +1,5 @@
 import {
-  batch, createMemo, createSignal, readonlySignal, seasonstate,
+  batch, createEffect, createMemo, createSignal, readonlySignal, seasonstate,
   type Memo, type ReadonlySignal, type WorldSeason,
 } from '../../signals/src';
 
@@ -11,6 +11,8 @@ export interface WeatherSaveData {
   moistureceil: number;
   preciptype: PrecipitationType;
   peakprecipitationrate: number;
+  /** Legacy precipitation-only saves omit snowlevel. */
+  snowlevel?: number;
 }
 
 export interface WeatherOptions {
@@ -27,6 +29,10 @@ const MIN_PRECIP_RATE = 0.1;
 const MOISTURE_CEIL_MULTIPLIERS: Record<WorldSeason, number> = { autumn: 8, winter: 3, spring: 5.5, summer: 13 };
 const MOISTURE_FLOOR_MULTIPLIERS: Record<WorldSeason, number> = { autumn: 1, winter: 1, spring: 0.25, summer: 1.5 };
 const START_SNOW_THRESHOLDS: Record<WorldSeason, number> = { autumn: -5, winter: 5, spring: -5, summer: -5 };
+const STOP_SNOW_THRESHOLDS: Record<WorldSeason, number> = { autumn: 0, winter: 10, spring: 0, summer: 0 };
+const SNOW_ACCUM_RATE = 1 / 300;
+const SNOW_MELT_RATE = 1 / 20;
+const MIN_SNOW_MELT_RATE = 1 / 120;
 const PEAK_PRECIPITATION_RANGES: Record<WorldSeason, { min: number; max: number }> = {
   autumn: { min: 0.1, max: 0.66 }, winter: { min: 0.1, max: 0.8 }, spring: { min: 0.5, max: 1 }, summer: { min: 1, max: 1 },
 };
@@ -42,8 +48,9 @@ function finite(value: number, name: string): number {
 
 /**
  * The precipitation part of components/weather.lua: moisture, its ceiling and floor, the precipitation type and the
- * derived precipitation rate. Moisture only moves by `ForcePrecipitation` (the `ms_forceprecipitation` event, used by
- * `book_rain`) and by dissipating while it precipitates. Wetness, snow cover, lightning, lunar hail, precipitation
+ * derived precipitation rate, temperature-driven rain/snow transitions and snow accumulation/melting.
+ * Moisture only moves by `ForcePrecipitation` (the `ms_forceprecipitation` event, used by
+ * `book_rain`) and by dissipating while it precipitates. Wetness, entity snow cover, lightning, lunar hail, precipitation
  * modes and the seasonal moisture rate are not ported.
  */
 export class Weather {
@@ -52,16 +59,24 @@ export class Weather {
   private readonly moisturefloorState = createSignal(0);
   private readonly preciptypeState = createSignal<PrecipitationType>('none');
   private readonly peakprecipitationrateState = createSignal(1);
+  private readonly snowlevelState = createSignal(0);
   readonly moisture = readonlySignal(this.moistureState);
   readonly moistureceil = readonlySignal(this.moistureceilState);
   readonly moisturefloor = readonlySignal(this.moisturefloorState);
   readonly preciptype = readonlySignal(this.preciptypeState);
   readonly peakprecipitationrate = readonlySignal(this.peakprecipitationrateState);
+  readonly snowLevel = readonlySignal(this.snowlevelState);
   /** weather.lua CalculatePrecipitationRate(): zero when dry, otherwise a rise and fall over the moisture range. */
   readonly precipitationRate: Memo<number>;
-  /** The rain particles and ambience follow the rate only for rain; snow has no art yet. */
+  /** Each emitter follows only its own precipitation type. */
   readonly rainRate: ReadonlySignal<number>;
+  readonly snowRate: ReadonlySignal<number>;
+  /** weather.lua SetGroundOverlay: three successive texture-mask layers. */
+  readonly snowCover: ReadonlySignal<number>;
   private readonly rainRateMemo: Memo<number>;
+  private readonly snowRateMemo: Memo<number>;
+  private readonly snowCoverMemo: Memo<number>;
+  private readonly stopTemperature: () => void;
   private readonly options: WeatherOptions;
   private readonly random: () => number;
 
@@ -78,6 +93,13 @@ export class Weather {
     });
     this.rainRateMemo = createMemo(() => this.preciptypeState.get() === 'rain' ? this.precipitationRate.get() : 0);
     this.rainRate = readonlySignal(this.rainRateMemo);
+    this.snowRateMemo = createMemo(() => this.preciptypeState.get() === 'snow' ? this.precipitationRate.get() : 0);
+    this.snowRate = readonlySignal(this.snowRateMemo);
+    this.snowCoverMemo = createMemo(() => this.snowlevelState.get() * 3);
+    this.snowCover = readonlySignal(this.snowCoverMemo);
+    this.stopTemperature = createEffect(() => {
+      this.updatePrecipitationType(seasonstate.get().season, options.temperature());
+    });
   }
 
   private season(): WorldSeason { return seasonstate.peek().season; }
@@ -104,6 +126,15 @@ export class Weather {
     });
   }
 
+  /** weather.lua's final temperature branch uses separate start/stop thresholds (hysteresis). */
+  private updatePrecipitationType(season = this.season(), temperature = this.options.temperature()): void {
+    if (temperature < START_SNOW_THRESHOLDS[season] && this.preciptypeState.peek() === 'rain') {
+      this.preciptypeState.set('snow');
+    } else if (temperature > STOP_SNOW_THRESHOLDS[season] && this.preciptypeState.peek() === 'snow') {
+      this.preciptypeState.set('rain');
+    }
+  }
+
   /** weather.lua OnForcePrecipitation: jump moisture to its ceiling (`enable`) or floor; OnUpdate then reacts. */
   ForcePrecipitation(enable = true): void {
     this.moistureState.set(enable ? this.moistureceilState.peek() : this.moisturefloorState.peek());
@@ -112,8 +143,10 @@ export class Weather {
   /** The moisture branches of OnUpdate: dissipate while precipitating, otherwise accumulate toward the ceiling. */
   OnUpdate(dt: number): void {
     if (!Number.isFinite(dt) || dt < 0) throw new RangeError('dt must be finite and nonnegative');
+    // Lua samples the precipitation rate before settling moisture.
+    const rate = this.precipitationRate.peek();
     if (this.preciptypeState.peek() !== 'none') {
-      const moisture = Math.max(this.moistureState.peek() - this.precipitationRate.peek() * dt * PRECIP_RATE_SCALE, 0);
+      const moisture = Math.max(this.moistureState.peek() - rate * dt * PRECIP_RATE_SCALE, 0);
       if (moisture <= this.moisturefloorState.peek()) this.stopPrecipitation();
       else this.moistureState.set(moisture);
     } else if (this.moistureceilState.peek() > 0) {
@@ -121,6 +154,15 @@ export class Weather {
       if (moisture >= this.moistureceilState.peek()) this.startPrecipitation();
       else this.moistureState.set(moisture);
     }
+    const snowlevel = this.snowlevelState.peek();
+    const temperature = this.options.temperature();
+    if (this.preciptypeState.peek() === 'snow') {
+      this.snowlevelState.set(Math.min(snowlevel + rate * dt * SNOW_ACCUM_RATE, 1));
+    } else if (snowlevel > 0 && temperature > 0) {
+      const meltrate = MIN_SNOW_MELT_RATE + SNOW_MELT_RATE * Math.min(temperature / 20, 1);
+      this.snowlevelState.set(Math.max(snowlevel - meltrate * dt, 0));
+    }
+    this.updatePrecipitationType();
   }
 
   OnSave(): WeatherSaveData {
@@ -128,6 +170,7 @@ export class Weather {
       moisture: this.moistureState.peek(), moisturefloor: this.moisturefloorState.peek(),
       moistureceil: this.moistureceilState.peek(), preciptype: this.preciptypeState.peek(),
       peakprecipitationrate: this.peakprecipitationrateState.peek(),
+      snowlevel: this.snowlevelState.peek(),
     };
   }
 
@@ -139,16 +182,22 @@ export class Weather {
     const moisturefloor = finite(data.moisturefloor ?? 0, 'moisturefloor');
     const moistureceil = finite(data.moistureceil ?? this.randomizeMoistureCeil(), 'moistureceil');
     const peak = finite(data.peakprecipitationrate ?? 1, 'peakprecipitationrate');
+    const snowlevel = finite(data.snowlevel ?? 0, 'snowlevel');
+    if (snowlevel < 0 || snowlevel > 1) throw new RangeError('snowlevel must be between 0 and 1');
     batch(() => {
       this.moistureState.set(moisture);
       this.moisturefloorState.set(moisturefloor);
       this.moistureceilState.set(moistureceil);
       this.preciptypeState.set(preciptype);
       this.peakprecipitationrateState.set(peak);
+      this.snowlevelState.set(snowlevel);
     });
   }
 
   dispose(): void {
+    this.stopTemperature();
+    this.snowCoverMemo.dispose();
+    this.snowRateMemo.dispose();
     this.rainRateMemo.dispose();
     this.precipitationRate.dispose();
   }

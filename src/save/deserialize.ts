@@ -244,12 +244,13 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   }
   if (systemsData.weather !== undefined) {
     const path = 'world.systems.weather';
-    const o = object(systemsData.weather, path, ['moisture', 'moisturefloor', 'moistureceil', 'preciptype', 'peakprecipitationrate']);
+    const o = object(systemsData.weather, path, ['moisture', 'moisturefloor', 'moistureceil', 'preciptype', 'peakprecipitationrate', 'snowlevel']);
     systems.weather = {
       moisture: number(o.moisture, `${path}.moisture`), moisturefloor: number(o.moisturefloor, `${path}.moisturefloor`),
       moistureceil: number(o.moistureceil, `${path}.moistureceil`),
       preciptype: choice(o.preciptype, `${path}.preciptype`, ['none', 'rain', 'snow']),
       peakprecipitationrate: number(o.peakprecipitationrate, `${path}.peakprecipitationrate`, 0, 1),
+      ...(o.snowlevel === undefined ? {} : { snowlevel: number(o.snowlevel, `${path}.snowlevel`, 0, 1) }),
     };
   }
   if (systemsData.random !== undefined) {
