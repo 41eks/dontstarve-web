@@ -20,13 +20,15 @@ interface Entry {
   visual: THREE.Group;
   colour: THREE.Color;
   opacity: number;
+  erosion: number;
+  styleVersion: number;
   appearance?: Appearance;
   /** The last appearance with a composed atlas, drawn while a newly shown one is still being composed. */
   ready?: Appearance;
   frame: number;
   stopPass: () => void;
   draw?: DrawEntry;
-  spatial?: { frame: RgbaSpriteAtlasFrame; world: THREE.Matrix4; sphere: THREE.Sphere; camera: number; visible: boolean };
+  spatial?: { frame: RgbaSpriteAtlasFrame; world: THREE.Matrix4; sphere: THREE.Sphere; camera: number; visible: boolean; version: number };
 }
 interface DrawEntry { entry: Entry; frame: RgbaSpriteAtlasFrame; depth: number; x: number; y: number; z: number; lightOverride: number; camera: number }
 interface DrawPage {
@@ -39,7 +41,8 @@ interface DrawPage {
 interface HierarchyState { generation: number; scene?: THREE.Scene; visible: boolean; lightOverride?: number }
 interface InstanceState {
   id: number;
-  world: THREE.Matrix4;
+  transformVersion: number;
+  styleVersion: number;
   frame?: RgbaSpriteAtlasFrame;
   r: number; g: number; b: number;
   opacity: number; light: number; erosion: number;
@@ -146,10 +149,10 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   private readonly frameMatrix = new THREE.Matrix4();
   private readonly frustumMatrix = new THREE.Matrix4();
   private readonly previousFrustumMatrix = new THREE.Matrix4();
+  private readonly previousViewMatrix = new THREE.Matrix4();
   private cameraVersion = 0;
   private coordinateSystem?: THREE.Camera['coordinateSystem'];
   private readonly frustum = new THREE.Frustum();
-  private readonly bounds = new THREE.Sphere();
   private readonly attributeValues = new Float32Array(4);
   private renderer?: THREE.WebGLRenderer;
   private contextLost = false;
@@ -197,7 +200,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
 
   retain(model: THREE.Object3D, visual: THREE.Group, colour: readonly [number, number, number] = [1, 1, 1], opacity = 1,
     foot: THREE.Object3D = model) {
-    const entry: Entry = { model, foot, visual, colour: new THREE.Color().setRGB(...colour), opacity, frame: 0,
+    const entry: Entry = { model, foot, visual, colour: new THREE.Color().setRGB(...colour), opacity, erosion: 0, styleVersion: 0, frame: 0,
       stopPass: registerSceneRenderPass(model, this) };
     this.entries.add(entry);
     return {
@@ -211,8 +214,14 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         entry.appearance = appearance; entry.frame = frame;
       },
       hide: () => { entry.appearance = entry.ready = undefined; },
-      setOpacity: (value: number) => { entry.opacity = value; },
-      setColour: (value: readonly [number, number, number]) => { entry.colour.setRGB(...value); },
+      setOpacity: (value: number) => {
+        if (entry.opacity !== value) { entry.opacity = value; entry.styleVersion++; }
+      },
+      setColour: (value: readonly [number, number, number]) => {
+        if (entry.colour.r !== value[0] || entry.colour.g !== value[1] || entry.colour.b !== value[2]) {
+          entry.colour.setRGB(...value); entry.styleVersion++;
+        }
+      },
       dispose: () => { entry.stopPass(); this.entries.delete(entry); },
     };
   }
@@ -313,8 +322,10 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     if (this.contextLost) return;
     this.generation++;
     this.frustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    if (this.coordinateSystem !== camera.coordinateSystem || !this.frustumMatrix.equals(this.previousFrustumMatrix)) {
+    if (this.coordinateSystem !== camera.coordinateSystem || !this.frustumMatrix.equals(this.previousFrustumMatrix)
+      || !camera.matrixWorldInverse.equals(this.previousViewMatrix)) {
       this.previousFrustumMatrix.copy(this.frustumMatrix); this.coordinateSystem = camera.coordinateSystem;
+      this.previousViewMatrix.copy(camera.matrixWorldInverse);
       this.frustum.setFromProjectionMatrix(this.frustumMatrix, camera.coordinateSystem); this.cameraVersion++;
     }
     const draws = this.draws;
@@ -330,11 +341,11 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       // assembled frame before sorting or uploading instances, retaining logical
       // playback and the cached atlas while the entity is outside the camera.
       let spatial = entry.spatial;
-      if (!spatial) entry.spatial = spatial = { frame, world: new THREE.Matrix4(), sphere: new THREE.Sphere(), camera: -1, visible: false };
+      if (!spatial) entry.spatial = spatial = { frame, world: new THREE.Matrix4(), sphere: new THREE.Sphere(), camera: -1, visible: false, version: 0 };
       if (spatial.camera === -1 || !spatial.world.equals(entry.visual.matrixWorld)
         || spatial.frame.width !== frame.width || spatial.frame.height !== frame.height
         || spatial.frame.minX !== frame.minX || spatial.frame.minY !== frame.minY) {
-        spatial.world.copy(entry.visual.matrixWorld); spatial.frame = frame;
+        spatial.world.copy(entry.visual.matrixWorld); spatial.frame = frame; spatial.version++;
         spatial.sphere.center.set((frame.minX + frame.maxX) / 2, (frame.minY + frame.maxY) / 2, 0);
         spatial.sphere.radius = Math.hypot(frame.width, frame.height) / 2;
         spatial.sphere.applyMatrix4(entry.visual.matrixWorld); spatial.camera = -1;
@@ -359,7 +370,14 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         if (draw.depth !== depth || draw.x !== x || draw.z !== z) page.sortDirty = true;
         draw.depth = depth; draw.x = x; draw.y = y; draw.z = z; draw.camera = this.cameraVersion;
       }
-      draw.frame = frame; draw.lightOverride = Math.max(lightOverride ?? 0, getLightOverride(page.source) ?? 0);
+      draw.frame = frame;
+      // Visibility and inherited light can be assigned directly on Three nodes.
+      // Sample them each pass, but leave unchanged instance attributes untouched.
+      const light = Math.max(lightOverride ?? 0, getLightOverride(page.source) ?? 0);
+      const erosion = getSpriteErosion(entry.model);
+      if (draw.lightOverride !== light || entry.erosion !== erosion) {
+        draw.lightOverride = light; entry.erosion = erosion; entry.styleVersion++;
+      }
       if (page.members[page.count] !== draw) { page.members[page.count] = draw; page.sortDirty = true; }
       page.count++;
     }
@@ -416,28 +434,28 @@ export class InstancedArchiveSprites implements SceneRenderPass {
           const { entry, frame, lightOverride: light } = page.entries[index];
           let previous = batch.transforms[index];
           const replaced = !previous || previous.id !== entry.model.id;
-          if (!previous) batch.transforms[index] = previous = { id: -1, world: new THREE.Matrix4(),
+          if (!previous) batch.transforms[index] = previous = { id: -1, transformVersion: -1, styleVersion: -1,
             r: NaN, g: NaN, b: NaN, opacity: NaN, light: NaN, erosion: NaN };
-          if (replaced || !previous.world.equals(entry.visual.matrixWorld)
-            || previous.frame!.width !== frame.width || previous.frame!.height !== frame.height
-            || previous.frame!.minX !== frame.minX || previous.frame!.minY !== frame.minY) {
+          if (replaced || previous.transformVersion !== entry.spatial!.version) {
             this.frameMatrix.makeScale(frame.width, frame.height, 1).setPosition(frame.minX, frame.minY, 0);
             this.matrix.multiplyMatrices(entry.visual.matrixWorld, this.frameMatrix);
             writer.write(batch.colour.instanceMatrix, index, this.matrix.elements);
-            previous.world.copy(entry.visual.matrixWorld);
-          }
-          if (replaced || previous.r !== entry.colour.r || previous.g !== entry.colour.g || previous.b !== entry.colour.b) {
-            values[0] = previous.r = entry.colour.r; values[1] = previous.g = entry.colour.g; values[2] = previous.b = entry.colour.b;
-            writer.write(batch.colour.instanceColor!, index, values);
+            previous.transformVersion = entry.spatial!.version;
           }
           if (replaced || previous.frame !== frame) {
             values[0] = frame.u0; values[1] = frame.v0; values[2] = frame.u1; values[3] = frame.v1;
             writer.write(uv, index, values);
           }
-          if (replaced || previous.opacity !== entry.opacity) { values[0] = previous.opacity = entry.opacity; writer.write(opacity, index, values); }
-          if (replaced || previous.light !== light) { values[0] = previous.light = light; writer.write(lightOverride, index, values); }
-          const amount = getSpriteErosion(entry.model);
-          if (replaced || previous.erosion !== amount) { values[0] = previous.erosion = amount; writer.write(erosion, index, values); }
+          if (replaced || previous.styleVersion !== entry.styleVersion) {
+            if (replaced || previous.r !== entry.colour.r || previous.g !== entry.colour.g || previous.b !== entry.colour.b) {
+              values[0] = previous.r = entry.colour.r; values[1] = previous.g = entry.colour.g; values[2] = previous.b = entry.colour.b;
+              writer.write(batch.colour.instanceColor!, index, values);
+            }
+            if (replaced || previous.opacity !== entry.opacity) { values[0] = previous.opacity = entry.opacity; writer.write(opacity, index, values); }
+            if (replaced || previous.light !== light) { values[0] = previous.light = light; writer.write(lightOverride, index, values); }
+            if (replaced || previous.erosion !== entry.erosion) { values[0] = previous.erosion = entry.erosion; writer.write(erosion, index, values); }
+            previous.styleVersion = entry.styleVersion;
+          }
           previous.id = entry.model.id; previous.frame = frame;
         }
         batch.colour.count = batch.depth.count = page.entries.length;

@@ -18,6 +18,7 @@ import {
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
 import { publishSpriteSpatialBounds, spriteSpatialRadius } from './spatialBounds';
+import { installMatrixGate } from './matrixGate';
 
 /** Envelope radius of every frame of an animation drawn from the plain build (no skin layers or overrides). */
 const animationEnvelopes = new WeakMap<Animation, number>();
@@ -100,6 +101,7 @@ export interface AnimatedSpriteFactory {
 export class SpriteController implements TransientSpriteAnimationController, FrameSeekableAnimationController, PercentAnimationController, LayerAnimationController {
   protected readonly visual: THREE.Group;
   private readonly renderer: SpriteFrameRenderer;
+  private readonly matrixGate?: ReturnType<typeof installMatrixGate>;
   private build: ParsedBuild;
   protected readonly animations: ParsedAnim;
   private materials: THREE.MeshBasicMaterial[];
@@ -139,6 +141,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   ) {
     this.visual = visual;
     this.renderer = new SpriteFrameRenderer(visual);
+    if (visual.parent) this.matrixGate = installMatrixGate(visual.parent, visual, false, false, true);
     this.build = build;
     this.animations = animations;
     this.materials = materials;
@@ -169,6 +172,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   }
 
   dispose(): void {
+    this.matrixGate?.dispose();
     this.stopSnow?.();
     this.stopSnow = undefined;
     this.snowLevel = undefined;

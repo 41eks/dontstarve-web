@@ -812,11 +812,9 @@ three-roaming-save-v1.json
 
 当前地面是固定平面，没有 DST 式可修改地皮，因此 `map` 保存生成器或初始数据集的身份和参数。当前应用从 `public/saves/initial-world.json` 的 `world.entities.moon_tree` 读取 500 个预先随机生成的固定坐标，通过 `createMoonTreeForest()` 的 `positions` 选项创建通用实体记录；坐标位于 1000 × 1000 的区域内，并保留出生点空地。每次进入页面直接恢复存档中的实体记录，不在运行时重新随机生成。
 
-`ProximityEntities` 保留全部实体的 `id` 和地面接触点 `position`，管理月树模型：场景通过 `bindWorld` 注入世界的 `tickingarea` 后，月树所在 tile 活动时创建模型，inactive 时移除模型并释放其几何体（见 [tile 生命周期](tile-lifecycle.md)）。未注入时月树保持 inactive，不再按玩家距离加载。只有范围内的月树更新动画和 Billboard 朝向，并与玩家、猪王一起按脚点的相机空间深度排序。
+`ResidentEntity` 保留每棵月树的运行时 `id`、持久化 `saveId`、脚点 `position` 和稳定的 `model` 根节点。`bindWorld()` 注入世界的 `tickingarea`，`watchTileActivity()` 更新活动集合并调用 `ResidentSprite.setActive()`；inactive 只释放 visual，保留交互投影、Workable、生长／腐烂计时器和小地图实体。返回时重建共享 archive sprite 并恢复当前 clip、积雪和外观，不重建整棵树（见 [tile 生命周期](tile-lifecycle.md)）。未绑定世界时 visual 保持未加载；绑定后未提供活动查询或查询返回 `undefined` 时保持 active。
 
-月树使用通用动画精灵，通过 `createAnimatedSpriteFactory()` 共享一次加载的动画资源、材质和贴图；每个已加载实体拥有独立模型、几何体和动画控制器。存档应遍历 `MoonTreeForest.entities` 中的全部逻辑记录，而不能只保存 `activeEntities` 或场景中当前存在的模型。距离卸载只释放渲染对象，不删除世界实体。
-
-第一版每棵月树保存稳定的存档 ID、脚点位置和逻辑旋转，当前没有额外持久化组件时使用空的 `components`。`ProximityEntity.id` 按位置数组下标生成，只适用于本次运行；持久化 ID 由 `saveId` 从 JSON 恢复并在导出时保留。加载范围、是否已加载、模型引用、动画帧和相机朝向属于运行时派生状态，按当前 Prefab 定义与恢复后的玩家位置重新计算。`map.generator.options.moonTreeCount` 仅描述初次生成参数，不能代替实际实体记录。
+月树通过 `preloadSharedArchiveSprite()` 复用共享资源，循环待机进入实例批次，其他动画复用共享帧。存档遍历 `MoonTreeForest.entities` 的全部记录，保存身份、脚点和源组件状态，包括树桩／烧焦状态、尺寸、生长和腐烂计时器；不只保存活动集合。运行时 `id` 不写入存档，持久化 ID 通过 `saveId` 恢复和导出。visual 是否驻留、动画帧与相机朝向属于派生状态；`map.generator.options.moonTreeCount` 仅描述初次生成参数，不能代替实际实体记录。
 
 若以后加入可修改地皮，可采用与 DST 类似的编码对象：
 
@@ -970,7 +968,7 @@ JSON 按容器分组，只写非空槽，空槽由 `slotCount` 和缺失的 `slo
 7. 第一遍恢复所有世界实体的逻辑记录和玩家，并建立 `savedEntityId -> runtimeEntity` 映射；月树的映射目标是始终存在的逻辑记录，模型按距离另行创建。
 8. 恢复各组件的本地状态和嵌套容器。
 9. 第二遍解析跨实体引用，再执行组件的 `afterLoad`。
-10. 从保存位置同步已创建的 Three.js 对象和 Cannon Body，重建衍生渲染状态；月树依据恢复后的玩家位置调用 `updateNearby()`，仅创建 10 格半径内的模型，再更新动画、Billboard 朝向与脚点深度排序。
+10. 从保存位置同步已创建的 Three.js 对象和 Cannon Body，重建衍生渲染状态；月树依据恢复后的玩家 tile 活动状态加载 resident visual，再更新活动实体的动画、Billboard 朝向与脚点深度排序；根节点和组件始终保留。
 11. 所有步骤成功后一次性替换当前世界；失败则销毁离屏世界并继续运行旧世界。
 
 加载不能通过调用“放置建筑”“丢弃物品”“装备火把”等玩家操作接口来实现，因为这些接口会消费物品、播放动画并产生副作用。每种持久化 Prefab 应提供无副作用的 `spawnFromSave(record)` 或等价恢复入口。

@@ -39,9 +39,11 @@ export interface ArchiveSpriteOptions {
   scale?: number;
   /** Stationary billboard: its owner uses faceCamera()/refreshTransform() for
    * transform changes, avoiding per-frame local-transform comparisons.
-   * Parent movement and reparenting are still detected automatically.
+   * Reparenting is still detected automatically.
    */
   staticBillboard?: boolean;
+  /** Ancestors are assumed static; set when the parent moves while this sprite stays attached to it. */
+  dynamicParent?: boolean;
 }
 
 export interface ArchiveSpriteBuild {
@@ -266,7 +268,7 @@ function constructArchiveSprite(
   visual.scale.set(scale, -scale, scale);
   model.add(visual);
   registerSpriteRenderGroup(model, visual);
-  const matrixGate = installMatrixGate(model, visual, options.staticBillboard);
+  const matrixGate = installMatrixGate(model, visual, options.staticBillboard, undefined, options.dynamicParent);
   const renderer = new SpriteFrameRenderer(visual);
   const instances = options.instancedAnimations?.length
     ? assets.instancedSprites.retain(model, visual, options.colour, options.opacity ?? definition.multColour?.[3] ?? 1, options.foot) : undefined;

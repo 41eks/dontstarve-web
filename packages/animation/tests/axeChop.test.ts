@@ -70,7 +70,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) animation.update(1 / 30); };
   try {
     player.position.set(1, 0, 3);
-    await area.visit(player.position, forest);
+    await area.visit(player.position);
     const [target] = forest.chopTargets;
     expect(target.entity.hasTag('CHOP_workable')).toBe(true);
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(16);
@@ -92,10 +92,16 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     controller.cancel(); advance(60);
     expect(axe.components.finiteuses.remaining).toBe(99);
 
-    // Work survives unloading the model.
-    player.position.set(500, 0, 0); await area.visit(player.position, forest);
+    // Work, its action projection and the root survive visual unloading.
+    const originalModel = target.model, originalInst = target.entity, originalWork = target.entity.components.workable;
+    player.position.set(500, 0, 0); await area.visit(player.position);
     expect(forest.chopTargets).toEqual([]);
-    player.position.set(1, 0, 3); await area.visit(player.position, forest);
+    expect(target.isValid()).toBe(false);
+    expect(forest.entities[0].model).toBe(originalModel);
+    expect(originalModel.userData.animationController.loaded).toBe(false);
+    player.position.set(1, 0, 3); await area.visit(player.position);
+    expect(forest.chopTargets[0].entity).toBe(originalInst);
+    expect(originalInst.components.workable).toBe(originalWork);
     expect(forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(15);
 
     // The last strike fells the tree away from the chopper and leaves a stump.
@@ -116,12 +122,12 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     expect(tree.entity.hasTag('DIG_workable')).toBe(true);
     expect(tree.entity.hasTag('stump')).toBe(true);
     expect(performToolWork('CHOP', tree.entity, worker, axe)).toBe(false);
-    expect(forest.exportState(forest.entities[0])).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+    expect(forest.exportState(forest.entities[0])).toMatchObject({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
     expect(axe.components.finiteuses.remaining).toBe(84);
 
     // The stump persists through unloading and a restored forest.
-    player.position.set(500, 0, 0); await area.visit(player.position, forest);
-    player.position.set(1, 0, 3); await area.visit(player.position, forest);
+    player.position.set(500, 0, 0); await area.visit(player.position);
+    player.position.set(1, 0, 3); await area.visit(player.position);
     const model = forest.entities[0].model!;
     expect(model.userData.animationController.currentAnimation).toBe('stump_tall');
     expect(forest.chopTargets).toEqual([]);
@@ -131,10 +137,10 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     try {
       restored.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
       restored.restoreState('tree', { stump: true });
-      await area.visit(player.position, restored);
+      await area.visit(player.position);
       expect(restored.entities[0].model!.userData.animationController.currentAnimation).toBe('stump_tall');
       expect(restored.chopTargets).toEqual([]);
-      expect(restored.exportState(restored.entities[0])).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+      expect(restored.exportState(restored.entities[0])).toMatchObject({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
     } finally { restored.dispose(); }
   } finally { controller.dispose(); forest.dispose(); inventory.dispose(); }
 });
@@ -155,7 +161,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
   forest.bindWorld({ camera, scene: new THREE.Scene(), worldEvents: new EventEmitter<WorldEvents>(), tickingarea: area.query, dropLoot });
   forest.restoreState('stump', { stump: true });
   player.position.set(1, 0, 3);
-  await area.visit(player.position, forest);
+  await area.visit(player.position);
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const locomotor = { goToPoint: vi.fn(() => true), stop: vi.fn(), destination: undefined };
   const controller = new ShovelActionController(world, animation, locomotor, inventory.handEquipment, () => forest.digTargets);
@@ -169,17 +175,17 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     expect(controller.request(target)).toBe(true); controller.update(0);
     controller.cancel(); advance(60);
     expect(target.isValid()).toBe(true);
-    expect(forest.exportState(forest.entities[0])).toEqual({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
+    expect(forest.exportState(forest.entities[0])).toMatchObject({ moonTree: { stump: true, size: 'tall' }, growable: { stage: 3 } });
     expect(shovel.components.finiteuses.remaining).toBeUndefined();
     expect(dropLoot).not.toHaveBeenCalled();
 
     // Unloading a model invalidates its target, retaining logical stump work.
-    player.position.set(500, 0, 0); await area.visit(player.position, forest);
+    player.position.set(500, 0, 0); await area.visit(player.position);
     expect(target.isValid()).toBe(false);
     expect(target.dig()).toBe(false);
-    player.position.set(1, 0, 3); await area.visit(player.position, forest);
+    player.position.set(1, 0, 3); await area.visit(player.position);
     const reloaded = forest.digTargets[0], standing = forest.chopTargets[0];
-    const geometryDispose = vi.spyOn((reloaded.model.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
+    const geometryDispose = vi.spyOn((reloaded.model.children[0].children[0].children[0] as THREE.Mesh).geometry, 'dispose');
     expect(controller.request(reloaded)).toBe(true); controller.update(0);
     while (animation.stategraph.stateName === 'dig_start') animation.update(1 / 30);
     advance(14);
@@ -198,8 +204,8 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     expect(forest.renderEntities.map(entity => entity.object)).toEqual([standing.model]);
     expect(forest.digTargets).toEqual([]);
     expect(forest.exportState(forest.entities[0])).toMatchObject({ moonTree: { size: 'tall' }, growable: { stage: 3 } });
-    player.position.set(500, 0, 0); await area.visit(player.position, forest);
-    player.position.set(1, 0, 3); await area.visit(player.position, forest);
+    player.position.set(500, 0, 0); await area.visit(player.position);
+    player.position.set(1, 0, 3); await area.visit(player.position);
     expect(forest.digTargets).toEqual([]);
     expect(forest.activeEntities.size).toBe(1);
     expect(forest.chopTargets[0].entity.components.workable!.GetWorkLeft()).toBe(16);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { updateSceneMatrices } from './matrixUpdates';
 
 /** Display-space world lightmap, shared with the ordinary world materials. */
 export interface ScenePassLighting {
@@ -104,7 +105,7 @@ function visiblePasses(scene: THREE.Scene): SceneRenderPass[] {
 /** Prepare offscreen inputs before drawing the world that consumes them. */
 export function renderScenePasses(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera,
   lighting?: ScenePassLighting): void {
-  scene.updateMatrixWorld();
+  updateSceneMatrices(scene);
   camera.updateMatrixWorld();
   for (const pass of visiblePasses(scene)) pass.render(renderer, camera, lighting);
 }
@@ -112,7 +113,7 @@ export function renderScenePasses(renderer: THREE.WebGLRenderer, scene: THREE.Sc
 /** Offscreen inputs and the world share one matrix traversal, including spatial-index updates. */
 export function renderSceneWithPasses(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera,
   lighting?: ScenePassLighting | PrepareSceneLighting): void {
-  scene.updateMatrixWorld();
+  updateSceneMatrices(scene);
   // A camera in the scene was already updated with its ancestors above.
   if (camera.parent === null) camera.updateMatrixWorld();
   const sceneAutoUpdate = scene.matrixWorldAutoUpdate;
@@ -133,7 +134,7 @@ export function renderSceneWithPasses(renderer: THREE.WebGLRenderer, scene: THRE
 
 export async function prewarmScenePasses(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera,
   signal?: AbortSignal): Promise<void> {
-  scene.updateMatrixWorld();
+  updateSceneMatrices(scene);
   camera.updateMatrixWorld();
   for (const pass of visiblePasses(scene)) {
     signal?.throwIfAborted();

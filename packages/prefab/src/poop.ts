@@ -23,7 +23,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
       const prepared = await Promise.allSettled([
         createGroundItemSprite(context.assets, 'poop', item.skinId),
         createArchiveSprite(context.assets, { animationArchive: 'flies.zip', buildArchives: ['flies.zip'],
-          bank: 'flies', animation: 'swarm_pre', loop: false }, { name: 'flies' }),
+          bank: 'flies', animation: 'swarm_pre', loop: false }, { name: 'flies', dynamicParent: true }),
         PreloadSounds(FLIES_SOUND),
       ]);
       const failure = prepared.find(result => result.status === 'rejected');
