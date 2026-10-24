@@ -37,6 +37,10 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
   tile.set(true); await tick();
   expect(created).toHaveLength(2);
   expect(visual.model.children[0]).toBe(created[1].model);
+  // Pausing is sprite json: it reaches the drawn sprite on its next frame.
+  visual.model.dispatchEvent({ type: 'onputininventory' } as never);
+  visual.update!(0);
+  expect(created[1].setPaused).toHaveBeenLastCalledWith(true);
   visual.dispose();
   expect(created[1].dispose).toHaveBeenCalledOnce();
 });

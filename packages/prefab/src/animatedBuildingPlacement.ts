@@ -267,11 +267,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     async spawn(buildId: BuildId, skinId?: string): Promise<void> {
         const building = await this.createInstance(buildId, skinId);
         const target = this.playerFrontGroundPosition();
-        building.model.position.set(
-            target.x,
-            target.y + building.groundOffset,
-            target.z,
-        );
+        building.model.position.set(target.x, target.y + building.groundOffset, target.z);
         building.model.visible = true;
         this.setOpacity(building.model, 1);
         this.faceCamera(building.model);

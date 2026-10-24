@@ -1,9 +1,9 @@
-import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { PrefabDisplay } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Explosive, type ExplosiveTarget } from '../../componets/src/explosive';
 import { FindEntities } from './actionEntity';
-import { configureBurnableItemEntity, burnableFireRenderEntry, createBurnableItemVisual } from './burnableItems';
-import { createGroundItemSprite } from './groundItems';
+import { configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
+import { createResidentGroundItem } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { TILE_SIZE } from './tile';
 
@@ -12,18 +12,18 @@ const CANT_TAGS = ['INLIMBO', 'notarget'] as const; // explosive.lua CANT_TAGS
 
 /** gunpowder.lua: a burnable explosive whose fuse ends in explode_small; the scene is the explosion's world. */
 export function createGunpowderGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const fires = new Set<ArchiveSprite>();
+  const displays = new Set<PrefabDisplay>();
   return {
     itemIds: [GUNPOWDER_ID],
     configureEntity: configureBurnableItemEntity,
     async create(item) {
       if (!context.fx) throw new Error('Gunpowder requires the explode_small effect');
-      const sprite = await createGroundItemSprite(context.assets, GUNPOWDER_ID, item.skinId);
+      const base = await createResidentGroundItem(context, item);
       let visual;
       try {
-        visual = await createBurnableItemVisual(context, GUNPOWDER_ID, sprite, fires);
+        visual = await createBurnableItemVisual(context, GUNPOWDER_ID, base, displays);
         await context.fx.prepare('explode_small');
-      } catch (error) { (visual ?? sprite).dispose(); throw error; }
+      } catch (error) { (visual ?? base.visual).dispose(); throw error; }
       return { ...visual, bindEntity(entity: ItemEntity) {
         visual.bindEntity?.(entity);
         const explosive = entity.component('explosive', () => new Explosive(entity,
@@ -34,8 +34,7 @@ export function createGunpowderGroundFactory(context: GroundPrefabContext): Grou
         explosive.SetOnExplodeFn(inst => context.fx!.spawn('explode_small', inst.getPosition()));
       } };
     },
-    update(dt, quaternion) { for (const fire of fires) { fire.model.quaternion.copy(quaternion); fire.update(dt); } },
-    renderEntities: () => [...fires].map(burnableFireRenderEntry),
-    dispose() { for (const fire of fires) fire.dispose(); fires.clear(); },
+    renderEntities: () => [...displays].flatMap(display => display.fxRenderEntries),
+    dispose() { displays.clear(); },
   };
 }

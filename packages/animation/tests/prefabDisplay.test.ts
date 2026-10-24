@@ -49,3 +49,26 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
   expect(model.parent).toBeNull();
   expect(meshes()).toBe(0);
 });
+
+it('the model stands on the entity\'s own position vector, so moving it never touches the sprite json', async () => {
+  const bytes = await readFile(new URL(`../../../public/dst/data/anim/${TREASURE_CHEST_DEFINITION.archive}`, import.meta.url));
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(bytes)));
+  vi.stubGlobal('window', new EventTarget());
+  vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
+  const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
+    tickingarea: () => createMemo(() => true) } as unknown as WorldContext;
+  const placement = new AnimatedBuildingPlacement(world, { chest: TREASURE_CHEST_DEFINITION }, () => true);
+  await placement.spawn('chest');
+  const model = world.scene.children[0], instance = prefabInstance(model)!;
+  await tick();
+  expect(model.position).toBe(instance.position);
+
+  const published = vi.fn();
+  instance.sprite.sprite.subscribe(published);
+  model.position.set(3, 0, 4);
+  expect(instance.position.toArray()).toEqual([3, 0, 4]);
+  instance.sprite.start('open');
+  expect(published).toHaveBeenCalledOnce();
+  expect(instance.position.toArray()).toEqual([3, 0, 4]);
+});

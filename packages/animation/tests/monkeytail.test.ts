@@ -126,7 +126,8 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
       id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('dug_monkeytail').maxStack).toBe(10);
     expect(s.inventory.getItemSpec('dug_monkeytail').atlas).toBe('images/inventoryimages2.xml');
-    const groundMesh = s.ground.renderEntities[0].object.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+    let groundMesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+    s.ground.renderEntities[0].object.traverse(object => { if (object instanceof THREE.Mesh) groundMesh ??= object as typeof groundMesh; });
     expect(groundMesh.material.some(material => material.name === 'ground:reeds_monkeytails')).toBe(true);
     expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
     s.player.position.set(0, 0, 0);

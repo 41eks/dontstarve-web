@@ -9,7 +9,9 @@ import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 
 export const FLIES_SOUND = 'dontstarve/common/flies';
 
-/** flies.lua: a NOCLICK/DECOR child with independent proximity, animation and looping audio. */
+/**
+ * flies.lua: a NOCLICK/DECOR child with independent proximity, animation and looping audio.
+ */
 export class FliesController {
   readonly playerprox: PlayerProx;
   private readonly init: ComponentTimer;
@@ -72,6 +74,7 @@ export class FliesController {
     this.playerprox.OnEntitySleep();
     this.stopSound();
   }
+  /** For an owner that advances the child's frames itself; a display-declared child is advanced by its owner's display. */
   update(dt: number): void { if (!this.disposed && !this.asleep) this.sprite.update(dt); }
   dispose(): void {
     if (this.disposed) return;

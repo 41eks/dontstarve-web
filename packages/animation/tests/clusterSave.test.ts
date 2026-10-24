@@ -41,7 +41,9 @@ it.each(['Caves', 'Master'] as const)('exports current %s state and preserves ev
       .filter(entry => entry.isFile()).map(entry => relative(clusterDirectory, join(entry.parentPath, entry.name)).replaceAll('\\', '/'));
     expect(Object.keys(files).sort()).toEqual(members.map(name => `Cluster_1/${name}`).sort());
     for (const name of members.filter(name => name !== `${shard}.json`)) {
-      expect(files[`Cluster_1/${name}`]).toEqual(new Uint8Array(await sourceFile(name)));
+      // toEqual walks a typed array element by element (tens of seconds and gigabytes for the 17 MB shard); compare the bytes natively.
+      const expected = await sourceFile(name);
+      expect(Buffer.from(files[`Cluster_1/${name}`]).equals(expected), name).toBe(true);
     }
     const saved = deserializeSave(strFromU8(files[`Cluster_1/${shard}.json`]), SAVE_CATALOG);
     expect(saved.snapshot.parentId).toBe(template.snapshot.id);

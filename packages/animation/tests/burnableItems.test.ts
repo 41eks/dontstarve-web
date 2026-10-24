@@ -50,7 +50,12 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
       expect(model.userData.persistenceSignal.peek()).toBe(false);
       expect(performPickupAction(model.userData.pickupTarget, createPickupDoer(new THREE.Group(), inventory))).toBe(false);
     }
-    expect(scene.children.filter(model => model.name === 'fire')).toHaveLength(2);
+    // The fire is a child of the burning item, as DST's Burnable:SpawnFX adds it, with the source's tags.
+    const fires = () => models.flatMap(model => model.children.filter(child => child.name === 'fire'));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(fires()).toHaveLength(2);
+    expect(fires().every(fire => fire.userData.tags.includes('FX') && fire.userData.tags.includes('HASHEATER'))).toBe(true);
+    expect(manager.renderEntities.filter(entry => entry.object.name === 'fire')).toHaveLength(2);
     const save = () => serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
       entities: { ground_item: manager.exportRecords() }, inventory: inventory.exportState(), elapsedSeconds: 15,
       playerTransform: { position: [3, 0, 6], rotationY: 0 },
@@ -63,7 +68,7 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     expect(notifications[0]).toHaveBeenCalledExactlyOnceWith(true, false);
     expect(notifications[1]).not.toHaveBeenCalled();
     manager.update(7.5, new THREE.Quaternion());
-    expect(log.isRemoved).toBe(true); expect(scene.children.some(model => model.name === 'fire')).toBe(false);
+    expect(log.isRemoved).toBe(true); expect(fires()).toHaveLength(0);
     expect(notifications[1]).toHaveBeenCalledExactlyOnceWith(true, false);
     const records = manager.exportRecords();
     expect(records.map(record => record.components.stack)).toEqual([{ itemId: 'ash', count: 3 }, { itemId: 'ash', count: 7 }]);
