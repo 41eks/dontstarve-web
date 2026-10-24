@@ -3,6 +3,16 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // SGwilson portal_jumpout, sounddef 516, wilson file_index 1.
+  'dontstarve/movement/bodyfall_dirt': { bank: 'wilson', streams: [2], loop: false },
+  // SGwilson portal jump: dontstarve.fev sounddef 2210; together file_index 1487–1491.
+  'dontstarve/creatures/together/toad_stool/infection_post': { bank: 'together', streams: [1488, 1489, 1490, 1491, 1492], loop: false },
+  // sounddefs 2886 + 2722: soul spawn plus Fire_addFuelFlare, two simultaneous layers.
+  'dontstarve/characters/wortox/soul/spawn': { bank: 'wortox', streams: [118], loop: false,
+    layers: [{ bank: 'common', streams: [67] }] },
+  // sounddef 2885: soul_hop_OUT_wortox_DST-001..024, file_index 69–92.
+  'dontstarve/characters/wortox/soul/hop_out': { bank: 'wortox', streams: [70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81,
+    82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93], loop: false },
   // scienceprototyper.lua / magicprototyper.lua → dontstarve.fev sounddefs 244/245/619/944; file_index + 1.
   'dontstarve/common/researchmachine_lvl1_idle_LP': { bank: 'common', streams: [248], loop: true, volume: .15848931670188904 },
   'dontstarve/common/researchmachine_lvl2_idle_LP': { bank: 'common', streams: [249], loop: true, volume: .15848931670188904 },

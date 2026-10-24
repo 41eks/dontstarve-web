@@ -37,11 +37,12 @@ import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from 
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { actionEntity } from './actionEntity';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
+import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
 import { StaffCastingLight } from './yellowstaff';
 
 export type WilsonFacing = 'up' | 'down' | 'side';
-/** waxwell.lua MakePlayerCharacter: Maxwell's playable character build. */
-export const PLAYER_ART_CHARACTER = 'waxwell' as const;
+/** skinprefabs.lua wortox_none: normal_skin = wortox, ghost_skin = ghost_wortox_build. */
+export const PLAYER_ART_CHARACTER = 'wortox' as const;
 
 /** player_common.lua AddComponent("builder"); the scene supplies spatial queries. */
 export function bindPlayerBuilder(model: THREE.Group, world: Omit<BuilderWorld, 'researchMachineDistance'>): Builder {
@@ -98,6 +99,7 @@ export interface WilsonAnimationController extends ActionAnimationController {
   makeGhost(loading?: boolean): void;
   /** player_common_extensions.lua DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state (portal_rez, or amulet_rebirth for an amulet). */
   makeAlive(state?: 'portal_rez' | 'amulet_rebirth'): void;
+  bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint' | 'playSound'> | undefined): void;
   readonly isGhost: boolean;
   readonly isSleeping: boolean;
   wakeFromBed(): void;
@@ -187,6 +189,10 @@ class WilsonController implements WilsonAnimationController {
   private ghostArt?: GhostAssets;
   /** The living build and materials set aside while the ghost's are shown. */
   private livingArt?: { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] };
+  private soulHopHost?: WilsonSoulHopHost;
+  private readonly portalTint = { value: 0 };
+  private readonly tintedMaterials = new WeakSet<THREE.Material>();
+  private readonly portalSounds = new Set<SoundHandle>();
   private multColour: readonly [number, number, number] = [1, 1, 1];
   private readonly hatAssets: HatEquipmentAssets;
   private readonly sanityPercent?: ReadonlySignal<number>;
@@ -237,6 +243,7 @@ class WilsonController implements WilsonAnimationController {
     this.bookFx = new BookFxController(this.equipmentAssets, visual);
     const controller = this;
     this.stategraph = new WilsonStateGraph({
+      get soulHop() { return controller.soulHopHost; },
       get sleep() { return controller.sleepHost; },
       get death() { return controller.deathHost; },
       get rebirth() { return controller.rebirthHost; },
@@ -368,10 +375,29 @@ class WilsonController implements WilsonAnimationController {
     this.rebirthHost = rebirth && { ...rebirth, castLight: (colour, duration, delay) => this.castingLight.start(colour, duration, delay) };
   }
 
+  bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint' | 'playSound'> | undefined): void {
+    if (!host) {
+      this.stategraph.cancelAction('BLINK');
+      for (const sound of this.portalSounds) sound.stop();
+      this.portalSounds.clear();
+      this.portalTint.value = 0;
+    }
+    this.soulHopHost = host && {
+      ...host,
+      setTint: value => { this.portalTint.value = value; },
+      playSound: (event, volume = 1) => {
+        for (const sound of this.portalSounds) if (!sound.isPlaying()) this.portalSounds.delete(sound);
+        const sound = PlaySound(event as SoundEventPath, this.visual.parent!.position);
+        sound.setVolume(volume);
+        this.portalSounds.add(sound);
+      },
+    };
+  }
+
   /** The ghost build is `ghost_<character>_build` (skinner ghost_skin of the default skin). */
   prepareGhost(): Promise<void> {
     this.ghostAssets ??= Promise.all([
-      loadBuild(`ghost_${PLAYER_ART_CHARACTER}_build.zip`, this.assetBaseUrl),
+      loadBuild(`dynamic/ghost_${PLAYER_ART_CHARACTER}_build.zip`, this.assetBaseUrl),
       loadAnim('player_ghost_withhat.zip', this.assetBaseUrl),
       // amulet_rebirth: the resurrecting amulet's clip, FX build and worn art, ready before a haunt can reach it.
       loadAnim('player_amulet_resurrect.zip', this.assetBaseUrl),
@@ -805,7 +831,23 @@ class WilsonController implements WilsonAnimationController {
         return propImage ? [{ element, image: propImage, materials: props!.materials }] : [];
       });
     const fx = this.AnimState.ResolveEffects(this.animation.frames[index].elements, this.mirrored);
-    this.renderer.show([...fx.back, ...sprites, ...fx.front, ...bookFx.front]);
+    const resolved = [...fx.back, ...sprites, ...fx.front, ...bookFx.front];
+    // DoWortoxPortalTint: texture RGB *= 1-val, then colouradder adds (154,23,19)/255 * val.
+    for (const sprite of resolved) for (const material of sprite.materials) {
+      if (this.tintedMaterials.has(material)) continue;
+      this.tintedMaterials.add(material);
+      const previousCompile = material.onBeforeCompile.bind(material);
+      const previousKey = material.customProgramCacheKey();
+      material.onBeforeCompile = (shader, renderer) => {
+        previousCompile(shader, renderer);
+        shader.uniforms.wortoxPortalTint = this.portalTint;
+        shader.fragmentShader = 'uniform float wortoxPortalTint;\n' + shader.fragmentShader.replace(
+          '#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = diffuseColor.rgb * (1.0 - wortoxPortalTint) + vec3(154.0, 23.0, 19.0) / 255.0 * wortoxPortalTint;');
+      };
+      material.customProgramCacheKey = () => previousKey + ':wortox_portaltint';
+      material.needsUpdate = true;
+    }
+    this.renderer.show(resolved);
   }
 }
 
@@ -813,8 +855,8 @@ export async function createWilsonPlayer(
   assetBaseUrl: string,
   options: Pick<WilsonPlayerPrefabOptions, 'sanityPercent'> = {},
 ): Promise<PlayerModel> {
-  const [buildPackage, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip, strum, fishing, shell] = await Promise.all([
-    loadBuild(`${PLAYER_ART_CHARACTER}.zip`, assetBaseUrl),
+  const [buildPackage, idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip, strum, fishing, shell, portal] = await Promise.all([
+    loadBuild(`dynamic/${PLAYER_ART_CHARACTER}.zip`, assetBaseUrl),
     loadAnim('player_idles.zip', assetBaseUrl),
     loadAnim('player_basic.zip', assetBaseUrl),
     loadAnim('player_jump.zip', assetBaseUrl),
@@ -832,6 +874,7 @@ export async function createWilsonPlayer(
     loadAnim('player_strum.zip', assetBaseUrl),
     loadAnim('player_actions_fishing.zip', assetBaseUrl),
     loadAnim('player_slurtle_armor.zip', assetBaseUrl),
+    loadAnim('wortox_portal.zip', assetBaseUrl),
     PreloadSounds('dontstarve/movement/iceslab_slipping', 'dontstarve/movement/slip_fall_whoop',
       'dontstarve/movement/slip_fall_thud', 'dontstarve/characters/wilson/hurt', 'dontstarve/wilson/make_trap', 'dontstarve/wilson/shave_LP', 'dontstarve/wilson/attack_whoosh',
       'dontstarve/wilson/attack_weapon', 'dontstarve/wilson/attack_nightsword',
@@ -845,12 +888,12 @@ export async function createWilsonPlayer(
   const group = new THREE.Group();
   const player = Object.assign(group, { MiniMapEntity: new MiniMapEntity(group.position) });
   // player_common.lua common initialization uses the character name, not the
-  // shared Wilson animation bank. Maxwell's playable prefab is waxwell.
+  // shared Wilson animation bank. Wortox's default skin supplies the build.
   player.MiniMapEntity.SetIcon(`${buildPackage.build.name.toLowerCase()}.png`);
   player.MiniMapEntity.SetPriority(10);
   player.MiniMapEntity.SetCanUseCache(false);
   player.MiniMapEntity.SetDrawOverFogOfWar(true);
-  player.name = 'Maxwell';
+  player.name = 'Wortox';
   player.userData.artCharacter = PLAYER_ART_CHARACTER;
   // player_common.lua: deployment queries ignore the player's own entity.
   actionEntity(player, PLAYER_ART_CHARACTER).addTag('player');
@@ -864,6 +907,7 @@ export async function createWilsonPlayer(
   registerSpriteRenderGroup(player, visual);
 
   const controller = new WilsonController(visual, buildPackage.build, {
+    wortox_portal: portal,
     idle,
     walk: movement,
     run: movement,

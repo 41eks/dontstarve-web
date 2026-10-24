@@ -63,7 +63,7 @@ export function updateMovement(
         const castingBusy = (animation?.isCasting || animation?.isReading || animation?.isPlayingInstrument) && animation.stategraph.hasStateTag('busy');
         // SGwilson's death state has the dead tag: the corpse never moves.
         const dead = animation?.stategraph.isDead === true;
-        const acting = dead || slipping || sleeping || hiding || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
+        const acting = animation?.stategraph.isPerformingAction('BLINK') || dead || slipping || sleeping || hiding || castingBusy || animation?.isNetting || animation?.isEmoting || animation?.isMining || animation?.isChopping || animation?.isHammering || animation?.isDigging || animation?.isReskinning;
         if (slipping && player.userData.wantsToMoveForward) animation!.stategraph.pushLocomote();
         if (acting) locomotor.stop();
         // Match world.step's substep budget when limiting the final travel step.

@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TILE_SIZE, snapToTileCenter, type Vector2 } from './tile';
-import { GROUND_TILE_DEFINITIONS, groundTileGeometry, loadGroundTileMinimapLayer, groundTileVariant, loadGroundTileAssets,
-  type GroundTileAssets, type GroundTileLayerImage, type GroundTileQuad, type GroundOverlayGeometry, type GroundTileName } from './groundTiles';
+import { GROUND_TILE_DEFINITIONS, FALLOFF_EDGES, groundTileGeometry, groundFalloffGeometry, sortGroundFalloffGeometry, loadGroundFalloffAssets, loadGroundTileMinimapLayer, groundTileVariant, loadGroundTileAssets,
+  type GroundTileAssets, type GroundFalloffAssets, type FalloffEdge, type GroundTileLayerImage, type GroundTileQuad, type GroundOverlayGeometry, type GroundTileName } from './groundTiles';
 import { OceanSurface } from './ocean';
 import { loadMinimapOcean, type MinimapOceanData } from './minimapOcean';
 import type { ClockState, ReadonlySignal } from '@dontstarve-web/signals';
+import { GroundDepthPrepass } from './groundDepthPrepass';
 
 // tiledefs.lua preserves these vanilla GROUND IDs in WORLD_TILES.
 export const WORLD_TILES = {
@@ -49,6 +50,9 @@ export class TurfMap {
   private readonly listeners = new Set<(world: Vector2, originalTileId: number) => void>();
   private readonly terrainListeners = new Set<() => void>();
   private ocean?: OceanSurface;
+  private falloffAssets?: GroundFalloffAssets;
+  private falloffMesh?: THREE.Mesh;
+  private readonly depthPrepass = new GroundDepthPrepass();
   private assetBaseUrl?: string;
   private minimapLayers?: Promise<Map<number, GroundTileLayerImage>>;
   private minimapOceanData?: Promise<MinimapOceanData>;
@@ -227,6 +231,7 @@ export class TurfMap {
           / (Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder)) + 1);
         mesh.receiveShadow = true;
         visual.add(mesh);
+        this.depthPrepass.add(mesh);
         this.layers.set(WORLD_TILES[name], { mesh, assets });
         layers.set(WORLD_TILES[name], mini);
         this.rebuildGeometry();
@@ -292,6 +297,7 @@ export class TurfMap {
     const material = this.dirtAssets.material;
     this.dirt = new THREE.Mesh(new THREE.BufferGeometry(), material);
     this.dirt.name = 'DugTurf:DIRT';
+    this.depthPrepass.add(this.dirt);
     this.dirt.renderOrder = -1.5;
     this.dirt.receiveShadow = true;
     this.rebuildGeometry();
@@ -302,11 +308,13 @@ export class TurfMap {
   async createVisual(assetBaseUrl: string): Promise<THREE.Group> {
     if (this.visual) return this.visual;
     this.assetBaseUrl = assetBaseUrl;
-    const [dirt, deciduous, grass, woodfloor, farming, dock] = await Promise.all([
+    const [dirt, deciduous, grass, woodfloor, farming, dock, falloff] = await Promise.all([
       this.createDirtMesh(assetBaseUrl), loadGroundTileAssets(assetBaseUrl, 'DECIDUOUS'), loadGroundTileAssets(assetBaseUrl, 'GRASS'),
       loadGroundTileAssets(assetBaseUrl, 'WOODFLOOR'),
       loadGroundTileAssets(assetBaseUrl, 'FARMING_SOIL'), loadGroundTileAssets(assetBaseUrl, 'MONKEY_DOCK'),
+      loadGroundFalloffAssets(assetBaseUrl),
     ]);
+    this.falloffAssets = falloff;
     this.visual = new THREE.Group();
     this.visual.name = 'EditableTurf';
     this.visual.add(dirt);
@@ -318,8 +326,20 @@ export class TurfMap {
         / (Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder)) + 1);
       mesh.receiveShadow = true;
       this.visual.add(mesh);
+      this.depthPrepass.add(mesh);
       this.layers.set(WORLD_TILES[name], { mesh, assets });
     }
+    // Opaque depth passes run first; the sorted transparent cliffs blend over terrain only where they are in front.
+    this.falloffMesh = new THREE.Mesh(new THREE.BufferGeometry(), falloff.material);
+    this.falloffMesh.name = 'TurfFalloff';
+    this.falloffMesh.renderOrder = -.6;
+    const modelView = new THREE.Matrix4();
+    this.falloffMesh.onBeforeRender = (_renderer, _scene, camera, geometry) => {
+      modelView.multiplyMatrices(camera.matrixWorldInverse, this.falloffMesh!.matrixWorld);
+      sortGroundFalloffGeometry(geometry, modelView);
+    };
+    this.depthPrepass.add(this.falloffMesh);
+    this.visual.add(this.falloffMesh);
     if ([...this.dugTiles.values()].some(tile => tile.tileId === WORLD_TILES.OCEAN_COASTAL)) {
       const assets = await loadGroundTileAssets(assetBaseUrl, 'OCEAN_COASTAL');
       this.ocean = new OceanSurface(assets.material, { size: this.size, tileSize: TILE_SIZE,
@@ -365,6 +385,7 @@ export class TurfMap {
     const geometry = groundTileGeometry(quads, this.dirtAssets, this.size);
     this.dirt.geometry.dispose();
     this.dirt.geometry = geometry;
+    this.depthPrepass.sync(this.dirt);
     this.dirt.visible = quads.length > 0;
     for (const [tileId, { mesh, assets }] of this.layers) {
       const candidates = new Set<string>();
@@ -399,26 +420,51 @@ export class TurfMap {
       const edgeQuads: GroundTileQuad[] = [];
       for (const key of candidates) {
         const [col, row] = key.split(',').map(Number);
-        const current = this.tileAt(col, row);
-        if (!isLandTile(current) && current !== WORLD_TILES.OCEAN_COASTAL) continue;
+        // Skirts also fall off into impassable (void) cells; only cells outside the world have no surface.
+        if (this.tileAt(col, row) === WORLD_TILES.INVALID) continue;
         const variant = this.variantAt(col, row, tileId);
         if (variant !== 17) edgeQuads.push({ col, row, variant });
       }
       mesh.geometry.dispose();
       mesh.geometry = groundTileGeometry(edgeQuads, assets, this.size);
+      this.depthPrepass.sync(mesh);
       mesh.visible = edgeQuads.length > 0;
     }
+    this.rebuildFalloff();
     this.ocean?.rebuildColours();
     for (const listener of this.terrainListeners) listener();
   }
 
+  /** falloffdefs.lua FALLOFF: a land cell (docks excepted) gets a cliff on each side whose neighbour is void. */
+  private rebuildFalloff(): void {
+    if (!this.falloffAssets || !this.falloffMesh) return;
+    const edges: FalloffEdge[] = [];
+    const { min, max } = this.cellRange();
+    for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
+      const tile = this.tileAt(col, row);
+      if (!isLandTile(tile) || tile === WORLD_TILES.MONKEY_DOCK) continue;
+      FALLOFF_EDGES.forEach(({ dx, dz }, edge) => {
+        if (this.isVoidAtCell(col + dx, row + dz)) edges.push({ col, row, edge });
+      });
+    }
+    this.falloffMesh.geometry.dispose();
+    this.falloffMesh.geometry = groundFalloffGeometry(edges, this.falloffAssets);
+    this.depthPrepass.sync(this.falloffMesh);
+    this.falloffMesh.visible = edges.length > 0;
+  }
+
   dispose(): void {
+    this.depthPrepass.dispose();
     this.ocean?.dispose();
     this.ocean = undefined;
     this.visual?.removeFromParent();
     this.dirt?.geometry.dispose();
     this.dirtAssets?.material.dispose();
     for (const { mesh, assets } of this.layers.values()) { mesh.geometry.dispose(); assets.material.dispose(); }
+    this.falloffMesh?.geometry.dispose();
+    this.falloffMesh = undefined;
+    this.falloffAssets?.material.dispose();
+    this.falloffAssets = undefined;
     this.layers.clear();
     this.layerRequests.clear();
     this.listeners.clear();

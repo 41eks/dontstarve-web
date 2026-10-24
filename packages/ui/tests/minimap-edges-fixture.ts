@@ -1,3 +1,4 @@
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { DstMinimapElement } from '../src/minimap';
 import { createMinimapTilePainter } from '../src/minimap-terrain';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
@@ -20,6 +21,6 @@ playerIcon.SetPriority(10);
 playerIcon.SetCanUseCache(false);
 playerIcon.SetDrawOverFogOfWar(true);
 document.body.append(map);
-map.bind({ terrain, cellSize: 12, getPlayerPosition: () => playerIcon.position, miniMapEntities: [playerIcon] });
+map.bind({ terrain, cellSize: 12, getPlayerPosition: () => playerIcon.position, cameraHeading: readonlySignal(createSignal(-90)), miniMapEntities: [playerIcon] });
 map.setOpen(true);
 (window as any).minimapEdges = { terrain, map, playerIcon, createMinimapTilePainter };

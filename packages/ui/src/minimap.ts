@@ -1,3 +1,4 @@
+import { watchSignal, createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
 import { AssetElement } from './assets';
 import { MinimapView, MINIMAP_ZOOM_MAX, MINIMAP_ZOOM_MIN } from './minimap-view';
 import { renderMinimapOcean, type MinimapOceanConfig } from './minimap-ocean';
@@ -24,6 +25,8 @@ export interface MinimapOptions {
   /** World units per grid cell (TILE_SIZE). */
   cellSize: number;
   getPlayerPosition(): { x: number; z: number };
+  /** TheCamera:GetHeading() in degrees; the map's up direction follows the camera. */
+  cameraHeading: ReadonlySignal<number>;
   miniMapEntities?: readonly MiniMapEntity[];
   getMiniMapEntities?(): readonly MiniMapEntity[];
 }
@@ -59,6 +62,7 @@ export class DstMinimapElement extends AssetElement {
   private cursor = { x: 0, y: 0 };
   private drag?: { pointer: number; x: number; y: number; moved: boolean };
   private stopTerrain?: () => void;
+  private readonly headingCleanups: (() => void)[] = [];
   private resizeObserver?: ResizeObserver;
   private readonly icons = new Map<string, HTMLCanvasElement | null>();
   private iconGeneration = 0;
@@ -72,12 +76,16 @@ export class DstMinimapElement extends AssetElement {
 
   bind(options: MinimapOptions): void {
     this.stopTerrain?.();
+    this.releaseHeading();
     this.options = options;
     this.iconGeneration++;
     this.icons.clear();
     for (const entity of this.mapEntities()) this.loadIcon(entity.icon);
     const { min, max } = options.terrain.cellRange();
-    this.view = new MinimapView((max - min) * options.cellSize);
+    const view = this.view = new MinimapView((max - min) * options.cellSize);
+    const heading = watchSignal(options.cameraHeading, stop => { this.headingCleanups.push(stop); });
+    view.heading = heading.peek();
+    createEffect(() => { view.heading = heading.get(); });
     this.baseDirty = true;
     this.layers = undefined;
     this.ocean = undefined;
@@ -130,6 +138,10 @@ export class DstMinimapElement extends AssetElement {
     if (this.open) root.hidden = false;
   }
 
+  private releaseHeading(): void {
+    for (const stop of this.headingCleanups.splice(0)) stop();
+  }
+
   disconnectedCallback(): void {
     cancelAnimationFrame(this.frame);
     window.removeEventListener('keydown', this.onKeyDown);
@@ -143,6 +155,7 @@ export class DstMinimapElement extends AssetElement {
   dispose(): void {
     this.setOpen(false);
     this.disconnectedCallback();
+    this.releaseHeading();
     this.options = undefined;
     this.layers = undefined;
     this.ocean = undefined;
@@ -257,16 +270,20 @@ export class DstMinimapElement extends AssetElement {
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
-    // Base row j covers world z from (min + j) * cell upward on screen, so flip Y.
-    const cell = options.cellSize, scale = view.scale, pixel = cell * scale / CELL_PX;
-    const origin = view.worldToScreen(min * cell, min * cell);
-    context.setTransform(pixel, 0, 0, -pixel, origin.x, origin.z);
+    // Base pixel (u, v) is world (min + u / CELL_PX, min + v / CELL_PX) cells; the view rotates it with the camera.
+    const cell = options.cellSize;
+    context.setTransform(...view.canvasTransform(min * cell, min * cell, cell / CELL_PX));
     context.drawImage(this.base!, 0, 0);
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.strokeStyle = '#6f6248';
     context.lineWidth = 2;
-    const corner = view.worldToScreen(max * cell, max * cell);
-    context.strokeRect(origin.x, corner.z, corner.x - origin.x, origin.z - corner.z);
+    context.beginPath();
+    [[min, min], [max, min], [max, max], [min, max]].forEach(([col, row], index) => {
+      const corner = view.worldToScreen(col * cell, row * cell);
+      if (index === 0) context.moveTo(corner.x, corner.z); else context.lineTo(corner.x, corner.z);
+    });
+    context.closePath();
+    context.stroke();
 
     // Player SetCanUseCache(false): project its live transform on every map
     // frame, independently of the cached terrain. Higher priority draws last.

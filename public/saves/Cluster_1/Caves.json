@@ -22164,7 +22164,129 @@
         "containers": {
           "player:inventory": {
             "slotCount": 15,
-            "slots": []
+            "slots": [
+       {
+"slotKey": "0",
+"item": {
+  "entityId": "e_d1534027d651c84cf418253fbb4e364a",
+  "itemId": "bananajuice",
+  "count": 5
+}
+},
+{
+"slotKey": "1",
+"item": {
+  "entityId": "e_d6e9715654097a08e39fd806095c55fb",
+  "itemId": "yellowstaff",
+  "count": 1,
+  "remainingUses": 17
+}
+},
+{
+"slotKey": "2",
+"item": {
+  "entityId": "e_de1b2a40e41415328215c58886c176fa",
+  "itemId": "turf_cotl_brick",
+  "count": 20
+}
+},
+{
+"slotKey": "3",
+"item": {
+  "entityId": "e_5d692812dc3a6f33e8090c3c02807002",
+  "itemId": "bananapop",
+  "count": 8,
+  "freshnessPercent": 0.24503265625623927
+}
+},
+{
+"slotKey": "4",
+"item": {
+  "entityId": "e_e3bc034cf0ae436f7779ec63c0df8456",
+  "itemId": "opalstaff",
+  "count": 1,
+  "remainingUses": 45
+}
+},
+{
+"slotKey": "5",
+"item": {
+  "entityId": "e_ce28f3798d0a92bc24c1b1c2cbf99ed3",
+  "itemId": "red_cap",
+  "count": 16,
+  "freshnessPercent": 0.8440364583351391
+}
+},
+{
+"slotKey": "6",
+"item": {
+  "entityId": "e_dd2f40d6829c5076db6e49cc0a1f0c23",
+  "itemId": "book_moon",
+  "count": 1
+}
+},
+{
+"slotKey": "7",
+"item": {
+  "entityId": "e_e640a364a302fd7fe5f12990a8527391",
+  "itemId": "butterfly",
+  "count": 15,
+  "freshnessPercent": 0.5700356944504457
+}
+},
+{
+"slotKey": "8",
+"item": {
+  "entityId": "e_0cb0321cedf19505b07c7e0ef392d209",
+  "itemId": "fireflies",
+  "count": 14
+}
+},
+{
+"slotKey": "9",
+"item": {
+  "entityId": "e_701ca836d4dd5f0477d8a36ec530658b",
+  "itemId": "panflute",
+  "count": 1
+}
+},
+{
+"slotKey": "10",
+"item": {
+  "entityId": "e_d34ae8cfaefa8d4bfb198d8dd1d99932",
+  "itemId": "goldenaxe",
+  "count": 1
+}
+},
+{
+"slotKey": "12",
+"item": {
+  "entityId": "e_dc92af1ac7c2b93a8512ab98678209f3",
+  "itemId": "greenstaff",
+  "count": 1,
+  "remainingUses": 3
+}
+},
+{
+"slotKey": "13",
+"item": {
+  "entityId": "e_a150a6cf5e12e1a4141dc47e33de6c1d",
+  "itemId": "reskin_tool",
+  "count": 1
+}
+},
+{
+"slotKey": "14",
+"item": {
+  "entityId": "e_4edc42d322d0f1192991db8fb21e034f",
+  "itemId": "bugnet",
+  "count": 1,
+  "remainingUses": 3
+}
+}
+
+
+            ]
           },
           "player:equipment": {
             "slotCount": 3,

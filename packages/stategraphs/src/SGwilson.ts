@@ -2,6 +2,8 @@ import { BufferedAction } from './bufferedaction.ts';
 import type { BufferedActionObject } from './bufferedaction.ts';
 import { ActionHandler as DefineActionHandler, EventHandler, FRAMES, State as DefineState, StateGraphInstance, TimeEvent } from './stategraph.ts';
 import type { StateActionHandler, StateDefinition } from './stategraph.ts';
+import { wortoxStates } from './SGwortox.ts';
+import type { Vector3 } from 'three';
 import { ghostActionHandlers, ghostClip, ghostStates } from './SGwilsonghost.ts';
 
 export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
@@ -17,11 +19,11 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   /** SGwilsonghost.lua states; `idle`, `walk` and `run` are shared names in a separate state table. */
   | 'appear' | 'hit' | 'haunt_pre' | 'haunt'
   /** SGwilson.lua portal_rez: the player stepping out of the multiplayer portal after a haunt resurrection. */
-  | 'portal_rez'
+  | 'portal_rez' | 'portal_jumpin_pre' | 'portal_jumpin' | 'portal_jumpout'
   /** SGwilson.lua amulet_rebirth: the player rising from a red amulet after a haunt resurrection. */
   | 'amulet_rebirth';
-export type WilsonAction = 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT';
-export type WilsonAnimationKey = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
+export type WilsonAction = 'BLINK' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT';
+export type WilsonAnimationKey = 'wortox_portal' | WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
   | 'quick_eat_pre' | 'quick_eat' | 'quick_drink_pre' | 'quick_drink' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst'
@@ -141,7 +143,18 @@ export interface WilsonRebirthHost {
   sleepNearby(radius: number, seconds: number): void;
 }
 
+export interface WilsonSoulHopHost {
+  tryToPortalHop(): boolean;
+  facePoint(position: Vector3): void;
+  teleport(position: Vector3): void;
+  setPhysicsEnabled(enabled: boolean): void;
+  setTint(value: number): void;
+  spawnFx(prefab: 'wortox_portal_jumpin_fx' | 'wortox_portal_jumpout_fx'): void;
+  playSound(event: string, volume?: number): void;
+}
+
 export interface WilsonStateGraphHost {
+  soulHop?: WilsonSoulHopHost;
   rez?: WilsonRezHost;
   rebirth?: WilsonRebirthHost;
   sleep?: WilsonSleepHost;
@@ -1338,6 +1351,7 @@ const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = 
 
 /** SGwilson.lua action handlers for the supported, unmounted player/tool branches. */
 const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = [
+  ActionHandler('BLINK', (inst, action) => !action.invobject && inst.context.host.soulHop ? 'portal_jumpin_pre' : null),
   // Ranged, blowdart and mounted destinations need unported states.
   ActionHandler('ATTACK', (inst, action) =>
     inst.hasStateTag('attack') && action.target === inst.statemem.attacktarget ? null : 'attack'),
@@ -1443,7 +1457,7 @@ export class WilsonStateGraph {
   }
 
   private createGraph(): WilsonInstance {
-    this.sg = new StateGraphInstance(this, [...states, ...applicationStates], actionHandlers);
+    this.sg = new StateGraphInstance(this, [...states, ...wortoxStates, ...applicationStates], actionHandlers);
     this.sg.listenForEvent('newstate', () => this.host.onStateChanged(this.sg.stateName));
     // SGwilson.lua EventHandler("toolbroke"): ignored during nointerrupt states.
     this.sg.listenForEvent('toolbroke', data => {
@@ -1503,7 +1517,7 @@ export class WilsonStateGraph {
     this.sg.pushEvent(name, data);
     // Browser equipment replacement cancels all owned actions, including states
     // without a Lua-local unequip handler (castspell/veryquickcastspell/bugnet).
-    if (name === 'unequip') this.cancelAction();
+    if (name === 'unequip' && !this.isPerformingAction('BLINK')) this.cancelAction();
   }
   update(dt: number): void { this.sg.update(dt); }
 
@@ -1642,6 +1656,7 @@ export class WilsonStateGraph {
   /** Update the persistent browser crafting request and reconcile the state. */
   requestCrafting(crafting: boolean): void {
     if (this.ghost) return;
+    if (crafting && this.isPerformingAction('BLINK')) return;
     if (crafting === this.crafting) return;
     this.crafting = crafting;
     if (crafting && (this.activeAction !== null || this.stateName === 'emote')) this.finish();
@@ -1650,7 +1665,7 @@ export class WilsonStateGraph {
 
   /** Request a visual state, interrupting any buffered action. */
   requestOneShot(state: WilsonOneShotState): void {
-    if (this.isDead || this.ghost) return;
+    if (this.isDead || this.ghost || this.isPerformingAction('BLINK')) return;
     this.clearBufferedAction();
     this.activeAction = null;
     this.activeBufferedAction = undefined;
@@ -1671,6 +1686,13 @@ export class WilsonStateGraph {
     this.activeInvobject = action.invobject;
     this.foodDrink = action.action === 'EAT' && foodDrink;
     this.sg.goToState(destination);
+    return true;
+  }
+
+  /** ACTIONS.BLINK.fn: only the pre state's buffered action can commit a soul hop. */
+  beginPortalJump(position: Vector3): boolean {
+    if (this.stateName !== 'portal_jumpin_pre' || !this.host.soulHop?.tryToPortalHop()) return false;
+    this.sg.goToState('portal_jumpin', position);
     return true;
   }
 

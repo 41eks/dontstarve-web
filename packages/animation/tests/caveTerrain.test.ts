@@ -56,7 +56,8 @@ it('draws cave land only and blocks keyboard velocity and paths across void or f
     const visual = await map.createVisual('/dst/data');
     for (const name of ['FUNGUS', 'ARCHIVE']) {
       const mesh = visual.getObjectByName(`TurfBlend:${name}`) as Mesh;
-      expect(mesh.geometry.getIndex()!.count).toBe(6);
+      // One full land cell plus the eight source atlas skirts blending into neighbouring void cells.
+      expect(mesh.geometry.getIndex()!.count).toBe(9 * 6);
       expect(map.tileLayerQuads().get(WORLD_TILES[name as 'FUNGUS' | 'ARCHIVE'])).toHaveLength(1);
     }
     expect(map.isVoidAtCell(1, 0)).toBe(true);

@@ -474,3 +474,17 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 ### 科技站启用循环声
 
 `scienceprototyper.lua` / `magicprototyper.lua` 的 `onturnon` 播放 `researchmachine_lvl1..4_idle_LP`，`onturnoff` 停止 `idlesound`。用 `fev-events.py` 核对 `dontstarve.fev`：sounddefs 244、245、619、944 分别映射到 `common` 的零基索引 247、248、250、212，即提取索引 248、249、251、213。CLI `-h` 与逐流 `-m -s` 已核对，流名依次为 `researchmachine_lvl1_idle_LP`、`researchmachine_lvl2_idle_LP`、`researchmachine_lvl3_idle`、`magichat_LP`；四份均以 `-i` 导出为 `sound/common.fsb-<index>.wav`，与源目录已有 WAV 字节一致。前三个 FEV 事件音量为 0.1584893167；第四个为 0.1、音调 −0.25 八度。统一 `sound.ts` 预加载和播放，每站独立循环，停用、烧毁或移除停止；换肤保留音源。
+
+
+### Wortox 灵魂跳跃
+
+`SGwilson.lua` 的 `portal_jumpin` 第 1 帧播放 `creatures/together/toad_stool/infection_post`（音量 .7）与 `characters/wortox/soul/spawn`（音量 .5），`portal_jumpout` 第 1 帧播放 `characters/wortox/soul/hop_out`、第 7 帧播放 `movement/bodyfall_dirt`。项目名前缀均为 `dontstarve/`。FEV 核对结果：
+
+| 事件 | sounddef | bank | 零基 file_index → 一基提取索引 |
+| --- | --- | --- | --- |
+| infection_post | 2210 | together | 1487–1491 → 1488–1492 |
+| soul/spawn（两层同时播放） | 2886 / 2722 | wortox / common | 117 / 66 → 118 / 67 |
+| soul/hop_out | 2885 | wortox | 69–92 → 70–93 |
+| bodyfall_dirt | 516 | wilson | 1 → 2 |
+
+检查安装 CLI 的 `-h` 后，用 `-m -s` 核对每个流，`-i -s` 导出不延长的 WAV；每份可用的已有源 WAV（`<bank>.fsb#<index>.wav`）均按字节比较。`packages/prefab/scripts/import-wortox-soulhop.py` 从 FEV 解析这些事件，按源目录镜像 `anim/wortox_portal.zip`，并导出／检查 32 份 WAV。映射、预加载和播放统一在 `packages/prefab/src/sound.ts`，不循环。

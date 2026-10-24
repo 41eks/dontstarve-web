@@ -10,6 +10,7 @@ import {
   craft,
   equipmentSlotAddress,
   inventorySlotAddress,
+  cursorSlotAddress,
   type InventoryItemSpec,
   type InventoryStack,
 } from '../src';
@@ -23,6 +24,22 @@ const specs: Readonly<Record<string, InventoryItemSpec>> = {
   twigs: { name: '树枝', maxStack: 40, icon: 'twigs.tex' },
   axe: { name: '斧头', maxStack: 40, icon: 'axe.tex', equippable: 'hand' },
 };
+
+it('ConsumeByName consumes item slots then the active stack, preserves unrelated storage, and tolerates a shortfall', () => {
+  const cursor = cursorSlotAddress(), storage = { containerId: 'test:chest', slotKey: '0' };
+  const store = new InventoryStore([
+    inventorySlot(0, { itemId: 'twigs', count: 2 }),
+    { address: cursor, slot: new InventorySlot({ itemId: 'twigs', count: 2 }) },
+    { address: storage, slot: new StorageSlot({ itemId: 'twigs', count: 3 }) },
+  ], specs);
+  store.ConsumeByName('twigs', 3);
+  expect(store.getEntity(inventorySlotAddress(0))).toBeNull();
+  expect(store.getEntity(cursor)!.components.stackable.count).toBe(1);
+  store.ConsumeByName('twigs', 20);
+  expect(store.getEntity(cursor)).toBeNull();
+  expect(store.getEntity(storage)!.components.stackable.count).toBe(3);
+  store.dispose();
+});
 
 function inventorySlot(index: number, stack: InventoryStack | null = null) {
   return {

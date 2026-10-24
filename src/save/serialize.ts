@@ -11,6 +11,7 @@ export interface RuntimeSaveState {
   elapsedSeconds: number;
   playerStats?: SavedPlayer['stats'];
   playerGhost?: boolean;
+  playerWortox?: SavedPlayer['wortox'];
   tiles?: TurfTileSave[];
   worldtemperature?: SaveDocument['world']['systems']['worldtemperature'];
   weather?: SaveDocument['world']['systems']['weather'];
@@ -69,6 +70,7 @@ export function serializeSave(
         transform: structuredClone(state.playerTransform),
         ...(state.playerStats === undefined ? {} : { stats: { ...state.playerStats } }),
         ...(state.playerGhost ? { ghost: true as const } : {}),
+        ...(state.playerWortox === undefined ? {} : { wortox: { ...state.playerWortox } }),
         inventory: {
           containers: {
             'player:inventory': containers.get('player:inventory')!,

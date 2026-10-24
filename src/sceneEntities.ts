@@ -394,6 +394,7 @@ export async function createSceneEntities(
   function registerWorldFx(registry: EntityRegistry, prefabId: 'world_fx', _worldState: SceneWorldState) {
     const worldFx = new WorldFx(scene);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
+      debugSpawn: async prefab => { await worldFx.prepare(prefab); worldFx.spawn(prefab, player.position); },
       exportRecords: () => [],
       update: (dt, quaternion) => worldFx.update(dt, quaternion),
       renderEntities: () => worldFx.renderEntities,

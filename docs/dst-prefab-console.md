@@ -575,3 +575,6 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 
 
 2026-10-17 补充 `firestaff`：`prefabs/staff.lua` 的 `red()`（tags `firestaff`、`weapon`、`rangedweapon`、`rangedlighter`，`FIRESTAFF_USES` = 20，`weapon:SetRange(8, 10)`，投射物 `fire_projectile`），可 `c_give` / `c_spawn`。右键可燃物触发 `ACTIONS.ATTACK`（`RANGEDLIGHT`，文案“点燃”），`SGwilson` 的 `attack` 状态使用 `projectiledelay`（1 帧）并在 `onupdate` 中发射；命中后 `onattack_red` 点燃 / 加燃料 / 解冻 / 唤醒目标并扣 `SANITY_SUPERTINY`。声音 `attack_firestaff`（sounddef 624 → `sfx.fsb-1261..1264`）、`fireball_explo`（sounddef 625 → `sfx.fsb-1260`）与 `fire_fail_fx` 的 `fireOut` 已核对。`c_save()` 保留物品身份、耐久和皮肤。`controlled_burner` 标签、`onhauntred` 作祟和 `firepen` 未接入。
+
+
+2026-10-17 Wortox 灵魂跳跃 / 回声：核对 `prefabs/wortox.lua` 的 `GetPointSpecialActions`、`CanBlinkTo`、`TryToPortalHop`、`FinishPortalHop`、`OnSave/OnLoad`，`actions.lua` 的 BLINK 与 `stategraphs/SGwilson.lua` 三个 portal_jump 状态。按项目要求跳过库存灵魂数量判定，其余基础两跳／5 秒规则保留，未启用技能树。`prefabs/wortox_portal_fx.lua` 的 `wortox_portal_jumpin_fx` 和 `wortox_portal_jumpout_fx` 可 `c_spawn`，没有 inventoryitem，不能 `c_give`；bank `wilson`、build `wortox_portal`、对应同名去掉 `_fx` 的动画，FinalOffset 3，animover 后 2 帧移除，persists=false。两个特效均不入档，回声计数与玩家落点通过 `c_save()` 保存并重载。代表性覆盖见 `packages/animation/tests/wortox.test.ts` 与 `packages/ui/tests/wortox_soulhop.spec.ts`。

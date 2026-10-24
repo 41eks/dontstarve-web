@@ -4,6 +4,23 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PlayerActionPicker } from '../src/playeractionpicker.ts';
 
+test('Wortox point specials are fallbacks after equipped actions and never displace active-item actions', () => {
+  const picker = new PlayerActionPicker({ beginFrame() {}, endFrame() {}, dispose() {}, pickMouseTarget() {} });
+  const blink = { action: 'BLINK' }, cast = { action: 'CASTSPELL' }, deploy = { action: 'DEPLOY' };
+  picker.register(() => [{ action: blink, button: 'right', source: 'special' }]);
+  assert.equal(picker.getMouseActions().right, blink);
+  const stopCast = picker.register(() => [{ action: cast, button: 'right' }]);
+  assert.equal(picker.getMouseActions().right, cast);
+  stopCast();
+  let active = true;
+  picker.registerActiveItemSource(() => active);
+  assert.equal(picker.getMouseActions().right, undefined);
+  picker.register(() => [{ action: deploy, button: 'right', source: 'inventory' }]);
+  assert.equal(picker.getMouseActions().right, deploy);
+  active = false;
+  picker.dispose();
+});
+
 test('shared picking resolves one entity and chooses independent button actions by source priority', t => {
   const root = new Group(), child = new Object3D();
   root.add(child); new Scene().add(root);

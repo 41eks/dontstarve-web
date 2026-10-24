@@ -99,6 +99,21 @@ export class InventoryStore {
   }
   GetNumSlots(): number { return this.inventorySlots().length; }
   GetActiveItem(): ItemEntity | null { return this.getEntity(cursorSlotAddress()); }
+  /** inventory.lua ConsumeByName: item slots, active item, then the equipped overflow container. */
+  ConsumeByName(prefab: string, amount = 1): void {
+    if (!Number.isSafeInteger(amount) || amount <= 0) return;
+    const slots = [...this.inventorySlots(),
+      ...this.registrations.filter(({ address }) => address.containerId === PLAYER_CURSOR_CONTAINER_ID),
+      ...this.registrations.filter(({ address }) => isBackpackContainerId(address.containerId) && this.accessibleBackpackAddress(address))];
+    for (const { address, slot } of slots) {
+      const item = slot.getEntity();
+      if (!item || item.prefab !== prefab) continue;
+      const count = Math.min(amount, item.components.stackable.count);
+      const consumed = this.extract(address, count, item);
+      if (consumed) { consumed.remove(); amount -= count; }
+      if (amount <= 0) return;
+    }
+  }
   GetEquippedItem(kind: EquipmentKind): ItemEntity | null { return this.getEntity(equipmentSlotAddress(kind)); }
   /** inventory.lua EquipHasTag checks only equipped items. */
   EquipHasTag(tag: string): boolean { return EQUIPMENT_KINDS.some(kind => this.GetEquippedItem(kind)?.hasTag(tag)); }

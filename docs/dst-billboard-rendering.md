@@ -63,3 +63,12 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 `src/camera.ts` 的 `FollowCameraController.facing` signal 把相机 heading（`packages/animation/src/facing.ts` 的 `facingFromHeading()`）按 45° 分成 8 档，取对应 `FACING_*`（`constants.lua`：RIGHT=0、UP=1、LEFT=2、DOWN=3、UPRIGHT=4、UPLEFT=5、DOWNRIGHT=6、DOWNLEFT=7；墙的 rotation 为 0，故 `a = heading`，偶数档为四个正向，奇数档为四个斜向）的位掩码，该 signal 只在 heading 跨过扇区边界时写入，经 `WorldContext.cameraFacing` 传给 `WallPlacement`，后者用 `watchSignal` 建立私有本地 signal，并在 `createEffect` 中对预览和已建墙调用 `setFacing()`，由动画按 `facing` 掩码匹配 clip；`wall.zip` 与 `wall_dreadstone.zip` 的每个状态只创作了 `15`（四个正向共用）和 `240`（四个斜向共用）两组美术，同组内选哪个方向不改变画面。再调用 `packages/animation/src/wallSprite.ts` 的 `StaticSpriteController.showImage()` 切换图片。
 
 `createStaticSprite()` 每次显示一个 build 图片，`imageIndices` 提前列出所有需要的 facing，不必随相机转动重建 sprite。`wall_dreadstone` 另将 `wall_segment_red` 叠在 `wall_segment_base` 上：通过 `overlay` 传入覆盖符号，其 `imageIndices` 与基础列表按位置配对，让朝向切换后仍保留发光层。
+
+
+## 地皮与洞穴崖壁 falloff
+
+`falloffdefs.lua` 的普通陆地规则由 `TurfMap.rebuildFalloff()` 生成边面；贴图保持源路径 `levels/tiles/falloff.tex` / `.xml`，源图集有六个方形单元。Lua 最终调用原生 `Map:AddFalloffTexture`，没有提供顶点、高度或随机选图算法。当前视觉尺寸对照 `public/saves/Cluster_1/Snipaste_2026-10-17_20-14-39.png` 校准：一个图集单元覆盖连续两格边界，高度四格；相邻两格共享同一纹理变体和连续 UV，负坐标同样连续，底部从高度比例 0.35 起渐隐至透明。它们是 Web 版视觉校准参数，不声称来自 Lua 的数值。
+
+地皮仍按源地皮层混合，崖壁颜色在地皮之后、积雪与动态角色之前绘制，颜色 pass 均不写深度。`GroundDepthPrepass` 为每个地皮／崖壁颜色 Mesh 添加一个借用同一几何体的 opaque 深度 Mesh：`colorWrite=false`、`depthWrite=true`、alpha-test 0.98，仅实心部分建立遮挡，保留软边缘的颜色混合。深度材质复用地皮 atlas 的 onBeforeCompile 和纹理，不能只用噪声图计算 alpha。地皮重建时两个 pass 同步更换几何体；几何体与纹理由原持有者释放，深度 pass 只释放自己的材质。
+
+一个合并的透明 Mesh 不会自动排序内部崖壁面。`sortGroundFalloffGeometry` 根据 model-view 矩阵对等高边面的中心深度由远到近排序，仅更新索引，不重建顶点、不拆成逐面 Mesh；相机矩阵未变化时复用结果。实心深度与软边排序分别处理，不能用一个固定 renderOrder 替代空间遮挡。代表性浏览器验证会反转整组输入边面并旋转相机，比较实际 WebGL 像素；单位测试覆盖跨负坐标纹理连续性、索引更新与几何体／材质的所有权。
