@@ -9,7 +9,7 @@ import {
     type AnimatedSpriteSourceOptions,
     type SpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
-import { ResidentSpriteController } from './residentSprite';
+import { ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 import type { BuildingContainerDefinition } from './containers';

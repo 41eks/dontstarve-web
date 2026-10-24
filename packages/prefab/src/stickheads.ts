@@ -5,7 +5,7 @@ import { createEffect, createMemo, WorldContentKey, type Memo } from '@dontstarv
 import { TileTracker } from '../../componets/src/tileManager';
 import { FliesController, FLIES_SOUND } from './flies';
 import { actionEntity } from './actionEntity';
-import { ResidentSprite } from './residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import { PreloadSounds } from './sound';
 import type {

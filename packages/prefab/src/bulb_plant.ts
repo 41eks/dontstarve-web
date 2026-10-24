@@ -3,7 +3,7 @@ import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signal
 import { GameTimeScheduler } from './components/gameTimeScheduler';
 import { ComponentTimer } from './components/timer';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { ResidentSprite } from './residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import type { SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';

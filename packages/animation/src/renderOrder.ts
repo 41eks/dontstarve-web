@@ -28,15 +28,20 @@ export function setSpriteEntityRenderOrder(
   renderGroup.renderOrder = renderOrder;
 }
 
-/** Hidden entities (or ones whose registered visual is hidden) are not drawn, so their order is irrelevant. */
-export function isSpriteEntityRendered(sprite: THREE.Object3D): boolean {
+/** Entity visibility, independent of whether its pixels use an ordinary mesh or an instance batch. */
+export function isSpriteEntityVisible(sprite: THREE.Object3D): boolean {
   if (!sprite.visible) return false;
   const group = spriteRenderGroups.get(sprite);
-  if (group && undrawnGroups.has(group)) return false;
   for (let node: THREE.Object3D | null = group ?? null; node && node !== sprite; node = node.parent) {
     if (!node.visible) return false;
   }
   return true;
+}
+
+/** Hidden entities and sprites drawn by an instance batch do not join ordinary billboard sorting. */
+export function isSpriteEntityRendered(sprite: THREE.Object3D): boolean {
+  const group = spriteRenderGroups.get(sprite);
+  return !(group && undrawnGroups.has(group)) && isSpriteEntityVisible(sprite);
 }
 
 /** Camera depths closer than this are one depth, so float noise cannot reorder overlapping sprites. */

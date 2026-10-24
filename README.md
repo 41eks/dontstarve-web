@@ -21,7 +21,7 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 月亮洞穴水池及附属雾气、瀑布、月亮玻璃通过动画包通用函数 `createSharedArchiveSprite()` 接入共享帧几何，prefab 无需维护共享动画清单；正常和开采后的 `*_mined` 动画分别缓存，各实体保留自己的播放进度、位置、开采状态及子物件关系，单池移除不释放其他池仍使用的帧。调用方式与资源所有权见 [动画包说明](packages/animation/README.md#通用共享帧入口)。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 的导出和恢复流程沿用原有实现。
 
-蘑菇树通过 `createSharedArchiveSprite()` 的 `instancedAnimations: ['idle_loop']` 实例化待机：源 atlas 零件按动画变换和层顺序合成完整帧，整段动画共用固定原点与像素网格，保留每棵树的随机起始帧、颜色、位置与交互。受击、倒下、树桩、生长／开花及燃烧消失仍使用共享帧几何，返回待机自动重新合批。深度预绘制与不写深度的颜色 pass 保持地皮、树和动态角色的遮挡顺序；资源由 manager 统一释放。常青树、桦树和月树统一使用 `ResidentSprite`，tile effect 只加载／释放 visual，保留同一根节点、交互投影、Workable 和逻辑计时器；已移除旧的整模型卸载路径及每帧 `updateNearby()` 扫描。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存原有树木状态。
+蘑菇树通过 `createSharedArchiveSprite()` 的 `instancedAnimations: ['idle_loop']` 实例化待机：源 atlas 零件按动画变换和层顺序合成完整帧，整段动画共用固定原点与像素网格，保留每棵树的随机起始帧、颜色、位置与交互。受击、倒下、树桩、生长／开花及燃烧消失仍使用共享帧几何，返回待机自动重新合批。深度预绘制与不写深度的颜色 pass 保持地皮、树和动态角色的遮挡顺序；资源由 manager 统一释放。常青树、桦树和月树统一使用 `@dontstarve-web/animation/residentSprite` 的 `ResidentSprite`，tile effect 只加载／释放 visual，保留同一根节点、交互投影、Workable 和逻辑计时器；已移除旧的整模型卸载路径及每帧 `updateNearby()` 扫描。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存原有树木状态。
 
 世界渲染通过 `renderSceneWithPasses()` 共用一次场景矩阵更新，光照贴图在矩阵准备完成后读取世界位置。矩阵缓存和空间索引共用唯一更新入口，实体复用同一更新函数和缓存方法，变换快照按标量保存；父节点矩阵在一次场景遍历中共享比较结果，显式查询和同次遍历内再次更新仍即时失效。变换未变化时不再同步索引，缓存、祖先快照和索引按各自所有权释放；静态 billboard 保留显式失效的快速路径，其他共享动画及 factory sprite 检测模型、visual 与父节点变化；ResidentSprite 与 ResidentSpriteController 的稳定根节点只缓存自身矩阵，静止时跳过重复计算和空间索引通知，当前 sprite 子树及附加 FX 继续使用各自的更新入口；根节点或祖先移动时先使直接子缓存失效，显式浅查询保留后续子树更新。ResidentSprite 用私有 signal 保存实际 visual，effect 在空 visual 时切换到共享空矩阵入口，不再进入逐实体缓存检查；唤醒后强制刷新矩阵，显式世界坐标查询始终更新，附加动态子节点时回到常规遍历。渲染 pass 按注册锚点与祖先可见性选择，不再扫描整棵场景树；实例化代理和空帧退出普通精灵排序，切回工作动画时自动恢复。实例 pass 复用包围球、视锥结果、绘制条目与脚点排序；相机、变换、帧边界或批次成员变化时更新对应缓存，共享祖先的显隐和光照每次 pass 只采样一次。静止且外观属性未变时，换帧只更新 UV；实例批次只上传实际变化的 Float32 属性区间，并保留尚未上传的范围。自动更新设置在本次绘制结束或异常后恢复。调试命令的语法、参数、行为及支持的 `c_spawn` / `c_give` ID 不变。
 
@@ -221,6 +221,8 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 `c_give("butterfly", 2)` 获取活蝴蝶；点击或右键物品栏中的蝴蝶拿到鼠标后，右键可种植的空地执行 `DEPLOY`。预览使用 `anim/flowers.zip` 的 `flowers` bank/build、`f1`，间距为 LESS（0.75 DST 单位）；角色自动走近，在 `doshortaction` 第 6 帧消耗 1 只并生成原版 `planted_flower`（运行时及存档 prefab 为 `flower`），触发 `growfrombutterfly` 并播放种植声。花型随机为 f1–f10，玫瑰概率 1%；无效地形、阻挡、Esc 或切换动作不会消耗蝴蝶。`c_spawn("planted_flower")` 可直接生成种下的花，不支持 `c_give`；`c_save()` 保存花的 ID、脚点、花型及种植标记，恢复后仍可供蝴蝶授粉。
 
+花朵（含自然花、种下的花和玫瑰）、大理石灌木 `marbleshrub`、大理石豆苗 `marblebean_sapling` 和石果萌芽 `rock_avocado_fruit_sprout_sapling` 通过动画包的 `ResidentSprite` 驻留，并共享 archive sprite 与实例批次；源动画仍按非循环方式播放。活动区休眠只释放 visual，唤醒恢复花型、形状、明度、积雪和相机朝向，保留实体、脚点、组件及已有的物理和小地图。豆苗和石果萌芽在休眠时仍按游戏时间生长／替换，燃烧计时也继续；大理石灌木开采后由调度器在 `mined_*` 动画时长结束时移除，不因卸载 visual 提前结算。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 继续保存休眠中的逻辑实体。
+
 花朵支持玩家左键通用 `PICK`：例如 `c_spawn("planted_flower")` 后点击花朵，角色走近并通过快速 `doshortaction` 在第 6 帧获得 1 个 `petals`，恢复 5 点理智；`plantkin` 不获得这次理智恢复。玫瑰会通过玩家 `combat:GetAttacked` 造成 1 点伤害并发送 `thorns`，已装备 `bramble_resistant` 标签物品或带 `shadowminion` 标签时免疫刺伤；只放在物品栏里的装备不生效。成功后依次发送世界 `plantkilled`、实体 `picked` 并移除花朵，取消或产物准备失败时保留花和属性，燃烧／`intense` 状态不能采摘。库存满时沿用 `GiveItem` 将花瓣掉到玩家脚点；采花后 `c_save()` 不再导出该花，花瓣身份、数量、位置及玩家理智／生命保存恢复，读档不会重新出现已采的花。花的 `picksound` 保留原版字段，普通玩家快速采摘状态不额外播放该元数据的声音。
 
 采花得到的 `petals` 和 `c_give("petals", count)` / `c_spawn("petals")` 生成的花瓣均接入原版 `PERISH_FAST`：基础保鲜期 6 游戏日（2880 秒），每 10 游戏秒结算，完全腐败后整叠替换为同数量 `spoiled_food`。地面、冰箱、受潮和温度倍率沿用通用 perishable 组件；转移和 `c_save()` 前结清不足 10 秒的时间，鼠标持有与读档保留身份、数量和新鲜度。
@@ -351,9 +353,11 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 用 `c_spawn("wall_stone")`、`c_spawn("wall_wood")`、`c_spawn("wall_hay")`、`c_spawn("wall_ruins")`、`c_spawn("wall_moonrock")` 或 `c_spawn("wall_dreadstone")` 生成建成墙；`wall_*_item` 别名仍生成建成墙。`c_give("wall_stone_item", 10)` 等命令获取可放置的墙物品，库存图标、掉落地面的 `idle` 动画与建成墙的 `half` 外观分别使用各自原版资源。装备 `c_give("reskin_tool")` 获取的清洁扫把，右键建成墙可按下表循环换肤，最后回到默认外观；原有地面墙物品也可换肤。放置带皮肤的墙物品会映射到对应的建成墙皮肤，保留正面/斜面随相机朝向切换、受击动画和绝望石墙的红色覆盖层。换肤保留实体 ID、地面落点及已保存的健康状态；建成墙皮肤随 `c_save()` 保存并恢复，旧的无皮肤墙存档仍可加载。档案馆墙 `wall_stone_2` / `wall_ruins_2` 和废料墙 `wall_scrap` 没有原版皮肤，不提供换肤。
 
+墙体使用动画包的 `ResidentSpriteController` 与共享静态精灵工厂，栅栏使用 `ResidentSprite` 和共享 archive sprite；离开活动区只释放 visual，唤醒后恢复当前朝向、皮肤和姿态，实体 ID、脚点、健康／工作组件、物理登记和存档状态继续保留。栅栏燃烧计时在休眠时继续，到期仍移除实体。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 可继续保存休眠实体。
+
 墙按 `prefabs/walls.lua` 拥有 `health` 与 `combat` 组件：最大生命为草墙 100、木墙 200、石墙与档案馆石墙 400、铥矿墙 800、月岩墙 600、绝望石墙 800、废料墙 600，新建成的墙以一半生命开始；月岩墙、绝望石墙和废料墙按 `SetAbsorptionAmountFromPlayer(.25)` 减免 25% 玩家伤害。外观由生命 signal 派生：≤0 `broken`、≤40% `onequarter`、≤50% `half`（原有静态图）、<99% `threequarter`、满血按世界坐标稳定选择 `fullA` / `fullB` / `fullC`；受击播放对应的 `*_hit` 再停在该姿态，同时播放材质的 `destroy_*` 音效。生命为 0 的墙显示破损外观，不再是攻击目标，但仍可锤毁（按 0 生命掉落 1 份材料）。墙的当前生命随换肤保留，并以 `health: { current, maximum }` 随 `c_save()` 保存恢复；旧存档缺少该字段时按一半生命加载。
 
-按 F 攻击附近的敌对目标，按住 Ctrl + F 强制攻击：墙不是敌对目标，只能强制攻击（游戏会拦截浏览器的 Ctrl+F 查找）。按 `playercontroller.lua:GetAttackTarget` 在攻击距离外加 6 个单位的范围内选最近的可攻击目标，自动走到攻击距离内，按 `SGwilson.lua` 的 attack 状态出手并在第 8 帧结算：空手为 `punch` 和 `attack_whoosh`、伤害 `UNARMED_DAMAGE = 10`、冷却 24 帧；武器为 `atk_pre → atk` 和 `attack_weapon`（暗夜剑为 `attack_nightsword`）、冷却 13 帧；提灯（`light`）、清洁扫把与各法杖（`nopunch`）使用武器动作但造成空手伤害。武器伤害取源码 `weapon` 组件：火把、锤子、铲子、草叉、园艺锄 17，鹤嘴锄 27.2，捕虫网 4.25，暗夜剑 68；攻击按 `attackwear` 消耗有耐久的工具（捕虫网 3 次，金色工具 0.25 次，暗夜剑新增原版 100 次耐久）。最小攻击间隔为 `WILSON_ATTACK_PERIOD = 0.4` 秒，按住 F 会在每次攻击的冷却结束后连续攻击；移动、Esc 或鼠标点击取消尚未出手的攻击。修理墙、墙体碰撞与寻路、火把点燃可燃墙及生物战斗尚未实现。
+按 F 攻击附近的敌对目标，按住 Ctrl + F 强制攻击：墙不是敌对目标，只能强制攻击（游戏会拦截浏览器的 Ctrl+F 查找）。按 `playercontroller.lua:GetAttackTarget` 在攻击距离外加 6 个单位的范围内选最近的可攻击目标，自动走到攻击距离内，按 `SGwilson.lua` 的 attack 状态出手并在第 8 帧结算：空手为 `punch` 和 `attack_whoosh`、伤害 `UNARMED_DAMAGE = 10`、冷却 24 帧；武器为 `atk_pre → atk` 和 `attack_weapon`（暗夜剑为 `attack_nightsword`）、冷却 13 帧；提灯（`light`）、清洁扫把与各法杖（`nopunch`）使用武器动作但造成空手伤害。武器伤害取源码 `weapon` 组件：火把、锤子、铲子、草叉、园艺锄 17，鹤嘴锄 27.2，捕虫网 4.25，暗夜剑 68；攻击按 `attackwear` 消耗有耐久的工具（捕虫网 3 次，金色工具 0.25 次，暗夜剑新增原版 100 次耐久）。最小攻击间隔为 `WILSON_ATTACK_PERIOD = 0.4` 秒，按住 F 会在每次攻击的冷却结束后连续攻击；移动、Esc 或鼠标点击取消尚未出手的攻击。墙体碰撞随健康值启用／禁用；修理墙、火把点燃可燃墙及生物战斗尚未实现。
 
 | 建成墙 prefab_id | 皮肤循环顺序 |
 | --- | --- |

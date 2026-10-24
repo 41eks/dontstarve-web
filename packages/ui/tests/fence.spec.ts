@@ -1,3 +1,4 @@
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -13,8 +14,9 @@ test('fence_item previews against the camera, places by click, rotates with the 
   delete save.world.map.tiles;
   save.players.local.transform.position = [0, 0, 0];
   for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
-  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: save }));
-  await page.goto('/tests/dst-lighting.html');
+  let currentSave = save;
+  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: currentSave }));
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   const urls = Object.fromEntries(['main', 'player', 'universal', 'view'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
   await page.evaluate(async urls => {
@@ -60,13 +62,25 @@ test('fence_item previews against the camera, places by click, rotates with the 
   await expect.poll(async () => (await fences()).filter(fence => fence.placed).length).toBe(2);
   const download = page.waitForEvent('download');
   await submit('c_save()');
-  const chunks = [];
-  for await (const chunk of (await (await download).createReadStream())!) chunks.push(chunk);
-  const saved = JSON.parse(Buffer.concat(chunks).toString());
+  const saved = JSON.parse(await readSaveDownload(await (await download).path(), 'Master'));
   expect(saved.world.entities.fence.map((fence: any) => fence.components.fence)).toEqual([{ rot: 7 }, {}]);
   expect(saved.world.entities.ground_item.map((item: any) => item.components.stack)).toEqual([{ itemId: 'fence_item', count: 1 }]);
   const held = Object.values(saved.players.local.inventory.containers).flatMap((container: any) => container.slots)
     .find((slot: any) => slot.item?.itemId === 'fence_item');
   expect(held.item.count).toBe(2);
+  currentSave = saved;
+  await page.reload();
+  await page.evaluate(async urls => {
+    const main = await import(urls.main), player = await import(urls.player);
+    const { scene } = await import(urls.universal), { view } = await import(urls.view);
+    (window as any).fenceGame = { main, ...player, scene, view };
+  }, urls);
+  const restored = await page.evaluate(() => (window as any).fenceGame.scene.children
+    .filter((model: any) => model.userData.actionEntity?.prefab === 'fence').map((model: any) => ({
+      id: model.userData.entityId, position: model.position.toArray(), rot: ((Math.floor(model.userData.fenceRotation / 45) % 8) + 8) % 8,
+    })));
+  expect(restored).toEqual(saved.world.entities.fence.map((fence: any) => ({
+    id: fence.id, position: fence.transform.position, rot: fence.components.fence.rot ?? 0,
+  })));
   expect(errors).toEqual([]);
 });

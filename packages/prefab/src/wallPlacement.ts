@@ -3,8 +3,8 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { disposeSprite } from './disposeSprite';
 import {
-    createStaticSprite,
-    type StaticSpriteController,
+    createStaticSpriteFactory,
+    type StaticSpriteFactory,
 } from '@dontstarve-web/animation/wallSprite';
 import { BuildCursor } from './buildCursor';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
@@ -13,7 +13,8 @@ import type { WorldContext } from './worldContext';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { watchTileActivity } from './tileActivity';
 import { nextReskin } from './reskin_tool';
 import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { wallWorldPrefab, wallWorldSkin } from './wallSkins';
@@ -21,7 +22,7 @@ import { actionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { GroundItemAssets } from './groundItems';
-import { createArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -118,7 +119,9 @@ export interface WallHammerContext {
 
 interface WallArt {
     model: THREE.Group;
-    animation: StaticSpriteController;
+    animation: ResidentSpriteController;
+    opacity: Signal<number>;
+    stopAppearance: () => void;
     groundOffset: number;
 }
 
@@ -128,6 +131,7 @@ interface WallInstance<BuildId extends string> extends WallArt {
     readonly preparedSkins: Set<WallArt>;
     preparedSkin?: WallArt;
     stopSkin: () => void;
+    stopActivity?: () => void;
     inventorySkinId?: string;
     health: Health;
     combat: Combat;
@@ -182,6 +186,7 @@ export class WallPlacement<BuildId extends string> {
     private readonly world: WorldContext;
     private readonly effectAssets = new GroundItemAssets();
     private readonly effects = new Set<ArchiveSprite>();
+    private readonly sources = new Map<string, Promise<StaticSpriteFactory>>();
 
     constructor(
         world: WorldContext,
@@ -201,12 +206,6 @@ export class WallPlacement<BuildId extends string> {
         this.pointer = new PointerRaycaster(world);
         this.cursor = new BuildCursor(world, this.pointer);
         this.facing = watchSignal(world.cameraFacing, stop => this.cleanups.push(stop));
-        // A heading crossing a 45-degree sector re-faces the preview and every placed wall.
-        createEffect(() => {
-            const facing = this.facing.get();
-            if (this.active) this.updateFacing(this.active, facing);
-            for (const wall of this.placed) this.updateFacing(wall, facing);
-        });
         world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     }
 
@@ -239,7 +238,7 @@ export class WallPlacement<BuildId extends string> {
             target.z,
         );
         wall.model.visible = true;
-        this.setOpacity(wall.model, 1);
+        wall.opacity.set(1);
         this.faceCamera(wall.model);
         this.place(wall);
     }
@@ -261,7 +260,7 @@ export class WallPlacement<BuildId extends string> {
 
     get renderEntities() {
         return [...this.placed, ...(this.active ? [this.active] : [])]
-            .filter(({ model }) => model.visible)
+            .filter(({ model, animation }) => model.visible && animation.loaded)
             .map(({ model, groundOffset }) => ({
                 object: model,
                 footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
@@ -311,7 +310,7 @@ export class WallPlacement<BuildId extends string> {
                         const skinId = nextReskin(Object.keys(this.definitions[wall.buildId].skinArchives ?? {}), previousSkin, tool?._cached_reskinname, wallWorldPrefab(wall.buildId));
                         const replacement = await this.createArt(wall.buildId, skinId);
                         if (!isValid() || wall.skinId.peek() !== previousSkin || skinId === previousSkin) {
-                            disposeSprite(replacement.model);
+                            replacement.stopAppearance(); disposeSprite(replacement.model);
                             return { apply: () => false, dispose: () => {} };
                         }
                         wall.preparedSkins.add(replacement);
@@ -372,6 +371,8 @@ export class WallPlacement<BuildId extends string> {
         for (const effect of this.effects) effect.dispose();
         this.effects.clear(); this.effectAssets.dispose();
         this.placed.clear();
+        for (const source of this.sources.values()) void source.then(factory => factory.dispose(), () => {});
+        this.sources.clear();
     }
 
     cancel() {
@@ -405,7 +406,7 @@ export class WallPlacement<BuildId extends string> {
 
         const placedWall = this.active;
         placedWall.model.visible = true;
-        this.setOpacity(placedWall.model, 1);
+        placedWall.opacity.set(1);
         this.place(placedWall);
         this.active = undefined;
         this.cursor.hide();
@@ -418,7 +419,7 @@ export class WallPlacement<BuildId extends string> {
             disposeSprite(instance.model);
             return;
         }
-        this.setOpacity(instance.model, 0.65);
+        instance.opacity.set(0.65);
         instance.model.visible = false;
         this.active = instance;
         this.updateFacing(instance, this.facing.peek());
@@ -433,33 +434,42 @@ export class WallPlacement<BuildId extends string> {
         const skinArchive = skinId === undefined ? undefined : definition.skinArchives?.[skinId];
         if (skinId !== undefined && skinArchive === undefined) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
         const skin = skinId === undefined ? undefined : definition.skinInit?.(skinId);
-        const model = await createStaticSprite(
-            `${import.meta.env.BASE_URL}dst/data/anim`,
-            skin?.archive ?? definition.archive,
-            {
-                imageIndices: [definition.sideImageIndex, definition.frontImageIndex],
-                imageIndex: this.isFrontFacing(this.facing.peek())
-                    ? definition.frontImageIndex
-                    : definition.sideImageIndex,
-                name: definition.name,
-                scale: definition.scale,
-                symbol: definition.symbol,
-                skinArchive: skin?.skinArchive ?? skinArchive,
-                ...(definition.overlay ? {
-                    overlay: {
-                        symbol: definition.overlay.symbol,
-                        imageIndices: [definition.overlay.sideImageIndex, definition.overlay.frontImageIndex],
-                    },
-                } : {}),
-                animationArchive: definition.animationArchive ?? 'wall.zip',
-                restAnimation: 'half',
-            },
-        );
-        if (definition.multColour) this.setMultColour(model, definition.multColour);
-        if (this.disposed) { disposeSprite(model); throw new Error('Placement has been disposed'); }
+        const options = {
+            imageIndices: [definition.sideImageIndex, definition.frontImageIndex],
+            name: definition.name, scale: definition.scale, symbol: definition.symbol,
+            skinArchive: skin?.skinArchive ?? skinArchive,
+            ...(definition.overlay ? { overlay: { symbol: definition.overlay.symbol,
+                imageIndices: [definition.overlay.sideImageIndex, definition.overlay.frontImageIndex] } } : {}),
+            animationArchive: definition.animationArchive ?? 'wall.zip', restAnimation: 'half',
+        };
+        const archive = skin?.archive ?? definition.archive;
+        const key = JSON.stringify([archive, options]);
+        let request = this.sources.get(key);
+        if (!request) {
+            request = createStaticSpriteFactory(`${import.meta.env.BASE_URL}dst/data/anim`, archive, options);
+            this.sources.set(key, request);
+            void request.catch(() => { if (this.sources.get(key) === request) this.sources.delete(key); });
+        }
+        const source = await request;
+        if (this.disposed) throw new Error('Placement has been disposed');
+        const sprite = source.create();
+        const model = new THREE.Group();
+        model.name = definition.name;
+        const animation = new ResidentSpriteController(model, () => source.create(), sprite => source.disposeSprite(sprite), sprite, { name: 'half', held: true });
+        model.userData.animationController = animation;
+        animation.setPose(undefined);
+        const opacity = createSignal(1);
+        const stopAppearance = createEffect(() => {
+            animation.art.get();
+            const facing = this.facing.get();
+            animation.showImage(this.isFrontFacing(facing) ? definition.frontImageIndex : definition.sideImageIndex);
+            animation.setFacing(facing);
+            if (definition.multColour) animation.setColour(definition.multColour);
+            animation.setOpacity(opacity.get());
+        });
         model.updateWorldMatrix(true, true);
         const bounds = new THREE.Box3().setFromObject(model);
-        return { model, animation: model.userData.animationController as StaticSpriteController, groundOffset: -bounds.min.y };
+        return { model, animation, opacity, stopAppearance, groundOffset: -bounds.min.y };
     }
 
     private async createInstance(buildId: BuildId, attach = true, requestedSkin?: string): Promise<WallInstance<BuildId>> {
@@ -477,6 +487,7 @@ export class WallPlacement<BuildId extends string> {
         model.userData.getGroundPosition = groundPosition;
         entity.addTag('wall');
         entity.addTag('noauradamage');
+        entity.addTag('electricdamageimmune');
         const combatInst: CombatInst = {
             get isRemoved() { return entity.isRemoved; },
             getPosition: groundPosition,
@@ -546,17 +557,9 @@ export class WallPlacement<BuildId extends string> {
             }
             wall.preparedSkin = undefined;
             const footY = wall.model.position.y - wall.groundOffset;
-            replacement.animation.copyPlaybackFrom(wall.animation);
-            // Include unused fallback atlas materials when releasing the old art.
-            const oldVisuals = new THREE.Group();
-            oldVisuals.userData.ownedSpriteMaterials = wall.model.userData.ownedSpriteMaterials;
-            for (const child of [...wall.model.children]) oldVisuals.add(child);
-            disposeSprite(oldVisuals);
-            for (const child of [...replacement.model.children]) wall.model.add(child);
-            wall.model.userData.ownedSpriteMaterials = replacement.model.userData.ownedSpriteMaterials;
-            registerSpriteRenderGroup(wall.model, wall.model.children[0] as THREE.Group);
-            wall.animation = replacement.animation;
-            wall.model.userData.animationController = replacement.animation;
+            replacement.stopAppearance();
+            wall.animation.adopt(replacement.animation);
+            replacement.animation.dispose();
             wall.groundOffset = replacement.groundOffset;
             wall.model.position.y = footY + wall.groundOffset;
             if (skinId === undefined) delete wall.model.userData.skinId;
@@ -566,7 +569,7 @@ export class WallPlacement<BuildId extends string> {
     }
 
     private releasePreparedSkin(wall: WallInstance<BuildId>, art: WallArt): void {
-        if (wall.preparedSkins.delete(art)) disposeSprite(art.model);
+        if (wall.preparedSkins.delete(art)) { art.stopAppearance(); disposeSprite(art.model); }
     }
 
     private hammerContext(wall: WallInstance<BuildId>): WallHammerContext {
@@ -575,11 +578,12 @@ export class WallPlacement<BuildId extends string> {
             definition: this.definitions[wall.buildId], health: wall.health, position,
             dropLoot: items => this.world.dropLoot?.(items, position),
             spawnEffect: () => {
-                void createArchiveSprite(this.effectAssets, {
+                void createSharedArchiveSprite(this.effectAssets, {
                     animationArchive: 'structure_collapse_fx.zip', buildArchives: ['structure_collapse_fx.zip'],
                     bank: 'collapse', animation: 'collapse_small', loop: false,
                 }).then(effect => {
                     if (this.disposed) { effect.dispose(); return; }
+                    Object.assign(effect.model.userData, { tags: ['NOCLICK', 'FX'], persists: false });
                     effect.model.position.copy(position); this.scene.add(effect.model); this.effects.add(effect);
                     effect.playOnce('collapse_small', () => { effect.dispose(); this.effects.delete(effect); });
                 }).catch((error: unknown) => { if (!this.disposed) console.error('Unable to play wall collapse effect', error); });
@@ -598,6 +602,7 @@ export class WallPlacement<BuildId extends string> {
         const ground = wall.model.position.clone().setY(wall.model.position.y - wall.groundOffset);
         wall.body = MakeObstaclePhysics(ground, .5);
         this.setObstacle(wall, !wall.health.IsDead());
+        wall.stopActivity = watchTileActivity(wall.model, this.world.tickingarea, active => wall.animation.setActive(active));
     }
 
     /** walls.lua makeobstacle/clearobstacle: Physics:SetActive follows health > 0. */
@@ -613,6 +618,8 @@ export class WallPlacement<BuildId extends string> {
         this.setObstacle(wall, false);
         wall.body = undefined;
         wall.model.userData.removed = true;
+        wall.stopActivity?.();
+        wall.stopAppearance();
         wall.stopSkin();
         wall.preparedSkin = undefined;
         for (const art of wall.preparedSkins) this.releasePreparedSkin(wall, art);
@@ -655,25 +662,4 @@ export class WallPlacement<BuildId extends string> {
         model.quaternion.copy(this.cameraWorldQuaternion);
     }
 
-    private setOpacity(model: THREE.Object3D, opacity: number) {
-        model.traverse((object) => {
-            if (!(object instanceof THREE.Mesh)) return;
-            const materials = Array.isArray(object.material) ? object.material : [object.material];
-            materials.forEach((material) => {
-                material.transparent = true;
-                material.opacity = opacity;
-            });
-        });
-    }
-
-    private setMultColour(model: THREE.Object3D, colour: readonly number[]) {
-        const [red, green, blue] = [colour[0] ?? 1, colour[1] ?? 1, colour[2] ?? 1];
-        model.traverse((object) => {
-            if (!(object instanceof THREE.Mesh)) return;
-            const materials = Array.isArray(object.material) ? object.material : [object.material];
-            materials.forEach((material) => {
-                material.color.setRGB(red, green, blue);
-            });
-        });
-    }
 }

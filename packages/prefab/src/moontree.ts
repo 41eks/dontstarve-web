@@ -12,7 +12,7 @@ import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper
 import { Workable, type Worker } from '../../componets/src/workable';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import catalog from './groundItems.json' with { type: 'json' };
-import { ResidentSprite, type ResidentEntity } from './residentSprite';
+import { ResidentSprite, type ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import { watchTileActivity } from './tileActivity';
 import { registerPlacementTree } from './placementEntities';
 import { PlaySound } from './sound';

@@ -1,6 +1,9 @@
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
-import { createArchiveSprite, ArchiveSpriteAssets, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import { createEffect, type TileStateQuery } from '@dontstarve-web/signals';
+import { watchTileActivity } from './tileActivity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
@@ -23,7 +26,9 @@ export interface MarbleBeanSaplingRecord {
   components: { saplingTimer?: NamedTimerSave };
 }
 interface Sapling {
-  sprite: ArchiveSprite;
+  sprite: ResidentSprite;
+  stopActivity?: () => void;
+  stopAppearance: () => void;
   timer: Timer;
   workable: Workable;
   loot: PreparedGroundSpawn;
@@ -31,6 +36,7 @@ interface Sapling {
 }
 export interface MarbleBeanSaplingWorld {
   scheduler?: GameTimeScheduler;
+  tickingarea?: TileStateQuery;
   shrubs: Pick<MarbleShrubManager, 'prepareGrowFromSeed'>;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
 }
@@ -42,6 +48,8 @@ export class MarbleBeanSaplingManager {
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
   private readonly assets = new ArchiveSpriteAssets();
+  private source?: ReturnType<typeof preloadSharedArchiveSprite>;
+  private readonly cameraQuaternion = new THREE.Quaternion();
   private readonly saplings = new Map<THREE.Group, Sapling>();
   private disposed = false;
 
@@ -63,20 +71,20 @@ export class MarbleBeanSaplingManager {
 
   private async prepare() {
     const resources = await Promise.allSettled([
-      createArchiveSprite(this.assets, { animationArchive: 'marblebean.zip', buildArchives: ['marblebean.zip'],
-        bank: 'marblebean', animation: 'idle_planted', loop: false }, { name: MARBLEBEAN_SAPLING_ID }),
+      this.source ??= preloadSharedArchiveSprite(this.assets, { animationArchive: 'marblebean.zip', buildArchives: ['marblebean.zip'],
+        bank: 'marblebean' }, { instancedAnimations: 'all', staticBillboard: true }).catch(error => { this.source = undefined; throw error; }),
       this.world.prepareSpawn({ ...catalog.items.marblebean, itemId: 'marblebean', count: 1 }, true),
       this.world.shrubs.prepareGrowFromSeed(),
     ] as const);
     const disposeResources = () => {
-      for (const result of resources) if (result.status === 'fulfilled') result.value.dispose();
+      for (const result of resources) if (result.status === 'fulfilled' && 'dispose' in result.value) result.value.dispose();
     };
     const failed = resources.find(result => result.status === 'rejected');
     if (failed || this.disposed) {
       disposeResources();
       throw failed?.status === 'rejected' ? failed.reason : new Error('Marble bean saplings disposed');
     }
-    const sprite = (resources[0] as PromiseFulfilledResult<ArchiveSprite>).value;
+    const source = (resources[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof preloadSharedArchiveSprite>>>).value;
     const loot = (resources[1] as PromiseFulfilledResult<PreparedGroundSpawn>).value;
     const shrub = (resources[2] as PromiseFulfilledResult<Sapling['shrub']>).value;
     let used = false;
@@ -86,7 +94,12 @@ export class MarbleBeanSaplingManager {
         if (used || this.disposed) throw new Error('Prepared sapling is unavailable');
         if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError('Invalid sapling position');
         used = true;
+        const create = (clip: { name: string; loop: boolean }) => source(clip.name, clip.loop, MARBLEBEAN_SAPLING_ID);
+        const clip = { name: 'idle_planted', loop: false };
+        const sprite = new ResidentSprite(create, clip, create(clip), MARBLEBEAN_SAPLING_ID);
         const model = sprite.model;
+        model.userData.animationController = sprite;
+        const stopAppearance = createEffect(() => { sprite.art.get(); sprite.faceCamera(this.cameraQuaternion); });
         model.position.set(position.x, 0, position.z);
         Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: MARBLEBEAN_SAPLING_ID,
           deploySmartRadius: 1, tags: ['marbleshrub'] });
@@ -103,7 +116,7 @@ export class MarbleBeanSaplingManager {
           this.remove(model);
         });
         Object.assign(entity.components, { workable, timer });
-        const sapling: Sapling = { sprite, timer, workable, loot, shrub };
+        const sapling: Sapling = { sprite, stopAppearance, timer, workable, loot, shrub };
         this.saplings.set(model, sapling);
         // startgrowing runs on construction and from marblebean's StartGrowing; a saved timer then replaces it.
         if (!timer.TimerExists('grow')) {
@@ -111,6 +124,7 @@ export class MarbleBeanSaplingManager {
         }
         timer.OnLoad(saved?.components.saplingTimer);
         this.scene.add(model);
+        sapling.stopActivity = watchTileActivity(model, this.world.tickingarea, active => sprite.setActive(active));
         return model;
       },
     };
@@ -118,12 +132,13 @@ export class MarbleBeanSaplingManager {
 
   update(dt: number, quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
+    this.cameraQuaternion.copy(quaternion);
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const { sprite } of this.saplings.values()) { sprite.model.quaternion.copy(quaternion); sprite.update(dt); }
+    for (const { sprite } of this.saplings.values()) if (sprite.loaded) { sprite.faceCamera(quaternion); sprite.update(dt); }
   }
 
   get renderEntities() {
-    return [...this.saplings.values()].map(({ sprite }) => ({ object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 }));
+    return [...this.saplings.values()].filter(({ sprite }) => sprite.loaded).map(({ sprite }) => ({ object: sprite.model, footPosition: sprite.model.position, cameraDepth: 0 }));
   }
   get digTargets(): ShovelTarget[] { return this.getDigTargets(); }
 
@@ -146,6 +161,7 @@ export class MarbleBeanSaplingManager {
   private remove(model: THREE.Group): void {
     const sapling = this.saplings.get(model); if (!sapling) return;
     this.saplings.delete(model); model.userData.removed = true;
+    sapling.stopActivity?.(); sapling.stopAppearance();
     sapling.timer.dispose(); sapling.workable.dispose();
     sapling.sprite.dispose(); sapling.loot.dispose(); sapling.shrub.dispose();
   }

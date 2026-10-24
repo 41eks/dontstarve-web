@@ -59,7 +59,7 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     const before = placement.exportRecords();
     const target = placement.hammerTargets[1], combatTarget = placement.combatTargets[1], skinTarget = placement.reskinTargets[1];
     const prepared = await skinTarget.prepareNextSkin();
-    const releases = (target.model.userData.ownedSpriteMaterials as THREE.Material[]).map(material => vi.spyOn(material, 'dispose'));
+    const release = vi.spyOn(target.model.children[0].userData.animationController, 'dispose');
     target.playHit(); target.playHit();
     expect(target.isValid()).toBe(true);
     expect(placement.exportRecords()).toEqual(before);
@@ -69,7 +69,7 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     expect(combatTarget.isValid()).toBe(false);
     expect(skinTarget.isValid()).toBe(false);
     expect(target.model.parent).toBeNull();
-    expect(releases.every(release => release.mock.calls.length === 1)).toBe(true);
+    expect(release).toHaveBeenCalledOnce();
     expect(prepared.apply()).toBe(false);
     prepared.dispose();
     target.playHit();

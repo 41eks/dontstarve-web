@@ -6,7 +6,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { bindTestWorld, tickWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '../../signals/src';
-import { ResidentSprite } from '../../prefab/src/residentSprite';
+import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 
 afterEach(() => {
   vi.restoreAllMocks();

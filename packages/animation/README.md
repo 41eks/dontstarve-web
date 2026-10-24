@@ -56,6 +56,14 @@ assets.dispose(); // manager 的所有实例移除后，统一释放缓存几何
 共享的是不可变几何，调用方不要直接修改其顶点、UV、索引或释放它。`grotto_pool` 已使用此入口；
 仅需部分动画共享时，仍可用 `createArchiveSprite()` 的 `sharedAnimations: ['idle']`。
 
+## Sprite 驻留
+
+`@dontstarve-web/animation/residentSprite` 导出 `ResidentSprite`（archive sprite）、
+`ResidentSpriteController`（factory sprite，含静态图片控制器）和 `ResidentEntity`，也可从包根入口导入。
+驻留容器保留稳定根节点与逻辑动画，`setActive()` 加载／释放实体 visual，共享资源由所有者管理。
+静态墙使用 `createStaticSpriteFactory()` 共享 atlas 与帧几何，实例的颜色／透明度使用私有材质；先 `disposeSprite()` 全部实体，再 `dispose()` 工厂。
+外观由 prefab 根据 `art` signal 在 visual 加载后重新应用。详见 [tile 生命周期](../../docs/tile-lifecycle.md)。
+
 ## prefab 的动画切换
 
 动画包统一提供共享帧和通用播放接口；动作对应哪个源 clip、结束后播放什么，由 prefab 按 Lua 选择。
