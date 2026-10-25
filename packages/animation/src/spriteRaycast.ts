@@ -19,15 +19,22 @@ function wrapPixel(index: number, size: number, wrapping: THREE.Wrapping): numbe
   return Math.max(0, Math.min(size - 1, index));
 }
 
+const alphaMasks = new WeakMap<THREE.Source<unknown>, Uint8Array>();
+
+/** One alpha byte per texel of an atlas source, which outlives the RGBA released after the GPU upload. */
+export function setAtlasAlphaMask(source: THREE.Source<unknown>, alpha: Uint8Array): void { alphaMasks.set(source, alpha); }
+
 /** Sample the existing decoded atlas, using the same UV transform, orientation and filtering as the sprite. */
 function atlasAlpha(texture: THREE.DataTexture, uv: THREE.Vector2): number {
-  const { data, width, height } = texture.image;
+  const { width, height } = texture.image;
+  const mask = alphaMasks.get(texture.source);
+  const data = mask ?? texture.image.data, stride = mask ? 1 : 4, channel = mask ? 0 : 3;
   if (!data || width === 0 || height === 0) return 1;
   if (texture.matrixAutoUpdate) texture.updateMatrix();
   texture.transformUv(textureUv.copy(uv));
   const x = textureUv.x * width, y = textureUv.y * height;
   const texel = (x: number, y: number) => data[(wrapPixel(y, height, texture.wrapT) * width
-    + wrapPixel(x, width, texture.wrapS)) * 4 + 3] / 255;
+    + wrapPixel(x, width, texture.wrapS)) * stride + channel] / 255;
   if (texture.magFilter === THREE.NearestFilter) return texel(Math.floor(x), Math.floor(y));
   // Linear texels are centred at (i + .5) / size, including interpolation across wrapped edges.
   const x0 = Math.floor(x - .5), y0 = Math.floor(y - .5);

@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { markSpatialGeometryBounds, publishSpriteSpatialBounds } from './spatialBounds';
-import type { DecodedTexture } from './parseKtex';
-import type { AnimElement, BuildImage, ParsedAnim, ParsedBuild, BuildPackage } from './animationArchive';
-import { loadAnimationArchivePart } from './animationArchiveLoader';
-import { raycastSprite, setInstancedSpriteProxy } from './spriteRaycast';
+import type { AnimElement, BuildAtlas, BuildImage, ParsedAnim, ParsedBuild, BuildPackage } from './animationArchive';
+import { canReloadAtlasPixels, loadAnimationArchivePart, reloadAtlasPixels } from './animationArchiveLoader';
+import { raycastSprite, setAtlasAlphaMask, setInstancedSpriteProxy } from './spriteRaycast';
 import { setSpriteRenderGroupDrawn } from './renderOrder';
 
 export { smallHash } from './animationArchive';
-export type { Matrix2D, AnimElement, Animation, ParsedAnim, BuildImage, ParsedBuild, BuildPackage } from './animationArchive';
+export { atlasPixels } from './animationArchive';
+export type { Matrix2D, AnimElement, Animation, ParsedAnim, BuildAtlas, BuildImage, ParsedBuild, BuildPackage } from './animationArchive';
 export { disposeAnimationAssets } from './animationArchiveLoader';
 
 export interface ResolvedSprite {
@@ -67,15 +67,105 @@ export interface SpriteMaterialOptions {
   readonly pointFiltering?: boolean;
 }
 
-export function createAtlasTexture(atlas: DecodedTexture, pointFiltering = false): THREE.DataTexture {
-  const texture = new THREE.DataTexture(atlas.pixels, atlas.width, atlas.height, THREE.RGBAFormat);
+/**
+ * One three.js Source per atlas and filtering, so every texture of it shares one GPU copy (three counts its users).
+ * The RGBA leaves the CPU after that copy is made; a GPU copy made without data (a restored context, a new renderer)
+ * decodes the page again from its archive and uploads it. One renderer draws the build atlases.
+ */
+interface AtlasImage { data: Uint8Array | null; width: number; height: number }
+
+interface AtlasSource {
+  readonly atlas: BuildAtlas;
+  readonly source: THREE.Source<AtlasImage>;
+  readonly image: AtlasImage;
+  readonly textures: Set<THREE.DataTexture>;
+  reload?: Promise<void>;
+}
+
+const atlasSources = new WeakMap<BuildAtlas, [linear?: AtlasSource, point?: AtlasSource]>();
+const sourceRecords = new WeakMap<THREE.Source<unknown>, AtlasSource>();
+const pendingReloads = new Set<Promise<void>>();
+
+function atlasSource(atlas: BuildAtlas, pointFiltering: boolean): AtlasSource {
+  let sources = atlasSources.get(atlas);
+  if (!sources) atlasSources.set(atlas, sources = []);
+  const slot = pointFiltering ? 1 : 0;
+  let record = sources[slot];
+  if (!record) {
+    const image: AtlasImage = { data: atlas.pixels ?? null, width: atlas.width, height: atlas.height };
+    const source = new THREE.Source(image);
+    // Without data three allocates the texture and calls onUpdate, which starts the reload.
+    source.dataReady = image.data !== null;
+    if (atlas.alpha) setAtlasAlphaMask(source, atlas.alpha);
+    sources[slot] = record = { atlas, source, image, textures: new Set() };
+    sourceRecords.set(source, record);
+  }
+  return record;
+}
+
+function onAtlasUpload(texture: THREE.Texture): void {
+  const record = sourceRecords.get(texture.source);
+  if (!record) return;
+  if (!record.source.dataReady) { reloadAtlasSource(record); return; }
+  // The GPU holds the pixels now. Keep them only when they could not be decoded again or picking still reads them.
+  if (!record.atlas.alpha || !canReloadAtlasPixels(record.atlas)) return;
+  record.image.data = null;
+  record.source.dataReady = false;
+  record.atlas.pixels = undefined;
+}
+
+function reloadAtlasSource(record: AtlasSource): void {
+  if (record.reload || !canReloadAtlasPixels(record.atlas)) return;
+  const reload = reloadAtlasPixels(record.atlas).then(pixels => {
+    record.image.data = pixels;
+    record.source.dataReady = true;
+    // Each renderer uploads once through whichever of these textures it binds first.
+    for (const texture of record.textures) texture.needsUpdate = true;
+  }, error => console.error('Unable to reload a released animation atlas', error)).finally(() => {
+    record.reload = undefined;
+    pendingReloads.delete(reload);
+  });
+  record.reload = reload;
+  pendingReloads.add(reload);
+}
+
+export function createAtlasTexture(atlas: BuildAtlas, pointFiltering = false): THREE.DataTexture {
+  const record = atlasSource(atlas, pointFiltering);
+  const texture = new THREE.DataTexture(null, atlas.width, atlas.height, THREE.RGBAFormat);
+  texture.source = record.source;
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.flipY = false;
   texture.generateMipmaps = false;
   texture.magFilter = pointFiltering ? THREE.NearestFilter : THREE.LinearFilter;
   texture.minFilter = pointFiltering ? THREE.NearestFilter : THREE.LinearFilter;
-  texture.needsUpdate = true;
+  // Only this texture needs binding: a Source version bump would upload the shared pixels again.
+  texture.version++;
+  texture.onUpdate = onAtlasUpload;
+  record.textures.add(texture);
+  texture.addEventListener('dispose', () => record.textures.delete(texture));
   return texture;
+}
+
+/**
+ * Uploads an atlas texture to `renderer` when it has not been, and reports whether its pixels are on the GPU.
+ * False while a released atlas is decoded again; offscreen composition waits rather than drawing it blank.
+ */
+export function prepareAtlasTexture(renderer: THREE.WebGLRenderer, texture: THREE.Texture): boolean {
+  renderer.initTexture(texture);
+  return sourceRecords.get(texture.source)?.reload === undefined;
+}
+
+/** The RGBA of an atlas texture for CPU composition, or undefined while a released atlas is decoded again. */
+export function atlasTexturePixels(texture: THREE.DataTexture): Uint8Array | undefined {
+  const record = sourceRecords.get(texture.source);
+  if (!record) return texture.image.data as Uint8Array;
+  if (!record.image.data) reloadAtlasSource(record);
+  return record.image.data ?? undefined;
+}
+
+/** Resolves once every atlas being decoded again has its pixels back. */
+export async function atlasReloadsSettled(): Promise<void> {
+  while (pendingReloads.size) await Promise.all(pendingReloads);
 }
 
 export function createMaterials(buildPackage: BuildPackage, options: SpriteMaterialOptions = {}) {

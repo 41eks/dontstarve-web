@@ -90,12 +90,18 @@ Spine 去掉 `premultiplied_alpha_fragment` 与 `colorspace_fragment`，让预�
 
 普通动态 sprite 的 `SpriteFrameRenderer` 已按容量复用缓冲，普通共享帧已通过 `FrameGeometryCache` 换帧复用，不能将 Spine 每次更新重写骨骼网格的方式整体套用到这些路径。其 `addUpdateRange()` 思路可用于仍需重写的私有缓冲；多个未消费更新区间必须保留，不能因后一次写入丢弃前一次更新。
 
+## 源图集内存
+
+build 图集由 worker 解码为 RGBA，同时生成每像素 1 字节的 alpha。`createAtlasTexture()` 为每个图集按过滤方式共享一个 Three.js `Source`，同一图集的所有纹理在 renderer 内只有一份 GPU 拷贝，引用计数和释放仍由 Three.js 与各所有者的 `dispose()` 负责。带数据的上传完成后（`onUpdate`）丢弃 CPU 端 RGBA，只保留 alpha 供 `spriteRaycast.ts` 拾取；无法从动画包重新解码（非 loader 加载）或没有 alpha 的图集保留 RGBA。
+
+之后需要新的 GPU 拷贝时（上下文恢复、新的过滤方式），Three.js 以 `dataReady = false` 分配空纹理并调用 `onUpdate`，由 loader 按记录的动画包重新解码该页（同一 build 的多页共享一次解码），完成后标记共享该 `Source` 的全部纹理更新，上传后再次释放。期间普通 sprite 暂时透明；GPU 合成通过 `prepareAtlasTexture()` 等待像素就绪，CPU 回退通过 `atlasTexturePixels()` 取像素，合成器在等待时让出本帧，不会把空白源合成进缓存页。同步的 `composeResolvedRgbaSpriteAtlases()`／`composeRgbaSpriteAtlas()` 遇到已释放图集直接报错；UI 中 CPU 绘制的 build（世界时钟、理智暗角）用 `atlasPixels()` 读取，这些 build 不经 `createAtlasTexture()` 上传，RGBA 不会被释放。`atlasReloadsSettled()` 供测试等待重新解码完成。build 图集只由一个 renderer 绘制。
+
 ## 测试
 
-- 单元测试 `packages/animation/tests/rgbaSpriteAtlas.test.ts`：分步合成器逐帧推进，结果与同步合成一致（CPU 路径）。`rgbaSpriteAtlasLifecycle.test.ts` 验证懒解析、跨页几何／索引复用、交错材质组、有效区间、渲染器统计与状态保持，以及多页中途取消／绘制失败时的资源释放。
+- 单元测试 `packages/animation/tests/rgbaSpriteAtlas.test.ts`：分步合成器逐帧推进，结果与同步合成一致（CPU 路径）。`rgbaSpriteAtlasLifecycle.test.ts` 验证懒解析、跨页几何／索引复用、交错材质组、有效区间、渲染器统计与状态保持，以及多页中途取消／绘制失败时的资源释放。`atlasRelease.test.ts` 验证源图集共享 `Source`、上传后释放 RGBA、释放后 alpha 拾取不变，以及无数据 GPU 拷贝触发的重新解码与再次释放。
 - 浏览器测试 `packages/ui/tests/tree-sprite.spec.ts` 与 `trees.spec.ts`：实例化的杂木与桦树帧与普通渲染逐像素对比（平均误差小于 2），覆盖层顺序、符号覆盖、隐藏符号、着色保持私有、砍伐后恢复以及 draw call 数。测试夹具在对比前调用 `flush(renderer)`，保证新外观已合成完。
 - 这些测试环境支持浮点渲染，实例化对比走 GPU 路径；CPU 单测使用模拟 canvas 验证布局与分步调用。当前尚无同一像素夹具强制走 GPU／CPU 两路的直接对比，不能将已有测试视为两路逐像素一致的证明。
-- 浏览器测试 `packages/ui/tests/atlas-lifecycle.spec.ts` 使用真实荧光花：多个动画帧均有绘制内容、脚点位置保留、前景误差受控，`idle → off → idle` 复用同一实例批次；真实 `WEBGL_lose_context` 丢失／恢复后图集重建，图像与恢复前一致。恢复调用放在丢失事件完成派发后的宏任务中。隐藏所有实体后空闲网格退出场景，重新显示时仍复用原批次且图像一致。
+- 浏览器测试 `packages/ui/tests/atlas-lifecycle.spec.ts` 使用真实荧光花：多个动画帧均有绘制内容、脚点位置保留、前景误差受控，`idle → off → idle` 复用同一实例批次；首次绘制后源图集 RGBA 已释放；真实 `WEBGL_lose_context` 丢失／恢复后，首次绘制触发重新解码，等待 `atlasReloadsSettled()` 后图集重建，图像与恢复前一致。恢复调用放在丢失事件完成派发后的宏任务中。隐藏所有实体后空闲网格退出场景，重新显示时仍复用原批次且图像一致。
 - 后续可补强制 CPU／GPU 的同夹具像素对照与缩小采样质量验证；保留原有普通 sprite 对照，不以全画面平均值代替前景与边缘检查。
 
 ## 性能埋点

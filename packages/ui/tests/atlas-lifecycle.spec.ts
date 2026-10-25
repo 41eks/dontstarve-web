@@ -14,6 +14,7 @@ test('flower frames stay at their foot point, reuse batches across appearances a
     expect(sample.centroid).toBeLessThan(200);
     expect(sample.error).toBeLessThan(12);
   }
+  expect(result.released).toBe(true);
   expect(result.positions).toEqual(Array(5).fill([3, 0, 0]));
   expect(result.reusedForOff).toBe(true); expect(result.reusedForIdle).toBe(true);
   expect(result.rebuiltTexture).toBe(true); expect(result.identityPreserved).toBe(true);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
+import { atlasReloadsSettled } from '@dontstarve-web/animation/animationAssets';
 
 function contextEvent(canvas: HTMLCanvasElement, name: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -49,6 +50,12 @@ export async function checkFlowerAtlasLifecycle() {
       shared.setFrame(frame); reference.setFrame(frame);
       samples.push(compare()); positions.push(shared.model.position.toArray());
     }
+    // Drawing uploaded the build atlas; only its alpha stays on the CPU.
+    let sourceAtlas: THREE.DataTexture | undefined;
+    reference.model.traverse(object => {
+      if (object instanceof THREE.Mesh) sourceAtlas ??= (object.material as THREE.MeshBasicMaterial[])[0].map as THREE.DataTexture;
+    });
+    const released = sourceAtlas?.image.data === null;
     const originalBatch = batches()[0], geometry = originalBatch.geometry, instanceMatrix = originalBatch.instanceMatrix;
     const texture = (originalBatch.material as THREE.MeshBasicMaterial).map;
     shared.playOnce('off'); reference.playOnce('off');
@@ -63,6 +70,8 @@ export async function checkFlowerAtlasLifecycle() {
     await new Promise(resolve => setTimeout(resolve, 0));
     const restored = contextEvent(renderer.domElement, 'webglcontextrestored');
     renderer.forceContextRestore(); await restored;
+    // The restored context has no copy of the released atlas: the first draw decodes it again, then it is drawn.
+    read(scenes[0]); read(scenes[1]); await atlasReloadsSettled();
     const afterRestore = compare();
     const rebuiltTexture = (batches()[0].material as THREE.MeshBasicMaterial).map !== texture;
     const identityPreserved = shared.model.uuid === originalIdentity && shared.currentAnimation === 'idle';
@@ -72,7 +81,7 @@ export async function checkFlowerAtlasLifecycle() {
     const spareDetached = group.children.length === 0 && !group.visible && recoveredBatch.parent === null;
     shared.model.visible = true;
     const afterShow = compare(), reusedAfterShow = batches()[0] === recoveredBatch;
-    return { samples, positions, off, reusedForOff, reusedForIdle, beforeRestore, afterRestore, rebuiltTexture, identityPreserved,
+    return { samples, released, positions, off, reusedForOff, reusedForIdle, beforeRestore, afterRestore, rebuiltTexture, identityPreserved,
       spareDetached, afterShow, reusedAfterShow };
   } finally {
     shared.dispose(); reference.dispose(); assets.dispose(); target.dispose(); renderer.dispose(); renderer.domElement.remove();

@@ -3,8 +3,11 @@ import * as THREE from 'three';
 import { spritePerfSpan } from './spritePerf';
 
 import {
+  atlasPixels,
+  atlasTexturePixels,
   findImage,
   loadAnimationArchive,
+  prepareAtlasTexture,
   type Animation,
   type BuildPackage,
   type ResolvedSprite,
@@ -154,7 +157,7 @@ const DECODE_CHUNK_PIXELS = 1 << 19;
 function* decodeTextureSteps(texture: BuildPackage['atlases'][number]): Generator<void, HTMLCanvasElement> {
   const canvas = createCanvas(texture.width, texture.height);
   const context = context2d(canvas);
-  const { width, height, pixels } = texture;
+  const { width, height } = texture, pixels = atlasPixels(texture);
   const rows = Math.max(1, Math.floor(DECODE_CHUNK_PIXELS / width));
   for (let y = 0; y < height; y += rows) {
     const count = Math.min(rows, height - y);
@@ -182,10 +185,18 @@ export function composeRgbaSpriteAtlas(
     sprite => (sources ??= buildPackage.atlases.map(decodedTextureCanvas))[sprite.image.sampler ?? 0], options));
 }
 
-function drain<T>(steps: Generator<void, T>): T {
+/** Yielded while a released source atlas is decoded again; a budgeted composer gives the rest of its frame back. */
+const ATLAS_PENDING = Symbol('atlas pixels pending');
+type ComposeStep = void | typeof ATLAS_PENDING;
+
+function drain<T>(steps: Generator<ComposeStep, T>): T {
   for (;;) {
     const next = steps.next();
     if (next.done) return next.value;
+    if (next.value === ATLAS_PENDING) {
+      steps.return(undefined as T);
+      throw new Error('A source atlas is being decoded again; compose it with createResolvedRgbaSpriteAtlasComposer');
+    }
   }
 }
 
@@ -227,9 +238,10 @@ export function createResolvedRgbaSpriteAtlasComposer(
       const deadline = performance.now() + budgetMs;
       do {
         const end = spritePerfSpan('step:next', animation.name);
-        let next: IteratorResult<void, RgbaSpriteAtlas[]>;
+        let next: IteratorResult<ComposeStep, RgbaSpriteAtlas[]>;
         try { next = steps.next(); } catch (error) { cancelled = true; throw error; } finally { end(); }
         if (next.done) return pages = next.value;
+        if (next.value === ATLAS_PENDING) return undefined;
       } while (performance.now() < deadline);
       return undefined;
     },
@@ -246,7 +258,7 @@ function* composeResolvedSteps(
   frames: ResolvedFrames,
   maxTextureSize: number,
   gpu?: THREE.WebGLRenderer,
-): Generator<void, RgbaSpriteAtlas[]> {
+): Generator<ComposeStep, RgbaSpriteAtlas[]> {
   const frameCount = typeof frames === 'function' ? animation.frames.length : frames.length;
   const layouts: FrameLayout[] = [];
   // Preserve the source texel density instead of expanding downscaled DST atlases
@@ -288,8 +300,9 @@ function* composeResolvedSteps(
     const texture = materials[image.sampler ?? 0].map;
     if (!(texture instanceof THREE.DataTexture)) throw new Error('Instanced sprite source must be a decoded atlas');
     if (decodedSources.has(texture)) continue;
-    decodedSources.set(texture, yield* decodeTextureSteps({ width: texture.image.width, height: texture.image.height,
-      pixels: texture.image.data as Uint8Array }));
+    let pixels: Uint8Array | undefined;
+    while (!(pixels = atlasTexturePixels(texture))) yield ATLAS_PENDING;
+    decodedSources.set(texture, yield* decodeTextureSteps({ width: texture.image.width, height: texture.image.height, pixels }));
   }
   const sourceOf = ({ image, materials }: ResolvedSprite) => decodedSources.get(materials[image.sampler ?? 0].map!)!;
   const pages: RgbaSpriteAtlas[] = [];
@@ -528,14 +541,19 @@ function* composeGpuPageSteps(
   animation: Animation,
   layouts: FrameLayout[],
   options: Omit<RgbaSpriteAtlasOptions, 'animationName'>,
-): Generator<void, RgbaSpriteAtlas> {
+): Generator<ComposeStep, RgbaSpriteAtlas> {
   if (layouts.length === 0) throw new Error('At least one sprite frame is required');
   const { width, height, resolutionScale } = layoutAtlasPage(layouts, options);
   for (const frame of layouts) for (const { image, materials } of frame.sprites) {
     const texture = materials[image.sampler ?? 0].map!;
     if (scratch.uploaded.has(texture)) continue;
-    const end = spritePerfSpan('step:gpu-upload', texture.name || texture.uuid);
-    try { renderer.initTexture(texture); scratch.uploaded.add(texture); } finally { end(); }
+    const upload = () => {
+      const end = spritePerfSpan('step:gpu-upload', texture.name || texture.uuid);
+      try { return prepareAtlasTexture(renderer, texture); } finally { end(); }
+    };
+    // A released atlas whose GPU copy is being rebuilt would compose blank frames into the cached pages.
+    while (!upload()) yield ATLAS_PENDING;
+    scratch.uploaded.add(texture);
     yield;
   }
   const accumulation = new THREE.WebGLRenderTarget(width, height, { type: THREE.HalfFloatType, depthBuffer: false,

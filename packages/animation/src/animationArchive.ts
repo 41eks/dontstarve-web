@@ -1,5 +1,5 @@
 import { unzipSync } from 'fflate';
-import { parseKtex, type DecodedTexture } from './parseKtex';
+import { parseKtex } from './parseKtex';
 import { decodeDyn } from './decodeDyn';
 
 export type Matrix2D = [number, number, number, number, number, number];
@@ -46,9 +46,32 @@ export interface ParsedBuild {
   symbols: Map<number, BuildImage[]>;
 }
 
+/**
+ * One build atlas page. Its RGBA is released once the GPU holds it (see `createAtlasTexture`), and decoded again from
+ * the archive only when a GPU copy has to be rebuilt; `alpha` (one byte per texel) stays for input picking.
+ */
+export interface BuildAtlas {
+  readonly width: number;
+  readonly height: number;
+  pixels: Uint8Array | undefined;
+  readonly alpha?: Uint8Array;
+}
+
 export interface BuildPackage {
   build: ParsedBuild;
-  atlases: DecodedTexture[];
+  atlases: BuildAtlas[];
+}
+
+/** The RGBA of an atlas that CPU drawing needs; an atlas already handed to the GPU no longer has it. */
+export function atlasPixels(atlas: BuildAtlas): Uint8Array {
+  if (!atlas.pixels) throw new Error('Atlas RGBA was released after its GPU upload');
+  return atlas.pixels;
+}
+
+function alphaChannel(pixels: Uint8Array): Uint8Array {
+  const alpha = new Uint8Array(pixels.length >> 2);
+  for (let texel = 0; texel < alpha.length; texel++) alpha[texel] = pixels[texel * 4 + 3];
+  return alpha;
 }
 
 class BinaryReader {
@@ -271,7 +294,8 @@ async function buildPackageFromEntries(
   const atlases = build.atlasNames.map((name) => {
     const atlas = findEntry(entries, name) ?? findEntry(atlasEntries, name);
     if (!atlas) throw new Error(`${file} does not contain ${name}`);
-    return parseKtex(atlas, `${file}:${name}`);
+    const { width, height, pixels } = parseKtex(atlas, `${file}:${name}`);
+    return { width, height, pixels, alpha: alphaChannel(pixels) };
   });
   return { build, atlases };
 }

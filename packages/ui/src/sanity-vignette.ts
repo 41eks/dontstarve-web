@@ -1,5 +1,5 @@
 import {
-  findImage, loadAnimationArchive, type Animation, type BuildPackage,
+  atlasPixels, findImage, loadAnimationArchive, type Animation, type BuildPackage,
 } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
 
@@ -47,7 +47,7 @@ export class SanityVignette {
         canvas.height = texture.height;
         const context = canvas.getContext('2d')!;
         const image = context.createImageData(texture.width, texture.height);
-        image.data.set(texture.pixels);
+        image.data.set(atlasPixels(texture));
         context.putImageData(image, 0, 0);
         return canvas;
       });

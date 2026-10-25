@@ -1,5 +1,5 @@
 import {
-  findImage, loadAnimationArchive, loadBuild, smallHash,
+  atlasPixels, findImage, loadAnimationArchive, loadBuild, smallHash,
   type Animation, type BuildPackage,
 } from '@dontstarve-web/animation/animationAssets';
 import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
@@ -53,7 +53,7 @@ function textureCanvas(texture: DecodedTexture): HTMLCanvasElement {
 function animationAsset(buildPackage: BuildPackage, animations: Animation[] = []): AnimationAsset {
   return {
     buildPackage,
-    atlases: buildPackage.atlases.map(textureCanvas),
+    atlases: buildPackage.atlases.map(atlas => textureCanvas({ width: atlas.width, height: atlas.height, pixels: atlasPixels(atlas) })),
     animations: new Map(animations.map((animation) => [animation.name, animation])),
   };
 }
