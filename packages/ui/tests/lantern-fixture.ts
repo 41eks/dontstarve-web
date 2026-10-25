@@ -66,7 +66,7 @@ export async function checkLanternLighting() {
         if (mesh.material.some((material) => !material.forceSinglePass)) failures.push('split face passes');
       }
     }
-    const ground = await createLanternGroundSprite(assets, skin);
+    const ground = await createLanternGroundSprite({ assets }, skin);
     const entity = new ItemEntity({ itemId: 'lantern', count: 1, ...(skin ? { skinId: skin } : {}) });
     ground.bindEntity!(entity);
     ground.model.dispatchEvent({ type: 'ondropped' });
@@ -108,9 +108,9 @@ export async function checkLanternLighting() {
   manager.update(0.05, camera.quaternion);
   const twoLights = { left: sample(-30), right: sample(30), far: sample(0, 75) };
   const clickFirst = () => {
-    const { object: model } = manager.renderEntities[0];
+    const { model } = manager.reskinTargets[0];
     model.updateWorldMatrix(true, true);
-    const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry>;
+    const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry>;
     const bounds = new THREE.Box3();
     const vertices = mesh.geometry.getAttribute('position');
     for (let i = 0; i < mesh.geometry.drawRange.count / 6 * 4; i++)

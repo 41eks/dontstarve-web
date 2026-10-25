@@ -181,6 +181,7 @@ function onhammered({ position, dropLoot, remove }: AnimatedBuildingHammerContex
 
 export const MOONDIAL_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.moondial,
+    obstacleRadius: 0.45,
     hammerWorkLeft: 4,
     skinInit: moondial_init_fn,
     prepare,

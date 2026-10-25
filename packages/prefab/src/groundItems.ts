@@ -1,6 +1,6 @@
 import {
   ArchiveSpriteAssets, createSharedArchiveSprite,
-  type ArchiveSprite, type ArchiveSpriteDefinition,
+  type ArchiveSpriteDefinition,
 } from '@dontstarve-web/animation/archiveSprite';
 import type { InventoryItemSpec, InventorySkinSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { GroundTileName } from './groundTiles';
@@ -82,31 +82,6 @@ export class GroundItemAssets extends ArchiveSpriteAssets {
   constructor() { super('ground'); }
 }
 
-export type GroundItemSprite = ArchiveSprite;
-
-export async function createGroundItemSprite(
-  assets: GroundItemAssets,
-  itemId: string,
-  skinId?: string,
-): Promise<GroundItemSprite> {
-  const definition = GROUND_ITEM_DEFINITIONS[itemId];
-  if (!definition) throw new Error(`Unknown ground item: ${itemId}`);
-  const skinArchive = skinId === undefined ? undefined : definition.skinArchives[skinId];
-  if (skinId !== undefined && !skinArchive) throw new Error(`Unknown ground skin ${skinId} for ${itemId}`);
-  const sprite = await createSharedArchiveSprite(assets, definition, { skinArchive, name: `GroundItem:${itemId}` });
-  Object.assign(sprite.model.userData, { itemId, skinId });
-  const removeInventoryEvents = listenInventoryEvents(sprite.model, {
-    ondropped: () => sprite.setPaused(false),
-    onload: () => sprite.setPaused(false),
-    onputininventory: () => sprite.setPaused(true),
-  });
-  return {
-    ...sprite,
-    get currentAnimation() { return sprite.currentAnimation; },
-    dispose() { removeInventoryEvents(); sprite.dispose(); },
-  };
-}
-
 /**
  * A plain ground item whose sprite exists only while the tile under it is active. The tile is bound once the item's
  * position is settled (loaded or dropped, including the end of a fling), not while it is still moving.
@@ -114,7 +89,7 @@ export async function createGroundItemSprite(
 /** A ground item's visual with the instance and display behind it, for prefabs that declare more on its sprite. */
 export interface ResidentGroundItem { readonly visual: GroundItemVisual; readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
 
-export async function createResidentGroundItem(context: GroundPrefabContext, item: GroundItemDefinition,
+export async function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, item: Pick<GroundItemDefinition, 'itemId' | 'skinId'>,
   /** The prefab's declaration of what its sprite follows, made once the item's entity is bound. */
   declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): Promise<ResidentGroundItem> {
   const { itemId, skinId } = item;
@@ -123,7 +98,7 @@ export async function createResidentGroundItem(context: GroundPrefabContext, ite
   const skinArchive = skinId === undefined ? undefined : definition.skinArchives[skinId];
   if (skinId !== undefined && !skinArchive) throw new Error(`Unknown ground skin ${skinId} for ${itemId}`);
   const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(context.assets,
-    { ...definition, animation: clip.name, loop: clip.loop }, { skinArchive, name: `GroundItem:${itemId}` });
+    { ...definition, animation: clip.name, loop: clip.loop }, { skinArchive, name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
   const clip = { name: definition.animation, loop: definition.loop };
   const { instance, display } = createArchiveEntity(itemId, { create, initial: await create(clip) },
     { name: definition.animation, held: !definition.loop }, `GroundItem:${itemId}`);

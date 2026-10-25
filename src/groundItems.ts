@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { isSpriteEntityRendered, registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { nextReskin } from '@dontstarve-web/prefab/reskin_tool';
-import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
@@ -112,6 +112,7 @@ export class GroundItemManager {
     mouseActions?: PlayerActionPicker,
     lightflierWorld?: GroundPrefabOptions['lightflierWorld'],
     tickingarea?: GroundPrefabOptions['tickingarea'],
+    physics?: GroundPrefabOptions['physics'],
   ) {
     this.mouseActions = mouseActions;
     this.entities = entities;
@@ -122,7 +123,7 @@ export class GroundItemManager {
     this.inventory = inventory;
     this.player = player;
     this.prefabs = new GroundPrefabRegistry({
-      scene, animationBaseUrl, scheduler, fx, moleWorld, lightflierWorld, tickingarea, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
+      scene, animationBaseUrl, scheduler, fx, moleWorld, lightflierWorld, tickingarea, physics, butterflyWorld, firefliesWorld, bernieWorld, inventoryOwnerPosition: player.position,
       handEquipment: inventory.handEquipment,
       dropLoot: (items, position) => this.flingLoot(items, position),
       prepareSpawn: definition => this.prepareSpawn(definition),
@@ -735,7 +736,7 @@ export class GroundItemManager {
                     const visual = await this.createVisual(definition);
                     let used = false;
                     return {
-                        apply: () => {
+                        apply: (fx?: ReskinFxMessage) => {
                             if (used || !isValid()) return false;
                             // The machine may have advanced while skin assets were loading.
                             const oldMachine = record.model.userData.phonograph as PhonographController | undefined;
@@ -766,6 +767,7 @@ export class GroundItemManager {
                             this.bindInventoryEvents(replacement);
                             this.bindVisualActivity(replacement);
                             visual.model.dispatchEvent({ type: 'onload' });
+                            fx?.play(record.footPosition, prefabId);
                             used = true;
                             return true;
                         },

@@ -32,7 +32,7 @@ export async function checkLightbulbLighting() {
   };
   const baseline = sample(0);
   const assets = new GroundItemAssets();
-  const bulb = await createLightbulbGroundSprite(assets);
+  const bulb = await createLightbulbGroundSprite({ assets });
   scene.add(bulb.model);
   bulb.model.quaternion.copy(camera.quaternion);
   const parameters = getPrefabLocalLight(bulb.model);
@@ -53,9 +53,9 @@ export async function checkLightbulbLighting() {
   manager.update(0.05, camera.quaternion);
   const dropped = sample(5);
   const click = () => {
-    const { object: model } = manager.renderEntities[0];
+    const { model } = manager.reskinTargets[0];
     model.updateWorldMatrix(true, true);
-    const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry>;
+    const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry>;
     const bounds = new THREE.Box3();
     const vertices = mesh.geometry.getAttribute('position');
     for (let i = 0; i < mesh.geometry.drawRange.count / 6 * 4; i++)

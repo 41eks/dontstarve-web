@@ -184,23 +184,27 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     expect(drawnIndices(first)).toBeLessThan(initialSnow);
     s.snowLevel.set(.015); await settleEffects();
     expect(drawnIndices(first)).toBe(initialSnow);
-    // The resident controller is the entity's stable handle; the drawn sprite and its controller are replaced.
-    const drawnController = () => first.children.find(child => child.userData.animationController)!.userData.animationController;
-    const oldController = drawnController();
-    const oldHide = vi.spyOn(oldController, 'hideLayer'), oldShow = vi.spyOn(oldController, 'showLayer');
+    // The sprite json stays with the plant; a reskin replaces only its drawn sprite.
+    const controller = first.userData.animationController, oldSprite = first.children[0];
+    const oldMesh = oldSprite.getObjectByProperty('isMesh', true) as THREE.Mesh;
+    const oldCount = oldMesh.geometry.drawRange.count;
     const skin = await s.bushes.reskinTargets[0].prepareNextSkin();
     expect(skin.apply()).toBe(true); skin.dispose();
-    expect(drawnController()).not.toBe(oldController);
+    await settleEffects();
+    expect(first.userData.animationController).toBe(controller);
+    expect(first.children[0]).not.toBe(oldSprite);
+    expect(oldSprite.parent).toBeNull();
     const reskinnedSnow = drawnIndices(first);
     s.snowLevel.set(0); await settleEffects();
     expect(drawnIndices(first)).toBeLessThan(reskinnedSnow);
     s.snowLevel.set(.5); await settleEffects();
     expect(drawnIndices(first)).toBe(reskinnedSnow);
-    expect(oldHide).not.toHaveBeenCalled(); expect(oldShow).not.toHaveBeenCalled();
+    expect(oldMesh.geometry.drawRange.count).toBe(oldCount);
     // A prepared replacement reads the latest snow even if applied before its queued effect runs.
     const nextSkin = await s.bushes.reskinTargets[0].prepareNextSkin();
     s.snowLevel.set(0);
     expect(nextSkin.apply()).toBe(true); nextSkin.dispose();
+    await settleEffects();
     const bareReplacement = drawnIndices(first);
     await settleEffects();
     expect(drawnIndices(first)).toBe(bareReplacement);

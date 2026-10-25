@@ -132,6 +132,7 @@ function oninit({ model, prepared, art }: AnimatedBuildingEventContext): void {
 
 export const SCULPTING_TABLE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.sculptingtable,
+    obstacleRadius: 0.4,
     hammerWorkLeft: 4, hammerMaterial: 'wood',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     // dropitems: the held block comes out with the recipe loot.

@@ -540,6 +540,7 @@ export async function createSceneEntities(
       view.mouseActions,
       Managers['lightflier_flower'].habitat,
       worldState.tickingarea,
+      world,
     );
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => {
@@ -610,6 +611,7 @@ export async function createSceneEntities(
 
   function registerRocks(registry: EntityRegistry, prefabId: 'rocks', worldState: SceneWorldState) {
     const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      physics: world,
       tickingarea: worldState.tickingarea,
       scheduler,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
@@ -1044,7 +1046,7 @@ export async function createSceneEntities(
   }
 
   function registerNightmareGrowths(registry: EntityRegistry, prefabId: 'nightmaregrowth', _worldState: SceneWorldState) {
-    const nightmareGrowths = new NightmareGrowthManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`);
+    const nightmareGrowths = new NightmareGrowthManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, world);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => nightmareGrowths.spawn(new THREE.Vector3(...record.transform.position), {
         id: record.id, transform: record.transform, components: { nightmareGrowth: record.components.nightmareGrowth! },
@@ -1159,7 +1161,7 @@ export async function createSceneEntities(
   }
 
   function registerFarmPlow(registry: EntityRegistry, prefabId: 'farm_plow', _worldState: SceneWorldState) {
-    const farmPlow = new FarmPlowPlacement(view, turfMap,
+    const farmPlow = new FarmPlowPlacement({ ...view, physics: world }, turfMap,
       async (position, item) => { await Managers['ground_item'].spawnFromSave(item.entityId ?? newEntityId(), {
         ...SAVE_CATALOG.items[item.itemId], ...item,
       }, position); },
@@ -1205,6 +1207,7 @@ export async function createSceneEntities(
 
   async function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {
     const moonTrees = await createMoonTreeManager(`${import.meta.env.BASE_URL}dst/data/anim`, {
+      physics: world,
       camera,
       scene,
       scheduler,

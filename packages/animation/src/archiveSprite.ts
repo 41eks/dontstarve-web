@@ -21,6 +21,8 @@ export interface ArchiveSpriteDefinition extends SpriteMaterialOptions {
   readonly symbolOverrides?: Readonly<Record<string, { archive: string; symbol: string }>>;
   /** Source animation placeholders supplied by runtime systems such as snow. */
   readonly hiddenSymbols?: readonly string[];
+  /** AnimState:Hide / Show selects animation layers independently of symbol names. */
+  readonly hiddenLayers?: readonly string[];
 }
 
 export interface ArchiveSpriteOptions {
@@ -57,12 +59,13 @@ interface SpriteAppearance {
   skin?: ArchiveSpriteBuild;
   overrides: ReadonlyMap<number, { hash: number; source: ArchiveSpriteBuild }>;
   hidden: ReadonlySet<number>;
+  hiddenLayers: ReadonlySet<number>;
 }
 
-function resolveAppearanceFrame({ animation, builds, skin, overrides, hidden }: SpriteAppearance, index: number): ResolvedSprite[] {
+function resolveAppearanceFrame({ animation, builds, skin, overrides, hidden, hiddenLayers }: SpriteAppearance, index: number): ResolvedSprite[] {
   return [...animation.frames[index].elements]
     // These banks include bounding-only symbols with no build art.
-    .filter(element => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash))
+    .filter(element => element.imageHash !== smallHash('bounding') && !hidden.has(element.imageHash) && !hiddenLayers.has(element.layerHash))
     .sort((a, b) => b.z - a.z).flatMap((element): ResolvedSprite[] => {
       const override = overrides.get(element.imageHash), hash = override?.hash ?? element.imageHash;
       for (const build of [...(skin ? [skin] : []), ...(override ? [override.source] : builds)]) {
@@ -164,6 +167,7 @@ export interface ArchiveSprite {
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void;
   /** AnimState:Hide / Show for a named symbol layer, such as MakeSnowCovered's `snow`. */
   setSymbolHidden(symbol: string, hidden: boolean): void;
+  setLayerHidden(layer: string, hidden: boolean): void;
   /** Turn towards the camera; unchanged transforms reuse their matrices. */
   faceCamera(rotation: THREE.Quaternion): void;
   /** Explicitly invalidate transforms. Required after moving a staticBillboard;
@@ -249,6 +253,7 @@ function constructArchiveSprite(
   const overrides = new Map(Object.entries(definition.symbolOverrides ?? {}).map(([symbol, override]) =>
     [smallHash(symbol), { hash: smallHash(override.symbol), source: builds[definition.buildArchives.indexOf(override.archive)] }]));
   const hidden = new Set((definition.hiddenSymbols ?? []).map(smallHash));
+  const hiddenLayers = new Set((definition.hiddenLayers ?? []).map(smallHash));
   const sharedAnimations = options.sharedAnimations === 'all' ? 'all' : new Set(options.sharedAnimations);
   const cache = assets.frameCache;
   const source = (build: ArchiveSpriteBuild) => sources.get(build) ?? build;
@@ -257,6 +262,7 @@ function constructArchiveSprite(
     [...overrides].sort(([a], [b]) => a - b).map(([hash, override]) =>
       [hash, override.hash, cache.idOf(source(override.source))]),
     [...hidden].sort((a, b) => a - b),
+    [...hiddenLayers].sort((a, b) => a - b),
   ]);
   let sharedAppearance = '';
   const tintedFrames = new WeakMap<SharedFrame, SharedFrame>();
@@ -281,9 +287,9 @@ function constructArchiveSprite(
   // Keep only source data in the deferred resolver, without retaining this entity's controller or private materials.
   const snapshotAppearance = (): SpriteAppearance => ({ animation, builds: activeBuilds.map(source), skin: skin && source(skin),
     overrides: new Map([...overrides].map(([hash, override]) => [hash, { hash: override.hash, source: source(override.source) }])),
-    hidden: new Set(hidden) });
+    hidden: new Set(hidden), hiddenLayers: new Set(hiddenLayers) });
   const resolveSprites = (index: number, shared: boolean): ResolvedSprite[] => resolveAppearanceFrame(shared ? snapshotAppearance()
-    : { animation, builds: activeBuilds, skin, overrides, hidden }, index);
+    : { animation, builds: activeBuilds, skin, overrides, hidden, hiddenLayers }, index);
   const update = (dt: number) => {
     if (paused || disposed) return;
     elapsed += Math.max(0, Math.min(dt, 0.1));
@@ -416,6 +422,14 @@ function constructArchiveSprite(
       const hash = smallHash(symbol);
       if (disposed || hidden.has(hash) === isHidden) return;
       if (isHidden) hidden.add(hash); else hidden.delete(hash);
+      sharedAppearance = '';
+      previousFrame = -1;
+      update(0);
+    },
+    setLayerHidden(layer: string, isHidden: boolean) {
+      const hash = smallHash(layer);
+      if (disposed || hiddenLayers.has(hash) === isHidden) return;
+      if (isHidden) hiddenLayers.add(hash); else hiddenLayers.delete(hash);
       sharedAppearance = '';
       previousFrame = -1;
       update(0);

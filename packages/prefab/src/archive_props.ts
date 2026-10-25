@@ -66,12 +66,16 @@ interface PropDefinition {
   eightFaced?: true;
   /** Animation symbols that the prefab's own build lacks; the engine draws nothing for them. */
   hiddenSymbols?: readonly string[];
+  /** Only source-looping clips participate in scenery instance batches. */
+  instancedAnimations?: readonly string[];
   minimap?: string;
   tags: readonly string[];
 }
 
 const PROPS: Readonly<Record<Exclude<ArchivePropId | typeof ARCHIVE_SWITCH_PAD_ID, typeof ARCHIVE_AMBIENT_SFX_ID>, PropDefinition>> = {
   [ARCHIVE_MOON_STATUE_ID]: { animationArchive: 'archive_moon_statue.zip', buildArchive: 'archive_moon_statue.zip', bank: 'archive_moon_statue',
+    instancedAnimations: Array.from({ length: MOON_STATUE_VARIANTS }, (_, index) =>
+      ['full', 'med', 'low'].map(state => `idle_${state}_${index + 1}`)).flat(),
     tags: ['structure', 'statue', 'dustable'] },
   [ARCHIVE_RUNE_STATUE_ID]: { animationArchive: 'archive_runes.zip', buildArchive: 'archive_runes.zip', bank: 'archive_rune',
     minimap: 'archive_runes.png', tags: ['structure', 'statue', 'dustable', 'ancient_text'] },
@@ -161,12 +165,13 @@ export class ArchivePropsManager {
     return this.create(prefab, definition, entity, child, loot, position, anim, state?.storyprogress, saved);
   }
 
-  private getSource(definition: Pick<PropDefinition, 'animationArchive' | 'buildArchive' | 'bank' | 'hiddenSymbols'>) {
+  private getSource(definition: Pick<PropDefinition, 'animationArchive' | 'buildArchive' | 'bank' | 'hiddenSymbols' | 'instancedAnimations'>) {
     const key = definition.animationArchive;
     let request = this.sources.get(key);
     if (!request) {
       request = preloadSharedArchiveSprite(this.assets, { animationArchive: key, buildArchives: [definition.buildArchive],
-        bank: definition.bank, hiddenSymbols: definition.hiddenSymbols }).catch(error => { this.sources.delete(key); throw error; });
+        bank: definition.bank, hiddenSymbols: definition.hiddenSymbols }, { instancedAnimations: definition.instancedAnimations })
+        .catch(error => { this.sources.delete(key); throw error; });
       this.sources.set(key, request);
     }
     return request;

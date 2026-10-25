@@ -7,9 +7,16 @@ import { bindHandEquipmentUpdate, type HandEquipmentSignal } from './handEquipme
 import { collectEquippedActions, equippedActionEntity, type ComponentActionEntity } from './componentactions.ts';
 import type { SpellCastDoer, SpellTarget } from '../../componets/src/spellcaster';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
+/** Prepared logical FX message. The target places and starts it only after committing its skin. */
+export interface ReskinFxMessage {
+  play(position: THREE.Vector3, prefabId: string): void;
+  /** Discard an unused message; a started FX keeps its own animation lifecycle. */
+  dispose(): void;
+}
+
 export interface PreparedReskin {
   /** Commit the prepared appearance only if its source entity is still valid. */
-  apply(): boolean;
+  apply(fx?: ReskinFxMessage): boolean;
   dispose(): void;
 }
 
@@ -22,13 +29,13 @@ export interface ReskinTarget extends SpellTarget {
   readonly skins: readonly string[];
   readonly reskinToolCannotTargetThis?: boolean;
   readonly preparedReskin?: PreparedReskin;
+  readonly reskinFx?: ReskinFxMessage;
   isValid(): boolean;
   prepareNextSkin(tool?: ComponentActionEntity): Promise<PreparedReskin>;
 }
 
 export interface ReskinEffectPresenter {
-  prepare(toolSkinId?: string): Promise<void>;
-  spawn(target: Pick<ReskinTarget, 'position' | 'prefabId'>, toolSkinId?: string): void;
+  prepare(toolSkinId?: string): Promise<ReskinFxMessage>;
 }
 
 export const RESKIN_CAST_TIME = WILSON_ACTION_TIMES.reskin;
@@ -49,7 +56,7 @@ export class ReskinActionController {
   private readonly picker: PlayerActionPicker;
   private readonly unregisterHover: () => void;
   private version = 0;
-  private pending?: { target: ReskinTarget; prepared?: PreparedReskin; skinId?: string; started: boolean };
+  private pending?: { target: ReskinTarget; prepared?: PreparedReskin; fx: ReskinFxMessage; skinId?: string; started: boolean };
   private loading = false;
   private readonly doer: SpellCastDoer;
 
@@ -96,6 +103,7 @@ export class ReskinActionController {
     this.animation.cancelEmote();
     this.loading = true;
     let prepared: PreparedReskin | undefined;
+    let fx: ReskinFxMessage | undefined;
     try {
       // allSettled also releases a prepared target when effect preparation fails.
       // Selection is tag-based; CanCast belongs to actions.lua at the hit frame.
@@ -105,13 +113,15 @@ export class ReskinActionController {
         this.effects.prepare(tool.skinId),
       ]);
       if (results[0].status === 'fulfilled') prepared = results[0].value;
+      if (results[1].status === 'fulfilled') fx = results[1].value;
       for (const result of results) if (result.status === 'rejected') throw result.reason;
       if (version !== this.version || this.getTool()?.entity !== tool.entity || this.getTool()?.skinId !== tool.skinId || !this.canSelect(target)) return false;
-      this.pending = { target, prepared, skinId: tool.skinId, started: false };
+      this.pending = { target, prepared, fx: fx!, skinId: tool.skinId, started: false };
       prepared = undefined;
+      fx = undefined;
       return true;
     } catch (error) { if (version === this.version) this.onError(error); return false; }
-    finally { prepared?.dispose(); if (version === this.version) this.loading = false; }
+    finally { prepared?.dispose(); fx?.dispose(); if (version === this.version) this.loading = false; }
   }
 
   private isEquipped(equipment = this.handEquipment.peek()): boolean {
@@ -138,6 +148,7 @@ export class ReskinActionController {
     this.version++;
     if (this.pending) this.locomotor.stop();
     this.pending?.prepared?.dispose();
+    this.pending?.fx.dispose();
     this.pending = undefined;
     this.loading = false;
     this.animation.cancelReskin();
@@ -169,11 +180,10 @@ export class ReskinActionController {
         || this.getTool()!.skinId !== pending.skinId || this.distanceSquared(target.position) > RESKIN_REACH ** 2) {
         this.cancel(); return;
       }
-      const castTarget = Object.assign(Object.create(target) as ReskinTarget, { preparedReskin: pending.prepared });
-      if (equippedActionEntity(this.getTool())?.components.spellcaster?.castSpell(castTarget, target.position, this.doer)) {
-        this.effects.spawn(target, pending.skinId);
-      }
+      const castTarget = Object.assign(Object.create(target) as ReskinTarget, { preparedReskin: pending.prepared, reskinFx: pending.fx });
+      equippedActionEntity(this.getTool())?.components.spellcaster?.castSpell(castTarget, target.position, this.doer);
       pending.prepared?.dispose();
+      pending.fx.dispose();
       this.pending = undefined;
     });
     if (!pending.started) this.cancel();

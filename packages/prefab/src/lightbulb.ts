@@ -1,4 +1,4 @@
-import { createGroundItemSprite, GroundItemAssets } from './groundItems';
+import { createResidentGroundItem } from './groundItems';
 import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -27,19 +27,19 @@ export const LIGHTBULB_LIGHT: PrefabLocalLight = {
 };
 
 /** Ground lightbulbs glow until picked up; they use bulb.zip's idle world art. */
-export async function createLightbulbGroundSprite(assets: GroundItemAssets, options: { lit?: boolean; skinId?: string } = {}) {
-  const sprite = await createGroundItemSprite(assets, LIGHTBULB_ID, options.skinId);
-  const setLit = (lit: boolean) => setPrefabLocalLight(sprite.model, lit ? LIGHTBULB_LIGHT : null);
+export async function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, options: { lit?: boolean; skinId?: string } = {}) {
+  const { visual } = await createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId });
+  const setLit = (lit: boolean) => setPrefabLocalLight(visual.model, lit ? LIGHTBULB_LIGHT : null);
   setLit(options.lit ?? true);
-  const removeInventoryEvents = listenInventoryEvents(sprite.model, {
+  const removeInventoryEvents = listenInventoryEvents(visual.model, {
     ondropped: () => setLit(true),
     onputininventory: () => setLit(false),
     onload: () => setLit(options.lit ?? true),
   });
   return {
-    ...sprite,
+    ...visual,
     setLit,
-    dispose() { removeInventoryEvents(); setLit(false); sprite.dispose(); },
+    dispose() { removeInventoryEvents(); setLit(false); visual.dispose(); },
   };
 }
 
@@ -47,6 +47,6 @@ export function createLightbulbGroundFactory(context: GroundPrefabContext): Grou
   return {
     itemIds: [LIGHTBULB_ID],
     configureEntity: configureLightbulbEntity,
-    create: (item) => createLightbulbGroundSprite(context.assets, { skinId: item.skinId }),
+    create: (item) => createLightbulbGroundSprite(context, { skinId: item.skinId }),
   };
 }

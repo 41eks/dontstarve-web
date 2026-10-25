@@ -6,7 +6,8 @@ import { FOOD_EFFECTS, PERISHABLE_FOODS } from '../../prefab/src/food';
 import { SEEDS_HUNGER } from '../../prefab/src/seeds';
 import { FoodActionController } from '../../stategraphs/src/food';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import { TurfMap } from '../../prefab/src/turfMap';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
@@ -29,10 +30,10 @@ function farmSetup(player = new THREE.Group()) {
 
 it('renders the original ground seed pose and commits quick eating once at frame 12, preserving other stats', async () => {
   const assets = new GroundItemAssets();
-  const sprite = await createGroundItemSprite(assets, 'seeds');
+  const sprite = await createGroundItemVisual(assets, 'seeds');
   expect(GROUND_ITEM_DEFINITIONS.seeds).toMatchObject({ atlas: 'images/inventoryimages.xml', bank: 'seeds',
     animationArchive: 'seeds.zip', animation: 'idle', skinArchives: {} });
-  const mesh = sprite.model.children[0].children[0] as THREE.Mesh;
+  const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh;
   expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
   sprite.dispose(); assets.dispose();
   const player = await createWilsonPlayer('/dst/data/anim');
@@ -111,8 +112,8 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
   expect(GROUND_ITEM_DEFINITIONS.tomato.icon).toBe('quagmire_tomato.tex');
   expect(GROUND_ITEM_DEFINITIONS.kelp_dried).toMatchObject({ bank: 'meat_rack_food_tot', animation: 'dried_kelp' });
   for (const id of ['carrot_seeds', 'kelp_dried', 'tomato_cooked']) {
-    const sprite = await createGroundItemSprite(assets, id);
-    expect((sprite.model.children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
+    const sprite = await createGroundItemVisual(assets, id);
+    expect((sprite.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     sprite.dispose();
   }
   assets.dispose();

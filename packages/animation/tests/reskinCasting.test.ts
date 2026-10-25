@@ -68,19 +68,24 @@ it.each([undefined, 'reskin_tool_brush'])(
   'draws %s puff with its source build and removes it at animation end', async (skinId) => {
     const scene = new THREE.Scene();
     const effects = new ReskinEffects(scene);
-    await effects.prepare(skinId);
-    effects.spawn({ prefabId: 'cookpot', position: new THREE.Vector3(4, 0, 7) }, skinId);
+    const fx = await effects.prepare(skinId);
+    expect(effects.renderEntities).toEqual([]);
+    fx.play(new THREE.Vector3(4, 0, 7), 'cookpot');
+    await new Promise(resolve => setTimeout(resolve, 0));
     const [{ object, footPosition }] = effects.renderEntities;
     expect(footPosition.toArray()).toEqual([4, 0, 7]);
     expect(object.position.toArray()).toEqual([4, 1.5, 7]);
+    expect(object.scale.toArray()).toEqual([1.4, 1.4, 1.4]);
+    expect(object.userData.instance.hasTag('FX')).toBe(true);
+    expect(object.userData.instance.persists).toBe(false);
     expect(getPrefabLightOverride(object)).toBe(skinId ? 0 : 1);
-    const mesh = object.children[0].children[0] as THREE.Mesh;
+    const mesh = object.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect((mesh.material as THREE.MeshBasicMaterial[]).every((material) => material.forceSinglePass)).toBe(true);
     expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${skinId ?? 'reskin_tool_fx'}`)).toBe(true);
     const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1);
     for (let frame = 0; frame < 15; frame++) effects.update(1 / 30, quaternion);
-    expect(object.quaternion.equals(quaternion)).toBe(true);
+    expect(object.children[0].quaternion.equals(quaternion)).toBe(true);
     expect(effects.renderEntities).toHaveLength(1);
     effects.update(1 / 30, quaternion);
     expect(effects.renderEntities).toEqual([]);
@@ -88,6 +93,41 @@ it.each([undefined, 'reskin_tool_brush'])(
     effects.dispose();
   },
 );
+
+it('shares FX geometry while keeping playback independent and discarding unused messages', async () => {
+  const scene = new THREE.Scene();
+  const effects = new ReskinEffects(scene);
+  const rotation = new THREE.Quaternion();
+  const first = await effects.prepare();
+  const second = await effects.prepare();
+  const unused = await effects.prepare();
+  unused.dispose();
+  effects.update(0, rotation);
+  expect(scene.children).toHaveLength(2);
+  const position = new THREE.Vector3(3, 0, 4);
+  first.play(position, 'treasurechest');
+  second.play(position, 'treasurechest');
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const [a, b] = effects.renderEntities;
+  const meshA = a.object.children[0].children[0].children[0] as THREE.Mesh;
+  const meshB = b.object.children[0].children[0].children[0] as THREE.Mesh;
+  expect(meshA.geometry).toBe(meshB.geometry);
+  expect(meshA.material).toEqual(meshB.material);
+  const release = vi.fn();
+  meshA.geometry.addEventListener('dispose', release);
+  // Moving the target later does not move its independently positioned puff.
+  position.set(30, 0, 40);
+  expect(a.footPosition.toArray()).toEqual([3, 0, 4]);
+  a.object.userData.instance.remove();
+  effects.update(0, rotation);
+  expect(effects.renderEntities).toEqual([b]);
+  expect(release).not.toHaveBeenCalled();
+  for (let frame = 0; frame < 16; frame++) effects.update(1 / 30, rotation);
+  expect(scene.children).toEqual([]);
+  expect(release).not.toHaveBeenCalled();
+  effects.dispose();
+  expect(release).toHaveBeenCalledOnce();
+});
 
 it('cycles building skins while preserving the open container root, identity, state and saved foot', async () => {
   const world = setupWorld();
@@ -98,7 +138,12 @@ it('cycles building skins while preserving the open container root, identity, st
   const skins = Object.keys(TREASURE_CHEST_DEFINITION.skinArchives!);
   const change = await placement.reskinTargets[0].prepareNextSkin();
   expect(placement.exportRecords()[0].record.components.building?.skinId).toBeUndefined();
-  expect(change.apply()).toBe(true);
+  const fx = { play: vi.fn(), dispose: vi.fn() };
+  const tool = actionTool('reskin_tool');
+  // The tool forwards its message to the target's skin commit; it does not draw the FX.
+  const doer = { position: world.player.position, hasTag: () => false, components: {} };
+  expect(tool.entity.components.spellcaster!.castSpell({ ...placement.reskinTargets[0], preparedReskin: change, reskinFx: fx }, root.position, doer)).toBe(true);
+  expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'treasurechest');
   change.dispose();
   expect(world.scene.children).toEqual([root]);
   expect(root.userData.entityId).toBe(record.id);
@@ -112,7 +157,9 @@ it('cycles building skins while preserving the open container root, identity, st
   const stale = await placement.reskinTargets[0].prepareNextSkin();
   const fresh = await placement.reskinTargets[0].prepareNextSkin();
   expect(fresh.apply()).toBe(true);
-  expect(stale.apply()).toBe(false);
+  fx.play.mockClear();
+  expect(stale.apply(fx)).toBe(false);
+  expect(fx.play).not.toHaveBeenCalled();
   stale.dispose(); fresh.dispose();
 });
 
@@ -127,7 +174,9 @@ it('reskins dropped items without changing their count or entity ID and preserve
   }, new THREE.Vector3(3, 0, 4));
   const first = manager.reskinTargets[0];
   const change = await first.prepareNextSkin();
-  expect(change.apply()).toBe(true);
+  const fx = { play: vi.fn(), dispose: vi.fn() };
+  expect(change.apply(fx)).toBe(true);
+  expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'greenstaff');
   change.dispose();
   expect(first.isValid()).toBe(false);
   expect(manager.exportRecords()[0]).toMatchObject({ id: 'e_staff', transform: { position: [3, 0, 4] },
@@ -160,7 +209,8 @@ it('selects an unskinnable target by tags and fails at the cast frame without ch
     playReskin: vi.fn((callback: () => void) => { commit = callback; animation.isReskinning = true; return true; }),
     cancelReskin: vi.fn(() => { animation.isReskinning = false; }),
   };
-  const effects = { prepare: vi.fn(async () => {}), spawn: vi.fn() };
+  const fx = { play: vi.fn(), dispose: vi.fn() };
+  const effects = { prepare: vi.fn(async () => fx) };
   const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
     { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped, () => [target], effects);
   try {
@@ -169,7 +219,8 @@ it('selects an unskinnable target by tags and fails at the cast frame without ch
     controller.update(1 / 30);
     expect(animation.playReskin).toHaveBeenCalledOnce();
     commit!();
-    expect(effects.spawn).not.toHaveBeenCalled();
+    expect(fx.play).not.toHaveBeenCalled();
+    expect(fx.dispose).toHaveBeenCalledOnce();
     expect(tool.entity._cached_reskinname!.size).toBe(0);
   } finally { controller.dispose(); }
 });
@@ -189,10 +240,11 @@ it.each(['unequip', 'while loading'])(
     const animation = { isReskinning: false, cancelEmote: vi.fn(), setFacing: vi.fn(),
       playReskin: vi.fn((cast: () => void) => { callback = cast; animation.isReskinning = true; return true; }),
       cancelReskin: vi.fn(() => { animation.isReskinning = false; }) };
-    const effects = { prepare: vi.fn(async () => {}), spawn: vi.fn() };
+    const fx = { play: vi.fn(), dispose: vi.fn() };
+    const effects = { prepare: vi.fn(async () => fx) };
     const controller = new ReskinActionController(world, animation as unknown as WilsonAnimationController,
       { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined }, equipped,
-      () => [target], effects as unknown as ReskinEffects, () => manual);
+      () => [target], effects, () => manual);
     const request = controller.request(target);
     if (reason === 'while loading') { controller.cancel(); release(); expect(await request).toBe(false); }
     else {
@@ -208,7 +260,8 @@ it.each(['unequip', 'while loading'])(
     }
     expect(apply).not.toHaveBeenCalled();
     expect(dispose).toHaveBeenCalledOnce();
-    expect(effects.spawn).not.toHaveBeenCalled();
+    expect(fx.play).not.toHaveBeenCalled();
+    expect(fx.dispose).toHaveBeenCalledOnce();
     controller.dispose();
   },
 );

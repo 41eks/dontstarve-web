@@ -187,7 +187,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(record.components.torch).toEqual({ lit: true });
       vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
       controller.onFrame(0.125);
-      performPickupAction(manager.renderEntities[0].object.userData.pickupTarget, createPickupDoer(player, store));
+      performPickupAction(model.userData.pickupTarget, createPickupDoer(player, store));
       expect(manager.exportRecords()).toEqual([]);
       expect(store.getEntity(hand)).toBe(entity);
       expect(getTorchController(entity)).toBe(controller);

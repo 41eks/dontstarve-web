@@ -1,11 +1,10 @@
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable, type Worker } from '../../componets/src/workable';
-import { createGroundItemSprite, createResidentGroundItem } from './groundItems';
+import { createResidentGroundItem } from './groundItems';
 import { configureTradableEntity } from './tradable';
 import { createBurnableItemVisual } from './burnableItems';
-import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { PrefabDisplay } from '@dontstarve-web/display';
+import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import type { GroundItemFactory, GroundPrefabContext, PreparedGroundSpawn } from './groundPrefab';
 import type { LootLaunch } from './lootFling';
 import type { Vector3 } from 'three';
@@ -24,7 +23,7 @@ function scatterLaunch(origin: Vector3, target?: Vector3): LootLaunch {
     height: .5, speed: { min: -1.8, range: -3.6 }, ySpeed: { min: .4, range: 2 } };
 }
 interface FruitPresentation {
-  sprite: ArchiveSprite;
+  sprite: ArchiveSpriteCommands;
   outputs: Map<Product, PreparedGroundSpawn[]>;
 }
 
@@ -101,24 +100,24 @@ export function createRockAvocadoGroundFactory(context: GroundPrefabContext): Gr
           stop = entity.ListenForEvent('split_open', () => sprite.playOnce('split_open', () => sprite.playOnce('idle_split_open')));
         }, dispose() { stop?.(); visual.dispose(); } };
       }
-      const sprite = await createGroundItemSprite(context.assets, item.itemId);
-      if (!context.prepareSpawn) { sprite.dispose(); throw new Error('Stone fruit needs prepared loot'); }
+      const { visual, instance: { sprite } } = await createResidentGroundItem(context, item);
+      if (!context.prepareSpawn) { visual.dispose(); throw new Error('Stone fruit needs prepared loot'); }
       const requests = PRODUCTS.flatMap(prefab => Array.from({ length: item.count }, () => ({ prefab,
         request: context.prepareSpawn!({ ...catalog.items[prefab], itemId: prefab, count: 40 }),
       })));
       const results = await Promise.allSettled(requests.map(output => output.request));
       if (results.some(result => result.status === 'rejected')) {
-        sprite.dispose(); results.forEach(result => { if (result.status === 'fulfilled') result.value.dispose(); });
+        visual.dispose(); results.forEach(result => { if (result.status === 'fulfilled') result.value.dispose(); });
         throw (results.find(result => result.status === 'rejected') as PromiseRejectedResult).reason;
       }
       const outputs = new Map<Product, PreparedGroundSpawn[]>(PRODUCTS.map(id => [id, []]));
       results.forEach((result, index) => { if (result.status === 'fulfilled') outputs.get(requests[index].prefab)!.push(result.value); });
       const presentation = { sprite, outputs };
       let controller: RockAvocadoFruit | undefined;
-      return { ...sprite, bindEntity(entity: ItemEntity) {
+      return { ...visual, bindEntity(entity: ItemEntity) {
         controller = entity.getComponent<RockAvocadoFruit>('rock_avocado_fruit')!; controller.bind(presentation);
       }, dispose() {
-        controller?.release(presentation); for (const pieces of outputs.values()) pieces.forEach(output => output.dispose()); sprite.dispose();
+        controller?.release(presentation); for (const pieces of outputs.values()) pieces.forEach(output => output.dispose()); visual.dispose();
       } };
     },
     renderEntities: () => [...displays].flatMap(display => display.fxRenderEntries),

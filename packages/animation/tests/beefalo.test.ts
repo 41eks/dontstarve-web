@@ -6,39 +6,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BEEFALO_BEHAVIOR, BeefaloController, BeefaloManager, type BeefaloWorld, type BeefaloManagerWorld } from '../../prefab/src/beefalo';
 import { createMemo, createSignal, getWatchWorldContent, type WorldPhase, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '../src/beefaloSprite';
+import { BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, createBeefaloSpriteFactory, type FacingSpriteController } from '../src/beefaloSprite';
+import { COLLISION } from '../../componets/src/physicsState';
+import { bindInstance, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
+import type { SpriteController } from '../src/sprite';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const DAY = 480;
+/** Frame counts of the source beefalo clips at 30 fps, as the sprite factory reports them. */
+const CLIP_FRAMES: Record<string, number> = { idle_loop: 72, graze_loop: 28, graze2_pre: 13, graze2_loop: 28, graze2_pst: 9, alert_pre: 3, alert_idle: 44, walk_pre: 12, walk_loop: 56, walk_pst: 9, sleep_pre: 34, sleep_loop: 72, sleep_pst: 33, shave: 37, hair_growth_pre: 23, hair_growth: 17, shake: 24, bellow: 51 };
+const lengths = new Map(Object.entries(CLIP_FRAMES).map(([name, frames]) => [name, frames / 30]));
 
 function setup(random = () => 0) {
-  const model = new THREE.Group();
   const physics = new CANNON.World();
-  let complete: (() => void) | undefined;
-  let clip = '', revision = 0;
-  const queue: { name: string; loop: boolean }[] = [];
-  const select = (name: string, loop: boolean) => {
-    clip = name;
-    const selectedRevision = revision;
-    if (loop) { complete = undefined; animation.start(name); }
-    else animation.playOnce(name, () => {
-      if (selectedRevision !== revision) return;
-      animation.onAnimationEvent?.('animover');
-      if (selectedRevision !== revision) return;
-      const next = queue.shift();
-      if (next) select(next.name, next.loop);
-      else animation.onAnimationEvent?.('animqueueover');
-    });
-  };
-  const animation = { start: vi.fn(), update: vi.fn(), setFacing: vi.fn(), setShaved: vi.fn(),
-    get currentAnimation() { return clip; }, currentAnimationLength: 2,
-    onAnimationEvent: undefined as FacingSpriteAnimationController['onAnimationEvent'],
-    playOnce: vi.fn((_clip: string, callback?: () => void) => { complete = callback; }),
-    playAnimation: vi.fn((name: string, loop = false) => { revision++; queue.length = 0; select(name, loop); }),
-    pushAnimation: vi.fn((name: string, loop = false) => queue.push({ name, loop })),
-  };
+  // The drawn sprite: it follows the logical AnimState, which owns the queue and the clip timing.
+  const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), setFacing: vi.fn(), setBuildArchive: vi.fn(), setAwake: vi.fn() };
+  const model = new THREE.Group();
+  bindInstance(model, new PrefabInstance('beefalo', animation as never));
   let players: THREE.Vector3[] = [];
   let poop: Iterable<THREE.Vector3> = [];
   const scheduler = new GameTimeScheduler();
@@ -49,16 +35,20 @@ function setup(random = () => 0) {
     spawnPrize: vi.fn(),
     getPlayerPositions: () => players, findPath: vi.fn((_start, target) => [target]),
     constrainPosition: vi.fn(), getPoopPositions: () => poop, spawnPoop: vi.fn() };
-  const controller = new BeefaloController(model, physics, animation, world, undefined, random);
+  const controller = new BeefaloController(model, physics, lengths, world, undefined, random);
   const body = controller.body;
-  return { controller, model, body, physics, animation, world,
+  const animstate = controller.animstate;
+  return { controller, model, body, physics, animation, world, lengths,
+    playAnimation: vi.spyOn(animstate, 'PlayAnimation'), pushAnimation: vi.spyOn(animstate, 'PushAnimation'),
+    clip: () => animstate.animation.peek().name,
     setPlayers: (value: THREE.Vector3[]) => { players = value; },
     setPoop: (value: Iterable<THREE.Vector3>) => { poop = value; },
     setNight: (value: boolean) => { world.phase = value ? 'night' : 'day'; cycle.set(world.phase); },
     /** Advance game time to the next day boundary, running every task due on the way. */
     endDay: () => { scheduler.advance(world.secondsUntilNextDay(scheduler.now)); },
     scheduler,
-    complete: () => { const callback = complete; complete = undefined; callback?.(); },
+    /** Game time reaches the end of the current clip. */
+    complete: () => { const timer = animstate.timer.peek(); if (timer.status === 'scheduled') scheduler.advanceTo(timer.endTime); },
     tick: (seconds: number) => {
       for (let i = 0; i < Math.round(seconds * 10); i++) {
         scheduler.advance(0.1);
@@ -80,27 +70,26 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.sg.sg.timeoutSnapshot!.peek()).toBe(idleTimer);
     s.scheduler.advanceTo(1);
     expect(s.controller.state).toBe('graze_empty');
-    expect(s.animation.playAnimation).toHaveBeenLastCalledWith('graze2_pre', undefined);
-    expect(s.animation.pushAnimation).toHaveBeenLastCalledWith('graze2_loop', undefined);
+    expect(s.playAnimation).toHaveBeenLastCalledWith('graze2_pre', undefined);
+    expect(s.pushAnimation).toHaveBeenLastCalledWith('graze2_loop', undefined);
     const grazeTimer = s.controller.sg.sg.timeoutSnapshot!.peek();
     // No animation completion yet: the timeout must still run during the pre animation.
     s.scheduler.advanceTo(1.9);
     expect(s.controller.sg.sg.timeoutSnapshot!.peek()).toBe(grazeTimer);
     s.scheduler.advanceTo(2);
     expect(s.controller.state).toBe('idle');
-    expect(s.animation.currentAnimation).toBe('graze2_pst');
-    expect(s.animation.pushAnimation).toHaveBeenLastCalledWith('idle_loop', true);
+    expect(s.clip()).toBe('graze2_pst');
+    expect(s.pushAnimation).toHaveBeenLastCalledWith('idle_loop', true);
     expect(s.controller.sg.sg.timeoutSnapshot!.peek()).toEqual({ status: 'scheduled', endTime: 3 });
     s.complete();
-    expect(s.animation.currentAnimation).toBe('idle_loop');
+    expect(s.clip()).toBe('idle_loop');
     s.controller.dispose();
   });
 
-  it('cancels grazing on sleep and rejects a stale pre-animation callback even after returning to the same state', () => {
+  it('cancels grazing on sleep and does not replay a cancelled pre animation after returning to the same state', () => {
     const s = setup();
     s.controller.brain.Stop();
     s.scheduler.advanceTo(1);
-    const stale = s.animation.playOnce.mock.calls.at(-1)![1];
     s.controller.sleeper.GoToSleep();
     expect(s.controller.state).toBe('sleep');
     expect(s.controller.sg.sg.timeoutSnapshot!.peek()).toEqual({ status: 'stopped' });
@@ -113,12 +102,11 @@ describe('wild beefalo behavior', () => {
     s.complete();
     s.scheduler.advance(1);
     expect(s.controller.state).toBe('graze_empty');
-    stale?.();
-    expect(s.animation.currentAnimation).toBe('graze2_pre');
-    const calls = s.animation.playAnimation.mock.calls.length;
+    expect(s.clip()).toBe('graze2_pre');
+    const calls = s.playAnimation.mock.calls.length;
     s.controller.dispose();
     s.scheduler.advance(100);
-    expect(s.animation.playAnimation).toHaveBeenCalledTimes(calls);
+    expect(s.playAnimation).toHaveBeenCalledTimes(calls);
   });
 
   it('uses FaceEntity alert states and keeps the target until the source keep distance is exceeded', () => {
@@ -128,14 +116,15 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.state).toBe('actual_alert');
     expect(s.controller.sg.hasStateTag('idle')).toBe(true);
     expect(s.controller.sg.hasStateTag('alert')).toBe(true);
-    expect(s.animation.currentAnimation).toBe('alert_pre');
-    s.complete();
-    expect(s.animation.currentAnimation).toBe('alert_idle');
+    // alert_pre is three frames long, so game time has already reached the queued alert_idle.
+    expect(s.playAnimation).toHaveBeenCalledWith('alert_pre', undefined);
+    expect(s.clip()).toBe('alert_idle');
     player.x = 15; s.tick(3);
     expect(s.controller.state).toBe('actual_alert');
     expect(s.body.velocity.x).toBe(0);
     player.x = 19; s.tick(2);
-    expect(s.controller.state).toBe('walk_start');
+    // walk_pre has ended within those two seconds of game time.
+    expect(s.controller.state).toBe('walk');
     expect(s.body.velocity.x).toBeGreaterThan(0);
     s.controller.dispose();
   });
@@ -146,32 +135,30 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.state).toBe('walk_start');
     expect(s.body.velocity.x).toBe(BEEFALO_BEHAVIOR.walkSpeed);
     const startX = s.model.position.x;
-    s.complete();
     s.tick(1);
     expect(s.model.position.x - startX).toBeCloseTo(BEEFALO_BEHAVIOR.walkSpeed);
-    expect(s.animation.start).toHaveBeenLastCalledWith('walk_loop');
+    expect(s.clip()).toBe('walk_loop');
     s.tick(.4);
     expect(s.controller.state).toBe('walk_stop');
     expect(s.body.velocity.x).toBe(0);
     s.complete();
-    expect(s.animation.start).toHaveBeenLastCalledWith('idle_loop');
+    expect(s.clip()).toBe('idle_loop');
   });
 
-  it('interrupts movement to sleep at night and wakes at dawn; stale callbacks cannot restart walking', async () => {
+  it('interrupts movement to sleep at night and wakes at dawn; a cancelled walk clip cannot restart walking', async () => {
     const s = setup();
     s.tick(2.1);
-    const stale = s.animation.playOnce.mock.calls.at(-1)?.[1];
     // The day/night effect reacts in a microtask without advancing game time.
-    s.setNight(true); await new Promise(resolve => setTimeout(resolve, 0)); stale?.();
+    s.setNight(true); await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.controller.state).toBe('sleep');
     expect(s.controller.sleeper.IsAsleep()).toBe(true);
     expect(s.body.velocity.x).toBe(0);
     s.complete();
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('sleep_loop', expect.any(Function));
+    expect(s.clip()).toBe('sleep_loop');
     s.setNight(false);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.controller.sleeper.IsAsleep()).toBe(false);
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('sleep_pst', expect.any(Function));
+    expect(s.clip()).toBe('sleep_pst');
     s.complete();
     expect(s.controller.state).toBe('idle');
   });
@@ -185,7 +172,8 @@ describe('wild beefalo behavior', () => {
     expect(vi.mocked(s.world.spawnPoop).mock.calls[0][0].toArray()).toEqual([s.model.position.x - 3, 0, 0]);
     const saved = s.controller.exportState();
     const restoredScene = setup(); restoredScene.controller.dispose();
-    const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.animation, s.world, saved, () => 0);
+    bindInstance(restoredScene.model, new PrefabInstance('beefalo', restoredScene.animation as never));
+    const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.lengths, s.world, saved, () => 0);
     expect(restored.exportState()).toEqual(saved);
     restored.dispose(); restored.update(0.1);
     expect(restored.periodicspawner.timerState.peek()).toEqual({ status: 'stopped' });
@@ -229,13 +217,13 @@ describe('wild beefalo behavior', () => {
     expect(s.world.spawnPrize).toHaveBeenCalledExactlyOnceWith('beefalowool', 3, expect.objectContaining({ x: s.model.position.x, z: s.model.position.z }));
     expect(s.controller.state).toBe('shaved');
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(s.animation.setShaved).toHaveBeenLastCalledWith(true);
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('shave', expect.any(Function));
+    expect(s.animation.setBuildArchive).toHaveBeenLastCalledWith(BEEFALO_SHAVED_BUILD);
+    expect(s.clip()).toBe('shave');
     expect(s.model.userData.actionEntity.hasTag('has_beard')).toBe(false);
     expect(s.model.userData.actionEntity.hasTag('bearded')).toBe(true);
     s.complete();
     expect(s.controller.state).toBe('sleeping');
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('sleep_loop', expect.any(Function));
+    expect(s.clip()).toBe('sleep_loop');
     expect(s.controller.beard.ShouldTryToShave(undefined)).toEqual({ ok: false, reason: 'NOBITS' });
   });
 
@@ -245,7 +233,7 @@ describe('wild beefalo behavior', () => {
     expect(s.controller.beard.bits.peek()).toBe(3);
     expect(s.world.spawnPrize).not.toHaveBeenCalled();
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(s.animation.setShaved).not.toHaveBeenLastCalledWith(true);
+    expect(s.animation.setBuildArchive).not.toHaveBeenLastCalledWith(BEEFALO_SHAVED_BUILD);
   });
 
   it('regrows hair on the third day, entering hair_growth when it next idles, and persists the beard', async () => {
@@ -255,22 +243,24 @@ describe('wild beefalo behavior', () => {
     const shavedState = s.controller.exportState();
     expect(shavedState.beard).toMatchObject({ growth: 0, bits: 0 });
     const restoredScene = setup(); restoredScene.controller.dispose();
-    const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.animation, s.world, shavedState, () => 0);
+    bindInstance(restoredScene.model, new PrefabInstance('beefalo', restoredScene.animation as never));
+    const restored = new BeefaloController(restoredScene.model, restoredScene.physics, restoredScene.lengths, s.world, shavedState, () => 0);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(restoredScene.animation.setShaved).toHaveBeenLastCalledWith(true);
+    expect(restoredScene.animation.setBuildArchive).toHaveBeenLastCalledWith(BEEFALO_SHAVED_BUILD);
     expect(restored.model.userData.actionEntity.hasTag('has_beard')).toBe(false);
     restored.dispose();
     s.endDay(); s.endDay();
     expect(s.controller.beard.bits.peek()).toBe(0);
     s.endDay();
-    s.setNight(false); s.tick(4); s.complete();
+    s.setNight(false);
+    for (let i = 0; i < 100 && s.controller.state !== 'hair_growth'; i++) s.tick(.1);
     expect(s.controller.state).toBe('hair_growth');
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('hair_growth_pre', expect.any(Function));
+    expect(s.clip()).toBe('hair_growth_pre');
     s.complete();
     expect(s.controller.state).toBe('hair_growth_pop');
     expect(s.controller.beard.bits.peek()).toBe(3);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(s.animation.setShaved).toHaveBeenLastCalledWith(false);
+    expect(s.animation.setBuildArchive).toHaveBeenLastCalledWith(BEEFALO_BUILD);
     expect(s.model.userData.actionEntity.hasTag('has_beard')).toBe(true);
     s.complete();
     expect(s.controller.state).toBe('idle');
@@ -282,7 +272,7 @@ describe('wild beefalo behavior', () => {
     expect(beard.dayTimerState.peek()).toEqual({ status: 'scheduled', endTime: DAY });
     s.setNight(true); s.tick(7.1); s.complete();
     beard.Shave(undefined); s.complete();
-    s.scheduler.advance(DAY - 8.5);
+    s.scheduler.advanceTo(DAY - .1);
     expect(beard.daysgrowth.peek()).toBe(0);
     expect(beard.dayTimerState.peek()).toEqual({ status: 'scheduled', endTime: DAY });
     // One long jump crosses three boundaries; the day-3 callback runs exactly once, on the third.
@@ -299,13 +289,13 @@ describe('wild beefalo behavior', () => {
     s.controller.beard.Shave(undefined); s.complete();
     await new Promise(resolve => setTimeout(resolve, 0));
     s.controller.dispose();
-    const calls = s.animation.setShaved.mock.calls.length;
+    const calls = s.animation.setBuildArchive.mock.calls.length;
     s.endDay(); s.endDay(); s.endDay();
     expect(s.controller.beard.dayTimerState.peek()).toEqual({ status: 'stopped' });
     s.controller.beard.SetBits(3);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(s.controller.beard.daysgrowth.peek()).toBe(0);
-    expect(s.animation.setShaved.mock.calls).toHaveLength(calls);
+    expect(s.animation.setBuildArchive.mock.calls).toHaveLength(calls);
     expect(s.controller.hairGrowthPending.peek()).toBe(false);
   });
 
@@ -386,7 +376,7 @@ describe('original beefalo assets', () => {
     } finally { manager.dispose(); cycle.dispose(); sources.scheduler.dispose(); }
   });
 
-  it('shares the two build atlases, merges frames, hides HEAT, and preserves one-shot completion across facing changes', async () => {
+  it('shares the two build atlases, merges frames, hides HEAT, and preserves one-shot completion across facing and build changes', async () => {
     serveAssets();
     const factory = await createBeefaloSpriteFactory('/dst/data/anim');
     const a = factory.create({ initialAnimation: 'idle_loop' });
@@ -397,7 +387,7 @@ describe('original beefalo assets', () => {
     const mesh = a.children[0].children[0] as THREE.Mesh;
     expect(mesh.material).toEqual((b.children[0].children[0] as THREE.Mesh).material);
     for (const material of mesh.material as THREE.MeshBasicMaterial[]) expect(material.forceSinglePass).toBe(true);
-    const controller = a.userData.animationController as FacingSpriteAnimationController;
+    const controller = a.userData.animationController as SpriteController & FacingSpriteController;
     const complete = vi.fn();
     controller.playOnce('sleep_pre', complete);
     for (let i = 0; i < 6; i++) controller.update(0.1);
@@ -410,21 +400,11 @@ describe('original beefalo assets', () => {
       for (const facing of [1, 4, 16, 32, 64, 128]) { controller.setFacing(facing); controller.update(0.1); }
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     }
-    const events: string[] = [];
-    controller.onAnimationEvent = event => events.push(event);
-    controller.playAnimation('graze2_pre');
-    controller.pushAnimation('graze2_loop');
-    controller.setFacing(64);
-    for (let i = 0; i < 100 && controller.currentAnimation === 'graze2_pre'; i++) controller.update(.1);
-    expect(controller.currentAnimation).toBe('graze2_loop');
-    expect(events).toEqual(['animover']);
-    controller.playAnimation('graze2_pst');
-    controller.pushAnimation('idle_loop', true);
-    controller.setFacing(32, true);
-    for (let i = 0; i < 100 && controller.currentAnimation === 'graze2_pst'; i++) controller.update(.1);
-    expect(controller.currentAnimation).toBe('idle_loop');
-    for (let i = 0; i < 50; i++) controller.update(.1);
-    expect(events).toEqual(['animover', 'animover']);
+    expect(factory.lengths.get('graze2_pre')).toBeGreaterThan(0);
+    // AnimState:SetBuild swaps the whole build and keeps the clip.
+    controller.setBuildArchive(BEEFALO_SHAVED_BUILD);
+    controller.setBuildArchive(BEEFALO_BUILD);
+    expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     factory.dispose();
   });
 
@@ -473,6 +453,7 @@ describe('original beefalo assets', () => {
     controller.body.position.set(0, 1.5, 0);
     const radius = 1.5;
     const player = new CANNON.Body({ mass: 75, shape: new CANNON.Sphere(radius), fixedRotation: true });
+    player.collisionFilterGroup = COLLISION.CHARACTERS;
     player.position.set(-2 * radius, 1.5, 0);
     physics.addBody(player);
     let stoppedAt = 0;

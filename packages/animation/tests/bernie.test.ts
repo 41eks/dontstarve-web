@@ -1,8 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createBernieGroundSprite } from '../../prefab/src/bernie';
-import { GroundItemAssets } from '../../prefab/src/groundItems';
+import { BernieAssets, createBernieGroundSprite } from '../../prefab/src/bernie';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {
   const path = String(url).slice('/dst/data/'.length);
@@ -12,17 +11,18 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source art (%s)', async (skinId) => {
   let sanity = 1;
-  const assets = new GroundItemAssets();
+  const assets = new BernieAssets('/dst/data/anim');
   const sprite = await createBernieGroundSprite(assets, { getSanityPercent: () => sanity }, skinId);
   const { model } = sprite;
-  const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  // The display's root holds the drawn sprite, whose scaled visual holds the merged frame mesh.
+  const visual = () => model.children[0].children[0];
+  const mesh = visual().children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const state = () => [model.userData.prefab, model.userData.animation];
   const advance = (frames: number) => {
     for (let i = 0; i < frames; i++) {
       sprite.update(1 / 30);
-      expect(model.children[0].children).toHaveLength(1);
+      expect(visual().children).toHaveLength(1);
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-      if (skinId) expect(mesh.material.some((material) => material.name.includes(skinId))).toBe(true);
     }
   };
   const positions = (target = mesh) => Array.from(target.geometry.getAttribute('position').array)
@@ -34,7 +34,7 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     sanity = 0.1;
     sprite.update(0);
     expect(state()).toEqual(['bernie_big', 'activate']);
-    expect(model.children[0].scale.x).toBeCloseTo(0.014);
+    expect(visual().scale.x).toBeCloseTo(0.014);
     const firstGrowthFrame = positions();
     advance(41);
     expect(state()).toEqual(['bernie_big', 'activate']);
@@ -53,12 +53,12 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     expect(state()[1]).toBe('deactivate');
     advance(1);
     expect(state()).toEqual(['bernie_big', 'deactivate_pst']);
-    expect(model.children[0].scale.x).toBeCloseTo(0.014);
+    expect(visual().scale.x).toBeCloseTo(0.014);
     advance(10);
     expect(state()[1]).toBe('deactivate_pst');
     advance(1);
     expect(state()).toEqual(['bernie_active', 'activate']);
-    expect(model.children[0].scale.x).toBeCloseTo(0.02);
+    expect(visual().scale.x).toBeCloseTo(0.02);
     advance(21);
     expect(state()).toEqual(['bernie_active', 'idle_loop_nodir']);
     advance(15);
@@ -70,15 +70,22 @@ it.each([undefined, 'bernie_cat'])('plays Lua growth/shrink queues with source a
     // Independently render an idle sprite at the same source time for comparison.
     const idle = await createBernieGroundSprite(assets, { getSanityPercent: () => 1 }, skinId);
     for (let i = 0; i < 15; i++) idle.update(1 / 30);
-    const idleMesh = idle.model.children[0].children[0] as typeof mesh;
+    const idleMesh = idle.model.children[0].children[0].children[0] as typeof mesh;
     expect(positions()).toEqual(positions(idleMesh));
     idle.dispose();
+    // The skin's build replaces the base art at the same source time.
+    if (skinId) {
+      const plain = await createBernieGroundSprite(assets, { getSanityPercent: () => 1 });
+      for (let i = 0; i < 15; i++) plain.update(1 / 30);
+      expect(positions()).not.toEqual(positions(plain.model.children[0].children[0].children[0] as typeof mesh));
+      plain.dispose();
+    }
   } finally { sprite.dispose(); assets.dispose(); }
 });
 
 it('finishes a busy transformation using the latest sanity and cancels it on inventory/load events', async () => {
   let sanity = 1;
-  const assets = new GroundItemAssets();
+  const assets = new BernieAssets('/dst/data/anim');
   const sprite = await createBernieGroundSprite(assets, { getSanityPercent: () => sanity });
   const animation = () => sprite.model.userData.animation;
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) sprite.update(1 / 30); };

@@ -206,6 +206,7 @@ export class ResidentSprite implements ArchiveSprite {
   setBuildArchive(archive: string): void { this.sprite?.setBuildArchive(archive); }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.sprite?.setSymbolOverride(symbol, archive, sourceSymbol); }
   setSymbolHidden(symbol: string, hidden: boolean): void { this.sprite?.setSymbolHidden(symbol, hidden); }
+  setLayerHidden(layer: string, hidden: boolean): void { this.sprite?.setLayerHidden(layer, hidden); }
   faceCamera(rotation: THREE.Quaternion): void { this.sprite?.faceCamera(rotation); }
   /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
   setErosion(amount: number): void { if (this.sprite) setSpriteErosion(this.sprite.model, amount); }
@@ -375,7 +376,9 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   }
   showImage(image: number): void { this.staticController?.showImage(image); }
   setFacing(facing: number, mirrored?: boolean): void {
-    (this.sprite?.userData.animationController as { setFacing(facing: number, mirrored?: boolean): void } | undefined)?.setFacing(facing, mirrored);
+    // Only six-faced art mirrors; other sprites keep their one-argument facing.
+    if (mirrored === undefined) { this.staticController?.setFacing(facing); return; }
+    (this.sprite?.userData.animationController as { setFacing(facing: number, mirrored: boolean): void } | undefined)?.setFacing(facing, mirrored);
   }
   /** AnimState:SetBuild, for factory sprites that carry the entity's alternative builds. */
   setBuildArchive(archive: string): void {

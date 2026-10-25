@@ -130,7 +130,9 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 兔子帽同时使用 `rabbit_build` 的身体和 `hat_rabbit` 的帽子部件。
 
 `@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
-`GroundItemAssets` 和 `createGroundItemSprite(assets, itemId, skinId?)`。
+`GroundItemAssets` 和 `createResidentGroundItem({ assets, tickingarea? }, { itemId, skinId? })`。
+返回 `{ visual, instance, display }`，prefab 通过 `instance.sprite` 声明动画与外观，
+由 `PrefabDisplay` 创建和释放 sprite；落地／读档后绑定 tile，休眠时保留稳定模型、身份与组件。
 通用资源加载、动画选择、符号覆盖、模型创建和逐帧绘制由
 `@dontstarve-web/animation/archiveSprite` 提供。`GroundItemAssets` 继承其共享缓存，
 保留 `ground:` 材质名称；prefab 层负责物品定义、皮肤校验、实体物品信息和库存事件。
@@ -157,8 +159,12 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 12 个皮肤 ID 使用目录中的原始 build 和别名，缺少的手持符号回退到基础手持 build。
 
 ```ts
-const lamp = await createLanternGroundSprite(new GroundItemAssets(animationBaseUrl));
-scene.add(lamp.model); // 默认为满燃料、亮灯，位置由调用方设置
+const assets = new GroundItemAssets();
+const lamp = await createLanternGroundSprite({ assets, tickingarea });
+const item = new ItemEntity({ itemId: 'lantern', count: 1 });
+configureLanternEntity(item);
+lamp.bindEntity!(item);
+scene.add(lamp.model); // 位置由调用方设置，ondropped 开灯
 lamp.model.dispatchEvent({ type: 'ondropped' });
 lamp.model.dispatchEvent({ type: 'onputininventory' }); // 关闭地面光源
 lamp.model.dispatchEvent({ type: 'ondropped' }); // 再次放到地面，恢复灯光
@@ -166,6 +172,8 @@ lamp.light.setLit(false);
 lamp.light.setFuelPercent(0.5);
 lamp.light.setLit(true);
 lamp.dispose();
+item.destroy();
+assets.dispose();
 
 await player.userData.animationController.setCarryItem('lantern', skinId);
 player.userData.animationController.setLanternFuelPercent(0.5);
@@ -289,12 +297,16 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `ReskinEffects` 和装备资源由 `@dontstarve-web/prefab/reskin_tool` 导出。玩家手持时右键有已导入皮肤的建筑或地面物品，
 超出原版 CASTSPELL 的 20 单位距离（本场景 60）会先走近。目标和特效资源加载完成后，
 `WilsonAnimationController.playReskin()` 按 `SGwilson.lua` 的 `veryquickcastspell`
-播放 `player_attacks.zip` 的 `atk_pre → atk`，第 9 帧原子提交目标的下一个皮肤。
+播放 `player_attacks.zip` 的 `atk_pre → atk`，第 9 帧将预备好的 FX 消息交给目标的换肤提交。
+目标成功应用下一个皮肤后处理消息，以自身的 prefab ID 和地面脚点放置、启动独立 FX；失败或取消只释放未使用的消息。
 目标目录按支持的皮肤 ID 循环，最后恢复基础外观；目前不实现原版所有权与事件锁筛选。
 
 `ReskinEffects` 使用 `reskin_tool_fx.zip` 的 `fx_shadow_dust/puff`，4 个工具皮肤按
 `explode_small.lua` 的定义替换 `shadow_dust`；保留目标专属大小和高度、基础特效的
-`SetLightOverride(1)` 与皮肤特效的 `0`。每帧部件合入一个 Mesh，按真实目标脚点排序，
+`SetLightOverride(1)` 与皮肤特效的 `0`。prefab 通过 `PrefabInstance` 声明 `FX` 标签、
+不持久化属性及 sprite 的符号覆盖、照明和单次动画；`packages/display` 的 `PrefabDisplayGroup` /
+`PrefabDisplay` 负责模型创建、场景挂载、朝向、绘制与释放，通过 `preloadSharedArchiveSprite()`
+共享资源和帧几何。烟雾生成后独立存在，不跟随目标位置。每帧部件合入一个 Mesh，按真实目标脚点排序，
 第 16 帧移除特效；不保存临时特效。当前渲染器不提供原版 Bloom 后处理。
 声音经共享 `PlaySound()` 播放：开始时 `dontstarve/wilson/attack_weapon`，提交时
 `dontstarve/common/together/reskin_tool`，幽灵画笔改用 `terraria1/skins/spectrepaintbrush`。

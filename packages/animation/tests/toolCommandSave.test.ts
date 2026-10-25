@@ -53,8 +53,8 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     const skinId = golden.skinId;
     expect(skinId).toBeDefined();
     const hand = equipmentSlotAddress('hand');
-    const pickup = () => performPickupAction(manager.renderEntities.find(({ object }) => object.userData.entityId === golden.id)!
-      .object.userData.pickupTarget, createPickupDoer(player, inventory));
+    const pickup = () => performPickupAction(manager.reskinTargets.find(target => target.id === golden.id)!
+      .model.userData.pickupTarget, createPickupDoer(player, inventory));
     expect(pickup()).toBe(true);
     expect(inventory.getEntity(hand)).toBe(golden);
     expect(await manager.drop({ ...SAVE_CATALOG.items.goldenpickaxe, ...golden.snapshot() }, player.position,

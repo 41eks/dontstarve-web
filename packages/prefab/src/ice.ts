@@ -1,5 +1,5 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { createGroundItemSprite } from './groundItems';
+import { createResidentGroundItem } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
 export const ICE_ID = 'ice';
@@ -19,7 +19,7 @@ export function createIceGroundFactory(context: GroundPrefabContext): GroundItem
     itemIds: [ICE_ID],
     configureEntity: configureIceEntity,
     async create(item) {
-      const sprite = await createGroundItemSprite(context.assets, item.itemId, item.skinId);
+      const { visual, instance } = await createResidentGroundItem(context, item);
       let stop: (() => void) | undefined;
       let melting = false;
       const melt = (entity: ItemEntity) => {
@@ -27,16 +27,16 @@ export function createIceGroundFactory(context: GroundPrefabContext): GroundItem
         melting = true;
         entity.persists = false;
         entity.components.inventoryitem.canbepickedup = false;
-        sprite.playOnce('melt', () => entity.remove());
+        instance.sprite.playOnce('melt', () => entity.remove());
       };
       return {
-        ...sprite,
+        ...visual,
         bindEntity(entity) {
           stop?.();
           stop = entity.ListenForEvent('perished', () => melt(entity));
           if (entity.components.perishable.timer.peek().status === 'perished') melt(entity);
         },
-        dispose() { stop?.(); sprite.dispose(); },
+        dispose() { stop?.(); visual.dispose(); },
       };
     },
   };

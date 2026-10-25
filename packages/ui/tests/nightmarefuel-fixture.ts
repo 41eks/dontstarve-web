@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { GroundItemAssets, createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createArchiveSprite } from '../../animation/src/archiveSprite';
+import { renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 export async function checkNightmareFuelTransparency() {
   const assets = new GroundItemAssets();
   const source = GROUND_ITEM_DEFINITIONS.nightmarefuel;
-  const fuel = await createGroundItemSprite(assets, 'nightmarefuel');
+  const { visual: fuel } = await createResidentGroundItem({ assets }, { itemId: 'nightmarefuel' });
   const opaque = await createArchiveSprite(assets, { ...source, multColour: [1, 1, 1, 1] });
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(128, 128);
@@ -13,7 +14,8 @@ export async function checkNightmareFuelTransparency() {
   const camera = new THREE.OrthographicCamera(-2, 2, 2.5, -1.5, 0.1, 10);
   camera.position.set(0, 0, 5); camera.lookAt(0, 0, 0);
   const pixels = () => {
-    renderer.render(scene, camera);
+    assets.instancedSprites.flush(renderer);
+    renderSceneWithPasses(renderer, scene, camera);
     const data = new Uint8Array(128 * 128 * 4);
     const gl = renderer.getContext();
     gl.readPixels(0, 0, 128, 128, gl.RGBA, gl.UNSIGNED_BYTE, data);

@@ -21,6 +21,7 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 
 export const FIRE_PIT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.firepit,
+    obstacleRadius: 0.3,
     hammerWorkLeft: 4, hammerMaterial: 'stone',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     hammerExtraLoot: [{ itemId: 'ash', count: 1 }],

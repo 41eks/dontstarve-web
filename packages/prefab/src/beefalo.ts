@@ -2,9 +2,10 @@ import { syncPlacementEntity } from './placementEntities';
 import * as CANNON from 'cannon-es';
 import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
 import * as THREE from 'three';
-import { createBeefaloSpriteFactory, type FacingSpriteAnimationController } from '@dontstarve-web/animation/beefaloSprite';
-import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import { createEffect, createSignal, readonlySignal, type ReadonlySignal, type WorldPhase, type WorldSeason, type WorldContentContext } from '@dontstarve-web/signals';
+import { BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, createBeefaloSpriteFactory, type BeefaloSpriteFactory } from '@dontstarve-web/animation/beefaloSprite';
+import type { PrefabDisplay } from '@dontstarve-web/display';
+import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type WorldPhase, type WorldSeason, type WorldContentContext } from '@dontstarve-web/signals';
+import { AnimState } from '../../componets/src/animstate';
 import { Beard, type BeardSave } from '../../componets/src/beard';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sleeper } from '../../componets/src/sleeper';
@@ -18,9 +19,8 @@ import type { FaceEntityInst } from '../../brains/src/behaviours/faceentity';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import { BeefaloStateGraph, type BeefaloStateName } from '../../stategraphs/src/SGBeefalo';
 import { newEntityId } from './saveRecord';
+import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
-import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
-import { PhysicsState } from '../../componets/src/physicsState';
 /** beefalo.lua, beefalobrain.lua and SGBeefalo.lua; distances use this world's scale. */
 export const BEEFALO_BEHAVIOR = {
   radius: 0.5 * WORLD_SCALE,
@@ -100,19 +100,28 @@ export class BeefaloController {
   readonly sleeper: Sleeper;
   readonly model: THREE.Group;
   /** beefalo.lua MakeCharacterPhysics(inst, 100, .5); the binding owns the body the locomotor drives. */
-  readonly physics = new PhysicsState();
-  private readonly physicsBinding: PhysicsBinding;
+  get physics() { return this.instance.physics; }
   readonly body: CANNON.Body;
-  private readonly animation: FacingSpriteAnimationController;
+  readonly instance: PrefabInstance;
+  /** The engine's AnimState queue: the stategraph's animover/animqueueover come from game time, not from drawing. */
+  readonly animstate: AnimState;
+  private stopFollow = () => {};
+  // The facing last written to the sprite json, so an unchanged camera heading writes nothing.
+  private facing?: number;
+  private mirrored?: boolean;
   private readonly world: BeefaloWorld;
   private readonly random: () => number;
 
-  constructor(model: THREE.Group, physics: CANNON.World, animation: FacingSpriteAnimationController,
+  /** `model` is drawn by its display, which bound the entity's `PrefabInstance` to it; `lengths` times each clip. */
+  constructor(model: THREE.Group, physics: CANNON.World, lengths: ReadonlyMap<string, number>,
     world: BeefaloWorld, saved?: BeefaloSaveState, random = Math.random) {
-    this.model = model; this.animation = animation;
-    MakeCharacterPhysics(this, 100, .5);
-    this.physicsBinding = bindPhysics(physics, this.physics, () => model.position);
-    this.body = this.physicsBinding.body!;
+    this.model = model;
+    const instance = prefabInstance(model);
+    if (!instance) throw new Error('A beefalo model needs its PrefabInstance');
+    this.instance = instance as PrefabInstance;
+    MakeCharacterPhysics(instance, 100, .5);
+    instance.bindPhysics(physics);
+    this.body = instance.physicsBody!;
     this.world = world; this.random = random;
     this.home = saved ? new THREE.Vector3(...saved.home) : model.position.clone().setY(0);
     if (saved) {
@@ -143,8 +152,8 @@ export class BeefaloController {
     });
     this.locomotor.walkspeed = BEEFALO_BEHAVIOR.walkSpeed;
     this.locomotor.runspeed = 7 * WORLD_SCALE;
-    Object.assign(model.userData, { prefab: 'beefalo', beefaloController: this,
-      tags: ['beefalo', 'animal', 'largecreature'] });
+    Object.assign(model.userData, { prefab: 'beefalo', beefaloController: this });
+    for (const tag of ['beefalo', 'animal', 'largecreature']) instance.addTag(tag);
     this.beard = new Beard(this, {
       scheduler: world.scheduler,
       secondsUntilNextDay: now => world.secondsUntilNextDay(now),
@@ -182,19 +191,29 @@ export class BeefaloController {
     model.userData.components = { ...this.components, beard, sleeper: this.sleeper,
       beefalo: { HasTag: (tag: string) => tag === 'has_beard' ? beard.hairy.peek() : undefined } };
     actionEntity(model, 'beefalo');
-    this.stopAppearance = createEffect(() => this.animation.setShaved(!beard.hairy.get()));
+    const sprite = this.instance.sprite;
+    this.stopAppearance = createEffect(() => sprite.setBuildArchive(beard.hairy.get() ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD));
+    this.animstate = new AnimState(world.scheduler, lengths, event => this.PushEvent(event));
+    // The drawn sprite follows the logical clip; a queued clip only ends a loop, which the next clip replaces.
+    const animation = watchSignal(this.animstate.animation, stop => { this.stopFollow = stop; });
+    let drawn = animation.peek().revision;
+    createEffect(() => {
+      const { name, loop, revision } = animation.get();
+      if (revision === drawn) return;
+      drawn = revision;
+      if (loop) sprite.start(name); else sprite.playOnce(name);
+    });
     if (saved?.beard) this.beard.OnLoad(saved.beard);
     this.sg = new BeefaloStateGraph({
       locomotor: this.locomotor, sleeper: this.sleeper,
       hairGrowthPending: () => this.hairGrowthPendingState.peek(),
       growHair: () => { this.beard.SetBits(BEEFALO_BEARD_BITS); this.hairGrowthPendingState.set(false); },
-      playAnimation: (name, loop) => animation.playAnimation(name, loop),
-      pushAnimation: (name, loop) => animation.pushAnimation(name, loop),
-      getCurrentAnimationLength: () => animation.currentAnimationLength,
-      isCurrentAnimation: name => animation.currentAnimation === name,
+      playAnimation: (name, loop) => this.animstate.PlayAnimation(name, loop),
+      pushAnimation: (name, loop) => this.animstate.PushAnimation(name, loop),
+      getCurrentAnimationLength: () => this.animstate.length,
+      isCurrentAnimation: name => this.animstate.animation.peek().name === name,
       random: () => this.random(),
     }, world.scheduler);
-    animation.onAnimationEvent = event => this.PushEvent(event);
     this.sg.sg.listenForEvent('newstate', () => { model.userData.beefaloState = this.state; });
     model.userData.beefaloState = this.state;
     this.brain = new BeefaloBrain(this.createBrainInst(), WORLD_SCALE);
@@ -207,7 +226,7 @@ export class BeefaloController {
   update(dt: number): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
     const step = Math.min(dt, .1);
-    this.animation.update(step);
+    this.instance.sprite.update(step);
     this.sg.update(step);
     this.brain.tick(this.world.scheduler.now);
     this.locomotor.update(step);
@@ -288,7 +307,10 @@ export class BeefaloController {
     // use the corresponding diagonal art; mirrored pairs share the source mask.
     const facing = Math.abs(z) < 0.5 ? (x < 0 ? 4 : 1)
       : z > 0 ? (x < 0 ? 32 : 16) : (x < 0 ? 128 : 64);
-    this.animation.setFacing(facing, x < 0);
+    const mirrored = x < 0;
+    if (facing === this.facing && mirrored === this.mirrored) return;
+    this.facing = facing; this.mirrored = mirrored;
+    this.instance.sprite.setFacing(facing, mirrored);
   }
 
   exportState(): BeefaloSaveState {
@@ -301,7 +323,6 @@ export class BeefaloController {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.animation.onAnimationEvent = undefined;
     this.brain.Stop();
     this.sg.dispose();
     this.locomotor.Stop();
@@ -309,7 +330,9 @@ export class BeefaloController {
     this.stopAppearance();
     this.beard.dispose();
     this.sleeper.dispose();
-    this.physicsBinding.dispose();
+    this.animstate.dispose();
+    this.stopFollow();
+    this.instance.remove();
   }
 
   // Entity surface read by components and actions.
@@ -345,7 +368,7 @@ function distanceSquared(a: { x: number; z: number }, b: { x: number; z: number 
 
 /** Shared source atlases, independent AI/merged sprite geometry and physics bodies. */
 export class BeefaloManager {
-  private factoryRequest?: Promise<AnimatedSpriteFactory>;
+  private factoryRequest?: Promise<BeefaloSpriteFactory>;
   private readonly beefalos = new Set<BeefaloController>();
   private readonly pendingSpawns = new Set<THREE.Vector3>();
   private disposed = false;
@@ -403,11 +426,15 @@ export class BeefaloManager {
     }
     const factory = await this.factoryRequest;
     if (this.disposed) throw new Error('Beefalo manager has been disposed');
-    const model = factory.create({ initialAnimation: 'idle_loop', name: 'beefalo' });
-    model.position.copy(position).setY(0);
-    this.world.constrainPosition(model.position);
-    model.userData.entityId = saved?.id ?? newEntityId();
-    const controller = new BeefaloController(model, this.physics, model.userData.animationController, this.world, saved?.components.beefalo);
+    const { instance, display } = createPrefabEntity('beefalo', {
+      create: (animation, frame) => factory.create({ initialAnimation: animation, initialFrame: frame, name: 'beefalo' }),
+      release: sprite => factory.disposeSprite(sprite),
+    }, { name: 'idle_loop' }, 'beefalo');
+    const model = display.model;
+    instance.position.copy(position).setY(0);
+    this.world.constrainPosition(instance.position);
+    instance.entityId = saved?.id ?? newEntityId();
+    const controller = new BeefaloController(model, this.physics, factory.lengths, this.world, saved?.components.beefalo);
     this.beefalos.add(controller);
     this.scene.add(model);
     return model;
@@ -446,7 +473,7 @@ export class BeefaloManager {
     if (this.ownsScheduler) this.scheduler.dispose();
     for (const beefalo of this.beefalos) {
       beefalo.dispose();
-      beefalo.model.removeFromParent();
+      (beefalo.model.userData.display as PrefabDisplay).dispose();
     }
     this.beefalos.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);

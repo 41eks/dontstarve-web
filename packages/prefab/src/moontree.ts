@@ -1,3 +1,4 @@
+import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { ModelRecords, modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import {
@@ -53,6 +54,7 @@ SetSharedLootTable('moontree_burnt', [['charcoal', 1]]);
 
 /** World services owned by this moon-tree manager. */
 export interface MoonTreeWorld {
+  physics?: import('cannon-es').World;
   readonly camera: THREE.Camera;
   readonly scheduler?: GameTimeScheduler;
   /** Only visuals are resident while the entity's tile is active. */
@@ -259,6 +261,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   /** chop_down_burnt_moon_tree: the crumble and chop sounds, charcoal, and removal when the clip ends. */
   const chopDownBurnt = (entity: ResidentEntity) => {
     const state = stateOf(entity), controller = controllers.get(entity.model);
+    RemovePhysicsColliders(sprites.get(entity)!.instance);
     controller?.workable?.dispose(); if (controller) delete controller.inst.components.workable;
     sound('dontstarve/forest/treeCrumble', entity.position);
     sound('dontstarve/wilson/use_axe_tree', entity.position);
@@ -280,6 +283,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   /** make_stump: replace CHOP work with one DIG, removing shelter. */
   const makeStump = (controller: TreeController) => {
     const { entity, model, inst } = controller;
+    RemovePhysicsColliders(sprites.get(entity)!.instance);
     unbindFire(controller);
     const state = stateOf(entity);
     state.growable.StopGrowing();
@@ -392,6 +396,8 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     const drawn = createArchiveEntity('moon_tree', { create: clip => createTree(clip.name, clip.loop, `MoonTree-${id}`), alignBottom: true },
       { name: standingAnimation, billboard: true }, `MoonTree-${id}`, instance => instance.setActive(false));
     const model = drawn.display.model; drawn.instance.position.copy(position);
+    MakeObstaclePhysics(drawn.instance, .5);
+    if (world.physics) drawn.instance.bindPhysics(world.physics);
     model.userData.placementLogical = true;
     if (saveId) model.userData.entityId = saveId;
     const entity: ResidentEntity = { id, saveId, model, position: model.position };

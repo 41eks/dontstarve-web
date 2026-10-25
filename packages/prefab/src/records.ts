@@ -1,5 +1,5 @@
 import type { ItemEntity, InventoryItemSpec } from '@dontstarve-web/inventory';
-import { createGroundItemSprite, GROUND_ITEM_DISPLAY_SPECS } from './groundItems';
+import { createResidentGroundItem, GROUND_ITEM_DISPLAY_SPECS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import type { SoundEventPath } from './sound';
 
@@ -32,6 +32,6 @@ export function createRecordGroundFactory(context: GroundPrefabContext): GroundI
   return {
     itemIds: [RECORD_ID],
     configureEntity: configureRecordEntity,
-    create: item => createGroundItemSprite(context.assets, RECORD_ID, item.skinId),
+    create: async item => (await createResidentGroundItem(context, item)).visual,
   };
 }

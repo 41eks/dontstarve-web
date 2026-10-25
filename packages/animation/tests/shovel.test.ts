@@ -8,7 +8,8 @@ import { ShovelActionController } from '../../stategraphs/src/shovel';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
@@ -37,10 +38,10 @@ function advance(animation: WilsonAnimationController, frames: number) {
 it('loads original ground and separate equipped art, visible skins and hidden equipped symbols', async () => {
   const assets = new GroundItemAssets();
   try {
-    const regular = await createGroundItemSprite(assets, 'shovel', 'shovel_feathered');
-    const gold = await createGroundItemSprite(assets, 'goldenshovel');
+    const regular = await createGroundItemVisual(assets, 'shovel', 'shovel_feathered');
+    const gold = await createGroundItemVisual(assets, 'goldenshovel');
     for (const sprite of [regular, gold]) {
-      expect((sprite.model.children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
+      expect((sprite.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
       sprite.dispose();
     }
     expect(GROUND_ITEM_DEFINITIONS.shovel).toMatchObject({ bank: 'shovel', animation: 'idle', atlas: 'images/inventoryimages.xml' });

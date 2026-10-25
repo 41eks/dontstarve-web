@@ -1,3 +1,4 @@
+import { MakeObstaclePhysics } from './standardcomponents';
 import { SpatialIndex } from './spatialIndex';
 import { placementEntities, registerPlacementEntity, ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
 import { ModelRecords } from './modelRecords';
@@ -232,6 +233,8 @@ export class FarmPlowPlacement implements FarmActionWorld {
   private addPlow(sprite: FarmEntity, id: string, position: THREE.Vector3, state: FarmPlowSaveState): void {
     const plow: Plow = { ...state, deployItem: state.deployItem ? { ...state.deployItem } : null, id, sprite, dirtTasks: [] };
     sprite.display.model.position.copy(position);
+    MakeObstaclePhysics(sprite.instance, .5);
+    if (this.world.physics) sprite.instance.bindPhysics(this.world.physics);
     Object.assign(sprite.display.model.userData, { entityId: id, prefab: FARM_PLOW_ID });
     this.persist(sprite, ['scarytoprey']);
     this.plowPositions.add(plow);

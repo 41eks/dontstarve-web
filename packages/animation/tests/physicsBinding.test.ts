@@ -10,6 +10,7 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 it('binds a moving character: frictionless damped sphere, ghost and toggled masks, teleport and release on one body', async () => {
   const world = new CANNON.World();
   const ground = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: new CANNON.Material('ground') });
+  ground.collisionFilterGroup = GROUND_COLLISION_GROUP;
   world.addBody(ground);
   const entity = { physics: new PhysicsState() }, position = new Vector3(3, 0, -6);
   MakeCharacterPhysics(entity, 75, .5);
@@ -21,7 +22,7 @@ it('binds a moving character: frictionless damped sphere, ghost and toggled mask
   expect(body.mass).toBe(75);
   expect(body.shapes).toEqual([expect.objectContaining({ radius: .5 * WORLD_SCALE })]);
   expect(body.position.toArray()).toEqual([3, .5 * WORLD_SCALE, -6]);
-  expect(body.collisionFilterMask).toBe(-1);
+  expect(body.collisionFilterMask).toBe((CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP);
   // SetFriction(0) against the ground already registered.
   expect(world.getContactMaterial(body.material!, ground.material!)?.friction).toBe(0);
 
@@ -35,23 +36,23 @@ it('binds a moving character: frictionless damped sphere, ghost and toggled mask
   entity.physics.Teleport();
   expect([body.position.x, body.position.z]).toEqual([-9, 12]);
 
-  // MakeGhostPhysics leaves obstacles out of the mask: only the ground; the body and its place are kept.
+  // MakeGhostPhysics excludes obstacles while retaining world, characters and giants.
   MakeGhostPhysics(entity, 1, .5);
   await settle();
   expect(binding.body).toBe(body);
   expect(body.mass).toBe(1);
-  expect(body.collisionFilterMask).toBe(GROUND_COLLISION_GROUP);
+  expect(body.collisionFilterMask).toBe((COLLISION.WORLD & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP | COLLISION.CHARACTERS | COLLISION.GIANTS);
   expect([body.position.x, body.position.z]).toEqual([-9, 12]);
   MakeCharacterPhysics(entity, 75, .5);
   await settle();
-  expect(body.collisionFilterMask).toBe(-1);
+  expect(body.collisionFilterMask).toBe((CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP);
   // SGwilson ToggleOffPhysics / ToggleOnPhysics.
   entity.physics.SetCollisionMask(COLLISION.GROUND);
   await settle();
   expect(body.collisionFilterMask).toBe(GROUND_COLLISION_GROUP);
   entity.physics.SetCollisionMask(...CHARACTER_COLLISION_MASK);
   await settle();
-  expect(body.collisionFilterMask).toBe(-1);
+  expect(body.collisionFilterMask).toBe((CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP);
 
   binding.dispose();
   expect(world.bodies).toEqual([ground]);

@@ -5,6 +5,7 @@ export const MONKEYTAIL_ID = 'monkeytail' as const;
 export const MONKEYTAIL_REGROW_TIME = 3 * 480;
 export const MONKEYTAIL_DEFINITION: PickablePlantDefinition = {
   prefab: MONKEYTAIL_ID, animArchive: 'grass.zip', buildArchive: 'reeds_monkeytails.zip',
+  archiveSprite: { bank: 'grass', instancedAnimations: 'all' },
   tags: ['plant', 'silviculture', 'witherable'], product: 'cutreeds', regrowTime: MONKEYTAIL_REGROW_TIME,
   idle: { name: 'idle', randomFrame: true },
   picked: { sound: 'dontstarve/wilson/pickup_reeds', clips: ['picking', 'picked'] },

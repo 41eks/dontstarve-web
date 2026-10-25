@@ -49,6 +49,12 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
     return this.model.position;
   }
 
+  /** Transform:SetScale, on the model owned by the display. */
+  get scale(): Vector3 {
+    if (!this.model) throw new Error('The entity has no model attached');
+    return this.model.scale;
+  }
+
   /** The body the binding keeps for `physics`, while one exists. */
   get physicsBody(): CANNON.Body | undefined { return this.physicsBinding?.body; }
 

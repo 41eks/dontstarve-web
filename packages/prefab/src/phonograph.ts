@@ -1,7 +1,11 @@
 import type * as THREE from 'three';
-import { createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from './groundItems';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { ComponentTimer } from '../../componets/src/timer';
+import { createMemo } from '@dontstarve-web/signals';
+import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext, GroundItemDefinition } from './groundPrefab';
-import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { createArchiveEntity } from './prefabInstance';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
@@ -22,18 +26,28 @@ export class PhonographController {
     if (this.entity) this.entity.phonographRecord = record;
     else this.unboundRecord = record;
   }
-  remainingSeconds = 0;
+  private readonly scheduler: GameTimeScheduler;
+  private readonly ownsScheduler: boolean;
+  private readonly playback: ComponentTimer;
+  readonly timer;
+  private readonly playing;
+  get remainingSeconds(): number { return this.playback.remainingSeconds ?? 0; }
   private sound?: SoundHandle;
   private disposed = false;
-  private readonly sprite: Pick<ArchiveSprite, 'start' | 'playOnce' | 'setAnimation'>;
+  private readonly sprite: Pick<ArchiveSpriteCommands, 'start' | 'playOnce'>;
   private readonly position: THREE.Vector3;
 
-  constructor(sprite: Pick<ArchiveSprite, 'start' | 'playOnce' | 'setAnimation'>,
-    position: THREE.Vector3, record?: string) {
+  constructor(sprite: Pick<ArchiveSpriteCommands, 'start' | 'playOnce'>,
+    position: THREE.Vector3, record?: string, scheduler?: GameTimeScheduler) {
     this.sprite = sprite; this.position = position; this.record = record;
+    this.ownsScheduler = scheduler === undefined;
+    this.scheduler = scheduler ?? new GameTimeScheduler();
+    this.playback = new ComponentTimer(this.scheduler, () => this.stop());
+    this.timer = this.playback.snapshot;
+    this.playing = createMemo(() => this.timer.get().status === 'scheduled');
   }
 
-  get isPlaying(): boolean { return this.remainingSeconds > 0; }
+  get isPlaying(): boolean { return this.playing.peek(); }
 
   bindEntity(entity: ItemEntity): void {
     this.entity = entity;
@@ -49,7 +63,7 @@ export class PhonographController {
     if (this.disposed || !this.record || !Object.hasOwn(RECORD_SONGS, this.record)
       || !Number.isFinite(seconds) || seconds <= 0 || seconds > PHONOGRAPH_PLAY_TIME) return false;
     this.sound?.stop();
-    this.remainingSeconds = seconds;
+    this.playback.start(seconds);
     this.sound = PlaySound(RECORD_SONGS[this.record], this.position, PHONOGRAPH_PLAY_TIME - seconds);
     if (open) this.sprite.playOnce('open', () => { if (this.isPlaying) this.sprite.start('play_loop'); });
     else this.sprite.start('play_loop');
@@ -57,25 +71,26 @@ export class PhonographController {
   }
 
   stop(playEnd = true): void {
-    const wasPlaying = this.isPlaying;
+    const wasPlaying = this.sound !== undefined;
     this.sound?.stop(); this.sound = undefined;
-    this.remainingSeconds = 0;
-    this.sprite.setAnimation('idle');
+    if (this.timer.peek().status !== 'expired') this.playback.stop();
+    this.sprite.playOnce('idle');
     if (wasPlaying && playEnd) PlaySound(END_SOUND, this.position);
   }
 
   update(dt: number): void {
-    if (Number.isFinite(dt) && dt > 0 && this.isPlaying) {
-      if (dt + 1e-8 >= this.remainingSeconds) this.stop();
-      else this.remainingSeconds -= dt;
-    }
+    if (this.ownsScheduler && !this.disposed && Number.isFinite(dt) && dt > 0) this.scheduler.advance(dt);
   }
 
   snapshot(): Pick<GroundItemDefinition, 'phonographRecord' | 'playbackRemaining'> {
     return { phonographRecord: this.record, playbackRemaining: this.isPlaying ? this.remainingSeconds : undefined };
   }
 
-  dispose(): void { this.stop(false); this.disposed = true; }
+  dispose(): void {
+    if (this.disposed) return;
+    this.stop(false); this.disposed = true; this.playing.dispose();
+    if (this.ownsScheduler) this.scheduler.dispose();
+  }
 }
 
 export function createPhonographGroundFactory(context: GroundPrefabContext): GroundItemFactory {
@@ -91,16 +106,21 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
       await Promise.all([context.assets.loadAnimation('structure_collapse_fx.zip'), context.assets.loadBuild('structure_collapse_fx.zip')]);
       await PreloadSounds(...Object.values(RECORD_SONGS), END_SOUND,
         'dontstarve/common/destroy_smoke', 'dontstarve/common/destroy_wood');
-      const sprite = await createGroundItemSprite(context.assets, PHONOGRAPH_ID, item.skinId);
-      const controller = new PhonographController(sprite, sprite.model.position, item.phonographRecord);
-      sprite.model.userData.phonograph = controller;
-      const removeEvents = listenInventoryEvents(sprite.model, {
+      const { visual, instance, display } = await createResidentGroundItem(context, item);
+      const model = display.model, sprite = instance.sprite;
+      for (const tag of ['structure', 'trader', 'recordplayer', 'furnituredecor', 'groundonlymachine']) instance.addTag(tag);
+      const controller = new PhonographController(sprite, model.position, item.phonographRecord, context.scheduler);
+      model.userData.phonograph = controller;
+      const removeEvents = listenInventoryEvents(model, {
         onputininventory: () => controller.stop(),
         // Dropping a loaded machine enables it, but does not turn it on.
         onload: () => { if (item.playbackRemaining) controller.play(item.playbackRemaining); },
       });
       return {
-        model: sprite.model,
+        ...visual,
+        // The song deadline belongs to the machine, independently of sprite residency.
+        active: undefined,
+        model,
         bindEntity(entity: ItemEntity) {
           controller.bindEntity(entity);
           const workable = entity.component('workable', () => {
@@ -111,7 +131,7 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
           });
           entity.components.workable = workable;
           workable.SetOnFinishCallback(() => {
-            const position = sprite.model.position.clone();
+            const position = model.position.clone();
             const loaded = controller.record;
             controller.stop();
             if (loaded) {
@@ -137,8 +157,8 @@ export function createPhonographGroundFactory(context: GroundPrefabContext): Gro
           });
         },
         getDefinition: () => controller.snapshot(),
-        update(dt: number) { controller.update(dt); sprite.update(dt); },
-        dispose() { removeEvents(); controller.dispose(); sprite.dispose(); },
+        update(dt: number) { controller.update(dt); visual.update?.(dt); },
+        dispose() { removeEvents(); controller.dispose(); visual.dispose(); },
       };
     },
   };

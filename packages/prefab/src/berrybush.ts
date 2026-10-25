@@ -17,6 +17,7 @@ export function berrybushRegrowTime(pickable: Pickable): number {
 
 export const BERRYBUSH_DEFINITION: PickablePlantDefinition = {
   prefab: BERRYBUSH_ID, animArchive: 'berrybush.zip', buildArchive: 'berrybush.zip',
+  archiveSprite: { bank: 'berrybush', instancedAnimations: 'all' },
   tags: ['bush', 'plant', 'renewable', 'lunarplant_target', 'witherable', 'SnowCovered', 'blocker'],
   product: 'berries', regrowTime: BERRYBUSH_REGROW_TIME, getRegenTime: berrybushRegrowTime,
   idle: { name: 'idle', randomFrame: true }, picked: { clips: ['picked', 'idle'] },

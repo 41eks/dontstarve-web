@@ -24,7 +24,7 @@ import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
 import { nextReskin } from './reskin_tool';
-import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
+import type { ReskinFxMessage, ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { watchTileActivity } from './tileActivity';
 import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { SpriteState, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
@@ -55,7 +55,7 @@ export interface PickablePlantWorld {
   isOcean?(position: THREE.Vector3): boolean;
 }
 
-export interface PickablePlantAppearanceContext<T extends PlantAnimation = SpriteController | SpriteState> {
+export interface PickablePlantAppearanceContext<T extends PlantAnimation = PlantAnimation> {
   readonly model: THREE.Group;
   readonly animation: T;
   play(clips: readonly string[], loopLast?: boolean, onFirstOver?: () => void): void;
@@ -185,7 +185,7 @@ interface Plant {
  */
 export class PickablePlantManager {
   private readonly factoryRequests = new Map<string, Promise<AnimatedSpriteFactory>>();
-  private readonly archiveSpriteRequests = new Map<PickablePlantDefinition, Promise<CreatePlantArchiveSprite>>();
+  private readonly archiveSpriteRequests = new Map<string, Promise<CreatePlantArchiveSprite>>();
   private readonly archiveAssets: ArchiveSpriteAssets;
   private fireFactoryRequest?: Promise<AnimatedSpriteFactory>;
   private snowRequest?: Promise<LoadedBuildOverride>;
@@ -196,6 +196,7 @@ export class PickablePlantManager {
   private readonly ownsScheduler: boolean;
   private readonly cleanups: (() => void)[] = [];
   private readonly season?: WorldContentSignal<SeasonState>;
+  private snowLevel?: WorldContentSignal<number>;
   private readonly getWatchWorldContent?: GetWatchWorldContent;
   private disposed = false;
 
@@ -236,8 +237,18 @@ export class PickablePlantManager {
   }> {
     const { prefab } = definition;
     if (this.disposed) throw new Error(`${prefab} manager has been disposed`);
-    const factoryRequest = definition.archiveSprite ? this.getArchiveSprite(definition) : this.getFactory(definition, skinId);
-    if (definition.snowCovered && !this.snowRequest) this.snowRequest = loadBuildOverride(this.assetBaseUrl, 'snow.zip');
+    const factoryRequest = definition.archiveSprite ? this.getArchiveSprite(definition, skinId) : this.getFactory(definition, skinId);
+    if (definition.snowCovered && definition.archiveSprite && !this.snowLevel && this.getWatchWorldContent) {
+      const snowLevel = this.snowLevel = this.getWatchWorldContent(WorldContentKey.SnowLevel, stop => this.cleanups.push(stop));
+      const covered = createMemo(() => snowLevel.get() >= .015);
+      createEffect(() => {
+        const hidden = !covered.get();
+        for (const plant of this.plants.values()) if (plant.definition.snowCovered && plant.definition.archiveSprite) {
+          if (hidden) plant.instance.sprite.hideLayer('snow'); else plant.instance.sprite.showLayer('snow');
+        }
+      });
+    }
+    if (definition.snowCovered && !definition.archiveSprite && !this.snowRequest) this.snowRequest = loadBuildOverride(this.assetBaseUrl, 'snow.zip');
     /* Plant art is shared by skin; each pending deployment owns its prepared loot. */
     if (!this.fireFactoryRequest) {
       this.fireFactoryRequest = Promise.all([
@@ -250,7 +261,7 @@ export class PickablePlantManager {
       .map(skinId => ({ ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1, ...(skinId ? { skinId } : {}) })));
     let snow: LoadedBuildOverride | undefined;
     const resources = await Promise.allSettled([
-      Promise.all([factoryRequest, definition.snowCovered ? this.snowRequest : undefined]).then(([factory, loadedSnow]) => { snow = loadedSnow; return factory; }), this.fireFactoryRequest,
+      Promise.all([factoryRequest, definition.snowCovered && !definition.archiveSprite ? this.snowRequest : undefined]).then(([factory, loadedSnow]) => { snow = loadedSnow; return factory; }), this.fireFactoryRequest,
       ...outputDefinitions.map(output => this.world.prepareSpawn(output, output.itemId !== 'ash')),
     ]);
     const failed = resources.find(result => result.status === 'rejected');
@@ -309,6 +320,10 @@ export class PickablePlantManager {
         model.position.set(position.x, 0, position.z);
         Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId() });
         for (const tag of definition.tags) instance.addTag(tag);
+        if (archiveEntity && definition.snowCovered) {
+          instance.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
+          if ((this.snowLevel?.peek() ?? 0) >= .015) instance.sprite.showLayer('snow'); else instance.sprite.hideLayer('snow');
+        }
         if (skinId) model.userData.skinId = skinId;
         if (definition.deploySmartRadius !== undefined) model.userData.deploySmartRadius = definition.deploySmartRadius;
         let animation: PlantAnimation = instance.sprite;
@@ -341,10 +356,7 @@ export class PickablePlantManager {
             play(0);
           },
         };
-        const appearance = definition.createAppearance?.({ ...animationContext, get animation() {
-          if (animation instanceof SpriteController || animation instanceof SpriteState) return animation;
-          throw new Error('Layered plant appearance requires a factory controller');
-        } });
+        const appearance = definition.createAppearance?.(animationContext);
         const pickable: Pickable = new Pickable(model, definition.product, definition.regrowTime, definition.numToHarvest ?? 1, () => {
           plant.sound?.stop();
           if (definition.picked.sound) plant.sound = PlaySound(definition.picked.sound, model.position);
@@ -561,20 +573,27 @@ export class PickablePlantManager {
         prepareNextSkin: async (tool?: Parameters<ReskinTarget['prepareNextSkin']>[0]) => {
           const previousSkin = model.userData.skinId as string | undefined;
           const skinId = nextReskin(definition.skins!, previousSkin, tool?._cached_reskinname, definition.prefab);
-          const factory = await this.getFactory(definition, skinId);
+          const source = definition.archiveSprite ? await this.getArchiveSprite(definition, skinId) : await this.getFactory(definition, skinId);
           if (!isValid()) throw new Error('Plant is no longer available');
           const snowCovered = definition.snowCovered ? await this.snowRequest : undefined;
           const options = (initialAnimation: string) => ({ initialAnimation,
             getWatchWorldContent: this.getWatchWorldContent, snowCovered });
-          const replacement = createPrefabEntity(definition.prefab, { create: animationName => factory.create(options(animationName)),
-            release: drawn => factory.disposeSprite(drawn) }, { name: definition.idle.name }).display;
+          const replacement = typeof source === 'function'
+            ? createArchiveEntity(definition.prefab, { create: clip => source(clip.name, clip.loop, definition.prefab),
+              initial: source(definition.idle.name, definition.idle.loop !== false, definition.prefab) }, { name: definition.idle.name }).display
+            : createPrefabEntity(definition.prefab, { create: animationName => source.create(options(animationName)),
+              release: drawn => source.disposeSprite(drawn) }, { name: definition.idle.name }).display;
           const release = () => replacement.dispose();
           let used = false;
-          return { apply: () => {
+          return { apply: (fx?: ReskinFxMessage) => {
             if (used || !isValid() || model.userData.skinId !== previousSkin) return false;
+            if (definition.snowCovered && definition.archiveSprite) {
+              if ((this.snowLevel?.peek() ?? 0) >= .015) plant.instance.sprite.showLayer('snow'); else plant.instance.sprite.hideLayer('snow');
+            }
             plant.display.adopt(replacement);
             model.userData.skinId = skinId || undefined;
             release(); used = true;
+            fx?.play(model.position, definition.prefab);
             return true;
           }, dispose: () => { if (!used) { release(); used = true; } } };
         },
@@ -599,18 +618,22 @@ export class PickablePlantManager {
     return request;
   }
 
-  private getArchiveSprite(definition: PickablePlantDefinition): Promise<CreatePlantArchiveSprite> {
-    let request = this.archiveSpriteRequests.get(definition);
+  private getArchiveSprite(definition: PickablePlantDefinition, skinId?: string): Promise<CreatePlantArchiveSprite> {
+    if (skinId !== undefined && !definition.skins?.includes(skinId)) throw new Error(`Unsupported ${definition.prefab} skin: ${skinId}`);
+    const key = `${definition.prefab}:${skinId ?? ''}`;
+    let request = this.archiveSpriteRequests.get(key);
     if (!request) {
       request = Promise.all([
         preloadSharedArchiveSprite(this.archiveAssets, { animationArchive: definition.animArchive,
-          buildArchives: [definition.buildArchive], bank: definition.archiveSprite!.bank },
-        { instancedAnimations: definition.archiveSprite!.instancedAnimations, staticBillboard: true }),
+          buildArchives: [definition.buildArchive, ...definition.snowCovered ? ['snow.zip'] : []], bank: definition.archiveSprite!.bank,
+          hiddenLayers: definition.snowCovered ? ['snow'] : [] },
+        { instancedAnimations: definition.archiveSprite!.instancedAnimations, staticBillboard: true,
+          skinArchive: skinId ? `dynamic/${skinId}.zip` : undefined }),
         PreloadSounds(...definition.picked.sound ? [definition.picked.sound] : [],
           'dontstarve/common/campfire', 'dontstarve/common/fireOut'),
       ]).then(([create]) => create);
-      this.archiveSpriteRequests.set(definition, request);
-      void request.catch(() => this.archiveSpriteRequests.delete(definition));
+      this.archiveSpriteRequests.set(key, request);
+      void request.catch(() => this.archiveSpriteRequests.delete(key));
     }
     return request;
   }

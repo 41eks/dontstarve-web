@@ -1,3 +1,4 @@
+import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -75,6 +76,7 @@ export function rockArchives(prefab: RockEntityId) {
 }
 
 export interface RockWorld {
+  physics?: import('cannon-es').World;
   scheduler?: GameTimeScheduler;
   tickingarea?: TileStateQuery;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
@@ -119,6 +121,7 @@ export class RockController {
       this.onWorkFinished = () => {
         context.spawnSeed();
         this.entity.addTag('NOCLICK');
+        RemovePhysicsColliders(model.userData.instance);
         model.userData.persists = false;
         (model.userData.animationController as ArchiveSpriteCommands).playOnce('break');
         this.erode!.start(2);
@@ -250,6 +253,10 @@ export class RockManager {
     if (prefabId === 'moonrockseed') sprite.setPaused(true);
     const model = display.model;
     model.position.set(position.x, 0, position.z);
+    if (prefabId !== 'cavein_boulder' && (MINEABLE_ROCK_PREFABS as readonly string[]).includes(prefabId)) {
+      MakeObstaclePhysics(instance, 1);
+      if (this.world.physics) instance.bindPhysics(this.world.physics);
+    }
     model.userData.entityId = saved?.id ?? newEntityId();
     model.userData.prefab = prefabId;
     model.userData.animationController = sprite;

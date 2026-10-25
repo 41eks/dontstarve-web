@@ -115,7 +115,8 @@ it('discards a prepared reskin after the equipped entity changes during loading 
   const target = { ...reskinEntityFields, id: 'target', prefabId: 'icebox', model: new THREE.Group(), position: new THREE.Vector3(1, 0, 0),
     isValid: () => true, prepareNextSkin: async () => { await ready; return prepared; } };
   const animation = { isReskinning: false, cancelEmote: vi.fn(), cancelReskin: vi.fn(), setFacing: vi.fn() };
-  const effects = { prepare: vi.fn(async () => {}), spawn: vi.fn() };
+  const fx = { play: vi.fn(), dispose: vi.fn() };
+  const effects = { prepare: vi.fn(async () => fx) };
   const controller = new ReskinActionController(context(), animation as unknown as ActionAnimationController,
     { goToPoint: () => true, stop: vi.fn(), destination: undefined }, equipment, () => [target], effects);
   const request = controller.request(target);
@@ -124,7 +125,7 @@ it('discards a prepared reskin after the equipped entity changes during loading 
   expect(await request).toBe(false);
   expect(prepared.apply).not.toHaveBeenCalled();
   expect(prepared.dispose).toHaveBeenCalledOnce();
-  expect(effects.spawn).not.toHaveBeenCalled();
+  expect(fx.play).not.toHaveBeenCalled();
   controller.dispose();
   animation.cancelReskin.mockClear();
   equipment.set(null);

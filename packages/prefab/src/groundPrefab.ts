@@ -63,6 +63,7 @@ export interface GroundFx {
 }
 
 export interface GroundPrefabOptions {
+  physics?: import('cannon-es').World;
   moleWorld?: import('./molehill').MoleHabitat;
   lightflierWorld?: import('./lightflier').LightFlierHabitat;
   fx?: GroundFx;

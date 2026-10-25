@@ -85,6 +85,7 @@ function onhit({ model, animation }: AnimatedBuildingEventContext): void {
 
 export const WINTEROMETER_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.winterometer,
+    obstacleRadius: 0.4,
     hammerWorkLeft: 4, hammerMaterial: 'wood',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'small' },

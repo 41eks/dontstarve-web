@@ -196,7 +196,7 @@ describe('lantern fuel', () => {
       expect((await executeDebugCommand('c_spawn("lantern")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
       expect((await executeDebugCommand('c_give("lantern", 2)', inventory)).ok).toBe(true);
       const ground = manager.entities.get('spawn:lantern')!;
-      const model = manager.renderEntities[0].object;
+      const model = manager.reskinTargets[0].model;
       expect(getLanternController(ground).isOn).toBe(true);
       expect(lightAt(model)).toMatchObject({ radius: 15 });
       manager.update(1, new THREE.Quaternion());

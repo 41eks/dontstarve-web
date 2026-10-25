@@ -46,7 +46,8 @@ it('exposes the loot prefabs with their own ground clips, icon atlases and stack
     const spawned = await executeDebugCommand(['foliage', 'trinket_32', 'blueprint', 'scrapbook_page'].map(id => `c_spawn("${id}")`).join(';'),
       inventory, id => registry.spawn(id));
     expect(spawned.ok).toBe(true);
-    expect(ground.renderEntities).toHaveLength(4);
+    expect(ground.reskinTargets).toHaveLength(4);
+    expect(ground.renderEntities).toEqual([]);
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     const saved = deserializeSave(serializeSave(template, { entities: { ground_item: ground.exportRecords() }, inventory: inventory.exportState(),
       elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG), SAVE_CATALOG);

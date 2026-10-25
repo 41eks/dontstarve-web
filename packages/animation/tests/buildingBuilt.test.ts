@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+import { WARDROBE_DEFINITION } from '../../prefab/src/wardrobe';
+import { WORLD_SCALE } from '../../prefab/src/tile';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import {
@@ -27,7 +30,7 @@ async function setup(definition: AnimatedBuildingDefinition) {
   });
   const canvas = new EventTarget();
   const world = {
-    scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
+    physics: new CANNON.World(), scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas },
   } as unknown as WorldContext;
   world.player.position.set(100, 0, 100);
@@ -99,4 +102,27 @@ it('lets a prefab control built effects and keeps interaction blocked until it c
   context!.onComplete();
   click();
   expect(playOnce).toHaveBeenCalledExactlyOnceWith('open', expect.any(Function));
+});
+
+
+it('binds a committed building collider at its foot, restores it from saves and removes it with the entity', async () => {
+  const { placement, world, consume, click } = await setup(WARDROBE_DEFINITION);
+  const physics = world.physics!;
+  try {
+    await placement.begin('building');
+    expect(physics.bodies).toHaveLength(0);
+    consume.mockReturnValue(false); click();
+    expect(physics.bodies).toHaveLength(0);
+    consume.mockReturnValue(true); click();
+    expect(physics.bodies).toHaveLength(1);
+    const record = placement.exportRecords()[0].record;
+    const body = physics.bodies[0];
+    expect(body.position.toArray()).toEqual([3, WORLD_SCALE, 4]);
+    expect(body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === .75 * WORLD_SCALE)).toBe(true);
+    await placement.spawnFromSave('building', { ...record, id: 'restored-building' });
+    expect(physics.bodies).toHaveLength(2);
+    expect(physics.bodies[1].position.toArray()).toEqual(body.position.toArray());
+    placement.dispose();
+    expect(physics.bodies).toHaveLength(0);
+  } finally { placement.dispose(); }
 });

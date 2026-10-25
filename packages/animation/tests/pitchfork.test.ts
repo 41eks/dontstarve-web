@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadPitchforkEquipment, type PitchforkTool } from '../../prefab/src/pitchfork';
 import { PitchforkActionController } from '../../stategraphs/src/pitchfork';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
-import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
@@ -29,13 +30,13 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     expect(inventoryItemEquipmentKind(tool)).toBe('hand');
     expect(inventoryItemMaxStack(tool)).toBe(1);
     const assets = new GroundItemAssets();
-    const ground = await createGroundItemSprite(assets, tool);
-    const mesh = ground.model.children[0].children[0] as THREE.Mesh;
+    const ground = await createGroundItemVisual(assets, tool);
+    const mesh = ground.model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${tool}`)).toBe(true);
     for (const skin of Object.keys(GROUND_ITEM_DEFINITIONS[tool].skinArchives)) {
       expect((await loadPitchforkEquipment(assets, tool, skin)).builds).toHaveLength(2);
-      const skinned = await createGroundItemSprite(assets, tool, skin);
+      const skinned = await createGroundItemVisual(assets, tool, skin);
       skinned.dispose();
     }
     const player = await createWilsonPlayer('/dst/data/anim');

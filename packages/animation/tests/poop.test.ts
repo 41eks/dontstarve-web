@@ -116,7 +116,7 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     flies.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object; });
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     const entries = manager.renderEntities;
-    expect(entries).toHaveLength(2);
+    expect(entries.map(entry => entry.object)).toEqual([flies]);
     setSpriteEntityRenderOrder(flies, 2);
     expect(mesh.parent!.renderOrder).toBe(2);
     expect(entries.find(entry => entry.object === flies)!.footPosition.toArray()).toEqual([0, 0, 0]);

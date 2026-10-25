@@ -3,12 +3,50 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
+import { createAnimatedSpriteSource, loadBuildOverride, type SpriteController } from '../src/sprite';
 
 beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (url: string) => {
   const path = String(url).slice(String(url).indexOf('/dst/data/') + '/dst/data/'.length);
   return new Response(await readFile(new URL(`../../../public/dst/data/${path}`, import.meta.url)));
 })));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
+it('matches native skinned berry layers and snow overrides while retaining independent shared appearances', async () => {
+  const assets = new ArchiveSpriteAssets(), snow = await loadBuildOverride('/dst/data/anim', 'snow.zip');
+  const reference = await createAnimatedSpriteSource('/dst/data/anim', 'berrybush.zip', {
+    skinArchive: 'dynamic/berrybush_cawnival.zip',
+  });
+  const control = reference.create({ initialAnimation: 'idle', snowCovered: snow });
+  const controller = control.userData.animationController as SpriteController;
+  const definition = { animationArchive: 'berrybush.zip', buildArchives: ['berrybush.zip', 'snow.zip'], bank: 'berrybush',
+    animation: 'idle', loop: true, symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } } };
+  const options = { skinArchive: 'dynamic/berrybush_cawnival.zip', instancedAnimations: 'all' as const };
+  const first = await createSharedArchiveSprite(assets, definition, options);
+  const second = await createSharedArchiveSprite(assets, definition, options);
+  const mesh = (model: THREE.Object3D) => model.getObjectByProperty('isMesh', true) as THREE.Mesh;
+  try {
+    for (const layer of ['berries', 'berriesmore']) { controller.hideLayer(layer); first.setLayerHidden(layer, true); }
+    controller.showLayer('snow'); controller.setFrame(0); first.setFrame(0);
+    const positions = (model: THREE.Object3D) => {
+      const geometry = mesh(model).geometry;
+      return Array.from(geometry.getAttribute('position').array.slice(0, geometry.drawRange.count / 6 * 12));
+    };
+    expect(positions(first.model)).toEqual(positions(control));
+    const withSnow = mesh(first.model).geometry;
+    controller.hideLayer('snow'); first.setLayerHidden('snow', true);
+    expect(positions(first.model)).toEqual(positions(control));
+    expect(mesh(first.model).geometry.drawRange.count).toBeLessThan(withSnow.drawRange.count);
+    // Identical appearance data shares immutable geometry; changing a sibling does not rewrite it.
+    for (const layer of ['berries', 'berriesmore', 'snow']) second.setLayerHidden(layer, true);
+    expect(mesh(first.model).geometry).toBe(mesh(second.model).geometry);
+    const shared = mesh(second.model).geometry;
+    first.setLayerHidden('berriesmost', true);
+    expect(mesh(first.model).geometry.drawRange.count).toBeLessThan(shared.drawRange.count);
+    expect(mesh(second.model).geometry).toBe(shared);
+    first.setLayerHidden('berriesmost', false);
+    expect(mesh(first.model).geometry).toBe(shared);
+  } finally { first.dispose(); second.dispose(); reference.disposeSprite(control); reference.dispose(); snow.dispose(); assets.dispose(); }
+});
 
 it('shares later-selected clips without prefab clip lists while keeping opacity and completion callbacks local', async () => {
   const assets = new ArchiveSpriteAssets();

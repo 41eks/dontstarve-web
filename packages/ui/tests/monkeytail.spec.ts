@@ -33,7 +33,7 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
       && !!model.userData.components.pickable.exportState().transplanted === planted);
     if (!model) throw new Error('No monkeytail target');
     scene.updateMatrixWorld(true);
-    const mesh = model.children[0].children[0], geometry = mesh.geometry;
+    const mesh = model.getObjectByProperty('isMesh', true), geometry = mesh.geometry;
     const positions = geometry.getAttribute('position'), indices = geometry.getIndex();
     let largest = -1, point = model.position.clone();
     for (let i = 0; i < geometry.drawRange.count; i += 3) {
@@ -50,7 +50,7 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   const count = (id: string) => page.evaluate(id => (window as any).monkeytailGame.inventory.count(id), id);
   const bar = page.locator('dst-inventory-bar .inventory-bar__items');
 
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_spawn("monkeytail");c_give("dug_monkeytail",2);c_give("poop",2)');
   await expect(bar.locator('[data-item-id="dug_monkeytail"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.scene.children.filter((model: any) => model.userData.prefab === 'monkeytail').length)).toBe(1);

@@ -3,7 +3,7 @@ import { createSignal, readonlySignal, type EquipmentLifecycle, type EquipmentOw
 import type * as THREE from 'three';
 import { Lighter } from '../../componets/src/lighter';
 import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import { createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from './groundItems';
+import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
 import { attachPrefabLight, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
@@ -243,7 +243,8 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
     configureEntity: configureTorchEntity,
     async create(item) {
       await PreloadSounds(...TORCH_SOUNDS);
-      const sprite = await createGroundItemSprite(context.assets, TORCH_ID, item.skinId);
+      const { visual, instance: { sprite } } = await createResidentGroundItem(context, item);
+      const model = visual.model;
       let fling: LootFling | undefined;
       let state = item;
       let entity: ItemEntity | undefined;
@@ -251,8 +252,8 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
       let controller: TorchController | undefined;
       let stopBurning: (() => void) | undefined;
       const options: TorchLifecycleOptions = {
-        soundPosition: sprite.model.position,
-        returnToIdle: () => sprite.setAnimation('idle'),
+        soundPosition: model.position,
+        returnToIdle: () => sprite.playOnce('idle'),
         onGroundExtinguish: () => {
           if (!entity) return;
           const scale = TILE_SIZE / 4, angle = Math.random() * Math.PI * 2, speed = Math.random() * scale;
@@ -264,28 +265,29 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
         },
       };
       const syncBurning = (burning: boolean) => {
-        setPrefabLocalLight(sprite.model, burning ? TORCH_LIGHT : null);
-        if (burning) sprite.setAnimation('land');
+        setPrefabLocalLight(model, burning ? TORCH_LIGHT : null);
+        if (burning) sprite.playOnce('land');
       };
       const bind = () => {
         if (!entity) {
           standalone = !state.entity;
           entity = state.entity ?? new ItemEntity(state);
           controller = getTorchController(entity);
-          sprite.model.userData.torch = controller;
+          model.userData.torch = controller;
           stopBurning = controller.burning.subscribe(syncBurning);
         }
         controller!.setPresentation(options);
         syncBurning(controller!.isBurning);
       };
-      const removeEvents = listenInventoryEvents(sprite.model, {
+      const removeEvents = listenInventoryEvents(model, {
         onputininventory: () => { fling = undefined; controller?.OnPutInInventory(context.inventoryOwnerPosition); },
         onextinguish: () => controller?.extinguish(),
         ondropped: () => { bind(); controller!.OnDropped(); },
         onload: () => { bind(); controller!.OnDropped(); if (state.torchLit) controller!.ignite(false); },
       });
+      // No `active`: a burning torch keeps consuming fuel while its tile only releases the sprite.
       return {
-        model: sprite.model,
+        model,
         isRemoved: () => entity?.isRemoved ?? false,
         setDefinition: (definition) => {
           state = definition;
@@ -299,7 +301,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
           controller?.onFrame(dt); sprite.update(dt);
           if (fling) {
             fling.update(dt);
-            sprite.model.children[0].position.y = fling.height;
+            model.children[0].position.y = fling.height;
             if (fling.settled) fling = undefined;
           }
         },
@@ -307,7 +309,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
           removeEvents(); stopBurning?.();
           controller?.releasePresentation(options);
           if (standalone) entity?.destroy();
-          sprite.dispose();
+          visual.dispose();
         },
       };
     },

@@ -7,11 +7,18 @@ const url = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url
 test('farm plow supports seed planting and ordinary/golden hoe tilling on its farming tile', async ({ page }) => {
   test.setTimeout(180_000);
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('pageerror', (error) => { console.error(error.stack); errors.push(error.message); });
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
-  await page.goto('/tests/dst-lighting.html');
+  await page.route('**/saves/initial-world.json', async route => {
+    const response = await route.fetch(), save = await response.json();
+    save.world.entities = {};
+    const inventory = save.players.local.inventory.containers['player:inventory'];
+    inventory.slots = inventory.slots.filter((slot: any) => slot.item?.itemId === 'reskin_tool').slice(0, 1);
+    await route.fulfill({ response, json: save });
+  });
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   const prepare = () => page.evaluate(async (paths) => {
-    const main = await import(paths.main);
+    const main = await import(paths.main); await main.gameReady;
     const { player, playerBody } = await import(paths.player);
     const { scene } = await import(paths.universal);
     const { view } = await import(paths.view);
@@ -68,7 +75,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await page.screenshot({ path: '/tmp/dontstarve-farm-plow-drilling.png' });
   const duringDownload = page.waitForEvent('download');
   await submit('c_save()');
-  const drillingSave = JSON.parse(await readSaveDownload((await (await duringDownload).path())!));
+  const drillingSave = JSON.parse(await readSaveDownload((await (await duringDownload).path())!, 'Master'));
   expect(drillingSave.world.entities.farm_plow[0].components.farmPlow).toMatchObject({ phase: 'drill_loop', deployItem: { ...originalItem, remainingUses: 3 } });
   expect(drillingSave.world.entities.farm_plow[0].components.farmPlow.remainingSeconds).toBeLessThan(15);
   await page.route('**/saves/initial-world.json', (route) => route.fulfill({ json: drillingSave }));
@@ -83,24 +90,35 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await expect.poll(() => page.evaluate(() => (window as any).farmGame.scene.children
     .some((model: any) => model.userData.prefab === 'farm_plow'))).toBe(false);
   await page.screenshot({ path: '/tmp/dontstarve-farm-plow-finished.png' });
-  // Aim inside a rendered triangle; merged bounds can span gaps between parts.
-  const spritePoint = async (prefab: string, name?: string) => page.evaluate(({ prefab, name }) => {
+  // Sample an alpha-hit point through the real sprite raycaster, including instanced input proxies.
+  const spritePoint = async (prefab: string, name?: string) => page.evaluate(async ({ prefab, name, pointerPath }) => {
     const { scene, view, player } = (window as any).farmGame;
     const model = scene.children.filter((model: any) => name ? model.name === name : model.userData.prefab === prefab
       && model.userData.animationController.currentAnimation === 'till_idle')
       .sort((a: any, b: any) => a.position.distanceToSquared(player.position) - b.position.distanceToSquared(player.position))[0];
     if (!model) throw new Error(`No clickable ${prefab}`);
-    const mesh = model.children[0].children[0]; mesh.updateWorldMatrix(true, false);
-    const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.index;
-    const point = model.position.clone().set(0, 0, 0), vertex = point.clone();
-    for (let i = 0; i < 3; i++) {
-      vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex);
+    const mesh = model.getObjectsByProperty('isMesh', true).find((object: any) => object.geometry?.drawRange.count > 0);
+    if (!mesh) throw new Error(`No drawn mesh for ${prefab}`);
+    mesh.updateWorldMatrix(true, false);
+    const positions = mesh.geometry.getAttribute('position'), bounds = view.renderer.domElement.getBoundingClientRect();
+    const point = model.position.clone();
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < mesh.geometry.drawRange.count / 6 * 4; i++) {
+      point.fromBufferAttribute(positions, i); mesh.localToWorld(point).project(view.camera);
+      minX = Math.min(minX, point.x); maxX = Math.max(maxX, point.x);
+      minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
     }
-    const ndc = point.multiplyScalar(1 / 3).project(view.camera);
-    const bounds = view.renderer.domElement.getBoundingClientRect();
-    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2,
-      id: model.userData.entityId, position: model.position.toArray() };
-  }, { prefab, name });
+    const { PointerRaycaster } = await import(pointerPath), pointer = new PointerRaycaster(view);
+    try {
+      for (const fy of [.5, .35, .65, .2, .8, .1, .9]) for (const fx of [.5, .35, .65, .2, .8, .1, .9]) {
+        const x = bounds.left + (minX + (maxX - minX) * fx + 1) * bounds.width / 2;
+        const y = bounds.top + (1 - minY - (maxY - minY) * fy) * bounds.height / 2;
+        pointer.trackPointer({ clientX: x, clientY: y });
+        if (pointer.raycastPointer([model])) return { x, y, id: model.userData.entityId, position: model.position.toArray() };
+      }
+      throw new Error(`No alpha-hit point for ${prefab}`);
+    } finally { pointer.dispose(); }
+  }, { prefab, name, pointerPath: url('../../stategraphs/src/pointerRaycaster.ts') });
   const pickupPoint = await spritePoint('farm_plow_item', 'GroundItem:farm_plow_item');
   expect(pickupPoint.id).toBe(originalItem.entityId);
   await page.mouse.click(pickupPoint.x, pickupPoint.y);
@@ -109,7 +127,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     .find((slot: any) => slot.item?.itemId === 'farm_plow_item').item)).toEqual({ ...originalItem, remainingUses: 3 });
   const afterDownload = page.waitForEvent('download');
   await submit('c_save()');
-  const finishedSave = JSON.parse(await readSaveDownload((await (await afterDownload).path())!));
+  const finishedSave = JSON.parse(await readSaveDownload((await (await afterDownload).path())!, 'Master'));
   expect(finishedSave.world.entities.farm_plow).toEqual([]);
   expect(finishedSave.world.entities.farm_soil_debris.length).toBeGreaterThan(0);
   expect(finishedSave.world.map.tiles.some((tile: any) => tile.tileId === 47)).toBe(true);
@@ -152,7 +170,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await expect(cursorSeed.locator('.slot-drag-preview__count')).toHaveText('');
   const plantedDownload = page.waitForEvent('download');
   await submit('c_save()');
-  const plantedSave = JSON.parse(await readSaveDownload((await (await plantedDownload).path())!));
+  const plantedSave = JSON.parse(await readSaveDownload((await (await plantedDownload).path())!, 'Master'));
   expect(plantedSave.world.entities.farm_soil.some((record: any) => record.id === hole.id)).toBe(false);
   expect(plantedSave.world.entities.farm_plant_randomseed[0].transform.position).toEqual(hole.position);
   expect(plantedSave.players.local.inventory.containers['player:inventory'].slots
@@ -249,7 +267,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
     .filter((model: any) => ['GroundItem:farm_hoe', 'GroundItem:golden_farm_hoe'].includes(model.name)).length)).toBe(2);
   const hoeDownload = page.waitForEvent('download');
   await submit('c_save()');
-  const hoeSave = JSON.parse(await readSaveDownload((await (await hoeDownload).path())!));
+  const hoeSave = JSON.parse(await readSaveDownload((await (await hoeDownload).path())!, 'Master'));
   expect(hoeSave.world.entities.farm_plant_randomseed).toEqual(plantedSave.world.entities.farm_plant_randomseed);
   expect(hoeSave.players.local.inventory.containers['player:equipment'].slots
     .find((slot: any) => slot.slotKey === 'hand').item.skinId).toBe('golden_farmhoe_garden');
@@ -261,7 +279,7 @@ test('farm plow supports seed planting and ordinary/golden hoe tilling on its fa
   await page.route('**/saves/initial-world.json', (route) => route.fulfill({ json: hoeSave }));
   await page.reload();
   const restored = await page.evaluate(async (paths) => {
-    const main = await import(paths.main);
+    const main = await import(paths.main); await main.gameReady;
     const { scene } = await import(paths.universal);
     const { player } = await import(paths.player);
     const { turfMap } = await import(paths.building);

@@ -1,9 +1,7 @@
-import * as THREE from 'three';
-import {
-  findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite,
-} from '@dontstarve-web/animation/animationAssets';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from './groundItems';
+import { loadAnim, loadBuild, loadSpriteSkinArchive, smallHash, type Animation } from '@dontstarve-web/animation/animationAssets';
+import { createSpriteFactory, SpriteController, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
+import { createPrefabEntity } from './prefabInstance';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 
@@ -21,80 +19,95 @@ export function bernieGroundForm(sanityPercent: number): BernieGroundForm {
   return sanityPercent < BERNIE_BIG_SANITY_PERCENT ? 'bernie_big' : 'bernie_active';
 }
 
-/** Preload both banks so a sanity change never removes or asynchronously swaps an entity. */
-export async function createBernieGroundSprite(assets: GroundItemAssets, world: BernieWorld, skinId?: string) {
-  const definition = GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID];
-  const skinArchive = skinId === undefined ? undefined : definition.skinArchives[skinId];
-  if (skinId !== undefined && !skinArchive) throw new Error(`Unknown Bernie skin: ${skinId}`);
-  const [small, big, base, skin] = await Promise.all([
-    assets.loadAnimation('bernie.zip'), assets.loadAnimation('bernie_big.zip'),
-    assets.loadBuild('bernie_build.zip'), skinArchive ? assets.loadBuild(skinArchive) : undefined,
-  ]);
-  const findClip = (parsed: typeof small, bank: string, name = 'idle_loop'): Animation => {
-    const clip = parsed.animations.find(({ name: clipName, bankHash }) => clipName === name && bankHash === smallHash(bank));
-    if (!clip?.frames.length) throw new Error(`Missing Bernie animation ${bank}:${name}`);
+/** bernie.zip and bernie_big.zip clips named `form:clip`; bernie_big.lua keeps scale 0.7, its growth is baked into the art. */
+class BernieSpriteController extends SpriteController {
+  protected override findAnimation(key: string): Animation {
+    const separator = key.indexOf(':');
+    const form = key.slice(0, separator), name = key.slice(separator + 1);
+    const bank = smallHash(form === 'bernie_big' ? 'bernie_big' : 'bernie');
+    const animation = this.animations.animations.find(clip => clip.name === name && clip.bankHash === bank);
+    if (!animation?.frames.length) throw new Error(`Missing Bernie animation ${key}`);
+    const scale = 0.02 * (form === 'bernie_big' ? 0.7 : 1);
+    this.visual.scale.set(scale, -scale, scale);
+    return animation;
+  }
+}
+
+interface BernieSource { readonly factory: AnimatedSpriteFactory; readonly clips: ReadonlyMap<string, Animation> }
+
+/** Both banks preloaded per skin, so a sanity change never removes or asynchronously swaps an entity. */
+export class BernieAssets {
+  private readonly sources = new Map<string | undefined, Promise<BernieSource>>();
+  private readonly assetBaseUrl: string;
+  private disposed = false;
+  constructor(assetBaseUrl: string) { this.assetBaseUrl = assetBaseUrl; }
+
+  load(skinId?: string): Promise<BernieSource> {
+    if (this.disposed) throw new Error('Bernie assets have been disposed');
+    let request = this.sources.get(skinId);
+    if (!request) {
+      const skinArchive = skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID].skinArchives[skinId];
+      if (skinId !== undefined && !skinArchive) throw new Error(`Unknown Bernie skin: ${skinId}`);
+      request = (async () => {
+        const [build, small, big, skin] = await Promise.all([
+          loadBuild('bernie_build.zip', this.assetBaseUrl), loadAnim('bernie.zip', this.assetBaseUrl), loadAnim('bernie_big.zip', this.assetBaseUrl),
+          skinArchive ? loadSpriteSkinArchive(skinArchive, this.assetBaseUrl) : undefined,
+        ]);
+        const factory = createSpriteFactory(build, { animations: [...small.animations, ...big.animations] }, BernieSpriteController, skin);
+        const clips = new Map<string, Animation>();
+        for (const [form, parsed, bank] of [['bernie_active', small, 'bernie'], ['bernie_big', big, 'bernie_big'], [BERNIE_ITEM_ID, small, 'bernie']] as const) {
+          for (const clip of parsed.animations) if (clip.bankHash === smallHash(bank)) clips.set(`${form}:${clip.name}`, clip);
+        }
+        return { factory, clips };
+      })();
+      this.sources.set(skinId, request);
+      void request.catch(() => this.sources.delete(skinId));
+    }
+    return request;
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const source of this.sources.values()) void source.then(({ factory }) => factory.dispose(), () => undefined);
+    this.sources.clear();
+  }
+}
+
+export async function createBernieGroundSprite(assets: BernieAssets, world: BernieWorld, skinId?: string) {
+  const { factory, clips } = await assets.load(skinId);
+  const clipOf = (form: BernieAnimationForm, name: string): Animation => {
+    const clip = clips.get(`${form}:${name}`);
+    if (!clip) throw new Error(`Missing Bernie animation ${form}:${name}`);
     return clip;
   };
-  const animations = new Map<string, Animation>();
-  for (const [form, parsed, bank] of [
-    ['bernie_active', small, 'bernie'], ['bernie_big', big, 'bernie_big'],
-  ] as const) {
-    for (const name of ['idle_loop', 'idle_loop_nodir', 'activate']) {
-      animations.set(`${form}:${name}`, findClip(parsed, bank, name));
-    }
-  }
-  for (const name of ['deactivate', 'deactivate_pst']) {
-    animations.set(`bernie_big:${name}`, findClip(big, 'bernie_big', name));
-  }
-  animations.set(`${BERNIE_ITEM_ID}:inactive`, findClip(small, 'bernie', 'inactive'));
-  const model = new THREE.Group();
-  const visual = new THREE.Group();
-  visual.scale.set(0.02, -0.02, 0.02);
-  model.add(visual);
-  registerSpriteRenderGroup(model, visual);
-  Object.assign(model.userData, { billboard: true, itemId: BERNIE_ITEM_ID, skinId });
-  const renderer = new SpriteFrameRenderer(visual);
-  let form: BernieAnimationForm;
-  let clip: Animation;
+  const required = [...(['bernie_active', 'bernie_big'] as const).flatMap(form => ['idle_loop', 'idle_loop_nodir', 'activate'].map(name => [form, name] as const)),
+    ['bernie_big', 'deactivate'], ['bernie_big', 'deactivate_pst'], [BERNIE_ITEM_ID, 'inactive']] as const;
+  for (const [form, name] of required) clipOf(form, name);
+  let form: BernieAnimationForm = bernieGroundForm(world.getSanityPercent());
+  const spriteName = `GroundItem:${BERNIE_ITEM_ID}`;
+  const { instance, display } = createPrefabEntity(BERNIE_ITEM_ID, {
+    create: initialAnimation => factory.create({ initialAnimation, name: spriteName }), release: drawn => factory.disposeSprite(drawn),
+  }, { name: `${form}:idle_loop` }, spriteName);
+  const model = display.model, sprite = instance.sprite;
+  Object.assign(model.userData, { itemId: BERNIE_ITEM_ID, skinId });
+  let clip = clipOf(form, 'idle_loop');
   let inInventory = false;
   let elapsed = 0;
-  let previousFrame = -1;
   const play = (next: BernieAnimationForm, name: string, time = 0) => {
-    const animation = animations.get(`${next}:${name}`);
-    if (!animation) throw new Error(`Missing Bernie animation ${next}:${name}`);
     form = next;
-    clip = animation;
+    clip = clipOf(next, name);
     elapsed = time;
-    previousFrame = -1;
-    // bernie_big.lua keeps scale 0.7 throughout activate/deactivate, including
-    // the small pose in deactivate_pst. The growth is baked into the source art.
-    const scale = 0.02 * (form === 'bernie_big' ? 0.7 : 1);
-    visual.scale.set(scale, -scale, scale);
+    const key = `${next}:${name}`;
+    if (name === 'idle_loop') sprite.start(key); else sprite.playOnce(key);
     model.name = `GroundItem:${form}`;
     Object.assign(model.userData, { prefab: form, animation: name });
   };
-  const draw = () => {
-    const rawFrame = Math.floor(elapsed * clip.frameRate);
-    const frame = clip.name === 'idle_loop' ? rawFrame % clip.frames.length
-      : Math.min(rawFrame, clip.frames.length - 1);
-    if (frame === previousFrame) return;
-    const sprites = [...clip.frames[frame].elements]
-      .filter((element) => element.imageHash !== smallHash('bounding'))
-      .sort((a, b) => b.z - a.z).map((element) => {
-        for (const source of skin ? [skin, base] : [base]) {
-          const image = findImage(source.build, element.imageHash, element.imageIndex);
-          if (image) return { element, image, materials: source.materials };
-        }
-        // The shared bank also contains allegiance FX placeholders (blob_body,
-        // etc.). DST leaves these undrawn when the selected build has no art.
-        return undefined;
-      }).filter((sprite): sprite is ResolvedSprite => sprite !== undefined);
-    renderer.show(sprites);
-    previousFrame = frame;
-  };
   const update = (dt: number) => {
     if (inInventory) return;
+    sprite.update(dt);
     const desired = bernieGroundForm(world.getSanityPercent());
+    const previous = clip;
     // Finish busy states before responding to another sanity change, as the
     // Lua brains do. Re-read sanity on each update rather than queuing stale forms.
     if (clip.name === 'idle_loop' && desired !== form) {
@@ -117,36 +130,41 @@ export async function createBernieGroundSprite(assets: GroundItemAssets, world: 
         default: throw new Error(`Unexpected Bernie animation ${clip.name}`);
       }
     }
-    draw();
+    // A clip started during this update is shown at the time the stategraph has reached in it.
+    if (clip !== previous) {
+      const frame = Math.floor(elapsed * clip.frameRate);
+      if (frame > 0) sprite.setFrame(clip.name === 'idle_loop' ? frame % clip.frames.length : Math.min(frame, clip.frames.length - 1));
+      sprite.update(0);
+    }
   };
-  try { play(bernieGroundForm(world.getSanityPercent()), 'idle_loop'); draw(); } catch (error) {
-    visual.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
-    throw error;
-  }
   const onGround = () => {
     inInventory = false;
     play(bernieGroundForm(world.getSanityPercent()), 'idle_loop');
-    draw();
+    sprite.update(0);
   };
   const removeInventoryEvents = listenInventoryEvents(model, {
     ondropped: onGround,
     onload: onGround,
-    onputininventory: () => { inInventory = true; play(BERNIE_ITEM_ID, 'inactive'); draw(); },
+    onputininventory: () => { inInventory = true; play(BERNIE_ITEM_ID, 'inactive'); sprite.update(0); },
   });
+  Object.assign(model.userData, { prefab: form, animation: 'idle_loop' });
+  model.name = `GroundItem:${form}`;
   return {
     model, update,
     dispose() {
       removeInventoryEvents();
       inInventory = true;
-      model.removeFromParent();
-      visual.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
+      instance.remove();
+      display.dispose();
     },
   };
 }
 
 export function createBernieGroundFactory(context: GroundPrefabContext): GroundItemFactory {
+  const assets = new BernieAssets(context.animationBaseUrl);
   return {
     itemIds: [BERNIE_ITEM_ID],
-    create: (item) => createBernieGroundSprite(context.assets, context.bernieWorld, item.skinId),
+    create: (item) => createBernieGroundSprite(assets, context.bernieWorld, item.skinId),
+    dispose: () => assets.dispose(),
   };
 }

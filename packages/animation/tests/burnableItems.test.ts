@@ -29,7 +29,7 @@ function setup() {
 }
 
 it('burns dropped live grass/log stacks to prepared ash, notifies signals and immediately saves/reloads ash quantities and positions', async () => {
-  const { inventory, manager, scene } = setup();
+  const { inventory, manager } = setup();
   const restored = setup();
   try {
     expect((await executeDebugCommand('c_give("torch");c_give("cutgrass",3);c_give("log",7)', inventory)).ok).toBe(true);
@@ -38,7 +38,7 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
       expect(await manager.drop({ ...INVENTORY_ITEM_SPECS[entity.prefab], ...entity.snapshot(), entity }, position,
         () => inventory.extract(inventorySlotAddress(index), entity.components.stackable.count)!)).toBe(true);
     }
-    const models = manager.renderEntities.map(entry => entry.object);
+    const models = manager.reskinTargets.map(target => target.model);
     const notifications = models.map(model => {
       const notify = vi.fn(); model.userData.burntSignal.subscribe(notify); return notify;
     });
@@ -117,8 +117,8 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     const entity = manager.entities.get('spawn:log')!;
     entity.setFreshnessPercent(.6); entity.setWet(true);
     const before = entity.snapshot();
-    const model = manager.renderEntities.find(entry => entry.object.userData.itemId === 'log')!.object;
-    const rocks = manager.renderEntities.find(entry => entry.object.userData.itemId === 'rocks')!.object;
+    const model = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
+    const rocks = manager.reskinTargets.find(target => target.prefabId === 'rocks')!.model;
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
     expect(collectEquippedActions(torch, rocks.userData.actionEntity, true)).toEqual([]);
     performLightAction(torch, model.userData.actionEntity, torch); manager.update(5, new THREE.Quaternion());
@@ -131,7 +131,7 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     expect(model.parent).toBeNull(); expect(inventory.getEntity(inventorySlotAddress(1))).toBe(entity);
     expect(await manager.drop({ ...SAVE_CATALOG.items.log, ...entity.snapshot(), entity }, new THREE.Vector3(8, 0, -4),
       () => inventory.extract(inventorySlotAddress(1), 1)!)).toBe(true);
-    const dropped = manager.renderEntities.find(entry => entry.object.userData.itemId === 'log')!.object;
+    const dropped = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
     expect(dropped.userData.burningSignal).toBe(burningSignal); expect(dropped.userData.burntSignal).toBe(burntSignal);
     expect(entity.snapshot()).toEqual(before); expect(entity.transform.position.toArray()).toEqual([8, 0, -4]);
     performLightAction(torch, dropped.userData.actionEntity, torch); manager.update(15, new THREE.Quaternion());

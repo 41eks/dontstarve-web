@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FencePlacement, calcRotationEnum, fixUpFenceRotation, isNarrowRotation, placerRotation } from '../../prefab/src/fence';
 import { FENCE_SKIN_ARCHIVES, fenceWorldSkin } from '../../prefab/src/fenceSkins';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, createGroundItemSprite } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { createArchiveSprite } from '../src/archiveSprite';
@@ -175,6 +176,6 @@ it('draws the fence item and every item skin from the shared catalog, matching t
   try {
     const itemSkins = Object.keys(GROUND_ITEM_DEFINITIONS.fence_item.skinArchives);
     expect(itemSkins.map(skin => fenceWorldSkin('fence_item', skin))).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));
-    for (const skinId of [undefined, itemSkins[0], itemSkins.at(-1)]) (await createGroundItemSprite(assets, 'fence_item', skinId)).dispose();
+    for (const skinId of [undefined, itemSkins[0], itemSkins.at(-1)]) (await createGroundItemVisual(assets, 'fence_item', skinId)).dispose();
   } finally { assets.dispose(); }
 });

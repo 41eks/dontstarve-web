@@ -342,6 +342,7 @@ async function prepare(): Promise<MoonbaseResources> {
 
 export const MOONBASE_DEFINITION: AnimatedBuildingDefinition = {
   ...definitions.animatedBuildings.moonbase,
+    obstacleRadius: 1,
   prepare,
   oninit: ({ model, prepared, itemEntities, world, art }) => { model.userData.moonbase = new Moonbase(model, prepared as MoonbaseResources, itemEntities, world, art); },
   onrestore: ({ model }, components) => stateOf(model).restore(components),

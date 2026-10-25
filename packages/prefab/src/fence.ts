@@ -10,7 +10,7 @@ import { createEffect, createSignal, readonlySignal, watchSignal, getBoundWatchW
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
-import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import type { ReskinFxMessage, ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
@@ -259,11 +259,12 @@ export class FencePlacement {
                     fence.preparedSkins.add(replacement);
                     let used = false;
                     return {
-                        apply: () => {
+                        apply: (fx?: ReskinFxMessage) => {
                             if (used || !isValid() || fence.skinId.peek() !== previousSkin
                                 || !fence.preparedSkins.has(replacement)) return false;
                             fence.preparedSkin = replacement;
                             fence.skinId.set(skinId);
+                            fx?.play(fence.root.position, FENCE_ID);
                             used = true;
                             return true;
                         },

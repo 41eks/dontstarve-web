@@ -4,7 +4,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import { getRegisteredPhysicsBodies, PhysicsWorld } from './physicsWorld';
 import { COLLISION, type PhysicsJson, type PhysicsState } from './physicsState';
 
-/** Cannon collision group of the world's ground body; every other body keeps Cannon's default group. */
+/** Cannon collision group of the world's ground body; declared bodies use their source collision group. */
 export const GROUND_COLLISION_GROUP = 2;
 
 /** Keeps one entity's Cannon body in step with its declared `PhysicsState`. */
@@ -46,14 +46,9 @@ function contactRegisteredMaterials(world: CANNON.World, material: CANNON.Materi
   }
 }
 
-/**
- * A moving body's Cannon mask. Masks are otherwise recorded only: it collides with everything while it collides
- * with obstacles (MakeCharacterPhysics, ToggleOnPhysics), otherwise only with the ground (MakeGhostPhysics,
- * ToggleOffPhysics, RemovePhysicsColliders).
- */
-function movingMask(mask: number): number {
-  if (mask & (COLLISION.OBSTACLES | COLLISION.SMALLOBSTACLES)) return -1;
-  return mask & COLLISION.GROUND ? GROUND_COLLISION_GROUP : 0;
+/** Translate the source ground bit to the host plane's group; all other source groups retain their bits. */
+function collisionBits(bits: number): number {
+  return (bits & ~COLLISION.GROUND) | (bits & COLLISION.GROUND ? GROUND_COLLISION_GROUP : 0);
 }
 
 /**
@@ -123,7 +118,8 @@ export function bindPhysics(world: CANNON.World, physics: PhysicsState, ground: 
     }
     body.material = next.friction === undefined ? null : frictionMaterial(world, next.friction);
     body.collisionResponse = moving || (next.mask & COLLISION.CHARACTERS) !== 0;
-    body.collisionFilterMask = moving ? movingMask(next.mask) : -1;
+    body.collisionFilterGroup = collisionBits(next.group);
+    body.collisionFilterMask = collisionBits(next.mask);
     if (next.active && (moving || next.mask !== 0)) register(next.dontRemoveOnSleep);
     else unregister();
     if (registered !== undefined && body.material) contactRegisteredMaterials(world, body.material);

@@ -5,7 +5,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { GroundItemAssets, createGroundItemSprite } from '../../prefab/src/groundItems';
+import { GroundItemAssets } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { parseImageAtlasXml } from '../src/imageAtlas';
 
@@ -50,8 +51,8 @@ it('renders source ground and held art for the base sweeper and brush skin, then
   const animation = player.userData.animationController as WilsonAnimationController;
   const skins = ['reskin_tool_brush'];
   for (const skinId of [undefined, ...skins]) {
-    const ground = await createGroundItemSprite(assets, 'reskin_tool', skinId);
-    expect((ground.model.children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
+    const ground = await createGroundItemVisual(assets, 'reskin_tool', skinId);
+    expect((ground.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     await animation.setCarryItem('reskin_tool', skinId);
     for (const facing of ['down', 'side', 'up'] as const) {
       animation.setFacing(facing);

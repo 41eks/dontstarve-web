@@ -39,7 +39,7 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
       : model.userData.entityId !== 'rock-avocado:overripe' && model.userData.prefab === 'rock_avocado_bush' && !!model.userData.components.pickable.exportState().transplanted === planted);
     if (!model) throw new Error('No rock_avocado_bush target');
     scene.updateMatrixWorld(true);
-    const mesh = model.children[0].children[0], geometry = mesh.geometry;
+    const mesh = model.getObjectByProperty('isMesh', true), geometry = mesh.geometry;
     const positions = geometry.getAttribute('position'), indices = geometry.getIndex();
     let largest = -1, point = model.position.clone();
     for (let i = 0; i < geometry.drawRange.count; i += 3) {
@@ -56,7 +56,7 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   const count = (id: string) => page.evaluate(id => (window as any).rock_avocado_bushGame.inventory.count(id), id);
   const bar = page.locator('dst-inventory-bar .inventory-bar__items');
 
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_give("shovel");c_give("poop",2)');
   await expect(bar.locator('[data-item-id="shovel"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   const hand = page.locator('dst-inventory-bar .inventory-bar__equipment .inventory-slot').first();

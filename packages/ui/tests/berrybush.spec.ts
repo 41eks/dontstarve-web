@@ -33,7 +33,7 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
       : model.userData.prefab === 'berrybush' && !!model.userData.components.pickable.exportState().transplanted === planted);
     if (!model) throw new Error('No berrybush target');
     scene.updateMatrixWorld(true);
-    const mesh = model.children[0].children[0], geometry = mesh.geometry;
+    const mesh = model.getObjectByProperty('isMesh', true), geometry = mesh.geometry;
     const positions = geometry.getAttribute('position'), indices = geometry.getIndex();
     let largest = -1, point = model.position.clone();
     for (let i = 0; i < geometry.drawRange.count; i += 3) {
@@ -50,7 +50,7 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
   const count = (id: string) => page.evaluate(id => (window as any).berrybushGame.inventory.count(id), id);
   const bar = page.locator('dst-inventory-bar .inventory-bar__items');
 
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_spawn("berrybush");c_give("shovel");c_give("poop",2);c_give("reskin_tool")');
   await expect(bar.locator('[data-item-id="reskin_tool"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).berrybushGame.scene.children.filter((model: any) => model.userData.prefab === 'berrybush').length)).toBe(1);
@@ -63,6 +63,16 @@ test('reskins and digs berrybush, replants the skinned root and restores its fer
   await expect.poll(() => page.evaluate(() => (window as any).berrybushGame.scene.children.find((model: any) => model.userData.prefab === 'berrybush')?.userData.skinId)).toBe('berrybush_cawnival');
   wild = await screenPoint(false);
   await page.mouse.move(wild.x, wild.y);
+  console.log('BERRY_PICK', await page.evaluate(() => {
+    const { scene, view, player } = (window as any).berrybushGame;
+    const model = scene.children.find((model: any) => model.userData.prefab === 'berrybush');
+    const actions = view.mouseActions.getMouseActions();
+    return { point: [view.mouseActions.pointer.pointerClientX, view.mouseActions.pointer.pointerClientY],
+      target: view.mouseActions.targetModel?.userData.prefab, tags: model.userData.tags,
+      pick: model.userData.components.pickable.canBePicked, state: player.userData.animationController?.stategraph?.currentState,
+      actions: { left: actions.left?.action, right: actions.right?.action },
+      mesh: { matrix: model.getObjectByProperty('isMesh', true).matrixWorld.elements, children: model.children.map((child: any) => child.name) } };
+  }));
   await expect.poll(() => page.evaluate(() => (window as any).berrybushGame.view.mouseActions.getMouseActions().left?.action)).toBe('PICK');
   await page.mouse.click(wild.x, wild.y);
   await expect.poll(() => count('berries')).toBe(1);

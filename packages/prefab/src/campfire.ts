@@ -21,6 +21,7 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 
 export const CAMPFIRE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.campfire,
+    obstacleRadius: 0.2,
     skinInit: campfire_init_fn,
     onbuilt,
 };

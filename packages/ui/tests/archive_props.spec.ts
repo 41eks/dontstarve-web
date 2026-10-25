@@ -5,6 +5,19 @@ import { expect, test } from '@playwright/test';
 const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
   [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
 
+test('loaded moon statues batch full, med and low idles through mining and sleep/wake', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/tests/dst-lighting.html');
+  const result = await page.evaluate(async url => (await import(url)).checkArchiveStatueInstancing(),
+    `/@fs${fileURLToPath(new URL('./archive-statue-instancing-fixture.ts', import.meta.url))}`);
+  expect(result).toEqual({
+    full: { calls: 2, count: 8 }, med: { calls: 2, count: 8 }, low: { calls: 2, count: 8 },
+    asleep: { calls: 0, count: 0 }, restored: { calls: 2, count: 8 }, shared: true, preserved: true, remaining: 7,
+  });
+  expect(errors).toEqual([]);
+});
+
 test('spawns the static archive props and keeps their identities, positions and poses through c_save and reload', async ({ page }) => {
   test.setTimeout(150_000);
   const errors: string[] = [];

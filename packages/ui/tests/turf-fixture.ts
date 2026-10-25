@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { createTurfGround } from '../../prefab/src/turf';
 import { TILE_SIZE, snapToTileCenter } from '../../prefab/src/tile';
-import { GroundItemAssets, createGroundItemSprite } from '../../prefab/src/groundItems';
+import { GroundItemAssets, createResidentGroundItem } from '../../prefab/src/groundItems';
+import { renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 export async function checkTurfOcclusion() {
   const scene = new THREE.Scene();
@@ -34,9 +35,10 @@ export async function checkTurfOcclusion() {
   let comparisons = 0;
   try {
     for (const id of ['meatballs', 'log', 'torch', 'wall_stone_item']) {
-      const sprite = await createGroundItemSprite(assets, id);
+      const { visual: sprite } = await createResidentGroundItem({ assets }, { itemId: id });
       sprite.model.position.copy(feet);
       scene.add(sprite.model);
+      assets.instancedSprites.flush(renderer);
       for (const pitch of [30, 60]) for (const heading of [0, 45, 90]) {
         const p = THREE.MathUtils.degToRad(pitch), h = THREE.MathUtils.degToRad(heading);
         camera.position.copy(feet).add(new THREE.Vector3(
@@ -45,10 +47,11 @@ export async function checkTurfOcclusion() {
         camera.lookAt(feet);
         sprite.model.quaternion.copy(camera.quaternion);
         ground.visible = overlay.visible = false;
-        renderer.render(scene, camera);
+        renderSceneWithPasses(renderer, scene, camera);
         renderer.readRenderTargetPixels(target, 0, 0, 256, 256, reference);
+        if (!reference.some((value, i) => i % 4 < 2 && value > 10)) failures.push(`${id}:missing art`);
         ground.visible = overlay.visible = true;
-        renderer.render(scene, camera);
+        renderSceneWithPasses(renderer, scene, camera);
         renderer.readRenderTargetPixels(target, 0, 0, 256, 256, actual);
         comparisons++;
         if (actual.some((value, i) => value !== reference[i])) failures.push(`${id}:${pitch}:${heading}`);
@@ -56,6 +59,7 @@ export async function checkTurfOcclusion() {
       sprite.dispose();
     }
   } finally {
+    assets.dispose();
     target.dispose();
     renderer.dispose();
   }

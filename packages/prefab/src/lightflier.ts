@@ -21,7 +21,8 @@ import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import { Hauntable } from '../../componets/src/hauntable';
 import { ErodeAway } from '../../componets/src/erodeaway';
-import { createArchiveEntity } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import { LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
@@ -30,7 +31,7 @@ import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import type { LightFlierFlower } from './lightflier_flower';
-import { WORLD_SCALE } from './standardcomponents';
+import { WORLD_SCALE, MakeGhostPhysics } from './standardcomponents';
 import { setPrefabLocalLight, setPrefabLightOverride } from './localLight';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
@@ -171,6 +172,23 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   private asleepHome?: ComponentTimer;
   private disposed = false;
   private speed = 0;
+  private physicsInstance?: PrefabInstance<ArchiveSpriteCommands>;
+  /** The persistent creature drives the instance's physics; replacing its display releases this binding. */
+  bindPhysics(instance: PrefabInstance<ArchiveSpriteCommands>, world?: import('cannon-es').World): () => void {
+    this.physicsInstance = instance;
+    MakeGhostPhysics(instance, 1, .5);
+    instance.physics.SetActive(this.active.peek());
+    if (world) instance.bindPhysics(world, () => this.getPosition());
+    return () => { if (this.physicsInstance === instance) this.physicsInstance = undefined; };
+  }
+  private syncMotor(): void {
+    const body = this.physicsInstance?.physicsBody;
+    if (!body) return;
+    const angle = this.heading * Math.PI / 180;
+    body.velocity.x = Math.cos(angle) * this.speed;
+    body.velocity.z = -Math.sin(angle) * this.speed;
+  }
+
   private heading = 0;
   private loop?: SoundHandle;
   private readonly sounds = new Set<SoundHandle>();
@@ -225,10 +243,10 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   }
   RemoveEventCallback(_name: string, fn: (data?: unknown) => void): void { this.eventStops.get(fn)?.(); this.eventStops.delete(fn); }
   PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
-  setRotation(degrees: number): void { this.heading = degrees; }
+  setRotation(degrees: number): void { this.heading = degrees; this.syncMotor(); }
   getAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }
-  setMotorSpeed(speed: number): void { this.speed = speed; }
-  stopPhysics(): void { this.speed = 0; }
+  setMotorSpeed(speed: number): void { this.speed = speed; this.syncMotor(); }
+  stopPhysics(): void { this.setMotorSpeed(0); }
   bindWorld(habitat: LightFlierHabitat, lengths: ReadonlyMap<string, number>): void {
     if (this.habitat) return;
     this.habitat = habitat; habitat.flies.add(this);
@@ -319,6 +337,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   private setActive(active: boolean): void {
     if (this.active.peek() === active) return;
     this.activeState.set(active);
+    this.physicsInstance?.physics.SetActive(active);
     if (!active) {
       this.components.formationfollower.LeaveFormation(); this.components.formationfollower.StopUpdating(); this.targetSearch?.stop(); this.brain?.Pause(); this.enableBuzz(false);
     } else if (this.isValid()) {
@@ -333,12 +352,14 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     this.erosion?.start(2);
   }
   private onPutInInventory(): void {
+    this.physicsInstance?.physics.SetActive(false);
     this.home?.components.childspawner.OnChildKilled(this); this.setHome();
     this.targetSearch?.stop(); this.components.formationfollower.LeaveFormation(); this.components.formationfollower.StopUpdating();
     this.brain?.Stop(); this.locomotor?.Stop(); this.clearBufferedAction(); this.sg?.sg.pause(); this.animstate?.stop();
     this.components.sleeper?.StopTesting(); this.enableBuzz(false); this.entity.components.perishable.StartPerishing();
   }
   private onDropped(): void {
+    this.physicsInstance?.physics.Teleport(); this.physicsInstance?.physics.SetActive(this.active.peek());
     this.entity.components.perishable.StopPerishing(); this.entity.components.workable?.SetWorkLeft(1);
     this.components.knownlocations.RememberLocation('home', this.getPosition());
     this.components.formationfollower.StartUpdating(); this.sg?.sg.resume(); this.sg?.goToState('idle'); this.brain?.Start();
@@ -348,6 +369,8 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   update(dt: number): void {
     if (!this.isValid()) return;
     this.tracker?.sync(); if (!this.active.peek()) return;
+    const body = this.physicsInstance?.physicsBody;
+    if (body) this.getPosition().set(body.position.x, 0, body.position.z);
     const step = Math.max(0, Math.min(dt, this.habitat?.services.maxMovementStep ?? .1));
     if (!this.isDead()) {
       this.brain.tick(this.getTime());
@@ -364,7 +387,8 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
     this.erosion?.update();
     if (!this.sg.hasStateTag('busy') && this.speed > 0) {
       const angle = this.heading * Math.PI / 180;
-      this.getPosition().add(new Vector3(Math.cos(angle) * this.speed * step, 0, -Math.sin(angle) * this.speed * step));
+      if (body) this.syncMotor();
+      else this.getPosition().add(new Vector3(Math.cos(angle) * this.speed * step, 0, -Math.sin(angle) * this.speed * step));
     }
   }
   OnSave(): NonNullable<InventoryStack['lightflier']> {
@@ -438,7 +462,8 @@ export function createLightFlierGroundFactory(context: GroundPrefabContext): Gro
           createEffect(() => { active.set(awake.get()); instance.setActive(awake.get()); if (!awake.get()) setPrefabLocalLight(model, null); });
           createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
           // The item entity owns the lightflier's tags.
-          Object.assign(model.userData, { lightflier: fly, physicsRadius: .5 * WORLD_SCALE });
+          cleanups.push(fly.bindPhysics(instance, context.physics));
+          model.userData.lightflier = fly;
           setPrefabLightOverride(model, 1);
         },
         update: dt => {

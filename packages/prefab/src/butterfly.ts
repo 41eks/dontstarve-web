@@ -29,6 +29,7 @@ import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTE
 import { FindEntities, type FoundEntity } from './actionEntity';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
+import { createPrefabEntity } from './prefabInstance';
 
 export const BUTTERFLY_ID = 'butterfly';
 export const MOONBUTTERFLY_ID = 'moonbutterfly';
@@ -508,24 +509,33 @@ export class ButterflyAssets {
     if (this.disposed) throw new Error('Insect assets have been disposed');
     const factory = await this.factory(prefab);
     if (this.disposed) throw new Error('Insect assets have been disposed');
-    const model = factory.create({ initialAnimation: 'idle_flight_loop', name: `GroundItem:${prefab}` });
+    const name = `GroundItem:${prefab}`;
+    const { instance, display } = createPrefabEntity(prefab, {
+      create: initialAnimation => factory.create({ initialAnimation, name }), release: sprite => factory.disposeSprite(sprite),
+    }, { name: 'idle_flight_loop' }, name);
+    const model = display.model;
     let creature: ButterflyCreature | undefined;
     const removeInventoryEvents = listenInventoryEvents(model, {
       ondropped: () => creature?.onDropped(),
       onputininventory: () => creature?.onPutInInventory(),
     });
+    // The creature's tags are written to the instance, which owns the entity's tags.
+    const syncTags = () => {
+      const tags = creature!.dynamicTags;
+      for (const tag of instance.listTags()) if (!tags.has(tag)) instance.removeTag(tag);
+      for (const tag of tags) instance.addTag(tag);
+    };
     return {
       model, get controller() { return creature; },
       bindTransform(transform: ItemEntity['transform']) {
-        creature = new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], transform,
-          model.userData.animationController as SpriteController, world, getOthers, undefined, dropLoot);
-        creature.tagsChanged = () => { model.userData.tags = [...creature!.dynamicTags]; };
-        model.userData.tags = [...creature.dynamicTags];
+        creature = new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], transform, instance.sprite, world, getOthers, undefined, dropLoot);
+        creature.tagsChanged = syncTags;
+        syncTags();
         Object.assign(model.userData, { itemId: prefab, prefab, butterflyController: creature });
       },
       update: (dt: number) => creature?.update(dt),
       isRemoved: () => creature?.removed ?? false,
-      dispose() { removeInventoryEvents(); creature?.dispose(); factory.disposeSprite(model); },
+      dispose() { removeInventoryEvents(); creature?.dispose(); instance.remove(); display.dispose(); },
     };
   }
 }

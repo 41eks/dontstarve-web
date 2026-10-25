@@ -21,6 +21,7 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 
 export const PIG_HOUSE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.pighouse,
+    obstacleRadius: 1,
     hammerWorkLeft: 4, hammerMaterial: 'wood',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_large', name: 'collapse' },
     skinInit: pighouse_init_fn,

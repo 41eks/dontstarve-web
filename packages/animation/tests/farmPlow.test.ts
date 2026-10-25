@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FarmPlowPlacement, FARM_PLOW_DRILLING_DURATION } from '../../prefab/src/farm_plow';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
-import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
 
@@ -42,12 +43,12 @@ function item(remainingUses?: number) {
 it('loads original packed ground art and the actual inventory atlas', async () => {
   const assets = new GroundItemAssets();
   try {
-    const item = await createGroundItemSprite(assets, 'farm_plow_item');
+    const item = await createGroundItemVisual(assets, 'farm_plow_item');
     expect(GROUND_ITEM_DEFINITIONS.farm_plow_item).toMatchObject({
       atlas: 'images/inventoryimages2.xml', animation: 'idle_packed', bank: 'farm_plow', skinArchives: {},
     });
     expect(item.model.children[0].children).toHaveLength(1);
-    expect((item.model.children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
+    expect((item.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     item.dispose();
   } finally { assets.dispose(); }
 });

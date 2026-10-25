@@ -42,6 +42,8 @@ export interface SpriteJson {
   readonly mirrored?: boolean;
   readonly colour?: readonly number[];
   readonly opacity?: number;
+  /** AnimState:SetLightOverride: minimum material light, without emitting light. */
+  readonly lightOverride?: number;
   /** Held out of the world, such as an item in a pack. */
   readonly paused?: boolean;
   readonly visible?: boolean;
@@ -84,11 +86,14 @@ export interface ArchiveSpriteCommands {
   setFacing(facing: number): void;
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
+  setLightOverride(value: number): void;
   setPaused(paused: boolean): void;
   setVisible(visible: boolean): void;
   setErosion(amount: number): void;
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void;
   setSymbolHidden(symbol: string, hidden: boolean): void;
+  hideLayer(layer: string): void;
+  showLayer(layer: string): void;
   setBuildArchive(archive: string): void;
   setGround(renderOrder: number, flat?: boolean): void;
   setMeshOrder(order: number): void;
@@ -198,6 +203,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setFacing(facing: number, mirrored?: boolean): void { this.write({ facing, mirrored }); }
   setColour(colour: readonly number[]): void { this.write({ colour }); }
   setOpacity(opacity: number): void { this.write({ opacity }); }
+  setLightOverride(lightOverride: number): void { this.write({ lightOverride }); }
   setPaused(paused: boolean): void { this.write({ paused }); }
   setVisible(visible: boolean): void { this.write({ visible }); }
   setErosion(erosion: number): void { this.write({ erosion }); }

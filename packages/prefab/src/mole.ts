@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { createEffect, WorldContentKey, watchSignal, type ReadonlySignal, type WorldContentContext } from '@dontstarve-web/signals';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
-import { ArchiveSpriteAssets, createArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { Eater } from '../../componets/src/eater';
 import { Sleeper } from '../../componets/src/sleeper';
@@ -21,7 +21,10 @@ import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { Molehill } from './molehill';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
-import { WORLD_SCALE } from './standardcomponents';
+import { WORLD_SCALE, MakeCharacterPhysics, CHARACTER_COLLISION_MASK } from './standardcomponents';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { COLLISION } from '../../componets/src/physicsState';
 
 export const MOLE_ID = 'mole' as const;
 export const MOLE_PERISH_TIME = 960;
@@ -72,6 +75,24 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   private disposed = false;
   private dropPending = false;
   private speed = 0;
+  private physicsInstance?: PrefabInstance<ArchiveSpriteCommands>;
+  /** The persistent creature drives the instance's physics; replacing its display releases this binding. */
+  bindPhysics(instance: PrefabInstance<ArchiveSpriteCommands>, world?: import('cannon-es').World): () => void {
+    this.physicsInstance = instance;
+    MakeCharacterPhysics(instance, 99999, .5);
+    if (this.isunder) this.setUnder(); else this.setAbove();
+    instance.physics.SetActive(this.isValid());
+    if (world) instance.bindPhysics(world, () => this.getPosition());
+    return () => { if (this.physicsInstance === instance) this.physicsInstance = undefined; };
+  }
+  private syncMotor(): void {
+    const body = this.physicsInstance?.physicsBody;
+    if (!body) return;
+    const angle = this.heading * Math.PI / 180;
+    body.velocity.x = Math.cos(angle) * this.speed;
+    body.velocity.z = -Math.sin(angle) * this.speed;
+  }
+
   private heading = 0;
   private readonly sounds = new Map<string, SoundHandle>();
   private readonly oneShots = new Set<SoundHandle>();
@@ -118,11 +139,19 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   }
   isNear(other: { getPosition(): unknown }, distance: number): boolean { return this.getPosition().distanceToSquared(other.getPosition() as Vector3) <= distance ** 2; }
   getAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }
-  setRotation(degrees: number): void { this.heading = degrees; }
-  setMotorSpeed(speed: number): void { this.speed = speed; }
-  stopPhysics(): void { this.speed = 0; }
-  setUnder(): void { this.isunder = true; this.entity.addTag('notdrawable'); }
-  setAbove(): void { this.isunder = false; this.entity.removeTag('notdrawable'); }
+  setRotation(degrees: number): void { this.heading = degrees; this.syncMotor(); }
+  setMotorSpeed(speed: number): void { this.speed = speed; this.syncMotor(); }
+  stopPhysics(): void { this.setMotorSpeed(0); }
+  setUnder(): void {
+    this.isunder = true; this.entity.addTag('notdrawable');
+    this.physicsInstance?.physics.SetCollisionGroup(COLLISION.CHARACTERS);
+    this.physicsInstance?.physics.SetCollisionMask(COLLISION.WORLD, COLLISION.OBSTACLES);
+  }
+  setAbove(): void {
+    this.isunder = false; this.entity.removeTag('notdrawable');
+    this.physicsInstance?.physics.SetCollisionGroup(COLLISION.CHARACTERS);
+    this.physicsInstance?.physics.SetCollisionMask(...CHARACTER_COLLISION_MASK);
+  }
   setPickup(enabled: boolean): void { this.entity.components.inventoryitem.canbepickedup = enabled; }
   isDead(): boolean { return this.components.health.IsDead(); }
   inventoryFull(): boolean { return this.components.inventory?.IsFull() ?? false; }
@@ -213,11 +242,12 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     this.components.inventory?.TransferInventory(home); this.sg.goToState('idle');
     return home.components.spawner.GoHome(this);
   }
-  enterHome(): void { this.occupied = true; this.entity.addTag('INLIMBO'); this.brain.Stop(); this.locomotor.Stop(); this.animstate.stop(); this.sg.pause(); this.components.sleeper?.StopTesting(); this.stopSounds(); this.components.homeseeker.SetHome(); }
+  enterHome(): void { this.physicsInstance?.physics.SetActive(false); this.occupied = true; this.entity.addTag('INLIMBO'); this.brain.Stop(); this.locomotor.Stop(); this.animstate.stop(); this.sg.pause(); this.components.sleeper?.StopTesting(); this.stopSounds(); this.components.homeseeker.SetHome(); }
   leaveHome(): void {
     this.occupied = false; this.entity.removeTag('INLIMBO'); const home = this.home!;
     const angle = this.random() * Math.PI * 2;
     this.getPosition().copy(home.getPosition()).add(new Vector3(Math.cos(angle) * WORLD_SCALE, 0, -Math.sin(angle) * WORLD_SCALE));
+    this.physicsInstance?.physics.Teleport(); this.physicsInstance?.physics.SetActive(true);
     this.sg.resume(); this.sg.goToState('idle'); this.brain.Start(); this.components.sleeper?.StartTesting();
   }
   findHomePosition(): Vector3 | undefined {
@@ -242,11 +272,13 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   }
   onHomeDugUp(): void { this.needs_home_time = this.getTime(); this.dropInventory(); if (!this.isDead()) this.sg.goToState('stunned'); }
   private onPickup(): void {
+    this.physicsInstance?.physics.SetActive(false);
     this.entity.PushEvent('ontrapped', undefined); this.components.homeseeker.SetHome(); this.components.sleeper?.StopTesting(); this.brain?.Stop(); this.locomotor?.Stop(); this.clearBufferedAction();
     this.sg?.goToState('idle'); this.sg?.pause(); this.animstate?.stop(); this.stopStunnedSounds(); this.stopSounds();
     this.entity.components.perishable.StartPerishing();
   }
   private onDropped(): void {
+    this.physicsInstance?.physics.Teleport(); this.physicsInstance?.physics.SetActive(true);
     this.dropPending = true;
     this.entity.components.perishable.StopPerishing(); this.stopSounds();
     if (this.sg) { this.dropPending = false; this.sg.resume(); this.sg.goToState('stunned', true); this.brain.Start(); this.components.sleeper?.StartTesting(); }
@@ -254,11 +286,15 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   }
   update(dt: number): void {
     if (!this.isValid() || this.isDead()) return;
+    const body = this.physicsInstance?.physicsBody;
+    if (body) this.getPosition().set(body.position.x, 0, body.position.z);
     this.brain.tick(this.getTime()); if (this.locomotor.isUpdating) this.locomotor.update(dt); this.sg.update(dt);
     if (this.speed > 0) {
       const angle = this.heading * Math.PI / 180;
       const p = this.getPosition().clone().add(new Vector3(Math.cos(angle) * this.speed * dt, 0, -Math.sin(angle) * this.speed * dt));
-      if (this.worldServices!.isWalkable(p)) this.getPosition().copy(p); else this.locomotor.Stop();
+      if (this.worldServices!.isWalkable(p)) {
+        if (body) this.syncMotor(); else this.getPosition().copy(p);
+      } else this.locomotor.Stop();
     }
     for (const sound of this.oneShots) if (!sound.isPlaying()) this.oneShots.delete(sound);
   }
@@ -297,30 +333,41 @@ export function configureMoleEntity(entity: ItemEntity): void {
 }
 export function createMoleGroundFactory(context: GroundPrefabContext): GroundItemFactory {
   const assets = new ArchiveSpriteAssets('mole');
+  const definition = { animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole', animation: 'idle_under', loop: true };
+  const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(assets, { ...definition, animation: clip.name, loop: clip.loop }, { name: MOLE_ID });
   return {
     itemIds: [MOLE_ID], configureEntity: configureMoleEntity,
     create: async () => {
       if (!context.moleWorld) throw new Error('Mole world is unavailable');
       await PreloadSounds(...MOLE_SOUNDS);
-      const [sprite, bank] = await Promise.all([
-        createArchiveSprite(assets, { animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole', animation: 'idle_under', loop: true }),
-        assets.loadAnimation('mole_basic.zip'), context.moleWorld.prepare(),
-      ]);
+      const [initial, bank] = await Promise.all([create({ name: definition.animation, loop: true }), assets.loadAnimation('mole_basic.zip'), context.moleWorld.prepare()]);
+      const { instance, display } = createArchiveEntity(MOLE_ID, { create, initial }, { name: definition.animation }, MOLE_ID);
+      const sprite = instance.sprite, model = display.model;
       let mole: Mole | undefined;
+      // Visibility and facing change the sprite json only when their value does.
+      let visible: boolean | undefined, facing: number | undefined;
       const cleanups: (() => void)[] = [];
       const heading = watchSignal(context.moleWorld.cameraHeading, stop => cleanups.push(stop));
       return {
-        model: sprite.model,
+        model,
         bindEntity: entity => {
           configureMoleEntity(entity); mole = entity.getComponent<Mole>('mole')!;
           mole.bindWorld(context.moleWorld!, new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate])));
           const animation = watchSignal(mole.animstate.animation, stop => cleanups.push(stop));
           createEffect(() => { const { name, loop } = animation.get(); if (loop) sprite.start(name); else sprite.playOnce(name); });
-          sprite.model.userData.mole = mole; sprite.model.userData.physicsRadius = .5 * WORLD_SCALE;
+          cleanups.push(mole.bindPhysics(instance, context.physics));
+          model.userData.mole = mole;
         },
-        update: dt => { mole?.update(dt); sprite.model.visible = mole?.isValid() ?? true; sprite.setFacing(fourFacingFromRotation(mole?.facing ?? 0, heading.peek())); sprite.update(dt); },
+        update: dt => {
+          mole?.update(dt);
+          const nextVisible = mole?.isValid() ?? true;
+          if (nextVisible !== visible) sprite.setVisible(visible = nextVisible);
+          const nextFacing = fourFacingFromRotation(mole?.facing ?? 0, heading.peek());
+          if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
+          sprite.update(dt);
+        },
         isClickable: () => mole?.isValid() ?? true,
-        dispose: () => { cleanups.splice(0).forEach(stop => stop()); sprite.dispose(); },
+        dispose: () => { cleanups.splice(0).forEach(stop => stop()); instance.remove(); display.dispose(); },
       };
     }, dispose: () => assets.dispose(),
   };

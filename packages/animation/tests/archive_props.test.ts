@@ -61,6 +61,7 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     const [minimap] = s.props.miniMapEntities;
     expect(minimap.icon).toBe('archive_moon_statue3.png');
     const model = s.props.mineTargets[0].model;
+    expect(model.userData.instance.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_full_3', loop: false });
     expect(model.userData.tags).toEqual(expect.arrayContaining(['structure', 'statue', 'dustable']));
     expect(s.physics.bodies).toHaveLength(1);
 
@@ -70,6 +71,8 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     await restored.props.spawn('archive_moon_statue', new THREE.Vector3(...record.transform.position),
       { id: record.id, transform: record.transform, components: { archiveProp: record.components.archiveProp } });
     expect(restored.props.exportRecords()).toEqual(s.props.exportRecords());
+    expect(restored.props.mineTargets[0].model.userData.instance.sprite.sprite.peek().clip)
+      .toMatchObject({ name: 'idle_full_3', loop: true });
 
     // MARBLEPILLAR_MINE = 10 works; the final one drops the table (the 5% nugget misses at .5), collapses and removes the statue.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });

@@ -21,7 +21,7 @@ import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents
 import { newEntityId, saveGroundPosition, type PlacementSaveRecord, type PlacedEntitySaveRecord } from './saveRecord';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import { nextReskin } from './reskin_tool';
-import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { isPlayerNearby } from './playerProximity';
 import { createBuildingContainer, isStorageBuildingId } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
@@ -36,6 +36,7 @@ import { Propagator } from '../../componets/src/propagator';
 import { setPrefabLocalLight } from './localLight';
 import type { TradeItem, Trader } from '../../componets/src/trader';
 import { TILE_SIZE } from './tile';
+import { MakeObstaclePhysics } from './standardcomponents';
 
 const lootRecipes = new Map<string, LootRecipe>([
     ...recipeData.recipes
@@ -49,6 +50,8 @@ const lootRecipes = new Map<string, LootRecipe>([
 export const buildingRecipeLoot = (buildId: string) => GetRecipeLoot(lootRecipes.get(buildId), lootRecipes);
 
 export interface AnimatedBuildingDefinition {
+    /** Source MakeObstaclePhysics radius in DST units; previews never bind a body. */
+    obstacleRadius?: number;
     archive: string;
     /** Build zip when `archive` holds only the bank. */
     buildArchive?: string;
@@ -343,6 +346,9 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private initializeComponents(building: AnimatedBuildingInstance<BuildId>): void {
         const { model, buildId } = building;
         model.userData.getGroundPosition = () => model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0));
+        const obstacleRadius = this.definitions[buildId].obstacleRadius;
+        if (obstacleRadius !== undefined) MakeObstaclePhysics(building.instance, obstacleRadius);
+        if (this.worldContext.physics) building.instance.bindPhysics(this.worldContext.physics, model.userData.getGroundPosition);
         model.userData.dropLoot = (items: readonly { itemId: string; count: number }[]) => this.dropLoot?.(items, model.userData.getGroundPosition());
         this.bindSkin(building);
         model.userData.burntSignal = readonlySignal(building.burnt);
@@ -576,10 +582,11 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                         building.preparedSkins.set(skinId, replacement);
                         let used = false;
                         return {
-                            apply: () => {
+                            apply: (fx?: ReskinFxMessage) => {
                                 if (used || !isValid() || building.skinId.peek() !== previousSkin
                                     || building.preparedSkins.get(skinId) !== replacement) return false;
                                 building.skinId.set(skinId);
+                                fx?.play(building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0)), building.buildId);
                                 used = true;
                                 return true;
                             },

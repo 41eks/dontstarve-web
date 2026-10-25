@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { COLLISION } from '../../componets/src/physicsState';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Heater } from '../../componets/src/heater';
@@ -69,6 +70,7 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     const body = prefabInstance(model)!.physicsBody!;
     const moving = new CANNON.Body({ mass: 5, fixedRotation: true, shape: new CANNON.Sphere(4.5),
       position: new CANNON.Vec3(12 + 18, 4.5, -8) });
+    moving.collisionFilterGroup = COLLISION.CHARACTERS;
     physics.addBody(moving);
     for (let frame = 0; frame < 180; frame++) { moving.velocity.set(-8, 0, 0); physics.step(1 / 60); }
     expect(moving.position.x - model.position.x).toBeGreaterThan(LAVA_POND_RADIUS + 4.5 - .2);

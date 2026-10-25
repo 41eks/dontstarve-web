@@ -21,6 +21,7 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 
 export const NIGHT_LIGHT_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.nightlight,
+    obstacleRadius: 0.1,
     hammerWorkLeft: 4, hammerMaterial: 'stone',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     skinInit: nightlight_init_fn,

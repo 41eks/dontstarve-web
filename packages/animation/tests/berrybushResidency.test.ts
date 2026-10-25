@@ -12,7 +12,7 @@ vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
-it('takes a resident factory plant out of the scene outside the tickingarea and restores it with its identity and skin', async () => {
+it('takes an instanced plant out of the scene outside the tickingarea and restores it with its identity and skin', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
@@ -21,9 +21,9 @@ it('takes a resident factory plant out of the scene outside the tickingarea and 
   const ground = new GroundItemManager(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const bushes = new BerrybushManager(scene, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()),
-    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) } as never);
+    prepareSpawn: (definition, fling) => ground.prepareSpawn(definition, fling) });
   try {
-    await bushes.spawn(new THREE.Vector3(4, 0, 6), { id: 'bush:resident', transform: { position: [4, 0, 6], rotationY: 0 }, components: {} } as never);
+    await bushes.spawn(new THREE.Vector3(4, 0, 6), { id: 'bush:resident', transform: { position: [4, 0, 6], rotationY: 0 }, components: {} });
     await tick();
     const model = bushes.digTargets[0].model;
     expect(model.parent).toBe(scene);

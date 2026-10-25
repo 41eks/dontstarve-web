@@ -5,7 +5,8 @@ import * as CANNON from 'cannon-es';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadBugNetEquipment } from '../../prefab/src/bugnet';
 import { BugNetCaptureController, type ButterflyCaptureTarget } from '../../stategraphs/src/bugnet';
-import { createGroundItemSprite, GroundItemAssets } from '../../prefab/src/groundItems';
+import { GroundItemAssets } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
@@ -95,7 +96,7 @@ describe('original bugnet assets and Wilson action', () => {
     expect(inventoryItemMaxStack('bugnet')).toBe(1);
     expect(inventoryItemEquipmentKind('bugnet')).toBe('hand');
     const assets = new GroundItemAssets();
-    const ground = await createGroundItemSprite(assets, 'bugnet');
+    const ground = await createGroundItemVisual(assets, 'bugnet');
     const meshes: THREE.Mesh[] = [];
     ground.model.traverse(object => { if (object instanceof THREE.Mesh) meshes.push(object); });
     expect(meshes).toHaveLength(1);

@@ -10,7 +10,7 @@ import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { newEntityId } from './saveRecord';
 import { nextReskin } from './reskin_tool';
-import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { TILE_SIZE } from './tile';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 
@@ -146,7 +146,7 @@ export class WormholeManager {
           const release = () => { replacement.instance.remove(); replacement.display.dispose(); };
           let used = false;
           return {
-            apply: () => {
+            apply: (fx?: ReskinFxMessage) => {
               if (used || !isValid() || entity.skinId !== previousSkin) return false;
               entity.display.adopt(replacement.display);
               entity.skinId = skinId;
@@ -154,6 +154,7 @@ export class WormholeManager {
               else model.userData.skinId = skinId;
               release();
               used = true;
+              fx?.play(model.position, WORMHOLE_ID);
               return true;
             },
             dispose: () => { if (!used) { release(); used = true; } },

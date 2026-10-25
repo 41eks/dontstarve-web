@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createEffect, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
+import { setLightOverride } from '@dontstarve-web/animation/lightOverride';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
 import { ArchiveEngine, type ArchiveSpriteSource, type DisplayEngine } from './displayEngine';
@@ -38,6 +39,7 @@ export class PrefabDisplay {
   private readonly engine: DisplayEngine;
   private readonly state: SpriteState;
   private readonly json: ReturnType<typeof watchSignal<SpriteJson>>;
+  private readonly status: ReturnType<typeof watchSignal<PrefabStatus>>;
   private readonly cleanups: (() => void)[] = [];
   private fx!: FxAttachments;
   private readonly follower = new AnimationFollower(name => {
@@ -53,7 +55,7 @@ export class PrefabDisplay {
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: number; transient?: SpriteJson['transient'];
-    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; appearance: ReadonlyMap<string, AppearanceJson> };
+    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; lightOverride?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
     const { archive, sprite: state } = options;
@@ -96,7 +98,7 @@ export class PrefabDisplay {
       update: dt => { sync(); controller.update(dt); this.fx.update(dt); },
     });
     this.model.addEventListener('added', this.onAdded);
-    const status = watchSignal(options.status, stop => this.cleanups.push(stop));
+    const status = this.status = watchSignal(options.status, stop => this.cleanups.push(stop));
     const json = this.json = watchSignal(state.sprite, stop => this.cleanups.push(stop));
     const art = watchSignal(this.engine.art, stop => this.cleanups.push(stop));
     this.cleanups.push(createEffect(() => this.applyStatus(status.get())));
@@ -116,6 +118,19 @@ export class PrefabDisplay {
   }
 
   get model(): THREE.Group { return this.engine.model; }
+
+  get isRemoved(): boolean { return this.disposed || this.status.peek() === 'removed'; }
+
+  /** Advance a display owned by a scene collection, including standalone camera-facing FX. */
+  update(dt: number, cameraRotation: THREE.Quaternion): void {
+    if (this.disposed) return;
+    this.applyStatus(this.status.peek());
+    if (this.isRemoved || this.asleep) return;
+    if (this.json.peek().billboard) this.faceCamera(cameraRotation);
+    this.state.update(dt);
+    // Animation completion can remove the entity during this update.
+    this.applyStatus(this.status.peek());
+  }
 
   /** Render entries of the effects that are shown now, for the owner's registry to sort with it. */
   get fxRenderEntries(): FxRenderEntry[] { return this.fx.entries(); }
@@ -183,6 +198,10 @@ export class PrefabDisplay {
     }
     if (json.colour !== applied.colour) { applied.colour = json.colour; if (json.colour) controller.setColour(json.colour); }
     if (json.opacity !== applied.opacity) { applied.opacity = json.opacity; if (json.opacity !== undefined) controller.setOpacity(json.opacity); }
+    if (json.lightOverride !== applied.lightOverride) {
+      applied.lightOverride = json.lightOverride;
+      if (json.lightOverride !== undefined) setLightOverride(this.model, json.lightOverride);
+    }
     if (json.paused !== applied.paused) { applied.paused = json.paused; if (json.paused !== undefined) controller.setPaused?.(json.paused); }
     if (json.erosion !== applied.erosion) { applied.erosion = json.erosion; if (json.erosion !== undefined) controller.setErosion?.(json.erosion); }
     if (json.ground !== applied.ground) { applied.ground = json.ground; if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat); }

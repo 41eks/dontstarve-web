@@ -124,7 +124,7 @@ class Tumbleweed {
       canBePicked: true, quickpick: false, product: undefined,
       pick: () => this.pickup(),
     };
-    Object.assign(this.model.userData, { prefab: TUMBLEWEED_ID, physicsRadius: WORLD_SCALE, tumbleweed: this });
+    Object.assign(this.model.userData, { prefab: TUMBLEWEED_ID, tumbleweed: this });
     // inst:ListenForEvent("startlongaction", OnLongAction) — PICK's long action pushes it on the target.
     const onLongAction = () => this.onLongAction();
     this.model.addEventListener('startlongaction' as never, onLongAction);

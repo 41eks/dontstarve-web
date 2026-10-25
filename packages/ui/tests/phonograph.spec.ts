@@ -6,7 +6,7 @@ const url = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url
 test('cursor records, machine switches and pickup use real input and release decoded music sources', async ({ page }) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('pageerror', (error) => { console.error(error.stack); errors.push(error.message); });
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   await page.addInitScript(() => {
     const sources: any[] = [];
@@ -21,9 +21,14 @@ test('cursor records, machine switches and pickup use real input and release dec
       return node;
     };
   });
-  await page.goto('/tests/dst-lighting.html');
+  await page.route('**/saves/initial-world.json', async route => {
+    const response = await route.fetch(), save = await response.json();
+    save.world.entities = {};
+    await route.fulfill({ response, json: save });
+  });
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   await page.evaluate(async (paths) => {
-    const main = await import(paths.main);
+    const main = await import(paths.main); await main.gameReady;
     // The initial save equips a reskin tool, whose right click takes precedence over machines.
     const hand = main.inventory.exportState().slots.find((slot: any) => slot.address.slotKey === 'hand');
     if (hand?.item) main.inventory.applySlotChanges([{ slot: hand.address, ...hand.item, delta: -hand.item.count }]);
@@ -51,7 +56,7 @@ test('cursor records, machine switches and pickup use real input and release dec
   }, command);
   await submit('c_spawn("phonograph")');
   await expect.poll(() => page.evaluate(() => (window as any).phonographGame.scene.children
-    .filter((model: any) => model.userData.itemId === 'phonograph').length)).toBe(1);
+    .filter((model: any) => model.userData.itemId === 'phonograph').length), { timeout: 30_000 }).toBe(1);
   await submit('c_give("record")');
   const record = page.locator('dst-inventory-bar .inventory-bar__items [data-item-id="record"]');
   await expect(record.locator('.inventory-slot__icon[data-loaded="true"]')).toBeVisible();
@@ -66,7 +71,8 @@ test('cursor records, machine switches and pickup use real input and release dec
     await new Promise(requestAnimationFrame);
     const { scene, view } = (window as any).phonographGame;
     const model = scene.children.find((model: any) => model.userData.itemId === 'phonograph');
-    const mesh = model.children[0].children[0]; mesh.updateWorldMatrix(true, false);
+    const mesh = model.getObjectsByProperty('isMesh', true).find((object: any) => object.geometry?.drawRange.count > 0);
+    mesh.updateWorldMatrix(true, false);
     const positions = mesh.geometry.getAttribute('position');
     const vertex = model.position.clone();
     const min = vertex.clone().set(Infinity, Infinity, Infinity), max = vertex.clone().set(-Infinity, -Infinity, -Infinity);
@@ -98,7 +104,7 @@ test('cursor records, machine switches and pickup use real input and release dec
   await page.keyboard.down('Shift'); await machine.click({ button: 'right' }); await page.keyboard.up('Shift');
   await expect(machine).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as any).phonographGame.scene.children
-    .filter((model: any) => model.userData.itemId === 'phonograph').length)).toBe(1);
+    .filter((model: any) => model.userData.itemId === 'phonograph').length), { timeout: 30_000 }).toBe(1);
   expect(await music()).toHaveLength(2);
   await clickMachine('right');
   await expect.poll(music).toHaveLength(3);

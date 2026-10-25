@@ -10,7 +10,8 @@ import { createEquipmentExistenceState } from '../../signals/src';
 import { FarmPlowPlacement } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
@@ -38,10 +39,10 @@ function advance(animation: WilsonAnimationController, frames: number) {
 it('resolves both source ground builds, the separate golden held build and invisible equipment', async () => {
   const assets = new GroundItemAssets();
   try {
-    const ordinary = await createGroundItemSprite(assets, 'farm_hoe');
-    const gold = await createGroundItemSprite(assets, 'golden_farm_hoe', 'golden_farmhoe_garden');
+    const ordinary = await createGroundItemVisual(assets, 'farm_hoe');
+    const gold = await createGroundItemVisual(assets, 'golden_farm_hoe', 'golden_farmhoe_garden');
     for (const sprite of [ordinary, gold]) {
-      expect((sprite.model.children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
+      expect((sprite.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
       sprite.dispose();
     }
     expect(GROUND_ITEM_DEFINITIONS.farm_hoe).toMatchObject({ bank: 'quagmire_hoe', animation: 'idle', atlas: 'images/inventoryimages2.xml' });

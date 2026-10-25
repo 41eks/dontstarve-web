@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS, createGroundItemSprite } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { parseImageAtlasXml } from '../src/imageAtlas';
 
@@ -21,8 +22,8 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
   const assets = new GroundItemAssets();
   const skins = ['backpack_babybeef', 'backpack_catcoonp', 'backpack_invisible'];
   for (const skinId of [undefined, ...skins]) {
-    const ground = await createGroundItemSprite(assets, 'backpack', skinId);
-    const mesh = ground.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+    const ground = await createGroundItemVisual(assets, 'backpack', skinId);
+    const mesh = ground.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
     expect(mesh.geometry.drawRange.count, skinId).toBeGreaterThan(0);
     expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite), skinId).toBe(true);
     expect(ground.model.children[0].children).toHaveLength(1);

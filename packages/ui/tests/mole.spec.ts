@@ -25,7 +25,7 @@ test('mole console commands, hammer capture and save export/reload preserve anim
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const bar = page.locator('dst-inventory-bar .inventory-bar__items');
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_spawn("mole");c_spawn("molehill");c_give("mole",2);c_give("hammer")');
   await expect(bar.locator('[data-item-id="mole"]')).toHaveCount(2);
   await expect(bar.locator('[data-item-id="mole"] .inventory-slot__icon[data-loaded="true"]').first()).toBeVisible();
@@ -33,7 +33,7 @@ test('mole console commands, hammer capture and save export/reload preserve anim
   const identity = await page.evaluate(() => {
     const { scene } = (window as any).moleGame;
     const model = scene.children.find((m: any) => m.userData.mole), mole = model.userData.mole;
-    mole.brain.Stop(); mole.entity.transform.position.set(4, 0, 0); mole.setAbove(); mole.sg.goToState('idle');
+    mole.brain.Stop(); mole.entity.transform.position.set(4, 0, 0); model.userData.instance.physics.Teleport(); mole.setAbove(); mole.sg.goToState('idle');
     (window as any).captureMole = mole.id;
     return mole.id;
   });
@@ -48,7 +48,8 @@ test('mole console commands, hammer capture and save export/reload preserve anim
   const point = await page.evaluate(() => {
     const { scene, view } = (window as any).moleGame;
     const model = scene.children.find((m: any) => m.userData.entityId === (window as any).captureMole);
-    scene.updateMatrixWorld(true); const mesh = model.children[0].children[0], geometry = mesh.geometry;
+    scene.updateMatrixWorld(true);
+    const mesh = model.getObjectsByProperty('isMesh', true).find((object: any) => object.geometry?.drawRange.count > 0), geometry = mesh.geometry;
     const positions = geometry.getAttribute('position'), indices = geometry.getIndex();
     let largest = -1, point = model.position.clone();
     for (let i = 0; i < geometry.drawRange.count; i += 3) {
@@ -72,7 +73,7 @@ test('mole console commands, hammer capture and save export/reload preserve anim
   await bar.locator(`[data-slot-key="${capturedSlot}"]`).click();
   await expect.poll(() => page.evaluate(id => (window as any).moleGame.inventory.entities.get(id)?.snapshot().mole.health, identity)).toBe(23);
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   const moles = saved.players.local.inventory.containers['player:inventory'].slots.filter((s: any) => s.item.itemId === 'mole');
   expect(moles).toHaveLength(3);
   expect(moles.find((s: any) => s.item.entityId === identity).item.mole.health).toBe(23);

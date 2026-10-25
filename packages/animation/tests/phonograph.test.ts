@@ -1,6 +1,7 @@
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PhonographController } from '../../prefab/src/phonograph';
 import { PlaySound } from '../../prefab/src/sound';
@@ -22,25 +23,31 @@ vi.mock('../../prefab/src/sound', () => ({
 afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('runs a ground-only record for 64 seconds and releases each machine sound independently', () => {
-  const sprite = { start: vi.fn(), playOnce: vi.fn(), setAnimation: vi.fn() };
-  const first = new PhonographController(sprite, new THREE.Vector3());
+  const sprite = { start: vi.fn(), playOnce: vi.fn() };
+  const scheduler = new GameTimeScheduler();
+  const first = new PhonographController(sprite, new THREE.Vector3(), undefined, scheduler);
   const second = new PhonographController(sprite, new THREE.Vector3(12, 0, 0), 'record_efs');
   expect(first.play()).toBe(false);
   first.insert('record'); second.play();
   const handles = vi.mocked(PlaySound).mock.results.map(({ value }) => value);
   expect(sprite.playOnce).toHaveBeenCalledWith('open', expect.any(Function));
-  sprite.playOnce.mock.calls[0][1]();
+  sprite.playOnce.mock.calls.find(([name]) => name === 'open')![1]!();
   expect(sprite.start).toHaveBeenCalledWith('play_loop');
-  first.update(63.9); expect(first.isPlaying).toBe(true);
-  first.update(0.1); expect(first.isPlaying).toBe(false);
+  // The logical task expires even without updating the visual.
+  const scheduled = first.timer.peek();
+  scheduler.advance(63.9); expect(first.isPlaying).toBe(true);
+  expect(first.timer.peek()).toBe(scheduled);
+  scheduler.advance(0.1); expect(first.isPlaying).toBe(false);
+  expect(first.timer.peek()).toEqual({ status: 'expired' });
   expect(first.record).toBe('record');
   expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/music/gramaphone_end', expect.any(THREE.Vector3));
   expect(handles[0].stop).toHaveBeenCalledOnce();
   expect(handles[1].stop).not.toHaveBeenCalled();
   expect(second.isPlaying).toBe(true);
   second.dispose(); expect(handles[1].stop).toHaveBeenCalledOnce();
+  expect(second.timer.peek()).toEqual({ status: 'stopped' });
   expect(second.play()).toBe(false);
-  first.dispose();
+  first.dispose(); scheduler.dispose();
 });
 
 it('preserves a loaded skinned record across reskin, pickup, inventory transfer, drop and save/load; rejects failed trades', async () => {
@@ -80,7 +87,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     // Playback advances during the asynchronous preparation.
     manager.update(2, new THREE.Quaternion());
     expect(skin.apply()).toBe(true); skin.dispose();
-    model = manager.renderEntities.find(({ object }) => object.userData.itemId === 'phonograph')!.object;
+    model = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!.model as THREE.Group;
     expect(model.userData.entityId).toBe('phonograph:test'); expect(model.position).toEqual(position);
     expect(model.userData.phonograph.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });
     expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/music/gramaphone_creepyforest', model.position, 10);
@@ -113,7 +120,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(await manager.drop({ ...spec, ...item }, position, () => inventory.applySlotChanges([
       { slot: to, itemId: item.itemId, skinId: item.skinId, delta: -1 },
     ]))).toBe(true);
-    const dropped = manager.renderEntities.find(({ object }) => object.userData.entityId !== 'restored')!.object;
+    const dropped = manager.reskinTargets.find(({ model }) => model.userData.entityId !== 'restored')!.model as THREE.Group;
     expect(dropped.userData.phonograph.record).toBe('record_creepyforest');
     expect(dropped.userData.phonograph.isPlaying).toBe(false);
     const droppedRecord = manager.exportRecords().find(({ id }) => id !== 'restored')!;
@@ -122,7 +129,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     take.mockReturnValue(true);
     expect(await manager.insertPhonographRecord(dropped, { entity: plain, take })).toBe(true);
     expect(manager.exportRecords().some(({ components }) => components.stack?.skinId === 'record_creepyforest')).toBe(true);
-    const ejected = manager.renderEntities.find(({ object }) => object.userData.itemId === 'record')!.object;
+    const ejected = manager.reskinTargets.find(({ prefabId }) => prefabId === 'record')!.model;
     expect(manager.reskinTargets.find(target => target.model === ejected)!.hasTag('phonograph_record')).toBe(true);
     manager.hammerTargets.find(({ model }) => model === dropped)!.playHit();
     await vi.waitFor(() => expect(manager.exportRecords().filter(({ components }) => components.stack?.itemId === 'record')).toHaveLength(2));

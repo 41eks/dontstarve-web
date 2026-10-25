@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
-import type { SpriteAnimationController } from '@dontstarve-web/animation/sprite';
 import { ArchiveSpriteAssets, createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { createArchiveEntity, setModelTag } from './prefabInstance';
 import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { listenInventoryEvents } from './inventoryEvents';
@@ -40,6 +40,9 @@ export const FIREFLIES_LIGHT = {
   colour: [180 / 255, 195 / 255, 150 / 255] as const,
 };
 
+/** What the swarm tells its sprite: clips, and whether the swarm is shown. */
+export type FirefliesSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'update' | 'setVisible'>;
+
 export interface FirefliesWorld {
   getWatchWorldContent?: GetWatchWorldContent;
   handEquipment?: ReadonlySignal<HandEquipment | null>;
@@ -72,15 +75,16 @@ export class FirefliesController {
   private canWork = false;
   private canClick = false;
   private disposed = false;
+  private shown = false;
   readonly model: THREE.Group;
-  private readonly animation: SpriteAnimationController;
+  private readonly animation: FirefliesSprite;
   private readonly random: () => number;
   private readonly transform: ItemEntity['transform'];
   private entity?: ItemEntity;
 
   constructor(
     model: THREE.Group,
-    animation: SpriteAnimationController,
+    animation: FirefliesSprite,
     world: FirefliesWorld,
     transform: ItemEntity['transform'],
     random = Math.random,
@@ -106,7 +110,8 @@ export class FirefliesController {
       firefliesController: this, rayTestOnBB: true });
     // Source uses the bloom shader; its luminous swarm art stays visible at night.
     setPrefabLightOverride(model, 1);
-    model.children[0].visible = false;
+    for (const tag of FIREFLIES_TAGS) setModelTag(model, tag, true);
+    animation.setVisible(false);
     this.refresh();
     if (this.handEquipment) createEffect(() => {
       this.handEquipment!.get();
@@ -167,6 +172,8 @@ export class FirefliesController {
   private get inInventory(): boolean { return this.placement.peek() === undefined; }
   get intensity(): number { return this.fadeValue; }
   get workable(): boolean { return !this.disposed && this.canWork; }
+  /** Whether the swarm is drawn: from swarm_pre until swarm_pst ends. */
+  get visible(): boolean { return this.shown; }
   get clickable(): boolean {
     return !this.disposed && this.canClick && this.active.peek() && this.handEquipment?.peek()?.itemId === 'bugnet';
   }
@@ -185,7 +192,7 @@ export class FirefliesController {
     if (this.disposed || this.inInventory || this.awake?.peek() === false) return;
     if (this.ownsScheduler && Number.isFinite(dt) && dt > 0) this.scheduler.advance(dt);
     const step = Math.max(0, Math.min(dt, 0.1));
-    if (this.model.children[0].visible) this.animation.update(step);
+    if (this.shown) this.animation.update(step);
     if (this.fadeRate !== 0) {
       this.fadeValue = THREE.MathUtils.clamp(this.fadeValue + this.fadeRate * step, 0, FIREFLIES_LIGHT.intensity);
       if ((this.fadeRate > 0 && this.fadeValue >= FIREFLIES_LIGHT.intensity)
@@ -206,7 +213,7 @@ export class FirefliesController {
     this.fadeValue = this.fadeRate = 0;
     this.direction = 0;
     this.disableWork.stop();
-    this.model.children[0].visible = false;
+    this.show(false);
     this.refresh();
     setPrefabLocalLight(this.model, null);
     setPrefabLightOverride(this.model, null);
@@ -234,7 +241,7 @@ export class FirefliesController {
     this.disableWork.stop();
     this.fadeValue = this.fadeRate = this.direction = 0;
     this.canClick = this.canWork = false;
-    this.model.children[0].visible = false;
+    this.show(false);
     this.refresh();
   }
 
@@ -251,7 +258,7 @@ export class FirefliesController {
     this.direction = 1;
     this.canWork = this.canClick = true;
     this.disableWork.stop();
-    this.model.children[0].visible = true;
+    this.show(true);
     this.animation.playOnce('swarm_pre', () => {
       if (!this.disposed && this.direction > 0) this.animation.start('swarm_loop');
     });
@@ -264,7 +271,7 @@ export class FirefliesController {
     if (this.direction <= 0) return;
     this.direction = -1;
     this.animation.playOnce('swarm_pst', () => {
-      if (!this.disposed && this.direction < 0) { this.model.children[0].visible = false; this.syncUpdating(); }
+      if (!this.disposed && this.direction < 0) { this.show(false); this.syncUpdating(); }
     });
     const byte = 32 + Math.min(31, Math.floor(this.random() * 32));
     this.fadeRate = -this.fadeValue / (0.75 + (byte - 32) / 31);
@@ -274,12 +281,18 @@ export class FirefliesController {
   private finishFadeOut(): void {
     this.canClick = false;
     this.disableWork.start(1.5 + this.random());
-    this.model.children[0].visible = false;
+    this.show(false);
+  }
+
+  private show(shown: boolean): void {
+    if (shown === this.shown) return;
+    this.shown = shown;
+    this.animation.setVisible(shown);
   }
 
   private syncUpdating(): void {
     this.updatingState.set(!this.disposed && !this.inInventory
-      && (this.ownsScheduler || this.fadeRate !== 0 || this.model.children[0].visible));
+      && (this.ownsScheduler || this.fadeRate !== 0 || this.shown));
   }
 
   private refresh(): void {
@@ -291,7 +304,7 @@ export class FirefliesController {
   private refreshClickability(): void {
     const clickable = this.clickable;
     if (clickable) this.entity?.removeTag('NOCLICK'); else this.entity?.addTag('NOCLICK');
-    this.model.userData.tags = [...FIREFLIES_TAGS, ...(clickable ? [] : ['NOCLICK'])];
+    setModelTag(this.model, 'NOCLICK', !clickable);
   }
 
   /** Rebuild presentation after waking without changing logical work/fade/timer state. */
@@ -299,40 +312,6 @@ export class FirefliesController {
     setPrefabLocalLight(this.model, this.fadeValue > 0 ? { ...FIREFLIES_LIGHT, intensity: this.fadeValue } : null);
     this.refreshClickability();
     this.model.userData.firefliesIntensity = this.fadeValue;
-  }
-}
-
-/** Keep the logical clip/callback while its GPU geometry is unloaded. */
-class FirefliesAnimation implements SpriteAnimationController {
-  private animation?: SpriteAnimationController;
-  private clip = { name: 'swarm_loop', loop: true, complete: undefined as (() => void) | undefined, finished: false };
-
-  attach(animation?: SpriteAnimationController): void {
-    this.animation = animation;
-    if (animation) this.play();
-  }
-
-  start(name: string): void {
-    this.clip = { name, loop: true, complete: undefined, finished: false };
-    this.play();
-  }
-
-  playOnce(name: string, complete?: () => void): void {
-    this.clip = { name, loop: false, complete, finished: false };
-    this.play();
-  }
-
-  update(dt: number): void { this.animation?.update(dt); }
-
-  private play(): void {
-    const clip = this.clip;
-    if (clip.finished) return;
-    if (clip.loop) this.animation?.start(clip.name);
-    else this.animation?.playOnce(clip.name, () => {
-      if (this.clip !== clip) return;
-      clip.finished = true;
-      clip.complete?.();
-    });
   }
 }
 
@@ -348,10 +327,10 @@ export class FirefliesAssets {
     this.assets.dispose();
   }
 
-  async createSprite(foot: THREE.Group): Promise<ArchiveSprite> {
+  async createSprite(clip = { name: 'swarm_loop', loop: true }): Promise<ArchiveSprite> {
     const sprite = await createSharedArchiveSprite(this.assets, {
-      animationArchive: 'fireflies.zip', buildArchives: ['fireflies.zip'], bank: 'fireflies', animation: 'swarm_loop', loop: true,
-    }, { name: foot.name, foot, instancedAnimations: ['swarm_loop'] });
+      animationArchive: 'fireflies.zip', buildArchives: ['fireflies.zip'], bank: 'fireflies', animation: clip.name, loop: clip.loop,
+    }, { name: `GroundItem:${FIREFLIES_ID}`, instancedAnimations: ['swarm_loop'] });
     if (this.disposed) { sprite.dispose(); throw new Error('Insect assets have been disposed'); }
     return sprite;
   }
@@ -362,95 +341,42 @@ export class FirefliesAssets {
 }
 
 export async function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld) {
-  // Only the lightweight origin and logical controller survive outside tickingarea.
-  // Source frames, atlas materials and instance batches belong to assets.
-  const model = new THREE.Group();
-  model.name = 'GroundItem:fireflies';
-  model.userData.billboard = true;
-  // Ground creation resolves with its first visual ready, preserving immediate
-  // drop/capture semantics; an initially sleeping entity releases it on binding.
-  let prepared: ArchiveSprite | undefined = await assets.createSprite(model);
-  const empty = new THREE.Group();
-  model.add(empty);
-  registerSpriteRenderGroup(model, empty);
-  const animation = new FirefliesAnimation();
-  model.userData.animationController = animation;
-  const resources = createSignal(false);
+  // Ground creation resolves with its first visual ready, preserving immediate drop/capture semantics; the display
+  // releases it when the swarm's tile is found inactive. Source frames and instance batches belong to assets.
+  const { instance, display } = createArchiveEntity(FIREFLIES_ID, { create: clip => assets.createSprite(clip), initial: await assets.createSprite() },
+    { name: 'swarm_loop' }, `GroundItem:${FIREFLIES_ID}`);
+  const model = display.model;
+  const active = createSignal(true);
   const cleanups: (() => void)[] = [];
-  let sprite: ArchiveSprite | undefined;
-  let generation = 0;
-  let loading = false;
-  let disposed = false;
-  const unload = () => {
-    generation++;
-    loading = false;
-    prepared?.dispose();
-    prepared = undefined;
-    if (!sprite) return;
-    animation.attach(undefined);
-    const visual = model.children[0];
-    empty.visible = visual.visible;
-    empty.position.copy(visual.position);
-    model.add(empty);
-    registerSpriteRenderGroup(model, empty);
-    sprite.dispose();
-    sprite = undefined;
-    setPrefabLocalLight(model, null);
-    resources.set(false);
-  };
   let controller: FirefliesController | undefined;
-  const attach = (created: ArchiveSprite) => {
-    sprite = created;
-    sprite.model.visible = empty.visible;
-    sprite.model.position.copy(empty.position);
-    model.remove(empty);
-    model.add(sprite.model);
-    registerSpriteRenderGroup(model, sprite.model.children[0] as THREE.Group);
-    animation.attach(sprite);
-    controller?.refreshVisual();
-    resources.set(true);
-  };
   const removeInventoryEvents = listenInventoryEvents(model, {
     ondropped: () => controller?.place(true),
     onputininventory: () => controller?.onPutInInventory(),
     onload: () => controller?.place(false),
   });
-  return { model, active: readonlySignal(resources), get controller() { return controller; },
+  return { model, active: readonlySignal(active), get controller() { return controller; },
     bindEntity(entity: ItemEntity) { controller?.bindEntity(entity); },
     bindTransform(transform: ItemEntity['transform']) {
-      controller = new FirefliesController(model, animation, world, transform);
-      const active = watchSignal(controller.active, stop => cleanups.push(stop));
+      controller = new FirefliesController(model, instance.sprite, world, transform);
+      const awake = watchSignal(controller.active, stop => cleanups.push(stop));
+      // OnEntitySleep/OnEntityWake: the swarm's frames and instance entry exist only while its tile is active.
       createEffect(() => {
-        if (!active.get()) { unload(); return; }
-        if (sprite || loading) return;
-        if (prepared) {
-          const created = prepared; prepared = undefined;
-          attach(created);
-          return;
-        }
-        loading = true;
-        const requested = generation;
-        void assets.createSprite(model).then(created => {
-          if (disposed || requested !== generation || !active.peek()) { created.dispose(); return; }
-          loading = false;
-          attach(created);
-        }).catch(error => {
-          if (disposed || requested !== generation) return;
-          loading = false;
-          console.error('Unable to load fireflies sprite', error);
-        });
+        const value = awake.get();
+        instance.setActive(value);
+        active.set(value);
+        if (value) controller!.refreshVisual(); else setPrefabLocalLight(model, null);
       });
     },
     get updating() { return controller?.updating; },
     update: (dt: number) => controller?.update(dt),
     isClickable: () => controller?.clickable ?? false, isWorkable: () => controller?.workable ?? false,
     dispose() {
-      disposed = true;
       cleanups.splice(0).forEach(stop => stop());
       removeInventoryEvents();
       controller?.dispose();
-      unload();
-      model.removeFromParent();
+      setPrefabLocalLight(model, null);
+      instance.remove();
+      display.dispose();
     } };
 }
 

@@ -114,7 +114,7 @@ function researchLabDefinition(id: ResearchLabId): AnimatedBuildingDefinition {
         researchlab3: { MAGIC: 3 }, researchlab4: { MAGIC: 2 },
     };
     return {
-        ...definitions.animatedBuildings[id], onProximity: false, onbuilt, onhit,
+        ...definitions.animatedBuildings[id], obstacleRadius: .4, onProximity: false, onbuilt, onhit,
         oninit: (context) => {
             const inst = actionEntity(context.model, id);
             inst.addTag('structure');

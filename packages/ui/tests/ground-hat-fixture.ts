@@ -2,6 +2,7 @@ import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import { HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { GroundItemManager } from '../../../src/groundItems';
+import { prewarmScenePasses, renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 export async function checkGroundHats() {
   const scene = new THREE.Scene();
@@ -69,7 +70,7 @@ export async function checkGroundHats() {
   const torch = await manager.spawnFromSave('torch-ground', {
     itemId: 'torch', name: '火炬', icon: 'torch.tex', count: 1,
   }, new THREE.Vector3(-6, 0, 0));
-  const torchMesh = torch.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry>;
+  const torchMesh = torch.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry>;
   const torchIsMesh = torchMesh.isMesh;
   const torchFoot = manager.exportRecords().find(({ id }) => id === 'torch-ground')!.transform.position;
   torchMesh.updateWorldMatrix(true, false);
@@ -79,12 +80,14 @@ export async function checkGroundHats() {
     torchBox.expandByPoint(torchMesh.localToWorld(new THREE.Vector3().fromBufferAttribute(torchPositions, vertex)));
   }
   const iconPoint = torchBox.getCenter(new THREE.Vector3()).project(camera);
-  renderer.render(scene, camera);
+  await prewarmScenePasses(renderer, scene, camera);
+  renderSceneWithPasses(renderer, scene, camera);
   const iconBounds = renderer.domElement.getBoundingClientRect();
   renderer.domElement.dispatchEvent(new MouseEvent('pointerdown', {
     clientX: iconBounds.left + (iconPoint.x + 1) * iconBounds.width / 2,
     clientY: iconBounds.top + (1 - iconPoint.y) * iconBounds.height / 2, button: 0,
   }));
+  pickup.settle();
   const torchPickedUp = !manager.exportRecords().some(({ id }) => id === 'torch-ground');
   renderer.dispose();
   return {

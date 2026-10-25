@@ -26,6 +26,7 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 export const MUSHROOM_LIGHT_DEFINITIONS: Readonly<Record<MushroomLightId, AnimatedBuildingDefinition>> = {
     mushroom_light: {
         ...definitions.animatedBuildings.mushroom_light,
+        obstacleRadius: 0.25,
     hammerWorkLeft: 3, hammerMaterial: 'wood',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     hammerDropContentsOnHit: true,
@@ -35,6 +36,7 @@ export const MUSHROOM_LIGHT_DEFINITIONS: Readonly<Record<MushroomLightId, Animat
     },
     mushroom_light2: {
         ...definitions.animatedBuildings.mushroom_light2,
+        obstacleRadius: 0.4,
     hammerWorkLeft: 3, hammerMaterial: 'wood',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     hammerDropContentsOnHit: true,

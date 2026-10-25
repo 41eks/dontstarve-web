@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import type { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
-import { createGroundItemSprite } from '@dontstarve-web/prefab/groundItems';
+const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(...args: unknown[]) => Promise<{ model: THREE.Group; update: ReturnType<typeof vi.fn>; dispose(): void }>>() }));
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -19,7 +19,7 @@ vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
 // This suite checks save/transfer state; browser tests load the real DST assets.
 vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dontstarve-web/prefab/groundItems')>();
-  const createGroundItemSprite = vi.fn(async () => {
+  createTestVisual.mockImplementation(async () => {
     const model = new THREE.Group();
     model.add(new THREE.Group());
     model.userData.events = [];
@@ -29,10 +29,10 @@ vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
     return { model, update: vi.fn(), dispose() { model.userData.events.push('dispose'); model.removeFromParent(); } };
   });
   return {
-    ...actual, createGroundItemSprite,
+    ...actual,
     createGroundItemFactory: () => ({
       itemIds: Object.keys(actual.GROUND_ITEM_DEFINITIONS),
-      create: createGroundItemSprite,
+      create: createTestVisual,
     }),
   };
 });
@@ -99,7 +99,7 @@ describe('ground item save records', () => {
       const origin = new THREE.Vector3();
       const model = await manager.spawnFromSave('stationary:log', definition, origin);
       const entity = manager.entities.get('stationary:log')!;
-      const visual = await vi.mocked(createGroundItemSprite).mock.results.at(-1)!.value;
+      const visual = await vi.mocked(createTestVisual).mock.results.at(-1)!.value;
       const update = visual.update;
       const matrices = vi.spyOn(model, 'updateWorldMatrix');
       const query = placementEntities(scene);
@@ -150,14 +150,14 @@ describe('ground item save records', () => {
 
   it('queries only the requested prefab using live positions, replacing spawn reservations without duplicate entries', async () => {
     const { manager, inventory } = setup();
-    const createSprite = vi.mocked(createGroundItemSprite).getMockImplementation()!;
+    const createSprite = vi.mocked(createTestVisual).getMockImplementation() as (...args: Parameters<typeof createTestVisual>) => ReturnType<typeof createTestVisual>;
     const position = new THREE.Vector3(8, 0, 9);
     let release!: () => void;
     const loading = new Promise<void>(resolve => { release = resolve; });
     let atCommit: THREE.Vector3[] = [];
     try {
       const unrelated = await manager.spawnFromSave('unrelated', { ...definition, itemId: 'ash' }, new THREE.Vector3());
-      vi.mocked(createGroundItemSprite).mockImplementationOnce(async (...args) => {
+      vi.mocked(createTestVisual).mockImplementationOnce(async (...args) => {
         await loading;
         const sprite = await createSprite(...args);
         sprite.model.addEventListener('onload', () => { atCommit = [...manager.iteratePrefabPositions('log')]; });
@@ -195,16 +195,16 @@ describe('ground item save records', () => {
 
   it('releases failed and disposed spawn reservations while art is loading', async () => {
     const { manager, inventory } = setup();
-    const createSprite = vi.mocked(createGroundItemSprite).getMockImplementation()!;
+    const createSprite = vi.mocked(createTestVisual).getMockImplementation() as (...args: Parameters<typeof createTestVisual>) => ReturnType<typeof createTestVisual>;
     let release!: () => void;
     const loading = new Promise<void>(resolve => { release = resolve; });
     try {
-      vi.mocked(createGroundItemSprite).mockRejectedValueOnce(new Error('art failed'));
+      vi.mocked(createTestVisual).mockRejectedValueOnce(new Error('art failed'));
       const failed = manager.spawnFromSave('failed', definition, new THREE.Vector3());
       expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
       await expect(failed).rejects.toThrow('art failed');
       expect([...manager.iteratePrefabPositions('log')]).toEqual([]);
-      vi.mocked(createGroundItemSprite).mockImplementationOnce(async (...args) => { await loading; return createSprite(...args); });
+      vi.mocked(createTestVisual).mockImplementationOnce(async (...args) => { await loading; return createSprite(...args); });
       const late = manager.spawnFromSave('late', definition, new THREE.Vector3());
       expect([...manager.iteratePrefabPositions('log')]).toHaveLength(1);
       manager.dispose();
@@ -367,7 +367,7 @@ describe('ground item save records', () => {
 
   it('dispatches prefab events only after successful transfers and distinguishes restore from drop', async () => {
     const { manager, scene, pickup, pick } = setup();
-    const lastModel = async () => (await vi.mocked(createGroundItemSprite).mock.results.at(-1)!.value).model;
+    const lastModel = async () => (await vi.mocked(createTestVisual).mock.results.at(-1)!.value).model;
     expect(await manager.drop(definition, new THREE.Vector3(), () => false)).toBe(false);
     expect((await lastModel()).userData.events).toEqual(['dispose']);
     await expect(manager.drop(definition, new THREE.Vector3(), () => { throw new Error('transfer failed'); }))

@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { readSaveDownload } from './save-download';
 
 test('animation decoder worker shares assets and retries failed skin loads', async ({ page, context }) => {
   const errors: string[] = [];
@@ -48,7 +50,17 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/tests/dst-lighting.html');
+  const initial = structuredClone(initialWorld) as any;
+  initial.world.entities = {};
+  initial.world.map.generator.options.size = 96;
+  initial.world.map.generator.options.moonTreeCount = 0;
+  delete initial.world.map.tiles;
+  initial.players.local.transform.position = [0, 0, 0];
+  initial.players.local.stats = { health: 150, hunger: 150, sanity: 200 };
+  for (const container of Object.values(initial.players.local.inventory.containers) as any[]) container.slots = [];
+  let currentSave = initial;
+  await page.route('**/saves/initial-world.json', route => route.fulfill({ json: currentSave }));
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   const urls = Object.fromEntries(['main', 'player', 'universal', 'view'].map((name) =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
   await page.evaluate(async (urls) => {
@@ -57,9 +69,12 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
     const { scene } = await import(urls.universal);
     const { view } = await import(urls.view);
     const radius = player.playerBody.shapes[0].radius;
-    player.playerBody.position.set(120, radius, 120); player.player.position.set(120, 0, 120);
+    player.playerBody.position.set(0, radius, 0); player.player.position.set(0, 0, 0);
     const oldRoots = scene.children.filter((object: any) => object.name === 'TreasureChest');
     (window as any).reskinGame = { main, ...player, scene, view, oldRoots };
+    scene.addEventListener('childadded', (event: any) => {
+      if (event.child.name === 'explode_reskin') (window as any).reskinGame.fx = event.child;
+    });
     for (const command of ['c_give("reskin_tool")', 'c_spawn("treasurechest")']) {
       document.querySelector('dst-debug-console')!.dispatchEvent(new CustomEvent('game:debug-command', { detail: { command } }));
     }
@@ -87,7 +102,8 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
     game.entityId = target.userData.entityId;
     // Record the stable world identity while requesting an actual pointer action.
     await new Promise(requestAnimationFrame);
-    const mesh = target.children[0].children[0];
+    let mesh: any;
+    target.traverse((object: any) => { if (object.isMesh && !mesh) mesh = object; });
     mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox;
     const position = box.getCenter(target.position.clone()).applyMatrix4(mesh.matrixWorld);
@@ -98,6 +114,12 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).reskinGame.target.userData.skinId)).toBe('treasurechest_ancient');
   await expect.poll(() => page.evaluate(() => (window as any).reskinGame.player.userData.animationController.isReskinning)).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).reskinGame.fx?.userData.instance.status.peek())).toBe('removed');
+  expect(await page.evaluate(() => {
+    const { fx, scene } = (window as any).reskinGame;
+    return { tagged: fx.userData.instance.hasTag('FX'), persists: fx.userData.instance.persists,
+      detached: !scene.children.includes(fx) };
+  })).toMatchObject({ tagged: true, persists: false, detached: true });
   await page.evaluate(async () => {
     const game = (window as any).reskinGame;
     // c_spawn places the chest 10 units away; opening requires being within 9.
@@ -105,7 +127,8 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
     game.playerBody.position.set(game.target.position.x + 3, radius, game.target.position.z);
     game.player.position.set(game.target.position.x + 3, 0, game.target.position.z);
     await new Promise(requestAnimationFrame);
-    const mesh = game.target.children[0].children[0];
+    let mesh: any;
+    game.target.traverse((object: any) => { if (object.isMesh && !mesh) mesh = object; });
     mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox;
     const position = box.getCenter(game.target.position.clone()).applyMatrix4(mesh.matrixWorld);
@@ -132,11 +155,7 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const file = await download;
-  const stream = await file.createReadStream();
-  const chunks = [];
-  for await (const chunk of stream!) chunks.push(chunk);
-  const save = JSON.parse(Buffer.concat(chunks).toString());
+  const save = JSON.parse(await readSaveDownload(await (await download).path(), 'Master'));
   const id = await page.evaluate(() => (window as any).reskinGame.entityId);
   const chest = save.world.entities.treasurechest.find((entity: any) => entity.id === id);
   expect(chest.components.building).toEqual({ state: 'closed', skinId: 'treasurechest_ancient' });
@@ -144,5 +163,16 @@ test('game right-click reskins a chest and c_save keeps its skin and container c
     { slotKey: '8', item: storedItem },
   ] });
   expect(Object.keys(save.world.entities).some((prefab) => prefab.includes('reskin') || prefab.includes('explode'))).toBe(false);
+  currentSave = save;
+  await page.reload();
+  await page.evaluate(async url => { await import(url); }, urls.main);
+  const restored = await page.evaluate(async ({ url, id }) => {
+    const { scene } = await import(url);
+    const target = scene.children.find((model: any) => model.userData.entityId === id);
+    return { skinId: target?.userData.skinId, position: target ? [target.position.x, target.position.z] : undefined,
+      container: target?.userData.saveRecord.components.container };
+  }, { url: urls.universal, id });
+  expect(restored).toEqual({ skinId: 'treasurechest_ancient', position: [chest.transform.position[0], chest.transform.position[2]],
+    container: chest.components.container });
   expect(errors).toEqual([]);
 });

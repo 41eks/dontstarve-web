@@ -103,8 +103,8 @@ export class ArchiveEngine implements DisplayEngine {
   pushAnimation(): void { unsupported('A queued animation'); }
   playTransient(): void { unsupported('A transient animation'); }
   showImage(): void { unsupported('A static image'); }
-  hideLayer(): void { unsupported('Hiding a layer'); }
-  showLayer(): void { unsupported('Showing a layer'); }
+  hideLayer(layer: string): void { this.resident.setLayerHidden(layer, true); }
+  showLayer(layer: string): void { this.resident.setLayerHidden(layer, false); }
   setSymbolOverrides(): void { unsupported('Symbol overrides'); }
   overrideSymbol(): void { unsupported('A symbol override'); }
   addOverrideBuild(): void { unsupported('An override build'); }

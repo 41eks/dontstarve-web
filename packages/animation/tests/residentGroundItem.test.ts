@@ -44,3 +44,35 @@ it('unloads a settled ground item sprite with its tile and rebuilds it when the 
   visual.dispose();
   expect(created[1].dispose).toHaveBeenCalledOnce();
 });
+
+it('retains a lantern machine, light and fuel while its tile releases and rebuilds the sprite', async () => {
+  const { createLanternGroundSprite, configureLanternEntity, getLanternController, LANTERN_FUEL } = await import('../../prefab/src/lantern');
+  const { ItemEntity } = await import('../../inventory/src');
+  const tile = createSignal(true), assets = new GroundItemAssets();
+  const visual = await createLanternGroundSprite({ assets, tickingarea: () => Object.assign(tile, { dispose() {} }) as never });
+  const item = new ItemEntity({ itemId: 'lantern', count: 1 });
+  configureLanternEntity(item); visual.bindEntity!(item);
+  const scene = new THREE.Scene(), model = visual.model;
+  scene.add(model); model.position.set(3, 0, 4);
+  model.dispatchEvent({ type: 'ondropped' } as never); await tick();
+  const controller = getLanternController(item), light = model.getObjectByName('lanternlight');
+  const drawn = created.at(-1)!;
+  try {
+    expect(light).toBeDefined();
+    expect(model.userData.instance.hasTag('light')).toBe(true);
+    tile.set(false); await tick();
+    expect(drawn.dispose).toHaveBeenCalledOnce();
+    expect(model.parent).toBeNull();
+    expect(controller.isOn).toBe(true);
+    expect(visual.light.parent).toBe(model);
+    for (let frame = 0; frame < 60; frame++) visual.update!(1);
+    expect(item.components.fueled.remaining).toBeCloseTo(LANTERN_FUEL - 60 - 1 / 60);
+    tile.set(true); await tick();
+    expect(model.parent).toBe(scene);
+    expect(model.getObjectByName('lanternlight')).toBe(light);
+    expect(model.position.toArray()).toEqual([3, 0, 4]);
+    expect(created.at(-1)).not.toBe(drawn);
+    visual.update!(0);
+    expect(created.at(-1)!.playOnce).toHaveBeenCalledWith('idle_on');
+  } finally { visual.dispose(); item.destroy(); assets.dispose(); }
+});

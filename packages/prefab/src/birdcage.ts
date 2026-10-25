@@ -615,6 +615,7 @@ function onhit({ model }: AnimatedBuildingHammerContext): void {
 
 export const BIRDCAGE_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.birdcage,
+    obstacleRadius: 0.5,
     hammerWorkLeft: 4, hammerMaterial: 'metal',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse_small' },
     skinInit: birdcage_init_fn,

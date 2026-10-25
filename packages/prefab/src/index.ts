@@ -183,8 +183,8 @@ export { NIGHTSWORD_DAPPERNESS, configureNightswordEntity, loadNightswordEquipme
 
 export {
   GROUND_ITEM_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS,
-  GroundItemAssets, createGroundItemSprite,
-  type GroundItemAssetDefinition, type GroundItemSprite,
+  GroundItemAssets, createResidentGroundItem,
+  type GroundItemAssetDefinition,
 } from './groundItems';
 
 export {

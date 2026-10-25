@@ -180,6 +180,7 @@ function onhit(context: AnimatedBuildingHammerContext): void {
 
 export const BOOKSTATION_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.bookstation,
+    obstacleRadius: 0.4,
     hammerWorkLeft: 4, hammerMaterial: 'wood',
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
     // MakeLargeBurnable(inst, nil, nil, true) and MakeLargePropagator.

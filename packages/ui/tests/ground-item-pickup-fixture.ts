@@ -1,6 +1,7 @@
 import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import { GroundItemManager } from '../../../src/groundItems';
+import { prewarmScenePasses, renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 export async function checkGroundItemPickup() {
   const scene = new THREE.Scene();
@@ -26,8 +27,8 @@ export async function checkGroundItemPickup() {
     player.position.set(9.01, 0, 0);
     const dropped = await manager.drop(definition(id), new THREE.Vector3(0, 9, 0), () => true);
     manager.update(0.05, camera.quaternion);
-    const { object: model } = manager.renderEntities[0];
-    const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry>;
+    const { model } = manager.reskinTargets[0];
+    const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry>;
     mesh.updateWorldMatrix(true, false);
     const box = new THREE.Box3();
     const positions = mesh.geometry.getAttribute('position');
@@ -35,7 +36,8 @@ export async function checkGroundItemPickup() {
       box.expandByPoint(mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(positions, vertex)));
     }
     const point = box.getCenter(new THREE.Vector3()).project(camera);
-    renderer.render(scene, camera);
+    await prewarmScenePasses(renderer, scene, camera);
+    renderSceneWithPasses(renderer, scene, camera);
     const bounds = renderer.domElement.getBoundingClientRect();
     const click = () => renderer.domElement.dispatchEvent(new MouseEvent('pointerdown', {
       clientX: bounds.left + (point.x + 1) * bounds.width / 2,

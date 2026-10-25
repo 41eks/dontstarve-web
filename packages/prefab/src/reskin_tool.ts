@@ -1,12 +1,13 @@
-import { findImage, smallHash, SpriteFrameRenderer, type Animation, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import type { ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import * as THREE from 'three';
+import type { ReskinFxMessage, ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import type * as THREE from 'three';
+import { Vector3 } from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
-import { setPrefabLightOverride } from './localLight';
+import { bindInstance, PrefabInstance } from './prefabInstance';
 import { PlaySound, PreloadSounds, type SoundEventPath } from './sound';
 import { TILE_SIZE } from './tile';
 
@@ -22,7 +23,7 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
     // The renderer prepares build/symbol assets before the animation commits the cast.
     caster.setSpellFn((_tool, target) => {
       const inst = target as ReskinTarget;
-      if (!inst.preparedReskin?.apply()) return false;
+      if (!inst.preparedReskin?.apply(inst.reskinFx)) return false;
       entity._cached_reskinname!.set(inst.prefabId, inst.skinId);
       return true;
     }, async () => {});
@@ -67,131 +68,95 @@ export function reskinEffectSound(toolSkinId?: string): SoundEventPath {
     : 'dontstarve/common/together/reskin_tool';
 }
 
-interface EffectAssets { animation: Animation; builds: readonly ReskinToolBuild[] }
-interface EffectInstance {
-  model: THREE.Group;
-  footPosition: THREE.Vector3;
-  renderer: SpriteFrameRenderer;
-  assets: EffectAssets;
-  elapsed: number;
-  frame: number;
-}
+type CreateEffectSprite = Awaited<ReturnType<typeof preloadSharedArchiveSprite>>;
 
-/** explode_small.lua: fx_shadow_dust/puff with base or skin shadow_dust art. */
-export class ReskinEffects {
-  private readonly scene: THREE.Scene;
-  private readonly assets: GroundItemAssets;
-  private readonly prepared = new Map<string, Promise<EffectAssets>>();
-  private readonly ready = new Map<string, EffectAssets>();
-  private readonly active = new Set<EffectInstance>();
-  private disposed = false;
+/** A logical FX request: the receiving target supplies its own prefab and ground-contact position. */
+class ReskinFx implements ReskinFxMessage {
+  private played = false;
+  readonly footPosition = new Vector3();
+  readonly instance: PrefabInstance;
+  private readonly toolSkinId?: string;
 
-  constructor(scene: THREE.Scene) {
-    this.scene = scene;
-    this.assets = new GroundItemAssets();
+  constructor(instance: PrefabInstance, toolSkinId?: string) { this.instance = instance; this.toolSkinId = toolSkinId; }
+
+  play(position: THREE.Vector3, prefabId: string): void {
+    if (this.played || this.instance.status.peek() === 'removed') return;
+    this.played = true;
+    const info = fxInfo[prefabId];
+    this.footPosition.copy(position);
+    this.instance.position.copy(position);
+    this.instance.position.y += (info?.offset ?? 0) * (TILE_SIZE / 4);
+    this.instance.scale.setScalar(info?.scale ?? 1);
+    this.instance.sprite.setVisible(true);
+    this.instance.sprite.playOnce('puff', () => this.instance.remove());
+    PlaySound(reskinEffectSound(this.toolSkinId), position);
   }
 
-  async prepare(toolSkinId?: string): Promise<void> {
+  dispose(): void { if (!this.played) this.instance.remove(); }
+}
+
+/** explode_small.lua: logical one-shot entities; all visual ownership stays in packages/display. */
+export class ReskinEffects {
+  private readonly assets = new ArchiveSpriteAssets('ground');
+  private readonly displays: PrefabDisplayGroup;
+  private readonly prepared = new Map<string, Promise<CreateEffectSprite>>();
+  private readonly effects = new Set<ReskinFx>();
+  private disposed = false;
+
+  constructor(scene: THREE.Scene) { this.displays = new PrefabDisplayGroup(scene); }
+
+  async prepare(toolSkinId?: string): Promise<ReskinFxMessage> {
     if (this.disposed) throw new Error('Reskin effects have been disposed');
     const key = toolSkinId ?? '';
+    const skinArchive = toolSkinId ? GROUND_ITEM_DEFINITIONS.reskin_tool.skinArchives[toolSkinId] : undefined;
+    if (toolSkinId && !skinArchive) throw new Error(`Unknown reskin tool skin: ${toolSkinId}`);
     let request = this.prepared.get(key);
     if (!request) {
-      request = (async () => {
-        const skinArchive = toolSkinId ? GROUND_ITEM_DEFINITIONS.reskin_tool.skinArchives[toolSkinId] : undefined;
-        if (toolSkinId && !skinArchive) throw new Error(`Unknown reskin tool skin: ${toolSkinId}`);
-        const [parsed, base, skin] = await Promise.all([
-          this.assets.loadAnimation('reskin_tool_fx.zip'), this.assets.loadBuild('reskin_tool_fx.zip'),
-          skinArchive ? this.assets.loadBuild(skinArchive) : undefined,
-          PreloadSounds('dontstarve/wilson/attack_weapon', reskinEffectSound(toolSkinId)),
-        ]);
-        const animation = parsed.animations.find((clip) => clip.name === 'puff' && clip.bankHash === smallHash('fx_shadow_dust'));
-        if (!animation?.frames.length) throw new Error('Missing reskin puff animation');
-        return { animation, builds: skin ? [skin, base] : [base] };
-      })();
+      request = Promise.all([
+        preloadSharedArchiveSprite(this.assets, {
+          animationArchive: 'reskin_tool_fx.zip', bank: 'fx_shadow_dust',
+          buildArchives: ['reskin_tool_fx.zip', ...skinArchive ? [skinArchive] : []],
+        }),
+        PreloadSounds('dontstarve/wilson/attack_weapon', reskinEffectSound(toolSkinId)),
+      ]).then(([create]) => create);
       this.prepared.set(key, request);
       void request.catch(() => this.prepared.delete(key));
     }
-    const resources = await request;
-    if (!this.disposed) this.ready.set(key, resources);
+    const create = await request;
+    if (this.disposed) throw new Error('Reskin effects have been disposed');
+    const prefab = toolSkinId ? `explode_${toolSkinId.replace('_tool', '')}` : 'explode_reskin';
+    const sprite = new SpriteState({ name: 'puff', held: true, billboard: true });
+    const instance = new PrefabInstance(prefab, sprite);
+    instance.addTag('FX');
+    instance.persists = false;
+    sprite.setVisible(false);
+    sprite.setLightOverride(toolSkinId ? 0 : 1);
+    if (skinArchive) sprite.setSymbolOverride('shadow_dust', skinArchive);
+    const effect = new ReskinFx(instance, toolSkinId);
+    const display = this.displays.add({ name: prefab, status: instance.status, sprite,
+      archive: { create: clip => create(clip.name, clip.loop) } }, effect.footPosition);
+    bindInstance(display.model, instance);
+    this.effects.add(effect);
+    return effect;
   }
 
-  spawn(target: Pick<ReskinTarget, 'position' | 'prefabId'>, toolSkinId?: string): void {
-    const assets = this.ready.get(toolSkinId ?? '');
-    if (!assets || this.disposed) return;
-    const model = new THREE.Group();
-    model.name = toolSkinId ? `${toolSkinId}_explode_fx` : 'explode_reskin';
-    model.userData.billboard = true;
-    const info = fxInfo[target.prefabId];
-    model.position.copy(target.position).add(new THREE.Vector3(0, (info?.offset ?? 0) * (TILE_SIZE / 4), 0));
-    const visual = new THREE.Group();
-    const scale = 0.02 * (info?.scale ?? 1);
-    visual.scale.set(scale, -scale, scale);
-    model.add(visual);
-    registerSpriteRenderGroup(model, visual);
-    setPrefabLightOverride(model, toolSkinId ? 0 : 1);
-    const effect: EffectInstance = {
-      model, footPosition: target.position.clone(), renderer: new SpriteFrameRenderer(visual), assets, elapsed: 0, frame: -1,
-    };
-    this.showFrame(effect, 0);
-    this.active.add(effect);
-    this.scene.add(model);
-    PlaySound(reskinEffectSound(toolSkinId), effect.footPosition);
-  }
-
-  get renderEntities() {
-    return [...this.active].map(({ model, footPosition }) => ({ object: model, footPosition, cameraDepth: 0 }));
-  }
+  get renderEntities() { return this.displays.renderEntities; }
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    for (const effect of this.active) {
-      effect.elapsed += Math.min(dt, 0.1);
-      const frame = Math.floor(effect.elapsed * effect.assets.animation.frameRate + 1e-8);
-      if (frame >= effect.assets.animation.frames.length) {
-        this.remove(effect);
-        continue;
-      }
-      effect.model.quaternion.copy(cameraQuaternion);
-      this.showFrame(effect, frame);
-    }
+    this.displays.update(Math.min(dt, 0.1), cameraQuaternion);
+    for (const effect of this.effects) if (effect.instance.status.peek() === 'removed') this.effects.delete(effect);
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const effect of this.active) this.remove(effect);
-    // Cached builds are owned by this manager, independent of equipment/ground assets.
-    const released = new Set<THREE.Material>();
-    for (const request of this.prepared.values()) void request.then(({ builds }) => {
-      for (const { materials } of builds) for (const material of materials) {
-        if (released.has(material)) continue;
-        released.add(material);
-        material.map?.dispose(); material.dispose();
-      }
-    }, () => {});
-    this.prepared.clear(); this.ready.clear();
-  }
-
-  private remove(effect: EffectInstance): void {
-    effect.model.removeFromParent();
-    effect.model.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
-    this.active.delete(effect);
-  }
-
-  private showFrame(effect: EffectInstance, index: number): void {
-    if (effect.frame === index) return;
-    const sprites: ResolvedSprite[] = [];
-    for (const element of [...effect.assets.animation.frames[index].elements].sort((a, b) => b.z - a.z)) {
-      for (const source of effect.assets.builds) {
-        const image = findImage(source.build, element.imageHash, element.imageIndex);
-        if (image) { sprites.push({ element, image, materials: source.materials }); break; }
-      }
-    }
-    effect.renderer.show(sprites);
-    effect.frame = index;
+    for (const effect of this.effects) effect.instance.remove();
+    this.effects.clear();
+    this.displays.dispose();
+    this.assets.dispose();
+    this.prepared.clear();
   }
 }
-
-/** Right-click CASTSPELL: prepare first, approach, face, then commit at frame nine. */
 
 type ReskinToolBuild = Awaited<ReturnType<GroundItemAssets['loadBuild']>>;
 export interface ReskinToolEquipment { readonly builds: readonly ReskinToolBuild[] }

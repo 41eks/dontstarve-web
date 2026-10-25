@@ -1,4 +1,6 @@
+import { MakeObstaclePhysics } from './standardcomponents';
 import * as THREE from 'three';
+import type * as CANNON from 'cannon-es';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import { newEntityId } from './saveRecord';
 import { createPrefabEntity } from './prefabInstance';
@@ -29,9 +31,11 @@ export class NightmareGrowthManager {
   private readonly scene: THREE.Scene;
   private readonly assetBaseUrl: string;
   private disposed = false;
+  private readonly physics?: CANNON.World;
 
-  constructor(scene: THREE.Scene, assetBaseUrl: string) {
+  constructor(scene: THREE.Scene, assetBaseUrl: string, physics?: CANNON.World) {
     this.scene = scene;
+    this.physics = physics;
     this.assetBaseUrl = assetBaseUrl;
   }
 
@@ -62,6 +66,8 @@ export class NightmareGrowthManager {
     crack.instance.persists = false;
     const model = growth.display.model, crackModel = crack.display.model;
     growth.instance.position.set(position.x, 0, position.z);
+    MakeObstaclePhysics(growth.instance, 1.1);
+    if (this.physics) growth.instance.bindPhysics(this.physics);
     crack.instance.position.copy(model.position);
     crackModel.rotation.set(-Math.PI / 2, 0, THREE.MathUtils.degToRad(crackRotation));
     Object.assign(crackModel.userData, { prefab: 'nightmaregrowth_crack', billboard: false });

@@ -16,7 +16,7 @@ import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import { nextReskin } from './reskin_tool';
-import { type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
+import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { wallWorldPrefab, wallWorldSkin } from './wallSkins';
 import { actionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
@@ -312,11 +312,12 @@ export class WallPlacement<BuildId extends string> {
                         wall.preparedSkins.add(replacement);
                         let used = false;
                         return {
-                            apply: () => {
+                            apply: (fx?: ReskinFxMessage) => {
                                 if (used || !isValid() || wall.skinId.peek() !== previousSkin
                                     || !wall.preparedSkins.has(replacement)) return false;
                                 wall.preparedSkin = replacement;
                                 wall.skinId.set(skinId);
+                                fx?.play(wall.model.position.clone().add(new THREE.Vector3(0, -wall.groundOffset, 0)), wallWorldPrefab(wall.buildId));
                                 used = true;
                                 return true;
                             },

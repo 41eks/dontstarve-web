@@ -3,7 +3,7 @@ import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, type EquipmentLifecycle, type EquipmentOwner, type ReadonlySignal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
 import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
-import { GROUND_ITEM_DEFINITIONS, GroundItemAssets, createGroundItemSprite } from './groundItems';
+import { GROUND_ITEM_DEFINITIONS, GroundItemAssets, createResidentGroundItem } from './groundItems';
 import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
 import { setPrefabLocalLight } from './localLight';
@@ -235,6 +235,7 @@ export class LanternLightController {
     if (!this.node) {
       this.node = new THREE.Object3D();
       this.node.name = 'lanternlight';
+      this.node.userData.tags = ['FX'];
       this.owner?.add(this.node);
     }
     setPrefabLocalLight(this.node, {
@@ -263,35 +264,40 @@ export function createLanternHandLifecycle(entity: ItemEntity, context: LanternH
 }
 
 /** Ground art binds to the inst's lantern lifecycle; it starts unlit until a drop or load event. */
-export async function createLanternGroundSprite(assets: GroundItemAssets, skinId?: string): Promise<GroundItemVisual & {
+export async function createLanternGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, skinId?: string): Promise<GroundItemVisual & {
   readonly light: LanternLightController;
 }> {
-  const sprite = await createGroundItemSprite(assets, LANTERN_ID, skinId);
+  const { visual, instance, display } = await createResidentGroundItem(context, { itemId: LANTERN_ID, skinId });
+  const model = display.model, sprite = instance.sprite;
+  instance.addTag('light');
   let controller: LanternController | undefined;
   let stopState: (() => void) | undefined;
   let savedOn: boolean | undefined;
-  const removeInventoryEvents = listenInventoryEvents(sprite.model, {
+  const removeInventoryEvents = listenInventoryEvents(model, {
     ondropped: () => controller?.OnDropped(),
     // Older saves predate machine.ison; their ground lanterns were dropped, hence on.
     onload: () => controller?.OnLoad(savedOn ?? true),
   });
   return {
-    model: sprite.model,
+    ...visual,
+    // Fuel settlement continues while the display releases its off-tile sprite.
+    active: undefined,
+    model,
     get light() { return controller!.light; },
     bindEntity(entity) {
       stopState?.();
       controller = getLanternController(entity);
-      controller.bindGround(sprite.model);
+      controller.bindGround(model);
       const ison = watchSignal(controller.ison, stop => { stopState = stop; });
-      createEffect(() => sprite.setAnimation(ison.get() ? 'idle_on' : 'idle_off'));
+      createEffect(() => sprite.playOnce(ison.get() ? 'idle_on' : 'idle_off'));
     },
     setDefinition(definition) { savedOn = definition.lanternOn; },
     getDefinition() {
       controller?.flushFuel();
       return controller ? { lanternOn: controller.isOn } : {};
     },
-    update(dt: number) { controller?.onFrame(dt); sprite.update(dt); },
-    dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(sprite.model); sprite.dispose(); },
+    update(dt: number) { controller?.onFrame(dt); visual.update?.(dt); },
+    dispose() { removeInventoryEvents(); stopState?.(); controller?.releaseGround(model); visual.dispose(); },
   };
 }
 
@@ -310,7 +316,7 @@ export function createLanternGroundFactory(context: GroundPrefabContext): Ground
   return {
     itemIds: [LANTERN_ID],
     configureEntity: configureLanternEntity,
-    create: (item) => createLanternGroundSprite(context.assets, item.skinId),
+    create: (item) => createLanternGroundSprite(context, item.skinId),
   };
 }
 

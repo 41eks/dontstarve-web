@@ -4,7 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ItemEntity, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createPickupInventory } from './pickupFixture';
 import { configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
-import { GroundItemAssets, createGroundItemSprite, createGroundItemFactory } from '../../prefab/src/groundItems';
+import { GroundItemAssets, createGroundItemFactory } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import type { GroundPrefabContext } from '../../prefab/src/groundPrefab';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createRecipe } from '../../ui/src/categories/shared';
@@ -121,12 +122,12 @@ it('renders the source neutral pose for base and skinned stones and resolves the
   const assets = new GroundItemAssets();
   try {
     for (const skin of [undefined, 'heatrock_fantasy']) {
-      const sprite = await createGroundItemSprite(assets, 'heatrock', skin);
+      const sprite = await createGroundItemVisual(assets, 'heatrock', skin);
       try {
         expect(sprite.currentAnimation).toBe('3');
         sprite.update(60);
         expect(sprite.currentAnimation).toBe('3');
-        const mesh = sprite.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+        const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
         expect(mesh.material.some(material => material.name === `ground:${skin ?? 'heat_rock'}`)).toBe(true);
         expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);

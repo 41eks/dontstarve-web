@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { GroundItemAssets, createGroundItemSprite, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import { loadNightswordEquipment } from '../../prefab/src/nightsword';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { smallHash, type AnimElement } from '../src/animationAssets';
@@ -48,9 +49,9 @@ it('uses separate source ground and equipped art and renders a skin while moving
     expect(animState.ResolveSymbol({ imageHash: smallHash('swap_object'), imageIndex: 0 } as AnimElement)).toHaveLength(1);
     await expect(loadNightswordEquipment(assets, 'pickaxe_invisible')).rejects.toThrow('Unknown nightsword skin');
     for (const skinId of [undefined, 'nightsword_cotl']) {
-      const ground = await createGroundItemSprite(assets, 'nightsword', skinId);
+      const ground = await createGroundItemVisual(assets, 'nightsword', skinId);
       try {
-        const groundMesh = ground.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+        const groundMesh = ground.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
         expect(groundMesh.material.some(material => material.name === `ground:${skinId ?? 'nightmaresword'}`)).toBe(true);
         await animation.setCarryItem('nightsword', skinId);
@@ -108,7 +109,7 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     expect(entity.signals.wet.peek()).toBe(true);
     const groundRecord = manager.exportRecords().find(record => record.id === entity.id)!;
     expect(groundRecord.transform).toEqual(beforeSkin.transform);
-    const model = manager.renderEntities.find(({ object }) => object.userData.entityId === entity.id)!.object;
+    const model = manager.reskinTargets.find(target => target.id === entity.id)!.model;
     expect(performPickupAction(model.userData.pickupTarget, createPickupDoer(player, inventory))).toBe(true);
     expect(inventory.getEntity(hand)).toBe(entity);
     expect(inventory.handEquipment.peek()?.skinId).toBe('nightsword_cotl');

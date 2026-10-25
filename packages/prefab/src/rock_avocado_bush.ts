@@ -73,9 +73,10 @@ class RockAvocadoBush implements PickablePlantBehavior {
 
 export const ROCK_AVOCADO_BUSH_DEFINITION: PickablePlantDefinition = {
   prefab: ROCK_AVOCADO_BUSH_ID, animArchive: 'rock_avocado.zip', buildArchive: 'rock_avocado_build.zip',
+  archiveSprite: { bank: 'rock_avocado', instancedAnimations: 'all' },
   tags: ['plant', 'renewable', 'slurtlepickable', 'SnowCovered', 'blocker'],
   product: ROCK_AVOCADO_FRUIT_ID, numToHarvest: 3, noGrowInWinter: false,
-  idle: { name: 'idle1' }, picked: { sound: 'dontstarve/wilson/harvest_berries', clips: ['picked', 'idle1'] }, empty: { name: 'idle1', frame: 'first' },
+  idle: { name: 'idle1', loop: false }, picked: { sound: 'dontstarve/wilson/harvest_berries', clips: ['picked', 'idle1'] }, empty: { name: 'idle1', frame: 'first' },
   grow: 'grow2', barren: 'dead1', maxCycles: () => 3, witherable: true,
   dugLoot: 'dug_rock_avocado_bush', extraLoot: ['twigs', 'twigs', ROCK_AVOCADO_FRUIT_ID, ROCK_AVOCADO_FRUIT_ID],
   physicsRadius: .1, deploySmartRadius: 3, snowCovered: true, propagatorSize: 'medium', persistBurning: true,

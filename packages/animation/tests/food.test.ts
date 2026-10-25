@@ -5,7 +5,8 @@ import { FoodActionController, type FoodSource } from '../../stategraphs/src/foo
 import { FOOD_EFFECTS } from '../../prefab/src/food';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
 import { PlaySound, PreloadSounds } from '../../prefab/src/sound';
-import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, createGroundItemSprite } from '../../prefab/src/groundItems';
+import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
+import { createGroundItemVisual } from './groundItemVisual';
 import { InventoryStore, InventorySlot, inventorySlotAddress } from '@dontstarve-web/inventory';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { applyPlayerFoodEffects, getPlayerStats, playerStats } from '../../../src/playerStats';
@@ -64,15 +65,15 @@ it('eats meatballs through the solid-food action and applies source stats only a
 
 it('renders source raw/cooked mushroom poses and applies harmful and restorative food values', async () => {
   const assets = new GroundItemAssets();
-  const raw = await createGroundItemSprite(assets, 'green_cap');
-  const cooked = await createGroundItemSprite(assets, 'blue_cap_cooked');
+  const raw = await createGroundItemVisual(assets, 'green_cap');
+  const cooked = await createGroundItemVisual(assets, 'blue_cap_cooked');
   const { animation, actions, store, slot, source } = await fixture('green_cap');
   try {
     expect(GROUND_ITEM_DEFINITIONS.green_cap).toMatchObject({ bank: 'mushrooms', animationArchive: 'mushrooms.zip',
       buildArchives: ['mushrooms.zip'], animation: 'green_cap', atlas: 'images/inventoryimages.xml', skinArchives: {} });
     expect(GROUND_ITEM_DEFINITIONS.blue_cap_cooked.animation).toBe('blue_cap_cooked');
     for (const sprite of [raw, cooked]) {
-      const mesh = sprite.model.children[0].children[0] as THREE.Mesh;
+      const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh;
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     }
     await actions.eat(source, () => applyPlayerFoodEffects(FOOD_EFFECTS.green_cap));
@@ -87,12 +88,12 @@ it('renders source raw/cooked mushroom poses and applies harmful and restorative
 it('drinks source bananajuice art, consumes once at frame 12 and restores the remaining item and numerical stats', async () => {
   const { animation, actions, store, slot, entity, source } = await fixture();
   const assets = new GroundItemAssets();
-  const ground = await createGroundItemSprite(assets, 'bananajuice');
+  const ground = await createGroundItemVisual(assets, 'bananajuice');
   const onEaten = vi.fn(() => applyPlayerFoodEffects(FOOD_EFFECTS.bananajuice));
   try {
     expect(GROUND_ITEM_DEFINITIONS.bananajuice).toMatchObject({ atlas: 'images/inventoryimages1.xml', animationArchive: 'cook_pot_food.zip',
       buildArchives: ['cook_pot_food10.zip'], symbolOverrides: { swap_food: { symbol: 'bananajuice' } }, skinArchives: {} });
-    const mesh = ground.model.children[0].children[0] as THREE.Mesh;
+    const mesh = ground.model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect(await actions.eat(source, onEaten)).toBe(true);
     expect(animation.stategraph.animationClip.key).toBe('quick_drink_pre');
