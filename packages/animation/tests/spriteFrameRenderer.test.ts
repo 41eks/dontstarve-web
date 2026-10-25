@@ -39,6 +39,35 @@ function sprite(
 }
 
 describe('SpriteFrameRenderer', () => {
+  it('draws a depth offset through private copies that follow their sources, leaving shared materials untouched', () => {
+    const visual = new THREE.Group();
+    const renderer = new SpriteFrameRenderer(visual);
+    const mesh = visual.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+    const source = new THREE.MeshBasicMaterial({ transparent: true });
+    const shared = { geometry: new THREE.BufferGeometry(), materials: [source], visible: true };
+    renderer.showShared(shared);
+    renderer.setDepthOffset(true);
+    const [copy] = mesh.material;
+    expect(copy).not.toBe(source);
+    expect(copy).toMatchObject({ polygonOffset: true, polygonOffsetFactor: 0, transparent: true });
+    expect(copy.polygonOffsetUnits).toBeLessThan(0);
+    expect(source.polygonOffset).toBe(false);
+    // Later frames, shared or own, reuse the entity's copy of each source.
+    renderer.show([sprite(source)]);
+    expect(mesh.material).toEqual([copy]);
+    renderer.showShared(shared);
+    expect(mesh.material[0]).toBe(copy);
+    source.opacity = .5;
+    renderer.syncDepthOffset();
+    expect(copy).toMatchObject({ opacity: .5, polygonOffset: true });
+    let disposed = 0;
+    copy.addEventListener('dispose', () => disposed++);
+    renderer.setDepthOffset(false);
+    expect(mesh.material).toEqual([source]);
+    expect(disposed).toBe(1);
+    shared.geometry.dispose(); renderer.dispose();
+  });
+
   it('renders mirrored and ordinary billboard parts in the same face pass', () => {
     const [material] = createMaterials({
       build: { name: 'test', atlasNames: ['test'], symbols: new Map() },

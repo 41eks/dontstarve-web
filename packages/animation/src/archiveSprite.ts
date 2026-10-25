@@ -156,6 +156,8 @@ export interface ArchiveSprite {
   setOpacity(opacity: number): void;
   /** Per-entity tint, for sprites created with options.colour; shared atlas pixels stay unchanged. */
   setColour(colour: readonly [number, number, number]): void;
+  /** Draw a few depth steps towards the camera, so an effect on its owner's plane is not hidden by the owner's depth. */
+  setDepthOffset(enabled: boolean): void;
   /**
    * Eight-faced insts select, among clips of the same name, the one whose `facing` mask contains this FACING bit,
    * mirrored horizontally when the clip lists both a facing and its left-hand mirror.
@@ -383,6 +385,7 @@ function constructArchiveSprite(
     setOpacity(opacity: number) {
       if (options.opacity === undefined) throw new Error(`Sprite ${model.name} does not own its materials`);
       applyOpacity(opacity);
+      renderer.syncDepthOffset();
       instances?.setOpacity(opacity);
     },
     setColour(colour) {
@@ -390,8 +393,10 @@ function constructArchiveSprite(
       if (disposed) return;
       const tint = new THREE.Color().setRGB(...colour);
       for (const [material, copy] of materialCopies) copy.color.copy(material.color).multiply(tint);
+      renderer.syncDepthOffset();
       instances?.setColour(colour);
     },
+    setDepthOffset(enabled) { if (!disposed) renderer.setDepthOffset(enabled); },
     setSymbolOverride(symbol, archive, sourceSymbol = symbol) {
       if (disposed) return;
       const hash = smallHash(symbol), previous = overrides.get(hash);

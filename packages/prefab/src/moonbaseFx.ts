@@ -58,7 +58,7 @@ export class MoonbaseEffects {
     setPrefabLightOverride(object, 1);
     let fx!: Fx;
     const removal = new ComponentTimer(this.scheduler, () => this.remove(fx));
-    fx = { object, footPosition: object.position, sortLayer, instance, display, removal,
+    fx = { object, sortLayer, instance, display, removal,
       animation: instance.sprite, createdAt: this.scheduler.now };
     this.effects.add(fx); this.scene.add(object);
     return fx;

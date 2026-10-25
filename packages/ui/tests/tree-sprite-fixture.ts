@@ -191,13 +191,20 @@ export async function checkTreeSpriteRendering(instanced = false) {
 
 /** Compare the actual birch draw with source image intervals, including intentionally absent override slots. */
 export async function checkBirchLeafRendering(instanced = false) {
-  const { loadBuild, loadAnim, smallHash } = await import('@dontstarve-web/animation/animationAssets');
+  const { atlasPixels, loadBuild, loadAnim, smallHash } = await import('@dontstarve-web/animation/animationAssets');
   const { createSpriteFactory, loadSymbolOverride } = await import('@dontstarve-web/animation/sprite');
   const base = '/dst/data/anim';
   const [trunk, leaf, bank, override] = await Promise.all([
     loadBuild('tree_leaf_trunk_build.zip', base), loadBuild('tree_leaf_green_build.zip', base),
     loadAnim('tree_leaf_tall.zip', base), loadSymbolOverride(base, 'tree_leaf_green_build.zip', 'swap_leaves'),
   ]);
+  // The CPU reference copies the source RGBA before the first draw hands it to the GPU.
+  const sources: HTMLCanvasElement[] = [];
+  const atlases = [trunk, leaf].map(pkg => pkg.atlases.map(atlas => {
+    const canvas = document.createElement('canvas'); canvas.width = atlas.width; canvas.height = atlas.height;
+    canvas.getContext('2d')!.putImageData(new ImageData(Uint8ClampedArray.from(atlasPixels(atlas)), atlas.width, atlas.height), 0, 0);
+    sources.push(canvas); return canvas;
+  }));
   const factory = createSpriteFactory(trunk, bank);
   const assets = new ArchiveSpriteAssets();
   const definition = { animationArchive: 'tree_leaf_tall.zip',
@@ -215,7 +222,6 @@ export async function checkBirchLeafRendering(instanced = false) {
   renderer.setSize(600, 600); renderer.setClearColor(0, 0);
   const reference = document.createElement('canvas'); reference.width = reference.height = 600;
   const actual = document.createElement('canvas'); actual.width = actual.height = 600;
-  const sources: HTMLCanvasElement[] = [];
   try {
     if (!shared) controller.setSymbolOverrides(new Map([[smallHash('swap_leaves'), override]]), ['mouseover']);
     controller.setFrame(0);
@@ -227,11 +233,6 @@ export async function checkBirchLeafRendering(instanced = false) {
     actual.getContext('2d')!.drawImage(renderer.domElement, 0, 0);
     const ctx = reference.getContext('2d')!;
     ctx.setTransform(.45, 0, 0, .45, 300, 540);
-    const atlases = [trunk, leaf].map(pkg => pkg.atlases.map(atlas => {
-      const canvas = document.createElement('canvas'); canvas.width = atlas.width; canvas.height = atlas.height;
-      canvas.getContext('2d')!.putImageData(new ImageData(Uint8ClampedArray.from(atlas.pixels), atlas.width, atlas.height), 0, 0);
-      sources.push(canvas); return canvas;
-    }));
     const frame = bank.animations.find(clip => clip.name === 'sway1_loop_tall')!.frames[0];
     let expectedParts = 0;
     for (const element of [...frame.elements].sort((a, b) => b.z - a.z)) {

@@ -7,7 +7,7 @@ import type { PrefabDisplay } from './prefabDisplay';
 /** An effect the prefab declares for an entity, shown while `active`; fire on a burning item is one. */
 interface FxOptions {
   readonly active: ReadonlySignal<boolean>;
-  /** Drawn in the owner's sort group, after the owner (2). */
+  /** Ordered at the owner's foot point: after the owner (2) or behind it (0). */
   readonly sortLayer: number;
   /** Background children keep their declared render order rather than joining billboard sorting. */
   readonly background?: boolean;
@@ -27,7 +27,6 @@ export interface FxRenderEntry {
   readonly object: THREE.Group;
   readonly footPosition: THREE.Vector3;
   readonly cameraDepth: number;
-  readonly sortGroup: number;
   readonly sortLayer: number;
 }
 
@@ -61,6 +60,8 @@ export class FxAttachments {
     const model = fxModel(fx);
     if (!fx.display) { model.userData.tags = [...fx.tags]; model.userData.persists = false; }
     model.position.set(0, 0, 0);
+    // Drawn after its owner on the owner's plane: the owner's depth (an instance batch writes it) must not hide it.
+    if (fx.sortLayer > 1) fx.sprite.setDepthOffset(true);
     // The watched signal owns the effect that reads it: stopping the bridge stops both.
     const active = watchSignal(fx.active, stop => { entry.stop = stop; });
     createEffect(() => {
@@ -71,6 +72,7 @@ export class FxAttachments {
 
   private detach(key: string, entry: Attached): void {
     entry.stop();
+    if (entry.fx.sortLayer > 1) entry.fx.sprite.setDepthOffset(false);
     fxModel(entry.fx).removeFromParent();
     this.attached.delete(key);
   }
@@ -87,7 +89,7 @@ export class FxAttachments {
     for (const { fx } of this.attached.values()) {
       const model = fxModel(fx);
       if (fx.background || model.parent !== this.owner) continue;
-      entries.push({ object: model, footPosition: this.owner.position, cameraDepth: 0, sortGroup: this.owner.id, sortLayer: fx.sortLayer });
+      entries.push({ object: model, footPosition: this.owner.position, cameraDepth: 0, sortLayer: fx.sortLayer });
     }
     return entries;
   }

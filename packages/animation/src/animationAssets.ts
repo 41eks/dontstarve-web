@@ -237,6 +237,8 @@ export class FrameGeometryCache {
  */
 const CULL_RADIUS_SCALE = 2;
 const tightSphere = new THREE.Sphere();
+/** Depth-buffer steps towards the camera: past float rounding between coplanar billboards, far below any real gap. */
+const DEPTH_OFFSET_UNITS = -4;
 
 export class SpriteFrameRenderer {
   private readonly visual: THREE.Group;
@@ -249,6 +251,11 @@ export class SpriteFrameRenderer {
   private quadCapacity = 0;
   private instanced = false;
   private frameVisible = false;
+  /** The source materials of the shown frame, which the mesh draws directly unless a depth offset is set. */
+  private shown: THREE.MeshBasicMaterial[] = this.materials;
+  /** Private copies drawn with a depth offset, keyed by their source; shared source materials stay unchanged. */
+  private offsetCopies?: Map<THREE.MeshBasicMaterial, THREE.MeshBasicMaterial>;
+  private readonly offsetMaterials: THREE.MeshBasicMaterial[] = [];
 
   constructor(visual: THREE.Group) {
     this.visual = visual;
@@ -270,10 +277,55 @@ export class SpriteFrameRenderer {
     setInstancedSpriteProxy(this.mesh, enabled && this.frameVisible);
   }
 
+  /**
+   * Draw towards the camera by a few depth-buffer steps, through private copies of the shown materials. An effect drawn
+   * after its owner on the owner's plane is then not hidden by the depth the owner's instance batch wrote, whatever the
+   * camera heading. Frames drawn by an instance batch are not affected.
+   */
+  setDepthOffset(enabled: boolean): void {
+    if (enabled === (this.offsetCopies !== undefined)) return;
+    if (enabled) this.offsetCopies = new Map();
+    else { this.disposeOffsetCopies(); this.offsetCopies = undefined; }
+    this.draw(this.shown);
+  }
+
+  /** Copy the sources' current state (opacity, tint) into the depth-offset copies after their owner changed them. */
+  syncDepthOffset(): void {
+    for (const [source, copy] of this.offsetCopies ?? []) this.copyOffset(source, copy);
+  }
+
+  private draw(materials: THREE.MeshBasicMaterial[]): void {
+    this.shown = materials;
+    const copies = this.offsetCopies;
+    if (!copies) { this.mesh.material = materials; return; }
+    this.offsetMaterials.length = 0;
+    for (const source of materials) {
+      let copy = copies.get(source);
+      if (!copy) { copy = this.copyOffset(source, new THREE.MeshBasicMaterial()); copies.set(source, copy); }
+      this.offsetMaterials.push(copy);
+    }
+    this.mesh.material = this.offsetMaterials;
+  }
+
+  private copyOffset(source: THREE.MeshBasicMaterial, copy: THREE.MeshBasicMaterial): THREE.MeshBasicMaterial {
+    copy.copy(source);
+    // Material.copy omits compile callbacks; the copy must compile to the source's program.
+    copy.onBeforeCompile = source.onBeforeCompile;
+    copy.customProgramCacheKey = source.customProgramCacheKey;
+    copy.polygonOffset = true; copy.polygonOffsetFactor = 0; copy.polygonOffsetUnits = DEPTH_OFFSET_UNITS;
+    copy.needsUpdate = true;
+    return copy;
+  }
+
+  private disposeOffsetCopies(): void {
+    for (const copy of this.offsetCopies?.values() ?? []) copy.dispose();
+    this.offsetCopies?.clear();
+  }
+
   /** Draw a frame owned by a FrameGeometryCache instead of this renderer's own buffers. */
   showShared(frame: SharedFrame): void {
     this.mesh.geometry = frame.geometry;
-    this.mesh.material = frame.materials;
+    this.draw(frame.materials);
     this.frameVisible = frame.visible;
     this.mesh.visible = frame.visible && !this.instanced;
     setSpriteRenderGroupDrawn(this.visual, this.mesh.visible);
@@ -290,11 +342,12 @@ export class SpriteFrameRenderer {
   dispose(): void {
     setInstancedSpriteProxy(this.mesh, false);
     if (this.mesh.geometry !== this.geometry) this.geometry.dispose();
+    this.disposeOffsetCopies();
   }
 
   show(sprites: ResolvedSprite[]) {
     this.mesh.geometry = this.geometry;
-    this.mesh.material = this.materials;
+    this.draw(this.materials);
     if (sprites.length === 0) {
       this.frameVisible = false;
       this.mesh.visible = false;
@@ -376,6 +429,8 @@ export class SpriteFrameRenderer {
     this.geometry.getAttribute('position').needsUpdate = true;
     this.geometry.getAttribute('uv').needsUpdate = true;
     markSpatialGeometryBounds(this.geometry);
+    // The own frame's materials were rebuilt in place above.
+    if (this.offsetCopies) this.draw(this.materials);
   }
 
   /** Bounds only the drawn vertices; stale capacity beyond the draw range is ignored. */

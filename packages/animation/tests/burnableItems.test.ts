@@ -56,6 +56,10 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(fires()).toHaveLength(2);
     expect(fires().every(fire => modelHasTag(fire, 'FX') && modelHasTag(fire, 'HASHEATER'))).toBe(true);
+    // Drawn on the item's plane after it: the depth the item's instance batch writes cannot hide it at any heading.
+    const fireMaterials = () => fires().flatMap(fire => (fire.getObjectByProperty('type', 'Mesh') as THREE.Mesh<THREE.BufferGeometry, THREE.Material[]>).material);
+    expect(fireMaterials().length).toBeGreaterThan(0);
+    expect(fireMaterials().every(material => material.polygonOffset)).toBe(true);
     expect(manager.renderEntities.filter(entry => entry.object.name === 'fire')).toHaveLength(2);
     const save = () => serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
       entities: { ground_item: manager.exportRecords() }, inventory: inventory.exportState(), elapsedSeconds: 15,

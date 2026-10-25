@@ -27,6 +27,7 @@
 ## Tickingarea and animation
 
 - `tickingarea` is this project's own mechanism with no Lua counterpart; do not describe it or justify behavior with Lua semantics. Animation playback must not be decided by `tickingarea`: whether and which animation plays follows the source Lua and the entity's own state, and `tickingarea` only gates resource loading, subscriptions and logical activity as in [tile lifecycle](docs/tile-lifecycle.md). Camera culling is separate from both.
+- Prefab visibility follows `tickingarea`: an entity is drawn while its tile is active and not drawn once it sleeps and releases its sprite. Do not add other ways of deciding whether a prefab is drawn, such as per-frame parent-chain/ancestor visibility checks in render batches, distance- or focus-radius hiding, or per-prefab show/hide toggles, and do not add culling. An entity whose source AnimState plays no animation (only a bank and build, as fireflies before `fadein`) declares that state with `SpriteState` `none` / `clearAnimation()`, and no sprite is built until a clip plays; this is animation state from the source Lua, not a visibility toggle.
 
 ## Page lifecycle
 

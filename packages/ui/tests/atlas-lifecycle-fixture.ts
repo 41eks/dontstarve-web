@@ -76,10 +76,11 @@ export async function checkFlowerAtlasLifecycle() {
     const rebuiltTexture = (batches()[0].material as THREE.MeshBasicMaterial).map !== texture;
     const identityPreserved = shared.model.uuid === originalIdentity && shared.currentAnimation === 'idle';
     const recoveredBatch = batches()[0];
-    shared.model.visible = false; read(scenes[0]);
+    // Out of view the batch draws nothing; its idle mesh leaves the scene and is reused on return.
+    shared.model.position.x = 100; read(scenes[0]);
     const group = scenes[0].children.find(child => child.name === 'InstancedArchiveSprites')!;
     const spareDetached = group.children.length === 0 && !group.visible && recoveredBatch.parent === null;
-    shared.model.visible = true;
+    shared.model.position.x = 3;
     const afterShow = compare(), reusedAfterShow = batches()[0] === recoveredBatch;
     return { samples, released, positions, off, reusedForOff, reusedForIdle, beforeRestore, afterRestore, rebuiltTexture, identityPreserved,
       spareDetached, afterShow, reusedAfterShow };

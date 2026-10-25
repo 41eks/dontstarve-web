@@ -42,7 +42,7 @@ function setup(separateFoot = false) {
     const show = (frame: number, key = 'idle') => handle.show(key, { ...animation, name: key }, () => () => [part], frame);
     show(0); return { model, visual, foot, handle, show };
   });
-  const render = () => { scene.updateMatrixWorld(); camera.updateMatrixWorld(); instances.render(renderer, camera); };
+  const render = () => { scene.updateMatrixWorld(); camera.updateMatrixWorld(); instances.render(renderer, camera, undefined, scene); };
   const batch = () => scene.getObjectByName('ArchiveSpriteInstances:colour') as THREE.InstancedMesh;
   return { instances, scene, parent, camera, renderer, material, entries, render, batch,
     dispose() { entries.forEach(entry => entry.handle.dispose()); instances.dispose(); material.dispose(); } };
@@ -77,13 +77,15 @@ it('advances only UVs on stationary animation frames, reusing culling, depth ord
   } finally { s.dispose(); }
 });
 
-it('invalidates camera culling and membership, samples shared ancestor changes, and updates private tint, opacity and erosion', () => {
+it('invalidates camera culling and membership, inherits the nearest light override, and updates private tint, opacity and erosion', () => {
   const s = setup();
   try {
     s.render(); const mesh = s.batch();
     const cull = vi.spyOn(THREE.Frustum.prototype, 'intersectsSphere');
-    s.parent.visible = false; s.render(); expect(mesh.count).toBe(0);
-    s.parent.visible = true; setLightOverride(s.parent, .6);
+    // Whether an entity is drawn follows its tile, not its parents; the light override comes from the nearest owner.
+    s.parent.visible = false; setLightOverride(s.parent, .6); s.render(); expect(mesh.count).toBe(3);
+    expect(mesh.geometry.getAttribute('spriteLightOverride').getX(2)).toBeCloseTo(.6);
+    s.parent.visible = true; setLightOverride(s.parent, null); setLightOverride(s.entries[2].model, .6);
     s.entries[0].handle.setColour([.2, .3, .4]); s.entries[0].handle.setOpacity(.5);
     setSpriteErosion(s.entries[0].model, .25); s.render();
     expect(mesh.count).toBe(3); expect(cull).not.toHaveBeenCalled();
@@ -96,20 +98,17 @@ it('invalidates camera culling and membership, samples shared ancestor changes, 
     setLightOverride(s.material, .9); s.render();
     expect(mesh.geometry.getAttribute('spriteLightOverride').getX(0)).toBeCloseTo(.9);
     setLightOverride(s.material, null); setLightOverride(s.entries[0].model, null); s.render();
-    expect(mesh.geometry.getAttribute('spriteLightOverride').getX(0)).toBeCloseTo(.6);
+    expect(mesh.geometry.getAttribute('spriteLightOverride').getX(0)).toBe(0);
     s.camera.position.x = 100; s.render();
     expect(cull).toHaveBeenCalledTimes(3); expect(mesh.count).toBe(0);
     s.camera.position.x = 0; s.render(); expect(mesh.count).toBe(3);
-    const otherParent = new THREE.Group(); setLightOverride(otherParent, .8); s.scene.add(otherParent);
-    otherParent.add(s.entries[2].model); s.render();
-    expect(mesh.geometry.getAttribute('spriteLightOverride').getX(2)).toBeCloseTo(.8);
     s.entries[0].handle.hide(); s.render(); expect(mesh.count).toBe(2);
     s.entries[0].show(1); s.render(); expect(mesh.count).toBe(3);
     s.entries[0].visual.visible = false; s.render(); expect(mesh.count).toBe(2);
     s.entries[0].visual.visible = true; s.render(); expect(mesh.count).toBe(3);
     s.entries[0].handle.dispose(); s.render(); expect(mesh.count).toBe(2);
     cull.mockClear(); s.parent.position.x = 1; s.render();
-    expect(cull).toHaveBeenCalledTimes(1); // The other model was reparented above.
+    expect(cull).toHaveBeenCalledTimes(2); // Both remaining entities move with their parent.
     const matrix = new THREE.Matrix4(); mesh.getMatrixAt(0, matrix);
     expect(matrix.elements[12]).toBe(1);
   } finally { s.dispose(); }

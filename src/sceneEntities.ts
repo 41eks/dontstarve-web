@@ -686,7 +686,7 @@ export async function createSceneEntities(
       }),
       debugSpawn: id => mushtrees.spawn(id, player.position.clone()),
       exportRecords: () => mushtrees.exportRecords(),
-      update: (dt, quaternion) => mushtrees.update(dt, quaternion, player.position),
+      update: (dt, quaternion) => mushtrees.update(dt, quaternion),
       renderEntities: () => mushtrees.renderEntities,
       miniMapEntities: () => mushtrees.miniMapEntities,
       dispose: () => mushtrees.dispose(),

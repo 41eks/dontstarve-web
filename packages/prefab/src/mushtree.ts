@@ -43,8 +43,6 @@ const DEAD_DECAY_TIME = 480 * 30;
 const SEG_TIME = 30;
 /** Animation frames are 30 per second. */
 const FRAMES = 1 / 30;
-/** Trees farther than this from the player are neither drawn nor animated (the moon forest has hundreds). */
-const ACTIVE_RADIUS_SQUARED = (12 * TILE_SIZE) ** 2;
 const STAGE_SCALE = [.9, 1, 1.1] as const;
 
 interface TreeData {
@@ -423,13 +421,10 @@ export class MushtreeManager {
     }
   }
 
-  update(dt: number, quaternion: THREE.Quaternion, focus?: THREE.Vector3): void {
+  update(dt: number, quaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     if (this.ownsScheduler) this.scheduler.advance(dt);
-    for (const { sprite, model } of this.trees.values()) {
-      const visible = !focus || model.position.distanceToSquared(focus) <= ACTIVE_RADIUS_SQUARED;
-      if (sprite.sprite.peek().visible !== visible) sprite.setVisible(visible);
-      if (!visible) continue;
+    for (const { sprite } of this.trees.values()) {
       if (sprite.loaded) sprite.update(dt);
     }
     for (const { entity: { instance } } of this.effects) instance.sprite.update(dt);

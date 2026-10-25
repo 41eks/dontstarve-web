@@ -25,3 +25,5 @@ dist-ssr
 
 .mimocode
 public/saves/Cluster_62
+Trace-*.json.gz
+trace_with_heap_dump.json.gz

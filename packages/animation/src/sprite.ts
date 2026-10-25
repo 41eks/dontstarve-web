@@ -205,6 +205,9 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   /** AnimState:GetCurrentAnimationLength, in seconds. */
   get currentAnimationLength(): number { return this.animation.frames.length / this.animation.frameRate; }
 
+  /** Draw a few depth steps towards the camera, so an effect on its owner's plane is not hidden by the owner's depth. */
+  setDepthOffset(enabled: boolean): void { this.renderer.setDepthOffset(enabled); }
+
   setFrame(frame: number): void {
     if (!Number.isInteger(frame) || frame < 0 || frame >= this.animation.frames.length) throw new RangeError('Invalid animation frame');
     this.elapsed = frame / this.animation.frameRate;

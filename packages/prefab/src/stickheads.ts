@@ -95,7 +95,7 @@ class StickHead {
     }
 
     get renderEffects(): BuildingRenderEffect[] {
-        return [{ object: this.flies.display.model, footPosition: this.context.model.position, sortLayer: 2 }];
+        return [{ object: this.flies.display.model, sortLayer: 2 }];
     }
 
     update(dt: number): void { this.fliesController?.update(dt); }

@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlacement';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { getLightOverride } from '../src/lightOverride';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import type { WorldContext } from '../../prefab/src/worldContext';
 
@@ -30,6 +31,11 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
   // Writing the json is enough: the drawn sprite follows on its next frame.
   sprite.start('open');
   expect(sprite.currentAnimation).toBe('open');
+  // The declared light override reaches the model, and clearing it leaves no minimum light behind.
+  sprite.setLightOverride(1); await tick();
+  expect(getLightOverride(model)).toBe(1);
+  sprite.setLightOverride(null); await tick();
+  expect(getLightOverride(model)).toBeUndefined();
 
   awake.set(false); await tick();
   expect(instance.status.peek()).toBe('asleep');

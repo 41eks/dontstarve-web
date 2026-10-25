@@ -121,7 +121,8 @@ export interface AnimatedBuildingDefinition {
     renderEffects?: (context: AnimatedBuildingEventContext) => readonly BuildingRenderEffect[];
 }
 
-export interface BuildingRenderEffect { object: THREE.Group; footPosition: THREE.Vector3; sortLayer: number; }
+/** An effect drawn at its building's foot point, behind (0) or after (2+) the building (1). */
+export interface BuildingRenderEffect { object: THREE.Group; sortLayer: number; }
 
 export interface AnimatedBuildingPreparedResources {
     readonly materials: readonly THREE.Material[];
@@ -534,16 +535,18 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             .map(({ model, groundOffset }) => ({
                 object: model,
                 footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
-                cameraDepth: 0,
-                sortGroup: model.id, sortLayer: 1,
+                cameraDepth: 0, sortLayer: 1,
             }));
-        // A burning building's fire shares its foot point and sort group, drawn after the building.
+        // A burning building's fire and its declared effects share its foot point, so they order with the building.
         const fires = this.placed.filter(({ fire }) => fire?.display.model.visible).map(({ model, fire, groundOffset }) => ({
             object: fire!.display.model, footPosition: model.position.clone().add(new THREE.Vector3(0, -groundOffset, 0)),
-            cameraDepth: 0, sortGroup: model.id, sortLayer: 2 }));
-        return [...entries, ...fires, ...this.placed.flatMap(building =>
-            (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? [])
-                .filter(effect => effect.object.visible).map(effect => ({ ...effect, cameraDepth: 0, sortGroup: building.model.id })))];
+            cameraDepth: 0, sortLayer: 2 }));
+        return [...entries, ...fires, ...this.placed.flatMap(building => {
+            const effects = (this.definitions[building.buildId].renderEffects?.(this.eventContext(building)) ?? []).filter(effect => effect.object.visible);
+            if (!effects.length) return [];
+            const footPosition = building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0));
+            return effects.map(effect => ({ ...effect, footPosition, cameraDepth: 0 }));
+        })];
     }
 
     get spellTargets(): readonly import('./greenstaff').DeconstructionTarget[] { return this.getSpellTargets(); }

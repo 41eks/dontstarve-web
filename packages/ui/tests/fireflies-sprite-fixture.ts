@@ -6,7 +6,7 @@ import { FirefliesAssets, configureFirefliesEntity, createFirefliesGroundSprite 
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
-import { setPrefabLightOverride, setPrefabLocalLight } from '../../prefab/src/localLight';
+import { setPrefabLocalLight } from '../../prefab/src/localLight';
 import { bindTestWorld } from '../../animation/tests/worldContentFixture';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
@@ -62,7 +62,7 @@ export async function checkFirefliesInstances() {
   try {
     await settle(); advance(5); await settle();
     // Keep a dark member in the same atlas batch to check independent overrides.
-    setPrefabLightOverride(swarms[31].model, 0);
+    swarms[31].instance.sprite.setLightOverride(0);
     await prewarmScenePasses(renderer, scene, camera);
     const calls = [draw()];
     const pixels = new Uint8Array(256 * 256 * 4);

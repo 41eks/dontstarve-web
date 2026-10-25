@@ -38,7 +38,6 @@ interface DrawPage {
   count: number;
   sortDirty: boolean;
 }
-interface HierarchyState { generation: number; scene?: THREE.Scene; visible: boolean; lightOverride?: number }
 interface InstanceState {
   id: number;
   transformVersion: number;
@@ -143,8 +142,6 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   private readonly entries = new Set<Entry>();
   private readonly scenes = new Map<THREE.Scene, SceneBatches>();
   private readonly draws = new Map<THREE.Scene, Map<RgbaSpriteAtlas, DrawPage>>();
-  private hierarchy = new WeakMap<THREE.Object3D, HierarchyState>();
-  private generation = 0;
   private readonly matrix = new THREE.Matrix4();
   private readonly frameMatrix = new THREE.Matrix4();
   private readonly frustumMatrix = new THREE.Matrix4();
@@ -274,21 +271,8 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     batches.spare.push(batch);
   }
 
-  /** Shared ancestors are sampled once per pass, including direct visibility/light changes and reparenting. */
-  private hierarchyState(node: THREE.Object3D): HierarchyState {
-    let state = this.hierarchy.get(node);
-    if (state?.generation === this.generation) return state;
-    if (!state) { state = { generation: 0, visible: false }; this.hierarchy.set(node, state); }
-    const parent = node.parent ? this.hierarchyState(node.parent) : undefined;
-    state.generation = this.generation;
-    state.scene = parent?.scene ?? (node instanceof THREE.Scene ? node : undefined);
-    state.visible = node.visible && (parent?.visible ?? true);
-    state.lightOverride = getLightOverride(node) ?? parent?.lightOverride;
-    return state;
-  }
-
-  render(renderer: THREE.WebGLRenderer, camera: THREE.Camera): void {
-    spritePerf('render', `${this.entries.size} entries`, () => this.renderPass(renderer, camera, COMPOSE_BUDGET_MS));
+  render(renderer: THREE.WebGLRenderer, camera: THREE.Camera, _lighting: unknown, scene: THREE.Scene): void {
+    spritePerf('render', `${this.entries.size} entries`, () => this.renderPass(renderer, camera, scene, COMPOSE_BUDGET_MS));
   }
 
   /** Spread atlas composition over frames: an appearance is drawn once its pages exist, never composed inside the draw loop. */
@@ -317,10 +301,10 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   /** Composes every pending appearance now, for callers that need the next draw to be complete. */
   flush(renderer: THREE.WebGLRenderer): void { this.composeAtlases(renderer, Infinity, 'compose:flush'); }
 
-  private renderPass(renderer: THREE.WebGLRenderer, camera: THREE.Camera, composeBudgetMs: number, composePhase?: string): void {
+  /** The world has one scene: every entity is drawn into the batches of the scene being rendered. */
+  private renderPass(renderer: THREE.WebGLRenderer, camera: THREE.Camera, scene: THREE.Scene, composeBudgetMs: number, composePhase?: string): void {
     this.composeAtlases(renderer, composeBudgetMs, composePhase);
     if (this.contextLost) return;
-    this.generation++;
     this.frustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     if (this.coordinateSystem !== camera.coordinateSystem || !this.frustumMatrix.equals(this.previousFrustumMatrix)
       || !camera.matrixWorldInverse.equals(this.previousViewMatrix)) {
@@ -334,8 +318,13 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       if (entry.appearance?.pages) entry.ready = entry.appearance;
       const appearance = entry.ready;
       if (!appearance) continue;
-      const { scene, visible, lightOverride } = this.hierarchyState(entry.model);
-      if (!visible || !entry.visual.visible || !scene) continue;
+      // Whether an entity is drawn follows the tickingarea: a sleeping entity has released its entry.
+      if (!entry.visual.visible) continue;
+      // The nearest owner's AnimState light override, the same lookup ordinary sprites use (DstLocalLighting).
+      let lightOverride: number | undefined;
+      for (let owner: THREE.Object3D | null = entry.model; owner && lightOverride === undefined; owner = owner.parent) {
+        lightOverride = getLightOverride(owner);
+      }
       const { atlas, frame } = appearance.locations![Math.min(entry.frame, appearance.locations!.length - 1)];
       // A single InstancedMesh has no per-entity frustum culling. Cull the whole
       // assembled frame before sorting or uploading instances, retaining logical
@@ -467,9 +456,9 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     }
   }
 
-  async prewarm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
+  async prewarm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal: AbortSignal | undefined, scene: THREE.Scene): Promise<void> {
     signal?.throwIfAborted();
-    this.renderPass(renderer, camera, Infinity, 'compose:prewarm');
+    this.renderPass(renderer, camera, scene, Infinity, 'compose:prewarm');
     for (const { group, pages } of this.scenes.values()) {
       for (const batch of pages.values()) renderer.initTexture(batch.atlas.texture);
       await renderer.compileAsync(group, camera);
@@ -496,7 +485,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       for (const batch of [...batches.pages.values(), ...batches.spare]) this.disposeBatch(batch);
     }
     this.scenes.clear();
-    this.draws.clear(); this.hierarchy = new WeakMap();
+    this.draws.clear();
     for (const appearance of this.appearances.values()) {
       appearance.composer?.cancel();
       for (const atlas of appearance.pages ?? []) atlas.texture.dispose();

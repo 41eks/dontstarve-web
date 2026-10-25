@@ -26,7 +26,7 @@ export async function benchmarkInstancePreparation(variant: string) {
       // Animation advances; camera and ground-contact positions remain fixed.
       sprites.forEach((sprite, index) => sprite.setFrame((frame + index) % sprite.frameCount));
       scene.updateMatrixWorld();
-      const start = performance.now(); assets.instancedSprites.render(renderer, camera);
+      const start = performance.now(); assets.instancedSprites.render(renderer, camera, undefined, scene);
       const elapsed = performance.now() - start;
       if (frame >= 30) samples.push(elapsed);
       // Consume uploads outside the preparation measurement.

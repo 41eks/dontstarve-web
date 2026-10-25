@@ -10,7 +10,7 @@ export interface EntityRenderEntry {
   cameraDepth: number;
   /** Drawing layer before depth sorting: background < 0, ordinary world entities default to 0. */
   renderLayer?: number;
-  sortGroup?: number;
+  /** Order among parts sharing one foot point (default 1): an effect passes its owner's foot. */
   sortLayer?: number;
 }
 

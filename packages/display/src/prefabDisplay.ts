@@ -55,7 +55,7 @@ export class PrefabDisplay {
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: number; transient?: SpriteJson['transient'];
-    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; lightOverride?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; appearance: ReadonlyMap<string, AppearanceJson> };
+    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; lightOverride?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
     const { archive, sprite: state } = options;
@@ -64,7 +64,7 @@ export class PrefabDisplay {
     const first = state.sprite.peek();
     const held = first.clip.finished && !first.clip.loop;
     if (archive) {
-      const clip = { name: first.clip.name, loop: !held };
+      const clip = { name: first.clip.name, loop: !held, none: first.clip.none };
       const prepare = (drawn: import('@dontstarve-web/animation/archiveSprite').ArchiveSprite) => {
         if (archive.alignBottom) {
           drawn.model.updateWorldMatrix(true, true);
@@ -178,7 +178,10 @@ export class PrefabDisplay {
     if (json.visible !== undefined) this.model.visible = json.visible;
     if (json.clip !== applied.clip) {
       const clip = json.clip;
-      if (clip.pose) controller.setPose(clip.pose.name);
+      if (clip.none) {
+        if (!controller.clearAnimation) throw new Error(`${this.model.name || 'Sprite'} cannot play no animation`);
+        controller.clearAnimation();
+      } else if (clip.pose) controller.setPose(clip.pose.name);
       else if (clip.percent !== undefined) controller.setPercent(clip.name, clip.percent);
       else if (clip.loop) controller.start(clip.name);
       else if (clip.finished) controller.holdLastFrame(clip.name);
@@ -200,12 +203,13 @@ export class PrefabDisplay {
     if (json.opacity !== applied.opacity) { applied.opacity = json.opacity; if (json.opacity !== undefined) controller.setOpacity(json.opacity); }
     if (json.lightOverride !== applied.lightOverride) {
       applied.lightOverride = json.lightOverride;
-      if (json.lightOverride !== undefined) setLightOverride(this.model, json.lightOverride);
+      setLightOverride(this.model, json.lightOverride ?? null);
     }
     if (json.paused !== applied.paused) { applied.paused = json.paused; if (json.paused !== undefined) controller.setPaused?.(json.paused); }
     if (json.erosion !== applied.erosion) { applied.erosion = json.erosion; if (json.erosion !== undefined) controller.setErosion?.(json.erosion); }
     if (json.ground !== applied.ground) { applied.ground = json.ground; if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat); }
     if (json.meshOrder !== applied.meshOrder) { applied.meshOrder = json.meshOrder; if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder); }
+    if (json.depthOffset !== applied.depthOffset) { applied.depthOffset = json.depthOffset; controller.setDepthOffset?.(json.depthOffset ?? false); }
     for (const [key, op] of json.appearance) if (applied.appearance.get(key) !== op) this.dressOne(op);
     applied.appearance = json.appearance;
   }
@@ -223,6 +227,7 @@ export class PrefabDisplay {
     if (json.erosion !== undefined) controller.setErosion?.(json.erosion);
     if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat);
     if (json.meshOrder !== undefined) controller.setMeshOrder?.(json.meshOrder);
+    if (json.depthOffset) controller.setDepthOffset?.(true);
     for (const op of json.appearance.values()) this.dressOne(op);
   }
 

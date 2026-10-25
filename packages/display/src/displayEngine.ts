@@ -25,6 +25,8 @@ export interface DisplayEngine {
   start(name: string): void;
   playOnce(name: string, complete?: () => void): void;
   holdLastFrame(name: string): void;
+  /** AnimState with no animation playing: the drawn sprite is released until a clip is played. Archive sprites only. */
+  clearAnimation?(): void;
   setPose(name: string | undefined): void;
   setPercent(name: string, percent: number): void;
   pushAnimation(name: string, loop?: boolean): void;
@@ -38,6 +40,7 @@ export interface DisplayEngine {
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
   setErosion?(amount: number): void;
+  setDepthOffset?(enabled: boolean): void;
   setSymbolOverride?(symbol: string, archive?: string, sourceSymbol?: string): void;
   setSymbolHidden?(symbol: string, hidden: boolean): void;
   setBuildArchive?(archive: string): void;
@@ -74,16 +77,15 @@ export class ArchiveEngine implements DisplayEngine {
   update(dt: number): void { this.resident.update(dt); }
   start(name: string): void { this.resident.start(name); }
   playOnce(name: string, complete?: () => void): void { this.resident.playOnce(name, complete); }
-  holdLastFrame(name: string): void {
-    this.resident.playOnce(name);
-    this.resident.setFrame(this.resident.frameCount - 1);
-  }
+  holdLastFrame(name: string): void { this.resident.holdLastFrame(name); }
+  clearAnimation(): void { this.resident.clearAnimation(); }
   setFrame(frame: number): void { this.resident.setFrame(frame); }
   setPaused(paused: boolean): void { this.resident.setPaused(paused); }
   setAnimation(name: string): void { this.resident.setAnimation(name); }
   setColour(colour: readonly number[]): void { this.resident.setColour([colour[0], colour[1], colour[2]]); }
   setOpacity(opacity: number): void { this.resident.setOpacity(opacity); }
   setErosion(amount: number): void { this.resident.setErosion(amount); }
+  setDepthOffset(enabled: boolean): void { this.resident.setDepthOffset(enabled); }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.resident.setSymbolOverride(symbol, archive, sourceSymbol); }
   setSymbolHidden(symbol: string, hidden: boolean): void { this.resident.setSymbolHidden(symbol, hidden); }
   setBuildArchive(archive: string): void { this.resident.setBuildArchive(archive); }

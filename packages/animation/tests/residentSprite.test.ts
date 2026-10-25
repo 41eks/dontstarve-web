@@ -61,6 +61,9 @@ it('keeps the last pose of a finished one-shot clip when reloaded', () => {
   created[0].finish();
   resident.unload(); resident.load();
   expect(created[1].calls).toEqual(expect.arrayContaining(['once:picked', 'frame:9']));
+  // Told to rest on a clip's last frame while unloaded: the rebuilt sprite rests there, not on frame 0.
+  resident.unload(); resident.holdLastFrame('pst'); resident.load();
+  expect(created[2].calls).toEqual(['once:pst', 'frame:9']);
 });
 
 it('skips empty visuals during rendering, updates explicit queries and refreshes a rebuilt visual', async () => {

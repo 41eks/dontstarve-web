@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FirefliesController, FIREFLIES_LIGHT, configureFirefliesEntity } from '../../prefab/src/fireflies';
-import { getPrefabLightOverride, getPrefabLocalLight } from '../../prefab/src/localLight';
+import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { GroundItemManager } from '../../../src/groundItems';
 
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -34,7 +34,7 @@ function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = ()
   cycle.set(night ? 'night' : 'day');
   playerpositions.set([position.clone()]);
   const model = new THREE.Group();
-  const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), setVisible: vi.fn() };
+  const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), clearAnimation: vi.fn(), setLightOverride: vi.fn() };
   const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
   const handEquipment = createSignal<HandEquipment | null>(netEquipment());
   const controller = new FirefliesController(model, animation,
@@ -151,7 +151,7 @@ describe('source fireflies light and proximity', () => {
     expect(s.controller.intensity).toBeCloseTo(0.25);
     s.tick(1.6);
     expect(getPrefabLocalLight(s.model)).toEqual(FIREFLIES_LIGHT);
-    expect(getPrefabLightOverride(s.model)).toBe(1);
+    expect(s.animation.setLightOverride).toHaveBeenLastCalledWith(1);
     const complete = s.animation.playOnce.mock.calls[0][1] as () => void;
     complete();
     expect(s.animation.start).toHaveBeenLastCalledWith('swarm_loop');
@@ -225,7 +225,7 @@ describe('fireflies tickingarea gate', () => {
     cycle.set('day'); playerpositions.set([new THREE.Vector3(1, 0, 0)]);
     const model = new THREE.Group();
     const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
-    const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), setVisible: vi.fn() };
+    const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), clearAnimation: vi.fn(), setLightOverride: vi.fn() };
     const controller = new FirefliesController(model, animation, { getWatchWorldContent,
       handEquipment: createSignal<HandEquipment | null>(netEquipment()) }, entity.transform, () => 0);
     cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
@@ -362,7 +362,8 @@ describe('real fireflies archive and ground transfers', () => {
       return result;
     };
     // Source frame buffers belong to ArchiveSpriteAssets; a departing swarm drops its visual and instance.
-    expect(geometry(near)).toBeDefined();
+    // The near swarm fades in on load, and its sprite is built when swarm_pre starts.
+    await vi.waitFor(() => expect(geometry(near)).toBeDefined());
     expect(geometry(far)).toBeUndefined();
     expect(far.parent).toBeNull();
     expect(manager.renderEntities.map(entry => entry.object)).toEqual([near]);
@@ -378,8 +379,8 @@ describe('real fireflies archive and ground transfers', () => {
     expect(geometry(near)).toBeUndefined();
     expect(near.parent).toBeNull();
     expect(getPrefabLocalLight(near)).toBeUndefined();
-    expect(geometry(far)).toBeDefined();
-    // A player standing next to the swarm hides it, and hidden swarms take no part in depth sorting.
+    // A player standing next to the swarm keeps it from fading in: it plays no animation, so nothing is built or sorted.
+    expect(geometry(far)).toBeUndefined();
     expect(manager.renderEntities).toEqual([]);
     expect(target.isValid()).toBe(false);
     expect(target.capture()).toBe(false);

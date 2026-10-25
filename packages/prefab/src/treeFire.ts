@@ -78,10 +78,9 @@ export class FireFxHost {
     }
   }
 
-  get renderEntities(): { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number; sortGroup?: number; sortLayer: number }[] {
-    // A fire sharing an owner joins its sort group, so it takes the owner's depth and draws after it.
-    return [...this.fires].map(([object, { position, owner }]) => ({ object, footPosition: position, cameraDepth: 0,
-      sortGroup: owner?.id, sortLayer: 2 }));
+  get renderEntities(): { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number; sortLayer: number }[] {
+    // A fire on an owner shares its foot point, so it takes the owner's order and draws after it.
+    return [...this.fires].map(([object, { position }]) => ({ object, footPosition: position, cameraDepth: 0, sortLayer: 2 }));
   }
 
   dispose(): void {

@@ -15,6 +15,8 @@ export interface ClipJson {
   readonly percent?: number;
   /** Static build-image rest pose; an undefined name selects the source image. */
   readonly pose?: { readonly name: string | undefined };
+  /** AnimState with no animation playing (bank and build only): nothing is drawn until a clip is played. */
+  readonly none?: true;
 }
 
 /** Appearance that belongs to the entity and is dressed again on every drawn sprite. */
@@ -52,6 +54,8 @@ export interface SpriteJson {
   readonly ground?: { readonly renderOrder: number; readonly flat: boolean };
   /** LAYER_BACKGROUND art that draws by mesh order among the ground layers, keeping its group order. */
   readonly meshOrder?: number;
+  /** An effect drawn on its owner's plane, a few depth steps towards the camera. */
+  readonly depthOffset?: boolean;
   readonly appearance: ReadonlyMap<string, AppearanceJson>;
 }
 
@@ -82,11 +86,14 @@ export interface ArchiveSpriteCommands {
   start(name: string): void;
   playOnce(name: string, complete?: () => void): void;
   holdLastFrame(name: string): void;
+  /** AnimState with no animation playing: nothing is drawn until a clip is played again. */
+  clearAnimation(): void;
   setFrame(frame: number): void;
   setFacing(facing: number): void;
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
-  setLightOverride(value: number): void;
+  /** null clears it: the model keeps no minimum light. */
+  setLightOverride(value: number | null): void;
   setPaused(paused: boolean): void;
   setVisible(visible: boolean): void;
   setErosion(amount: number): void;
@@ -97,6 +104,7 @@ export interface ArchiveSpriteCommands {
   setBuildArchive(archive: string): void;
   setGround(renderOrder: number, flat?: boolean): void;
   setMeshOrder(order: number): void;
+  setDepthOffset(enabled: boolean): void;
   attachFx(key: string, fx: FxJson): void;
   detachFx(key: string): void;
   followAnimation(source: ReadonlySignal<string | number> | undefined): void;
@@ -123,11 +131,15 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   private probe: SpriteProbe | undefined;
   private awake = true;
 
-  /** `held` marks an initial clip shown on its last frame; `billboard` entities face the camera. */
-  constructor(clip: { name: string; held?: boolean; billboard?: boolean }) {
+  /**
+   * `held` marks an initial clip shown on its last frame; `none` starts with no animation playing, as an AnimState that
+   * was given only a bank and build; `billboard` entities face the camera.
+   */
+  constructor(clip: { name: string; held?: boolean; none?: boolean; billboard?: boolean }) {
     this.initialAnimation = clip.name;
     this.json = createSignal<SpriteJson>({
-      clip: { name: clip.name, loop: !clip.held, finished: clip.held === true }, queue: [], appearance: new Map(),
+      clip: clip.none ? { name: clip.name, loop: false, finished: true, none: true }
+        : { name: clip.name, loop: !clip.held, finished: clip.held === true }, queue: [], appearance: new Map(),
       ...clip.billboard ? { billboard: true } : {},
     });
     this.sprite = readonlySignal(this.json);
@@ -159,7 +171,8 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     if (!awake) this.settle();
     this.awake = awake;
   }
-  private get drawn(): boolean { return this.awake && (this.probe?.loaded ?? true); }
+  // Playing no animation, the sprite is built for the next clip, which is drawn rather than settled.
+  private get drawn(): boolean { return this.awake && (this.state.clip.none === true || (this.probe?.loaded ?? true)); }
   /** The completion state: the clip completes, and what was queued behind it is the clip now. */
   private settle(): void {
     const { clip, queue } = this.state;
@@ -179,10 +192,14 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     this.write({ clip: { name, loop: true, finished: false }, queue: [], frame: undefined });
   }
   playOnce(name: string, complete?: () => void): void {
-    const clip: ClipJson = { name, loop: false, finished: false, complete };
+    const clip: ClipJson = { name, loop: false, finished: false, complete }, drawn = this.drawn;
     this.write({ clip, queue: [], frame: undefined });
     // Nothing is drawn, so the transition completes at once.
-    if (!this.drawn) this.finish(clip);
+    if (!drawn) this.finish(clip);
+  }
+  /** AnimState with no animation playing: the drawn sprite is released until a clip is played again. */
+  clearAnimation(): void {
+    this.write({ clip: { name: this.initialAnimation, loop: false, finished: true, none: true }, queue: [], frame: undefined });
   }
   pushAnimation(name: string, loop = false): void {
     this.write({ queue: [...this.state.queue, { name, loop }] });
@@ -203,12 +220,13 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setFacing(facing: number, mirrored?: boolean): void { this.write({ facing, mirrored }); }
   setColour(colour: readonly number[]): void { this.write({ colour }); }
   setOpacity(opacity: number): void { this.write({ opacity }); }
-  setLightOverride(lightOverride: number): void { this.write({ lightOverride }); }
+  setLightOverride(lightOverride: number | null): void { this.write({ lightOverride: lightOverride ?? undefined }); }
   setPaused(paused: boolean): void { this.write({ paused }); }
   setVisible(visible: boolean): void { this.write({ visible }); }
   setErosion(erosion: number): void { this.write({ erosion }); }
   setGround(renderOrder: number, flat = true): void { this.write({ ground: { renderOrder, flat } }); }
   setMeshOrder(meshOrder: number): void { this.write({ meshOrder }); }
+  setDepthOffset(depthOffset: boolean): void { this.write({ depthOffset }); }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
     this.withAppearance(`archive-symbol:${symbol}`, { kind: 'archive-symbol', symbol, archive, sourceSymbol });
   }

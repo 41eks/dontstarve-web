@@ -841,9 +841,10 @@ export class GroundItemManager {
 
   get renderEntities(): readonly { object: THREE.Group; footPosition: THREE.Vector3; cameraDepth: number }[] {
     const entries: { readonly object: THREE.Group; readonly footPosition: THREE.Vector3; cameraDepth: number }[] = [];
-    // Hidden visuals (daytime fireflies) take no part in depth sorting; entries are reused across frames.
+    // Items drawing nothing (no sprite built, as daytime fireflies playing no animation) take no part in depth sorting;
+    // entries are reused across frames.
     for (const record of this.activeItems) {
-      if (!isSpriteEntityRendered(record.model)) continue;
+      if (!record.instance.sprite.loaded || !isSpriteEntityRendered(record.model)) continue;
       let entry = this.renderEntryByRecord.get(record);
       if (!entry) {
         entry = { get object() { return record.model; }, get footPosition() { return record.footPosition; }, cameraDepth: 0, ...(record.instance.sprite.sprite.peek().ground ? { renderLayer: -1 } : {}) };

@@ -18,7 +18,7 @@
 
 `packages/animation/src/renderOrder.ts` 登记每个动画 sprite 最内层的 `visual` group，`setSpriteEntityRenderOrder()` 将实体顺序写到该 group。每帧按实际脚点的相机空间深度由远到近排序；若改用 sprite 中心或包围盒中心，高个实体会过早或过晚改变遮挡关系。
 
-`SpriteRenderOrderSorter` 每帧先遍历可见实体，把深度和各项排序键写进复用的连续数值数组，再排序数值索引数组，最后把序号写回登记的 `visual`。比较函数只读取数组，不访问实体对象。深度按原有 `0.001` 单位先量化，再写入 `Float32Array`；超出单精度精确整数范围时升级为 `Float64Array`，避免丢失远处实体的深度差。背景层、同深度时脚点 x/z 的稳定顺序、分组的 sortGroup/sortLayer/id 规则均保留；附属部分继承本帧可见主体的原始深度。索引沿用 `Array.sort`，保留分组与非分组实体在同深度混排时的比较行为。缓冲区按需扩容，隐藏、移除与换肤后的 visual 在下一帧重新采集。
+每个实体的顺序是它自己的排序键，只由它的脚点、相机和自身的层计算（`spriteRenderOrderKey()`），`updateSpriteRenderOrders()` 每帧把键写进各自登记的 `visual`，不做全局排名：Three 本来就按 group 的 `renderOrder` 数值排序透明物体，键无需连续。键的字典序为：`renderLayer`（背景 < 0 < 世界）→ 脚点相机空间深度，由远到近，按 `0.001` 量化以免浮点噪声改变重叠 sprite 的顺序 → 脚点相机空间 x，由左到右，同样量化，一排处于同一视线深度的墙因此顺序稳定，平移相机也不变 → `sortLayer`（默认 1）。共用脚点的部件靠 `sortLayer` 排在主体之前（0）或之后（2 及以上）：FX、着火建筑的火焰、建筑声明的效果都传入主体的脚点，而不是查找主体或依赖同一帧的排名，所以挂上 FX 的那一帧不论其他实体或相机是否变化都画在主体之后。键为不超过 2^26 的整数加 2^-26 步长的小数，都是精确的 double，取值 [1, 2^26 + 1)：在地皮和背景贴花的显式顺序（不超过 0）之后、天气覆盖层之前。不支持的层会抛错，不做截断。隐藏实体与由实例批次绘制的 sprite 不写键，保留原值；换皮或重载时 `registerSpriteRenderGroup()` 把旧 group 的键带给新 group。
 
 源 `LAYER_BACKGROUND` 与几何朝向分别处理。温泉 `hotspring.lua` 只设置背景层和 sort order 2，没有 `SetOrientation(OnGround)`；温泉保留动画默认 billboard，活动时随相机四元数旋转，原始脚点、物理体和存档位置不变。实体排序条目的 `renderLayer` 默认为 0，温泉使用背景层 −1，先按层再按脚点深度排序，顺序仍写入登记的 `visual` group。背景层不会把贴图旋转为地面平面。
 
@@ -44,6 +44,8 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 4. 动态角色按各自脚点的深度排序绘制。
 
 批次父 Group 保持默认 `renderOrder = 0`，颜色 mesh 使用 `renderOrder = -0.4`，排在地皮 mesh（−2～−0.5）之后。Three 先比较 Group 的顺序，再比较 mesh 的顺序；把批次 Group 设为负值会让颜色 pass 早于不写深度的地皮，树便会被地皮覆盖。批次内部实例仍按脚点深度从远到近排列。
+
+实例批次的深度 mesh 不透明、写深度，先于所有透明物体绘制。挂在实例化主体上的 FX（燃烧物品与树的火焰）是普通 billboard，与主体同脚点、同朝向，处在同一平面：排序键让它画在主体之后，但两者深度只差两条顶点路径（实例矩阵与烘焙顶点）的 float32 舍入，深度测试会随相机朝向时过时不过，火焰被主体不透明处挡掉。`FxAttachments` 因此为画在主体之后的效果（`sortLayer > 1`）声明 `setDepthOffset(true)`，存于 sprite json，重载后由 display 重新应用；`SpriteFrameRenderer` 用该实体的私有材质副本绘制，`polygonOffsetUnits = -4`（因子 0：同朝向 billboard 斜率相同），共享源材质不变，主体改透明度或染色后同步副本。偏移只有几个深度单位，不会让效果越过真正在它前面的物体；实例批次绘制的帧不受影响。
 
 `InstancedArchiveSprites` 保留每个实体的世界包围球与视锥测试结果。visual 的世界矩阵或帧边界变化时重算包围球；相机投影、视图矩阵或坐标系变化时重新测试视锥。绘制条目、页成员数组与排序结果跨帧复用，只在脚点排序键或成员变化时重排，脚点可独立于 visual 移动。祖先的场景归属、显隐与光照覆盖每次 pass 按节点采样一次，兼容直接赋值与重新挂载。各槽位通过变换和外观版本跳过未变属性，固定边界的动画换帧只写 UV；增删成员、跨页、隐藏后复用批次时仍核对槽位身份。属性上传合并实际变化的 Float32 区间，并保留 WebGL 尚未消费的更新。
 

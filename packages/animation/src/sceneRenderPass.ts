@@ -11,9 +11,10 @@ export interface ScenePassLighting {
 /** Invoked after world matrices settle, before any pass reads world positions. */
 export type PrepareSceneLighting = () => ScenePassLighting;
 
+/** `scene` is the world being drawn; a pass that adds its own objects adds them there. */
 export interface SceneRenderPass {
-  render(renderer: THREE.WebGLRenderer, camera: THREE.Camera, lighting?: ScenePassLighting): void;
-  prewarm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal?: AbortSignal): Promise<void>;
+  render(renderer: THREE.WebGLRenderer, camera: THREE.Camera, lighting: ScenePassLighting | undefined, scene: THREE.Scene): void;
+  prewarm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal: AbortSignal | undefined, scene: THREE.Scene): Promise<void>;
 }
 
 interface PassRegistration { object: THREE.Object3D; pass: SceneRenderPass }
@@ -28,6 +29,10 @@ export function createSceneRenderSnapshot(roots: readonly THREE.Object3D[]): { s
   const cleanups: (() => void)[] = [];
   const borrowed: { source: THREE.Mesh; copy: THREE.Mesh }[] = [];
   const snapshotPasses = new Map<SceneRenderPass, SceneRenderPass>();
+  // The borrowed passes keep drawing into the world the roots came from.
+  let source: THREE.Object3D | undefined = roots[0];
+  while (source?.parent) source = source.parent;
+  const sourceScene = source instanceof THREE.Scene ? source : scene;
   const syncResources = () => {
     for (const { source, copy } of borrowed) { copy.geometry = source.geometry; copy.material = source.material; }
   };
@@ -36,12 +41,12 @@ export function createSceneRenderSnapshot(roots: readonly THREE.Object3D[]): { s
     if (!result) {
       result = {
         render(renderer, camera, lighting) {
-          pass.render(renderer, camera, lighting);
+          pass.render(renderer, camera, lighting, sourceScene);
           // Passes may replace borrowed geometry (the ocean floor follows its
           // surface here). Refresh before drawing the detached colour scene.
           syncResources();
         },
-        async prewarm(renderer, camera, signal) { await pass.prewarm(renderer, camera, signal); syncResources(); },
+        async prewarm(renderer, camera, signal) { await pass.prewarm(renderer, camera, signal, sourceScene); syncResources(); },
       };
       snapshotPasses.set(pass, result);
     }
@@ -107,7 +112,7 @@ export function renderScenePasses(renderer: THREE.WebGLRenderer, scene: THREE.Sc
   lighting?: ScenePassLighting): void {
   updateSceneMatrices(scene);
   camera.updateMatrixWorld();
-  for (const pass of visiblePasses(scene)) pass.render(renderer, camera, lighting);
+  for (const pass of visiblePasses(scene)) pass.render(renderer, camera, lighting, scene);
 }
 
 /** Offscreen inputs and the world share one matrix traversal, including spatial-index updates. */
@@ -124,7 +129,7 @@ export function renderSceneWithPasses(renderer: THREE.WebGLRenderer, scene: THRE
     scene.matrixWorldAutoUpdate = false;
     camera.matrixWorldAutoUpdate = false;
     const preparedLighting = typeof lighting === 'function' ? lighting() : lighting;
-    for (const pass of visiblePasses(scene)) pass.render(renderer, camera, preparedLighting);
+    for (const pass of visiblePasses(scene)) pass.render(renderer, camera, preparedLighting, scene);
     renderer.render(scene, camera);
   } finally {
     scene.matrixWorldAutoUpdate = sceneAutoUpdate;
@@ -138,6 +143,6 @@ export async function prewarmScenePasses(renderer: THREE.WebGLRenderer, scene: T
   camera.updateMatrixWorld();
   for (const pass of visiblePasses(scene)) {
     signal?.throwIfAborted();
-    await pass.prewarm(renderer, camera, signal);
+    await pass.prewarm(renderer, camera, signal, scene);
   }
 }

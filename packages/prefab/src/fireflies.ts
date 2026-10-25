@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
-import { ArchiveSpriteAssets, createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { createArchiveEntity, setModelTag } from './prefabInstance';
-import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
+import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
@@ -42,8 +42,8 @@ export const FIREFLIES_LIGHT = {
   colour: [180 / 255, 195 / 255, 150 / 255] as const,
 };
 
-/** What the swarm tells its sprite: clips, and whether the swarm is shown. */
-export type FirefliesSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'update' | 'setVisible'>;
+/** What the swarm tells its sprite: its clips and self-light. Between swarm_pst and swarm_pre it plays no animation. */
+export type FirefliesSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'clearAnimation' | 'update' | 'setLightOverride'>;
 
 export interface FirefliesWorld {
   getWatchWorldContent?: GetWatchWorldContent;
@@ -112,9 +112,8 @@ export class FirefliesController {
     Object.assign(model.userData, { itemId: FIREFLIES_ID,
       firefliesController: this, rayTestOnBB: true });
     // Source uses the bloom shader; its luminous swarm art stays visible at night.
-    setPrefabLightOverride(model, 1);
+    animation.setLightOverride(1);
     for (const tag of FIREFLIES_TAGS) setModelTag(model, tag, true);
-    animation.setVisible(false);
     this.refresh();
     if (this.handEquipment) createEffect(() => {
       this.handEquipment!.get();
@@ -187,7 +186,7 @@ export class FirefliesController {
   /** Called after assigning the source ground origin, for both drops and restores. */
   place(dropped: boolean): void {
     if (this.disposed) return;
-    setPrefabLightOverride(this.model, 1);
+    this.animation.setLightOverride(1);
     this.tracker.sync();
     this.placement.set({ dropped });
     this.syncUpdating();
@@ -221,7 +220,7 @@ export class FirefliesController {
     this.show(false);
     this.refresh();
     setPrefabLocalLight(this.model, null);
-    setPrefabLightOverride(this.model, null);
+    this.animation.setLightOverride(null);
   }
 
   dispose(): void {
@@ -246,6 +245,8 @@ export class FirefliesController {
     this.disableWork.stop();
     this.fadeValue = this.fadeRate = this.direction = 0;
     this.canClick = this.canWork = false;
+    // Daylight came while asleep: settle where fadeout ends, with no animation playing.
+    this.animation.clearAnimation();
     this.show(false);
     this.refresh();
   }
@@ -275,24 +276,25 @@ export class FirefliesController {
   private fadeOut(): void {
     if (this.direction <= 0) return;
     this.direction = -1;
+    // swarm_pst ends on an empty frame; with no animation after it, nothing is built or drawn until swarm_pre.
     this.animation.playOnce('swarm_pst', () => {
-      if (!this.disposed && this.direction < 0) { this.show(false); this.syncUpdating(); }
+      if (!this.disposed && this.direction < 0) { this.animation.clearAnimation(); this.show(false); this.syncUpdating(); }
     });
     const byte = 32 + Math.min(31, Math.floor(this.random() * 32));
     this.fadeRate = -this.fadeValue / (0.75 + (byte - 32) / 31);
     if (this.fadeValue === 0) this.finishFadeOut();
   }
 
+  /** updatefade at zero light: NOCLICK and no work; swarm_pst keeps playing until its empty last frame. */
   private finishFadeOut(): void {
     this.canClick = false;
     this.disableWork.start(1.5 + this.random());
-    this.show(false);
+    this.refreshClickability();
   }
 
   private show(shown: boolean): void {
     if (shown === this.shown) return;
     this.shown = shown;
-    this.animation.setVisible(shown);
     this.refreshClickability();
   }
 
@@ -326,6 +328,7 @@ export class FirefliesController {
 /** One resource owner for shared frames and instanced swarm loops. */
 export class FirefliesAssets {
   private readonly assets: ArchiveSpriteAssets;
+  private factory?: ReturnType<typeof preloadSharedArchiveSprite>;
   private disposed = false;
   constructor(assetBaseUrl: string) { this.assets = new ArchiveSpriteAssets('fireflies', assetBaseUrl); }
 
@@ -335,13 +338,17 @@ export class FirefliesAssets {
     this.assets.dispose();
   }
 
-  async createSprite(clip = { name: 'swarm_loop', loop: true }): Promise<ArchiveSprite> {
-    const sprite = await createSharedArchiveSprite(this.assets, {
-      animationArchive: 'fireflies.zip', buildArchives: ['fireflies.zip'], bank: 'fireflies', animation: clip.name, loop: clip.loop,
-    }, { name: `GroundItem:${FIREFLIES_ID}`, instancedAnimations: ['swarm_loop'] });
-    if (this.disposed) { sprite.dispose(); throw new Error('Insect assets have been disposed'); }
-    return sprite;
+  /** Loads the swarm frames once; afterwards a swarm builds its sprite synchronously when a clip starts. */
+  preload(): ReturnType<typeof preloadSharedArchiveSprite> {
+    if (this.disposed) return Promise.reject(new Error('Insect assets have been disposed'));
+    if (!this.factory) {
+      this.factory = preloadSharedArchiveSprite(this.assets, { animationArchive: 'fireflies.zip', buildArchives: ['fireflies.zip'], bank: 'fireflies' },
+        { name: `GroundItem:${FIREFLIES_ID}`, instancedAnimations: ['swarm_loop'] });
+      void this.factory.catch(() => { this.factory = undefined; });
+    }
+    return this.factory;
   }
+
 
   create(world: FirefliesWorld) {
     return createFirefliesGroundSprite(this, world);
@@ -349,10 +356,11 @@ export class FirefliesAssets {
 }
 
 export async function createFirefliesGroundSprite(assets: FirefliesAssets, world: FirefliesWorld) {
-  // Ground creation resolves with its first visual ready, preserving immediate drop/capture semantics; the display
-  // releases it when the swarm's tile is found inactive. Source frames and instance batches belong to assets.
-  const { instance, display } = createArchiveEntity(FIREFLIES_ID, { create: clip => assets.createSprite(clip), initial: await assets.createSprite() },
-    { name: 'swarm_loop' }, `GroundItem:${FIREFLIES_ID}`);
+  // fireflies.lua gives the AnimState a bank and build but plays nothing until fadein: no sprite is built until a clip
+  // plays, and the display releases it when the swarm's tile is found inactive. Frames and instance batches belong to assets.
+  const create = await assets.preload();
+  const { instance, display } = createArchiveEntity(FIREFLIES_ID, { create: clip => create(clip.name, clip.loop) },
+    { name: 'swarm_pre', none: true }, `GroundItem:${FIREFLIES_ID}`);
   const model = display.model;
   const active = createSignal(true);
   const cleanups: (() => void)[] = [];

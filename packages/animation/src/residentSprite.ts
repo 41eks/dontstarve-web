@@ -7,7 +7,8 @@ import { setSpriteErosion } from './spriteErosion';
 import { installRootMatrixGate } from './matrixGate';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
 
-interface Clip { name: string; loop: boolean; complete?: () => void; finished: boolean; frame?: number }
+/** `none` is AnimState with no animation playing: nothing is drawn, and no sprite is built until a clip is played. */
+interface Clip { name: string; loop: boolean; complete?: () => void; finished: boolean; frame?: number; none?: boolean }
 
 /** Persistent entity origin; only the sprite under its model may be unloaded. */
 export interface ResidentEntity {
@@ -49,9 +50,10 @@ export class ResidentSprite implements ArchiveSprite {
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
 
   /** `initial` is an already created sprite in `clip`; without it the sprite stays unloaded until `load()`. */
-  constructor(create: ResidentSprite['create'], clip: { name: string; loop: boolean }, initial?: ArchiveSprite, name = 'ResidentSprite') {
+  constructor(create: ResidentSprite['create'], clip: { name: string; loop: boolean; none?: boolean }, initial?: ArchiveSprite,
+    name = 'ResidentSprite') {
     this.create = create;
-    this.clip = { ...clip, finished: false };
+    this.clip = { ...clip, finished: clip.none === true };
     this.model.name = name;
     this.model.userData.billboard = true;
     this.model.add(this.placeholder);
@@ -74,7 +76,7 @@ export class ResidentSprite implements ArchiveSprite {
 
   /** Build the sprite for an active entity; a no-op while loaded or loading. A synchronous factory loads immediately. */
   load(): void {
-    if (this.disposed || this.sprite || this.loading) return;
+    if (this.disposed || this.sprite || this.loading || this.clip.none) return;
     const generation = ++this.generation;
     const created = this.create({ name: this.clip.name, loop: this.clip.loop });
     if (!(created instanceof Promise)) { this.attach(created); return; }
@@ -174,13 +176,31 @@ export class ResidentSprite implements ArchiveSprite {
 
   update(dt: number): void { this.sprite?.update(dt); }
   start(name: string): void {
+    const resume = this.leavesNoAnimation();
     this.clip = { name, loop: true, finished: false };
+    if (resume) this.load();
     this.play();
   }
   playOnce(name: string, complete?: () => void): void {
+    const resume = this.leavesNoAnimation();
     this.clip = { name, loop: false, complete, finished: false };
+    if (resume) this.load();
     // Nothing is drawn while unloaded, so the transition settles at once into its completion state.
     if (!this.sprite && !this.loading) this.settle(); else this.play();
+  }
+  /** Stops playing any animation: the drawn sprite is released until a clip is played again. */
+  clearAnimation(): void {
+    this.clip = { name: this.clip.name, loop: false, finished: true, none: true };
+    this.unload();
+  }
+  /** An awake entity leaving `clearAnimation()` builds its sprite for the clip it now plays. */
+  private leavesNoAnimation(): boolean { return this.clip.none === true && !this.asleep; }
+  /** Rests on the clip's last frame, now or once the sprite is drawn again; no frame index is recorded while unloaded. */
+  holdLastFrame(name: string): void {
+    const resume = this.leavesNoAnimation();
+    this.clip = { name, loop: false, finished: true };
+    if (resume) this.load();
+    this.play();
   }
   private settle(): void {
     const clip = this.clip;
@@ -203,6 +223,7 @@ export class ResidentSprite implements ArchiveSprite {
   // effect on `art`. These calls reach only the sprite that is currently drawn.
   setOpacity(opacity: number): void { this.sprite?.setOpacity(opacity); }
   setColour(colour: readonly [number, number, number]): void { this.sprite?.setColour(colour); }
+  setDepthOffset(enabled: boolean): void { this.sprite?.setDepthOffset(enabled); }
   setBuildArchive(archive: string): void { this.sprite?.setBuildArchive(archive); }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.sprite?.setSymbolOverride(symbol, archive, sourceSymbol); }
   setSymbolHidden(symbol: string, hidden: boolean): void { this.sprite?.setSymbolHidden(symbol, hidden); }
@@ -388,6 +409,9 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   }
   setColour(colour: readonly number[]): void { this.staticController?.setColour(colour); }
   setOpacity(opacity: number): void { this.staticController?.setOpacity(opacity); }
+  setDepthOffset(enabled: boolean): void {
+    (this.sprite?.userData.animationController as { setDepthOffset?(enabled: boolean): void } | undefined)?.setDepthOffset?.(enabled);
+  }
   setMeshOrder(order: number): void {
     if (!this.sprite) return;
     (this.sprite.children[0].children[0] as THREE.Object3D).renderOrder = order;

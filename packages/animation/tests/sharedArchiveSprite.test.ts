@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createSharedArchiveSprite, type ArchiveSprite } from '../src/archiveSprite';
-import { isSpriteEntityRendered, SpriteRenderOrderSorter } from '../src/renderOrder';
+import { isSpriteEntityRendered, spriteRenderOrderKey, updateSpriteRenderOrders } from '../src/renderOrder';
 
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
   new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
@@ -37,9 +37,8 @@ it('changes baked animation geometry without invalidating static transforms, and
     expect(update).toHaveBeenCalledTimes(initialVisits);
     sprite.playOnce('chop'); scene.updateMatrixWorld();
     expect(isSpriteEntityRendered(sprite.model)).toBe(true);
-    const sorter = new SpriteRenderOrderSorter();
-    sorter.update([{ object: sprite.model, footPosition: sprite.model.position }], new THREE.Matrix4());
-    expect(sprite.model.children[0].renderOrder).toBe(0);
+    updateSpriteRenderOrders([{ object: sprite.model, footPosition: sprite.model.position }], new THREE.Matrix4());
+    expect(sprite.model.children[0].renderOrder).toBe(spriteRenderOrderKey(sprite.model.position, new THREE.Matrix4()));
     expect(update).toHaveBeenCalledTimes(initialVisits);
     sprite.model.position.set(30, 0, 60); sprite.refreshTransform();
     scene.updateMatrixWorld();

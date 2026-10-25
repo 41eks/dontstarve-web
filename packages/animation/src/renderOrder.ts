@@ -47,118 +47,53 @@ export function isSpriteEntityRendered(sprite: THREE.Object3D): boolean {
   return !(group && undrawnGroups.has(group)) && isSpriteEntityVisible(sprite);
 }
 
-/** Camera depths closer than this are one depth, so float noise cannot reorder overlapping sprites. */
-const CAMERA_DEPTH_QUANTUM = 1e-3;
+
+/**
+ * Each entity's render order is its own key, computed from its foot point and the camera alone: three.js sorts
+ * transparent groups by these numbers, so no list of entities is ranked here. The key orders, most significant first:
+ *
+ * - `renderLayer` (background < 0 < world);
+ * - camera-space foot depth, far to near, in millimetre buckets so float noise cannot reorder overlapping sprites;
+ * - camera-space foot x, left to right, in millimetre buckets: entities on one line of sight (a row of walls) share
+ *   a depth, and their order across the screen does not change while the camera pans;
+ * - `sortLayer` (default 1), for parts that share one foot point: an effect passes its owner's foot and draws after
+ *   it (2) or behind it (0).
+ *
+ * Keys are integers up to 2^26 plus a fraction in 2^-26 steps, so every key is an exact double. They lie in
+ * [1, 2^26 + 1): after ground tiles and background decals (explicit orders up to 0), before weather overlays.
+ */
+const QUANTUM = 1e-3;
+const DEPTH_BUCKETS = 2 ** 24;
+const LATERAL_BUCKETS = 2 ** 23;
+const SORT_LAYERS = 8;
+const MIN_RENDER_LAYER = -2;
+const RENDER_LAYERS = 4;
+const FRACTION = LATERAL_BUCKETS * SORT_LAYERS;
 
 export interface RenderOrderEntry {
   object: THREE.Object3D;
   footPosition: THREE.Vector3;
-  cameraDepth: number;
   renderLayer?: number;
-  sortGroup?: number;
   sortLayer?: number;
 }
 
-/**
- * Layer, then far-to-near camera-space foot depth (negative z, ascending draws far first).
- * Entities on one line of sight (a row of walls) share a depth, so they fall back to their
- * world foot x then z, which does not change while the camera moves. Grouped parts keep
- * sortGroup, sortLayer and id.
- */
-export function compareRenderEntries(a: RenderOrderEntry, b: RenderOrderEntry): number {
-  const ungrouped = a.sortGroup === undefined && b.sortGroup === undefined;
-  return (a.renderLayer ?? 0) - (b.renderLayer ?? 0)
-    || Math.round(a.cameraDepth / CAMERA_DEPTH_QUANTUM) - Math.round(b.cameraDepth / CAMERA_DEPTH_QUANTUM)
-    || (ungrouped ? a.footPosition.x - b.footPosition.x || a.footPosition.z - b.footPosition.z || (a.sortLayer ?? 1) - (b.sortLayer ?? 1) : 0)
-    || (a.sortGroup ?? a.object.id) - (b.sortGroup ?? b.object.id)
-    || (a.sortLayer ?? 1) - (b.sortLayer ?? 1)
-    || a.object.id - b.object.id;
+const bucket = (value: number, buckets: number) => Math.min(buckets - 1, Math.max(0, Math.round(value / QUANTUM) + buckets / 2));
+
+export function spriteRenderOrderKey(foot: THREE.Vector3, view: THREE.Matrix4, renderLayer = 0, sortLayer = 1): number {
+  const layer = renderLayer - MIN_RENDER_LAYER;
+  if (!Number.isInteger(layer) || layer < 0 || layer >= RENDER_LAYERS) throw new Error(`Unsupported render layer ${renderLayer}`);
+  if (!Number.isInteger(sortLayer) || sortLayer < 0 || sortLayer >= SORT_LAYERS) throw new Error(`Unsupported sort layer ${sortLayer}`);
+  // The view matrix is affine; compute just camera-space x and z, without a temporary vector.
+  const m = view.elements;
+  const depth = bucket(m[2] * foot.x + m[6] * foot.y + m[10] * foot.z + m[14], DEPTH_BUCKETS);
+  const lateral = bucket(m[0] * foot.x + m[4] * foot.y + m[8] * foot.z + m[12], LATERAL_BUCKETS);
+  return 1 + layer * DEPTH_BUCKETS + depth + (lateral * SORT_LAYERS + sortLayer) / FRACTION;
 }
 
-/** Reusable structure-of-arrays scratch space; only numeric indices enter the sort. */
-export class SpriteRenderOrderSorter {
-  // Store already rounded depth quanta, so Float32 conversion cannot change a bucket.
-  // Promote only if a very distant foot exceeds Float32's exact integer precision.
-  private depths: Float32Array | Float64Array = new Float32Array(0);
-  private renderLayers = new Float64Array(0);
-  private footX = new Float64Array(0);
-  private footZ = new Float64Array(0);
-  private sortGroups = new Float64Array(0);
-  private sortLayers = new Float64Array(0);
-  private ids = new Float64Array(0);
-  private grouped = new Uint8Array(0);
-  // Keep Array.sort's comparison schedule for the existing mixed grouped/ungrouped tie rules.
-  private readonly indices: number[] = [];
-  private entryIndices = new Uint32Array(0);
-  private readonly ownerIndices = new Map<number, number>();
-
-  update(entries: readonly Omit<RenderOrderEntry, 'cameraDepth'>[], cameraMatrixWorldInverse: THREE.Matrix4): void {
-    this.reserve(entries.length);
-    const matrix = cameraMatrixWorldInverse.elements;
-    const { renderLayers, footX, footZ, sortGroups, sortLayers, ids, grouped, ownerIndices } = this;
-    ownerIndices.clear();
-    let count = 0;
-    for (let entryIndex = 0; entryIndex < entries.length; entryIndex++) {
-      const entry = entries[entryIndex];
-      const object = entry.object;
-      if (!isSpriteEntityRendered(object)) continue;
-      const foot = entry.footPosition;
-      // The view matrix is affine; compute just camera-space z, without a temporary vector.
-      const depth = Math.round((matrix[2] * foot.x + matrix[6] * foot.y
-        + matrix[10] * foot.z + matrix[14]) / CAMERA_DEPTH_QUANTUM);
-      if (this.depths instanceof Float32Array && Math.fround(depth) !== depth) {
-        this.depths = new Float64Array(this.depths);
-      }
-      this.depths[count] = depth;
-      renderLayers[count] = entry.renderLayer ?? 0;
-      footX[count] = foot.x;
-      footZ[count] = foot.z;
-      sortGroups[count] = entry.sortGroup ?? object.id;
-      sortLayers[count] = entry.sortLayer ?? 1;
-      ids[count] = object.id;
-      grouped[count] = entry.sortGroup === undefined ? 0 : 1;
-      this.indices[count] = count;
-      this.entryIndices[count] = entryIndex;
-      ownerIndices.set(object.id, count);
-      count++;
-    }
-
-    const depths = this.depths;
-    // Grouped parts inherit the owner's original depth, even if that owner is itself grouped.
-    // The spare half holds resolved depths without overwriting any owner's original depth.
-    for (let i = 0; i < count; i++) {
-      const owner = grouped[i] && sortGroups[i] !== ids[i]
-        ? ownerIndices.get(sortGroups[i]) ?? i : i;
-      depths[count + i] = depths[owner];
-    }
-    ownerIndices.clear();
-
-    const indices = this.indices;
-    indices.length = count;
-    indices.sort((a, b) => renderLayers[a] - renderLayers[b]
-      || depths[count + a] - depths[count + b]
-      || (!grouped[a] && !grouped[b]
-        ? footX[a] - footX[b] || footZ[a] - footZ[b] || sortLayers[a] - sortLayers[b] : 0)
-      || sortGroups[a] - sortGroups[b]
-      || sortLayers[a] - sortLayers[b]
-      || ids[a] - ids[b]);
-
-    for (let order = 0; order < count; order++) {
-      setSpriteEntityRenderOrder(entries[this.entryIndices[indices[order]]].object, order);
-    }
-  }
-
-  private reserve(count: number): void {
-    if (count <= this.entryIndices.length) return;
-    const capacity = Math.max(16, count, this.entryIndices.length * 2);
-    this.depths = this.depths instanceof Float64Array ? new Float64Array(capacity * 2) : new Float32Array(capacity * 2);
-    this.renderLayers = new Float64Array(capacity);
-    this.footX = new Float64Array(capacity);
-    this.footZ = new Float64Array(capacity);
-    this.sortGroups = new Float64Array(capacity);
-    this.sortLayers = new Float64Array(capacity);
-    this.ids = new Float64Array(capacity);
-    this.grouped = new Uint8Array(capacity);
-    this.entryIndices = new Uint32Array(capacity);
+/** Writes every shown entity's key; hidden entities and sprites drawn by an instance batch keep theirs. */
+export function updateSpriteRenderOrders(entries: readonly RenderOrderEntry[], view: THREE.Matrix4): void {
+  for (let i = 0; i < entries.length; i++) {
+    const { object, footPosition, renderLayer, sortLayer } = entries[i];
+    if (isSpriteEntityRendered(object)) setSpriteEntityRenderOrder(object, spriteRenderOrderKey(footPosition, view, renderLayer, sortLayer));
   }
 }

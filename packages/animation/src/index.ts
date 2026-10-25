@@ -29,7 +29,7 @@ export {
   type StaticSpriteOptions,
   type StaticSpriteOverlay,
 } from './wallSprite';
-export { SpriteRenderOrderSorter, compareRenderEntries, isSpriteEntityRendered, isSpriteEntityVisible, setSpriteEntityRenderOrder } from './renderOrder';
+export { isSpriteEntityRendered, isSpriteEntityVisible, setSpriteEntityRenderOrder, spriteRenderOrderKey, updateSpriteRenderOrders } from './renderOrder';
 export {
   ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite, preloadSharedArchiveSprite,
   type ArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions, type ArchiveSpriteBuild,
