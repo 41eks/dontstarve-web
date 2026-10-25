@@ -9,7 +9,7 @@ import { isSpriteEntityRendered } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { nextReskin } from '@dontstarve-web/prefab/reskin_tool';
 import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
-import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
+import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
 import { createPrefabEntity, modelHasTag } from '@dontstarve-web/prefab/prefabInstance';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
@@ -134,7 +134,7 @@ export class GroundItemManager {
       // Billboards face the camera: re-orient them only when the camera turns.
       createEffect(() => {
         const quaternion = rotation.get();
-        for (const { model } of this.activeItems) model.quaternion.copy(quaternion);
+        for (const { model, instance } of this.activeItems) if (!instance.sprite.sprite.peek().ground) model.quaternion.copy(quaternion);
       });
     }
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
@@ -415,8 +415,12 @@ export class GroundItemManager {
       ?? this.entities.create({ ...definition, entityId: id });
     this.entities.adopt(entity);
     this.pendingDrops.delete(entity.id);
-    this.inventory.configureItem(entity);
-    this.prefabs.get(entity.prefab)?.configureEntity?.(entity);
+    if (this.inventory.hasItemSpec(entity.prefab)) {
+      this.inventory.configureItem(entity);
+      this.prefabs.get(entity.prefab)?.configureEntity?.(entity);
+    } else {
+      entity.components.inventoryitem.canbepickedup = false;
+    }
     definition = { ...definition, ...entity.snapshot(), entity };
     Object.assign(visual.model.userData, { itemId: entity.prefab, count: entity.components.stackable.count });
     visual.instance.skinId = entity.skinId;
@@ -455,7 +459,7 @@ export class GroundItemManager {
         this.activeItems.add(record);
         this.refreshUpdating(record);
         record.model.position.copy(record.entity.transform.position);
-        if (this.cameraRotation) record.model.quaternion.copy(this.cameraRotation.peek());
+        if (this.cameraRotation && !record.instance.sprite.sprite.peek().ground) record.model.quaternion.copy(this.cameraRotation.peek());
         this.scene.add(record.model);
       } else {
         this.activeItems.delete(record);
@@ -494,6 +498,7 @@ export class GroundItemManager {
 
   private bindInventoryEvents(record: GroundItemRecord): void {
     const { model, entity } = record;
+    if (!this.inventory.hasItemSpec(entity.prefab)) { record.isClickable = () => false; return; }
     model.userData.components = entity.components;
     // Domain queries read the authoritative vector; presentation/pickup snapshots own their scratch vector.
     model.userData.getGroundPosition = () => entity.transform.position;
@@ -619,6 +624,7 @@ export class GroundItemManager {
         components: {
           stack: {
             itemId: definition.itemId, count: definition.count,
+            ...(definition.variant === undefined ? {} : { variant: definition.variant }),
             ...(definition.mole === undefined ? {} : { mole: definition.mole }),
             ...(definition.lightflier === undefined ? {} : { lightflier: definition.lightflier }),
             ...(definition.container === undefined ? {} : { container: definition.container }),
@@ -724,7 +730,7 @@ export class GroundItemManager {
     getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
         return modelValues(this.items, model, this.activeItems).flatMap((record) => {
             const prefabId = record.definition.itemId;
-            const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ITEM_DEFINITIONS[prefabId])?.skinArchives ?? {});
+            const skins = Object.keys((isHatId(prefabId) ? HAT_DEFINITIONS[prefabId] : GROUND_ART_DEFINITIONS[prefabId])?.skinArchives ?? {});
             const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.();
             return [{
                 id: record.id, prefabId, model: record.model, get position() { return record.footPosition; }, isValid,
@@ -840,7 +846,7 @@ export class GroundItemManager {
       if (!isSpriteEntityRendered(record.model)) continue;
       let entry = this.renderEntryByRecord.get(record);
       if (!entry) {
-        entry = { get object() { return record.model; }, get footPosition() { return record.footPosition; }, cameraDepth: 0 };
+        entry = { get object() { return record.model; }, get footPosition() { return record.footPosition; }, cameraDepth: 0, ...(record.instance.sprite.sprite.peek().ground ? { renderLayer: -1 } : {}) };
         this.renderEntryByRecord.set(record, entry);
       }
       entries.push(entry);
@@ -851,7 +857,8 @@ export class GroundItemManager {
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     this.prefabs.update(dt, cameraQuaternion);
-    if (!this.cameraRotation) for (const { model } of this.activeItems) {
+    if (!this.cameraRotation) for (const { model, instance } of this.activeItems) {
+      if (instance.sprite.sprite.peek().ground) continue;
       if (model.quaternion.equals(cameraQuaternion)) continue;
       model.quaternion.copy(cameraQuaternion);
     }

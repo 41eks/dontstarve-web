@@ -478,7 +478,28 @@
     "grotto_waterfall_small1",
     "grotto_waterfall_small2",
     "pond",
-    "lava_pond"
+    "lava_pond",
+    "treasurechest",
+    "boneshard",
+    "cutgrass",
+    "flint",
+    "goldnugget",
+    "guano",
+    "hutch_fishbowl",
+    "mask_ancient_architecthat",
+    "mask_ancient_handmaidhat",
+    "mask_ancient_masonhat",
+    "orangegem",
+    "pitchfork",
+    "purplegem",
+    "rope",
+    "silk",
+    "thulecite",
+    "thulecite_pieces",
+    "torch",
+    "trap",
+    "twigs",
+    "yellowgem"
   ],
   "entityCounts": {
     "pigking": {
@@ -656,6 +677,90 @@
     "lava_pond": {
       "source": 0,
       "imported": 0
+    },
+    "treasurechest": {
+      "source": 0,
+      "imported": 0
+    },
+    "boneshard": {
+      "source": 10,
+      "imported": 10
+    },
+    "cutgrass": {
+      "source": 3,
+      "imported": 3
+    },
+    "flint": {
+      "source": 24,
+      "imported": 24
+    },
+    "goldnugget": {
+      "source": 5,
+      "imported": 5
+    },
+    "guano": {
+      "source": 32,
+      "imported": 32
+    },
+    "hutch_fishbowl": {
+      "source": 1,
+      "imported": 1
+    },
+    "mask_ancient_architecthat": {
+      "source": 1,
+      "imported": 1
+    },
+    "mask_ancient_handmaidhat": {
+      "source": 1,
+      "imported": 1
+    },
+    "mask_ancient_masonhat": {
+      "source": 1,
+      "imported": 1
+    },
+    "orangegem": {
+      "source": 1,
+      "imported": 1
+    },
+    "pitchfork": {
+      "source": 4,
+      "imported": 4
+    },
+    "purplegem": {
+      "source": 1,
+      "imported": 1
+    },
+    "rope": {
+      "source": 8,
+      "imported": 8
+    },
+    "silk": {
+      "source": 3,
+      "imported": 3
+    },
+    "thulecite": {
+      "source": 6,
+      "imported": 6
+    },
+    "thulecite_pieces": {
+      "source": 16,
+      "imported": 16
+    },
+    "torch": {
+      "source": 1,
+      "imported": 1
+    },
+    "trap": {
+      "source": 2,
+      "imported": 2
+    },
+    "twigs": {
+      "source": 6,
+      "imported": 6
+    },
+    "yellowgem": {
+      "source": 4,
+      "imported": 4
     }
   },
   "entitySources": [
@@ -55947,8 +56052,1571 @@
         -469.22
       ],
       "sourceNode": "GreenForest:5:GreenMushPonds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000001",
+      "prefab": "boneshard",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -478.19,
+        0,
+        -98.96
+      ],
+      "sourceNode": "BlueForest:1:BlueSpiderForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000002",
+      "prefab": "boneshard",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -445.4,
+        0,
+        -146.23
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000003",
+      "prefab": "boneshard",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -449.48,
+        0,
+        -138.52
+      ],
+      "sourceNode": "BlueForest:0:DropperDesolation"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000004",
+      "prefab": "boneshard",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -5.8,
+        0,
+        -326.56
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000005",
+      "prefab": "boneshard",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -37.75,
+        0,
+        -321.16
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000006",
+      "prefab": "boneshard",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -18.09,
+        0,
+        -321.58
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000007",
+      "prefab": "boneshard",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        -37.62,
+        0,
+        -325.52
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000008",
+      "prefab": "boneshard",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        -34.56,
+        0,
+        -334.06
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000009",
+      "prefab": "boneshard",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        -37.58,
+        0,
+        -318.95
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_boneshard_index_000010",
+      "prefab": "boneshard",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        -26.4,
+        0,
+        -353.89
+      ],
+      "sourceNode": "SpillagmiteCaverns:1:DropperCanyon"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cutgrass_index_000001",
+      "prefab": "cutgrass",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -58.62,
+        0,
+        -387.42
+      ],
+      "sourceNode": "ToadStoolTask3:1:ToadstoolArenaBGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cutgrass_index_000002",
+      "prefab": "cutgrass",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -59.49,
+        0,
+        -387.96
+      ],
+      "sourceNode": "ToadStoolTask3:1:ToadstoolArenaBGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_cutgrass_index_000003",
+      "prefab": "cutgrass",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -58.04,
+        0,
+        -390.02
+      ],
+      "sourceNode": "ToadStoolTask3:1:ToadstoolArenaBGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000001",
+      "prefab": "flint",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        26.89,
+        0,
+        342.85
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000002",
+      "prefab": "flint",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        70.75,
+        0,
+        390.01
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000003",
+      "prefab": "flint",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        81.74,
+        0,
+        161.73
+      ],
+      "sourceNode": "BigBatCave:8:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000004",
+      "prefab": "flint",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        93.96,
+        0,
+        94.38
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000005",
+      "prefab": "flint",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        97.83,
+        0,
+        93.42
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000006",
+      "prefab": "flint",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -376.699,
+        0,
+        -575.39
+      ],
+      "sourceNode": "CaveExitTask4:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000007",
+      "prefab": "flint",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        -371.534,
+        0,
+        -583.987
+      ],
+      "sourceNode": "CaveExitTask4:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000008",
+      "prefab": "flint",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        -469.458,
+        0,
+        -443.347
+      ],
+      "sourceNode": "RabbitCity:BG_44:BGSinkhole"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000009",
+      "prefab": "flint",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        -519.519,
+        0,
+        -443.884
+      ],
+      "sourceNode": "CaveExitTask9:0:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000010",
+      "prefab": "flint",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        336.629,
+        0,
+        182.38
+      ],
+      "sourceNode": "CaveExitTask10:0:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000011",
+      "prefab": "flint",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        272.854,
+        0,
+        144.19
+      ],
+      "sourceNode": "CaveExitTask10:1:GreenMushRabbits"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000012",
+      "prefab": "flint",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        315.214,
+        0,
+        136.684
+      ],
+      "sourceNode": "CaveExitTask10:0:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000013",
+      "prefab": "flint",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        -244.351,
+        0,
+        -436.129
+      ],
+      "sourceNode": "CaveExitTask1:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000014",
+      "prefab": "flint",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        -217.645,
+        0,
+        -429.87
+      ],
+      "sourceNode": "GreenForest:0:GreenMushNoise"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000015",
+      "prefab": "flint",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        240.632,
+        0,
+        77.586
+      ],
+      "sourceNode": "CaveExitTask8:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000016",
+      "prefab": "flint",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        269.606,
+        0,
+        81.395
+      ],
+      "sourceNode": "CaveExitTask8:BG_98:BGSinkhole"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000017",
+      "prefab": "flint",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        215.206,
+        0,
+        137.914
+      ],
+      "sourceNode": "RabbitTown:4:RabbitSinkhole"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000018",
+      "prefab": "flint",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        -517.75,
+        0,
+        -157.21
+      ],
+      "sourceNode": "CaveExitTask2:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000019",
+      "prefab": "flint",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        185.542,
+        0,
+        483.353
+      ],
+      "sourceNode": "CaveExitTask7:0:SinkholeOasis"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000020",
+      "prefab": "flint",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        173.252,
+        0,
+        537.03
+      ],
+      "sourceNode": "CaveExitTask7:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000021",
+      "prefab": "flint",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        206.887,
+        0,
+        512.11
+      ],
+      "sourceNode": "CaveExitTask7:1:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000022",
+      "prefab": "flint",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        -370.947,
+        0,
+        -380.562
+      ],
+      "sourceNode": "GreenForest:BG_101:BGGreenMush"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000023",
+      "prefab": "flint",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        -355.203,
+        0,
+        -411.127
+      ],
+      "sourceNode": "CaveExitTask3:0:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_flint_index_000024",
+      "prefab": "flint",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        160.646,
+        0,
+        391.857
+      ],
+      "sourceNode": "CaveExitTask5:0:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_goldnugget_index_000001",
+      "prefab": "goldnugget",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        18.21,
+        0,
+        190.99
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_goldnugget_index_000002",
+      "prefab": "goldnugget",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        125.56,
+        0,
+        170.08
+      ],
+      "sourceNode": "BigBatCave:5:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_goldnugget_index_000003",
+      "prefab": "goldnugget",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        130.54,
+        0,
+        173.71
+      ],
+      "sourceNode": "BigBatCave:5:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_goldnugget_index_000004",
+      "prefab": "goldnugget",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        25.25,
+        0,
+        362.39
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_goldnugget_index_000005",
+      "prefab": "goldnugget",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        81.74,
+        0,
+        402.17
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000001",
+      "prefab": "guano",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        77.58,
+        0,
+        374.71
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000002",
+      "prefab": "guano",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        37.52,
+        0,
+        370.34
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000003",
+      "prefab": "guano",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        22.91,
+        0,
+        342.86
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000004",
+      "prefab": "guano",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -9.16,
+        0,
+        358.55
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000005",
+      "prefab": "guano",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        50.15,
+        0,
+        353.25
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000006",
+      "prefab": "guano",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        10.64,
+        0,
+        354.97
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000007",
+      "prefab": "guano",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        85.34,
+        0,
+        394.25
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000008",
+      "prefab": "guano",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        78.4,
+        0,
+        389.18
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000009",
+      "prefab": "guano",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        62.55,
+        0,
+        366.4
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000010",
+      "prefab": "guano",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        -9.26,
+        0,
+        346.17
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000011",
+      "prefab": "guano",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        70.51,
+        0,
+        146.55
+      ],
+      "sourceNode": "BigBatCave:8:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000012",
+      "prefab": "guano",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        66.27,
+        0,
+        145.02
+      ],
+      "sourceNode": "BigBatCave:8:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000013",
+      "prefab": "guano",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        49.21,
+        0,
+        154.96
+      ],
+      "sourceNode": "BigBatCave:8:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000014",
+      "prefab": "guano",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        121.44,
+        0,
+        90.93
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000015",
+      "prefab": "guano",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        106.03,
+        0,
+        105.25
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000016",
+      "prefab": "guano",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        118.94,
+        0,
+        66.98
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000017",
+      "prefab": "guano",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        121.95,
+        0,
+        69.19
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000018",
+      "prefab": "guano",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        90.85,
+        0,
+        94.05
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000019",
+      "prefab": "guano",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        74.64,
+        0,
+        98.02
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000020",
+      "prefab": "guano",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        102.53,
+        0,
+        61.51
+      ],
+      "sourceNode": "BigBatCave:7:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000021",
+      "prefab": "guano",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        101.71,
+        0,
+        138.67
+      ],
+      "sourceNode": "BigBatCave:6:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000022",
+      "prefab": "guano",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        138.97,
+        0,
+        162.37
+      ],
+      "sourceNode": "BigBatCave:6:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000023",
+      "prefab": "guano",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        145.9,
+        0,
+        149.26
+      ],
+      "sourceNode": "BigBatCave:6:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000024",
+      "prefab": "guano",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        26.83,
+        0,
+        174.41
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000025",
+      "prefab": "guano",
+      "sourceIndex": 25,
+      "sourcePosition": [
+        54.33,
+        0,
+        205.31
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000026",
+      "prefab": "guano",
+      "sourceIndex": 26,
+      "sourcePosition": [
+        14.47,
+        0,
+        182.28
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000027",
+      "prefab": "guano",
+      "sourceIndex": 27,
+      "sourcePosition": [
+        49.33,
+        0,
+        194.04
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000028",
+      "prefab": "guano",
+      "sourceIndex": 28,
+      "sourcePosition": [
+        106.27,
+        0,
+        181.61
+      ],
+      "sourceNode": "BigBatCave:5:BatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000029",
+      "prefab": "guano",
+      "sourceIndex": 29,
+      "sourcePosition": [
+        33.69,
+        0,
+        378.32
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000030",
+      "prefab": "guano",
+      "sourceIndex": 30,
+      "sourcePosition": [
+        33.36,
+        0,
+        358.07
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000031",
+      "prefab": "guano",
+      "sourceIndex": 31,
+      "sourcePosition": [
+        73.87,
+        0,
+        373.71
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_guano_index_000032",
+      "prefab": "guano",
+      "sourceIndex": 32,
+      "sourcePosition": [
+        38.08,
+        0,
+        373.57
+      ],
+      "sourceNode": "BigBatCave:0:BattyCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_hutch_fishbowl_index_000001",
+      "prefab": "hutch_fishbowl",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        73.77,
+        0,
+        66.4
+      ],
+      "sourceNode": "MudPit:0:SlurtlePlains"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_mask_ancient_architecthat_index_000001",
+      "prefab": "mask_ancient_architecthat",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -805.5,
+        0,
+        52.15
+      ],
+      "sourceNode": "Vault:0:Vault_Vault"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_mask_ancient_handmaidhat_index_000001",
+      "prefab": "mask_ancient_handmaidhat",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -813.6,
+        0,
+        56
+      ],
+      "sourceNode": "Vault:0:Vault_Vault"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_mask_ancient_masonhat_index_000001",
+      "prefab": "mask_ancient_masonhat",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -823.5,
+        0,
+        51.75
+      ],
+      "sourceNode": "Vault:0:Vault_Vault"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_orangegem_id_110932",
+      "prefab": "orangegem",
+      "sourceIndex": 1,
+      "sourceId": 110932,
+      "sourcePosition": [
+        368,
+        0,
+        -329
+      ],
+      "sourceNode": "Sacred:7:Spiral"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pitchfork_index_000001",
+      "prefab": "pitchfork",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -471.88,
+        0,
+        -123.88
+      ],
+      "sourceNode": "CaveExitTask2:0:RabbitTown"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pitchfork_index_000002",
+      "prefab": "pitchfork",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -69.19,
+        0,
+        -166.5
+      ],
+      "sourceNode": "MudCave:3:SlurtlePlains"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pitchfork_index_000003",
+      "prefab": "pitchfork",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -206.82,
+        0,
+        -93.5
+      ],
+      "sourceNode": "MudWorld:0:MudWithRabbit"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_pitchfork_index_000004",
+      "prefab": "pitchfork",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        263.87,
+        0,
+        199.87
+      ],
+      "sourceNode": "RabbitTown:0:RabbitTown"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_purplegem_id_110910",
+      "prefab": "purplegem",
+      "sourceIndex": 1,
+      "sourceId": 110910,
+      "sourcePosition": [
+        -222.83,
+        0,
+        90.48
+      ],
+      "sourceNode": "CaveJungle:BG_54:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rope_index_000001",
+      "prefab": "rope",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -293.41,
+        0,
+        -565.11
+      ],
+      "sourceNode": "GreenForest:7:GreenMushForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rope_index_000002",
+      "prefab": "rope",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        -293.25,
+        0,
+        -563.33
+      ],
+      "sourceNode": "GreenForest:7:GreenMushForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rope_index_000003",
+      "prefab": "rope",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        -294.6,
+        0,
+        -562.51
+      ],
+      "sourceNode": "GreenForest:7:GreenMushForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rope_index_000004",
+      "prefab": "rope",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -294.77,
+        0,
+        -563.45
+      ],
+      "sourceNode": "GreenForest:7:GreenMushForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rope_index_000005",
+      "prefab": "rope",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -293.97,
+        0,
+        -562.69
+      ],
+      "sourceNode": "GreenForest:7:GreenMushForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rope_index_000006",
+      "prefab": "rope",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        262.58,
+        0,
+        -165.4
+      ],
+      "sourceNode": "Residential:BG_61:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rope_index_000007",
+      "prefab": "rope",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        261.14,
+        0,
+        -167.79
+      ],
+      "sourceNode": "Residential:BG_61:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_rope_index_000008",
+      "prefab": "rope",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        263.01,
+        0,
+        -166.02
+      ],
+      "sourceNode": "Residential:BG_61:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_silk_index_000001",
+      "prefab": "silk",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        45.06,
+        0,
+        184.43
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_silk_index_000002",
+      "prefab": "silk",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        47.87,
+        0,
+        185.81
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_silk_index_000003",
+      "prefab": "silk",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        44.5,
+        0,
+        185.25
+      ],
+      "sourceNode": "BigBatCave:9:FernyBatCave"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_id_110826",
+      "prefab": "thulecite",
+      "sourceIndex": 1,
+      "sourceId": 110826,
+      "sourcePosition": [
+        197.31,
+        0,
+        -286.77
+      ],
+      "sourceNode": "AtriumMaze:8:AtriumMazeEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_id_110912",
+      "prefab": "thulecite",
+      "sourceIndex": 2,
+      "sourceId": 110912,
+      "sourcePosition": [
+        261.56,
+        0,
+        -418.38
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_id_110944",
+      "prefab": "thulecite",
+      "sourceIndex": 3,
+      "sourceId": 110944,
+      "sourcePosition": [
+        94.18,
+        0,
+        -110.67
+      ],
+      "sourceNode": "LichenLand:BG_80:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_id_110995",
+      "prefab": "thulecite",
+      "sourceIndex": 4,
+      "sourceId": 110995,
+      "sourcePosition": [
+        209.73,
+        0,
+        -113.21
+      ],
+      "sourceNode": "LichenLand:BG_84:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_id_111144",
+      "prefab": "thulecite",
+      "sourceIndex": 5,
+      "sourceId": 111144,
+      "sourcePosition": [
+        188.5,
+        0,
+        -379.32
+      ],
+      "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_id_111157",
+      "prefab": "thulecite",
+      "sourceIndex": 6,
+      "sourceId": 111157,
+      "sourcePosition": [
+        65.73,
+        0,
+        -297.2
+      ],
+      "sourceNode": "Residential2:0:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_id_110895",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 1,
+      "sourceId": 110895,
+      "sourcePosition": [
+        -114.47,
+        0,
+        169.98
+      ],
+      "sourceNode": "CaveJungle:BG_53:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_id_110991",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 2,
+      "sourceId": 110991,
+      "sourcePosition": [
+        129.71,
+        0,
+        1.02
+      ],
+      "sourceNode": "LichenLand:BG_82:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000003",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        670.87,
+        0,
+        -421.98
+      ],
+      "sourceNode": "TheLabyrinth:BG_87:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000004",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        665.8,
+        0,
+        -426.34
+      ],
+      "sourceNode": "TheLabyrinth:BG_87:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000005",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        725.34,
+        0,
+        -321.38
+      ],
+      "sourceNode": "TheLabyrinth:BG_89:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000006",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        718.55,
+        0,
+        -393.33
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000007",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        694.03,
+        0,
+        -409.47
+      ],
+      "sourceNode": "TheLabyrinth:1:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000008",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        673.53,
+        0,
+        -530.71
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000009",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        713.62,
+        0,
+        -569.6
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000010",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        678.42,
+        0,
+        -502.88
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000011",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        697,
+        0,
+        -539
+      ],
+      "sourceNode": "TheLabyrinth:BG_88:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000012",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        722.77,
+        0,
+        -441.63
+      ],
+      "sourceNode": "TheLabyrinth:2:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000013",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        653.69,
+        0,
+        -442.37
+      ],
+      "sourceNode": "TheLabyrinth:4:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000014",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        669.18,
+        0,
+        -474.48
+      ],
+      "sourceNode": "TheLabyrinth:3:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_index_000015",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        694.48,
+        0,
+        -334.16
+      ],
+      "sourceNode": "TheLabyrinth:BG_86:Labyrinth"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_thulecite_pieces_id_111203",
+      "prefab": "thulecite_pieces",
+      "sourceIndex": 16,
+      "sourceId": 111203,
+      "sourcePosition": [
+        -230.15,
+        0,
+        234.93
+      ],
+      "sourceNode": "Military:5:MilitaryEntrance"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_torch_id_102869",
+      "prefab": "torch",
+      "sourceIndex": 1,
+      "sourceId": 102869,
+      "sourcePosition": [
+        256.26,
+        0,
+        -161.97
+      ],
+      "sourceNode": "Residential:BG_61:RuinedCity"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_trap_id_106009",
+      "prefab": "trap",
+      "sourceIndex": 1,
+      "sourceId": 106009,
+      "sourcePosition": [
+        -299.14,
+        0,
+        -566.57
+      ],
+      "sourceNode": "GreenForest:7:GreenMushForest"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_trap_id_106011",
+      "prefab": "trap",
+      "sourceIndex": 2,
+      "sourceId": 106011,
+      "sourcePosition": [
+        -53.63,
+        0,
+        -387.18
+      ],
+      "sourceNode": "ToadStoolTask3:1:ToadstoolArenaBGMud"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_twigs_index_000001",
+      "prefab": "twigs",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        91.09,
+        0,
+        -246.86
+      ],
+      "sourceNode": "Residential2:2:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_twigs_index_000002",
+      "prefab": "twigs",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        90.36,
+        0,
+        -245.62
+      ],
+      "sourceNode": "Residential2:2:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_twigs_index_000003",
+      "prefab": "twigs",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        90.64,
+        0,
+        -249.14
+      ],
+      "sourceNode": "Residential2:2:CaveJungle"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_twigs_index_000004",
+      "prefab": "twigs",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        -570.707,
+        0,
+        -179.598
+      ],
+      "sourceNode": "CaveExitTask2:BG_38:BGSinkhole"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_twigs_index_000005",
+      "prefab": "twigs",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        -586.106,
+        0,
+        -167.836
+      ],
+      "sourceNode": "CaveExitTask2:BG_38:BGSinkhole"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_twigs_index_000006",
+      "prefab": "twigs",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        -579.273,
+        0,
+        -198.318
+      ],
+      "sourceNode": "CaveExitTask2:BG_38:BGSinkhole"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_yellowgem_id_110842",
+      "prefab": "yellowgem",
+      "sourceIndex": 1,
+      "sourceId": 110842,
+      "sourcePosition": [
+        438.33,
+        0,
+        -582.07
+      ],
+      "sourceNode": "SacredDanger:BG_51:BGSacred"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_yellowgem_id_111009",
+      "prefab": "yellowgem",
+      "sourceIndex": 2,
+      "sourceId": 111009,
+      "sourcePosition": [
+        162.37,
+        0,
+        -506.44
+      ],
+      "sourceNode": "AtriumMaze:4:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_yellowgem_id_111136",
+      "prefab": "yellowgem",
+      "sourceIndex": 3,
+      "sourceId": 111136,
+      "sourcePosition": [
+        -194.4,
+        0,
+        74.44
+      ],
+      "sourceNode": "CaveJungle:BG_52:BGWildsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_yellowgem_id_111159",
+      "prefab": "yellowgem",
+      "sourceIndex": 4,
+      "sourceId": 111159,
+      "sourcePosition": [
+        -233.28,
+        0,
+        178.78
+      ],
+      "sourceNode": "CaveJungle:BG_56:BGWildsRoom"
     }
   ],
+  "groundItemCounts": {
+    "boneshard": {
+      "entities": 10,
+      "quantity": 10,
+      "sourceComponents": []
+    },
+    "cutgrass": {
+      "entities": 3,
+      "quantity": 3,
+      "sourceComponents": []
+    },
+    "flint": {
+      "entities": 24,
+      "quantity": 24,
+      "sourceComponents": []
+    },
+    "goldnugget": {
+      "entities": 5,
+      "quantity": 5,
+      "sourceComponents": []
+    },
+    "guano": {
+      "entities": 32,
+      "quantity": 32,
+      "sourceComponents": []
+    },
+    "hutch_fishbowl": {
+      "entities": 1,
+      "quantity": 1,
+      "sourceComponents": []
+    },
+    "mask_ancient_architecthat": {
+      "entities": 1,
+      "quantity": 1,
+      "sourceComponents": []
+    },
+    "mask_ancient_handmaidhat": {
+      "entities": 1,
+      "quantity": 1,
+      "sourceComponents": []
+    },
+    "mask_ancient_masonhat": {
+      "entities": 1,
+      "quantity": 1,
+      "sourceComponents": []
+    },
+    "orangegem": {
+      "entities": 1,
+      "quantity": 1,
+      "sourceComponents": []
+    },
+    "pitchfork": {
+      "entities": 4,
+      "quantity": 4,
+      "sourceComponents": []
+    },
+    "purplegem": {
+      "entities": 1,
+      "quantity": 1,
+      "sourceComponents": []
+    },
+    "rope": {
+      "entities": 8,
+      "quantity": 8,
+      "sourceComponents": []
+    },
+    "silk": {
+      "entities": 3,
+      "quantity": 3,
+      "sourceComponents": []
+    },
+    "thulecite": {
+      "entities": 6,
+      "quantity": 8,
+      "sourceComponents": [
+        "stackable"
+      ]
+    },
+    "thulecite_pieces": {
+      "entities": 16,
+      "quantity": 30,
+      "sourceComponents": [
+        "stackable"
+      ]
+    },
+    "torch": {
+      "entities": 1,
+      "quantity": 1,
+      "sourceComponents": [
+        "fueled"
+      ]
+    },
+    "trap": {
+      "entities": 2,
+      "quantity": 2,
+      "sourceComponents": [
+        "finiteuses"
+      ]
+    },
+    "twigs": {
+      "entities": 6,
+      "quantity": 6,
+      "sourceComponents": []
+    },
+    "yellowgem": {
+      "entities": 4,
+      "quantity": 4,
+      "sourceComponents": []
+    }
+  },
+  "containerItems": {
+    "skipped": [],
+    "droppedComponents": []
+  },
+  "groundItemScope": "Ground art via the existing ground_item path: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.",
   "player": {
     "source": "public/saves/Cluster_62/Caves/save/session/04E26ADB66396E8D/A7MO82FN9PR9/0000000003",
     "sourceSha256": "4a4ccdc7f905a535d34b235200d75e0aeafa4cc8dcb87e11e952002b1528836f",

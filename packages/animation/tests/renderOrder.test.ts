@@ -144,3 +144,18 @@ describe('SpriteRenderOrderSorter', () => {
     expectOrder(sorter, [makeEntry(new THREE.Vector3())], matrix);
   });
 });
+
+describe('registerSpriteRenderGroup', () => {
+  it('keeps the entity order when a loaded sprite replaces its placeholder, so no resort is needed', () => {
+    const root = new THREE.Group(), placeholder = new THREE.Group(), drawn = new THREE.Group(), far = new THREE.Group();
+    registerSpriteRenderGroup(root, placeholder);
+    registerSpriteRenderGroup(far, new THREE.Group());
+    new SpriteRenderOrderSorter().update([
+      { object: far, footPosition: new THREE.Vector3(0, 0, -20) },
+      { object: root, footPosition: new THREE.Vector3(0, 0, -10) },
+    ], new THREE.Matrix4());
+    expect(placeholder.renderOrder).toBe(1);
+    registerSpriteRenderGroup(root, drawn);
+    expect(drawn.renderOrder).toBe(1);
+  });
+});

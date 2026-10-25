@@ -50,12 +50,12 @@ def main():
             if override['archive'] not in builds:
                 builds.append(override['archive'])
         icon = (icon_name or item) + '.tex'
-        if icon not in icons:
+        if icon_name is not False and icon not in icons:
             raise ValueError(f'No inventory icon for {item}')
         definition = {
             'source': 'databundles/scripts_unpacked/scripts/prefabs/' + source + '.lua',
             'name': messages.get('STRINGS.NAMES.' + item.upper(), item),
-            'icon': icon, 'atlas': icons[icon],
+            **({'icon': icon, 'atlas': icons[icon]} if icon_name is not False else {}),
             'animationArchive': animation_archive, 'buildArchives': builds,
             'bank': bank, 'animation': animation, 'loop': loop,
             'symbolOverrides': overrides or {}, 'skinArchives': {},
@@ -378,19 +378,29 @@ def main():
             animation_archive='cook_pot_food.zip',
             overrides={'swap_food': {'archive': build + '.zip', 'symbol': basename[1] if basename else entry[1]}})
 
+    # Static world imports have art, but do not become inventory/gameplay items.
+    static_source = runpy.run_path(str(Path(__file__).with_name('static-ground-items.py')))
+    static_items = static_source['read_static_items'](add, items, read)
+    static_variants = static_source['read_static_variants']()
+    static_source['check_animation_clips'](items | static_items, static_variants, args.source)
+
     # Skin builds replace matching symbols while the original bank keeps its pose.
     skin_specs = {}
     staff_morph_skins = {}
     skins = read('skinprefabs')
     for match in re.finditer(r'CreatePrefabSkin\("([^"]+)",\s*\{(.*?)\}\)\)', skins, re.S):
         base = re.search(r'base_prefab\s*=\s*"([^"]+)"', match[2])
-        if not base or base[1] not in items:
+        if not base or base[1] not in items | static_items:
             continue
         override = re.search(r'build_name_override\s*=\s*"([^"]+)"', match[2])
         build = override[1] if override else match[1]
         path = f'dynamic/{build}.zip'
-        items[base[1]]['skinArchives'][match[1]] = path
+        (items | static_items)[base[1]]['skinArchives'][match[1]] = path
         icon = match[1] + (heatrock_range if base[1] == 'heatrock' else '') + '.tex'
+        if base[1] in static_items:
+            # Bundle skins use size-suffixed icons; they are not inventory specs in this port.
+            assets.update(['anim/' + path, 'anim/' + str(Path(path).with_suffix('.dyn'))])
+            continue
         if base[1] == 'heatrock':
             heatrock_images(match[1])
         if icon not in icons:
@@ -405,7 +415,8 @@ def main():
         assets.update(['anim/' + path, 'anim/' + str(Path(path).with_suffix('.dyn'))])
 
     output = package / 'src/groundItems.json'
-    serialized = json.dumps({'items': items, 'skinSpecs': skin_specs, 'staffMorphSkins': staff_morph_skins}, ensure_ascii=False, indent=2) + '\n'
+    serialized = json.dumps({'items': items, 'staticItems': static_items, 'staticVariants': static_variants,
+                             'skinSpecs': skin_specs, 'staffMorphSkins': staff_morph_skins}, ensure_ascii=False, indent=2) + '\n'
     if args.check:
         if output.read_text() != serialized:
             raise ValueError('groundItems.json is out of date')
@@ -421,7 +432,8 @@ def main():
             else:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(data)
-    print(f'{"Checked" if args.check else "Imported"} {len(items)} ground items, {len(skin_specs)} skins, {len(assets)} assets')
+    print(f'{"Checked" if args.check else "Imported"} {len(items)} ground items, {len(static_items)} static art entries, '
+          f'{len(skin_specs)} inventory skins, {len(assets)} assets')
 
 
 if __name__ == '__main__':

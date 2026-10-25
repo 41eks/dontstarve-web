@@ -1,5 +1,7 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
+2026-10-25 源存档散落物品美术：`groundItems.json.staticItems` 的 63 个条目按各自 `source` 指向的 prefab Lua 核对 bank/build/clip，原版均为 inventoryitem 路径；雕塑头另外有 heavy。项目此次复用原有地面物品路径增加 `c_spawn("ID")` 展示，完整 ID 列表见 [README 调试说明](../README.md)，不为这些新美术增加库存／拾取／装备／使用交互。现有帽子等库存支持保持原路径。源 `bullkelp_beachedroot` 的拾取回调会替换成 kelp 和 bullkelp_root，本次不移植该回调；扑克牌不移植 flipdeck、playingcard 组件和库存 OverrideImage。实体复用原有 ground_item.components.stack 保存数量、源皮肤及白名单外观变体；`groundItemArt.test.ts` 验证 c_spawn、c_save ZIP 导出及重载，`import-ground-items.py --check` 验证全部 bank/clip 引用及源资源字节。
+
 核对日期：2026-10-07。依据本地 DST Lua 源码，整理原版命令的适用条件与 prefab ID；没有运行 DST 引擎验证。
 
 源码根目录：`/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts/`。下文 `prefabs/*.lua`、`components/*.lua` 等路径均相对于该目录，行号对应本次读取的源码版本。

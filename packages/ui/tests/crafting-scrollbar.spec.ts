@@ -55,7 +55,11 @@ test('uses atlas arrows and scrolls with clicks, wheel, keyboard and a scaled th
 
 test('keeps the recipe viewport, scrollbar and details inside the painted frame at smaller sizes', async ({ page }) => {
   await page.goto('/tests/fixture.html');
-  await page.locator('dst-crafting-ui .craft-quick-toggle').click();
+  // Isolate crafting geometry from the status HUD overlapping its toggle at phone widths.
+  await page.locator('dst-status-hud').evaluate(element => element.remove());
+  const crafting = page.locator('dst-crafting-ui');
+  const panel = crafting.locator('.craft-panel');
+  await crafting.locator('.craft-quick-toggle').click();
   for (const size of [{ width: 1280, height: 900 }, { width: 640, height: 640 }, { width: 1280, height: 480 }, { width: 375, height: 667 }]) {
     await page.setViewportSize(size);
     const bounds = await page.locator('dst-crafting-ui').evaluate((host) => {
@@ -78,5 +82,17 @@ test('keeps the recipe viewport, scrollbar and details inside the painted frame 
     }
     expect(bounds.horizontalOverflow).toBe(0);
     expect(bounds.nativeScrollbar).toBe('none');
+    expect((bounds.panel.top + bounds.panel.bottom) / 2).toBeCloseTo(size.height / 2, 3);
+    await crafting.locator('.craft-view-toggle').click();
+    const collapsed = (await panel.boundingBox())!;
+    expect(collapsed.y).toBeCloseTo(bounds.panel.top, 3);
+    expect(collapsed.height).toBeCloseTo(bounds.panel.bottom - bounds.panel.top, 3);
+    expect(collapsed.y + collapsed.height / 2).toBeCloseTo(size.height / 2, 3);
+    expect(collapsed.x).toBeLessThan(bounds.panel.left);
+    await crafting.locator('.craft-quick-toggle').click();
+    const expanded = (await panel.boundingBox())!;
+    expect(expanded.y).toBeCloseTo(collapsed.y, 3);
+    expect(expanded.height).toBeCloseTo(collapsed.height, 3);
+    expect(expanded.x).toBeCloseTo(bounds.panel.left, 3);
   }
 });

@@ -4,10 +4,11 @@
 
 .minimap {
   position: fixed;
-  z-index: 40;
+  /* MapScreen sits above the HUD, inventory and open container panels (55). */
+  z-index: 60;
   inset: 0;
   overflow: hidden;
-  background: #1d1a14;
+  isolation: isolate;
   cursor: none;
   touch-action: none;
   user-select: none;
@@ -16,6 +17,25 @@
 
 .minimap[hidden] {
   display: none;
+}
+
+/* MapWidget.bg: middle anchors/registration and independent screen-width/height scaling. */
+.minimap__background {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+}
+
+.minimap__background::part(sprite) {
+  width: 100%;
+  height: 100%;
+}
+
+/* MapWidget.img is drawn above bg using BLENDMODE.Additive. */
+.minimap__viewport {
+  z-index: 1;
+  mix-blend-mode: plus-lighter;
 }
 
 .minimap--dragging {
@@ -34,6 +54,7 @@
 
 .minimap__center {
   position: absolute;
+  z-index: 2;
   left: clamp(8px, 1.2vw, 18px);
   bottom: clamp(40px, 8vw, 74px);
   padding: 6px 14px;

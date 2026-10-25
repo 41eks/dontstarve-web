@@ -4,6 +4,8 @@ import styles from './styles/map-controls.css?inline';
 export type CameraTurnDirection = 'left' | 'right';
 
 export class DstMapControlsElement extends AssetElement {
+  private mapOpen = false;
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -36,8 +38,7 @@ export class DstMapControlsElement extends AssetElement {
 
     mapButton.addEventListener('click', () => {
       const isOpen = mapButton.getAttribute('aria-pressed') !== 'true';
-      mapButton.setAttribute('aria-pressed', String(isOpen));
-      mapButton.setAttribute('aria-label', isOpen ? '关闭地图' : '打开地图');
+      this.setMapOpen(isOpen);
       this.emit('game:map-toggle', { isOpen });
     });
 
@@ -56,13 +57,18 @@ export class DstMapControlsElement extends AssetElement {
         this.emit('game:camera-turn', { direction });
       });
     });
+    this.setMapOpen(this.mapOpen);
   }
 
   /** Mirrors a map opened or closed elsewhere (M key, Esc) without emitting game:map-toggle. */
   setMapOpen(isOpen: boolean): void {
+    this.mapOpen = isOpen;
     const button = this.shadowRoot?.querySelector<HTMLButtonElement>('.map-controls__map');
     button?.setAttribute('aria-pressed', String(isOpen));
     button?.setAttribute('aria-label', isOpen ? '关闭地图' : '打开地图');
+    // screens/mapscreen.lua hides pauseBtn on the map's own controls.
+    const pause = this.shadowRoot?.querySelector<HTMLButtonElement>('.map-controls__pause');
+    if (pause) pause.hidden = isOpen;
   }
 
   private emit<T>(type: string, detail: T): void {

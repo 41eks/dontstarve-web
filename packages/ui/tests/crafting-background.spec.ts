@@ -7,6 +7,19 @@ test('composes the frame into one background and replaces/releases it when layou
   await crafting.locator('.craft-quick-toggle').click();
   const background = crafting.locator('.craft-background');
   await expect(background).toHaveAttribute('data-loaded', 'true');
+  const quickbarLayout = () => crafting.evaluate(host => {
+    const root = host.shadowRoot!;
+    const panel = root.querySelector('.craft-panel')!.getBoundingClientRect();
+    const quickbar = root.querySelector('.craft-quickbar')!.getBoundingClientRect();
+    const slots = [...root.querySelectorAll('.craft-quick-category:not([hidden]) .craft-quick-item')]
+      .map(slot => slot.getBoundingClientRect());
+    return { panelHeight: panel.height, barHeight: quickbar.height,
+      slotRatio: slots[0].height / panel.height,
+      gapRatio: (slots[1].top - slots[0].bottom) / panel.height,
+      bottom: slots.at(-1)!.bottom, panelBottom: panel.bottom };
+  });
+  const initialQuickbar = await quickbarLayout();
+  expect(initialQuickbar.barHeight).toBeCloseTo(initialQuickbar.panelHeight, 3);
   const firstUrl = await background.evaluate((node) => node.style.backgroundImage.slice(5, -2));
   const pixels = await crafting.evaluate(async (host) => {
     const root = host.shadowRoot!;
@@ -72,6 +85,11 @@ test('composes the frame into one background and replaces/releases it when layou
   await page.setViewportSize({ width: 640, height: 640 });
   await expect.poll(() => background.evaluate((node) => node.style.backgroundImage.slice(5, -2))).not.toBe(firstUrl);
   await expect(background).toHaveAttribute('data-loaded', 'true');
+  const resizedQuickbar = await quickbarLayout();
+  expect(resizedQuickbar.barHeight).toBeCloseTo(resizedQuickbar.panelHeight, 3);
+  expect(resizedQuickbar.slotRatio).toBeCloseTo(initialQuickbar.slotRatio, 4);
+  expect(resizedQuickbar.gapRatio).toBeCloseTo(initialQuickbar.gapRatio, 4);
+  expect(resizedQuickbar.bottom).toBeLessThanOrEqual(resizedQuickbar.panelBottom);
   const resizedUrl = await background.evaluate((node) => node.style.backgroundImage.slice(5, -2));
   const revoked = async (url: string) => page.evaluate(async (url) => {
     const image = new Image(); image.src = url;

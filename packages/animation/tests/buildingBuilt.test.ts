@@ -12,6 +12,7 @@ import {
 import { COOK_POT_DEFINITION } from '../../prefab/src/cook_pot';
 import { TREASURE_CHEST_DEFINITION } from '../../prefab/src/treasurechest';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { modelHasTag } from '../../prefab/src/prefabInstance';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';
 
@@ -104,6 +105,32 @@ it('lets a prefab control built effects and keeps interaction blocked until it c
   expect(playOnce).toHaveBeenCalledExactlyOnceWith('open', expect.any(Function));
 });
 
+
+it('gives placed and restored chests a map icon at their foot and releases it with the entity', async () => {
+  const { placement, world, click } = await setup({ ...TREASURE_CHEST_DEFINITION, onbuilt: undefined });
+  try {
+    await placement.begin('building');
+    // The placer is not the chest: no icon until the build is committed.
+    expect(placement.miniMapEntities).toHaveLength(0);
+    click();
+    const [built] = placement.miniMapEntities;
+    expect(built.icon).toBe('treasurechest.png');
+    expect(built.position).toBe(world.scene.children[0].position);
+    expect([built.position.x, built.position.z]).toEqual([3, 4]);
+    const restored = await placement.spawnFromSave('building', {
+      id: 'imported-chest', transform: { position: [-12, 0, 24], rotationY: 0 },
+      components: { building: { state: 'closed' }, container: { slotCount: 9, slots: [] } } });
+    expect(placement.miniMapEntities.map(({ position }) => [position.x, position.z])).toEqual([[3, 4], [-12, 24]]);
+    expect(modelHasTag(restored, 'chest')).toBe(true);
+    expect(placement.getSpellTargets(world.scene.children[0])[0].removeOne()).toBe(true);
+    expect(built.enabled).toBe(false);
+    expect(placement.miniMapEntities.map(({ position }) => position)).toEqual([restored.position]);
+    const [kept] = placement.miniMapEntities;
+    placement.dispose();
+    expect(kept.enabled).toBe(false);
+    expect(placement.miniMapEntities).toHaveLength(0);
+  } finally { placement.dispose(); }
+});
 
 it('binds a committed building collider at its foot, restores it from saves and removes it with the entity', async () => {
   const { placement, world, consume, click } = await setup(WARDROBE_DEFINITION);

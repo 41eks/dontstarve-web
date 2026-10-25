@@ -39,7 +39,7 @@ it('resolves the player icon from its actual native minimap atlas', async () => 
   expect(icon.width).toBeGreaterThan(32);
   expect(icon.pixels.some((value, i) => i % 4 === 3 && value === 0)).toBe(true);
   expect(icon.pixels.some((value, i) => i % 4 === 3 && value === 255)).toBe(true);
-  for (const name of ['pigking.png', 'backpack.png']) {
+  for (const name of ['pigking.png', 'backpack.png', 'treasurechest.png']) {
     const worldIcon = await loadMinimapIcon('http://minimap-test/dst/data', name);
     expect(worldIcon.texturePath).toBe('http://minimap-test/dst/data/minimap/minimap_atlas2.tex');
   }

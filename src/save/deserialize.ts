@@ -5,6 +5,7 @@ import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from '
 import type { BuildingContainerDefinition } from '@dontstarve-web/prefab/containers';
 import { WORLD_TILES, isOceanTile } from '@dontstarve-web/prefab/turfMap';
 import { GROUND_TILE_DEFINITIONS } from '@dontstarve-web/prefab/groundTiles';
+import { GROUND_ART_DEFINITIONS, GROUND_ART_VARIANTS } from '@dontstarve-web/prefab/groundItems';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { PREFAB_DEFINITIONS, prefabSaveParsers, type PrefabDefinition } from '../prefabDefinitions';
 import { array, choice, fail, integer, number, object, snapshotId, string, timestamp } from './validation';
@@ -104,7 +105,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   };
   const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'mole', 'lightflier', 'container', 'temperature', 'highTemp', 'lowTemp']);
+    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'variant', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'mole', 'lightflier', 'container', 'temperature', 'highTemp', 'lowTemp']);
     const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
     if (entityId !== undefined) {
       if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
@@ -124,12 +125,16 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     const highTemp = o.highTemp === undefined ? undefined : integer(o.highTemp, `${path}.highTemp`, -20, 90);
     const lowTemp = o.lowTemp === undefined ? undefined : integer(o.lowTemp, `${path}.lowTemp`, -20, 90);
     if (highTemp !== undefined && lowTemp !== undefined) fail(path, 'thermal stone cannot have both temperature extrema');
-    const spec = Object.hasOwn(catalog.items, itemId) ? catalog.items[itemId] : undefined;
+    const ground = path.startsWith('world.entities.ground_item[') && path.endsWith('.components.stack');
+    const art = Object.hasOwn(GROUND_ART_DEFINITIONS, itemId) ? GROUND_ART_DEFINITIONS[itemId] : undefined;
+    const spec = Object.hasOwn(catalog.items, itemId) ? catalog.items[itemId]
+      : ground && art ? { name: art.name, icon: art.icon ?? '', maxStack: Number.MAX_SAFE_INTEGER } : undefined;
+    const variant = o.variant === undefined ? undefined : choice(o.variant, `${path}.variant`, Object.keys(GROUND_ART_VARIANTS[itemId] ?? {}));
     if (!spec) fail(`${path}.itemId`, `unknown item ${itemId}`);
     const skinId = o.skinId === undefined ? undefined : string(o.skinId, `${path}.skinId`);
     if (skinId !== undefined) {
       const skin = Object.hasOwn(catalog.skins, skinId) ? catalog.skins[skinId] : undefined;
-      if (!skin || (skin.itemId !== undefined && skin.itemId !== itemId)) fail(`${path}.skinId`, `invalid skin for ${itemId}`);
+      if ((!skin || (skin.itemId !== undefined && skin.itemId !== itemId)) && !(ground && art && Object.hasOwn(art.skinArchives, skinId))) fail(`${path}.skinId`, `invalid skin for ${itemId}`);
     }
     const remainingUses = o.remainingUses === undefined ? undefined
       : number(o.remainingUses, `${path}.remainingUses`, spec.useStep ?? 1, spec.maxUses ?? 0);
@@ -168,7 +173,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       if (itemId !== 'backpack') fail(`${path}.container`, 'item has no container');
       return container(o.container, `${path}.container`, numericKeys(8));
     })();
-    return { ...(lightflier === undefined ? {} : { lightflier }), ...(mole === undefined ? {} : { mole }), ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }),
+    return { ...(lightflier === undefined ? {} : { lightflier }), ...(mole === undefined ? {} : { mole }), ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }), ...(variant === undefined ? {} : { variant }),
       ...(phonographRecord === undefined ? {} : { phonographRecord }),
       ...(temperature === undefined ? {} : { temperature }),
       ...(highTemp === undefined ? {} : { highTemp }),
@@ -217,7 +222,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       if (components.stack?.entityId !== undefined && components.stack.entityId !== id) {
         fail(`${recordPath}.components.stack.entityId`, 'ground item ID must match entity record');
       }
-      return { id, transform: transform(o.transform, `${recordPath}.transform`, true), components };
+      return { id, transform: transform(o.transform, `${recordPath}.transform`, prefab !== 'ground_item'), components };
     });
     return [prefab, records];
   }));

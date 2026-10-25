@@ -3,6 +3,42 @@ import { expect, test } from '@playwright/test';
 
 const PLAYER_PATH = `/@fs${fileURLToPath(new URL('../../../src/player.ts', import.meta.url))}`;
 
+test('the source HUD frame fills landscape and portrait screens and stays fixed while the map moves', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/tests/minimap-edges.html');
+  await page.waitForFunction(() => Boolean((window as any).minimapEdges));
+  const map = page.locator('dst-minimap'), background = map.locator('.minimap__background');
+  await expect(background).toHaveAttribute('data-loaded', 'true');
+  const texture = await background.getAttribute('data-image');
+  for (const [width, height] of [[1280, 720], [600, 900]]) {
+    await page.setViewportSize({ width, height });
+    await expect.poll(() => background.evaluate(element => {
+      const sprite = element.shadowRoot!.querySelector('.sprite')!;
+      const rect = sprite.getBoundingClientRect();
+      return [rect.x, rect.y, rect.width, rect.height];
+    })).toEqual([0, 0, width, height]);
+    await page.evaluate(async () => {
+      const { map, heading } = (window as any).minimapEdges;
+      heading.set(45);
+      map.setView({ x: 12, z: -12, zoom: 20 });
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(await background.getAttribute('data-image')).toBe(texture);
+    await expect(background).toHaveAttribute('data-atlas', 'images/hud.xml');
+    await expect(background).toHaveAttribute('data-element', 'map.tex');
+    expect(await map.locator('.minimap__viewport').evaluate(element => getComputedStyle(element).mixBlendMode)).toBe('plus-lighter');
+    await page.screenshot({ path: testInfo.outputPath(`map-hud-frame-${width}x${height}.png`) });
+  }
+  await page.keyboard.press('Escape');
+  await expect(background).toBeHidden();
+  await page.keyboard.press('m');
+  await expect(background).toBeVisible();
+  expect(await background.getAttribute('data-image')).toBe(texture);
+  expect(errors).toEqual([]);
+});
+
 test('precomposed tile regions reuse uploads and bounded atlas slots while preserving colour and alpha', async ({ page }) => {
   await page.goto('/tests/minimap-edges.html');
   await page.waitForFunction(() => Boolean((window as any).minimapEdges));
@@ -451,8 +487,25 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   await expect(inspectImage).toHaveAttribute('src', /self_inspect_wortox\.tex\.png$/);
   await expect.poll(() => inspectImage.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBe(98);
 
+  await page.evaluate(() => {
+    const backpack = document.querySelector('dst-backpack-panel') as any;
+    if (!backpack.slotContainer) backpack.open({ containerId: 'map-layout:backpack', slotCount: 8, title: '背包' });
+    (window as any).mapGame.backpack = backpack.slotContainer;
+  });
+  const coveredByMap = (selector: string) => page.locator(selector).evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.tagName === 'DST-MINIMAP';
+  });
+  const inventorySelector = 'dst-inventory-bar .inventory-bar';
+  const backpackSelector = 'dst-backpack-panel .chest-panel__slots';
+
   await page.locator('dst-map-controls').getByRole('button', { name: '打开地图' }).click();
   await expect(section).toBeVisible();
+  const inventoryBar = page.locator(inventorySelector);
+  const pauseButton = page.locator('dst-map-controls .map-controls__pause');
+  expect(await coveredByMap(inventorySelector)).toBe(true);
+  expect(await coveredByMap(backpackSelector)).toBe(true);
+  await expect(pauseButton).toBeHidden();
   expect(await page.evaluate(() => (window as any).mapGame.IsAutopaused())).toBe(true);
   expect(await page.evaluate(async playerPath => {
     const { player } = await import(playerPath);
@@ -518,10 +571,22 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
   expect(await page.evaluate(() => (window as any).mapGame.hitTests)).toBe(0);
   await page.keyboard.press('Escape');
   await expect(section).toBeHidden();
+  await expect(inventoryBar).toBeVisible();
+  await expect(pauseButton).toBeVisible();
+  expect(await coveredByMap(inventorySelector)).toBe(false);
+  expect(await coveredByMap(backpackSelector)).toBe(false);
+  expect(await page.evaluate(() => (document.querySelector('dst-backpack-panel') as any).slotContainer === (window as any).mapGame.backpack)).toBe(true);
   await page.mouse.move(cx, cy);
   await expect.poll(() => page.evaluate(() => (window as any).mapGame.hitTests)).toBeGreaterThan(0);
   await page.evaluate(() => (window as any).mapGame.restoreHitTest());
   expect(await page.evaluate(() => (window as any).mapGame.IsAutopaused())).toBe(false);
   expect(await page.locator('dst-map-controls').getByRole('button', { name: '打开地图' }).getAttribute('aria-pressed')).toBe('false');
+  await page.keyboard.press('m');
+  expect(await coveredByMap(inventorySelector)).toBe(true);
+  expect(await coveredByMap(backpackSelector)).toBe(true);
+  await expect(pauseButton).toBeHidden();
+  await page.locator('dst-map-controls').getByRole('button', { name: '关闭地图' }).click();
+  await expect(inventoryBar).toBeVisible();
+  await expect(pauseButton).toBeVisible();
   expect(errors).toEqual([]);
 });

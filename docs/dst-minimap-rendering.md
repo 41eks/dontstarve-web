@@ -2,6 +2,12 @@
 
 游戏地图由 `packages/ui` 在主线程中维护：一张地面 PNG 与独立实体图标共用世界坐标容器。DOM 中没有地图 Canvas；底图由临时 `OffscreenCanvas` 直接合成像素，不使用 WebGL 渲染器，地图没有持续渲染循环或地图 Worker（地图没有海洋计算）。
 
+全屏装饰背景对应 `widgets/mapwidget.lua:24` 的 `Image("images/hud.xml", "map.tex")`：`hud.xml` 把 `map.tex` 映射到 `images/hud.tex` 的一块图集区域，二者均从原始 `databundles/images.zip` 读取。`DstMinimapElement` 通过共享 `createAtlasImage()` 绘制该区域，横纵方向分别拉伸到视口边缘，对应中点注册／锚定及 `SCALEMODE_FILLSCREEN`；横屏、竖屏均不保留原图宽高比或留边。背景固定在屏幕上，不随地图平移、缩放或转向。解码器把源预乘纹理恢复为普通 RGBA，浏览器以标准 alpha 合成背景，对应 Lua 的 Premultiplied 绘制。
+
+地图视口位于装饰背景之上，使用 `mix-blend-mode: plus-lighter` 对应 `MapWidget.img` 的 `BLENDMODE.Additive`，地图根节点隔离混合范围，按钮另放上层。`prepareTerrain()` 同时等待 HUD 背景和地皮就绪；关闭／重开地图复用同一图集资源。`screens/mapscreen.lua` 在键鼠模式隐藏 `cursor02.tex` 中央准星，当前键鼠界面沿用这一分支。既有地图操作和调试命令的语法、参数及支持 ID 不变。
+
+地图层的 `z-index` 为 60，覆盖物品栏、右侧 backpack 和其他容器面板（55）；不切换这些面板的显隐或关闭容器，退出地图后直接露出原状态。地图／旋转控制位于 70；暂停按钮按 `screens/mapscreen.lua:35` 的 `pauseBtn:Hide()` 在地图打开时隐藏，关闭时恢复，左右旋转按钮保留原来的网格位置。该行为由 `isOpen` 决定，地图动作解除自动暂停后仍保持地图遮挡。
+
 `src/main.ts` 只注入 `TurfMap` 和格子尺寸。`TurfMap` 拥有地皮、八邻格变体、海洋及变更通知。`MinimapGroundImage` 负责图片生成、分辨率、解码、替换和生命周期，并通过不缓存总览的 `MinimapTerrainLayer`（`prepareInputs()` / `paintCells()`）按 32×32 格分块合成：再按源图层顺序绘制 `mini_*` 遮罩乘以世界坐标噪声的每格像素。海洋是底图：`packages/ui/scripts/render-minimap-ocean.mjs`（`--check` 校验）把 `minimap_paper.tex` 乘以 `EDGE_COLOR0` 渲染成无缝不透明的 `public/minimap/ocean.png`，`MinimapDomRenderer` 以 CSS 背景平铺（每张 32 格）铺满地皮范围及 10% margin，位于地面图下方；地面图的海洋格保持透明，运行时不再计算海岸线、阴影和海洋 Worker，海岸只有陆地遮罩自带的柔边。每个输出像素对应一个源纹素，不做相机重采样，因此保持原版地图的清晰边缘。图片左上为最小世界 X/Z；不将角色、建筑、昼夜光照或后处理烘焙到底图。
 
 

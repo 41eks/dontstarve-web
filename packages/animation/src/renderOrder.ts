@@ -14,6 +14,9 @@ export function registerSpriteRenderGroup(
   sprite: THREE.Object3D,
   renderGroup: THREE.Group,
 ): void {
+  // A sprite loaded or swapped under a stable root keeps the entity's order until the next sort.
+  const previous = spriteRenderGroups.get(sprite);
+  if (previous && renderGroup && previous !== renderGroup) renderGroup.renderOrder = previous.renderOrder;
   spriteRenderGroups.set(sprite, renderGroup);
 }
 

@@ -1,6 +1,6 @@
 import { BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
 import { HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';
-import { GROUND_ITEM_DEFINITIONS, TURF_ITEM_IDS } from '@dontstarve-web/prefab/groundItems';
+import { GROUND_ART_DEFINITIONS, GROUND_ART_VARIANTS, GROUND_ART_SPAWN_IDS, TURF_ITEM_IDS } from '@dontstarve-web/prefab/groundItems';
 import { BURNABLE_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/burnableItems';
 import { BANANAJUICE_ID, MUSHROOM_ITEM_IDS } from '@dontstarve-web/prefab/food';
 import { BIRD_IDS } from '@dontstarve-web/prefab/birds';
@@ -76,10 +76,10 @@ function buildingArchives(prefab: string): readonly AnimationArchiveSpec[] {
 /** Ground items share one saved prefab; the catalog entry named by each record's stack supplies its art. */
 function groundItemArchives(_prefab: string, records: readonly unknown[]): readonly AnimationArchiveSpec[] {
   const specs: AnimationArchiveSpec[] = [];
-  for (const record of records as { components?: { stack?: { itemId?: string; skinId?: string } } }[]) {
+  for (const record of records as { components?: { stack?: { itemId?: string; skinId?: string; variant?: string } } }[]) {
     const stack = record.components?.stack;
-    const item = stack?.itemId !== undefined && Object.hasOwn(GROUND_ITEM_DEFINITIONS, stack.itemId)
-      ? GROUND_ITEM_DEFINITIONS[stack.itemId] : undefined;
+    const item = stack?.itemId !== undefined && Object.hasOwn(GROUND_ART_DEFINITIONS, stack.itemId)
+      ? { ...GROUND_ART_DEFINITIONS[stack.itemId], ...GROUND_ART_VARIANTS[stack.itemId]?.[stack.variant ?? ''] } : undefined;
     if (!item) continue;
     for (const build of item.buildArchives) specs.push({ animation: item.animationArchive, build });
     for (const { archive } of Object.values(item.symbolOverrides)) specs.push({ animation: item.animationArchive, build: archive });
@@ -145,7 +145,7 @@ export const PREFAB_DEFINITIONS = {
   }, // fence_item is an ordinary ground item (c_spawn) and inventory item (c_give); only `fence` is placed by c_spawn.
     PLACEABLE_BUILDING_IDS.filter((id) => id !== FENCE_ITEM_ID), buildingArchives),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    [ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'], groundItemArchives),
+    [...new Set([...GROUND_ART_SPAWN_IDS, ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'])], groundItemArchives),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] }), ['planted_flower'], ['flowers.zip']),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),

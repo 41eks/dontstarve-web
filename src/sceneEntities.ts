@@ -23,7 +23,7 @@ import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
 import { camera, followCamera } from './camera';
 import { GroundItemManager } from './groundItems';
 import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
-import { GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-web/prefab/groundItems';
+import { GROUND_ART_DEFINITIONS, GROUND_ITEM_DISPLAY_SPECS } from '@dontstarve-web/prefab/groundItems';
 import { DockKitPlacement } from '@dontstarve-web/prefab/dock_kit';
 import { FarmPlowPlacement, FARM_PLOW_ID } from '@dontstarve-web/prefab/farm_plow';
 import { playerStats } from './playerStats';
@@ -407,6 +407,7 @@ export async function createSceneEntities(
       exportRecords: () => buildingPlacement.exportRecords(),
       update: (dt) => buildingPlacement.update(dt),
       renderEntities: () => buildingPlacement.renderEntities,
+      miniMapEntities: () => buildingPlacement.miniMapEntities,
       dispose: () => buildingPlacement.dispose(),
     });
     return buildingPlacement;
@@ -546,17 +547,17 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (_, record) => {
         const item = record.components.stack!;
-        const spec = SAVE_CATALOG.items[item.itemId];
+        const spec = SAVE_CATALOG.items[item.itemId] ?? GROUND_ART_DEFINITIONS[item.itemId];
         const skin = item.skinId ? SAVE_CATALOG.skins[item.skinId] : undefined;
         return groundItems.spawnFromSave(record.id, {
-          ...item, name: skin?.name ?? spec.name, icon: skin?.icon ?? spec.icon, atlas: skin?.atlas ?? spec.atlas,
+          ...item, name: skin?.name ?? spec.name, icon: skin?.icon ?? spec.icon ?? '', atlas: skin?.atlas ?? spec.atlas,
           ...(record.components.phonograph ? { playbackRemaining: record.components.phonograph.remainingSeconds } : {}),
           ...(record.components.torch ? { torchLit: true } : {}),
           ...(record.components.lantern ? { lanternOn: record.components.lantern.ison } : {}),
         }, new THREE.Vector3(...record.transform.position));
       },
       debugSpawn: (id) => groundItems.spawnFromSave(newEntityId(), {
-        ...SAVE_CATALOG.items[id], itemId: id, count: 1,
+        ...GROUND_ART_DEFINITIONS[id], ...SAVE_CATALOG.items[id], icon: SAVE_CATALOG.items[id]?.icon ?? GROUND_ART_DEFINITIONS[id]?.icon ?? '', itemId: id, count: 1,
       }, player.position.clone().setY(0)),
       exportRecords: () => groundItems.exportRecords().map((record) => ({ prefabId: 'ground_item', record })),
       update: (dt, quaternion) => groundItems.update(dt, quaternion),

@@ -240,6 +240,7 @@ export class ItemEntity {
   mole?: InventoryStack['mole'];
   lightflier?: InventoryStack['lightflier'];
   skinId?: string;
+  variant?: string;
   highTemp?: number;
   lowTemp?: number;
   private temperatureWorld?: TemperatureWorld;
@@ -327,6 +328,7 @@ export class ItemEntity {
       ...(this.lowTemp === undefined ? {} : { lowTemp: Math.floor(this.lowTemp) }),
       ...(includeIdentity ? { entityId: this.id } : {}), itemId: this.prefab, count: this.components.stackable.count,
       ...(this.skinId === undefined ? {} : { skinId: this.skinId }),
+      ...(this.variant === undefined ? {} : { variant: this.variant }),
       ...(this.components.fueled.remaining === undefined ? {} : { remainingFuel: this.components.fueled.remaining }),
       ...(this.components.finiteuses.remaining === undefined ? {} : { remainingUses: this.components.finiteuses.remaining }),
       ...(freshness === undefined ? {} : { freshnessPercent: freshness }),
@@ -346,6 +348,7 @@ export class ItemEntity {
     this.mole = state.mole;
     this.lightflier = state.lightflier;
     this.skinId = state.skinId;
+    this.variant = state.variant;
     this.highTemp = state.highTemp;
     this.lowTemp = state.lowTemp;
     this.savedTemperature = state.temperature;

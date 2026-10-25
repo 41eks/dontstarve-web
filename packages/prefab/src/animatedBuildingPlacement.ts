@@ -28,6 +28,7 @@ import { createBuildingContainer, isStorageBuildingId } from './containers';
 import { performCookAction } from '../../stategraphs/src/cook';
 import { Workable } from '../../componets/src/workable';
 import { actionEntity } from './actionEntity';
+import { MiniMapEntity } from './minimapEntity';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { GetRecipeLoot, type LootRecipe } from '../../componets/src/lootdropper';
 import recipeData from '@dontstarve-web/animation/recipes.json';
@@ -81,6 +82,8 @@ export interface AnimatedBuildingDefinition {
     /** Preloaded, temporary destruction art, independent of a building's skin. */
     hammerEffect?: { archive: string; animation: string; name: string };
     name: string;
+    /** Source AddMiniMapEntity() + MiniMapEntity:SetIcon(); omitted buildings have no map icon. */
+    minimapIcon?: string;
     container?: BuildingContainerDefinition;
     /**
      * Prepares prefab resources alongside the sprite, without playing effects. Returned
@@ -196,6 +199,7 @@ interface AnimatedBuildingInstance<BuildId extends string> {
     effectFactory?: AnimatedSpriteFactory;
     fireFactory?: AnimatedSpriteFactory;
     fire?: DrawnEffect;
+    minimap?: MiniMapEntity;
 }
 
 /** A transient fx entity (fire, collapse) drawn by its own display. */
@@ -371,6 +375,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         }
         this.definitions[buildId].oninit?.(this.eventContext(building));
         const definition = this.definitions[buildId];
+        if (definition.minimapIcon !== undefined) {
+            building.minimap = new MiniMapEntity(model.position);
+            building.minimap.SetIcon(definition.minimapIcon);
+        }
         if (definition.hammerWorkLeft !== undefined) {
             const entity = actionEntity(model, buildId);
             const workable = new Workable(entity);
@@ -514,6 +522,10 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     /** Whole sprite entities and their ground-contact points for depth sorting. */
+    get miniMapEntities(): MiniMapEntity[] {
+        return this.placed.flatMap(({ minimap }) => minimap ? [minimap] : []);
+    }
+
     get renderEntities() {
         const entries = [...this.placed, ...(this.active ? [this.active] : []),
             ...Array.from(this.effects, ({ display }) => ({ model: display.model, groundOffset: 0 }))]
@@ -695,6 +707,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             this.definitions[instance.buildId].ondispose?.(this.eventContext(instance));
             this.releaseContainer(instance);
             this.releaseSkin(instance);
+            instance.minimap?.dispose();
             disposeSprite(instance.model);
         }
         this.placed.length = 0;
@@ -1032,6 +1045,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
                 this.definitions[building.buildId].ondispose?.(this.eventContext(building));
                 this.releaseSkin(building);
                 this.releaseContainer(building);
+                building.minimap?.dispose();
                 disposeSprite(building.model);
             },
         };

@@ -180,6 +180,8 @@ export class PlaceableBuildingPlacement {
         this.fences.cancel();
     }
 
+    get miniMapEntities() { return this.animated.miniMapEntities; }
+
     get renderEntities() {
         return [...this.animated.renderEntities, ...this.walls.renderEntities, ...this.fences.renderEntities];
     }

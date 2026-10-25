@@ -9,9 +9,39 @@ import struct
 import unittest
 
 IMPORTER = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/import-dst-region.py'))
+TILE, PREFAB, PLAYER = IMPORTER['TILE'], IMPORTER['PREFAB'], IMPORTER['PLAYER']
 
 
 class RegionImportTest(unittest.TestCase):
+    def test_loose_ground_art_preserves_visuals_quantity_skin_and_height_without_inventory_components(self):
+        encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
+        terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}
+        source = {
+            'rocks': [{'id': 1, 'x': 2, 'y': 1, 'z': -3, 'data': {'anim': 'f2', 'stackable': {'stack': 8}}}],
+            'singingshell_octave3': [{'id': 2, 'data': {'variation': 3, 'cyclable': {'step': 11}}}],
+            'goldenaxe': [{'id': 3, 'skinname': 'goldenaxe_invisible', 'skin_id': 42,
+                           'data': {'finiteuses': {'uses': 72.5}}}],
+            'bundle': [{'data': {'unwrappable': {'items': [{'prefab': 'goldnugget'}, {'prefab': 'charcoal'}]}}}],
+            'blueprint': [{'data': {'is_rare': True, 'recipetouse': 'dock_kit'}}],
+            'rabbit': [{'id': 9}],
+        }
+        entities, provenance = PREFAB['convert_entities'](terrain, source, {'translation': [12, 0, 24]}, 'ART')
+        records = {e['components']['stack']['itemId']: e for e in entities['ground_item']}
+        self.assertEqual(records['rocks'], {'id': 'dst_ART_rocks_id_1',
+                         'transform': {'position': [18, 3, -15], 'rotationY': 0},
+                         'components': {'stack': {'entityId': 'dst_ART_rocks_id_1', 'itemId': 'rocks', 'count': 8, 'variant': 'f2'}}})
+        self.assertEqual(records['goldenaxe']['components']['stack'],
+                         {'entityId': 'dst_ART_goldenaxe_id_3', 'itemId': 'goldenaxe', 'count': 1, 'skinId': 'goldenaxe_invisible'})
+        self.assertEqual(records['bundle']['components']['stack']['variant'], 'medium')
+        self.assertEqual(records['blueprint']['components']['stack']['variant'], 'rare')
+        self.assertEqual(records['singingshell_octave3']['components']['stack']['variant'], '3')
+        self.assertNotIn('rabbit', provenance['groundItemCounts'])
+        self.assertEqual(provenance['groundItemCounts']['rocks']['quantity'], 8)
+        self.assertEqual(set(entities), {'ground_item'})
+        source['rocks'][0]['data']['anim'] = 'f99'
+        with self.assertRaisesRegex(ValueError, 'ground variant'):
+            PREFAB['convert_entities'](terrain, source, {'translation': [12, 0, 24]}, 'ART')
+
     def test_full_map_remaps_ids_and_preserves_holes_and_unassigned_cells(self):
         width, height = 7, 5
         tiles, nodes = [1] * (width * height), [0] * (width * height)
@@ -113,7 +143,7 @@ class RegionImportTest(unittest.TestCase):
     def test_rejects_bad_grid_and_lua_code_without_execution(self):
         for raw in [b'garbage', b'VRSN\0\x02\0\0\0\x01\0', b'VRSN\0\x01\0\0\0']:
             with self.assertRaises(ValueError):
-                IMPORTER['decode_grid'](base64.b64encode(raw).decode(), 1, 1)
+                TILE['decode_grid'](base64.b64encode(raw).decode(), 1, 1)
         reader = IMPORTER['LITERALS']['returned_table']
         self.assertEqual(reader('KLEI     1 return {session_id="ABC", nested={true, false, 2.5}}'),
                          {'session_id': 'ABC', 'nested': [True, False, 2.5]})
@@ -142,7 +172,7 @@ class RegionImportTest(unittest.TestCase):
             'butterfly': [{'id': 5, 'data': {'health': {'health': 1}, 'stackable': {'stack': 2},
                                              'perishable': {'time': 720, 'paused': True}}}],
         }
-        entities, provenance = IMPORTER['convert_entities'](terrain, source, report, 'SURFACE')
+        entities, provenance = PREFAB['convert_entities'](terrain, source, report, 'SURFACE')
         self.assertEqual(entities['pigking'][0]['components'], {})
         self.assertEqual(entities['pigking'][0]['transform']['position'], [12, 0, -24])
         self.assertEqual(entities['deciduoustree'][0]['components'], {
@@ -167,8 +197,8 @@ class RegionImportTest(unittest.TestCase):
         self.assertTrue(all(record['components']['stack']['entityId'] == record['id'] for record in insects))
         self.assertEqual(provenance['entityCounts']['fireflies'], {'source': 1, 'imported': 1})
         self.assertEqual(provenance['entityCounts']['butterfly'], {'source': 1, 'imported': 1})
-        self.assertEqual(IMPORTER['convert_entities'](terrain, source, report, 'SURFACE')[0], entities)
-        self.assertNotIn('growable', IMPORTER['deciduoustree_components']({'burnt': True, 'leaf_state': 'normal'}))
+        self.assertEqual(PREFAB['convert_entities'](terrain, source, report, 'SURFACE')[0], entities)
+        self.assertNotIn('growable', PREFAB['GROWABLE']['deciduoustree_components']({'burnt': True, 'leaf_state': 'normal'}))
         for prefab, data in [('moon_tree', {'size': 'short', 'growable': {'stage': 2}}),
                              ('moonbutterfly_sapling', {'timer': {'timers': {}}}),
                              ('deciduoustree', {**tree, 'monster': True}),
@@ -177,10 +207,10 @@ class RegionImportTest(unittest.TestCase):
                              ('fireflies', {'stackable': {'stack': 41}}),
                              ('butterfly', {'health': {'health': 0}})]:
             with self.subTest(prefab=prefab, data=data), self.assertRaises(ValueError):
-                IMPORTER['ENTITY_WHITELIST'][prefab](data)
+                PREFAB['ENTITY_WHITELIST'][prefab](data)
 
     def test_plant_import_preserves_wither_check_and_rejects_unported_protection(self):
-        convert = IMPORTER['ENTITY_WHITELIST']['grass']
+        convert = PREFAB['ENTITY_WHITELIST']['grass']
         self.assertEqual(convert({'pickable': {'caninteractwith': True},
                                   'witherable': {'task_time_remaining': 25.566665861756}}),
                          {'witherable': {'taskSeconds': 25.566665861756}})
@@ -188,9 +218,9 @@ class RegionImportTest(unittest.TestCase):
             convert({'witherable': {'protect_time_remaining': 30}})
 
     def test_rock_import_preserves_variation_and_rejects_unsupported_source_state(self):
-        self.assertEqual(IMPORTER['ENTITY_WHITELIST']['rock_moon']({}), {})
-        self.assertEqual(IMPORTER['ENTITY_WHITELIST']['rock1']({'workable': {}}), {})
-        convert = IMPORTER['ENTITY_WHITELIST']['cavein_boulder']
+        self.assertEqual(PREFAB['ENTITY_WHITELIST']['rock_moon']({}), {})
+        self.assertEqual(PREFAB['ENTITY_WHITELIST']['rock1']({'workable': {}}), {})
+        convert = PREFAB['ENTITY_WHITELIST']['cavein_boulder']
         self.assertEqual(convert({'variation': 7, 'submersible': {'force_no_repositioning': False}}),
                          {'caveinBoulder': {'variation': 7}})
         self.assertEqual(convert({'raised': True}), {'caveinBoulder': {'variation': 1, 'raised': True}})
@@ -198,7 +228,7 @@ class RegionImportTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 convert(data)
         with self.assertRaises(ValueError):
-            IMPORTER['rock_components']({'workable': {'workleft': 2}})
+            PREFAB['WORKABLE']['rock_components']({'workable': {'workleft': 2}})
 
     def test_entity_whitelist_imports_all_nodes_and_preserves_source_state_and_identity(self):
         nodes = [0] * 48
@@ -248,8 +278,8 @@ tablefunctions["ents_mermhead_fn"] = function()
 return os.execute("not-whitelisted")
 end
 '''
-        groups = IMPORTER['LITERALS']['snapshot_entities'](source, IMPORTER['ENTITY_WHITELIST'])
-        entities, provenance = IMPORTER['convert_entities'](terrain, groups, report, 'SESSION')
+        groups = IMPORTER['LITERALS']['snapshot_entities'](source, PREFAB['ENTITY_WHITELIST'])
+        entities, provenance = PREFAB['convert_entities'](terrain, groups, report, 'SESSION')
         self.assertEqual(set(entities), {'pighead', 'archive_moon_statue', 'cave_exit', 'mushtree_medium', 'mushtree_moon', 'mushtree_tall', 'blue_mushroom',
                                     'grotto_pool_big', 'grotto_pool_small', 'grotto_moonglass_1', 'grotto_waterfall_big', 'grotto_waterfall_small2'})
         self.assertEqual(entities['pighead'], [
@@ -287,10 +317,10 @@ end
         self.assertEqual(next(e for e in provenance['entitySources'] if e['prefab'] == 'archive_moon_statue')['sourceId'], 42)
         self.assertIsNone(provenance['entitySources'][0]['sourceNode'])
         self.assertIsNone(next(e for e in provenance['entitySources'] if e.get('sourceId') == 43)['sourceNode'])
-        self.assertEqual(IMPORTER['convert_entities'](terrain, groups, report, 'SESSION')[0], entities)
+        self.assertEqual(PREFAB['convert_entities'](terrain, groups, report, 'SESSION')[0], entities)
         groups['pighead'][2]['data']['unsupported'] = True
         with self.assertRaisesRegex(ValueError, 'Unsupported pighead save state'):
-            IMPORTER['convert_entities'](terrain, groups, report, 'SESSION')
+            PREFAB['convert_entities'](terrain, groups, report, 'SESSION')
 
     def test_player_snapshot_migrates_mirrored_position_and_inventory(self):
         literals = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/dst-save-literal.py'))
@@ -305,7 +335,7 @@ end
                              'hambat': {'maxStack': 40}, 'lantern': {'maxStack': 1, 'maxFuel': 468, 'equippable': 'hand'},
                              'backpack': {'maxStack': 1, 'equippable': 'body', 'canGoInContainer': False}},
                    'skins': {'backpack_catcoon': 'backpack'}}
-        position, containers, report = IMPORTER['convert_player'](source, [12, 0, 24], 1000, 'dst_S_U', catalog)
+        position, containers, report = PLAYER['convert_player'](source, [12, 0, 24], 1000, 'dst_S_U', catalog)
         self.assertEqual(position, [24, 0, -48])
         self.assertEqual(containers['player:inventory']['slots'], [
             {'slotKey': '0', 'item': {'entityId': 'dst_S_U_items_0', 'itemId': 'meat', 'count': 3, 'freshnessPercent': .5, 'wet': True}},
@@ -319,6 +349,39 @@ end
         self.assertEqual([(s['prefab'], s['reason']) for s in report['skipped']],
                          [('unknown_item', 'unknown item'), ('hambat', 'not equippable in hand')])
         self.assertEqual(report['droppedComponents'], [{'path': 'inventory.items.3', 'prefab': 'armorwood', 'components': ['armor']}])
+
+    def test_treasurechest_import_preserves_contents_skin_and_burnt_state(self):
+        encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
+        terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}
+        catalog = {'items': {'log': {'maxStack': 40}, 'backpack': {'maxStack': 1, 'canGoInContainer': False}}, 'skins': {}}
+        sign = {'sign': {'prefab': 'minisign', 'x': 1, 'z': 1}, 'nohuaminisign': False}
+        source = {'treasurechest': [
+            {'id': 5, 'x': 1, 'z': 1, 'skinname': 'treasurechest_cake', 'skin_id': 42, 'data': {
+                'container': {'items': {2: {'prefab': 'log', 'data': {'stackable': {'stack': 7}}},
+                                        3: {'prefab': 'backpack'}, 4: {'prefab': 'unknown_item'}}},
+                'upgradeable': {'numupgrades': 0, 'stage': 1}, 'smart_minisign': sign,
+                'scenariorunner': {'hasrunonce': True, 'scriptname': 'chest_abandonedboat'}}},
+            {'id': 6, 'data': {'burnt': True}},
+        ]}
+        report = {'translation': [12, 0, 24]}
+        entities, provenance = PREFAB['convert_entities'](terrain, source, report, 'BOX', catalog)
+        chest, burnt = entities['treasurechest']
+        self.assertEqual(chest['components'], {
+            'container': {'slotCount': 9, 'slots': [{'slotKey': '1', 'item': {
+                'entityId': 'dst_BOX_treasurechest_id_5_1', 'itemId': 'log', 'count': 7}}]},
+            'building': {'state': 'closed', 'skinId': 'treasurechest_cake'}})
+        self.assertEqual(burnt['components'], {'building': {'state': 'closed', 'burnt': True}})
+        self.assertEqual([(s['path'], s['reason']) for s in provenance['containerItems']['skipped']],
+                         [('treasurechest.id_5.container.3', 'cannot go in a container'),
+                          ('treasurechest.id_5.container.4', 'unknown item')])
+        for data, skin in [({'upgradeable': {'numupgrades': 1, 'stage': 2}}, None),
+                           ({'scenariorunner': {'scriptname': 'chest_labyrinth'}}, None),
+                           ({'burnt': True, 'container': {'items': {}}}, None),
+                           ({}, 'treasurechest_upgraded_ancient')]:
+            with self.assertRaises(ValueError):
+                PREFAB['convert_entities'](terrain, {'treasurechest': [{'skinname': skin, 'data': data}]}, report, 'BOX', catalog)
+        with self.assertRaisesRegex(ValueError, 'item catalog'):
+            PREFAB['convert_entities'](terrain, source, report, 'BOX')
 
     def test_layout_entities_align_with_wood_floor_for_odd_and_even_map_dimensions(self):
         for width, height, source_centre in [(7, 5, (0, 0)), (8, 6, (-2, -2))]:
@@ -342,7 +405,7 @@ end
                 # resurrectionstone.lua puts heads at the four midpoints of the floor's outer edges.
                 cx, cz = source_centre
                 heads = [{'x': cx + x, 'z': cz + z} for x, z in [(0, -4), (4, 0), (0, 4), (-4, 0)]]
-                entities, _ = IMPORTER['convert_entities'](terrain, {'pighead': heads}, report, 'SESSION')
+                entities, _ = PREFAB['convert_entities'](terrain, {'pighead': heads}, report, 'SESSION')
                 wood = {(t['col'], t['row']) for t in save['world']['map']['tiles'] if t['tileId'] == 10}
                 self.assertEqual(wood, {(0, -1), (1, -1), (0, -2), (1, -2)})
                 self.assertEqual([e['transform']['position'] for e in entities['pighead']],

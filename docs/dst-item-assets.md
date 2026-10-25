@@ -100,3 +100,9 @@ python3 packages/prefab/scripts/import-ground-tiles.py --check
 ```
 
 前者核对全部物品的 bank/build/clip metadata、图标 atlas 和动画源字节；后者核对 terrain metadata、每张 atlas 的 48 个源变体以及纹理／XML 字节。新地形无旧 GROUND ID 时按 TileManager 的 LAND 范围顺序分配，保留源渲染顺序。
+
+## 源存档散落物品的静态美术
+
+`import-ground-items.py` 共用 `scripts/static-ground-items.py` 导入 63 个静态展示条目，写入 `groundItems.json.staticItems`，不注册新库存物品。原有材料、工具和食物复用 `items` 目录；外观分支存于 `staticVariants`。运行时统一由原有 `GroundItemManager` 和地面 prefab 工厂消费，记录保存为 `ground_item.components.stack`，不另建管理器或逐帧循环。`--check` 同时读取原始 anim.bin，核对全部目录项及变体的 bank/clip，并按源路径校验资源字节。冰杖与传送法杖来自 `staff.lua` 的 `colour.."staff"..suffix`，分别使用 `staffs:bluestaff`、`staffs:purplestaff`。
+
+雕塑头使用 `sculpture_pieces.zip` 的动画和 `swap_sculpture_<piece>.zip` 的 build；贝壳以 `singingshell.zip` 的 `octave<octave>_<variation>` 覆盖 `shell_placeholder`。扑克牌使用 deck_of_cards 的 single 贴地美术；不移植库存 OverrideImage UI。被冲上岸的海带使用 bullkelp 的 dropped_beached，源 INV_IMAGE 拼写为 kullkelp_root、无可用库存图标；静态展示不使用图标回退。

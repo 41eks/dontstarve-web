@@ -68,6 +68,8 @@ export interface InventoryStack {
   entityId?: string;
   itemId: string;
   skinId?: string;
+  /** Source-saved ground pose or symbol variant. */
+  variant?: string;
   count: number;
   remainingUses?: number;
   remainingFuel?: number;
@@ -83,6 +85,7 @@ export type InventoryMaterialSummary = Readonly<Record<string, number>>;
 
 export interface InventorySlotDelta {
   entityId?: string;
+  variant?: string;
   slot: SlotAddress;
   itemId: string;
   skinId?: string;

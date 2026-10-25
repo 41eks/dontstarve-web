@@ -82,9 +82,24 @@ const updateAnimation = createAnimationUpdater(player, camera);
 const cameraWorldQuaternion = new THREE.Quaternion();
 const renderOrderSorter = new SpriteRenderOrderSorter();
 const playerRenderEntry = { object: player, footPosition: player.position };
+// Reused each frame, so a scene with thousands of entities does not copy them into a new list per frame.
+const renderOrderEntries: Parameters<SpriteRenderOrderSorter['update']>[0][number][] = [];
+
+// Order is resolved from the player's foot and the camera view; while neither changes the last order stands.
+const renderOrderView = new THREE.Matrix4();
+const renderOrderPlayerFoot = new THREE.Vector3();
+let renderOrderResolved = false;
 
 function updateCharacterRenderOrder(registry: EntityRegistry) {
-  renderOrderSorter.update([playerRenderEntry, ...registry.renderEntities], camera.matrixWorldInverse);
+  if (renderOrderResolved && renderOrderPlayerFoot.equals(player.position)
+    && renderOrderView.equals(camera.matrixWorldInverse)) return;
+  renderOrderResolved = true;
+  renderOrderPlayerFoot.copy(player.position);
+  renderOrderView.copy(camera.matrixWorldInverse);
+  renderOrderEntries.length = 0;
+  renderOrderEntries.push(playerRenderEntry);
+  for (const entry of registry.renderEntities) renderOrderEntries.push(entry);
+  renderOrderSorter.update(renderOrderEntries, camera.matrixWorldInverse);
 }
 
 function getVelocity(): number {

@@ -13,11 +13,13 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 ## 调试命令（debugCommand）
 
+制作菜单右侧快捷栏按面板高度整体同比缩放，按钮、页码和槽位间距保持比例；窗口变矮时不再溢出面板。大小屏均将面板中心对齐窗口高度的 50%；展开和收起共用垂直定位与缩放原点，仅横向移动。该布局调整不改变调试命令的语法、参数、支持 ID 或存档格式。
+
 实体元数据直接从 `PrefabInstance` 读取：`prefab`、`entityId`、`saveRecord`、`skinId`、`persists`；半径通过 `instance.getPhysicsRadius(fallback)` 获取。模型入口通过 `prefabInstance(model)` 找到实例，地面物品状态以 `ItemEntity` 为准，visual 显式提供 `instance`。这些字段不再通过模型的 `userData` 转发。此次调整保留 `c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 与存档格式。
 
 `c_spawn("lantern")` 和 `c_spawn("phonograph")` 的地面动画现在随 tile 休眠释放、唤醒重建；保留灯光挂载点、燃料、唱片与播放到期任务。建筑、月树、岩石、`nightmaregrowth` 和已部署的 `farm_plow` 使用实例声明的源码障碍碰撞；鼹鼠地下仍碰撞地形与障碍物，出地后恢复角色碰撞，`lightflier` 使用幽灵碰撞。普通 `treasurechest` 按 Lua 不增加障碍碰撞。命令参数、支持的 ID、`c_give` 与 `c_save()` 格式不变。
 
-按 `M` 打开的地图以两层 DOM 展示：底层平铺海洋图片，上层为按原版地皮遮罩与噪声合成的透明 PNG；加载页等待图片解码后启动游戏。生成陆地图时同步从 alpha（阈值 128）提取 SVG 轮廓，保留岛屿和孔洞；浏览器通过透明 path 命中陆地，陆地显示十字光标，海面／透明处隐藏光标，左键拖动时显示抓取光标。悬停不查询地形或世界坐标，命中区与底图共用缩放、平移和旋转；缩放通过修改地图容器宽高实现，地形和图标使用百分比定位，图标保持 32 CSS 像素宽度，缩放不再更新共享图标反向变换规则，相机转向时只抵消旋转；地图打开时由 UI 状态直接隐藏世界动作提示并停止其 DOM 命中测试，地图跳跃解除自动暂停后仍保持屏蔽，关闭地图立即重新检查光标下的世界动作；地皮变化后同步替换图片与轮廓。图标进入地图后独立加载，按实体身份复用节点。地图初始 `zoom=3`，`zoom=1` 最近、`zoom=20` 最远；每侧留出地图边长 10% 的 margin，最远档地图加 margin 构成的正方形边长为窗口长边 1.5 倍；视口平移不越过该边界。滚轮围绕光标以 0.1 秒插值缩放，向上放大、向下缩小。底图按默认缩放、窗口尺寸和 DPR 计算目标采样密度，再乘以 75%，最大 8192×8192；按 32×32 格分块合成，最终显示单张陆地图。预合成地皮块按地皮种类、分辨率、边缘变体及 8×8 噪声相位复用，每种地皮／分辨率共用一张最多 128 槽的图集；缓存命中直接绘制，淘汰复用最久未使用的槽位，销毁时统一释放。图集和读取 alpha 的捕获分块使用 CPU 画布，避免逐块 GPU 像素回读；猪王布局一次登记，有效地皮未变化时跳过全图重建。挖地、铺地和耕地会更新底图及命中区，关闭地图保留资源，场景释放时清理 URL、节点和订阅。实现见 [世界地皮整图与 DOM 地图](docs/dst-minimap-rendering.md)。调试命令语法、参数、支持的 `c_spawn` / `c_give` ID 和 `c_save()` 存档格式不变。
+按 `M` 打开的地图以两层 DOM 展示：底层平铺海洋图片，上层为按原版地皮遮罩与噪声合成的透明 PNG；加载页等待图片解码后启动游戏。生成陆地图时同步从 alpha（阈值 128）提取 SVG 轮廓，保留岛屿和孔洞；浏览器通过透明 path 命中陆地，陆地显示十字光标，海面／透明处隐藏光标，左键拖动时显示抓取光标。悬停不查询地形或世界坐标，命中区与底图共用缩放、平移和旋转；缩放通过修改地图容器宽高实现，地形和图标使用百分比定位，图标保持 32 CSS 像素宽度，缩放不再更新共享图标反向变换规则，相机转向时只抵消旋转；地图打开时由 UI 状态直接隐藏世界动作提示并停止其 DOM 命中测试，地图跳跃解除自动暂停后仍保持屏蔽，关闭地图立即重新检查光标下的世界动作；地皮变化后同步替换图片与轮廓。图标进入地图后独立加载，按实体身份复用节点。地图装饰背景按 `widgets/mapwidget.lua` 从 `images/hud.xml`／`images/hud.tex` 取出 `map.tex`，独立拉伸到全屏并固定在屏幕坐标；地图层以 Additive（CSS `plus-lighter`）叠在背景上，横屏、竖屏及地图拖动／缩放时均保留原版布局。地图层级高于物品栏和右侧 backpack，打开时覆盖它们、关闭后保留原状态恢复；地图与旋转按钮保留在上层，暂停按钮按 Lua 在地图打开时隐藏。右下角地图控制整体缩小 20%，以右下角为缩放原点，贴紧窗口右边和底边；小屏原有缩放继续保留。地图初始 `zoom=3`，`zoom=1` 最近、`zoom=20` 最远；每侧留出地图边长 10% 的 margin，最远档地图加 margin 构成的正方形边长为窗口长边 1.5 倍；视口平移不越过该边界。滚轮围绕光标以 0.1 秒插值缩放，向上放大、向下缩小。底图按默认缩放、窗口尺寸和 DPR 计算目标采样密度，再乘以 75%，最大 8192×8192；按 32×32 格分块合成，最终显示单张陆地图。预合成地皮块按地皮种类、分辨率、边缘变体及 8×8 噪声相位复用，每种地皮／分辨率共用一张最多 128 槽的图集；缓存命中直接绘制，淘汰复用最久未使用的槽位，销毁时统一释放。图集和读取 alpha 的捕获分块使用 CPU 画布，避免逐块 GPU 像素回读；猪王布局一次登记，有效地皮未变化时跳过全图重建。挖地、铺地和耕地会更新底图及命中区，关闭地图保留资源，场景释放时清理 URL、节点和订阅。实现见 [世界地皮整图与 DOM 地图](docs/dst-minimap-rendering.md)。调试命令语法、参数、支持的 `c_spawn` / `c_give` ID 和 `c_save()` 存档格式不变。
 
 开发模式（`pnpm dev`）下的性能诊断开关，不是控制台命令，命令语法与支持的 ID 不变：URL 加 `?stats` 显示 stats-gl 面板（FPS／CPU），`?stats=gpu` 另外统计 GPU 时间，库按需加载，不进生产构建；加 `?tileperf` 在控制台输出玩家跨 tile 时的活动网格写入耗时、订阅者耗时和长任务（`[tileperf]`），传送（灵魂跳跃）时附带标记。
 
@@ -39,7 +41,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 玩家美术改用 Wortox 默认外观（`wortox_none`）：本体 `anim/dynamic/wortox.zip` / `.dyn`，幽灵 `anim/dynamic/ghost_wortox_build.zip` / `.dyn`；地图图标和物品栏自检头像同步使用 Wortox。共用 `wilson` 动画 bank、装备符号覆盖、死亡／复活及存档流程沿用现有实现，角色数值和存档角色字段沿用现有实现。资源按原路径和字节镜像，运行 `python3 packages/prefab/scripts/import-player-art.py --check` 校验，去掉 `--check` 可重新导入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变。
 
-默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_58 --output public/saves/Cluster_1 --origin-cell 281 392` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。地表保留 48,007 格陆地、120,242 格海洋及 6,895 个白名单实体；洞穴保留 46,224 格陆地、298 格 `FAKE_GROUND` 及 4,640 个白名单实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 281 392` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。`c_spawn` / `c_give` 的语法、参数和支持 ID 不变；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
+默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。当前 `Cluster_62` 导入结果包含地表 6,383 个实体（含 2 个带内容物的箱子）、洞穴 4,757 个实体，其中静态散落物品分别为 137 种／961 个实体和 20 种／130 个实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 214 213` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。`c_spawn` 新增静态散落物品 ID，详见下方调试命令说明；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
 
 已实现树木的导入白名单包含 `evergreen`、`deciduoustree`、`moon_tree`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`，以及月树幼苗 `moonbutterfly_sapling`。本次重新导入默认存档新增 198 棵月树。常青树、桦树、月树按 Lua 使用原版地图图标、优先级 `-1`，砍倒或烧毁后切换树桩／焦木图标；蘑菇树沿用现有图标。图标属于逻辑树，远处卸载模型时继续显示，永久移除时清理。月树保留大小、生长及 `moonTreeTimer` 腐朽计时器；幼苗保留 `saplingTimer`，按原版不显示地图图标。现有 `c_spawn("evergreen_normal")`、`c_spawn("deciduoustree_normal")`、`c_spawn("moon_tree_normal")` 等命令与支持 ID 不变；`c_save()` 保存树木身份、位置及相应组件状态。
 
@@ -178,6 +180,21 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 木箱燃烧 10 秒、锅燃烧 20 秒，使用 `anim/fire.zip` 的 `level2` / `level3` 原版火焰、局部照明及独立循环火声；附近已接入燃烧组件的建筑和地面物品按原版热量传播和阴燃分支受热。建筑、草丛／树苗、可燃地面物品和矮星的传播半径按当前季节派生：春季乘原版 `SPRING_FIRE_RANGE_MOD = 0.67`，其他季节使用基础半径；邻居查询与距离热量衰减共用修正后的半径。季节切换不重启传播定时器，下一次 0.5 游戏秒传播更新读取新半径。烧毁后显示原版 `burnt` 残骸、掉出容器中的真实物品，锅掉出已有料理并停止烹饪；残骸不能打开，再锤击一次即可拆除。建筑提供只读 `userData.burningSignal` 和 `userData.burntSignal`，火焰表现和容器 UI 订阅状态更新，烧毁主动关闭已打开的面板；换肤保留根实体、组件、signal、位置和燃烧进度，移除实体或关闭面板时释放订阅。`c_save()` 按原版将正在燃烧或已烧毁的建筑保存为 `building.burnt: true`，读档直接恢复残骸，保留实体 ID、位置、皮肤以及掉出物品的身份、数量和组件状态。当前接入这些建筑和下述材料的普通点火、烧毁及干燥天气传播分支，其他植物/物品、雨水和角色技能修正仍未接入。命令语法和参数不变；材料新增的 `c_spawn` 入口见下文。
 
 地面上的干草 `cutgrass`、木头 `log` 和草簇 `dug_grass` 同样支持手持 `torch` 右键点燃。可执行 `c_give("torch");c_spawn("cutgrass");`，装备火把后右键地面干草；`c_spawn("log")` 生成木头，也可将 `c_give("cutgrass", 3)` / `c_give("log", 7)` 得到的物品丢到地上再点燃。干草燃烧 7.5 秒、木头燃烧 15 秒、草簇燃烧 30 秒，整叠烧毁后在原脚点生成同数量的一叠灰烬 `ash`（原版上限 40），原物品移除；灰烬美术提前准备，烧毁后立即 `c_save()` 即可保存灰烬实体、位置和数量并读档恢复。物品通过只读 `burningSignal`、`burntSignal` 和 `persistenceSignal` 通知表现及存档状态。正在燃烧时不能拾取，按原版 `DefaultBurnFn` 不写入存档；熄灭后重新可保存、可拾取，身份、数量和已有组件状态不变，拾回再丢弃保留同一份燃烧组件和 signal。活木 `livinglog`（`c_spawn("livinglog")` / `c_give("livinglog", 3)`）同样可被火把点燃并燃烧 15 秒、烧成灰烬：按 `livinglog.lua` 的 `onignite` 在点燃瞬间播放 `dontstarve/creatures/leif/livinglog_burn`（`leif.fsb` 四个样本随机选一），燃烧期间沿用通用火焰与循环火声；读档恢复燃烧不重播惨叫。石头等未声明燃烧组件的物品不提供“点燃”。新增 `c_spawn("cutgrass")`、`c_spawn("log")`、`c_spawn("ash")`，均生成在玩家脚点；`c_give` 已支持这三个 ID，语法与数量参数不变。
+
+
+散落物品静态美术：导入器按原版 prefab ID 检测快照的实体分组，`.import.json` 的 `groundItemCounts` 列出每种物品的地面实体数、总数量及源组件名。物品复用 `ground_item.components.stack` 和原有 `GroundItemManager`，保留 ID、坐标（含高度）、数量、皮肤及 `variant` 外观映射；共享资源、tile 休眠、活跃对象更新及存档均沿用原有路径。已有物品继续使用原 prefab 工厂和交互；仅新增美术的物品只展示，不增加装备、使用、容器或组件计时器。
+
+新增 `c_spawn("ID")` 均无额外参数，通过原有地面物品路径在玩家脚点生成一个实体；`c_save()` 保存并重载这些实体。支持以下 ID：
+
+- `bedroll_straw`、`chum`、`cookiecuttershell`、`coontail`、`driftwood_log`、`glasscutter`、`glommerflower`、`lureplantbulb`、`oceanfishingrod`、`palmcone_scale`
+- `palmcone_seed`、`pig_token`、`saltrock`、`sewing_kit`、`shadowheart`、`shroom_skin`、`sketch`、`tentaclespike`、`twiggy_nut`、`waxpaper`
+- `beef_bell`、`blowdart_pipe`、`chester_eyebone`、`hutch_fishbowl`、`deer_antler1`、`deer_antler2`、`deer_antler3`、`dug_berrybush_juicy`、`dug_trap_starfish`、`greenamulet`
+- `orangeamulet`、`icestaff`、`telestaff`、`horrorfuel`、`lavae_egg`、`tallbirdegg`、`messagebottle`、`oar`、`oar_driftwood`、`malbatross_beak`
+- `sculpture_bishophead`、`sculpture_knighthead`、`spoiled_fish_small`、`tacklecontainer`、`terrarium`、`trap`、`bullkelp_beachedroot`、`bundle`、`hermit_bundle`、`playbill_the_doll`
+- `playing_card`、`singingshell_octave3`、`singingshell_octave4`、`singingshell_octave5`、`strawhat`、`beefalohat`、`cookiecutterhat`、`dreadstonehat`、`footballhat`、`ruinshat`
+- `mask_ancient_architecthat`、`mask_ancient_handmaidhat`、`mask_ancient_masonhat`
+
+本次只移植静态美术，以上新美术不新增 `c_give` 库存支持；已存在的帽子等 `c_give` 行为沿用原实现。皮肤从源存档保留，换肤沿用原有 `reskin_tool` 地面物品路径。例：`c_spawn("icestaff"); c_spawn("singingshell_octave3"); c_save()`。
 
 原版 Lua 中哪些 prefab 可用 `c_spawn`、哪些可通过 `c_give` 入栏，见 [prefab 命令静态核对表](docs/dst-prefab-console.md)。该表记录源码调查结果；本项目当前支持的 ID 以本文下方对象列表及物品定义为准。
 

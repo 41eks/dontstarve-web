@@ -37,10 +37,13 @@ export class DstStatusHudElement extends AssetElement {
   }
 
   setStats(stats: { health: number; hunger: number; sanity: number }): void {
+    const previous = this.stats;
     this.stats = { ...stats };
     for (const { kind, label } of meters) {
-      const meter = this.shadowRoot?.querySelector(`.survival-meter--${kind}`);
       const value = Math.round(this.stats[kind]);
+      // Stats drain every frame; unchanged text must not invalidate layout.
+      if (value === Math.round(previous[kind])) continue;
+      const meter = this.shadowRoot?.querySelector(`.survival-meter--${kind}`);
       meter?.setAttribute('aria-label', `${label} ${value}`);
       const output = meter?.querySelector('output');
       if (output) output.textContent = String(value);

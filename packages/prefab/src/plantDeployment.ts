@@ -184,8 +184,9 @@ export class PlantDeployment {
         }).catch(error => console.error('Unable to load plant placer', error));
       }
     }
-    const preview = this.preview, point = this.pointer.groundPoint();
+    const preview = this.preview;
     if (!preview) return;
+    const point = this.pointer.groundPoint();
     const visible = !!point && !!source?.isValid();
     if (visible !== preview.visible) preview.instance.sprite.setVisible(preview.visible = visible);
     if (!point || !source) return;

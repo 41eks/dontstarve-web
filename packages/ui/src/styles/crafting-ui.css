@@ -21,6 +21,7 @@
   --craft-detail-height: 238px;
   --craft-panel-scale: 0.75;
   --craft-collapsed-peek: 16px;
+  --craft-panel-offset-x: 0px;
   position: fixed;
   z-index: 30;
   top: 50%;
@@ -33,7 +34,7 @@
   color: var(--ink);
   text-align: left;
   pointer-events: auto;
-  transform: translateY(-50%) scale(var(--craft-panel-scale));
+  transform: translateY(-50%) scale(var(--craft-panel-scale)) translateX(var(--craft-panel-offset-x));
   transform-origin: left center;
   padding: 8px 20px;
   border: 0;
@@ -668,18 +669,21 @@
 }
 
 .craft-quickbar {
+  /* Keep the pinbar's logical layout together as the parent panel changes height. */
+  --craft-quickbar-scale: calc(var(--craft-panel-height) / 760px);
   position: absolute;
   top: 50%;
   right: -48px;
   width: 48px;
-  height: var(--craft-panel-height);
+  height: 760px;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   padding: 0;
   border: 0;
   background: transparent;
   pointer-events: auto;
-  transform: translateY(-50%);
+  transform: translateY(-50%) scale(var(--craft-quickbar-scale));
+  transform-origin: left center;
 }
 
 .craft-quick-toggle {
@@ -820,11 +824,9 @@
 }
 
 .craft-panel.is-collapsed {
-  top: 50%;
+  --craft-panel-offset-x: calc(-100% + var(--craft-collapsed-peek));
   left: 0;
   pointer-events: none;
-  transform: translateY(-50%) scale(var(--craft-panel-scale)) translateX(calc(-100% + var(--craft-collapsed-peek)));
-  transform-origin: left center;
 }
 
 .craft-panel.is-collapsed .craft-quickbar {
@@ -854,7 +856,6 @@
 @media (max-width: 700px), (max-height: 650px) {
   .craft-panel {
     --craft-panel-height: calc(100vh - 24px);
-    top: 12px;
     left: 12px;
     width: min(580px, calc(100vw - 24px));
     height: var(--craft-panel-height);
@@ -862,8 +863,6 @@
     --craft-categories-height: 82px;
     --craft-divider-height: 7px;
     --craft-detail-height: 200px;
-    transform: scale(var(--craft-panel-scale));
-    transform-origin: left top;
   }
 
   .craft-categories {

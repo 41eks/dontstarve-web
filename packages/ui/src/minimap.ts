@@ -5,6 +5,8 @@ import { MinimapDomRenderer, type MinimapInspection } from './minimap-dom';
 import type { GroundImageOptions } from './minimap-ground-image';
 import type { MiniMapEntity } from '@dontstarve-web/prefab/minimapEntity';
 import { Vector3 } from 'three';
+import { createAtlasImage, registerImageAtlases, type AtlasImageElement } from '@dontstarve-web/animation/atlasImage';
+import { loadImageAtlas } from '@dontstarve-web/animation/imageAtlas';
 import styles from './styles/minimap.css?inline';
 
 export type { MinimapPixels, MinimapTileLayer } from './minimap-terrain';
@@ -36,6 +38,7 @@ export class DstMinimapElement extends AssetElement {
   private options?: MinimapOptions;
   view?: MinimapView;
   private root!: HTMLElement;
+  private background?: AtlasImageElement;
   private renderer?: MinimapDomRenderer;
   private open = false;
   private autopaused = false;
@@ -65,7 +68,7 @@ export class DstMinimapElement extends AssetElement {
     const heading = watchSignal(options.cameraHeading, stop => { this.headingCleanups.push(stop); });
     view.heading = heading.peek();
     this.renderer = new MinimapDomRenderer(options, this.dataAsset(''));
-    this.root?.prepend(this.renderer.root);
+    if (this.root) this.root.insertBefore(this.renderer.root, this.root.querySelector('.minimap__center'));
     createEffect(() => {
       view.heading = heading.get();
       this.updateView();
@@ -75,8 +78,8 @@ export class DstMinimapElement extends AssetElement {
   }
 
   /** Prepare static map art while the world generation page is still visible. */
-  prepareTerrain(): Promise<void> {
-    return this.renderer?.prepare() ?? Promise.resolve();
+  async prepareTerrain(): Promise<void> {
+    await Promise.all([this.renderer?.prepare(), this.background?.ready]);
   }
 
   setView({ x, z, zoom }: { x?: number; z?: number; zoom?: number }): void {
@@ -121,7 +124,13 @@ export class DstMinimapElement extends AssetElement {
       </section>
     `;
     const root = this.root = this.shadowRoot!.querySelector<HTMLElement>('.minimap')!;
-    if (this.renderer) root.prepend(this.renderer.root);
+    // mapwidget.lua: map.tex from hud.xml/hud.tex, centered and stretched with SCALEMODE_FILLSCREEN.
+    // Registration also supports standalone maps; the UI's shared atlas cache owns decoding and URLs.
+    const archive = this.dataAsset('databundles/images.zip');
+    registerImageAtlases({ 'images/hud.xml': () => loadImageAtlas(archive, 'images/hud.xml') });
+    this.background = createAtlasImage('minimap__background', 'images/hud.xml', 'map.tex');
+    root.prepend(this.background);
+    if (this.renderer) root.insertBefore(this.renderer.root, root.querySelector('.minimap__center'));
     root.querySelector('.minimap__center')!.addEventListener('click', () => this.recenter());
     root.addEventListener('wheel', this.onWheel, { passive: false });
     root.addEventListener('pointerdown', this.onPointerDown);

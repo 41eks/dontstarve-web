@@ -65,6 +65,8 @@ python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/d
 
 `scripts/import-dst-region.py` 读取完整快照中的最终 `map.tiles`，不重新运行静态布局；实体从 `savedata.ents` 的白名单分组读取。只接受可读的开发版 Lua 世界快照，使用字面量解析器读取 table，不执行存档 Lua；压缩的正式版快照暂不支持。
 
+入口脚本只负责读取快照、组装存档外壳和写入／校验输出，转换按职责拆分到同目录模块（经 `runpy` 加载）：`dst-region-tile.py` 负责地皮栅格、底层地皮、坐标投影和出生点；`dst-region-prefab.py` 持有 `ENTITY_WHITELIST` 并完成实体 ID、坐标与子实体链接，各 prefab 的源状态转换器按组件类型位于 `dst-region-prefab-growable.py`（树木生长与腐朽计时器）、`-pickable.py`（采摘、枯萎、发光植物与子实体生成）、`-workable.py`（岩石、雕像等开采／敲击物件）、`-structure.py`（猪王、洞穴出入口、池塘与石窟池子物件）、`-inventory.py`（萤火虫／蝴蝶堆叠与静态散落物品）和 `-container.py`（箱子）；`dst-region-item.py` 将物品存档记录转为 `InventoryStack`，由玩家背包和箱子内容物共用；`dst-region-player.py` 负责玩家重置、位置与背包迁移。
+
 ```bash
 # 同时转换 forest 与 cave，输出两个独立的分片 JSON 和来源报告
 python3 scripts/import-dst-region.py \
@@ -88,7 +90,7 @@ python3 scripts/import-dst-region.py \
 
 一个原版 4 单位地皮对应项目 12 单位。稀疏 `world.map.tiles` 保存所有非 `IMPASSABLE` 格，`defaultTileId: 1` 表示其余位置为虚空；`FAKE_GROUND` 保留但不绘制、不通行，不生成桥或填补缺口。实体连续栅格坐标使用 `gx = x / 4 + width / 2 + 0.5`、`gz = z / 4 + height / 2 + 0.5`，与 `map/bunch_spawner.lua`、`map/waterlog_worldgen.lua` 的 `checkIfValidGround` 一致。项目位置为 `((gx - origin_col) × 12, y × 3, (gz - origin_row) × 12)`；当前 `(471, 471)` 地图和 `(281, 392)` 原点对应平移 `(-540, 0, -1872)`。不能省略半格偏移。
 
-`ENTITY_WHITELIST` 中每项绑定专用的源状态转换函数，只解析这些实体分组；白名单外的实体、桥梁、墙、生物及地下环境规则尚未迁移。白名单内的全部记录均导入，包括无节点、虚空、悬边和地图边缘位置，不再因区域归属丢弃。未知状态、无对应支持的皮肤或平台数据仍报错。
+`ENTITY_WHITELIST` 中每项绑定专用的源状态转换函数；此外，导入器读取 groundItems 目录中可显示的散落物品分组，排除鼹鼠、鸟、蝴蝶等活体。其他实体、桥梁、墙、生物及地下环境规则尚未迁移。白名单内的全部记录均导入，包括无节点、虚空、悬边和地图边缘位置，不再因区域归属丢弃。未知状态、无对应支持的皮肤或平台数据仍报错。
 
 当前白名单及状态转换：
 
@@ -105,6 +107,7 @@ python3 scripts/import-dst-region.py \
 - `flower_cave`、`flower_cave_double`、`flower_cave_triple`：`light_state`、`plantname`、采摘及再生状态、亮灯／充能计时器 → `bulbPlant`。`lightflier_flower` → `lightflierFlower`，保留 `childspawner.childreninside`；外飞子实体 GUID 只在子实体同样导入时链接。`lightflier` 不在白名单中。
 - `rock1`、`rock2`、`rock_moon_shell`、`rock_flintless`、`rock_flintless_med`、`rock_flintless_low`、`rock_moon`：按 `rocks.lua` 不保存开采量，只接受空状态或空 workable。`cavein_boulder` 保留 `variation`（默认 1）、`raised`／`formed`，接受静止落石的 `submersible.force_no_repositioning: false`，拒绝尚未移植的下落目标和关联状态。
 - `grotto_pool_big`、`grotto_pool_small`：子物件源 GUID 转为项目实体 ID，写入 `grottoPool.children`，仅链接已导入的子物件。`grotto_moonglass_1/3/4`、`grotto_waterfall_small1/2` 保留 `workable.workleft`（`maxwork = -1`）；`grotto_waterfall_big` 不接受状态。
+- `treasurechest`：源 `container.items`（一基槽位，表或带空洞的字典）→ `container`（9 格），物品经与玩家背包相同的转换，ID 为 `<箱子 ID>_<槽位>`；未知物品、不能放入容器的物品及无对应字段的组件记入来源报告 `containerItems`。`skinname` → `building.skinId`（拒绝运行时派生的 `treasurechest_upgraded_*`），`burnt` → `building.burnt`，烧毁箱子不得带内容物。只接受未升级的 `upgradeable`（`numupgrades = 0`）与已运行的 `scenariorunner`；`smart_minisign` 晚于本地源 Lua，附带的 `minisign` 未移植，校验后丢弃。箱子按 `MakeChest` 带 `chest` 标签和 `treasurechest.png` 小地图图标。当前地表快照导入 2 个箱子。
 - `pond`：`plants`、`childspawner`、`worldsettingstimer`（青蛙生成器，未移植）校验后丢弃，鱼数量取默认；小地图图标 `pond.png`。`lava_pond`：`rocks`（`rocktype`、`offset`）→ `lavaPond.rocks`；小地图图标 `lava_pond.png`。`pond_mos`、`pond_cave` 不在白名单内。
 
 实体 ID 包含源 Session、prefab 和源 `id`；无 `id` 时使用原分组序号，同一快照重复导入保持稳定。`Master.import.json` / `Caves.import.json` 的 `scope: "full-map"` 标记完整转换，记录全部节点、地皮数量、各白名单 prefab 的源数量和导入数量，以及每个实体的源序号、源 ID、源位置和所属节点。无节点或源坐标越界时 `sourceNode` 为 `null`。源文件路径、SHA-256、尺寸、原点和平移同样保留。
@@ -129,3 +132,18 @@ cd packages/ui && npx playwright test tests/pigking.spec.ts
 ```
 
 `pigKing.test.ts` 检查 40 / 12 块地皮、角点对齐和岩石坐标；`pigking.spec.ts` 在真实场景中检查 8 块岩石、草地图层、`c_spawn("insanityrock")` 以及 `c_save()` 后的实体数量和 ID 唯一性。
+
+### 散落物品静态展示
+
+当前默认存档来源为 `Cluster_62`；保持原点重新生成及校验：
+
+```bash
+python3 scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197
+python3 scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
+```
+
+地表检测到 137 种、961 个散落物品实体（合计 2,143 件），洞穴 20 种、130 个实体（146 件）。每份 `.import.json` 的 `groundItemCounts` 记录 `entities`、`quantity` 和 `sourceComponents`；数量按地面实体的 stackable.stack 计算，不遍历玩家库存、容器或包裹内容。`groundItemScope` 明确记录美术范围。
+
+这些记录存为 `ground_item.components.stack`，保存 `itemId`、`count`、可选 `skinId` 与 `variant`。石头／冰块的 anim、月亮碎片的 glassname、贝壳的 variation、稀有蓝图、包裹大小和扑克牌正面映射为白名单外观变体。保留源高度并按现有坐标比例及 Z 轴映射导入；平台坐标仍拒绝。其余源组件只在报告中记录名称，不因美术导入扩展组件实现；已有 prefab 沿用原工厂、组件及交互，仅有美术的 ID 不增加拾取／使用／装备目标、容器或计时器。
+
+所有记录复用原有 `GroundItemManager`、ground prefab 工厂及共享 archive 资源、PrefabInstance/PrefabDisplay 和 tile 活动订阅；仅活跃条目参与更新，休眠释放 visual，保存保留逻辑记录，唤醒恢复外观。新增的 `c_spawn` ID、语法和例子见 [README 调试命令](../README.md)。

@@ -15,7 +15,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "ROAD"
+      "groundTile": "ROAD",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_cotl_brick": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -32,7 +36,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "COTL_BRICK"
+      "groundTile": "COTL_BRICK",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_pebblebeach": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -49,7 +57,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "PEBBLEBEACH"
+      "groundTile": "PEBBLEBEACH",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_monkey_ground": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -66,7 +78,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "MONKEY_GROUND"
+      "groundTile": "MONKEY_GROUND",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_shellbeach": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -83,7 +99,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "SHELLBEACH"
+      "groundTile": "SHELLBEACH",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_marsh": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -100,7 +120,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "MARSH"
+      "groundTile": "MARSH",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_rocky": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -117,7 +141,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "ROCKY"
+      "groundTile": "ROCKY",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_savanna": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -134,7 +162,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "SAVANNA"
+      "groundTile": "SAVANNA",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_forest": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -151,7 +183,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "FOREST"
+      "groundTile": "FOREST",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_grass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -168,7 +204,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "GRASS"
+      "groundTile": "GRASS",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_deciduous": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -185,7 +225,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "DECIDUOUS"
+      "groundTile": "DECIDUOUS",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_desertdirt": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -202,7 +246,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "DESERT_DIRT"
+      "groundTile": "DESERT_DIRT",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_cave": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -219,7 +267,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "CAVE"
+      "groundTile": "CAVE",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_fungus": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -236,7 +288,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "FUNGUS"
+      "groundTile": "FUNGUS",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_fungus_red": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -253,7 +309,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "FUNGUSRED"
+      "groundTile": "FUNGUSRED",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_fungus_green": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -270,7 +330,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "FUNGUSGREEN"
+      "groundTile": "FUNGUSGREEN",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_fungus_moon": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -287,7 +351,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "FUNGUSMOON"
+      "groundTile": "FUNGUSMOON",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_sinkhole": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -304,7 +372,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "SINKHOLE"
+      "groundTile": "SINKHOLE",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_underrock": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -321,7 +393,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "UNDERROCK"
+      "groundTile": "UNDERROCK",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_vent": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -338,7 +414,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "VENT"
+      "groundTile": "VENT",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_mud": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -355,7 +435,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "MUD"
+      "groundTile": "MUD",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_archive": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -372,7 +456,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "ARCHIVE"
+      "groundTile": "ARCHIVE",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_vault": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -389,7 +477,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "VAULT_CLEAN"
+      "groundTile": "VAULT_CLEAN",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_ruinsbrick_glow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -406,7 +498,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "BRICK_GLOW"
+      "groundTile": "BRICK_GLOW",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_ruinsbrick": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -423,7 +519,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "BRICK"
+      "groundTile": "BRICK",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_ruinstiles_glow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -440,7 +540,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "TILES_GLOW"
+      "groundTile": "TILES_GLOW",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_ruinstiles": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -457,7 +561,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "TILES"
+      "groundTile": "TILES",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_ruinstrim_glow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -474,7 +582,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "TRIM_GLOW"
+      "groundTile": "TRIM_GLOW",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_ruinstrim": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -491,7 +603,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "TRIM"
+      "groundTile": "TRIM",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_meteor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -508,7 +624,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "METEOR"
+      "groundTile": "METEOR",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_dragonfly": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -525,7 +645,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "SCALE"
+      "groundTile": "SCALE",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_woodfloor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -542,7 +666,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "WOODFLOOR"
+      "groundTile": "WOODFLOOR",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_cotl_gold": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -559,7 +687,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "COTL_GOLD"
+      "groundTile": "COTL_GOLD",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_checkerfloor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -576,7 +708,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "CHECKER"
+      "groundTile": "CHECKER",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_mosaic_grey": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -593,7 +729,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "MOSAIC_GREY"
+      "groundTile": "MOSAIC_GREY",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_mosaic_red": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -610,7 +750,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "MOSAIC_RED"
+      "groundTile": "MOSAIC_RED",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_mosaic_blue": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -627,7 +771,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "MOSAIC_BLUE"
+      "groundTile": "MOSAIC_BLUE",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_carpetfloor2": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -644,7 +792,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "CARPET2"
+      "groundTile": "CARPET2",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_carpetfloor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -661,7 +813,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "CARPET"
+      "groundTile": "CARPET",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "turf_beard_rug": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -678,7 +834,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "groundTile": "BEARD_RUG"
+      "groundTile": "BEARD_RUG",
+      "tags": [
+        "groundtile",
+        "molebait"
+      ]
     },
     "cutgrass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cutgrass.lua",
@@ -693,7 +853,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "renewable",
+        "cutgrass"
+      ]
     },
     "twigs": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/twigs.lua",
@@ -708,7 +873,13 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "renewable",
+        "oceanfishing_bobber",
+        "twigs"
+      ]
     },
     "log": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/log.lua",
@@ -723,7 +894,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "log"
+      ]
     },
     "cutreeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cutreeds.lua",
@@ -738,7 +912,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "boards": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/boards.lua",
@@ -753,7 +928,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "rope": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/rope.lua",
@@ -768,7 +944,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy"
+      ]
     },
     "cutstone": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cutstone.lua",
@@ -784,7 +963,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "tags": [
+        "molebait"
+      ]
     },
     "flint": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/flint.lua",
@@ -801,7 +983,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 1.0
+      "elementalFoodHunger": 1.0,
+      "tags": [
+        "molebait",
+        "renewable",
+        "quakedebris"
+      ]
     },
     "goldnugget": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/goldnugget.lua",
@@ -818,7 +1005,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 2.0
+      "elementalFoodHunger": 2.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "minigameitem"
+      ]
     },
     "gears": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gears.lua",
@@ -834,7 +1026,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "tags": [
+        "molebait"
+      ]
     },
     "charcoal": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/charcoal.lua",
@@ -850,7 +1045,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "tags": [
+        "molebait"
+      ]
     },
     "pigskin": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pigskin.lua",
@@ -865,7 +1063,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "silk": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/silk.lua",
@@ -880,7 +1079,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy"
+      ]
     },
     "stinger": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/stinger.lua",
@@ -895,7 +1097,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "selfstacker"
+      ]
     },
     "houndstooth": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/houndstooth.lua",
@@ -910,7 +1115,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "blowpipeammo",
+        "reloaditem_ammo",
+        "selfstacker"
+      ]
     },
     "nitre": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/nitre.lua",
@@ -927,7 +1137,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 2.0
+      "elementalFoodHunger": 2.0,
+      "tags": [
+        "molebait",
+        "quakedebris"
+      ]
     },
     "livinglog": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/livinglog.lua",
@@ -942,7 +1156,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "nightmarefuel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/nightmarefuel.lua",
@@ -964,7 +1179,10 @@
         1.0,
         0.5
       ],
-      "pointFiltering": true
+      "pointFiltering": true,
+      "tags": [
+        "waterproofer"
+      ]
     },
     "petals": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/petals.lua",
@@ -994,7 +1212,10 @@
       "animation": "anim",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "dryable"
+      ]
     },
     "ash": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/ash.lua",
@@ -1025,7 +1246,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy"
+      ]
     },
     "boneshard": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/boneshard.lua",
@@ -1040,7 +1264,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "butterflywings": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/butterflywings.lua",
@@ -1085,7 +1310,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "honeyed"
+      ]
     },
     "honeycomb": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/honeycomb.lua",
@@ -1117,7 +1345,10 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 3.0
+      "elementalFoodHunger": 3.0,
+      "tags": [
+        "molebait"
+      ]
     },
     "thulecite_pieces": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/thulecite_pieces.lua",
@@ -1134,7 +1365,10 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 1.0
+      "elementalFoodHunger": 1.0,
+      "tags": [
+        "molebait"
+      ]
     },
     "guano": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/guano.lua",
@@ -1149,7 +1383,10 @@
       "animation": "dump",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "fertilizerresearchable"
+      ]
     },
     "tentaclespots": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/tentaclespots.lua",
@@ -1164,7 +1401,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "spidergland": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/spidergland.lua",
@@ -1179,7 +1417,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy"
+      ]
     },
     "slurtleslime": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/slurtleslime.lua",
@@ -1269,7 +1510,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "glommerfuel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/glommerfuel.lua",
@@ -1284,7 +1526,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "fertilizerresearchable"
+      ]
     },
     "acorn": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/acorn.lua",
@@ -1299,7 +1544,15 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant",
+        "icebox_valid",
+        "cattoy",
+        "show_spoilage",
+        "treeseed",
+        "cookable"
+      ]
     },
     "marblebean": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/marblebean.lua",
@@ -1329,7 +1582,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "wagpunk_bits": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/wagpunk_bits.lua",
@@ -1361,7 +1615,8 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "elementalFoodHunger": 1.0
+      "elementalFoodHunger": 1.0,
+      "tags": []
     },
     "moonglass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moonglass.lua",
@@ -1376,7 +1631,12 @@
       "animation": "f1",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "moonglass_piece",
+        "lunarhaildebris",
+        "quakedebris"
+      ]
     },
     "dock_kit": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/dock_kit.lua",
@@ -1406,7 +1666,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "bookcabinet_item"
+      ]
     },
     "featherpencil": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/featherpencil.lua",
@@ -1466,7 +1730,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": []
     },
     "scrapbook_page": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/scrapbook_page.lua",
@@ -1502,7 +1767,10 @@
           "icon": "blueprint_rare.tex",
           "atlas": "images/inventoryimages.xml"
         }
-      }
+      },
+      "tags": [
+        "_named"
+      ]
     },
     "rocks": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_rocks.lua",
@@ -1519,7 +1787,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 1.0
+      "elementalFoodHunger": 1.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "rocks"
+      ]
     },
     "ice": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_rocks_ice.lua",
@@ -1535,7 +1808,12 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "tags": [
+        "frozen",
+        "molebait",
+        "watersource"
+      ]
     },
     "marble": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_marble.lua",
@@ -1551,7 +1829,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "tags": [
+        "molebait",
+        "quakedebris"
+      ]
     },
     "heatrock": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/heatrock.lua",
@@ -1652,7 +1934,14 @@
           "icon": "heatrock_planet5.tex",
           "atlas": "images/inventoryimages2.xml"
         }
-      }
+      },
+      "tags": [
+        "heatrock",
+        "icebox_valid",
+        "bait",
+        "molebait",
+        "HASHEATER"
+      ]
     },
     "razor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/razor.lua",
@@ -1671,7 +1960,10 @@
         "razor_barber": "dynamic/razor_barber.zip",
         "razor_scissors": "dynamic/razor_scissors.zip",
         "razor_straight": "dynamic/razor_straight.zip"
-      }
+      },
+      "tags": [
+        "donotautopick"
+      ]
     },
     "panflute": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/panflute.lua",
@@ -1691,7 +1983,11 @@
         "panflute_harlequin": "dynamic/panflute_harlequin.zip",
         "panflute_insect": "dynamic/panflute_insect.zip",
         "panflute_swamp": "dynamic/panflute_swamp.zip"
-      }
+      },
+      "tags": [
+        "flute",
+        "tool"
+      ]
     },
     "moonbutterfly": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moonbutterfly.lua",
@@ -1736,7 +2032,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "vasedecoration",
+        "dryable"
+      ]
     },
     "trinket_1": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -1832,7 +2133,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "tags": [
+        "molebait",
+        "cattoy"
+      ]
     },
     "trinket_7": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2487,7 +2792,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "show_spoilage"
+      ]
     },
     "seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/seeds.lua",
@@ -2502,7 +2810,13 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant",
+        "deployedfarmplant",
+        "cookable",
+        "oceanfishing_lure"
+      ]
     },
     "seeds_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/seeds.lua",
@@ -2517,7 +2831,13 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant",
+        "deployedfarmplant",
+        "cookable",
+        "oceanfishing_lure"
+      ]
     },
     "red_cap": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
@@ -2622,7 +2942,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant",
+        "cattoy",
+        "treeseed"
+      ]
     },
     "acorn_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/acorn.lua",
@@ -2637,7 +2962,15 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant",
+        "icebox_valid",
+        "cattoy",
+        "show_spoilage",
+        "treeseed",
+        "cookable"
+      ]
     },
     "poop": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/poop.lua",
@@ -2652,7 +2985,10 @@
       "animation": "dump",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "fertilizerresearchable"
+      ]
     },
     "spoiled_food": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/spoiledfood.lua",
@@ -2683,7 +3019,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "tags": [
+        "molebait",
+        "explosive"
+      ]
     },
     "fence_item": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/fence.lua",
@@ -2729,7 +3069,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 5.0
+      "elementalFoodHunger": 5.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "gem"
+      ]
     },
     "bluegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -2746,7 +3091,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 5.0
+      "elementalFoodHunger": 5.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "gem"
+      ]
     },
     "purplegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -2763,7 +3113,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 5.0
+      "elementalFoodHunger": 5.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "gem"
+      ]
     },
     "greengem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -2780,7 +3135,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 5.0
+      "elementalFoodHunger": 5.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "gem"
+      ]
     },
     "orangegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -2797,7 +3157,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 5.0
+      "elementalFoodHunger": 5.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "gem"
+      ]
     },
     "yellowgem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -2814,7 +3179,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 5.0
+      "elementalFoodHunger": 5.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "gem"
+      ]
     },
     "opalpreciousgem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -2831,7 +3201,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 5.0
+      "elementalFoodHunger": 5.0,
+      "tags": [
+        "molebait",
+        "quakedebris",
+        "gem"
+      ]
     },
     "feather_crow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -2846,7 +3221,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "birdfeather"
+      ]
     },
     "feather_robin": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -2861,7 +3240,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "birdfeather"
+      ]
     },
     "feather_robin_winter": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -2876,7 +3259,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "birdfeather"
+      ]
     },
     "feather_canary": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -2891,7 +3278,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "birdfeather"
+      ]
     },
     "crow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/birds.lua",
@@ -2978,7 +3369,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "catfood",
+        "cookable"
+      ]
     },
     "rottenegg": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/egg.lua",
@@ -2993,7 +3388,14 @@
       "animation": "rotten",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "icebox_valid",
+        "show_spoiled",
+        "cattoy",
+        "fertilizerresearchable",
+        "spoiledfood"
+      ]
     },
     "torch": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/torch.lua",
@@ -3023,7 +3425,17 @@
         "torch_spooky": "dynamic/torch_spooky.zip",
         "torch_spookyp": "dynamic/torch_spooky.zip",
         "torch_tesla": "dynamic/torch_tesla.zip"
-      }
+      },
+      "tags": [
+        "wildfireprotected",
+        "lighter",
+        "waterproofer",
+        "weapon",
+        "projectile",
+        "complexprojectile",
+        "special_action_toss",
+        "keep_equip_toss"
+      ]
     },
     "backpack": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/backpack.lua",
@@ -3075,7 +3487,10 @@
         "backpack_smallbird": "dynamic/backpack_smallbird.zip",
         "backpack_spider": "dynamic/backpack_spider.zip",
         "backpack_splumonkey": "dynamic/backpack_splumonkey.zip"
-      }
+      },
+      "tags": [
+        "backpack"
+      ]
     },
     "bernie_inactive": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bernie_inactive.lua",
@@ -3136,7 +3551,10 @@
         "lantern_tesla": "dynamic/lantern_tesla.zip",
         "lantern_winter": "dynamic/lantern_winter.zip",
         "lantern_winter_alt": "dynamic/lantern_winter.zip"
-      }
+      },
+      "tags": [
+        "light"
+      ]
     },
     "phonograph": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/phonograph.lua",
@@ -3213,7 +3631,11 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
-      "elementalFoodHunger": 2.0
+      "elementalFoodHunger": 2.0,
+      "tags": [
+        "molebait",
+        "quakedebris"
+      ]
     },
     "rock_avocado_fruit_ripe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/rock_avocado_fruit.lua",
@@ -3259,7 +3681,10 @@
       "animation": "idle_seed",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant"
+      ]
     },
     "dug_rock_avocado_bush": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3274,7 +3699,10 @@
       "animation": "dropped",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant"
+      ]
     },
     "dug_berrybush": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3293,7 +3721,10 @@
         "dug_berrybush_cawnival": "dynamic/berrybush_cawnival.zip",
         "dug_berrybush_mystical": "dynamic/berrybush_mystical.zip",
         "dug_berrybush_swamp": "dynamic/berrybush_swamp.zip"
-      }
+      },
+      "tags": [
+        "deployedplant"
+      ]
     },
     "dug_monkeytail": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3308,7 +3739,10 @@
       "animation": "dropped",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant"
+      ]
     },
     "dug_grass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3323,7 +3757,10 @@
       "animation": "dropped",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant"
+      ]
     },
     "dug_sapling": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3338,7 +3775,10 @@
       "animation": "dropped",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant"
+      ]
     },
     "dug_sapling_moon": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3353,7 +3793,10 @@
       "animation": "dropped",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "deployedplant"
+      ]
     },
     "mole": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mole.lua",
@@ -3433,7 +3876,12 @@
         "starstaff_portal": "dynamic/starstaff_portal.zip",
         "starstaff_relic": "dynamic/starstaff_relic.zip",
         "starstaff_swamp": "dynamic/starstaff_swamp.zip"
-      }
+      },
+      "tags": [
+        "shadowlevel",
+        "nopunch",
+        "allow_action_on_impassable"
+      ]
     },
     "opalstaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -3453,7 +3901,11 @@
         "moonstaff_portal": "dynamic/starstaff_portal.zip",
         "moonstaff_relic": "dynamic/starstaff_relic.zip",
         "moonstaff_swamp": "dynamic/starstaff_swamp.zip"
-      }
+      },
+      "tags": [
+        "nopunch",
+        "allow_action_on_impassable"
+      ]
     },
     "greenstaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -3472,7 +3924,11 @@
         "greenstaff_an": "dynamic/greenstaff_an.zip",
         "greenstaff_clockwork": "dynamic/greenstaff_clockwork.zip",
         "greenstaff_planet": "dynamic/greenstaff_planet.zip"
-      }
+      },
+      "tags": [
+        "shadowlevel",
+        "nopunch"
+      ]
     },
     "firestaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -3497,7 +3953,14 @@
         "firestaff_northern": "dynamic/firestaff_northern.zip",
         "firestaff_rose": "dynamic/firestaff_rose.zip",
         "firestaff_rw_swamp": "dynamic/firestaff_rw_swamp.zip"
-      }
+      },
+      "tags": [
+        "shadowlevel",
+        "firestaff",
+        "weapon",
+        "rangedweapon",
+        "rangedlighter"
+      ]
     },
     "trident": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trident.lua",
@@ -3602,7 +4065,12 @@
         "hammer_hammush": "dynamic/hammer_hammush.zip",
         "hammer_invisible": "dynamic/hammer_invisible.zip",
         "hammer_rw_startingforest": "dynamic/hammer_rw_startingforest.zip"
-      }
+      },
+      "tags": [
+        "hammer",
+        "tool",
+        "weapon"
+      ]
     },
     "nightsword": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/nightsword.lua",
@@ -3658,7 +4126,10 @@
         "amulet_red_occulteye": "dynamic/amulet_red_occulteye.zip",
         "amulet_red_relic": "dynamic/amulet_red_relic.zip",
         "amulet_red_rose": "dynamic/amulet_red_rose.zip"
-      }
+      },
+      "tags": [
+        "shadowlevel"
+      ]
     },
     "bugnet": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bugnet.lua",
@@ -3698,7 +4169,12 @@
         "fishingrod_block": "dynamic/fishingrod_block.zip",
         "fishingrod_curl": "dynamic/fishingrod_curl.zip",
         "fishingrod_sword": "dynamic/fishingrod_sword.zip"
-      }
+      },
+      "tags": [
+        "fishingrod",
+        "allow_action_on_impassable",
+        "weapon"
+      ]
     },
     "pitchfork": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
@@ -3717,7 +4193,11 @@
         "pitchfork_fork": "dynamic/pitchfork_fork.zip",
         "pitchfork_invisible": "dynamic/pitchfork_invisible.zip",
         "pitchfork_rose": "dynamic/pitchfork_rose.zip"
-      }
+      },
+      "tags": [
+        "sharp",
+        "weapon"
+      ]
     },
     "goldenpitchfork": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
@@ -3734,7 +4214,11 @@
       "symbolOverrides": {},
       "skinArchives": {
         "goldenpitchfork_invisible": "dynamic/goldenpitchfork_invisible.zip"
-      }
+      },
+      "tags": [
+        "sharp",
+        "weapon"
+      ]
     },
     "farm_hoe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/farm_hoe.lua",
@@ -3792,7 +4276,13 @@
         "axe_northern": "dynamic/axe_northern.zip",
         "axe_rose": "dynamic/axe_rose.zip",
         "axe_victorian": "dynamic/axe_victorian.zip"
-      }
+      },
+      "tags": [
+        "sharp",
+        "possessable_axe",
+        "tool",
+        "weapon"
+      ]
     },
     "goldenaxe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/axe.lua",
@@ -3810,7 +4300,13 @@
       "skinArchives": {
         "goldenaxe_invisible": "dynamic/goldenaxe_invisible.zip",
         "goldenaxe_northern": "dynamic/goldenaxe_northern.zip"
-      }
+      },
+      "tags": [
+        "sharp",
+        "possessable_axe",
+        "tool",
+        "weapon"
+      ]
     },
     "pickaxe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pickaxe.lua",
@@ -3833,7 +4329,12 @@
         "pickaxe_scythe": "dynamic/pickaxe_scythe.zip",
         "pickaxe_scythe_alt": "dynamic/pickaxe_scythe.zip",
         "pickaxe_victorian": "dynamic/pickaxe_victorian.zip"
-      }
+      },
+      "tags": [
+        "sharp",
+        "tool",
+        "weapon"
+      ]
     },
     "goldenpickaxe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pickaxe.lua",
@@ -3851,7 +4352,12 @@
       "skinArchives": {
         "goldenpickaxe_invisible": "dynamic/goldenpickaxe_invisible.zip",
         "goldenpickaxe_northern": "dynamic/goldenpickaxe_northern.zip"
-      }
+      },
+      "tags": [
+        "sharp",
+        "tool",
+        "weapon"
+      ]
     },
     "shovel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/shovel.lua",
@@ -3874,7 +4380,11 @@
         "shovel_rose": "dynamic/shovel_rose.zip",
         "shovel_spoon": "dynamic/shovel_spoon.zip",
         "shovel_victorian": "dynamic/shovel_victorian.zip"
-      }
+      },
+      "tags": [
+        "tool",
+        "weapon"
+      ]
     },
     "goldenshovel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/shovel.lua",
@@ -3892,7 +4402,11 @@
       "skinArchives": {
         "goldenshovel_invisible": "dynamic/goldenshovel_invisible.zip",
         "goldenshovel_northern": "dynamic/goldenshovel_northern.zip"
-      }
+      },
+      "tags": [
+        "tool",
+        "weapon"
+      ]
     },
     "moonglassaxe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/axe.lua",
@@ -3907,7 +4421,13 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "sharp",
+        "possessable_axe",
+        "tool",
+        "weapon"
+      ]
     },
     "wall_stone_item": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
@@ -4094,7 +4614,13 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "meat",
+        "dryable",
+        "lureplant_bait",
+        "cookable"
+      ]
     },
     "cookedmonstermeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4544,7 +5070,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "tags": [
+        "cookable",
+        "weighable_OVERSIZEDVEGGIES"
+      ]
     },
     "carrot_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -6685,6 +7215,1848 @@
         }
       },
       "skinArchives": {}
+    }
+  },
+  "staticItems": {
+    "bedroll_straw": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bedroll.lua",
+      "name": "草席卷",
+      "icon": "bedroll_straw.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "swap_bedroll_straw.zip",
+      "buildArchives": [
+        "swap_bedroll_straw.zip"
+      ],
+      "bank": "swap_bedroll_straw",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "chum": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/chum.lua",
+      "name": "鱼食",
+      "icon": "chum.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "chum_pouch.zip",
+      "buildArchives": [
+        "chum_pouch.zip"
+      ],
+      "bank": "chum_pouch",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "allow_action_on_impassable"
+      ]
+    },
+    "cookiecuttershell": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/cookiecuttershell.lua",
+      "name": "饼干切割机壳",
+      "icon": "cookiecuttershell.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cookiecuttershell.zip",
+      "buildArchives": [
+        "cookiecuttershell.zip"
+      ],
+      "bank": "cookiecutter_shell",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "coontail": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/coontail.lua",
+      "name": "猫尾",
+      "icon": "coontail.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "coontail.zip",
+      "buildArchives": [
+        "coontail.zip"
+      ],
+      "bank": "coontail",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "cattoy"
+      ]
+    },
+    "driftwood_log": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/driftwood.lua",
+      "name": "浮木桩",
+      "icon": "driftwood_log.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "driftwood_log.zip",
+      "buildArchives": [
+        "driftwood_log.zip"
+      ],
+      "bank": "driftwood_log",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "waterproofer"
+      ]
+    },
+    "glasscutter": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/glasscutter.lua",
+      "name": "玻璃刀",
+      "icon": "glasscutter.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "glasscutter.zip",
+      "buildArchives": [
+        "glasscutter.zip"
+      ],
+      "bank": "glasscutter",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "glasscutter_mystical": "dynamic/glasscutter_mystical.zip",
+        "glasscutter_terraprisma": "dynamic/glasscutter_terraprisma.zip"
+      },
+      "tags": [
+        "sharp",
+        "pointy"
+      ]
+    },
+    "glommerflower": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/glommerflower.lua",
+      "name": "格罗姆花",
+      "icon": "glommerflower.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "glommer_flower.zip",
+      "buildArchives": [
+        "glommer_flower.zip"
+      ],
+      "bank": "glommer_flower",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "glommerflower_fantasy": "dynamic/glommer_fantasy.zip"
+      },
+      "tags": [
+        "glommerflower",
+        "nonpotatable",
+        "irreplaceable"
+      ]
+    },
+    "lureplantbulb": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/lureplant_bulb.lua",
+      "name": "食人花种子",
+      "icon": "lureplantbulb.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "eyeplant_bulb.zip",
+      "buildArchives": [
+        "eyeplant_bulb.zip"
+      ],
+      "bank": "eyeplant_bulb",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "eyeplant_bulb_trap_plantera": "dynamic/eyeplant_trap_plantera.zip"
+      },
+      "tags": []
+    },
+    "oceanfishingrod": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/oceanfishingrod.lua",
+      "name": "海钓竿",
+      "icon": "oceanfishingrod.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "fishingrod_ocean.zip",
+      "buildArchives": [
+        "fishingrod_ocean.zip"
+      ],
+      "bank": "fishingrod_ocean",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "oceanfishingrod_hotline": "dynamic/oceanfishingrod_hotline.zip",
+        "oceanfishingrod_ice": "dynamic/oceanfishingrod_ice.zip",
+        "oceanfishingrod_ice_alt": "dynamic/oceanfishingrod_ice.zip",
+        "oceanfishingrod_nautical": "dynamic/oceanfishingrod_nautical.zip"
+      },
+      "tags": [
+        "weapon",
+        "allow_action_on_impassable",
+        "accepts_oceanfishingtackle"
+      ]
+    },
+    "palmcone_scale": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/palmcone_scale.lua",
+      "name": "棕榈松果树鳞片",
+      "icon": "palmcone_scale.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "palmcone_scale.zip",
+      "buildArchives": [
+        "palmcone_scale.zip"
+      ],
+      "bank": "palmcone_scale",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "palmcone_seed": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pinecone.lua",
+      "name": "棕榈松果树芽",
+      "icon": "palmcone_seed.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "palmcone_seed.zip",
+      "buildArchives": [
+        "palmcone_seed.zip"
+      ],
+      "bank": "palmcone_seed",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "deployedplant",
+        "cattoy",
+        "treeseed"
+      ]
+    },
+    "pig_token": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pig_token.lua",
+      "name": "金腰带",
+      "icon": "pig_token.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "pig_token.zip",
+      "buildArchives": [
+        "pig_token.zip"
+      ],
+      "bank": "pig_token",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "saltrock": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/saltrock.lua",
+      "name": "盐晶",
+      "icon": "saltrock.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "salt.zip",
+      "buildArchives": [
+        "salt.zip"
+      ],
+      "bank": "salt",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "moleBait": true,
+      "elementalFoodHunger": 1.0,
+      "tags": [
+        "molebait"
+      ]
+    },
+    "sewing_kit": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/sewingkit.lua",
+      "name": "针线包",
+      "icon": "sewing_kit.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "sewing_kit.zip",
+      "buildArchives": [
+        "sewing_kit.zip"
+      ],
+      "bank": "sewing_kit",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "shadowheart": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/shadowheart.lua",
+      "name": "暗影心房",
+      "icon": "shadowheart.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "shadowheart.zip",
+      "buildArchives": [
+        "shadowheart.zip"
+      ],
+      "bank": "shadowheart",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "shadowheart"
+      ]
+    },
+    "shroom_skin": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/shroom_skin.lua",
+      "name": "蘑菇皮",
+      "icon": "shroom_skin.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "shroom_skin.zip",
+      "buildArchives": [
+        "shroom_skin.zip"
+      ],
+      "bank": "shroom_skin",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "sketch": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/sketch.lua",
+      "name": "{item}草图",
+      "icon": "sketch.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "blueprint_sketch.zip",
+      "buildArchives": [
+        "blueprint_sketch.zip"
+      ],
+      "bank": "blueprint_sketch",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "_named",
+        "sketch"
+      ]
+    },
+    "tentaclespike": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/tentaclespike.lua",
+      "name": "触手尖刺",
+      "icon": "tentaclespike.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "tentacle_spike.zip",
+      "buildArchives": [
+        "tentacle_spike.zip"
+      ],
+      "bank": "spike",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "sharp",
+        "weapon"
+      ]
+    },
+    "twiggy_nut": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/pinecone.lua",
+      "name": "多枝树种",
+      "icon": "twiggy_nut.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "twiggy_nut.zip",
+      "buildArchives": [
+        "twiggy_nut.zip"
+      ],
+      "bank": "twiggy_nut",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "deployedplant",
+        "cattoy",
+        "treeseed"
+      ]
+    },
+    "waxpaper": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/waxpaper.lua",
+      "name": "蜡纸",
+      "icon": "waxpaper.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "wax_paper.zip",
+      "buildArchives": [
+        "wax_paper.zip"
+      ],
+      "bank": "wax_paper",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "beef_bell": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/beef_bell.lua",
+      "name": "皮弗娄牛铃",
+      "icon": "beef_bell.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "cowbell.zip",
+      "buildArchives": [
+        "cowbell.zip"
+      ],
+      "bank": "cowbell",
+      "animation": "idle1",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "cowbell_round": "dynamic/cowbell_round.zip"
+      },
+      "tags": [
+        "bell",
+        "donotautopick"
+      ]
+    },
+    "blowdart_pipe": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/blowdart.lua",
+      "name": "吹箭",
+      "icon": "blowdart_pipe.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "blow_dart.zip",
+      "buildArchives": [
+        "blow_dart.zip"
+      ],
+      "bank": "blow_dart",
+      "animation": "dart_pipe",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "blowdart",
+        "sharp",
+        "weapon",
+        "projectile"
+      ]
+    },
+    "chester_eyebone": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/chester_eyebone.lua",
+      "name": "眼骨",
+      "icon": "chester_eyebone.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "chester_eyebone.zip",
+      "buildArchives": [
+        "chester_eyebone_build.zip"
+      ],
+      "bank": "eyebone",
+      "animation": "idle_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "chester_eyebone_horn": "dynamic/chester_horn.zip",
+        "chester_eyebone_lamb": "dynamic/chester_lamb.zip",
+        "chester_eyebone_mystical": "dynamic/chester_mystical.zip",
+        "chester_eyebone_walrus": "dynamic/chester_walrus.zip"
+      },
+      "tags": [
+        "chester_eyebone",
+        "irreplaceable",
+        "nonpotatable"
+      ]
+    },
+    "hutch_fishbowl": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hutch_fishbowl.lua",
+      "name": "星空",
+      "icon": "hutch_fishbowl.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "hutch_fishbowl.zip",
+      "buildArchives": [
+        "hutch_fishbowl.zip"
+      ],
+      "bank": "fishbowl",
+      "animation": "idle_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "hutch_fishbowl_fantasy": "dynamic/hutch_fantasy.zip",
+        "hutch_fishbowl_swamp": "dynamic/hutch_swamp.zip"
+      },
+      "tags": [
+        "hutch_fishbowl",
+        "irreplaceable",
+        "nonpotatable"
+      ]
+    },
+    "deer_antler1": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/deer_antler.lua",
+      "name": "deer_antler1",
+      "icon": "deer_antler1.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "deer_antler.zip",
+      "buildArchives": [
+        "deer_antler.zip"
+      ],
+      "bank": "deer_antler",
+      "animation": "idle1",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "deerantler",
+        "klaussackkey"
+      ]
+    },
+    "deer_antler2": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/deer_antler.lua",
+      "name": "deer_antler2",
+      "icon": "deer_antler2.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "deer_antler.zip",
+      "buildArchives": [
+        "deer_antler.zip"
+      ],
+      "bank": "deer_antler",
+      "animation": "idle2",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "deerantler",
+        "klaussackkey"
+      ]
+    },
+    "deer_antler3": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/deer_antler.lua",
+      "name": "deer_antler3",
+      "icon": "deer_antler3.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "deer_antler.zip",
+      "buildArchives": [
+        "deer_antler.zip"
+      ],
+      "bank": "deer_antler",
+      "animation": "idle3",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "deerantler",
+        "klaussackkey"
+      ]
+    },
+    "dug_berrybush_juicy": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
+      "name": "多汁浆果丛",
+      "icon": "dug_berrybush_juicy.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "berrybush_juicy.zip",
+      "buildArchives": [
+        "berrybush_juicy.zip"
+      ],
+      "bank": "berrybush_juicy",
+      "animation": "dropped",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "deployedplant"
+      ]
+    },
+    "dug_trap_starfish": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trap_starfish.lua",
+      "name": "海星陷阱",
+      "icon": "dug_trap_starfish.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "star_trap.zip",
+      "buildArchives": [
+        "star_trap.zip"
+      ],
+      "bank": "star_trap",
+      "animation": "inactive",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "greenamulet": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/amulet.lua",
+      "name": "建造护符",
+      "icon": "greenamulet.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "amulets.zip",
+      "buildArchives": [
+        "amulets.zip"
+      ],
+      "bank": "amulets",
+      "animation": "greenamulet",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "amulet_green_relic": "dynamic/amulet_green_relic.zip"
+      },
+      "tags": [
+        "shadowlevel"
+      ]
+    },
+    "orangeamulet": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/amulet.lua",
+      "name": "懒人护符",
+      "icon": "orangeamulet.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "amulets.zip",
+      "buildArchives": [
+        "amulets.zip"
+      ],
+      "bank": "amulets",
+      "animation": "orangeamulet",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "amulet_orange_planet": "dynamic/amulet_orange_planet.zip",
+        "amulet_orange_relic": "dynamic/amulet_orange_relic.zip"
+      },
+      "tags": [
+        "shadowlevel",
+        "repairshortaction"
+      ]
+    },
+    "icestaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "冰魔杖",
+      "icon": "icestaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "bluestaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "icestaff_bee": "dynamic/icestaff_bee.zip",
+        "icestaff_gungnir": "dynamic/icestaff_gungnir.zip",
+        "icestaff_hockey": "dynamic/icestaff_hockey.zip",
+        "icestaff_icerod": "dynamic/icestaff_icerod.zip",
+        "icestaff_lance": "dynamic/icestaff_lance.zip",
+        "icestaff_northern": "dynamic/icestaff_northern.zip",
+        "icestaff_rose": "dynamic/icestaff_rose.zip",
+        "icestaff_rw_swamp": "dynamic/icestaff_rw_swamp.zip"
+      },
+      "tags": [
+        "icestaff",
+        "weapon",
+        "rangedweapon",
+        "extinguisher",
+        "shadowlevel"
+      ]
+    },
+    "telestaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "传送魔杖",
+      "icon": "telestaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "purplestaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "telestaff_crystal": "dynamic/telestaff_crystal.zip",
+        "telestaff_mystical": "dynamic/telestaff_mystical.zip",
+        "telestaff_shadowbeam": "dynamic/telestaff_shadowbeam.zip"
+      },
+      "tags": [
+        "nopunch",
+        "shadowlevel"
+      ]
+    },
+    "horrorfuel": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/horrorfuel.lua",
+      "name": "纯粹恐惧",
+      "icon": "horrorfuel.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "horrorfuel.zip",
+      "buildArchives": [
+        "horrorfuel.zip"
+      ],
+      "bank": "horrorfuel",
+      "animation": "idle_loop",
+      "loop": true,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "waterproofer",
+        "purehorror",
+        "mermbuffcast"
+      ],
+      "multColour": [
+        1,
+        1,
+        1,
+        0.5
+      ]
+    },
+    "lavae_egg": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/lavae_egg.lua",
+      "name": "岩浆虫卵",
+      "icon": "lavae_egg.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "lavae_egg.zip",
+      "buildArchives": [
+        "lavae_egg.zip"
+      ],
+      "bank": "lavae_egg",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [],
+      "scale": 0.75
+    },
+    "tallbirdegg": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/tallbirdegg.lua",
+      "name": "高脚鸟蛋",
+      "icon": "tallbirdegg.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "tallbird_egg.zip",
+      "buildArchives": [
+        "tallbird_egg.zip"
+      ],
+      "bank": "egg",
+      "animation": "egg",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "cattoy",
+        "tallbirdegg",
+        "cookable"
+      ]
+    },
+    "messagebottle": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/messagebottle.lua",
+      "name": "瓶中信",
+      "icon": "messagebottle.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "bottle.zip",
+      "buildArchives": [
+        "bottle.zip"
+      ],
+      "bank": "bottle",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "waterproofer",
+        "mapspotrevealer"
+      ]
+    },
+    "oar": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/oar.lua",
+      "name": "桨",
+      "icon": "oar.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "oar.zip",
+      "buildArchives": [
+        "oar.zip"
+      ],
+      "bank": "oar",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "oar_invisible": "dynamic/oar_invisible.zip",
+        "oar_swamp": "dynamic/oar_swamp.zip"
+      },
+      "tags": [
+        "allow_action_on_impassable"
+      ]
+    },
+    "oar_driftwood": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/oar.lua",
+      "name": "浮木桨",
+      "icon": "oar_driftwood.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "oar_driftwood.zip",
+      "buildArchives": [
+        "oar_driftwood.zip"
+      ],
+      "bank": "oar_driftwood",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "oar_driftwood_invisible": "dynamic/oar_driftwood_invisible.zip",
+        "oar_driftwood_swamp": "dynamic/oar_driftwood_swamp.zip"
+      },
+      "tags": [
+        "allow_action_on_impassable",
+        "waterproofer"
+      ]
+    },
+    "malbatross_beak": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/oar.lua",
+      "name": "邪天翁喙",
+      "icon": "malbatross_beak.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "malbatross_beak.zip",
+      "buildArchives": [
+        "malbatross_beak.zip"
+      ],
+      "bank": "malbatross_beak",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "allow_action_on_impassable"
+      ]
+    },
+    "sculpture_bishophead": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/sculpture_pieces.lua",
+      "name": "可疑的大理石",
+      "icon": "sculpture_bishophead.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "sculpture_pieces.zip",
+      "buildArchives": [
+        "swap_sculpture_bishophead.zip"
+      ],
+      "bank": "sculpture_pieces",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "irreplaceable",
+        "nonpotatable",
+        "heavy"
+      ]
+    },
+    "sculpture_knighthead": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/sculpture_pieces.lua",
+      "name": "可疑的大理石",
+      "icon": "sculpture_knighthead.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "sculpture_pieces.zip",
+      "buildArchives": [
+        "swap_sculpture_knighthead.zip"
+      ],
+      "bank": "sculpture_pieces",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "irreplaceable",
+        "nonpotatable",
+        "heavy"
+      ]
+    },
+    "spoiled_fish_small": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/spoiledfood.lua",
+      "name": "变质的小鱼块",
+      "icon": "spoiled_fish_small.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "spoiled_fish_small.zip",
+      "buildArchives": [
+        "spoiled_fish_small.zip"
+      ],
+      "bank": "spoiled_fish_small",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "icebox_valid",
+        "saltbox_valid",
+        "show_spoiled",
+        "fertilizerresearchable",
+        "selfstacker",
+        "spoiledfood",
+        "spoiled_fish"
+      ],
+      "scale": 1.3
+    },
+    "tacklecontainer": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/tacklecontainer.lua",
+      "name": "钓具箱",
+      "icon": "tacklecontainer.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "tacklecontainer.zip",
+      "buildArchives": [
+        "tacklecontainer.zip"
+      ],
+      "bank": "tacklecontainer",
+      "animation": "closed",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "tacklecontainer_shell": "dynamic/tacklecontainer_shell.zip",
+        "tacklecontainer_shiny": "dynamic/tacklecontainer_shiny.zip"
+      },
+      "tags": [
+        "portablestorage"
+      ]
+    },
+    "terrarium": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/terrarium.lua",
+      "name": "盒中泰拉",
+      "icon": "terrarium.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "terrarium.zip",
+      "buildArchives": [
+        "terrarium.zip"
+      ],
+      "bank": "terrarium",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "irreplaceable",
+        "trader",
+        "alltrader"
+      ]
+    },
+    "trap": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/trap.lua",
+      "name": "陷阱",
+      "icon": "trap.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "trap.zip",
+      "buildArchives": [
+        "trap.zip"
+      ],
+      "bank": "trap",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "trap_basket": "dynamic/trap_basket.zip",
+        "trap_metal": "dynamic/trap_metal.zip"
+      },
+      "tags": [
+        "trap"
+      ]
+    },
+    "bullkelp_beachedroot": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bullkelp_beached.lua",
+      "name": "bullkelp_beachedroot",
+      "animationArchive": "bullkelp.zip",
+      "buildArchives": [
+        "bullkelp.zip"
+      ],
+      "bank": "bullkelp",
+      "animation": "dropped_beached",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": []
+    },
+    "bundle": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bundle.lua",
+      "name": "捆绑物资",
+      "icon": "bundle_small.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "bundle.zip",
+      "buildArchives": [
+        "bundle.zip"
+      ],
+      "bank": "bundle",
+      "animation": "idle_small",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "bundle_cawnival": "dynamic/bundle_cawnival.zip",
+        "bundle_gothic": "dynamic/bundle_gothic.zip",
+        "bundle_kitchen": "dynamic/bundle_kitchen.zip",
+        "bundle_metal": "dynamic/bundle_metal.zip",
+        "bundle_mystical": "dynamic/bundle_mystical.zip",
+        "bundle_vintage": "dynamic/bundle_vintage.zip"
+      },
+      "tags": [
+        "bundle",
+        "unwrappable",
+        "canpeek"
+      ]
+    },
+    "hermit_bundle": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/bundle.lua",
+      "name": "一包谢意",
+      "icon": "hermit_bundle.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "hermit_bundle.zip",
+      "buildArchives": [
+        "hermit_bundle.zip"
+      ],
+      "bank": "hermit_bundle",
+      "animation": "idle_onesize",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "bundle",
+        "unwrappable"
+      ]
+    },
+    "playbill_the_doll": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/playbill.lua",
+      "name": "附魔玩偶\n舞台剧",
+      "icon": "playbill.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "playbill.zip",
+      "buildArchives": [
+        "playbill.zip"
+      ],
+      "bank": "playbill",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "playbill",
+        "furnituredecor"
+      ]
+    },
+    "playing_card": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/deck_of_cards.lua",
+      "name": "扑克牌",
+      "animationArchive": "deck_of_cards.zip",
+      "buildArchives": [
+        "deck_of_cards.zip"
+      ],
+      "bank": "deck_of_cards",
+      "animation": "single",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [],
+      "ground": true
+    },
+    "singingshell_octave3": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/singingshell.lua",
+      "name": "低音贝壳钟",
+      "icon": "singingshell_octave3_1.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "singingshell.zip",
+      "buildArchives": [
+        "singingshell.zip"
+      ],
+      "bank": "singingshell",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "shell_placeholder": {
+          "archive": "singingshell.zip",
+          "symbol": "octave3_1"
+        }
+      },
+      "skinArchives": {},
+      "tags": [
+        "singingshell"
+      ]
+    },
+    "singingshell_octave4": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/singingshell.lua",
+      "name": "中音贝壳钟",
+      "icon": "singingshell_octave4_1.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "singingshell.zip",
+      "buildArchives": [
+        "singingshell.zip"
+      ],
+      "bank": "singingshell",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "shell_placeholder": {
+          "archive": "singingshell.zip",
+          "symbol": "octave4_1"
+        }
+      },
+      "skinArchives": {},
+      "tags": [
+        "singingshell"
+      ]
+    },
+    "singingshell_octave5": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/singingshell.lua",
+      "name": "高音贝壳钟",
+      "icon": "singingshell_octave5_1.tex",
+      "atlas": "images/inventoryimages3.xml",
+      "animationArchive": "singingshell.zip",
+      "buildArchives": [
+        "singingshell.zip"
+      ],
+      "bank": "singingshell",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {
+        "shell_placeholder": {
+          "archive": "singingshell.zip",
+          "symbol": "octave5_1"
+        }
+      },
+      "skinArchives": {},
+      "tags": [
+        "singingshell"
+      ]
+    },
+    "strawhat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "草帽",
+      "icon": "strawhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "hat_straw.zip",
+      "buildArchives": [
+        "hat_straw.zip"
+      ],
+      "bank": "strawhat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "strawhat_bonnet": "dynamic/strawhat_bonnet.zip",
+        "strawhat_cowboy": "dynamic/strawhat_cowboy.zip",
+        "strawhat_floppy": "dynamic/strawhat_floppy.zip",
+        "strawhat_western": "dynamic/strawhat_western.zip"
+      },
+      "tags": [
+        "hat",
+        "waterproofer"
+      ]
+    },
+    "beefalohat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "牛角帽",
+      "icon": "beefalohat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "hat_beefalo.zip",
+      "buildArchives": [
+        "hat_beefalo.zip"
+      ],
+      "bank": "beefalohat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "beefalohat_fantasy": "dynamic/beefalohat_fantasy.zip",
+        "beefalohat_klaus": "dynamic/beefalohat_klaus.zip",
+        "beefalohat_mystical": "dynamic/beefalohat_mystical.zip",
+        "beefalohat_pigking": "dynamic/beefalohat_pigking.zip",
+        "beefalohat_pigking_alt": "dynamic/beefalohat_pigking.zip"
+      },
+      "tags": [
+        "hat",
+        "waterproofer"
+      ]
+    },
+    "cookiecutterhat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "饼干切割机帽子",
+      "icon": "cookiecutterhat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "hat_cookiecutter.zip",
+      "buildArchives": [
+        "hat_cookiecutter.zip"
+      ],
+      "bank": "cookiecutterhat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "hat",
+        "waterproofer"
+      ]
+    },
+    "dreadstonehat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "绝望石头盔",
+      "icon": "dreadstonehat.tex",
+      "atlas": "images/inventoryimages1.xml",
+      "animationArchive": "hat_dreadstone.zip",
+      "buildArchives": [
+        "hat_dreadstone.zip"
+      ],
+      "bank": "dreadstonehat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "hat_dreadstone_horn": "dynamic/hat_dreadstone_horn.zip"
+      },
+      "tags": [
+        "hat",
+        "dreadstone",
+        "hardarmor",
+        "shadow_item",
+        "waterproofer",
+        "shadowlevel"
+      ]
+    },
+    "footballhat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "橄榄球头盔",
+      "icon": "footballhat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "hat_football.zip",
+      "buildArchives": [
+        "hat_football.zip"
+      ],
+      "bank": "footballhat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "footballhat_adventure": "dynamic/footballhat_adventure.zip",
+        "footballhat_combathelm": "dynamic/footballhat_combathelm.zip",
+        "footballhat_combathelm2": "dynamic/footballhat_combathelm2.zip",
+        "footballhat_hockey": "dynamic/footballhat_hockey.zip",
+        "footballhat_rw_gustree": "dynamic/footballhat_rw_gustree.zip",
+        "footballhat_western": "dynamic/footballhat_western.zip",
+        "hat_dog_helm": "dynamic/hat_dog_helm.zip"
+      },
+      "tags": [
+        "hat",
+        "waterproofer"
+      ]
+    },
+    "ruinshat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "铥矿皇冠",
+      "icon": "ruinshat.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "hat_ruins.zip",
+      "buildArchives": [
+        "hat_ruins.zip"
+      ],
+      "bank": "ruinshat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "ruinshat_an": "dynamic/ruinshat_an.zip",
+        "ruinshat_arcane": "dynamic/ruinshat_arcane.zip"
+      },
+      "tags": [
+        "hat",
+        "open_top_hat",
+        "metal",
+        "hardarmor",
+        "shadowlevel"
+      ]
+    },
+    "mask_ancient_architecthat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "远见者面具",
+      "icon": "mask_ancient_architecthat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "hat_mask_ancient_architect.zip",
+      "buildArchives": [
+        "hat_mask_ancient_architect.zip"
+      ],
+      "bank": "mask_ancient_architecthat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "hat",
+        "ancient_reader"
+      ]
+    },
+    "mask_ancient_handmaidhat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "鞘翅面具",
+      "icon": "mask_ancient_handmaidhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "hat_mask_ancient_handmaid.zip",
+      "buildArchives": [
+        "hat_mask_ancient_handmaid.zip"
+      ],
+      "bank": "mask_ancient_handmaidhat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "hat",
+        "ancient_reader"
+      ]
+    },
+    "mask_ancient_masonhat": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
+      "name": "工匠面具",
+      "icon": "mask_ancient_masonhat.tex",
+      "atlas": "images/inventoryimages2.xml",
+      "animationArchive": "hat_mask_ancient_mason.zip",
+      "buildArchives": [
+        "hat_mask_ancient_mason.zip"
+      ],
+      "bank": "mask_ancient_masonhat",
+      "animation": "anim",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {},
+      "tags": [
+        "hat",
+        "ancient_reader"
+      ]
+    }
+  },
+  "staticVariants": {
+    "rocks": {
+      "f1": {
+        "animation": "f1"
+      },
+      "f2": {
+        "animation": "f2"
+      },
+      "f3": {
+        "animation": "f3"
+      }
+    },
+    "ice": {
+      "f1": {
+        "animation": "f1"
+      },
+      "f2": {
+        "animation": "f2"
+      },
+      "f3": {
+        "animation": "f3"
+      }
+    },
+    "moonglass": {
+      "f1": {
+        "animation": "f1"
+      },
+      "f2": {
+        "animation": "f2"
+      },
+      "f3": {
+        "animation": "f3"
+      }
+    },
+    "blueprint": {
+      "rare": {
+        "animationArchive": "blueprint_rare.zip",
+        "buildArchives": [
+          "blueprint_rare.zip"
+        ],
+        "bank": "blueprint_rare"
+      }
+    },
+    "bundle": {
+      "small": {
+        "animation": "idle_small"
+      },
+      "medium": {
+        "animation": "idle_medium"
+      },
+      "large": {
+        "animation": "idle_large"
+      }
+    },
+    "singingshell_octave3": {
+      "1": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave3_1"
+          }
+        }
+      },
+      "2": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave3_2"
+          }
+        }
+      },
+      "3": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave3_3"
+          }
+        }
+      }
+    },
+    "singingshell_octave4": {
+      "1": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave4_1"
+          }
+        }
+      },
+      "2": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave4_2"
+          }
+        }
+      },
+      "3": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave4_3"
+          }
+        }
+      }
+    },
+    "singingshell_octave5": {
+      "1": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave5_1"
+          }
+        }
+      },
+      "2": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave5_2"
+          }
+        }
+      },
+      "3": {
+        "symbolOverrides": {
+          "shell_placeholder": {
+            "archive": "singingshell.zip",
+            "symbol": "octave5_3"
+          }
+        }
+      }
+    },
+    "trap": {
+      "full": {
+        "animation": "trap_loop"
+      },
+      "empty": {
+        "animation": "side"
+      }
+    },
+    "playing_card": {
+      "101": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card101"
+          }
+        }
+      },
+      "102": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card102"
+          }
+        }
+      },
+      "103": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card103"
+          }
+        }
+      },
+      "104": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card104"
+          }
+        }
+      },
+      "105": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card105"
+          }
+        }
+      },
+      "106": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card106"
+          }
+        }
+      },
+      "107": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card107"
+          }
+        }
+      },
+      "108": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card108"
+          }
+        }
+      },
+      "109": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card109"
+          }
+        }
+      },
+      "110": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card110"
+          }
+        }
+      },
+      "111": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card111"
+          }
+        }
+      },
+      "112": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card112"
+          }
+        }
+      },
+      "113": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card113"
+          }
+        }
+      },
+      "201": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card201"
+          }
+        }
+      },
+      "202": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card202"
+          }
+        }
+      },
+      "203": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card203"
+          }
+        }
+      },
+      "204": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card204"
+          }
+        }
+      },
+      "205": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card205"
+          }
+        }
+      },
+      "206": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card206"
+          }
+        }
+      },
+      "207": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card207"
+          }
+        }
+      },
+      "208": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card208"
+          }
+        }
+      },
+      "209": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card209"
+          }
+        }
+      },
+      "210": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card210"
+          }
+        }
+      },
+      "211": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card211"
+          }
+        }
+      },
+      "212": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card212"
+          }
+        }
+      },
+      "213": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card213"
+          }
+        }
+      },
+      "301": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card301"
+          }
+        }
+      },
+      "302": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card302"
+          }
+        }
+      },
+      "303": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card303"
+          }
+        }
+      },
+      "304": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card304"
+          }
+        }
+      },
+      "305": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card305"
+          }
+        }
+      },
+      "306": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card306"
+          }
+        }
+      },
+      "307": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card307"
+          }
+        }
+      },
+      "308": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card308"
+          }
+        }
+      },
+      "309": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card309"
+          }
+        }
+      },
+      "310": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card310"
+          }
+        }
+      },
+      "311": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card311"
+          }
+        }
+      },
+      "312": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card312"
+          }
+        }
+      },
+      "313": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card313"
+          }
+        }
+      },
+      "401": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card401"
+          }
+        }
+      },
+      "402": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card402"
+          }
+        }
+      },
+      "403": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card403"
+          }
+        }
+      },
+      "404": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card404"
+          }
+        }
+      },
+      "405": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card405"
+          }
+        }
+      },
+      "406": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card406"
+          }
+        }
+      },
+      "407": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card407"
+          }
+        }
+      },
+      "408": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card408"
+          }
+        }
+      },
+      "409": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card409"
+          }
+        }
+      },
+      "410": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card410"
+          }
+        }
+      },
+      "411": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card411"
+          }
+        }
+      },
+      "412": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card412"
+          }
+        }
+      },
+      "413": {
+        "symbolOverrides": {
+          "swap_card": {
+            "archive": "deck_of_cards.zip",
+            "symbol": "card413"
+          }
+        }
+      }
     }
   },
   "skinSpecs": {

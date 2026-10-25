@@ -43,6 +43,8 @@ export class EntityRegistry {
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];
   private readonly lifecycleOrder: ReadonlyMap<PrefabDefinition, number>;
   private disposed = false;
+  /** Reused each frame: render ordering reads the list before the next frame refills it. */
+  private readonly renderEntries: EntityRenderEntry[] = [];
 
   /** Construction dependencies may differ from the required frame/update and disposal order. */
   constructor(lifecycleOrder: readonly PrefabDefinition[] = []) {
@@ -135,8 +137,16 @@ export class EntityRegistry {
     if (!this.disposed) for (const registration of this.registrations) registration.update?.(dt, cameraQuaternion);
   }
 
+  /** Every registration's entries, in one list that the next read refills. */
   get renderEntities(): readonly EntityRenderEntry[] {
-    return this.disposed ? [] : this.registrations.flatMap((registration) => registration.renderEntities?.() ?? []);
+    const entries = this.renderEntries;
+    entries.length = 0;
+    if (this.disposed) return entries;
+    for (const registration of this.registrations) {
+      const provided = registration.renderEntities?.();
+      if (provided) for (let i = 0; i < provided.length; i++) entries.push(provided[i]);
+    }
+    return entries;
   }
 
   get miniMapEntities(): readonly MiniMapEntity[] {

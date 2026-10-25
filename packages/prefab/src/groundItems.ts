@@ -31,12 +31,20 @@ export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly atlas: string;
   /** tiledefs.lua's terrain key, independent of the inventory and ground art. */
   readonly groundTile?: GroundTileName;
+  readonly tags?: readonly string[];
+  readonly scale?: number;
+  readonly ground?: boolean;
   readonly symbolOverrides: Readonly<Record<string, { archive: string; symbol: string }>>;
   readonly skinArchives: Readonly<Record<string, string>>;
 }
 
 // The importer validates four-component colour tuples; JSON infers plain arrays.
 export const GROUND_ITEM_DEFINITIONS = catalog.items as unknown as Readonly<Record<string, GroundItemAssetDefinition>>;
+/** Additional art shares the ground factory without registering inventory/gameplay support. */
+export type GroundArtDefinition = Omit<GroundItemAssetDefinition, 'icon' | 'atlas'> & { readonly icon?: string; readonly atlas?: string };
+export const GROUND_ART_DEFINITIONS = { ...GROUND_ITEM_DEFINITIONS, ...catalog.staticItems } as unknown as Readonly<Record<string, GroundArtDefinition>>;
+export const GROUND_ART_SPAWN_IDS = Object.keys(catalog.staticItems);
+export const GROUND_ART_VARIANTS = catalog.staticVariants as Readonly<Record<string, Readonly<Record<string, Partial<ArchiveSpriteDefinition>>>>>;
 export const GROUND_ITEM_DISPLAY_SPECS = Object.fromEntries(Object.entries(GROUND_ITEM_DEFINITIONS)
   .map(([id, { name, icon, atlas }]) => [id, { name, icon, atlas }]));
 export const GROUND_ITEM_SKIN_SPECS: Readonly<Record<string, InventorySkinSpec>> = catalog.skinSpecs;
@@ -50,7 +58,7 @@ export const TURF_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = Obje
 export function createGroundItemFactory(context: GroundPrefabContext): GroundItemFactory {
   const displays = new Set<PrefabDisplay>();
   return {
-    itemIds: Object.keys(GROUND_ITEM_DEFINITIONS),
+    itemIds: Object.keys(GROUND_ART_DEFINITIONS),
     configureEntity: entity => {
       configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity);
       if (Object.hasOwn(FERTILIZER_CYCLES, entity.prefab)) configureFertilizerEntity(entity);
@@ -87,11 +95,14 @@ export class GroundItemAssets extends ArchiveSpriteAssets {
 /** A ground item's visual with the instance and display behind it, for prefabs that declare more on its sprite. */
 export interface ResidentGroundItem { readonly visual: GroundItemVisual; readonly instance: PrefabInstance<ArchiveSpriteCommands>; readonly display: PrefabDisplay }
 
-export async function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, item: Pick<GroundItemDefinition, 'itemId' | 'skinId'>,
+export async function createResidentGroundItem(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, item: Pick<GroundItemDefinition, 'itemId' | 'skinId' | 'variant'>,
   /** The prefab's declaration of what its sprite follows, made once the item's entity is bound. */
   declare?: (entity: ItemEntity, sprite: ArchiveSpriteCommands) => void): Promise<ResidentGroundItem> {
   const { itemId, skinId } = item;
-  const definition = GROUND_ITEM_DEFINITIONS[itemId];
+  const base = GROUND_ART_DEFINITIONS[itemId];
+  const variant = item.variant === undefined ? undefined : GROUND_ART_VARIANTS[itemId]?.[item.variant];
+  if (item.variant !== undefined && !variant) throw new Error(`Unknown ground variant: ${itemId}/${item.variant}`);
+  const definition = base && { ...base, ...variant };
   if (!definition) throw new Error(`Unknown ground item: ${itemId}`);
   const skinArchive = skinId === undefined ? undefined : definition.skinArchives[skinId];
   if (skinId !== undefined && !skinArchive) throw new Error(`Unknown ground skin ${skinId} for ${itemId}`);
@@ -99,7 +110,15 @@ export async function createResidentGroundItem(context: Pick<GroundPrefabContext
     { ...definition, animation: clip.name, loop: clip.loop }, { skinArchive, name: `GroundItem:${itemId}`, instancedAnimations: 'all' });
   const clip = { name: definition.animation, loop: definition.loop };
   const { instance, display } = createArchiveEntity(itemId, { create, initial: await create(clip) },
-    { name: definition.animation, held: !definition.loop }, `GroundItem:${itemId}`);
+    { name: definition.animation, held: !definition.loop }, `GroundItem:${itemId}`,
+    entity => {
+      for (const tag of definition.tags ?? []) entity.addTag(tag);
+      for (const [symbol, override] of Object.entries(definition.symbolOverrides)) entity.sprite.setSymbolOverride(symbol, override.archive, override.symbol);
+      for (const symbol of definition.hiddenSymbols ?? []) entity.sprite.setSymbolHidden(symbol, true);
+      if (definition.ground) entity.sprite.setGround(3);
+    });
+  instance.scale.setScalar(definition.scale ?? 1);
+  if (definition.ground) instance.scale.set(-1, 1.4, 1);
   instance.skinId = skinId;
   return { visual: bindResidentGroundItem(context, instance, display, declare), instance, display };
 }

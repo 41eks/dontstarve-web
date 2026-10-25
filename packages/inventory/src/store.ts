@@ -57,6 +57,7 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
     : right !== null
       && left.itemId === right.itemId
       && left.skinId === right.skinId
+      && left.variant === right.variant
       && left.remainingUses === right.remainingUses
       && left.remainingFuel === right.remainingFuel
       && left.freshnessPercent === right.freshnessPercent
@@ -566,6 +567,8 @@ export class InventoryStore {
     return split;
   }
 
+  hasItemSpec(itemId: string): boolean { return this.itemSpecs.has(itemId); }
+
   getItemSpec(itemId: string): InventoryItemSpec {
     return this.requireItemSpec(itemId);
   }
@@ -791,6 +794,7 @@ export class InventoryStore {
       const source = sourceIndex < 0 ? undefined : moved.splice(sourceIndex, 1)[0].state;
       const entityId = current?.entityId ?? change.entityId ?? source?.entityId;
       const incoming = change.entityId ? this.entities.get(change.entityId)?.snapshot() : undefined;
+      const variant = current ? current.variant : change.variant ?? source?.variant ?? incoming?.variant;
       const freshnessPercent = spec.perishTime === undefined
         ? change.freshnessPercent ?? current?.freshnessPercent ?? source?.freshnessPercent ?? incoming?.freshnessPercent
         : this.dilutedFreshness(current, change.delta, change.freshnessPercent ?? source?.freshnessPercent ?? incoming?.freshnessPercent);
@@ -799,6 +803,7 @@ export class InventoryStore {
         itemId: change.itemId,
         ...(change.skinId === undefined ? {} : { skinId: change.skinId }),
         count: nextCount,
+        ...(variant === undefined ? {} : { variant }),
         ...((current?.temperature ?? source?.temperature ?? incoming?.temperature) === undefined ? {}
           : { temperature: current?.temperature ?? source?.temperature ?? incoming?.temperature }),
         ...((current?.highTemp ?? source?.highTemp ?? incoming?.highTemp) === undefined ? {}

@@ -22,6 +22,8 @@ function onbuilt({ animation, onComplete }: AnimatedBuildingBuiltContext): void 
 
 export const TREASURE_CHEST_DEFINITION: AnimatedBuildingDefinition = {
     ...definitions.animatedBuildings.treasurechest,
+    // treasurechest.lua MakeChest: MiniMapEntity:SetIcon(name..".png").
+    minimapIcon: 'treasurechest.png',
     hammerWorkLeft: 2, hammerMaterial: 'wood',
     burnable: { burnTime: 10, fxLevel: 2, propagator: 'medium' },
     hammerEffect: { archive: 'structure_collapse_fx.zip', animation: 'collapse_small', name: 'collapse' },
@@ -29,6 +31,8 @@ export const TREASURE_CHEST_DEFINITION: AnimatedBuildingDefinition = {
     prepare: () => PreloadSounds('dontstarve/wilson/chest_open', 'dontstarve/wilson/chest_close'),
     onopen: ({ model }) => { PlaySound('dontstarve/wilson/chest_open', model.position); },
     onclose: ({ model }) => { PlaySound('dontstarve/wilson/chest_close', model.position); },
+    // MakeChest: inst:AddTag("structure") comes with the burnable building; "chest" is added here.
+    oninit: ({ instance }) => { instance.addTag('chest'); },
     onbuilt,
 };
 

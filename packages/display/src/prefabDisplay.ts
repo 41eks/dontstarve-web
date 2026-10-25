@@ -133,7 +133,7 @@ export class PrefabDisplay {
   }
 
   /** Render entries of the effects that are shown now, for the owner's registry to sort with it. */
-  get fxRenderEntries(): FxRenderEntry[] { return this.fx.entries(); }
+  get fxRenderEntries(): readonly FxRenderEntry[] { return this.fx.entries(); }
 
   /** Take over another display's source and drawn sprite (a reskin); this model, entity and json stay. */
   adopt(other: PrefabDisplay): void {

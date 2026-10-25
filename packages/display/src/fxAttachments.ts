@@ -33,6 +33,8 @@ export interface FxRenderEntry {
 
 interface Attached { readonly fx: FxJson; stop(): void }
 
+const NO_ENTRIES: readonly FxRenderEntry[] = Object.freeze([]);
+
 /**
  * Shows each declared effect as a child of its owner's model, as DST adds `fx` with AddChild: it follows the owner's
  * position and camera facing, and it is in the scene only while the owner is. Declaring a different effect for a key,
@@ -78,7 +80,9 @@ export class FxAttachments {
   }
 
   /** Entries for the effects that are shown, ordered with the owner. */
-  entries(): FxRenderEntry[] {
+  entries(): readonly FxRenderEntry[] {
+    // Most owners show no effect; they share one empty list instead of allocating one per frame.
+    if (this.attached.size === 0) return NO_ENTRIES;
     const entries: FxRenderEntry[] = [];
     for (const { fx } of this.attached.values()) {
       const model = fxModel(fx);

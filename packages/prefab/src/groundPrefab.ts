@@ -18,6 +18,7 @@ export interface GroundItemDefinition {
   entityId?: string;
   itemId: string;
   skinId?: string;
+  variant?: string;
   name: string;
   icon: string;
   atlas?: string;

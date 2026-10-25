@@ -740,8 +740,8 @@ test('emits composed map, pause, and camera events', async ({ page }) => {
   });
 
   const controls = page.locator('dst-map-controls');
-  await controls.locator('.map-controls__map').click();
   await controls.locator('.map-controls__pause').click();
+  await controls.locator('.map-controls__map').click();
   await controls.locator('.map-controls__turn--left').click();
   await controls.locator('.map-controls__turn--right').click();
 
@@ -750,8 +750,8 @@ test('emits composed map, pause, and camera events', async ({ page }) => {
   await expect.poll(() => page.evaluate(() =>
     (window as typeof window & { eventLog: unknown[] }).eventLog,
   )).toEqual([
-    { type: 'game:map-toggle', detail: { isOpen: true } },
     { type: 'game:pause-toggle', detail: { isPaused: true } },
+    { type: 'game:map-toggle', detail: { isOpen: true } },
     { type: 'game:camera-turn', detail: { direction: 'left' } },
     { type: 'game:camera-turn', detail: { direction: 'right' } },
   ]);
