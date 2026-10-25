@@ -164,7 +164,7 @@ describe('torch prefab burning lifecycle', () => {
         return store.extract(hand, 1, entity) ?? false;
       })).toBe(true);
       let model = scene.children[0] as THREE.Group;
-      expect(model.userData.entityId).toBe(entity.id);
+      expect(model.userData.instance?.entityId).toBe(entity.id);
       expect(model.userData.torch).toBe(controller);
       expect(controller.isBurning).toBe(false);
       expect(entity.components.fueled.remaining).toBe(74.25);

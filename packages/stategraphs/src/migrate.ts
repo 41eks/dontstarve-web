@@ -5,6 +5,7 @@ import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } f
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 
 /** Reach beyond the portal's obstacle physics radius. */
 export const MIGRATE_REACH = 4;
@@ -13,6 +14,7 @@ export interface MigrateTarget extends BufferedActionObject {
   readonly model: THREE.Object3D;
   readonly component: WorldMigrator;
   getPosition(): THREE.Vector3;
+  getPhysicsRadius(): number;
 }
 
 /** The portal is attached and its `migrator` tag (ACTIVE destination) is present. */
@@ -25,10 +27,12 @@ function canMigrate(target: MigrateTarget): boolean {
 export function getMigrateActions(model: THREE.Object3D | undefined): MouseActionCandidate[] {
   const component = model?.userData.components?.worldmigrator as WorldMigrator | undefined;
   if (!model || !component) return [];
+  const instance = prefabInstance(model);
   const target: MigrateTarget = {
-    model, component, prefab: model.userData.prefab,
-    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? model.userData.tags?.includes(tag) ?? false,
-    getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
+    model, component, prefab: model.userData.actionEntity?.prefab ?? instance?.prefab,
+    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? modelHasTag(model, tag),
+    getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
+    getPhysicsRadius: () => instance?.getPhysicsRadius(0) ?? 0,
   };
   return target.hasTag('migrator') ? [{ action: { action: 'MIGRATE', target }, button: 'left', model, available: canMigrate(target) }] : [];
 }
@@ -88,7 +92,7 @@ export class MigrateActionController {
     const position = target.getPosition();
     if (!this.inReach(target)) {
       this.direction.subVectors(this.world.player.position, position).setY(0).normalize();
-      const destination = position.addScaledVector(this.direction, (MIGRATE_REACH + (target.model.userData.physicsRadius ?? 0)) * .8);
+      const destination = position.clone().addScaledVector(this.direction, (MIGRATE_REACH + target.getPhysicsRadius()) * .8);
       if (!this.locomotor.destination || this.locomotor.destination.distanceToSquared(destination) > .01) {
         if (!this.locomotor.goToPoint(destination)) this.cancel();
       }
@@ -107,7 +111,7 @@ export class MigrateActionController {
 
   private inReach(target: MigrateTarget): boolean {
     const position = target.getPosition(), player = this.world.player.position;
-    return (position.x - player.x) ** 2 + (position.z - player.z) ** 2 <= (MIGRATE_REACH + (target.model.userData.physicsRadius ?? 0)) ** 2;
+    return position.distanceToSquared(player) <= (MIGRATE_REACH + target.getPhysicsRadius()) ** 2;
   }
 
   private faceTarget(position: THREE.Vector3): void {

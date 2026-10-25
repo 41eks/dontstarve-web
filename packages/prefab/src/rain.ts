@@ -193,7 +193,6 @@ export class RainEffect {
       const factory = this.factory;
       const { instance, display } = createPrefabEntity('raindrop', { create: initialAnimation => factory.create({ initialAnimation, name: 'raindrop' }),
         release: sprite => factory.disposeSprite(sprite) }, { name: 'anim', held: true }, 'raindrop');
-      display.model.userData.prefab = 'raindrop';
       instance.persists = false;
       instance.addTag('FX');
       splash = { instance, display, model: display.model, animation: instance.sprite, active: false };

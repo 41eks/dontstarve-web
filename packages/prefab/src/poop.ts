@@ -36,7 +36,7 @@ export function createPoopGroundFactory(context: GroundPrefabContext): GroundIte
       const base = (prepared[0] as PromiseFulfilledResult<ResidentGroundItem>).value;
       const flies = createArchiveEntity('flies', { create: createFlies, initial: (prepared[1] as PromiseFulfilledResult<ArchiveSprite>).value },
         { name: 'swarm_pre' }, 'flies');
-      flies.instance.persists = false; flies.display.model.userData.prefab = 'flies';
+      flies.instance.persists = false;
       flies.instance.sprite.setVisible(false);
       // The decorative child must not enlarge the manure's pickup target, whenever its sprite is drawn again.
       const stopRaycast = createEffect(() => {

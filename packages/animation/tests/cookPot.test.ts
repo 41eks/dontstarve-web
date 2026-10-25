@@ -7,6 +7,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { findImage, loadBuild, smallHash } from '../src/animationAssets';
 import type { TransientSpriteAnimationController } from '../src/sprite';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -101,7 +102,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(emptyRecord.transform).toEqual(saved.transform);
   const empty = await restoredPlacement.spawnFromSave('cookpot', emptyRecord);
   expect(empty.userData.components.container.canbeopened).toBe(true);
-  expect(empty.userData.tags).not.toContain('donecooking');
+  expect(prefabInstance(empty)!.listTags()).not.toContain('donecooking');
   expect(empty.userData.animationController.currentAnimation).toBe('idle_empty');
   restoredPlacement.dispose();
   expect(disposed).toHaveBeenCalledTimes(1);

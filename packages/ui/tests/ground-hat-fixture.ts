@@ -2,6 +2,8 @@ import { fixturePickup } from './pickup-fixture';
 import * as THREE from 'three';
 import { HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { GroundItemManager } from '../../../src/groundItems';
+import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { prewarmScenePasses, renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 
 export async function checkGroundHats() {
@@ -27,7 +29,7 @@ export async function checkGroundHats() {
   manager.update(0.1, camera.quaternion);
   const model = manager.renderEntities[0].object;
   const foot = manager.exportRecords()[0].transform.position;
-  const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry>;
+  const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry>;
   mesh.updateWorldMatrix(true, false);
   const box = new THREE.Box3();
   const positions = mesh.geometry.getAttribute('position');
@@ -52,15 +54,15 @@ export async function checkGroundHats() {
   const failures: string[] = [];
   for (const id of HAT_IDS) {
     const model = await manager.spawnFromSave(id, definition(id), new THREE.Vector3(30, 0, 0));
-    const visual = model.children[0];
-    const mesh = visual.children[0] as THREE.Mesh<THREE.BufferGeometry>;
-    if (visual.children.length !== 1 || !mesh.isMesh || mesh.geometry.drawRange.count < 6) failures.push(id);
+    const meshes: THREE.Mesh<THREE.BufferGeometry>[] = [];
+    model.traverse(object => { if ((object as THREE.Mesh).isMesh) meshes.push(object as THREE.Mesh<THREE.BufferGeometry>); });
+    if (meshes.length !== 1 || meshes[0].geometry.drawRange.count < 6) failures.push(id);
   }
   for (const [id, hat] of Object.entries(HAT_DEFINITIONS)) {
     for (const skinId of Object.keys(hat.skinArchives)) {
       const model = await manager.spawnFromSave(skinId, definition(id, skinId), new THREE.Vector3(30, 0, 0));
-      const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry>;
-      if (mesh.geometry.drawRange.count < 6) failures.push(skinId);
+      const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry> | undefined;
+      if (!mesh || mesh.geometry.drawRange.count < 6) failures.push(skinId);
     }
   }
   const restoredPosition = new THREE.Vector3(3, 0.25, 4);
@@ -89,9 +91,26 @@ export async function checkGroundHats() {
   }));
   pickup.settle();
   const torchPickedUp = !manager.exportRecords().some(({ id }) => id === 'torch-ground');
+  // An item without ground art is still an entity, drawn as its inventory icon.
+  const iconSpec = INVENTORY_ITEM_SPECS.beeswax;
+  const icon = await manager.spawnFromSave('icon-ground', {
+    itemId: 'beeswax', name: iconSpec.name, icon: iconSpec.icon, atlas: iconSpec.atlas, count: 1,
+  }, new THREE.Vector3(6, 0, 0));
+  const iconPrefab = prefabInstance(icon)?.prefab;
+  const iconIsSprite = icon.getObjectByProperty('isSprite', true) !== undefined;
+  const iconFoot = manager.exportRecords().find(({ id }) => id === 'icon-ground')!.transform.position;
+  const iconCenter = new THREE.Box3().setFromObject(icon).getCenter(new THREE.Vector3()).project(camera);
+  renderSceneWithPasses(renderer, scene, camera);
+  renderer.domElement.dispatchEvent(new MouseEvent('pointerdown', {
+    clientX: iconBounds.left + (iconCenter.x + 1) * iconBounds.width / 2,
+    clientY: iconBounds.top + (1 - iconCenter.y) * iconBounds.height / 2, button: 0,
+  }));
+  pickup.settle();
+  const iconPickedUp = !manager.exportRecords().some(({ id }) => id === 'icon-ground');
   renderer.dispose();
   return {
     failedDrop, rollbackCount, foot, isAnimatedMesh: mesh.isMesh, pickedUp,
     rejectedPickupCount, afterPickupCount, failures, restoredFoot, torchIsMesh, torchFoot, torchPickedUp,
+    iconPrefab, iconIsSprite, iconFoot, iconPickedUp,
   };
 }

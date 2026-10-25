@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 
@@ -31,7 +32,7 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
   }, urls);
   await expect.poll(() => page.evaluate(() => {
     const game = (window as any).wormholeGame;
-    game.target = game.scene.children.find((model: any) => model.userData.prefab === 'wormhole');
+    game.target = game.scene.children.find((model: any) => model.userData.instance?.prefab === 'wormhole');
     return game.target?.userData.animationController.currentAnimation;
   })).toBe('open_loop');
 
@@ -51,8 +52,9 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
   expect(await animation()).toBe('open_loop');
   await move(10);
 
-  const point = await page.evaluate(async (url) => {
-    const { equipmentSlotAddress, inventorySlotAddress } = await import(url);
+  const point = await page.evaluate(async ({ inventoryUrl, spriteUrl }) => {
+    const { equipmentSlotAddress, inventorySlotAddress } = await import(inventoryUrl);
+    const { spriteScreenPoint } = await import(spriteUrl);
     const game = (window as any).wormholeGame;
     const store = game.main.inventory;
     const source = store.exportState().slots.find((entry: any) => entry.item?.itemId === 'reskin_tool');
@@ -61,28 +63,24 @@ test('wormhole opens nearby, closes away, accepts sweeper right-click and saves 
       { slot: equipmentSlotAddress('hand'), itemId: 'reskin_tool', delta: 1 },
     ])) throw new Error('Unable to equip sweeper');
     await game.player.userData.animationController.setCarryItem('reskin_tool');
-    game.entityId = game.target.userData.entityId;
+    game.entityId = game.target.userData.instance?.entityId;
     await new Promise(requestAnimationFrame);
-    const mesh = game.target.children[0].children[0];
-    mesh.geometry.computeBoundingBox();
-    const ndc = mesh.geometry.boundingBox.getCenter(game.target.position.clone()).applyMatrix4(mesh.matrixWorld).project(game.view.camera);
-    const bounds = game.view.renderer.domElement.getBoundingClientRect();
-    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
-  }, `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`);
+    return spriteScreenPoint(game.target, game.view.camera, game.view.renderer);
+  }, {
+    inventoryUrl: `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`,
+    spriteUrl: `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}`,
+  });
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).wormholeGame.target.userData.skinId)).toBe('wormhole_claw');
+  await expect.poll(() => page.evaluate(() => (window as any).wormholeGame.target.userData.instance?.skinId)).toBe('wormhole_claw');
   expect(await animation()).toBe('open_loop');
   expect(await page.evaluate(() => {
     const game = (window as any).wormholeGame;
-    return game.target.userData.entityId === game.entityId && game.target.children[0].children[0].renderOrder === -0.5;
+    return game.target.userData.instance?.entityId === game.entityId && game.target.children[0].children[0].renderOrder === -0.5;
   })).toBe(true);
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const stream = await (await download).createReadStream();
-  const chunks = [];
-  for await (const chunk of stream!) chunks.push(chunk);
-  const saved = JSON.parse(Buffer.concat(chunks).toString());
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   const { id, position } = await page.evaluate(() => {
     const game = (window as any).wormholeGame;
     return { id: game.entityId, position: game.target.position.toArray() };

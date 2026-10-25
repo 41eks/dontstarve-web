@@ -1,6 +1,7 @@
 // src/main.ts
 
 import './style.css';
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { tilePerfMark } from '../packages/componets/src/tilePerf';
 import { INVENTORY_ITEM_SPECS } from './inventoryItems';
 import { isPhonographRecord } from '@dontstarve-web/prefab/records';
@@ -69,6 +70,7 @@ import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import { Sanity } from '../packages/componets/src/sanity';
 import { OnMakePlayerGhost, OnRespawnFromGhost, setGhostLight, type PlayerGhostOwner, type RezSource } from '@dontstarve-web/prefab/player_common';
 import { SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
+import { modelHasTag } from '@dontstarve-web/prefab/prefabInstance';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
 const animRoot = `${import.meta.env.BASE_URL}dst/data/anim`;
@@ -136,7 +138,7 @@ const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: u
     player.addEventListener(name as never, handler);
     return () => player.removeEventListener(name as never, handler);
   },
-  hasTag: tag => tag === 'player' || (player.userData.tags?.includes(tag) ?? false),
+  hasTag: tag => tag === 'player' || modelHasTag(player, tag),
   GetPosition: () => player.position,
   HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
   GoToState: name => playerAnimation?.stategraph.goToState(name as WilsonStateName),
@@ -275,7 +277,7 @@ const sceneResources = await startScene(
   (buildingId, skinId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId, skinId),
   ({ buildId, isOpen, model }) => {
     if (!isStorageBuildingId(buildId)) return;
-    const entityId = String(model.userData.entityId);
+    const entityId = String(prefabInstance(model)?.entityId);
     disposalResources.setContainerOpen(buildId, model, isOpen);
     const id = buildingContainerId(buildId, entityId);
     inventory.setStorageAccessible(id, isOpen);
@@ -530,7 +532,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   if (!recipe) return;
 
   inventory.craft(recipe, skinId,
-    inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, player.position));
+    inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement, player.position));
   // Buffered builds place as soon as they are crafted. Walls are not buffered:
   // crafting only fills the inventory, and placing starts from the slot click.
   if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {

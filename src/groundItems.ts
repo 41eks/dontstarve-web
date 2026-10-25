@@ -5,11 +5,12 @@ import type { PickupTarget } from '@dontstarve-web/stategraphs';
 import type { PlayerActionPicker } from '@dontstarve-web/stategraphs';
 import { loadImageAtlas, type ImageAtlas } from '@dontstarve-web/animation/imageAtlas';
 import * as THREE from 'three';
-import { isSpriteEntityRendered, registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import { isSpriteEntityRendered } from '@dontstarve-web/animation/renderOrder';
 import { isHatId, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
 import { nextReskin } from '@dontstarve-web/prefab/reskin_tool';
 import { type ReskinFxMessage, type ReskinTarget } from '@dontstarve-web/stategraphs/reskin_tool';
 import { GROUND_ITEM_DEFINITIONS } from '@dontstarve-web/prefab/groundItems';
+import { createPrefabEntity, modelHasTag } from '@dontstarve-web/prefab/prefabInstance';
 import { newEntityId } from '@dontstarve-web/prefab/saveRecord';
 import type { BernieWorld } from '@dontstarve-web/prefab/bernie';
 import type { ButterflyWorld } from '@dontstarve-web/prefab/butterfly';
@@ -382,7 +383,7 @@ export class GroundItemManager {
         prefab: entity.prefab, model: record.model, components: entity.components,
         get position() { return record.footPosition; }, get isRemoved() { return !isValid(); }, isValid,
         isVisible: () => record.model.visible,
-        hasTag: (tag: string) => entity.hasTag(tag) || (record.model.userData.tags?.includes(tag) ?? false), flush: () => entity.flush(),
+        hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(record.model, tag), flush: () => entity.flush(),
         PushEvent: (name: string, data: unknown) => entity.PushEvent(name, data),
         removeOne: () => {
           if (!isValid()) return false;
@@ -417,13 +418,14 @@ export class GroundItemManager {
     this.inventory.configureItem(entity);
     this.prefabs.get(entity.prefab)?.configureEntity?.(entity);
     definition = { ...definition, ...entity.snapshot(), entity };
-    Object.assign(visual.model.userData, { itemId: entity.prefab, skinId: entity.skinId, count: entity.components.stackable.count });
+    Object.assign(visual.model.userData, { itemId: entity.prefab, count: entity.components.stackable.count });
+    visual.instance.skinId = entity.skinId;
     id = entity.id;
     entity.transform.position.set(position.x, dropped ? 0 : position.y, position.z);
     this.trackGroundEntity(entity);
     visual.bindTransform?.(entity.transform);
     visual.model.position.copy(entity.transform.position);
-    visual.model.userData.entityId = id;
+    visual.instance.entityId = id;
     visual.setDefinition?.(definition);
     visual.bindEntity?.(entity);
     const record = this.withFootPosition({ id, entity, definition, stops: [], ...visual });
@@ -498,7 +500,7 @@ export class GroundItemManager {
     actionEntity(model, entity.prefab, entity);
     model.userData.pickupTarget = {
       model, entity, get position() { return record.footPosition; },
-      hasTag: (tag: string) => entity.hasTag(tag) || (model.userData.tags?.includes(tag) ?? false),
+      hasTag: (tag: string) => entity.hasTag(tag) || modelHasTag(model, tag),
       isValid: () => !this.disposed && this.activeItems.has(record) && !entity.isRemoved
         && !entity.components.inventoryitem.owner && record.isClickable?.() !== false && !record.isRemoved?.()
         && !this.inserting.has(record),
@@ -692,7 +694,7 @@ export class GroundItemManager {
       .map(record => ({ id: record.entity.id, model: record.model,
         inst: { prefab: record.entity.prefab, components: record.entity.components,
           get isRemoved() { return record.entity.isRemoved; },
-          getPosition: () => record.entity.getPosition(), getPhysicsRadius: () => record.model.userData.physicsRadius ?? 0,
+          getPosition: () => record.entity.getPosition(), getPhysicsRadius: () => record.instance.getPhysicsRadius(0),
           hasTag: (tag: string) => record.entity.hasTag(tag), PushEvent: (name: string, data: unknown) => record.entity.PushEvent(name, data) },
         isValid: () => this.activeItems.has(record) && !record.entity.isRemoved && !record.entity.hasTag('INLIMBO') }));
   }
@@ -726,7 +728,7 @@ export class GroundItemManager {
             const isValid = () => this.activeItems.has(record) && !record.entity.isRemoved && !record.isRemoved?.();
             return [{
                 id: record.id, prefabId, model: record.model, get position() { return record.footPosition; }, isValid,
-                get isRemoved() { return record.entity.isRemoved; }, hasTag: tag => record.entity.hasTag(tag) || (record.model.userData.tags?.includes(tag) ?? false),
+                get isRemoved() { return record.entity.isRemoved; }, hasTag: tag => record.entity.hasTag(tag) || modelHasTag(record.model, tag),
                 isVisible: () => record.model.visible,
                 skins, get skinId() { return record.entity.skinId; },
                 prepareNextSkin: async (tool) => {
@@ -760,7 +762,7 @@ export class GroundItemManager {
                             visual.model.position.copy(record.footPosition);
                             visual.model.quaternion.copy(record.model.quaternion);
                             if (record.fling) visual.model.children[0].position.y = record.fling.height;
-                            visual.model.userData.entityId = record.id;
+                            visual.instance.entityId = record.entity.id;
                             this.removeVisual(record);
                             const replacement = this.withFootPosition({ ...record, ...visual, definition });
                             this.items.set(visual.model, replacement);
@@ -877,9 +879,8 @@ export class GroundItemManager {
   private async createVisual(definition: GroundItemDefinition): Promise<GroundItemVisual> {
     const factory = this.prefabs.get(definition.itemId);
     const visual = await (factory ? factory.create(definition) : this.createIconVisual(definition));
-    Object.assign(visual.model.userData, {
-      itemId: definition.itemId, skinId: definition.skinId, count: definition.count,
-    });
+    Object.assign(visual.model.userData, { itemId: definition.itemId, count: definition.count });
+    visual.instance.skinId = definition.skinId;
     return visual;
   }
 
@@ -904,31 +905,33 @@ export class GroundItemManager {
     texture.magFilter = THREE.NearestFilter;
     texture.needsUpdate = true;
 
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    const material = new THREE.SpriteMaterial({
       map: texture,
       transparent: true,
       alphaTest: 0.01,
       toneMapped: false,
-    }));
-    sprite.name = `GroundItem:${definition.itemId}`;
-    sprite.scale.set(ITEM_HEIGHT * image.width / image.height, ITEM_HEIGHT, 1);
-    sprite.userData.itemId = definition.itemId;
-    sprite.userData.skinId = definition.skinId;
-    sprite.userData.count = definition.count;
-    sprite.position.y = ITEM_HEIGHT / 2;
-    const model = new THREE.Group();
-    model.name = sprite.name;
-    Object.assign(model.userData, sprite.userData);
-    const visual = new THREE.Group();
-    visual.add(sprite);
-    model.add(visual);
-    registerSpriteRenderGroup(model, visual);
+    });
+    const name = `GroundItem:${definition.itemId}`;
+    // The entity is drawn by its display like any other item; the source only builds the icon billboard.
+    const { instance, display } = createPrefabEntity(definition.itemId, {
+      create: () => {
+        const sprite = new THREE.Sprite(material);
+        sprite.name = name;
+        sprite.scale.set(ITEM_HEIGHT * image.width / image.height, ITEM_HEIGHT, 1);
+        sprite.position.y = ITEM_HEIGHT / 2;
+        const visual = new THREE.Group();
+        visual.add(sprite);
+        return new THREE.Group().add(visual);
+      },
+      release: drawn => drawn.removeFromParent(),
+    }, { name: '' }, name);
     return {
-      model,
+      model: display.model, instance,
       dispose() {
-        model.removeFromParent();
-        sprite.material.map?.dispose();
-        sprite.material.dispose();
+        instance.remove();
+        display.dispose();
+        texture.dispose();
+        material.dispose();
       },
     };
   }

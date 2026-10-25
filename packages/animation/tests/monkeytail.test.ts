@@ -21,6 +21,7 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -80,8 +81,8 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
     expect((await executeDebugCommand('c_spawn("monkeytail")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const model = s.monkeytails.digTargets[0].model, pickable = model.userData.components.pickable;
     expect(model.userData.animationController.currentAnimation).toBe('idle');
-    expect(model.userData.tags).toContain('silviculture');
-    expect(model.userData.tags).not.toContain('renewable');
+    expect(prefabInstance(model)!.listTags()).toContain('silviculture');
+    expect(prefabInstance(model)!.listTags()).not.toContain('renewable');
     expect(model.userData.deploySmartRadius).toBe(1.5);
     const cycles = pickable.cyclesLeft;
     expect(cycles).toBeGreaterThanOrEqual(5); expect(cycles).toBeLessThanOrEqual(7);

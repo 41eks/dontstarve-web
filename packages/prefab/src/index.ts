@@ -186,11 +186,12 @@ export {
   GroundItemAssets, createResidentGroundItem,
   type GroundItemAssetDefinition,
 } from './groundItems';
+export { bindResidentGroundItem } from './groundItemLifecycle';
 
 export {
   HAT_DEFINITIONS, HAT_IDS, HAT_ITEM_SPECS, HAT_SKIN_SPECS, HAT_RECIPES, HAT_CRAFTING_DEFINITIONS,
-  isHatId, HatEquipmentAssets, resolveHatSprites, createHatGroundSprite,
-  type HatDefinition, type HatEquipMode, type HatEquipment, type HatGroundSprite,
+  isHatId, HatEquipmentAssets, resolveHatSprites, createHatGroundFactory,
+  type HatDefinition, type HatEquipMode, type HatEquipment,
 } from './hats';
 
 export {
@@ -205,3 +206,4 @@ export { BANANAJUICE_ID, MUSHROOM_ITEM_IDS, FOOD_EFFECTS, PERISHABLE_FOODS, getF
 
 export { LightFlierFlowerManager, LightFlierFlower, LIGHTFLIER_FLOWER_ID } from './lightflier_flower';
 export { LightFlier, LightFlierHabitat, LIGHTFLIER_ID, configureLightFlierEntity } from './lightflier';
+export { mouseTargets, setMouseTargetEnabled } from './mouseTargets';

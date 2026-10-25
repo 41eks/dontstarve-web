@@ -7,6 +7,7 @@ import { MushtreeManager, type MushtreeWorld } from '../../prefab/src/mushtree';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -26,7 +27,7 @@ it('loads a burnt tree as ash and releases its independent burnt FX on game time
     expect(ash).toEqual([new THREE.Vector3(5, 0, 7)]);
     await vi.waitFor(() => expect(scene.children.some(child => child.userData.instance?.prefab === 'mushtree_moon_burntfx')).toBe(true));
     const fx = scene.children.find(child => child.userData.instance?.prefab === 'mushtree_moon_burntfx')!;
-    expect(fx.userData.tags).toEqual(['FX']);
+    expect(prefabInstance(fx)!.listTags()).toEqual(['FX']);
     expect(fx.userData.instance.persists).toBe(false);
     scheduler.advance(10);
     expect(fx.userData.instance.status.peek()).toBe('removed');
@@ -138,7 +139,7 @@ it('releases the mushtree sprite outside the tickingarea and settles a transitio
     awake.set(false);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(meshes()).toBe(0);
-    expect(model.userData.entityId).toBeDefined();
+    expect(model.userData.instance?.entityId).toBeDefined();
     awake.set(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(meshes()).toBeGreaterThan(0);

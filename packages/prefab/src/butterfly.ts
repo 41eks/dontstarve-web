@@ -526,12 +526,12 @@ export class ButterflyAssets {
       for (const tag of tags) instance.addTag(tag);
     };
     return {
-      model, get controller() { return creature; },
+      model, instance, get controller() { return creature; },
       bindTransform(transform: ItemEntity['transform']) {
         creature = new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], transform, instance.sprite, world, getOthers, undefined, dropLoot);
         creature.tagsChanged = syncTags;
         syncTags();
-        Object.assign(model.userData, { itemId: prefab, prefab, butterflyController: creature });
+        Object.assign(model.userData, { itemId: prefab, butterflyController: creature });
       },
       update: (dt: number) => creature?.update(dt),
       isRemoved: () => creature?.removed ?? false,

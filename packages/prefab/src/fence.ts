@@ -1,3 +1,4 @@
+import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
@@ -187,7 +188,7 @@ export class FencePlacement {
     /** c_spawn("fence"): SpawnPrefab leaves rotation 0 (the narrow bank) in front of the player. */
     async spawn(buildId: FenceId, skinId?: string): Promise<void> {
         const fence = await this.createInstance(buildId, 0, skinId, true);
-        fence.root.userData.entityId = newEntityId();
+        fence.instance.entityId = newEntityId();
         fence.root.position.copy(this.playerFrontGroundPosition());
         this.place(fence);
     }
@@ -195,8 +196,8 @@ export class FencePlacement {
     async spawnFromSave(buildId: FenceId, record: PlacementSaveRecord): Promise<THREE.Group> {
         const saved = record.components.fence;
         const fence = await this.createInstance(buildId, (saved?.rot ?? 0) * 45, saved?.skinId, false);
-        fence.root.userData.entityId = record.id;
-        fence.root.userData.saveRecord = record;
+        fence.instance.entityId = record.id;
+        fence.instance.saveRecord = record;
         const [x, y, z] = record.transform.position;
         fence.root.position.set(x, y, z);
         this.scene.add(fence.root);
@@ -220,7 +221,7 @@ export class FencePlacement {
             const entity = actionEntity(fence.root, FENCE_ID);
             if (!entity.hasTag('HAMMER_workable')) continue;
             targets.push({
-                id: String(fence.root.userData.entityId), model: fence.root, entity,
+                id: String(fence.instance.entityId), model: fence.root, entity,
                 position: fence.root.position.clone(),
                 isValid: () => this.isLive(fence),
                 playHit: () => { performToolWork('HAMMER', entity, {}); },
@@ -232,7 +233,7 @@ export class FencePlacement {
     /** fence.lua combat.onhitfn turns an attack into one unit of HAMMER work. */
     get combatTargets(): readonly WallCombatTarget[] {
         return Array.from(this.placed, fence => ({
-            id: String(fence.root.userData.entityId), model: fence.root, inst: fence.combatInst!,
+            id: String(fence.instance.entityId), model: fence.root, inst: fence.combatInst!,
             isValid: () => this.isLive(fence) && !fence.health!.IsDead(),
         }));
     }
@@ -244,7 +245,7 @@ export class FencePlacement {
         return Array.from(this.mouseRecords.select(model, this.placed), (fence) => {
             const isValid = () => this.isLive(fence);
             return {
-                id: String(fence.root.userData.entityId), prefabId: FENCE_ID, model: fence.root,
+                id: String(fence.instance.entityId), prefabId: FENCE_ID, model: fence.root,
                 skins, get skinId() { return fence.skinId.peek(); },
                 get isRemoved() { return !isValid(); }, hasTag: (tag: string) => actionEntity(fence.root, FENCE_ID).hasTag(tag),
                 get position() { return fence.root.position.clone(); }, isValid,
@@ -281,12 +282,12 @@ export class FencePlacement {
 
     exportRecords(): PlacedEntitySaveRecord[] {
         // DefaultBurnFn: a burning fence has persists = false and is not saved.
-        return Array.from(this.placed).filter(fence => fence.root.userData.persists !== false).map((fence) => {
+        return Array.from(this.placed).filter(fence => fence.instance.persists !== false).map((fence) => {
             const skinId = fence.skinId.peek(), rot = calcRotationEnum(fence.rotation);
             return {
                 prefabId: FENCE_ID,
                 record: {
-                    id: fence.root.userData.entityId as string,
+                    id: fence.instance.entityId as string,
                     transform: { position: saveGroundPosition(fence.root.position, 0), rotationY: 0 },
                     components: { fence: { ...(rot > 0 ? { rot } : {}), ...(skinId === undefined ? {} : { skinId }) } },
                 },
@@ -353,7 +354,7 @@ export class FencePlacement {
         this.cursor.hide();
         fence.opacity.set(1);
         if (fence.spare) { this.disposeArt(fence.spare); fence.spare = undefined; }
-        fence.root.userData.entityId = newEntityId();
+        fence.instance.entityId = newEntityId();
         this.place(fence);
         PlaySound('dontstarve/common/place_structure_wood', fence.root.position);
     };
@@ -522,6 +523,7 @@ export class FencePlacement {
         };
         (root as unknown as THREE.EventDispatcher<{ death: object }>).addEventListener('death', () => this.hammered(fence));
         this.initializeBurnable(fence);
+        new ToolMouseTarget(entity, fence.instance, workable, this.world.handEquipment, { spellTarget: true });
     }
 
     private playHit(fence: FenceInstance): void {
@@ -597,12 +599,12 @@ export class FencePlacement {
             return targets;
         }, UNIT, undefined, getBoundWatchWorldContent());
         fence.root.userData.burningSignal = burnable.burning;
-        burnable.SetOnIgniteFn(() => { fence.root.userData.persists = false; });
+        burnable.SetOnIgniteFn(() => { fence.instance.persists = false; });
         fence.stopBurning = burnable.burning.subscribe(burning => {
             if (burning && fence.awake) this.showFire(fence); else this.hideFire(fence);
         });
         burnable.SetOnExtinguishFn(() => {
-            fence.root.userData.persists = true;
+            fence.instance.persists = true;
             PlaySound('dontstarve/common/fireOut', fence.root.position);
         });
         burnable.SetOnBurntFn(() => {

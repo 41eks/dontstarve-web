@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
@@ -48,7 +49,7 @@ export interface SkeletonRecord {
   components: { skeleton?: SkeletonSaveState };
 }
 
-export interface SkeletonWorld {
+export interface SkeletonWorld extends ToolMouseTargetWorld {
   tickingarea?: TileStateQuery;
   physics?: CANNON.World;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
@@ -150,7 +151,8 @@ export class SkeletonManager {
     const model = display.model;
     const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab, animationController: sprite });
+    instance.entityId = saved?.id ?? newEntityId();
+    Object.assign(model.userData, { animationController: sprite });
     for (const tag of skeletonTags(prefab)) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
     // workable: HAMMER, SKELETON_WORK; OnHammered drops the table, plays collapse_small with the rock material and removes it.
@@ -175,6 +177,7 @@ export class SkeletonManager {
       this.remove(model);
     });
     Object.assign(model.userData.components, { workable, lootdropper });
+    new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     MakeSmallObstaclePhysics(instance, PHYSICS_RADIUS);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     this.skeletons.set(model, skeleton);
@@ -225,7 +228,7 @@ export class SkeletonManager {
 
   getHammerTargets(model?: THREE.Object3D): HammerTarget[] {
     return modelEntries(this.skeletons, model).filter(([, skeleton]) => skeleton.workable.CanBeWorked()).map(([model, skeleton]) => ({
-      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, skeleton.prefab),
+      id: String(skeleton.instance.entityId), model, position: model.position, entity: actionEntity(model, skeleton.prefab),
       isValid: () => this.skeletons.get(model) === skeleton && skeleton.workable.CanBeWorked(),
       playHit: () => { performToolWork('HAMMER', actionEntity(model, skeleton.prefab), {}); },
     }));
@@ -233,10 +236,10 @@ export class SkeletonManager {
 
   /** workable.savestate is false: a surviving skeleton reloads with its full work count. */
   exportRecords(): { prefabId: SkeletonId; record: SkeletonRecord }[] {
-    return [...this.skeletons].map(([model, { prefab, anim, description }]) => ({
+    return [...this.skeletons].map(([model, { prefab, anim, description, instance }]) => ({
       prefabId: prefab,
       record: {
-        id: String(model.userData.entityId),
+        id: String(instance.entityId),
         transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
         components: { skeleton: { anim, ...description } },
       },

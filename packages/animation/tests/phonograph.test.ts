@@ -88,7 +88,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     manager.update(2, new THREE.Quaternion());
     expect(skin.apply()).toBe(true); skin.dispose();
     model = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!.model as THREE.Group;
-    expect(model.userData.entityId).toBe('phonograph:test'); expect(model.position).toEqual(position);
+    expect(model.userData.instance?.entityId).toBe('phonograph:test'); expect(model.position).toEqual(position);
     expect(model.userData.phonograph.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });
     expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/music/gramaphone_creepyforest', model.position, 10);
     const data = structuredClone(initialWorld) as any;
@@ -120,7 +120,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(await manager.drop({ ...spec, ...item }, position, () => inventory.applySlotChanges([
       { slot: to, itemId: item.itemId, skinId: item.skinId, delta: -1 },
     ]))).toBe(true);
-    const dropped = manager.reskinTargets.find(({ model }) => model.userData.entityId !== 'restored')!.model as THREE.Group;
+    const dropped = manager.reskinTargets.find(({ model }) => model.userData.instance?.entityId !== 'restored')!.model as THREE.Group;
     expect(dropped.userData.phonograph.record).toBe('record_creepyforest');
     expect(dropped.userData.phonograph.isPlaying).toBe(false);
     const droppedRecord = manager.exportRecords().find(({ id }) => id !== 'restored')!;

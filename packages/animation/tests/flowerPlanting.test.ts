@@ -24,6 +24,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -88,8 +89,8 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     const record = s.flowers.exportRecords()[0];
     expect(record.transform.position).toEqual(point.toArray());
     expect(record.components.flower).toEqual({ animation: 'f6', planted: true });
-    const flower = s.world.scene.children.find(model => model.userData.prefab === 'flower')!;
-    expect(flower.userData.tags).toContain('flower');
+    const flower = s.world.scene.children.find(model => model.userData.instance?.prefab === 'flower')!;
+    expect(prefabInstance(flower)!.listTags()).toContain('flower');
     expect(s.flowers.renderEntities.find(entity => entity.object === flower)?.footPosition).toBe(flower.position);
     expect(deployment.canDeploy(new THREE.Vector3(4.2, 0, 0), source()!.entity)).toBe(false);
     expect(deployment.canDeploy(new THREE.Vector3(4.3, 0, 0), source()!.entity)).toBe(true);
@@ -249,8 +250,8 @@ it('spawns the source planted_flower command as a persistent flower, including i
     s.world.player.position.set(9, 0, 6);
     expect((await executeDebugCommand('c_spawn("planted_flower")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const model = s.world.scene.children[0];
-    expect(model.userData.prefab).toBe('flower');
-    expect(model.userData.tags).toContain('thorny');
+    expect(model.userData.instance?.prefab).toBe('flower');
+    expect(prefabInstance(model)!.listTags()).toContain('thorny');
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.flower[0];
@@ -273,6 +274,6 @@ it('restores natural flowers without changing their planted flag and preserves b
       record.components.flower!.animation, new THREE.Vector3(...record.transform.position), record.components.flower!.planted === true);
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
     expect(restored.world.scene.children[0].userData.planted).toBe(false);
-    expect(restored.world.scene.children[0].userData.tags).toContain('thorny');
+    expect(prefabInstance(restored.world.scene.children[0])!.listTags()).toContain('thorny');
   } finally { s.dispose(); restored.dispose(); }
 });

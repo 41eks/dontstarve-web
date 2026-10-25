@@ -39,7 +39,7 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
   const spritePoint = async (prefab: string, groundItem = false) => page.evaluate(async ({ prefab, groundItem }) => {
     await new Promise(requestAnimationFrame);
     const { scene, player, view } = (window as any).shovelGame;
-    const model = scene.children.filter((model: any) => groundItem ? model.name === `GroundItem:${prefab}` : model.userData.prefab === prefab)
+    const model = scene.children.filter((model: any) => groundItem ? model.name === `GroundItem:${prefab}` : model.userData.instance?.prefab === prefab)
       .sort((a: any, b: any) => a.position.distanceToSquared(player.position) - b.position.distanceToSquared(player.position))[0];
     if (!model) throw new Error(`Missing ${prefab}`);
     const mesh = model.children[0].children[0]; mesh.updateWorldMatrix(true, false);
@@ -47,7 +47,7 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
     const point = model.position.clone().set(0, 0, 0), vertex = point.clone();
     for (let i = 0; i < 3; i++) { vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex); }
     const ndc = point.multiplyScalar(1 / 3).project(view.camera), bounds = view.renderer.domElement.getBoundingClientRect();
-    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2, id: model.userData.entityId };
+    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2, id: model.userData.instance?.entityId };
   }, { prefab, groundItem });
   const bar = page.locator('dst-inventory-bar');
   const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
@@ -57,7 +57,7 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
     await expect(slot.locator('.inventory-slot__icon[data-loaded="true"]')).toBeVisible();
     await slot.dragTo(hand);
     await expect(hand).toHaveAttribute('data-item-id', id);
-    await expect.poll(() => page.evaluate((name) => (window as any).shovelGame.player.children[0].children[0].material
+    await expect.poll(() => page.evaluate((name) => (window as any).shovelGame.player.getObjectByProperty('isMesh', true).material
       .some((material: any) => material.name === name), material)).toBe(true);
   };
   await submit('c_give("farm_plow_item")');
@@ -73,7 +73,7 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
   await expect.poll(() => page.evaluate(() => {
     const { turfMap, center } = (window as any).shovelGame; return turfMap.getTileAtWorld(center);
   }), { timeout: 30_000 }).toBe(47);
-  await expect.poll(() => page.evaluate(() => (window as any).shovelGame.scene.children.some((model: any) => model.userData.prefab === 'farm_soil_debris'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).shovelGame.scene.children.some((model: any) => model.userData.instance?.prefab === 'farm_soil_debris'))).toBe(true);
   await submit('c_give("shovel")'); await submit('c_give("goldenshovel")'); await submit('c_give("reskin_tool")');
   await equip('shovel', 'ground:swap_shovel');
   let debris = await spritePoint('farm_soil_debris');
@@ -81,10 +81,10 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
   await expect.poll(() => page.evaluate(() => (window as any).shovelGame.player.userData.animationController.isShoveling)).toBe(true);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(1100);
-  expect(await page.evaluate((id) => (window as any).shovelGame.scene.children.some((model: any) => model.userData.entityId === id), debris.id)).toBe(true);
+  expect(await page.evaluate((id) => (window as any).shovelGame.scene.children.some((model: any) => model.userData.instance?.entityId === id), debris.id)).toBe(true);
   debris = await spritePoint('farm_soil_debris');
   await page.mouse.click(debris.x, debris.y, { button: 'right' });
-  await expect.poll(() => page.evaluate((id) => (window as any).shovelGame.scene.children.some((model: any) => model.userData.entityId === id), debris.id),
+  await expect.poll(() => page.evaluate((id) => (window as any).shovelGame.scene.children.some((model: any) => model.userData.instance?.entityId === id), debris.id),
     { timeout: 15_000 }).toBe(false);
   const removedIds = [debris.id];
   // Exercise the existing reskin workflow on one representative visible skin.
@@ -93,7 +93,7 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
   await equip('reskin_tool', 'ground:swap_reskin_tool');
   const dropped = await spritePoint('shovel', true);
   await page.mouse.click(dropped.x, dropped.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).shovelGame.scene.children.find((model: any) => model.name === 'GroundItem:shovel')?.userData.skinId)).toBe('shovel_feathered');
+  await expect.poll(() => page.evaluate(() => (window as any).shovelGame.scene.children.find((model: any) => model.name === 'GroundItem:shovel')?.userData.instance?.skinId)).toBe('shovel_feathered');
   const skinned = await spritePoint('shovel', true);
   expect(skinned.id).toBe(dropped.id);
   await page.mouse.click(skinned.x, skinned.y);
@@ -102,12 +102,12 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
   await equip('goldenshovel', 'ground:swap_goldenshovel');
   const nearbyDebris = await page.evaluate(() => {
     const { scene, player } = (window as any).shovelGame;
-    return scene.children.some((model: any) => model.userData.prefab === 'farm_soil_debris' && model.position.distanceToSquared(player.position) < 200);
+    return scene.children.some((model: any) => model.userData.instance?.prefab === 'farm_soil_debris' && model.position.distanceToSquared(player.position) < 200);
   });
   if (!nearbyDebris) await submit('c_spawn("farm_soil_debris")');
   debris = await spritePoint('farm_soil_debris');
   await page.mouse.click(debris.x, debris.y, { button: 'right' });
-  await expect.poll(() => page.evaluate((id) => (window as any).shovelGame.scene.children.some((model: any) => model.userData.entityId === id), debris.id),
+  await expect.poll(() => page.evaluate((id) => (window as any).shovelGame.scene.children.some((model: any) => model.userData.instance?.entityId === id), debris.id),
     { timeout: 15_000 }).toBe(false);
   removedIds.push(debris.id);
   await submit('c_spawn("shovel")'); await submit('c_spawn("goldenshovel")');
@@ -126,12 +126,12 @@ test('shovels equip, clear farm-plow debris, reskin and preserve command-created
     const { player } = await import(paths.player);
     const { equipmentSlotAddress } = await import(paths.inventory);
     return { tools: scene.children.filter((model: any) => ['shovel', 'goldenshovel'].includes(model.userData.itemId))
-      .map((model: any) => ({ id: model.userData.entityId, position: model.position.toArray(), count: model.userData.count })),
-      debris: scene.children.filter((model: any) => model.userData.prefab === 'farm_soil_debris')
-        .map((model: any) => ({ id: model.userData.entityId, position: model.position.toArray(), animation: model.userData.animationController.currentAnimation })),
+      .map((model: any) => ({ id: model.userData.instance?.entityId, position: model.position.toArray(), count: model.userData.count })),
+      debris: scene.children.filter((model: any) => model.userData.instance?.prefab === 'farm_soil_debris')
+        .map((model: any) => ({ id: model.userData.instance?.entityId, position: model.position.toArray(), animation: model.userData.animationController.currentAnimation })),
       hand: main.inventory.get(equipmentSlotAddress('hand')),
       regular: main.inventory.exportState().slots.find((slot: any) => slot.item?.itemId === 'shovel')?.item,
-      held: player.children[0].children[0].material.some((material: any) => material.name === 'ground:swap_goldenshovel') };
+      held: player.getObjectByProperty('isMesh', true).material.some((material: any) => material.name === 'ground:swap_goldenshovel') };
   }, modules);
   const toolRecords = save.world.entities.ground_item.filter((record: any) => ['shovel', 'goldenshovel'].includes(record.components.stack.itemId));
   expect(restored.tools).toEqual(toolRecords.map((record: any) => ({ id: record.id, position: record.transform.position, count: record.components.stack.count })));

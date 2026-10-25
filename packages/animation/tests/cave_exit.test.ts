@@ -18,7 +18,7 @@ it('renders the static cave_exit art as a solid obstacle and round-trips its rec
     expect(physics.bodies).toHaveLength(1);
     exits.update(0.1, new THREE.Quaternion());
     const [{ prefabId, record }] = exits.exportRecords();
-    expect([prefabId, record.id, record.transform.position]).toEqual(['cave_exit', model.userData.entityId, [5, 0, 7]]);
+    expect([prefabId, record.id, record.transform.position]).toEqual(['cave_exit', model.userData.instance?.entityId, [5, 0, 7]]);
 
     const restored = new CaveExitManager(new THREE.Scene(), {});
     try {

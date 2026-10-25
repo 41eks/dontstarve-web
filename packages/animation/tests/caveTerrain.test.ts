@@ -20,12 +20,12 @@ it('loads the entire imported map and retains cave identity, sparse void and pla
   const map = new TurfMap(template.world.map.generator.options.size, template.world.map.tiles, template.world.map.defaultTileId);
   try {
     expect(template.world.prefab).toBe('cave');
-    expect(template.world.map.tiles).toHaveLength(46522);
+    expect(template.world.map.tiles).toHaveLength(45977);
     expect(map.cellsOfTile(WORLD_TILES.VAULT)).toHaveLength(82);
-    expect(template.world.entities.grass.filter(record => record.components.witherable)).toHaveLength(37);
+    expect(template.world.entities.grass.filter(record => record.components.witherable)).toHaveLength(23);
     const wood = map.cellsOfTile(WORLD_TILES.WOODFLOOR);
-    // Sample the intact resurrectionstone layout; the full map also contains a partially destroyed one.
-    const woodNearOrigin = wood.filter(([col, row]) => col < 10 && row > -50);
+    // Sample one of the two resurrectionstone layouts.
+    const woodNearOrigin = wood.filter(([col]) => col >= 0);
     const cx = (Math.min(...woodNearOrigin.map(([col]) => col)) + Math.max(...woodNearOrigin.map(([col]) => col)) + 1) * TILE_SIZE / 2;
     const cz = (Math.min(...woodNearOrigin.map(([, row]) => row)) + Math.max(...woodNearOrigin.map(([, row]) => row)) + 1) * TILE_SIZE / 2;
     expect(template.world.entities.pighead.filter(record => new Vector3(...record.transform.position)
@@ -34,9 +34,9 @@ it('loads the entire imported map and retains cave identity, sparse void and pla
     ].sort());
     // Three source statues are outside the archive; their original locations must also be retained.
     expect(template.world.entities.archive_moon_statue.filter(record =>
-      map.getTileAtWorld(new Vector3(...record.transform.position)) === WORLD_TILES.ARCHIVE)).toHaveLength(31);
-    expect(template.world.entities.archive_moon_statue).toHaveLength(34);
-    expect(map.cellsOfTile(WORLD_TILES.SINKHOLE)).toHaveLength(10003);
+      map.getTileAtWorld(new Vector3(...record.transform.position)) === WORLD_TILES.ARCHIVE)).toHaveLength(24);
+    expect(template.world.entities.archive_moon_statue).toHaveLength(27);
+    expect(map.cellsOfTile(WORLD_TILES.SINKHOLE)).toHaveLength(8597);
     expect(map.getTileAtWorld({ x: -map.size / 2 + 6, z: -map.size / 2 + 6 })).toBe(WORLD_TILES.IMPASSABLE);
     expect(map.isPassableAtPoint(new Vector3(...template.players.local.transform.position))).toBe(true);
     const restored = deserializeSave(serializeSave(template, {
@@ -94,8 +94,8 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(save.world.prefab).toBe('forest');
     expect(save.players.local.shardId).toBe('master');
     expect(map.isPassableAtPoint(new Vector3(...save.players.local.transform.position))).toBe(true);
-    expect(map.cellsOfTile(WORLD_TILES.OCEAN_SWELL)).toHaveLength(40945);
-    expect(map.cellsOfTile(WORLD_TILES.OCEAN_ICE)).toHaveLength(37);
+    expect(map.cellsOfTile(WORLD_TILES.OCEAN_SWELL)).toHaveLength(34173);
+    expect(map.cellsOfTile(WORLD_TILES.OCEAN_ICE)).toHaveLength(21);
     const [col, row] = map.cellsOfTile(WORLD_TILES.OCEAN_ROUGH)[0];
     expect(map.isOceanAtWorld(new Vector3((col + .5) * TILE_SIZE, 0, (row + .5) * TILE_SIZE))).toBe(true);
     expect(map.isPassableAtPoint(new Vector3((col + .5) * TILE_SIZE, 0, (row + .5) * TILE_SIZE))).toBe(false);
@@ -109,11 +109,11 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
       placeStaticLayout('default_pigking', new Vector3(...king.transform.position), 'pigking').tiles
         .map(({ position, tile }) => ({ position, tileId: WORLD_TILES[tile] }))));
     expect(terrainChanged).not.toHaveBeenCalled(); // Imported final tiles already cover the entire layout.
-    expect(save.world.entities.deciduoustree).toHaveLength(695);
-    expect(save.world.entities.deciduoustree.filter(entity => entity.components.deciduousTimer)).toHaveLength(2);
-    expect(save.world.entities.flower).toHaveLength(441);
+    expect(save.world.entities.deciduoustree).toHaveLength(614);
+    expect(save.world.entities.deciduoustree.filter(entity => entity.components.deciduousTimer)).toHaveLength(4);
+    expect(save.world.entities.flower).toHaveLength(433);
     expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
-    expect(save.world.entities.ground_item.filter(entity => entity.components.stack?.itemId === 'fireflies')).toHaveLength(316);
+    expect(save.world.entities.ground_item.filter(entity => entity.components.stack?.itemId === 'fireflies')).toHaveLength(334);
     const restored = deserializeSave(serializeSave(save, {
       entities: save.world.entities, tiles: map.exportTiles(), playerTransform: save.players.local.transform,
       inventory: inventoryStateFromSave(save), elapsedSeconds: 10,

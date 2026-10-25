@@ -29,7 +29,7 @@ test('a running player slips on a frozen pond, slides along the heading, falls o
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const state = () => page.evaluate(() => {
     const { scene, player, playerBody } = (window as any).slipGame;
-    const pond = scene.children.find((model: any) => model.userData.prefab === 'pond');
+    const pond = scene.children.find((model: any) => model.userData.instance?.prefab === 'pond');
     return { sg: player.userData.stategraph.stateName as string, x: player.position.x as number, z: player.position.z as number,
       speed: Math.hypot(playerBody.velocity.x, playerBody.velocity.z) as number,
       frozen: pond?.userData.frozen as boolean | undefined, slippery: pond?.userData.actionEntity?.hasTag('slipperyfeettarget') as boolean | undefined };

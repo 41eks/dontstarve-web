@@ -208,7 +208,7 @@ export class NightmareRockManager {
       release: drawn => factory.disposeSprite(drawn) }, { name: 'idle_inactive', billboard: true }, id);
     const model = entity.display.model;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { prefab: id, entityId: saved?.id ?? newEntityId() });
+    entity.instance.entityId = saved?.id ?? newEntityId();
     // UPDATE_OFFSET staggers the periodic refresh of each spawned entity by one frame.
     const rock = new NightmareRock(this.world, id, entity, this.staggerOffset);
     this.staggerOffset += FRAMES;
@@ -229,8 +229,8 @@ export class NightmareRockManager {
 
   /** The rocks' state is derived from the nearby player on load, so only identity and position are saved. */
   exportRecords(): { prefabId: NightmareRockId; record: NightmareRockRecord }[] {
-    return [...this.rocks].map(([model, { id }]) => ({ prefabId: id, record: {
-      id: String(model.userData.entityId),
+    return [...this.rocks].map(([model, { id, rock }]) => ({ prefabId: id, record: {
+      id: String(rock.instance.entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: {},
     } }));

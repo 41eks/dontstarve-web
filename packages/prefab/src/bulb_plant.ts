@@ -324,9 +324,8 @@ export class BulbPlantManager {
     if (!loop) instance.sprite.setFrame(created.frameCount - 1);
     const model = display.model;
     instance.position.set(position.x, 0, position.z);
-    model.userData.entityId = saved?.id ?? newEntityId();
+    instance.entityId = saved?.id ?? newEntityId();
     model.userData.bulbPlantVariant = variant;
-    model.userData.prefab = prefabId;
     const controller = new BulbPlantController(model, instance.sprite, this.world, variant, state, this.random, instance);
     actionEntity(model, prefabId);
     this.plants.add({ prefabId, model, controller, variant, instance, display });
@@ -343,8 +342,8 @@ export class BulbPlantManager {
   }
 
   exportRecords(): { prefabId: BulbPlantPrefabId; record: BulbPlantRecord }[] {
-    return [...this.plants].map(({ prefabId, model, variant, controller }) => ({ prefabId, record: {
-      id: String(model.userData.entityId), transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
+    return [...this.plants].map(({ prefabId, model, variant, controller, instance }) => ({ prefabId, record: {
+      id: String(instance.entityId), transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: { bulbPlant: controller.exportState(variant) },
     } }));
   }

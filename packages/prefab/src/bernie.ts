@@ -90,7 +90,7 @@ export async function createBernieGroundSprite(assets: BernieAssets, world: Bern
     create: initialAnimation => factory.create({ initialAnimation, name: spriteName }), release: drawn => factory.disposeSprite(drawn),
   }, { name: `${form}:idle_loop` }, spriteName);
   const model = display.model, sprite = instance.sprite;
-  Object.assign(model.userData, { itemId: BERNIE_ITEM_ID, skinId });
+  model.userData.itemId = BERNIE_ITEM_ID; instance.skinId = skinId;
   let clip = clipOf(form, 'idle_loop');
   let inInventory = false;
   let elapsed = 0;
@@ -101,7 +101,7 @@ export async function createBernieGroundSprite(assets: BernieAssets, world: Bern
     const key = `${next}:${name}`;
     if (name === 'idle_loop') sprite.start(key); else sprite.playOnce(key);
     model.name = `GroundItem:${form}`;
-    Object.assign(model.userData, { prefab: form, animation: name });
+    model.userData.animation = name;
   };
   const update = (dt: number) => {
     if (inInventory) return;
@@ -147,10 +147,10 @@ export async function createBernieGroundSprite(assets: BernieAssets, world: Bern
     onload: onGround,
     onputininventory: () => { inInventory = true; play(BERNIE_ITEM_ID, 'inactive'); sprite.update(0); },
   });
-  Object.assign(model.userData, { prefab: form, animation: 'idle_loop' });
+  model.userData.animation = 'idle_loop';
   model.name = `GroundItem:${form}`;
   return {
-    model, update,
+    model, instance, update,
     dispose() {
       removeInventoryEvents();
       inInventory = true;

@@ -73,7 +73,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
     const point = model.position.clone().set(0, 0, 0), vertex = point.clone();
     for (let i = 0; i < 3; i++) { vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex); }
     const ndc = point.multiplyScalar(1 / 3).project(view.camera), bounds = view.renderer.domElement.getBoundingClientRect();
-    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2, id: model.userData.entityId };
+    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2, id: model.userData.instance?.entityId };
   });
   const bar = page.locator('dst-inventory-bar');
   const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
@@ -114,7 +114,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   await submit('c_give("reskin_tool")');
   await items.locator('[data-item-id="reskin_tool"]').dragTo(hand);
   await page.mouse.click(dropped.x, dropped.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).torchGame.scene.children.find((model: any) => model.name === 'GroundItem:torch')?.userData.skinId),
+  await expect.poll(() => page.evaluate(() => (window as any).torchGame.scene.children.find((model: any) => model.name === 'GroundItem:torch')?.userData.instance?.skinId),
     { timeout: 15_000 }).toBe('torch_barber');
   const skinned = await spritePoint();
   expect(skinned.id).toBe(dropped.id);
@@ -160,7 +160,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   await submit('c_spawn("torch")');
   await expect.poll(() => page.evaluate(() => (window as any).torchGame.scene.children.filter((model: any) => model.name === 'GroundItem:torch').length)).toBe(2);
   await page.evaluate(() => (window as any).torchGame.scene.children
-    .find((model: any) => model.name === 'GroundItem:torch' && !model.userData.skinId).userData.torch.ignite());
+    .find((model: any) => model.name === 'GroundItem:torch' && !model.userData.instance?.skinId).userData.torch.ignite());
   // Keep one partially spent torch in inventory and another on the ground.
   await page.evaluate(() => {
     const { main } = (window as any).torchGame;
@@ -183,7 +183,7 @@ test('torch fuel updates the UI, pauses when unequipped, survives reskin/save/re
   const restored = await page.evaluate(() => {
     const { scene } = (window as any).torchGame;
     return scene.children.filter((model: any) => model.name === 'GroundItem:torch')
-      .map((model: any) => ({ id: model.userData.entityId, position: model.position.toArray(), skinId: model.userData.skinId, count: model.userData.count }));
+      .map((model: any) => ({ id: model.userData.instance?.entityId, position: model.position.toArray(), skinId: model.userData.instance?.skinId, count: model.userData.count }));
   });
   expect(restored).toEqual(records.map((record: any) => ({ id: record.id, position: record.transform.position,
     skinId: record.components.stack.skinId, count: record.components.stack.count })));

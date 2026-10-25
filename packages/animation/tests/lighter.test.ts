@@ -23,6 +23,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { SavedEntity } from '../../../src/save/types';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -167,7 +168,7 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     const saved = deserializeSave(json, SAVE_CATALOG);
     // Complete this session before restoring a new session from the exported document.
     placement.update(7);
-    expect(model.userData.tags).toContain('burnt');
+    expect(prefabInstance(model)!.listTags()).toContain('burnt');
     expect(model.userData.animationController.currentAnimation).toBe('burnt');
     expect(model.userData.components.container).toBeUndefined();
     expect(scene.children.some(child => child.name === 'fire')).toBe(false);
@@ -177,8 +178,8 @@ it('keeps burning art through reskin, exports source burnt state, restores a che
     expect(dropped).toEqual([item]); expect(item.snapshot()).toEqual(before);
     expect(item.transform.position.toArray()).toEqual([3, 0, -6]);
     const restored = await restoredPlacement.spawnFromSave('treasurechest', saved.world.entities.treasurechest[0]);
-    expect(restored.userData.entityId).toBe('burning_chest');
-    expect(restored.userData.skinId).toBe(record.components.building!.skinId);
+    expect(restored.userData.instance?.entityId).toBe('burning_chest');
+    expect(restored.userData.instance?.skinId).toBe(record.components.building!.skinId);
     expect(restored.userData.animationController.currentAnimation).toBe('burnt');
     expect(restored.userData.burntSignal.peek()).toBe(true);
     expect(restored.userData.components.burnable).toBeUndefined();
@@ -200,7 +201,7 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
       components: { building: { state: 'closed', skinId: 'cookpot_cauldron' }, stewer: { product: 'meatballs', phase: 'cooking', remainingSeconds: 15 } } });
     model.userData.components.burnable.Ignite();
     placement.update(19.9);
-    expect(model.userData.tags).not.toContain('burnt'); expect(dropLoot).not.toHaveBeenCalled();
+    expect(prefabInstance(model)!.listTags()).not.toContain('burnt'); expect(dropLoot).not.toHaveBeenCalled();
     placement.update(.1);
     expect(model.userData.animationController.currentAnimation).toBe('burnt');
     expect(model.userData.components.stewer).toBeUndefined(); expect(model.userData.components.container).toBeUndefined();

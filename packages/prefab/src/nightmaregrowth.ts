@@ -70,9 +70,10 @@ export class NightmareGrowthManager {
     if (this.physics) growth.instance.bindPhysics(this.physics);
     crack.instance.position.copy(model.position);
     crackModel.rotation.set(-Math.PI / 2, 0, THREE.MathUtils.degToRad(crackRotation));
-    Object.assign(crackModel.userData, { prefab: 'nightmaregrowth_crack', billboard: false });
+    crackModel.userData.billboard = false;
+    growth.instance.entityId = saved?.id ?? newEntityId();
     Object.assign(model.userData, {
-      prefab: NIGHTMAREGROWTH_ID, entityId: saved?.id ?? newEntityId(), nightmareGrowthCrack: crackModel,
+      nightmareGrowthCrack: crackModel,
     });
     this.growths.add({ model, growth, crack, crackRotation });
     this.scene.add(crackModel, model);
@@ -84,8 +85,8 @@ export class NightmareGrowthManager {
   }
 
   exportRecords(): NightmareGrowthRecord[] {
-    return [...this.growths].map(({ model, crackRotation }) => ({
-      id: String(model.userData.entityId),
+    return [...this.growths].map(({ model, crackRotation, growth }) => ({
+      id: String(growth.instance.entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: { nightmareGrowth: { crackRotation } },
     }));

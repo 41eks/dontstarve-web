@@ -126,7 +126,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(burnable.timer.peek()).toBe(timer);
     burnable.Extinguish();
     const record = s.grass.exportRecords()[0];
-    expect(record.id).toBe(model.userData.entityId);
+    expect(record.id).toBe(model.userData.instance?.entityId);
     expect(record.components.pickable).toEqual({ picked: true, regrowSeconds: 1430 });
     expect(state.phase.peek()).toBe('picked');
     expect(state.persistence.peek()).toBe(true);

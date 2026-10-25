@@ -7,6 +7,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PigKingManager } from '../../prefab/src/pigking';
 import { configureTradableEntity } from '../../prefab/src/tradable';
 import { bindTestWorld } from './worldContentFixture';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 
@@ -91,7 +92,7 @@ describe('Pig King trading and sleeping', () => {
     setNight(true);
     await Promise.resolve();
     expect(king.sg.stateName).toBe('sleep');
-    expect(model.userData.tags).not.toContain('trader');
+    expect(prefabInstance(model)!.listTags()).not.toContain('trader');
     expect(king.trader.AbleToAccept(item('goldnugget')).ok).toBe(false);
     expect(give(king, item('goldnugget')).accepted).toBe(false);
     run(3);
@@ -99,12 +100,12 @@ describe('Pig King trading and sleeping', () => {
     setNight(false);
     await Promise.resolve();
     expect(king.sg.stateName).toBe('wake');
-    expect(model.userData.tags).toContain('trader');
+    expect(prefabInstance(model)!.listTags()).toContain('trader');
     run(5);
     expect(king.sg.stateName).toBe('idle');
     expect(give(king, item('goldnugget')).accepted).toBe(true);
     dispose();
-    expect(model.userData.tags).not.toContain('trader');
+    expect(prefabInstance(model)!.listTags()).not.toContain('trader');
   });
 
   it('finishes a toss before sleeping when night falls mid-trade', async () => {

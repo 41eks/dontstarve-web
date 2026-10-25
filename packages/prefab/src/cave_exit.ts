@@ -67,7 +67,7 @@ export class CaveExitManager {
     const { instance, display } = createArchiveEntity(CAVE_EXIT_ID, { create, initial: create(clip) }, { name: clip.name, billboard: true }, CAVE_EXIT_ID);
     const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: CAVE_EXIT_ID });
+    instance.entityId = saved?.id ?? newEntityId();
     const inst = actionEntity(model, CAVE_EXIT_ID);
     const exit: Exit = { instance, display, minimap: new MiniMapEntity(model.position), stopActivity: () => {}, stopMigration: () => {} };
     exit.minimap.SetIcon('cave_open2.png');
@@ -102,8 +102,8 @@ export class CaveExitManager {
   get miniMapEntities(): MiniMapEntity[] { return [...this.exits.values()].map(({ minimap }) => minimap); }
 
   exportRecords(): { prefabId: typeof CAVE_EXIT_ID; record: CaveExitRecord }[] {
-    return [...this.exits.keys()].map(model => ({ prefabId: CAVE_EXIT_ID, record: {
-      id: String(model.userData.entityId),
+    return [...this.exits].map(([model, { instance }]) => ({ prefabId: CAVE_EXIT_ID, record: {
+      id: String(instance.entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: {},
     } }));

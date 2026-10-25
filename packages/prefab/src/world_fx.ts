@@ -98,7 +98,7 @@ export class WorldFx {
     const assets = this.ready.get(prefab);
     if (!assets || this.disposed) throw new Error(`FX prefab ${prefab} has not been prepared`);
     const entity = createEmptyEntity(prefab), model = entity.display.model;
-    Object.assign(model.userData, { prefab, billboard: true });
+    model.userData.billboard = true;
     entity.instance.persists = false;
     entity.instance.addTag('FX');
     entity.instance.position.set(position.x, 0, position.z);

@@ -151,7 +151,7 @@ export class HotspringManager {
         release: sprite => factory.disposeSprite(sprite) }, { name: anim, billboard: true }, prefab);
       const object = display.model;
       object.position.copy(foot);
-      object.userData.prefab = prefab; instance.persists = false;
+      instance.persists = false;
       const fx: SteamFx = { object, footPosition: object.position, instance, display };
       instance.sprite.playOnce(anim, () => this.removeSteam(fx));
       this.steam.add(fx); this.scene.add(object);
@@ -177,8 +177,8 @@ export class HotspringManager {
     const model = entity.display.model;
     model.position.copy(position);
     // LAYER_BACKGROUND controls drawing order, not OnGround orientation; keep the source art origin.
-    Object.assign(model.userData, { prefab: HOTSPRING_ID, entityId: saved?.id ?? newEntityId(),
-      noWetPrefix: true, deploySmartRadius: 1.5 * WORLD_SCALE });
+    entity.instance.entityId = saved?.id ?? newEntityId();
+    Object.assign(model.userData, { noWetPrefix: true, deploySmartRadius: 1.5 * WORLD_SCALE });
     MakePondPhysics(entity.instance, HOTSPRING_RADIUS / WORLD_SCALE);
     const spring = new Hotspring(model, this.scheduler, this.random,
       prefab => this.spawnSteam(prefab, model.position), saved?.components.hotspring);
@@ -220,7 +220,7 @@ export class HotspringManager {
   }
   exportRecords(): { prefabId: typeof HOTSPRING_ID; record: HotspringRecord }[] {
     return [...this.springs].map(([model, spring]) => ({ prefabId: HOTSPRING_ID, record: {
-      id: model.userData.entityId as string,
+      id: this.entities.get(model)!.instance.entityId as string,
       transform: { position: model.position.toArray(), rotationY: 0 }, components: { hotspring: spring.exportSave() },
     } }));
   }

@@ -2,6 +2,7 @@ import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { ActionWorldContext } from '@dontstarve-web/stategraphs/actionContext';
 import type { EventEmitter, WorldContentContext } from '@dontstarve-web/signals';
+import type { ToolMouseTargetWorld } from './toolMouseTarget';
 
 /** Discrete requests emitted by prefabs; the running scene owns the handlers. */
 export interface WorldEvents {
@@ -15,7 +16,7 @@ export type WorldEventEmitter = EventEmitter<WorldEvents>;
  * running game. The application owns the scene graph, the camera, the renderer
  * and the ground, so prefabs receive them instead of creating their own.
  */
-export interface WorldContext extends ActionWorldContext, Partial<WorldContentContext> {
+export interface WorldContext extends ActionWorldContext, Partial<WorldContentContext>, ToolMouseTargetWorld {
     worldEvents?: WorldEventEmitter;
     /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
     cameraFacing: import('@dontstarve-web/signals').ReadonlySignal<number>;

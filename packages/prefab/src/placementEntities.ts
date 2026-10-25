@@ -1,6 +1,7 @@
 import type { Object3D, Vector3 } from 'three';
 import { isSpriteEntityVisible } from '@dontstarve-web/animation/renderOrder';
 import { SpatialIndex, type SpatialQuery } from './spatialIndex';
+import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export interface PlacementBlocker {
   readonly position: Vector3;
@@ -32,21 +33,22 @@ export function ignoresPlacement(blocker: PlacementBlocker, tags: Iterable<strin
 
 /** One engine entity entry, independent of rendering lists, selected action and mouse visibility. */
 export function registerPlacementEntity(model: Object3D, position: () => Vector3): () => void {
+  const instance = prefabInstance(model);
   const entry: WorldBlocker = {
     root: model,
     get position() { return position(); },
-    get prefab() { return model.userData.actionEntity?.prefab ?? model.userData.prefab; },
+    get prefab() { return model.userData.actionEntity?.prefab ?? instance?.prefab; },
     get smartRadius() { return model.userData.deploySmartRadius; },
     get groundTargetRadius() {
       return hasPlacementTag(entry, 'groundtargetblocker') || hasPlacementTag(entry, 'groundhole')
-        ? model.userData.ground_target_blocker_radius ?? model.userData._groundhole_outerradius ?? model.userData.physicsRadius ?? 0 : undefined;
+        ? model.userData.ground_target_blocker_radius ?? model.userData._groundhole_outerradius ?? instance?.getPhysicsRadius(0) ?? 0 : undefined;
     },
     get groundHoleInnerRadius() { return model.userData._groundhole_innerradius; },
     get groundHoleRangeOverride() { return model.userData._groundhole_rangeoverride; },
-    get inventoryRadius() { return model.userData.itemId ? model.userData.physicsRadius ?? .5 : undefined; },
-    getInventoryRadius: fallback => model.userData.itemId ? model.userData.physicsRadius ?? fallback : undefined,
+    get inventoryRadius() { return model.userData.itemId ? instance?.getPhysicsRadius(.5) ?? .5 : undefined; },
+    getInventoryRadius: fallback => model.userData.itemId ? instance?.getPhysicsRadius(fallback) ?? fallback : undefined,
     get visible() { return isSpriteEntityVisible(model); },
-    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? model.userData.tags?.includes(tag) ?? false,
+    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? modelHasTag(model, tag),
     valid: () => !!model.parent && !model.userData.placementLogical && !model.userData.actionEntity?.isRemoved
       && !model.userData.removed && !model.userData.placer
       && (hasPlacementTag(entry, 'dockjammer') || !ignoresPlacement(entry, ['NOBLOCK', 'FX', 'DECOR', 'player'])),
@@ -82,7 +84,7 @@ export function registerPlacementTree(root: Object3D, tree: { position: Vector3;
   const entry: WorldBlocker = {
     root, position: tree.position, prefab, smartRadius, logicalTree: true,
     get visible() { return !!tree.model?.parent && isSpriteEntityVisible(tree.model); },
-    hasTag: tag => tree.model?.userData.actionEntity?.hasTag(tag) ?? tree.model?.userData.tags?.includes(tag) ?? false,
+    hasTag: tag => tree.model?.userData.actionEntity?.hasTag(tag) ?? (tree.model ? modelHasTag(tree.model, tag) : false),
     valid: () => true,
   };
   index.add(entry);

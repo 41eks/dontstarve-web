@@ -31,13 +31,13 @@ test('chops a moon tree, reloads its stump, and digs it with a shovel, preservin
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const treeAnimation = () => page.evaluate(() => {
-    const tree = (window as any).chopGame.scene.children.find((model: any) => model.userData.prefab === 'moon_tree');
+    const tree = (window as any).chopGame.scene.children.find((model: any) => model.userData.instance?.prefab === 'moon_tree');
     return tree?.userData.animationController.currentAnimation ?? null;
   });
   const clickTree = async () => {
     const point = await page.evaluate(async () => {
       const { scene, camera, renderer } = (window as any).chopGame;
-      const tree = scene.children.find((model: any) => model.userData.prefab === 'moon_tree');
+      const tree = scene.children.find((model: any) => model.userData.instance?.prefab === 'moon_tree');
       let mesh: any; tree.traverse((object: any) => { if (!mesh && object.isMesh && object.geometry.index) mesh = object; });
       mesh.updateWorldMatrix(true, false);
       const { Raycaster, Vector2, Vector3 } = await import('/node_modules/.vite/deps/three.js');

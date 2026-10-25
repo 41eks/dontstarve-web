@@ -77,7 +77,7 @@ test('fence_item previews against the camera, places by click, rotates with the 
   }, urls);
   const restored = await page.evaluate(() => (window as any).fenceGame.scene.children
     .filter((model: any) => model.userData.actionEntity?.prefab === 'fence').map((model: any) => ({
-      id: model.userData.entityId, position: model.position.toArray(), rot: ((Math.floor(model.userData.fenceRotation / 45) % 8) + 8) % 8,
+      id: model.userData.instance?.entityId, position: model.position.toArray(), rot: ((Math.floor(model.userData.fenceRotation / 45) % 8) + 8) % 8,
     })));
   expect(restored).toEqual(saved.world.entities.fence.map((fence: any) => ({
     id: fence.id, position: fence.transform.position, rot: fence.components.fence.rot ?? 0,

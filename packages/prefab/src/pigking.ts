@@ -220,7 +220,7 @@ export class PigKingManager {
       { name: definitions.pigKing.animationName, billboard: true }, PIGKING_ID);
     const model = entity.display.model;
     model.position.copy(position);
-    Object.assign(model.userData, { prefab: PIGKING_ID, entityId: saved?.id ?? newEntityId() });
+    entity.instance.entityId = saved?.id ?? newEntityId();
     const king = new PigKing(this.world, entity, this.getWatchWorldContent);
     model.userData.pigKing = king;
     this.kings.set(model, king);
@@ -245,8 +245,8 @@ export class PigKingManager {
   get(model: THREE.Object3D): PigKing | undefined { return this.kings.get(model as THREE.Group); }
 
   exportRecords(): { prefabId: typeof PIGKING_ID; record: PigKingRecord }[] {
-    return [...this.kings.keys()].map(model => ({ prefabId: PIGKING_ID, record: {
-      id: String(model.userData.entityId),
+    return [...this.kings].map(([model, king]) => ({ prefabId: PIGKING_ID, record: {
+      id: String(king.instance.entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: {},
     } }));

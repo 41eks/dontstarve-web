@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./mouseTargets": "./src/mouseTargets.ts",
+    "./prefabInstance": "./src/prefabInstance.ts",
     "./lightflier": "./src/lightflier.ts",
     "./lightflier_flower": "./src/lightflier_flower.ts",
     "./backpack": "./src/backpack.ts",

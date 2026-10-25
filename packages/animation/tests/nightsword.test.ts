@@ -33,7 +33,7 @@ it('uses separate source ground and equipped art and renders a skin while moving
   const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
   const animation = player.userData.animationController as WilsonAnimationController;
-  const mesh = player.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const usedMaterials = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);
   try {
     expect(GROUND_ITEM_DEFINITIONS.nightsword).toMatchObject({

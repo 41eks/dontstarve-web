@@ -124,7 +124,6 @@ export class DwarfStarManager {
     const nearby = this.isNearby(position, this.getPlayerPosition?.());
     const { instance, display } = createPrefabEntity(this.prefabId, { create: (animation, frame) => {
       const sprite = factory.create({ initialAnimation: animation, initialFrame: frame, name });
-      sprite.userData.entityId = entityId;
       return sprite;
     }, release: sprite => factory.disposeSprite(sprite) }, { name: 'idle_loop' }, this.prefabId, instance => { if (!nearby) instance.setActive(false); });
     const model = display.model;
@@ -202,7 +201,7 @@ export class DwarfStarManager {
   exportRecords(): DwarfStarRecord[] {
     for (const star of this.stars) this.settle(star, star.awake);
     return Array.from(this.stars).filter((star) => star.phase.peek() === 'active').map((star) => ({
-      id: String(star.model.userData.entityId),
+      id: String(star.instance.entityId),
       transform: { position: [star.model.position.x, 0, star.model.position.z], rotationY: 0 },
       components: { timer: { remainingSeconds: star.remaining.peek() } },
     }));
@@ -323,7 +322,7 @@ export class DwarfStarManager {
 
   private removeStar(star: Star): void {
     if (!this.stars.delete(star)) return;
-    star.model.userData.persists = false;
+    star.instance.persists = false;
     star.model.userData.removed = true;
     star.propagator?.dispose();
     star.heater?.dispose();
@@ -362,7 +361,7 @@ export class DwarfStarManager {
   private beginDisappearance(star: Star, expirySeconds: number, animateExpiry: boolean): boolean {
     // Commit domain work synchronously; presentation may run later or be cancelled.
     star.removalAtSeconds = expirySeconds + 1;
-    star.model.userData.persists = false;
+    star.instance.persists = false;
     star.remaining.set(0);
     if (!animateExpiry || this.elapsedSeconds >= star.removalAtSeconds) {
       this.removeStar(star);

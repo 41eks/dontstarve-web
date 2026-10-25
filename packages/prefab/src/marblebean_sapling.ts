@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
@@ -35,7 +36,7 @@ interface Sapling {
   loot: PreparedGroundSpawn;
   shrub: Awaited<ReturnType<MarbleShrubManager['prepareGrowFromSeed']>>;
 }
-export interface MarbleBeanSaplingWorld {
+export interface MarbleBeanSaplingWorld extends ToolMouseTargetWorld {
   scheduler?: GameTimeScheduler;
   tickingarea?: TileStateQuery;
   shrubs: Pick<MarbleShrubManager, 'prepareGrowFromSeed'>;
@@ -100,7 +101,8 @@ export class MarbleBeanSaplingManager {
         instance.sprite.playOnce('idle_planted');
         const model = display.model;
         instance.position.set(position.x, 0, position.z);
-        Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: MARBLEBEAN_SAPLING_ID, deploySmartRadius: 1 });
+        instance.entityId = saved?.id ?? newEntityId();
+        Object.assign(model.userData, { deploySmartRadius: 1 });
         instance.addTag('marbleshrub');
         const entity = actionEntity(model, MARBLEBEAN_SAPLING_ID);
         const timer = new Timer(this.scheduler, name => {
@@ -115,6 +117,7 @@ export class MarbleBeanSaplingManager {
           this.remove(model);
         });
         Object.assign(entity.components, { workable, timer });
+        new ToolMouseTarget(entity, instance, workable, this.world.handEquipment);
         const sapling: Sapling = { instance, display, timer, workable, loot, shrub };
         this.saplings.set(model, sapling);
         // startgrowing runs on construction and from marblebean's StartGrowing; a saved timer then replaces it.
@@ -141,7 +144,7 @@ export class MarbleBeanSaplingManager {
   get digTargets(): ShovelTarget[] { return this.getDigTargets(); }
 
   getDigTargets(model?: THREE.Object3D): ShovelTarget[] {
-    return modelEntries(this.saplings, model).map(([model, sapling]) => ({ id: String(model.userData.entityId), model, position: model.position,
+    return modelEntries(this.saplings, model).map(([model, sapling]) => ({ id: String(sapling.instance.entityId), model, position: model.position,
       entity: actionEntity(model, MARBLEBEAN_SAPLING_ID),
       isValid: () => this.saplings.get(model) === sapling && sapling.workable.CanBeWorked(),
       dig: () => performToolWork('DIG', actionEntity(model, MARBLEBEAN_SAPLING_ID), {}),
@@ -150,7 +153,7 @@ export class MarbleBeanSaplingManager {
 
   exportRecords(): MarbleBeanSaplingRecord[] {
     this.scheduler.advanceTo(this.scheduler.now);
-    return [...this.saplings].map(([model, { timer }]) => ({ id: String(model.userData.entityId),
+    return [...this.saplings].map(([model, { timer, instance }]) => ({ id: String(instance.entityId),
       transform: { position: model.position.toArray() as [number, number, number], rotationY: 0 },
       components: { saplingTimer: timer.OnSave() ?? { timers: {} } },
     }));

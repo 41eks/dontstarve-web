@@ -50,9 +50,9 @@ test('right-click plays the panflute: play_flute timing and sound, one use spent
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const stateName = () => page.evaluate(() => (window as any).fluteGame.player.userData.stategraph.stateName);
   const beefaloIds = () => page.evaluate(() => (window as any).fluteGame.scene.children
-    .filter((model: any) => model.userData.prefab === 'beefalo').map((model: any) => model.userData.entityId as string));
+    .filter((model: any) => model.userData.instance?.prefab === 'beefalo').map((model: any) => model.userData.instance?.entityId as string));
   const beefaloAsleep = (id: string) => page.evaluate(id => (window as any).fluteGame.scene.children
-    .find((model: any) => model.userData.entityId === id).userData.beefaloController.sleeper.IsAsleep() as boolean, id);
+    .find((model: any) => model.userData.instance?.entityId === id).userData.beefaloController.sleeper.IsAsleep() as boolean, id);
   const uses = () => page.evaluate(() => (window as any).fluteGame.main.inventory.exportState().slots
     .find((slot: any) => slot.item?.itemId === 'panflute')?.item.remainingUses);
 

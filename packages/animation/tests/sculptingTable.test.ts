@@ -10,6 +10,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -43,8 +44,8 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     const trader = model.userData.components.trader, pickable = model.userData.components.pickable;
     const sprite = model.userData.animationController as SpriteController;
     let override = vi.spyOn(sprite, 'overrideSymbol');
-    expect(model.userData.tags).toContain('trader');
-    expect(model.userData.tags).not.toContain('pickable');
+    expect(prefabInstance(model)!.listTags()).toContain('trader');
+    expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
     expect(placement.exportRecords()[0].record.components).not.toHaveProperty('sculptingtable');
 
     // abletoaccepttest: only sculptable materials, and only into an empty slot.
@@ -64,7 +65,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(play).toHaveBeenCalledExactlyOnceWith(itemSound, model.position);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(override).toHaveBeenLastCalledWith('cutstone01', expect.objectContaining({ symbolHash: expect.any(Number) }));
-    expect(model.userData.tags).toContain('pickable');
+    expect(prefabInstance(model)!.listTags()).toContain('pickable');
     expect(canGive(offer('cutstone').entity)).toBe(false);
     expect(trader.AbleToAccept(offer('cutstone').entity)).toEqual({ ok: false, reason: 'SLOTFULL' });
     const full = offer('cutstone');
@@ -85,7 +86,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(() => parse({ ...saved, components: { ...saved.components, sculptingtable: { itemname: 'log' } } })).toThrow(/itemname/);
     const restored = await placement.spawnFromSave(SCULPTING_TABLE_ID, parse(saved).world.entities.sculptingtable[0]);
     expect(restored.userData.components.pickable.product).toBe('marble');
-    expect(restored.userData.tags).toContain('pickable');
+    expect(prefabInstance(restored)!.listTags()).toContain('pickable');
     // Lua onload calls giveitem, including its sound; reskinning only replaces art.
     expect(play).toHaveBeenCalledTimes(2);
     expect(play).toHaveBeenLastCalledWith(itemSound, restored.position);
@@ -105,7 +106,7 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(doer.giveItem).toHaveBeenCalledWith('marble', 1, expect.anything());
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(override).toHaveBeenLastCalledWith('cutstone01', undefined);
-    expect(model.userData.tags).not.toContain('pickable');
+    expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
     expect(pickable.pick(doer)).toBe(false);
     expect(play).toHaveBeenCalledTimes(3);
     expect(placement.exportRecords()[0].record.components).not.toHaveProperty('sculptingtable');

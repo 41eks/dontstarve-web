@@ -453,7 +453,7 @@ export function createLightFlierGroundFactory(context: GroundPrefabContext): Gro
       // Facing and erosion change the sprite json only when their value does.
       let facing: number | undefined, erosion: number | undefined;
       const heading = habitat.services.cameraHeading ? watchSignal(habitat.services.cameraHeading, stop => cleanups.push(stop)) : undefined;
-      return { model, active: readonlySignal(active),
+      return { model, instance, active: readonlySignal(active),
         bindEntity: entity => {
           configureLightFlierEntity(entity); fly = entity.getComponent<LightFlier>(LIGHTFLIER_ID)!; habitat.bind(fly);
           const animation = watchSignal(fly.animstate.animation, stop => cleanups.push(stop));

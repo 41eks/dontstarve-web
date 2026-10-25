@@ -1,3 +1,4 @@
+import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createSignal, readonlySignal, getBoundWatchWorldContent, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
@@ -126,6 +127,8 @@ export interface AnimatedBuildingPreparedResources {
 
 export interface AnimatedBuildingEventContext {
     model: THREE.Group;
+    /** The building entity: identity, tags and persistence. */
+    instance: PrefabInstance;
     animation: SpriteAnimationController;
     /** Changes whenever the building's drawn sprite is rebuilt; effects that dress the sprite read it. */
     art?: ReadonlySignal<number>;
@@ -416,6 +419,15 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             });
         }
         if (definition.burnable) this.initializeBurnable(building);
+        if (definition.hammerWorkLeft !== undefined || definition.burnable) {
+            const entity = actionEntity(model, buildId);
+            new ToolMouseTarget(entity, building.instance, entity.components.workable, this.worldContext.handEquipment, {
+                spellTarget: true,
+                canInteractWithoutTool: () => !entity.hasTag('burnt') && !!(definition.interaction
+                    || definition.container || model.userData.components?.container || entity.components.trader || entity.components.fueled
+                    || entity.components.prototyper || entity.components.occupiable),
+            });
+        }
         // OnEntitySleep/OnEntityWake: the sprite exists only while the building's tile is active.
         building.stopActivity = watchTileActivity(model, this.worldContext.tickingarea, active => building.instance.setActive(active));
     }
@@ -603,7 +615,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     }
 
     private eventContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingEventContext {
-        return { model: building.model, animation: building.animation, art: building.animation.art, skinId: building.skinId.peek(), prepared: building.prepared,
+        return { model: building.model, instance: building.instance, animation: building.animation, art: building.animation.art, skinId: building.skinId.peek(), prepared: building.prepared,
             itemEntities: this.worldContext.itemEntities, world: this.worldContext,
             remove: () => this.hammerContext(building).remove() };
     }
@@ -818,6 +830,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             container?.Open(this.player);
             definition.onopen?.({
                 model: building.model,
+                instance: building.instance,
                 animation: building.animation,
                 skinId: building.skinId.peek(),
             });
@@ -863,6 +876,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         building.model.userData.components?.container?.Close(this.player);
         definition.onclose?.({
             model: building.model,
+            instance: building.instance,
             animation: building.animation,
             skinId: building.skinId.peek(),
         });
@@ -991,7 +1005,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
     private hammerContext(building: AnimatedBuildingInstance<BuildId>): AnimatedBuildingHammerContext {
         const position = building.model.position.clone().add(new THREE.Vector3(0, -building.groundOffset, 0));
         return {
-            model: building.model, animation: building.animation, skinId: building.skinId.peek(), prepared: building.prepared,
+            model: building.model, instance: building.instance, animation: building.animation, skinId: building.skinId.peek(), prepared: building.prepared,
             workLeft: actionEntity(building.model, building.buildId).components.workable?.GetWorkLeft() ?? 0,
             position, isPlayerNearby: building.isPlayerNearby,
             dropLoot: (items) => this.dropLoot?.(items, position.clone()),
@@ -1051,6 +1065,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
         const onProximityChange = nearby ? definition.onturnon : definition.onturnoff;
         onProximityChange?.({
             model: building.model,
+            instance: building.instance,
             animation: building.animation,
             skinId: building.skinId.peek(),
         });

@@ -108,7 +108,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
     return { x: rect.left + (centre.x + 1) * rect.width / 2, y: rect.top + (1 - centre.y) * rect.height / 2 };
   });
   await page.mouse.click(point.x, point.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).cageGame.scene.children.find((child: any) => child.name === 'Birdcage').userData.skinId)).toBe('birdcage_adventure');
+  await expect.poll(() => page.evaluate(() => (window as any).cageGame.scene.children.find((child: any) => child.name === 'Birdcage').userData.instance?.skinId)).toBe('birdcage_adventure');
   await expect.poll(() => page.evaluate(() => (window as any).cageGame.player.userData.animationController.isReskinning)).toBe(false);
   expect(await cage()).toMatchObject({ state: '_bird', bird: 'canary', animation: 'idle_bird' });
   expect(await page.evaluate(() => (window as any).cageGame.scene.children.find((child: any) => child.name === 'Birdcage').children[0].children[0].material.length))
@@ -128,7 +128,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
   await expect.poll(cage).toMatchObject({ state: '_bird', bird: 'canary', animation: 'idle_bird' });
   expect(await page.evaluate(() => {
     const model = (window as any).cageGame.scene.children.find((child: any) => child.name === 'Birdcage');
-    return { skin: model.userData.skinId, atlases: model.children[0].children[0].material.length };
+    return { skin: model.userData.instance?.skinId, atlases: model.children[0].children[0].material.length };
   })).toMatchObject({ skin: 'birdcage_circus', atlases: expect.any(Number) });
   expect((await saveGame()).world.entities.birdcage[0].components.birdcage.occupant.entityId).toBe(record.occupant.entityId);
 

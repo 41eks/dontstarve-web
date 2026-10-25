@@ -57,7 +57,7 @@ NPC 专用的 `shadow_thrall_parasitehat` 不属于玩家帽子目录，不导�
 
 `ArchiveSpriteAssets` 和 `GroundItemAssets` 不接收动画目录参数，统一从 `${import.meta.env.BASE_URL}dst/data/anim` 加载，支持子路径部署。使用 `new ArchiveSpriteAssets()` 或 `new GroundItemAssets()`；`ArchiveSpriteAssets` 的可选构造参数仅指定材质名称前缀，例如 `new ArchiveSpriteAssets('farm')`。仅转发动画目录的 prefab／特效构造参数一并移除，材质缓存和释放仍由原有资源对象管理。
 
-帽子工厂最终调用 `packages/prefab/src/hats.ts` 的 `createHatGroundSprite()`；普通目录物品工厂调用 `packages/prefab/src/groundItems.ts` 的 `createGroundItemSprite()`。`GroundItemManager` 不再直接选择这两个函数。未注册的物品才使用库存图标创建回退模型。
+帽子工厂是 `packages/prefab/src/hats.ts` 的 `createHatGroundFactory()`；普通目录物品工厂调用 `packages/prefab/src/groundItems.ts` 的 `createResidentGroundItem()`。`GroundItemManager` 不直接选择这两个函数。未注册的物品才使用库存图标回退，回退物品同样是 `createPrefabEntity()` 创建的 `PrefabInstance` 实体，由 `PrefabDisplay` 绘制图标 billboard。
 
 地面模型保留源原点作为脚点，用于绘制顺序、拾取距离与存档位置。皮肤通过库存、地面、穿戴和存档路径传递，换肤不应创建新的逻辑实体。
 

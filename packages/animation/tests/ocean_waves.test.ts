@@ -38,7 +38,7 @@ it('plays standalone and undefined-query waves to completion and keeps shared ar
       const [shimmer, shore] = scene.children;
       expect(shimmer.position.toArray()).toEqual([12, 0, 24]);
       expect(shore.position.toArray()).toEqual([12, 0, 24]);
-      expect(shimmer.userData.persists).toBe(false);
+      expect(shimmer.userData.instance?.persists).toBe(false);
       const geometryDispose = vi.spyOn(meshOf(shimmer).geometry, 'dispose');
       const material = (meshOf(shimmer).material as THREE.Material[])[0];
       const materialDispose = vi.spyOn(material, 'dispose');

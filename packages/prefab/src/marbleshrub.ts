@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -60,7 +61,7 @@ export interface MarbleShrubRecord {
   components: { growable: GrowableSave; marbleShrub: MarbleShrubSaveState };
 }
 
-export interface MarbleShrubWorld {
+export interface MarbleShrubWorld extends ToolMouseTargetWorld {
   scheduler?: GameTimeScheduler;
   tickingarea?: TileStateQuery;
   physics?: CANNON.World;
@@ -177,7 +178,8 @@ export class MarbleShrubManager {
     const sprite = instance.sprite;
     model.userData.animationController = sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: MARBLESHRUB_ID, deploySmartRadius: 1 });
+    instance.entityId = saved?.id ?? newEntityId();
+    Object.assign(model.userData, { deploySmartRadius: 1 });
     for (const tag of ['boulder', 'SnowCovered']) instance.addTag(tag);
     const inst = actionEntity(model, MARBLESHRUB_ID);
     const shrub: Shrub = { instance, display, sprite, completion: new ComponentTimer(this.scheduler, () => this.remove(model)), loot, shapenumber, color, stage: STAGES[0], broken: false, sounds: new Set(), minimap: new MiniMapEntity(model.position), workable: undefined!, growable: undefined! };
@@ -214,7 +216,7 @@ export class MarbleShrubManager {
       // onworked: break pose, rock_break_fx, loot at the shrub, then no collision, NOCLICK and removal at animover.
       shrub.broken = true;
       inst.addTag('NOCLICK');
-      model.userData.persists = false;
+      shrub.instance.persists = false;
       sprite.playOnce(shrub.stage.broken);
       shrub.completion.start(breakDurations[shrub.growable.GetStage() - 1]);
       shrub.sounds.add(PlaySound('dontstarve/wilson/rock_break', model.position));
@@ -222,6 +224,7 @@ export class MarbleShrubManager {
       RemovePhysicsColliders(instance);
     });
     Object.assign(model.userData.components, { growable: shrub.growable, workable: shrub.workable, lootdropper });
+    new ToolMouseTarget(inst, instance, shrub.workable, this.world.handEquipment);
     this.shrubs.set(model, shrub);
     // SetupShrubShape: shape 1 keeps the constructor icon, others use marbleshrub<n>.png.
     shrub.minimap.SetIcon(`marbleshrub${shapenumber}.png`); shrub.minimap.SetPriority(-1);
@@ -266,7 +269,7 @@ export class MarbleShrubManager {
 
   getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
     return modelEntries(this.shrubs, model).filter(([, shrub]) => !shrub.broken && shrub.workable.CanBeWorked()).map(([model, shrub]) => ({
-      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, MARBLESHRUB_ID),
+      id: String(shrub.instance.entityId), model, position: model.position, entity: actionEntity(model, MARBLESHRUB_ID),
       isValid: () => this.shrubs.get(model) === shrub && !shrub.broken && shrub.workable.CanBeWorked(),
     }));
   }
@@ -275,7 +278,7 @@ export class MarbleShrubManager {
   exportRecords(): MarbleShrubRecord[] {
     this.scheduler.advanceTo(this.scheduler.now);
     return [...this.shrubs].filter(([, shrub]) => !shrub.broken).map(([model, shrub]) => ({
-      id: String(model.userData.entityId),
+      id: String(shrub.instance.entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: { growable: shrub.growable.OnSave(),
         marbleShrub: { ...shrub.shapenumber === 1 ? {} : { shapenumber: shrub.shapenumber }, color: shrub.color } },

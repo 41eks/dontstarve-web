@@ -68,7 +68,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         expect(release).toHaveBeenCalledOnce();
         for (let frame = 0; frame < 60; frame++) placement.update(1 / 30);
         expect(model.userData.animationController.currentAnimation).toBe('onequarter');
-        expect(model.userData.skinId).toBe(skinId);
+        expect(model.userData.instance?.skinId).toBe(skinId);
         const record = placement.exportRecords()[0].record;
         expect(record).toEqual({ id: `wall:${prefabId}`, transform: { position: [3, 0, -6], rotationY: 0 },
           components: { health, ...(skinId === undefined ? {} : { wall: { skinId } }) } });
@@ -92,7 +92,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         }
         const restoredWorld = setup();
         const restored = await restoredWorld.placement.spawnFromSave(prefabId, record);
-        expect(restored.userData.skinId).toBe(skinId);
+        expect(restored.userData.instance?.skinId).toBe(skinId);
         expect(restored.userData.skinIdSignal.peek()).toBe(skinId);
         expect(restoredWorld.placement.exportRecords()[0].record).toEqual(record);
         restoredWorld.placement.dispose();

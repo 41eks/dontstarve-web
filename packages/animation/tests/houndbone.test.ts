@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { HoundboneManager } from '../../prefab/src/houndbone';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import type { GroundItemDefinition } from '../../prefab/src/groundPrefab';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -34,12 +35,12 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   // houndbone.lua: bonetype n plays piece<n>; the entity carries the `bone` tag and a HAMMER workable of 1.
   expect(one.userData.animationController.currentAnimation).toBe('piece1');
   expect(three.userData.animationController.currentAnimation).toBe('piece3');
-  expect(one.userData.tags).toContain('bone');
+  expect(prefabInstance(one)!.listTags()).toContain('bone');
   expect(bones.exportRecords().map(({ record }) => record.components.houndbone?.bonetype)).toEqual([1, 3]);
   expect(() => PREFAB_DEFINITIONS.houndbones.parseComponents({ houndbone: { bonetype: 4 } }, 'x', { grounded: true } as never)).toThrow();
 
   const restored = await bones.spawn(new THREE.Vector3(5, 0, 5));
-  expect([1, 2, 3]).toContain(bones.exportRecords().find(({ record }) => record.id === restored.userData.entityId)?.record.components.houndbone?.bonetype);
+  expect([1, 2, 3]).toContain(bones.exportRecords().find(({ record }) => record.id === restored.userData.instance?.entityId)?.record.components.houndbone?.bonetype);
 
   const target = bones.hammerTargets.find(({ model }) => model === one)!;
   target.playHit();

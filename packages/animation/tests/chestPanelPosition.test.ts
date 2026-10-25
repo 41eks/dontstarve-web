@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { beforeEach, expect, it, vi } from 'vitest';
 
 import { createSignal, getWatchWorldContent, type WorldContentEnvironment } from '@dontstarve-web/signals';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { PLAYER_COLLIDER_RADIUS } from '../../prefab/src/player';
 import { createChestInventoryPanel } from '../../ui/src/chest-inventory-panel';
 import type { DstChestPanelElement } from '../../ui/src/chest-panel';
@@ -42,9 +43,10 @@ it.each(['treasurechest'] as const)('anchors the %s panel above the moving playe
     camera, canvas, player,
     getWatchWorldContent: (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, world, options),
   }, prefab);
-  const chest = new THREE.Group();
+  const { instance, display } = createEmptyEntity(prefab);
+  const chest = display.model;
   chest.position.set(10, 0, 0);
-  chest.userData.entityId = 'chest';
+  instance.entityId = 'chest';
   controller.setOpen(chest, true);
   const expected = (x: number) => {
     const point = new THREE.Vector3(x, PLAYER_COLLIDER_RADIUS * 3.6 + 1, 0).project(camera);
@@ -66,4 +68,5 @@ it.each(['treasurechest'] as const)('anchors the %s panel above the moving playe
   republish();
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(element.hidden).toBe(true);
+  controller.dispose(); instance.remove(); display.dispose();
 });

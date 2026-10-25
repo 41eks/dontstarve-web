@@ -1,9 +1,15 @@
+import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
 import { Vector3 } from 'three';
-import { expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { bindPhysics, GROUND_COLLISION_GROUP } from '../../componets/src/physicsBinding';
 import { COLLISION, PhysicsState } from '../../componets/src/physicsState';
 import { CHARACTER_COLLISION_MASK, MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from '../../prefab/src/standardcomponents';
+import { createWilsonPlayerPrefab, PLAYER_PHYSICS_RADIUS } from '../../prefab/src/player';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+afterEach(() => { vi.unstubAllGlobals(); });
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -59,4 +65,22 @@ it('binds a moving character: frictionless damped sphere, ghost and toggled mask
   body.velocity.set(10, 0, 0);
   world.step(1 / 60);
   expect(body.velocity.x).toBe(10);
+});
+
+it('makes the player an entity whose instance owns its tags and collider, while the scene keeps the body binding', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const world = new CANNON.World();
+  const { model, physics, physicsBinding, body } = await createWilsonPlayerPrefab('/dst/data/anim', world);
+  const instance = prefabInstance(model)!;
+  expect(instance.prefab).toBe('wortox');
+  expect(instance.hasTag('player')).toBe(true);
+  expect(prefabInstance(model)!.listTags()).toContain('player');
+  // player_common.lua MakeCharacterPhysics(inst, 75, .5) is the instance's collider.
+  expect(physics).toBe(instance.physics);
+  expect(instance.getPhysicsRadius(0)).toBe(PLAYER_PHYSICS_RADIUS * WORLD_SCALE);
+  expect(world.bodies).toContain(body);
+  // Scene teardown releases the body before its world; the player entity and its model stay.
+  physicsBinding.dispose();
+  expect(world.bodies).not.toContain(body);
+  expect(instance.status.peek()).toBe('active');
 });

@@ -17,6 +17,7 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -88,7 +89,7 @@ it('cycles all four stages through winter, picks three fruits or clears nil prod
     s.advance(.5); expect(growable.GetStage()).toBe(3);
     s.advance(.5); expect(growable.GetStage()).toBe(3);
     expect(growable.OnSave().time).toBe(675);
-    expect(model.userData.tags).not.toContain('magicgrowth');
+    expect(prefabInstance(model)!.listTags()).not.toContain('magicgrowth');
   } finally { s.dispose(); }
 });
 

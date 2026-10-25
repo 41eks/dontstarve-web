@@ -124,7 +124,7 @@ export class PortalManager {
     }, release: sprite => mainFactory.disposeSprite(sprite) }, { name: 'idle_loop', billboard: true }, PORTAL_ID);
     const model = main.display.model;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { prefab: PORTAL_ID, entityId });
+    main.instance.entityId = entityId;
 
     // FX child: same animations, hides 'portal' layer, overrides FX_ray1 from portal_stone.
     const fx = createPrefabEntity(`${PORTAL_ID}_fx`, { create: animation => fxFactory.create({
@@ -178,8 +178,8 @@ export class PortalManager {
   }
 
   exportRecords(): PortalRecord[] {
-    return [...this.portals].map(({ model }) => ({
-      id: String(model.userData.entityId),
+    return [...this.portals].map(({ model, main }) => ({
+      id: String(main.instance.entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: {} as Record<string, never>,
     }));

@@ -60,7 +60,7 @@ export async function checkLanternLighting() {
       for (const mirrored of [false, true]) {
         controller.setFacing(facing, mirrored);
         controller.update(0.05);
-        const mesh = player.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+        const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         if (!mesh.material.some((material) => material.name === `ground:${expectedBuild}`))
           failures.push(`missing worn art ${skin}:${facing}:${mirrored}`);
         if (mesh.material.some((material) => !material.forceSinglePass)) failures.push('split face passes');

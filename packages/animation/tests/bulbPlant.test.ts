@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BulbPlantController, BulbPlantManager, bulbPlantRegrowTime, BULB_PLANT_LIGHT, type BulbPlantVariant, type BulbPlantSaveState } from '../../prefab/src/bulb_plant';
 import { createSignal, createMemo } from '@dontstarve-web/signals';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -138,7 +139,7 @@ describe('real plant archives, spawning and saving', () => {
     expect(records.find(p => p.prefabId === 'flower_cave_double')!.record.components.bulbPlant.variant).toBe('double');
     const saved = records.find(p => p.record.id === 'e_springy')!;
     const restored = await manager.spawn(saved.prefabId, new THREE.Vector3(...saved.record.transform.position), saved.record);
-    expect(restored.userData.entityId).toBe(saved.record.id);
+    expect(restored.userData.instance?.entityId).toBe(saved.record.id);
     expect(restored.userData.bulbPlantVariant).toBe('springy');
     expect(getPrefabLocalLight(restored)).toEqual(BULB_PLANT_LIGHT);
     expect(manager.renderEntities.every(p => p.footPosition === p.object.position)).toBe(true);
@@ -150,7 +151,7 @@ describe('real plant archives, spawning and saving', () => {
     const pickedRecord = manager.exportRecords().find(p => p.record.id === 'e_springy')!;
     const pickedRestored = await manager.spawn(pickedRecord.prefabId, new THREE.Vector3(8, 0, 9), pickedRecord.record);
     expect(pickedRestored.userData.bulbPlantPicked).toBe(true);
-    expect(pickedRestored.userData.tags).toContain('plant');
+    expect(prefabInstance(pickedRestored)!.listTags()).toContain('plant');
     expect(getPrefabLocalLight(pickedRestored)).toBeUndefined();
     for (const model of [single, double, triple, springy]) {
       expect(mesh(model).geometry.drawRange.count).toBeGreaterThan(0);
@@ -161,7 +162,7 @@ describe('real plant archives, spawning and saving', () => {
     manager.dispose();
     expect(scene.children).toHaveLength(0);
     expect(getPrefabLocalLight(single)).toBeUndefined();
-    expect(single.userData.tags).toEqual(['plant']);
+    expect(prefabInstance(single)!.listTags()).toEqual(['plant']);
     expect(single.userData.components.pickable).toBeUndefined();
   });
 });

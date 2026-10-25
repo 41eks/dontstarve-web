@@ -12,6 +12,7 @@ test('fireflies batch their loops, retain self-light and release instances on sl
   expect(result.bright[1]).toBe(0);
   expect(result.hiddenSourceCount).toBe(32);
   expect(result.mouseTargeting).toEqual([false, true, false]);
+  expect(result.registrations).toEqual([0, 32, 0, 32, 0, 0, 32, 0, 0]);
   expect(result.preVisible).toBe(true);
   expect(result.loopVisible).toBe(false);
   expect(result.calls).toEqual([2, 0, 2, 3, 2, 0, 0, 2, 0]);

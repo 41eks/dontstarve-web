@@ -25,10 +25,10 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
   const rendered = await page.evaluate(samples => {
     const { universal: { scene } } = (window as any).caveGame;
     return samples.map((record: any) => {
-      const model = scene.children.find((child: any) => child.userData.entityId === record.id);
+      const model = scene.children.find((child: any) => child.userData.instance?.entityId === record.id);
       let vertices = 0;
       model?.traverse((child: any) => { vertices += child.geometry?.getAttribute('position')?.count ?? 0; });
-      return { id: model?.userData.entityId, vertices };
+      return { id: model?.userData.instance?.entityId, vertices };
     });
   }, samples);
   expect(rendered.map(record => record.id)).toEqual(samples.map(record => record.id));
@@ -96,7 +96,7 @@ test('loads whitelisted cave entities, stops keyboard movement at the void and r
     })), prefab);
     await expect.poll(() => page.evaluate(prefab => {
       const { universal: { scene } } = (window as any).caveGame;
-      return scene.children.filter((child: any) => child.userData.prefab === prefab).length;
+      return scene.children.filter((child: any) => child.userData.instance?.prefab === prefab).length;
     }, prefab)).toBe((imported.world.entities[prefab]?.length ?? 0) + 1);
   }
   const download = page.waitForEvent('download');

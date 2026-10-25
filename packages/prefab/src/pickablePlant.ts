@@ -318,13 +318,13 @@ export class PickablePlantManager {
         const model = display.model;
         model.name = prefab;
         model.position.set(position.x, 0, position.z);
-        Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId() });
+        instance.entityId = saved?.id ?? newEntityId();
         for (const tag of definition.tags) instance.addTag(tag);
         if (archiveEntity && definition.snowCovered) {
           instance.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
           if ((this.snowLevel?.peek() ?? 0) >= .015) instance.sprite.showLayer('snow'); else instance.sprite.hideLayer('snow');
         }
-        if (skinId) model.userData.skinId = skinId;
+        if (skinId) instance.skinId = skinId;
         if (definition.deploySmartRadius !== undefined) model.userData.deploySmartRadius = definition.deploySmartRadius;
         let animation: PlantAnimation = instance.sprite;
         model.userData.animationController = animation;
@@ -554,8 +554,8 @@ export class PickablePlantManager {
   get digTargets(): readonly ShovelTarget[] { return this.getDigTargets(); }
 
   getDigTargets(model?: THREE.Object3D): readonly ShovelTarget[] {
-    return modelValues(this.plants, model).filter(({ definition }) => definition.dugLoot).map(({ definition, model, workable }) => ({
-      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, definition.prefab),
+    return modelValues(this.plants, model).filter(({ definition }) => definition.dugLoot).map(({ definition, model, workable, instance }) => ({
+      id: String(instance.entityId), model, position: model.position, entity: actionEntity(model, definition.prefab),
       isValid: () => !this.disposed && this.plants.has(model) && workable.CanBeWorked(),
       dig: () => performToolWork('DIG', actionEntity(model, definition.prefab), {}),
     }));
@@ -564,14 +564,14 @@ export class PickablePlantManager {
 
   getReskinTargets(model?: THREE.Object3D): readonly ReskinTarget[] {
     return modelValues(this.plants, model).flatMap(plant => {
-      const { definition, model } = plant;
+      const { definition, model, instance } = plant;
       if (!definition.skins) return [];
       const isValid = () => !this.disposed && this.plants.get(model) === plant && !model.userData.removed;
-      return [{ id: String(model.userData.entityId), prefabId: definition.prefab, model, position: model.position,
-        skins: definition.skins, isValid, get skinId() { return model.userData.skinId as string | undefined; },
+      return [{ id: String(instance.entityId), prefabId: definition.prefab, model, position: model.position,
+        skins: definition.skins, isValid, get skinId() { return instance.skinId; },
         get isRemoved() { return !isValid(); }, hasTag: (tag: string) => actionEntity(model, definition.prefab).hasTag(tag),
         prepareNextSkin: async (tool?: Parameters<ReskinTarget['prepareNextSkin']>[0]) => {
-          const previousSkin = model.userData.skinId as string | undefined;
+          const previousSkin = instance.skinId;
           const skinId = nextReskin(definition.skins!, previousSkin, tool?._cached_reskinname, definition.prefab);
           const source = definition.archiveSprite ? await this.getArchiveSprite(definition, skinId) : await this.getFactory(definition, skinId);
           if (!isValid()) throw new Error('Plant is no longer available');
@@ -586,12 +586,12 @@ export class PickablePlantManager {
           const release = () => replacement.dispose();
           let used = false;
           return { apply: (fx?: ReskinFxMessage) => {
-            if (used || !isValid() || model.userData.skinId !== previousSkin) return false;
+            if (used || !isValid() || instance.skinId !== previousSkin) return false;
             if (definition.snowCovered && definition.archiveSprite) {
               if ((this.snowLevel?.peek() ?? 0) >= .015) plant.instance.sprite.showLayer('snow'); else plant.instance.sprite.hideLayer('snow');
             }
             plant.display.adopt(replacement);
-            model.userData.skinId = skinId || undefined;
+            plant.instance.skinId = skinId || undefined;
             release(); used = true;
             fx?.play(model.position, definition.prefab);
             return true;
@@ -640,12 +640,12 @@ export class PickablePlantManager {
 
   protected exportPlants(): { prefab: string; record: PickablePlantRecord }[] {
     this.scheduler.advanceTo(this.scheduler.now);
-    return [...this.plants.values()].filter(plant => plant.persistence.peek()).map(({ definition, model, pickable, witherable, behavior, burnable, variant }) => ({
+    return [...this.plants.values()].filter(plant => plant.persistence.peek()).map(({ definition, model, pickable, witherable, behavior, burnable, variant, instance }) => ({
       prefab: definition.prefab,
       record: {
-        id: String(model.userData.entityId),
+        id: String(instance.entityId),
         transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
-        components: { ...(definition.skins ? { plant: model.userData.skinId ? { skinId: model.userData.skinId } : {} } : {}), pickable: pickable.exportState(), ...(witherable ? { witherable: witherable.exportState() } : {}),
+        components: { ...(definition.skins ? { plant: instance.skinId ? { skinId: instance.skinId } : {} } : {}), pickable: pickable.exportState(), ...(witherable ? { witherable: witherable.exportState() } : {}),
           ...behavior?.exportState(), ...(variant ? { variant: { anim: variant } } : {}), ...(definition.persistBurning && burnable.IsBurning() ? { burning: true as const } : {}) },
       },
     }));
@@ -673,6 +673,7 @@ export class PickablePlantManager {
     plant.stopEffect();
     plant.sound?.stop();
     plant.instance.remove();
+    plant.display.dispose();
   }
 
   dispose(): void {

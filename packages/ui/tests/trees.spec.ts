@@ -1,8 +1,9 @@
+import { hoverSprite } from './sprite-input';
 import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
-const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
+const urls = Object.fromEntries(['main', 'universal', 'camera', 'player', 'view'].map(name =>
   [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
 
 test('spawns a tall deciduous tree, restores growth, chops it and digs the restored stump, preserving loot and removal through saves', async ({ page }) => {
@@ -24,7 +25,8 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
     const main = await import(urls.main), { scene, renderer } = await import(urls.universal);
     await main.gameReady;
     const { camera } = await import(urls.camera), { player } = await import(urls.player);
-    (window as any).deciduoustreeGame = { main, scene, renderer, camera, player };
+    const { view } = await import(urls.view);
+    (window as any).deciduoustreeGame = { main, inventory: main.inventory, view, scene, renderer, camera, player };
   }, urls);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
@@ -33,34 +35,16 @@ test('spawns a tall deciduous tree, restores growth, chops it and digs the resto
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const treeAnimation = () => page.evaluate(() => (window as any).deciduoustreeGame.scene.children
-    .find((model: any) => model.name === 'DeciduousForest')?.children.find((model: any) => model.userData.prefab === 'deciduoustree')
+    .find((model: any) => model.name === 'DeciduousForest')?.children.find((model: any) => model.userData.instance?.prefab === 'deciduoustree')
     ?.userData.animationController.currentAnimation ?? null);
   const clickTree = async () => {
-    const point = await page.evaluate(async () => {
-      await new Promise(requestAnimationFrame);
+    const action = await page.evaluate(() => (window as any).deciduoustreeGame.inventory.handEquipment.peek()?.itemId === 'shovel' ? 'DIG' : 'CHOP');
+    const point = await hoverSprite(page, () => page.evaluate(async moduleUrl => {
       const { scene, camera, renderer } = (window as any).deciduoustreeGame;
-      const tree = scene.children.find((model: any) => model.name === 'DeciduousForest').children.find((model: any) => model.userData.prefab === 'deciduoustree');
-      const mesh = tree.children[0].children[0].children[0]; mesh.updateWorldMatrix(true, false);
-      const { Raycaster, Vector2, Vector3 } = await import('/node_modules/.vite/deps/three.js');
-      const positions = mesh.geometry.getAttribute('position'), bounds = renderer.domElement.getBoundingClientRect();
-      const raycaster = new Raycaster(), pointer = new Vector2();
-      const point = new Vector3(), origin = new Vector3(), across = new Vector3(), down = new Vector3();
-      // Shared quads retain transparent margins. Choose an opaque canopy point through the real sprite raycast.
-      for (let quad = mesh.geometry.drawRange.count / 6 - 1; quad >= 0; quad--) {
-        origin.fromBufferAttribute(positions, quad * 4);
-        across.fromBufferAttribute(positions, quad * 4 + 1).sub(origin);
-        down.fromBufferAttribute(positions, quad * 4 + 3).sub(origin);
-        for (const u of [.5, .3, .7]) for (const v of [.5, .3, .7]) {
-          point.copy(origin).addScaledVector(across, u).addScaledVector(down, v);
-          mesh.localToWorld(point); point.project(camera);
-          if (Math.abs(point.x) >= .95 || Math.abs(point.y) >= .9) continue;
-          pointer.set(point.x, point.y); raycaster.setFromCamera(pointer, camera);
-          if (!raycaster.intersectObject(mesh).length) continue;
-          return { x: bounds.left + (point.x + 1) * bounds.width / 2, y: bounds.top + (1 - point.y) * bounds.height / 2 };
-        }
-      }
-      throw new Error('No opaque tree pixel is visible');
-    });
+      const tree = scene.children.find((model: any) => model.name === 'DeciduousForest').children.find((model: any) => model.userData.instance?.prefab === 'deciduoustree');
+      const { spriteScreenPoint } = await import(moduleUrl);
+      return spriteScreenPoint(tree, camera, renderer);
+    }, `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}`), 'deciduoustreeGame', 'right', action);
     await page.mouse.click(point.x, point.y, { button: 'right' });
   };
   const lootCount = (save: any, itemId: string) => save.world.entities.ground_item

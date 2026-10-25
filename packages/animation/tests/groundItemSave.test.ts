@@ -1,10 +1,12 @@
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
 import * as THREE from 'three';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import type { GroundItemDefinition, GroundItemVisual } from '../../prefab/src/groundPrefab';
 import type { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GroundItemManager } from '../../../src/groundItems';
-const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(...args: unknown[]) => Promise<{ model: THREE.Group; update: ReturnType<typeof vi.fn>; dispose(): void }>>() }));
+const { createTestVisual } = vi.hoisted(() => ({ createTestVisual: vi.fn<(definition: GroundItemDefinition) => Promise<GroundItemVisual & { update: ReturnType<typeof vi.fn<(dt: number) => void>> }>>() }));
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -19,14 +21,15 @@ vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
 // This suite checks save/transfer state; browser tests load the real DST assets.
 vi.mock('@dontstarve-web/prefab/groundItems', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dontstarve-web/prefab/groundItems')>();
-  createTestVisual.mockImplementation(async () => {
-    const model = new THREE.Group();
+  createTestVisual.mockImplementation(async definition => {
+    const { instance, display } = createEmptyEntity(definition.itemId);
+    const model = display.model;
     model.add(new THREE.Group());
     model.userData.events = [];
     for (const type of ['ondropped', 'onputininventory', 'onload'] as const) {
       model.addEventListener(type, () => model.userData.events.push(type));
     }
-    return { model, update: vi.fn(), dispose() { model.userData.events.push('dispose'); model.removeFromParent(); } };
+    return { model, instance, update: vi.fn<(dt: number) => void>(), dispose() { model.userData.events.push('dispose'); instance.remove(); display.dispose(); } };
   });
   return {
     ...actual,
@@ -42,16 +45,17 @@ vi.mock('@dontstarve-web/prefab/butterfly', async (importOriginal) => {
   class MockButterflyAssets {
     dispose() {}
     async create(prefab: 'butterfly' | 'moonbutterfly', world: import('../../prefab/src/butterfly').ButterflyWorld) {
-      const model = new THREE.Group();
+      const { instance, display } = createEmptyEntity(prefab);
+      const model = display.model;
       model.add(new THREE.Group());
       let controller: InstanceType<typeof actual.ButterflyController> | undefined;
-      return { model, get controller() { return controller; },
+      return { model, instance, get controller() { return controller; },
         bindTransform(transform: ItemEntity['transform']) {
           controller = new actual.ButterflyController(actual.BUTTERFLY_DEFINITIONS[prefab], transform,
             { start() {}, playOnce() {}, update() {}, currentAnimation: 'idle_flight_loop', currentAnimationLength: 1 }, world, undefined, () => 0);
         },
         update: (dt: number) => controller?.update(dt),
-        dispose: () => model.removeFromParent() };
+        dispose: () => { instance.remove(); display.dispose(); } };
     }
   }
   return {
@@ -402,7 +406,7 @@ describe('ground item save records', () => {
     expect(manager.exportRecords()).toEqual([]);
     expect(await manager.drop(definition, new THREE.Vector3(8, 30, 9), () => true)).toBe(true);
     const [record] = manager.exportRecords();
-    expect(record.id).toBe(scene.children[0].userData.entityId);
+    expect(record.id).toBe(scene.children[0].userData.instance?.entityId);
     expect(record.transform.position).toEqual([8, 0, 9]);
     expect(record.components.stack).toEqual({ itemId: 'log', count: 1 });
     record.components.stack!.count = 20;
@@ -432,7 +436,7 @@ describe('ground item save records', () => {
     const { manager, scene, pickup, canvas } = setup();
     const butterfly = { itemId: 'butterfly', count: 1, name: '蝴蝶', icon: 'butterfly.tex' };
     await manager.drop(butterfly, new THREE.Vector3(), () => true);
-    const entity = manager.entities.get(scene.children[0].userData.entityId)!;
+    const entity = manager.entities.get(scene.children[0].userData.instance?.entityId)!;
     // The brain's priority scatter and Wander's initial wait come first, then the butterfly flies.
     for (let frame = 0; frame < 40; frame++) manager.update(0.1, new THREE.Quaternion());
     expect(entity.transform.position.x).toBeGreaterThan(0);

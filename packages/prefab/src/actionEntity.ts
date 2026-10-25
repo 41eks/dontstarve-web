@@ -6,6 +6,7 @@ import { TileTracker } from '../../componets/src/tileManager';
 import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
 import { activePrefabs, type FoundEntity } from './activePrefabs';
 import { prefabInstance } from './prefabInstance';
+import { registerMouseTarget } from './mouseTargets';
 
 export { activePrefabs, type FoundEntity } from './activePrefabs';
 
@@ -24,6 +25,7 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
   if (model.userData.actionEntity) return model.userData.actionEntity;
   model.userData.components ??= {};
   const removal = inst?.removal ?? modelRemoval(model);
+  const instance = prefabInstance(model);
   const entity: ComponentActionEntity & WorkableInst & { readonly model: THREE.Group; getPosition(): THREE.Vector3; getPhysicsRadius(): number } = {
     model,
     prefab,
@@ -31,30 +33,31 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
     get isRemoved() { return removal.peek(); },
     get components() { return inst?.components ?? model.userData.components; },
     getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
-    getPhysicsRadius: () => model.userData.physicsRadius ?? 0,
+    getPhysicsRadius: () => instance?.getPhysicsRadius(0) ?? 0,
     hasTag: tag => {
       if (inst) return inst.hasTag(tag);
       for (const component of Object.values(model.userData.components) as { HasTag?(tag: string): boolean | undefined }[]) {
         const value = component?.HasTag?.(tag);
         if (value !== undefined) return value;
       }
-      const instance = prefabInstance(model);
       return instance ? instance.hasTag(tag) : model.userData.tags?.includes(tag) ?? false;
     },
     addTag(tag) {
-      const owner = inst ?? prefabInstance(model);
+      const owner = inst ?? instance;
       if (owner) owner.addTag(tag);
       else {
         model.userData.tags ??= [];
         if (!model.userData.tags.includes(tag)) model.userData.tags.push(tag);
       }
       syncPlacementEntity(model);
+      mouseRegistrations.get(entity)?.refresh();
     },
     removeTag(tag) {
-      const owner = inst ?? prefabInstance(model);
+      const owner = inst ?? instance;
       if (owner) owner.removeTag(tag);
       else model.userData.tags = (model.userData.tags ?? []).filter((value: string) => value !== tag);
       syncPlacementEntity(model);
+      mouseRegistrations.get(entity)?.refresh();
     },
     PushEvent: (name, data) => {
       if (inst) inst.PushEvent?.(name, data);
@@ -62,16 +65,26 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
     },
   };
   model.userData.actionEntity = entity;
+  const mouse = registerMouseTarget(entity);
+  mouseRegistrations.set(entity, mouse);
+  const mouseCleanups: (() => void)[] = [];
+  if (instance) {
+    const status = watchSignal(instance.status, stop => mouseCleanups.push(stop));
+    createEffect(() => mouse.setAwake(status.get() === 'active'));
+  }
   const stopPlacement = registerPlacementEntity(model, entity.getPosition);
+  const tagsChanged = () => { syncPlacementEntity(model); mouse.refresh(); };
   const stopTags = inst ? (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
-    .ListenForEvent?.('tagchanged', () => syncPlacementEntity(model))
-    : prefabInstance(model)?.onTagChanged(() => syncPlacementEntity(model));
+    .ListenForEvent?.('tagchanged', tagsChanged)
+    : instance?.onTagChanged(tagsChanged);
   liveEntities.add(entity);
   const stopRemoval = removal.subscribe(removed => { if (removed) disposeActionEntity(model); });
   disposals.set(entity, () => {
     stopRemoval();
     stopTags?.();
     stopPlacement();
+    mouseCleanups.splice(0).forEach(stop => stop());
+    mouse.dispose(); mouseRegistrations.delete(entity);
     entityWorlds.get(entity)?.remove(entity);
     setPrefabActive(entity, false);
     entity.removeTag('tickingarea');
@@ -90,14 +103,16 @@ export function actionEntity(model: THREE.Group, prefab: string, inst?: Componen
 
 /**
  * The engine's lifecycle list adopts projected insts when a world binds. Area effects maintain the active
- * prefab list independently of scene attachment. Radius queries and mouse picking share that list.
+ * prefab list independently of scene attachment. Mouse input has a separate, explicitly maintained registry.
  */
 const liveEntities = new Set<FoundEntity>();
 const disposals = new Map<FoundEntity, () => void>();
 const entityWorlds = new WeakMap<FoundEntity, EntityTickingArea>();
+const mouseRegistrations = new WeakMap<FoundEntity, ReturnType<typeof registerMouseTarget>>();
 let currentEntityWorld: EntityTickingArea | undefined;
 
 function setPrefabActive(entity: FoundEntity, active: boolean): void {
+  mouseRegistrations.get(entity)?.setActive(active);
   const index = activePrefabs.indexOf(entity);
   if (active && !entity.isRemoved) {
     if (index === -1) activePrefabs.push(entity);

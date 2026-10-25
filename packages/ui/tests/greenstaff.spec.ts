@@ -40,7 +40,7 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
   await expect(hand).toHaveAttribute('data-item-id', 'greenstaff');
   await expect.poll(() => page.evaluate(() => {
     const { player } = (window as any).greenGame;
-    return player.children[0].children[0].material.some((material: any) => material.name === 'ground:swap_staffs');
+    return player.getObjectByProperty('isMesh', true).material.some((material: any) => material.name === 'ground:swap_staffs');
   })).toBe(true);
   // Prepare one source skin on the actual equipped entity; the existing equipment binding presents it.
   await page.evaluate(() => {
@@ -51,23 +51,23 @@ test('console greenstaff reskins, deconstructs opalstaff by right-click and relo
     main.inventory.applySlotChanges([{ slot, ...snapshot, delta: -1 },
       { slot, ...snapshot, skinId: 'greenstaff_clockwork', delta: 1 }]);
     const ground = scene.children.filter((model: any) => model.userData.itemId === 'opalstaff');
-    const target = ground.at(-1), opal = main.inventory.entities.get(target.userData.entityId);
+    const target = ground.at(-1), opal = main.inventory.entities.get(target.userData.instance?.entityId);
     opal.transform.position.set(player.position.x + 12, 0, player.position.z);
     (window as any).greenGame.opalId = opal.id;
     // Move the other command-spawned objects aside so only opalstaff is under the pointer.
     for (const model of scene.children.filter((model: any) => ['greenstaff', 'opalpreciousgem'].includes(model.userData.itemId))) {
-      const item = main.inventory.entities.get(model.userData.entityId);
+      const item = main.inventory.entities.get(model.userData.instance?.entityId);
       item.transform.position.set(player.position.x - 24, 0, player.position.z + 12);
     }
   });
   await expect.poll(() => page.evaluate(() => {
     const { player } = (window as any).greenGame;
-    return player.children[0].children[0].material.some((material: any) => material.name.includes('greenstaff_clockwork'));
+    return player.getObjectByProperty('isMesh', true).material.some((material: any) => material.name.includes('greenstaff_clockwork'));
   })).toBe(true);
   await expect.poll(() => page.evaluate(() => (window as any).greenGame.player.userData.animationController.stategraph.isOneShot)).toBe(false);
   const point = await page.evaluate(() => {
     const { scene, view, opalId } = (window as any).greenGame;
-    const model = scene.children.find((model: any) => model.userData.entityId === opalId);
+    const model = scene.children.find((model: any) => model.userData.instance?.entityId === opalId);
     model.updateMatrixWorld(true);
     const position = model.position.clone(); position.y += 1;
     const ndc = position.project(view.camera), bounds = view.renderer.domElement.getBoundingClientRect();

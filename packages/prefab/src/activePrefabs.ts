@@ -4,5 +4,5 @@ import type { WorkableInst } from '../../componets/src/workable';
 
 export type FoundEntity = ComponentActionEntity & WorkableInst & { readonly model: Object3D; getPosition(): Vector3 };
 
-/** The logical world's active prefab projections, shared by radius queries and pointer picking. */
+/** The logical world's active prefab projections, used by world/radius queries independently of mouse targeting. */
 export const activePrefabs: FoundEntity[] = [];

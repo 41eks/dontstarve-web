@@ -33,8 +33,8 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(report['landCells'], 10)
         self.assertEqual(report['tileCounts'], {'ARCHIVE': 1, 'FAKE_GROUND': 1, 'FUNGUS': 9})
         cells = {(t['col'], t['row']): t['tileId'] for t in result['world']['map']['tiles']}
-        self.assertEqual(cells, {(x - 3, z - 2): 256 for x in range(1, 4) for z in range(1, 4)} | {(1, 0): 200, (2, 0): 45})
-        self.assertEqual(result['players']['local']['transform']['position'], [-6, 0, 6])
+        self.assertEqual(cells, {(x - 3, 1 - z): 256 for x in range(1, 4) for z in range(1, 4)} | {(1, -1): 200, (2, -1): 45})
+        self.assertEqual(result['players']['local']['transform']['position'], [-6, 0, -6])
         self.assertEqual(report['scope'], 'full-map')
         self.assertEqual(report['nodes'], terrain['topology']['ids'])
         self.assertEqual(result['world']['map']['generator']['options']['size'], 144)
@@ -144,7 +144,7 @@ class RegionImportTest(unittest.TestCase):
         }
         entities, provenance = IMPORTER['convert_entities'](terrain, source, report, 'SURFACE')
         self.assertEqual(entities['pigking'][0]['components'], {})
-        self.assertEqual(entities['pigking'][0]['transform']['position'], [12, 0, 24])
+        self.assertEqual(entities['pigking'][0]['transform']['position'], [12, 0, -24])
         self.assertEqual(entities['deciduoustree'][0]['components'], {
             'growable': tree['growable'], 'deciduoustree': {'build': 'red', 'leaf_state': 'colorful',
                 'target_leaf_state': 'barren', 'leaveschangetime': 30}})
@@ -253,21 +253,21 @@ end
         self.assertEqual(set(entities), {'pighead', 'archive_moon_statue', 'cave_exit', 'mushtree_medium', 'mushtree_moon', 'mushtree_tall', 'blue_mushroom',
                                     'grotto_pool_big', 'grotto_pool_small', 'grotto_moonglass_1', 'grotto_waterfall_big', 'grotto_waterfall_small2'})
         self.assertEqual(entities['pighead'], [
-            {'id': 'dst_SESSION_pighead_index_000001', 'transform': {'position': [3012, 0, -24], 'rotationY': 0},
+            {'id': 'dst_SESSION_pighead_index_000001', 'transform': {'position': [3012, 0, 24], 'rotationY': 0},
              'components': {'building': {'state': 'idle'}}},
-            {'id': 'dst_SESSION_pighead_index_000002', 'transform': {'position': [0, 0, -24], 'rotationY': 0},
+            {'id': 'dst_SESSION_pighead_index_000002', 'transform': {'position': [0, 0, 24], 'rotationY': 0},
              'components': {'building': {'state': 'idle'}}},
-            {'id': 'dst_SESSION_pighead_id_9', 'transform': {'position': [12, 0, -24], 'rotationY': 0},
+            {'id': 'dst_SESSION_pighead_id_9', 'transform': {'position': [12, 0, 24], 'rotationY': 0},
              'components': {'building': {'state': 'idle', 'burnt': True}}},
         ])
         self.assertEqual(entities['archive_moon_statue'], [
-            {'id': 'dst_SESSION_archive_moon_statue_id_42', 'transform': {'position': [12, 0, -24], 'rotationY': 0},
+            {'id': 'dst_SESSION_archive_moon_statue_id_42', 'transform': {'position': [12, 0, 24], 'rotationY': 0},
              'components': {'archiveProp': {'anim': 4}}},
-            {'id': 'dst_SESSION_archive_moon_statue_id_43', 'transform': {'position': [-36, 0, -60], 'rotationY': 0},
+            {'id': 'dst_SESSION_archive_moon_statue_id_43', 'transform': {'position': [-36, 0, 60], 'rotationY': 0},
              'components': {'archiveProp': {'anim': 2}}},
         ])
         self.assertEqual(entities['cave_exit'], [
-            {'id': 'dst_SESSION_cave_exit_id_7', 'transform': {'position': [12, 0, -24], 'rotationY': 0}, 'components': {}}])
+            {'id': 'dst_SESSION_cave_exit_id_7', 'transform': {'position': [12, 0, 24], 'rotationY': 0}, 'components': {}}])
         # Pools keep only the children that were imported, linked by project entity ID; props keep their work left.
         self.assertEqual(entities['grotto_pool_big'][0]['components'], {'grottoPool': {'children': [
             {'index': 1, 'id': 'dst_SESSION_grotto_waterfall_big_id_21'}, {'index': 2, 'id': 'dst_SESSION_grotto_moonglass_1_id_22'}]}})
@@ -291,6 +291,34 @@ end
         groups['pighead'][2]['data']['unsupported'] = True
         with self.assertRaisesRegex(ValueError, 'Unsupported pighead save state'):
             IMPORTER['convert_entities'](terrain, groups, report, 'SESSION')
+
+    def test_player_snapshot_migrates_mirrored_position_and_inventory(self):
+        literals = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/dst-save-literal.py'))
+        # A dedicated server's player file wraps the table in a binary header and session trailer.
+        source = literals['player_snapshot']('\x03\r\x1dreturn {x=4,z=8,prefab="wortox",data={inventory={'
+            'items={[1]={prefab="meat",data={stackable={stack=3},perishable={time=1440},'
+            'inventoryitemmoisture={wet=true,moisture=100}}},[3]={prefab="armorwood",data={armor={condition=10}}},'
+            '[4]={prefab="unknown_item"}},'
+            'equip={hands={prefab="hambat"},body={prefab="backpack",skinname="backpack_catcoon",'
+            'data={container={items={[2]={prefab="lantern",data={fueled={fuel=100}}}}}}}}}}}\x01\x00\x10SESSION\x00')
+        catalog = {'items': {'meat': {'maxStack': 40, 'perishTime': 2880}, 'armorwood': {'maxStack': 40},
+                             'hambat': {'maxStack': 40}, 'lantern': {'maxStack': 1, 'maxFuel': 468, 'equippable': 'hand'},
+                             'backpack': {'maxStack': 1, 'equippable': 'body', 'canGoInContainer': False}},
+                   'skins': {'backpack_catcoon': 'backpack'}}
+        position, containers, report = IMPORTER['convert_player'](source, [12, 0, 24], 1000, 'dst_S_U', catalog)
+        self.assertEqual(position, [24, 0, -48])
+        self.assertEqual(containers['player:inventory']['slots'], [
+            {'slotKey': '0', 'item': {'entityId': 'dst_S_U_items_0', 'itemId': 'meat', 'count': 3, 'freshnessPercent': .5, 'wet': True}},
+            {'slotKey': '2', 'item': {'entityId': 'dst_S_U_items_2', 'itemId': 'armorwood', 'count': 1}}])
+        self.assertEqual(containers['player:equipment']['slots'], [{'slotKey': 'body', 'item': {
+            'entityId': 'dst_S_U_equip_body', 'itemId': 'backpack', 'count': 1, 'skinId': 'backpack_catcoon',
+            'container': {'slotCount': 8, 'slots': [{'slotKey': '1', 'item': {
+                'entityId': 'dst_S_U_equip_body_1', 'itemId': 'lantern', 'count': 1, 'remainingFuel': 100}}]}}}])
+        self.assertEqual(containers['player:cursor']['slots'], [])
+        self.assertEqual(report['character'], 'wortox')
+        self.assertEqual([(s['prefab'], s['reason']) for s in report['skipped']],
+                         [('unknown_item', 'unknown item'), ('hambat', 'not equippable in hand')])
+        self.assertEqual(report['droppedComponents'], [{'path': 'inventory.items.3', 'prefab': 'armorwood', 'components': ['armor']}])
 
     def test_layout_entities_align_with_wood_floor_for_odd_and_even_map_dimensions(self):
         for width, height, source_centre in [(7, 5, (0, 0)), (8, 6, (-2, -2))]:
@@ -316,9 +344,9 @@ end
                 heads = [{'x': cx + x, 'z': cz + z} for x, z in [(0, -4), (4, 0), (0, 4), (-4, 0)]]
                 entities, _ = IMPORTER['convert_entities'](terrain, {'pighead': heads}, report, 'SESSION')
                 wood = {(t['col'], t['row']) for t in save['world']['map']['tiles'] if t['tileId'] == 10}
-                self.assertEqual(wood, {(0, 0), (1, 0), (0, 1), (1, 1)})
+                self.assertEqual(wood, {(0, -1), (1, -1), (0, -2), (1, -2)})
                 self.assertEqual([e['transform']['position'] for e in entities['pighead']],
-                                 [[12, 0, 0], [24, 0, 12], [12, 0, 24], [0, 0, 12]])
+                                 [[12, 0, 0], [24, 0, -12], [12, 0, -24], [0, 0, -12]])
 
 
 if __name__ == '__main__':

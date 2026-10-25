@@ -46,11 +46,11 @@ test('equipped torch right-click ignites structures and ground materials, closin
   const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
   await torch.dragTo(hand); await expect(hand).toHaveAttribute('data-item-id', 'torch');
   await expect.poll(() => page.evaluate(() => (window as any).igniteGame.scene.children.some((model: any) =>
-    model.userData.actionEntity?.prefab === 'treasurechest' && !model.userData.saveRecord))).toBe(true);
+    model.userData.actionEntity?.prefab === 'treasurechest' && !model.userData.instance?.saveRecord))).toBe(true);
 
   const point = async (prefab: string) => page.evaluate(async prefab => {
     const game = (window as any).igniteGame;
-    const model = game.scene.children.find((model: any) => model.userData.actionEntity?.prefab === prefab && !model.userData.saveRecord);
+    const model = game.scene.children.find((model: any) => model.userData.actionEntity?.prefab === prefab && !model.userData.instance?.saveRecord);
     if (!model) throw new Error(`Missing spawned ${prefab}`);
     game.targets.set(prefab, model);
     const foot = model.userData.getGroundPosition();
@@ -84,7 +84,7 @@ test('equipped torch right-click ignites structures and ground materials, closin
   });
   await submit('c_spawn("cookpot")');
   await expect.poll(() => page.evaluate(() => (window as any).igniteGame.scene.children.some((model: any) =>
-    model.userData.actionEntity?.prefab === 'cookpot' && !model.userData.saveRecord))).toBe(true);
+    model.userData.actionEntity?.prefab === 'cookpot' && !model.userData.instance?.saveRecord))).toBe(true);
   const potPoint = await point('cookpot');
   await page.mouse.click(potPoint.x, potPoint.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).igniteGame.targets.get('cookpot').userData.burningSignal.peek())).toBe(true);

@@ -31,7 +31,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   };
   const ground = () => page.evaluate(() => (window as any).heatRockGame.scene.children
     .filter((model: any) => model.userData.itemId === 'heatrock').map((model: any) => ({
-      id: model.userData.entityId, skin: model.userData.skinId,
+      id: model.userData.instance?.entityId, skin: model.userData.instance?.skinId,
       vertices: model.children[0].children[0].geometry.drawRange.count,
       materials: model.children[0].children[0].material.map((material: any) => material.name),
     })));
@@ -40,7 +40,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
       { timeout: 20_000 }).toBe(true);
     const point = await page.evaluate(async ({ id, pointerUrl }) => {
       const { scene, camera, renderer } = (window as any).heatRockGame;
-      const model = scene.children.find((model: any) => model.userData.entityId === id), mesh = model.children[0].children[0];
+      const model = scene.children.find((model: any) => model.userData.instance?.entityId === id), mesh = model.children[0].children[0];
       const { PointerRaycaster } = await import(pointerUrl);
       const pointer = new PointerRaycaster({ scene, camera, renderer });
       const rect = renderer.domElement.getBoundingClientRect();
@@ -88,7 +88,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   expect(spawned.vertices).toBeGreaterThan(0); expect(spawned.materials).toContain('ground:heat_rock');
   await page.evaluate(id => {
     const game = (window as any).heatRockGame;
-    game.scene.children.find((model: any) => model.userData.entityId === id).userData.components.fueled.remaining = 75;
+    game.scene.children.find((model: any) => model.userData.instance?.entityId === id).userData.components.fueled.remaining = 75;
     game.playerBody.position.set(-3, game.playerBody.shapes[0].radius, 3); game.player.position.set(-3, 0, 3);
   }, spawned.id);
   await bag.locator('[data-item-id="reskin_tool"]').dragTo(bar.locator('[data-slot-key="hand"]'));

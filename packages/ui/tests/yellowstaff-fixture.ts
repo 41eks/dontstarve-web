@@ -63,7 +63,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
       for (const mirrored of [false, true]) {
         animation.setFacing(facing, mirrored);
         animation.update(0.05);
-        const mesh = player.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+        const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
         if (!mesh.material.some((material) => material.name === `ground:${build}`)) failures.push(`worn:${skin}:${facing}:${mirrored}`);
         if (mesh.material.some((material) => !material.forceSinglePass)) failures.push('face passes');
       }
@@ -179,10 +179,10 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const lifetimeStar = await stars.spawn(new THREE.Vector3(-70, 0, 0));
   stars.update(duration - 1, camera.quaternion);
   const survivesUntilExpiry = !!lifetimeStar.parent && !!getPrefabLocalLight(lifetimeStar)
-    && stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.entityId
+    && stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.instance?.entityId
       && Math.abs(entry.components.timer.remainingSeconds - 1) < 0.000001);
   stars.update(1, camera.quaternion);
-  const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.entityId);
+  const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.instance?.entityId);
   stars.update(1, camera.quaternion);
   const lifetimeRemoved = !lifetimeStar.parent && !getPrefabLocalLight(lifetimeStar);
   casting.dispose();

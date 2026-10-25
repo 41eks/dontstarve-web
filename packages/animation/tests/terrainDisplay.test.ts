@@ -6,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { ArchivePropsManager } from '../../prefab/src/archive_props';
 import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
 import { NightmareRockManager } from '../../prefab/src/nightmarerock';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance, modelHasTag } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FACING } from '../src/facing';
 
@@ -30,12 +30,12 @@ it('restores portal ground layers, its declared shadow and statue work state wit
     const mine = manager.mineTargets[0];
     mine.entity.components.workable!.WorkedBy({}, 5);
     await settle();
-    const shadow = portal.children.find(child => child.userData.tags?.includes('DECOR'))!;
+    const shadow = portal.children.find(child => modelHasTag(child, 'DECOR'))!;
     const records = manager.exportRecords();
     const work = mine.entity.components.workable!.GetWorkLeft();
     const shadowInstance = prefabInstance(shadow)!;
     expect(shadowInstance.persists).toBe(false);
-    expect(shadow.userData.tags).toEqual(['DECOR', 'NOCLICK']);
+    expect(prefabInstance(shadow)!.listTags()).toEqual(['DECOR', 'NOCLICK']);
     // The archive path is stable root -> drawn sprite -> visual -> merged frame.
     const portalVisual = portal.children[0].children[0];
     expect(portalVisual.rotation.x).toBe(-Math.PI / 2);

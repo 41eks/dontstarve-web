@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { DwarfStarManager, dwarfStarLight, DWARF_STAR_DURATION, STAFF_LIGHT_ACTIVE_RADIUS, getStaffLightState, type StaffLightId } from '../../prefab/src/stafflight';
 import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { PlaySound } from '../../prefab/src/sound';
@@ -171,7 +172,7 @@ it('settles lifetime at frame 60 using actual dt and releases light, sound and g
   expect(state.remaining.peek()).toBe(0);
   expect(state.phase.peek()).toBe('disappearing');
   expect(state.removed.peek()).toBe(false);
-  expect(model.userData.persists).toBe(false);
+  expect(model.userData.instance?.persists).toBe(false);
   expect(manager.exportRecords()).toEqual([]); // Domain state commits before the effect.
   expect(play).not.toHaveBeenCalled();
   await Promise.resolve();
@@ -205,6 +206,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   const appearances = vi.spyOn(SpriteState.prototype, 'playOnce');
   const model = await manager.spawn(position);
   await settle();
+  const instance = prefabInstance(model)!;
   const oldAppearDone = appearances.mock.calls.find(([clip]) => clip === 'appear')![1]!;
   const state = getStaffLightState(model)!;
   const controller = model.userData.animationController as SpriteAnimationController;
@@ -242,7 +244,8 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   const newSprite = drawn(model)!;
   expect(FindEntities(model.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
   expect(newSprite).not.toBe(oldSprite);
-  expect(newSprite.userData.entityId).toBe(model.userData.entityId);
+  expect(prefabInstance(model)).toBe(instance);
+  expect(newSprite.userData).not.toHaveProperty('entityId');
   expect(getStaffLightState(model)).toBe(state);
   const newIdle = vi.spyOn(model.userData.animationController as SpriteAnimationController, 'start');
   oldAppearDone(); // The old model cannot restart animation on the replacement.
@@ -256,7 +259,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   expect(newSprite.children[0].renderOrder).toBe(7);
   expect(PlaySound).toHaveBeenCalledTimes(3); // Creation, old loop, resumed loop.
   const record = manager.exportRecords()[0];
-  expect(record.id).toBe(model.userData.entityId);
+  expect(record.id).toBe(model.userData.instance?.entityId);
   expect(record.transform.position).toEqual(position.toArray());
   expect(record.components.timer.remainingSeconds).toBeCloseTo(DWARF_STAR_DURATION - 12.6);
   expect(getPrefabLocalLight(model)!.radius).toBeCloseTo(dwarfStarLight(12.6).radius);
@@ -311,7 +314,7 @@ it('haunting starts disappearance once and keeps the original one-second removal
   const play = vi.spyOn(model.userData.animationController as SpriteAnimationController, 'playOnce');
   expect(manager.haunt(model)).toBe(true);
   expect(state.remaining.peek()).toBe(0);
-  expect(model.userData.persists).toBe(false);
+  expect(model.userData.instance?.persists).toBe(false);
   await Promise.resolve();
   expect(play).toHaveBeenCalledExactlyOnceWith('disappear', expect.any(Function));
   update(0.6);

@@ -19,8 +19,8 @@ export async function checkCrown() {
   document.body.style.cssText = 'margin:0;background:#182025;color:white;font:14px sans-serif';
   const gallery = document.querySelector<HTMLElement>('#crown-gallery')!;
   gallery.style.cssText = 'display:grid;grid-template-columns:repeat(3,260px);width:780px';
-  const visual = player.children[0];
-  const mesh = visual.children[0] as THREE.Mesh;
+  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
+  const visual = mesh.parent!;
   const capture = (label: string) => {
     renderer.render(scene, camera);
     const canvas = document.createElement('canvas');

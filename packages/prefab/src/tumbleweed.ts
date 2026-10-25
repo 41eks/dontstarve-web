@@ -124,7 +124,7 @@ class Tumbleweed {
       canBePicked: true, quickpick: false, product: undefined,
       pick: () => this.pickup(),
     };
-    Object.assign(this.model.userData, { prefab: TUMBLEWEED_ID, tumbleweed: this });
+    this.model.userData.tumbleweed = this;
     // inst:ListenForEvent("startlongaction", OnLongAction) — PICK's long action pushes it on the target.
     const onLongAction = () => this.onLongAction();
     this.model.addEventListener('startlongaction' as never, onLongAction);
@@ -275,7 +275,7 @@ export class TumbleweedManager {
     const model = entity.display.model;
     model.position.copy(position).setY(0);
     this.world.constrainPosition(model.position);
-    model.userData.entityId = saved?.id ?? newEntityId();
+    entity.instance.entityId = saved?.id ?? newEntityId();
     const tumbleweed = new Tumbleweed(entity, breakFx, this.physics, this.world, (target, picked) => this.remove(target.model, picked));
     this.tumbleweeds.set(model, tumbleweed);
     model.userData.remove = () => this.remove(model, false);
@@ -300,7 +300,7 @@ export class TumbleweedManager {
   }
 
   exportRecords(): TumbleweedRecord[] {
-    return [...this.tumbleweeds.keys()].map(model => ({ id: String(model.userData.entityId),
+    return [...this.tumbleweeds].map(([model, weed]) => ({ id: String(weed.entity.instance.entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 }, components: {} }));
   }
 

@@ -80,7 +80,7 @@ export async function checkMoonShellErosion() {
       const target = manager.getMineTargets(shells[index])[0];
       for (let i = 0; i < 6; i++) performToolWork('MINE', target.entity, {});
       shells[index].userData.animationController.setPaused(true);
-      for (const entity of scene.children) if (entity.userData.prefab === 'moonrockseed') entity.visible = false;
+      for (const entity of scene.children) if (entity.userData.instance?.prefab === 'moonrockseed') entity.visible = false;
     };
     breakShell(0); scheduler.advance(1); breakShell(1);
     const intact = await draw();

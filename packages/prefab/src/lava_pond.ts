@@ -79,7 +79,7 @@ class LavaPond {
     for (const rock of this.rocksState.peek()!) {
       const child = createRock(this.rockFactory, `lava_pond_rock${rock.rocktype}` as LavaPondRockId);
       child.position.fromArray(rock.offset).multiplyScalar(WORLD_SCALE);
-      child.userData.persists = false; this.model.add(child); this.children.push(child);
+      prefabInstance(child)!.persists = false; this.model.add(child); this.children.push(child);
     }
   }
   exportSave(): LavaPondSaveState {
@@ -111,8 +111,9 @@ function createRock(factory: AnimatedSpriteFactory, prefab: LavaPondRockId, save
   // matrixWorld is read directly: getWorldPosition() calls updateWorldMatrix, which re-enters the spatial index sync.
   const groundPosition = new THREE.Vector3();
   instance.sprite.playOnce(`idle${type}`);
-  Object.assign(model.userData, { prefab, entityId: saved?.id ?? newEntityId(), persists: true,
-    prefabNameOverride: 'lava_pond_rock', getGroundPosition: () => groundPosition.setFromMatrixPosition(model.matrixWorld) });
+  instance.entityId = saved?.id ?? newEntityId();
+  Object.assign(model.userData, { prefabNameOverride: 'lava_pond_rock',
+    getGroundPosition: () => groundPosition.setFromMatrixPosition(model.matrixWorld) });
   actionEntity(model, prefab);
   return model;
 }
@@ -155,8 +156,8 @@ export class LavaPondManager {
     model.position.copy(position); model.userData.billboard = false;
     // OnGround rotates only art; the entity root and child offsets stay in world space.
     instance.sprite.setGround(0); instance.sprite.setMeshOrder(-.5); // Same BACKGROUND/sort order 3 as pond.lua.
-    Object.assign(model.userData, { prefab: LAVA_POND_ID, entityId: saved?.id ?? newEntityId(),
-      noWetPrefix: true, deploySmartRadius: 2 * WORLD_SCALE, sourceSortOrder: 3 });
+    instance.entityId = saved?.id ?? newEntityId();
+    Object.assign(model.userData, { noWetPrefix: true, deploySmartRadius: 2 * WORLD_SCALE, sourceSortOrder: 3 });
     const pool = new LavaPond(model, rocks, this.scheduler, this.random, saved?.components.lavaPond);
     model.userData.lavaPond = pool;
     // lava_pond.lua MakePondPhysics(inst, 1.95)
@@ -192,10 +193,10 @@ export class LavaPondManager {
   }
   exportRecords(): { prefabId: string; record: LavaPondRecord | LavaPondRockRecord }[] {
     return [...[...this.pools.values()].map(pool => ({ prefabId: LAVA_POND_ID, record: {
-      id: pool.model.userData.entityId as string,
+      id: prefabInstance(pool.model)!.entityId as string,
       transform: { position: pool.model.position.toArray(), rotationY: 0 }, components: { lavaPond: pool.exportSave() },
-    } })), ...[...this.standaloneRocks].map(model => ({ prefabId: model.userData.prefab as LavaPondRockId, record: {
-      id: model.userData.entityId as string, transform: { position: model.position.toArray(), rotationY: 0 }, components: {},
+    } })), ...[...this.standaloneRocks].map(model => ({ prefabId: prefabInstance(model)!.prefab as LavaPondRockId, record: {
+      id: prefabInstance(model)!.entityId as string, transform: { position: model.position.toArray(), rotationY: 0 }, components: {},
     } }))];
   }
   remove(model: THREE.Group): void {

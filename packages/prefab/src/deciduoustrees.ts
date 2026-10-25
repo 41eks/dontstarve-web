@@ -2,7 +2,7 @@ import { ModelRecords } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSignal, readonlySignal, createEffect, getBoundWatchWorldContent, WorldContentKey, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, createEffect, getBoundWatchWorldContent, WorldContentKey, type HandEquipment, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createAnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
@@ -19,6 +19,7 @@ import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './
 import { watchTileActivity } from './tileActivity';
 import { registerPlacementTree } from './placementEntities';
 import { actionEntity } from './actionEntity';
+import { ToolMouseTarget } from './toolMouseTarget';
 import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
 import { DeciduousTreeLeaves, type DeciduousTreeSave, type LeafWorld, type LeafBuild } from './deciduousTreeLeaves';
@@ -42,6 +43,7 @@ export interface DeciduousRecord {
   components: { deciduoustree: DeciduousTreeSave; growable?: GrowableSave; deciduousTimer?: NamedTimerSave };
 }
 export interface DeciduousWorld {
+  handEquipment?: ReadonlySignal<HandEquipment | null>;
   camera: THREE.Camera;
   /** Searched for propagator neighbours; receives fire effects. */
   scene: THREE.Object3D;
@@ -71,6 +73,7 @@ interface Tree {
   growable: Growable;
   timer: Timer;
   workable: Workable;
+  mouseTarget?: ToolMouseTarget;
   lootdropper: LootDropper;
   sounds: Set<SoundHandle>;
   leaves: DeciduousTreeLeaves;
@@ -267,6 +270,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
     tree.workable = new Workable(tree.inst);
     tree.inst.components.workable = tree.workable;
     tree.workable.SetWorkAction('DIG'); tree.workable.SetWorkLeft(1);
+    tree.mouseTarget?.setWorkable(tree.workable);
     tree.workable.SetOnFinishCallback(() => {
       tree.lootdropper.SpawnLootPrefab('log');
       remove(tree);
@@ -307,11 +311,12 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
   const initializeModel = (tree: Tree) => {
     const model = tree.logical.model;
     model.userData.animationController = tree.sprite;
-    Object.assign(model.userData, { entityId: tree.logical.saveId, prefab: 'deciduoustree', deploySmartRadius: 1,
+    Object.assign(model.userData, { deploySmartRadius: 1,
       MiniMapEntity: tree.minimap, components: tree.inst.components,
       deciduoustreeState: { stump: readonlySignal(tree.stump), growth: tree.growable.state, leaves: tree.leaves.state } });
     model.userData.placementLogical = true;
-    actionEntity(model, 'deciduoustree', tree.inst);
+    const entity = actionEntity(model, 'deciduoustree', tree.inst);
+    tree.mouseTarget = new ToolMouseTarget(entity, tree.instance, tree.workable, world.handEquipment);
     mouseRecords.set(model, tree.logical);
   };
   const setActive = (tree: Tree, awake: boolean) => {

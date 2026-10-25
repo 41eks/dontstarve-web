@@ -1,3 +1,4 @@
+import { hoverSprite } from './sprite-input';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -31,9 +32,18 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/tests/dst-lighting.html');
+  await page.route('**/saves/initial-world.json', async route => {
+    const response = await route.fetch(), save = await response.json();
+    save.world.entities = { treasurechest: [{ id: 'hammer-chest', transform: { position: [0, 0, -6], rotationY: 0 },
+      components: { building: { state: 'closed' }, container: { slotCount: 9, slots: [] } } }] };
+    save.players.local.transform.position = [0, 0, 0];
+    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
+    save.players.local.inventory.bufferedBuilds = [];
+    await route.fulfill({ response, json: save });
+  });
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   await page.evaluate(async (urls) => {
-    const main = await import(urls.main);
+    const main = await import(urls.main); await main.gameReady;
     const player = await import(urls.player);
     const { scene } = await import(urls.universal);
     const { view } = await import(urls.view);
@@ -50,7 +60,7 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
     player.playerBody.position.set(target.position.x, radius, target.position.z + 3);
     player.player.position.set(target.position.x, 0, target.position.z + 3);
     if (main.inventory.count('hammer') === 0) main.inventory.add('hammer', 1);
-    (window as any).hammerGame = { main, ...player, scene, view, target };
+    (window as any).hammerGame = { main, inventory: main.inventory, ...player, scene, view, target };
   }, {
     ...Object.fromEntries(['main', 'player', 'universal', 'view'].map((name) =>
       [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`])),
@@ -68,40 +78,33 @@ test('game UI equips, drops and picks up hammer, then right-click hammers a buil
   await hand.click({ button: 'right' });
   await page.keyboard.up('Shift');
   await expect.poll(() => page.evaluate(() => (window as any).hammerGame.scene.children.some((model: any) => model.name === 'GroundItem:hammer'))).toBe(true);
-  const point = await page.evaluate(() => {
-    const { scene, view } = (window as any).hammerGame;
-    const dropped = scene.children.find((model: any) => model.name === 'GroundItem:hammer');
-    const position = dropped.position.clone();
-    dropped.children[0].children[0].geometry.computeBoundingBox();
-    const box = dropped.children[0].children[0].geometry.boundingBox;
-    position.y += -(box.min.y + box.max.y) * 0.01;
-    const ndc = position.project(view.camera);
-    const bounds = view.renderer.domElement.getBoundingClientRect();
-    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
-  });
+  const screenPoint = (dropped: boolean) => page.evaluate(async ({ dropped, moduleUrl }) => {
+    const { scene, view, target } = (window as any).hammerGame;
+    const model = dropped ? scene.children.find((model: any) => model.name === 'GroundItem:hammer') : target;
+    const { spriteScreenPoint } = await import(moduleUrl);
+    return spriteScreenPoint(model, view.camera, view.renderer);
+  }, { dropped, moduleUrl: `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}` });
+  const point = await hoverSprite(page, () => screenPoint(true), 'hammerGame', 'left', 'PICKUP');
   await page.mouse.click(point.x, point.y);
   await expect(hand).toHaveAttribute('data-item-id', 'hammer');
   await expect.poll(() => page.evaluate(() => (window as any).hammerGame.scene.children.some((model: any) => model.name === 'GroundItem:hammer'))).toBe(false);
-  await expect.poll(() => page.evaluate(() => (window as any).hammerGame.player.children[0].children[0].material
+  await expect.poll(() => page.evaluate(() => (window as any).hammerGame.player.getObjectByProperty('isMesh', true).material
     .some((material: any) => material.name === 'ground:swap_hammer'))).toBe(true);
-  const targetPoint = await page.evaluate(async () => {
-    const { target, view } = (window as any).hammerGame;
-    const before = JSON.stringify(target.userData.saveRecord);
+  await page.evaluate(() => {
+    const { target } = (window as any).hammerGame;
+    const before = JSON.stringify(target.userData.instance?.saveRecord);
     (window as any).hammerGame.before = before;
     (window as any).hammerGame.hitSeen = false;
     const controller = target.userData.animationController;
     const original = controller.playTransient.bind(controller);
     controller.playTransient = (name: string) => { (window as any).hammerGame.hitSeen = name === 'hit'; original(name); };
-    await new Promise(requestAnimationFrame);
-    const ndc = target.position.clone().project(view.camera);
-    const bounds = view.renderer.domElement.getBoundingClientRect();
-    return { x: bounds.left + (ndc.x + 1) * bounds.width / 2, y: bounds.top + (1 - ndc.y) * bounds.height / 2 };
   });
+  const targetPoint = await hoverSprite(page, () => screenPoint(false), 'hammerGame', 'right', 'HAMMER');
   await page.mouse.click(targetPoint.x, targetPoint.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).hammerGame.hitSeen)).toBe(true);
   expect(await page.evaluate(() => {
     const { target, before } = (window as any).hammerGame;
-    return JSON.stringify(target.userData.saveRecord) === before;
+    return JSON.stringify(target.userData.instance?.saveRecord) === before;
   })).toBe(true);
   await expect(page.locator('dst-chest-panel .chest-panel')).toBeHidden();
   expect(errors).toEqual([]);

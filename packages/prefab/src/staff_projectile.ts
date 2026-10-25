@@ -78,7 +78,6 @@ export class StaffProjectileManager {
   private attach(entry: ActiveProjectile, initial: ArchiveSprite): void {
     const entity = entry.entity = createArchiveEntity(FIRE_PROJECTILE_ID, { create: clip => this.create(clip), initial },
       { name: 'fire_spin_loop' }, FIRE_PROJECTILE_ID);
-    entity.display.model.userData.prefab = FIRE_PROJECTILE_ID;
     entity.instance.persists = false;
     entity.instance.addTag('projectile');
     entity.instance.position.copy(entry.component.position);

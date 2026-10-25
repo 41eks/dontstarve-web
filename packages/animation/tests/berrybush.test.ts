@@ -63,7 +63,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     expect(s.inventory.getItemSpec('dug_berrybush').atlas).toBe('images/inventoryimages.xml');
     const model = s.bushes.digTargets[0].model, pickable = model.userData.components.pickable;
     expect(s.physics.bodies).toHaveLength(1);
-    expect(model.userData.physicsRadius).toBeCloseTo(.3);
+    expect(model.userData.instance?.getPhysicsRadius(undefined)).toBeCloseTo(.3);
     expect(pickable.pick(s.picker)).toBe(true);
     expect(s.inventory.count('berries')).toBe(1);
     expect(pickable.cyclesLeft).toBe(5);
@@ -106,11 +106,11 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
   const s = setup(), restored = setup();
   try {
     const position = new THREE.Vector3(24, 0, 36);
-    const model = await s.bushes.spawn(position), originalId = model.userData.entityId;
+    const model = await s.bushes.spawn(position), originalId = model.userData.instance?.entityId;
     const reskin = await s.bushes.reskinTargets[0].prepareNextSkin();
     expect(reskin.apply()).toBe(true); reskin.dispose();
-    expect(model.userData.skinId).toBe('berrybush_cawnival');
-    expect(model.userData.entityId).toBe(originalId); expect(model.position.equals(position)).toBe(true);
+    expect(model.userData.instance?.skinId).toBe('berrybush_cawnival');
+    expect(model.userData.instance?.entityId).toBe(originalId); expect(model.position.equals(position)).toBe(true);
     const original = s.bushes.exportRecords()[0];
     expect(performToolWork('DIG', s.bushes.digTargets[0].entity!, {})).toBe(true);
     expect(s.physics.bodies).toHaveLength(0);
@@ -132,14 +132,14 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     })).toBe(true);
     prepared.dispose();
     const replanted = s.bushes.digTargets[0].model, pickable = replanted.userData.components.pickable;
-    expect(replanted.userData.skinId).toBe('berrybush_cawnival');
+    expect(replanted.userData.instance?.skinId).toBe('berrybush_cawnival');
     expect(pickable.exportState()).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
     expect(replanted.userData.animationController.currentAnimation).toBe('dead');
     s.snowLevel.set(.5); await settleEffects();
     const beforeFertilize = s.bushes.exportRecords()[0];
     const nextSkin = await s.bushes.reskinTargets[0].prepareNextSkin();
     expect(nextSkin.apply()).toBe(true); nextSkin.dispose();
-    expect(replanted.userData.skinId).toBe('berrybush_mystical');
+    expect(replanted.userData.instance?.skinId).toBe('berrybush_mystical');
     expect(s.bushes.exportRecords()[0].components.pickable).toEqual(beforeFertilize.components.pickable);
     expect(pickable.remainingSeconds).toBeUndefined();
     const fertilizer = s.inventory.entities.create({ itemId: 'poop', count: 1 }); s.inventory.configureItem(fertilizer);

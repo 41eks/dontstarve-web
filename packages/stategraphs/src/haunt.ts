@@ -6,6 +6,7 @@ import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } f
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 
 /** actions.lua HAUNT mindistance = 2 DST units. */
 export const HAUNT_REACH = 2 * TILE_SIZE / 4;
@@ -26,8 +27,8 @@ function hauntTarget(model: THREE.Object3D): HauntTarget | undefined {
   const component = model.userData.components?.hauntable as Hauntable | undefined;
   if (!component) return undefined;
   return {
-    model, component, prefab: model.userData.prefab,
-    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? model.userData.tags?.includes(tag) ?? false,
+    model, component, prefab: model.userData.actionEntity?.prefab ?? prefabInstance(model)?.prefab,
+    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? modelHasTag(model, tag),
     getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
   };
 }

@@ -10,6 +10,7 @@ import { getMigrateActions } from '../../stategraphs/src/migrate';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { createSignal, readonlySignal } from '../../signals/src';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -57,7 +58,7 @@ it('offers MIGRATE on an open entrance whose Caves destination is available and 
     const open = await caves.spawn('cave_entrance_open', new THREE.Vector3(1, 0, 2));
     const [action] = getMigrateActions(open);
     expect(action).toMatchObject({ button: 'left', available: true, action: { action: 'MIGRATE' } });
-    expect(open.userData.tags).toContain('migrator');
+    expect(prefabInstance(open)!.listTags()).toContain('migrator');
     expect(open.userData.components.worldmigrator.Activate({ hasTag: () => false })).toBe(false);
     const player = { hasTag: (tag: string) => tag === 'player' };
     expect(open.userData.components.worldmigrator.Activate(player)).toBe(true);
@@ -65,7 +66,7 @@ it('offers MIGRATE on an open entrance whose Caves destination is available and 
 
     const closed = await unavailable.spawn('cave_entrance_open', new THREE.Vector3(5, 0, 2));
     expect(getMigrateActions(closed)).toEqual([]);
-    expect(closed.userData.tags).not.toContain('migrator');
+    expect(prefabInstance(closed)!.listTags()).not.toContain('migrator');
   } finally { caves.dispose(); unavailable.dispose(); }
 }, 20000);
 

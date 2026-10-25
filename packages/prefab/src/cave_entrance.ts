@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
@@ -42,7 +43,7 @@ export interface CaveEntranceRecord {
   components: Record<string, never>;
 }
 
-export interface CaveEntranceWorld {
+export interface CaveEntranceWorld extends ToolMouseTargetWorld {
   physics?: CANNON.World;
   /** Without it every entrance is active. */
   tickingarea?: TileStateQuery;
@@ -131,7 +132,7 @@ export class CaveEntranceManager {
     const { instance, display } = this.createSprite(this.factory!, prefab);
     const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab });
+    instance.entityId = saved?.id ?? newEntityId();
     instance.addTag('antlion_sinkhole_blocker');
     const inst = actionEntity(model, prefab);
     const entrance: Entrance = { prefab, instance, display, sprite, loot, removed: false, stopActivity: () => {},
@@ -190,6 +191,7 @@ export class CaveEntranceManager {
       this.create(CAVE_ENTRANCE_OPEN_ID, new Map(), model.position, record);
     });
     Object.assign(model.userData.components, { workable, lootdropper });
+    new ToolMouseTarget(inst, entrance.instance, workable, this.world.handEquipment);
   }
 
   update(dt: number, _quaternion: THREE.Quaternion): void {
@@ -210,14 +212,14 @@ export class CaveEntranceManager {
 
   getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
     return modelEntries(this.entrances, model).filter(([, entrance]) => entrance.workable?.CanBeWorked()).map(([model, entrance]) => ({
-      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, entrance.prefab),
+      id: String(entrance.instance.entityId), model, position: model.position, entity: actionEntity(model, entrance.prefab),
       isValid: () => this.entrances.get(model) === entrance && !!entrance.workable?.CanBeWorked(),
     }));
   }
 
   exportRecords(): { prefabId: CaveEntranceId; record: CaveEntranceRecord }[] {
-    return [...this.entrances].map(([model, { prefab }]) => ({ prefabId: prefab, record: {
-      id: String(model.userData.entityId),
+    return [...this.entrances].map(([model, { prefab, instance }]) => ({ prefabId: prefab, record: {
+      id: String(instance.entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: {},
     } }));

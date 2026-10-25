@@ -28,7 +28,7 @@ test('cooks, reloads and harvests food with player input, preserving the empty p
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const state = () => page.evaluate(() => {
     const pot = (window as any).potGame.scene.children.find((model: any) => model.name === 'CookPot');
-    return pot ? { id: pot.userData.entityId, stewer: pot.userData.stewer ?? null,
+    return pot ? { id: pot.userData.instance?.entityId, stewer: pot.userData.stewer ?? null,
       animation: pot.userData.animationController.currentAnimation } : null;
   });
   const saveGame = async () => {

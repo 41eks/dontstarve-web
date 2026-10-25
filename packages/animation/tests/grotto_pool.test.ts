@@ -119,11 +119,11 @@ it('spawns the big pool with its five children, mines a glass for moonglass and 
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
     const [mine] = s.pools.mineTargets;
     for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
-    expect(mine.model.userData.physicsRadius).toBeDefined();
+    expect(mine.model.userData.instance?.getPhysicsRadius(undefined)).toBeDefined();
     expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(s.pools.mineTargets).toHaveLength(3);
     expect(mine.entity.hasTag('NOCLICK')).toBe(true);
-    expect(mine.model.userData.physicsRadius).toBeUndefined();
+    expect(mine.model.userData.instance?.getPhysicsRadius(undefined)).toBeUndefined();
     // moonglass_prop: two sure pieces and the 50% one (random = .5 hits).
     await vi.waitFor(() => expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['moonglass', 'moonglass', 'moonglass']));
 
@@ -161,7 +161,7 @@ it('spawns the small pool with one small waterfall and plays the waterfall loop 
     s.pools.update(0.2, new THREE.Quaternion());
     expect(sound.stops).toBe(before + 1);
     // Removing the pool removes its waterfall.
-    const pool = s.scene.children.find(model => model.userData.prefab === 'grotto_pool_small')!;
+    const pool = s.scene.children.find(model => model.userData.instance?.prefab === 'grotto_pool_small')!;
     pool.userData.remove();
     expect(s.pools.exportRecords()).toEqual([]);
     expect(s.physics.bodies).toHaveLength(0);

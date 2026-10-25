@@ -33,7 +33,7 @@ it('takes an instanced plant out of the scene outside the tickingarea and restor
     awake.set(false); await tick();
     expect(model.parent).toBeNull();
     expect(meshes()).toBe(0);
-    expect(model.userData.entityId).toBe('bush:resident');
+    expect(model.userData.instance?.entityId).toBe('bush:resident');
     expect(bushes.exportRecords()[0].id).toBe('bush:resident');
 
     awake.set(true); await tick();

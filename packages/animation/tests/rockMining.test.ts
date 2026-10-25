@@ -60,7 +60,7 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
     model.addEventListener('workfinished' as never, finished);
     performToolWork('MINE', mine.entity, {});
     expect(finished).toHaveBeenCalledOnce();
-    expect(model.userData.tags).toContain('NOCLICK');
+    expect(prefabInstance(model)!.listTags()).toContain('NOCLICK');
     expect(model.userData.animationController.currentAnimation).toBe('break');
     expect(s.manager.exportRecords()[0].record.transform.position).toEqual([3, 0, 4]);
     expect(s.manager.mineTargets).toEqual([]);

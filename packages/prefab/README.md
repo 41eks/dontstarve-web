@@ -123,16 +123,18 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 `python3 packages/prefab/scripts/import-hats.py` 可重新生成帽子目录并镜像资产，
 `--source` 可指定 DST data 根目录，`--check` 校验目录与所有镜像文件。
 
-`createHatGroundSprite(assets, itemId, skinId?)` 使用独立的落地 `anim` 动画，遵循
+`createHatGroundFactory(context)` 把落地帽子创建为 `createPrefabEntity()` 实体，使用独立的落地 `anim` 动画，遵循
 `hats.lua` 的 `SetBank(name.."hat")` / `SetBuild("hat_"..name)` / `PlayAnimation("anim")`。
-传入 `new HatEquipmentAssets(animationBaseUrl)`，返回 `{ model, update, dispose }`；
+sprite 来自按帽子 archive 与皮肤共享的 `createAnimatedSpriteSource()`，由 `PrefabDisplay` 绘制；
+落地／读档后经 `bindResidentGroundItem()` 绑定 tile 活动，与目录物品相同。
 落地帽子按实体的地面接触点参与遮挡排序，点击合并 Mesh 可拾取，存档保存真实落点。
-兔子帽同时使用 `rabbit_build` 的身体和 `hat_rabbit` 的帽子部件。
+兔子帽按 `rabbit_custom_init` 以 `rabbit_build` 为 build，并通过 `instance.sprite.addOverrideBuild('hat_rabbit', …)` 声明帽子部件。
 
 `@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、
 `GroundItemAssets` 和 `createResidentGroundItem({ assets, tickingarea? }, { itemId, skinId? })`。
 返回 `{ visual, instance, display }`，prefab 通过 `instance.sprite` 声明动画与外观，
 由 `PrefabDisplay` 创建和释放 sprite；落地／读档后绑定 tile，休眠时保留稳定模型、身份与组件。
+其他 sprite 来源（如 factory 路径的落地帽子）用 `groundItemLifecycle.ts` 的 `bindResidentGroundItem(context, instance, display)` 获得同一生命周期。
 通用资源加载、动画选择、符号覆盖、模型创建和逐帧绘制由
 `@dontstarve-web/animation/archiveSprite` 提供。`GroundItemAssets` 继承其共享缓存，
 保留 `ground:` 材质名称；prefab 层负责物品定义、皮肤校验、实体物品信息和库存事件。

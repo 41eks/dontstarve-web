@@ -22,8 +22,8 @@ test('giving, dropping and spawning Bernie follows player sanity and saves canon
     const { scene } = await import(url);
     const models: { id: string; prefab: string; position: number[]; count: number }[] = [];
     scene.traverse((model: any) => {
-      if (model.userData.itemId === 'bernie_inactive') models.push({ id: model.userData.entityId,
-        prefab: model.userData.prefab, position: model.position.toArray(), count: model.userData.count });
+      if (model.userData.itemId === 'bernie_inactive') models.push({ id: model.userData.instance?.entityId,
+        prefab: model.name.slice('GroundItem:'.length), position: model.position.toArray(), count: model.userData.count });
     });
     return models;
   }, moduleUrl('../../../src/universal.ts'));

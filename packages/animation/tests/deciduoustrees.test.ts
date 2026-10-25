@@ -10,6 +10,7 @@ import { createDeciduousForest } from '../../prefab/src/deciduoustrees';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { DeciduousTreeLeaves } from '../../prefab/src/deciduousTreeLeaves';
 import { bindTestWorld } from './worldContentFixture';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;
@@ -68,7 +69,7 @@ it('cycles three source size banks, swaps seasonal leaves without sharing tint, 
     await area.visit(new THREE.Vector3());
     expect(s.forest.chopTargets[0].entity.components.workable).toBe(work);
     const covered = (tree.model!.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count;
-    expect(tree.model!.userData.tags).toContain('SnowCovered');
+    expect(prefabInstance(tree.model!)!.listTags()).toContain('SnowCovered');
     world.snowLevel.set(0); await new Promise(resolve => setTimeout(resolve, 0));
     expect((tree.model!.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeLessThan(covered);
     expect(s.forest.exportRecords()[0].components.deciduoustree).toMatchObject({ build: 'barren', leaf_state: 'barren' });

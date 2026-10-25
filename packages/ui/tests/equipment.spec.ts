@@ -30,7 +30,7 @@ test('head/body signals restore equipped art and keep the backpack active when a
   await items.locator('[data-item-id="strawhat"]').dragTo(head);
   await items.locator('[data-item-id="backpack"]').dragTo(body);
   const hatArt = () => page.evaluate(() => {
-    const mesh = (window as any).equipmentGame.player.children[0].children[0];
+    const mesh = (window as any).equipmentGame.player.getObjectByProperty('isMesh', true);
     return mesh.geometry.groups.some((group: any) => mesh.material[group.materialIndex]?.name.startsWith('hat:'));
   });
   await expect.poll(hatArt).toBe(true);

@@ -44,7 +44,7 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     const dig = vi.fn();
     expect(animation.playDig(dig)).toBe(false);
     await animation.setCarryItem(tool);
-    const held = player.children[0].children[0] as THREE.Mesh;
+    const held = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     expect((held.material as THREE.Material[]).some((material) => material.name === `ground:swap_${tool}`)).toBe(true);
     expect(animation.playDig(dig)).toBe(true);
     expect(animation.playDig(dig)).toBe(false);

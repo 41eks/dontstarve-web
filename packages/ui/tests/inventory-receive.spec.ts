@@ -58,6 +58,42 @@ test('captured fireflies fly from their projected foot point into the actual slo
   expect(errors).toEqual([]);
 });
 
+test('pickup receipts reach both inventory and backpack slots and closing the backpack preserves received stacks', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await setup(page);
+  const { containerId, maxStack } = await page.evaluate(() => (window as any).receiveFixture.equipBackpack());
+  const packSlot = page.locator('dst-backpack-panel .inventory-slot').first();
+  await expect(packSlot).toBeVisible();
+  expect(await page.evaluate(() => (window as any).receiveFixture.give('rocks', 3))).toBe(true);
+  const flights = page.locator('.inventory-receive-flight');
+  await expect(flights).toHaveCount(2);
+  await expect(flights.locator('[data-loaded="true"]')).toHaveCount(2);
+  const mainSlot = page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot').first();
+  await expect(mainSlot.locator('.inventory-slot__count')).toHaveText(String(maxStack - 1));
+  await expect(packSlot.locator('.inventory-slot__content')).toBeHidden();
+  expect(await flights.evaluateAll(elements => elements.map(element => (element as HTMLElement).dataset.containerId).sort()))
+    .toEqual([containerId, 'player:inventory'].sort());
+  await expect(flights.first()).toBeVisible();
+  await expect(flights.last()).toBeVisible();
+  await flights.evaluateAll(elements => elements.forEach(element => element.getAnimations()[0].finish()));
+  await expect(flights).toHaveCount(0);
+  await expect(mainSlot.locator('.inventory-slot__count')).toHaveText(String(maxStack));
+  await expect(packSlot.locator('.inventory-slot__count')).toHaveText('2');
+
+  expect(await page.evaluate(() => (window as any).receiveFixture.give('rocks', 1))).toBe(true);
+  await expect(flights).toHaveCount(1);
+  await expect(flights).toHaveAttribute('data-container-id', containerId);
+  await expect(packSlot.locator('.inventory-slot__count')).toHaveText('2');
+  await page.evaluate(() => (window as any).receiveFixture.backpackPanel.close());
+  await expect(flights).toHaveCount(0);
+  // A receipt without a visible destination must still leave the inventory transaction intact.
+  expect(await page.evaluate(() => (window as any).receiveFixture.give('rocks', 1))).toBe(true);
+  await expect(flights).toHaveCount(0);
+  expect(await page.evaluate(id => (window as any).receiveFixture.inventory.get({ containerId: id, slotKey: '0' }).count, containerId)).toBe(4);
+  expect(errors).toEqual([]);
+});
+
 test('failed acquisition, removing an item, resizing and disconnecting the UI leave no stale flights', async ({ page }) => {
   await setup(page);
   await page.evaluate(() => (window as any).receiveFixture.add('cutgrass', 1));

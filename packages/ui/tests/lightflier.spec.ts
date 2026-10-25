@@ -33,7 +33,7 @@ test('picks a lunar flower, nets its insect, and preserves spawned insects and c
   };
   const point = (prefab: string) => page.evaluate(prefab => {
     const { scene, renderer, camera, view } = (window as any).lightFlierGame;
-    const model = scene.children.find((m: any) => m.userData.prefab === prefab || m.userData.itemId === prefab);
+    const model = scene.children.find((m: any) => m.userData.instance?.prefab === prefab || m.userData.itemId === prefab);
     if (!model) return null;
     let mesh: any; model.traverse((m: any) => { if (!mesh && m.isMesh && m.geometry.getAttribute('position')?.count) mesh = m; });
     if (!mesh) return null;
@@ -66,7 +66,7 @@ test('picks a lunar flower, nets its insect, and preserves spawned insects and c
   const bug = await point('lightflier'); expect(bug).not.toBeNull(); await page.mouse.click(bug!.x, bug!.y);
   await expect(bar.locator('.inventory-bar__items [data-item-id="lightflier"]')).toHaveCount(1, { timeout: 15000 });
   await submit('c_give("lightflier", 2)'); await submit('c_spawn("lightflier")'); await submit('c_spawn("lightflier_flower")');
-  await expect.poll(() => page.evaluate(() => (window as any).lightFlierGame.scene.children.filter((m: any) => m.userData.prefab === 'lightflier_flower').length)).toBe(2);
+  await expect.poll(() => page.evaluate(() => (window as any).lightFlierGame.scene.children.filter((m: any) => m.userData.instance?.prefab === 'lightflier_flower').length)).toBe(2);
   const saved = await saveGame();
   const stack = Object.values(saved.players.local.inventory.containers).flatMap((c: any) => c.slots).find((s: any) => s.item.itemId === 'lightflier') as any;
   expect(stack.item.count).toBe(3); expect(stack.item.lightflier.health).toBe(25);

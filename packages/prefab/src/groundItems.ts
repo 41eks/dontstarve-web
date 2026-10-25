@@ -5,16 +5,14 @@ import {
 import type { InventoryItemSpec, InventorySkinSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
-import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemDefinition, GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity, createBurnableItemVisual } from './burnableItems';
 import { configureBookEntity, isBook } from './books';
 import { configureHeatRockEntity, declareHeatRockSprite, HEATROCK_ID } from './heatrock';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import type { PrefabInstance } from './prefabInstance';
-import { createMemo } from '@dontstarve-web/signals';
 import { createArchiveEntity } from './prefabInstance';
-import { watchTileActivity } from './tileActivity';
+import { bindResidentGroundItem } from './groundItemLifecycle';
 import { configureRazorEntity, RAZOR_ID } from './razor';
 import { configurePanfluteEntity, PANFLUTE_ID } from './panflute';
 import { configureBirdEntity, isBirdId } from './birds';
@@ -102,25 +100,6 @@ export async function createResidentGroundItem(context: Pick<GroundPrefabContext
   const clip = { name: definition.animation, loop: definition.loop };
   const { instance, display } = createArchiveEntity(itemId, { create, initial: await create(clip) },
     { name: definition.animation, held: !definition.loop }, `GroundItem:${itemId}`);
-  const model = display.model, sprite = instance.sprite;
-  Object.assign(model.userData, { itemId, skinId });
-  const active = createMemo(() => instance.status.get() === 'active');
-  let stopTile = () => {};
-  const bindTile = () => {
-    stopTile();
-    stopTile = watchTileActivity(model, context.tickingarea, awake => instance.setActive(awake));
-  };
-  const removeInventoryEvents = listenInventoryEvents(model, {
-    ondropped: () => { sprite.setPaused(false); bindTile(); },
-    onload: () => { sprite.setPaused(false); bindTile(); },
-    onputininventory: () => { sprite.setPaused(true); stopTile(); stopTile = () => {}; },
-  });
-  const visual: GroundItemVisual = {
-    model,
-    active,
-    bindEntity: declare && (entity => declare(entity, sprite)),
-    update: dt => sprite.update(dt),
-    dispose() { removeInventoryEvents(); stopTile(); active.dispose(); instance.remove(); display.dispose(); },
-  };
-  return { visual, instance, display };
+  instance.skinId = skinId;
+  return { visual: bindResidentGroundItem(context, instance, display, declare), instance, display };
 }

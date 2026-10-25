@@ -13,6 +13,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -51,7 +52,7 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
     const [target] = s.skeletons.hammerTargets;
     // math.random(1, 6) at .5 → idle4; Player_SetSkeletonDescription lowercases the cause.
     s.skeletons.setSkeletonDescription(target.model, 'waxwell', 'Maxwell', 'Starvation');
-    expect(target.model.userData.tags).toEqual(expect.arrayContaining(['skeleton', 'playerskeleton']));
+    expect(prefabInstance(target.model)!.listTags()).toEqual(expect.arrayContaining(['skeleton', 'playerskeleton']));
     expect(s.physics.bodies).toHaveLength(1);
 
     let json = '';
@@ -85,7 +86,7 @@ it('spawns a creature skeleton with its own pose range and shared table, droppin
     expect(s.skeletons.exportRecords().map(({ prefabId, record }) => [prefabId, record.components.skeleton])).toEqual([
       ['skeleton_notplayer_2', { anim: 8 }], ['skeleton', { anim: 1 }]]);
     for (const target of targets) {
-      expect(target.model.userData.tags).toContain('skeleton'); expect(target.model.userData.tags).not.toContain('playerskeleton');
+      expect(prefabInstance(target.model)!.listTags()).toContain('skeleton'); expect(prefabInstance(target.model)!.listTags()).not.toContain('playerskeleton');
     }
     s.skeletons.setSkeletonDescription(targets[1].model, 'waxwell', 'Maxwell', 'Starvation');
     expect(s.skeletons.exportRecords()[1].record.components.skeleton).toEqual({ anim: 1 });

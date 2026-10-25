@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { FliesController } from '../../prefab/src/flies';
-import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import * as sound from '../../prefab/src/sound';
 import { GroundItemManager } from '../../../src/groundItems';
@@ -110,7 +110,7 @@ it('renders real flies child art, preloads looping audio and preserves manure th
     expect(context.decodeAudioData).toHaveBeenCalled();
     const flies = model.userData.flies as THREE.Group;
     expect(flies.parent).toBe(model);
-    expect(flies.userData.tags).toEqual(['NOCLICK', 'DECOR']);
+    expect(prefabInstance(flies)!.listTags()).toEqual(['NOCLICK', 'DECOR']);
     for (let frame = 0; frame < 20; frame++) manager.update(.1, new THREE.Quaternion());
     let mesh!: THREE.Mesh;
     flies.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object; });

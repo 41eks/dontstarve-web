@@ -15,6 +15,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { modelHasTag } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -54,7 +55,7 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     const fires = () => models.flatMap(model => model.children.filter(child => child.name === 'fire'));
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(fires()).toHaveLength(2);
-    expect(fires().every(fire => fire.userData.tags.includes('FX') && fire.userData.tags.includes('HASHEATER'))).toBe(true);
+    expect(fires().every(fire => modelHasTag(fire, 'FX') && modelHasTag(fire, 'HASHEATER'))).toBe(true);
     expect(manager.renderEntities.filter(entry => entry.object.name === 'fire')).toHaveLength(2);
     const save = () => serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
       entities: { ground_item: manager.exportRecords() }, inventory: inventory.exportState(), elapsedSeconds: 15,

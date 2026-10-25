@@ -110,9 +110,8 @@ export class PondManager {
     // OnGround: lift only the artwork above terrain; the entity/save origin stays grounded. Ground layers share
     // group order 0 and use mesh order. A negative group order would draw the pond before transparent turf, which covers it up.
     instance.sprite.setGround(0); instance.sprite.setMeshOrder(-0.5);
-    Object.assign(model.userData, {
-      billboard: false, prefab: POND_ID, entityId: saved?.id ?? newEntityId(),
-    });
+    instance.entityId = saved?.id ?? newEntityId();
+    model.userData.billboard = false;
     // pond.lua: the fishable component holds pondfish and respawns one every FISH_RESPAWN_TIME.
     const entity = actionEntity(model, POND_ID);
     const fishable = new Fishable(entity, this.scheduler);
@@ -153,7 +152,7 @@ export class PondManager {
     return [...this.ponds].map((model) => {
       const fishable = (actionEntity(model, POND_ID).components as { fishable?: Fishable }).fishable?.OnSave();
       return {
-        id: String(model.userData.entityId),
+        id: String(prefabInstance(model)!.entityId),
         transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
         components: fishable ? { fishable } : {},
       };

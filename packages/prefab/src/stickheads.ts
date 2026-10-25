@@ -33,7 +33,7 @@ async function prepare(): Promise<StickHeadResources> {
         const first = { name: 'swarm_pre', loop: false };
         const [created] = await Promise.all([createFlies(first), PreloadSounds(FLIES_SOUND)]);
         const flies = createArchiveEntity('flies', { create: createFlies, initial: created }, { name: first.name }, 'flies');
-        flies.instance.persists = false; flies.display.model.userData.prefab = 'flies';
+        flies.instance.persists = false;
         return { materials: [], flies, dispose: () => { flies.instance.remove(); flies.display.dispose(); assets.dispose(); } };
     } catch (error) { assets.dispose(); throw error; }
 }

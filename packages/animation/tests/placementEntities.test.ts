@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { WORLD_SCALE } from '../../prefab/src/tile';
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { placementEntities, syncPlacementEntity, isGroundTargetBlocked, registerPlacementTree } from '../../prefab/src/placementEntities';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
@@ -120,4 +122,45 @@ it('keeps logical trees blocking their tile while only the visual is unloaded an
     stop();
     expect(farm.canDeploy(origin)).toBe(true);
   } finally { stop(); disposeActionEntity(model); root.removeFromParent(); farm.dispose(); }
+});
+
+
+it('reads live entity metadata and radius overrides through action and placement queries without model projections', () => {
+  const scene = new THREE.Scene();
+  const { instance, display } = createEmptyEntity('log');
+  const model = display.model;
+  instance.entityId = 'log:placement';
+  instance.skinId = 'test-skin';
+  instance.persists = false;
+  instance.addTag('groundtargetblocker');
+  model.userData.itemId = instance.prefab;
+  const entity = actionEntity(model, instance.prefab);
+  scene.add(model);
+  const query = placementEntities(scene);
+  const read = () => {
+    let result: import('../../prefab/src/placementEntities').PlacementBlocker | undefined;
+    query.someNear(instance.position, 1, blocker => { result = blocker; return true; });
+    return result!;
+  };
+  try {
+    for (const key of ['prefab', 'entityId', 'saveRecord', 'skinId', 'persists', 'physicsRadius']) {
+      expect(Object.hasOwn(model.userData, key)).toBe(false);
+    }
+    expect(entity.prefab).toBe('log');
+    expect(read().prefab).toBe('log');
+    expect(entity.getPhysicsRadius()).toBe(0);
+    expect(read().inventoryRadius).toBe(.5);
+    expect(read().getInventoryRadius!(.25)).toBe(.25);
+    instance.physics.SetCapsule(.2);
+    expect(entity.getPhysicsRadius()).toBe(.2 * WORLD_SCALE);
+    expect(read().inventoryRadius).toBe(.2 * WORLD_SCALE);
+    instance.physicsRadiusOverride = .4;
+    expect(entity.getPhysicsRadius()).toBe(.4 * WORLD_SCALE);
+    expect(read().groundTargetRadius).toBe(.4 * WORLD_SCALE);
+    // A zero override is a real radius, rather than an absent value or a fallback.
+    instance.physicsRadiusOverride = 0;
+    expect(read().inventoryRadius).toBe(0);
+    instance.physicsRadiusOverride = undefined;
+    expect(read().getInventoryRadius!(.25)).toBe(.2 * WORLD_SCALE);
+  } finally { disposeActionEntity(model); instance.remove(); display.dispose(); }
 });

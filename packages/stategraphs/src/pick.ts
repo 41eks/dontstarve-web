@@ -7,6 +7,7 @@ import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { Combat } from '../../componets/src/combat';
+import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 
 /** The picker inst supplied to prefab onpickedfn callbacks. */
 export interface PickActor {
@@ -63,9 +64,9 @@ export function getPickActions(model: THREE.Object3D | undefined): MouseActionCa
   const component: PickableComponent | undefined = model.userData.components?.pickable;
   if (!component) return actions;
   const target: PickTarget = {
-    model, component, prefab: model.userData.prefab,
+    model, component, prefab: model.userData.actionEntity?.prefab ?? prefabInstance(model)?.prefab,
     quickpick: component.quickpick,
-    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? model.userData.tags?.includes(tag) ?? false,
+    hasTag: tag => model.userData.actionEntity?.hasTag(tag) ?? modelHasTag(model, tag),
     getPosition: () => model.userData.getGroundPosition?.() ?? model.position,
     getPhysicsRadius: () => model.userData.actionEntity?.getPhysicsRadius?.() ?? 0,
     PushEvent: (name, data) => model.userData.actionEntity?.PushEvent?.(name, data),

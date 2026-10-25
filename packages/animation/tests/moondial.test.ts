@@ -41,7 +41,7 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     const reskin = await placement.reskinTargets[0].prepareNextSkin();
     expect(reskin.apply()).toBe(true);
     const model = placement.hammerTargets[0].model;
-    expect(model.userData.skinId).toBe('moondial_an');
+    expect(model.userData.instance?.skinId).toBe('moondial_an');
     expect((model.userData.animationController as SpriteController).currentAnimation).toBe('wane_to_half');
     expect(getPrefabLightOverride(model)).toBe(.1);
     expect(placement.exportRecords()[0].record.components.building).toMatchObject({ skinId: 'moondial_an' });

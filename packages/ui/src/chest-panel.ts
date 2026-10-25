@@ -6,6 +6,7 @@ import type { BuildingContainerDefinition } from '../../prefab/src/containers';
 import { createSlotContainer, type SlotContainer, type SlotContainerKind } from './slot/slot-container';
 import type { SlotAddress, SlotItem, SlotModel, SlotSelectDetail } from './slot/slot-model';
 import { createSlotRenderer, type SlotRenderer } from './slot/slot-renderer';
+import type { InventoryReceiveSource } from './slot/slot-receive-animation';
 import type { SlotTransferRequest } from './slot/slot-transfer';
 import slotStyles from './styles/slot.css?inline';
 import styles from './styles/chest-panel.css?inline';
@@ -141,6 +142,12 @@ export class DstChestPanelElement extends AssetElement {
 
   getSlot(address: SlotAddress): SlotItem | null {
     return this.requireSlot(address).getItem();
+  }
+
+  animateReceive(address: SlotAddress, source: InventoryReceiveSource, amount: number): void {
+    this.requireSlot(address);
+    this.renderers.find(({ button }) => button.dataset.containerId === address.containerId
+      && button.dataset.slotKey === address.slotKey)?.animateReceive(source, amount);
   }
 
   /** Application metadata maps the component DTO to UI items; UI only subscribes. */

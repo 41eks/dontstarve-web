@@ -2,7 +2,7 @@ import { ModelRecords } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSignal, readonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, type HandEquipment, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createAnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
@@ -19,6 +19,7 @@ import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './
 import { watchTileActivity } from './tileActivity';
 import { registerPlacementTree } from './placementEntities';
 import { actionEntity } from './actionEntity';
+import { ToolMouseTarget } from './toolMouseTarget';
 import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
 import { newEntityId } from './saveRecord';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
@@ -48,6 +49,7 @@ export interface EvergreenRecord {
   components: { evergreen?: { stump?: true; burnt?: true; burntcone?: true }; growable?: GrowableSave; evergreenTimer?: NamedTimerSave };
 }
 export interface EvergreenWorld {
+  handEquipment?: ReadonlySignal<HandEquipment | null>;
   camera: THREE.Camera;
   /** Searched for propagator neighbours; receives fire effects. */
   scene: THREE.Object3D;
@@ -74,6 +76,7 @@ interface Tree {
   growable: Growable;
   timer: Timer;
   workable: Workable;
+  mouseTarget?: ToolMouseTarget;
   lootdropper: LootDropper;
   sounds: Set<SoundHandle>;
   /** MakeLargeBurnable/MakeMediumPropagator (or the stump's small pair) while the tree is awake. */
@@ -238,6 +241,7 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
     tree.workable = new Workable(tree.inst);
     tree.inst.components.workable = tree.workable;
     tree.workable.SetWorkAction('DIG'); tree.workable.SetWorkLeft(1);
+    tree.mouseTarget?.setWorkable(tree.workable);
     tree.workable.SetOnFinishCallback(() => {
       tree.lootdropper.SpawnLootPrefab('log');
       remove(tree);
@@ -270,11 +274,12 @@ export async function createEvergreenForest(assetBaseUrl: string, world: Evergre
   const initializeModel = (tree: Tree) => {
     const model = tree.logical.model;
     model.userData.animationController = tree.sprite;
-    Object.assign(model.userData, { entityId: tree.logical.saveId, prefab: 'evergreen', deploySmartRadius: 1,
+    Object.assign(model.userData, { deploySmartRadius: 1,
       MiniMapEntity: tree.minimap, components: tree.inst.components,
       evergreenState: { stump: readonlySignal(tree.stump), growth: tree.growable.state } });
     model.userData.placementLogical = true;
-    actionEntity(model, 'evergreen', tree.inst);
+    const entity = actionEntity(model, 'evergreen', tree.inst);
+    tree.mouseTarget = new ToolMouseTarget(entity, tree.instance, tree.workable, world.handEquipment);
     mouseRecords.set(model, tree.logical);
   };
   const setActive = (tree: Tree, awake: boolean) => {

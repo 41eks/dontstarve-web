@@ -70,7 +70,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
     expect(controller.currentAnimation).toBe('broken');
     expect(meshes(model)[0].geometry.drawRange.count).toBe(12);
     for (const [key, component] of Object.entries(components)) expect(model.userData.components[key]).toBe(component);
-    expect(model.userData.skinId).toBe(saved[0].record.components.wall!.skinId);
+    expect(model.userData.instance?.skinId).toBe(saved[0].record.components.wall!.skinId);
     const restored = new WallsPlacement(world, () => false);
     try {
       const exportRecord = placement.exportRecords()[0];

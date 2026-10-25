@@ -1,3 +1,4 @@
+import { ToolMouseTarget } from './toolMouseTarget';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { SpatialIndex } from './spatialIndex';
 import { placementEntities, registerPlacementEntity, ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
@@ -235,7 +236,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     sprite.display.model.position.copy(position);
     MakeObstaclePhysics(sprite.instance, .5);
     if (this.world.physics) sprite.instance.bindPhysics(this.world.physics);
-    Object.assign(sprite.display.model.userData, { entityId: id, prefab: FARM_PLOW_ID });
+    sprite.instance.entityId = id;
     this.persist(sprite, ['scarytoprey']);
     this.plowPositions.add(plow);
     this.plows.set(id, plow); this.mousePlows.set(plow.sprite.display.model, plow); this.world.scene.add(sprite.display.model);
@@ -245,6 +246,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(1);
     workable.SetWorkable(state.phase !== 'collapse');
+    new ToolMouseTarget(entity, sprite.instance, workable, this.world.handEquipment);
     workable.SetOnFinishCallback(() => {
       if (this.plows.get(plow.id) !== plow || plow.phase === 'collapse') return;
       plow.finished = false;
@@ -403,7 +405,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
         used = true;
         const position = soil.sprite.display.model.position.clone();
         this.decor.delete(soil.id); soil.stopTracking?.(); release(soil.sprite);
-        this.addPlantedSeed(sprite, newEntityId(), position, plantId);
+        this.addPlantedSeed(sprite, newEntityId(), position);
         sprite.instance.sprite.playOnce(art.pre, () => sprite.instance.sprite.start(art.idle));
         PlaySound('dontstarve/common/plant', position);
         return true;
@@ -418,14 +420,14 @@ export class FarmPlowPlacement implements FarmActionWorld {
     const art = PLANTED_SEED_ART[plantId];
     const sprite = await this.createPlant(plantId, art.idle);
     if (this.disposed) { release(sprite); throw new Error('Farm plow has been disposed'); }
-    this.addPlantedSeed(sprite, id, position, plantId);
+    this.addPlantedSeed(sprite, id, position);
     sprite.instance.sprite.start(art.idle);
     return sprite.display.model;
   }
 
-  private addPlantedSeed(sprite: FarmEntity, id: string, position: THREE.Vector3, plantId: string): void {
+  private addPlantedSeed(sprite: FarmEntity, id: string, position: THREE.Vector3): void {
     sprite.display.model.position.copy(position).setY(0);
-    Object.assign(sprite.display.model.userData, { entityId: id, prefab: plantId });
+    sprite.instance.entityId = id;
     this.persist(sprite, ['plantedsoil', 'farm_plant', 'planted_seed']);
     this.seedPositions.add(sprite);
     this.stopSeeds.set(sprite, registerPlacementEntity(sprite.display.model, () => sprite.display.model.position));
@@ -433,7 +435,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
   }
 
   exportPlantedSeedRecords() {
-    return [...this.plantedSeeds].map(([id, sprite]) => ({ prefabId: sprite.display.model.userData.prefab as string, record: {
+    return [...this.plantedSeeds].map(([id, sprite]) => ({ prefabId: sprite.instance.prefab, record: {
       id, transform: { position: sprite.display.model.position.toArray(), rotationY: 0 }, components: {},
     } }));
   }
@@ -529,7 +531,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
   }
 
   private addDecor(sprite: FarmEntity, item: Decor): void {
-    Object.assign(sprite.display.model.userData, { entityId: item.id, prefab: item.prefabId });
+    sprite.instance.entityId = item.id;
     this.persist(sprite, [item.prefabId === 'farm_soil' ? 'soil' : 'farm_debris']);
     this.decor.set(item.id, item); this.mouseDecor.set(item.sprite.display.model, item);
     this.decorPositions.add(item);

@@ -32,7 +32,7 @@ test('equipping a backpack opens eight usable side slots and switches independen
   await expect(background).toHaveAttribute('data-playing', 'false');
   await expect(pack.locator('.inventory-slot')).toHaveCount(8);
   await expect(pack.locator('.inventory-slot').last()).toBeVisible();
-  await expect.poll(() => page.evaluate(() => (window as any).backpackGame.player.children[0].children[0].material
+  await expect.poll(() => page.evaluate(() => (window as any).backpackGame.player.getObjectByProperty('isMesh', true).material
     .some((material: any) => material.name === 'ground:swap_backpack'))).toBe(true);
 
   for (const width of [1280, 640]) {

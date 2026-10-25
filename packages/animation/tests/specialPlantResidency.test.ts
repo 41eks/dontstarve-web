@@ -15,6 +15,7 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 import type { WorldContext, WorldEvents } from '../../prefab/src/worldContext';
 import type { GroundItemDefinition, PreparedGroundSpawn } from '../../prefab/src/groundPrefab';
 import { bindTestWorld } from './worldContentFixture';
+import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -70,7 +71,7 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
     expect(meshes(model)[0].geometry).toBe(geometry);
     expect(model.children[0].quaternion.equals(env.rotation)).toBe(true);
     expect(model.userData.components.pickable).toBe(pickable);
-    expect(model.userData.tags).toContain('thorny');
+    expect(prefabInstance(model)!.listTags()).toContain('thorny');
     expect(model.userData.planted).toBe(false);
     model.userData.components.burnable.Ignite(); await settle();
     expect(flowers.renderEntities.some(({ object }) => object.name === 'fire')).toBe(true);
@@ -122,8 +123,8 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     env.sources.snowLevel.set(0); await settle();
     expect(meshes(shrub)[0].geometry.drawRange.count).toBeLessThan(snowyCount);
     const target = shrubs.mineTargets[0];
-    for (let i = 0; i < 8 && !shrub.userData.tags.includes('NOCLICK'); i++) performToolWork('MINE', target.entity, {});
-    expect(shrub.userData.tags).toContain('NOCLICK');
+    for (let i = 0; i < 8 && !modelHasTag(shrub, 'NOCLICK'); i++) performToolWork('MINE', target.entity, {});
+    expect(prefabInstance(shrub)!.listTags()).toContain('NOCLICK');
     env.awake.set(false); await settle();
     expect(shrub.userData.removed).toBe(false);
     const bank = await loadAnim('marbleshrub.zip', '/dst/data/anim');

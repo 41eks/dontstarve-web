@@ -6,11 +6,12 @@ import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } f
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { modelHasTag } from '../../prefab/src/prefabInstance';
 
 export interface PickupDoer extends InventoryActor { components: { inventory: InventoryStore }; }
 export function createPickupDoer(player: THREE.Object3D, inventory: InventoryStore): PickupDoer {
   const doer: PickupDoer = { components: { inventory }, GetPosition: () => player.position,
-    hasTag: tag => tag === 'player' || (player.userData.tags?.includes(tag) ?? false),
+    hasTag: tag => tag === 'player' || modelHasTag(player, tag),
     PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never) };
   inventory.bindActor(doer);
   return doer;

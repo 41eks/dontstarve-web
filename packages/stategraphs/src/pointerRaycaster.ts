@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import type { ActionWorldContext as WorldContext } from './actionContext.ts';
-import { activePrefabs } from '../../prefab/src/activePrefabs';
+import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { prepareSpatialGeometryBounds, spatialAttributeVersion } from '../../animation/src/spatialBounds.ts';
 import { isInstancedSpriteProxy } from '../../animation/src/spriteRaycast.ts';
+import { modelHasTag } from '../../prefab/src/prefabInstance';
 
 /** Ten percent of the sprite's size on each outer edge, used only after exact picking misses. */
 const SPRITE_PICK_SCALE = 1.2;
@@ -10,7 +11,7 @@ const SPRITE_PICK_SCALE = 1.2;
 function mouseVisible(object: THREE.Object3D): boolean {
     if (!object.visible && !isInstancedSpriteProxy(object)) return false;
     const inst = object.userData.actionEntity as { hasTag?(tag: string): boolean } | undefined;
-    return !(inst?.hasTag?.('NOCLICK') ?? object.userData.tags?.includes('NOCLICK'));
+    return !(inst?.hasTag?.('NOCLICK') ?? modelHasTag(object, 'NOCLICK'));
 }
 
 interface BoundsPart {
@@ -157,9 +158,8 @@ export class PointerRaycaster {
     pickMouseTarget(): THREE.Intersection | undefined {
         if (!this.updatePointerRay()) return undefined;
         const candidates: THREE.Object3D[] = [];
-        for (const entity of activePrefabs) {
-            if (!entity.isRemoved && entity.model.parent && mouseVisible(entity.model)) candidates.push(entity.model);
-        }
+        // The registry already excludes removed, detached, inactive, disabled and NOCLICK roots.
+        for (const entity of mouseTargets) if (mouseVisible(entity.model)) candidates.push(entity.model);
         return intersectSpriteEntities(this.raycaster, candidates)[0] ?? this.pickPaddedTarget(candidates);
     }
 

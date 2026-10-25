@@ -10,6 +10,7 @@ import { getDeconstructionRecipe } from '../../componets/src/recipes.ts';
 export interface ComponentActionEntity extends WorkInst {
   readonly _cached_reskinname?: Map<string, string | undefined>;
   readonly prefab: string;
+  getPhysicsRadius?(): number;
   readonly components: {
     builder?: import('../../componets/src/builder').Builder;
     prototyper?: import('../../componets/src/prototyper').Prototyper;

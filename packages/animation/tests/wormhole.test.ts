@@ -88,13 +88,13 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
   const player = new THREE.Vector3(100, 0, 0);
   const manager = new WormholeManager(scene, '/dst/data/anim', () => [player]);
   const model = await manager.spawn(new THREE.Vector3(0, 0, 0));
-  const id = model.userData.entityId;
+  const id = model.userData.instance?.entityId;
   const step = (frames: number) => { for (let i = 0; i < frames; i++) manager.update(1 / 30, new THREE.Quaternion()); };
   try {
     const canceled = await manager.reskinTargets[0].prepareNextSkin();
     canceled.dispose();
     expect(canceled.apply()).toBe(false);
-    expect(model.userData.skinId).toBeUndefined();
+    expect(model.userData.instance?.skinId).toBeUndefined();
     const prepared = await manager.reskinTargets[0].prepareNextSkin();
     player.x = 0;
     step(9);
@@ -109,8 +109,8 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
     prepared.dispose();
 
     const skinId = WORMHOLE_SKINS[0];
-      expect(model.userData.entityId).toBe(id);
-      expect(model.userData.skinId).toBe(skinId);
+      expect(model.userData.instance?.entityId).toBe(id);
+      expect(model.userData.instance?.skinId).toBe(skinId);
       expect(model.userData.animationController.currentAnimation).toBe('open_loop');
       expect(model.position.toArray()).toEqual([0, 0, 0]);
       const saved = manager.exportRecords()[0];
@@ -123,8 +123,8 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
         expect(materials.some((material) => ((material as THREE.MeshBasicMaterial).map as THREE.DataTexture | null)?.image.data
           === skin.buildPackage.atlases[0].pixels)).toBe(true);
         const restored = await manager.spawn(new THREE.Vector3(...saved.transform.position), saved);
-        expect(restored.userData.skinId).toBe(skinId);
-        expect(restored.userData.entityId).toBe(id);
+        expect(restored.userData.instance?.skinId).toBe(skinId);
+        expect(restored.userData.instance?.entityId).toBe(id);
       }
     expect(fetchAsset.mock.calls.filter(([url]) => url.endsWith('.dyn'))).toHaveLength(1);
     await expect(manager.spawn(new THREE.Vector3(), {

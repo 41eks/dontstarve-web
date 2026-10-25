@@ -36,7 +36,6 @@ interface WormholeEntity {
   model: THREE.Group;
   instance: PrefabInstance;
   display: PrefabDisplay;
-  skinId?: string;
   state: WormholeState;
   elapsed: number;
   nearby: boolean;
@@ -68,9 +67,9 @@ export class WormholeManager {
     const { instance, display } = this.createEntity(factory);
     const model = display.model;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { prefab: WORMHOLE_ID, entityId: saved?.id ?? newEntityId() });
-    if (skinId !== undefined) model.userData.skinId = skinId;
-    const entity: WormholeEntity = { model, instance, display, skinId, state: 'idle', elapsed: 0, nearby: false, groundLayer: false };
+    instance.entityId = saved?.id ?? newEntityId();
+    instance.skinId = skinId;
+    const entity: WormholeEntity = { model, instance, display, state: 'idle', elapsed: 0, nearby: false, groundLayer: false };
     model.userData.wormholeState = entity.state;
     actionEntity(model, WORMHOLE_ID);
     this.wormholes.add(entity); this.mouseRecords.set(entity.model, entity);
@@ -107,8 +106,8 @@ export class WormholeManager {
   }
 
   exportRecords(): WormholeRecord[] {
-    return [...this.wormholes].map(({ model, skinId }) => ({
-      id: String(model.userData.entityId),
+    return [...this.wormholes].map(({ model, instance: { skinId, entityId } }) => ({
+      id: String(entityId),
       transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
       components: skinId === undefined ? {} : { wormhole: { skinId } },
     }));
@@ -133,11 +132,11 @@ export class WormholeManager {
       const { model } = entity;
       const isValid = () => !this.disposed && this.wormholes.has(entity) && model.visible && model.parent !== null;
       return {
-        id: String(model.userData.entityId), prefabId: WORMHOLE_ID, model, position: model.position, isValid,
-        skins: WORMHOLE_SKINS, get skinId() { return entity.skinId; },
+        id: String(entity.instance.entityId), prefabId: WORMHOLE_ID, model, position: model.position, isValid,
+        skins: WORMHOLE_SKINS, get skinId() { return entity.instance.skinId; },
         get isRemoved() { return !isValid(); }, hasTag: tag => actionEntity(model, WORMHOLE_ID).hasTag(tag),
         prepareNextSkin: async (tool) => {
-          const previousSkin = entity.skinId;
+          const previousSkin = entity.instance.skinId;
           const skinId = nextReskin(WORMHOLE_SKINS, previousSkin, tool?._cached_reskinname, WORMHOLE_ID);
           const factory = await this.getFactory(skinId);
           if (!isValid()) throw new Error('Wormhole is no longer available');
@@ -147,11 +146,9 @@ export class WormholeManager {
           let used = false;
           return {
             apply: (fx?: ReskinFxMessage) => {
-              if (used || !isValid() || entity.skinId !== previousSkin) return false;
+              if (used || !isValid() || entity.instance.skinId !== previousSkin) return false;
               entity.display.adopt(replacement.display);
-              entity.skinId = skinId;
-              if (skinId === undefined) delete model.userData.skinId;
-              else model.userData.skinId = skinId;
+              entity.instance.skinId = skinId;
               release();
               used = true;
               fx?.play(model.position, WORMHOLE_ID);

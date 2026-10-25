@@ -142,7 +142,8 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect(s.sprouts.exportRecords()).toEqual([]);
     const bush = s.bushes.exportRecords()[0];
     expect(bush.transform.position).toEqual(point.toArray()); expect(bush.id).not.toBe(record.id);
-    expect(bush.components.pickable).toMatchObject({ maxCycles: 3, cyclesLeft: 3 });
+    // Pickable:OnSave omits unused cycles.
+    expect(bush.components.pickable?.cyclesLeft).toBeUndefined();
     expect(bush.components.pickable?.transplanted).toBeUndefined();
     expect(bush.components.growable?.stage).toBe(3);
     expect(model.userData.saplingState.completionTimer.peek().status).toBe('stopped');

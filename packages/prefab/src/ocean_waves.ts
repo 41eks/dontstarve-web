@@ -102,7 +102,7 @@ export class OceanWaves implements WaveSpawner {
     if (!animation?.frames.length) throw new Error(`Missing wave animation ${bank}:${name}`);
     const prefab = archive.replace('.zip', '');
     const entity = createEmptyEntity(prefab), model = entity.display.model;
-    Object.assign(model.userData, { prefab, billboard: !flat });
+    model.userData.billboard = !flat;
     entity.instance.persists = false;
     for (const tag of ['FX', 'NOCLICK']) entity.instance.addTag(tag);
     entity.instance.position.set(x, 0, z);

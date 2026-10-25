@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
@@ -49,7 +50,7 @@ export interface ArchivePropRecord {
   components: { archiveProp?: ArchivePropSaveState };
 }
 
-export interface ArchivePropsWorld {
+export interface ArchivePropsWorld extends ToolMouseTargetWorld {
   tickingarea?: TileStateQuery;
   physics?: CANNON.World;
   /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
@@ -203,7 +204,7 @@ export class ArchivePropsManager {
     const model = display.model;
     const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab });
+    instance.entityId = saved?.id ?? newEntityId();
     for (const tag of definition.tags) instance.addTag(tag);
     const inst = actionEntity(model, prefab);
     const prop: ArchiveProp = { prefab, model, instance, display, sprite, shadow, loot, anim, storyprogress, removed: false };
@@ -280,6 +281,7 @@ export class ArchivePropsManager {
       this.remove(model);
     });
     Object.assign(model.userData.components, { workable, lootdropper });
+    new ToolMouseTarget(inst, prop.instance, workable, this.world.handEquipment);
   }
 
   /** structure_collapse_fx.lua: smoke plus the `rock` material sound over the collapse_small animation. */
@@ -327,7 +329,7 @@ export class ArchivePropsManager {
     const { instance, display } = createEmptyEntity(ARCHIVE_AMBIENT_SFX_ID);
     const model = display.model;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: ARCHIVE_AMBIENT_SFX_ID });
+    instance.entityId = saved?.id ?? newEntityId();
     for (const tag of ['NOBLOCK', 'NOCLICK']) instance.addTag(tag);
     actionEntity(model, ARCHIVE_AMBIENT_SFX_ID);
     const prop: ArchiveProp = { prefab: ARCHIVE_AMBIENT_SFX_ID, model, instance, display, removed: false };
@@ -360,7 +362,7 @@ export class ArchivePropsManager {
 
   getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
     return modelEntries(this.props, model).filter(([, prop]) => prop.workable?.CanBeWorked()).map(([model, prop]) => ({
-      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, prop.prefab),
+      id: String(prop.instance.entityId), model, position: model.position, entity: actionEntity(model, prop.prefab),
       isValid: () => this.props.get(model) === prop && !!prop.workable?.CanBeWorked(),
     }));
   }
@@ -370,7 +372,7 @@ export class ArchivePropsManager {
     return [...this.props].filter(([, prop]) => prop.prefab !== ARCHIVE_SWITCH_PAD_ID).map(([model, prop]) => ({
       prefabId: prop.prefab as ArchivePropId,
       record: {
-        id: String(model.userData.entityId),
+        id: String(prop.instance.entityId),
         transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
         components: prop.anim === undefined ? {} : { archiveProp: {
           anim: prop.anim, ...prop.storyprogress === undefined ? {} : { storyprogress: prop.storyprogress } } },

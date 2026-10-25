@@ -8,6 +8,7 @@ import { Builder } from '../../componets/src/builder';
 import { actionEntity, FindEntities } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { PlaySound } from '../../prefab/src/sound';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
@@ -64,7 +65,8 @@ it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and remove
     expect(placement.reskinTargets).toEqual([]);
     expect(placement.exportRecords()).toEqual([]);
     const effect = world.scene.children.find((model) => model.name === 'collapse_small')!;
-    expect(effect.userData).toMatchObject({ persists: false, tags: ['FX', 'NOCLICK'] });
+    expect(prefabInstance(effect)!.persists).toBe(false);
+    expect(prefabInstance(effect)!.listTags()).toEqual(['FX', 'NOCLICK']);
     expect(effect.position.toArray()).toEqual([3, 0, 4]);
     expect(placement.renderEntities.map(({ object }) => object)).toEqual([effect]);
     target.playHit();

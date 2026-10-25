@@ -18,6 +18,7 @@ import { SleepingBagUser } from '../packages/componets/src/sleepingbaguser';
 import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { actionEntity, FindEntities } from '../packages/prefab/src/actionEntity';
+import { modelHasTag, setModelTag } from '../packages/prefab/src/prefabInstance';
 import type { PickActor } from '../packages/stategraphs/src/pick';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
@@ -141,7 +142,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       const actionControllers: Disposable[] = [];
       let playerCombat: Combat | undefined;
       const pickActor: PickActor = {
-        hasTag: tag => tag === 'player' || (player.userData.tags?.includes(tag) ?? false),
+        hasTag: tag => tag === 'player' || modelHasTag(player, tag),
         PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
         components: {
           sanity: { DoDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) },
@@ -169,7 +170,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         };
       };
       const stopInventoryReceived = inventory.subscribeReceived((received, source) => {
-        if (source) inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement,
+        if (source) inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement,
           player.position.clone().set(source.x, source.y, source.z))(received);
       });
       let itemUse: ItemUseActionController | undefined;
@@ -206,7 +207,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
             giveItem: (_prefab, _count, position) => {
               const sourcePosition = view.player.position.clone().set(position.x, position.y, position.z);
               const received = inventory.addAvailable(itemId, count, undefined,
-                inventoryReceiveEffect(gameUi.inventoryBar, view.camera, view.renderer.domElement, sourcePosition));
+                inventoryReceiveEffect(gameUi, view.camera, view.renderer.domElement, sourcePosition));
               return received === count || drop.spawn(view.player.position.clone().setY(0), count - received);
             },
             dispose: () => drop.dispose(),
@@ -252,7 +253,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const sleeping = new SleepActionController(view, playerAnimation, locomotor, sleeper, isActionInterrupting);
         frameControllers.push(sleeping);
         frameControllers.push(new MigrateActionController(view, playerAnimation, locomotor,
-          { hasTag: tag => tag === 'player' || ((view.player.userData.tags as string[] | undefined)?.includes(tag) ?? false) }, isActionInterrupting));
+          { hasTag: tag => tag === 'player' || modelHasTag(view.player, tag) }, isActionInterrupting));
         // SGwilsonghost's HAUNT: the ghost doer is the player inst, so `playerghost` and `respawnfromghost` reach it.
         const ghostInst = actionEntity(view.player as never, view.player.userData.artCharacter as string);
         frameControllers.push(new HauntActionController(view, playerAnimation, locomotor,
@@ -295,11 +296,10 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       }
 
       // The player inst carries reader.lua's component and tag, plus the sanity it charges.
-      const tags: string[] = player.userData.tags ??= [];
       const readerInst: PlayerReaderInst = {
-        hasTag: (tag: string) => tags.includes(tag),
-        addTag(tag: string) { if (!tags.includes(tag)) tags.push(tag); },
-        removeTag(tag: string) { const index = tags.indexOf(tag); if (index >= 0) tags.splice(index, 1); },
+        hasTag: (tag: string) => modelHasTag(player, tag),
+        addTag: (tag: string) => setModelTag(player, tag, true),
+        removeTag: (tag: string) => setModelTag(player, tag, false),
         getPosition: () => player.position,
         components: {
           sanity: { doDelta: (delta: number) => playerStats.sanity.set(playerStats.sanity.peek() + delta) },
@@ -381,7 +381,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
         const attackerInst: CombatActor = {
           getPosition: () => player.position,
           getPhysicsRadius: () => .5 * unit,
-          hasTag: tag => tag === 'player' || tags.includes(tag),
+          hasTag: tag => tag === 'player' || modelHasTag(player, tag),
           PushEvent: (name, data) => player.dispatchEvent({ type: name, data } as never),
           components: { health: {
             IsDead: () => playerStats.health.peek() <= 0,
@@ -405,7 +405,7 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
       if (playerAnimation) {
         const spellcast = new SpellCastActionController(view, playerAnimation, locomotor, handEquipment, {
           position: player.position,
-          hasTag: tag => player.userData.tags?.includes(tag) ?? false,
+          hasTag: tag => modelHasTag(player, tag),
           components: { sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) } },
         }, isActionInterrupting, (error) => console.error('Unable to cast spell', error),
         (model) => [...groundItems.getSpellTargets(model), ...buildingPlacement.getSpellTargets(model)]);

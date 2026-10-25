@@ -21,6 +21,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
 import { bindTestWorld } from './worldContentFixture';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;
@@ -174,7 +175,7 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     const tree = s.forest.spawn('moon_tree_tall', new THREE.Vector3(3, 0, 0));
     await settle();
     const model = tree.model!, bareIndices = drawnIndices(model);
-    expect(model.userData.tags).toContain('SnowCovered');
+    expect(prefabInstance(model)!.listTags()).toContain('SnowCovered');
     const mesh = () => model.children[0].children[0].children.find(child => child instanceof THREE.Mesh) as THREE.Mesh;
     expect(mesh().visible).toBe(false); // Swaying is drawn by the shared instance batch.
     s.snowLevel.set(.014); await settle();

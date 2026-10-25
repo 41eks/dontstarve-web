@@ -120,7 +120,7 @@ export class PickaxeActionController {
     if (!this.canWork(target)) { this.cancel(); return; }
     const distance = this.distanceSquared(target);
     // Obstacle targets (cave_entrance) cannot be approached closer than their physics radius.
-    const reach = PICKAXE_REACH + (target.model.userData.physicsRadius ?? 0);
+    const reach = PICKAXE_REACH + (target.entity.getPhysicsRadius?.() ?? 0);
     if (distance > reach ** 2) {
       // Stop short of the foot point; do not walk into the billboard's centre.
       const destination = target.position.clone();

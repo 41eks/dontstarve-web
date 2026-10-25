@@ -1,3 +1,4 @@
+import { hoverSprite } from './sprite-input';
 import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
@@ -21,7 +22,9 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   });
   const urls = Object.fromEntries(['main', 'universal', 'view', 'building', 'player'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
+  urls.physics = `/@fs${fileURLToPath(new URL('../../../src/physics.ts', import.meta.url))}`;
   const prepare = () => page.evaluate(async urls => {
+    const { worldState } = await import(urls.physics); worldState.season.set({ season: 'winter', progress: .5 });
     const { inventory, gameReady } = await import(urls.main); await gameReady;
     const { scene } = await import(urls.universal), { view } = await import(urls.view);
     const { turfMap } = await import(urls.building), { player, playerBody } = await import(urls.player);
@@ -32,27 +35,18 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   }, urls);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
-  const screenPoint = (planted: boolean | 'dug' | 'overripe') => page.evaluate(planted => {
+  const screenPoint = (planted: boolean | 'dug' | 'overripe') => page.evaluate(async ({ planted, moduleUrl }) => {
     const { scene, view } = (window as any).rock_avocado_bushGame;
     const model = scene.children.find((model: any) => planted === 'dug' ? model.userData.itemId === 'dug_rock_avocado_bush'
-      : planted === 'overripe' ? model.userData.entityId === 'rock-avocado:overripe'
-      : model.userData.entityId !== 'rock-avocado:overripe' && model.userData.prefab === 'rock_avocado_bush' && !!model.userData.components.pickable.exportState().transplanted === planted);
+      : planted === 'overripe' ? model.userData.instance?.entityId === 'rock-avocado:overripe'
+      : model.userData.instance?.entityId !== 'rock-avocado:overripe' && model.userData.instance?.prefab === 'rock_avocado_bush' && !!model.userData.components.pickable.exportState().transplanted === planted);
     if (!model) throw new Error('No rock_avocado_bush target');
     scene.updateMatrixWorld(true);
-    const mesh = model.getObjectByProperty('isMesh', true), geometry = mesh.geometry;
-    const positions = geometry.getAttribute('position'), indices = geometry.getIndex();
-    let largest = -1, point = model.position.clone();
-    for (let i = 0; i < geometry.drawRange.count; i += 3) {
-      const a = model.position.clone().fromBufferAttribute(positions, indices.getX(i));
-      const b = model.position.clone().fromBufferAttribute(positions, indices.getX(i + 1));
-      const c = model.position.clone().fromBufferAttribute(positions, indices.getX(i + 2));
-      const area = b.clone().sub(a).cross(c.clone().sub(a)).lengthSq();
-      if (area > largest) { largest = area; point.copy(a).add(b).add(c).multiplyScalar(1 / 3); }
-    }
-    mesh.localToWorld(point).project(view.camera);
-    const rect = view.renderer.domElement.getBoundingClientRect();
-    return { x: rect.left + (point.x + 1) * rect.width / 2, y: rect.top + (1 - point.y) * rect.height / 2 };
-  }, planted);
+    const { spriteScreenPoint } = await import(moduleUrl);
+    return spriteScreenPoint(model, view.camera, view.renderer);
+  }, { planted, moduleUrl: `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}` });
+  const hover = (target: Parameters<typeof screenPoint>[0], button: 'left' | 'right', action: string) =>
+    hoverSprite(page, () => screenPoint(target), 'rock_avocado_bushGame', button, action);
   const count = (id: string) => page.evaluate(id => (window as any).rock_avocado_bushGame.inventory.count(id), id);
   const bar = page.locator('dst-inventory-bar .inventory-bar__items');
 
@@ -60,26 +54,19 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   await submit('c_give("shovel");c_give("poop",2)');
   await expect(bar.locator('[data-item-id="shovel"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   const hand = page.locator('dst-inventory-bar .inventory-bar__equipment .inventory-slot').first();
-  const overripe = await screenPoint('overripe');
-  await page.mouse.move(overripe.x, overripe.y);
-  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.view.mouseActions.getMouseActions().left?.action)).toBe('PICK');
+  const overripe = await hover('overripe', 'left', 'PICK');
   await page.mouse.click(overripe.x, overripe.y);
-  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.find((m: any) => m.userData.entityId === 'rock-avocado:overripe').userData.components.growable.GetStage())).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.find((m: any) => m.userData.instance?.entityId === 'rock-avocado:overripe').userData.components.growable.GetStage())).toBe(1);
   expect(await count('rock_avocado_fruit')).toBe(0);
-  let wild = await screenPoint(false);
-  await page.mouse.move(wild.x, wild.y);
-  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.view.mouseActions.getMouseActions().left?.action)).toBe('PICK');
+  let wild = await hover(false, 'left', 'PICK');
   await page.mouse.click(wild.x, wild.y);
   await expect.poll(() => count('rock_avocado_fruit')).toBe(3);
 
   await bar.locator('[data-item-id="shovel"]').dragTo(hand);
-  wild = await screenPoint(false);
-  await page.mouse.move(wild.x, wild.y);
-  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.view.mouseActions.getMouseActions().right?.action)).toBe('DIG');
+  wild = await hover(false, 'right', 'DIG');
   await page.mouse.click(wild.x, wild.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.some((model: any) => model.userData.itemId === 'dug_rock_avocado_bush'))).toBe(true);
-  const dug = await screenPoint('dug');
-  await page.mouse.move(dug.x, dug.y);
+  const dug = await hover('dug', 'left', 'PICKUP');
   await page.mouse.click(dug.x, dug.y);
   await expect(bar.locator('[data-item-id="dug_rock_avocado_bush"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
   await bar.locator('[data-item-id="dug_rock_avocado_bush"]').click();
@@ -91,36 +78,35 @@ test('picks rock avocado, clears overripe fruit, digs and replants a root, ferti
   await page.mouse.move(plantingPoint.x, plantingPoint.y);
   await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.view.mouseActions.getMouseActions().right?.action)).toBe('DEPLOY');
   await page.mouse.click(plantingPoint.x, plantingPoint.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.filter((model: any) => model.userData.prefab === 'rock_avocado_bush').length)).toBe(2);
+  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.scene.children.filter((model: any) => model.userData.instance?.prefab === 'rock_avocado_bush').length)).toBe(2);
   await expect.poll(() => count('dug_rock_avocado_bush')).toBe(0);
   const root = await page.evaluate(() => {
     const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => model.userData.components?.pickable?.exportState().transplanted);
-    return { id: model.userData.entityId, position: model.position.toArray(), skinId: model.userData.skinId, state: model.userData.components.pickable.exportState() };
+    return { id: model.userData.instance?.entityId, position: model.position.toArray(), skinId: model.userData.instance?.skinId, state: model.userData.components.pickable.exportState() };
   });
   expect(root.state).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
   await bar.locator('[data-item-id="poop"]').click();
-  const dead = await screenPoint(true);
-  await page.mouse.move(dead.x, dead.y);
-  await expect.poll(() => page.evaluate(() => (window as any).rock_avocado_bushGame.view.mouseActions.getMouseActions().left?.action)).toBe('FERTILIZE');
+  const dead = await hover(true, 'left', 'FERTILIZE');
   await page.mouse.click(dead.x, dead.y);
   await expect.poll(() => count('poop')).toBe(1);
   await expect.poll(() => page.evaluate(id => {
-    const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => model.userData.entityId === id);
+    const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => model.userData.instance?.entityId === id);
     return model.userData.components.growable.state.timer.peek().status;
   }, root.id)).toBe('scheduled'); // Rock avocado keeps growing during winter.
 
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   const plant = saved.world.entities.rock_avocado_bush.find((record: any) => record.id === root.id);
   expect(plant.transform.position).toEqual(root.position);
   expect(plant.components.pickable).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 3 });
   expect(plant.components.growable.stage).toBe(1);
-  expect(plant.components.growable.time).toBeGreaterThan(500);
+  expect(plant.components.growable.time).toBeGreaterThan(0);
+  expect(plant.components.growable.time).toBeLessThanOrEqual(660);
   expect(plant.components.pickable.cyclesLeft).toBe(3);
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {
-    const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => model.userData.entityId === id);
+    const model = (window as any).rock_avocado_bushGame.scene.children.find((model: any) => model.userData.instance?.entityId === id);
     return model?.userData.components.pickable.exportState();
   }, root.id)).toEqual(plant.components.pickable);
   await expect.poll(() => count('dug_rock_avocado_bush')).toBe(0);

@@ -4,11 +4,12 @@ import { createInventoryStore } from '../../../src/inventory';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createWorldState } from '../../../src/worldState';
 import { inventoryReceiveEffect, projectInventorySource } from '../../../src/inventoryReceive';
-import { inventorySlotAddress } from '@dontstarve-web/inventory';
+import { backpackContainerId, inventorySlotAddress, INVENTORY_SLOT_COUNT } from '@dontstarve-web/inventory';
 import initialWorld from '../../../public/saves/initial-world.json';
 
 export async function createReceiveFixture() {
-  const { inventoryBar } = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
+  const ui = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
+  const { inventoryBar, backpackPanel } = ui;
   const inventory = createInventoryStore();
   const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 100);
   camera.position.set(0, 12, 20);
@@ -18,6 +19,7 @@ export async function createReceiveFixture() {
   Object.assign(canvas.style, { position: 'fixed', left: '40px', top: '60px', width: '320px', height: '240px' });
   document.body.append(canvas);
   const sync = (address: ReturnType<typeof inventorySlotAddress>) => {
+    if (!inventoryBar.containers.some(container => container.id === address.containerId)) return;
     const stack = inventory.get(address);
     if (!stack) { inventoryBar.setSlot(address, null); return; }
     inventoryBar.setSlot(address, { ...inventory.getStackSpec(stack), id: stack.itemId, count: stack.count,
@@ -26,7 +28,7 @@ export async function createReceiveFixture() {
   inventory.addresses().forEach(sync);
   inventory.subscribe((addresses) => addresses.forEach(sync));
   const scene = new THREE.Scene();
-  inventory.subscribeReceived((received, source) => { if (source) inventoryReceiveEffect(inventoryBar, camera, canvas, new THREE.Vector3(source.x, source.y, source.z))(received); });
+  inventory.subscribeReceived((received, source) => { if (source) inventoryReceiveEffect(ui, camera, canvas, new THREE.Vector3(source.x, source.y, source.z))(received); });
   const worldState = createWorldState({ elapsedSeconds: 450, systems: {}, map: { ...initialWorld.world.map, kind: 'generated' } });
   // Keep the capture scene in tickingarea, with the player outside the swarm's hide radius.
   worldState.playerpositions.set([new THREE.Vector3(20, 0, 3)]);
@@ -34,16 +36,34 @@ export async function createReceiveFixture() {
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group(), undefined,
     { getWatchWorldContent: worldState.getWatchWorldContent });
   return {
-    inventory, inventoryBar,
+    inventory, inventoryBar, backpackPanel,
+    equipBackpack() {
+      const backpack = inventory.entities.create({ itemId: 'backpack', count: 1 });
+      if (!inventory.Equip(backpack)) throw new Error('Could not equip backpack');
+      const containerId = backpackContainerId(backpack.id);
+      const container = backpack.components.container!;
+      backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
+      backpackPanel.bindContainer(container.toSignal(), stack => ({
+        ...inventory.getStackSpec(stack), id: stack.itemId, count: stack.count, entityId: stack.entityId,
+      }));
+      const maxStack = inventory.getItemSpec('rocks').maxStack;
+      if (!inventory.add('rocks', INVENTORY_SLOT_COUNT * maxStack)) throw new Error('Could not fill inventory');
+      // Leave capacity for one item so one receipt spans the main inventory and backpack.
+      inventory.applySlotChanges([{ slot: inventorySlotAddress(0), itemId: 'rocks', delta: -1 }]);
+      return { containerId, maxStack };
+    },
+    give(itemId: string, count: number) {
+      return inventory.GiveItem(inventory.entities.create({ itemId, count }), new THREE.Vector3(4, 0, 3));
+    },
     add(itemId: string, count: number, x = 0, z = 0, skinId?: string) {
       const position = new THREE.Vector3(x, 0, z);
       const source = projectInventorySource(position, camera, canvas);
-      const ok = inventory.add(itemId, count, skinId, inventoryReceiveEffect(inventoryBar, camera, canvas, position));
+      const ok = inventory.add(itemId, count, skinId, inventoryReceiveEffect(ui, camera, canvas, position));
       return { ok, source };
     },
     craft() {
       return inventory.craft(INVENTORY_RECIPES.rope, undefined,
-        inventoryReceiveEffect(inventoryBar, camera, canvas, new THREE.Vector3()));
+        inventoryReceiveEffect(ui, camera, canvas, new THREE.Vector3()));
     },
     async capture() {
       const position = new THREE.Vector3(4, 0, 3);
@@ -58,6 +78,6 @@ export async function createReceiveFixture() {
       const stack = inventory.get(slot)!;
       inventory.applySlotChanges([{ slot, itemId: stack.itemId, skinId: stack.skinId, delta: -stack.count }]);
     },
-    dispose() { ground.dispose(); worldState.dispose(); inventoryBar.remove(); canvas.remove(); },
+    dispose() { ground.dispose(); worldState.dispose(); inventoryBar.remove(); backpackPanel.remove(); canvas.remove(); },
   };
 }

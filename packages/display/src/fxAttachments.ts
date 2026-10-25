@@ -17,7 +17,7 @@ interface FxOptions {
 export type FxJson = FxOptions & (
   /** Tags the source adds to the effect entity (`FX`, `HASHEATER`). */
   | { readonly sprite: ArchiveSprite; readonly display?: undefined; readonly tags: readonly string[] }
-  /** A drawn entity's tags belong to its own instance. */
+  /** A drawn entity's tags and persistence belong to its own instance. */
   | { readonly sprite: ArchiveSpriteCommands; readonly display: PrefabDisplay; readonly tags?: undefined }
 );
 
@@ -57,8 +57,7 @@ export class FxAttachments {
     const entry: Attached = { fx, stop: () => {} };
     this.attached.set(key, entry);
     const model = fxModel(fx);
-    if (!fx.display) model.userData.tags = [...fx.tags];
-    model.userData.persists = false;
+    if (!fx.display) { model.userData.tags = [...fx.tags]; model.userData.persists = false; }
     model.position.set(0, 0, 0);
     // The watched signal owns the effect that reads it: stopping the bridge stops both.
     const active = watchSignal(fx.active, stop => { entry.stop = stop; });

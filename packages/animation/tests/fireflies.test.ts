@@ -12,11 +12,21 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal, type HandEquipment, type ReadonlySignal } from '../../signals/src';
 import { DisposeTileStates, GetTileKeyAtPoint, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { bindTestWorld } from './worldContentFixture';
+import { configureBugNetEntity } from '../../prefab/src/bugnet';
+import { actionEntity, activePrefabs, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { mouseTargets } from '../../prefab/src/mouseTargets';
 
 useTestTileMap();
 
 const cleanups: (() => void)[] = [];
 afterEach(() => { cleanups.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+function netEquipment(itemId = 'bugnet'): HandEquipment {
+  const entity = new ItemEntity({ itemId, count: 1 });
+  configureBugNetEntity(entity);
+  cleanups.push(() => entity.destroy());
+  return { itemId, EQUIPSLOTS: 'HANDS', entity };
+}
 
 function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = () => 0) {
   const scheduler = new GameTimeScheduler();
@@ -26,7 +36,7 @@ function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = ()
   const model = new THREE.Group();
   const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), setVisible: vi.fn() };
   const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
-  const handEquipment = createSignal<HandEquipment | null>({ itemId: 'bugnet', EQUIPSLOTS: 'HANDS' });
+  const handEquipment = createSignal<HandEquipment | null>(netEquipment());
   const controller = new FirefliesController(model, animation,
     { getWatchWorldContent, handEquipment }, entity.transform, random);
   cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
@@ -36,29 +46,39 @@ function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = ()
 }
 
 describe('source fireflies light and proximity', () => {
-  it('requires an equipped bugnet for mouse targeting without changing the swarm light or NET work state', async () => {
+  it('requires an equipped NET-capable entity for mouse targeting without changing the swarm light or NET work state', async () => {
     const s = setup();
     const settle = () => new Promise(resolve => setTimeout(resolve, 0));
     configureFirefliesEntity(s.entity); s.controller.bindEntity(s.entity);
+    new THREE.Scene().add(s.model);
+    const projected = actionEntity(s.model, 'fireflies', s.entity);
+    cleanups.push(() => { disposeActionEntity(s.model); s.entity.destroy(); });
+    expect(mouseTargets.has(projected)).toBe(false);
     s.controller.place(false); await settle(); s.tick(3.1);
     expect(s.controller.clickable).toBe(true);
+    expect(mouseTargets.has(projected)).toBe(true);
     expect(s.entity.hasTag('NOCLICK')).toBe(false);
     expect(s.entity.hasTag('NOBLOCK')).toBe(true);
     const light = getPrefabLocalLight(s.model), clips = s.animation.playOnce.mock.calls.length;
-    for (const hand of [{ itemId: 'axe', EQUIPSLOTS: 'HANDS' } as const, null]) {
+    for (const hand of [{ itemId: 'axe', EQUIPSLOTS: 'HANDS' } as const, { itemId: 'bugnet', EQUIPSLOTS: 'HANDS' } as const, null]) {
       s.handEquipment.set(hand); await settle();
       expect(s.controller.clickable).toBe(false);
-      expect(s.entity.hasTag('NOCLICK')).toBe(true);
-      expect(s.model.userData.tags).toContain('NOCLICK');
+      expect(mouseTargets.has(projected)).toBe(false);
+      expect(activePrefabs).toContain(projected);
+      // The held-net gate only drops the mouse candidate; NOCLICK still follows the source fade.
+      expect(s.entity.hasTag('NOCLICK')).toBe(false);
+      expect(s.model.userData.tags).not.toContain('NOCLICK');
       expect(s.controller.workable).toBe(true);
       expect(getPrefabLocalLight(s.model)).toBe(light);
     }
-    s.handEquipment.set({ itemId: 'bugnet', EQUIPSLOTS: 'HANDS' }); await settle();
+    s.handEquipment.set(netEquipment('test_net')); await settle();
     expect(s.controller.clickable).toBe(true);
+    expect(mouseTargets.has(projected)).toBe(true);
     expect(s.entity.hasTag('NOCLICK')).toBe(false);
     expect(s.animation.playOnce).toHaveBeenCalledTimes(clips);
     s.setNight(false); await settle(); s.tick(2.1); await settle(); s.tick(.8);
     expect(s.entity.hasTag('NOCLICK')).toBe(true);
+    expect(mouseTargets.has(projected)).toBe(false);
     s.controller.dispose();
     const reads = vi.spyOn(s.handEquipment, 'get');
     s.handEquipment.set(null); await settle();
@@ -207,7 +227,7 @@ describe('fireflies tickingarea gate', () => {
     const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
     const animation = { start: vi.fn(), playOnce: vi.fn(), update: vi.fn(), setVisible: vi.fn() };
     const controller = new FirefliesController(model, animation, { getWatchWorldContent,
-      handEquipment: createSignal<HandEquipment | null>({ itemId: 'bugnet', EQUIPSLOTS: 'HANDS' }) }, entity.transform, () => 0);
+      handEquipment: createSignal<HandEquipment | null>(netEquipment()) }, entity.transform, () => 0);
     cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
     const settle = () => new Promise(resolve => setTimeout(resolve, 0));
     const tick = (seconds: number) => { for (let i = 0; i < Math.round(seconds * 100); i++) { scheduler.advance(.01); controller.update(.01); } };

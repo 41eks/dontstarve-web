@@ -455,7 +455,7 @@ export class Birdcage {
 
     private slotOwner(item: ItemEntity): ItemOwner {
         const cage = this;
-        const id = String(cage.context.model.userData.entityId);
+        const id = String(cage.context.instance.entityId);
         return {
             address: { containerId: `world:birdcage:${id}`, slotKey: '0' },
             changed() {},

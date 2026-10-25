@@ -11,6 +11,8 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Workable } from '../../componets/src/workable';
 import { ComponentTimer } from '../../componets/src/timer';
 import { TileTracker } from '../../componets/src/tileManager';
+import { equippedActionEntity } from '../../stategraphs/src/componentactions';
+import { setMouseTargetEnabled } from './mouseTargets';
 
 const FIREFLIES_TAGS = ['firefly', 'cattoyairborne', 'flying', 'NOBLOCK'] as const;
 
@@ -90,6 +92,7 @@ export class FirefliesController {
     random = Math.random,
   ) {
     this.model = model;
+    setMouseTargetEnabled(model, false);
     this.transform = transform;
     this.animation = animation;
     this.random = random;
@@ -106,7 +109,7 @@ export class FirefliesController {
     this.scheduler = scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = scheduler === undefined;
     this.disableWork = new ComponentTimer(this.scheduler, () => { this.canWork = false; this.refresh(); });
-    Object.assign(model.userData, { itemId: FIREFLIES_ID, prefab: FIREFLIES_ID,
+    Object.assign(model.userData, { itemId: FIREFLIES_ID,
       firefliesController: this, rayTestOnBB: true });
     // Source uses the bloom shader; its luminous swarm art stays visible at night.
     setPrefabLightOverride(model, 1);
@@ -175,7 +178,9 @@ export class FirefliesController {
   /** Whether the swarm is drawn: from swarm_pre until swarm_pst ends. */
   get visible(): boolean { return this.shown; }
   get clickable(): boolean {
-    return !this.disposed && this.canClick && this.active.peek() && this.handEquipment?.peek()?.itemId === 'bugnet';
+    const tool = equippedActionEntity(this.handEquipment?.peek());
+    return !this.disposed && !this.inInventory && this.shown && this.canClick && this.active.peek()
+      && !!tool && !tool.isRemoved && tool.hasTag('NET_tool') && tool.components.tool?.CanDoAction('NET') === true;
   }
   bindEntity(entity: ItemEntity): void { this.entity = entity; this.refresh(); }
 
@@ -288,6 +293,7 @@ export class FirefliesController {
     if (shown === this.shown) return;
     this.shown = shown;
     this.animation.setVisible(shown);
+    this.refreshClickability();
   }
 
   private syncUpdating(): void {
@@ -301,10 +307,12 @@ export class FirefliesController {
     this.refreshVisual();
   }
 
+  /** NOCLICK follows fireflies.lua fadein/updatefade; the held-net gate only limits mouse ray candidates. */
   private refreshClickability(): void {
-    const clickable = this.clickable;
-    if (clickable) this.entity?.removeTag('NOCLICK'); else this.entity?.addTag('NOCLICK');
-    setModelTag(this.model, 'NOCLICK', !clickable);
+    const noclick = this.disposed || !this.canClick;
+    if (noclick) this.entity?.addTag('NOCLICK'); else this.entity?.removeTag('NOCLICK');
+    setModelTag(this.model, 'NOCLICK', noclick);
+    setMouseTargetEnabled(this.model, this.clickable);
   }
 
   /** Rebuild presentation after waking without changing logical work/fade/timer state. */
@@ -354,7 +362,7 @@ export async function createFirefliesGroundSprite(assets: FirefliesAssets, world
     onputininventory: () => controller?.onPutInInventory(),
     onload: () => controller?.place(false),
   });
-  return { model, active: readonlySignal(active), get controller() { return controller; },
+  return { model, instance, active: readonlySignal(active), get controller() { return controller; },
     bindEntity(entity: ItemEntity) { controller?.bindEntity(entity); },
     bindTransform(transform: ItemEntity['transform']) {
       controller = new FirefliesController(model, instance.sprite, world, transform);

@@ -146,11 +146,11 @@ it('cycles building skins while preserving the open container root, identity, st
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'treasurechest');
   change.dispose();
   expect(world.scene.children).toEqual([root]);
-  expect(root.userData.entityId).toBe(record.id);
+  expect(root.userData.instance?.entityId).toBe(record.id);
   expect(placement.exportRecords()[0].record).toMatchObject({
     id: record.id, transform: record.transform, components: { building: { state: 'open', skinId: skins[0] } },
   });
-  expect(root.userData.saveRecord.components.container).toEqual(record.components.container);
+  expect(root.userData.instance?.saveRecord.components.container).toEqual(record.components.container);
   // The final skin returns to the base rather than dropping an unsupported skin ID into the save.
   expect(nextReskin(skins, skins.at(-1))).toBeUndefined();
   expect(nextReskin(skins)).toBe(skins[0]);

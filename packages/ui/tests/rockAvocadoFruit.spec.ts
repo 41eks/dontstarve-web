@@ -29,7 +29,7 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const screenPoint = (prefab: string) => page.evaluate(prefab => {
     const { scene, view } = (window as any).rockFruitGame;
-    const model = scene.children.find((model: any) => model.userData.itemId === prefab || model.userData.prefab === prefab);
+    const model = scene.children.find((model: any) => model.userData.itemId === prefab || model.userData.instance?.prefab === prefab);
     if (!model) throw new Error('No rock_avocado_bush target');
     scene.updateMatrixWorld(true);
     const mesh = model.children[0].children[0], geometry = mesh.geometry;
@@ -77,7 +77,7 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
   await page.mouse.move(planting.x, planting.y);
   await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.view.mouseActions.getMouseActions().right?.action)).toBe('DEPLOY');
   await page.mouse.click(planting.x, planting.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => m.userData.prefab === 'rock_avocado_fruit_sprout_sapling'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => m.userData.instance?.prefab === 'rock_avocado_fruit_sprout_sapling'))).toBe(true);
   expect(await count('rock_avocado_fruit_sprout')).toBe(0);
   const download = page.waitForEvent('download'); await submit('c_save()');
   const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
@@ -87,16 +87,16 @@ test('mines a hard stone fruit with a pickaxe, plants its sprout, saves it and g
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {
-    const model = (window as any).rockFruitGame.scene.children.find((m: any) => m.userData.entityId === id);
+    const model = (window as any).rockFruitGame.scene.children.find((m: any) => m.userData.instance?.entityId === id);
     return model && { position: model.position.toArray(), timer: model.userData.components.timer.snapshot('grow').peek().status };
   }, record.id)).toEqual({ position: record.transform.position, timer: 'scheduled' });
   // Restore a scene near the deadline to exercise the real growth animation without waiting 1500 seconds.
   record.components.saplingTimer.timers.grow.timeleft = .5;
   await page.reload(); await prepare();
-  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => m.userData.prefab === 'rock_avocado_bush')),
+  await expect.poll(() => page.evaluate(() => (window as any).rockFruitGame.scene.children.some((m: any) => m.userData.instance?.prefab === 'rock_avocado_bush')),
     { timeout: 15000 }).toBe(true);
   expect(await page.evaluate(() => {
-    const bush = (window as any).rockFruitGame.scene.children.find((m: any) => m.userData.prefab === 'rock_avocado_bush');
+    const bush = (window as any).rockFruitGame.scene.children.find((m: any) => m.userData.instance?.prefab === 'rock_avocado_bush');
     return { position: bush.position.toArray(), transplanted: bush.userData.components.pickable.exportState().transplanted ?? false };
   })).toEqual({ position: record.transform.position, transplanted: false });
   expect(errors).toEqual([]);

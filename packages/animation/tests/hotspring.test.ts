@@ -83,7 +83,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
   try {
     expect((await executeDebugCommand('c_give("bathbomb",2);c_spawn("hotspring")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(s.inventory.getItemSpec('bathbomb').maxStack).toBe(20);
-    const model = s.springs.exportRecords().length === 1 ? s.scene.children.find(child => child.userData.prefab === 'hotspring')! as THREE.Group : undefined;
+    const model = s.springs.exportRecords().length === 1 ? s.scene.children.find(child => child.userData.instance?.prefab === 'hotspring')! as THREE.Group : undefined;
     const inst = model!.userData.actionEntity, heater = inst.components.heater;
     expect(inst.hasTag('HASHEATER')).toBe(true); expect(inst.hasTag('bathbombable')).toBe(true);
     expect(heater.GetHeat()).toBe(45);
@@ -261,14 +261,14 @@ it('emits slow steam, switches to crater steam once bombed, stops while asleep a
   const tick = async (seconds: number) => {
     for (let i = 0; i < Math.round(seconds * 10); i++) { s.springs.update(.1, s.world.camera.quaternion); await settle(); }
   };
-  const steam = () => s.scene.children.filter(child => /steam_fx/.test(child.userData.prefab ?? ''));
+  const steam = () => s.scene.children.filter(child => /steam_fx/.test(child.userData.instance?.prefab ?? ''));
   try {
     const model = await s.springs.spawn(new THREE.Vector3(2, 0, 3));
     await tick(1.8); expect(steam()).toHaveLength(0);
     await tick(.5);
-    expect(steam().map(child => child.userData.prefab)).toEqual(['slow_steam_fx3']);
+    expect(steam().map(child => child.userData.instance?.prefab)).toEqual(['slow_steam_fx3']);
     const fx = steam()[0];
-    expect(fx.position.toArray()).toEqual([2, 0, 3]); expect(fx.userData.persists).toBe(false);
+    expect(fx.position.toArray()).toEqual([2, 0, 3]); expect(fx.userData.instance?.persists).toBe(false);
     expect(s.registry.renderEntities.find(entry => entry.object === fx)).toMatchObject({ sortLayer: 2 });
     expect(s.registry.renderEntities.find(entry => entry.object === model)).toMatchObject({ renderLayer: -1 });
 
@@ -276,7 +276,7 @@ it('emits slow steam, switches to crater steam once bombed, stops while asleep a
     model.userData.hotspring.bathbombable.OnBathBombed();
     await tick(3);
     expect(fx.parent).toBeNull();
-    expect(steam().map(child => child.userData.prefab)).toEqual(['crater_steam_fx3']);
+    expect(steam().map(child => child.userData.instance?.prefab)).toEqual(['crater_steam_fx3']);
 
     // OnEntitySleep stops the task; OnEntityWake starts it again with a fresh random delay.
     state.playerpositions.set([new THREE.Vector3(300, 0, 0)]); await settle();
@@ -284,7 +284,7 @@ it('emits slow steam, switches to crater steam once bombed, stops while asleep a
     await tick(10); expect(steam()).toHaveLength(0);
     state.playerpositions.set([new THREE.Vector3()]); await settle();
     expect(model.userData.hotspring.fx.peek().status).toBe('scheduled');
-    await tick(2.3); expect(steam().map(child => child.userData.prefab)).toEqual(['crater_steam_fx3']);
+    await tick(2.3); expect(steam().map(child => child.userData.instance?.prefab)).toEqual(['crater_steam_fx3']);
 
     s.springs.remove(model);
     expect(model.userData.hotspring.fx.peek().status).toBe('stopped');

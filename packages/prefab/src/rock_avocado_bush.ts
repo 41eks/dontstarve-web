@@ -4,6 +4,7 @@ import { SimpleMagicGrower } from '../../componets/src/simplemagicgrower';
 import { actionEntity } from './actionEntity';
 import { PickablePlantManager, type PickablePlantBehavior, type PickablePlantBehaviorContext,
   type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
+import { modelHasTag } from './prefabInstance';
 
 export const ROCK_AVOCADO_BUSH_ID = 'rock_avocado_bush' as const;
 export const ROCK_AVOCADO_FRUIT_ID = 'rock_avocado_fruit' as const;
@@ -34,7 +35,7 @@ class RockAvocadoBush implements PickablePlantBehavior {
   initialize(saved?: PickablePlantRecord): void {
     if (saved?.components.growable) this.growable.OnLoad(saved.components.growable);
     else { this.growable.SetStage(1 + Math.floor(Math.random() * 4)); this.growable.StartGrowing(); }
-    if (this.context.pickable.IsBarren() || this.context.model.userData.tags.includes('withered')) this.barren();
+    if (this.context.pickable.IsBarren() || modelHasTag(this.context.model, 'withered')) this.barren();
   }
   private setStage(stage: number): void {
     const { pickable, play } = this.context;
@@ -56,12 +57,12 @@ class RockAvocadoBush implements PickablePlantBehavior {
   empty(): void {
     const wasDead = this.context.animation.currentAnimation === 'dead1';
     this.growable.SetStage(1); this.growable.StartGrowing(); this.growable.magicgrowable = true;
-    this.context.play(this.context.model.userData.tags.includes('withered') || wasDead
+    this.context.play(modelHasTag(this.context.model, 'withered') || wasDead
       ? ['dead1_to_idle1', 'idle1'] : ['idle1']);
   }
   barren(): void {
     this.growable.SetStage(1); this.growable.StopGrowing(); this.growable.magicgrowable = false;
-    this.context.play(this.context.model.userData.tags.includes('withered') ? ['idle1_to_dead1', 'dead1'] : ['dead1']);
+    this.context.play(modelHasTag(this.context.model, 'withered') ? ['idle1_to_dead1', 'dead1'] : ['dead1']);
   }
   burnt(): void {
     if (this.growable.GetStage() === 3) for (let i = 0; i < 3; i++) this.context.spawnLoot(ROCK_AVOCADO_FRUIT_ID);

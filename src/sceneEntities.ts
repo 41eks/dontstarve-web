@@ -385,7 +385,7 @@ export async function createSceneEntities(
 
   function registerBuildings(registry: EntityRegistry, prefabId: 'buildings', worldState: SceneWorldState) {
     const buildingPlacement = new PlaceableBuildingPlacement(
-      { ...view, physics: world, scheduler, dynamicMusic,
+      { ...view, physics: world, scheduler, dynamicMusic, handEquipment: sceneInventory.handEquipment,
         getLocalTemperature: (x, z) => GetTemperatureAtXZ(() => worldState.temperature.peek(), x, z), itemEntities: sceneInventory.entities,
         cycle: worldState.cycle, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, isNight: worldState.isNight, perishClock: worldState.perishClock,
         secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
@@ -477,6 +477,7 @@ export async function createSceneEntities(
           })());
     };
     const molehills: MolehillManager = new MolehillManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      handEquipment: sceneInventory.handEquipment,
       itemSpecs: SAVE_CATALOG.items, getWatchWorldContent: worldState.getWatchWorldContent, cameraHeading: view.cameraHeading, tickingarea: worldState.tickingarea,
       isWalkable: moleWalkable,
       findPath: (start, target) => findGroundPath(new THREE.Vector3(start.x, start.y, start.z),
@@ -611,6 +612,7 @@ export async function createSceneEntities(
 
   function registerRocks(registry: EntityRegistry, prefabId: 'rocks', worldState: SceneWorldState) {
     const rockManager = new RockManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      handEquipment: sceneInventory.handEquipment,
       physics: world,
       tickingarea: worldState.tickingarea,
       scheduler,
@@ -631,6 +633,7 @@ export async function createSceneEntities(
 
   function registerCaveEntrances(registry: EntityRegistry, prefabId: 'cave_entrance', worldState: SceneWorldState) {
     const caveEntrances = new CaveEntranceManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       physics: world, tickingarea: worldState.tickingarea, prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
       shard: shardLink,
     });
@@ -669,6 +672,7 @@ export async function createSceneEntities(
 
   function registerMushtrees(registry: EntityRegistry, prefabId: 'mushtree', worldState: SceneWorldState) {
     const mushtrees = new MushtreeManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       physics: world, scheduler, scene, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, worldEvents,
       dropLoot: (items, position) => {
         void Managers['ground_item'].flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position)
@@ -691,6 +695,7 @@ export async function createSceneEntities(
 
   function registerGrottoPools(registry: EntityRegistry, prefabId: 'grotto_pool', worldState: SceneWorldState) {
     const grottoPools = new GrottoPoolManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       physics: world, scheduler: scheduler ?? worldState.scheduler, playerPosition: () => player.position,
       getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, fx: Managers['world_fx'],
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
@@ -727,6 +732,7 @@ export async function createSceneEntities(
 
   function registerMarbleShrubs(registry: EntityRegistry, prefabId: 'marbleshrub', _worldState: SceneWorldState) {
     const marbleShrubs = new MarbleShrubManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       scheduler, physics: world, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
@@ -747,6 +753,7 @@ export async function createSceneEntities(
 
   function registerArchiveProps(registry: EntityRegistry, prefabId: 'archive_props', worldState: SceneWorldState) {
     const archiveProps = new ArchivePropsManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       physics: world, cameraFacing: view.cameraFacing, tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
@@ -766,6 +773,7 @@ export async function createSceneEntities(
 
   function registerHoundbones(registry: EntityRegistry, prefabId: 'houndbone', worldState: SceneWorldState) {
     const houndbones = new HoundboneManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
@@ -784,6 +792,7 @@ export async function createSceneEntities(
 
   function registerSkeletons(registry: EntityRegistry, prefabId: 'skeleton', worldState: SceneWorldState) {
     const skeletons = new SkeletonManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       tickingarea: worldState.tickingarea,
       physics: world,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
@@ -803,6 +812,7 @@ export async function createSceneEntities(
 
   function registerMarbleBeanSaplings(registry: EntityRegistry, prefabId: 'marblebean_sapling', _worldState: SceneWorldState) {
     const marbleBeanSaplings = new MarbleBeanSaplingManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       scheduler, shrubs: Managers['marbleshrub'], tickingarea: worldState.tickingarea,
       prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
     });
@@ -837,6 +847,7 @@ export async function createSceneEntities(
 
   function registerRockAvocadoSaplings(registry: EntityRegistry, prefabId: 'rock_avocado_fruit_sprout_sapling', _worldState: SceneWorldState) {
     const rockAvocadoSaplings = new RockAvocadoSaplingManager(scene, {
+      handEquipment: sceneInventory.handEquipment,
       scheduler, bushes: Managers['rock_avocado_bush'], tickingarea: worldState.tickingarea,
       prepareSpawn: definition => Managers['ground_item'].prepareSpawn(definition),
     });
@@ -1115,6 +1126,7 @@ export async function createSceneEntities(
 
   async function registerEvergreens(registry: EntityRegistry, prefabId: 'evergreen', worldState: SceneWorldState) {
     const evergreenForest = await createEvergreenForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
+      handEquipment: sceneInventory.handEquipment,
       camera, scene, scheduler, physics: world, worldEvents, tickingarea: worldState.tickingarea,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
       dropLoot: (items, position) => {
@@ -1138,6 +1150,7 @@ export async function createSceneEntities(
 
   async function registerDeciduousTrees(registry: EntityRegistry, prefabId: 'deciduoustree', worldState: SceneWorldState) {
     const deciduousForest = await createDeciduousForest(`${import.meta.env.BASE_URL}dst/data/anim`, {
+      handEquipment: sceneInventory.handEquipment,
       camera, scene, scheduler, physics: world, season: worldState.season, worldEvents, tickingarea: worldState.tickingarea,
       secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
       growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
@@ -1161,7 +1174,7 @@ export async function createSceneEntities(
   }
 
   function registerFarmPlow(registry: EntityRegistry, prefabId: 'farm_plow', _worldState: SceneWorldState) {
-    const farmPlow = new FarmPlowPlacement({ ...view, physics: world }, turfMap,
+    const farmPlow = new FarmPlowPlacement({ ...view, physics: world, handEquipment: sceneInventory.handEquipment }, turfMap,
       async (position, item) => { await Managers['ground_item'].spawnFromSave(item.entityId ?? newEntityId(), {
         ...SAVE_CATALOG.items[item.itemId], ...item,
       }, position); },
@@ -1207,6 +1220,7 @@ export async function createSceneEntities(
 
   async function registerMoonTrees(registry: EntityRegistry, prefabId: 'moon_tree', worldState: SceneWorldState) {
     const moonTrees = await createMoonTreeManager(`${import.meta.env.BASE_URL}dst/data/anim`, {
+      handEquipment: sceneInventory.handEquipment,
       physics: world,
       camera,
       scene,

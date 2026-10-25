@@ -1,5 +1,5 @@
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { describe, expect, it, vi } from 'vitest';
-import * as THREE from 'three';
 import { ItemEntity, type ItemOwner } from '../../inventory/src';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf } from '../../componets/src/shelf';
@@ -37,9 +37,11 @@ describe('caged birds', () => {
       playOnce: vi.fn((_name: string, onComplete: () => void) => { finish = onComplete; }),
       clearOverrideBuild: vi.fn(),
     };
-    const model = new THREE.Group();
+    const { instance, display } = createEmptyEntity('birdcage');
+    const model = display.model;
+    instance.entityId = 'birdcage:test';
     model.userData.animationController = controller;
-    const cage = new Birdcage({ model, animation: controller as unknown as SpriteAnimationController,
+    const cage = new Birdcage({ model, instance, animation: controller as unknown as SpriteAnimationController,
       world: { scheduler, cycle } as unknown as WorldContext }, () => .9);
     const bird = createBird();
     cage.occupiable!.Occupy(bird);
@@ -98,6 +100,7 @@ describe('caged birds', () => {
     expect(controller.playOnce).not.toHaveBeenCalled();
     bird.destroy();
     scheduler.dispose();
+    instance.remove(); display.dispose();
   });
 
   it('starve at the cage rate, not the ground rate, and a ground bird does not starve at all', () => {

@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
@@ -188,7 +189,7 @@ describe('DST building skins', () => {
     await placement.begin(prefabId, skinId);
     if (skinInit) expect(skinInit).toHaveBeenCalledExactlyOnceWith(skinId);
     expect(placement.exportRecords()).toHaveLength(0);
-    expect(world.scene.children[0].userData.skinId).toBe(skinId);
+    expect(world.scene.children[0].userData.instance?.skinId).toBe(skinId);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
     expect(consume).toHaveBeenCalledWith(prefabId);
     for (let frame = 0; frame < 100; frame++) placement.update(0.1);
@@ -197,7 +198,7 @@ describe('DST building skins', () => {
     expect(record.transform.position).toEqual([3, 0, 4]);
     const restored = await placement.spawnFromSave(prefabId, record as PlacementSaveRecord);
     if (skinInit) expect(skinInit).toHaveBeenCalledTimes(2);
-    expect(restored.userData.skinId).toBe(skinId);
+    expect(restored.userData.instance?.skinId).toBe(skinId);
     expect(placement.exportRecords()[1].record).toEqual(record);
     await expect(placement.spawn(prefabId, 'missing_skin')).rejects.toThrow('Unsupported');
   });
@@ -259,8 +260,9 @@ describe('DST building skins', () => {
     expect(meshes()).toBe(0);
     // The anchor leaves the scene with its visual; identity stays on the instance.
     expect(model.parent).toBeNull();
-    expect(model.userData.entityId).toBe('lab:resident');
-    const animation = model.userData.animationController as SpriteAnimationController;
+    const instance = prefabInstance(model)!;
+    expect(instance.entityId).toBe('lab:resident');
+    const animation = instance.sprite;
     animation.start('proximity_loop');
     expect(animation.currentAnimation).toBe('proximity_loop');
     const prepared = await placement.reskinTargets[0].prepareNextSkin();

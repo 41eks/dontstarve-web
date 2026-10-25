@@ -3,6 +3,8 @@ import { PickablePlantManager, type PickablePlantDefinition, type PickablePlantR
 
 export const GRASS_ID = 'grass' as const;
 export const GRASS_REGROW_TIME = 3 * 480;
+/** TUNING.GRASS_CYCLES: picks a transplanted tuft gives before it goes barren. */
+export const GRASS_CYCLES = 20;
 
 export type GrassRecord = PickablePlantRecord;
 export type GrassWorld = PickablePlantWorld;
@@ -18,6 +20,7 @@ export const GRASS_DEFINITION: PickablePlantDefinition = {
   regrowTime: GRASS_REGROW_TIME,
   witherable: true,
   barren: 'idle_dead',
+  maxCycles: () => GRASS_CYCLES,
   idle: { name: 'idle' },
   picked: { sound: 'dontstarve/wilson/pickup_reeds', clips: ['picking', 'picked'] },
   empty: { name: 'picked', frame: 'last' },

@@ -6,6 +6,7 @@ import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBin
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { PlacementSaveRecord } from './saveRecord';
 import { WORLD_SCALE } from './tile';
+import { refreshMouseTarget } from './mouseTargets';
 
 /**
  * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
@@ -78,7 +79,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
     this.tagsChanged(tag);
   }
   removeTag(tag: string): void { if (this.tags.delete(tag)) this.tagsChanged(tag); }
-  /** The current tags as a frozen list, for readers that still look at `userData.tags`. */
+  /** The current tags as a frozen list. */
   listTags(): readonly string[] { return this.tagView ??= Object.freeze([...this.tags]); }
   /** Called with each added or removed tag, e.g. to refresh the placement index. */
   onTagChanged(listener: (tag: string) => void): () => void {
@@ -103,35 +104,20 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   }
 }
 
-/**
- * Transitional: readers that still look at `userData` keep working while the entity's data lives on the instance.
- * `instance` is how a model finds its entity.
- */
+/** Bind the display's model to its logical entity; metadata remains on the instance. */
 export function bindInstance(model: Object3D, instance: PrefabInstance<ArchiveSpriteCommands>): void {
   model.userData.instance = instance;
   instance.attach(model);
-  for (const key of ['entityId', 'saveRecord', 'skinId', 'persists'] as const) {
-    Object.defineProperty(model.userData, key, {
-      enumerable: true, configurable: true,
-      get: () => instance[key], set: (value: never) => { instance[key] = value; },
-    });
-  }
-  // Tags are the instance's; `userData.tags` is a read-only view and writers must use addTag/removeTag.
-  Object.defineProperty(model.userData, 'tags', {
-    enumerable: true, configurable: true,
-    get: () => instance.listTags(),
-    set: () => { throw new Error(`${instance.prefab}: write tags through the PrefabInstance`); },
-  });
-  // Entities that declare no physics still set a plain radius here.
-  let physicsRadius: number | undefined = model.userData.physicsRadius;
-  Object.defineProperty(model.userData, 'physicsRadius', {
-    enumerable: true, configurable: true,
-    get: () => instance.getPhysicsRadius(physicsRadius), set: (value: number | undefined) => { physicsRadius = value; },
-  });
 }
 
 export function prefabInstance(model: Object3D): PrefabInstance<ArchiveSpriteCommands> | undefined {
   return model.userData.instance as PrefabInstance<ArchiveSpriteCommands> | undefined;
+}
+
+/** inst:HasTag on a model: its instance owns the tags; a model without one (bare FX) keeps its own `userData.tags`. */
+export function modelHasTag(model: Object3D, tag: string): boolean {
+  const instance = prefabInstance(model);
+  return instance ? instance.hasTag(tag) : (model.userData.tags as readonly string[] | undefined)?.includes(tag) ?? false;
 }
 
 /** Transitional: a model's tag write goes to its instance; a model without one keeps its own `userData.tags`. */
@@ -142,6 +128,7 @@ export function setModelTag(model: Object3D, tag: string, present: boolean): voi
   const index = tags.indexOf(tag);
   if (present) { if (index < 0) tags.push(tag); }
   else if (index >= 0) tags.splice(index, 1);
+  refreshMouseTarget(model);
 }
 
 /** A new entity and the display that draws it. The model is the display's; the entity never holds it. */

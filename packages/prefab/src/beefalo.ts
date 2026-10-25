@@ -152,7 +152,7 @@ export class BeefaloController {
     });
     this.locomotor.walkspeed = BEEFALO_BEHAVIOR.walkSpeed;
     this.locomotor.runspeed = 7 * WORLD_SCALE;
-    Object.assign(model.userData, { prefab: 'beefalo', beefaloController: this });
+    model.userData.beefaloController = this;
     for (const tag of ['beefalo', 'animal', 'largecreature']) instance.addTag(tag);
     this.beard = new Beard(this, {
       scheduler: world.scheduler,
@@ -459,7 +459,7 @@ export class BeefaloManager {
 
   exportRecords(): BeefaloRecord[] {
     return Array.from(this.beefalos, (beefalo) => ({
-      id: String(beefalo.model.userData.entityId),
+      id: String(beefalo.instance.entityId),
       transform: { position: beefalo.model.position.toArray(), rotationY: 0 },
       components: { beefalo: beefalo.exportState() },
     }));

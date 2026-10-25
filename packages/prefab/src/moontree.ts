@@ -10,6 +10,7 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable, type Worker } from '../../componets/src/workable';
 import { actionEntity, disposeActionEntity } from './actionEntity';
+import { ToolMouseTarget } from './toolMouseTarget';
 import catalog from './groundItems.json' with { type: 'json' };
 import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
@@ -26,7 +27,7 @@ import { newEntityId } from './saveRecord';
 import { MiniMapEntity } from './minimapEntity';
 import { PreloadSounds, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment, type BurnSpec } from './treeFire';
-import { getBoundWatchWorldContent, WorldContentKey, createEffect, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import { getBoundWatchWorldContent, WorldContentKey, createEffect, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorldEventEmitter } from './worldContext';
 
 /** tuning.lua MOON_TREE_CHOPS_TALL: the tall stage requires sixteen chops. */
@@ -54,6 +55,7 @@ SetSharedLootTable('moontree_burnt', [['charcoal', 1]]);
 
 /** World services owned by this moon-tree manager. */
 export interface MoonTreeWorld {
+  handEquipment?: ReadonlySignal<HandEquipment | null>;
   physics?: import('cannon-es').World;
   readonly camera: THREE.Camera;
   readonly scheduler?: GameTimeScheduler;
@@ -85,6 +87,7 @@ interface TreeController {
   readonly inst: ReturnType<typeof actionEntity>;
   stopActivity?: () => void;
   workable?: Workable;
+  mouseTarget?: ToolMouseTarget;
   /** MakeXBurnable + MakeXPropagator while the tree is awake. */
   burn?: BurnableBinding;
   /** Private snow-level bridge; its cleanup owns the source subscription and the layer effect. */
@@ -297,6 +300,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     inst.addTag('stump');
     workable.SetWorkAction('DIG');
     workable.SetWorkLeft(1);
+    controller.mouseTarget?.setWorkable(workable);
     // dig_up_stump: NORMAL/TALL drop two logs, then inst:Remove().
     workable.SetOnFinishCallback(() => {
       world.dropLoot([{ itemId: 'log', count: sizeOf(stateOf(entity)) === 'short' ? 1 : 2 }], entity.position);
@@ -328,7 +332,6 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     const controller: TreeController = { entity, model, inst };
     mouseRecords.set(model, entity);
     controllers.set(model, controller);
-    model.userData.prefab = 'moon_tree';
     model.userData.deploySmartRadius = 1.6 * unit;
     model.userData.MiniMapEntity = state.minimap;
     model.userData.components.growable = state.growable;
@@ -399,7 +402,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     MakeObstaclePhysics(drawn.instance, .5);
     if (world.physics) drawn.instance.bindPhysics(world.physics);
     model.userData.placementLogical = true;
-    if (saveId) model.userData.entityId = saveId;
+    if (saveId) drawn.instance.entityId = saveId;
     const entity: ResidentEntity = { id, saveId, model, position: model.position };
     sprites.set(entity, drawn); entities.push(entity); world.scene.add(model);
     placementStops.set(entity, registerPlacementTree(world.scene, entity, 'moon_tree', 1.6 * unit));
@@ -429,7 +432,10 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   };
   const bindActivity = (entity: ResidentEntity) => {
     let controller = controllers.get(entity.model);
-    if (!controller) { attach(entity, entity.model); controller = controllers.get(entity.model)!; }
+    if (!controller) {
+      attach(entity, entity.model); controller = controllers.get(entity.model)!;
+      controller.mouseTarget = new ToolMouseTarget(controller.inst, sprites.get(entity)!.instance, controller.workable!, world.handEquipment);
+    }
     controller.stopActivity?.();
     controller.stopActivity = watchTileActivity(entity.model, world.tickingarea, awake => setActive(controller!, awake));
   };
@@ -460,7 +466,8 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     const model = entity.display.model;
     entity.instance.sprite.playOnce('idle');
     model.position.copy(position);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: 'moonbutterfly_sapling', placementLogical: true, deploySmartRadius: 1.6 * unit });
+    entity.instance.entityId = saved?.id ?? newEntityId();
+    Object.assign(model.userData, { placementLogical: true, deploySmartRadius: 1.6 * unit });
     for (const tag of ['plant', 'moon_tree']) entity.instance.addTag(tag);
     const inst = actionEntity(model, 'moonbutterfly_sapling');
     const timer = new Timer(scheduler, () => {
@@ -475,6 +482,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     });
     model.userData.components.workable = workable;
     model.userData.components.timer = timer;
+    new ToolMouseTarget(inst, entity.instance, workable, world.handEquipment);
     saplings.set(model, { entity, timer, workable, stopPlacement: registerPlacementTree(world.scene, { model, position: model.position }, 'moonbutterfly_sapling', 1.6 * unit), stopActivity: watchTileActivity(model, world.tickingarea, active => entity.instance.setActive(active)) });
     world.scene.add(model);
     timer.StartTimer('grow', MOONBUTTERFLY_SAPLING_GROW_TIME.base + (random() * 2 - 1) * MOONBUTTERFLY_SAPLING_GROW_TIME.random);
@@ -496,8 +504,8 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
   };
 
   const digTargets = (model?: THREE.Object3D) => {
-    const saplingTargets = modelEntries(saplings, model).map(([model, { workable }]) => ({
-      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, 'moonbutterfly_sapling'),
+    const saplingTargets = modelEntries(saplings, model).map(([model, { workable, entity }]) => ({
+      id: String(entity.instance.entityId), model, position: model.position, entity: actionEntity(model, 'moonbutterfly_sapling'),
       isValid: () => saplings.has(model) && workable.CanBeWorked(),
     }));
     return [...workTargets('DIG', model), ...saplingTargets].map(target => ({ ...target,
@@ -578,8 +586,8 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
         },
       };
     },
-    exportSaplings: () => [...saplings].map(([model, { timer }]) => ({
-      id: String(model.userData.entityId), transform: { position: model.position.toArray(), rotationY: 0 },
+    exportSaplings: () => [...saplings].map(([model, { timer, entity }]) => ({
+      id: String(entity.instance.entityId), transform: { position: model.position.toArray(), rotationY: 0 },
       components: { saplingTimer: timer.OnSave()! },
     })),
     dispose() {

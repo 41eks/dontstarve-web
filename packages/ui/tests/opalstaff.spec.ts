@@ -38,7 +38,7 @@ test('game console gives opalstaff and equipped right-click summons a saved pola
   const hand = bar.locator('.inventory-bar__equipment .inventory-slot').first();
   await staff.dragTo(hand);
   await expect(hand).toHaveAttribute('data-item-id', 'opalstaff');
-  await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.children[0].children[0].material
+  await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.getObjectByProperty('isMesh', true).material
     .some((material: any) => material.name === 'ground:swap_staffs'))).toBe(true);
   await expect.poll(() => page.evaluate(() => (window as any).opalGame.player.userData.animationController.stategraph.isOneShot)).toBe(false);
   const point = await page.evaluate(() => {

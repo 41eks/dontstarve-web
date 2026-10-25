@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { modelEntries } from './modelRecords';
 import * as THREE from 'three';
 import { createEffect, createMemo, readonlySignal, getBoundWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
@@ -45,7 +46,7 @@ interface Sapling {
   outputs: PreparedGroundSpawn[];
   bush?: Awaited<ReturnType<RockAvocadoBushManager['prepareNaturalSpawn']>>;
 }
-export interface RockAvocadoSaplingWorld {
+export interface RockAvocadoSaplingWorld extends ToolMouseTargetWorld {
   scheduler?: GameTimeScheduler;
   tickingarea?: TileStateQuery;
   bushes: Pick<RockAvocadoBushManager, 'prepareNaturalSpawn'>;
@@ -117,7 +118,8 @@ export class RockAvocadoSaplingManager {
         fire.instance.persists = false;
         const model = drawn.display.model, fireModel = fire.display.model;
         drawn.instance.position.set(position.x, 0, position.z);
-        Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: ROCK_AVOCADO_SAPLING_ID, deploySmartRadius: 3 });
+        drawn.instance.entityId = saved?.id ?? newEntityId();
+        Object.assign(model.userData, { deploySmartRadius: 3 });
         const entity = actionEntity(model, ROCK_AVOCADO_SAPLING_ID);
         const completion = new ComponentTimer(this.scheduler, () => {
           if (this.saplings.get(model) !== sapling) return;
@@ -145,6 +147,7 @@ export class RockAvocadoSaplingManager {
           return nearby;
         }, 3, this.scheduler, getBoundWatchWorldContent());
         Object.assign(entity.components, { workable, timer, burnable, propagator });
+        new ToolMouseTarget(entity, drawn.instance, workable, this.world.handEquipment);
         const startGrowing = () => { if (!timer.TimerExists('grow')) timer.StartTimer('grow', ROCK_AVOCADO_SPROUT_GROW_TIME); };
         burnable.SetOnIgniteFn(() => timer.StopTimer('grow'));
         burnable.SetOnExtinguishFn(() => {
@@ -195,14 +198,14 @@ export class RockAvocadoSaplingManager {
   get digTargets(): ShovelTarget[] { return this.getDigTargets(); }
 
   getDigTargets(model?: THREE.Object3D): ShovelTarget[] {
-    return modelEntries(this.saplings, model).map(([model, sapling]) => ({ id: String(model.userData.entityId), model, position: model.position,
+    return modelEntries(this.saplings, model).map(([model, sapling]) => ({ id: String(sapling.entity.instance.entityId), model, position: model.position,
       entity: actionEntity(model, ROCK_AVOCADO_SAPLING_ID), isValid: () => this.saplings.get(model) === sapling && sapling.workable.CanBeWorked(),
       dig: () => performToolWork('DIG', actionEntity(model, ROCK_AVOCADO_SAPLING_ID), {}),
     }));
   }
   exportRecords(): RockAvocadoSaplingRecord[] {
     this.scheduler.advanceTo(this.scheduler.now);
-    return [...this.saplings].map(([model, { timer }]) => ({ id: String(model.userData.entityId),
+    return [...this.saplings].map(([model, { timer, entity }]) => ({ id: String(entity.instance.entityId),
       transform: { position: model.position.toArray() as [number, number, number], rotationY: 0 },
       components: { saplingTimer: timer.OnSave() ?? { timers: {} } },
     }));

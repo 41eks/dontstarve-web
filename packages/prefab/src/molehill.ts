@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createEffect, WorldContentKey, type TileStateQuery } from '@dontstarve-web/signals';
@@ -23,7 +24,7 @@ export interface MolehillSave { items: InventoryStack[]; child?: InventoryStack;
 export interface MolehillRecord {
   id: string; transform: { position: [number, number, number]; rotationY: number }; components: { molehill: MolehillSave };
 }
-export interface MoleHabitat extends MoleWorld { tickingarea?: TileStateQuery; prepare(): Promise<void>; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }
+export interface MoleHabitat extends MoleWorld, ToolMouseTargetWorld { tickingarea?: TileStateQuery; prepare(): Promise<void>; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }
 
 /** molehill.lua owns the dig callback, stored minerals and its one persistent child. */
 export class Molehill implements BrainEntity {
@@ -69,9 +70,11 @@ export class Molehill implements BrainEntity {
       if (this.cycle.get() !== 'day' && spawner.IsOccupied()) this.startSpawning(); else this.stopSpawning();
     });
     model.userData.components = this.components;
-    Object.assign(model.userData, { prefab: MOLEHILL_ID, entityId: id, molehill: this, remove: () => this.remove() });
+    instance.entityId = id;
+    Object.assign(model.userData, { molehill: this, remove: () => this.remove() });
     // Workable's source inst owns tags, including DIG_workable.
     model.userData.components.workable = workable; inst.addTag('DIG_workable');
+    new ToolMouseTarget(inst, instance, workable, world.handEquipment);
     this.cleanups.push(watchTileActivity(model, world.tickingarea, active => instance.setActive(active)));
   }
   private readonly cycle;
@@ -132,7 +135,7 @@ export class MolehillManager {
   private readonly scene: THREE.Scene;
   private readonly base: string;
   constructor(scene: THREE.Scene, base: string,
-    services: Omit<MoleWorld, 'getMoles' | 'makeHome' | 'registerMole' | 'spawnMoveFx' | 'prepare'> & { tickingarea?: TileStateQuery; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }) {
+    services: Omit<MoleWorld, 'getMoles' | 'makeHome' | 'registerMole' | 'spawnMoveFx' | 'prepare'> & ToolMouseTargetWorld & { tickingarea?: TileStateQuery; showMole(entity: import('@dontstarve-web/inventory').ItemEntity, position: THREE.Vector3): void }) {
     this.scene = scene; this.base = base;
     this.habitat = { ...services, showMole: services.showMole,
       getMoles: () => [...this.moles], makeHome: mole => this.spawnPrepared(mole.getPosition().clone(), undefined, mole),

@@ -2,12 +2,6 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { SaplingManager } from '../../prefab/src/sapling';
-import { PlantDeployment } from '../../prefab/src/plantDeployment';
-import { createInventoryStore } from '../../../src/inventory';
-import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
-import type { ActionAnimationController } from '../../stategraphs/src/actionContext';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createPickupInventory } from './pickupFixture';
 import { createPickupDoer } from '../../stategraphs/src/pickup';
@@ -23,6 +17,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { bindTestWorld, tickWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createSignal } from '../../signals/src';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -64,17 +59,17 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
   try {
     s.player.position.set(3, 0, 6);
     expect((await executeDebugCommand('c_spawn("sapling")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const [model] = s.scene.children.filter(child => child.userData.prefab === 'sapling') as THREE.Group[];
+    const [model] = s.scene.children.filter(child => child.userData.instance?.prefab === 'sapling') as THREE.Group[];
     const animation = model.userData.animationController;
     expect(animation.currentAnimation).toBe('sway');
-    expect(model.userData.tags).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'tickingarea', 'canlight', 'witherable']);
+    expect(prefabInstance(model)!.listTags()).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'tickingarea', 'canlight', 'witherable']);
     expect(model.userData.actionEntity.hasTag('DIG_workable')).toBe(true);
     expect(getPickActions(model).find(action => action.model === model)?.available).toBe(true);
 
     expect(model.userData.components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) })).toBe(true);
     expect(s.inventory.count('twigs')).toBe(1);
     expect(animation.currentAnimation).toBe('picked');
-    expect(model.userData.tags).not.toContain('pickable');
+    expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
     tickWorld(s.scheduler, s.saplings, 1000, new THREE.Quaternion());
 
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
@@ -83,7 +78,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     const copy = await restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record);
     // Pickable:OnLoad calls makeemptyfn rather than replaying the pick.
     expect(copy.userData.animationController.currentAnimation).toBe('empty');
-    expect(copy.userData.entityId).toBe(model.userData.entityId);
+    expect(copy.userData.instance?.entityId).toBe(model.userData.instance?.entityId);
 
     tickWorld(s.scheduler, s.saplings, 920, new THREE.Quaternion());
     expect(model.userData.pickablePlantState.phase.peek()).toBe('ready');
@@ -130,7 +125,7 @@ it('restores an imported wither check through save/load, reschedules on expiry a
       id: 'imported-sapling', transform: { position: [30, 0, 6], rotationY: 0 },
       components: { witherable: { taskSeconds: 2.5 } },
     });
-    expect(model.userData.tags).toContain('witherable');
+    expect(prefabInstance(model)!.listTags()).toContain('witherable');
     tickWorld(s.scheduler, s.saplings, 1, new THREE.Quaternion());
     const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.sapling[0];
     expect(record.components.witherable).toEqual({ taskSeconds: 1.5 });

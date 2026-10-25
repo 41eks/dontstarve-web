@@ -58,7 +58,7 @@ test('pitchfork digs terrain, cursor-held turf deploys on dirt and saves and rel
   await expect(hand).toHaveAttribute('data-item-id', 'pitchfork');
   await expect.poll(() => page.evaluate(() => {
     const { player } = (window as any).pitchforkGame;
-    return player.children[0].children[0].material.some((material: any) => material.name === 'ground:swap_pitchfork');
+    return player.getObjectByProperty('isMesh', true).material.some((material: any) => material.name === 'ground:swap_pitchfork');
   })).toBe(true);
   const point = async (x: number, z: number) => page.evaluate(async ({ x, z }) => {
     await new Promise(requestAnimationFrame);

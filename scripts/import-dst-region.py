@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import DST forest/cave maps and whitelisted entities into project shard saves."""
+"""Import DST forest/cave maps, whitelisted entities and the player's position and inventory into project shard saves."""
 import argparse
 import base64
 from collections import Counter
@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 import runpy
 import struct
+import subprocess
 import zlib
 
 LITERALS = runpy.run_path(str(Path(__file__).with_name('dst-save-literal.py')))
@@ -25,6 +26,13 @@ def source_grid_position(coordinate, extent):
     # floor(extent / 2 + .5 + coordinate / TILE_SCALE).
     # These are cell-boundary coordinates, matching the project's floor(world / TILE_SIZE).
     return coordinate / 4 + extent / 2 + .5
+
+
+def project_position(coordinates, translation):
+    # DST's world is left-handed and Three.js is right-handed (see packages/ui/src/minimap-view.ts):
+    # keep X and negate Z so the imported map is not mirrored.
+    x, y, z = (round(value * TILE_SIZE / 4 + shift, 6) for value, shift in zip(coordinates, translation))
+    return [x, y, 0 - z]
 
 
 def pighead_components(data):
@@ -202,10 +210,20 @@ def pickable_state(data, prefab):
 
 
 def pickable_plant_components(prefab):
-    # grass.lua / sapling.lua add no OnSave fields of their own.
+    # grass.lua / sapling.lua OnSave only add was_herd, which re-registers the herd with
+    # lunarthrall_plantspawner (with herdmember's knownlocations); that spawner is not ported.
+    # Transplanted grass also saves its grassgekko morph timers, and grassgekko is not ported either.
     def convert(data):
-        if set(data) - {'pickable', 'witherable'}:
+        extra = {'was_herd', 'knownlocations'} | ({'worldsettingstimer'} if prefab == 'grass' else set())
+        if set(data) - {'pickable', 'witherable'} - extra or data.get('was_herd') not in (None, True):
             raise ValueError(f'Unsupported {prefab} save state')
+        timers = (data.get('worldsettingstimer') or {}).get('timers') or {}
+        if set(timers) - {'morphdelay', 'morphing', 'morphrelay'}:
+            raise ValueError(f'Unsupported {prefab} worldsettingstimer state')
+        locations = data.get('knownlocations') or {}
+        if not isinstance(locations, dict) or set(locations) - {'locations'} \
+                or any(not isinstance(location, dict) or location.get('name') != 'herd' for location in locations.get('locations') or []):
+            raise ValueError(f'Unsupported {prefab} knownlocations state')
         state = pickable_state(data.get('pickable') or {}, prefab)
         components = {'pickable': state} if state else {}
         # witherable.lua OnSave -> the existing Witherable component. Protection tasks are not ported.
@@ -311,6 +329,9 @@ def lightflier_flower_components(data):
         raise ValueError('Unsupported lightflier_flower save state')
     variant = {'_single': 'single', '_springy': 'springy'}.get(data.get('plantname'))
     spawner = data.get('childspawner')
+    # ChildSpawner:OnSave writes childrenoutside only when a child is out.
+    if isinstance(spawner, dict):
+        spawner = {'childrenoutside': [], **spawner}
     if variant is None or not isinstance(spawner, dict) or type(spawner.get('childreninside')) is not int \
             or not 0 <= spawner['childreninside'] <= 1 or not isinstance(spawner.get('childrenoutside'), list) \
             or any(type(child) is not int or child < 0 for child in spawner['childrenoutside']):
@@ -361,7 +382,7 @@ def insect_components(prefab):
     # fireflies.lua / butterfly.lua: these inventoryitem prefabs use the existing ground_item owner.
     # Stackable:OnSave only writes non-singleton stacks; live butterflies have maximum health 1.
     def convert(data):
-        allowed = {'stackable', 'workable'} | ({'health', 'perishable', 'knownlocations'} if prefab == 'butterfly' else set())
+        allowed = {'stackable', 'workable', 'inventoryitemmoisture'} | ({'health', 'perishable', 'knownlocations'} if prefab == 'butterfly' else set())
         if set(data) - allowed or data.get('workable'):
             raise ValueError(f'Unsupported {prefab} save state')
         stackable = data.get('stackable') or {}
@@ -369,6 +390,12 @@ def insect_components(prefab):
                 or type(stackable.get('stack', 1)) is not int or not 1 <= stackable.get('stack', 1) <= 40:
             raise ValueError(f'Unsupported {prefab} stackable state')
         stack = {'itemId': prefab, 'count': stackable.get('stack', 1)}
+        # InventoryItemMoisture:OnSave; the stack keeps only the wet flag, not the moisture level.
+        moisture = data.get('inventoryitemmoisture') or {}
+        if not isinstance(moisture, dict) or set(moisture) - {'wet', 'moisture'} or moisture.get('wet') not in (None, True):
+            raise ValueError(f'Unsupported {prefab} moisture state')
+        if moisture.get('wet'):
+            stack['wet'] = True
         if prefab == 'butterfly':
             health = data.get('health') or {}
             if not isinstance(health, dict) or set(health) - {'health'} or type(health.get('health', 1)) not in (int, float) or health.get('health', 1) != 1:
@@ -606,8 +633,7 @@ def convert_entities(terrain, source_entities, report, session_id):
             if 'stack' in components:
                 components['stack']['entityId'] = entity_id
             imported.append({'id': entity_id,
-                             'transform': {'position': [round(value * TILE_SIZE / 4 + shift, 6)
-                                                        for value, shift in zip(coordinates, translation)], 'rotationY': 0},
+                             'transform': {'position': project_position(coordinates, translation), 'rotationY': 0},
                              'components': components})
             sources.append({'id': entity_id, 'prefab': prefab, 'sourceIndex': index,
                             **({'sourceId': source_id} if source_id is not None else {}),
@@ -691,7 +717,8 @@ def convert(terrain, template, supported, origin_cell=None):
     underneath = decode_underneath(terrain)
     saved_tiles = []
     for x, z, name, tile_id, _ in map_cells:
-        tile = {'col': x - origin_x, 'row': z - origin_z, 'tileId': tile_id}
+        # Source rows grow along DST +Z; project_position negates Z, so rows are mirrored around the origin.
+        tile = {'col': x - origin_x, 'row': origin_z - z - 1, 'tileId': tile_id}
         if name in ('FARMING_SOIL', 'MONKEY_DOCK', 'OCEAN_ICE') and z * width + x in underneath:
             under_name = source_names.get(underneath[z * width + x])
             if under_name not in supported:
@@ -722,7 +749,7 @@ def convert(terrain, template, supported, origin_cell=None):
     player['prefab'] = 'wilson'
     player['shardId'] = shard_id
     player['transform'] = {'position': [(spawn[0] - origin_x + .5) * TILE_SIZE, 0,
-                                         (spawn[1] - origin_z + .5) * TILE_SIZE], 'rotationY': 0}
+                                         (origin_z - spawn[1] - .5) * TILE_SIZE], 'rotationY': 0}
     player.pop('ghost', None)
     player['stats'] = {'health': 150, 'hunger': 150, 'sanity': 200}
     player['inventory'] = {'containers': {
@@ -734,7 +761,7 @@ def convert(terrain, template, supported, origin_cell=None):
         'scope': 'full-map', 'nodes': names,
         **({'unassignedNodeIds': sorted(unassigned_nodes)} if unassigned_nodes else {}),
         'sourceDimensions': [width, height], 'sourceBounds': [min_x, min_z, max_x, max_z],
-        'sourceOriginCell': [origin_x, origin_z], 'worldScale': TILE_SIZE / 4,
+        'sourceOriginCell': [origin_x, origin_z], 'worldScale': TILE_SIZE / 4, 'mirroredAxis': 'z',
         'translation': [(source_grid_position(0, width) - origin_x) * TILE_SIZE, 0,
                         (source_grid_position(0, height) - origin_z) * TILE_SIZE],
         'tileCounts': dict(sorted(Counter(c[2] for c in map_cells).items())),
@@ -742,6 +769,137 @@ def convert(terrain, template, supported, origin_cell=None):
         'note': 'Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.',
     }
     return result, report
+
+
+# inventory.lua equipslots -> project equipment slot keys.
+EQUIP_SLOTS = {'hands': 'hand', 'body': 'body', 'head': 'head'}
+PLAYER_SLOT_COUNT = 15
+BACKPACK_SLOT_COUNT = 8
+
+
+def lua_slots(items, path):
+    # Inventory/Container:OnSave key items by one-based slot; a table with holes is read as a keyed dict.
+    if isinstance(items, list):
+        return list(enumerate(items, 1))
+    if not isinstance(items, dict) or any(type(slot) is not int or slot < 1 for slot in items):
+        raise ValueError(f'Expected one-based slots in {path}')
+    return sorted(items.items())
+
+
+def convert_player_item(record, path, entity_id, catalog, report):
+    """GetSaveRecord of an inventory item -> InventoryStack; unsupported items and components are reported."""
+    prefab = record.get('prefab')
+    spec = catalog['items'].get(prefab)
+    if spec is None:
+        report['skipped'].append({'path': path, 'prefab': prefab, 'reason': 'unknown item'})
+        return None
+    data = record.get('data') or {}
+    if not isinstance(data, dict):
+        raise ValueError(f'Expected component data at {path}')
+    item, dropped = {'entityId': entity_id, 'itemId': prefab}, []
+    count = (data.get('stackable') or {}).get('stack', 1)
+    if type(count) is not int or not 1 <= count <= spec['maxStack']:
+        raise ValueError(f'{path}: stack {count} exceeds {prefab} maxStack {spec["maxStack"]}')
+    item['count'] = count
+    skin = record.get('skinname')
+    if skin is not None:
+        if skin in catalog['skins'] and catalog['skins'][skin] in (None, prefab):
+            item['skinId'] = skin
+        else:
+            dropped.append('skinname')
+    for component, value in data.items():
+        if component == 'stackable':
+            continue
+        if component == 'finiteuses' and 'maxUses' in spec:
+            uses, step = value['uses'], spec.get('useStep', 1)
+            if not step <= uses <= spec['maxUses'] or uses / step != round(uses / step):
+                raise ValueError(f'{path}: {prefab} uses {uses} outside the project durability')
+            item['remainingUses'] = uses
+        elif component == 'fueled' and 'maxFuel' in spec:
+            fuel = value.get('fuel', spec['maxFuel'])
+            if not 0 <= fuel <= spec['maxFuel']:
+                raise ValueError(f'{path}: {prefab} fuel {fuel} outside the project fuel')
+            item['remainingFuel'] = fuel
+        elif component == 'perishable' and 'perishTime' in spec and value.get('time') is not None:
+            # perishremainingtime -> remaining fraction of perishable:SetPerishTime.
+            if value.get('paused'):
+                dropped.append('perishable.paused')
+            item['freshnessPercent'] = min(value['time'] / spec['perishTime'], 1)
+        elif component == 'inventoryitemmoisture':
+            if value.get('wet'):
+                item['wet'] = True
+        elif component == 'container' and prefab == 'backpack':
+            slots = []
+            for slot, child in lua_slots(value.get('items', {}), f'{path}.container'):
+                child_path = f'{path}.container.{slot}'
+                if slot > BACKPACK_SLOT_COUNT:
+                    raise ValueError(f'{child_path} is outside the backpack')
+                converted = convert_player_item(child, child_path, f'{entity_id}_{slot - 1}', catalog, report)
+                if converted is None:
+                    continue
+                if converted['itemId'] == 'backpack' or catalog['items'][converted['itemId']].get('canGoInContainer') is False:
+                    report['skipped'].append({'path': child_path, 'prefab': converted['itemId'], 'reason': 'cannot go in a container'})
+                    continue
+                slots.append({'slotKey': str(slot - 1), 'item': converted})
+            item['container'] = {'slotCount': BACKPACK_SLOT_COUNT, 'slots': slots}
+        else:
+            dropped.append(component)
+    if dropped:
+        report['droppedComponents'].append({'path': path, 'prefab': prefab, 'components': dropped})
+    return item
+
+
+def convert_player(source, translation, size, entity_prefix, catalog):
+    """A DST player snapshot's position and inventory; stats and the character stay the template's."""
+    data = source.get('data') or {}
+    inventory = data.get('inventory') or {}
+    report = {'character': source.get('prefab'), 'sourcePosition': [source.get('x', 0), 0, source.get('z', 0)],
+              'skipped': [], 'droppedComponents': []}
+    position = project_position(report['sourcePosition'], translation)
+    if any(type(value) not in (int, float) or not math.isfinite(value) or abs(value) > size / 2 for value in position):
+        raise ValueError('Player position is outside the imported map')
+    slots = []
+    for slot, record in lua_slots(inventory.get('items', {}), 'inventory.items'):
+        if slot > PLAYER_SLOT_COUNT:
+            raise ValueError(f'inventory.items.{slot} is outside the player inventory')
+        item = convert_player_item(record, f'inventory.items.{slot}', f'{entity_prefix}_items_{slot - 1}', catalog, report)
+        if item is not None:
+            slots.append({'slotKey': str(slot - 1), 'item': item})
+    equipment = []
+    for source_slot, record in (inventory.get('equip') or {}).items():
+        path = f'inventory.equip.{source_slot}'
+        slot = EQUIP_SLOTS.get(source_slot)
+        if slot is None:
+            report['skipped'].append({'path': path, 'prefab': record.get('prefab'), 'reason': 'unknown equipment slot'})
+            continue
+        item = convert_player_item(record, path, f'{entity_prefix}_equip_{slot}', catalog, report)
+        if item is None:
+            continue
+        if catalog['items'][item['itemId']].get('equippable') != slot:
+            report['skipped'].append({'path': path, 'prefab': item['itemId'], 'reason': f'not equippable in {slot}'})
+            continue
+        equipment.append({'slotKey': slot, 'item': item})
+    cursor = []
+    if inventory.get('activeitem'):
+        item = convert_player_item(inventory['activeitem'], 'inventory.activeitem', f'{entity_prefix}_cursor', catalog, report)
+        if item is not None:
+            cursor.append({'slotKey': '0', 'item': item})
+    containers = {
+        'player:inventory': {'slotCount': PLAYER_SLOT_COUNT, 'slots': slots},
+        'player:equipment': {'slotCount': 3, 'slots': sorted(equipment, key=lambda s: list(EQUIP_SLOTS.values()).index(s['slotKey']))},
+        'player:cursor': {'slotCount': 1, 'slots': cursor},
+    }
+    return position, containers, report
+
+
+def player_snapshot(session, snapshot):
+    """The single local player's file saved with this world snapshot, if the player was in this shard."""
+    users = sorted(path for path in session.iterdir() if path.is_dir())
+    if len(users) > 1:
+        raise ValueError(f'Expected at most one player in {session}')
+    if not users or not (users[0] / snapshot).is_file():
+        return None, None
+    return users[0], users[0] / snapshot
 
 
 def write_or_check(path, data, check):
@@ -754,7 +912,7 @@ def write_or_check(path, data, check):
         path.write_text(serialized)
 
 
-def import_shard(shard, template, supported, origin_cell=None, snapshot=None, expected_prefab=None):
+def import_shard(shard, template, supported, catalog, origin_cell=None, snapshot=None, expected_prefab=None):
     source_shard = shard
     shard = shard.resolve()
     index = LITERALS['returned_table']((shard / 'save/shardindex').read_text())
@@ -775,6 +933,16 @@ def import_shard(shard, template, supported, origin_cell=None, snapshot=None, ex
     source_entities = LITERALS['snapshot_entities'](source_text, ENTITY_WHITELIST)
     result['world']['entities'], entity_report = convert_entities(terrain, source_entities, report, session_id)
     report.update(entity_report)
+    user, player_source = player_snapshot(session, snapshot)
+    if player_source is not None:
+        player = result['players']['local']
+        position, player['inventory']['containers'], player_report = convert_player(
+            LITERALS['player_snapshot'](player_source.read_text(encoding='utf-8', errors='surrogateescape')),
+            report['translation'], result['world']['map']['generator']['options']['size'],
+            f'dst_{session_id}_{user.name}', catalog)
+        player['transform']['position'] = position
+        report['player'] = {'source': f'{source_shard.as_posix()}/save/session/{session_id}/{user.name}/{snapshot}',
+                            'sourceSha256': hashlib.sha256(player_source.read_bytes()).hexdigest(), **player_report}
     result['session']['id'] = f'{terrain["prefab"]}-{session_id}-map-v1'
     result['snapshot'] = {**result['snapshot'], 'id': snapshot, 'parentId': None, 'reason': 'initial'}
     report['source'] = f'{source_shard.as_posix()}/save/session/{session_id}/{snapshot}'
@@ -807,12 +975,15 @@ def main():
     supported = {name: spec['tileId'] for name, spec in json.loads(
         (ROOT / 'packages/prefab/src/groundTiles.json').read_text()).items()}
     supported['FAKE_GROUND'] = 200
+    # The save loader's item catalog lives in TypeScript; validate player items against the same specs.
+    catalog = json.loads(subprocess.run(['node', str(ROOT / 'scripts/export-save-catalog.mjs')],
+                                        check=True, capture_output=True, text=True).stdout)
     jobs = [(args.shard, args.output, args.origin_cell, None)] if args.shard else [
         (args.cluster / name, args.output / f'{name}.json',
          args.forest_origin_cell if prefab == 'forest' else args.origin_cell, prefab)
         for prefab, (name, _) in SHARDS.items()]
     # Convert/validate every shard before replacing any output file.
-    imports = [(output, *import_shard(shard, template, supported, origin, args.snapshot, prefab))
+    imports = [(output, *import_shard(shard, template, supported, catalog, origin, args.snapshot, prefab))
                for shard, output, origin, prefab in jobs]
     for output, result, report in imports:
         write_or_check(output, result, args.check)

@@ -174,7 +174,7 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
   }
   await begin();
   expect(store.exportState()).toEqual(paidState);
-  if (kind === 'animated') expect(world.scene.children[1].userData.skinId).toBe('selected_skin');
+  if (kind === 'animated') expect(world.scene.children[1].userData.instance?.skinId).toBe('selected_skin');
   click(0);
   expect(consume).toHaveBeenCalledTimes(1);
   expect(getPrefabLightOverride(world.scene.children[1])).toBeUndefined();

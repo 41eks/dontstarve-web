@@ -26,8 +26,8 @@ it('loads the Wortox build with shared player animations and renders every facin
   expect(urls).not.toContain('/dst/data/anim/wilson.zip');
   await animation.setHat('strawhat');
   await animation.setCarryItem('torch');
-  const visual = player.children[0];
-  const mesh = visual.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const visual = mesh.parent!;
   for (const facing of ['up', 'down', 'side'] as const) {
     for (const mirrored of [false, true]) {
       animation.setFacing(facing, mirrored);

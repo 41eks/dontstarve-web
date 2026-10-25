@@ -349,7 +349,7 @@ export function createMoleGroundFactory(context: GroundPrefabContext): GroundIte
       const cleanups: (() => void)[] = [];
       const heading = watchSignal(context.moleWorld.cameraHeading, stop => cleanups.push(stop));
       return {
-        model,
+        model, instance,
         bindEntity: entity => {
           configureMoleEntity(entity); mole = entity.getComponent<Mole>('mole')!;
           mole.bindWorld(context.moleWorld!, new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate])));

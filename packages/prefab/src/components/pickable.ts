@@ -3,7 +3,7 @@ import { batch, createMemo, createSignal, readonlySignal } from '@dontstarve-web
 import type { PickableComponent, PickDoer } from '@dontstarve-web/stategraphs/pick';
 import { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
-import { setModelTag } from '../prefabInstance';
+import { setModelTag, modelHasTag } from '../prefabInstance';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 
 export interface PickableSaveState {
@@ -117,7 +117,7 @@ export class Pickable implements PickableComponent {
   get maximumCycles(): number | undefined { return this.maxCycles; }
   set cyclesLeft(value: number | undefined) { this.cycles.set(value); this.refreshTag(); }
   IsBarren(): boolean { return this.cycles.peek() === 0; }
-  CanBeFertilized(): boolean { return !this.removed.peek() && (this.IsBarren() || this.model.userData.tags?.includes('withered')); }
+  CanBeFertilized(): boolean { return !this.removed.peek() && (this.IsBarren() || modelHasTag(this.model, 'withered')); }
 
   MakeBarren(): void {
     if (this.removed.peek()) return;
@@ -179,7 +179,7 @@ export class Pickable implements PickableComponent {
       }
       this.onPicked(doer);
       this.ready.set(false);
-      if (this.regrowTime !== undefined && !this.paused.peek() && !this.IsBarren() && !this.model.userData.tags?.includes('withered')) this.timer.start(this.nextGrowthDuration());
+      if (this.regrowTime !== undefined && !this.paused.peek() && !this.IsBarren() && !modelHasTag(this.model, 'withered')) this.timer.start(this.nextGrowthDuration());
       else this.timer.stop();
       this.refreshTag();
     });
@@ -226,7 +226,8 @@ export class Pickable implements PickableComponent {
       ...(this.timer.remainingSeconds !== undefined ? { regrowSeconds: this.timer.remainingSeconds } : {}),
       ...(this.paused.peek() ? { paused: true } : {}),
       ...(this.transplanted.peek() ? { transplanted: true } : {}),
-      ...(this.maxCycles === undefined ? {} : { cyclesLeft: this.cycles.peek(), maxCycles: this.maxCycles }),
+      // Pickable:OnSave writes the cycles only once a transplanted plant has used some.
+      ...(this.maxCycles === undefined || this.cycles.peek() === this.maxCycles ? {} : { cyclesLeft: this.cycles.peek(), maxCycles: this.maxCycles }),
       ...(this.protection.peek() === undefined ? {} : { protectedCycles: this.protection.peek() }) };
   }
 

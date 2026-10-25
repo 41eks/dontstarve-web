@@ -1,3 +1,4 @@
+import { ToolMouseTarget } from './toolMouseTarget';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { disposeSprite } from './disposeSprite';
@@ -536,6 +537,7 @@ export class WallPlacement<BuildId extends string> {
         entity.components.workable = workable;
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(definition.hammerWorkLeft ?? 3);
+        new ToolMouseTarget(entity, wall.instance, workable, this.world.handEquipment, { spellTarget: true });
         workable.SetOnWorkCallback(onhit);
         workable.SetOnFinishCallback(() => {
             if (!this.placed.has(wall)) return;

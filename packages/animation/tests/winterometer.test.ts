@@ -99,7 +99,7 @@ it('keeps its skin through c_save, restores the reading, and saves only the burn
         buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) }).world.entities.winterometer[0];
     };
     const restored = await placement.spawnFromSave(WINTEROMETER_ID, parse(saved));
-    expect(restored.userData.skinId).toBe('winterometer_circus');
+    expect(restored.userData.instance?.skinId).toBe('winterometer_circus');
     const percent = spyPercent(restored);
     scheduler.advance(0);
     expect(percent).toHaveBeenLastCalledWith('meter', 0.5);

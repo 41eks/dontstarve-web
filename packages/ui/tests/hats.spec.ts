@@ -64,7 +64,8 @@ test('ground hats use anim geometry, preserve feet and pick up through merged me
   }, moduleUrl('./ground-hat-fixture.ts'));
   expect(result).toEqual({
     failedDrop: false, rollbackCount: 0, foot: [0, 0, 0], isAnimatedMesh: true,
-    pickedUp: ['strawhat', 'torch'], rejectedPickupCount: 1, afterPickupCount: 0,
+    pickedUp: ['strawhat', 'torch', 'beeswax'], rejectedPickupCount: 1, afterPickupCount: 0,
     failures: [], restoredFoot: [3, 0.25, 4], torchIsMesh: true, torchFoot: [-6, 0, 0], torchPickedUp: true,
+    iconPrefab: 'beeswax', iconIsSprite: true, iconFoot: [6, 0, 0], iconPickedUp: true,
   });
 });

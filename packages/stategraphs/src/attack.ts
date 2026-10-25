@@ -1,3 +1,4 @@
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { bindActionCancellation } from './actionEvents.ts';
 import type { ActionWorldContext as WorldContext, ActionAnimationController as WilsonAnimationController, ActionLocomotor as Locomotor } from './actionContext.ts';
@@ -109,7 +110,7 @@ export class AttackActionController {
     if (!inst || !this.canLight(inst)) return false;
     if (this.target?.inst !== inst) this.world.actionEvents?.emit('action:begin', { owner: this, action: 'ATTACK' });
     this.animation.cancelEmote();
-    this.target = { id: String(model.userData.entityId), model: model as THREE.Group, inst,
+    this.target = { id: String(prefabInstance(model)?.entityId), model: model as THREE.Group, inst,
       isValid: () => !inst.isRemoved && !!model.parent };
     return true;
   }

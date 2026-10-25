@@ -1,19 +1,23 @@
 import {
-  findImage, smallHash, SpriteFrameRenderer, type AnimElement, type Matrix2D, type ResolvedSprite,
+  findImage, smallHash, type AnimElement, type Matrix2D, type ResolvedSprite,
 } from '@dontstarve-web/animation/animationAssets';
 import {
-  bloomPadding, compose, HatArtAssets, resolveHatElement, resolveHatSprites,
+  bloomPadding, compose, HatArtAssets, resolveHatSprites,
   type HatEquipment as ArtHatEquipment,
   type HatArtDefinition,
   type HatEquipMode,
 } from '@dontstarve-web/animation/hatAssets';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
+import {
+  createAnimatedSpriteSource, loadBuildOverride,
+  type AnimatedSpriteFactory, type AnimatedSpriteSourceOptions, type LoadedBuildOverride,
+} from '@dontstarve-web/animation/sprite';
 import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
 import { createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import catalog from './hats.json' with { type: 'json' };
-import { listenInventoryEvents } from './inventoryEvents';
+import { bindResidentGroundItem } from './groundItemLifecycle';
+import { createPrefabEntity } from './prefabInstance';
 import { attachPrefabLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 
@@ -201,76 +205,53 @@ export class HatActivationController {
   }
 }
 
-export interface HatGroundSprite {
-  readonly model: THREE.Group;
-  update(dt: number): void;
-  /** Shared atlas materials belong to HatEquipmentAssets. */
-  dispose(): void;
-}
+/** hats.lua's rabbit custom_init: the ground rabbit is rabbit_build, with the hat's own build as its override build. */
+const RABBITHAT_GROUND = { build: 'rabbit_build.zip', overrideBuild: 'hat_rabbit' } as const;
 
-/** hats.lua's simple(): the world bank plays anim, independently of swap_hat. */
-export async function createHatGroundSprite(
-  assets: HatEquipmentAssets,
-  itemId: string,
-  skinId?: string,
-): Promise<HatGroundSprite> {
-  const hat = await assets.load(itemId, skinId);
-  // Each hat archive supplies its own anim, so select that archive's ground clip.
-  const animation = hat.animations.animations.find(({ name }) => name === 'anim');
-  if (!animation) throw new Error(`Hat ${itemId} has no ground animation`);
-  const model = new THREE.Group();
-  model.name = `GroundHat:${itemId}`;
-  model.userData.billboard = true;
-  const visual = new THREE.Group();
-  visual.scale.set(0.02, -0.02, 0.02);
-  model.add(visual);
-  registerSpriteRenderGroup(model, visual);
-  const renderer = new SpriteFrameRenderer(visual);
-  let elapsed = 0;
-  let frameIndex = -1;
-  let inInventory = false;
-  const update = (dt: number) => {
-    if (inInventory) return;
-    elapsed += Math.min(dt, 0.1);
-    const frame = Math.floor(elapsed * animation.frameRate);
-    // Rabbit's animqueueover restarts its ground idle in hats.lua.
-    const next = itemId === 'rabbithat' ? frame % animation.frames.length
-      : Math.min(frame, animation.frames.length - 1);
-    if (next === frameIndex) return;
-    frameIndex = next;
-    const sprites = [...animation.frames[next].elements].sort((a, b) => b.z - a.z)
-      .flatMap((element) => {
-        const sprite = resolveHatElement(hat, element);
-        return sprite ? [sprite] : [];
-      });
-    renderer.show(sprites);
-  };
-  update(0);
-  const onGround = () => { inInventory = false; update(0); };
-  const removeInventoryEvents = listenInventoryEvents(model, {
-    ondropped: onGround,
-    onload: onGround,
-    onputininventory: () => { inInventory = true; },
-  });
-  return {
-    model, update,
-    dispose() {
-      removeInventoryEvents();
-      inInventory = true;
-      model.removeFromParent();
-      visual.traverse((object) => {
-        if (object instanceof THREE.Mesh) object.geometry.dispose();
-      });
-    },
-  };
-}
-
+/**
+ * hats.lua's simple(): SetBank(name.."hat") / SetBuild("hat_"..name) / PlayAnimation("anim"), independently of
+ * swap_hat. Each hat is an item entity drawn by its display; sources are shared per archive and skin.
+ */
 export function createHatGroundFactory(context: GroundPrefabContext): GroundItemFactory {
-  const assets = new HatEquipmentAssets(context.animationBaseUrl);
+  const sources = new Map<string, Promise<AnimatedSpriteFactory>>();
+  let rabbitOverride: Promise<LoadedBuildOverride> | undefined;
+  const source = (archive: string, options: AnimatedSpriteSourceOptions) => {
+    const key = JSON.stringify([archive, options.buildArchive, options.skinArchive]);
+    let request = sources.get(key);
+    if (!request) {
+      request = createAnimatedSpriteSource(context.animationBaseUrl, archive, options);
+      sources.set(key, request);
+      void request.catch(() => sources.delete(key));
+    }
+    return request;
+  };
   return {
     itemIds: Object.keys(HAT_DEFINITIONS),
-    create: (item) => createHatGroundSprite(assets, item.itemId, item.skinId),
-    dispose: () => assets.dispose(),
+    async create({ itemId, skinId }) {
+      const hat = HAT_DEFINITIONS[itemId];
+      const skinArchive = skinId === undefined ? undefined : hat.skinArchives[skinId];
+      if (skinId !== undefined && !skinArchive) throw new Error(`Unknown skin ${skinId} for ${hat.archive}`);
+      const rabbit = itemId === 'rabbithat';
+      const [factory, override] = await Promise.all([
+        source(hat.archive, { skinArchive, buildArchive: rabbit ? RABBITHAT_GROUND.build : undefined }),
+        rabbit ? rabbitOverride ??= loadBuildOverride(context.animationBaseUrl, `${RABBITHAT_GROUND.overrideBuild}.zip`) : undefined,
+      ]);
+      const name = `GroundHat:${itemId}`;
+      // The rabbit's animqueueover restarts its ground idle; other hats rest on anim's last frame.
+      const { instance, display } = createPrefabEntity(itemId, {
+        create: (animation, frame) => factory.create({ initialAnimation: animation, initialFrame: frame, name }),
+        release: sprite => factory.disposeSprite(sprite),
+      }, { name: 'anim', held: !rabbit }, name, override && (entity => entity.sprite.addOverrideBuild(RABBITHAT_GROUND.overrideBuild, override)));
+      instance.skinId = skinId;
+      return bindResidentGroundItem(context, instance, display);
+    },
+    // The manager releases every hat entity first; only then can the atlases they drew from go.
+    dispose() {
+      for (const request of sources.values()) void request.then(factory => factory.dispose(), () => undefined);
+      sources.clear();
+      void rabbitOverride?.then(override => override.dispose(), () => undefined);
+      rabbitOverride = undefined;
+    },
   };
 }
 

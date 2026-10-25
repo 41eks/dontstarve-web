@@ -1,9 +1,10 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
 import type { TileStateQuery } from '@dontstarve-web/signals';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
@@ -75,7 +76,7 @@ export function rockArchives(prefab: RockEntityId) {
     ...(prefab === 'rock_moon_shell' ? [{ animation: 'moonrock_seed.zip', build: 'moonrock_seed.zip' }] : [])];
 }
 
-export interface RockWorld {
+export interface RockWorld extends ToolMouseTargetWorld {
   physics?: import('cannon-es').World;
   scheduler?: GameTimeScheduler;
   tickingarea?: TileStateQuery;
@@ -121,8 +122,9 @@ export class RockController {
       this.onWorkFinished = () => {
         context.spawnSeed();
         this.entity.addTag('NOCLICK');
-        RemovePhysicsColliders(model.userData.instance);
-        model.userData.persists = false;
+        const instance = prefabInstance(model)!;
+        RemovePhysicsColliders(instance);
+        instance.persists = false;
         (model.userData.animationController as ArchiveSpriteCommands).playOnce('break');
         this.erode!.start(2);
       };
@@ -257,8 +259,7 @@ export class RockManager {
       MakeObstaclePhysics(instance, 1);
       if (this.world.physics) instance.bindPhysics(this.world.physics);
     }
-    model.userData.entityId = saved?.id ?? newEntityId();
-    model.userData.prefab = prefabId;
+    instance.entityId = saved?.id ?? newEntityId();
     model.userData.animationController = sprite;
     for (const tag of prefabId === 'cavein_boulder' ? ['heavy', 'boulder', 'caveindebris']
       : prefabId === 'moonrockseed' ? ['irreplaceable', 'nonpotatable', 'celestial_station']
@@ -284,6 +285,7 @@ export class RockManager {
           this.create('moonrockseed', this.createSprite(seed, 'moonrockseed', 'idle'), new Map(), model.position);
         },
       });
+      new ToolMouseTarget(inst, instance, rock.controller.workable, this.world.handEquipment);
     }
     sprite.setColour([colour, colour, colour]);
     if (caveinBoulder && caveinBoulder.variation > 1) {
@@ -310,7 +312,7 @@ export class RockManager {
     return this.mouseRecords.select(model, this.rocks).flatMap((rock) => {
       const controller = rock.controller;
       return controller?.canMine ? [{
-        id: String(rock.model.userData.entityId),
+        id: String(rock.instance.entityId),
         model: rock.model,
         position: rock.model.position,
         entity: controller.entity,
@@ -324,10 +326,10 @@ export class RockManager {
   }
 
   exportRecords(): { prefabId: RockEntityId; record: RockRecord }[] {
-    return [...this.rocks].filter(rock => rock.controller?.persistent ?? true).map(({ prefabId, model, caveinBoulder }) => ({
+    return [...this.rocks].filter(rock => rock.controller?.persistent ?? true).map(({ prefabId, model, caveinBoulder, instance }) => ({
       prefabId,
       record: {
-        id: String(model.userData.entityId),
+        id: String(instance.entityId),
         transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
         components: caveinBoulder ? { caveinBoulder: { ...caveinBoulder } } : {},
       },

@@ -1,4 +1,6 @@
 import { createSignal, readonlySignal, type ReadonlySignal, type Signal } from '../../signals/src';
+import { modelHasTag } from '../../prefab/src/prefabInstance';
+import type { Object3D } from 'three';
 
 /** Detached presentation data; empty slots remain explicit so UI can clear them. */
 export interface ContainerDTO<TRecord> {
@@ -28,8 +30,8 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   readonly inst: object;
   /** Tags belong to the holder, not to its stored items. */
   hasTag(tag: string): boolean {
-    const inst = this.inst as { hasTag?(tag: string): boolean; tags?: Set<string>; userData?: { tags?: string[] } };
-    return inst.hasTag?.(tag) ?? inst.tags?.has(tag) ?? inst.userData?.tags?.includes(tag) ?? false;
+    const inst = this.inst as { hasTag?(tag: string): boolean; tags?: Set<string>; userData?: object };
+    return inst.hasTag?.(tag) ?? inst.tags?.has(tag) ?? (inst.userData ? modelHasTag(inst as Object3D, tag) : false);
   }
   canbeopened = true;
   openlimit?: number;

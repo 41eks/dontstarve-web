@@ -30,10 +30,10 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
     return JSON.parse(await readSaveDownload((await (await download).path())!));
   };
   const beefalo = () => page.evaluate(() => {
-    const model = (window as any).razorGame.scene.children.find((model: any) => model.userData.prefab === 'beefalo');
+    const model = (window as any).razorGame.scene.children.find((model: any) => model.userData.instance?.prefab === 'beefalo');
     if (!model) return null;
     const { beard, sleeper } = model.userData.components, inst = model.userData.actionEntity;
-    return { id: model.userData.entityId, state: model.userData.beefaloState, bits: beard.bits.peek(), growth: beard.daysgrowth.peek(),
+    return { id: model.userData.instance?.entityId, state: model.userData.beefaloState, bits: beard.bits.peek(), growth: beard.daysgrowth.peek(),
       asleep: sleeper.IsAsleep(), bearded: inst.hasTag('bearded'), hairy: inst.hasTag('has_beard') };
   });
   const wool = () => page.evaluate(() => (window as any).razorGame.scene.children
@@ -41,7 +41,7 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   const clickBeefalo = async () => {
     const point = await page.evaluate(() => {
       const { scene, camera, renderer } = (window as any).razorGame;
-      const model = scene.children.find((model: any) => model.userData.prefab === 'beefalo'), mesh = model.children[0].children[0];
+      const model = scene.children.find((model: any) => model.userData.instance?.prefab === 'beefalo'), mesh = model.children[0].children[0];
       mesh.geometry.computeBoundingBox();
       const center = mesh.geometry.boundingBox.getCenter(model.position.clone()); mesh.localToWorld(center).project(camera);
       const rect = renderer.domElement.getBoundingClientRect();
@@ -63,7 +63,7 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   // Wandering is not under test here; stop its brain while testing the player's tool input.
   await page.evaluate(() => {
     const { scene, player, playerBody } = (window as any).razorGame;
-    const model = scene.children.find((model: any) => model.userData.prefab === 'beefalo');
+    const model = scene.children.find((model: any) => model.userData.instance?.prefab === 'beefalo');
     model.userData.beefaloController.brain.Stop();
     playerBody.position.set(model.position.x - 6, playerBody.shapes[0].radius, model.position.z + 6);
     player.position.set(model.position.x - 6, 0, model.position.z + 6);
@@ -71,14 +71,14 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   // reskin_tool cycles the ground razor through its three source skins, keeping its identity.
   const groundRazor = () => page.evaluate(() => (window as any).razorGame.scene.children
     .filter((model: any) => model.userData.itemId === 'razor')
-    .map((model: any) => ({ id: model.userData.entityId, skin: model.userData.skinId })));
+    .map((model: any) => ({ id: model.userData.instance?.entityId, skin: model.userData.instance?.skinId })));
   const spawnedRazor = (await groundRazor())[0];
   await submit('c_give("reskin_tool")');
   const bar = page.locator('dst-inventory-bar');
   await bar.locator('.inventory-bar__items [data-item-id="reskin_tool"]').dragTo(bar.locator('[data-slot-key="hand"]'));
   await page.evaluate(id => {
     const { scene, camera, renderer, player, playerBody } = (window as any).razorGame;
-    const model = scene.children.find((model: any) => model.userData.entityId === id);
+    const model = scene.children.find((model: any) => model.userData.instance?.entityId === id);
     playerBody.position.set(model.position.x + 3, playerBody.shapes[0].radius, model.position.z + 3);
     player.position.set(model.position.x + 3, 0, model.position.z + 3);
     (window as any).razorPoint = () => {
@@ -119,7 +119,7 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   expect(await beefalo()).toMatchObject({ bits: 3, asleep: true });
   await page.evaluate(() => {
     const { scene, player, playerBody } = (window as any).razorGame;
-    const model = scene.children.find((model: any) => model.userData.prefab === 'beefalo');
+    const model = scene.children.find((model: any) => model.userData.instance?.prefab === 'beefalo');
     playerBody.position.set(model.position.x - 6, playerBody.shapes[0].radius, model.position.z + 6);
     player.position.set(model.position.x - 6, 0, model.position.z + 6);
   });

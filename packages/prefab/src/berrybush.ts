@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { Pickable } from './components/pickable';
 import { PickablePlantManager, type PickablePlantDefinition, type PickablePlantRecord } from './pickablePlant';
+import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export const BERRYBUSH_ID = 'berrybush' as const;
 export const BERRYBUSH_REGROW_TIME = 3 * 480;
@@ -29,7 +30,7 @@ export const BERRYBUSH_DEFINITION: PickablePlantDefinition = {
   digLoot: (model, pickable, withered) => withered || pickable.IsBarren()
     ? [{ prefab: 'twigs' }, { prefab: 'twigs' }]
     : [...pickable.canBePicked ? [{ prefab: 'berries' }] : [],
-      { prefab: 'dug_berrybush', skinId: model.userData.skinId ? `dug_${model.userData.skinId}` : undefined }],
+      { prefab: 'dug_berrybush', skinId: prefabInstance(model)!.skinId ? `dug_${prefabInstance(model)!.skinId}` : undefined }],
   createAppearance: context => {
     const setBerries = (percent?: number) => {
       const layer = percent === undefined ? undefined : percent >= .9 ? 'berriesmost' : percent >= .33 ? 'berriesmore' : 'berries';
@@ -48,13 +49,13 @@ export const BERRYBUSH_DEFINITION: PickablePlantDefinition = {
       },
       regen: pickable => { context.play(['grow', 'idle'], true); full(pickable); },
       empty: () => {
-        if (context.model.userData.tags.includes('withered') || context.animation.currentAnimation === 'dead') {
+        if (modelHasTag(context.model, 'withered') || context.animation.currentAnimation === 'dead') {
           context.play(['dead_to_idle', 'idle']);
         } else context.play(['idle'], true);
         setBerries();
       },
       barren: () => {
-        if (context.model.userData.tags.includes('withered') || context.animation.currentAnimation === 'idle') {
+        if (modelHasTag(context.model, 'withered') || context.animation.currentAnimation === 'idle') {
           context.play(['idle_to_dead', 'dead']);
         } else context.play(['dead']);
         setBerries();

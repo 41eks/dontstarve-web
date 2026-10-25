@@ -53,7 +53,6 @@ export class MoonbaseEffects {
       { name: clip }, prefab);
     const object = display.model;
     instance.position.copy(this.foot()); object.quaternion.copy(this.model.quaternion);
-    object.userData.prefab = prefab;
     instance.persists = false;
     instance.addTag(cold ? 'HASHEATER' : 'FX');
     setPrefabLightOverride(object, 1);

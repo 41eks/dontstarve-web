@@ -11,6 +11,7 @@ import { CHARACTER_COLLISION_MASK, WORLD_SCALE } from './standardcomponents';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { Wortox, type WortoxSave } from './wortox';
 import { isGroundTargetBlocked, placementEntities, type PlacementQuery } from './placementEntities';
+import { modelHasTag } from './prefabInstance';
 
 export interface WortoxPlayerOptions {
   world: WorldContext;
@@ -75,7 +76,7 @@ export class WortoxPlayer {
     });
     this.input = new BlinkActionController(world, animation, locomotor, {
       canSoulHop: () => !this.disposed && !animation.isGhost && !animation.stategraph.isDead
-        && world.player.userData.controllerEnabled !== false && !world.player.userData.tags?.includes('riding') && !inventory.GetActiveItem(),
+        && world.player.userData.controllerEnabled !== false && !modelHasTag(world.player, 'riding') && !inventory.GetActiveItem(),
       canBlinkTo: position => this.canBlinkTo(position),
       canMapBlinkTo: position => this.canMapBlinkTo(position),
       hasSoulEcho: () => this.state.hasSoulEcho.peek(),

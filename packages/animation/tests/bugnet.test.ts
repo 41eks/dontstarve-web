@@ -107,7 +107,7 @@ describe('original bugnet assets and Wilson action', () => {
     const player = await createWilsonPlayer('/anim');
     const controller = player.userData.animationController as WilsonAnimationController;
     await controller.setCarryItem('bugnet');
-    const mesh = player.children[0].children[0] as THREE.Mesh;
+    const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     expect((mesh.material as THREE.MeshBasicMaterial[]).some(material => material.name === 'ground:swap_bugnet')).toBe(true);
     expect((mesh.material as THREE.MeshBasicMaterial[]).every(material => material.forceSinglePass)).toBe(true);
     ground.dispose();

@@ -85,7 +85,8 @@ export class LightFlierFlower implements BrainEntity {
       this.sampleTimer.start(BULB_PLANT_LIGHT_SAMPLE_INTERVAL);
     });
     this.timers = Object.freeze({ recharge: this.recharge.snapshot, turnoff: this.turnoff.snapshot, wake: this.wake.snapshot, recall: this.recall.snapshot });
-    Object.assign(model.userData, { prefab: this.prefab, entityId: id, lightflierFlower: this, remove: () => this.remove() });
+    instance.entityId = id;
+    Object.assign(model.userData, { lightflierFlower: this, remove: () => this.remove() });
     for (const tag of ['plant', 'lightflier_home']) instance.addTag(tag);
     const pickable = new Pickable(model, undefined, LIGHTFLIER_FLOWER_REGROW_TIME, 1, doer => {
       const fly = habitat.spawn(this.getPosition()); this.components.childspawner.TakeOwnership(fly);

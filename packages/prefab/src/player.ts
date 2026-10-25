@@ -36,8 +36,9 @@ import { isShovelTool, type ShovelTool } from './shovel';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
-import { PhysicsState } from '../../componets/src/physicsState';
+import type { PhysicsState } from '../../componets/src/physicsState';
 import { actionEntity } from './actionEntity';
+import { createEmptyEntity, prefabInstance } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
 import { StaffCastingLight } from './yellowstaff';
@@ -891,7 +892,10 @@ export async function createWilsonPlayer(
     throw new Error(`Expected ${PLAYER_ART_CHARACTER} build, received ${buildPackage.build.name}`);
   }
 
-  const group = new THREE.Group();
+  // The player is an entity like any other: the instance owns its identity, tags and collider, and the display
+  // owns the model, under which the Wilson controller draws the character's own visual.
+  const { display } = createEmptyEntity(PLAYER_ART_CHARACTER);
+  const group = display.model;
   const player = Object.assign(group, { MiniMapEntity: new MiniMapEntity(group.position) });
   // player_common.lua common initialization uses the character name, not the
   // shared Wilson animation bank. Wortox's default skin supplies the build.
@@ -981,8 +985,9 @@ export async function createWilsonPlayerPrefab(
   options: WilsonPlayerPrefabOptions = {},
 ): Promise<WilsonPlayerPrefab> {
   const model = await createWilsonPlayer(assetBaseUrl, options);
-  const entity = { physics: new PhysicsState() };
+  const entity = prefabInstance(model)!;
   MakeCharacterPhysics(entity, 75, PLAYER_PHYSICS_RADIUS);
+  // The scene releases the body before its world while the player entity stays, so the binding is kept here.
   const physicsBinding = bindPhysics(world, entity.physics, () => model.position);
   const body = physicsBinding.body as PlayerBody;
   body.canJump = false;

@@ -1,8 +1,9 @@
+import { hoverSprite } from './sprite-input';
 import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
-const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(name =>
+const urls = Object.fromEntries(['main', 'universal', 'camera', 'player', 'view'].map(name =>
   [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
 
 test('right-click mining breaks a moon shell and preserves the orb and mineral drops through c_save and reload', async ({ page }) => {
@@ -19,9 +20,10 @@ test('right-click mining breaks a moon shell and preserves the orb and mineral d
     await route.fulfill({ response, json: save });
   });
   const prepare = () => page.evaluate(async urls => {
-    await import(urls.main);
+    const main = await import(urls.main); await main.gameReady;
     const { scene, renderer } = await import(urls.universal), { camera } = await import(urls.camera);
-    (window as any).miningGame = { scene, renderer, camera };
+    const { player } = await import(urls.player), { view } = await import(urls.view);
+    (window as any).miningGame = { scene, renderer, camera, player, view, inventory: main.inventory };
   }, urls);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
@@ -30,7 +32,7 @@ test('right-click mining breaks a moon shell and preserves the orb and mineral d
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const workLeft = () => page.evaluate(() => {
-    const shell = (window as any).miningGame.scene.children.find((model: any) => model.userData.entityId === 'mine-shell');
+    const shell = (window as any).miningGame.scene.children.find((model: any) => model.userData.instance?.entityId === 'mine-shell');
     return shell?.userData.components.workable.GetWorkLeft() ?? 0;
   });
   await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
@@ -40,17 +42,12 @@ test('right-click mining breaks a moon shell and preserves the orb and mineral d
   await bar.locator('.inventory-bar__items [data-item-id="pickaxe"]').dragTo(hand);
   await expect(hand).toHaveAttribute('data-item-id', 'pickaxe');
   for (let hit = 0; hit < 6; hit++) {
-    const point = await page.evaluate(() => {
+    const point = await hoverSprite(page, () => page.evaluate(async moduleUrl => {
       const { scene, renderer, camera } = (window as any).miningGame;
-      const shell = scene.children.find((model: any) => model.userData.entityId === 'mine-shell');
-      let mesh: any; shell.traverse((object: any) => { if (!mesh && object.isMesh && object.geometry.index) mesh = object; });
-      mesh.updateWorldMatrix(true, false);
-      const positions = mesh.geometry.getAttribute('position'), indices = mesh.geometry.index;
-      const point = shell.position.clone().multiplyScalar(0), vertex = point.clone();
-      for (let i = 0; i < 3; i++) { vertex.fromBufferAttribute(positions, indices.getX(i)); mesh.localToWorld(vertex); point.add(vertex); }
-      const ndc = point.multiplyScalar(1 / 3).project(camera), rect = renderer.domElement.getBoundingClientRect();
-      return { x: rect.left + (ndc.x + 1) * rect.width / 2, y: rect.top + (1 - ndc.y) * rect.height / 2 };
-    });
+      const shell = scene.children.find((model: any) => model.userData.instance?.entityId === 'mine-shell');
+      const { spriteScreenPoint } = await import(moduleUrl);
+      return spriteScreenPoint(shell, camera, renderer);
+    }, `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}`), 'miningGame', 'right', 'MINE');
     await page.mouse.click(point.x, point.y, { button: 'right' });
     await expect.poll(workLeft, { timeout: 10_000 }).toBe(5 - hit);
     if (hit < 5) await page.waitForTimeout(700);

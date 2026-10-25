@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
@@ -96,7 +97,7 @@ export interface GrottoRecord {
   components: { grottoPool?: GrottoPoolSaveState; grottoGlass?: GrottoGlassSaveState };
 }
 
-export interface GrottoPoolWorld {
+export interface GrottoPoolWorld extends ToolMouseTargetWorld {
   physics?: CANNON.World;
   scheduler: GameTimeScheduler;
   /** The listener of the waterfall sound controller (`ThePlayer`). */
@@ -215,7 +216,8 @@ export class GrottoPoolManager {
     const model = display.model, sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
     const id = saved?.id ?? newEntityId();
-    Object.assign(model.userData, { entityId: id, prefab, noWetPrefix: true, remove: () => this.remove(model) });
+    instance.entityId = id;
+    Object.assign(model.userData, { noWetPrefix: true, remove: () => this.remove(model) });
     const grotto: Grotto = { prefab, model, instance, display, sprite, mist, visible: true, loot, children: [], savedChildren: [], stopMoonWatch: [], stopArea: [], removed: false,
       tracker: new TileTracker(() => model.position) };
     const inst = actionEntity(model, prefab);
@@ -323,6 +325,7 @@ export class GrottoPoolManager {
     workable.SetOnLoadFn(() => { if (workable.workleft.peek() <= 0) this.setMined(grotto, definition); });
     if (saved) workable.OnLoad({ workleft: saved.workleft });
     Object.assign(model.userData.components, { workable, lootdropper });
+    new ToolMouseTarget(inst, grotto.instance, workable, this.world.handEquipment);
   }
 
   private setMined(grotto: Grotto, definition: ChildDefinition): void {
@@ -402,7 +405,7 @@ export class GrottoPoolManager {
 
   getMineTargets(model?: THREE.Object3D): PickaxeTarget[] {
     return modelEntries(this.grottos, model).filter(([, grotto]) => grotto.workable?.CanBeWorked()).map(([model, grotto]) => ({
-      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, grotto.prefab),
+      id: String(grotto.instance.entityId), model, position: model.position, entity: actionEntity(model, grotto.prefab),
       isValid: () => this.grottos.get(model) === grotto && !!grotto.workable?.CanBeWorked(),
     }));
   }
@@ -410,9 +413,9 @@ export class GrottoPoolManager {
   /** on_save: a pool lists its live children; a prop saves its work left. */
   exportRecords(): { prefabId: GrottoId; record: GrottoRecord }[] {
     return [...this.grottos].map(([model, grotto]) => {
-      const children = grotto.children.flatMap((child, slot) => child ? [{ index: slot + 1, id: String(child.userData.entityId) }] : []);
+      const children = grotto.children.flatMap((child, slot) => child ? [{ index: slot + 1, id: String(this.grottos.get(child)!.instance.entityId) }] : []);
       return { prefabId: grotto.prefab, record: {
-        id: String(model.userData.entityId),
+        id: String(grotto.instance.entityId),
         transform: { position: [model.position.x, 0, model.position.z] as [number, number, number], rotationY: 0 },
         components: isPoolId(grotto.prefab) ? { grottoPool: { children: [...children, ...grotto.savedChildren] } }
           : grotto.workable ? { grottoGlass: { workleft: grotto.workable.workleft.peek() } } : {},
@@ -492,7 +495,7 @@ export class GrottoPoolManager {
   /** on_removed: a pool removes its children from the last slot to the first; a prop leaves its owner's slot. */
   private remove(model: THREE.Group): void {
     const grotto = this.grottos.get(model); if (!grotto) return;
-    this.grottos.delete(model); this.byId.delete(String(model.userData.entityId));
+    this.grottos.delete(model); this.byId.delete(String(grotto.instance.entityId));
     model.userData.removed = true; grotto.removed = true;
     if (grotto.owner) grotto.owner.grotto.children[grotto.owner.index] = undefined;
     for (const child of [...grotto.children].reverse()) if (child) this.remove(child);

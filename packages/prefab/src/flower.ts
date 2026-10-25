@@ -164,8 +164,9 @@ export class FlowerPlanting {
     instance.sprite.playOnce(animation);
     const model = display.model;
     instance.position.set(position.x, 0, position.z);
+    instance.entityId = id;
     Object.assign(model.userData, {
-      rayTestOnBB: true, entityId: id, prefab: 'flower', planted, flowerAnimation: animation,
+      rayTestOnBB: true, planted, flowerAnimation: animation,
       deploySmartRadius: .375 * (TILE_SIZE / 4),
     });
     for (const tag of ['flower', 'cattoy', ...(animation === 'rose' ? ['thorny'] : [])]) instance.addTag(tag);

@@ -1,3 +1,4 @@
+import { hoverSprite } from './sprite-input';
 import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
@@ -16,7 +17,9 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   });
   const urls = Object.fromEntries(['main', 'universal', 'view', 'building', 'player'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
+  urls.physics = `/@fs${fileURLToPath(new URL('../../../src/physics.ts', import.meta.url))}`;
   const prepare = () => page.evaluate(async urls => {
+    const { worldState } = await import(urls.physics); worldState.season.set({ season: 'winter', progress: .5 });
     const { inventory, gameReady } = await import(urls.main); await gameReady;
     const { scene } = await import(urls.universal), { view } = await import(urls.view);
     const { turfMap } = await import(urls.building), { player, playerBody } = await import(urls.player);
@@ -27,36 +30,25 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   }, urls);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
-  const screenPoint = (planted: boolean) => page.evaluate(planted => {
+  const screenPoint = (planted: boolean) => page.evaluate(async ({ planted, moduleUrl }) => {
     const { scene, view } = (window as any).monkeytailGame;
-    const model = scene.children.find((model: any) => model.userData.prefab === 'monkeytail'
+    const model = scene.children.find((model: any) => model.userData.instance?.prefab === 'monkeytail'
       && !!model.userData.components.pickable.exportState().transplanted === planted);
     if (!model) throw new Error('No monkeytail target');
     scene.updateMatrixWorld(true);
-    const mesh = model.getObjectByProperty('isMesh', true), geometry = mesh.geometry;
-    const positions = geometry.getAttribute('position'), indices = geometry.getIndex();
-    let largest = -1, point = model.position.clone();
-    for (let i = 0; i < geometry.drawRange.count; i += 3) {
-      const a = model.position.clone().fromBufferAttribute(positions, indices.getX(i));
-      const b = model.position.clone().fromBufferAttribute(positions, indices.getX(i + 1));
-      const c = model.position.clone().fromBufferAttribute(positions, indices.getX(i + 2));
-      const area = b.clone().sub(a).cross(c.clone().sub(a)).lengthSq();
-      if (area > largest) { largest = area; point.copy(a).add(b).add(c).multiplyScalar(1 / 3); }
-    }
-    mesh.localToWorld(point).project(view.camera);
-    const rect = view.renderer.domElement.getBoundingClientRect();
-    return { x: rect.left + (point.x + 1) * rect.width / 2, y: rect.top + (1 - point.y) * rect.height / 2 };
-  }, planted);
+    const { spriteScreenPoint } = await import(moduleUrl);
+    return spriteScreenPoint(model, view.camera, view.renderer);
+  }, { planted, moduleUrl: `/@fs${fileURLToPath(new URL('./sprite-screen-point.ts', import.meta.url))}` });
+  const hover = (target: Parameters<typeof screenPoint>[0], button: 'left' | 'right', action: string) =>
+    hoverSprite(page, () => screenPoint(target), 'monkeytailGame', button, action);
   const count = (id: string) => page.evaluate(id => (window as any).monkeytailGame.inventory.count(id), id);
   const bar = page.locator('dst-inventory-bar .inventory-bar__items');
 
   await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await submit('c_spawn("monkeytail");c_give("dug_monkeytail",2);c_give("poop",2)');
   await expect(bar.locator('[data-item-id="dug_monkeytail"] .inventory-slot__icon[data-loaded="true"]')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.scene.children.filter((model: any) => model.userData.prefab === 'monkeytail').length)).toBe(1);
-  const wild = await screenPoint(false);
-  await page.mouse.move(wild.x, wild.y);
-  await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.view.mouseActions.getMouseActions().left?.action)).toBe('PICK');
+  await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.scene.children.filter((model: any) => model.userData.instance?.prefab === 'monkeytail').length)).toBe(1);
+  const wild = await hover(false, 'left', 'PICK');
   await page.mouse.click(wild.x, wild.y);
   await expect.poll(() => count('cutreeds')).toBe(1);
 
@@ -69,28 +61,26 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   await page.mouse.move(plantingPoint.x, plantingPoint.y);
   await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.view.mouseActions.getMouseActions().right?.action)).toBe('DEPLOY');
   await page.mouse.click(plantingPoint.x, plantingPoint.y, { button: 'right' });
-  await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.scene.children.filter((model: any) => model.userData.prefab === 'monkeytail').length)).toBe(2);
+  await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.scene.children.filter((model: any) => model.userData.instance?.prefab === 'monkeytail').length)).toBe(2);
   await expect.poll(() => count('dug_monkeytail')).toBe(1);
   const root = await page.evaluate(() => {
     const model = (window as any).monkeytailGame.scene.children.find((model: any) => model.userData.components?.pickable?.exportState().transplanted);
-    return { id: model.userData.entityId, position: model.position.toArray(), state: model.userData.components.pickable.exportState() };
+    return { id: model.userData.instance?.entityId, position: model.position.toArray(), state: model.userData.components.pickable.exportState() };
   });
   expect(root.state).toMatchObject({ picked: true, transplanted: true, cyclesLeft: 0 });
   // Put the remaining root back, then hold manure on the cursor.
   await bar.locator('.inventory-slot[data-item-id=""]').first().click();
   await bar.locator('[data-item-id="poop"]').click();
-  const dead = await screenPoint(true);
-  await page.mouse.move(dead.x, dead.y);
-  await expect.poll(() => page.evaluate(() => (window as any).monkeytailGame.view.mouseActions.getMouseActions().left?.action)).toBe('FERTILIZE');
+  const dead = await hover(true, 'left', 'FERTILIZE');
   await page.mouse.click(dead.x, dead.y);
   await expect.poll(() => count('poop')).toBe(1);
   await expect.poll(() => page.evaluate(id => {
-    const model = (window as any).monkeytailGame.scene.children.find((model: any) => model.userData.entityId === id);
+    const model = (window as any).monkeytailGame.scene.children.find((model: any) => model.userData.instance?.entityId === id);
     return model.userData.components.pickable.state.timer.peek().status;
   }, root.id)).toBe('stopped'); // Initial world is winter: fertilizer cannot bypass the winter pause.
 
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const saved = JSON.parse(await readSaveDownload((await (await download).path())!));
+  const saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   const plant = saved.world.entities.monkeytail.find((record: any) => record.id === root.id);
   expect(plant.transform.position).toEqual(root.position);
   expect(plant.components.pickable).toMatchObject({ picked: true, transplanted: true, paused: true });
@@ -98,7 +88,7 @@ test('picks monkeytail, plants a cursor-held root and fertilizes it through real
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
   await page.reload(); await prepare();
   await expect.poll(() => page.evaluate(id => {
-    const model = (window as any).monkeytailGame.scene.children.find((model: any) => model.userData.entityId === id);
+    const model = (window as any).monkeytailGame.scene.children.find((model: any) => model.userData.instance?.entityId === id);
     return model?.userData.components.pickable.exportState();
   }, root.id)).toEqual(plant.components.pickable);
   await expect.poll(() => count('dug_monkeytail')).toBe(1);

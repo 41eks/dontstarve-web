@@ -5,6 +5,7 @@ import { RockManager, type RockRecord } from '../../prefab/src/rocks';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import cave from '../../../public/saves/Cluster_1/Caves.json' with { type: 'json' };
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 
@@ -29,7 +30,7 @@ it('shares split-bank cave-in art and preserves its variation, raised pose, iden
     const mesh = (model: THREE.Group) => firstMesh(model);
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
     expect(first.userData.animationController.currentAnimation).toBe('idle_raised');
-    expect(first.userData.tags).toEqual(expect.arrayContaining(['heavy', 'boulder', 'caveindebris']));
+    expect(prefabInstance(first)!.listTags()).toEqual(expect.arrayContaining(['heavy', 'boulder', 'caveindebris']));
     expect(manager.mineTargets).toEqual([]); // Raised cave-in boulders cannot be mined.
     const geometry = mesh(first).geometry, disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
     const document = deserializeSave(JSON.stringify(cave), SAVE_CATALOG);
@@ -53,7 +54,7 @@ it('keeps the celestial orb as static art without mining or preparing loot', asy
   try {
     const model = await manager.spawn('moonrockseed', new THREE.Vector3());
     expect(model.userData.animationController.currentAnimation).toBe('idle');
-    expect(model.userData.tags).toEqual(expect.arrayContaining(['irreplaceable', 'nonpotatable', 'celestial_station']));
+    expect(prefabInstance(model)!.listTags()).toEqual(expect.arrayContaining(['irreplaceable', 'nonpotatable', 'celestial_station']));
     expect(firstMesh(model).geometry.getAttribute('position').count).toBeGreaterThan(0);
     expect(manager.mineTargets).toEqual([]);
   } finally { manager.dispose(); }

@@ -42,12 +42,12 @@ test('mole console commands, hammer capture and save export/reload preserve anim
   await page.keyboard.down('Control'); await page.keyboard.down('KeyF');
   await expect.poll(() => page.evaluate(() => {
     const { scene } = (window as any).moleGame;
-    return scene.children.find((m: any) => m.userData.entityId === (window as any).captureMole)?.userData.mole.sg.stateName;
+    return scene.children.find((m: any) => m.userData.instance?.entityId === (window as any).captureMole)?.userData.mole.sg.stateName;
   })).toBe('stunned');
   await page.keyboard.up('KeyF'); await page.keyboard.up('Control');
   const point = await page.evaluate(() => {
     const { scene, view } = (window as any).moleGame;
-    const model = scene.children.find((m: any) => m.userData.entityId === (window as any).captureMole);
+    const model = scene.children.find((m: any) => m.userData.instance?.entityId === (window as any).captureMole);
     scene.updateMatrixWorld(true);
     const mesh = model.getObjectsByProperty('isMesh', true).find((object: any) => object.geometry?.drawRange.count > 0), geometry = mesh.geometry;
     const positions = geometry.getAttribute('position'), indices = geometry.getIndex();
@@ -83,6 +83,6 @@ test('mole console commands, hammer capture and save export/reload preserve anim
   await page.reload(); await prepare();
   await expect(bar.locator('[data-item-id="mole"]')).toHaveCount(3);
   await expect.poll(() => page.evaluate(id => (window as any).moleGame.inventory.entities.get(id)?.snapshot().mole.health, identity)).toBe(23);
-  await expect.poll(() => page.evaluate(id => (window as any).moleGame.scene.children.some((m: any) => m.userData.entityId === id && m.userData.prefab === 'molehill'), hillId)).toBe(true);
+  await expect.poll(() => page.evaluate(id => (window as any).moleGame.scene.children.some((m: any) => m.userData.instance?.entityId === id && m.userData.instance?.prefab === 'molehill'), hillId)).toBe(true);
   expect(errors).toEqual([]);
 });

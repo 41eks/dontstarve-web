@@ -47,8 +47,8 @@ test('spawns the static archive props and keeps their identities, positions and 
     playerBody.position.set(x, playerBody.shapes[0].radius, z); player.position.set(x, 0, z);
   }, [x, z]).then(() => page.waitForTimeout(300));
   const props = () => page.evaluate(() => (window as any).archiveGame.scene.children
-    .filter((model: any) => model.userData.prefab?.startsWith('archive_')).map((model: any) => ({
-      prefab: model.userData.prefab, id: model.userData.entityId, x: model.position.x, z: model.position.z })));
+    .filter((model: any) => model.userData.instance?.prefab?.startsWith('archive_')).map((model: any) => ({
+      prefab: model.userData.instance?.prefab, id: model.userData.instance?.entityId, x: model.position.x, z: model.position.z })));
   await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   const layout: [string, number, number][] = [['archive_moon_statue', -14, 0], ['archive_rune_statue', -7, 0], ['archive_portal', 0, -24],
     ['archive_switch_base', 22, -24], ['archive_ambient_sfx', 12, 0], ['archive_switch_pad', 30, -24], ['rubble1', 30, 0]];

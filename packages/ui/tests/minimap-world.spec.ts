@@ -45,7 +45,7 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
     g.map.setView({ x: 0, z: 0, zoom: 1 });
     const king = g.scene.getObjectByName('PigKingStandee');
     const pigIcon = g.entities().find((icon: any) => icon.icon === 'pigking.png');
-    return { backpackId: g.bag.id, pigKingId: king.userData.entityId, pigPriority: pigIcon.priority };
+    return { backpackId: g.bag.id, pigKingId: king.userData.instance?.entityId, pigPriority: pigIcon.priority };
   });
   expect(identities.pigPriority).toBe(1);
   await expect.poll(() => page.evaluate(async () => {
@@ -93,7 +93,7 @@ test('pig king and ground backpack icons render, backpack ownership hides them, 
   await expect(icons).toHaveCount(2);
   expect(await page.evaluate(() => {
     const g = (window as any).worldIcons;
-    return g.scene.children.find((object: any) => object.userData.itemId === 'backpack').userData.entityId;
+    return g.scene.children.find((object: any) => object.userData.itemId === 'backpack').userData.instance?.entityId;
   })).toBe(identities.backpackId);
   expect(errors).toEqual([]);
 });
@@ -153,7 +153,7 @@ test('tree icons use native art, survive model unloading and retain identities a
   expect(await page.evaluate(() => {
     const { scene } = (window as any).treeMap;
     let count = 0;
-    scene.traverse((object: any) => { if (['evergreen', 'deciduoustree', 'moon_tree'].includes(object.userData.prefab)) count++; });
+    scene.traverse((object: any) => { if (['evergreen', 'deciduoustree', 'moon_tree'].includes(object.userData.instance?.prefab)) count++; });
     return count;
   })).toBe(0);
   const restoredDownload = page.waitForEvent('download');

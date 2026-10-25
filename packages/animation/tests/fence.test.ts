@@ -141,7 +141,7 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
 
     const fire = model.userData.actionEntity.components.burnable;
     fire.Ignite();
-    expect(model.userData.persists).toBe(false);
+    expect(model.userData.instance?.persists).toBe(false);
     expect(placement.exportRecords()).toEqual([]);
     fire.Extinguish();
     expect(placement.exportRecords()).toHaveLength(1);

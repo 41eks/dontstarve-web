@@ -5,6 +5,7 @@ import type { ActionWorldContext, ActionAnimationController, ActionLocomotor } f
 import { bindActionCancellation } from './actionEvents.ts';
 import { PlayerActionPicker, type MouseActionCandidate } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
+import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
 
 export const SLEEPIN_REACH = 4;
 
@@ -29,8 +30,8 @@ export function getSleepActions(model: THREE.Object3D | undefined): MouseActionC
   const component = model.userData.components?.sleepingbag as SleepingBag | undefined;
   if (!component) return actions;
   const target: SleepTarget = {
-    model, component, prefab: model.userData.prefab,
-    hasTag: tag => model.userData.tags?.includes(tag) ?? false,
+    model, component, prefab: model.userData.actionEntity?.prefab ?? prefabInstance(model)?.prefab,
+    hasTag: tag => modelHasTag(model, tag),
     getPosition: () => model.userData.getGroundPosition?.() ?? model.position.clone(),
   };
   actions.push({ action: { action: 'SLEEPIN', target }, button: 'left', model, available: canSleep(target) });

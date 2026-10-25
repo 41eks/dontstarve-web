@@ -18,6 +18,7 @@ import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
 import type { BuildingContainer } from './containers';
 import type { WorldContext } from './worldContext';
+import { modelHasTag } from './prefabInstance';
 
 export const BOOKSTATION_ID = 'bookstation' as const;
 export type BookstationId = typeof BOOKSTATION_ID;
@@ -106,7 +107,7 @@ export class Bookstation {
         const player = world.player;
         const nearPlayer = player.position.distanceToSquared(model.userData.getGroundPosition())
             <= BOOKSTATION_BONUS_RANGE * BOOKSTATION_BONUS_RANGE;
-        const bonus = nearPlayer && (player.userData.tags as readonly string[] | undefined)?.includes('bookbuilder')
+        const bonus = nearPlayer && modelHasTag(player, 'bookbuilder')
             ? BOOKSTATION_WICKER_BONUS : 1;
         for (const book of container.GetAllItems()) {
             if (!book.hasTag('book') || !isBook(book.prefab)) continue;

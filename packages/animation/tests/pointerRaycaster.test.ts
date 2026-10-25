@@ -8,9 +8,10 @@ import { createMemo, createSignal } from '../../signals/src';
 import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { useTestTileMap } from './tileMapFixture';
 import { SpriteFrameRenderer, type ResolvedSprite } from '../src/animationAssets';
+import { mouseTargets, setMouseTargetEnabled } from '../../prefab/src/mouseTargets';
 
 useTestTileMap();
-afterEach(() => { vi.unstubAllGlobals(); expect(activePrefabs).toHaveLength(0); });
+afterEach(() => { vi.unstubAllGlobals(); expect(activePrefabs).toHaveLength(0); expect(mouseTargets.size).toBe(0); });
 
 it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking and keeps unavailable visible targets blocking', () => {
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
@@ -78,6 +79,7 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
   const pointer = new PointerRaycaster({ camera, renderer, scene }), picker = new PlayerActionPicker(pointer);
   const raycasts = vi.spyOn(pointer, 'pickMouseTarget'), traversal = vi.spyOn(scene, 'traverse');
+  const worldScan = vi.spyOn(activePrefabs, Symbol.iterator);
   const pickup = { action: 'PICKUP' as const };
   const provider = vi.fn(model => model ? [{ action: pickup, model, button: 'left' as const, available: model === back }] : []);
   picker.register(provider);
@@ -90,6 +92,12 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
     item.removeTag('NOCLICK');
     expect(picker.getMouseActions().left).toBeUndefined();
     expect(provider).toHaveBeenLastCalledWith(front); // An unavailable visible entity still occludes the back.
+    setMouseTargetEnabled(front, false);
+    expect(activePrefabs.some(entity => entity.model === front)).toBe(true);
+    expect(mouseTargets.has(front.userData.actionEntity)).toBe(false);
+    expect(picker.getMouseActions().left).toBe(pickup);
+    setMouseTargetEnabled(front, true);
+    expect(picker.getMouseActions().left).toBeUndefined();
     front.removeFromParent();
     expect(picker.getMouseActions().left).toBe(pickup);
     scene.add(front);
@@ -99,8 +107,9 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
     item.removeTag('NOCLICK');
     expect(picker.getMouseActions().left).toBe(pickup);
     expect(traversal).not.toHaveBeenCalled();
+    expect(worldScan).not.toHaveBeenCalled();
   } finally {
-    raycasts.mockRestore(); traversal.mockRestore();
+    raycasts.mockRestore(); traversal.mockRestore(); worldScan.mockRestore();
     item.destroy(); disposeActionEntity(front); disposeActionEntity(back); picker.dispose();
     geometry.dispose(); material.dispose();
   }

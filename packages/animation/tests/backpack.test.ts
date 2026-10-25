@@ -36,7 +36,7 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
 it('uses skinned swap_body art in every player facing and hides invisible equipment', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   const controller = player.userData.animationController as WilsonAnimationController;
-  const mesh = player.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   for (const skinId of ['backpack_babybeef', 'backpack_invisible']) {
     await controller.setBackpack(true, skinId);
     let hasSkinnedArt = false;

@@ -4,7 +4,7 @@ import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { createEffect, WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
+import { createEffect, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type WorldContentSignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
 import { TileTracker } from '../../componets/src/tileManager';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
@@ -13,6 +13,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { modelEntries } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
+import { ToolMouseTarget } from './toolMouseTarget';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -100,6 +101,7 @@ export function isMushtreeSpawnId(value: string): value is MushtreeSpawnId {
 }
 
 export interface MushtreeWorld {
+  handEquipment?: ReadonlySignal<HandEquipment | null>;
   physics?: CANNON.World;
   /** The running game's clock; without one the manager advances a private scheduler from `update`. */
   scheduler?: GameTimeScheduler;
@@ -193,7 +195,7 @@ export class MushtreeManager {
     const model = display.model;
     const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab });
+    instance.entityId = saved?.id ?? newEntityId();
     const inst = actionEntity(model, prefab);
     for (const tag of ['cavedweller', 'mushtree', 'plant', 'shelter', 'tree', ...data.webbable ? ['webbable'] : []]) inst.addTag(tag);
     const tree: Tree = { prefab, data, instance, display, model, sprite, inst, stump: false, treestate: 'normal', removed: false, cleanups: [],
@@ -213,6 +215,7 @@ export class MushtreeManager {
     this.bindBurn(tree);
     if (data.growable) this.createGrowable(tree, components?.growable);
     this.setupWork(tree);
+    new ToolMouseTarget(inst, instance, tree.workable, this.world.handEquipment);
     if (spawnAsStump || state?.stump) this.makeStump(tree, state?.decay);
     else if (state?.burnt) this.treeBurnt(tree);
     else this.initialSeason(tree, state?.treestate);
@@ -451,7 +454,7 @@ export class MushtreeManager {
 
   private workTargets(action: 'CHOP' | 'DIG', model?: THREE.Object3D): PickaxeTarget[] {
     return modelEntries(this.trees, model).filter(([, tree]) => tree.workable.CanBeWorked() && tree.workable.GetWorkAction() === action)
-      .map(([model, tree]) => ({ id: String(model.userData.entityId), model, position: model.position, entity: tree.inst,
+      .map(([model, tree]) => ({ id: String(tree.instance.entityId), model, position: model.position, entity: tree.inst,
         isValid: () => this.trees.get(model) === tree && tree.workable.CanBeWorked() && tree.workable.GetWorkAction() === action }));
   }
 
@@ -463,7 +466,7 @@ export class MushtreeManager {
       const mushtree: MushtreeSaveState = { ...tree.stump ? { stump: true } : {}, ...burnt ? { burnt: true } : {},
         ...tree.data.growable && !tree.stump ? { treestate: tree.treestate } : {}, ...decay === undefined ? {} : { decay } };
       return { prefabId: tree.prefab, record: {
-        id: String(model.userData.entityId),
+        id: String(tree.instance.entityId),
         transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
         components: { ...Object.keys(mushtree).length ? { mushtree } : {}, ...tree.growable ? { growable: tree.growable.OnSave() } : {} },
       } };

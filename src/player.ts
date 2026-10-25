@@ -9,7 +9,6 @@ const playerPrefab = await createWilsonPlayerPrefab(
   { sanityPercent: playerStats.sanity.percent },
 );
 playerPrefab.model.position.set(...initialSave.players.local.transform.position);
-playerPrefab.model.userData.saveRecord = initialSave.players.local;
 playerPrefab.physics.Teleport();
 
 export const player = playerPrefab.model;

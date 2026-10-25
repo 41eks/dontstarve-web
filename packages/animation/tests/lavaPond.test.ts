@@ -57,12 +57,12 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     expect(state.rocks.peek()).toHaveLength(2);
     expect(state.rocks.peek().map((rock: any) => rock.rocktype)).toEqual(['', '7']);
     const entries = manager.renderEntities;
-    expect(entries.map(entry => entry.object.userData.prefab)).toEqual(['lava_pond_rock', 'lava_pond_rock7']);
+    expect(entries.map(entry => entry.object.userData.instance?.prefab)).toEqual(['lava_pond_rock', 'lava_pond_rock7']);
     expect(entries[0].footPosition.x).toBe(12);
     expect(entries[0].footPosition.z).toBeCloseTo(-1.7);
     expect(FindEntities(entries[0].footPosition, .01).map(inst => inst.prefab))
       .toEqual(['lava_pond_rock']);
-    expect(entries.every(entry => entry.object.userData.persists === false)).toBe(true);
+    expect(entries.every(entry => entry.object.userData.instance?.persists === false)).toBe(true);
     const source = FindEntities(model.position, 30, ['HASHEATER'], ['INLIMBO']);
     expect(source).toHaveLength(1); expect(source[0].components.heater!.GetHeat()).toBe(500);
 

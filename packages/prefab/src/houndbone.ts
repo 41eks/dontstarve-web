@@ -1,3 +1,4 @@
+import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import * as THREE from 'three';
 import { createSharedArchiveSprite, preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
@@ -31,7 +32,7 @@ export interface HoundboneRecord {
   components: { houndbone?: HoundboneSaveState };
 }
 
-export interface HoundboneWorld {
+export interface HoundboneWorld extends ToolMouseTargetWorld {
   tickingarea?: TileStateQuery;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
 }
@@ -103,7 +104,8 @@ export class HoundboneManager {
     const model = display.model;
     const sprite = instance.sprite;
     model.position.set(position.x, 0, position.z);
-    Object.assign(model.userData, { entityId: saved?.id ?? newEntityId(), prefab: HOUNDBONE_ID, animationController: sprite });
+    instance.entityId = saved?.id ?? newEntityId();
+    Object.assign(model.userData, { animationController: sprite });
     const inst = actionEntity(model, HOUNDBONE_ID);
     inst.addTag('bone');
     // workable: HAMMER, 1 work; onhammered drops the loot, plays collapse_small with the rock material and removes it.
@@ -129,6 +131,7 @@ export class HoundboneManager {
       this.remove(model);
     });
     Object.assign(model.userData.components, { workable, lootdropper });
+    new ToolMouseTarget(inst, instance, workable, this.world.handEquipment);
     this.bones.set(model, bone);
     this.scene.add(model);
     bone.stopActivity = watchTileActivity(model, this.world.tickingarea, active => instance.setActive(active));
@@ -168,7 +171,7 @@ export class HoundboneManager {
 
   getHammerTargets(model?: THREE.Object3D): HammerTarget[] {
     return modelEntries(this.bones, model).filter(([, bone]) => bone.workable.CanBeWorked()).map(([model, bone]) => ({
-      id: String(model.userData.entityId), model, position: model.position, entity: actionEntity(model, HOUNDBONE_ID),
+      id: String(bone.instance.entityId), model, position: model.position, entity: actionEntity(model, HOUNDBONE_ID),
       isValid: () => this.bones.get(model) === bone && bone.workable.CanBeWorked(),
       playHit: () => { performToolWork('HAMMER', actionEntity(model, HOUNDBONE_ID), {}); },
     }));
@@ -176,10 +179,10 @@ export class HoundboneManager {
 
   /** workable.savestate is false: a surviving bone reloads with its full work count. */
   exportRecords(): { prefabId: typeof HOUNDBONE_ID; record: HoundboneRecord }[] {
-    return [...this.bones].map(([model, { bonetype }]) => ({
+    return [...this.bones].map(([model, { bonetype, instance }]) => ({
       prefabId: HOUNDBONE_ID,
       record: {
-        id: String(model.userData.entityId),
+        id: String(instance.entityId),
         transform: { position: [model.position.x, 0, model.position.z], rotationY: 0 },
         components: { houndbone: { bonetype } },
       },

@@ -1,3 +1,4 @@
+import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import type { DstChestPanelElement } from './chest-panel';
 import { buildingContainerId, buildingContainerDefinition, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
@@ -145,7 +146,7 @@ export function createChestInventoryPanel(
         openPrefab = buildingPrefab;
         const container = buildingContainerDefinition(buildingPrefab);
         element.open({
-          containerId: buildingContainerId(buildingPrefab, String(model.userData.entityId)),
+          containerId: buildingContainerId(buildingPrefab, String(prefabInstance(model)?.entityId)),
           slotCount: container.slotCount,
           columns: container.columns,
           panelArchive: container.panelArchive,

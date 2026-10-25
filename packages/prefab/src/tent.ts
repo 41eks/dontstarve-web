@@ -44,7 +44,7 @@ function periodic(scheduler: GameTimeScheduler, period: number, initialDelay: nu
 }
 
 /** tent.lua common_fn / tent(): sleepingbag, finiteuses and their sleep, wake, hit and finish callbacks. */
-function oninit({ model, world, remove }: AnimatedBuildingEventContext): void {
+function oninit({ model, instance, world, remove }: AnimatedBuildingEventContext): void {
     const scheduler = world?.scheduler;
     if (!scheduler) throw new Error('A tent needs the world scheduler');
     const entity = actionEntity(model, TENT_ID);
@@ -64,7 +64,7 @@ function oninit({ model, world, remove }: AnimatedBuildingEventContext): void {
     uses.SetOnFinished(() => {
         if (entity.hasTag('burnt')) return;
         stopSleepSound();
-        model.userData.persists = false;
+        instance.persists = false;
         animation().playOnce('destroy', () => remove?.());
         PlaySound('dontstarve/common/tent_dis_pre', model.position);
         scheduler.schedule(16 * FRAME, () => PlaySound('dontstarve/common/tent_dis_twirl', model.position));

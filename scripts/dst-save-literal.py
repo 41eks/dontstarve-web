@@ -38,7 +38,8 @@ class LiteralReader:
             raise ValueError(f'Expected {token!r}, got {self.token!r}')
         self.advance()
 
-    def value(self):
+    def value(self, final=False):
+        """`final` stops at the closing brace, so bytes after a top-level table are never tokenized."""
         token = self.token
         if token == '{':
             self.advance()
@@ -67,7 +68,8 @@ class LiteralReader:
                     self.advance()
                 elif self.token != '}':
                     raise ValueError('Expected table separator')
-            self.advance()
+            if not final:
+                self.advance()
             return result if keyed else list(result.values())
         if token and token[0] in ('"', "'"):
             result = string_value(token)
@@ -88,6 +90,14 @@ def returned_table(text):
     if not match:
         raise ValueError('No literal return table found')
     return LiteralReader(text, match.end()).value()
+
+
+def player_snapshot(text):
+    """A dedicated server's player file: a short binary header, one returned table and a binary session trailer."""
+    match = re.search(r'return\s+(?=\{)', text[:16])
+    if not match:
+        raise ValueError('Expected a readable DST player snapshot')
+    return LiteralReader(text, match.end()).value(final=True)
 
 
 def snapshot_map(text):

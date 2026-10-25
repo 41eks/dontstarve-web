@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { InventoryReceiveListener } from '@dontstarve-web/inventory';
-import type { DstInventoryBarElement, InventoryReceiveSource } from '@dontstarve-web/ui';
+import type { GameUiElements, InventoryReceiveSource } from '@dontstarve-web/ui';
 
 /** Snapshot the source in browser viewport coordinates, including a canvas offset or CSS scale. */
 export function projectInventorySource(
@@ -19,11 +19,18 @@ export function projectInventorySource(
 }
 
 export function inventoryReceiveEffect(
-  bar: DstInventoryBarElement, camera: THREE.Camera, canvas: HTMLCanvasElement, position: THREE.Vector3,
+  ui: Pick<GameUiElements, 'inventoryBar' | 'backpackPanel'>,
+  camera: THREE.Camera, canvas: HTMLCanvasElement, position: THREE.Vector3,
 ): InventoryReceiveListener {
   const source = projectInventorySource(position, camera, canvas);
   return (received) => {
     if (!source) return;
-    for (const { slot, delta } of received) bar.animateReceive(slot, source, delta);
+    for (const { slot, delta } of received) {
+      if (ui.inventoryBar.containers.some(container => container.id === slot.containerId)) {
+        ui.inventoryBar.animateReceive(slot, source, delta);
+      } else if (ui.backpackPanel.slotContainer?.id === slot.containerId) {
+        ui.backpackPanel.animateReceive(slot, source, delta);
+      }
+    }
   };
 }
