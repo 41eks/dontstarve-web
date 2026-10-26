@@ -9,7 +9,7 @@ import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { watchTileActivity } from './tileActivity';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
-import { createEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import { createRenderEffect, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
@@ -233,7 +233,7 @@ export class MarbleShrubManager {
     sprite.setColour([color, color, color]);
     sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
     sprite.setSymbolOverride('marbleshrub_top1', shapenumber === 1 ? undefined : 'marbleshrub_build.zip', `marbleshrub_top${shapenumber}`);
-    shrub.stopAppearance = createEffect(() => sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < .015));
+    shrub.stopAppearance = createRenderEffect(() => sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < .015));
     MakeObstaclePhysics(instance, PHYSICS_RADIUS);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     if (saved) {

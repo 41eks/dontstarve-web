@@ -113,6 +113,14 @@ export function createEffect(fn: () => void, synchronous = false) {
     return () => disposeEffect(effect);
 }
 
+/**
+ * Run fn in the synchronous task of each dependency change instead of the microtask queue.
+ * Inside a batch it runs once after the batch commits, together with memos.
+ */
+export function createRenderEffect(fn: () => void) {
+    return createEffect(fn, true);
+}
+
 function disposeEffect(effect: Effect): void {
     if (effect.disposed) return;
     effect.disposed = true;

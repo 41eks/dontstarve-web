@@ -370,6 +370,8 @@
     "blue_mushroom",
     "grass",
     "sapling",
+    "cactus",
+    "oasis_cactus",
     "evergreen",
     "flower_cave",
     "flower_cave_double",
@@ -397,6 +399,7 @@
     "pond",
     "lava_pond",
     "treasurechest",
+    "beefalo",
     "acorn",
     "amulet",
     "axe",
@@ -608,6 +611,14 @@
       "source": 572,
       "imported": 572
     },
+    "cactus": {
+      "source": 14,
+      "imported": 14
+    },
+    "oasis_cactus": {
+      "source": 18,
+      "imported": 18
+    },
     "evergreen": {
       "source": 2352,
       "imported": 2352
@@ -715,6 +726,10 @@
     "treasurechest": {
       "source": 2,
       "imported": 2
+    },
+    "beefalo": {
+      "source": 36,
+      "imported": 36
     },
     "acorn": {
       "source": 1,
@@ -31814,6 +31829,390 @@
         76.26
       ],
       "sourceNode": "Beeeees!:BG_58:BGGrass"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_157411",
+      "prefab": "cactus",
+      "sourceIndex": 1,
+      "sourceId": 157411,
+      "sourcePosition": [
+        441.786,
+        0,
+        186.75
+      ],
+      "sourceNode": "Badlands:6:DragonflyArena"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102077",
+      "prefab": "cactus",
+      "sourceIndex": 2,
+      "sourceId": 102077,
+      "sourcePosition": [
+        456.84,
+        0,
+        275.96
+      ],
+      "sourceNode": "Badlands:BG_31:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102078",
+      "prefab": "cactus",
+      "sourceIndex": 3,
+      "sourceId": 102078,
+      "sourcePosition": [
+        491.26,
+        0,
+        132.56
+      ],
+      "sourceNode": "Badlands:BG_32:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102079",
+      "prefab": "cactus",
+      "sourceIndex": 4,
+      "sourceId": 102079,
+      "sourcePosition": [
+        496.15,
+        0,
+        144.93
+      ],
+      "sourceNode": "Badlands:BG_32:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102080",
+      "prefab": "cactus",
+      "sourceIndex": 5,
+      "sourceId": 102080,
+      "sourcePosition": [
+        512.68,
+        0,
+        164.54
+      ],
+      "sourceNode": "Badlands:2:Badlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102081",
+      "prefab": "cactus",
+      "sourceIndex": 6,
+      "sourceId": 102081,
+      "sourcePosition": [
+        516.06,
+        0,
+        156.36
+      ],
+      "sourceNode": "Badlands:2:Badlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102082",
+      "prefab": "cactus",
+      "sourceIndex": 7,
+      "sourceId": 102082,
+      "sourcePosition": [
+        447.92,
+        0,
+        159.97
+      ],
+      "sourceNode": "Badlands:3:Badlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102083",
+      "prefab": "cactus",
+      "sourceIndex": 8,
+      "sourceId": 102083,
+      "sourcePosition": [
+        448.65,
+        0,
+        128.98
+      ],
+      "sourceNode": "Badlands:BG_34:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102084",
+      "prefab": "cactus",
+      "sourceIndex": 9,
+      "sourceId": 102084,
+      "sourcePosition": [
+        476.01,
+        0,
+        179.62
+      ],
+      "sourceNode": "Badlands:BG_33:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102085",
+      "prefab": "cactus",
+      "sourceIndex": 10,
+      "sourceId": 102085,
+      "sourcePosition": [
+        439.71,
+        0,
+        219.35
+      ],
+      "sourceNode": "Badlands:BG_30:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102086",
+      "prefab": "cactus",
+      "sourceIndex": 11,
+      "sourceId": 102086,
+      "sourcePosition": [
+        571.5,
+        0,
+        275.1
+      ],
+      "sourceNode": "Badlands:BG_29:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102087",
+      "prefab": "cactus",
+      "sourceIndex": 12,
+      "sourceId": 102087,
+      "sourcePosition": [
+        659.51,
+        0,
+        203.73
+      ],
+      "sourceNode": "Badlands:BG_35:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102088",
+      "prefab": "cactus",
+      "sourceIndex": 13,
+      "sourceId": 102088,
+      "sourcePosition": [
+        664.79,
+        0,
+        179.22
+      ],
+      "sourceNode": "Badlands:BG_35:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cactus_id_102089",
+      "prefab": "cactus",
+      "sourceIndex": 14,
+      "sourceId": 102089,
+      "sourcePosition": [
+        627.19,
+        0,
+        228.44
+      ],
+      "sourceNode": "Badlands:BG_35:BGBadlands"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106321",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 1,
+      "sourceId": 106321,
+      "sourcePosition": [
+        287.37,
+        0,
+        -132.53
+      ],
+      "sourceNode": "Lightning Bluff:2:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106322",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 2,
+      "sourceId": 106322,
+      "sourcePosition": [
+        272.11,
+        0,
+        -143.46
+      ],
+      "sourceNode": "Lightning Bluff:2:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106323",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 3,
+      "sourceId": 106323,
+      "sourcePosition": [
+        232.32,
+        0,
+        -91.75
+      ],
+      "sourceNode": "Lightning Bluff:2:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106324",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 4,
+      "sourceId": 106324,
+      "sourcePosition": [
+        279.63,
+        0,
+        -99.98
+      ],
+      "sourceNode": "Lightning Bluff:2:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106325",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 5,
+      "sourceId": 106325,
+      "sourcePosition": [
+        351,
+        0,
+        -140.5
+      ],
+      "sourceNode": "Lightning Bluff:BG_106:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106326",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 6,
+      "sourceId": 106326,
+      "sourcePosition": [
+        355.17,
+        0,
+        -144.12
+      ],
+      "sourceNode": "Lightning Bluff:BG_106:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106327",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 7,
+      "sourceId": 106327,
+      "sourcePosition": [
+        240.87,
+        0,
+        -144.26
+      ],
+      "sourceNode": "Lightning Bluff:3:LightningBluffAntlion"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106328",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 8,
+      "sourceId": 106328,
+      "sourcePosition": [
+        363.28,
+        0,
+        -176.44
+      ],
+      "sourceNode": "Lightning Bluff:BG_105:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106329",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 9,
+      "sourceId": 106329,
+      "sourcePosition": [
+        260.32,
+        0,
+        -187.49
+      ],
+      "sourceNode": "Lightning Bluff:4:LightningBluffLightning"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106330",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 10,
+      "sourceId": 106330,
+      "sourcePosition": [
+        263.17,
+        0,
+        -168.65
+      ],
+      "sourceNode": "Lightning Bluff:4:LightningBluffLightning"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106331",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 11,
+      "sourceId": 106331,
+      "sourcePosition": [
+        328.21,
+        0,
+        -287.93
+      ],
+      "sourceNode": "Lightning Bluff:BG_104:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106332",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 12,
+      "sourceId": 106332,
+      "sourcePosition": [
+        255.35,
+        0,
+        -264.78
+      ],
+      "sourceNode": "Lightning Bluff:BG_104:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106333",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 13,
+      "sourceId": 106333,
+      "sourcePosition": [
+        304.26,
+        0,
+        -219.9
+      ],
+      "sourceNode": "Lightning Bluff:BG_104:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106334",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 14,
+      "sourceId": 106334,
+      "sourcePosition": [
+        311.68,
+        0,
+        -296.83
+      ],
+      "sourceNode": "Lightning Bluff:BG_104:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106335",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 15,
+      "sourceId": 106335,
+      "sourcePosition": [
+        272.86,
+        0,
+        -67.89
+      ],
+      "sourceNode": "Lightning Bluff:1:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106336",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 16,
+      "sourceId": 106336,
+      "sourcePosition": [
+        331.24,
+        0,
+        -191.11
+      ],
+      "sourceNode": "Lightning Bluff:BG_105:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106337",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 17,
+      "sourceId": 106337,
+      "sourcePosition": [
+        352.73,
+        0,
+        -148.29
+      ],
+      "sourceNode": "Lightning Bluff:BG_106:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oasis_cactus_id_106338",
+      "prefab": "oasis_cactus",
+      "sourceIndex": 18,
+      "sourceId": 106338,
+      "sourcePosition": [
+        299.96,
+        0,
+        -139.23
+      ],
+      "sourceNode": "Lightning Bluff:1:BGLightningBluff"
     },
     {
       "id": "dst_03741E1B78B29575_evergreen_id_112609",
@@ -65624,6 +66023,438 @@
         -308.427
       ],
       "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101546",
+      "prefab": "beefalo",
+      "sourceIndex": 1,
+      "sourceId": 101546,
+      "sourcePosition": [
+        420.037,
+        0,
+        -401.499
+      ],
+      "sourceNode": "MoonIsland_Beach:0:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101548",
+      "prefab": "beefalo",
+      "sourceIndex": 2,
+      "sourceId": 101548,
+      "sourcePosition": [
+        -455.97,
+        0,
+        492.65
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101550",
+      "prefab": "beefalo",
+      "sourceIndex": 3,
+      "sourceId": 101550,
+      "sourcePosition": [
+        -475.72,
+        0,
+        499.78
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101552",
+      "prefab": "beefalo",
+      "sourceIndex": 4,
+      "sourceId": 101552,
+      "sourcePosition": [
+        -483.25,
+        0,
+        519.19
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101554",
+      "prefab": "beefalo",
+      "sourceIndex": 5,
+      "sourceId": 101554,
+      "sourcePosition": [
+        -455.46,
+        0,
+        480.54
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101558",
+      "prefab": "beefalo",
+      "sourceIndex": 6,
+      "sourceId": 101558,
+      "sourcePosition": [
+        -463.64,
+        0,
+        495.93
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101560",
+      "prefab": "beefalo",
+      "sourceIndex": 7,
+      "sourceId": 101560,
+      "sourcePosition": [
+        -491.6,
+        0,
+        496.57
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101562",
+      "prefab": "beefalo",
+      "sourceIndex": 8,
+      "sourceId": 101562,
+      "sourcePosition": [
+        -304.175,
+        0,
+        -30.345
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101564",
+      "prefab": "beefalo",
+      "sourceIndex": 9,
+      "sourceId": 101564,
+      "sourcePosition": [
+        -298.998,
+        0,
+        -27.23
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101566",
+      "prefab": "beefalo",
+      "sourceIndex": 10,
+      "sourceId": 101566,
+      "sourcePosition": [
+        -280.404,
+        0,
+        -52.899
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101568",
+      "prefab": "beefalo",
+      "sourceIndex": 11,
+      "sourceId": 101568,
+      "sourcePosition": [
+        -283.543,
+        0,
+        -56.87
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101570",
+      "prefab": "beefalo",
+      "sourceIndex": 12,
+      "sourceId": 101570,
+      "sourcePosition": [
+        -283.13,
+        0,
+        -53.088
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101572",
+      "prefab": "beefalo",
+      "sourceIndex": 13,
+      "sourceId": 101572,
+      "sourcePosition": [
+        -281.04,
+        0,
+        -49.936
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101574",
+      "prefab": "beefalo",
+      "sourceIndex": 14,
+      "sourceId": 101574,
+      "sourcePosition": [
+        -278.271,
+        0,
+        -55.26
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101576",
+      "prefab": "beefalo",
+      "sourceIndex": 15,
+      "sourceId": 101576,
+      "sourcePosition": [
+        -275.828,
+        0,
+        -55.751
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101578",
+      "prefab": "beefalo",
+      "sourceIndex": 16,
+      "sourceId": 101578,
+      "sourcePosition": [
+        -285.422,
+        0,
+        -61.178
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101580",
+      "prefab": "beefalo",
+      "sourceIndex": 17,
+      "sourceId": 101580,
+      "sourcePosition": [
+        -279.191,
+        0,
+        -56.301
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101582",
+      "prefab": "beefalo",
+      "sourceIndex": 18,
+      "sourceId": 101582,
+      "sourcePosition": [
+        -282.189,
+        0,
+        -53.504
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101584",
+      "prefab": "beefalo",
+      "sourceIndex": 19,
+      "sourceId": 101584,
+      "sourcePosition": [
+        -286.847,
+        0,
+        -50.673
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101586",
+      "prefab": "beefalo",
+      "sourceIndex": 20,
+      "sourceId": 101586,
+      "sourcePosition": [
+        -279.101,
+        0,
+        -53.701
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101588",
+      "prefab": "beefalo",
+      "sourceIndex": 21,
+      "sourceId": 101588,
+      "sourcePosition": [
+        -164.124,
+        0,
+        -5.945
+      ],
+      "sourceNode": "Great Plains:3:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101590",
+      "prefab": "beefalo",
+      "sourceIndex": 22,
+      "sourceId": 101590,
+      "sourcePosition": [
+        -237.373,
+        0,
+        -1.22
+      ],
+      "sourceNode": "Great Plains:1:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101592",
+      "prefab": "beefalo",
+      "sourceIndex": 23,
+      "sourceId": 101592,
+      "sourcePosition": [
+        -242.13,
+        0,
+        -13.725
+      ],
+      "sourceNode": "Great Plains:1:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101594",
+      "prefab": "beefalo",
+      "sourceIndex": 24,
+      "sourceId": 101594,
+      "sourcePosition": [
+        -476.44,
+        0,
+        519.62
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101596",
+      "prefab": "beefalo",
+      "sourceIndex": 25,
+      "sourceId": 101596,
+      "sourcePosition": [
+        -479.49,
+        0,
+        471.28
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101598",
+      "prefab": "beefalo",
+      "sourceIndex": 26,
+      "sourceId": 101598,
+      "sourcePosition": [
+        -171.174,
+        0,
+        -1.084
+      ],
+      "sourceNode": "Great Plains:3:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101600",
+      "prefab": "beefalo",
+      "sourceIndex": 27,
+      "sourceId": 101600,
+      "sourcePosition": [
+        -277.659,
+        0,
+        -53.711
+      ],
+      "sourceNode": "Great Plains:0:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101602",
+      "prefab": "beefalo",
+      "sourceIndex": 28,
+      "sourceId": 101602,
+      "sourcePosition": [
+        426.079,
+        0,
+        -395.542
+      ],
+      "sourceNode": "MoonIsland_Beach:0:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101604",
+      "prefab": "beefalo",
+      "sourceIndex": 29,
+      "sourceId": 101604,
+      "sourcePosition": [
+        425.795,
+        0,
+        -400.189
+      ],
+      "sourceNode": "MoonIsland_Beach:0:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101606",
+      "prefab": "beefalo",
+      "sourceIndex": 30,
+      "sourceId": 101606,
+      "sourcePosition": [
+        428.396,
+        0,
+        -407.381
+      ],
+      "sourceNode": "MoonIsland_Beach:0:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101608",
+      "prefab": "beefalo",
+      "sourceIndex": 31,
+      "sourceId": 101608,
+      "sourcePosition": [
+        428.193,
+        0,
+        -396.954
+      ],
+      "sourceNode": "MoonIsland_Beach:0:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101610",
+      "prefab": "beefalo",
+      "sourceIndex": 32,
+      "sourceId": 101610,
+      "sourcePosition": [
+        426.31,
+        0,
+        -399.483
+      ],
+      "sourceNode": "MoonIsland_Beach:0:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_146734",
+      "prefab": "beefalo",
+      "sourceIndex": 33,
+      "sourceId": 146734,
+      "sourcePosition": [
+        426.238,
+        0,
+        -396.538
+      ],
+      "sourceNode": "MoonIsland_Beach:0:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_146736",
+      "prefab": "beefalo",
+      "sourceIndex": 34,
+      "sourceId": 146736,
+      "sourcePosition": [
+        421.906,
+        0,
+        -397.315
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_136458",
+      "prefab": "beefalo",
+      "sourceIndex": 35,
+      "sourceId": 136458,
+      "sourcePosition": [
+        428.472,
+        0,
+        -395.237
+      ],
+      "sourceNode": "MoonIsland_Beach:0:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beefalo_id_101556",
+      "prefab": "beefalo",
+      "sourceIndex": 36,
+      "sourceId": 101556,
+      "sourcePosition": [
+        -471.51,
+        0,
+        479.73
+      ],
+      "sourceNode": "For a nice walk:10:BeefalowPlain"
     },
     {
       "id": "dst_03741E1B78B29575_acorn_id_101207",

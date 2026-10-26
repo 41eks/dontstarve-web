@@ -29,6 +29,8 @@ export interface InventoryItemSpec {
   useStep?: number;
   /** Prefab-owned component initialization, applied to each inventory/world inst. */
   configureEntity?: (entity: import('./entity').ItemEntity) => void;
+  /** armor:InitCondition amount; bounds a saved armor condition. */
+  maxArmor?: number;
   /** Full fuel duration in seconds. Missing stack fuel means a fresh item. */
   maxFuel?: number;
   /** perishable:SetPerishTime in seconds. Missing stack freshness means a fresh item. */
@@ -62,6 +64,8 @@ export interface InventoryStack {
   temperature?: import('../../componets/src/temperature').TemperatureSaveData;
   highTemp?: number;
   lowTemp?: number;
+  /** armor.lua OnSave: present only while damaged. */
+  armor?: import('../../componets/src/armor').ArmorSaveData;
   /** Container belongs to this item, including when it is on the ground. */
   container?: ItemContainerState;
   /** Persistent inst identity; absent in old saves and detached UI projections. */

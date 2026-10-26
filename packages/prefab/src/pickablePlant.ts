@@ -1,7 +1,7 @@
 import { modelValues } from './modelRecords';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, WorldContentKey, type ReadonlySignal, type WorldContentSignal, type GetWatchWorldContent, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
 import { Witherable, type WitherableSave } from '../../componets/src/witherable';
 import { loadAnim, loadBuild, loadSpriteSkinArchive } from '@dontstarve-web/animation/animationAssets';
 import {
@@ -22,7 +22,11 @@ import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
-import { MakeSmallObstaclePhysics } from './standardcomponents';
+import { MakeObstaclePhysics, MakeSmallObstaclePhysics } from './standardcomponents';
+import { MiniMapEntity } from '../../componets/src/minimapentity';
+import type { PhysicsState } from '../../componets/src/physicsState';
+import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
+import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
 import { nextReskin } from './reskin_tool';
 import type { ReskinFxMessage, ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { watchTileActivity } from './tileActivity';
@@ -53,6 +57,10 @@ export interface PickablePlantWorld {
   getLocalTemperature?(position: THREE.Vector3): number;
   prepareSpawn(definition: GroundItemDefinition, fling?: boolean): Promise<PreparedGroundSpawn>;
   isOcean?(position: THREE.Vector3): boolean;
+  /** SpawnPrefab for an inventory item a behavior hands to its picker. */
+  spawnItem?(state: InventoryStack): ItemEntity;
+  /** inventoryitem:DoDropPhysics at the plant, for pickers without an inventory. */
+  dropItem?(entity: ItemEntity, position: THREE.Vector3): void;
 }
 
 export interface PickablePlantAppearanceContext<T extends PlantAnimation = PlantAnimation> {
@@ -72,7 +80,8 @@ export interface PickablePlantAppearance {
 /** Source prefab callbacks coordinating components, independently of presentation effects. */
 export interface PickablePlantBehavior {
   initialize(saved?: PickablePlantRecord): void;
-  picked(): void;
+  /** onpickedfn(inst, picker) */
+  picked(doer?: PickDoer): void;
   regen(): void;
   empty(): void;
   barren(): void;
@@ -85,6 +94,10 @@ export interface PickablePlantBehaviorContext extends PickablePlantAppearanceCon
   readonly scheduler: GameTimeScheduler;
   growthDuration(seconds: number): number;
   spawnLoot(prefab: string): void;
+  /** The plant's Physics, for Physics:SetActive. */
+  readonly physics: PhysicsState;
+  spawnItem?(state: InventoryStack): ItemEntity;
+  dropItem?(entity: ItemEntity, position: THREE.Vector3): void;
   /** Local bridges to world content, for behaviors watching phases or weather; each cleanup is the behavior's to run. */
   readonly getWatchWorldContent?: GetWatchWorldContent;
   readonly rain?: ReadonlySignal<'none' | 'rain' | 'snow'>;
@@ -141,6 +154,10 @@ export interface PickablePlantDefinition {
   readonly dugSkins?: readonly string[];
   readonly snowCovered?: boolean;
   readonly physicsRadius?: number;
+  /** MakeObstaclePhysics rather than MakeSmallObstaclePhysics for `physicsRadius`. */
+  readonly obstaclePhysics?: boolean;
+  /** MiniMapEntity:SetIcon. */
+  readonly minimapIcon?: string;
   readonly propagatorSize?: 'small' | 'medium';
 }
 
@@ -177,6 +194,7 @@ interface Plant {
   witherable?: Witherable;
   variant?: string;
   behavior?: PickablePlantBehavior;
+  minimap?: MiniMapEntity;
 }
 
 /**
@@ -241,7 +259,7 @@ export class PickablePlantManager {
     if (definition.snowCovered && definition.archiveSprite && !this.snowLevel && this.getWatchWorldContent) {
       const snowLevel = this.snowLevel = this.getWatchWorldContent(WorldContentKey.SnowLevel, stop => this.cleanups.push(stop));
       const covered = createMemo(() => snowLevel.get() >= .015);
-      createEffect(() => {
+      createRenderEffect(() => {
         const hidden = !covered.get();
         for (const plant of this.plants.values()) if (plant.definition.snowCovered && plant.definition.archiveSprite) {
           if (hidden) plant.instance.sprite.hideLayer('snow'); else plant.instance.sprite.showLayer('snow');
@@ -357,11 +375,11 @@ export class PickablePlantManager {
           },
         };
         const appearance = definition.createAppearance?.(animationContext);
-        const pickable: Pickable = new Pickable(model, definition.product, definition.regrowTime, definition.numToHarvest ?? 1, () => {
+        const pickable: Pickable = new Pickable(model, definition.product, definition.regrowTime, definition.numToHarvest ?? 1, doer => {
           plant.sound?.stop();
           if (definition.picked.sound) plant.sound = PlaySound(definition.picked.sound, model.position);
           if (definition.removeWhenPicked) return;
-          if (plant.behavior) { plant.behavior.picked(); return; }
+          if (plant.behavior) { plant.behavior.picked(doer); return; }
           if (appearance) { appearance.picked(pickable); return; }
           const [first, last] = definition.picked.clips;
           if (first === undefined) return;
@@ -459,6 +477,7 @@ export class PickablePlantManager {
           scheduler: this.scheduler,
           growthDuration: seconds => this.season?.peek().season === 'spring' ? seconds * .75 : seconds,
           spawnLoot: prefab => { lootdropper.SpawnLootPrefab(prefab); },
+          physics: instance.physics, spawnItem: this.world.spawnItem, dropItem: this.world.dropItem,
           getWatchWorldContent: this.getWatchWorldContent, rain: this.world.rain,
         });
         if (definition.witherable) {
@@ -490,14 +509,18 @@ export class PickablePlantManager {
         this.plants.set(model, plant);
         this.track(plant);
         // Layers and snow are prefab state: dress every drawn sprite again from the plant's own components.
-        if (appearance && residentController) plant.stopArt = createEffect(() => { residentController.art.get(); appearance.restore(pickable); });
+        if (appearance && residentController) plant.stopArt = createRenderEffect(() => { residentController.art.get(); appearance.restore(pickable); });
         plant.stopActivity = watchTileActivity(model, this.world.tickingarea, active => {
           instance.setActive(active);
           plant.awake = active;
           this.track(plant);
         });
+        if (definition.minimapIcon) {
+          plant.minimap = new MiniMapEntity(model.position);
+          plant.minimap.SetIcon(definition.minimapIcon);
+        }
         if (definition.physicsRadius !== undefined) {
-          MakeSmallObstaclePhysics(instance, definition.physicsRadius);
+          (definition.obstaclePhysics ? MakeObstaclePhysics : MakeSmallObstaclePhysics)(instance, definition.physicsRadius);
           if (this.world.physics) instance.bindPhysics(this.world.physics);
         }
         plant.behavior?.initialize(saved);
@@ -537,6 +560,8 @@ export class PickablePlantManager {
       }
     }
   }
+
+  get miniMapEntities(): MiniMapEntity[] { return [...this.plants.values()].flatMap(({ minimap }) => minimap ? [minimap] : []); }
 
   /** A sleeping plant draws nothing, so it has no order to resolve. */
   get renderEntities() {
@@ -662,6 +687,7 @@ export class PickablePlantManager {
     plant.burnable.dispose(); plant.propagator.dispose(); plant.workable.dispose();
     plant.witherable?.dispose();
     plant.behavior?.dispose();
+    plant.minimap?.dispose();
     plant.pickable.dispose(); plant.phase.dispose();
     plant.stopBurning();
     plant.fireSound?.stop(); plant.extinguishSound?.stop();

@@ -67,20 +67,22 @@ it('binds a moving character: frictionless damped sphere, ghost and toggled mask
   expect(body.velocity.x).toBe(10);
 });
 
-it('makes the player an entity whose instance owns its tags and collider, while the scene keeps the body binding', async () => {
+it('makes the player instance own its tags, collider and permanent removal', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const world = new CANNON.World();
-  const { model, physics, physicsBinding, body } = await createWilsonPlayerPrefab('/dst/data/anim', world);
+  const { model, physics, instance: playerInstance, body } = await createWilsonPlayerPrefab('/dst/data/anim', world);
   const instance = prefabInstance(model)!;
   expect(instance.prefab).toBe('wortox');
   expect(instance.hasTag('player')).toBe(true);
   expect(prefabInstance(model)!.listTags()).toContain('player');
   // player_common.lua MakeCharacterPhysics(inst, 75, .5) is the instance's collider.
   expect(physics).toBe(instance.physics);
+  expect(playerInstance).toBe(instance);
+  expect(instance.physicsBody).toBe(body);
   expect(instance.getPhysicsRadius(0)).toBe(PLAYER_PHYSICS_RADIUS * WORLD_SCALE);
   expect(world.bodies).toContain(body);
-  // Scene teardown releases the body before its world; the player entity and its model stay.
-  physicsBinding.dispose();
+  instance.remove();
   expect(world.bodies).not.toContain(body);
-  expect(instance.status.peek()).toBe('active');
+  expect(instance.status.peek()).toBe('removed');
+  expect(instance.physicsBody).toBeUndefined();
 });

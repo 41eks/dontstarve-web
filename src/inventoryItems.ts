@@ -23,7 +23,7 @@ import { configurePanfluteEntity, PANFLUTE_ID, PANFLUTE_USES } from '@dontstarve
 import { configureEquipmentEntity, getHandEquipmentDefinition } from '@dontstarve-web/prefab/handEquipment';
 import { configureBirdEntity, isBirdId } from '@dontstarve-web/prefab/birds';
 import { configureBackpackEntity } from '@dontstarve-web/prefab/backpack';
-import { ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from '@dontstarve-web/prefab/armorsnurtleshell';
+import { ARMORSNURTLESHELL, ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { AMULET_ID, REDAMULET_USES, configureAmuletEntity } from '@dontstarve-web/prefab/amulet';
 import { configureIceEntity, ICE_ID } from '@dontstarve-web/prefab/ice';
 import { PERISHABLE_FOODS } from '@dontstarve-web/prefab/food';
@@ -78,6 +78,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...(getHandEquipmentDefinition(itemId)?.definition.useStep === undefined ? {}
         : { useStep: getHandEquipmentDefinition(itemId)!.definition.useStep }),
       ...(itemId === 'backpack' ? { canGoInContainer: false } : {}),
+      ...(itemId === ARMORSNURTLESHELL_ID ? { maxArmor: ARMORSNURTLESHELL } : {}),
       ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME } : {}),
       ...(itemId === 'lightflier' ? { perishTime: LIGHTFLIER_PERISH_TIME } : {}),
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),

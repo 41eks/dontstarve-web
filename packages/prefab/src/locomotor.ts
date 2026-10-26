@@ -14,7 +14,82 @@ interface PathNode {
     z: number;
     cost: number;
     score: number;
+    order: number;
     parent?: PathNode;
+}
+
+const OBSTACLE_CELL = 4;
+const obstacleCell = (x: number, z: number) => Math.floor(x / OBSTACLE_CELL) * 0x10000 + Math.floor(z / OBSTACLE_CELL);
+
+// A point check or a short clear segment scans the boxes; a path search buckets them after this many tests.
+const LINEAR_TESTS = 16;
+
+/**
+ * Whether an XZ point lies within `margin` of a static collider. Cached AABBs are reused: Cannon and the
+ * physics binding flag `aabbNeedsUpdate` whenever a body moves or changes shape.
+ */
+export function staticObstacleTest(bodies: Iterable<CANNON.Body>, margin: number): (point: THREE.Vector3) => boolean {
+    const boxes: CANNON.AABB[] = [];
+    for (const body of bodies) {
+        if (body.type !== CANNON.Body.STATIC || !body.collisionResponse
+            || !body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere)) continue;
+        if (body.aabbNeedsUpdate) body.updateAABB();
+        boxes.push(body.aabb);
+    }
+    const inside = (box: CANNON.AABB, point: THREE.Vector3) =>
+        point.x >= box.lowerBound.x - margin && point.x <= box.upperBound.x + margin
+        && point.z >= box.lowerBound.z - margin && point.z <= box.upperBound.z + margin;
+    let tests = 0;
+    let cells: Map<number, CANNON.AABB[]> | undefined;
+    const bucket = () => {
+        const result = new Map<number, CANNON.AABB[]>();
+        for (const box of boxes) {
+            const x0 = Math.floor((box.lowerBound.x - margin) / OBSTACLE_CELL), x1 = Math.floor((box.upperBound.x + margin) / OBSTACLE_CELL);
+            const z0 = Math.floor((box.lowerBound.z - margin) / OBSTACLE_CELL), z1 = Math.floor((box.upperBound.z + margin) / OBSTACLE_CELL);
+            for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+                const key = x * 0x10000 + z;
+                const cell = result.get(key);
+                if (cell) cell.push(box); else result.set(key, [box]);
+            }
+        }
+        return result;
+    };
+    return (point) => {
+        if (!cells && ++tests <= LINEAR_TESTS) return boxes.some((box) => inside(box, point));
+        cells ??= bucket();
+        return cells.get(obstacleCell(point.x, point.z))?.some((box) => inside(box, point)) ?? false;
+    };
+}
+
+/** Open-set order: lowest score first, earlier insertion among equal scores. */
+const before = (a: PathNode, b: PathNode) => a.score < b.score || (a.score === b.score && a.order < b.order);
+
+function pushNode(heap: PathNode[], node: PathNode): void {
+    let index = heap.push(node) - 1;
+    while (index > 0) {
+        const parent = (index - 1) >> 1;
+        if (!before(heap[index], heap[parent])) break;
+        [heap[index], heap[parent]] = [heap[parent], heap[index]];
+        index = parent;
+    }
+}
+
+function popNode(heap: PathNode[]): PathNode {
+    const top = heap[0];
+    const last = heap.pop()!;
+    if (heap.length > 0) {
+        heap[0] = last;
+        for (let index = 0; ;) {
+            const left = index * 2 + 1, right = left + 1;
+            let next = index;
+            if (left < heap.length && before(heap[left], heap[next])) next = left;
+            if (right < heap.length && before(heap[right], heap[next])) next = right;
+            if (next === index) break;
+            [heap[index], heap[next]] = [heap[next], heap[index]];
+            index = next;
+        }
+    }
+    return top;
 }
 
 /** Searches the XZ plane; the host supplies map boundaries and physical obstacles. */
@@ -40,14 +115,15 @@ export function findGroundPath(
 
     const point = (node: PathNode) => new THREE.Vector3(start.x + node.x * cellSize, target.y, start.z + node.z * cellSize);
     const heuristic = (x: number, z: number) => Math.hypot(start.x + x * cellSize - target.x, start.z + z * cellSize - target.z);
-    const open: PathNode[] = [{ x: 0, z: 0, cost: 0, score: heuristic(0, 0) }];
-    const costs = new Map<string, number>([['0,0', 0]]);
+    // Grid offsets stay within ±maxVisited of the start, far inside the key's 2^20 stride.
+    const nodeKey = (x: number, z: number) => x * 0x100000 + z;
+    let order = 0;
+    const open: PathNode[] = [{ x: 0, z: 0, cost: 0, score: heuristic(0, 0), order: order++ }];
+    const costs = new Map<number, number>([[nodeKey(0, 0), 0]]);
     let visited = 0;
     while (open.length > 0 && visited < maxVisited) {
-        let best = 0;
-        for (let i = 1; i < open.length; i++) if (open[i].score < open[best].score) best = i;
-        const current = open.splice(best, 1)[0];
-        if (current.cost !== costs.get(`${current.x},${current.z}`)) continue;
+        const current = popNode(open);
+        if (current.cost !== costs.get(nodeKey(current.x, current.z))) continue;
         visited += 1;
         const currentPoint = point(current);
         if (heuristic(current.x, current.z) <= cellSize * 1.5 && clearSegment(currentPoint, target)) {
@@ -61,9 +137,9 @@ export function findGroundPath(
                 const x = current.x + dx;
                 const z = current.z + dz;
                 const cost = current.cost + Math.hypot(dx, dz) * cellSize;
-                const key = `${x},${z}`;
+                const key = nodeKey(x, z);
                 if (cost >= (costs.get(key) ?? Infinity)) continue;
-                const next = { x, z, cost, score: cost + heuristic(x, z), parent: current };
+                const next = { x, z, cost, score: cost + heuristic(x, z), order: order++, parent: current };
                 const nextPoint = point(next);
                 if (!isWalkable(nextPoint) || !clearSegment(currentPoint, nextPoint)) continue;
                 // Do not cut diagonally through blocked corners.
@@ -71,7 +147,7 @@ export function findGroundPath(
                     !isWalkable(point({ ...current, x })) || !isWalkable(point({ ...current, z }))
                 )) continue;
                 costs.set(key, cost);
-                open.push(next);
+                pushNode(open, next);
             }
         }
     }

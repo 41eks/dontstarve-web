@@ -2,6 +2,9 @@ import type * as THREE from 'three';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
+import type { AnimStateJson } from '@dontstarve-web/animation/animState';
+import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
+import type { SpriteArtSource, SpriteTint, CompositeSpriteFrame } from '@dontstarve-web/animation/sprite';
 
 type SymbolOverrides = Parameters<import('@dontstarve-web/animation/sprite').SpriteController['setSymbolOverrides']>[0];
 type SymbolOverride = Parameters<import('@dontstarve-web/animation/sprite').SpriteController['overrideSymbol']>[1];
@@ -33,6 +36,12 @@ export interface DisplayEngine {
   playTransient(name: string): void;
   setFrame(frame: number): void;
   setPaused?(paused: boolean): void;
+  setArtSource?(source: SpriteArtSource): void;
+  setAnimState?(state: AnimStateJson): void;
+  setTint?(tint: SpriteTint): void;
+  setComposites?(frames: readonly CompositeSpriteFrame[]): void;
+  getResolvedFrame?(): readonly ResolvedSprite[];
+  getSymbolPosition?(symbol: string, x: number, y: number, target: THREE.Vector3): boolean;
   /** AnimState:SetAnimation-like change of the current clip's name, keeping whether it loops. */
   setAnimation?(name: string): void;
   showImage(image: number): void;

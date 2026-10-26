@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import { createWilsonPlayerPrefab, type WilsonAnimationController } from '../../prefab/src/player';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from '../../prefab/src/emotes';
 import { Locomotor } from '../../prefab/src/locomotor';
@@ -11,7 +12,7 @@ import { bindActionCancellation, type PlayerActionEvents } from '../../stategrap
 
 export async function createEmoteFixture() {
   const { emoteWheel } = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
-  const { model, body } = await createWilsonPlayerPrefab('/dst/data/anim');
+  const { model, body } = await createWilsonPlayerPrefab('/dst/data/anim', new CANNON.World());
   model.position.set(0, 0, 0);
   body.position.set(0, 4.5, 0);
   body.canJump = true;
@@ -60,7 +61,7 @@ export async function createEmoteFixture() {
           for (const mirrored of [false, true]) {
             animation.setFacing(facing, mirrored);
             if (!await animation.playEmote(id)) failures.push(`start:${id}`);
-            const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+            const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
             const before = [...mesh.geometry.getAttribute('position').array];
             for (let f = 0; f < 8; f++) animation.update(1 / 30);
             const after = [...mesh.geometry.getAttribute('position').array];
@@ -81,7 +82,7 @@ export async function createEmoteFixture() {
       await animation.setHat('strawhat');
       await animation.setCarryItem('torch');
       await animation.playEmote('wave');
-      const mesh = model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+      const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
       const equipmentMaterials = mesh.material.map((material) => material.name);
       const withTorch = [...mesh.material];
       await animation.setCarryItem(null);

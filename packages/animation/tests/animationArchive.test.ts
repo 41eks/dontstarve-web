@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { unzipSync, zipSync } from 'fflate';
 import { afterEach, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
+import { createSpriteFactory } from '../src/sprite';
 import { createMaterials, loadAnim, loadBuild, loadAnimationArchive, loadSpriteSkinArchive, findImage, smallHash } from '../src/animationAssets';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -68,4 +70,24 @@ it('keeps absent birch leaf slots invisible instead of repeating the first three
   const [first] = build.symbols.get(hash)!;
   expect(findImage(build, hash, first.index)).toBe(first);
   expect(findImage(build, hash, first.index + first.duration - 1)).toBe(first);
+});
+
+it('keeps the base bank clip when a skin archive ships a stub anim.bin', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const [{ buildPackage, animations }, skin] = await Promise.all([
+    loadAnimationArchive('hat_dreadstone.zip', '/dst/data/anim'),
+    loadSpriteSkinArchive('dynamic/hat_dreadstone_horn.zip', '/dst/data/anim'),
+  ]);
+  const hash = smallHash('swap_hat');
+  // hats.lua plays dreadstonehat/anim, whose swap_hat element is the ground pose 3; the skin's own stub points at 1.
+  expect(animations.animations[0].frames[0].elements[0].imageIndex).toBe(3);
+  expect(skin.animations!.animations[0].frames[0].elements[0].imageIndex).toBe(1);
+  const factory = createSpriteFactory(buildPackage, animations, undefined, skin);
+  const sprite = factory.create({ initialAnimation: 'anim' });
+  const mesh = sprite.getObjectByProperty('isMesh', true) as THREE.Mesh;
+  const box = new THREE.Box3().setFromBufferAttribute(mesh.geometry.getAttribute('position') as THREE.BufferAttribute);
+  const aspect = (image: number) => findImage(skin.buildPackage.build, hash, image)!.width / findImage(skin.buildPackage.build, hash, image)!.height;
+  expect((box.max.x - box.min.x) / (box.max.y - box.min.y)).toBeCloseTo(aspect(3), 2);
+  expect(aspect(3)).not.toBeCloseTo(aspect(1), 1);
+  factory.dispose();
 });

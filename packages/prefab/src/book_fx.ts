@@ -1,85 +1,125 @@
-import * as THREE from 'three';
-import { findImage, smallHash, type AnimElement, type Animation, type Matrix2D, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
-import type { ArchiveSpriteBuild } from '@dontstarve-web/animation/archiveSprite';
+import type * as THREE from 'three';
+import { loadAnimationArchive, smallHash, type ParsedAnim } from '@dontstarve-web/animation/animationAssets';
+import { createSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { WilsonFx } from '@dontstarve-web/stategraphs';
-import type { GroundItemAssets } from './groundItems';
+import { createSignal } from '@dontstarve-web/signals';
+import { ComponentTimer } from '../../componets/src/timer';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
 import { PlaySound, PreloadSounds } from './sound';
 
-/** book_fx.lua MakeBookFX("book_fx") and books.lua MakeFX("fx_roots_under_book"). */
+/** book_fx.lua MakeBookFX and books.lua MakeFX, plus brokentool.lua's non-networked visual. */
 const FX_PREFABS = {
   book_fx: { archive: 'book_fx_wicker.zip', bank: 'book_fx_wicker', anim: 'book_fx_wicker',
-    failanim: 'book_fx_fail_wicker', multColour: [1, 1, 1, .4] as const },
+    failanim: 'book_fx_fail_wicker', opacity: .4 },
   fx_roots_under_book: { archive: 'fx_books.zip', bank: 'fx_books', anim: 'roots' },
-  // brokentool.lua: spawned at the player's position and left in the world until animover.
   brokentool: { archive: 'broken_tool.zip', bank: 'broketool', anim: 'used', ground: true },
 } as const;
 export type BookFxPrefab = keyof typeof FX_PREFABS;
 const BOOK_FX_FAIL_SOUND = 'wickerbottom_rework/book_spells/fail';
+const ACTIVE = createSignal(true);
 
-interface FxAssets { animations: readonly Animation[]; build: ArchiveSpriteBuild }
+interface FxAssets {
+  readonly animations: ParsedAnim;
+  readonly factory: ReturnType<typeof createSpriteFactory>;
+  users: number;
+  retired: boolean;
+}
 
 class FxInst implements WilsonFx {
-  animation: Animation;
-  elapsed = 0;
-  removed = false;
-  /** Ground point and mirroring retained after SetParent(nil). */
-  detachedAt?: { position: THREE.Vector3; mirrored: boolean };
+  readonly instance: PrefabInstance;
   readonly prefab: BookFxPrefab;
-  readonly assets: FxAssets;
-  readonly followHash?: number;
   private readonly owner: BookFxController;
+  private readonly assets: FxAssets;
+  private readonly symbol?: string;
+  private readonly timer: ComponentTimer;
+  get animationTimer(): ComponentTimer['snapshot'] { return this.timer.snapshot; }
+  private detached?: { position: THREE.Vector3; mirrored: boolean };
+  private readonly key: string;
 
-  constructor(owner: BookFxController, prefab: BookFxPrefab, assets: FxAssets, followSymbol?: string) {
-    this.owner = owner; this.prefab = prefab; this.assets = assets;
-    this.followHash = followSymbol === undefined ? undefined : smallHash(followSymbol);
-    this.animation = this.find(FX_PREFABS[prefab].anim);
+  constructor(owner: BookFxController, prefab: BookFxPrefab, assets: FxAssets, symbol?: string) {
+    this.owner = owner; this.prefab = prefab; this.assets = assets; this.symbol = symbol;
+    this.key = `book-fx:${owner.nextId++}`;
+    const definition = FX_PREFABS[prefab];
+    const { instance, display } = createPrefabEntity(prefab, {
+      create: name => assets.factory.create({ initialAnimation: name }),
+      release: sprite => assets.factory.disposeSprite(sprite),
+    }, { name: definition.anim }, prefab, instance => {
+      instance.addTag('FX');
+      instance.persists = false;
+      instance.sprite.setArtSource({ animations: assets.animations, bank: smallHash(definition.bank), build: assets.factory.build });
+      instance.sprite.setFacing(owner.instance.sprite.sprite.peek().facing ?? 8);
+      if ('opacity' in definition) instance.sprite.setOpacity(definition.opacity);
+    }, owner.instance.status);
+    this.instance = instance;
+    assets.users++;
+    display.onDispose(() => { if (--assets.users === 0 && assets.retired) assets.factory.dispose(); });
+    this.timer = new ComponentTimer(owner.scheduler, () => this.remove());
+    instance.onRemove(() => {
+      if (this.timer.snapshot.peek().status !== 'expired') this.timer.stop();
+      owner.instance.sprite.detachFx(this.key);
+      owner.forget(this);
+    });
+    if ('ground' in definition) this.detached = owner.groundPoint();
+    this.declare(display);
+    this.play(definition.anim);
   }
 
-  find(name: string): Animation {
-    const bank = smallHash(FX_PREFABS[this.prefab].bank);
-    const animation = this.assets.animations.find(clip => clip.name === name && clip.bankHash === bank);
-    if (!animation) throw new Error(`Missing FX animation ${FX_PREFABS[this.prefab].bank}:${name}`);
-    return animation;
+  private declare(display: import('@dontstarve-web/display').PrefabDisplay): void {
+    this.owner.instance.sprite.attachFx(this.key, { sprite: this.instance.sprite, display, active: ACTIVE, sortLayer: 2,
+      composite: { symbol: this.symbol, detached: this.detached } });
   }
 
-  isValid(): boolean { return !this.removed; }
-  remove(): void { this.removed = true; }
+  private play(name: string): void {
+    const clip = this.assets.animations.animations.find(clip => clip.name === name && clip.bankHash === smallHash(FX_PREFABS[this.prefab].bank));
+    if (!clip) throw new Error(`Missing FX animation ${FX_PREFABS[this.prefab].bank}:${name}`);
+    this.instance.sprite.playOnce(name);
+    this.timer.start(clip.frames.length / clip.frameRate);
+  }
+
+  isValid(): boolean { return this.instance.status.peek() !== 'removed'; }
+  remove(): void { this.instance.remove(); }
   detach(): void {
-    if (this.removed || this.detachedAt) return;
-    this.detachedAt = this.owner.ownerGroundPoint();
+    if (!this.isValid() || this.detached) return;
+    this.detached = this.owner.groundPoint();
+    const fx = this.owner.instance.sprite.fx.peek().get(this.key)!;
+    this.owner.instance.sprite.attachFx(this.key, { ...fx, composite: { symbol: this.symbol, detached: this.detached } });
   }
   pushEvent(name: 'fail_fx'): void {
     const definition = FX_PREFABS[this.prefab];
-    if (name !== 'fail_fx' || this.removed || !('failanim' in definition)) return;
-    this.animation = this.find(definition.failanim);
-    this.elapsed = 0;
+    if (name !== 'fail_fx' || !this.isValid() || !('failanim' in definition)) return;
+    this.play(definition.failanim);
     PlaySound(BOOK_FX_FAIL_SOUND);
   }
 }
 
-/** Reader-owned FX insts: parented to the player, following symbols, or left at their detach point. */
+/** Logical FX entities. Their timers own removal; the owner's display merges their declared frames. */
 export class BookFxController {
-  private readonly assets: GroundItemAssets;
-  private readonly visual: THREE.Group;
+  readonly instance: PrefabInstance;
+  readonly scheduler: GameTimeScheduler;
+  private readonly assetBaseUrl: string;
   private readonly loaded = new Map<BookFxPrefab, FxAssets>();
   private readonly requests = new Map<BookFxPrefab, Promise<void>>();
-  private fx: FxInst[] = [];
-  private readonly point = new THREE.Vector3();
+  private readonly fx = new Set<FxInst>();
+  private disposed = false;
+  nextId = 0;
 
-  constructor(assets: GroundItemAssets, visual: THREE.Group) { this.assets = assets; this.visual = visual; }
-
-  get isAnimating(): boolean { return this.fx.length > 0; }
+  constructor(instance: PrefabInstance, scheduler: GameTimeScheduler, assetBaseUrl: string) {
+    this.instance = instance; this.scheduler = scheduler; this.assetBaseUrl = assetBaseUrl;
+  }
 
   prepare(...prefabs: BookFxPrefab[]): Promise<void> {
     return Promise.all(prefabs.map(prefab => {
       let request = this.requests.get(prefab);
       if (!request) {
-        const definition = FX_PREFABS[prefab];
         request = Promise.all([
-          this.assets.loadAnimation(definition.archive),
-          this.assets.loadBuild(definition.archive, 'multColour' in definition ? { multColour: definition.multColour } : {}),
+          loadAnimationArchive(FX_PREFABS[prefab].archive, this.assetBaseUrl),
           prefab === 'book_fx' ? PreloadSounds(BOOK_FX_FAIL_SOUND) : undefined,
-        ]).then(([anim, build]) => { this.loaded.set(prefab, { animations: anim.animations, build }); });
+        ]).then(([{ animations, buildPackage }]) => {
+          const factory = createSpriteFactory(buildPackage, animations);
+          if (this.disposed) { factory.dispose(); return; }
+          this.loaded.set(prefab, { animations, factory, users: 0, retired: false });
+        });
         this.requests.set(prefab, request);
         void request.catch(() => this.requests.delete(prefab));
       }
@@ -87,64 +127,22 @@ export class BookFxController {
     })).then(() => undefined);
   }
 
-  isPrepared(prefab: string): prefab is BookFxPrefab {
-    return Object.hasOwn(FX_PREFABS, prefab) && this.loaded.has(prefab as BookFxPrefab);
-  }
-
   spawn(prefab: string, followSymbol?: string): WilsonFx {
-    if (!this.isPrepared(prefab)) throw new Error(`FX prefab ${prefab} has not been prepared`);
-    const fx = new FxInst(this, prefab, this.loaded.get(prefab)!, followSymbol);
-    this.fx.push(fx);
-    if ('ground' in FX_PREFABS[fx.prefab]) fx.detach();
+    if (this.disposed || !Object.hasOwn(FX_PREFABS, prefab) || !this.loaded.has(prefab as BookFxPrefab)) throw new Error(`FX prefab ${prefab} has not been prepared`);
+    const fx = new FxInst(this, prefab as BookFxPrefab, this.loaded.get(prefab as BookFxPrefab)!, followSymbol);
+    this.fx.add(fx);
     return fx;
   }
 
-  ownerGroundPoint(): { position: THREE.Vector3; mirrored: boolean } {
-    return { position: this.visual.parent!.getWorldPosition(new THREE.Vector3()), mirrored: this.visual.scale.x < 0 };
+  groundPoint(): { position: THREE.Vector3; mirrored: boolean } {
+    return { position: this.instance.position.clone(), mirrored: this.instance.sprite.sprite.peek().mirrored === true };
   }
-
-  /** Both FX prefabs remove themselves on animover; their anims are padded for that. */
-  update(dt: number): void {
-    for (const fx of this.fx) {
-      fx.elapsed += dt;
-      if (fx.elapsed * fx.animation.frameRate + 1e-8 >= fx.animation.frames.length) fx.remove();
-    }
-    this.fx = this.fx.filter(fx => fx.isValid());
+  forget(fx: FxInst): void { this.fx.delete(fx); }
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const fx of this.fx) fx.remove();
+    for (const assets of this.loaded.values()) { assets.retired = true; if (assets.users === 0) assets.factory.dispose(); }
+    this.loaded.clear();
   }
-
-  /** Followers replace their anchor element in layer order; parented FX draw after the body (SetFinalOffset(3)). */
-  resolve(frame: readonly AnimElement[]): { followers: Map<AnimElement, ResolvedSprite[]>; front: ResolvedSprite[] } {
-    const followers = new Map<AnimElement, ResolvedSprite[]>();
-    const front: ResolvedSprite[] = [];
-    if (this.fx.length) this.visual.updateWorldMatrix(true, false);
-    for (const fx of this.fx) {
-      let anchor: Matrix2D = [1, 0, 0, 1, 0, 0];
-      let target = front;
-      if (fx.followHash !== undefined) {
-        const element = frame.find(({ imageHash }) => imageHash === fx.followHash);
-        if (!element) continue;
-        anchor = element.matrix;
-        target = followers.get(element) ?? [];
-        followers.set(element, target);
-      } else if (fx.detachedAt) {
-        this.visual.worldToLocal(this.point.copy(fx.detachedAt.position));
-        anchor = [fx.detachedAt.mirrored === this.visual.scale.x < 0 ? 1 : -1, 0, 0, 1, this.point.x, this.point.y];
-      }
-      const frames = fx.animation.frames;
-      const index = Math.min(frames.length - 1, Math.floor((fx.elapsed + 1e-8) * fx.animation.frameRate));
-      for (const element of [...frames[index].elements].sort((a, b) => b.z - a.z)) {
-        const image = findImage(fx.assets.build.build, element.imageHash, element.imageIndex);
-        if (image) target.push({ element: { ...element, matrix: compose(anchor, element.matrix) }, image, materials: fx.assets.build.materials });
-      }
-    }
-    return { followers, front };
-  }
-
-  dispose(): void { for (const fx of this.fx) fx.remove(); this.fx = []; }
-}
-
-function compose(parent: Matrix2D, child: Matrix2D): Matrix2D {
-  const [a, b, c, d, tx, ty] = parent;
-  const [e, f, g, h, ux, uy] = child;
-  return [a * e + c * f, b * e + d * f, a * g + c * h, b * g + d * h, a * ux + c * uy + tx, b * ux + d * uy + ty];
 }

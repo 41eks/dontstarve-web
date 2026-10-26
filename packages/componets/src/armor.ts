@@ -21,6 +21,7 @@ export class Armor {
   readonly percent: Memo<number>;
   absorb_percent?: number;
   onfinished?: (inst: ArmorInst) => void;
+  ontakedamage?: (inst: ArmorInst, amount: number) => void;
   keeponfinished = false;
   private readonly inst: ArmorInst;
   private readonly stopPercentChanged: () => void;
@@ -60,6 +61,7 @@ export class Armor {
   }
   TakeDamage(amount: number): void {
     this.SetCondition(this.conditionState.peek() - amount);
+    this.ontakedamage?.(this.inst, amount);
     this.inst.PushEvent('armordamaged', amount);
   }
   Repair(amount: number): void { this.SetCondition(this.conditionState.peek() + amount); }

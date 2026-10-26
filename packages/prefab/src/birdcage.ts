@@ -3,7 +3,7 @@ import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { birdcage_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { loadBuildOverride, type LoadedBuildOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
-import { batch, createEffect, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type Signal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
+import { batch, createRenderEffect, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type Signal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldPhase } from '@dontstarve-web/signals';
 import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf, type ShelfHolder, type ShelfTaker } from '../../componets/src/shelf';
@@ -188,7 +188,7 @@ export class Birdcage {
         const entity = this.entity = actionEntity(context.model, BIRDCAGE_ID);
         // birdcage.lua SetBirdType: AnimState:AddOverrideBuild for the bird shown, re-dressed on every rebuilt sprite.
         let activeBuild: string | undefined;
-        this.stopBuild = createEffect(() => {
+        this.stopBuild = createRenderEffect(() => {
             context.art?.get();
             const type = this.shownBird.get(), resources = this.resourcesState.get();
             if (activeBuild !== undefined) this.controller.clearOverrideBuild(activeBuild);

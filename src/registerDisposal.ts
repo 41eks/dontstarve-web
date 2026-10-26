@@ -389,8 +389,14 @@ export function createDisposalResources({ gameUi, view, inventory, playerAnimati
               playerStats.health.set(playerStats.health.peek() + delta);
               return delta;
             },
-          }, sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) } },
+          }, sanity: { doDelta: delta => playerStats.sanity.set(playerStats.sanity.peek() + delta) }, inventory },
         };
+        // inst:PushEvent reaches the stategraph's EventHandlers.
+        for (const name of ['attacked', 'blocked'] as const) {
+          const forward = (event: { data?: unknown }) => playerAnimation.stategraph.pushEvent(name, event.data);
+          player.addEventListener(name as never, forward);
+          actionControllers.push({ dispose: () => player.removeEventListener(name as never, forward) });
+        }
         const combat = new Combat(attackerInst, () => scheduler.now,
           () => equippedActionEntity(handEquipment.peek())?.components.weapon);
         combat.SetDefaultDamage(10);

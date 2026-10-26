@@ -7,7 +7,7 @@ import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './p
 import { watchTileActivity } from './tileActivity';
 import { facingFromRotation } from '@dontstarve-web/animation/facing';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { createEffect, createSignal, readonlySignal, watchSignal, getBoundWatchWorldContent, type Signal } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, createSignal, readonlySignal, watchSignal, getBoundWatchWorldContent, type Signal } from '@dontstarve-web/signals';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
@@ -160,7 +160,7 @@ export class FencePlacement {
         this.cursor = new BuildCursor(world, this.pointer);
         this.heading = watchSignal(world.cameraHeading, stop => this.cleanups.push(stop));
         // A moving camera re-faces every fence; the preview additionally rotates against it.
-        createEffect(() => {
+        createRenderEffect(() => {
             const heading = this.heading.get();
             if (this.active) this.orientPreview(this.active, heading);
             for (const fence of this.placed) this.applyFacing(fence, heading);
@@ -472,7 +472,7 @@ export class FencePlacement {
             stopAppearance: () => {}, awake: true, rotation, skinId: createSignal(skinId), inventorySkinId: requestedSkin,
             preparedSkins: new Set(), stopSkin: () => {}, physics: new PhysicsState(),
         };
-        const stopFacing = createEffect(() => {
+        const stopFacing = createRenderEffect(() => {
             const { sprite } = fence.art.get().instance;
             sprite.setFacing(facingFromRotation(fence.rotation, this.heading.get()));
             sprite.setOpacity(fence.opacity.get());

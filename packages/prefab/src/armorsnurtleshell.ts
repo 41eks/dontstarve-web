@@ -16,8 +16,8 @@ export const FULL_ABSORPTION = 1;
 export function configureArmorSnurtleshellEntity(entity: ItemEntity): void {
   entity.addTag('shell');
   entity.addTag('hardarmor');
-  const armor = entity.components.armor ??= new Armor(entity);
-  armor.InitCondition(ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION);
+  // Inventory re-configures entities on equip and commits; InitCondition belongs to construction only.
+  if (!entity.components.armor) (entity.components.armor = new Armor(entity)).InitCondition(ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION);
   entity.components.equippable ??= new Equippable(entity, 'body');
   entity.components.useableitem ??= new UseableItem({
     addTag: tag => entity.addTag(tag),

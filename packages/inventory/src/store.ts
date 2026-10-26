@@ -64,6 +64,7 @@ function stacksEqual(left: InventoryStack | null, right: InventoryStack | null):
       && left.wet === right.wet
       && left.phonographRecord === right.phonographRecord
       && left.temperature?.current === right.temperature?.current
+      && left.armor?.condition === right.armor?.condition
       && left.highTemp === right.highTemp && left.lowTemp === right.lowTemp
       && left.count === right.count;
 }
@@ -116,6 +117,24 @@ export class InventoryStore {
     }
   }
   GetEquippedItem(kind: EquipmentKind): ItemEntity | null { return this.getEntity(equipmentSlotAddress(kind)); }
+  /**
+   * inventory.lua ApplyDamage: the best equipped absorption protects the wearer; every armor shares the absorbed damage by
+   * its absorption and loses that much condition. resistance, damagetyperesist and special damage are not ported.
+   */
+  ApplyDamage(damage: number): number {
+    const absorbers = new Map<import('../../componets/src/armor').Armor, number>();
+    for (const kind of EQUIPMENT_KINDS) {
+      const armor = this.GetEquippedItem(kind)?.components.armor;
+      const absorption = armor?.GetAbsorption();
+      if (armor && absorption !== undefined) absorbers.set(armor, absorption);
+    }
+    let absorbedPercent = 0, totalAbsorption = 0;
+    for (const amount of absorbers.values()) { absorbedPercent = Math.max(amount, absorbedPercent); totalAbsorption += amount; }
+    const absorbed = damage * absorbedPercent;
+    if (totalAbsorption > 0) for (const [armor, amount] of absorbers) armor.TakeDamage(absorbed * amount / totalAbsorption);
+    return damage - absorbed;
+  }
+
   /** inventory.lua EquipHasTag checks only equipped items. */
   EquipHasTag(tag: string): boolean { return EQUIPMENT_KINDS.some(kind => this.GetEquippedItem(kind)?.hasTag(tag)); }
   /** inventory.lua Has: main slots, active item and the equipped overflow container. */
@@ -806,6 +825,8 @@ export class InventoryStore {
         ...(variant === undefined ? {} : { variant }),
         ...((current?.temperature ?? source?.temperature ?? incoming?.temperature) === undefined ? {}
           : { temperature: current?.temperature ?? source?.temperature ?? incoming?.temperature }),
+        ...((current?.armor ?? source?.armor ?? incoming?.armor) === undefined ? {}
+          : { armor: current?.armor ?? source?.armor ?? incoming?.armor }),
         ...((current?.highTemp ?? source?.highTemp ?? incoming?.highTemp) === undefined ? {}
           : { highTemp: current?.highTemp ?? source?.highTemp ?? incoming?.highTemp }),
         ...((current?.lowTemp ?? source?.lowTemp ?? incoming?.lowTemp) === undefined ? {}

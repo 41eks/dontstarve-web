@@ -744491,6 +744491,394 @@
           "components": {}
         }
       ],
+      "cactus": [
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_157411",
+          "transform": {
+            "position": [
+              1367.358,
+              0.0,
+              -506.25
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102077",
+          "transform": {
+            "position": [
+              1412.52,
+              0.0,
+              -773.88
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102078",
+          "transform": {
+            "position": [
+              1515.78,
+              0.0,
+              -343.68
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102079",
+          "transform": {
+            "position": [
+              1530.45,
+              0.0,
+              -380.79
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102080",
+          "transform": {
+            "position": [
+              1580.04,
+              0.0,
+              -439.62
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102081",
+          "transform": {
+            "position": [
+              1590.18,
+              0.0,
+              -415.08
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102082",
+          "transform": {
+            "position": [
+              1385.76,
+              0.0,
+              -425.91
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102083",
+          "transform": {
+            "position": [
+              1387.95,
+              0.0,
+              -332.94
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102084",
+          "transform": {
+            "position": [
+              1470.03,
+              0.0,
+              -484.86
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102085",
+          "transform": {
+            "position": [
+              1361.13,
+              0.0,
+              -604.05
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102086",
+          "transform": {
+            "position": [
+              1756.5,
+              0.0,
+              -771.3
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102087",
+          "transform": {
+            "position": [
+              2020.53,
+              0.0,
+              -557.19
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102088",
+          "transform": {
+            "position": [
+              2036.37,
+              0.0,
+              -483.66
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_cactus_id_102089",
+          "transform": {
+            "position": [
+              1923.57,
+              0.0,
+              -631.32
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
+      "oasis_cactus": [
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106321",
+          "transform": {
+            "position": [
+              904.11,
+              0.0,
+              451.59
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106322",
+          "transform": {
+            "position": [
+              858.33,
+              0.0,
+              484.38
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106323",
+          "transform": {
+            "position": [
+              738.96,
+              0.0,
+              329.25
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106324",
+          "transform": {
+            "position": [
+              880.89,
+              0.0,
+              353.94
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106325",
+          "transform": {
+            "position": [
+              1095.0,
+              0.0,
+              475.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106326",
+          "transform": {
+            "position": [
+              1107.51,
+              0.0,
+              486.36
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106327",
+          "transform": {
+            "position": [
+              764.61,
+              0.0,
+              486.78
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106328",
+          "transform": {
+            "position": [
+              1131.84,
+              0.0,
+              583.32
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106329",
+          "transform": {
+            "position": [
+              822.96,
+              0.0,
+              616.47
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106330",
+          "transform": {
+            "position": [
+              831.51,
+              0.0,
+              559.95
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106331",
+          "transform": {
+            "position": [
+              1026.63,
+              0.0,
+              917.79
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106332",
+          "transform": {
+            "position": [
+              808.05,
+              0.0,
+              848.34
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106333",
+          "transform": {
+            "position": [
+              954.78,
+              0.0,
+              713.7
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106334",
+          "transform": {
+            "position": [
+              977.04,
+              0.0,
+              944.49
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106335",
+          "transform": {
+            "position": [
+              860.58,
+              0.0,
+              257.67
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106336",
+          "transform": {
+            "position": [
+              1035.72,
+              0.0,
+              627.33
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106337",
+          "transform": {
+            "position": [
+              1100.19,
+              0.0,
+              498.87
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_03741E1B78B29575_oasis_cactus_id_106338",
+          "transform": {
+            "position": [
+              941.88,
+              0.0,
+              471.69
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "evergreen": [
         {
           "id": "dst_03741E1B78B29575_evergreen_id_112609",
@@ -793448,6 +793836,1340 @@
             },
             "building": {
               "state": "closed"
+            }
+          }
+        }
+      ],
+      "beefalo": [
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101546",
+          "transform": {
+            "position": [
+              1302.111,
+              0.0,
+              1258.497
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 28,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 16,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101548",
+          "transform": {
+            "position": [
+              -1325.91,
+              0.0,
+              -1423.95
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 71,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101550",
+          "transform": {
+            "position": [
+              -1385.16,
+              0.0,
+              -1445.34
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 4,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101552",
+          "transform": {
+            "position": [
+              -1407.75,
+              0.0,
+              -1503.57
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 47,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101554",
+          "transform": {
+            "position": [
+              -1324.38,
+              0.0,
+              -1387.62
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 34,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101558",
+          "transform": {
+            "position": [
+              -1348.92,
+              0.0,
+              -1433.79
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 68,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101560",
+          "transform": {
+            "position": [
+              -1432.8,
+              0.0,
+              -1435.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 59,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101562",
+          "transform": {
+            "position": [
+              -870.525,
+              0.0,
+              145.035
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -865.347748,
+                0.0,
+                141.920248
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -865.347748,
+                    "y": 0.0,
+                    "z": 141.920248
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 64,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101564",
+          "transform": {
+            "position": [
+              -854.994,
+              0.0,
+              135.69
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -865.347748,
+                0.0,
+                141.920248
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -865.347748,
+                    "y": 0.0,
+                    "z": 141.920248
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 18,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101566",
+          "transform": {
+            "position": [
+              -799.212,
+              0.0,
+              212.697
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 50,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101568",
+          "transform": {
+            "position": [
+              -808.629,
+              0.0,
+              224.61
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 50,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101570",
+          "transform": {
+            "position": [
+              -807.39,
+              0.0,
+              213.264
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 62,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101572",
+          "transform": {
+            "position": [
+              -801.12,
+              0.0,
+              203.808
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 77,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101574",
+          "transform": {
+            "position": [
+              -792.813,
+              0.0,
+              219.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 67,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101576",
+          "transform": {
+            "position": [
+              -785.484,
+              0.0,
+              221.253
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 42,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101578",
+          "transform": {
+            "position": [
+              -814.266,
+              0.0,
+              237.534
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 1,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101580",
+          "transform": {
+            "position": [
+              -795.573,
+              0.0,
+              222.903
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 18,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101582",
+          "transform": {
+            "position": [
+              -804.567,
+              0.0,
+              214.512
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 50,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101584",
+          "transform": {
+            "position": [
+              -818.541,
+              0.0,
+              206.019
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 13,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101586",
+          "transform": {
+            "position": [
+              -795.303,
+              0.0,
+              215.103
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 86,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101588",
+          "transform": {
+            "position": [
+              -450.372,
+              0.0,
+              71.835
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -459.501755,
+                0.0,
+                69.625876
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -459.501755,
+                    "y": 0.0,
+                    "z": 69.625876
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 4,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101590",
+          "transform": {
+            "position": [
+              -670.119,
+              0.0,
+              57.66
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -674.710144,
+                0.0,
+                88.252124
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -674.710144,
+                    "y": 0.0,
+                    "z": 88.252124
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 37,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101592",
+          "transform": {
+            "position": [
+              -684.39,
+              0.0,
+              95.175
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -674.710144,
+                0.0,
+                88.252124
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -674.710144,
+                    "y": 0.0,
+                    "z": 88.252124
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 15,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101594",
+          "transform": {
+            "position": [
+              -1387.32,
+              0.0,
+              -1504.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 60,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101596",
+          "transform": {
+            "position": [
+              -1396.47,
+              0.0,
+              -1359.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 7,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101598",
+          "transform": {
+            "position": [
+              -471.522,
+              0.0,
+              57.252
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -459.501755,
+                0.0,
+                69.625876
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -459.501755,
+                    "y": 0.0,
+                    "z": 69.625876
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 38,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 18,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101600",
+          "transform": {
+            "position": [
+              -790.977,
+              0.0,
+              215.133
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -801.156281,
+                0.0,
+                217.217995
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -801.156281,
+                    "y": 0.0,
+                    "z": 217.217995
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 13,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101602",
+          "transform": {
+            "position": [
+              1320.237,
+              0.0,
+              1240.626
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 14,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 20,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101604",
+          "transform": {
+            "position": [
+              1319.385,
+              0.0,
+              1254.567
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 9,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 35,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101606",
+          "transform": {
+            "position": [
+              1327.188,
+              0.0,
+              1276.143
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 72,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 19,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101608",
+          "transform": {
+            "position": [
+              1326.579,
+              0.0,
+              1244.862
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 31,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 12,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101610",
+          "transform": {
+            "position": [
+              1320.93,
+              0.0,
+              1252.449
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 15,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 9,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_146734",
+          "transform": {
+            "position": [
+              1320.714,
+              0.0,
+              1243.614
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 7,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 8,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_146736",
+          "transform": {
+            "position": [
+              1307.718,
+              0.0,
+              1245.945
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 37,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 8,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_136458",
+          "transform": {
+            "position": [
+              1327.416,
+              0.0,
+              1239.711
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                1318.849182,
+                0.0,
+                1249.624146
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": 1318.849182,
+                    "y": 0.0,
+                    "z": 1249.624146
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 21,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 8,
+                "bits": 3
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beefalo_id_101556",
+          "transform": {
+            "position": [
+              -1372.53,
+              0.0,
+              -1385.19
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "beefalo": {
+              "home": [
+                -1416.920013,
+                0.0,
+                -1438.920044
+              ],
+              "knownlocations": {
+                "locations": [
+                  {
+                    "name": "herd",
+                    "x": -1416.920013,
+                    "y": 0.0,
+                    "z": -1438.920044
+                  }
+                ]
+              },
+              "heading": 0,
+              "poopRemainingSeconds": 14,
+              "beard": {
+                "growthaccumulator": 0,
+                "growth": 54,
+                "bits": 3
+              }
             }
           }
         }

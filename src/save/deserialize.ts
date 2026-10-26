@@ -105,7 +105,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
   };
   const ids = new Set<string>();
   const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'variant', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'mole', 'lightflier', 'container', 'temperature', 'highTemp', 'lowTemp']);
+    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'variant', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'mole', 'lightflier', 'container', 'temperature', 'highTemp', 'lowTemp', 'armor']);
     const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
     if (entityId !== undefined) {
       if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
@@ -136,6 +136,10 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
       const skin = Object.hasOwn(catalog.skins, skinId) ? catalog.skins[skinId] : undefined;
       if ((!skin || (skin.itemId !== undefined && skin.itemId !== itemId)) && !(ground && art && Object.hasOwn(art.skinArchives, skinId))) fail(`${path}.skinId`, `invalid skin for ${itemId}`);
     }
+    if (o.armor !== undefined && spec.maxArmor === undefined) fail(`${path}.armor`, `${itemId} has no armor`);
+    // armor.lua OnSave omits a full condition; a broken armor is removed rather than saved.
+    const armor = o.armor === undefined ? undefined
+      : { condition: number(object(o.armor, `${path}.armor`, ['condition']).condition, `${path}.armor.condition`, Number.MIN_VALUE, spec.maxArmor!) };
     const remainingUses = o.remainingUses === undefined ? undefined
       : number(o.remainingUses, `${path}.remainingUses`, spec.useStep ?? 1, spec.maxUses ?? 0);
     if (remainingUses !== undefined && !Number.isSafeInteger(remainingUses / (spec.useStep ?? 1))) {
@@ -176,6 +180,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog): SaveDocumen
     return { ...(lightflier === undefined ? {} : { lightflier }), ...(mole === undefined ? {} : { mole }), ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }), ...(variant === undefined ? {} : { variant }),
       ...(phonographRecord === undefined ? {} : { phonographRecord }),
       ...(temperature === undefined ? {} : { temperature }),
+      ...(armor === undefined ? {} : { armor }),
       ...(highTemp === undefined ? {} : { highTemp }),
       ...(lowTemp === undefined ? {} : { lowTemp }),
       ...(remainingFuel === undefined ? {} : { remainingFuel }),

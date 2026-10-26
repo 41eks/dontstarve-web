@@ -43,6 +43,7 @@
 | 普通墙物品 | `anim/wall.zip` 与对应 `anim/wall_*.zip` build | 地面物品使用 `idle`；已建墙使用独立的 `half` 姿态 |
 | `wall_dreadstone_item` | `anim/wall_dreadstone.zip` | bank、build、动画均来自此归档 |
 | 暖石 `heatrock` | `anim/heat_rock.zip`，bank/build `heat_rock`；三款皮肤使用 `anim/dynamic/heatrock_*.zip` / `.dyn` | `heatrock.lua` 的 `UpdateImages(inst, 3)` 初始姿态为循环 `3`；库存为 `heat_rock3.tex`，皮肤为 `<skin>3.tex`。目录的 `inventoryImageVariants` 核对基础和皮肤的全部 1～5 档图标 atlas；当前不接入温度变化 |
+| 绝望石头盔 `dreadstonehat` | `anim/hat_dreadstone.zip`，bank `dreadstonehat`、build `hat_dreadstone`；皮肤 `hat_dreadstone_horn` 用 `anim/dynamic/hat_dreadstone_horn.zip` / `.dyn` | 地面 `anim` 取 `swap_hat` 第 3 帧（带阴影的落地姿态）。皮肤 zip 自带的 stub `anim.bin` 把同名 clip 指到第 1 帧（侧视图），皮肤只替换 build，因此同 bank 同名 clip 始终用基础归档的 |
 | 噩梦燃料 | `anim/nightmarefuel.zip` | `idle_loop` 循环；源 `SetMultColour(1, 1, 1, 0.5)` 和 `UsePointFiltering(true)` 分别控制半透明与点采样 |
 
 NPC 专用的 `shadow_thrall_parasitehat` 不属于玩家帽子目录，不导入库存元数据、配方或图标回退。

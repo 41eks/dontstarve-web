@@ -33,6 +33,7 @@ import { CAVE_ENTRANCE_IDS } from '@dontstarve-web/prefab/cave_entrance';
 import { CAVE_EXIT_IDS } from '@dontstarve-web/prefab/cave_exit';
 import { GROTTO_IDS } from '@dontstarve-web/prefab/grotto_pool';
 import { CAVE_FERN_ANIMATIONS, CAVE_FERN_DEFINITIONS, CAVE_FERN_IDS } from '@dontstarve-web/prefab/cave_fern';
+import { CACTUS_DEFINITIONS, CACTUS_IDS, CACTUS_REGROW_TIME } from '@dontstarve-web/prefab/cactus';
 import { MUSHROOM_PLANT_IDS } from '@dontstarve-web/prefab/mushroom_plant';
 import { MUSHTREE_IDS, MUSHTREE_SPAWN_IDS, MUSHTREE_GROWTH_STAGES, MUSHTREE_GROWTH_TIME } from '@dontstarve-web/prefab/mushtree';
 import { TENT_ID, TENT_USES } from '@dontstarve-web/prefab/tent';
@@ -145,7 +146,7 @@ export const PREFAB_DEFINITIONS = {
   }, // fence_item is an ordinary ground item (c_spawn) and inventory item (c_give); only `fence` is placed by c_spawn.
     PLACEABLE_BUILDING_IDS.filter((id) => id !== FENCE_ITEM_ID), buildingArchives),
   groundItems: definePrefabs(['ground_item'], componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
-    [...new Set([...GROUND_ART_SPAWN_IDS, ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'])], groundItemArchives),
+    [...new Set([...GROUND_ART_SPAWN_IDS, ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'cactus_flower', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'])], groundItemArchives),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] }), ['planted_flower'], ['flowers.zip']),
   dwarfStars: definePrefabs(['stafflight'], componentParser({ keys: ['timer'], timerDuration: DWARF_STAR_DURATION }), true),
   polarLights: definePrefabs([POLAR_LIGHT_ID], componentParser({ keys: ['timer'], timerDuration: POLAR_LIGHT_DURATION }), true),
@@ -188,6 +189,8 @@ export const PREFAB_DEFINITIONS = {
     [{ animation: GRASS_DEFINITION.animArchive, build: GRASS_DEFINITION.buildArchive }]),
   caveFerns: definePrefabs(CAVE_FERN_IDS, componentParser({ keys: ['pickable', 'variant'], plantVariants: CAVE_FERN_ANIMATIONS }), true,
     prefab => [{ animation: CAVE_FERN_DEFINITIONS[prefab].animArchive, build: CAVE_FERN_DEFINITIONS[prefab].buildArchive }]),
+  cacti: definePrefabs(CACTUS_IDS, componentParser({ keys: ['pickable'], regrowTime: CACTUS_REGROW_TIME }), true,
+    prefab => [{ animation: CACTUS_DEFINITIONS[prefab].animArchive, build: CACTUS_DEFINITIONS[prefab].buildArchive }]),
   saplings: definePrefabs(SAPLING_PREFABS, componentParser({ keys: ['pickable', 'witherable'], regrowTime: SAPLING_REGROW_TIME }), true),
   ponds: definePrefabs([POND_ID], componentParser({ keys: ['fishable'] }), true, ['marsh_tile.zip']),
   lavaPonds: definePrefabs([LAVA_POND_ID], componentParser({ keys: ['lavaPond'] }), true, ['lava_tile.zip', 'scorched_rock.zip']),

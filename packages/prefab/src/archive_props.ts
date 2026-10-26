@@ -6,7 +6,7 @@ import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/displ
 import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
-import { createEffect, createSignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { createRenderEffect, createSignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { modelEntries } from './modelRecords';
@@ -221,7 +221,7 @@ export class ArchivePropsManager {
     if (definition.eightFaced && this.world.cameraFacing) {
       // Transform:SetEightFaced: a rotation-0 inst shows the facing the camera heading selects.
       const facing = watchSignal(this.world.cameraFacing, stop => { prop.stopFacing = stop; });
-      createEffect(() => { const value = facing.get(); sprite.setFacing(value); shadow?.instance.sprite.setFacing(value); });
+      createRenderEffect(() => { const value = facing.get(); sprite.setFacing(value); shadow?.instance.sprite.setFacing(value); });
     }
     if (prefab === ARCHIVE_MOON_STATUE_ID) this.createStatue(prop, inst, anim!, saved !== undefined);
     else if (prefab === ARCHIVE_RUNE_STATUE_ID) this.createRune(prop, storyprogress);

@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { findImage, smallHash, type AnimElement, type ParsedBuild, type ResolvedSprite } from './animationAssets';
 
 /** Decoded handles stand in for the engine's named builds. */
@@ -9,6 +10,31 @@ export interface AnimationAttachment {
   update(dt: number): void;
   readonly isAnimating: boolean;
   resolve?(elements: readonly AnimElement[], mirrored: boolean): FrameEffect;
+}
+
+/** Immutable appearance snapshot; decoded builds and equipment attachments retain their owner's lifetime. */
+export interface AnimStateJson {
+  readonly overrides: ReadonlyMap<number, { sources: readonly SymbolBuild[]; symbol: number }>;
+  readonly hiddenLayers: ReadonlySet<number>;
+  readonly hiddenSymbols: ReadonlySet<number>;
+  readonly followers: ReadonlyMap<number, (element: AnimElement) => ResolvedSprite[]>;
+  readonly attachments: readonly AnimationAttachment[];
+}
+
+export function animStateVisible(state: AnimStateJson, element: AnimElement): boolean {
+  const group = visibilityGroups.get(element.imageHash);
+  return !state.hiddenSymbols.has(element.imageHash) && !state.hiddenLayers.has(element.layerHash)
+    && (group === undefined || !state.hiddenLayers.has(group));
+}
+
+export function resolveAnimStateSymbol(state: AnimStateJson, element: AnimElement): ResolvedSprite[] | undefined {
+  const follower = state.followers.get(element.imageHash);
+  if (follower) return follower(element);
+  const override = state.overrides.get(element.imageHash);
+  if (!override) return undefined;
+  const source = override.sources.find(candidate => candidate.build.symbols.has(override.symbol));
+  const image = source && findImage(source.build, override.symbol, element.imageIndex);
+  return image && source ? [{ element, image, materials: source.materials }] : [];
 }
 
 const visibilityGroups = new Map([
@@ -24,9 +50,16 @@ export class AnimState {
   private readonly hiddenSymbols = new Set<number>();
   private readonly followers = new Map<number, (element: AnimElement) => ResolvedSprite[]>();
   private readonly attachments = new Set<AnimationAttachment>();
-  private readonly changed: () => void;
+  private readonly state = createSignal<AnimStateJson>({ overrides: new Map(), hiddenLayers: new Set(), hiddenSymbols: new Set(), followers: new Map(), attachments: [] });
+  readonly json = readonlySignal(this.state);
+  private readonly onChanged: () => void;
 
-  constructor(changed: () => void) { this.changed = changed; }
+  constructor(changed: () => void = () => {}) { this.onChanged = changed; }
+  private changed(): void {
+    this.state.set({ overrides: new Map(this.overrides), hiddenLayers: new Set(this.hiddenLayers), hiddenSymbols: new Set(this.hiddenSymbols),
+      followers: new Map(this.followers), attachments: [...this.attachments] });
+    this.onChanged();
+  }
   RegisterBuild(name: string, source: SymbolBuild): void { this.builds.set(name, source); }
   private sources(source: SymbolSource): readonly SymbolBuild[] {
     if (typeof source !== 'string') return Array.isArray(source) ? source : [source as SymbolBuild];
@@ -48,20 +81,10 @@ export class AnimState {
   ShowSymbol(symbol: string): void { this.hiddenSymbols.delete(smallHash(symbol)); this.changed(); }
   HideSymbol(symbol: string): void { this.hiddenSymbols.add(smallHash(symbol)); this.changed(); }
   IsVisible(element: AnimElement): boolean {
-    if (this.hiddenSymbols.has(element.imageHash)) return false;
-    // Native ANIM visibility groups contain these character symbols even when a
-    // decoded frame uses the concrete head/hair layer name instead of the group.
-    const group = visibilityGroups.get(element.imageHash);
-    return !this.hiddenLayers.has(element.layerHash) && (group === undefined || !this.hiddenLayers.has(group));
+    return animStateVisible(this.state.peek(), element);
   }
   ResolveSymbol(element: AnimElement): ResolvedSprite[] | undefined {
-    const follower = this.followers.get(element.imageHash);
-    if (follower) return follower(element);
-    const override = this.overrides.get(element.imageHash);
-    if (!override) return undefined;
-    const source = override.sources.find(candidate => candidate.build.symbols.has(override.symbol));
-    const image = source && findImage(source.build, override.symbol, element.imageIndex);
-    return image && source ? [{ element, image, materials: source.materials }] : [];
+    return resolveAnimStateSymbol(this.state.peek(), element);
   }
   FollowSymbol(symbol: string, resolve: (element: AnimElement) => ResolvedSprite[]): () => void {
     const hash = smallHash(symbol);

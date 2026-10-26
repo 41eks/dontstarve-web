@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { batch, watchSignal, createEffect, createMemo, createSignal, onCleanUp, readonlySignal } from '../src';
+import { batch, watchSignal, createEffect, createRenderEffect, createMemo, createSignal, onCleanUp, readonlySignal } from '../src';
 
 it('notifies synchronous subscribers of every transition while batching effects', async () => {
   const value = createSignal<number | null>(0);
@@ -240,4 +240,19 @@ it('gates a watched bridge: holds the last value without reading the source whil
   stops.forEach(stop => stop());
   active.set(false); active.set(true); source.set(6);
   expect(local.peek()).toBe(5);
+});
+
+it('runs render effects synchronously on each change, once per committed batch, with cleanup on dispose', () => {
+  const value = createSignal(0), other = createSignal(0);
+  const observed: number[] = [];
+  let cleanupCount = 0;
+  const dispose = createRenderEffect(() => { observed.push(value.get() + other.get()); onCleanUp(() => cleanupCount++); });
+  value.set(1);
+  expect(observed).toEqual([0, 1]);
+  batch(() => { value.set(2); other.set(3); expect(observed).toEqual([0, 1]); });
+  expect(observed).toEqual([0, 1, 5]);
+  dispose();
+  value.set(4);
+  expect(observed).toEqual([0, 1, 5]);
+  expect(cleanupCount).toBe(3);
 });

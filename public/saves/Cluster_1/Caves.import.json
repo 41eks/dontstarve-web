@@ -453,6 +453,8 @@
     "blue_mushroom",
     "grass",
     "sapling",
+    "cactus",
+    "oasis_cactus",
     "evergreen",
     "flower_cave",
     "flower_cave_double",
@@ -480,6 +482,7 @@
     "pond",
     "lava_pond",
     "treasurechest",
+    "beefalo",
     "boneshard",
     "cutgrass",
     "flint",
@@ -573,6 +576,14 @@
     "sapling": {
       "source": 29,
       "imported": 29
+    },
+    "cactus": {
+      "source": 0,
+      "imported": 0
+    },
+    "oasis_cactus": {
+      "source": 0,
+      "imported": 0
     },
     "evergreen": {
       "source": 317,
@@ -679,6 +690,10 @@
       "imported": 0
     },
     "treasurechest": {
+      "source": 0,
+      "imported": 0
+    },
+    "beefalo": {
       "source": 0,
       "imported": 0
     },

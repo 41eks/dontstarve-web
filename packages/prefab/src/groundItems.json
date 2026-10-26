@@ -1835,6 +1835,21 @@
         "quakedebris"
       ]
     },
+    "cactus_flower": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/cactus.lua",
+      "name": "仙人掌花",
+      "icon": "cactus_flower.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "cactus_flower.zip",
+      "buildArchives": [
+        "cactus_flower.zip"
+      ],
+      "bank": "cactusflower",
+      "animation": "idle",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {}
+    },
     "heatrock": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/heatrock.lua",
       "name": "暖石",

@@ -343,7 +343,7 @@ describe('original beefalo assets', () => {
     });
     try {
       const model = await manager.spawn(new THREE.Vector3(10, 0, 20));
-      const controller = model.userData.beefaloController as BeefaloController;
+      const controller = manager.controllerOf(model)!;
       const world = (controller as any).world as BeefaloWorld;
       expect(world).toMatchObject({ phase: 'night', season: 'winter' });
       for (let i = 0; i < 60 && controller.state !== 'sleep'; i++) {
@@ -362,7 +362,7 @@ describe('original beefalo assets', () => {
       }
       expect(controller.state).toBe('wake');
       const later = await manager.spawn(new THREE.Vector3(30, 0, 40));
-      expect((later.userData.beefaloController as any).world).toBe(world);
+      expect((manager.controllerOf(later) as any).world).toBe(world);
       expect(clockPeek).toHaveBeenCalledOnce();
       expect(seasonPeek).toHaveBeenCalledOnce();
       manager.dispose(); manager.dispose();
@@ -422,7 +422,7 @@ describe('original beefalo assets', () => {
       secondsUntilNextDay: now => DAY - now % DAY };
     const manager = new BeefaloManager(scene, physics, '/dst/data/anim', world);
     const model = await manager.spawn(new THREE.Vector3());
-    const controller = model.userData.beefaloController as BeefaloController;
+    const controller = manager.controllerOf(model)!;
     // Use the actual brain, locomotor and animated sprite over a deterministic two-second walk.
     (controller as any).random = () => 0;
     controller.brain.Stop();
@@ -432,7 +432,7 @@ describe('original beefalo assets', () => {
       sources.scheduler.advance(1 / 60);
       manager.update(1 / 60);
       physics.step(1 / 60);
-      manager.sync(new THREE.Quaternion());
+      manager.sync(1 / 60, new THREE.Quaternion());
     }
     expect(model.position.x).toBeGreaterThan(4);
     manager.dispose();
@@ -449,7 +449,7 @@ describe('original beefalo assets', () => {
       secondsUntilNextDay: now => DAY - now % DAY };
     const manager = new BeefaloManager(new THREE.Scene(), physics, '/dst/data/anim', world);
     const model = await manager.spawn(new THREE.Vector3());
-    const controller = model.userData.beefaloController as BeefaloController;
+    const controller = manager.controllerOf(model)!;
     controller.body.position.set(0, 1.5, 0);
     const radius = 1.5;
     const player = new CANNON.Body({ mass: 75, shape: new CANNON.Sphere(radius), fixedRotation: true });

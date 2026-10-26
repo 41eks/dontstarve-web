@@ -13,6 +13,8 @@ export class CreatureInventory {
     this.inst = inst; this.drop = drop;
     this.slots = Array.from({ length: maxslots }, () => new InventorySlot(null, itemSpecs));
   }
+  /** inventory.lua ApplyDamage: a creature inventory has no equip slots, so nothing absorbs. */
+  ApplyDamage(damage: number): number { return damage; }
   IsFull(): boolean { return this.slots.every(slot => slot.getEntity() !== null); }
   GetItems(): ItemEntity[] { return this.slots.flatMap(slot => slot.getEntity() ?? []); }
   GiveItem(item: ItemEntity): boolean {

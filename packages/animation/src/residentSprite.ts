@@ -409,6 +409,15 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   }
   setColour(colour: readonly number[]): void { this.staticController?.setColour(colour); }
   setOpacity(opacity: number): void { this.staticController?.setOpacity(opacity); }
+  setPaused(paused: boolean): void { this.controller?.setPaused?.(paused); }
+  setArtSource(source: import('./sprite').SpriteArtSource): void { this.controller?.setArtSource?.(source); }
+  setAnimState(state: import('./animState').AnimStateJson): void { this.controller?.setAnimState?.(state); }
+  setTint(tint: import('./sprite').SpriteTint): void { this.controller?.setTint?.(tint); }
+  setComposites(frames: readonly import('./sprite').CompositeSpriteFrame[]): void { this.controller?.setComposites?.(frames); }
+  getResolvedFrame(): readonly import('./animationAssets').ResolvedSprite[] { return this.controller?.getResolvedFrame?.() ?? []; }
+  getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
+    return this.controller?.getSymbolPosition?.(symbol, x, y, target) ?? false;
+  }
   setDepthOffset(enabled: boolean): void {
     (this.sprite?.userData.animationController as { setDepthOffset?(enabled: boolean): void } | undefined)?.setDepthOffset?.(enabled);
   }

@@ -8,9 +8,9 @@ TILE = runpy.run_path(str(Path(__file__).with_name('dst-region-tile.py')))
 decode_grid, source_grid_position, project_position = (
     TILE['decode_grid'], TILE['source_grid_position'], TILE['project_position'])
 # Source component-state converters, grouped by the components they convert.
-GROWABLE, PICKABLE, WORKABLE, STRUCTURE, INVENTORY, CONTAINER = (
+GROWABLE, PICKABLE, WORKABLE, STRUCTURE, INVENTORY, CONTAINER, CREATURE = (
     runpy.run_path(str(Path(__file__).with_name(f'dst-region-prefab-{part}.py')))
-    for part in ('growable', 'pickable', 'workable', 'structure', 'inventory', 'container'))
+    for part in ('growable', 'pickable', 'workable', 'structure', 'inventory', 'container', 'creature'))
 ITEM = runpy.run_path(str(Path(__file__).with_name('dst-region-item.py')))
 
 
@@ -35,6 +35,8 @@ ENTITY_WHITELIST = {
     'blue_mushroom': PICKABLE['blue_mushroom_components'],
     'grass': PICKABLE['pickable_plant_components']('grass'),
     'sapling': PICKABLE['pickable_plant_components']('sapling'),
+    'cactus': PICKABLE['cactus_components']('cactus'),
+    'oasis_cactus': PICKABLE['cactus_components']('oasis_cactus'),
     'evergreen': GROWABLE['evergreen_components'],
     'flower_cave': PICKABLE['flower_cave_components']('flower_cave'),
     'flower_cave_double': PICKABLE['flower_cave_components']('flower_cave_double'),
@@ -62,9 +64,12 @@ ENTITY_WHITELIST = {
     'pond': STRUCTURE['pond_components'],
     'lava_pond': STRUCTURE['lava_pond_components'],
     'treasurechest': CONTAINER['treasurechest_components'],
+    'beefalo': CREATURE['beefalo_components'],
 }
 # Converters that also receive the record's skin and an item-slot converter for its saved contents.
 RECORD_CONTEXT_PREFABS = {'treasurechest'}
+# Converters that also receive the record's project position and a converter for saved source positions.
+POSITION_CONTEXT_PREFABS = {'beefalo'}
 
 
 def source_prefabs():
@@ -120,6 +125,10 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                     'skin': record.get('skinname'),
                     'items': lambda items, path, slot_count, entity_id=entity_id, suffix=suffix: ITEM['convert_slots'](
                         items, f'{prefab}.{suffix}.{path}', slot_count, entity_id, catalog, container_items)})
+            elif prefab in POSITION_CONTEXT_PREFABS:
+                components = convert_components(data, {
+                    'position': project_position(coordinates, translation),
+                    'project': lambda source: project_position(source, translation)})
             else:
                 components = convert_components(data)
             if 'stack' in components:

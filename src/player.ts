@@ -12,9 +12,14 @@ playerPrefab.model.position.set(...initialSave.players.local.transform.position)
 playerPrefab.physics.Teleport();
 
 export const player = playerPrefab.model;
+export const playerInstance = playerPrefab.instance;
+export const playerDisplay = playerPrefab.display;
 /** inst.Physics of the player; the binding keeps `playerBody`. */
 export const playerPhysics = playerPrefab.physics;
 export const playerBody = playerPrefab.body;
-/** Released with the scene, before its world. */
-export const playerPhysicsBinding = playerPrefab.physicsBinding;
+/** The application ends the logical entity, then releases its display before the scene's shared resources. */
+export function disposePlayer(): void {
+  playerInstance.remove();
+  playerDisplay.dispose();
+}
 export const setPlayerNormal = playerPrefab.setNormal;

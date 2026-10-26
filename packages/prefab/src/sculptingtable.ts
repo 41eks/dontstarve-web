@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import { sculptingtable_init_fn } from '@dontstarve-web/animation/prefabskin';
-import { createEffect, createSignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
+import { createRenderEffect, createSignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
 import {
     type AnimatedBuildingBuiltContext,
@@ -75,7 +75,7 @@ async function prepare(): Promise<SculptingResources> {
 
 /** OverrideSymbol/ClearOverrideSymbol for the held block, redone for every rebuilt sprite and reskin. */
 function showHeldItem(model: THREE.Group, pickable: Pickable, resources: Signal<SculptingResources | undefined>, art?: ReadonlySignal<number>): () => void {
-    return createEffect(() => {
+    return createRenderEffect(() => {
         art?.get();
         const sprite = model.userData.animationController as SpriteController;
         const loaded = resources.get(), held = pickable.state.canInteractWith.get();

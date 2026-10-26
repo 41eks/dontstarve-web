@@ -4,7 +4,7 @@ import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
 import * as THREE from 'three';
 import { BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, createBeefaloSpriteFactory, type BeefaloSpriteFactory } from '@dontstarve-web/animation/beefaloSprite';
 import type { PrefabDisplay } from '@dontstarve-web/display';
-import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type WorldPhase, type WorldSeason, type WorldContentContext } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type WorldPhase, type WorldSeason, type WorldContentContext } from '@dontstarve-web/signals';
 import { AnimState } from '../../componets/src/animstate';
 import { Beard, type BeardSave } from '../../componets/src/beard';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -152,7 +152,6 @@ export class BeefaloController {
     });
     this.locomotor.walkspeed = BEEFALO_BEHAVIOR.walkSpeed;
     this.locomotor.runspeed = 7 * WORLD_SCALE;
-    model.userData.beefaloController = this;
     for (const tag of ['beefalo', 'animal', 'largecreature']) instance.addTag(tag);
     this.beard = new Beard(this, {
       scheduler: world.scheduler,
@@ -192,7 +191,7 @@ export class BeefaloController {
       beefalo: { HasTag: (tag: string) => tag === 'has_beard' ? beard.hairy.peek() : undefined } };
     actionEntity(model, 'beefalo');
     const sprite = this.instance.sprite;
-    this.stopAppearance = createEffect(() => sprite.setBuildArchive(beard.hairy.get() ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD));
+    this.stopAppearance = createRenderEffect(() => sprite.setBuildArchive(beard.hairy.get() ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD));
     this.animstate = new AnimState(world.scheduler, lengths, event => this.PushEvent(event));
     // The drawn sprite follows the logical clip; a queued clip only ends a loop, which the next clip replaces.
     const animation = watchSignal(this.animstate.animation, stop => { this.stopFollow = stop; });
@@ -214,19 +213,18 @@ export class BeefaloController {
       isCurrentAnimation: name => this.animstate.animation.peek().name === name,
       random: () => this.random(),
     }, world.scheduler);
-    this.sg.sg.listenForEvent('newstate', () => { model.userData.beefaloState = this.state; });
-    model.userData.beefaloState = this.state;
+    instance.sg = this.sg.sg;
     this.brain = new BeefaloBrain(this.createBrainInst(), WORLD_SCALE);
+    instance.brain = this.brain;
     this.brain.Start();
   }
 
   get state(): BeefaloState { return this.sg.stateName; }
 
-  /** Run before physics; only animation and locomotion need a per-frame update. */
+  /** Run before physics; only the stategraph, brain and locomotion need a per-frame update. Drawing is the display's. */
   update(dt: number): void {
     if (this.disposed || !Number.isFinite(dt) || dt < 0) return;
     const step = Math.min(dt, .1);
-    this.instance.sprite.update(step);
     this.sg.update(step);
     this.brain.tick(this.world.scheduler.now);
     this.locomotor.update(step);
@@ -324,7 +322,9 @@ export class BeefaloController {
     if (this.disposed) return;
     this.disposed = true;
     this.brain.Stop();
+    this.instance.brain = undefined;
     this.sg.dispose();
+    this.instance.sg = undefined;
     this.locomotor.Stop();
     this.periodicspawner.dispose();
     this.stopAppearance();
@@ -369,7 +369,7 @@ function distanceSquared(a: { x: number; z: number }, b: { x: number; z: number 
 /** Shared source atlases, independent AI/merged sprite geometry and physics bodies. */
 export class BeefaloManager {
   private factoryRequest?: Promise<BeefaloSpriteFactory>;
-  private readonly beefalos = new Set<BeefaloController>();
+  private readonly beefalos = new Map<BeefaloController, PrefabDisplay>();
   private readonly pendingSpawns = new Set<THREE.Vector3>();
   private disposed = false;
   private readonly scene: THREE.Scene;
@@ -435,30 +435,43 @@ export class BeefaloManager {
     this.world.constrainPosition(instance.position);
     instance.entityId = saved?.id ?? newEntityId();
     const controller = new BeefaloController(model, this.physics, factory.lengths, this.world, saved?.components.beefalo);
-    this.beefalos.add(controller);
+    this.beefalos.set(controller, display);
     this.scene.add(model);
     return model;
   }
 
+  /** The controller of a beefalo this manager spawned. */
+  controllerOf(model: THREE.Object3D): BeefaloController | undefined {
+    for (const beefalo of this.beefalos.keys()) if (beefalo.model === model) return beefalo;
+    return undefined;
+  }
+
   update(dt: number): void {
     if (this.ownsScheduler && Number.isFinite(dt) && dt > 0) this.scheduler.advance(Math.min(dt, 0.1));
-    for (const beefalo of this.beefalos) beefalo.update(dt);
+    for (const beefalo of this.beefalos.keys()) beefalo.update(dt);
   }
-  sync(cameraQuaternion: THREE.Quaternion): void { for (const beefalo of this.beefalos) beefalo.sync(cameraQuaternion); }
+  /** Run after physics: each beefalo follows its body, then its display draws the declared sprite. */
+  sync(dt: number, cameraQuaternion: THREE.Quaternion): void {
+    const step = Number.isFinite(dt) && dt > 0 ? Math.min(dt, .1) : 0;
+    for (const [beefalo, display] of this.beefalos) {
+      beefalo.sync(cameraQuaternion);
+      display.update(step, cameraQuaternion);
+    }
+  }
 
   /** TheSim:FindEntities around a point on the ground plane: the beefalo's engine inst, with its tags and components. */
   entitiesNear(position: { readonly x: number; readonly z: number }, range: number): readonly ReturnType<typeof actionEntity>[] {
-    return Array.from(this.beefalos).filter(({ model }) =>
+    return Array.from(this.beefalos.keys()).filter(({ model }) =>
       Math.hypot(model.position.x - position.x, model.position.z - position.z) <= range)
       .map(({ model }) => model.userData.actionEntity as ReturnType<typeof actionEntity>);
   }
 
   get renderEntities() {
-    return Array.from(this.beefalos, ({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
+    return Array.from(this.beefalos.keys(), ({ model }) => ({ object: model, footPosition: model.position, cameraDepth: 0 }));
   }
 
   exportRecords(): BeefaloRecord[] {
-    return Array.from(this.beefalos, (beefalo) => ({
+    return Array.from(this.beefalos.keys(), (beefalo) => ({
       id: String(beefalo.instance.entityId),
       transform: { position: beefalo.model.position.toArray(), rotationY: 0 },
       components: { beefalo: beefalo.exportState() },
@@ -471,9 +484,9 @@ export class BeefaloManager {
     this.stopClock();
     this.stopSeason();
     if (this.ownsScheduler) this.scheduler.dispose();
-    for (const beefalo of this.beefalos) {
+    for (const [beefalo, display] of this.beefalos) {
       beefalo.dispose();
-      (beefalo.model.userData.display as PrefabDisplay).dispose();
+      display.dispose();
     }
     this.beefalos.clear();
     void this.factoryRequest?.then((factory) => factory.dispose(), () => undefined);

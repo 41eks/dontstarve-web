@@ -33,7 +33,7 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
     const model = (window as any).razorGame.scene.children.find((model: any) => model.userData.instance?.prefab === 'beefalo');
     if (!model) return null;
     const { beard, sleeper } = model.userData.components, inst = model.userData.actionEntity;
-    return { id: model.userData.instance?.entityId, state: model.userData.beefaloState, bits: beard.bits.peek(), growth: beard.daysgrowth.peek(),
+    return { id: model.userData.instance?.entityId, state: model.userData.instance.sg.stateName, bits: beard.bits.peek(), growth: beard.daysgrowth.peek(),
       asleep: sleeper.IsAsleep(), bearded: inst.hasTag('bearded'), hairy: inst.hasTag('has_beard') };
   });
   const wool = () => page.evaluate(() => (window as any).razorGame.scene.children
@@ -64,7 +64,7 @@ test('a cursor-held razor refuses an awake beefalo, shaves a sleeping one, and t
   await page.evaluate(() => {
     const { scene, player, playerBody } = (window as any).razorGame;
     const model = scene.children.find((model: any) => model.userData.instance?.prefab === 'beefalo');
-    model.userData.beefaloController.brain.Stop();
+    model.userData.instance.brain.Stop();
     playerBody.position.set(model.position.x - 6, playerBody.shapes[0].radius, model.position.z + 6);
     player.position.set(model.position.x - 6, 0, model.position.z + 6);
   });

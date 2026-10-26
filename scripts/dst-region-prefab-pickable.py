@@ -66,6 +66,16 @@ def pickable_plant_components(prefab):
     return convert
 
 
+def cactus_components(prefab):
+    # cactus.lua has no OnSave of its own; has_flower follows the season on wake/load and is not saved.
+    def convert(data):
+        if set(data) - {'pickable'}:
+            raise ValueError(f'Unsupported {prefab} save state')
+        state = pickable_state(data.get('pickable') or {}, prefab)
+        return {'pickable': state} if state else {}
+    return convert
+
+
 def cave_fern_components(prefab):
     # cave_fern.lua / cave_fern_withered.lua OnSave: data.anim is one of f1..f10.
     def convert(data):

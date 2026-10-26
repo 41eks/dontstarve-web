@@ -38,6 +38,8 @@
     "./pickaxe": "./src/pickaxe.ts",
     "./axe": "./src/axe.ts",
     "./nightsword": "./src/nightsword.ts",
+    "./dreadstonehat": "./src/dreadstonehat.ts",
+    "./cactus": "./src/cactus.ts",
     "./armorsnurtleshell": "./src/armorsnurtleshell.ts",
     "./amulet": "./src/amulet.ts",
     "./equipmentVisual": "./src/equipmentVisual.ts",

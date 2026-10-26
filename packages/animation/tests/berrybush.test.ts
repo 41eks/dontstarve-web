@@ -215,7 +215,11 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     expect(drawnIndices(first)).toBeGreaterThan(bareReplacement);
     const hide = vi.spyOn(first.userData.animationController, 'hideLayer');
     s.snowLevel.set(0);
+    expect(hide).toHaveBeenCalledExactlyOnceWith('snow');
+    hide.mockClear();
     s.bushes.remove(first);
+    s.snowLevel.set(.5);
+    s.snowLevel.set(0);
     await settleEffects();
     expect(hide).not.toHaveBeenCalled();
     expect(drawnIndices(second)).toBeLessThan(secondSnow);

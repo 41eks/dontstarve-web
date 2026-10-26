@@ -8,7 +8,9 @@ export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoD
   getPhysicsRadius(): number;
   hasTag(tag: string): boolean;
   PushEvent?(name: string, data: unknown): void;
-  readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { doDelta(delta: number): void } };
+  readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { doDelta(delta: number): void };
+    /** inventory:ApplyDamage: equipped armor absorbs its share before health; creature inventories wear none. */
+    inventory?: { ApplyDamage?(damage: number, attacker?: CombatActor, weapon?: Weapon): number } };
 }
 
 /** Players may bind the combat health operations to their existing authoritative stat store. */
@@ -111,14 +113,22 @@ export class Combat {
     return true;
   }
 
+  /** combat.lua GetAttacked: armor first, then health; fully absorbed damage is "blocked" instead of "attacked". */
   GetAttacked(attacker: CombatActor, damage: number, weapon?: Weapon): boolean {
     const health = this.inst.components.health;
     if (!health || health.IsDead()) return true;
+    const original_damage = damage;
+    const inventory = this.inst.components.inventory;
+    if (inventory?.ApplyDamage) damage = inventory.ApplyDamage(damage, attacker, weapon);
+    if (damage <= 0 && original_damage > 0) {
+      this.inst.PushEvent?.('blocked', { attacker, damage, original_damage });
+      return false;
+    }
     // Only positive damage reaches health; it fires ondelta before onhitfn.
     if (damage > 0) health.DoDelta(-damage, false, attacker.hasTag('player') ? 'player' : undefined, false, attacker);
-    this.inst.PushEvent?.('attacked', { attacker, damage, weapon });
+    this.inst.PushEvent?.('attacked', { attacker, damage, original_damage, weapon });
     this.onhitfn?.(this.inst, attacker, damage);
-    return false;
+    return true;
   }
 }
 

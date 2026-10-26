@@ -29,7 +29,7 @@ import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { Health } from '../../componets/src/health';
 import { Combat, type CombatInst } from '../../componets/src/combat';
-import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, type Memo, type Signal } from '@dontstarve-web/signals';
+import { createRenderEffect, createMemo, createSignal, readonlySignal, watchSignal, type Memo, type Signal } from '@dontstarve-web/signals';
 import { FACING_CARDINAL } from '@dontstarve-web/animation/facing';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
 
@@ -462,7 +462,7 @@ export class WallPlacement<BuildId extends string> {
             { name: 'half', held: true }, definition.name, entity => { entity.sprite.setPose(undefined); dress(entity.sprite); });
         const { model } = display;
         const animation = instance.sprite;
-        const stopAppearance = createEffect(() => {
+        const stopAppearance = createRenderEffect(() => {
             animation.art.get();
             const facing = this.facing.get();
             animation.showImage(this.isFrontFacing(facing) ? definition.frontImageIndex : definition.sideImageIndex);

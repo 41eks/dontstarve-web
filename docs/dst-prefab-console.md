@@ -80,6 +80,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `featherpencil` | 可生成 | 可入栏 | `prefabs/featherpencil.lua:34` |
 | `nightmarefuel` | 可生成 | 可入栏 | `prefabs/nightmarefuel.lua:93` |
 | `petals` | 可生成 | 可入栏 | `prefabs/petals.lua:99`：inventoryitem、PERISH_FAST（6 游戏日），腐败为同数量 spoiled_food；当前项目接入库存／地面 perish 与存读档 |
+| `cactus_flower` | 可生成 | 可入栏 | `prefabs/cactus.lua:118`：inventoryitem、edible（HEALING_MEDSMALL / CALORIES_SMALL / SANITY_TINY，VEGGIE）、PERISH_SUPERFAST（3 游戏日）腐败为 spoiled_food、STACK_SIZE_SMALLITEM；当前项目接入库存／地面 perish、食用与存读档 |
 | `petals_evil` | 可生成 | 可入栏 | `prefabs/petals_evil.lua:56` |
 | `ash` | 可生成 | 可入栏 | `prefabs/ash.lua:75` |
 | `beefalowool` | 可生成 | 可入栏 | `prefabs/beefalowool.lua:32` |
@@ -602,3 +603,5 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 2026-10-18 补充 `flower_cave`、`flower_cave_double`、`flower_cave_triple`、`lightflier_flower` 的区域导入：这些 prefab 已有 `c_spawn` / 存档支持，命令与支持 ID 不变；导入器新增的转换函数按 `OnSave` 的 `light_state`、`plantname`、`pickable.picked/time`、`timer` 与 `childspawner` 转为 `bulbPlant` / `lightflierFlower` 组件。
 
 2026-10-18 补充 `red_mushroom`、`green_mushroom`：与 `blue_mushroom` 同属 `prefabs/mushrooms.lua` 的 `mushcommonfn(data)`，仅 `animname` / `pickloot` / `open_time` 不同——红：`red` / `red_cap` / `day`，绿：`green` / `green_cap` / `dusk`。共用 `mushrooms.zip`（bank/build `mushrooms`）、`mushroom_up` / `mushroom_down` 音效、采后下雨再生、`DIG` 与燃烧，沿用 `MushroomPlant` 行为类并改由数据表选择；管理器 `spawn` 接收 prefab ID，`exportRecords` 保存各自的 `prefabId`。未移植 `hauntable`（`OnHauntMush` 换色）、`transformer`（Lua 中已注释）与 `AddToRegrowthManager`。`packages/animation/tests/mushroomPlant.test.ts` 验证红蘑菇白天可采、绿蘑菇黄昏后可采、各自产出对应帽并在保存记录中保留 prefab ID。
+
+2026-10-26 补充 `cactus`、`oasis_cactus`：`prefabs/cactus.lua` 的 `MakeCactus(name)` 是没有 inventoryitem 的世界实体，只可 `c_spawn`，没有 `c_give`；bank/build 与 prefab 同名（`anim/cactus.zip`、`anim/oasis_cactus.zip`），小地图 `cactus.png` / `oasis_cactus.png`，`MakeObstaclePhysics(inst, .3)`。`pickable:SetUp("cactus_meat", CACTUS_REGROW_TIME)`（4 游戏日），不是 quickpick，没有 `workable`；`onpickedfn` 对没有装备 `bramble_resistant`、也不是 `shadowminion` 的采摘者执行 `combat:GetAttacked(inst, CACTUS_DAMAGE)`（6）并推送 `thorns`，夏季长出的花（`has_flower`，不存档，读档时按季节决定）另外 `GiveItem` 一个 `cactus_flower`。`MakeLargeBurnable` + `MakeMediumPropagator`；没有 `MakeNoGrowInWinter`。存档只有 `pickable` 状态；导入器 `ENTITY_WHITELIST` 已接受两者。

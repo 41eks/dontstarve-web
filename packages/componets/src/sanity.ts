@@ -9,6 +9,7 @@ export interface SanityInst extends EquippableOwner {
       readonly components: { equippable?: Pick<Equippable, 'GetDapperness'> };
     } | null };
     health?: { IsInvincible(): boolean };
+    sanity?: { IsInsanityMode(): boolean; GetPercent(): number };
   };
   readonly sg?: { hasStateTag(tag: string): boolean };
   readonly is_teleporting?: boolean;
@@ -45,6 +46,8 @@ export class Sanity {
   /** Only the insanity mode is ported: lunacy and induced insanity are not. */
   IsSane(): boolean { return this.saneState.peek(); }
   IsInsane(): boolean { return !this.saneState.peek(); }
+  IsInsanityMode(): boolean { return true; }
+  GetPercent(): number { return this.current.percent.peek(); }
   GetRate(): number {
     if (this.disposed || this.ignore || this.inst.components.health?.IsInvincible()
       || this.inst.hasTag('spawnprotection') || this.inst.sg?.hasStateTag('sleeping') || this.inst.is_teleporting) return 0;

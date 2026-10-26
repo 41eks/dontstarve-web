@@ -131,7 +131,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
 }
 const playerAnimation = player.userData.animationController as WilsonAnimationController | undefined;
 const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean;
-  components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger } } = {
+  components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger },
   ListenForEvent(name, listener) {
     const handler = (event: { data?: unknown }) => listener(event.data);
@@ -151,6 +151,10 @@ const pickupDoer: PickupDoer & { ListenForEvent(name: string, listener: (data: u
   },
 };
 inventory.bindActor(pickupDoer);
+// owner.components.sanity, for equipment and the dapperfn's owner; created before any equip runs.
+const sanityComponents: { inventory: typeof inventory; sanity?: Sanity } = { inventory };
+const playerSanity = new Sanity({ ...pickupDoer, components: sanityComponents, sg: playerAnimation?.stategraph }, playerStats.sanity);
+sanityComponents.sanity = pickupDoer.components.sanity = playerSanity;
 playerAnimation?.bindInventory(inventory);
 player.userData.components = { ...player.userData.components, inventory };
 const handSlotAddress = equipmentSlotAddress('hand');
@@ -288,7 +292,6 @@ const sceneResources = await startScene(
 const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, skeletons, dwarfStars, polarLights, farmPlow, dockKit, registry, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading,
   getMiniMapEntities: () => [player.MiniMapEntity, ...registry.miniMapEntities] });
-const playerSanity = new Sanity({ ...pickupDoer, components: { inventory }, sg: playerAnimation?.stategraph }, playerStats.sanity);
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
 const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));

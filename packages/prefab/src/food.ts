@@ -42,6 +42,8 @@ export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
   // prefabs/mushrooms.lua's data table, resolved against tuning.lua.
   // prefabs/moontree_blossom.lua: HEALING_TINY, no hunger, VEGGIE.
   moon_tree_blossom: { health: 1, hunger: 0, sanity: 0 },
+  // prefabs/cactus.lua cactusflowerfn: HEALING_MEDSMALL, CALORIES_SMALL, SANITY_TINY, VEGGIE.
+  cactus_flower: { health: 8, hunger: 12.5, sanity: 5 },
   // prefabs/moonbutterflywings.lua: HEALING_MEDSMALL, CALORIES_TINY, SANITY_MED.
   moonbutterflywings: { health: 8, hunger: 9.375, sanity: 15 },
   // prefabs/pondfish.lua pondfish_data: HEALING_TINY, CALORIES_SMALL, no sanity, MEAT.
@@ -68,6 +70,8 @@ export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: nu
   red_cap: { perishTime: PERISH_MED, replacement: 'spoiled_food' },
   // prefabs/moontree_blossom.lua: PERISH_FAST, spoiled_food.
   moon_tree_blossom: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
+  // prefabs/cactus.lua cactusflowerfn: PERISH_SUPERFAST, spoiled_food.
+  cactus_flower: { perishTime: PERISH_SUPERFAST, replacement: 'spoiled_food' },
   // prefabs/moonbutterflywings.lua: PERISH_FAST, spoiled_food.
   moonbutterflywings: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   // prefabs/meats.lua raw: PERISH_FAST, spoiled_food (common() sets the replacement).

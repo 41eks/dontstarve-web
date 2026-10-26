@@ -2,7 +2,7 @@ import { ModelRecords } from './modelRecords';
 import { MiniMapEntity } from './minimapEntity';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
-import { createSignal, readonlySignal, createEffect, getBoundWatchWorldContent, WorldContentKey, type HandEquipment, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal, createRenderEffect, getBoundWatchWorldContent, WorldContentKey, type HandEquipment, type ReadonlySignal, type Signal, type TileStateQuery } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createAnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
@@ -334,7 +334,7 @@ export async function createDeciduousForest(assetBaseUrl: string, world: Deciduo
         tree.sprite.setFrame(Math.floor(random() * frames));
       }
       const snow = getBoundWatchWorldContent()?.(WorldContentKey.SnowLevel, stop => { tree.stopSnow = stop; });
-      if (snow) createEffect(() => { tree.sprite.setSymbolHidden('snow', snow.get() < .015); });
+      if (snow) createRenderEffect(() => { tree.sprite.setSymbolHidden('snow', snow.get() < .015); });
       bindFire(tree);
       if (tree.inst.hasTag('burnt')) startAcornTask(tree);
       instance.setActive(true);

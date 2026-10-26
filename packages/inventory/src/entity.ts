@@ -208,12 +208,14 @@ export class ItemEntity {
     explosive?: import('../../componets/src/explosive').Explosive;
     book?: import('../../componets/src/book').BookComponent;
     weapon?: import('../../componets/src/weapon').Weapon;
+    projectile?: import('../../componets/src/projectile').Projectile;
     repairer?: import('../../componets/src/repairer').Repairer;
     fuel?: Fuel;
     tradable?: import('../../componets/src/tradable').Tradable;
     temperature?: Temperature;
     heater?: Heater;
     armor?: import('../../componets/src/armor').Armor;
+    setbonus?: import('../../componets/src/setbonus').SetBonus;
     hauntable?: import('../../componets/src/hauntable').Hauntable;
     useableitem?: import('../../componets/src/useableitem').UseableItem;
   };
@@ -225,6 +227,9 @@ export class ItemEntity {
   private readonly persistsState = createSignal(true);
   readonly persistence = readonlySignal(this.persistsState);
   private readonly durability;
+  /** components.armor is attached by prefab configuration, after the durability memo exists. */
+  private readonly armorState = createSignal<import('../../componets/src/armor').Armor | undefined>(undefined);
+  private savedArmor?: InventoryStack['armor'];
   readonly transform: { readonly position: Vector3; rotationY: number } = { position: new Vector3(), rotationY: 0 };
   private miniMapEntity?: MiniMapEntity;
   get MiniMapEntity(): MiniMapEntity | undefined { return this.miniMapEntity; }
@@ -275,7 +280,8 @@ export class ItemEntity {
       inventoryitem: new InventoryItem<ItemEntity, ItemOwner>(this),
       perishable: new Perishable(this, readonlySignal(this.wetState), perishWorld),
     };
-    this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.components.fueled.percent.get());
+    this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.components.fueled.percent.get()
+      ?? this.armorState.get()?.percent.get());
     this.freshness = createMemo(() => this.components.perishable.perishtime.get() === undefined
       ? this.freshnessState.get() : this.components.perishable.percent.get());
     this.signals = Object.freeze({
@@ -316,6 +322,7 @@ export class ItemEntity {
   }
   snapshot(includeIdentity = true): InventoryStack {
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
+    const armor = this.components.armor ? this.components.armor.OnSave() : this.savedArmor;
     const freshness = this.components.perishable.perishtime.peek() === undefined
       ? this.freshnessState.peek() : this.components.perishable.GetPercent();
     const mole = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['mole']> }>('mole')?.OnSave() ?? this.mole;
@@ -324,6 +331,7 @@ export class ItemEntity {
       ...(lightflier === undefined ? {} : { lightflier }),
       ...(mole === undefined ? {} : { mole }),
       ...(temperature === undefined ? {} : { temperature }),
+      ...(armor === undefined ? {} : { armor }),
       ...(this.highTemp === undefined ? {} : { highTemp: Math.ceil(this.highTemp) }),
       ...(this.lowTemp === undefined ? {} : { lowTemp: Math.floor(this.lowTemp) }),
       ...(includeIdentity ? { entityId: this.id } : {}), itemId: this.prefab, count: this.components.stackable.count,
@@ -356,6 +364,9 @@ export class ItemEntity {
       this.components.temperature?.OnLoad(state.temperature);
     }
     this.phonographRecord = state.phonographRecord;
+    this.savedArmor = state.armor;
+    const armor = this.components.armor;
+    if (armor && state.armor && state.armor.condition !== armor.condition.peek()) armor.OnLoad(state.armor);
     batch(() => {
       this.components.stackable.count = state.count;
       this.components.fueled.remaining = state.remainingFuel;
@@ -387,6 +398,12 @@ export class ItemEntity {
       }
     });
     spec.configureEntity?.(this);
+    // armor.lua OnLoad runs after the prefab's InitCondition.
+    const armor = this.components.armor;
+    if (armor && this.armorState.peek() !== armor) {
+      this.armorState.set(armor);
+      if (this.savedArmor) armor.OnLoad(this.savedArmor);
+    }
   }
 
   /** Component adapters publish itemtile's perishchange / wetnesschange state. */

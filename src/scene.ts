@@ -13,7 +13,7 @@ import { ground, turfGround, turfMap } from './building';
 import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
-import { player, playerBody, playerPhysicsBinding, setPlayerNormal } from './player';
+import { player, playerBody, disposePlayer, setPlayerNormal } from './player';
 import {
   type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
@@ -135,7 +135,7 @@ export async function startScene(
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     entities.dispose();
     stopEntityWorld();
-    playerPhysicsBinding.dispose();
+    disposePlayer();
     world.dispose();
     disposeTerrain();
     worldState.dispose();
@@ -236,7 +236,6 @@ export async function startScene(
   const dispose = () => {
     if (disposed) return;
     disposed = true;
-    player.MiniMapEntity.dispose();
     preparation.abort();
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     if (player.userData.locomotor === locomotor) delete player.userData.locomotor;
@@ -260,7 +259,7 @@ export async function startScene(
     const releaseResources = () => {
       entities.dispose();
       stopEntityWorld();
-      playerPhysicsBinding.dispose();
+      disposePlayer();
       world.dispose();
       disposeTerrain();
       worldState.dispose();

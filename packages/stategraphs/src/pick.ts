@@ -16,7 +16,7 @@ export interface PickActor {
   readonly components: {
     sanity?: { DoDelta(delta: number): void };
     combat?: Pick<Combat, 'GetAttacked'>;
-    inventory?: { EquipHasTag(tag: string): boolean };
+    inventory?: { EquipHasTag(tag: string): boolean; GiveItem?(item: ItemEntity, source?: THREE.Vector3): boolean };
   };
 }
 

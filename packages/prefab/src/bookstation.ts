@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createSignal, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, createSignal, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { SpriteController } from '@dontstarve-web/animation/sprite';
 import { bookstation_init_fn } from '@dontstarve-web/animation/prefabskin';
 import { ComponentTimer } from '../../componets/src/timer';
@@ -66,7 +66,7 @@ export class Bookstation {
             createEffect(() => { if (watched.get()) this.stopTimer(); });
         }
         // UpdateBookAesthetics: Show/Hide the book layers by fullness, also on every rebuilt sprite and reskin.
-        this.stopAesthetics = createEffect(() => {
+        this.stopAesthetics = createRenderEffect(() => {
             host.art?.get();
             const count = this.bookCount.get(), animation = this.animation;
             if (!animation) return;

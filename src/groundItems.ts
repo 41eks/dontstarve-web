@@ -631,6 +631,7 @@ export class GroundItemManager {
             ...(definition.remainingUses === undefined ? {} : { remainingUses: definition.remainingUses }),
             ...(definition.remainingFuel === undefined ? {} : { remainingFuel: definition.remainingFuel }),
             ...(definition.temperature === undefined ? {} : { temperature: definition.temperature }),
+            ...(definition.armor === undefined ? {} : { armor: definition.armor }),
             ...(definition.highTemp === undefined ? {} : { highTemp: definition.highTemp }),
             ...(definition.lowTemp === undefined ? {} : { lowTemp: definition.lowTemp }),
             ...(definition.freshnessPercent === undefined ? {} : { freshnessPercent: definition.freshnessPercent }),

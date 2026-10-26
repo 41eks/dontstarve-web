@@ -1,19 +1,18 @@
 import {
   createMaterials,
-  findImage,
   loadAnim,
   loadAnimationArchive,
   loadBuild,
   smallHash,
-  SpriteFrameRenderer,
   type Animation,
   type ParsedAnim,
   type ParsedBuild,
-  type ResolvedSprite,
 } from '@dontstarve-web/animation/animationAssets';
 import { AnimState } from '@dontstarve-web/animation/animState';
-import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
-import { type ReadonlySignal } from '@dontstarve-web/signals';
+import { createSpriteFactory, type SpriteArtSource } from '@dontstarve-web/animation/sprite';
+import type { SymbolBuild } from '@dontstarve-web/animation/animState';
+import type { PrefabDisplay } from '@dontstarve-web/display';
+import { createRenderEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import { BufferedAction, WilsonStateGraph, type BufferedActionObject, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonDeathHost, type WilsonRebirthHost } from '@dontstarve-web/stategraphs';
 import type { ActionAnimationController } from '@dontstarve-web/stategraphs/actionContext';
 import type * as CANNON from 'cannon-es';
@@ -35,10 +34,10 @@ import { equipSamePrefab } from './player_common';
 import { isShovelTool, type ShovelTool } from './shovel';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
-import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { PhysicsState } from '../../componets/src/physicsState';
-import { actionEntity } from './actionEntity';
-import { createEmptyEntity, prefabInstance } from './prefabInstance';
+import { actionEntity, disposeActionEntity } from './actionEntity';
+import { createPrefabEntity, prefabInstance, type PrefabInstance } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
 import { StaffCastingLight } from './yellowstaff';
@@ -117,8 +116,8 @@ export interface WilsonPlayerPrefab {
   physics: PhysicsState;
   /** The bound body the movement and stategraphs drive. */
   body: PlayerBody;
-  /** Disposed before the world it registers in. */
-  physicsBinding: PhysicsBinding;
+  readonly instance: PrefabInstance;
+  readonly display: PrefabDisplay;
   model: PlayerModel;
   readonly MiniMapEntity: MiniMapEntity;
   setNormal(cameraWorldQuaternion: THREE.Quaternion): void;
@@ -162,7 +161,6 @@ interface ActiveEmote extends EmoteAssets {
 }
 
 class WilsonController implements WilsonAnimationController {
-  private readonly renderer: SpriteFrameRenderer;
   private materials: THREE.MeshBasicMaterial[];
   readonly stategraph: WilsonStateGraph;
   private state: WilsonAnimationKey = 'idle';
@@ -188,7 +186,13 @@ class WilsonController implements WilsonAnimationController {
   /** The player inst's combat component, read by the attack state. */
   combat?: WilsonCombat;
   private frameIndex = -1;
-  private readonly visual: THREE.Group;
+  private readonly model: PlayerModel;
+  private readonly instance: PrefabInstance;
+  private readonly fxScheduler = new GameTimeScheduler();
+  private readonly cleanups: (() => void)[] = [];
+  private disposed = false;
+  private artSource?: SpriteArtSource;
+  private readonly factoryAnimations: ParsedAnim;
   private build: ParsedBuild;
   private readonly animations: WilsonAnimations;
   private ghostAssets?: Promise<GhostAssets>;
@@ -196,13 +200,9 @@ class WilsonController implements WilsonAnimationController {
   /** The living build and materials set aside while the ghost's are shown. */
   private livingArt?: { build: ParsedBuild; materials: THREE.MeshBasicMaterial[] };
   private soulHopHost?: WilsonSoulHopHost;
-  private readonly portalTint = { value: 0 };
-  private readonly tintedMaterials = new WeakSet<THREE.Material>();
   private readonly portalSounds = new Set<SoundHandle>();
-  private multColour: readonly [number, number, number] = [1, 1, 1];
   private readonly hatAssets: HatEquipmentAssets;
   private readonly sanityPercent?: ReadonlySignal<number>;
-  private readonly symbolFollowers = new Set<{ hash: number; offset: readonly [number, number]; node: THREE.Object3D }>();
   private headVisual?: ReturnType<typeof equipmentVisualLifecycle>;
   private hatKey = '';
   private bodyVisual?: ReturnType<typeof equipmentVisualLifecycle>;
@@ -225,28 +225,33 @@ class WilsonController implements WilsonAnimationController {
   private readonly assetBaseUrl: string;
 
   constructor(
-    visual: THREE.Group,
+    instance: PrefabInstance,
+    model: PlayerModel,
     build: ParsedBuild,
     animations: WilsonAnimations,
     materials: THREE.MeshBasicMaterial[],
     assetBaseUrl: string,
+    factoryAnimations: ParsedAnim,
     sanityPercent?: ReadonlySignal<number>,
   ) {
-    this.visual = visual;
+    this.instance = instance;
+    this.model = model;
+    this.factoryAnimations = factoryAnimations;
     this.build = build;
     this.animations = animations;
     this.materials = materials;
     this.assetBaseUrl = assetBaseUrl;
     this.equipmentAssets = new GroundItemAssets();
-    this.AnimState = new AnimState(() => { if (this.animation) this.refreshFrame(); });
-    this.visualOwner = { AnimState: this.AnimState, PushEvent: (name, data) => visual.parent!.dispatchEvent({ type: name, data } as never) };
+    this.AnimState = new AnimState();
+    const appearance = watchSignal(this.AnimState.json, stop => this.cleanups.push(stop));
+    createRenderEffect(() => instance.sprite.setAnimState(appearance.get()));
+    this.visualOwner = { AnimState: this.AnimState, PushEvent: (name, data) => model.dispatchEvent({ type: name, data } as never) };
     for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) this.AnimState.Hide(layer);
-    this.castingLight = new StaffCastingLight(visual.parent!);
+    this.castingLight = new StaffCastingLight(model);
     this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
     this.sanityPercent = sanityPercent;
-    this.equipmentContext = { owner: this.visualOwner, assets: this.equipmentAssets, hats: this.hatAssets, lightParent: visual.parent!, sanityPercent };
-    this.renderer = new SpriteFrameRenderer(visual);
-    this.bookFx = new BookFxController(this.equipmentAssets, visual);
+    this.equipmentContext = { owner: this.visualOwner, assets: this.equipmentAssets, hats: this.hatAssets, lightParent: model, sanityPercent };
+    this.bookFx = new BookFxController(instance, this.fxScheduler, assetBaseUrl);
     const controller = this;
     this.stategraph = new WilsonStateGraph({
       get soulHop() { return controller.soulHopHost; },
@@ -254,10 +259,10 @@ class WilsonController implements WilsonAnimationController {
       get death() { return controller.deathHost; },
       get rebirth() { return controller.rebirthHost; },
       rez: {
-        setHidden: hidden => { this.visual.visible = !hidden; },
-        get isHidden() { return !controller.visual.visible; },
+        setHidden: hidden => instance.sprite.setVisible(!hidden),
+        get isHidden() { return instance.sprite.sprite.peek().visible === false; },
         setMultColour: (r, g, b) => this.setMultColour(r, g, b),
-        setInvincible: invincible => { visual.parent!.dispatchEvent({ type: 'setinvincible', data: invincible } as never); },
+        setInvincible: invincible => { model.dispatchEvent({ type: 'setinvincible', data: invincible } as never); },
       },
       get fishing() { return controller.fishingHost; },
       playEvent: event => { PlaySound(event as SoundEventPath); },
@@ -311,14 +316,14 @@ class WilsonController implements WilsonAnimationController {
         if (casting) this.castingLight.start(colour);
         else this.castingLight.stop();
       },
-      setControllerEnabled: enabled => { visual.parent!.userData.controllerEnabled = enabled; },
-      stopMovement: () => visual.parent!.userData.locomotor?.stop(),
-      pushPlayerEvent: (name, data) => { visual.parent!.dispatchEvent({ type: name, data } as never); },
+      setControllerEnabled: enabled => { model.userData.controllerEnabled = enabled; },
+      stopMovement: () => model.userData.locomotor?.stop(),
+      pushPlayerEvent: (name, data) => { model.dispatchEvent({ type: name, data } as never); },
       slip: {
-        runSpeed: () => visual.parent!.userData.runSpeed as number,
-        setMotorSpeed: speed => { visual.parent!.userData.motorSpeed = speed; },
-        resetSlipperiness: () => (visual.parent!.userData.slipperyfeet as { SetCurrent(value: number): void } | undefined)?.SetCurrent(0),
-        wantsToMoveForward: () => visual.parent!.userData.wantsToMoveForward === true,
+        runSpeed: () => model.userData.runSpeed as number,
+        setMotorSpeed: speed => { model.userData.motorSpeed = speed; },
+        resetSlipperiness: () => (model.userData.slipperyfeet as { SetCurrent(value: number): void } | undefined)?.SetCurrent(0),
+        wantsToMoveForward: () => model.userData.wantsToMoveForward === true,
         playSound: (event, volume) => {
           const handle = PlaySound(event === 'hurt' ? 'dontstarve/characters/wilson/hurt' : `dontstarve/movement/${event}`);
           if (volume !== undefined) handle.setVolume(volume);
@@ -330,7 +335,7 @@ class WilsonController implements WilsonAnimationController {
         this.carryItem = name === 'toolbroke' ? null : this.equippedCarryItem;
         if (name !== 'emote') this.emote = null;
         // stategraph.lua pushes "newstate" to the inst; armorsnurtleshell's ProtectionLevels listens for it.
-        visual.parent!.dispatchEvent({ type: 'newstate', data: { statename: name } } as never);
+        model.dispatchEvent({ type: 'newstate', data: { statename: name } } as never);
       },
     });
   }
@@ -387,14 +392,14 @@ class WilsonController implements WilsonAnimationController {
       this.stategraph.cancelAction('BLINK_MAP');
       for (const sound of this.portalSounds) sound.stop();
       this.portalSounds.clear();
-      this.portalTint.value = 0;
+      this.setTint(0);
     }
     this.soulHopHost = host && {
       ...host,
-      setTint: value => { this.portalTint.value = value; },
+      setTint: value => this.setTint(value),
       playSound: (event, volume = 1) => {
         for (const sound of this.portalSounds) if (!sound.isPlaying()) this.portalSounds.delete(sound);
-        const sound = PlaySound(event as SoundEventPath, this.visual.parent!.position);
+        const sound = PlaySound(event as SoundEventPath, this.model.position);
         sound.setVolume(volume);
         this.portalSounds.add(sound);
       },
@@ -413,6 +418,7 @@ class WilsonController implements WilsonAnimationController {
       PreloadSounds('dontstarve/ghost/ghost_howl', 'dontstarve/common/rebirth_amulet_raise', 'dontstarve/common/rebirth_amulet_poof'),
     ]).then(([buildPackage, animations, amulet]) => {
       this.amuletAnimations = amulet;
+      this.registerAnimations(animations); this.registerAnimations(amulet);
       return (this.ghostArt = { build: buildPackage.build, materials: createMaterials(buildPackage), animations });
     });
     void this.ghostAssets.catch(() => { this.ghostAssets = undefined; });
@@ -429,7 +435,6 @@ class WilsonController implements WilsonAnimationController {
     this.livingArt = { build: this.build, materials: this.materials };
     this.build = art.build;
     this.materials = art.materials;
-    this.applyMultColour();
     this.stategraph.becomeGhost(loading);
     this.frameIndex = -1;
     this.showCurrentFrame();
@@ -440,22 +445,16 @@ class WilsonController implements WilsonAnimationController {
     if (!this.isGhost || !living) return;
     this.build = living.build;
     this.materials = living.materials;
-    this.applyMultColour();
     this.livingArt = undefined;
     this.stategraph.becomeAlive(state);
     this.frameIndex = -1;
     this.showCurrentFrame();
   }
 
-  /** AnimState:SetMultColour(r, g, b, 1) on the character's body sprites. */
-  private setMultColour(r: number, g: number, b: number): void {
-    this.multColour = [r, g, b];
-    this.applyMultColour();
-  }
+  /** Character colour and Wortox's additive portal tint are per-instance appearance declarations. */
+  private setMultColour(r: number, g: number, b: number): void { this.instance.sprite.setColour([r, g, b]); }
+  private setTint(amount: number): void { this.instance.sprite.setTint({ colour: [154 / 255, 23 / 255, 19 / 255], amount }); }
 
-  private applyMultColour(): void {
-    for (const material of this.materials) material.color.setRGB(...this.multColour);
-  }
   /** The equipped rod's component for SGwilson's fishing states. */
   bindFishing(fishing: WilsonFishingHost | undefined): void { this.fishingHost = fishing; }
   get isSleeping(): boolean { return this.stategraph.isSleeping; }
@@ -478,6 +477,7 @@ class WilsonController implements WilsonAnimationController {
       PreloadSounds(...sounds as SoundEventPath[]),
     ]);
     this.uniqueItemAnimations = animations;
+    this.registerAnimations(animations);
   }
 
   playRead(book: BufferedActionObject, onRead: () => boolean): boolean {
@@ -501,6 +501,7 @@ class WilsonController implements WilsonAnimationController {
       PreloadSounds('dontstarve/wilson/flute_LP'),
     ]);
     this.uniqueItemAnimations = animations;
+    this.registerAnimations(animations);
   }
 
   playFlute(instrument: BufferedActionObject, onPlay: () => boolean): boolean {
@@ -543,6 +544,7 @@ class WilsonController implements WilsonAnimationController {
         void assets.catch(() => this.emoteAssets.delete(definition.archive));
       }
       const loaded = await assets;
+      this.registerAnimations(loaded.animations);
       if (request !== this.emoteRequest) return false;
       this.emotePending = false;
       this.emote = {
@@ -671,11 +673,11 @@ class WilsonController implements WilsonAnimationController {
     if (facing === this.facing && mirrored === this.mirrored) return;
     this.facing = facing;
     this.mirrored = mirrored;
-    this.visual.scale.x = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
+    this.instance.sprite.setFacing(facingValues[facing], mirrored);
     // Facing changes select different art without restarting the state timeline.
-    this.selectAnimation(this.stategraph.animationClip);
+    this.selectAnimation(this.stategraph.animationClip, false);
     this.showCurrentFrame();
-    this.updateSymbolFollowers();
+    this.instance.sprite.update(0);
   }
 
   setEquippedCarryItem(item: WilsonCarryItem | null): void {
@@ -710,7 +712,7 @@ class WilsonController implements WilsonAnimationController {
     this.headVisual?.onunequip(); this.headVisual = undefined;
     if (!itemId) return;
     const lifecycle = equipmentVisualLifecycle(() => prepareHatVisual(this.hatAssets,
-      { id: 'preview:head', prefab: itemId, skinId }, this.visual.parent!, this.sanityPercent), this.visualOwner);
+      { id: 'preview:head', prefab: itemId, skinId }, this.model, this.sanityPercent), this.visualOwner);
     this.headVisual = lifecycle;
     try { await lifecycle.ready; } catch (error) { if (this.headVisual === lifecycle) { this.hatKey = ''; throw error; } }
   }
@@ -728,46 +730,23 @@ class WilsonController implements WilsonAnimationController {
   }
 
   followSymbol(symbol: string, offsetX: number, offsetY: number): SymbolFollower {
-    const node = new THREE.Object3D();
-    node.name = `Follow:${symbol}`;
-    this.visual.parent!.add(node);
-    const follower = { hash: smallHash(symbol), offset: [offsetX, offsetY] as const, node };
-    this.symbolFollowers.add(follower);
-    this.updateSymbolFollowers();
-    return { node, remove: () => { this.symbolFollowers.delete(follower); node.removeFromParent(); } };
+    return this.instance.sprite.followSymbol(symbol, offsetX, offsetY);
   }
 
-  /** The symbol's matrix places the offset in animation pixels; the visual's scale and mirroring map it to the scene. */
-  private updateSymbolFollowers(): void {
-    if (!this.symbolFollowers.size) return;
-    const elements = this.animation.frames[Math.max(0, this.frameIndex)]?.elements ?? [];
-    this.visual.updateMatrix();
-    for (const { hash, offset: [x, y], node } of this.symbolFollowers) {
-      const element = elements.find((candidate) => candidate.imageHash === hash);
-      node.visible = !!element;
-      if (!element) continue;
-      const [a, b, c, d, tx, ty] = element.matrix;
-      node.position.set(a * x + c * y + tx, b * x + d * y + ty, 0).applyMatrix4(this.visual.matrix);
-    }
-  }
+  private refreshFrame(): void { this.instance.sprite.update(0); }
 
-  private refreshFrame() {
-    const currentFrame = Math.max(0, this.frameIndex);
-    this.frameIndex = -1;
-    this.showFrame(currentFrame);
-  }
-
-  update(dt: number, jumpProgress?: number) {
+  update(dt: number, jumpProgress?: number): void {
+    if (this.disposed) return;
     const step = Math.max(0, Math.min(dt, 0.1));
-    const fxWasAnimating = this.bookFx.isAnimating;
-    this.bookFx.update(step);
-    if (fxWasAnimating) this.frameIndex = -1;
+    this.fxScheduler.advance(step);
     this.stategraph.update(step);
     this.castingLight.update(step);
-    const equipmentWasAnimating = this.AnimState.isAnimating;
-    this.AnimState.Update(step);
-    if (equipmentWasAnimating) this.frameIndex = -1;
     this.showCurrentFrame(jumpProgress);
+    this.instance.sprite.update(step);
+  }
+
+  private registerAnimations(parsed: ParsedAnim): void {
+    for (const animation of parsed.animations) if (!this.factoryAnimations.animations.includes(animation)) this.factoryAnimations.animations.push(animation);
   }
 
   private showCurrentFrame(jumpProgress?: number) {
@@ -790,7 +769,7 @@ class WilsonController implements WilsonAnimationController {
     this.showFrame(clip.loop ? frame % this.animation.frames.length : Math.min(frame, this.animation.frames.length - 1));
   }
 
-  private selectAnimation(clip: WilsonAnimationClip): number {
+  private selectAnimation(clip: WilsonAnimationClip, restart = true): number {
     this.state = clip.key;
     this.clipName = clip.name;
     const parsed = this.state === 'ghost' ? this.ghostArt!.animations : this.state === 'emote' ? this.emote!.animations
@@ -804,8 +783,18 @@ class WilsonController implements WilsonAnimationController {
     this.animation = candidates.find((animation) => animation.facing === facing) ??
       candidates.find((animation) => (animation.facing & facing) !== 0) ?? candidates[0];
     if (!this.animation) throw new Error(`Wilson animation ${this.clipName} is unavailable`);
-    this.frameIndex = -1;
-    this.showFrame(0);
+    const fallbackBuilds = [this.symbolBuilds.get(UNIQUE_ITEM_BUILD), this.emote?.props].filter((build): build is CarryBuild => build !== undefined);
+    if (!this.artSource || this.artSource.animations !== parsed || this.artSource.build.build !== this.build
+      || fallbackBuilds.length !== (this.artSource.fallbackBuilds?.length ?? 0)
+      || fallbackBuilds.some((build, index) => build !== this.artSource!.fallbackBuilds?.[index])) {
+      this.artSource = { animations: parsed, bank: bankHash, build: { build: this.build, materials: this.materials }, fallbackBuilds };
+      this.instance.sprite.setArtSource(this.artSource);
+    }
+    if (restart) {
+      if (clip.loop) this.instance.sprite.start(clip.name); else this.instance.sprite.playOnce(clip.name);
+      this.frameIndex = -1;
+      this.showFrame(0);
+    }
     return this.animation.frames.length / ((clip.frameRate ?? this.animation.frameRate) * (clip.playbackRate ?? 1));
   }
 
@@ -814,47 +803,31 @@ class WilsonController implements WilsonAnimationController {
     this.stategraph.requestOneShot(state);
   }
 
-  private showFrame(index: number) {
-    if (index === this.frameIndex && !this.AnimState.isAnimating && !this.bookFx.isAnimating) return;
+  private showFrame(index: number): void {
+    if (index === this.frameIndex) return;
     this.frameIndex = index;
-    this.updateSymbolFollowers();
-    const bookFx = this.bookFx.resolve(this.animation.frames[index].elements);
-    const sprites = [...this.animation.frames[index].elements]
-      .filter(element => this.AnimState.IsVisible(element))
-      .sort((a, b) => b.z - a.z)
-      .flatMap((element): ResolvedSprite[] => {
-        const followers = bookFx.followers.get(element);
-        if (followers) return followers;
-        const override = this.AnimState.ResolveSymbol(element);
-        if (override) return override;
-        const source = { build: this.build, materials: this.materials };
-        const image = findImage(source.build, element.imageHash, element.imageIndex);
-        if (image) return [{ element, image, materials: source.materials }];
-        const uniqueItem = this.symbolBuilds.get(UNIQUE_ITEM_BUILD);
-        const uniqueImage = uniqueItem && findImage(uniqueItem.build, element.imageHash, element.imageIndex);
-        if (uniqueImage) return [{ element, image: uniqueImage, materials: uniqueItem.materials }];
-        const props = this.emote?.props;
-        const propImage = props && findImage(props.build, element.imageHash, element.imageIndex);
-        return propImage ? [{ element, image: propImage, materials: props!.materials }] : [];
-      });
-    const fx = this.AnimState.ResolveEffects(this.animation.frames[index].elements, this.mirrored);
-    const resolved = [...fx.back, ...sprites, ...fx.front, ...bookFx.front];
-    // DoWortoxPortalTint: texture RGB *= 1-val, then colouradder adds (154,23,19)/255 * val.
-    for (const sprite of resolved) for (const material of sprite.materials) {
-      if (this.tintedMaterials.has(material)) continue;
-      this.tintedMaterials.add(material);
-      const previousCompile = material.onBeforeCompile.bind(material);
-      const previousKey = material.customProgramCacheKey();
-      material.onBeforeCompile = (shader, renderer) => {
-        previousCompile(shader, renderer);
-        shader.uniforms.wortoxPortalTint = this.portalTint;
-        shader.fragmentShader = 'uniform float wortoxPortalTint;\n' + shader.fragmentShader.replace(
-          '#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = diffuseColor.rgb * (1.0 - wortoxPortalTint) + vec3(154.0, 23.0, 19.0) / 255.0 * wortoxPortalTint;');
-      };
-      material.customProgramCacheKey = () => previousKey + ':wortox_portaltint';
-      material.needsUpdate = true;
-    }
-    this.renderer.show(resolved);
+    this.instance.sprite.setFrame(index);
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    ++this.emoteRequest; ++this.carryRequest;
+    this.stategraph.dispose();
+    this.handVisual?.onunequip(); this.headVisual?.onunequip(); this.bodyVisual?.onunequip();
+    this.cleanups.splice(0).forEach(stop => stop());
+    this.bookFx.dispose(); this.fxScheduler.dispose(); this.castingLight.stop();
+    this.makeSound?.stop(); this.shaveSound?.stop();
+    for (const sound of this.namedSounds.values()) sound.stop();
+    for (const sound of this.portalSounds) sound.stop();
+    this.namedSounds.clear(); this.portalSounds.clear();
+  }
+
+  releaseAssets(): void {
+    this.equipmentAssets.dispose(); this.hatAssets.dispose();
+    const release = (build: SymbolBuild) => { for (const material of build.materials) { material.map?.dispose(); material.dispose(); } };
+    if (this.ghostAssets) void this.ghostAssets.then(release, () => {});
+    for (const assets of this.emoteAssets.values()) void assets.then(assets => { if (assets.props) release(assets.props); }, () => {});
   }
 }
 
@@ -892,31 +865,33 @@ export async function createWilsonPlayer(
     throw new Error(`Expected ${PLAYER_ART_CHARACTER} build, received ${buildPackage.build.name}`);
   }
 
-  // The player is an entity like any other: the instance owns its identity, tags and collider, and the display
-  // owns the model, under which the Wilson controller draws the character's own visual.
-  const { display } = createEmptyEntity(PLAYER_ART_CHARACTER);
-  const group = display.model;
-  const player = Object.assign(group, { MiniMapEntity: new MiniMapEntity(group.position) });
-  // player_common.lua common initialization uses the character name, not the
-  // shared Wilson animation bank. Wortox's default skin supplies the build.
-  player.MiniMapEntity.SetIcon(`${buildPackage.build.name.toLowerCase()}.png`);
+  const banks = [idle, movement, jump, itemActions, eat, staff, net, hammer, shovel, attacks, till, axe, actions, slip, strum, fishing, shell, portal];
+  const factoryAnimations: ParsedAnim = { animations: banks.flatMap(bank => bank.animations) };
+  const factory = createSpriteFactory(buildPackage, factoryAnimations);
+  const { instance, display } = createPrefabEntity(PLAYER_ART_CHARACTER, {
+    create: (name, frame) => factory.create({ initialAnimation: name, initialFrame: frame }),
+    release: sprite => factory.disposeSprite(sprite),
+  }, { name: 'idle_loop' }, 'Wortox', instance => {
+    instance.sprite.setArtSource({ animations: idle, bank: smallHash('wilson'), build: factory.build });
+    instance.sprite.setFacing(8, false);
+    // SGwilson owns playback time and action completion; the display draws the declared frame.
+    instance.sprite.setPaused(true);
+  });
+  const player = Object.assign(display.model, { MiniMapEntity: new MiniMapEntity(instance.position) });
+  player.MiniMapEntity.SetIcon(`${PLAYER_ART_CHARACTER}.png`);
   player.MiniMapEntity.SetPriority(10);
   player.MiniMapEntity.SetCanUseCache(false);
   player.MiniMapEntity.SetDrawOverFogOfWar(true);
-  player.name = 'Wortox';
   player.userData.artCharacter = PLAYER_ART_CHARACTER;
-  // player_common.lua: deployment queries ignore the player's own entity.
-  actionEntity(player, PLAYER_ART_CHARACTER).addTag('player');
+  // player_common.lua's common tags; upgrades.lua uses these exact upgrade type names.
+  for (const tag of ['player', 'scarytoprey', 'character', 'lightningtarget', 'waterplant_upgradeuser', 'mast_upgradeuser',
+    'chest_upgradeuser', 'usesvegetarianequipment', 'ghostlyelixirable', 'trader', 'debuffable', 'stageactor',
+    'playermonster', 'monster', 'soulstealer', 'souleater']) instance.addTag(tag);
   player.position.set(0, 30, 0);
   player.userData.billboard = true;
+  actionEntity(player, PLAYER_ART_CHARACTER);
 
-  const visual = new THREE.Group();
-  const assetToWorldScale = 0.02;
-  visual.scale.set(assetToWorldScale, -assetToWorldScale, assetToWorldScale);
-  player.add(visual);
-  registerSpriteRenderGroup(player, visual);
-
-  const controller = new WilsonController(visual, buildPackage.build, {
+  const controller = new WilsonController(instance, player, buildPackage.build, {
     wortox_portal: portal,
     idle,
     walk: movement,
@@ -966,8 +941,12 @@ export async function createWilsonPlayer(
     hideshell: shell, hideshell_idle: shell, hitshell: shell,
     slip_pre: slip, slip_loop: slip, slip_pst: slip,
     slip_fall_pre: slip, slip_fall_idle: slip, slip_fall_pst: slip,
-  }, createMaterials(buildPackage), assetBaseUrl, options.sanityPercent);
-  await controller.prepareToolBroke();
+  }, factory.build.materials, assetBaseUrl, factoryAnimations, options.sanityPercent);
+  instance.onRemove(() => { controller.dispose(); player.MiniMapEntity.dispose(); disposeActionEntity(player); });
+  display.onDispose(() => { controller.releaseAssets(); factory.dispose(); });
+  try { await controller.prepareToolBroke(); }
+  catch (error) { instance.remove(); throw error; }
+  instance.sprite.update(0);
   player.userData.animationController = controller;
   player.userData.stategraph = controller.stategraph;
   return player;
@@ -987,18 +966,18 @@ export async function createWilsonPlayerPrefab(
   const model = await createWilsonPlayer(assetBaseUrl, options);
   const entity = prefabInstance(model)!;
   MakeCharacterPhysics(entity, 75, PLAYER_PHYSICS_RADIUS);
-  // The scene releases the body before its world while the player entity stays, so the binding is kept here.
-  const physicsBinding = bindPhysics(world, entity.physics, () => model.position);
-  const body = physicsBinding.body as PlayerBody;
+  entity.bindPhysics(world);
+  const body = entity.physicsBody as PlayerBody;
   body.canJump = false;
-  body.addEventListener('collide', () => {
-    body.canJump = true;
-  });
+  const onCollide = () => { body.canJump = true; };
+  body.addEventListener('collide', onCollide);
+  entity.onRemove(() => body.removeEventListener('collide', onCollide));
 
   return {
     physics: entity.physics,
     body,
-    physicsBinding,
+    instance: entity as PrefabInstance,
+    display: model.userData.display as PrefabDisplay,
     model,
     MiniMapEntity: model.MiniMapEntity,
     setNormal(cameraWorldQuaternion) {

@@ -40,7 +40,7 @@ function available(target: PickupTarget, doer: PickupDoer, right: boolean): bool
 export function performPickupAction(target: PickupTarget, doer: PickupDoer): boolean {
   const inst = target.entity, item = inst.components.inventoryitem, inventory = doer.components.inventory;
   if (!target.isValid() || item.owner || !item.CanBePickedUp(doer)
-    || (target.hasTag('fire') && !target.hasTag('lighter')) || target.hasTag('projectile')) return false;
+    || (target.hasTag('fire') && !target.hasTag('lighter')) || inst.components.projectile?.IsThrown()) return false;
   if (inst.components.container?.IsOpenedByOthers(doer)) return false;
   doer.PushEvent('onpickupitem', { item: inst });
   const equippable = inst.components.equippable;

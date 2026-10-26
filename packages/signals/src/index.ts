@@ -1,11 +1,11 @@
-export { createSignal, createEffect, createMemo, watchSignal, batch, onCleanUp, readonlySignal } from './signal';
+export { createSignal, createEffect, createRenderEffect, createMemo, watchSignal, batch, onCleanUp, readonlySignal } from './signal';
 export { WorldContentKey, bindWorldContent, getWatchWorldContent, getBoundWatchWorldContent, isWorldContentBound, GetTileStateAtPoint, createIdleWeatherSources } from './worldContent';
 export type { WorldContentValues, WorldContentSources, WorldContentEnvironment, WorldContentSignal, PlayerPositionsSignal, WorldContentContext, GetWatchWorldContent, WorldWindChange, WorldMoonState, WorldPrecipitationType, PerishTick, PerishClock, TileStateQuery, WatchWorldContentOptions } from './worldContent';
 export { GameTimeScheduler } from './gameTimeScheduler';
 export { EventEmitter } from './EventEmitter';
 export type { Signal, ReadonlySignal, SignalListener, Memo } from './signal';
 export { createEquipmentExistenceState } from './equipment';
-export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentOwner, EquipmentSlot, EquipmentStat, HandEquipment, HeadEquipment, BodyEquipment } from './equipment';
+export type { Equipment, EquipmentEntity, EquipmentLifecycle, EquipmentOwner, EquipmentSanity, EquipmentSlot, EquipmentStat, HandEquipment, HeadEquipment, BodyEquipment } from './equipment';
 export { createSanityState, type SanityState } from './sanity';
 export { createHealthState, type HealthState } from './health';
 export { createHungerState, type HungerState } from './hunger';

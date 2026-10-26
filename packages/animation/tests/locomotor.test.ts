@@ -1,7 +1,7 @@
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
-import { Locomotor, findGroundPath } from '../../prefab/src/locomotor';
+import { Locomotor, findGroundPath, staticObstacleTest } from '../../prefab/src/locomotor';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -80,4 +80,21 @@ it('rejects a blocked or unreachable destination and bounds the search', () => {
   player.velocity.set(2, 3, 4);
   expect(locomotor.goToPoint(new THREE.Vector3(8, 0, 0))).toBe(false);
   expect(player.velocity).toEqual(new CANNON.Vec3(0, 3, 0));
+});
+
+it('tests ground points against nearby static colliders, following a relocated body', () => {
+  const wall = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(1, 1, 1)), position: new CANNON.Vec3(10, 0, 0) });
+  const ghost = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(1, 1, 1)), position: new CANNON.Vec3(-10, 0, 0) });
+  ghost.collisionResponse = false;
+  const mover = body(); mover.position.set(0, 0, 10);
+  const blocked = staticObstacleTest([wall, ghost, mover], .5);
+  expect(blocked(new THREE.Vector3(11.4, 0, 0))).toBe(true);
+  expect(blocked(new THREE.Vector3(11.6, 0, 0))).toBe(false);
+  expect(blocked(new THREE.Vector3(-10, 0, 0))).toBe(false);
+  expect(blocked(new THREE.Vector3(0, 0, 10))).toBe(false);
+  // A relocation flags the cached AABB; an untouched body keeps it.
+  wall.position.set(-20, 0, 0); wall.aabbNeedsUpdate = true;
+  const moved = staticObstacleTest([wall], .5);
+  expect(moved(new THREE.Vector3(10, 0, 0))).toBe(false);
+  expect(moved(new THREE.Vector3(-20, 0, 0))).toBe(true);
 });

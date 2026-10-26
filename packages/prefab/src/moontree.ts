@@ -27,7 +27,7 @@ import { newEntityId } from './saveRecord';
 import { MiniMapEntity } from './minimapEntity';
 import { PreloadSounds, type SoundHandle } from './sound';
 import { BurnableBinding, FireFxHost, TREE_BURN_TIME, type BurnEnvironment, type BurnSpec } from './treeFire';
-import { getBoundWatchWorldContent, WorldContentKey, createEffect, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { getBoundWatchWorldContent, WorldContentKey, createRenderEffect, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import type { WorldEventEmitter } from './worldContext';
 
 /** tuning.lua MOON_TREE_CHOPS_TALL: the tall stage requires sixteen chops. */
@@ -205,7 +205,7 @@ export async function createMoonTreeManager(assetBaseUrl: string, world: MoonTre
     controller.stopSnow?.(); controller.stopSnow = undefined;
     const sprite = controller.model.userData.animationController as ArchiveSpriteCommands;
     const level = getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { controller.stopSnow = stop; });
-    const stopWatch = controller.stopSnow, stopEffect = createEffect(() => { sprite.setSymbolHidden('snow', level ? level.get() < .015 : true); });
+    const stopWatch = controller.stopSnow, stopEffect = createRenderEffect(() => { sprite.setSymbolHidden('snow', level ? level.get() < .015 : true); });
     controller.stopSnow = () => { stopEffect(); (stopWatch as (() => void) | undefined)?.(); };
   };
   const unbindFire = (controller: TreeController) => { controller.burn?.dispose(); controller.burn = undefined; };

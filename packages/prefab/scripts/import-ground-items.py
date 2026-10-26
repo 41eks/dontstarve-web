@@ -108,6 +108,8 @@ def main():
     add('rocks', 'rocks', 'rocks', 'f1', 'inv_rocks')
     add('ice', 'ice', 'ice', 'f1', 'inv_rocks_ice')
     add('marble', 'marble', 'marble', 'anim', 'inv_marble')
+    # cactus.lua cactusflowerfn shares the file with the cactus plants: SetBank("cactusflower"), SetBuild("cactus_flower").
+    add('cactus_flower', 'cactusflower', 'cactus_flower', 'idle', 'cactus')
     # heatrock.lua initializes UpdateImages(inst, 3); the five source images
     # belong to one nonstackable prefab, not five inventory item IDs.
     heatrock_lua = read('heatrock')

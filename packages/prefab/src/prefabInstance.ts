@@ -4,6 +4,8 @@ import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-w
 import { PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
+import type { Brain } from '../../brains/src/brain';
+import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { PlacementSaveRecord } from './saveRecord';
 import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
@@ -31,9 +33,14 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   /** inst.physicsradiusoverride, in DST units. */
   physicsRadiusOverride?: number;
   private physicsBinding?: PhysicsBinding;
+  /** inst.sg: SetStateGraph's instance, as other code reads and drives it; cleared by ClearStateGraph. */
+  sg?: Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent'>;
+  /** inst.brain: SetBrain's brain, cleared by StopBrain. */
+  brain?: Brain;
   private readonly tags = new Set<string>();
   private tagView?: readonly string[];
   private readonly tagListeners = new Set<(tag: string) => void>();
+  private readonly removalHandlers = new Set<() => void>();
 
   /** `sprite` is the entity's sprite state, typed by what its display can draw. */
   constructor(prefab: string, sprite: Sprite) {
@@ -99,8 +106,18 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   }
 
   remove(): void {
+    if (this.lifecycle.peek() === 'removed') return;
     this.lifecycle.set('removed');
     this.physicsBinding?.dispose();
+    for (const remove of this.removalHandlers) remove();
+    this.removalHandlers.clear();
+  }
+
+  /** Entity-owned components and logical controllers stop when the inst is permanently removed. */
+  onRemove(remove: () => void): () => void {
+    if (this.lifecycle.peek() === 'removed') { remove(); return () => {}; }
+    this.removalHandlers.add(remove);
+    return () => { this.removalHandlers.delete(remove); };
   }
 }
 
@@ -134,11 +151,11 @@ export function setModelTag(model: Object3D, tag: string, present: boolean): voi
 /** A new entity and the display that draws it. The model is the display's; the entity never holds it. */
 export function createPrefabEntity(prefab: string, source: SpriteSource, clip: ConstructorParameters<typeof SpriteState>[0], name?: string,
   /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
-  initialize?: (instance: PrefabInstance) => void):
+  initialize?: (instance: PrefabInstance) => void, parentStatus?: ReadonlySignal<PrefabStatus>):
   { instance: PrefabInstance; display: PrefabDisplay } {
   const instance = new PrefabInstance(prefab, new SpriteState(clip));
   initialize?.(instance);
-  const display = new PrefabDisplay({ name, source, status: instance.status, sprite: instance.sprite });
+  const display = new PrefabDisplay({ name, source, status: instance.status, parentStatus, sprite: instance.sprite });
   bindInstance(display.model, instance);
   display.model.userData.display = display;
   display.model.userData.animationController = instance.sprite;

@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MarbleShrubManager } from '../../prefab/src/marbleshrub';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { MarbleBeanSaplingManager } from '../../prefab/src/marblebean_sapling';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
@@ -94,11 +95,17 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     const [minimap] = s.shrubs.miniMapEntities;
     expect([minimap.icon, minimap.priority, minimap.position.x]).toEqual(['marbleshrub2.png', -1, 12]);
     const model = s.shrubs.mineTargets[0].model;
+    const sprite = prefabInstance(model)!.sprite;
     const vertices = () => { let count = 0; model.traverse(o => { if (o instanceof THREE.Mesh) count += o.geometry.drawRange.count === Infinity ? o.geometry.index?.count ?? 0 : o.geometry.drawRange.count; }); return count; };
     const bare = vertices();
-    s.snowLevel.set(.02); await new Promise(resolve => setTimeout(resolve, 0));
+    s.snowLevel.set(.02);
+    // Appearance declarations update synchronously; the display applies them on its own schedule.
+    expect(sprite.sprite.peek().appearance.get('archive-hidden:snow')).toMatchObject({ hidden: false });
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(vertices()).toBeGreaterThan(bare);
-    s.snowLevel.set(0); await new Promise(resolve => setTimeout(resolve, 0));
+    s.snowLevel.set(0);
+    expect(sprite.sprite.peek().appearance.get('archive-hidden:snow')).toMatchObject({ hidden: true });
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(vertices()).toBe(bare);
 
     let json = '';
@@ -115,6 +122,12 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect(s.shrubs.exportRecords()).toHaveLength(1);
     expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
     expect(s.shrubs.mineTargets).toEqual([]); expect(s.shrubs.exportRecords()).toEqual([]);
+    s.shrubs.dispose();
+    expect(prefabInstance(model)!.status.peek()).toBe('removed');
+    const removedAppearance = sprite.sprite.peek();
+    s.snowLevel.set(.02);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(sprite.sprite.peek()).toBe(removedAppearance);
     await vi.waitFor(() => expect(dropped(s)).toEqual(['marble', 'marble', 'marblebean']));
   } finally { s.dispose(); restored.dispose(); }
 }, 20000);

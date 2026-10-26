@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { createEffect, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createMemo, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { setLightOverride } from '@dontstarve-web/animation/lightOverride';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
 import { ArchiveEngine, type ArchiveSpriteSource, type DisplayEngine } from './displayEngine';
 import type { AppearanceJson, ClipJson, SpriteJson, SpriteState } from './spriteState';
+import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 
 /** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
 export type PrefabStatus = 'active' | 'asleep' | 'removed';
@@ -27,6 +28,8 @@ export interface PrefabDisplayOptions {
   readonly empty?: boolean;
   /** The entity's lifecycle, written by the logical side. */
   readonly status: ReadonlySignal<PrefabStatus>;
+  /** A child shares its owner's tile residency; its own removed state still ends its display. */
+  readonly parentStatus?: ReadonlySignal<PrefabStatus>;
   /** The entity's sprite json, written by the prefab. The first sprite is drawn in its clip; the rest is dressed at once. */
   readonly sprite: SpriteState;
 }
@@ -39,8 +42,11 @@ export class PrefabDisplay {
   private readonly engine: DisplayEngine;
   private readonly state: SpriteState;
   private readonly json: ReturnType<typeof watchSignal<SpriteJson>>;
-  private readonly status: ReturnType<typeof watchSignal<PrefabStatus>>;
+  private readonly status: ReadonlySignal<PrefabStatus>;
   private readonly cleanups: (() => void)[] = [];
+  private readonly disposalHandlers = new Set<() => void>();
+  private readonly symbolNodes = new Set<THREE.Object3D>();
+  private dressedVersion = -1;
   private fx!: FxAttachments;
   private readonly follower = new AnimationFollower(name => {
     if (!this.engine.setAnimation) throw new Error('This display cannot follow an animation');
@@ -55,7 +61,8 @@ export class PrefabDisplay {
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: number; transient?: SpriteJson['transient'];
-    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; lightOverride?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean; appearance: ReadonlyMap<string, AppearanceJson> };
+    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; lightOverride?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
+    source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
     const { archive, sprite: state } = options;
@@ -95,10 +102,21 @@ export class PrefabDisplay {
       get currentAnimationLength() { sync(); return controller.currentAnimationLength; },
       get pose() { sync(); return controller.pose; },
       get loaded() { return controller.loaded; },
-      update: dt => { sync(); controller.update(dt); this.fx.update(dt); },
+      update: dt => {
+        sync(); controller.update(dt);
+        this.fx.update(dt, this.json.peek());
+        if (this.fx.hasComposites) controller.setComposites?.(this.fx.compositeFrames());
+        this.updateSymbolFollowers(this.json.peek());
+      },
+      createFollower: () => new THREE.Object3D(),
     });
     this.model.addEventListener('added', this.onAdded);
-    const status = this.status = watchSignal(options.status, stop => this.cleanups.push(stop));
+    const ownStatus = watchSignal(options.status, stop => this.cleanups.push(stop));
+    const parentStatus = options.parentStatus && watchSignal(options.parentStatus, stop => this.cleanups.push(stop));
+    const status = this.status = parentStatus ? createMemo<PrefabStatus>(() => {
+      const own = ownStatus.get();
+      return own === 'removed' ? own : own === 'asleep' || parentStatus.get() !== 'active' ? 'asleep' : 'active';
+    }) : ownStatus;
     const json = this.json = watchSignal(state.sprite, stop => this.cleanups.push(stop));
     const art = watchSignal(this.engine.art, stop => this.cleanups.push(stop));
     this.cleanups.push(createEffect(() => this.applyStatus(status.get())));
@@ -106,7 +124,7 @@ export class PrefabDisplay {
     const followed = watchSignal(state.animationSource, stop => this.cleanups.push(stop));
     const declaredFx = watchSignal(state.fx, stop => this.cleanups.push(stop));
     this.cleanups.push(createEffect(() => this.follower.follow(followed.get())));
-    this.fx = new FxAttachments(this.model);
+    this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()));
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
     this.cleanups.push(createEffect(() => { art.get(); this.dress(json.peek()); state.artChanged(); }));
     // A billboard turns to TheCamera itself, through its own bridge to the world's camera rotation.
@@ -120,6 +138,28 @@ export class PrefabDisplay {
   get model(): THREE.Group { return this.engine.model; }
 
   get isRemoved(): boolean { return this.disposed || this.status.peek() === 'removed'; }
+
+  /** Source owners release their shared resources after the display has returned its last sprite. */
+  onDispose(callback: () => void): () => void {
+    if (this.disposed) { callback(); return () => {}; }
+    this.disposalHandlers.add(callback);
+    return () => { this.disposalHandlers.delete(callback); };
+  }
+
+  /** A composited child supplies frame parts to its parent's merged billboard. */
+  resolveFrame(): readonly ResolvedSprite[] {
+    this.applyStatus(this.status.peek());
+    this.sync();
+    return this.engine.getResolvedFrame?.() ?? [];
+  }
+
+  private updateSymbolFollowers(json: SpriteJson): void {
+    for (const node of this.symbolNodes) if (!json.followers?.has(node)) { node.removeFromParent(); this.symbolNodes.delete(node); }
+    for (const [node, { symbol, x, y }] of json.followers ?? []) {
+      if (!this.symbolNodes.has(node)) { this.symbolNodes.add(node); this.model.add(node); }
+      node.visible = this.engine.getSymbolPosition?.(symbol, x, y, node.position) ?? false;
+    }
+  }
 
   /** Advance a display owned by a scene collection, including standalone camera-facing FX. */
   update(dt: number, cameraRotation: THREE.Quaternion): void {
@@ -175,6 +215,8 @@ export class PrefabDisplay {
 
   private applySprite(json: SpriteJson): void {
     const { engine: controller, applied, state } = this;
+    if (this.dressedVersion !== controller.art.peek()) this.dress(json);
+    if (json.source !== applied.source) { applied.source = json.source; if (json.source) controller.setArtSource?.(json.source); }
     if (json.visible !== undefined) this.model.visible = json.visible;
     if (json.clip !== applied.clip) {
       const clip = json.clip;
@@ -187,6 +229,7 @@ export class PrefabDisplay {
       else if (clip.finished) controller.holdLastFrame(clip.name);
       else controller.playOnce(clip.name, () => state.finish(clip));
       applied.clip = clip; applied.queue = 0; applied.frame = undefined;
+      applied.paused = undefined;
     }
     for (; applied.queue < json.queue.length; applied.queue++) {
       const entry = json.queue[applied.queue];
@@ -201,6 +244,7 @@ export class PrefabDisplay {
     }
     if (json.colour !== applied.colour) { applied.colour = json.colour; if (json.colour) controller.setColour(json.colour); }
     if (json.opacity !== applied.opacity) { applied.opacity = json.opacity; if (json.opacity !== undefined) controller.setOpacity(json.opacity); }
+    if (json.tint !== applied.tint) { applied.tint = json.tint; if (json.tint) controller.setTint?.(json.tint); }
     if (json.lightOverride !== applied.lightOverride) {
       applied.lightOverride = json.lightOverride;
       setLightOverride(this.model, json.lightOverride ?? null);
@@ -212,17 +256,22 @@ export class PrefabDisplay {
     if (json.depthOffset !== applied.depthOffset) { applied.depthOffset = json.depthOffset; controller.setDepthOffset?.(json.depthOffset ?? false); }
     for (const [key, op] of json.appearance) if (applied.appearance.get(key) !== op) this.dressOne(op);
     applied.appearance = json.appearance;
+    this.updateSymbolFollowers(json);
   }
 
   /** Every sprite that is drawn starts undressed: give it the entity's appearance again. */
   private dress(json: SpriteJson): void {
     const controller = this.engine;
     if (!controller.loaded) return;
+    this.dressedVersion = controller.art.peek();
+    if (json.source) controller.setArtSource?.(json.source);
     if (this.facing) controller.faceCamera?.(this.facing);
     if (json.image !== undefined) controller.showImage(json.image);
     if (json.facing !== undefined) controller.setFacing(json.facing, json.mirrored);
+    if (json.frame !== undefined && controller.currentAnimation === json.clip.name) controller.setFrame(json.frame);
     if (json.colour) controller.setColour(json.colour);
     if (json.opacity !== undefined) controller.setOpacity(json.opacity);
+    if (json.tint) controller.setTint?.(json.tint);
     if (json.paused !== undefined) controller.setPaused?.(json.paused);
     if (json.erosion !== undefined) controller.setErosion?.(json.erosion);
     if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat);
@@ -234,6 +283,7 @@ export class PrefabDisplay {
   private dressOne(op: AppearanceJson): void {
     const controller = this.engine;
     switch (op.kind) {
+      case 'anim-state': controller.setAnimState?.(op.state); break;
       case 'archive-symbol': controller.setSymbolOverride?.(op.symbol, op.archive, op.sourceSymbol); break;
       case 'archive-hidden': controller.setSymbolHidden?.(op.symbol, op.hidden); break;
       case 'archive-build': controller.setBuildArchive?.(op.archive); break;
@@ -258,6 +308,10 @@ export class PrefabDisplay {
     this.fx.dispose();
     this.state.bind(undefined);
     this.engine.dispose();
+    for (const node of this.symbolNodes) node.removeFromParent();
+    this.symbolNodes.clear();
     this.model.removeFromParent();
+    for (const dispose of this.disposalHandlers) dispose();
+    this.disposalHandlers.clear();
   }
 }

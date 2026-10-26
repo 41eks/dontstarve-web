@@ -215,6 +215,12 @@ export interface WilsonCombat {
 type WilsonInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName>;
 const State = DefineState<WilsonStateGraph, WilsonStateName>;
 const ActionHandler = DefineActionHandler<WilsonStateGraph, WilsonStateName>;
+/** SGwilson.lua: dontstarve/wilson/hit, then DoHurtSound. */
+function playHitSounds(host: { playEvent?(event: string): void }): void {
+  host.playEvent?.('dontstarve/wilson/hit');
+  host.playEvent?.('dontstarve/characters/wilson/hurt');
+}
+
 const clip = (key: WilsonAnimationKey, name: string = key): WilsonAnimationClip => ({ key, name });
 const fishingClip = (name: string): WilsonAnimationClip => clip('fishing', name);
 
@@ -777,6 +783,23 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       EventHandler('unequip', inst => { inst.statemem.unequipped = true; }),
     ],
     ontimeout: inst => inst.goToState(inst.statemem.unequipped ? 'idle' : 'shell_idle'),
+  }),
+  State({
+    // SGwilson.lua hit: player_actions' 21-frame `hit` stuns for min(21, 6) frames.
+    name: 'hit',
+    tags: ['busy', 'pausepredict', 'keepchannelcasting'],
+    onenter: inst => {
+      inst.context.host.stopMovement?.();
+      inst.context.clearBufferedAction();
+      inst.context.playClips([clip('hit')]);
+      playHitSounds(inst.context.host);
+      inst.setTimeout(6 * FRAMES);
+    },
+    ontimeout: inst => {
+      inst.removeStateTag('keepchannelcasting');
+      inst.goToState('idle', true);
+    },
+    events: [EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('idle'); })],
   }),
   State({
     // SGwilson.lua portal_rez: the player appears black inside the portal, then tweens back to full colour.
@@ -1500,6 +1523,19 @@ export class WilsonStateGraph {
       if (this.sg.hasStateTag('dead')) return;
       this.sg.goToState('death');
     });
+    // SGwilson.lua EventHandler("attacked") for the ported states; electric, parry, pinned and stunlock branches need
+    // unported components. A living stategraph is never in a dead state while its health is above zero.
+    this.sg.listenForEvent('attacked', () => {
+      if (this.sg.hasStateTag('dead')) return;
+      if (this.sg.hasStateTag('sleeping')) {
+        playHitSounds(this.host);
+        const sleep = this.host.sleep;
+        if (sleep?.hasBed) sleep.wakeBed(false);
+        else { this.sg.statemem.iswaking = true; this.sg.goToState('wakeup'); }
+      } else if (this.sg.hasStateTag('nointerrupt')) playHitSounds(this.host);
+      else if (this.sg.hasStateTag('shell')) this.sg.goToState('shell_hit');
+      else this.sg.goToState('hit');
+    });
     // SGwilson.lua EventHandler("blocked"): armor soaked the hit.
     this.sg.listenForEvent('blocked', () => {
       if (this.sg.hasStateTag('shell')) this.sg.goToState('shell_hit');
@@ -1547,6 +1583,13 @@ export class WilsonStateGraph {
     if (name === 'unequip' && !this.isSoulHopping) this.cancelAction();
   }
   update(dt: number): void { this.sg.update(dt); }
+
+  /** The entity is removed: no pending animation or buffered action may outlive it. */
+  dispose(): void {
+    this.cancelAnimation?.(); this.cancelAnimation = undefined;
+    this.releaseAction();
+    this.sg.dispose();
+  }
 
   get animationDone(): boolean { return this.animationCompleted; }
 

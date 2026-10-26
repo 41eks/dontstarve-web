@@ -26,6 +26,7 @@ export interface GroundItemDefinition {
   remainingUses?: number;
   remainingFuel?: number;
   temperature?: InventoryStack['temperature'];
+  armor?: InventoryStack['armor'];
   highTemp?: number;
   lowTemp?: number;
   freshnessPercent?: number;

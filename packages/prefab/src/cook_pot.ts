@@ -8,7 +8,7 @@ import {
 import type { WorldContext } from './worldContext';
 import type { AnimatedBuildingEventContext } from './animatedBuildingPlacement';
 import { setModelTag } from './prefabInstance';
-import { createEffect } from '@dontstarve-web/signals';
+import { createRenderEffect } from '@dontstarve-web/signals';
 import type * as THREE from 'three';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 
@@ -87,7 +87,7 @@ function initializePot({ model, art }: AnimatedBuildingEventContext): void {
     stewer.onstartcooking = () => continueCooking(model);
     stewer.oncontinuecooking = () => continueCooking(model);
     // cookpot.lua showproduct on donecooking / continuedone, redone for every rebuilt sprite.
-    model.userData.stopProduct = createEffect(() => {
+    model.userData.stopProduct = createRenderEffect(() => {
         art?.get();
         if (stewer.state.done.get() && stewer.state.product.get() !== undefined) showProduct(model);
     });

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
 import { ItemEntity, type ItemEntityRegistry, type InventoryStack } from '@dontstarve-web/inventory';
 import { createSpriteFactory, loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
@@ -119,7 +119,7 @@ class Moonbase {
     model.userData.components.moonbase = this;
     this.makeRepairable();
     // OverrideSymbol("swap_staffs", ...) follows the held staff and the displayed art, including after the sprite is rebuilt.
-    this.cleanups.push(createEffect(() => {
+    this.cleanups.push(createRenderEffect(() => {
       art?.get();
       const staff = this.staffState.get(), { staffOverrides } = this.resources.get();
       this.sprite.overrideSymbol('swap_staffs', staff ? staffOverrides[`${staff.prefab}:${staff.skinId ?? 'base'}`] : undefined);

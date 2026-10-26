@@ -48,6 +48,7 @@ import { BerrybushManager, BERRYBUSH_ID } from '@dontstarve-web/prefab/berrybush
 import { MonkeytailManager, MONKEYTAIL_ID } from '@dontstarve-web/prefab/monkeytail';
 import { GrassManager, GRASS_ID } from '@dontstarve-web/prefab/grass';
 import { CaveFernManager } from '@dontstarve-web/prefab/cave_fern';
+import { CactusManager } from '@dontstarve-web/prefab/cactus';
 import type { GameTimeScheduler } from '@dontstarve-web/prefab/gameTimeScheduler';
 import { TumbleweedManager, TUMBLEWEED_ID } from '@dontstarve-web/prefab/tumbleweed';
 import { SaplingManager } from '@dontstarve-web/prefab/sapling';
@@ -80,7 +81,7 @@ import { WaveManager, type WaveMap } from '../packages/componets/src/wavemanager
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { TILE_SIZE } from '../packages/prefab/src/tile';
 import { SAVE_CATALOG } from './save/catalog';
-import { findGroundPath } from '@dontstarve-web/prefab/locomotor';
+import { findGroundPath, staticObstacleTest } from '@dontstarve-web/prefab/locomotor';
 import { createDeciduousForest, type DeciduousSpawnId } from '@dontstarve-web/prefab/deciduoustrees';
 import { createEvergreenForest, type EvergreenSpawnId } from '@dontstarve-web/prefab/evergreens';
 
@@ -118,6 +119,7 @@ const MANAGER_DEFINITIONS = {
   'grass': PREFAB_DEFINITIONS.grasses,
   'sapling': PREFAB_DEFINITIONS.saplings,
   'cave_fern': PREFAB_DEFINITIONS.caveFerns,
+  'cactus': PREFAB_DEFINITIONS.cacti,
   'lava_pond': PREFAB_DEFINITIONS.lavaPonds,
   'tumbleweed': PREFAB_DEFINITIONS.tumbleweeds,
   'hotspring': PREFAB_DEFINITIONS.hotsprings,
@@ -234,6 +236,7 @@ export async function createSceneEntities(
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
+    'cactus': ReturnType<typeof registerCacti>;
     'lava_pond': ReturnType<typeof registerLavaPonds>;
     'tumbleweed': ReturnType<typeof registerTumbleweeds>;
     'hotspring': ReturnType<typeof registerHotsprings>;
@@ -304,6 +307,7 @@ export async function createSceneEntities(
   Managers['grass'] = registerGrasses(registry, 'grass', worldState);
   Managers['sapling'] = registerSaplings(registry, 'sapling', worldState);
   Managers['cave_fern'] = registerCaveFerns(registry, 'cave_fern', worldState);
+  Managers['cactus'] = registerCacti(registry, 'cactus', worldState);
   Managers['lava_pond'] = registerLavaPonds(registry, 'lava_pond', worldState);
 
   const worldWind = worldState.worldwind;
@@ -953,6 +957,28 @@ export async function createSceneEntities(
     return caveFerns;
   }
 
+  function registerCacti(registry: EntityRegistry, prefabId: 'cactus', worldState: SceneWorldState) {
+    const cacti = new CactusManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, {
+      tickingarea: worldState.tickingarea,
+      physics: world,
+      prepareSpawn: (definition, fling) => Managers['ground_item'].prepareSpawn(definition, fling),
+      spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
+      dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
+    });
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (id, record) => cacti.spawn(id, new THREE.Vector3(...record.transform.position), {
+        id: record.id, transform: record.transform, components: { pickable: record.components.pickable },
+      }),
+      debugSpawn: (id) => cacti.spawn(id, player.position.clone()),
+      exportRecords: () => cacti.exportRecords(),
+      update: (dt, quaternion) => cacti.update(dt, quaternion),
+      renderEntities: () => cacti.renderEntities,
+      miniMapEntities: () => cacti.miniMapEntities,
+      dispose: () => cacti.dispose(),
+    });
+    return cacti;
+  }
+
   function registerLavaPonds(registry: EntityRegistry, prefabId: 'lava_pond', _worldState: SceneWorldState) {
     const lavaPonds = new LavaPondManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, { scheduler });
     registry.register(MANAGER_DEFINITIONS[prefabId], {
@@ -1072,6 +1098,9 @@ export async function createSceneEntities(
   }
 
   function registerBeefalos(registry: EntityRegistry, prefabId: 'beefalo', worldState: SceneWorldState) {
+    // Colliders only change between brain updates, so one update's wander and path queries share an obstacle grid.
+    let planning = false;
+    let planningObstacles: ((point: THREE.Vector3) => boolean) | undefined;
     const beefalos = new BeefaloManager(scene, world, `${import.meta.env.BASE_URL}dst/data/anim`, {
       scheduler,
       // The scheduler runs on world seconds (src/scene.ts), so the next boundary is the next multiple of the day length.
@@ -1083,14 +1112,11 @@ export async function createSceneEntities(
       findPath(start, target) {
         const radius = BEEFALO_BEHAVIOR.radius;
         const edge = initialSave.world.map.generator.options.size / 2 - radius;
-        const obstacles = getRegisteredPhysicsBodies(world).filter((body) => body.type === CANNON.Body.STATIC && body.collisionResponse
-          && body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere))
-          .map((body) => { body.updateAABB(); return body.aabb; });
+        const blocked = planningObstacles ?? staticObstacleTest(getRegisteredPhysicsBodies(world), radius);
+        if (planning) planningObstacles = blocked;
         return findGroundPath(start, target, { cellSize: radius,
           isWalkable: (point) => Math.abs(point.x) <= edge && Math.abs(point.z) <= edge
-            && turfMap.isPassableAtPoint(point)
-            && !obstacles.some((box) => point.x >= box.lowerBound.x - radius && point.x <= box.upperBound.x + radius
-              && point.z >= box.lowerBound.z - radius && point.z <= box.upperBound.z + radius),
+            && turfMap.isPassableAtPoint(point) && !blocked(point),
         });
       },
       constrainPosition(position) {
@@ -1117,8 +1143,11 @@ export async function createSceneEntities(
       }),
       debugSpawn: () => beefalos.spawnNear(player.position),
       exportRecords: () => beefalos.exportRecords().map((record) => ({ prefabId: 'beefalo', record })),
-      beforePhysics: (dt) => beefalos.update(dt),
-      update: (_, quaternion) => beefalos.sync(quaternion),
+      beforePhysics: (dt) => {
+        planning = true;
+        try { beefalos.update(dt); } finally { planning = false; planningObstacles = undefined; }
+      },
+      update: (dt, quaternion) => beefalos.sync(dt, quaternion),
       renderEntities: () => beefalos.renderEntities,
       dispose: () => beefalos.dispose(),
     });

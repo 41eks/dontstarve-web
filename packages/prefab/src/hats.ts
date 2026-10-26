@@ -20,6 +20,7 @@ import { bindResidentGroundItem } from './groundItemLifecycle';
 import { createPrefabEntity } from './prefabInstance';
 import { attachPrefabLight, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
+import { ARMOR_DREADSTONEHAT, DREADSTONEHAT_ID, configureDreadstoneHatEntity } from './dreadstonehat';
 
 export type { HatEquipMode };
 export type HatEquipment = ArtHatEquipment<HatDefinition>;
@@ -59,6 +60,7 @@ export function isHatId(itemId: string): boolean {
 export const HAT_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = Object.fromEntries(
   Object.entries(HAT_DEFINITIONS).map(([id, hat]) => [id, {
     name: hat.name, icon: hat.icon, atlas: hat.atlas, maxStack: 1, equippable: 'head',
+    ...(id === DREADSTONEHAT_ID ? { maxArmor: ARMOR_DREADSTONEHAT, configureEntity: configureDreadstoneHatEntity } : {}),
   }]),
 );
 

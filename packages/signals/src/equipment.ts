@@ -28,6 +28,12 @@ export interface EquipmentStat {
   readonly maximum: number;
 }
 
+/** owner.components.sanity as equipment reads it; the mode is the wearer's, not the item's. */
+export interface EquipmentSanity {
+  IsInsanityMode(): boolean;
+  GetPercent(): number;
+}
+
 /** The equipping actor's event sink (inventoryitem.owner:PushEvent); released on unequip. */
 export interface EquipmentOwner {
   ListenForEvent?(name: string, listener: (data: unknown) => void): () => void;
@@ -38,8 +44,12 @@ export interface EquipmentOwner {
   GoToState?(name: string): void;
   /** owner.sg.currentstate.name == name */
   IsCurrentState?(name: string): boolean;
-  /** owner.components.health / hunger: the stats equipment reads and changes. */
-  readonly components?: { readonly health?: EquipmentStat & { GetMaxWithPenalty(): number }; readonly hunger?: EquipmentStat };
+  /** owner.components: the stats equipment reads and changes. */
+  readonly components?: {
+    readonly health?: EquipmentStat & { GetMaxWithPenalty(): number };
+    readonly hunger?: EquipmentStat;
+    readonly sanity?: EquipmentSanity;
+  };
 }
 
 /** Unequip releases the injected owner; removal goes through the item entity and its inventory owner. */

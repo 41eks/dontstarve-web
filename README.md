@@ -17,6 +17,8 @@ DST Lua 的世界／局部环境温度、实体升降温与暖石档位、耐久
 
 实体元数据直接从 `PrefabInstance` 读取：`prefab`、`entityId`、`saveRecord`、`skinId`、`persists`；半径通过 `instance.getPhysicsRadius(fallback)` 获取。模型入口通过 `prefabInstance(model)` 找到实例，地面物品状态以 `ItemEntity` 为准，visual 显式提供 `instance`。这些字段不再通过模型的 `userData` 转发。此次调整保留 `c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 与存档格式。
 
+玩家的动画、装备外观、颜色和读书／工具破损 FX 通过 `instance.sprite` 声明，由 `PrefabDisplay` 绘制；刚体绑定和逻辑清理由 `PrefabInstance` 管理。休眠释放 visual，保留位置、刚体、装备与状态图时间线，唤醒复用共享资源恢复外观。子 FX 的 visual 驻留由父子状态派生，到期移除由游戏时间调度器执行。外观声明使用 `createRenderEffect` 同步写入。调试命令的语法、参数、支持 ID 与 `c_save()` 存档格式不变。
+
 `c_spawn("lantern")` 和 `c_spawn("phonograph")` 的地面动画现在随 tile 休眠释放、唤醒重建；保留灯光挂载点、燃料、唱片与播放到期任务。建筑、月树、岩石、`nightmaregrowth` 和已部署的 `farm_plow` 使用实例声明的源码障碍碰撞；鼹鼠地下仍碰撞地形与障碍物，出地后恢复角色碰撞，`lightflier` 使用幽灵碰撞。普通 `treasurechest` 按 Lua 不增加障碍碰撞。命令参数、支持的 ID、`c_give` 与 `c_save()` 格式不变。
 
 按 `M` 打开的地图以两层 DOM 展示：底层平铺海洋图片，上层为按原版地皮遮罩与噪声合成的透明 PNG；加载页等待图片解码后启动游戏。生成陆地图时同步从 alpha（阈值 128）提取 SVG 轮廓，保留岛屿和孔洞；浏览器通过透明 path 命中陆地，陆地显示十字光标，海面／透明处隐藏光标，左键拖动时显示抓取光标。悬停不查询地形或世界坐标，命中区与底图共用缩放、平移和旋转；缩放通过修改地图容器宽高实现，地形和图标使用百分比定位，图标保持 32 CSS 像素宽度，缩放不再更新共享图标反向变换规则，相机转向时只抵消旋转；地图打开时由 UI 状态直接隐藏世界动作提示并停止其 DOM 命中测试，地图跳跃解除自动暂停后仍保持屏蔽，关闭地图立即重新检查光标下的世界动作；地皮变化后同步替换图片与轮廓。图标进入地图后独立加载，按实体身份复用节点。地图装饰背景按 `widgets/mapwidget.lua` 从 `images/hud.xml`／`images/hud.tex` 取出 `map.tex`，独立拉伸到全屏并固定在屏幕坐标；地图层以 Additive（CSS `plus-lighter`）叠在背景上，横屏、竖屏及地图拖动／缩放时均保留原版布局。地图层级高于物品栏和右侧 backpack，打开时覆盖它们、关闭后保留原状态恢复；地图与旋转按钮保留在上层，暂停按钮按 Lua 在地图打开时隐藏。右下角地图控制整体缩小 20%，以右下角为缩放原点，贴紧窗口右边和底边；小屏原有缩放继续保留。地图初始 `zoom=3`，`zoom=1` 最近、`zoom=20` 最远；每侧留出地图边长 10% 的 margin，最远档地图加 margin 构成的正方形边长为窗口长边 1.5 倍；视口平移不越过该边界。滚轮围绕光标以 0.1 秒插值缩放，向上放大、向下缩小。底图按默认缩放、窗口尺寸和 DPR 计算目标采样密度，再乘以 75%，最大 8192×8192；按 32×32 格分块合成，最终显示单张陆地图。预合成地皮块按地皮种类、分辨率、边缘变体及 8×8 噪声相位复用，每种地皮／分辨率共用一张最多 128 槽的图集；缓存命中直接绘制，淘汰复用最久未使用的槽位，销毁时统一释放。图集和读取 alpha 的捕获分块使用 CPU 画布，避免逐块 GPU 像素回读；猪王布局一次登记，有效地皮未变化时跳过全图重建。挖地、铺地和耕地会更新底图及命中区，关闭地图保留资源，场景释放时清理 URL、节点和订阅。实现见 [世界地皮整图与 DOM 地图](docs/dst-minimap-rendering.md)。调试命令语法、参数、支持的 `c_spawn` / `c_give` ID 和 `c_save()` 存档格式不变。
@@ -41,7 +43,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 
 玩家美术改用 Wortox 默认外观（`wortox_none`）：本体 `anim/dynamic/wortox.zip` / `.dyn`，幽灵 `anim/dynamic/ghost_wortox_build.zip` / `.dyn`；地图图标和物品栏自检头像同步使用 Wortox。共用 `wilson` 动画 bank、装备符号覆盖、死亡／复活及存档流程沿用现有实现，角色数值和存档角色字段沿用现有实现。资源按原路径和字节镜像，运行 `python3 packages/prefab/scripts/import-player-art.py --check` 校验，去掉 `--check` 可重新导入。调试命令语法、参数和支持的 `c_spawn` / `c_give` ID 不变。
 
-默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。当前 `Cluster_62` 导入结果包含地表 6,383 个实体（含 2 个带内容物的箱子）、洞穴 4,757 个实体，其中静态散落物品分别为 137 种／961 个实体和 20 种／130 个实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 214 213` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。`c_spawn` 新增静态散落物品 ID，详见下方调试命令说明；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
+默认加载 `public/saves/Cluster_1/Master.json`，无需 URL 参数。`scripts/import-dst-region.py --cluster public/saves/Cluster_62 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197` 一次转换地表与洞穴，分别输出 `Master.json`、`Caves.json` 和各自的 `.import.json` 来源报告。当前 `Cluster_62` 导入结果包含地表 6,451 个实体（含 2 个带内容物的箱子和 36 头野生 `beefalo`）、洞穴 4,757 个实体，其中静态散落物品分别为 137 种／961 个实体和 20 种／130 个实体。地表各海洋类型、海冰、码头／农田底层地皮，以及常青树已保存的腐朽计时器均随存档保留；出生点排除海洋与虚空。`--origin-cell 214 213` 在整簇导入时只固定洞穴原点，地表独立居中，可用 `--forest-origin-cell COL ROW` 指定。可用 `?save=Cluster_1/Caves.json` 加载洞穴，或 `?save=initial-world.json` 加载原地表存档。`c_spawn` 新增静态散落物品 ID，详见下方调试命令说明；`c_save()` 无参数，下载包含 `Cluster_1/` 目录的 `Cluster_1.zip`，更新当前分片并保留另一分片。将 ZIP 解压到 `public/saves/`，覆盖 `Cluster_1/` 后重载。完整参数和 `--check` 见 [地表与洞穴地图导入](docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。
 
 已实现树木的导入白名单包含 `evergreen`、`deciduoustree`、`moon_tree`、`mushtree_moon`、`mushtree_medium`、`mushtree_tall`，以及月树幼苗 `moonbutterfly_sapling`。本次重新导入默认存档新增 198 棵月树。常青树、桦树、月树按 Lua 使用原版地图图标、优先级 `-1`，砍倒或烧毁后切换树桩／焦木图标；蘑菇树沿用现有图标。图标属于逻辑树，远处卸载模型时继续显示，永久移除时清理。月树保留大小、生长及 `moonTreeTimer` 腐朽计时器；幼苗保留 `saplingTimer`，按原版不显示地图图标。现有 `c_spawn("evergreen_normal")`、`c_spawn("deciduoustree_normal")`、`c_spawn("moon_tree_normal")` 等命令与支持 ID 不变；`c_save()` 保存树木身份、位置及相应组件状态。
 
@@ -454,6 +456,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 骷髅 | `skeleton`（`idle1`～`idle6`）、`skeleton_notplayer`（`idle7`～`idle8`）、`skeleton_notplayer_1`（`idle7`）、`skeleton_notplayer_2`（`idle8`）（均无 `c_give`；只有 `c_spawn`；锤子 3 次敲出 2 个 `boneshard`，另有 10% 概率掉 `scrapbook_page`；不带 `playerskeleton` 标签，也不保存死者描述） |
 | 普通浆果丛 | `berrybush` |
 | 猴尾草 | `monkeytail` |
+| 仙人掌 | `cactus`、`oasis_cactus`（`c_spawn` 生成在玩家脚点；左键 `PICK` 得 `cactus_meat`，并对玩家造成 6 点伤害：先经身上护甲按吸收率分摊并扣耐久，剩余伤害扣生命，玩家进入 `hit` 受击状态；夏季开花时另得 `cactus_flower`；采后关闭碰撞，4 游戏日后长回；可燃烧；小地图图标；`c_save()` 保留 ID、位置和采摘／再生状态，存档 `Cluster_1/Master.json` 含原版导入的 14 株 `cactus` 与 18 株 `oasis_cactus`） |
 | 树苗 | `sapling`、`sapling_moon`（共享 archive sprite，`instancedAnimations: 'all'` 合批；命令与 ID 不变） |
 | 猎犬骨 | `houndbone`（bank `houndbase`、build `hound_base`，随机或存档的 `bonetype` 1～3 对应 `piece1`～`piece3`；装备锤子右键 `HAMMER` 一次即碎，掉落 `boneshard`，`piece3` 另有 50% `houndstooth`，并播放 `collapse_small`（岩石材质）；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批；只可 `c_spawn`，无 `c_give`，`c_save()` 保留 ID、位置与 `bonetype`） |
 | 洞穴蕨 | `cave_fern`、`cave_fern_withered`（bank `ferns`，build 分别为 `cave_ferns` / `cave_ferns_withered_build`，生成时随机选 `f1`～`f10` 姿态；快速 `PICK` 分别得 `foliage` / `cutgrass`，采后按 `remove_when_picked` 直接移除，无 `workable` 不能铲；可燃烧；通过共享 archive sprite 的 `instancedAnimations: 'all'` 合批，使用 `ResidentSprite` 随活动区卸载／重建 visual，保留实体、组件与姿态，重建后恢复相机朝向；无 `c_give`，`c_save()` 保留 ID、位置与姿态） |
@@ -495,6 +498,7 @@ Wortox 可右键有效地面发动「灵魂跳跃」，首跳后 5 个游戏秒�
 | 火药 | `gunpowder` |
 | 木栅栏 | `fence`（世界栅栏，只能 `c_spawn`）、`fence_item`（`c_give` 与 `c_spawn`） |
 | 石果及石果芽 | `rock_avocado_fruit`、`rock_avocado_fruit_ripe`、`rock_avocado_fruit_ripe_cooked`、`rock_avocado_fruit_sprout` |
+| 仙人掌花 | `cactus_flower`（`c_give("cactus_flower", n)` / `c_spawn("cactus_flower")`，堆叠 40，生命 +8、饥饿 +12.5、理智 +5，3 游戏日腐败为 `spoiled_food`） |
 | 可燃材料、草簇及灰烬 | `cutgrass`、`log`、`dug_rock_avocado_bush`、`dug_berrybush`、`dug_monkeytail`、`dug_grass`、`dug_sapling`、`dug_sapling_moon`、`ash` |
 | 园艺锄地面物品 | `farm_hoe`、`golden_farm_hoe` |
 | 铲子地面物品 | `shovel`、`goldenshovel` |

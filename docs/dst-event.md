@@ -6,6 +6,10 @@
 
 同一次动作涉及多项权威数据变化时，通过 `batch()` 提交，再发布完整的派生结果；例如灰烬入库存时一起提交归属和停止消散，避免表现读取转移中的组合状态。
 
+prefab 通过 effect 声明 `SpriteState` 外观（符号／build 覆盖、图层、朝向、颜色和透明度）时使用 `createRenderEffect`：依赖变化时同步写入外观 json，`batch()` 内则在提交时合并执行。依赖 `sprite.art` 的外观恢复也使用它，释放函数仍由实体或私有 `watchSignal` 的生命周期持有。`PrefabDisplay` 消费声明的调度保持现状；动画转换、组件领域逻辑和计时完成继续使用原有回调、调度器与 `createEffect`。
+
+玩家的 `AnimState` 发布外观快照，由私有 `watchSignal` 与 `createRenderEffect` 写入 `instance.sprite`；状态图声明 clip 和当前帧，继续负责动作结算。`PrefabDisplay` 使用共享 factory 绘制，并在重建时恢复 bank/build、符号覆盖、朝向和颜色。读书／工具破损 FX 各自是带 `FX` 标签、`persists = false` 的实例，其显示状态由自身与父实例的 `status` 纯派生，无额外 `parentActive` 状态；帧合入玩家的 billboard，保留符号层序。FX 的 `ComponentTimer` 在 visual 休眠时继续计时，到期才移除逻辑实体。离开 scene 或临时换父节点不作为释放依据，visual 仍按实例生命周期释放。
+
 ## 场景的灰烬生成事件
 
 每个场景创建独立的 `EventEmitter<WorldEvents>`。常青树、桦树和月树的树桩，以及种下的花，在原有烧尽回调中同步发出 `worldEvents.emit('spawnAsh', position.clone())`，然后移除原实体；不再注入 `spawnAsh` 函数。事件携带实体地面位置的 `Vector3`，不修改原位置。

@@ -48,7 +48,7 @@ test('right-click reads book_silviculture with the source states, sounds and gro
     const stats = await import(paths.playerStats);
     (window as any).bookGame = { main, player, scene, stats };
   }, modules);
-  await page.goto('/tests/dst-lighting.html'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
   await page.evaluate(() => {
     const { main, scene } = (window as any).bookGame;
     main.inventory.applySlotChanges(main.inventory.exportState().slots.filter((slot: any) => slot.item)
@@ -109,8 +109,9 @@ test('right-click reads book_silviculture with the source states, sounds and gro
   const savedBook = await page.evaluate(() => (window as any).bookGame.main.inventory.exportState().slots
     .find((slot: any) => slot.item?.itemId === 'book_silviculture').item);
   const download = page.waitForEvent('download'); await submit('c_save()');
-  const save = JSON.parse(await readSaveDownload((await (await download).path())!));
+  const save = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   const ground = save.world.entities.ground_item.find((entity: any) => entity.id === groundId);
+  expect(ground).toBeDefined();
   expect(ground.components.stack).toMatchObject({ itemId: 'book_silviculture', count: 1 });
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: save }));
   await page.reload(); await prepare();
@@ -140,7 +141,7 @@ test('right-click reads book_rain: its fx and sounds play, moisture starts the r
     save.players.local.stats = { health: 150, hunger: 150, sanity: 100 };
     await route.fulfill({ response, json: save });
   });
-  await page.goto('/tests/dst-lighting.html');
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
   await page.evaluate(async paths => {
     const main = await import(paths.main), { player } = await import(paths.player);
     const { scene } = await import(paths.universal);
@@ -157,7 +158,7 @@ test('right-click reads book_rain: its fx and sounds play, moisture starts the r
     return { type: weather.preciptype.peek(), moisture: weather.moisture.peek(), ceil: weather.moistureceil.peek(),
       floor: weather.moisturefloor.peek(), rate: weather.rainRate.peek() };
   });
-  const rainQuads = () => page.evaluate(() => (window as any).rainGame.scene.getObjectByName('rain')?.geometry.drawRange.count / 6);
+  const rainQuads = () => page.evaluate(() => ((window as any).rainGame.scene.getObjectByName('rain')?.getObjectByProperty('isMesh', true)?.geometry.drawRange.count ?? 0) / 6);
   const fxCount = () => page.evaluate(() => (window as any).rainGame.scene.children.filter((model: any) => model.userData.instance?.prefab === 'fx_book_rain').length);
   expect((await weather()).type).toBe('none');
   expect(await rainQuads()).toBe(0);
@@ -192,7 +193,7 @@ test('raining weather is exported by c_save and restored with its rain on reload
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const load = async (target: typeof page) => {
-    await target.goto('/tests/dst-lighting.html');
+    await target.goto('/tests/dst-lighting.html?save=initial-world.json');
     await target.evaluate(async paths => {
       const main = await import(paths.main); const { scene } = await import(paths.universal);
       const { worldState } = await import(paths.scene);
@@ -203,7 +204,7 @@ test('raining weather is exported by c_save and restored with its rain on reload
     const { weather, scene } = (window as any).rainGame;
     return { type: weather.preciptype.peek(), moisture: weather.moisture.peek(), floor: weather.moisturefloor.peek(),
       ceil: weather.moistureceil.peek(), peak: weather.peakprecipitationrate.peek(), rate: weather.rainRate.peek(),
-      quads: (scene.getObjectByName('rain')?.geometry.drawRange.count ?? 0) / 6 };
+      quads: (scene.getObjectByName('rain')?.getObjectByProperty('isMesh', true)?.geometry.drawRange.count ?? 0) / 6 };
   });
   await load(page);
   expect((await weather(page)).type).toBe('none');
@@ -212,7 +213,7 @@ test('raining weather is exported by c_save and restored with its rain on reload
   const download = page.waitForEvent('download');
   await page.evaluate(() => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command: 'c_save()' } })));
-  const saved = JSON.parse(await readSaveDownload(await (await download).path()));
+  const saved = JSON.parse(await readSaveDownload(await (await download).path(), 'Master'));
   expect(saved.world.systems.weather).toMatchObject({ preciptype: 'rain' });
   const exported = saved.world.systems.weather;
   expect(exported.moisture).toBeGreaterThan(exported.moisturefloor);

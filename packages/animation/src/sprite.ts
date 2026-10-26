@@ -15,7 +15,9 @@ import {
   type ParsedAnim,
   type ParsedBuild,
   type ResolvedSprite,
+  type Matrix2D,
 } from './animationAssets';
+import { animStateVisible, resolveAnimStateSymbol, type AnimStateJson, type SymbolBuild } from './animState';
 import { registerSpriteRenderGroup } from './renderOrder';
 import { publishSpriteSpatialBounds, spriteSpatialRadius } from './spatialBounds';
 import { installMatrixGate } from './matrixGate';
@@ -98,6 +100,23 @@ export interface AnimatedSpriteFactory {
   dispose(): void;
 }
 
+/** Prepared animation bank and builds. The resource owner retains the shared atlases. */
+export interface SpriteArtSource {
+  readonly animations: ParsedAnim;
+  readonly bank: number;
+  readonly build: SymbolBuild;
+  readonly fallbackBuilds?: readonly SymbolBuild[];
+}
+
+/** A child frame merged in the owner's layer order, or retained at a detached world point. */
+export interface CompositeSpriteFrame {
+  readonly sprites: readonly ResolvedSprite[];
+  readonly symbol?: number;
+  readonly detached?: { readonly position: THREE.Vector3; readonly mirrored: boolean };
+}
+
+export interface SpriteTint { readonly colour: readonly number[]; readonly amount: number }
+
 export class SpriteController implements TransientSpriteAnimationController, FrameSeekableAnimationController, PercentAnimationController, LayerAnimationController {
   protected readonly visual: THREE.Group;
   private readonly renderer: SpriteFrameRenderer;
@@ -128,6 +147,18 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   private readonly snow?: LoadedBuildOverride;
   private snowLevel?: WorldContentSignal<number>;
   private stopSnow?: () => void;
+  private artSource?: SpriteArtSource;
+  private animState?: AnimStateJson;
+  private artFacing?: number;
+  private mirrored = false;
+  private composites: readonly CompositeSpriteFrame[] = [];
+  private resolvedFrame: readonly ResolvedSprite[] = [];
+  private readonly colour = new THREE.Color(1, 1, 1);
+  private opacity = 1;
+  private readonly tintAmount = { value: 0 };
+  private readonly tintColour = { value: new THREE.Color() };
+  private readonly privateMaterials = new Map<THREE.MeshBasicMaterial, THREE.MeshBasicMaterial>();
+  private readonly compositePoint = new THREE.Vector3();
 
   constructor(
     visual: THREE.Group,
@@ -177,6 +208,8 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     this.stopSnow = undefined;
     this.snowLevel = undefined;
     this.renderer.dispose();
+    for (const material of this.privateMaterials.values()) material.dispose();
+    this.privateMaterials.clear();
   }
 
   /** Draw frames from the factory's shared cache while this sprite has no per-instance appearance. */
@@ -188,7 +221,9 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   }
 
   private canShareFrame(): boolean {
-    return this.frameCache !== undefined && !this.skin && this.overrides.size === 0 && this.buildOverrides.size === 0
+    return this.frameCache !== undefined && !this.artSource && !this.animState && this.composites.length === 0
+      && this.privateMaterials.size === 0 && this.colour.r === 1 && this.colour.g === 1 && this.colour.b === 1 && this.opacity === 1
+      && !this.skin && this.overrides.size === 0 && this.buildOverrides.size === 0
       && this.hiddenLayers.size === 0 && this.animStateHiddenLayers.size === 0
       && this.build === this.sharedBuild && this.materials === this.sharedMaterials
       && this.isLayerVisible === SpriteController.prototype.isLayerVisible;
@@ -207,6 +242,76 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
 
   /** Draw a few depth steps towards the camera, so an effect on its owner's plane is not hidden by the owner's depth. */
   setDepthOffset(enabled: boolean): void { this.renderer.setDepthOffset(enabled); }
+
+  setPaused(paused: boolean): void { this.paused = paused; }
+  setArtSource(source: SpriteArtSource): void {
+    if (source === this.artSource) return;
+    this.artSource = source;
+    if (source.animations.animations.some(animation => animation.name === this.animationName && animation.bankHash === source.bank)) {
+      this.animation = this.findAnimation(this.animationName);
+      this.reshowFrame();
+    }
+  }
+  setAnimState(state: AnimStateJson): void { this.animState = state; this.reshowFrame(); }
+  setFacing(facing: number, mirrored = false): void {
+    if (facing === this.artFacing && mirrored === this.mirrored) return;
+    this.artFacing = facing; this.mirrored = mirrored;
+    this.visual.scale.x = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
+    this.animation = this.findAnimation(this.animationName);
+    this.reshowFrame();
+  }
+  setColour(colour: readonly number[]): void { this.colour.setRGB(colour[0], colour[1], colour[2]); this.refreshMaterials(); }
+  setOpacity(opacity: number): void { this.opacity = opacity; this.refreshMaterials(); }
+  setTint(tint: SpriteTint): void {
+    this.tintAmount.value = tint.amount;
+    this.tintColour.value.setRGB(tint.colour[0], tint.colour[1], tint.colour[2]);
+    this.reshowFrame();
+  }
+  setComposites(frames: readonly CompositeSpriteFrame[]): void {
+    if (frames.length === this.composites.length && frames.every((frame, i) => frame.sprites === this.composites[i].sprites
+      && frame.symbol === this.composites[i].symbol && frame.detached === this.composites[i].detached)) return;
+    this.composites = frames; this.reshowFrame();
+  }
+  getResolvedFrame(): readonly ResolvedSprite[] { return this.resolvedFrame; }
+  getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
+    const frame = Math.min(this.animation.frames.length - 1, Math.max(0, Math.floor(this.elapsed * this.animation.frameRate)));
+    const element = this.animation.frames[frame].elements.find(element => element.imageHash === smallHash(symbol));
+    if (!element) return false;
+    const [a, b, c, d, tx, ty] = element.matrix;
+    this.visual.updateMatrix();
+    target.set(a * x + c * y + tx, b * x + d * y + ty, 0).applyMatrix4(this.visual.matrix);
+    return true;
+  }
+
+  private refreshMaterials(): void {
+    for (const [source, material] of this.privateMaterials) {
+      material.color.copy(source.color).multiply(this.colour);
+      material.opacity = source.opacity * this.opacity;
+    }
+    this.reshowFrame();
+  }
+  private dressedMaterial(source: THREE.MeshBasicMaterial): THREE.MeshBasicMaterial {
+    let material = this.privateMaterials.get(source);
+    if (!material && this.opacity === 1 && this.tintAmount.value === 0 && this.colour.r === 1 && this.colour.g === 1 && this.colour.b === 1) return source;
+    if (!material) {
+      material = source.clone();
+      material.color.copy(source.color).multiply(this.colour);
+      material.opacity = source.opacity * this.opacity;
+      // clone() keeps the authored material properties, but deliberately omits renderer-installed compile hooks.
+      // Copying the source's lighting hook would install world lighting twice when this private material is drawn.
+      const previousCompile = material.onBeforeCompile.bind(material), previousKey = material.customProgramCacheKey();
+      material.onBeforeCompile = (shader, renderer) => {
+        previousCompile(shader, renderer);
+        shader.uniforms.spriteTintAmount = this.tintAmount;
+        shader.uniforms.spriteTintColour = this.tintColour;
+        shader.fragmentShader = 'uniform float spriteTintAmount;\nuniform vec3 spriteTintColour;\n' + shader.fragmentShader.replace(
+          '#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = diffuseColor.rgb * (1.0 - spriteTintAmount) + spriteTintColour * spriteTintAmount;');
+      };
+      material.customProgramCacheKey = () => previousKey + ':spriteTint';
+      this.privateMaterials.set(source, material);
+    }
+    return material;
+  }
 
   setFrame(frame: number): void {
     if (!Number.isInteger(frame) || frame < 0 || frame >= this.animation.frames.length) throw new RangeError('Invalid animation frame');
@@ -322,17 +427,25 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   }
 
   protected findAnimation(name: string): Animation {
-    const base = this.animations.animations.find((candidate) => candidate.name === name);
+    const source = this.artSource;
+    const candidates = (source?.animations ?? this.animations).animations.filter(candidate => candidate.name === name
+      && (source === undefined || candidate.bankHash === source.bank));
+    const base = candidates.find(candidate => candidate.facing === this.artFacing)
+      ?? candidates.find(candidate => this.artFacing !== undefined && (candidate.facing & this.artFacing) !== 0) ?? candidates[0];
     if (!base) throw new Error(`Sprite animation ${name} is unavailable`);
-    return this.skin?.animations?.animations.find((candidate) =>
-      candidate.name === name && candidate.bankHash === base.bankHash,
-    ) ?? base;
+    // A skin swaps the build only (AnimState:SetSkin); the bank's clip stays the base archive's. The stub anim.bin in
+    // dynamic/hat_dreadstone_horn.zip points dreadstonehat/anim at swap_hat frame 1 instead of the ground pose 3.
+    return base;
   }
 
   protected isLayerVisible(_layerHash: number): boolean { return true; }
 
   update(dt: number) {
-    if (this.paused) return;
+    const attachments = this.animState?.attachments ?? [];
+    const animating = attachments.some(attachment => attachment.isAnimating);
+    for (const attachment of attachments) attachment.update(dt);
+    if (animating) this.frameKey = '';
+    if (this.paused) { if (animating) this.reshowFrame(); return; }
     this.elapsed += Math.min(dt, 0.1);
     if (this.animationQueue.length > 0 && this.elapsed >= this.queueAfter) {
       const [next, ...remaining] = this.animationQueue;
@@ -408,15 +521,29 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
       this.renderer.showShared(cache.get(`${cache.idOf(this.animation)}:${key}`, () => this.resolveSprites(index, layerIndices)));
       return;
     }
-    this.renderer.show(this.resolveSprites(index, layerIndices));
+    const resolved = this.resolveSprites(index, layerIndices);
+    this.resolvedFrame = resolved;
+    this.renderer.show(resolved);
   }
 
   private resolveSprites(index: number, layerIndices: readonly number[]): ResolvedSprite[] {
     const frames = [this.animation.frames[index], ...this.layers.map((layer, i) => layer.frames[layerIndices[i]])];
+    const followers = new Map<number, CompositeSpriteFrame[]>();
+    for (const fx of this.composites) if (fx.symbol !== undefined) {
+      const entries = followers.get(fx.symbol) ?? [];
+      entries.push(fx); followers.set(fx.symbol, entries);
+    }
     const sprites = frames.flatMap((frame) => [...frame.elements]
-      .filter((element) => !this.hiddenLayers.has(element.layerHash) && !this.animStateHiddenLayers.has(element.layerHash) && this.isLayerVisible(element.layerHash))
+      .filter((element) => (!this.animState || animStateVisible(this.animState, element))
+        && !this.hiddenLayers.has(element.layerHash) && !this.animStateHiddenLayers.has(element.layerHash) && this.isLayerVisible(element.layerHash))
       .sort((a, b) => b.z - a.z)
       .map((element) => {
+        // Follower anchors can have no image in the owner's build. Resolve them before looking up body art.
+        const followed = followers.get(element.imageHash);
+        if (followed) return followed.flatMap(fx => fx.sprites.map(sprite => ({ ...sprite,
+          element: { ...sprite.element, matrix: composeSpriteMatrix(element.matrix, sprite.element.matrix) } })));
+        const declared = this.animState && resolveAnimStateSymbol(this.animState, element);
+        if (declared) return declared;
         const override = this.overrides.get(element.imageHash);
         if (override) {
           const image = findImage(override.build, override.symbolHash, element.imageIndex);
@@ -432,11 +559,30 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
           const image = findImage(skin.build, element.imageHash, element.imageIndex);
           if (image) return { element, image, materials: skin.materials };
         }
-        const image = findImage(this.build, element.imageHash, element.imageIndex);
-        return image ? { element, image, materials: this.materials } : undefined;
+        for (const source of this.artSource ? [this.artSource.build, ...this.artSource.fallbackBuilds ?? []] : [{ build: this.build, materials: this.materials }]) {
+          const image = findImage(source.build, element.imageHash, element.imageIndex);
+          if (image) return { element, image, materials: source.materials };
+        }
+        return undefined;
       })
-      .filter((sprite): sprite is ResolvedSprite => Boolean(sprite)));
-    return sprites;
+      .flatMap(sprite => sprite === undefined ? [] : Array.isArray(sprite) ? sprite : [sprite]));
+    const elements = frames[0].elements;
+    const back: ResolvedSprite[] = [], front: ResolvedSprite[] = [];
+    for (const attachment of this.animState?.attachments ?? []) {
+      const fx = attachment.resolve?.(elements, this.mirrored);
+      if (fx) { back.push(...fx.back); front.push(...fx.front); }
+    }
+    for (const fx of this.composites) {
+      if (fx.symbol !== undefined) continue;
+      let matrix: Matrix2D = [1, 0, 0, 1, 0, 0];
+      if (fx.detached) {
+        this.visual.updateWorldMatrix(true, false);
+        this.visual.worldToLocal(this.compositePoint.copy(fx.detached.position));
+        matrix = [fx.detached.mirrored === this.mirrored ? 1 : -1, 0, 0, 1, this.compositePoint.x, this.compositePoint.y];
+      }
+      front.push(...fx.sprites.map(sprite => ({ ...sprite, element: { ...sprite.element, matrix: composeSpriteMatrix(matrix, sprite.element.matrix) } })));
+    }
+    return [...back, ...sprites, ...front].map(sprite => ({ ...sprite, materials: sprite.materials.map(material => this.dressedMaterial(material)) }));
   }
 }
 
@@ -567,7 +713,7 @@ export function createSpriteFactory(
   animations: ParsedAnim,
   controllerClass: typeof SpriteController = SpriteController,
   skinArchive?: Awaited<ReturnType<typeof loadSpriteSkinArchive>>,
-): AnimatedSpriteFactory {
+): AnimatedSpriteFactory & { readonly build: SymbolBuild } {
   const materials = createMaterials(buildPackage);
   const skinMaterials = skinArchive ? createMaterials(skinArchive.buildPackage) : [];
   const sprites = new Set<THREE.Group>();
@@ -582,6 +728,7 @@ export function createSpriteFactory(
     });
   };
   return {
+    build: { build: buildPackage.build, materials },
     create(options) {
       if (disposed) throw new Error('Animated sprite factory has been disposed');
       const skin: SpriteSkin | undefined = skinArchive ? {
@@ -606,6 +753,11 @@ export function createSpriteFactory(
       }
     },
   };
+}
+
+function composeSpriteMatrix(parent: Matrix2D, child: Matrix2D): Matrix2D {
+  const [a, b, c, d, tx, ty] = parent, [e, f, g, h, ux, uy] = child;
+  return [a * e + c * f, b * e + d * f, a * g + c * h, b * g + d * h, a * ux + c * uy + tx, b * ux + d * uy + ty];
 }
 
 function createSprite(

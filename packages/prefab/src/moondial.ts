@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { createEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase, type Signal } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, createSignal, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldMoonPhase, type Signal } from '@dontstarve-web/signals';
 import { loadSymbolOverride, type LoadedSymbolOverride, type SpriteController } from '@dontstarve-web/animation/sprite';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { moondial_init_fn } from '@dontstarve-web/animation/prefabskin';
@@ -65,7 +65,7 @@ class Moondial {
         const model = context.model;
         actionEntity(model, MOONDIAL_ID).addTag('structure');
         // Reflection symbols, light override and light for the current phase. Reskinning rebuilds the sprite.
-        this.cleanups.push(createEffect(() => {
+        this.cleanups.push(createRenderEffect(() => {
             context.art?.get();
             const { phase, waxing } = this.look.get(), { waning } = this.resources.get();
             const waxingLook = (waxing && phase !== 'new') || phase === 'full';

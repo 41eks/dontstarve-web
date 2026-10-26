@@ -1,6 +1,8 @@
 import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import type * as THREE from 'three';
+import type { AnimStateJson } from '@dontstarve-web/animation/animState';
 import type { FxJson } from './fxAttachments';
-import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from '@dontstarve-web/animation/sprite';
+import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController, SpriteArtSource, SpriteTint } from '@dontstarve-web/animation/sprite';
 
 type SymbolOverrideValue = Parameters<SpriteController['overrideSymbol']>[1];
 type SymbolOverrideMap = Parameters<SpriteController['setSymbolOverrides']>[0];
@@ -21,6 +23,7 @@ export interface ClipJson {
 
 /** Appearance that belongs to the entity and is dressed again on every drawn sprite. */
 export type AppearanceJson =
+  | { readonly kind: 'anim-state'; readonly state: AnimStateJson }
   | { readonly kind: 'layer'; readonly layer: string; readonly hidden: boolean }
   | { readonly kind: 'symbols'; readonly overrides: SymbolOverrideMap; readonly hiddenLayers: readonly string[] }
   | { readonly kind: 'symbol'; readonly symbol: string; readonly override: SymbolOverrideValue }
@@ -32,6 +35,9 @@ export type AppearanceJson =
 /** What an entity looks like, as plain data. The prefab writes it; the display draws it. */
 export interface SpriteJson {
   readonly clip: ClipJson;
+  readonly source?: SpriteArtSource;
+  readonly tint?: SpriteTint;
+  readonly followers?: ReadonlyMap<THREE.Object3D, { readonly symbol: string; readonly x: number; readonly y: number }>;
   /** Turned to the camera by the display: the source's default orientation, unlike OnGround art. Declared at creation. */
   readonly billboard?: boolean;
   readonly queue: readonly { readonly name: string; readonly loop: boolean }[];
@@ -67,6 +73,7 @@ export interface SpriteProbe {
   readonly pose: string | undefined;
   readonly loaded: boolean;
   update(dt: number): void;
+  createFollower?(): THREE.Object3D;
 }
 
 /**
@@ -215,9 +222,24 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setPose(name: string | undefined): void {
     this.write({ clip: { name: name ?? this.initialAnimation, loop: false, finished: true, pose: { name } }, queue: [], frame: undefined });
   }
-  setFrame(frame: number): void { this.write({ frame }); }
+  setFrame(frame: number): void { if (frame !== this.state.frame) this.write({ frame }); }
+  setArtSource(source: SpriteArtSource): void { if (source !== this.state.source) this.write({ source }); }
+  setAnimState(state: AnimStateJson): void { this.withAppearance('anim-state', { kind: 'anim-state', state }); }
+  setTint(tint: SpriteTint): void { this.write({ tint }); }
+  followSymbol(symbol: string, x: number, y: number): { readonly node: THREE.Object3D; remove(): void } {
+    const node = this.probe?.createFollower?.();
+    if (!node) throw new Error('The sprite has no display for a symbol follower');
+    this.write({ followers: new Map(this.state.followers).set(node, { symbol, x, y }) });
+    return { node, remove: () => {
+      const followers = new Map(this.state.followers);
+      followers.delete(node);
+      this.write({ followers });
+    } };
+  }
   showImage(image: number): void { this.write({ image }); }
-  setFacing(facing: number, mirrored?: boolean): void { this.write({ facing, mirrored }); }
+  setFacing(facing: number, mirrored?: boolean): void {
+    if (facing !== this.state.facing || mirrored !== this.state.mirrored) this.write({ facing, mirrored });
+  }
   setColour(colour: readonly number[]): void { this.write({ colour }); }
   setOpacity(opacity: number): void { this.write({ opacity }); }
   setLightOverride(lightOverride: number | null): void { this.write({ lightOverride: lightOverride ?? undefined }); }
