@@ -7,7 +7,7 @@ import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlac
 import { WallPlacement } from '../../prefab/src/wallPlacement';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import { getPrefabLightOverride } from '../../prefab/src/localLight';
+import { displayLightOverride } from '../../display/src/displaySprites';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
 import { EventEmitter, createEquipmentExistenceState, createSignal } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
@@ -152,7 +152,7 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
   const existing = world.scene.children[0];
   await begin();
   const preview = world.scene.children[1];
-  expect(getPrefabLightOverride(preview)).toBe(1);
+  expect(displayLightOverride(preview)).toBe(1);
   expect(placement.renderEntities.map(({ object }) => object)).toContain(preview);
   const paidState = store.exportState();
   expect(cursor.hidden).toBe(false);
@@ -177,7 +177,7 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
   if (kind === 'animated') expect(world.scene.children[1].userData.instance?.skinId).toBe('selected_skin');
   click(0);
   expect(consume).toHaveBeenCalledTimes(1);
-  expect(getPrefabLightOverride(world.scene.children[1])).toBeUndefined();
+  expect(displayLightOverride(world.scene.children[1])).toBe(0);
   expect(store.isBuffered('building')).toBe(false);
   expect(store.count('building')).toBe(0);
   expect(store.count('log')).toBe(0);

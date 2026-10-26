@@ -18,7 +18,6 @@ import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import type { HammerTarget } from '@dontstarve-web/stategraphs/hammer';
 import type { ShovelTarget } from '@dontstarve-web/stategraphs/shovel';
 import type { WorldContext } from './worldContext';
-import { setPrefabLightOverride } from './localLight';
 import { FARM_PLANT_ART, VEGGIE_SEED_IDS } from './veggies';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import { Workable } from '../../componets/src/workable';
@@ -170,7 +169,7 @@ export class FarmPlowPlacement implements FarmActionWorld {
       this.previewOutline = outline;
       outline.display.model.rotation.x = -Math.PI / 2;
       outline.display.model.userData.billboard = false;
-      setPrefabLightOverride(outline.display.model, 1);
+      outline.instance.sprite.setLightOverride(1);
       this.world.scene.add(preview.display.model, outline.display.model);
       this.cursor.setPreview(preview.display.model, 0, (point) => this.center(point));
       this.cursor.update();

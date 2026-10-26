@@ -1,7 +1,7 @@
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { createSharedArchiveSprite, type ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import { createArchiveEntity } from './prefabInstance';
+import { createArchiveEntity, prefabInstance } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { BurnableInst } from '../../componets/src/burnable';
@@ -9,7 +9,6 @@ import type { GroundPrefabContext, GroundItemVisual, PreparedGroundSpawn } from 
 import type { ResidentGroundItem } from './groundItems';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import catalog from './groundItems.json' with { type: 'json' };
-import { setPrefabLocalLight } from './localLight';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
@@ -154,14 +153,14 @@ export async function createBurnableItemVisual(context: GroundPrefabContext,
     burningNow = false;
     sound?.stop(); sound = undefined;
     loop?.stop(); loop = undefined;
-    setPrefabLocalLight(model, null);
+    prefabInstance(model)!.light.set(null);
   };
   const syncBurning = (burning: boolean) => {
     if (burning) {
       burningNow = true;
       sound = PlaySound('dontstarve/common/campfire', model.position);
       if (loopSound) loop = PlaySound(loopSound, model.position);
-      setPrefabLocalLight(model, { colour: [1, 1, 192 / 255], radius: (fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
+      prefabInstance(model)!.light.set({ colour: [1, 1, 192 / 255], radius: (fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
     } else {
       const wasBurning = burningNow;
       clearBurning();

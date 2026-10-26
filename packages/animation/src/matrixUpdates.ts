@@ -130,6 +130,19 @@ export function watchMatrixUpdates(model: Object3D, observer: () => void): () =>
   return () => { state.observers.delete(listener); state.release(); };
 }
 
+/** Notify only after the matrix pipeline produces a different world transform.
+ * Cached sprite subtrees do not reach this observer on unchanged frames. Plain
+ * Three nodes still support direct transform writes and explicit matrix queries.
+ */
+export function watchWorldMatrixChanges(model: Object3D, observer: () => void): () => void {
+  const previous = new Matrix4().copy(model.matrixWorld);
+  return watchMatrixUpdates(model, () => {
+    if (previous.equals(model.matrixWorld)) return;
+    previous.copy(model.matrixWorld);
+    observer();
+  });
+}
+
 /** A cached parent changed: the child's static-ancestor shortcut must settle again. */
 export function invalidateMatrixUpdates(model: Object3D): void {
   (model as ManagedObject)[updateState]?.updater?.markDirty?.();

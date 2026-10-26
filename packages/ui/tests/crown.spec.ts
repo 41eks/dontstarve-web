@@ -18,19 +18,19 @@ test('equipped crown follows real sanity at the 85 percent boundary and recomput
   });
   const paths = Object.fromEntries(['main', 'player', 'playerStats'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
-  const lightPath = `/@fs${fileURLToPath(new URL('../../prefab/src/localLight.ts', import.meta.url))}`;
+  const lightPath = `/@fs${fileURLToPath(new URL('../../prefab/src/prefabInstance.ts', import.meta.url))}`;
   const prepare = () => page.evaluate(async ({ paths, lightPath }) => {
     const main = await import(paths.main), { player } = await import(paths.player);
-    const { playerStats } = await import(paths.playerStats), { getPrefabLocalLight } = await import(lightPath);
-    (window as any).crownGame = { main, player, playerStats, getPrefabLocalLight };
+    const { playerStats } = await import(paths.playerStats), { prefabInstance } = await import(lightPath);
+    (window as any).crownGame = { main, player, playerStats, prefabInstance };
   }, { paths, lightPath });
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const crown = () => page.evaluate(() => {
-    const { player, getPrefabLocalLight } = (window as any).crownGame;
-    const lightOwner = player.children.find((child: any) => child.name === 'HatActivationLight');
+    const { player, prefabInstance } = (window as any).crownGame;
+    const lightOwner = player.children.find((child: any) => child.name === 'alterguardianhatlight');
     const materials = player.getObjectByProperty('isMesh', true).material;
-    return { light: lightOwner ? getPrefabLocalLight(lightOwner)?.radius ?? null : null,
+    return { light: lightOwner ? prefabInstance(lightOwner)?.light.peek()?.radius ?? null : null,
       crownLoaded: materials.some((material: any) => material.name === 'hat:hat_alterguardian'),
       fx: materials.some((material: any) => material.name.includes('hat_alterguardian_equipped')) };
   });

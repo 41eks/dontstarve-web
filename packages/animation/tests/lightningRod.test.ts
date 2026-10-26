@@ -5,7 +5,6 @@ import { AnimatedBuildingPlacement } from '../../prefab/src/animatedBuildingPlac
 import { LIGHTNING_ROD_DEFINITION, LIGHTNING_ROD_ID } from '../../prefab/src/lightning_rod';
 import { SendLightningStrike } from '../../prefab/src/lightning';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import type { SpriteController } from '../src/sprite';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
@@ -13,6 +12,10 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 const DAY = 480;
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -42,14 +45,14 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     scene.add(model);
     const components = model.userData.components;
     expect(components.inspectable.getstatus()).toBeUndefined();
-    expect(getPrefabLocalLight(model)).toBeUndefined();
+    expect(declaredLight(model)).toBeUndefined();
 
     // The strike lands 30 units away; the rod within 40 units takes it over.
     const struck = await strikeAt(scene, fx, model.position.clone().add(new THREE.Vector3(30 * 3, 0, 0)));
     expect(struck.x).toBeCloseTo(model.position.x);
     expect(fx.spawn).toHaveBeenCalledWith('lightning', expect.any(THREE.Vector3));
     expect(components.inspectable.getstatus()).toBe('CHARGED');
-    expect(getPrefabLocalLight(model)).toMatchObject({ intensity: .5, falloff: 1 });
+    expect(declaredLight(model)).toMatchObject({ intensity: .5, falloff: 1 });
     expect((model.userData.animationController as SpriteController).currentAnimation).toBe('hit');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(fx.spawn).toHaveBeenCalledWith('lightning_rod_fx', expect.any(THREE.Vector3));
@@ -68,7 +71,7 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     expect(components.battery.CanBeUsed(undefined, .5)).toEqual([true]);
     scheduler.advance(DAY);
     expect(components.inspectable.getstatus()).toBeUndefined();
-    expect(getPrefabLocalLight(model)).toBeUndefined();
+    expect(declaredLight(model)).toBeUndefined();
     expect(placement.exportRecords()[0].record.components).not.toHaveProperty('lightningrod');
     const settled = zaps();
     scheduler.advance(DAY * 3);
@@ -120,7 +123,7 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
     const restored = await placement.spawnFromSave(LIGHTNING_ROD_ID, record);
     expect(restored.userData.instance?.skinId).toBe('lightning_rod_adventure');
     expect(restored.userData.lightningrod.chargeleft).toBe(2);
-    expect(getPrefabLocalLight(restored)).toBeDefined();
+    expect(declaredLight(restored)).toBeDefined();
     scheduler.advance(DAY);
     expect(restored.userData.lightningrod.chargeleft).toBe(1);
   } finally { placement.dispose(); }

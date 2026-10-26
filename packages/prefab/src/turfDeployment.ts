@@ -11,7 +11,6 @@ import { turfTileName } from './turfs';
 import { TurfMap } from './turfMap';
 import { TILE_SIZE } from './tile';
 import { PreloadSounds } from './sound';
-import { setPrefabLightOverride } from './localLight';
 import type { WorldContext } from './worldContext';
 
 export interface TurfSource {
@@ -153,7 +152,7 @@ export class TurfDeployment {
         model.rotation.x = -Math.PI / 2;
         sprite.setVisible(false);
         sprite.setMeshOrder(-.5);
-        setPrefabLightOverride(model, 1);
+        sprite.setLightOverride(1);
         this.preview = { ...placer, visible: false };
         this.world.scene.add(model);
       }).catch((error: unknown) => console.error('Unable to load turf gridplacer', error));

@@ -16,7 +16,6 @@ import { LightFlierHabitat, type LightFlier, type LightFlierServices } from './l
 import { watchTileActivity } from './tileActivity';
 import { actionEntity, disposeActionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
-import { setPrefabLocalLight } from './localLight';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 import type { BrainEntity } from '../../brains/src/types';
@@ -173,7 +172,7 @@ export class LightFlierFlower implements BrainEntity {
   }
   private checkLight(): void { const wasInLight = this.inLight; this.sampleLight(); if (this.awake && !wasInLight && this.inLight) this.turnOn(); }
   private sampleLight(): void { const level = this.getLightLevel(this.model); this.inLight = this.inLight ? level > .05 : level >= .075; }
-  private refreshLight(): void { setPrefabLocalLight(this.model, bulbPlantLight(this.lightOn, (this.habitat.services.scheduler.now - this.tweenStart) / this.tweenTime)); }
+  private refreshLight(): void { this.instance.light.set(bulbPlantLight(this.lightOn, (this.habitat.services.scheduler.now - this.tweenStart) / this.tweenTime)); }
   update(): void {
     if (this.removed) return;
     if (this.pendingChildren.length) {
@@ -193,7 +192,7 @@ export class LightFlierFlower implements BrainEntity {
     this.wake.stop(); this.sampleTimer.stop(); this.recharge.stop(); this.turnoff.stop(); this.recall.stop(); this.animstate.dispose(); this.sound?.stop();
     this.components.childspawner.dispose(); this.components.pickable.dispose(); this.components.burnable.dispose(); this.components.propagator.dispose();
     this.components.hauntable.dispose(); this.MiniMapEntity.dispose();
-    this.cleanups.splice(0).forEach(stop => stop()); this.events.clear(); setPrefabLocalLight(this.model, null);
+    this.cleanups.splice(0).forEach(stop => stop()); this.events.clear(); this.instance.light.set(null);
     this.instance.remove(); this.model.removeFromParent();
   }
 }

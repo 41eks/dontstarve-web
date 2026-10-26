@@ -18,7 +18,7 @@ import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import catalog from './hats.json' with { type: 'json' };
 import { bindResidentGroundItem } from './groundItemLifecycle';
 import { createPrefabEntity } from './prefabInstance';
-import { attachPrefabLight, type PrefabLocalLight } from './localLight';
+import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { ARMOR_DREADSTONEHAT, DREADSTONEHAT_ID, configureDreadstoneHatEntity } from './dreadstonehat';
 
@@ -200,9 +200,9 @@ export class HatActivationController {
     // hats.lua spawns alterguardianhatlight under the owner on activation and removes it on deactivation.
     this.removeLight?.(); this.removeLight = null;
     if (active && config) {
-      this.removeLight = attachPrefabLight(this.owner, 'HatActivationLight', {
-        ...config.light, radius: config.light.radius * (TILE_SIZE / 4),
-      });
+      const light = spawnLightEntity(this.owner, 'alterguardianhatlight');
+      light.instance.light.set({ ...config.light, radius: config.light.radius * (TILE_SIZE / 4) });
+      this.removeLight = light.remove;
     }
   }
 }

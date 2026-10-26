@@ -7,13 +7,15 @@ import { Heater } from '../../componets/src/heater';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { LavaPondManager, LAVA_POND_RADIUS } from '../../prefab/src/lava_pond';
 import { FindEntities } from '../../prefab/src/actionEntity';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { SaveDocument } from '../../../src/save/types';
 import { bindTestWorld } from './worldContentFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -98,7 +100,7 @@ it('creates source rock offsets, keeps each rock foot separate, blocks bodies an
     expect(reloaded.position.toArray()).toEqual(record.transform.position);
     manager.remove(model);
     expect(FindEntities(model.position, 30, ['HASHEATER']).map(entity => entity === reloaded.userData.actionEntity)).toEqual([true]);
-    expect(physics.bodies).toEqual([]); expect(getPrefabLocalLight(model)).toBeUndefined();
+    expect(physics.bodies).toEqual([]); expect(declaredLight(model)).toBeUndefined();
     expect(manager.renderEntities).toEqual([]); expect(manager.exportRecords()).toEqual([]);
   } finally { manager.dispose(); restored.dispose(); content.unbind(); scheduler.dispose(); restoredScheduler.dispose(); }
 });

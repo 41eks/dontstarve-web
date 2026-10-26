@@ -15,12 +15,11 @@ import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { ToolMouseTarget } from './toolMouseTarget';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { ComponentTimer } from '../../componets/src/timer';
 import { watchTileActivity } from './tileActivity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
-import { setPrefabLocalLight } from './localLight';
 import { BurnableBinding, FireFxHost, type BurnSpec } from './treeFire';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
@@ -199,7 +198,7 @@ export class MushtreeManager {
     const tree: Tree = { prefab, data, instance, display, model, sprite, inst, stump: false, treestate: 'normal', removed: false, cleanups: [],
       minimap: new MiniMapEntity(model.position), workable: new Workable(inst) };
     tree.minimap.SetIcon(data.icon);
-    setPrefabLocalLight(model, { colour: data.lightColour, radius: data.lightRadius * (TILE_SIZE / 4), intensity: .8, falloff: .5 });
+    prefabInstance(model)!.light.set({ colour: data.lightColour, radius: data.lightRadius * (TILE_SIZE / 4), intensity: .8, falloff: .5 });
     MakeObstaclePhysics(instance, .25);
     if (this.world.physics) instance.bindPhysics(this.world.physics);
     this.trees.set(model, tree);
@@ -371,7 +370,7 @@ export class MushtreeManager {
     workable.SetWorkLeft(1);
     sprite.start('idle_stump');
     tree.minimap.SetIcon('mushroom_tree_stump.png');
-    setPrefabLocalLight(model, null);
+    prefabInstance(model)!.light.set(null);
     // The decay timer exists only once: a loaded stump keeps what remained.
     const delay = decayRemaining ?? DEAD_DECAY_TIME * (1 + (Math.random() - .5));
     tree.decayAt = this.scheduler.now + delay;
@@ -474,7 +473,7 @@ export class MushtreeManager {
     tree.changeTask?.(); tree.growTask?.(); tree.decayTask?.();
     tree.burn?.dispose(); tree.growable?.dispose(); tree.workable.dispose();
     for (const cleanup of tree.cleanups.splice(0)) cleanup();
-    setPrefabLocalLight(model, null);
+    prefabInstance(model)!.light.set(null);
     tree.minimap.dispose(); tree.instance.remove();
   }
 

@@ -1,12 +1,17 @@
 import * as THREE from 'three';
 import type { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { WorldContext } from './worldContext';
-import { setPrefabLightOverride } from './localLight';
+import { prefabInstance } from './prefabInstance';
 
 import type { CursorLabel } from '@dontstarve-web/stategraphs/actionContext';
 export type { CursorLabel } from '@dontstarve-web/stategraphs/actionContext';
 
 export type BuildCursorSnap = (point: THREE.Vector3) => THREE.Vector3;
+
+/** DST MakePlacer uses AnimState:SetLightOverride(1): each entity drawn in the preview declares it on its sprite. */
+function setPlacerLightOverride(preview: THREE.Object3D, value: number | null): void {
+    preview.traverse(node => prefabInstance(node)?.sprite.setLightOverride(value));
+}
 
 export class BuildCursor {
     private readonly camera: THREE.Camera;
@@ -29,7 +34,7 @@ export class BuildCursor {
 
     hide(): void {
         this.label.hide();
-        if (this.preview) setPrefabLightOverride(this.preview, null);
+        if (this.preview) setPlacerLightOverride(this.preview, null);
         this.preview = undefined;
     }
 
@@ -37,8 +42,7 @@ export class BuildCursor {
         this.preview = model;
         this.previewGroundOffset = groundOffset;
         this.snap = snap;
-        // DST MakePlacer uses AnimState:SetLightOverride(1).
-        setPrefabLightOverride(model, 1);
+        setPlacerLightOverride(model, 1);
     }
 
     update(): void {

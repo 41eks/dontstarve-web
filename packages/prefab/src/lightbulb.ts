@@ -1,10 +1,11 @@
 import { createResidentGroundItem } from './groundItems';
-import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
+import { type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Fuel } from '../../componets/src/fuel';
+import { prefabInstance } from './prefabInstance';
 
 export const LIGHTBULB_ID = 'lightbulb';
 /** tuning.lua MED_LARGE_FUEL = seg_time * 3. */
@@ -29,7 +30,7 @@ export const LIGHTBULB_LIGHT: PrefabLocalLight = {
 /** Ground lightbulbs glow until picked up; they use bulb.zip's idle world art. */
 export async function createLightbulbGroundSprite(context: Pick<GroundPrefabContext, 'assets' | 'tickingarea'>, options: { lit?: boolean; skinId?: string } = {}) {
   const { visual } = await createResidentGroundItem(context, { itemId: LIGHTBULB_ID, skinId: options.skinId });
-  const setLit = (lit: boolean) => setPrefabLocalLight(visual.model, lit ? LIGHTBULB_LIGHT : null);
+  const setLit = (lit: boolean) => prefabInstance(visual.model)!.light.set(lit ? LIGHTBULB_LIGHT : null);
   setLit(options.lit ?? true);
   const removeInventoryEvents = listenInventoryEvents(visual.model, {
     ondropped: () => setLit(true),

@@ -228,8 +228,8 @@ prefab 的 `dispose()` 调用它清理监听。`ondropped` 在成功从库存移
 
 `LanternLightController` 按源 Lua 在燃料比例 0～1 时使用半径 3～5（换算为场景的
 9～15 世界单位）、强度 0.4～0.6、Falloff 0.9，以及 RGB `(180,195,150)/255`；
-零燃料时关闭光源。通过 `@dontstarve-web/prefab/localLight` 的 `getPrefabLocalLight()`
-读取实体原点上的渲染无关光源描述，由应用的局部光照渲染器绘制。
+零燃料时关闭光源。光源声明在 `lanternlight` 光源实体的 `instance.light` 上，
+由其 display 列入光源列表，应用的局部光照渲染器只读取该列表。
 
 应用支持把提灯拖到手部装备、Shift+右键丢到地面，以及点击地面提灯拾回背包。
 地面模型移出场景后不再参与光照；失败的扣减或拾取保留原有物品状态。

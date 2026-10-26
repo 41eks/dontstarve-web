@@ -82,7 +82,6 @@ const lightingReady = DstLightingRenderer.create(
     sanityPercent: playerStats.sanity.percent,
     // player_classified pushes isghostmode into playervision:SetGhostVision.
     ghostVision: playerGhostMode,
-    tickingarea: worldState.tickingarea,
   },
 );
 input.setBlocked(true);

@@ -10,7 +10,6 @@ import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
-import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 
 /** tuning.lua TREE_BURN_TIME. */
@@ -55,7 +54,7 @@ export class FireFxHost {
     const instance = owner && prefabInstance(owner), key = `fire:${fire.id}`;
     fire.position.set(position.x, 0, position.z);
     for (const tag of ['FX', 'HASHEATER']) entity.instance.addTag(tag);
-    setPrefabLocalLight(fire, { colour: level.colour, radius: level.radius * (TILE_SIZE / 4), intensity: level.intensity, falloff: level.falloff });
+    prefabInstance(fire)!.light.set({ colour: level.colour, radius: level.radius * (TILE_SIZE / 4), intensity: level.intensity, falloff: level.falloff });
     if (instance) instance.sprite.attachFx(key, { sprite: entity.instance.sprite, display: entity.display,
       active: createSignal(true), sortLayer: 2 });
     else parent.add(fire);
@@ -64,7 +63,7 @@ export class FireFxHost {
       if (!this.fires.delete(fire)) return;
       instance?.sprite.detachFx(key);
       entity.instance.remove(); sound?.stop(); sound = undefined;
-      setPrefabLocalLight(fire, null);
+      prefabInstance(fire)!.light.set(null);
       if (extinguished && !this.disposed) PlaySound('dontstarve/common/fireOut', position);
     };
     this.fires.set(fire, { entity, position: owner?.position ?? fire.position, owner, instance, stop });

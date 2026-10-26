@@ -46,7 +46,7 @@ it('equips from the restore signal write, unequips before replacement and releas
     expect(PreloadSounds).toHaveBeenCalledBefore(ui.animation.setEquippedCarryItem);
     expect(oldTorch.isBurning).toBe(true);
     expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
-    expect(ui.lightParent.getObjectByName('TorchFireLight')).toBeDefined();
+    expect(ui.lightParent.getObjectByName('torchfire_light')).toBeDefined();
     binding.update(0.25);
     store.applySlotChanges([
       { slot: hand, itemId: 'torch', skinId: 'torch_barber', delta: -1 },
@@ -68,7 +68,9 @@ it('equips from the restore signal write, unequips before replacement and releas
     expect(store.handEquipment.peek()).toBe(stillEquipped);
     expect(store.getEntity(hand)).toBe(nextEntity);
     expect(ui.animation.setEquippedCarryItem).toHaveBeenLastCalledWith('torch');
-    expect(ui.lightParent.getObjectByName('TorchFireLight')).toBeUndefined();
+    // The removed light entity's display releases its model after the removal settles.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(ui.lightParent.getObjectByName('torchfire_light')).toBeUndefined();
     store.setRemainingFuel(hand, 17);
     expect(equip).toHaveBeenCalledOnce();
     store.transfer(hand, a, 1); store.transfer(a, hand, 1);

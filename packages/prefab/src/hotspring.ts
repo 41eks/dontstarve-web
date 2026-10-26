@@ -9,10 +9,9 @@ import { ComponentTimer } from '../../componets/src/timer';
 import { TileTracker } from '../../componets/src/tileManager';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
-import { setPrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { MakePondPhysics, WORLD_SCALE } from './standardcomponents';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 
 export const HOTSPRING_ID = 'hotspring' as const;
 /** tuning.lua HOTSPRING_HEAT. */
@@ -60,7 +59,7 @@ class Hotspring {
     this.bathbombable = new BathBombable(inst);
     this.bathbombable.SetOnBathBombedFn(() => this.onBathBombed(false));
     inst.components.heater = this.heater; inst.components.bathbombable = this.bathbombable;
-    setPrefabLocalLight(model, null); // Light:Enable(false)
+    prefabInstance(model)!.light.set(null); // Light:Enable(false)
     // OnLoad: `bathbombable:OnBathBombed()` with POPULATING set.
     if (saved?.isbathbombed) { this.bathbombable.OnBathBombed(); this.onBathBombed(true); }
     this.startFx();
@@ -91,7 +90,7 @@ class Hotspring {
     return 0;
   }
   private onBathBombed(populating: boolean): void {
-    setPrefabLocalLight(this.model, HOTSPRING_LIGHT);
+    prefabInstance(this.model)!.light.set(HOTSPRING_LIGHT);
     const controller = this.model.userData.animationController as SpriteState;
     if (populating) { controller.start('glow_loop'); return; }
     controller.playOnce('bath_bomb', () => controller.playOnce('glow_pre', () => controller.start('glow_loop')));
@@ -102,7 +101,7 @@ class Hotspring {
     this.heater.dispose(); this.bathbombable.dispose();
     const components = this.model.userData.components;
     delete components.heater; delete components.bathbombable;
-    setPrefabLocalLight(this.model, null);
+    prefabInstance(this.model)!.light.set(null);
   }
 }
 

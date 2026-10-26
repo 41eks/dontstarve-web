@@ -2,8 +2,11 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { dwarfStarLight } from '../../prefab/src/stafflight';
 import { StaffCastingLight } from '../../prefab/src/yellowstaff';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 describe('yellowstaff source lighting', () => {
   it('pulses the dwarf star on its twenty-second cycle', () => {
@@ -19,15 +22,15 @@ describe('yellowstaff source lighting', () => {
     const owner = new THREE.Group();
     const light = new StaffCastingLight(owner);
     light.start();
-    const radius = getPrefabLocalLight(light.model)!.radius;
+    const radius = declaredLight(light.model)!.radius;
     light.update(1);
-    expect(getPrefabLocalLight(light.model)!.radius).toBeGreaterThan(radius);
-    expect(getPrefabLocalLight(owner)).toBeUndefined();
+    expect(declaredLight(light.model)!.radius).toBeGreaterThan(radius);
+    expect(declaredLight(owner)).toBeUndefined();
     light.stop();
     light.update(1);
-    expect(getPrefabLocalLight(light.model)).toBeUndefined();
+    expect(declaredLight(light.model)).toBeUndefined();
     light.start();
     light.update(3);
-    expect(getPrefabLocalLight(light.model)).toBeUndefined();
+    expect(declaredLight(light.model)).toBeUndefined();
   });
 });

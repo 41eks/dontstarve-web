@@ -3,10 +3,10 @@ import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signal
 import { GameTimeScheduler } from './components/gameTimeScheduler';
 import { ComponentTimer } from './components/timer';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { LightState, type ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 import type { SpriteAnimationController } from '@dontstarve-web/animation/sprite';
-import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
+import { type PrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
@@ -113,9 +113,14 @@ export class BulbPlantController {
   private readonly random: () => number;
   private readonly variant: BulbPlantVariant;
 
+  /** The plant entity's inst.Light, which the LightWatcher cycle turns on and tweens. */
+  readonly light: LightState;
+
   constructor(model: THREE.Group, animation: SpriteAnimationController, world: BulbPlantWorld, variant: BulbPlantVariant,
-    saved?: BulbPlantSaveState, random = Math.random, entity?: { setActive(active: boolean): void; addTag(tag: string): void }) {
+    saved?: BulbPlantSaveState, random = Math.random,
+    entity?: { setActive(active: boolean): void; addTag(tag: string): void; readonly light: LightState }) {
     this.model = model;
+    this.light = entity?.light ?? new LightState();
     this.animation = animation;
     this.entity = entity;
     this.world = world;
@@ -247,7 +252,7 @@ export class BulbPlantController {
     this.pickable.dispose();
     this.pickSound?.stop(); this.pickSound = undefined;
     if (this.ownsScheduler) this.scheduler.dispose();
-    setPrefabLocalLight(this.model, null);
+    this.light.set(null);
   }
 
   private randomTween(): number { return 4 + Math.min(4, Math.floor(this.random() * 5)); }
@@ -268,7 +273,7 @@ export class BulbPlantController {
   }
 
   private refreshLight(): void {
-    setPrefabLocalLight(this.model, bulbPlantLight(this.lightOn, (this.scheduler.now - this.tweenStartedAt) / this.tweenDuration, this.variant));
+    this.light.set(bulbPlantLight(this.lightOn, (this.scheduler.now - this.tweenStartedAt) / this.tweenDuration, this.variant));
     this.model.userData.bulbPlantLightState = this.lightState;
     this.model.userData.bulbPlantPicked = !this.pickable.canBePicked;
   }

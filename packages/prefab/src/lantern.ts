@@ -6,8 +6,8 @@ import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVis
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets, createResidentGroundItem } from './groundItems';
 import type { GroundItemFactory, GroundItemVisual, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
-import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
+import { spawnLightEntity } from './localLight';
 
 export const LANTERN_ID = 'lantern';
 export const LANTERN_COLOUR = [180 / 255, 195 / 255, 150 / 255] as const;
@@ -196,15 +196,16 @@ export class LanternLightController {
   private fuelPercent = 1;
   private requestedOn = false;
 
-  private node?: THREE.Object3D;
+  /** mininglantern.lua's lanternlight, parented to the lantern's owner while lit. */
+  private light?: ReturnType<typeof spawnLightEntity>;
   private owner?: THREE.Object3D;
   constructor(owner?: THREE.Object3D) { this.owner = owner; }
 
   get parent(): THREE.Object3D | undefined { return this.owner; }
   setParent(parent?: THREE.Object3D): void {
     this.owner = parent;
-    this.node?.removeFromParent();
-    if (parent && this.node) parent.add(this.node);
+    this.light?.model.removeFromParent();
+    if (parent && this.light) parent.add(this.light.model);
   }
 
   get isLit(): boolean { return this.requestedOn && this.fuelPercent > 0; }
@@ -227,18 +228,12 @@ export class LanternLightController {
 
   private refresh(): void {
     if (!this.isLit) {
-      if (this.node) setPrefabLocalLight(this.node, null);
-      this.node?.removeFromParent();
-      this.node = undefined;
+      this.light?.remove();
+      this.light = undefined;
       return;
     }
-    if (!this.node) {
-      this.node = new THREE.Object3D();
-      this.node.name = 'lanternlight';
-      this.node.userData.tags = ['FX'];
-      this.owner?.add(this.node);
-    }
-    setPrefabLocalLight(this.node, {
+    this.light ??= spawnLightEntity(this.owner, 'lanternlight');
+    this.light.instance.light.set({
       radius: THREE.MathUtils.lerp(3, 5, this.fuelPercent) * (TILE_SIZE / 4),
       intensity: THREE.MathUtils.lerp(0.4, 0.6, this.fuelPercent),
       falloff: 0.9,

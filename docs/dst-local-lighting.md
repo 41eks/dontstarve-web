@@ -198,13 +198,16 @@ gl_FragColor.rgb *= max(light.rgb,
 燃料比例为零时关闭，地面关闭状态为 `idle_off`。基础动画和 12 个皮肤 ID 均保持源路径，
 不以背包图标代替地面或手持外观。
 
-`LanternLightController` 将光源描述挂到角色或地面提灯根实体，通过
-`getPrefabLocalLight()` 供应用读取。原版随燃料比例变化的半径 3～5 换算为 9～15
+`LanternLightController` 按 `mininglantern.lua` 生成 `lanternlight` 光源实体（`FX`、
+`persists = false`），父实体为角色或地面提灯，在其 `instance.light` 上声明光源参数。原版随燃料比例变化的半径 3～5 换算为 9～15
 世界单位，强度为 0.4～0.6，Falloff 固定 0.9；颜色与火把相同。
 本项目额外扩大 50% 的范围倍率仅用于火把，不额外扩大提灯范围。
 
-应用每帧收集场景中的提灯光源，将环境色写入贴图后，为每个光源使用一次加法混合
-绘制，并在 RGBA8 目标中限制到 `[0,1]`。提灯同样暂用 `K0 = log(falloff)`、
+光源是实体声明（`PrefabInstance.light`，对应 `inst.entity:AddLight()` 与 `inst.Light`），
+由 prefab 写入；实体的 `PrefabDisplay` 在实体 active 且光源开启时把它列入 display 层的
+光源列表（`displayLights()`），休眠或移除即退出列表。应用只读取这份列表：每帧将环境色写入贴图后，
+为列表中位于场景内的光源使用一次实例化加法绘制，并在 RGBA8 目标中限制到 `[0,1]`；
+LightWatcher 的 CPU 采样读取同一列表。提灯同样暂用 `K0 = log(falloff)`、
 `K1 = -2` 的估计衰减公式。每盏灯以自己的实体原点为照明中心；多盏地面提灯可以
 同时照明，远离玩家的灯不会因火把贴图范围而被裁掉。移除地面模型后，对应光源自动
 退出收集，不影响剩余灯。贴图仍为固定分辨率，大范围分散光源会降低其空间采样精度。
@@ -283,8 +286,8 @@ Falloff `0.9 - 0.4k`；颜色为 `(223,208,69)/255`，半径乘场景单位比�
 原版 `prefabutil.lua` 的 `MakePlacer()` 创建世界实体，并调用
 `AnimState:SetLightOverride(1)`。当前 `BuildCursor` 同样保留预览的世界坐标、
 地面吸附、面向相机和脚点深度排序；预览继续参与世界遮挡。
-`setPrefabLightOverride(model, 1)` 为预览根节点设置最低材质亮度，
-`dstLocalLighting.ts` 将它传给各子网格材质的 `dstLightOverride` uniform，
+预览子树中每个实体在 sprite json 上声明 `lightOverride: 1`（`sprite.setLightOverride(1)`）；
+`dstLocalLighting.ts` 绘制时从最近的 display 读取该声明，传给子网格材质的 `dstLightOverride` uniform，
 用 `max(dstLight, vec3(dstLightOverride))` 覆盖光照下限。
 这只改变预览本身，不产生局部光源；季节颜色校正仍作用于世界预览。
 落地或取消时清除覆盖，后续动画帧恢复普通环境光和局部光照。

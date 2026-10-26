@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { createSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import type { PickaxeTarget } from '@dontstarve-web/stategraphs/pickaxe';
 import { createEffect, createMemo, watchSignal, WorldContentKey, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -16,7 +16,6 @@ import { MiniMapEntity } from './minimapEntity';
 import { actionEntity } from './actionEntity';
 import { newEntityId } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
 import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import type { WorldFx } from './world_fx';
@@ -244,15 +243,15 @@ export class GrottoPoolManager {
     Object.assign(model.userData, { billboard: false, deploySmartRadius: definition.smartRadius * WORLD_SCALE });
     // OnGround: the group keeps its order; the pool surface draws by mesh order among the ground layers.
     grotto.sprite.setGround(0); grotto.sprite.setMeshOrder(BACKGROUND_RENDER_ORDER);
-    setPrefabLightOverride(model, .25);
-    setPrefabLocalLight(model, { radius: definition.light.radius * WORLD_SCALE, falloff: .6, intensity: definition.light.intensity,
+    grotto.sprite.setLightOverride(.25);
+    prefabInstance(model)!.light.set({ radius: definition.light.radius * WORLD_SCALE, falloff: .6, intensity: definition.light.intensity,
       colour: POOL_LIGHT_COLOUR });
     if (mist) {
       // makebigmist / makesmallmist: FX + NOCLICK, so the steam never intercepts the mouse over the props.
       const mistModel = mist.display.model;
       mist.instance.persists = false;
       for (const tag of ['FX', 'NOCLICK']) mist.instance.addTag(tag);
-      setPrefabLightOverride(mistModel, .5); model.add(mistModel);
+      mist.instance.sprite.setLightOverride(.5); model.add(mistModel);
     }
     grotto.minimap = new MiniMapEntity(model.position);
     grotto.minimap.SetIcon(`${prefab}.png`);
@@ -296,7 +295,7 @@ export class GrottoPoolManager {
     grotto.instance.physicsRadiusOverride = definition.physicsRadius;
     Object.assign(model.userData, { deploySmartRadius: definition.smartRadius * WORLD_SCALE,
     ...definition.lootTable ? { prefabNameOverride: 'moonglass_rock' } : {} });
-    if (definition.lightOverride !== undefined) setPrefabLightOverride(model, definition.lightOverride);
+    if (definition.lightOverride !== undefined) sprite.setLightOverride(definition.lightOverride);
     sprite.setFrame(Math.floor(Math.random() * sprite.numFrames));
     if (!definition.lootTable) return;
     const workable = new Workable(inst);
@@ -505,7 +504,7 @@ export class GrottoPoolManager {
     for (const emitter of this.emitters) if (emitter.pool?.grotto === grotto) {
       emitter.fade = undefined; emitter.handle?.stop(); emitter.handle = undefined; emitter.pool = undefined; emitter.volume = 0;
     }
-    setPrefabLocalLight(model, null);
+    prefabInstance(model)!.light.set(null);
     grotto.minimap?.dispose(); grotto.workable?.dispose();
     for (const outputs of grotto.loot.values()) outputs.forEach(output => output.dispose());
     grotto.loot.clear();

@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
+import type { InstancedSprite } from '@dontstarve-web/animation/instancedArchiveSprites';
 import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import type { AnimStateJson } from '@dontstarve-web/animation/animState';
 import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
@@ -19,6 +20,8 @@ export interface DisplayEngine {
   /** Changes whenever the drawn sprite is attached or released. */
   readonly art: ReadonlySignal<number>;
   readonly loaded: boolean;
+  /** The drawn sprite's shared-batch instance, which the display lists for its pass. */
+  readonly instanced?: InstancedSprite;
   readonly currentAnimation: string;
   readonly numFrames: number;
   readonly currentAnimationLength: number;
@@ -78,6 +81,7 @@ export class ArchiveEngine implements DisplayEngine {
   get model(): THREE.Group { return this.resident.model; }
   get art(): ReadonlySignal<number> { return this.resident.art; }
   get loaded(): boolean { return this.resident.loaded; }
+  get instanced(): InstancedSprite | undefined { return this.resident.instanced; }
   get currentAnimation(): string { return this.resident.currentAnimation; }
   get numFrames(): number { return this.resident.frameCount; }
   get currentAnimationLength(): number { return 0; }

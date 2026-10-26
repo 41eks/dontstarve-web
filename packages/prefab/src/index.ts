@@ -144,7 +144,7 @@ export {
   createLanternGroundSprite, createLanternHandLifecycle, loadLanternEquipment,
   type LanternEquipment,
 } from './lantern';
-export { getPrefabLocalLight, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
+export { spawnLightEntity, type PrefabLocalLight } from './localLight';
 export { LIGHTBULB_ID, LIGHTBULB_LIGHT, createLightbulbGroundSprite } from './lightbulb';
 export { FlowerPlanting, FLOWER_ANIMATIONS, type FlowerAnimation, type FlowerSaveRecord } from './flower';
 export { BUGNET_ID, loadBugNetEquipment, type BugNetEquipment } from './bugnet';

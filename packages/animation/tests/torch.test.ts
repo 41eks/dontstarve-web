@@ -10,7 +10,10 @@ import { OnItemRanOut } from '../../prefab/src/player_common';
 import { TORCH_FUEL, TORCH_SOUNDS, TorchController, getTorchController, createTorchGroundFactory } from '../../prefab/src/torch';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { PlaySound, PreloadSounds } from '../../prefab/src/sound';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}),
@@ -226,12 +229,12 @@ describe('torch prefab burning lifecycle', () => {
       expect(PreloadSounds).toHaveBeenCalledWith(...TORCH_SOUNDS);
       expect(controller.isBurning).toBe(true);
       expect(PlaySound).not.toHaveBeenCalled();
-      expect(getPrefabLocalLight(visual.model)).toBeDefined();
+      expect(declaredLight(visual.model)).toBeDefined();
       visual.update?.(0.5);
       expect(visual.getDefinition?.()).toEqual({ remainingFuel: 17.5, torchLit: true });
       visual.model.dispatchEvent({ type: 'onextinguish' });
       expect(controller.isBurning).toBe(false);
-      expect(getPrefabLocalLight(visual.model)).toBeUndefined();
+      expect(declaredLight(visual.model)).toBeUndefined();
       expect(handEquipmentExistenceState.peek()).toBe(held);
       expect(PlaySound).toHaveBeenLastCalledWith('dontstarve/common/fireOut', visual.model.position);
       const before = visual.model.position.clone();

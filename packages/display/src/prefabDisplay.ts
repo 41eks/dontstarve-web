@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, getBoundWatchWorldContent, watchSignal, WorldContentKey, type ReadonlySignal } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
-import { setLightOverride } from '@dontstarve-web/animation/lightOverride';
 import { AnimationFollower } from './animationFollower';
 import { FxAttachments, type FxRenderEntry } from './fxAttachments';
 import { ArchiveEngine, type ArchiveSpriteSource, type DisplayEngine } from './displayEngine';
+import { DisplaySprite, listDisplayLight, type DisplayLight } from './displaySprites';
+import type { LightState } from './lightState';
 import type { AppearanceJson, ClipJson, SpriteJson, SpriteState } from './spriteState';
 import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 
@@ -32,6 +33,8 @@ export interface PrefabDisplayOptions {
   readonly parentStatus?: ReadonlySignal<PrefabStatus>;
   /** The entity's sprite json, written by the prefab. The first sprite is drawn in its clip; the rest is dressed at once. */
   readonly sprite: SpriteState;
+  /** The entity's inst.Light declaration, listed for the renderer while the entity is active. */
+  readonly light?: LightState;
 }
 
 /**
@@ -40,6 +43,8 @@ export interface PrefabDisplayOptions {
  */
 export class PrefabDisplay {
   private readonly engine: DisplayEngine;
+  /** This display in the display layer's sprite list: its drawn instance and its sprite json. */
+  private readonly listed: DisplaySprite;
   private readonly state: SpriteState;
   private readonly json: ReturnType<typeof watchSignal<SpriteJson>>;
   private readonly status: ReadonlySignal<PrefabStatus>;
@@ -61,7 +66,7 @@ export class PrefabDisplay {
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: number; transient?: SpriteJson['transient'];
-    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; lightOverride?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
+    image?: number; facing?: number; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean;
     source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
   constructor(options: PrefabDisplayOptions) {
@@ -118,6 +123,13 @@ export class PrefabDisplay {
       return own === 'removed' ? own : own === 'asleep' || parentStatus.get() !== 'active' ? 'asleep' : 'active';
     }) : ownStatus;
     const json = this.json = watchSignal(state.sprite, stop => this.cleanups.push(stop));
+    if (options.light) {
+      const light = watchSignal(options.light.json, stop => this.cleanups.push(stop));
+      let listed: DisplayLight | undefined;
+      this.cleanups.push(createEffect(() => { listed = listDisplayLight(listed, this.model, status.get() === 'active' ? light.get() : undefined); }));
+      this.cleanups.push(() => { listed = listDisplayLight(listed, this.model, undefined); });
+    }
+    this.listed = new DisplaySprite(this.model, json);
     const art = watchSignal(this.engine.art, stop => this.cleanups.push(stop));
     this.cleanups.push(createEffect(() => this.applyStatus(status.get())));
     this.cleanups.push(createEffect(() => this.applySprite(json.get())));
@@ -126,7 +138,7 @@ export class PrefabDisplay {
     this.cleanups.push(createEffect(() => this.follower.follow(followed.get())));
     this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()));
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
-    this.cleanups.push(createEffect(() => { art.get(); this.dress(json.peek()); state.artChanged(); }));
+    this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); this.dress(json.peek()); state.artChanged(); }));
     // A billboard turns to TheCamera itself, through its own bridge to the world's camera rotation.
     const watchWorldContent = first.billboard ? getBoundWatchWorldContent() : undefined;
     if (watchWorldContent) {
@@ -245,10 +257,6 @@ export class PrefabDisplay {
     if (json.colour !== applied.colour) { applied.colour = json.colour; if (json.colour) controller.setColour(json.colour); }
     if (json.opacity !== applied.opacity) { applied.opacity = json.opacity; if (json.opacity !== undefined) controller.setOpacity(json.opacity); }
     if (json.tint !== applied.tint) { applied.tint = json.tint; if (json.tint) controller.setTint?.(json.tint); }
-    if (json.lightOverride !== applied.lightOverride) {
-      applied.lightOverride = json.lightOverride;
-      setLightOverride(this.model, json.lightOverride ?? null);
-    }
     if (json.paused !== applied.paused) { applied.paused = json.paused; if (json.paused !== undefined) controller.setPaused?.(json.paused); }
     if (json.erosion !== applied.erosion) { applied.erosion = json.erosion; if (json.erosion !== undefined) controller.setErosion?.(json.erosion); }
     if (json.ground !== applied.ground) { applied.ground = json.ground; if (json.ground) controller.setGround?.(json.ground.renderOrder, json.ground.flat); }
@@ -308,6 +316,7 @@ export class PrefabDisplay {
     this.fx.dispose();
     this.state.bind(undefined);
     this.engine.dispose();
+    this.listed.dispose();
     for (const node of this.symbolNodes) node.removeFromParent();
     this.symbolNodes.clear();
     this.model.removeFromParent();

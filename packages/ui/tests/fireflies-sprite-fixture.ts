@@ -6,7 +6,7 @@ import { FirefliesAssets, configureFirefliesEntity, createFirefliesGroundSprite 
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
 import { actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
-import { setPrefabLocalLight } from '../../prefab/src/localLight';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { bindTestWorld } from '../../animation/tests/worldContentFixture';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
@@ -48,7 +48,7 @@ export async function checkFirefliesInstances() {
   };
   const draw = () => {
     // Isolate AnimState's self-light override from the shared emitted-light map.
-    swarms.forEach(swarm => setPrefabLocalLight(swarm.model, null));
+    swarms.forEach(swarm => prefabInstance(swarm.model)!.light.set(null));
     lighting.renderLightmap(renderer);
     renderer.info.reset(); renderer.setRenderTarget(target);
     renderSceneWithPasses(renderer, scene, camera);

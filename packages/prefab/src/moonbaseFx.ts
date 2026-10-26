@@ -1,11 +1,10 @@
 import * as THREE from 'three';
 import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
-import { setPrefabLocalLight, setPrefabLightOverride } from './localLight';
 import { polarLight } from './stafflight';
 import type { BuildingRenderEffect } from './animatedBuildingPlacement';
 
@@ -41,9 +40,9 @@ export class MoonbaseEffects {
   private readonly resources: MoonbaseFxResources;
   constructor(model: THREE.Group, scene: THREE.Scene, scheduler: GameTimeScheduler, resources: MoonbaseFxResources) {
     this.model = model; this.scene = scene; this.scheduler = scheduler; this.resources = resources;
-    this.lightStart = new ComponentTimer(scheduler, () => setPrefabLocalLight(model,
+    this.lightStart = new ComponentTimer(scheduler, () => prefabInstance(model)!.light.set(
       { radius: 6, intensity: .75, falloff: .75, colour: [128 / 255, 128 / 255, 1] }));
-    this.lightStop = new ComponentTimer(scheduler, () => setPrefabLocalLight(model, null));
+    this.lightStop = new ComponentTimer(scheduler, () => prefabInstance(model)!.light.set(null));
   }
   private foot(): THREE.Vector3 { return this.model.userData.getGroundPosition?.() ?? this.model.position.clone(); }
   private create(prefab: string, clip: string, sortLayer: number, cold = false): Fx {
@@ -55,7 +54,7 @@ export class MoonbaseEffects {
     instance.position.copy(this.foot()); object.quaternion.copy(this.model.quaternion);
     instance.persists = false;
     instance.addTag(cold ? 'HASHEATER' : 'FX');
-    setPrefabLightOverride(object, 1);
+    instance.sprite.setLightOverride(1);
     let fx!: Fx;
     const removal = new ComponentTimer(this.scheduler, () => this.remove(fx));
     fx = { object, sortLayer, instance, display, removal,
@@ -133,7 +132,7 @@ export class MoonbaseEffects {
     for (const fx of this.effects) {
       fx.instance.position.copy(foot); fx.object.quaternion.copy(this.model.quaternion); fx.animation.update(dt);
     }
-    if (this.cold) setPrefabLocalLight(this.cold.object, polarLight(this.scheduler.now - this.cold.createdAt));
+    if (this.cold) prefabInstance(this.cold.object)!.light.set(polarLight(this.scheduler.now - this.cold.createdAt));
   }
   get renderEntities(): readonly BuildingRenderEffect[] { return [...this.effects]; }
   dispose(): void {
@@ -142,6 +141,6 @@ export class MoonbaseEffects {
     for (const sound of this.oneShots) sound.stop(); this.oneShots.clear();
     for (const fx of this.effects) this.remove(fx);
     this.front = this.back = this.pulse = this.cold = undefined;
-    setPrefabLocalLight(this.model, null);
+    prefabInstance(this.model)!.light.set(null);
   }
 }

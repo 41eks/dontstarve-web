@@ -3,3 +3,6 @@ export { PrefabDisplayGroup } from './prefabDisplayGroup';
 export { SpriteState, type ArchiveSpriteCommands, type SpriteJson, type ClipJson, type AppearanceJson, type SpriteProbe } from './spriteState';
 export { type FxJson, type FxRenderEntry } from './fxAttachments';
 export { type DisplayEngine, type ArchiveSpriteSource } from './displayEngine';
+export { DisplaySprite, displayLightOverride } from './displaySprites';
+export { displayLights, type DisplayLight } from './displaySprites';
+export { LightState, type LightJson } from './lightState';

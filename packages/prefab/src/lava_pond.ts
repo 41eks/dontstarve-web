@@ -6,7 +6,6 @@ import { Heater } from '../../componets/src/heater';
 import { ComponentTimer } from '../../componets/src/timer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { actionEntity } from './actionEntity';
-import { setPrefabLocalLight } from './localLight';
 import { newEntityId } from './saveRecord';
 import { MiniMapEntity } from './minimapEntity';
 import { MakePondPhysics } from './standardcomponents';
@@ -91,7 +90,7 @@ class LavaPond {
     if (this.timer.peek().status === 'scheduled' || this.timer.peek().status === 'paused') this.initializer.stop();
     this.minimap.dispose();
     this.heater.dispose(); delete this.model.userData.components.heater;
-    setPrefabLocalLight(this.model, null);
+    prefabInstance(this.model)!.light.set(null);
     for (const child of this.children) { child.userData.removed = true; removeEntity(child); }
     this.children.length = 0;
   }
@@ -164,7 +163,7 @@ export class LavaPondManager {
     MakePondPhysics(instance, LAVA_POND_RADIUS / WORLD_SCALE);
     instance.bindPhysics(this.physics);
     model.userData.remove = () => this.remove(model);
-    setPrefabLocalLight(model, { radius: 1.5 * WORLD_SCALE, falloff: .66, intensity: .66,
+    prefabInstance(model)!.light.set({ radius: 1.5 * WORLD_SCALE, falloff: .66, intensity: .66,
       colour: [235 / 255, 121 / 255, 12 / 255] });
     this.pools.set(model, pool); this.scene.add(model);
     return model;

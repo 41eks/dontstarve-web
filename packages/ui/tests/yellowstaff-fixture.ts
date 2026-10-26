@@ -5,7 +5,10 @@ import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/yellowstaff';
 import { SpellCastActionController } from '../../stategraphs/src/spellcaster';
 import { DwarfStarManager, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light a model's entity declares. */
+const getDeclaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { HandSlot, InventorySlot, InventoryStore, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
@@ -70,7 +73,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     }
   }
   await animation.setCarryItem(itemId);
-  const unlitHand = !getPrefabLocalLight(player);
+  const unlitHand = !getDeclaredLight(player);
   const stars = new DwarfStarManager(scene, '/dst/data/anim', itemId === 'opalstaff' ? 'staffcoldlight' : 'stafflight');
   const equipped = inventory.handEquipmentExistenceState;
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
@@ -150,7 +153,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const appeared = mesh.geometry.drawRange.count > 0 && mesh.material.every((material) => material.forceSinglePass);
   const bright = sample(30);
   const far = sample(-120, 120);
-  const source = getPrefabLocalLight(star)!;
+  const source = getDeclaredLight(star)!;
 
   // An interrupted cast must not produce a second star, even after its commit time.
   click();
@@ -161,7 +164,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   await animation.setCarryItem(null);
   tick(90);
   const cancelled = !animation.isCasting && stars.exportRecords().length === 1;
-  const noCastingLight = player.children.filter((child) => getPrefabLocalLight(child)).length === 0;
+  const noCastingLight = player.children.filter((child) => getDeclaredLight(child)).length === 0;
   click();
   await settle();
   const ignoredUnequipped = !animation.isCasting;
@@ -170,21 +173,21 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const fixedPosition = star.position.distanceTo(new THREE.Vector3(...record.transform.position)) < 0.000001;
 
   const restored = await stars.spawn(new THREE.Vector3(-40, 0, 0), { id: 'e_restored_star', remainingSeconds: 0.5 });
-  const restoredLit = !!getPrefabLocalLight(restored);
+  const restoredLit = !!getDeclaredLight(restored);
   stars.update(0.6, camera.quaternion);
   const expiredNotSaved = !stars.exportRecords().some((entry) => entry.id === 'e_restored_star');
   stars.update(1, camera.quaternion);
-  const expiredRemoved = !restored.parent && !getPrefabLocalLight(restored);
+  const expiredRemoved = !restored.parent && !getDeclaredLight(restored);
   const survivor = stars.exportRecords().length;
   const lifetimeStar = await stars.spawn(new THREE.Vector3(-70, 0, 0));
   stars.update(duration - 1, camera.quaternion);
-  const survivesUntilExpiry = !!lifetimeStar.parent && !!getPrefabLocalLight(lifetimeStar)
+  const survivesUntilExpiry = !!lifetimeStar.parent && !!getDeclaredLight(lifetimeStar)
     && stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.instance?.entityId
       && Math.abs(entry.components.timer.remainingSeconds - 1) < 0.000001);
   stars.update(1, camera.quaternion);
   const expiresAtLifetime = !stars.exportRecords().some((entry) => entry.id === lifetimeStar.userData.instance?.entityId);
   stars.update(1, camera.quaternion);
-  const lifetimeRemoved = !lifetimeStar.parent && !getPrefabLocalLight(lifetimeStar);
+  const lifetimeRemoved = !lifetimeStar.parent && !getDeclaredLight(lifetimeStar);
   casting.dispose();
   stars.dispose();
   const disposedDark = sample(30);

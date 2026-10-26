@@ -3,8 +3,7 @@ import type { Animation, ResolvedSprite } from './animationAssets';
 import { spritePerf } from './spritePerf';
 import { createResolvedRgbaSpriteAtlasComposer, type RgbaSpriteAtlasComposer, type RgbaSpriteAtlas, type RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
-import { getLightOverride } from './lightOverride';
-import { getSpriteErosion } from './spriteErosion';
+import { watchWorldMatrixChanges } from './matrixUpdates';
 
 interface Appearance {
   animation: Animation;
@@ -14,7 +13,23 @@ interface Appearance {
   pages?: RgbaSpriteAtlas[];
   locations?: { atlas: RgbaSpriteAtlas; frame: RgbaSpriteAtlasFrame }[];
 }
-interface Entry {
+/** One entity's retained instance. The pass draws it only while the display layer lists it as a member. */
+export interface InstancedSprite {
+  readonly pass: InstancedArchiveSprites;
+  show(key: string, animation: Animation, resolve: () => (frameIndex: number) => ResolvedSprite[], frame: number): void;
+  hide(): void;
+  setOpacity(value: number): void;
+  setColour(value: readonly [number, number, number]): void;
+  /** AnimState:SetErosionParams's amount, independent for each entity in a shared batch. */
+  setErosion(value: number): void;
+  dispose(): void;
+}
+/** A drawn sprite as the display layer lists it: its instance and its entity's AnimState light override. */
+export interface InstancedSpriteMember {
+  readonly sprite: InstancedSprite | undefined;
+  readonly lightOverride: number;
+}
+interface Entry extends InstancedSprite {
   model: THREE.Object3D;
   foot: THREE.Object3D;
   visual: THREE.Group;
@@ -22,15 +37,16 @@ interface Entry {
   opacity: number;
   erosion: number;
   styleVersion: number;
+  transformVersion: number;
   appearance?: Appearance;
   /** The last appearance with a composed atlas, drawn while a newly shown one is still being composed. */
   ready?: Appearance;
   frame: number;
-  stopPass: () => void;
+  disposed: boolean;
   draw?: DrawEntry;
-  spatial?: { frame: RgbaSpriteAtlasFrame; world: THREE.Matrix4; sphere: THREE.Sphere; camera: number; visible: boolean; version: number };
+  spatial?: { frame: RgbaSpriteAtlasFrame; transformVersion: number; sphere: THREE.Sphere; camera: number; visible: boolean; version: number };
 }
-interface DrawEntry { entry: Entry; frame: RgbaSpriteAtlasFrame; depth: number; x: number; y: number; z: number; lightOverride: number; camera: number }
+interface DrawEntry { entry: Entry; member: InstancedSpriteMember; frame: RgbaSpriteAtlasFrame; depth: number; x: number; y: number; z: number; camera: number }
 interface DrawPage {
   source: THREE.MeshBasicMaterial;
   members: DrawEntry[];
@@ -139,7 +155,9 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   /** Appearances whose atlas is not composed yet, in first-use order. */
   private readonly composing = new Set<Appearance>();
   private readonly appearances = new Map<string, Appearance>();
-  private readonly entries = new Set<Entry>();
+  /** Every retained instance, for atlas invalidation, prewarming and disposal; drawing walks the display's members. */
+  private readonly retained = new Set<Entry>();
+  private members: ReadonlySet<InstancedSpriteMember> = new Set();
   private readonly scenes = new Map<THREE.Scene, SceneBatches>();
   private readonly draws = new Map<THREE.Scene, Map<RgbaSpriteAtlas, DrawPage>>();
   private readonly matrix = new THREE.Matrix4();
@@ -189,19 +207,18 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     }
     this.composing.clear();
     this.draws.clear();
-    for (const entry of this.entries) {
+    for (const entry of this.retained) {
       entry.ready = undefined;
       if (entry.appearance) this.composing.add(entry.appearance);
     }
   }
 
   retain(model: THREE.Object3D, visual: THREE.Group, colour: readonly [number, number, number] = [1, 1, 1], opacity = 1,
-    foot: THREE.Object3D = model) {
-    const entry: Entry = { model, foot, visual, colour: new THREE.Color().setRGB(...colour), opacity, erosion: 0, styleVersion: 0, frame: 0,
-      stopPass: registerSceneRenderPass(model, this) };
-    this.entries.add(entry);
-    return {
-      show: (key: string, animation: Animation, resolve: () => (frameIndex: number) => ResolvedSprite[], frame: number) => {
+    foot: THREE.Object3D = model): InstancedSprite {
+    const stopPass = registerSceneRenderPass(model, this);
+    const entry: Entry = { pass: this, model, foot, visual, colour: new THREE.Color().setRGB(...colour), opacity,
+      erosion: 0, styleVersion: 0, transformVersion: 0, frame: 0, disposed: false,
+      show: (key, animation, resolve, frame) => {
         let appearance = this.appearances.get(key);
         if (!appearance) {
           appearance = { animation, frames: [], resolve: resolve() };
@@ -211,17 +228,32 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         entry.appearance = appearance; entry.frame = frame;
       },
       hide: () => { entry.appearance = entry.ready = undefined; },
-      setOpacity: (value: number) => {
+      setOpacity: value => {
         if (entry.opacity !== value) { entry.opacity = value; entry.styleVersion++; }
       },
-      setColour: (value: readonly [number, number, number]) => {
+      setColour: value => {
         if (entry.colour.r !== value[0] || entry.colour.g !== value[1] || entry.colour.b !== value[2]) {
           entry.colour.setRGB(...value); entry.styleVersion++;
         }
       },
-      dispose: () => { entry.stopPass(); this.entries.delete(entry); },
+      setErosion: value => {
+        const amount = Math.max(0, Math.min(1, value));
+        if (entry.erosion !== amount) { entry.erosion = amount; entry.styleVersion++; }
+      },
+      dispose: () => {
+        if (entry.disposed) return;
+        // A display may still list it until its art changes; it draws nothing from now on.
+        entry.disposed = true; entry.appearance = entry.ready = undefined;
+        stopPass(); stopMatrix(); this.retained.delete(entry);
+      },
     };
+    const stopMatrix = watchWorldMatrixChanges(visual, () => { entry.transformVersion++; });
+    this.retained.add(entry);
+    return entry;
   }
+
+  /** The display layer's list of drawn sprites of this pass; it adds and removes members as their art is drawn and released. */
+  bindMembers(members: ReadonlySet<InstancedSpriteMember>): void { this.members = members; }
 
   private createBatch(scene: SceneBatches, atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial, capacity: number): PageBatch {
     const geometry = new THREE.BufferGeometry();
@@ -272,7 +304,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   }
 
   render(renderer: THREE.WebGLRenderer, camera: THREE.Camera, _lighting: unknown, scene: THREE.Scene): void {
-    spritePerf('render', `${this.entries.size} entries`, () => this.renderPass(renderer, camera, scene, COMPOSE_BUDGET_MS));
+    spritePerf('render', `${this.members.size} members`, () => this.renderPass(renderer, camera, scene, COMPOSE_BUDGET_MS));
   }
 
   /** Spread atlas composition over frames: an appearance is drawn once its pages exist, never composed inside the draw loop. */
@@ -314,27 +346,24 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     }
     const draws = this.draws;
     for (const pages of draws.values()) for (const page of pages.values()) { page.count = 0; page.sortDirty = false; }
-    for (const entry of this.entries) {
+    for (const member of this.members) {
+      const entry = member.sprite as Entry | undefined;
+      if (!entry || entry.disposed) continue;
       if (entry.appearance?.pages) entry.ready = entry.appearance;
       const appearance = entry.ready;
       if (!appearance) continue;
       // Whether an entity is drawn follows the tickingarea: a sleeping entity has released its entry.
       if (!entry.visual.visible) continue;
-      // The nearest owner's AnimState light override, the same lookup ordinary sprites use (DstLocalLighting).
-      let lightOverride: number | undefined;
-      for (let owner: THREE.Object3D | null = entry.model; owner && lightOverride === undefined; owner = owner.parent) {
-        lightOverride = getLightOverride(owner);
-      }
       const { atlas, frame } = appearance.locations![Math.min(entry.frame, appearance.locations!.length - 1)];
       // A single InstancedMesh has no per-entity frustum culling. Cull the whole
       // assembled frame before sorting or uploading instances, retaining logical
       // playback and the cached atlas while the entity is outside the camera.
       let spatial = entry.spatial;
-      if (!spatial) entry.spatial = spatial = { frame, world: new THREE.Matrix4(), sphere: new THREE.Sphere(), camera: -1, visible: false, version: 0 };
-      if (spatial.camera === -1 || !spatial.world.equals(entry.visual.matrixWorld)
+      if (!spatial) entry.spatial = spatial = { frame, transformVersion: -1, sphere: new THREE.Sphere(), camera: -1, visible: false, version: 0 };
+      if (spatial.transformVersion !== entry.transformVersion
         || spatial.frame.width !== frame.width || spatial.frame.height !== frame.height
         || spatial.frame.minX !== frame.minX || spatial.frame.minY !== frame.minY) {
-        spatial.world.copy(entry.visual.matrixWorld); spatial.frame = frame; spatial.version++;
+        spatial.transformVersion = entry.transformVersion; spatial.frame = frame; spatial.version++;
         spatial.sphere.center.set((frame.minX + frame.maxX) / 2, (frame.minY + frame.maxY) / 2, 0);
         spatial.sphere.radius = Math.hypot(frame.width, frame.height) / 2;
         spatial.sphere.applyMatrix4(entry.visual.matrixWorld); spatial.camera = -1;
@@ -353,20 +382,13 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       const world = entry.foot.matrixWorld.elements, view = camera.matrixWorldInverse.elements;
       const x = world[12], y = world[13], z = world[14];
       let draw = entry.draw;
-      if (!draw) entry.draw = draw = { entry, frame, x, y, z, depth: 0, camera: -1, lightOverride: 0 };
+      if (!draw) entry.draw = draw = { entry, member, frame, x, y, z, depth: 0, camera: -1 };
       if (draw.camera !== this.cameraVersion || draw.x !== x || draw.y !== y || draw.z !== z) {
         const depth = Math.round((view[2] * x + view[6] * y + view[10] * z + view[14]) / .001);
         if (draw.depth !== depth || draw.x !== x || draw.z !== z) page.sortDirty = true;
         draw.depth = depth; draw.x = x; draw.y = y; draw.z = z; draw.camera = this.cameraVersion;
       }
-      draw.frame = frame;
-      // Visibility and inherited light can be assigned directly on Three nodes.
-      // Sample them each pass, but leave unchanged instance attributes untouched.
-      const light = Math.max(lightOverride ?? 0, getLightOverride(page.source) ?? 0);
-      const erosion = getSpriteErosion(entry.model);
-      if (draw.lightOverride !== light || entry.erosion !== erosion) {
-        draw.lightOverride = light; entry.erosion = erosion; entry.styleVersion++;
-      }
+      draw.member = member; draw.frame = frame;
       if (page.members[page.count] !== draw) { page.members[page.count] = draw; page.sortDirty = true; }
       page.count++;
     }
@@ -420,7 +442,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         const writer = batch.attributes, values = this.attributeValues;
         writer.begin();
         for (let index = 0; index < page.entries.length; index++) {
-          const { entry, frame, lightOverride: light } = page.entries[index];
+          const { entry, member, frame } = page.entries[index];
           let previous = batch.transforms[index];
           const replaced = !previous || previous.id !== entry.model.id;
           if (!previous) batch.transforms[index] = previous = { id: -1, transformVersion: -1, styleVersion: -1,
@@ -435,13 +457,15 @@ export class InstancedArchiveSprites implements SceneRenderPass {
             values[0] = frame.u0; values[1] = frame.v0; values[2] = frame.u1; values[3] = frame.v1;
             writer.write(uv, index, values);
           }
+          // The light is the display's declaration, read directly from its member.
+          const light = member.lightOverride;
+          if (replaced || previous.light !== light) { values[0] = previous.light = light; writer.write(lightOverride, index, values); }
           if (replaced || previous.styleVersion !== entry.styleVersion) {
             if (replaced || previous.r !== entry.colour.r || previous.g !== entry.colour.g || previous.b !== entry.colour.b) {
               values[0] = previous.r = entry.colour.r; values[1] = previous.g = entry.colour.g; values[2] = previous.b = entry.colour.b;
               writer.write(batch.colour.instanceColor!, index, values);
             }
             if (replaced || previous.opacity !== entry.opacity) { values[0] = previous.opacity = entry.opacity; writer.write(opacity, index, values); }
-            if (replaced || previous.light !== light) { values[0] = previous.light = light; writer.write(lightOverride, index, values); }
             if (replaced || previous.erosion !== entry.erosion) { values[0] = previous.erosion = entry.erosion; writer.write(erosion, index, values); }
             previous.styleVersion = entry.styleVersion;
           }
@@ -466,7 +490,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     }
     // Prepare the ordinary shared-frame material variant used when an entity starts working.
     const proxies = new Set<THREE.Mesh>();
-    for (const entry of this.entries) {
+    for (const entry of this.retained) {
       const proxy = entry.visual.children.find(child => child instanceof THREE.Mesh) as THREE.Mesh | undefined;
       if (proxy && !proxy.visible) proxies.add(proxy);
     }
@@ -478,8 +502,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
 
   dispose(): void {
     this.unbindRenderer();
-    for (const entry of this.entries) entry.stopPass();
-    this.entries.clear();
+    for (const entry of [...this.retained]) entry.dispose();
     for (const batches of this.scenes.values()) {
       batches.stopPass(); batches.group.removeFromParent();
       for (const batch of [...batches.pages.values(), ...batches.spare]) this.disposeBatch(batch);

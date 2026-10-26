@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { PhysicsState } from '../../componets/src/physicsState';
 import type { HealthState, HungerState, SanityState, Signal } from '@dontstarve-web/signals';
 import { actionEntity } from './actionEntity';
-import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
+import { prefabInstance } from './prefabInstance';
 import { MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from './standardcomponents';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { isGhostValidAction } from '../../stategraphs/src/actions';
@@ -90,7 +90,7 @@ export function OnMakePlayerGhost(owner: PlayerGhostOwner, data?: { skeleton?: b
   if (!loading) owner.spawnDieFx(position);
 
   owner.animation.makeGhost(loading);
-  setPrefabLightOverride(owner.model, GHOST_LIGHT_OVERRIDE);
+  prefabInstance(owner.model)!.sprite.setLightOverride(GHOST_LIGHT_OVERRIDE);
   setGhostLight(owner.model, true);
 
   // CommonPlayerDeath
@@ -118,7 +118,7 @@ const GHOST_LIGHT = { radius: .5 * WORLD_SCALE, intensity: .6, falloff: .6, colo
 
 /** inst.Light:Enable(enabled) for the ghost's light. */
 export function setGhostLight(model: THREE.Object3D, enabled: boolean): void {
-  setPrefabLocalLight(model, enabled ? GHOST_LIGHT : null);
+  prefabInstance(model)!.light.set(enabled ? GHOST_LIGHT : null);
 }
 
 /** tuning.lua PORTAL_HEALTH_PENALTY */
@@ -207,7 +207,7 @@ function finishRez(owner: PlayerGhostOwner, source: RezSource, position: THREE.V
   owner.setHidden(false);
   owner.teleport(position);
   owner.ghostMode.set(false);
-  setPrefabLightOverride(owner.model, 0);
+  prefabInstance(owner.model)!.sprite.setLightOverride(0);
   source.PushEvent('activateresurrection', owner.model);
   if (!amulet) {
     owner.stats.health.DeltaPenalty(PORTAL_HEALTH_PENALTY);

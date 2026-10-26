@@ -6,7 +6,7 @@ import {
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
 import { selectsFacing } from './facing';
-import { InstancedArchiveSprites } from './instancedArchiveSprites';
+import { InstancedArchiveSprites, type InstancedSprite } from './instancedArchiveSprites';
 import { installMatrixGate } from './matrixGate';
 
 /** Animation/build sources supplied by callers; no prefab or inventory metadata. */
@@ -142,6 +142,8 @@ export class ArchiveSpriteAssets {
 
 export interface ArchiveSprite {
   readonly model: THREE.Group;
+  /** The shared-batch instance of a sprite created with `instancedAnimations`; its display lists it for the pass. */
+  readonly instanced?: InstancedSprite;
   readonly currentAnimation: string;
   /** AnimState:GetCurrentAnimationNumFrames. */
   readonly frameCount: number;
@@ -156,6 +158,8 @@ export interface ArchiveSprite {
   setOpacity(opacity: number): void;
   /** Per-entity tint, for sprites created with options.colour; shared atlas pixels stay unchanged. */
   setColour(colour: readonly [number, number, number]): void;
+  /** AnimState:SetErosionParams's amount on the shared-batch instance. */
+  setErosion(amount: number): void;
   /** Draw a few depth steps towards the camera, so an effect on its owner's plane is not hidden by the owner's depth. */
   setDepthOffset(enabled: boolean): void;
   /**
@@ -355,7 +359,7 @@ function constructArchiveSprite(
     throw error;
   }
   return {
-    model, update,
+    model, update, instanced: instances,
     get currentAnimation() { return animation.name; },
     get frameCount() { return animation.frames.length; },
     setFrame(frame: number) {
@@ -396,6 +400,7 @@ function constructArchiveSprite(
       renderer.syncDepthOffset();
       instances?.setColour(colour);
     },
+    setErosion(amount: number) { if (!disposed) instances?.setErosion(amount); },
     setDepthOffset(enabled) { if (!disposed) renderer.setDepthOffset(enabled); },
     setSymbolOverride(symbol, archive, sourceSymbol = symbol) {
       if (disposed) return;

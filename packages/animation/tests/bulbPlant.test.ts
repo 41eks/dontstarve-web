@@ -3,8 +3,10 @@ import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BulbPlantController, BulbPlantManager, bulbPlantRegrowTime, BULB_PLANT_LIGHT, type BulbPlantVariant, type BulbPlantSaveState } from '../../prefab/src/bulb_plant';
 import { createSignal, createMemo } from '@dontstarve-web/signals';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -26,12 +28,12 @@ describe('flower_cave source light cycle', () => {
     expect(s.controller.lightState).toBe('ON');
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('recharge', expect.any(Function));
     s.controller.update(3.9);
-    expect(getPrefabLocalLight(s.model)).toEqual(BULB_PLANT_LIGHT);
+    expect(s.controller.light.peek()).toEqual(BULB_PLANT_LIGHT);
     s.controller.update(90);
     expect(s.controller.lightState).toBe('RECHARGING');
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('drain', expect.any(Function));
     s.controller.update(4);
-    expect(getPrefabLocalLight(s.model)).toBeUndefined();
+    expect(s.controller.light.peek()).toBeUndefined();
     s.setLight(0);
     s.controller.update(110);
     expect(s.controller.lightState).toBe('CHARGED');
@@ -52,7 +54,7 @@ describe('flower_cave source light cycle', () => {
     s.setLight(0);
     s.controller.update(1);
     expect(s.controller.lightState).toBe('ON');
-    expect(getPrefabLocalLight(s.model)).toEqual(BULB_PLANT_LIGHT);
+    expect(s.controller.light.peek()).toEqual(BULB_PLANT_LIGHT);
   });
 });
 
@@ -66,13 +68,13 @@ describe('flower_cave harvesting and regrowth', () => {
     expect(s.controller.pickable.pick({ giveItem: full })).toBe(false);
     expect(full).toHaveBeenCalledWith('lightbulb', count, s.model.position);
     expect(s.controller.exportState(variant)).toEqual(before);
-    expect(getPrefabLocalLight(s.model)).toBeDefined();
+    expect(s.controller.light.peek()).toBeDefined();
 
     const give = vi.fn(() => true);
     expect(s.controller.pickable.pick({ giveItem: give })).toBe(true);
     expect(give).toHaveBeenCalledWith('lightbulb', count, s.model.position);
     expect(s.model.userData.tags).toEqual(['plant']);
-    expect(getPrefabLocalLight(s.model)).toBeUndefined();
+    expect(s.controller.light.peek()).toBeUndefined();
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('picking', expect.any(Function));
     expect(s.controller.pickable.pick({ giveItem: give })).toBe(false);
     expect(give).toHaveBeenCalledTimes(1);
@@ -95,7 +97,7 @@ describe('flower_cave harvesting and regrowth', () => {
     const s = setup('double', { variant: 'double', lightState: 'RECHARGING', picked: true, regrowSeconds: 2 });
     expect(s.controller.pickable.canBePicked).toBe(false);
     expect(s.model.userData.tags).toEqual(['plant']);
-    expect(getPrefabLocalLight(s.model)).toBeUndefined();
+    expect(s.controller.light.peek()).toBeUndefined();
     s.controller.update(1.5);
     expect(s.controller.exportState('double')).toEqual({
       variant: 'double', lightState: 'RECHARGING', picked: true, regrowSeconds: 0.5,
@@ -132,16 +134,16 @@ describe('real plant archives, spawning and saving', () => {
       expect(mesh(model).geometry.drawRange.count).toBeGreaterThan(0);
       expect(material(model).forceSinglePass).toBe(true);
     }
-    expect(getPrefabLocalLight(single)?.radius).toBe(9);
-    expect(getPrefabLocalLight(double)?.radius).toBe(13.5);
-    expect(getPrefabLocalLight(triple)?.radius).toBe(13.5);
+    expect(declaredLight(single)?.radius).toBe(9);
+    expect(declaredLight(double)?.radius).toBe(13.5);
+    expect(declaredLight(triple)?.radius).toBe(13.5);
     const records = manager.exportRecords();
     expect(records.find(p => p.prefabId === 'flower_cave_double')!.record.components.bulbPlant.variant).toBe('double');
     const saved = records.find(p => p.record.id === 'e_springy')!;
     const restored = await manager.spawn(saved.prefabId, new THREE.Vector3(...saved.record.transform.position), saved.record);
     expect(restored.userData.instance?.entityId).toBe(saved.record.id);
     expect(restored.userData.bulbPlantVariant).toBe('springy');
-    expect(getPrefabLocalLight(restored)).toEqual(BULB_PLANT_LIGHT);
+    expect(declaredLight(restored)).toEqual(BULB_PLANT_LIGHT);
     expect(manager.renderEntities.every(p => p.footPosition === p.object.position)).toBe(true);
     // All four archives must supply picking/picked and grow clips, including springy.
     for (const model of [single, double, triple, springy]) {
@@ -152,7 +154,7 @@ describe('real plant archives, spawning and saving', () => {
     const pickedRestored = await manager.spawn(pickedRecord.prefabId, new THREE.Vector3(8, 0, 9), pickedRecord.record);
     expect(pickedRestored.userData.bulbPlantPicked).toBe(true);
     expect(prefabInstance(pickedRestored)!.listTags()).toContain('plant');
-    expect(getPrefabLocalLight(pickedRestored)).toBeUndefined();
+    expect(declaredLight(pickedRestored)).toBeUndefined();
     for (const model of [single, double, triple, springy]) {
       expect(mesh(model).geometry.drawRange.count).toBeGreaterThan(0);
       model.userData.bulbPlantController.update(bulbPlantRegrowTime(model.userData.bulbPlantVariant));
@@ -161,7 +163,7 @@ describe('real plant archives, spawning and saving', () => {
     for (let i = 0; i < 80; i++) manager.update(0.1, new THREE.Quaternion());
     manager.dispose();
     expect(scene.children).toHaveLength(0);
-    expect(getPrefabLocalLight(single)).toBeUndefined();
+    expect(declaredLight(single)).toBeUndefined();
     expect(prefabInstance(single)!.listTags()).toEqual(['plant']);
     expect(single.userData.components.pickable).toBeUndefined();
   });

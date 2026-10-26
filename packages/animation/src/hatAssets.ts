@@ -4,7 +4,7 @@ import {
   type AnimElement, type BuildPackage, type Matrix2D, type ParsedAnim, type ParsedBuild,
   type ResolvedSprite,
 } from './animationAssets';
-import { setLightOverride } from './lightOverride';
+import { setMaterialLightOverride } from './lightOverride';
 
 export type HatEquipMode = 'normal' | 'opentop' | 'fullhelm';
 
@@ -118,7 +118,7 @@ export class HatArtAssets<D extends HatArtDefinition = HatArtDefinition> {
           const glow = base.clone();
           glow.name += ':glow';
           // Preserve the source glow texture in darkness within the merged mesh.
-          setLightOverride(glow, 1);
+          setMaterialLightOverride(glow, 1);
           return glow;
         })])),
         bloomMaterials: new Map(fxBuilds.map((source) => [source, createHatBloomMaterials(source)])),
@@ -162,7 +162,7 @@ function createHatBloomMaterials(source: HatBuild): THREE.MeshBasicMaterial[] {
     material.blending = THREE.AdditiveBlending;
     material.opacity = 0.6;
     material.alphaTest = 0.001;
-    setLightOverride(material, 1);
+    setMaterialLightOverride(material, 1);
     material.onBeforeCompile = (shader) => {
       shader.uniforms.hatBloomBounds = { value: new THREE.Vector4(
         image.bbx! / image.canvasWidth!, image.bby! / image.canvasHeight!,

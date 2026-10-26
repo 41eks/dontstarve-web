@@ -20,7 +20,6 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 import type { ShovelTarget } from '../../stategraphs/src/shovel';
 import type { GroundItemDefinition, PreparedGroundSpawn } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
-import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics, MakeSmallObstaclePhysics } from './standardcomponents';
 import { MiniMapEntity } from '../../componets/src/minimapentity';
@@ -30,7 +29,7 @@ import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
 import { nextReskin } from './reskin_tool';
 import type { ReskinFxMessage, ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { watchTileActivity } from './tileActivity';
-import { createArchiveEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { SpriteState, type ArchiveSpriteCommands, type PrefabDisplay } from '@dontstarve-web/display';
 import type { GrowableSave } from '../../componets/src/growable';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
@@ -495,12 +494,12 @@ export class PickablePlantManager {
             this.track(plant);
             plant.fireSound = PlaySound('dontstarve/common/campfire', model.position);
             const large = definition.burnFxLevel === 4;
-            setPrefabLocalLight(model, { colour: large ? [1, 190 / 255, 121 / 255] : [1, 1, 192 / 255],
+            prefabInstance(model)!.light.set({ colour: large ? [1, 190 / 255, 121 / 255] : [1, 1, 192 / 255],
               radius: ((definition.burnFxLevel ?? 3) + 1) * (TILE_SIZE / 4), intensity: large ? .9 : .8, falloff: large ? .25 : .33 });
           } else {
             fire.display.model.removeFromParent(); plant.fireSound?.stop(); plant.fireSound = undefined;
             this.track(plant);
-            setPrefabLocalLight(model, null);
+            prefabInstance(model)!.light.set(null);
             if (this.plants.get(model) === plant && !this.disposed) {
               plant.extinguishSound?.stop(); plant.extinguishSound = PlaySound('dontstarve/common/fireOut', model.position);
             }
@@ -691,7 +690,7 @@ export class PickablePlantManager {
     plant.pickable.dispose(); plant.phase.dispose();
     plant.stopBurning();
     plant.fireSound?.stop(); plant.extinguishSound?.stop();
-    setPrefabLocalLight(model, null);
+    prefabInstance(model)!.light.set(null);
     plant.fire.instance.remove(); plant.fire.display.dispose();
     for (const pieces of plant.outputs.values()) for (const output of pieces) output.dispose();
     plant.stopActivity?.();

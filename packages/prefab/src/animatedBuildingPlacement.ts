@@ -10,7 +10,7 @@ import {
     type AnimatedSpriteSourceOptions,
     type SpriteAnimationController,
 } from '@dontstarve-web/animation/sprite';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import type { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { watchTileActivity } from './tileActivity';
 import type { PrefabSkinInitializer } from '@dontstarve-web/animation/prefabskin';
@@ -35,7 +35,6 @@ import recipeData from '@dontstarve-web/animation/recipes.json';
 import { PlaySound, PreloadSounds } from './sound';
 import { Burnable, type BurnableInst } from '../../componets/src/burnable';
 import { Propagator } from '../../componets/src/propagator';
-import { setPrefabLocalLight } from './localLight';
 import type { TradeItem, Trader } from '../../componets/src/trader';
 import { TILE_SIZE } from './tile';
 import { MakeObstaclePhysics } from './standardcomponents';
@@ -466,7 +465,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             fire.instance.position.copy(entity.getPosition());
             building.fire = fire;
             this.scene.add(fire.display.model); this.effects.add(fire);
-            setPrefabLocalLight(building.model, { colour: [1, 1, 192 / 255], radius: (spec.fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
+            prefabInstance(building.model)!.light.set({ colour: [1, 1, 192 / 255], radius: (spec.fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
             building.model.userData.fireSound = PlaySound('dontstarve/common/campfire', building.model.position);
         });
         burnable.SetOnExtinguishFn(() => { PlaySound('dontstarve/common/fireOut', building.model.position); });
@@ -508,7 +507,7 @@ export class AnimatedBuildingPlacement<BuildId extends string> {
             building.fire = undefined;
         }
         building.model.userData.fireSound?.stop(); delete building.model.userData.fireSound;
-        setPrefabLocalLight(building.model, null);
+        prefabInstance(building.model)!.light.set(null);
     }
 
     private releaseBurnable(building: AnimatedBuildingInstance<BuildId>): void {

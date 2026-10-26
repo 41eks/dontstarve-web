@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
+
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { createSanityState } from '@dontstarve-web/signals';
 
@@ -74,7 +74,11 @@ export async function checkCrown() {
   const top = new THREE.OrthographicCamera(-50, 50, 50, -50, 0.1, 200);
   top.position.set(0, 80, 0); top.up.set(0, 0, -1); top.lookAt(0, 0, 0);
   top.updateMatrixWorld();
-  const draw = () => { light.prepareScene(scene); light.renderLightmap(renderer); renderer.render(scene, top); };
+  // Lights reach the display list after the declaration settles.
+  const draw = async () => {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    light.prepareScene(scene); light.renderLightmap(renderer); renderer.render(scene, top);
+  };
   const sample = (x: number, z: number) => {
     const point = new THREE.Vector3(x, 0, z).project(top);
     const pixels = new Uint8Array(4);
@@ -83,19 +87,19 @@ export async function checkCrown() {
       1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
     return Array.from(pixels.slice(0, 3)).reduce((sum, value) => sum + value, 0);
   };
-  draw();
+  await draw();
   const dark = sample(8, 8);
   sanity.set(200);
-  draw();
+  await draw();
   const lit = sample(8, 8);
   const far = sample(-35, -35);
   player.position.x = 20;
-  draw();
+  await draw();
   const moved = sample(28, 8);
   await animation.setHat(null);
-  draw();
+  await draw();
   const removed = sample(28, 8);
-  const removedLight = !player.children.some(child => child.name === 'HatActivationLight');
+  const removedLight = !player.children.some(child => child.name === 'alterguardianhatlight');
   renderer.dispose();
   return { differentFrames: rising !== orbit && orbit !== rotated, bloomChangesPixels, failures,
     groundLight: { dark, lit, far, moved, removed }, removedLight };

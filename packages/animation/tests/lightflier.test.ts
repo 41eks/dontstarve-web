@@ -9,7 +9,10 @@ import { createPickupInventory } from './pickupFixture';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { createMemo, createSignal } from '../../signals/src';
 import { bindTestWorld } from './worldContentFixture';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
@@ -37,7 +40,7 @@ it('releases a child on light timeout, pauses growth, and captures the same enti
     const [fly] = s.manager.habitat.flies;
     expect(plant.components.pickable.canBePicked).toBe(false); expect(plant.components.pickable.state.paused.peek()).toBe(true);
     expect(fly.home).toBe(plant); expect(s.entities).toHaveLength(1); expect(plant.childrenOutside).toBe(1);
-    expect(getPrefabLocalLight(model)).toBeUndefined();
+    expect(declaredLight(model)).toBeUndefined();
     expect(performToolWork('NET', fly.entity, { components: { inventory } })).toBe(true);
     expect(inventory.Has('lightflier')).toBe(true); expect(inventory.exportState().slots.find(slot => slot.item?.itemId === 'lightflier')?.item?.entityId).toBe(fly.id);
     expect(plant.childrenOutside).toBe(0); expect(plant.components.pickable.state.paused.peek()).toBe(false);

@@ -3,7 +3,7 @@ import { ModelRecords } from './modelRecords';
 import * as THREE from 'three';
 import { createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, createEmptyEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { facingFromRotation } from '@dontstarve-web/animation/facing';
 import { registerSpriteRenderGroup } from '@dontstarve-web/animation/renderOrder';
@@ -23,7 +23,6 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 import { actionEntity, FindEntities } from './actionEntity';
 import { BuildCursor } from './buildCursor';
 import { GroundItemAssets } from './groundItems';
-import { setPrefabLocalLight } from './localLight';
 import { nextReskin } from './reskin_tool';
 import { newEntityId, saveGroundPosition, type PlacedEntitySaveRecord, type PlacementSaveRecord } from './saveRecord';
 import { PlaySound, PreloadSounds } from './sound';
@@ -368,6 +367,8 @@ export class FencePlacement {
             return;
         }
         fence.spare = spare;
+        // The spare art swaps into the placer later; it is placer art too (BuildCursor lights the drawn one).
+        spare.instance.sprite.setLightOverride(1);
         fence.root.visible = false;
         this.active = fence;
         this.cursor.setPreview(fence.root, 0, point => {
@@ -629,7 +630,7 @@ export class FencePlacement {
             fire.instance.position.copy(fence.root.position);
             this.scene.add(fire.display.model); this.fires.add(fire);
             fence.fire = fire;
-            setPrefabLocalLight(fence.root, { colour: [1, 1, 192 / 255], radius: (FENCE_FX_LEVEL + 1) * UNIT, intensity: .8, falloff: .33 });
+            prefabInstance(fence.root)!.light.set({ colour: [1, 1, 192 / 255], radius: (FENCE_FX_LEVEL + 1) * UNIT, intensity: .8, falloff: .33 });
             fence.fireSound = PlaySound('dontstarve/common/campfire', fence.root.position);
         }).catch((error: unknown) => { if (!this.disposed) console.error('Unable to show fence fire', error); });
     }
@@ -637,7 +638,7 @@ export class FencePlacement {
     private hideFire(fence: FenceInstance): void {
         if (fence.fire) { this.fires.delete(fence.fire); this.release(fence.fire); fence.fire = undefined; }
         fence.fireSound?.stop(); fence.fireSound = undefined;
-        setPrefabLocalLight(fence.root, null);
+        prefabInstance(fence.root)!.light.set(null);
     }
 
     private place(fence: FenceInstance): void {

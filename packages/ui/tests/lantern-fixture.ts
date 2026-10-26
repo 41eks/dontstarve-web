@@ -6,7 +6,10 @@ import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createLanternHandLifecycle, createLanternGroundSprite } from '../../prefab/src/lantern';
 import { ItemEntity } from '../../inventory/src';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light a model's entity declares. */
+const getDeclaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
 export async function checkLanternLighting() {
@@ -27,17 +30,20 @@ export async function checkLanternLighting() {
   camera.updateMatrixWorld();
   const lightAt = (owner: THREE.Object3D) => {
     const node = owner.getObjectByName('lanternlight');
-    return node && getPrefabLocalLight(node);
+    return node && getDeclaredLight(node);
   };
   const pixel = new Uint8Array(4);
-  const sample = (x: number, z = -8) => {
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  // Lights reach the display list after the declaration settles.
+  const sample = async (x: number, z = -8) => {
+    await settle();
     lighting.render(scene, camera);
     const point = new THREE.Vector3(x, 0, z).project(camera);
     const gl = renderer.getContext();
     gl.readPixels(Math.floor((point.x + 1) * 200), Math.floor((point.y + 1) * 200), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
     return pixel[0] + pixel[1] + pixel[2];
   };
-  const baseline = sample(0);
+  const baseline = await sample(0);
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 0);
   scene.add(player);
@@ -48,7 +54,7 @@ export async function checkLanternLighting() {
     lightParent: player, AnimState: controller.AnimState,
   });
   handLifecycle.onequip();
-  const hand = { lit: !!lightAt(player), brightness: sample(0) };
+  const hand = { lit: !!lightAt(player), brightness: await sample(0) };
   const failures: string[] = [];
   const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS.lantern.skinArchives)];
   const assets = new GroundItemAssets();
@@ -89,7 +95,7 @@ export async function checkLanternLighting() {
   handLifecycle.onunequip();
   handEntity.components.inventoryitem.OnPutInInventory({ hasTag: () => true, GetPosition: () => player.position, PushEvent() {} });
   await controller.setCarryItem(null);
-  const backpack = { unlit: !lightAt(player), brightness: sample(0) };
+  const backpack = { unlit: !lightAt(player), brightness: await sample(0) };
   const pending = controller.setCarryItem('lantern', skins[1]);
   await controller.setCarryItem(null);
   await pending;
@@ -106,7 +112,7 @@ export async function checkLanternLighting() {
   await manager.drop(definition, new THREE.Vector3(-30, 20, 0), () => true);
   await manager.drop(definition, new THREE.Vector3(30, 20, 0), () => true);
   manager.update(0.05, camera.quaternion);
-  const twoLights = { left: sample(-30), right: sample(30), far: sample(0, 75) };
+  const twoLights = { left: await sample(-30), right: await sample(30), far: await sample(0, 75) };
   const clickFirst = () => {
     const { model } = manager.reskinTargets[0];
     model.updateWorldMatrix(true, true);
@@ -126,11 +132,11 @@ export async function checkLanternLighting() {
   const failedPickupCount = manager.exportRecords().length;
   pickup.setAllowed(true);
   clickFirst(); pickup.settle();
-  const pickedUp = { count: manager.exportRecords().length, left: sample(-30), right: sample(30) };
+  const pickedUp = { count: manager.exportRecords().length, left: await sample(-30), right: await sample(30) };
   const record = manager.exportRecords()[0];
   const restored = await manager.spawnFromSave('restored-lantern', definition, new THREE.Vector3(-30, 0, 0));
   const save = { itemId: record.components.stack?.itemId, foot: record.transform.position,
-    restoredLit: !!lightAt(restored), restoredBrightness: sample(-30) };
+    restoredLit: !!lightAt(restored), restoredBrightness: await sample(-30) };
   pickup.dispose(); manager.dispose();
   handEntity.destroy();
   lighting.dispose();

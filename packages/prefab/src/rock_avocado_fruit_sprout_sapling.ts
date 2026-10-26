@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { createEffect, createMemo, readonlySignal, getBoundWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
 import { preloadSharedArchiveSprite, ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
-import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
 import { watchTileActivity } from './tileActivity';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -18,7 +18,6 @@ import type { PreparedGroundSpawn, GroundItemDefinition } from './groundPrefab';
 import type { RockAvocadoBushManager } from './rock_avocado_bush';
 import type { ShovelTarget } from '../../stategraphs/src/shovel';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { setPrefabLocalLight } from './localLight';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -169,10 +168,10 @@ export class RockAvocadoSaplingManager {
             fire.instance.position.copy(model.position);
             if (!fireModel.parent) this.scene.add(fireModel);
             sapling.sound ??= PlaySound('dontstarve/common/campfire', model.position);
-            setPrefabLocalLight(model, { colour: [1, 1, 192 / 255], radius: 9, intensity: .8, falloff: .33 });
+            prefabInstance(model)!.light.set({ colour: [1, 1, 192 / 255], radius: 9, intensity: .8, falloff: .33 });
           } else {
             sapling.sound?.stop(); sapling.sound = undefined;
-            setPrefabLocalLight(model, null);
+            prefabInstance(model)!.light.set(null);
           }
         });
         startGrowing(); timer.OnLoad(saved?.components.saplingTimer);
@@ -216,7 +215,7 @@ export class RockAvocadoSaplingManager {
     sapling.stopActivity?.(); sapling.stopBurning();
     sapling.burnable.SetOnExtinguishFn(undefined); sapling.burnable.dispose(); sapling.propagator.dispose();
     sapling.timer.dispose(); sapling.completion.stop(); sapling.workable.dispose(); sapling.phase.dispose();
-    sapling.sound?.stop(); setPrefabLocalLight(model, null);
+    sapling.sound?.stop(); prefabInstance(model)!.light.set(null);
     for (const { instance, display } of [sapling.entity, sapling.fire]) { instance.remove(); display.dispose(); }
     sapling.outputs.forEach(output => output.dispose()); sapling.bush?.dispose();
   }

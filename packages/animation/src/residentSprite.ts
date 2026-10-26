@@ -3,7 +3,7 @@ import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/sign
 import type { StaticSpriteController } from './wallSprite';
 import type { ArchiveSprite } from './archiveSprite';
 import { registerSpriteRenderGroup, setSpriteEntityRenderOrder } from './renderOrder';
-import { setSpriteErosion } from './spriteErosion';
+import type { InstancedSprite } from './instancedArchiveSprites';
 import { installRootMatrixGate } from './matrixGate';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
 
@@ -230,7 +230,8 @@ export class ResidentSprite implements ArchiveSprite {
   setLayerHidden(layer: string, hidden: boolean): void { this.sprite?.setLayerHidden(layer, hidden); }
   faceCamera(rotation: THREE.Quaternion): void { this.sprite?.faceCamera(rotation); }
   /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
-  setErosion(amount: number): void { if (this.sprite) setSpriteErosion(this.sprite.model, amount); }
+  setErosion(amount: number): void { this.sprite?.setErosion(amount); }
+  get instanced(): InstancedSprite | undefined { return this.sprite?.instanced; }
   /** LAYER_BACKGROUND art drawn by its mesh order within the ground layers; the group keeps its own order. */
   setMeshOrder(order: number): void {
     if (!this.sprite) return;

@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
-import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
+import { LightState, type ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { createArchiveEntity, setModelTag } from './prefabInstance';
-import { setPrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { listenInventoryEvents } from './inventoryEvents';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
@@ -83,6 +82,8 @@ export class FirefliesController {
   private readonly random: () => number;
   private readonly transform: ItemEntity['transform'];
   private entity?: ItemEntity;
+  /** The swarm entity's inst.Light, which the controller turns on and fades. */
+  readonly light: LightState;
 
   constructor(
     model: THREE.Group,
@@ -90,8 +91,10 @@ export class FirefliesController {
     world: FirefliesWorld,
     transform: ItemEntity['transform'],
     random = Math.random,
+    light = new LightState(),
   ) {
     this.model = model;
+    this.light = light;
     setMouseTargetEnabled(model, false);
     this.transform = transform;
     this.animation = animation;
@@ -219,7 +222,7 @@ export class FirefliesController {
     this.disableWork.stop();
     this.show(false);
     this.refresh();
-    setPrefabLocalLight(this.model, null);
+    this.light.set(null);
     this.animation.setLightOverride(null);
   }
 
@@ -319,7 +322,7 @@ export class FirefliesController {
 
   /** Rebuild presentation after waking without changing logical work/fade/timer state. */
   refreshVisual(): void {
-    setPrefabLocalLight(this.model, this.fadeValue > 0 ? { ...FIREFLIES_LIGHT, intensity: this.fadeValue } : null);
+    this.light.set(this.fadeValue > 0 ? { ...FIREFLIES_LIGHT, intensity: this.fadeValue } : null);
     this.refreshClickability();
     this.model.userData.firefliesIntensity = this.fadeValue;
   }
@@ -373,14 +376,14 @@ export async function createFirefliesGroundSprite(assets: FirefliesAssets, world
   return { model, instance, active: readonlySignal(active), get controller() { return controller; },
     bindEntity(entity: ItemEntity) { controller?.bindEntity(entity); },
     bindTransform(transform: ItemEntity['transform']) {
-      controller = new FirefliesController(model, instance.sprite, world, transform);
+      controller = new FirefliesController(model, instance.sprite, world, transform, Math.random, instance.light);
       const awake = watchSignal(controller.active, stop => cleanups.push(stop));
       // OnEntitySleep/OnEntityWake: the swarm's frames and instance entry exist only while its tile is active.
       createEffect(() => {
         const value = awake.get();
         instance.setActive(value);
         active.set(value);
-        if (value) controller!.refreshVisual(); else setPrefabLocalLight(model, null);
+        if (value) controller!.refreshVisual(); else instance.light.set(null);
       });
     },
     get updating() { return controller?.updating; },
@@ -390,7 +393,7 @@ export async function createFirefliesGroundSprite(assets: FirefliesAssets, world
       cleanups.splice(0).forEach(stop => stop());
       removeInventoryEvents();
       controller?.dispose();
-      setPrefabLocalLight(model, null);
+      instance.light.set(null);
       instance.remove();
       display.dispose();
     } };

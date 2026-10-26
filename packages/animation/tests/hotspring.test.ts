@@ -4,7 +4,6 @@ import { PhysicsWorld } from '../../componets/src/physicsWorld';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { HotspringManager, HOTSPRING_LIGHT } from '../../prefab/src/hotspring.ts';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { FindEntities } from '../../prefab/src/actionEntity';
 import { GroundItemManager } from '../../../src/groundItems';
 import { createInventoryStore } from '../../../src/inventory';
@@ -25,6 +24,9 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 /** The body the spring's physics binding keeps. */
 const bodyOf = (model: THREE.Object3D) => prefabInstance(model)!.physicsBody;
@@ -87,7 +89,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     const inst = model!.userData.actionEntity, heater = inst.components.heater;
     expect(inst.hasTag('HASHEATER')).toBe(true); expect(inst.hasTag('bathbombable')).toBe(true);
     expect(heater.GetHeat()).toBe(45);
-    expect(getPrefabLocalLight(model!)).toBeUndefined();
+    expect(declaredLight(model!)).toBeUndefined();
     expect(model!.userData.animationController.currentAnimation).toBe('idle');
 
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
@@ -104,7 +106,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(1);
     expect(heater.GetHeat()).toBe(90);
     expect(inst.hasTag('bathbombable')).toBe(false);
-    expect(getPrefabLocalLight(model!)).toEqual(HOTSPRING_LIGHT);
+    expect(declaredLight(model!)).toEqual(HOTSPRING_LIGHT);
     expect(model!.userData.animationController.currentAnimation).toBe('bath_bomb');
     for (let frame = 0; frame < 180; frame++) s.springs.update(1 / 30, s.world.camera.quaternion);
     expect(model!.userData.animationController.currentAnimation).toBe('glow_loop');
@@ -119,12 +121,12 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     const reloaded = await restored.springs.spawn(new THREE.Vector3(...record.transform.position), record);
     expect(restored.springs.exportRecords().map(entry => entry.record)).toEqual([record]);
     expect(reloaded.userData.actionEntity.components.heater.GetHeat()).toBe(90);
-    expect(getPrefabLocalLight(reloaded)).toEqual(HOTSPRING_LIGHT);
+    expect(declaredLight(reloaded)).toEqual(HOTSPRING_LIGHT);
     expect(reloaded.userData.animationController.currentAnimation).toBe('glow_loop');
 
     s.springs.remove(model!);
     expect(FindEntities(model!.position, 1, ['HASHEATER']).map(entity => entity === reloaded.userData.actionEntity)).toEqual([true]);
-    expect(getPrefabLocalLight(model!)).toBeUndefined();
+    expect(declaredLight(model!)).toBeUndefined();
   } finally { toss?.dispose(); s.dispose(); restored.dispose(); }
 });
 
@@ -234,7 +236,7 @@ it('toggles tile visibility, physics and animation while preserving inactive sav
     expect(s.physics.bodies).toEqual([secondBody]);
     expect([...s.physics.registeredBodies]).toEqual([secondBody]);
     expect(restored.physics.bodies).toEqual([bodyOf(loaded)]);
-    expect(getPrefabLocalLight(loaded)).toEqual(HOTSPRING_LIGHT);
+    expect(declaredLight(loaded)).toEqual(HOTSPRING_LIGHT);
     s.springs.update(.1, s.world.camera.quaternion);
     expect(secondAnimation).toHaveBeenCalledTimes(2);
     state.playerpositions.set([new THREE.Vector3(1, 0, 1)]);

@@ -13,7 +13,7 @@ import {
     type AnimatedBuildingPreparedResources,
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
-import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
+import { prefabInstance } from './prefabInstance';
 import { PlaySound, PreloadSounds, type SoundEventPath, type SoundHandle } from './sound';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { TILE_SIZE } from './tile';
@@ -71,8 +71,8 @@ class Moondial {
             const waxingLook = (waxing && phase !== 'new') || phase === 'full';
             for (const symbol of REFLECTION_SYMBOLS) this.sprite.overrideSymbol(symbol, waxingLook ? undefined : waning[symbol]);
             const light = LIGHT_STATES[phase];
-            setPrefabLightOverride(model, light.override);
-            setPrefabLocalLight(model, light.radius > 0
+            prefabInstance(model)!.sprite.setLightOverride(light.override);
+            prefabInstance(model)!.light.set(light.radius > 0
                 ? { radius: light.radius * (TILE_SIZE / 4), intensity: .6, falloff: .7, colour: [15 / 255, 160 / 255, 180 / 255] } : null);
         }));
         this.moon = context.world?.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop));
@@ -153,8 +153,8 @@ class Moondial {
         for (const sound of this.sounds) sound.stop();
         this.sounds.clear();
         for (const cleanup of this.cleanups) cleanup();
-        setPrefabLocalLight(this.context.model, null);
-        setPrefabLightOverride(this.context.model, null);
+        prefabInstance(this.context.model)!.light.set(null);
+        prefabInstance(this.context.model)?.sprite.setLightOverride(null);
     }
 }
 

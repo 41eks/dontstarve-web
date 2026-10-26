@@ -4,7 +4,10 @@ import { DstLightingRenderer } from '../../../src/dstLighting';
 import { GroundItemManager } from '../../../src/groundItems';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createLightbulbGroundSprite } from '../../prefab/src/lightbulb';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light a model's entity declares. */
+const getDeclaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
 export async function checkLightbulbLighting() {
@@ -23,35 +26,38 @@ export async function checkLightbulbLighting() {
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld();
   const pixel = new Uint8Array(4);
-  const sample = (x: number, z = -1.25) => {
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  // Lights reach the display list after the declaration settles.
+  const sample = async (x: number, z = -1.25) => {
+    await settle();
     lighting.render(scene, camera);
     const point = new THREE.Vector3(x, 0, z).project(camera);
     const gl = renderer.getContext();
     gl.readPixels(Math.floor((point.x + 1) * 200), Math.floor((point.y + 1) * 200), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
     return pixel[0] + pixel[1] + pixel[2];
   };
-  const baseline = sample(0);
+  const baseline = await sample(0);
   const assets = new GroundItemAssets();
   const bulb = await createLightbulbGroundSprite({ assets });
   scene.add(bulb.model);
   bulb.model.quaternion.copy(camera.quaternion);
-  const parameters = getPrefabLocalLight(bulb.model);
-  const glowing = { near: sample(0), far: sample(6) };
+  const parameters = getDeclaredLight(bulb.model);
+  const glowing = { near: await sample(0), far: await sample(6) };
   bulb.setLit(false);
-  const disabled = sample(0);
+  const disabled = await sample(0);
   bulb.setLit(true);
-  const reenabled = sample(0);
+  const reenabled = await sample(0);
   bulb.dispose();
-  const disposed = sample(0);
+  const disposed = await sample(0);
   const pickup = fixturePickup(scene, camera, renderer);
   pickup.setAllowed(false);
   const manager = new GroundItemManager(scene, camera, renderer, '/missing-atlas.zip', pickup.inventory, '/dst/data/anim', new THREE.Group());
   const definition = { itemId: 'lightbulb', name: '荧光果', icon: 'missing.tex', count: 1 };
   const failedDrop = await manager.drop(definition, new THREE.Vector3(5, 20, 0), () => false);
-  const failedDropBrightness = sample(5);
+  const failedDropBrightness = await sample(5);
   await manager.drop(definition, new THREE.Vector3(5, 20, 0), () => true);
   manager.update(0.05, camera.quaternion);
-  const dropped = sample(5);
+  const dropped = await sample(5);
   const click = () => {
     const { model } = manager.reskinTargets[0];
     model.updateWorldMatrix(true, true);
@@ -69,14 +75,14 @@ export async function checkLightbulbLighting() {
   };
   click(); pickup.settle();
   const failedPickupCount = manager.exportRecords().length;
-  const failedPickupBrightness = sample(5);
+  const failedPickupBrightness = await sample(5);
   const saved = manager.exportRecords()[0];
   pickup.setAllowed(true);
   click(); pickup.settle();
-  const pickedUp = { count: manager.exportRecords().length, brightness: sample(5) };
+  const pickedUp = { count: manager.exportRecords().length, brightness: await sample(5) };
   const restored = await manager.spawnFromSave('restored-bulb', definition, new THREE.Vector3(5, 0, 0));
-  const restoredBrightness = sample(5);
-  const restoredLit = !!getPrefabLocalLight(restored);
+  const restoredBrightness = await sample(5);
+  const restoredLit = !!getDeclaredLight(restored);
   pickup.dispose(); manager.dispose();
   lighting.dispose();
   renderer.dispose();

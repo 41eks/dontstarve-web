@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { DwarfStarManager, dwarfStarLight, DWARF_STAR_DURATION, STAFF_LIGHT_ACTIVE_RADIUS, getStaffLightState, type StaffLightId } from '../../prefab/src/stafflight';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { PlaySound } from '../../prefab/src/sound';
 import type { SpriteAnimationController } from '../src/sprite';
 import { SpriteState } from '@dontstarve-web/display';
@@ -20,6 +19,9 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}),
@@ -188,7 +190,7 @@ it('settles lifetime at frame 60 using actual dt and releases light, sound and g
   update(0.02); // Past expiry + 1, but before settlement time + 1.
   await Promise.resolve();
   expect(model.parent).toBeNull();
-  expect(getPrefabLocalLight(model)).toBeUndefined();
+  expect(declaredLight(model)).toBeUndefined();
   expect(loop.stop).toHaveBeenCalled();
   expect(state.removed.peek()).toBe(true);
   expect(state.phase.peek()).toBe('removed');
@@ -228,7 +230,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   expect(model.userData.animationController).toBe(controller);
   expect(disposeMaterial).not.toHaveBeenCalled();
   expect(disposeTexture).not.toHaveBeenCalled();
-  expect(getPrefabLocalLight(model)).toBeUndefined();
+  expect(declaredLight(model)).toBeUndefined();
   expect(manager.renderEntities).toEqual([]);
   expect(state.removed.peek()).toBe(false);
   expect(state.phase.peek()).toBe('active');
@@ -262,7 +264,7 @@ it('unloads outside the circular XZ range and rebuilds in place after catching u
   expect(record.id).toBe(model.userData.instance?.entityId);
   expect(record.transform.position).toEqual(position.toArray());
   expect(record.components.timer.remainingSeconds).toBeCloseTo(DWARF_STAR_DURATION - 12.6);
-  expect(getPrefabLocalLight(model)!.radius).toBeCloseTo(dwarfStarLight(12.6).radius);
+  expect(declaredLight(model)!.radius).toBeCloseTo(dwarfStarLight(12.6).radius);
   // Moving the entity handle also updates proximity in the current frame.
   model.position.x = player.x + STAFF_LIGHT_ACTIVE_RADIUS + 1;
   update(0.1); await settle();
@@ -298,7 +300,7 @@ it('keeps active presentation stable and cancels queued disappearance on explici
   expect(manager.remove(model)).toBe(false);
   expect(state.phase.peek()).toBe('removed');
   expect(model.parent).toBeNull();
-  expect(getPrefabLocalLight(model)).toBeUndefined();
+  expect(declaredLight(model)).toBeUndefined();
   expect(oldLoop.stop).toHaveBeenCalledOnce();
   await Promise.resolve();
   update(10);

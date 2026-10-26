@@ -24,12 +24,11 @@ import { MoonButterflyBrain } from '../../brains/src/moonbutterflybrain';
 import { RADIANS } from '../../brains/src/simutil';
 import type { BrainComponents, BrainEntity, BrainInst, BrainWorld } from '../../brains/src/types';
 import catalog from './groundItems.json' with { type: 'json' };
-import { setPrefabLightOverride, setPrefabLocalLight } from './localLight';
 import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
 import { FindEntities, type FoundEntity } from './actionEntity';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
-import { createPrefabEntity } from './prefabInstance';
+import { createPrefabEntity, prefabInstance } from './prefabInstance';
 
 export const BUTTERFLY_ID = 'butterfly';
 export const MOONBUTTERFLY_ID = 'moonbutterfly';
@@ -598,9 +597,10 @@ const LIGHT_RADIUS = .5 * (TILE_SIZE / 4), LIGHT_INTENSITY = .5, LIGHT_FALLOFF =
 function bindMoonButterflyVisual(visual: Awaited<ReturnType<typeof createButterflyGroundSprite>>): void {
   const { model } = visual;
   let flickerTime = 0, flickerElapsed = 0, lit = true;
-  const setLight = (intensity: number) => setPrefabLocalLight(model, lit
+  const setLight = (intensity: number) => prefabInstance(model)!.light.set(lit
     ? { colour: [.3, .55, .45], radius: LIGHT_RADIUS, intensity, falloff: LIGHT_FALLOFF } : null);
-  setPrefabLightOverride(model, .15);
+  const sprite = prefabInstance(model)!.sprite;
+  sprite.setLightOverride(.15);
   setLight(LIGHT_INTENSITY);
   const update = visual.update;
   // OnUpdateFlicker runs every .1s: intensity = .5 + .05 * (1 + sin(t * .7 + sin(t * 6.28))) / 2, t in 15x seconds.
@@ -622,7 +622,7 @@ function bindMoonButterflyVisual(visual: Awaited<ReturnType<typeof createButterf
       entity.components.workable?.SetWorkable(false);
       lit = false;
       setLight(0);
-      setPrefabLightOverride(model, null);
+      sprite.setLightOverride(null);
       visual.controller?.addTag('dead');
       visual.controller?.removeTag('spore');
       visual.controller?.PushEvent('death');

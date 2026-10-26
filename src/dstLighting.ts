@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { prewarmScenePasses, renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
-import { createEffect, watchSignal, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type TileStateQuery, type WorldSeason } from '@dontstarve-web/signals';
+import { createEffect, watchSignal, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type WorldSeason } from '@dontstarve-web/signals';
 import { DstLocalLighting } from './dstLocalLighting';
 import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
 
@@ -12,8 +12,6 @@ export interface DstLightingState {
   sanityPercent?: ReadonlySignal<number>;
   /** playervision:HasGhostVision(); replaces the ambient colour cube. */
   ghostVision?: ReadonlySignal<boolean>;
-  /** The owning world's activity query, shared by local light rendering and sampling. */
-  tickingarea?: TileStateQuery;
 }
 
 declare global {
@@ -295,7 +293,7 @@ export class DstLightingRenderer {
     initialState: DstLightingState,
   ) {
     this.renderer = renderer;
-    this.localLighting = new DstLocalLighting(initialState.tickingarea);
+    this.localLighting = new DstLocalLighting();
     this.textures = textures;
     const season = seasonstate.peek().season;
     const phase = this.getPhase();

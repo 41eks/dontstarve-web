@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
-import { setPrefabLocalLight } from '../../prefab/src/localLight';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+
+/** An entity that declares only a light, as torch and lantern light entities do. */
+const lightEntity = (light: Parameters<ReturnType<typeof createEmptyEntity>['instance']['light']['set']>[0]) => {
+  const { instance, display } = createEmptyEntity('light'); instance.light.set(light); return display.model;
+};
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 export async function checkLocalLightBatch() {
   const renderer = new THREE.WebGLRenderer();
@@ -39,16 +45,16 @@ export async function checkLocalLightBatch() {
   };
   const empty = draw();
   for (const colour of [[1, 0, 0], [0, 1, 0]] as const) {
-    const owner = new THREE.Object3D(); scene.add(owner);
-    setPrefabLocalLight(owner, { radius: 1, intensity: .4, falloff: 1, colour });
+    scene.add(lightEntity({ radius: 1, intensity: .4, falloff: 1, colour }));
   }
+  await settle();
   const overlapping = { ...draw(), pixel: sample() };
   for (let i = 2; i < 10_000; i++) {
-    const owner = new THREE.Object3D();
+    const owner = lightEntity({ radius: 1, intensity: .5, falloff: .5, colour: [1, 1, 1] });
     owner.position.set((i % 100) * 10, 0, Math.floor(i / 100) * 10);
-    setPrefabLocalLight(owner, { radius: 1, intensity: .5, falloff: .5, colour: [1, 1, 1] });
     scene.add(owner);
   }
+  await settle();
   const stress = draw();
   // Reuse the grown buffers with a smaller batch before removing every source.
   for (const child of [...scene.children].slice(2)) child.removeFromParent();

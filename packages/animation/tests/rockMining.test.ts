@@ -4,7 +4,6 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { RockManager } from '../../prefab/src/rocks';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { getSpriteErosion } from '../src/spriteErosion';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
@@ -69,7 +68,7 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
     expect(state.breakDelay.peek()).toEqual({ status: 'scheduled', endTime: 2 });
     s.scheduler.advance(2.5); s.manager.update(0, new THREE.Quaternion());
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(getSpriteErosion(model.children[0])).toBeCloseTo(.5); // the drawn sprite carries the erosion
+    expect(prefabInstance(model)!.sprite.sprite.peek().erosion).toBeCloseTo(.5); // the declared erosion reaches the drawn instance
     expect(s.scene.children).toContain(model);
     s.scheduler.advance(.5); // No rendering or presentation effect is needed to remove it.
     expect(prefabInstance(model)!.status.peek()).toBe('removed');

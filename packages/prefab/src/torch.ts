@@ -6,11 +6,12 @@ import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVis
 import { createResidentGroundItem, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { GroundItemFactory, GroundPrefabContext } from './groundPrefab';
 import { listenInventoryEvents } from './inventoryEvents';
-import { attachPrefabLight, setPrefabLocalLight, type PrefabLocalLight } from './localLight';
+import { spawnLightEntity, type PrefabLocalLight } from './localLight';
 import { LootFling } from './lootFling';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 import { TORCH_FIRE_OFFSET_Y, TorchFireEffect } from './torchfire';
+import { modelHasTag, prefabInstance } from './prefabInstance';
 
 export function configureTorchEntity(entity: ItemEntity): void {
   entity.components.lighter = entity.component('lighter', () => new Lighter(entity));
@@ -211,7 +212,11 @@ export function createTorchHandLifecycle(
     fire?.dispose(); fire = undefined;
     removeFire?.(); removeFire = undefined;
     if (!burning) return;
-    removeLight = attachPrefabLight(options.lightParent, 'TorchFireLight', TORCH_LIGHT);
+    // torchfire_common.lua CreateLight + AttachLightTo(owner): a player owner's light is also a playerlight.
+    const light = spawnLightEntity(options.lightParent, 'torchfire_light');
+    if (modelHasTag(options.lightParent, 'player')) light.instance.addTag('playerlight');
+    light.instance.light.set(TORCH_LIGHT);
+    removeLight = light.remove;
     if (options.followSymbol && options.dataBaseUrl !== undefined) {
       const follower = options.followSymbol('swap_object', 0, TORCH_FIRE_OFFSET_Y);
       removeFire = follower.remove;
@@ -266,7 +271,7 @@ export function createTorchGroundFactory(context: GroundPrefabContext): GroundIt
         },
       };
       const syncBurning = (burning: boolean) => {
-        setPrefabLocalLight(model, burning ? TORCH_LIGHT : null);
+        prefabInstance(model)!.light.set(burning ? TORCH_LIGHT : null);
         if (burning) sprite.playOnce('land');
       };
       const bind = () => {

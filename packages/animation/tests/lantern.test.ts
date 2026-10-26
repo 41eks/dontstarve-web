@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { LANTERN_FUEL, LanternLightController, createLanternHandLifecycle, getLanternController } from '../../prefab/src/lantern';
-import { getPrefabLocalLight } from '../../prefab/src/localLight';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { GroundItemManager } from '../../../src/groundItems';
@@ -19,10 +18,14 @@ import { createPickupInventory } from './pickupFixture';
 import { EventEmitter } from '@dontstarve-web/signals';
 import { AnimState } from '../src/animState';
 import { bindPlayerHandEquipment } from '../../../src/playerHandEquipment';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 const lightAt = (owner: THREE.Object3D) => {
   const node = owner.getObjectByName('lanternlight');
-  return node && getPrefabLocalLight(node);
+  return node && declaredLight(node);
 };
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -135,7 +138,7 @@ describe('lantern fuel', () => {
       expect(inventory.transfer(slot, hand, 1)).toBe(true);
       const node = player.getObjectByName('lanternlight')!;
       expect(node).toBeDefined();
-      expect(getPrefabLocalLight(player)).toBeUndefined();
+      expect(declaredLight(player)).toBeUndefined();
       expect(lightAt(player)).toMatchObject({ radius: 15, intensity: .6 });
       expect(show).toHaveBeenLastCalledWith('LANTERN_OVERLAY');
       entity.setRemainingFuel(LANTERN_FUEL / 2);

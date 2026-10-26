@@ -15,7 +15,7 @@ import { GroundItemManager } from '../../../src/groundItems';
 import { equipmentSlotAddress } from '../../inventory/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { DisposeSounds } from '../../prefab/src/sound';
-import { getPrefabLightOverride } from '../../prefab/src/localLight';
+import { displayLightOverride } from '../../display/src/displaySprites';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -78,7 +78,7 @@ it.each([undefined, 'reskin_tool_brush'])(
     expect(object.scale.toArray()).toEqual([1.4, 1.4, 1.4]);
     expect(object.userData.instance.hasTag('FX')).toBe(true);
     expect(object.userData.instance.persists).toBe(false);
-    expect(getPrefabLightOverride(object)).toBe(skinId ? 0 : 1);
+    expect(displayLightOverride(object)).toBe(skinId ? 0 : 1);
     const mesh = object.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect((mesh.material as THREE.MeshBasicMaterial[]).every((material) => material.forceSinglePass)).toBe(true);

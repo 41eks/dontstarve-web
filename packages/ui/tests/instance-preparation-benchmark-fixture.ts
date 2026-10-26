@@ -1,12 +1,8 @@
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 
-export async function benchmarkInstancePreparation(variant: string) {
+export async function benchmarkInstancePreparation() {
   const assets = new ArchiveSpriteAssets();
-  if (variant === 'before') {
-    const { InstancedArchiveSprites } = await import('../../animation/src/instancedArchiveSprites.benchmark');
-    Object.defineProperty(assets, 'instancedSprites', { value: new InstancedArchiveSprites() });
-  }
   const create = await preloadSharedArchiveSprite(assets, {
     animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'], bank: 'mushroom_tree',
     hiddenSymbols: [1, 2, 3].flatMap(index => [`swap_acidglob${index}`, `swap_acidglob_bloom${index}`]),
@@ -19,6 +15,8 @@ export async function benchmarkInstancePreparation(variant: string) {
     sprite.model.position.set((index % 60 - 30) * 4, 0, (Math.floor(index / 60) - 25) * 4);
     sprite.faceCamera(camera.quaternion); sprite.refreshTransform(); scene.add(sprite.model); return sprite;
   });
+  // The display layer lists drawn sprites for the pass; here every sprite is drawn and unlit.
+  assets.instancedSprites.bindMembers(new Set(sprites.map(sprite => ({ sprite: sprite.instanced, lightOverride: 0 }))));
   const samples: number[] = [];
   try {
     assets.instancedSprites.flush(renderer); scene.updateMatrixWorld();
@@ -34,7 +32,7 @@ export async function benchmarkInstancePreparation(variant: string) {
       renderer.render(scene, camera); scene.matrixWorldAutoUpdate = automatic;
     }
     samples.sort((a, b) => a - b);
-    return { variant, count: sprites.length, frames: samples.length, mean: samples.reduce((sum, value) => sum + value, 0) / samples.length,
+    return { count: sprites.length, frames: samples.length, mean: samples.reduce((sum, value) => sum + value, 0) / samples.length,
       median: samples[Math.floor(samples.length / 2)], p90: samples[Math.floor(samples.length * .9)], max: samples.at(-1) };
   } finally { sprites.forEach(sprite => sprite.dispose()); assets.dispose(); renderer.dispose(); }
 }

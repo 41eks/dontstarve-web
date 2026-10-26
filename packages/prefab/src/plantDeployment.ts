@@ -15,7 +15,6 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PLANTABLES } from './plantables';
 import { TILE_SIZE } from './tile';
 import { PlaySound, PreloadSounds, type SoundHandle } from './sound';
-import { setPrefabLightOverride } from './localLight';
 
 export interface PreparedPlant { spawn(position: THREE.Vector3): boolean; dispose(): void; }
 export interface PlantDeploymentWorld {
@@ -178,7 +177,7 @@ export class PlantDeployment {
           const model = placer.display.model;
           for (const tag of ['FX', 'NOCLICK']) placer.instance.addTag(tag);
           placer.instance.persists = false; model.userData.placer = true;
-          setPrefabLightOverride(model, 1);
+          placer.instance.sprite.setLightOverride(1);
           placer.instance.sprite.setVisible(false);
           this.preview = { ...placer, model, visible: false }; this.world.scene.add(model);
         }).catch(error => console.error('Unable to load plant placer', error));

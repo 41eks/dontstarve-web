@@ -6,9 +6,9 @@ import * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, type PrepareEquipmentVisual } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, GroundItemAssets } from './groundItems';
-import { setPrefabLocalLight } from './localLight';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
+import { spawnLightEntity } from './localLight';
 
 export const YELLOWSTAFF_ID = 'yellowstaff';
 export const YELLOWSTAFF_COLOUR = [223 / 255, 208 / 255, 69 / 255] as const;
@@ -87,9 +87,9 @@ export async function loadLightStaffEquipment(assets: GroundItemAssets, itemId: 
   return { builds: skin ? [skin, base] : [base], symbol: `swap_${itemId === 'firestaff' ? 'redstaff' : itemId}` };
 }
 
-/** staff_castinglight.lua's expanding light, on a separate child of the caster. */
+/** staff_castinglight.lua's expanding light: a non-persistent FX light entity parented to the caster. */
 export class StaffCastingLight {
-  readonly model = new THREE.Group();
+  private readonly entity: ReturnType<typeof spawnLightEntity>;
   private elapsed = 0;
   private active = false;
   private duration = 1.9;
@@ -97,9 +97,10 @@ export class StaffCastingLight {
   private colour: readonly [number, number, number] = YELLOWSTAFF_COLOUR;
 
   constructor(owner: THREE.Object3D) {
-    this.model.name = 'staff_castinglight';
-    owner.add(this.model);
+    this.entity = spawnLightEntity(owner, 'staff_castinglight');
   }
+
+  get model(): THREE.Object3D { return this.entity.model; }
 
   /** staff_castinglight.lua SetUp(colour, duration, delay); the staff's own cast waits .33 seconds for 1.9. */
   start(colour: readonly [number, number, number] = YELLOWSTAFF_COLOUR, duration = 1.9, delay = 0.33): void {
@@ -120,12 +121,18 @@ export class StaffCastingLight {
 
   stop(): void {
     this.active = false;
-    setPrefabLocalLight(this.model, null);
+    this.entity.instance.light.set(null);
+  }
+
+  /** The caster is removed: the light entity goes with it. */
+  dispose(): void {
+    this.stop();
+    this.entity.remove();
   }
 
   private refresh(progress: number): void {
     const k = progress ** 5;
-    setPrefabLocalLight(this.model, {
+    this.entity.instance.light.set({
       radius: (0.3 + 10 * k) * (TILE_SIZE / 4),
       intensity: 0.8 - 0.6 * k,
       falloff: 0.9 - 0.4 * k,

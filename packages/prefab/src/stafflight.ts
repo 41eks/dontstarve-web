@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { createEffect, createMemo, createSignal, readonlySignal, getBoundWatchWorldContent, type Memo, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import { createAnimatedSpriteFactory, type AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
 import type { PrefabDisplay } from '@dontstarve-web/display';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
-import { setPrefabLocalLight, type PrefabLocalLight } from './localLight';
+import { createPrefabEntity, type PrefabInstance, prefabInstance } from './prefabInstance';
+import { type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './yellowstaff';
 import { newEntityId } from './saveRecord';
@@ -194,7 +194,7 @@ export class DwarfStarManager {
       star.model.quaternion.copy(cameraWorldQuaternion);
       star.instance.sprite.update(dt);
       const age = star.ageSeconds + this.elapsedSeconds - star.lastSettlementSeconds;
-      setPrefabLocalLight(star.model, this.light(age));
+      prefabInstance(star.model)!.light.set(this.light(age));
     }
   }
 
@@ -273,7 +273,7 @@ export class DwarfStarManager {
       else this.startIdle(star, generation);
     };
     star.loopSound = PlaySound(this.loopEvent, star.model.position);
-    setPrefabLocalLight(star.model, this.light(star.ageSeconds));
+    prefabInstance(star.model)!.light.set(this.light(star.ageSeconds));
     star.instance.setActive(true);
     // OnEntityWake: the idle chain starts once the display has drawn the sprite again.
     let waiting = !animation.loaded;
@@ -313,7 +313,7 @@ export class DwarfStarManager {
     star.loopSound?.stop();
     star.creationSound = undefined;
     star.loopSound = undefined;
-    setPrefabLocalLight(star.model, null);
+    prefabInstance(star.model)!.light.set(null);
     // OnEntitySleep: the display releases the drawn sprite; callbacks of this presentation become stale.
     star.awake = false;
     star.generation++;

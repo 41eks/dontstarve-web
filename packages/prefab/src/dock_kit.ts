@@ -10,7 +10,6 @@ import { createArchiveEntity } from './prefabInstance';
 const VALID_TINT = new THREE.Color(0x66ff66).toArray() as [number, number, number];
 const BLOCKED_TINT = new THREE.Color(0xff5555).toArray() as [number, number, number];
 import { BuildCursor } from './buildCursor';
-import { setPrefabLightOverride } from './localLight';
 import { PlaySound, PreloadSounds } from './sound';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { TurfMap, WORLD_TILES, isLandTile } from './turfMap';
@@ -102,7 +101,7 @@ export class DockKitPlacement {
       this.world.scene.add(model);
       // BuildCursor copies the camera quaternion onto its preview, which would stand the flat outline up; it drives an anchor instead.
       this.anchor = new THREE.Object3D();
-      setPrefabLightOverride(model, 1);
+      entity.instance.sprite.setLightOverride(1);
       this.cursor.setPreview(this.anchor, 0, point => this.center(point));
       this.cursor.update();
     } catch (error) { if (version === this.version) this.cancel(); throw error; }

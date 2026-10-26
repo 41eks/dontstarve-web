@@ -1,7 +1,7 @@
 import type * as CANNON from 'cannon-es';
 import type { Object3D, Vector3 } from 'three';
 import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
+import { LightState, PrefabDisplay, SpriteState, type ArchiveSpriteCommands, type ArchiveSpriteSource, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { Brain } from '../../brains/src/brain';
@@ -30,6 +30,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState> 
   persists = true;
   /** inst.Physics: the collider the entity declares. */
   readonly physics = new PhysicsState();
+  /** inst.Light: the light the entity declares; its display lists it while the entity is active. */
+  readonly light = new LightState();
   /** inst.physicsradiusoverride, in DST units. */
   physicsRadiusOverride?: number;
   private physicsBinding?: PhysicsBinding;
@@ -155,7 +157,7 @@ export function createPrefabEntity(prefab: string, source: SpriteSource, clip: C
   { instance: PrefabInstance; display: PrefabDisplay } {
   const instance = new PrefabInstance(prefab, new SpriteState(clip));
   initialize?.(instance);
-  const display = new PrefabDisplay({ name, source, status: instance.status, parentStatus, sprite: instance.sprite });
+  const display = new PrefabDisplay({ name, source, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   display.model.userData.display = display;
   display.model.userData.animationController = instance.sprite;
@@ -169,7 +171,7 @@ export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource
   const state = new SpriteState(clip);
   const instance = new PrefabInstance<ArchiveSpriteCommands>(prefab, state);
   initialize?.(instance);
-  const display = new PrefabDisplay({ name, archive, status: instance.status, sprite: state });
+  const display = new PrefabDisplay({ name, archive, status: instance.status, sprite: state, light: instance.light });
   bindInstance(display.model, instance);
   display.model.userData.display = display;
   display.model.userData.animationController = instance.sprite;
@@ -179,7 +181,7 @@ export function createArchiveEntity(prefab: string, archive: ArchiveSpriteSource
 /** Transform-only prefab, with the same display-owned model and lifecycle as drawn entities. */
 export function createEmptyEntity(prefab: string): { instance: PrefabInstance; display: PrefabDisplay } {
   const instance = new PrefabInstance(prefab, new SpriteState({ name: '' }));
-  const display = new PrefabDisplay({ name: prefab, empty: true, status: instance.status, sprite: instance.sprite });
+  const display = new PrefabDisplay({ name: prefab, empty: true, status: instance.status, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   display.model.userData.display = display;
   return { instance, display };

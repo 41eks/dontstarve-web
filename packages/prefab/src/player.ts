@@ -816,7 +816,7 @@ class WilsonController implements WilsonAnimationController {
     this.stategraph.dispose();
     this.handVisual?.onunequip(); this.headVisual?.onunequip(); this.bodyVisual?.onunequip();
     this.cleanups.splice(0).forEach(stop => stop());
-    this.bookFx.dispose(); this.fxScheduler.dispose(); this.castingLight.stop();
+    this.bookFx.dispose(); this.fxScheduler.dispose(); this.castingLight.dispose();
     this.makeSound?.stop(); this.shaveSound?.stop();
     for (const sound of this.namedSounds.values()) sound.stop();
     for (const sound of this.portalSounds) sound.stop();

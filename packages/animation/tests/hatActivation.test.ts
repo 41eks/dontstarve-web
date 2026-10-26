@@ -2,10 +2,14 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HatActivationController, HatEquipmentAssets } from '../../prefab/src/hats';
-import { getPrefabLightOverride, getPrefabLocalLight } from '../../prefab/src/localLight';
+import { getMaterialLightOverride } from '../src/lightOverride';
 import { LanternLightController } from '../../prefab/src/lantern';
 import { smallHash, type AnimElement } from '../src/animationAssets';
 import { createSanityState } from '@dontstarve-web/signals';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+
+/** The inst.Light an entity's model declares. */
+const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -30,8 +34,8 @@ describe('Enlightened Crown source activation', () => {
     const lantern = new LanternLightController(owner);
     lantern.setLit(true);
     const lanternNode = owner.getObjectByName('lanternlight')!;
-    const lanternLight = getPrefabLocalLight(lanternNode);
-    const crownLight = () => { const node = owner.getObjectByName('HatActivationLight'); return node && getPrefabLocalLight(node); };
+    const lanternLight = declaredLight(lanternNode);
+    const crownLight = () => { const node = owner.getObjectByName('alterguardianhatlight'); return node && declaredLight(node); };
     const sanity = createSanityState(169, 200);
     const sanityRead = vi.spyOn(sanity.percent, 'get');
     const crown = new HatActivationController(owner, sanity.percent);
@@ -58,7 +62,7 @@ describe('Enlightened Crown source activation', () => {
     crown.update(0.4);
     expect(crown.resolve(anchor, false)).not.toEqual(loop);
     const glow = loop.front.find(({ materials }) => materials[0].name.endsWith(':bloom'))!;
-    expect(getPrefabLightOverride(glow.materials[0])).toBe(1);
+    expect(getMaterialLightOverride(glow.materials[0])).toBe(1);
     expect(glow.materials[0].forceSinglePass).toBe(true);
 
     sanity.set(170);
@@ -75,7 +79,7 @@ describe('Enlightened Crown source activation', () => {
     expect(crown.resolve(anchor, false)).toEqual(initial);
     crown.setHat(null);
     expect(crownLight()).toBeUndefined();
-    expect(getPrefabLocalLight(lanternNode)).toEqual(lanternLight);
+    expect(declaredLight(lanternNode)).toEqual(lanternLight);
     expect(crown.isAnimating).toBe(false);
     sanityRead.mockClear();
     sanity.set(200);

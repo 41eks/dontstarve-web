@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { CursorLabelUi } from '../src/cursor-label';
 import { DstLightingRenderer } from '../../../src/dstLighting';
-import { setPrefabLightOverride, getPrefabLightOverride, attachPrefabLight } from '../../prefab/src/localLight';
+import { spawnLightEntity } from '../../prefab/src/localLight';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { displayLightOverride } from '../../display/src/displaySprites';
 import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { TreasureChestPlacement } from '../../prefab/src/treasurechest';
 import { WallsPlacement } from '../../prefab/src/walls';
@@ -25,12 +27,13 @@ export async function checkCursorPreview() {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xffffff }));
   scene.add(ground);
-  const preview = new THREE.Group();
+  // A placer entity: its display reports the light override its sprite json declares.
+  const placer = createEmptyEntity('preview'), preview = placer.display.model;
   preview.add(new THREE.Mesh(new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xffffff })));
   preview.position.set(-6, 0.1, 0);
   scene.add(preview);
-  setPrefabLightOverride(preview, 1);
+  placer.instance.sprite.setLightOverride(1);
   const ui = new CursorLabelUi(renderer.domElement, '/dst/data/fonts/controllers.zip');
   await ui.ready;
   const pointer = { hasPointer: true, isOverGround: true, pointerClientX: 200, pointerClientY: 220 };
@@ -60,11 +63,15 @@ export async function checkCursorPreview() {
   const night = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
   const owner = new THREE.Object3D();
   scene.add(owner);
-  const removeTorchLight = attachPrefabLight(owner, 'TorchFireLight', TORCH_LIGHT);
+  const torchLight = spawnLightEntity(owner, 'torchfire_light'); torchLight.instance.light.set(TORCH_LIGHT);
+  const removeTorchLight = torchLight.remove;
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  await settle(); // The light entity's display lists its declared light.
   draw();
   const torch = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
   removeTorchLight();
-  setPrefabLightOverride(preview, null);
+  placer.instance.sprite.setLightOverride(null);
+  await settle();
   draw();
   const committed = { preview: sample(-6, 0), ground: sample(6, 0) };
   clockstate.set({ phase: 'day', timeinphase: 0 });
@@ -72,7 +79,7 @@ export async function checkCursorPreview() {
   lighting.update(4);
   draw();
   const dayLabel = labelState();
-  preview.removeFromParent();
+  placer.instance.remove();
 
   // Real animation/build assets: previews stay in the scene and foot sorting,
   // and both successful placement and cancellation clear the light override.
@@ -85,20 +92,20 @@ export async function checkCursorPreview() {
   await chest.begin('treasurechest');
   chest.update(0);
   const chestPreview = chest.renderEntities[0].object;
-  const building = { inScene: chestPreview.parent === scene, override: getPrefabLightOverride(chestPreview),
+  const building = { inScene: chestPreview.parent === scene, override: displayLightOverride(chestPreview),
     footY: chest.renderEntities[0].footPosition.y, label: labelState() };
   const leftGlyph = visibleRow().querySelector('canvas')!;
   const leftPixels = leftGlyph.getContext('2d')!.getImageData(0, 0, leftGlyph.width, leftGlyph.height).data;
   const differentButtons = rightPixels.some((value, index) => value !== leftPixels[index]);
   renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 220 }));
-  const placed = { inScene: chestPreview.parent === scene, override: getPrefabLightOverride(chestPreview) ?? null,
+  const placed = { inScene: chestPreview.parent === scene, override: displayLightOverride(chestPreview) || null,
     count: chest.exportRecords().length, label: labelState() };
   await wall.begin('wall_stone');
   wall.update();
   const wallPreview = wall.renderEntities[0].object;
-  const wallBefore = { inScene: wallPreview.parent === scene, override: getPrefabLightOverride(wallPreview) };
+  const wallBefore = { inScene: wallPreview.parent === scene, override: displayLightOverride(wallPreview) };
   wall.cancel();
-  const cancelled = { removed: wallPreview.parent === null, override: getPrefabLightOverride(wallPreview) ?? null,
+  const cancelled = { removed: wallPreview.parent === null, override: displayLightOverride(wallPreview) || null,
     count: wall.exportRecords().length, label: labelState() };
   const blocker = document.createElement('div');
   blocker.style.cssText = 'position:fixed;left:180px;top:200px;width:40px;height:40px;z-index:150';

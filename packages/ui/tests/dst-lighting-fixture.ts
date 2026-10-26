@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
-import { attachPrefabLight } from '../../prefab/src/localLight';
+import { spawnLightEntity } from '../../prefab/src/localLight';
 import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { getDstCycle } from '../../../src/tuning';
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
@@ -38,7 +38,10 @@ export async function checkDstLocalLighting() {
   const draw = () => lighting.render(scene, camera);
   draw();
   const night = { phase: lighting.getPhase(), season: lighting.getSeason(), centre: sample(0, 0), far: sample(15, 0) };
-  const removeTorchLight = attachPrefabLight(owner, 'TorchFireLight', TORCH_LIGHT);
+  const torchLight = spawnLightEntity(owner, 'torchfire_light'); torchLight.instance.light.set(TORCH_LIGHT);
+  const removeTorchLight = torchLight.remove;
+  // Its display lists the declared light once the declaration settles.
+  await new Promise(resolve => setTimeout(resolve, 0));
   draw();
   const torch = { centre: sample(0, 0), middle: sample(6, 0), far: sample(15, 0) };
 
@@ -57,6 +60,7 @@ export async function checkDstLocalLighting() {
   draw();
   const moved = { previous: sample(0, 0), current: sample(12, 0) };
   removeTorchLight();
+  await new Promise(resolve => setTimeout(resolve, 0));
   draw();
   const removed = { centre: sample(12, 0), instance: sample(0, 2) };
   clockstate.set({ phase: 'day', timeinphase: 0 });

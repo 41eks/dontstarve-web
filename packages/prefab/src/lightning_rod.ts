@@ -10,9 +10,9 @@ import {
     type AnimatedBuildingEventContext,
 } from './animatedBuildingPlacement';
 import { actionEntity } from './actionEntity';
-import { setPrefabLocalLight } from './localLight';
 import { PlaySound, PreloadSounds } from './sound';
 import { TILE_SIZE } from './tile';
+import { prefabInstance } from './prefabInstance';
 
 export const LIGHTNING_ROD_ID = 'lightning_rod' as const;
 export type LightningRodId = typeof LIGHTNING_ROD_ID;
@@ -107,7 +107,7 @@ class LightningRod {
         // AnimState:ClearBloomEffectHandle has no renderer here; the light is the visible charge.
         this.charged = false;
         this.chargeleft = undefined;
-        setPrefabLocalLight(this.context.model, null);
+        prefabInstance(this.context.model)!.light.set(null);
         this.zapTimer?.stop();
     }
 
@@ -119,7 +119,7 @@ class LightningRod {
 
     setcharged(charges: number): void {
         if (!this.charged) {
-            setPrefabLocalLight(this.context.model, LIGHT);
+            prefabInstance(this.context.model)!.light.set(LIGHT);
             this.charged = true;
             this.armDay();
         }
@@ -136,7 +136,7 @@ class LightningRod {
     dispose(): void {
         this.zapTimer?.stop();
         this.dayTimer?.stop();
-        setPrefabLocalLight(this.context.model, null);
+        prefabInstance(this.context.model)!.light.set(null);
     }
 }
 

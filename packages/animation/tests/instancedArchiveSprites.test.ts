@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { Animation, ResolvedSprite } from '../src/animationAssets';
 import { InstancedArchiveSprites } from '../src/instancedArchiveSprites';
-import { setLightOverride } from '../src/lightOverride';
-import { setSpriteErosion } from '../src/spriteErosion';
+import { installMatrixGate } from '../src/matrixGate';
+import { updateSceneMatrices } from '../src/matrixUpdates';
 
 vi.mock('../src/rgbaSpriteAtlas', async () => {
   const THREE = await import('three');
@@ -34,18 +34,23 @@ function setup(separateFoot = false) {
   const part = { materials: [material], image: { sampler: 0 } } as ResolvedSprite;
   const animation: Animation = { name: 'idle', facing: 255, bankHash: 0, frameRate: 30,
     frames: [{ elements: [] }, { elements: [] }] };
+  // The display layer's list: each drawn sprite and its json's light override.
+  const members = new Set<{ sprite: ReturnType<InstancedArchiveSprites['retain']>; lightOverride: number }>();
+  instances.bindMembers(members);
   const entries = [-3, 0, 3].map(x => {
     const model = new THREE.Group(), visual = new THREE.Group(); model.position.x = x; model.add(visual); parent.add(model);
+    const gate = installMatrixGate(model, visual, false, false, true);
     const foot = separateFoot ? new THREE.Group() : model;
     if (separateFoot) { foot.position.copy(model.position); parent.add(foot); }
     const handle = instances.retain(model, visual, [1, 1, 1], 1, foot);
+    const member = { sprite: handle, lightOverride: 0 }; members.add(member);
     const show = (frame: number, key = 'idle') => handle.show(key, { ...animation, name: key }, () => () => [part], frame);
-    show(0); return { model, visual, foot, handle, show };
+    show(0); return { model, visual, foot, handle, member, show, gate };
   });
-  const render = () => { scene.updateMatrixWorld(); camera.updateMatrixWorld(); instances.render(renderer, camera, undefined, scene); };
+  const render = () => { updateSceneMatrices(scene); camera.updateMatrixWorld(); instances.render(renderer, camera, undefined, scene); };
   const batch = () => scene.getObjectByName('ArchiveSpriteInstances:colour') as THREE.InstancedMesh;
-  return { instances, scene, parent, camera, renderer, material, entries, render, batch,
-    dispose() { entries.forEach(entry => entry.handle.dispose()); instances.dispose(); material.dispose(); } };
+  return { instances, scene, parent, camera, renderer, material, members, entries, render, batch,
+    dispose() { entries.forEach(entry => { entry.handle.dispose(); entry.gate.dispose(); }); instances.dispose(); material.dispose(); } };
 }
 
 it('advances only UVs on stationary animation frames, reusing culling, depth ordering, draw lists and unchanged instance attributes', () => {
@@ -58,9 +63,11 @@ it('advances only UVs on stationary animation frames, reusing culling, depth ord
     const before = versions(), uvBefore = uv.version;
     const cull = vi.spyOn(THREE.Frustum.prototype, 'intersectsSphere'), sort = vi.spyOn(Array.prototype, 'sort');
     const writes = vi.spyOn(Math, 'fround');
+    const compares = vi.spyOn(THREE.Matrix4.prototype, 'equals');
     s.entries[0].show(1); s.render();
     const sorts = sort.mock.calls.length, culls = cull.mock.calls.length;
     const floats = writes.mock.calls.length;
+    expect(compares.mock.calls.filter(([matrix]) => s.entries.some(entry => matrix === entry.visual.matrixWorld))).toHaveLength(0);
     expect(sorts).toBe(0); expect(culls).toBe(0);
     expect(floats).toBe(4);
     expect(versions()).toEqual(before); expect(uv.version).toBeGreaterThan(uvBefore);
@@ -77,27 +84,23 @@ it('advances only UVs on stationary animation frames, reusing culling, depth ord
   } finally { s.dispose(); }
 });
 
-it('invalidates camera culling and membership, inherits the nearest light override, and updates private tint, opacity and erosion', () => {
+it('draws only listed sprites, reads light from the members, and updates private tint, opacity, erosion and culling', () => {
   const s = setup();
   try {
     s.render(); const mesh = s.batch();
     const cull = vi.spyOn(THREE.Frustum.prototype, 'intersectsSphere');
-    // Whether an entity is drawn follows its tile, not its parents; the light override comes from the nearest owner.
-    s.parent.visible = false; setLightOverride(s.parent, .6); s.render(); expect(mesh.count).toBe(3);
+    // Whether an entity is drawn follows its tile, not its parents; its light is its display's declaration.
+    s.parent.visible = false; s.entries[2].member.lightOverride = .6; s.render(); expect(mesh.count).toBe(3);
     expect(mesh.geometry.getAttribute('spriteLightOverride').getX(2)).toBeCloseTo(.6);
-    s.parent.visible = true; setLightOverride(s.parent, null); setLightOverride(s.entries[2].model, .6);
-    s.entries[0].handle.setColour([.2, .3, .4]); s.entries[0].handle.setOpacity(.5);
-    setSpriteErosion(s.entries[0].model, .25); s.render();
+    s.parent.visible = true;
+    s.entries[0].handle.setColour([.2, .3, .4]); s.entries[0].handle.setOpacity(.5); s.entries[0].handle.setErosion(.25); s.render();
     expect(mesh.count).toBe(3); expect(cull).not.toHaveBeenCalled();
     expect(mesh.instanceColor!.getX(0)).toBeCloseTo(.2);
     expect(mesh.geometry.getAttribute('spriteOpacity').getX(0)).toBe(.5);
     expect(mesh.geometry.getAttribute('spriteErosion').getX(0)).toBe(.25);
-    expect(mesh.geometry.getAttribute('spriteLightOverride').getX(2)).toBeCloseTo(.6);
-    setLightOverride(s.entries[0].model, .1); s.render();
+    s.entries[0].member.lightOverride = .1; s.render();
     expect(mesh.geometry.getAttribute('spriteLightOverride').getX(0)).toBeCloseTo(.1);
-    setLightOverride(s.material, .9); s.render();
-    expect(mesh.geometry.getAttribute('spriteLightOverride').getX(0)).toBeCloseTo(.9);
-    setLightOverride(s.material, null); setLightOverride(s.entries[0].model, null); s.render();
+    s.entries[0].member.lightOverride = 0; s.render();
     expect(mesh.geometry.getAttribute('spriteLightOverride').getX(0)).toBe(0);
     s.camera.position.x = 100; s.render();
     expect(cull).toHaveBeenCalledTimes(3); expect(mesh.count).toBe(0);
@@ -106,6 +109,10 @@ it('invalidates camera culling and membership, inherits the nearest light overri
     s.entries[0].show(1); s.render(); expect(mesh.count).toBe(3);
     s.entries[0].visual.visible = false; s.render(); expect(mesh.count).toBe(2);
     s.entries[0].visual.visible = true; s.render(); expect(mesh.count).toBe(3);
+    // A retained sprite the display layer does not list is not drawn; listing it again draws it.
+    s.members.delete(s.entries[1].member); s.render(); expect(mesh.count).toBe(2);
+    s.members.add(s.entries[1].member); s.render(); expect(mesh.count).toBe(3);
+    // A display may still list a released instance until its art changes; it draws nothing.
     s.entries[0].handle.dispose(); s.render(); expect(mesh.count).toBe(2);
     cull.mockClear(); s.parent.position.x = 1; s.render();
     expect(cull).toHaveBeenCalledTimes(2); // Both remaining entities move with their parent.

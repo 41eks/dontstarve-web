@@ -133,7 +133,7 @@ export class ReskinEffects {
     sprite.setLightOverride(toolSkinId ? 0 : 1);
     if (skinArchive) sprite.setSymbolOverride('shadow_dust', skinArchive);
     const effect = new ReskinFx(instance, toolSkinId);
-    const display = this.displays.add({ name: prefab, status: instance.status, sprite,
+    const display = this.displays.add({ name: prefab, status: instance.status, sprite, light: instance.light,
       archive: { create: clip => create(clip.name, clip.loop) } }, effect.footPosition);
     bindInstance(display.model, instance);
     this.effects.add(effect);

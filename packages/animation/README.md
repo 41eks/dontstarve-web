@@ -98,8 +98,12 @@ sprite.playOnce('change', () => sprite.start('idle_loop'));
 `RockManager` 同样使用 `instancedAnimations: 'all'`：`full/med/low`、落石的 `idle/idle_raised`
 按 Lua 保持非循环播放，开采切换姿态后重新选择对应共享图集批次。动画与 build 分离的落石及其
 `swap_boulder2..8` 符号覆盖也按外观合批，实体明暗和拾取代理保持独立。
-月岩壳破碎后通过 `spriteErosion.ts` 的 `setSpriteErosion()` 写入独立的实例侵蚀量，
+月岩壳破碎后在 sprite json 上声明侵蚀量，display 经 `ArchiveSprite.setErosion()` 写入独立的实例侵蚀量，
 深度与颜色 pass 使用同一侵蚀属性；完成移除仍由游戏时间调度器执行，不依赖绘制帧。
+
+`InstancedArchiveSprites` 只绘制 display 层列出的成员：每个 `PrefabDisplay` 在其绘制的 sprite
+变化时把实例（`ArchiveSprite.instanced`）登记到对应批次的成员列表（`bindMembers()`），
+每实例的 `spriteLightOverride` 属性直接读取成员的 sprite json `lightOverride`，不沿场景父链查找。
 
 源 atlas 中分散的部件经 `rgbaSpriteAtlas.ts` 按动画变换及层顺序预合成完整帧。图集使用源纹理密度、
 按设备上限分页（每页不超过 4096），同一 clip 共用固定边界和像素网格，避免逐帧裁切取整导致抖动。
